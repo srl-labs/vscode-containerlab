@@ -25,6 +25,7 @@ interface FreeShapeAnnotationsAPI {
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
   updateEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
+  updateStartPosition: (id: string, startPosition: { x: number; y: number }) => void;
   disableAddShapeMode: () => void;
 }
 
@@ -70,6 +71,7 @@ export function useAnnotationCanvasProps(
     onUpdateFreeTextRotation: freeTextAnnotations.updateRotation,
     onUpdateFreeShapeRotation: freeShapeAnnotations.updateRotation,
     onUpdateFreeShapeEndPosition: freeShapeAnnotations.updateEndPosition,
+    onUpdateFreeShapeStartPosition: freeShapeAnnotations.updateStartPosition,
     disableAddTextMode: freeTextAnnotations.disableAddTextMode,
     disableAddShapeMode: freeShapeAnnotations.disableAddShapeMode
   }), [freeTextAnnotations, freeShapeAnnotations]);

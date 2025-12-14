@@ -189,6 +189,7 @@ export function buildInitialData(options: {
   mode?: 'edit' | 'view';
   deploymentState?: 'deployed' | 'undeployed' | 'unknown';
   elements?: CyElement[];
+  isLocked?: boolean;
 } = {}): Partial<TopoViewerState> & {
   schemaData?: unknown;
   dockerImages?: string[];
@@ -198,6 +199,7 @@ export function buildInitialData(options: {
     labName: 'dev-topology',
     mode: options.mode || 'edit',
     deploymentState: options.deploymentState || 'undeployed',
+    isLocked: options.isLocked ?? false,
     customNodes: sampleCustomNodes,
     defaultNode: 'SRLinux Latest',
     // Additional data that gets stored on window

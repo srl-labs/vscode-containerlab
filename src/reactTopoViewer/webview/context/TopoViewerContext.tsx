@@ -263,6 +263,7 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
     labName: (obj.labName as string) || '',
     mode: (obj.mode as 'edit' | 'view') || 'edit',
     deploymentState: (obj.deploymentState as DeploymentState) || 'unknown',
+    isLocked: (obj.isLocked as boolean) ?? false,
     customNodes: (obj.customNodes as CustomNodeTemplate[]) || [],
     defaultNode: (obj.defaultNode as string) || ''
   };

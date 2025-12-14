@@ -7,6 +7,7 @@ import type { Node, ReactFlowInstance } from '@xyflow/react';
 import type { AnnotationModeState, AnnotationHandlers } from '../../components/react-flow-canvas/types';
 import { snapToGrid } from './useCanvasHandlers';
 import { log } from '../../utils/logger';
+import { isLineHandleActive } from '../../components/react-flow-canvas/nodes/AnnotationHandles';
 
 /** Node type constants */
 const FREE_TEXT_NODE_TYPE = 'free-text-node';
@@ -147,6 +148,13 @@ function useWrappedNodeDragStop(
     }
 
     if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers) {
+      // Skip position update if a line handle drag is in progress
+      // The handle already updates the position directly
+      if (isLineHandleActive()) {
+        log.info(`[ReactFlowCanvas] Skipping position update (line handle active): ${node.id}`);
+        return;
+      }
+
       const snappedPosition = snapToGrid(node.position);
       log.info(`[ReactFlowCanvas] Updated free shape position: ${node.id}`);
       annotationHandlers.onUpdateFreeShapePosition(node.id, snappedPosition);

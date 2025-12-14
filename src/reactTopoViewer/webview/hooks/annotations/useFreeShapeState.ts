@@ -13,6 +13,7 @@ import {
   updateAnnotationPosition,
   updateAnnotationRotation,
   updateAnnotationEndPosition,
+  updateAnnotationStartPosition,
   duplicateAnnotations
 } from './freeShapeHelpers';
 
@@ -99,6 +100,7 @@ export interface UseFreeShapeActionsReturn {
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
   updateEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
+  updateStartPosition: (id: string, startPosition: { x: number; y: number }) => void;
   loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
   selectAnnotation: (id: string) => void;
   toggleAnnotationSelection: (id: string) => void;
@@ -170,7 +172,7 @@ function useAnnotationCrud(
   return { saveAnnotation, deleteAnnotation, loadAnnotations };
 }
 
-function useAnnotationUpdates(
+function useBasicAnnotationUpdates(
   setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
   saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
 ) {
@@ -198,6 +200,13 @@ function useAnnotationUpdates(
     });
   }, [setAnnotations, saveAnnotationsToExtension]);
 
+  return { updatePosition, updateSize, updateRotation };
+}
+
+function useLinePositionUpdates(
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
+  saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
+) {
   const updateEndPosition = useCallback((id: string, endPosition: { x: number; y: number }) => {
     setAnnotations(prev => {
       const updated = updateAnnotationInList(prev, id, a => updateAnnotationEndPosition(a, endPosition));
@@ -206,7 +215,15 @@ function useAnnotationUpdates(
     });
   }, [setAnnotations, saveAnnotationsToExtension]);
 
-  return { updatePosition, updateSize, updateRotation, updateEndPosition };
+  const updateStartPosition = useCallback((id: string, startPosition: { x: number; y: number }) => {
+    setAnnotations(prev => {
+      const updated = updateAnnotationInList(prev, id, a => updateAnnotationStartPosition(a, startPosition));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  return { updateEndPosition, updateStartPosition };
 }
 
 function useBasicSelection(
@@ -430,7 +447,8 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
 
   const modeActions = useModeActions(mode, isLocked, onLockedAction, setIsAddShapeMode, setPendingShapeType);
   const crudActions = useAnnotationCrud(setAnnotations, lastStyleRef, saveAnnotationsToExtension);
-  const updateActions = useAnnotationUpdates(setAnnotations, saveAnnotationsToExtension);
+  const basicUpdateActions = useBasicAnnotationUpdates(setAnnotations, saveAnnotationsToExtension);
+  const linePositionActions = useLinePositionUpdates(setAnnotations, saveAnnotationsToExtension);
   const selectionActions = useAnnotationSelection(
     annotations,
     setAnnotations,
@@ -452,7 +470,8 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
   return {
     ...modeActions,
     ...crudActions,
-    ...updateActions,
+    ...basicUpdateActions,
+    ...linePositionActions,
     ...selectionActions,
     ...copyPasteActions
   };

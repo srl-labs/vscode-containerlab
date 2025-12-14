@@ -82,6 +82,7 @@ export function useFreeShapeAnnotations(options: UseFreeShapeAnnotationsOptions)
     updateSize: actions.updateSize,
     updateRotation: actions.updateRotation,
     updateEndPosition: actions.updateEndPosition,
+    updateStartPosition: actions.updateStartPosition,
     loadAnnotations: actions.loadAnnotations,
     getUndoRedoAction,
     selectedAnnotationIds,

@@ -8,7 +8,7 @@ import type { FreeShapeNodeData } from '../types';
 import { SELECTION_COLOR } from '../types';
 import { useTopoViewer } from '../../../context/TopoViewerContext';
 import { useAnnotationHandlers } from '../../../context/AnnotationHandlersContext';
-import { RotationHandle, LineEndHandle } from './AnnotationHandles';
+import { RotationHandle, LineEndHandle, LineStartHandle } from './AnnotationHandles';
 
 // ============================================================================
 // Constants
@@ -296,6 +296,16 @@ function LineNode({ id, data, isSelected, showHandles, annotationHandlers }: Lin
         selected={isSelected}
         nodeId={id}
       />
+      {showHandles && annotationHandlers?.onUpdateFreeShapeStartPosition && (
+        <LineStartHandle
+          nodeId={id}
+          startPosition={startPosition}
+          endPosition={endPosition}
+          lineStartOffset={lineStartInNode}
+          rotation={rotation}
+          onStartPositionChange={annotationHandlers.onUpdateFreeShapeStartPosition}
+        />
+      )}
       {showHandles && annotationHandlers?.onUpdateFreeShapeEndPosition && (
         <LineEndHandle
           nodeId={id}

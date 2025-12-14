@@ -26,6 +26,7 @@ import '@xyflow/react/dist/style.css';
 import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from './types';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
+import { isLineHandleActive } from './nodes/AnnotationHandles';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { LinkCreationProvider } from '../../context/LinkCreationContext';
 import { AnnotationHandlersProvider } from '../../context/AnnotationHandlersContext';
@@ -213,11 +214,17 @@ function useSyncAnnotationNodes(
         }
         incomingById.delete(currentNode.id);
 
+        // When a line handle is being dragged, use the incoming position
+        // (computed from annotation data) to properly update the node's visual position.
+        // Otherwise, preserve React Flow's position to avoid jitter during node dragging.
+        const isLineNode = currentNode.type === 'free-shape-node' &&
+          (incoming.data as { shapeType?: string })?.shapeType === 'line';
+        const useIncomingPosition = isLineNode && isLineHandleActive();
+
         nextNodes.push({
           ...currentNode,
           ...incoming,
-          // Preserve React Flow's position to avoid jitter while dragging.
-          position: currentNode.position,
+          position: useIncomingPosition ? incoming.position : currentNode.position,
           // Always update to the latest annotation data.
           data: incoming.data,
           // Preserve selection/dragging state managed by React Flow.

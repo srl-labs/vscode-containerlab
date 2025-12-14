@@ -172,9 +172,38 @@ export function updateAnnotationEndPosition(
     dx *= scale;
     dy *= scale;
   }
+  // Explicitly set both position and endPosition for consistency
   return {
     ...annotation,
+    position: start,
     endPosition: { x: Math.round(start.x + dx), y: Math.round(start.y + dy) }
+  };
+}
+
+export function updateAnnotationStartPosition(
+  annotation: FreeShapeAnnotation,
+  startPosition: { x: number; y: number }
+): FreeShapeAnnotation {
+  if (annotation.shapeType !== 'line') return annotation;
+  // Get the end position, computing fallback if undefined
+  const end = annotation.endPosition ?? {
+    x: annotation.position.x + DEFAULT_LINE_LENGTH,
+    y: annotation.position.y
+  };
+  let dx = end.x - startPosition.x;
+  let dy = end.y - startPosition.y;
+  const length = Math.hypot(dx, dy);
+  if (length > 0 && length < MIN_SHAPE_SIZE) {
+    const scale = MIN_SHAPE_SIZE / length;
+    dx *= scale;
+    dy *= scale;
+  }
+  // IMPORTANT: Always explicitly set endPosition to prevent fallback recalculation
+  // If annotation.endPosition was undefined, this ensures it gets persisted
+  return {
+    ...annotation,
+    position: { x: Math.round(end.x - dx), y: Math.round(end.y - dy) },
+    endPosition: end
   };
 }
 

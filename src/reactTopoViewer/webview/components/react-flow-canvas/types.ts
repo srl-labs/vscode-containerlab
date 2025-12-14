@@ -182,6 +182,8 @@ export interface AnnotationHandlers {
   onUpdateFreeShapeRotation: (id: string, rotation: number) => void;
   /** Update line end position after resize */
   onUpdateFreeShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
+  /** Update line start position after resize */
+  onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => void;
   /** Disable add text mode (e.g., on Escape) */
   disableAddTextMode: () => void;
   /** Disable add shape mode (e.g., on Escape) */

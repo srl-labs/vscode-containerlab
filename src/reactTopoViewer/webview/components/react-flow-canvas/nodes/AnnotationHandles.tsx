@@ -6,6 +6,40 @@ import { useReactFlow, useUpdateNodeInternals } from '@xyflow/react';
 import { SELECTION_COLOR } from '../types';
 
 // ============================================================================
+// Global Line Handle Drag State
+// ============================================================================
+
+/**
+ * Global flag to track when a line handle is being dragged.
+ * Used by onNodeDragStop to skip position updates during handle resize.
+ */
+let isLineHandleDragging = false;
+
+/** Check if a line handle drag is in progress */
+export function isLineHandleActive(): boolean {
+  return isLineHandleDragging;
+}
+
+/** Set the line handle drag state */
+function setLineHandleDragging(dragging: boolean): void {
+  isLineHandleDragging = dragging;
+}
+
+/** Create a mouseup handler for line handle drag end */
+function createLineHandleMouseUpHandler(
+  setIsResizing: React.Dispatch<React.SetStateAction<boolean>>,
+  dragStartRef: { current: unknown }
+): () => void {
+  return () => {
+    setIsResizing(false);
+    dragStartRef.current = null;
+    // Delay clearing the flag to ensure onNodeDragStop checks it first
+    // This prevents the position update from overriding the handle's change
+    setTimeout(() => setLineHandleDragging(false), 0);
+  };
+}
+
+// ============================================================================
 // Constants
 // ============================================================================
 
@@ -243,10 +277,7 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
       });
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      dragStartRef.current = null;
-    };
+    const handleMouseUp = createLineHandleMouseUpHandler(setIsResizing, dragStartRef);
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -262,6 +293,7 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
     e.stopPropagation();
 
     setIsResizing(true);
+    setLineHandleDragging(true);
     const viewport = reactFlow.getViewport();
     dragStartRef.current = {
       startClientX: e.clientX,
@@ -302,30 +334,37 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
 };
 
 // ============================================================================
-// Line Start Handle
+// Line Start Handle (for resizing lines from the start point)
 // ============================================================================
 
 interface LineStartHandleProps {
   readonly nodeId: string;
   readonly startPosition: { x: number; y: number };
   readonly endPosition: { x: number; y: number };
-  readonly onPositionChange: (id: string, position: { x: number; y: number }) => void;
-  readonly onEndPositionChange: (id: string, endPosition: { x: number; y: number }) => void;
+  /** Offset of line start within the node (for bounding box positioning) */
+  readonly lineStartOffset: { x: number; y: number };
+  /** Current node rotation in degrees (applied to the node wrapper) */
+  readonly rotation?: number;
+  readonly onStartPositionChange: (id: string, startPosition: { x: number; y: number }) => void;
 }
 
 export const LineStartHandle: React.FC<LineStartHandleProps> = ({
   nodeId,
   startPosition,
   endPosition,
-  onPositionChange,
-  onEndPositionChange
+  lineStartOffset,
+  rotation = 0,
+  onStartPositionChange
 }) => {
   const [isResizing, setIsResizing] = useState(false);
+  const reactFlow = useReactFlow();
   const dragStartRef = useRef<{
     startClientX: number;
     startClientY: number;
-    originalStart: { x: number; y: number };
-    originalEnd: { x: number; y: number };
+    startStartX: number;
+    startStartY: number;
+    rotationRad: number;
+    zoom: number;
   } | null>(null);
 
   useEffect(() => {
@@ -334,33 +373,39 @@ export const LineStartHandle: React.FC<LineStartHandleProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
 
-      const deltaX = e.clientX - dragStartRef.current.startClientX;
-      const deltaY = e.clientY - dragStartRef.current.startClientY;
+      const deltaClientX = e.clientX - dragStartRef.current.startClientX;
+      const deltaClientY = e.clientY - dragStartRef.current.startClientY;
 
-      let newStartX = dragStartRef.current.originalStart.x + deltaX;
-      let newStartY = dragStartRef.current.originalStart.y + deltaY;
+      const deltaX = deltaClientX / dragStartRef.current.zoom;
+      const deltaY = deltaClientY / dragStartRef.current.zoom;
+
+      // Convert screen delta into model-space delta for the unrotated line
+      const cos = Math.cos(-dragStartRef.current.rotationRad);
+      const sin = Math.sin(-dragStartRef.current.rotationRad);
+      const rotatedDx = deltaX * cos - deltaY * sin;
+      const rotatedDy = deltaX * sin + deltaY * cos;
+
+      let newStartX = dragStartRef.current.startStartX + rotatedDx;
+      let newStartY = dragStartRef.current.startStartY + rotatedDy;
 
       // Ensure minimum line length
-      const dx = dragStartRef.current.originalEnd.x - newStartX;
-      const dy = dragStartRef.current.originalEnd.y - newStartY;
+      const dx = endPosition.x - newStartX;
+      const dy = endPosition.y - newStartY;
       const length = Math.hypot(dx, dy);
 
       if (length < MIN_LINE_LENGTH && length > 0) {
         const scale = MIN_LINE_LENGTH / length;
-        newStartX = dragStartRef.current.originalEnd.x - dx * scale;
-        newStartY = dragStartRef.current.originalEnd.y - dy * scale;
+        newStartX = endPosition.x - dx * scale;
+        newStartY = endPosition.y - dy * scale;
       }
 
-      onPositionChange(nodeId, {
+      onStartPositionChange(nodeId, {
         x: Math.round(newStartX),
         y: Math.round(newStartY)
       });
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      dragStartRef.current = null;
-    };
+    const handleMouseUp = createLineHandleMouseUpHandler(setIsResizing, dragStartRef);
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -368,7 +413,7 @@ export const LineStartHandle: React.FC<LineStartHandleProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, nodeId, onPositionChange, onEndPositionChange]);
+  }, [isResizing, nodeId, endPosition, onStartPositionChange]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -376,31 +421,40 @@ export const LineStartHandle: React.FC<LineStartHandleProps> = ({
     e.stopPropagation();
 
     setIsResizing(true);
+    setLineHandleDragging(true);
+    const viewport = reactFlow.getViewport();
     dragStartRef.current = {
       startClientX: e.clientX,
       startClientY: e.clientY,
-      originalStart: { ...startPosition },
-      originalEnd: { ...endPosition }
+      startStartX: startPosition.x,
+      startStartY: startPosition.y,
+      rotationRad: (rotation * Math.PI) / 180,
+      zoom: viewport.zoom || 1
     };
-  }, [startPosition, endPosition]);
+  }, [startPosition, reactFlow, rotation]);
+
+  // Handle is at the line start offset position
+  const handleX = lineStartOffset.x;
+  const handleY = lineStartOffset.y;
 
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="nodrag"
+      className="nodrag nopan nowheel"
       style={{
         position: 'absolute',
-        left: 0,
-        top: 0,
-        width: `${HANDLE_SIZE}px`,
-        height: `${HANDLE_SIZE}px`,
+        left: `${handleX}px`,
+        top: `${handleY}px`,
+        width: `${HANDLE_SIZE + 4}px`,
+        height: `${HANDLE_SIZE + 4}px`,
         backgroundColor: 'white',
         border: `2px solid ${SELECTION_COLOR}`,
         borderRadius: '2px',
         transform: CENTER_TRANSFORM,
-        cursor: isResizing ? 'grabbing' : 'nwse-resize',
+        cursor: isResizing ? 'grabbing' : 'nesw-resize',
         boxShadow: HANDLE_BOX_SHADOW,
-        zIndex: 10
+        zIndex: 1000,
+        pointerEvents: 'auto'
       }}
       title="Drag to resize line"
     />
