@@ -31,3 +31,11 @@ export type {
 
 export { useAppHandlers } from './useAppHandlers';
 export type { PendingMembershipChange } from './useAppHandlers';
+
+export { useClickOutside } from './useClickOutside';
+
+export { useDropdownKeyboard } from './useDropdownKeyboard';
+export type { DropdownKeyboardActions, DropdownKeyboardState } from './useDropdownKeyboard';
+
+export { useFilterableDropdown } from './useFilterableDropdown';
+export type { FilterableDropdownOption, UseFilterableDropdownReturn } from './useFilterableDropdown';

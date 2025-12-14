@@ -7,7 +7,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { log } from '../../utils/logger';
 
-// Extend Window to include docker images
 declare global {
   interface Window {
     __DOCKER_IMAGES__?: string[];
@@ -89,9 +88,32 @@ function parseDockerImages(images: string[]): ImageVersionMap {
 }
 
 /**
+ * Parse full image string into base and version components
+ */
+function splitImageString(fullImage: string, defaultBase: string): { base: string; version: string } {
+  if (!fullImage) {
+    return { base: defaultBase, version: 'latest' };
+  }
+  const lastColonIndex = fullImage.lastIndexOf(':');
+  if (lastColonIndex > 0) {
+    return {
+      base: fullImage.substring(0, lastColonIndex),
+      version: fullImage.substring(lastColonIndex + 1)
+    };
+  }
+  return { base: fullImage, version: 'latest' };
+}
+
+/**
+ * Combine base image and version into full image string
+ */
+function joinImageVersion(base: string, version: string): string {
+  return base ? `${base}:${version || 'latest'}` : '';
+}
+
+/**
  * Hook to access docker images with base/version parsing
  */
-// eslint-disable-next-line aggregate-complexity/aggregate-complexity
 export function useDockerImages(): UseDockerImagesResult {
   const [dockerImages, setDockerImages] = useState<string[]>(() => window.__DOCKER_IMAGES__ || []);
 
@@ -111,19 +133,12 @@ export function useDockerImages(): UseDockerImagesResult {
     [versionsByImage]
   );
 
-  const parseImageString = useCallback((fullImage: string): { base: string; version: string } => {
-    if (!fullImage) return { base: baseImages[0] || '', version: 'latest' };
-    const lastColonIndex = fullImage.lastIndexOf(':');
-    if (lastColonIndex > 0) {
-      return { base: fullImage.substring(0, lastColonIndex), version: fullImage.substring(lastColonIndex + 1) };
-    }
-    return { base: fullImage, version: 'latest' };
-  }, [baseImages]);
-
-  const combineImageVersion = useCallback(
-    (base: string, version: string): string => (base ? `${base}:${version || 'latest'}` : ''),
-    []
+  const parseImageString = useCallback(
+    (fullImage: string) => splitImageString(fullImage, baseImages[0] || ''),
+    [baseImages]
   );
+
+  const combineImageVersion = useCallback(joinImageVersion, []);
 
   return {
     dockerImages,
