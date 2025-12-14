@@ -11,10 +11,14 @@ import '@webview/styles/tailwind.css';
 import {
   buildInitialData,
   sampleElements,
+  sampleAnnotations,
+  annotatedElements,
+  annotatedTopologyAnnotations,
   emptyElements,
   generateLargeTopology,
   generateYamlFromElements
 } from './mockData';
+import type { TopologyAnnotations } from '@shared/types/topology';
 
 // ============================================================================
 // Dev Mode State
@@ -23,10 +27,7 @@ import {
 interface DevState {
   splitViewOpen: boolean;
   currentElements: typeof sampleElements;
-  currentAnnotations: {
-    freeTextAnnotations: unknown[];
-    nodeAnnotations: unknown[];
-  };
+  currentAnnotations: TopologyAnnotations;
   clipboard: unknown | null;
   graphBatchDepth: number;
   pendingTopologyBroadcast: boolean;
@@ -35,10 +36,7 @@ interface DevState {
 const devState: DevState = {
   splitViewOpen: false,
   currentElements: sampleElements,
-  currentAnnotations: {
-    freeTextAnnotations: [],
-    nodeAnnotations: []
-  },
+  currentAnnotations: { ...sampleAnnotations },
   clipboard: null,
   graphBatchDepth: 0,
   pendingTopologyBroadcast: false
@@ -185,7 +183,10 @@ function handleMockExtensionResponse(message: MockMessage) {
           }
         ];
         // Add to node annotations
-        (devState.currentAnnotations.nodeAnnotations as Array<{ id: string; position: { x: number; y: number } }>).push({
+        if (!devState.currentAnnotations.nodeAnnotations) {
+          devState.currentAnnotations.nodeAnnotations = [];
+        }
+        devState.currentAnnotations.nodeAnnotations.push({
           id: nodeId,
           position: nodePosition
         });
@@ -237,8 +238,9 @@ function handleMockExtensionResponse(message: MockMessage) {
           return true;
         });
         // Remove from node annotations
-        devState.currentAnnotations.nodeAnnotations = (devState.currentAnnotations.nodeAnnotations as Array<{ id: string }>)
-          .filter(a => a.id !== nodeId);
+        if (devState.currentAnnotations.nodeAnnotations) {
+          devState.currentAnnotations.nodeAnnotations = devState.currentAnnotations.nodeAnnotations.filter(a => a.id !== nodeId);
+        }
         updateSplitViewContent();
         if (devState.graphBatchDepth > 0) {
           devState.pendingTopologyBroadcast = true;
@@ -271,7 +273,23 @@ function handleMockExtensionResponse(message: MockMessage) {
       console.log('%c[Mock Extension]', 'color: #FF9800;', 'Saving annotations:', message);
       // Update stored annotations and refresh split view
       if (message.annotations) {
-        devState.currentAnnotations.freeTextAnnotations = message.annotations as unknown[];
+        devState.currentAnnotations.freeTextAnnotations = message.annotations as TopologyAnnotations['freeTextAnnotations'];
+        updateSplitViewContent();
+      }
+      break;
+
+    case 'save-free-shape-annotations':
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Saving free shape annotations:', message);
+      if (message.annotations) {
+        devState.currentAnnotations.freeShapeAnnotations = message.annotations as TopologyAnnotations['freeShapeAnnotations'];
+        updateSplitViewContent();
+      }
+      break;
+
+    case 'save-group-style-annotations':
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Saving group style annotations:', message);
+      if (message.annotations) {
+        devState.currentAnnotations.groupStyleAnnotations = message.annotations as TopologyAnnotations['groupStyleAnnotations'];
         updateSplitViewContent();
       }
       break;
@@ -295,13 +313,15 @@ function handleMockExtensionResponse(message: MockMessage) {
         });
 
         // Update node annotations (merge with existing)
-        const existingAnnotations = devState.currentAnnotations.nodeAnnotations as Array<{ id: string; position?: { x: number; y: number } }>;
+        if (!devState.currentAnnotations.nodeAnnotations) {
+          devState.currentAnnotations.nodeAnnotations = [];
+        }
         for (const posData of positionsArray) {
-          const existing = existingAnnotations.find(a => a.id === posData.id);
+          const existing = devState.currentAnnotations.nodeAnnotations.find(a => a.id === posData.id);
           if (existing) {
             existing.position = posData.position;
           } else {
-            existingAnnotations.push({ id: posData.id, position: posData.position });
+            devState.currentAnnotations.nodeAnnotations.push({ id: posData.id, position: posData.position });
           }
         }
         updateSplitViewContent();
@@ -347,14 +367,7 @@ function updateSplitViewContent() {
   // Update annotations JSON
   const annotationsContent = document.getElementById('annotationsContent');
   if (annotationsContent) {
-    const annotationsData = {
-      freeTextAnnotations: devState.currentAnnotations.freeTextAnnotations,
-      freeShapeAnnotations: [],
-      groupStyleAnnotations: [],
-      cloudNodeAnnotations: [],
-      nodeAnnotations: devState.currentAnnotations.nodeAnnotations
-    };
-    annotationsContent.textContent = JSON.stringify(annotationsData, null, 2);
+    annotationsContent.textContent = JSON.stringify(devState.currentAnnotations, null, 2);
   }
 }
 
@@ -373,7 +386,7 @@ declare global {
     __INITIAL_DATA__: ReturnType<typeof buildInitialData>;
     // Dev mode utilities (only exists in dev mode)
     __DEV__: {
-      loadTopology: (name: 'sample' | 'empty' | 'large' | 'large100' | 'large1000') => void;
+      loadTopology: (name: 'sample' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => void;
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
       toggleSplitView: () => void;
@@ -395,7 +408,17 @@ const initialData = buildInitialData({
   deploymentState: 'undeployed'
 });
 
-window.__INITIAL_DATA__ = initialData;
+// Flatten annotations to top level - hooks expect __INITIAL_DATA__.freeTextAnnotations, not nested
+const flattenedInitialData = {
+  ...initialData,
+  freeTextAnnotations: initialData.annotations?.freeTextAnnotations,
+  freeShapeAnnotations: initialData.annotations?.freeShapeAnnotations,
+  groupStyleAnnotations: initialData.annotations?.groupStyleAnnotations,
+  nodeAnnotations: initialData.annotations?.nodeAnnotations,
+  cloudNodeAnnotations: initialData.annotations?.cloudNodeAnnotations
+};
+
+window.__INITIAL_DATA__ = flattenedInitialData;
 // Cast to expected types - these are declared in webview code
 (window as { __SCHEMA_DATA__?: unknown }).__SCHEMA_DATA__ = initialData.schemaData;
 (window as { __DOCKER_IMAGES__?: string[] }).__DOCKER_IMAGES__ = initialData.dockerImages || [];
@@ -407,33 +430,58 @@ window.__INITIAL_DATA__ = initialData;
 window.__DEV__ = {
   /**
    * Load different topology configurations
-   * Usage: __DEV__.loadTopology('large1000')
+   * Usage: __DEV__.loadTopology('annotated')
    */
-  loadTopology: (name: 'sample' | 'empty' | 'large' | 'large100' | 'large1000') => {
+  loadTopology: (name: 'sample' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => {
     let elements;
+    let annotations: TopologyAnnotations;
+    const emptyAnnotations: TopologyAnnotations = {
+      freeTextAnnotations: [],
+      freeShapeAnnotations: [],
+      groupStyleAnnotations: [],
+      cloudNodeAnnotations: [],
+      nodeAnnotations: [],
+      aliasEndpointAnnotations: []
+    };
     switch (name) {
       case 'empty':
         elements = emptyElements;
+        annotations = emptyAnnotations;
         break;
       case 'large':
         elements = generateLargeTopology(25);
+        annotations = emptyAnnotations;
         break;
       case 'large100':
         elements = generateLargeTopology(100);
+        annotations = emptyAnnotations;
         break;
       case 'large1000':
         elements = generateLargeTopology(1000);
+        annotations = emptyAnnotations;
+        break;
+      case 'annotated':
+        elements = annotatedElements;
+        annotations = { ...annotatedTopologyAnnotations };
         break;
       case 'sample':
       default:
         elements = sampleElements;
+        annotations = { ...sampleAnnotations };
     }
     devState.currentElements = elements;
-    // Reset annotations when loading new topology
-    devState.currentAnnotations = { freeTextAnnotations: [], nodeAnnotations: [] };
+    devState.currentAnnotations = annotations;
+    // Flatten annotations to top level - hooks expect data.freeTextAnnotations, not data.annotations.freeTextAnnotations
     window.postMessage({
       type: 'topology-data',
-      data: { elements }
+      data: {
+        elements,
+        freeTextAnnotations: annotations.freeTextAnnotations,
+        freeShapeAnnotations: annotations.freeShapeAnnotations,
+        groupStyleAnnotations: annotations.groupStyleAnnotations,
+        nodeAnnotations: annotations.nodeAnnotations,
+        cloudNodeAnnotations: annotations.cloudNodeAnnotations
+      }
     }, '*');
     // Update split view if open
     updateSplitViewContent();
@@ -499,7 +547,9 @@ window.__DEV__ = {
 
 console.log('%c[React TopoViewer - Dev Mode]', 'color: #E91E63; font-weight: bold; font-size: 14px;');
 console.log('Available dev utilities:');
-console.log('  __DEV__.loadTopology("sample" | "empty" | "large" | "large100" | "large1000")');
+console.log('  __DEV__.loadTopology("sample" | "annotated" | "empty" | "large" | "large100" | "large1000")');
+console.log('    - sample: Basic spine-leaf topology');
+console.log('    - annotated: DC topology with groups, freetext, and freeshapes');
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed" | "unknown")');
 console.log('  __DEV__.toggleSplitView()     - Toggle split view (clab.yml + annotations)');
