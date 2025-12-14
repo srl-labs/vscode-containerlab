@@ -394,12 +394,22 @@ function scaleEdgeImmediate(e: any, factor: number, labelFactor: number): void {
 /**
  * Calculate geo scale factor based on Leaflet zoom
  */
-export function calculateGeoScale(state: GeoMapState): number {
+export function calculateGeoScale(state: GeoMapState, zoomOverride?: number): number {
   if (!state.leafletMap) return state.scaleFactor;
-  const currentZoom = state.leafletMap.getZoom() || state.baseZoom;
+  const currentZoom = zoomOverride ?? state.leafletMap.getZoom() ?? state.baseZoom;
   if (!state.baseZoom) state.baseZoom = currentZoom;
   const zoomDiff = currentZoom - state.baseZoom;
   return state.scaleFactor * Math.pow(2, zoomDiff);
+}
+
+export function handleZoomStart(cy: any, state: GeoMapState): void {
+  if (!cy || !state.isInitialized || !state.leafletMap) return;
+
+  state.isZooming = true;
+  if (state.zoomAnimationFrameId !== null) {
+    window.cancelAnimationFrame(state.zoomAnimationFrameId);
+    state.zoomAnimationFrameId = null;
+  }
 }
 
 /**
@@ -414,61 +424,51 @@ function updateNodePositionsFromGeo(cy: Core, state: GeoMapState): void {
       const lat = parseFloat(node.data('lat'));
       const lng = parseFloat(node.data('lng'));
       if (!isNaN(lat) && !isNaN(lng)) {
-        const point = state.leafletMap.latLngToContainerPoint([lat, lng]);
+        const layerPoint = state.leafletMap.latLngToLayerPoint([lat, lng]);
+        const point = state.leafletMap.layerPointToContainerPoint(layerPoint);
         node.position({ x: point.x, y: point.y });
       }
     });
   });
 }
 
-/**
- * Animation loop that continuously updates node positions during zoom
- * Uses requestAnimationFrame for smooth 60fps updates
- */
-function zoomAnimationLoop(cy: any, state: GeoMapState): void {
-  if (!state.isZooming || !cy || !state.isInitialized) {
-    state.zoomAnimationFrameId = null;
-    return;
-  }
+function updateNodePositionsFromGeoIntermediate(
+  cy: Core,
+  state: GeoMapState,
+  zoom?: number,
+  center?: any
+): void {
+  if (!state.leafletMap) return;
 
-  // Update positions to match geographic coordinates
-  updateNodePositionsFromGeo(cy, state);
+  const useIntermediateZoom = zoom !== undefined && center !== undefined;
 
-  // Update scale (sizes) simultaneously
-  const factor = calculateGeoScale(state);
-  applyGeoScaleImmediate(cy, state, factor);
-
-  // Continue the animation loop
-  state.zoomAnimationFrameId = window.requestAnimationFrame(() => zoomAnimationLoop(cy, state));
-}
-
-/**
- * Handle zoom start - begins the animation loop
- * Called on 'zoomstart' event for continuous updates during zoom animation
- */
-export function handleZoomStart(cy: any, state: GeoMapState): void {
-  if (!cy || !state.isInitialized || !state.leafletMap) return;
-
-  // Start zooming state
-  state.isZooming = true;
-
-  // Cancel any existing animation frame
-  if (state.zoomAnimationFrameId !== null) {
-    window.cancelAnimationFrame(state.zoomAnimationFrameId);
-  }
-
-  // Start the animation loop
-  state.zoomAnimationFrameId = window.requestAnimationFrame(() => zoomAnimationLoop(cy, state));
+  cy.batch(() => {
+    cy.nodes().forEach((node: any) => {
+      const lat = parseFloat(node.data('lat'));
+      const lng = parseFloat(node.data('lng'));
+      if (!isNaN(lat) && !isNaN(lng)) {
+        const map = state.leafletMap;
+        if (useIntermediateZoom && typeof map.latLngToNewLayerPoint === 'function') {
+          const layerPoint = map.latLngToNewLayerPoint([lat, lng], zoom, center);
+          const point = map.layerPointToContainerPoint(layerPoint);
+          node.position({ x: point.x, y: point.y });
+        } else {
+          const layerPoint = map.latLngToLayerPoint([lat, lng]);
+          const point = map.layerPointToContainerPoint(layerPoint);
+          node.position({ x: point.x, y: point.y });
+        }
+      }
+    });
+  });
 }
 
 /**
  * Handle zoom scale update on zoom end
  * Stops the animation loop and ensures final position accuracy
  */
-export function handleZoomScaleFinal(cy: any, state: GeoMapState): void {
+export function handleZoomScaleFinal(cy: any, state: GeoMapState, event?: any): void {
   if (!cy || !state.isInitialized) return;
 
-  // Stop the animation loop
   state.isZooming = false;
   if (state.zoomAnimationFrameId !== null) {
     window.cancelAnimationFrame(state.zoomAnimationFrameId);
@@ -476,10 +476,16 @@ export function handleZoomScaleFinal(cy: any, state: GeoMapState): void {
   }
 
   // Final position sync for accuracy
-  updateNodePositionsFromGeo(cy, state);
+  const zoom = event?.zoom as number | undefined;
+  const center = event?.center;
+  if (zoom !== undefined && center) {
+    updateNodePositionsFromGeoIntermediate(cy, state, zoom, center);
+  } else {
+    updateNodePositionsFromGeo(cy, state);
+  }
 
   // Final style application
-  const factor = calculateGeoScale(state);
+  const factor = calculateGeoScale(state, zoom);
   applyGeoScaleImmediate(cy, state, factor);
 }
 
@@ -498,6 +504,22 @@ export function createInitialGeoMapState(): GeoMapState {
     isZooming: false,
     zoomAnimationFrameId: null
   };
+}
+
+/**
+ * Apply in-flight zoom updates using fractional zoom/center from Leaflet events
+ */
+export function handleZoomProgress(cy: Core, state: GeoMapState, event: any): void {
+  if (!cy || !state.isInitialized || !state.leafletMap) return;
+
+  const zoom = event?.zoom as number | undefined;
+  const center = event?.center;
+
+  if (zoom === undefined || !center) return;
+
+  updateNodePositionsFromGeoIntermediate(cy, state, zoom, center);
+  const factor = calculateGeoScale(state, zoom);
+  applyGeoScaleImmediate(cy, state, factor);
 }
 
 /**
@@ -545,8 +567,9 @@ export function handleGeoModeChange(cy: Core | null, state: GeoMapState, geoMode
 export function cleanupGeoMapState(
   cy: Core | null,
   state: GeoMapState,
-  handleZoom: () => void,
-  handleZoomEnd: () => void
+  handleZoom: (event: any) => void,
+  handleZoomEnd: (event: any) => void,
+  handleZoomStart: () => void
 ): void {
   if (!state.isInitialized || !cy) return;
 
@@ -568,7 +591,9 @@ export function cleanupGeoMapState(
   }
 
   if (state.leafletMap) {
-    state.leafletMap.off('zoomstart', handleZoom);
+    state.leafletMap.off('zoomstart', handleZoomStart);
+    state.leafletMap.off('zoom', handleZoom);
+    state.leafletMap.off('zoomanim', handleZoom);
     state.leafletMap.off('zoomend', handleZoomEnd);
   }
 
@@ -601,8 +626,9 @@ export function cleanupGeoMapState(
 export async function initializeGeoMap(
   cy: Core,
   state: GeoMapState,
-  handleZoom: () => void,
-  handleZoomEnd: () => void
+  handleZoom: (event: any) => void,
+  handleZoomEnd: (event: any) => void,
+  handleZoomStart: () => void
 ): Promise<void> {
   log.info('[GeoMap] Initializing geo map');
 
@@ -629,7 +655,7 @@ export async function initializeGeoMap(
 
   try {
     initCytoscapeLeaflet(cy, state, geoContainer, container);
-    setupZoomHandlers(state, handleZoom, handleZoomEnd);
+    setupZoomHandlers(state, handleZoom, handleZoomEnd, handleZoomStart);
     applyGeoLayout(cy, state);
     log.info('[GeoMap] Geo map initialization complete');
   } catch (err) {
@@ -674,8 +700,15 @@ function overrideGetNodeLatLng(state: GeoMapState): void {
   };
 }
 
-function setupZoomHandlers(state: GeoMapState, handleZoomStart: () => void, handleZoomEnd: () => void): void {
+function setupZoomHandlers(
+  state: GeoMapState,
+  handleZoom: (event: any) => void,
+  handleZoomEnd: (event: any) => void,
+  handleZoomStart: () => void
+): void {
   state.leafletMap.on('zoomstart', handleZoomStart);
+  state.leafletMap.on('zoom', handleZoom);
+  state.leafletMap.on('zoomanim', handleZoom);
   state.leafletMap.on('zoomend', handleZoomEnd);
 }
 

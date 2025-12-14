@@ -12,7 +12,8 @@ import {
   handleZoomStart,
   handleZoomScaleFinal,
   handleGeoModeChange,
-  createInitialGeoMapState
+  createInitialGeoMapState,
+  handleZoomProgress
 } from './geoMapUtils';
 
 /**
@@ -21,29 +22,38 @@ import {
 export function useGeoMap({ cyInstance, isGeoLayout, geoMode }: UseGeoMapOptions): UseGeoMapReturn {
   const stateRef = useRef<GeoMapState>(createInitialGeoMapState());
 
-  // On zoom start: begin animation loop for smooth position updates
-  const handleZoom = useCallback(() => {
-    handleZoomStart(cyInstance, stateRef.current);
+  const handleZoom = useCallback(
+    (event: any) => {
+      handleZoomProgress(cyInstance as any, stateRef.current, event);
+    },
+    [cyInstance]
+  );
+
+  const handleZoomStartCb = useCallback(() => {
+    handleZoomStart(cyInstance as any, stateRef.current);
   }, [cyInstance]);
 
   // On zoom end: stop animation loop and ensure final accuracy
-  const handleZoomEnd = useCallback(() => {
-    handleZoomScaleFinal(cyInstance, stateRef.current);
-  }, [cyInstance]);
+  const handleZoomEnd = useCallback(
+    (event: any) => {
+      handleZoomScaleFinal(cyInstance as any, stateRef.current, event);
+    },
+    [cyInstance]
+  );
 
   // Geo map lifecycle
   useEffect(() => {
     if (!cyInstance || !isGeoLayout) {
       if (stateRef.current.isInitialized) {
-        cleanupGeoMapState(cyInstance, stateRef.current, handleZoom, handleZoomEnd);
+        cleanupGeoMapState(cyInstance, stateRef.current, handleZoom, handleZoomEnd, handleZoomStartCb);
         stateRef.current = createInitialGeoMapState();
       }
       return;
     }
     if (!stateRef.current.isInitialized) {
-      initializeGeoMap(cyInstance, stateRef.current, handleZoom, handleZoomEnd);
+      initializeGeoMap(cyInstance, stateRef.current, handleZoom, handleZoomEnd, handleZoomStartCb);
     }
-  }, [cyInstance, isGeoLayout, handleZoom, handleZoomEnd]);
+  }, [cyInstance, isGeoLayout, handleZoom, handleZoomEnd, handleZoomStartCb]);
 
   // Pan/edit mode changes
   useEffect(() => {
