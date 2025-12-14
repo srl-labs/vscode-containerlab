@@ -16,6 +16,7 @@ import { AboutPanel } from './components/panels/AboutPanel';
 import { BulkLinkPanel } from './components/panels/bulk-link';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
+import { ContextMenu } from './components/context-menu/ContextMenu';
 import { FreeTextEditorPanel } from './components/panels/free-text-editor';
 import { FreeShapeEditorPanel } from './components/panels/free-shape-editor';
 import { GroupEditorPanel } from './components/panels/group-editor';
@@ -468,7 +469,7 @@ export const App: React.FC = () => {
   });
 
   // Set up context menus
-  useContextMenu(cyInstance, {
+  const { menuState, menuItems, closeMenu } = useContextMenu(cyInstance, {
     mode: state.mode,
     isLocked: state.isLocked,
     onEditNode: menuHandlers.handleEditNode,
@@ -738,6 +739,12 @@ export const App: React.FC = () => {
           onStyleChange={groups.updateGroup}
         />
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
+        <ContextMenu
+          isVisible={menuState.isVisible}
+          position={menuState.position}
+          items={menuItems}
+          onClose={closeMenu}
+        />
       </main>
     </div>
   );

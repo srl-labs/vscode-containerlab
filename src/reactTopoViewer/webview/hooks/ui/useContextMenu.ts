@@ -1,18 +1,11 @@
 /**
- * Context Menu Hook for Cytoscape
- * Sets up radial context menus using cytoscape-cxtmenu
+ * Context Menu Hook for Cytoscape Elements
+ * Manages context menu state for nodes and edges using React-based menu
  */
-import { useEffect, useCallback } from 'react';
-import cytoscape, { Core } from 'cytoscape';
-import cxtmenu from 'cytoscape-cxtmenu';
+import { useEffect, useCallback, useState } from 'react';
+import { Core } from 'cytoscape';
 import { log } from '../../utils/logger';
-
-// Register the extension once
-let cxtmenuRegistered = false;
-if (!cxtmenuRegistered && typeof cytoscape === 'function') {
-  cytoscape.use(cxtmenu);
-  cxtmenuRegistered = true;
-}
+import { ContextMenuItem } from '../../components/context-menu/ContextMenu';
 
 /**
  * VS Code API interface
@@ -20,15 +13,6 @@ if (!cxtmenuRegistered && typeof cytoscape === 'function') {
 declare const vscode: {
   postMessage: (msg: unknown) => void;
 };
-
-/**
- * Menu item configuration
- */
-interface MenuItem {
-  content: string;
-  select: (ele: cytoscape.NodeSingular | cytoscape.EdgeSingular) => void;
-  enabled?: boolean;
-}
 
 /**
  * Context menu options
@@ -45,62 +29,24 @@ export interface ContextMenuOptions {
   onShowLinkProperties?: (edgeId: string) => void;
 }
 
-/** Common menu item labels */
-const MENU_LABELS = {
-  EDIT: 'Edit',
-  DELETE: 'Delete',
-  LINK: 'Link',
-  SSH: 'SSH',
-  SHELL: 'Shell',
-  LOGS: 'Logs',
-  INFO: 'Info'
-} as const;
+/** Context menu state */
+export interface ContextMenuState {
+  isVisible: boolean;
+  position: { x: number; y: number };
+  elementId: string | null;
+  elementType: 'node' | 'edge' | null;
+}
 
-/** Common menu icons */
-const MENU_ICONS = {
-  EDIT: 'fa-pen-to-square',
-  DELETE: 'fa-trash-alt',
-  LINK: 'fa-link',
-  SSH: 'fa-terminal',
-  SHELL: 'fa-cube',
-  LOGS: 'fa-file-alt',
-  INFO: 'fa-info-circle',
-  EDIT_ALT: 'fa-pen'
-} as const;
-
-/**
- * Common menu styling
- */
-const MENU_STYLE = {
-  fillColor: 'rgba(31, 31, 31, 0.85)',
-  activeFillColor: 'rgba(66, 88, 255, 1)',
-  activePadding: 8,
-  indicatorSize: 16,
-  separatorWidth: 3,
-  spotlightPadding: 6,
-  adaptativeNodeSpotlightRadius: true,
-  minSpotlightRadius: 16,
-  maxSpotlightRadius: 32,
-  itemTextShadowColor: 'transparent',
-  zIndex: 9999,
-  atMouse: false,
-  openMenuEvents: 'cxttapstart cxttap',
-  outsideMenuCancel: 10
+/** Initial context menu state */
+const INITIAL_STATE: ContextMenuState = {
+  isVisible: false,
+  position: { x: 0, y: 0 },
+  elementId: null,
+  elementType: null
 };
 
-/**
- * Create Font Awesome icon HTML
- */
-function faIcon(iconClass: string, label?: string): string {
-  const iconHtml = `<i class="fa-solid ${iconClass}" style="font-size: 14px; color: white;"></i>`;
-  if (label) {
-    return `<div style="display: flex; flex-direction: column; align-items: center;">
-      ${iconHtml}
-      <span style="font-size: 9px; color: white; margin-top: 2px;">${label}</span>
-    </div>`;
-  }
-  return iconHtml;
-}
+// Scratch key for context menu state (must match events.ts)
+const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
 
 /**
  * Send message to VS Code extension
@@ -113,80 +59,95 @@ function sendToExtension(command: string, data: Record<string, unknown>): void {
 }
 
 /**
- * Build node context menu items for edit mode
+ * Build menu items for node in edit mode
  */
-function buildNodeEditMenuItems(options: ContextMenuOptions): MenuItem[] {
+function buildNodeEditMenuItems(
+  nodeId: string,
+  options: ContextMenuOptions
+): ContextMenuItem[] {
   if (options.isLocked) return [];
 
   return [
     {
-      content: faIcon(MENU_ICONS.EDIT, MENU_LABELS.EDIT),
-      select: (ele) => {
-        const nodeId = ele.id();
+      id: 'edit-node',
+      label: 'Edit',
+      icon: 'fas fa-pen',
+      onClick: () => {
         log.info(`[ContextMenu] Edit node: ${nodeId}`);
         options.onEditNode?.(nodeId);
       }
     },
     {
-      content: faIcon(MENU_ICONS.DELETE, MENU_LABELS.DELETE),
-      select: (ele) => {
-        const nodeId = ele.id();
+      id: 'delete-node',
+      label: 'Delete',
+      icon: 'fas fa-trash',
+      onClick: () => {
         log.info(`[ContextMenu] Delete node: ${nodeId}`);
         options.onDeleteNode?.(nodeId);
       }
     },
     {
-      content: faIcon(MENU_ICONS.LINK, MENU_LABELS.LINK),
-      select: (ele) => {
-        log.info(`[ContextMenu] Add link from: ${ele.id()}`);
-        options.onCreateLinkFromNode?.(ele.id());
+      id: 'link-node',
+      label: 'Create Link',
+      icon: 'fas fa-link',
+      onClick: () => {
+        log.info(`[ContextMenu] Add link from: ${nodeId}`);
+        options.onCreateLinkFromNode?.(nodeId);
       }
     }
   ];
 }
 
 /**
- * Build node context menu items for view mode
+ * Build menu items for node in view mode
  */
-function buildNodeViewMenuItems(options: ContextMenuOptions): MenuItem[] {
+function buildNodeViewMenuItems(
+  nodeId: string,
+  nodeData: Record<string, unknown>,
+  options: ContextMenuOptions
+): ContextMenuItem[] {
   return [
     {
-      content: faIcon(MENU_ICONS.SSH, MENU_LABELS.SSH),
-      select: (ele) => {
-        const data = ele.data();
-        log.info(`[ContextMenu] SSH to node: ${data.name || ele.id()}`);
+      id: 'ssh-node',
+      label: 'SSH',
+      icon: 'fas fa-terminal',
+      onClick: () => {
+        log.info(`[ContextMenu] SSH to node: ${nodeData.name || nodeId}`);
         sendToExtension('clab-node-connect-ssh', {
-          nodeName: data.name || ele.id(),
-          labName: data.labName
+          nodeName: nodeData.name || nodeId,
+          labName: nodeData.labName
         });
       }
     },
     {
-      content: faIcon(MENU_ICONS.SHELL, MENU_LABELS.SHELL),
-      select: (ele) => {
-        const data = ele.data();
-        log.info(`[ContextMenu] Shell to node: ${data.name || ele.id()}`);
+      id: 'shell-node',
+      label: 'Shell',
+      icon: 'fas fa-cube',
+      onClick: () => {
+        log.info(`[ContextMenu] Shell to node: ${nodeData.name || nodeId}`);
         sendToExtension('clab-node-attach-shell', {
-          nodeName: data.name || ele.id(),
-          labName: data.labName
+          nodeName: nodeData.name || nodeId,
+          labName: nodeData.labName
         });
       }
     },
     {
-      content: faIcon(MENU_ICONS.LOGS, MENU_LABELS.LOGS),
-      select: (ele) => {
-        const data = ele.data();
-        log.info(`[ContextMenu] View logs for: ${data.name || ele.id()}`);
+      id: 'logs-node',
+      label: 'Logs',
+      icon: 'fas fa-file-alt',
+      onClick: () => {
+        log.info(`[ContextMenu] View logs for: ${nodeData.name || nodeId}`);
         sendToExtension('clab-node-view-logs', {
-          nodeName: data.name || ele.id(),
-          labName: data.labName
+          nodeName: nodeData.name || nodeId,
+          labName: nodeData.labName
         });
       }
     },
     {
-      content: faIcon(MENU_ICONS.INFO, MENU_LABELS.INFO),
-      select: (ele) => {
-        const nodeId = ele.id();
+      id: 'info-node',
+      label: 'Info',
+      icon: 'fas fa-info-circle',
+      onClick: () => {
         log.info(`[ContextMenu] Show properties for: ${nodeId}`);
         options.onShowNodeProperties?.(nodeId);
       }
@@ -195,24 +156,29 @@ function buildNodeViewMenuItems(options: ContextMenuOptions): MenuItem[] {
 }
 
 /**
- * Build edge context menu items for edit mode
+ * Build menu items for edge in edit mode
  */
-function buildEdgeEditMenuItems(options: ContextMenuOptions): MenuItem[] {
+function buildEdgeEditMenuItems(
+  edgeId: string,
+  options: ContextMenuOptions
+): ContextMenuItem[] {
   if (options.isLocked) return [];
 
   return [
     {
-      content: faIcon(MENU_ICONS.EDIT_ALT, MENU_LABELS.EDIT),
-      select: (ele) => {
-        const edgeId = ele.id();
+      id: 'edit-edge',
+      label: 'Edit',
+      icon: 'fas fa-pen',
+      onClick: () => {
         log.info(`[ContextMenu] Edit link: ${edgeId}`);
         options.onEditLink?.(edgeId);
       }
     },
     {
-      content: faIcon(MENU_ICONS.DELETE, MENU_LABELS.DELETE),
-      select: (ele) => {
-        const edgeId = ele.id();
+      id: 'delete-edge',
+      label: 'Delete',
+      icon: 'fas fa-trash',
+      onClick: () => {
         log.info(`[ContextMenu] Delete link: ${edgeId}`);
         options.onDeleteLink?.(edgeId);
       }
@@ -221,14 +187,18 @@ function buildEdgeEditMenuItems(options: ContextMenuOptions): MenuItem[] {
 }
 
 /**
- * Build edge context menu items for view mode
+ * Build menu items for edge in view mode
  */
-function buildEdgeViewMenuItems(options: ContextMenuOptions): MenuItem[] {
+function buildEdgeViewMenuItems(
+  edgeId: string,
+  options: ContextMenuOptions
+): ContextMenuItem[] {
   return [
     {
-      content: faIcon(MENU_ICONS.INFO, MENU_LABELS.INFO),
-      select: (ele) => {
-        const edgeId = ele.id();
+      id: 'info-edge',
+      label: 'Info',
+      icon: 'fas fa-info-circle',
+      onClick: () => {
         log.info(`[ContextMenu] Show link properties: ${edgeId}`);
         options.onShowLinkProperties?.(edgeId);
       }
@@ -236,130 +206,123 @@ function buildEdgeViewMenuItems(options: ContextMenuOptions): MenuItem[] {
   ];
 }
 
-/** Cxtmenu instance type */
-type CxtmenuInstance = { destroy: () => void };
-
-/** Cytoscape with cxtmenu extension */
-type CyWithCxtmenu = Core & { cxtmenu: (cfg: unknown) => CxtmenuInstance };
-
-// Scratch key for tracking context menu state
-export const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
-
-/**
- * Register node context menu
- */
-function registerNodeMenu(cy: CyWithCxtmenu, items: MenuItem[]): CxtmenuInstance | null {
-  if (items.length === 0) return null;
-
-  // Select nodes that are not annotations (freeText/freeShape)
-  const nodeSelector = 'node[topoViewerRole != "freeText"][topoViewerRole != "freeShape"]';
-
-  try {
-    const menu = cy.cxtmenu({
-      selector: nodeSelector,
-      commands: items,
-      menuRadius: (ele: cytoscape.NodeSingular) => Math.max(80, Math.min(120, ele.width() * 3)),
-      ...MENU_STYLE
-    });
-    log.info('[ContextMenu] Node menu registered');
-    return menu;
-  } catch (err) {
-    log.error(`[ContextMenu] Failed to create node menu: ${err}`);
-    return null;
-  }
+/** Return type for the hook */
+export interface UseContextMenuReturn {
+  menuState: ContextMenuState;
+  menuItems: ContextMenuItem[];
+  closeMenu: () => void;
 }
 
 /**
- * Register edge context menu
+ * Hook to manage context menus for Cytoscape elements
+ * Returns state and handlers for rendering a React-based context menu
  */
-function registerEdgeMenu(cy: CyWithCxtmenu, items: MenuItem[]): CxtmenuInstance | null {
-  if (items.length === 0) return null;
+export function useContextMenu(
+  cy: Core | null,
+  options: ContextMenuOptions
+): UseContextMenuReturn {
+  const [menuState, setMenuState] = useState<ContextMenuState>(INITIAL_STATE);
+  const [nodeData, setNodeData] = useState<Record<string, unknown>>({});
 
-  try {
-    const menu = cy.cxtmenu({
-      selector: 'edge',
-      commands: items,
-      menuRadius: () => 70,
-      ...MENU_STYLE
-    });
-    log.info('[ContextMenu] Edge menu registered');
-    return menu;
-  } catch (err) {
-    log.error(`[ContextMenu] Failed to create edge menu: ${err}`);
-    return null;
-  }
-}
-
-/** Menu item getters */
-interface MenuItemGetters {
-  getNodeMenuItems: () => MenuItem[];
-  getEdgeMenuItems: () => MenuItem[];
-}
-
-/** Setup menus on Cytoscape instance */
-function setupMenus(cy: Core, menus: CxtmenuInstance[], getters: MenuItemGetters): void {
-  const cyExt = cy as CyWithCxtmenu;
-
-  const nodeMenu = registerNodeMenu(cyExt, getters.getNodeMenuItems());
-  if (nodeMenu) menus.push(nodeMenu);
-
-  const edgeMenu = registerEdgeMenu(cyExt, getters.getEdgeMenuItems());
-  if (edgeMenu) menus.push(edgeMenu);
-}
-
-/** Cleanup menus */
-function cleanupMenus(menus: CxtmenuInstance[]): void {
-  menus.forEach(menu => {
-    try {
-      menu.destroy();
-    } catch (err) {
-      log.warn(`[ContextMenu] Error destroying menu: ${err}`);
+  const closeMenu = useCallback(() => {
+    setMenuState(INITIAL_STATE);
+    // Clear scratch key when menu closes
+    if (cy) {
+      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
     }
-  });
-  log.info('[ContextMenu] Menus cleaned up');
-}
+  }, [cy]);
 
-/**
- * Hook to set up context menus on a Cytoscape instance
- */
-export function useContextMenu(cy: Core | null, options: ContextMenuOptions): void {
-  const { mode, isLocked } = options;
-
-  const getNodeMenuItems = useCallback(() => {
-    return mode === 'edit' ? buildNodeEditMenuItems(options) : buildNodeViewMenuItems(options);
-  }, [mode, isLocked, options]);
-
-  const getEdgeMenuItems = useCallback(() => {
-    return mode === 'edit' ? buildEdgeEditMenuItems(options) : buildEdgeViewMenuItems(options);
-  }, [mode, isLocked, options]);
-
+  // Set up event listeners for context menu triggers
   useEffect(() => {
     if (!cy) return;
 
-    log.info(`[ContextMenu] Setting up context menus (mode: ${mode}, locked: ${isLocked})`);
+    log.info(`[ContextMenu] Setting up context menu listeners (mode: ${options.mode}, locked: ${options.isLocked})`);
 
-    const menus: CxtmenuInstance[] = [];
-    const getters: MenuItemGetters = {
-      getNodeMenuItems,
-      getEdgeMenuItems
+    // Handle right-click on nodes (excluding annotations)
+    const handleNodeContextMenu = (evt: cytoscape.EventObject) => {
+      const node = evt.target;
+      const role = node.data('topoViewerRole');
+
+      // Skip annotation nodes (text and shapes)
+      if (role === 'freeText' || role === 'freeShape') {
+        return;
+      }
+
+      evt.originalEvent?.preventDefault();
+
+      const nodeId = node.id();
+      const data = node.data();
+
+      setNodeData(data);
+      setMenuState({
+        isVisible: true,
+        position: { x: evt.originalEvent?.clientX ?? 0, y: evt.originalEvent?.clientY ?? 0 },
+        elementId: nodeId,
+        elementType: 'node'
+      });
+
+      // Set scratch key to prevent selection while menu is open
+      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
+
+      log.info(`[ContextMenu] Node context menu opened for: ${nodeId}`);
     };
 
-    // Set up context menu state tracking
-    const handleMenuOpen = () => cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
-    const handleMenuClose = () => {
-      setTimeout(() => cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false), 100);
+    // Handle right-click on edges
+    const handleEdgeContextMenu = (evt: cytoscape.EventObject) => {
+      evt.originalEvent?.preventDefault();
+
+      const edge = evt.target;
+      const edgeId = edge.id();
+
+      setMenuState({
+        isVisible: true,
+        position: { x: evt.originalEvent?.clientX ?? 0, y: evt.originalEvent?.clientY ?? 0 },
+        elementId: edgeId,
+        elementType: 'edge'
+      });
+
+      // Set scratch key to prevent selection while menu is open
+      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
+
+      log.info(`[ContextMenu] Edge context menu opened for: ${edgeId}`);
     };
 
-    cy.on('cxttapstart', handleMenuOpen);
-    cy.on('cxttapend', handleMenuClose);
-
-    setupMenus(cy, menus, getters);
+    // Register event handlers
+    cy.on('cxttap', 'node', handleNodeContextMenu);
+    cy.on('cxttap', 'edge', handleEdgeContextMenu);
 
     return () => {
-      cy.off('cxttapstart', handleMenuOpen);
-      cy.off('cxttapend', handleMenuClose);
+      cy.off('cxttap', 'node', handleNodeContextMenu);
+      cy.off('cxttap', 'edge', handleEdgeContextMenu);
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
-      cleanupMenus(menus);
+      log.info('[ContextMenu] Context menu listeners cleaned up');
     };
-  }, [cy, mode, isLocked, getNodeMenuItems, getEdgeMenuItems]);
+  }, [cy, options.mode, options.isLocked]);
+
+  // Build menu items based on current state
+  const menuItems = useCallback((): ContextMenuItem[] => {
+    if (!menuState.isVisible || !menuState.elementId) {
+      return [];
+    }
+
+    if (menuState.elementType === 'node') {
+      return options.mode === 'edit'
+        ? buildNodeEditMenuItems(menuState.elementId, options)
+        : buildNodeViewMenuItems(menuState.elementId, nodeData, options);
+    }
+
+    if (menuState.elementType === 'edge') {
+      return options.mode === 'edit'
+        ? buildEdgeEditMenuItems(menuState.elementId, options)
+        : buildEdgeViewMenuItems(menuState.elementId, options);
+    }
+
+    return [];
+  }, [menuState, nodeData, options])();
+
+  return {
+    menuState,
+    menuItems,
+    closeMenu
+  };
 }

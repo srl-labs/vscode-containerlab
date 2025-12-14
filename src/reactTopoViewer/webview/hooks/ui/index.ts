@@ -2,8 +2,8 @@
  * UI interaction hooks
  */
 
-export { useContextMenu, CONTEXT_MENU_SCRATCH_KEY } from './useContextMenu';
-export type { ContextMenuOptions } from './useContextMenu';
+export { useContextMenu } from './useContextMenu';
+export type { ContextMenuOptions, ContextMenuState, UseContextMenuReturn } from './useContextMenu';
 
 export { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
