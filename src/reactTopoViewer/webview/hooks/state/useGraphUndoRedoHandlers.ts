@@ -2,7 +2,7 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { CyElement } from '../../../shared/types/messages';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
-import { GraphChange, useUndoRedo, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove } from './useUndoRedo';
+import { GraphChange, useUndoRedo, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove, MembershipEntry } from './useUndoRedo';
 
 interface MenuHandlers {
   handleDeleteNode: (id: string) => void;
@@ -17,6 +17,7 @@ interface UseGraphUndoRedoHandlersParams {
   menuHandlers: MenuHandlers;
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
   applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
+  applyMembershipChange?: (memberships: MembershipEntry[]) => void;
 }
 
 interface GraphUndoRedoResult {
@@ -396,7 +397,7 @@ function applyLinkPropertyEdit(
 }
 
 function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
-  const { cyInstance, mode, addNode, addEdge, menuHandlers, applyAnnotationChange, applyGroupMoveChange } = params;
+  const { cyInstance, mode, addNode, addEdge, menuHandlers, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange } = params;
   const isApplyingUndoRedo = React.useRef(false);
 
   const applyGraphChanges = React.useCallback((changes: GraphChange[]) => {
@@ -434,7 +435,8 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     applyGraphChanges,
     applyPropertyEdit,
     applyAnnotationChange,
-    applyGroupMoveChange
+    applyGroupMoveChange,
+    applyMembershipChange
   });
 
   // Create handlers using useMemo with factory functions

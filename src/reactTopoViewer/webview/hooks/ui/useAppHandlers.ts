@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import type { FloatingActionPanelHandle } from '../../components/panels/FloatingActionPanel';
-import type { NodePositionEntry } from '../state';
+import type { NodePositionEntry, MembershipEntry } from '../state';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 interface SelectionCallbacks {
@@ -15,7 +15,14 @@ interface SelectionCallbacks {
 }
 
 interface UndoRedoRecorder {
-  recordMove: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void;
+  recordMove: (nodeIds: string[], beforePositions: NodePositionEntry[], membershipBefore?: MembershipEntry[], membershipAfter?: MembershipEntry[]) => void;
+}
+
+/** Ref for tracking pending membership changes during node drag */
+export interface PendingMembershipChange {
+  nodeId: string;
+  oldGroupId: string | null;
+  newGroupId: string | null;
 }
 
 interface UseAppHandlersOptions {
@@ -23,13 +30,16 @@ interface UseAppHandlersOptions {
   undoRedo: UndoRedoRecorder;
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   isLocked: boolean;
+  /** Ref holding pending membership changes from useNodeReparent */
+  pendingMembershipChangesRef?: React.RefObject<Map<string, PendingMembershipChange>>;
 }
 
 export function useAppHandlers({
   selectionCallbacks,
   undoRedo,
   floatingPanelRef,
-  isLocked
+  isLocked,
+  pendingMembershipChangesRef
 }: UseAppHandlersOptions) {
   const { selectNode, selectEdge, editNode, editEdge } = selectionCallbacks;
 
@@ -42,9 +52,28 @@ export function useAppHandlers({
   // Callback for when a node move is complete (for undo/redo)
   const handleMoveComplete = React.useCallback(
     (nodeIds: string[], beforePositions: NodePositionEntry[]) => {
-      undoRedo.recordMove(nodeIds, beforePositions);
+      // Collect membership changes for the moved nodes
+      let membershipBefore: MembershipEntry[] | undefined;
+      let membershipAfter: MembershipEntry[] | undefined;
+
+      if (pendingMembershipChangesRef?.current && pendingMembershipChangesRef.current.size > 0) {
+        const changes: PendingMembershipChange[] = [];
+        for (const nodeId of nodeIds) {
+          const change = pendingMembershipChangesRef.current.get(nodeId);
+          if (change) {
+            changes.push(change);
+            pendingMembershipChangesRef.current.delete(nodeId);
+          }
+        }
+        if (changes.length > 0) {
+          membershipBefore = changes.map(c => ({ nodeId: c.nodeId, groupId: c.oldGroupId }));
+          membershipAfter = changes.map(c => ({ nodeId: c.nodeId, groupId: c.newGroupId }));
+        }
+      }
+
+      undoRedo.recordMove(nodeIds, beforePositions, membershipBefore, membershipAfter);
     },
-    [undoRedo]
+    [undoRedo, pendingMembershipChangesRef]
   );
 
   // Handle deselect all callback

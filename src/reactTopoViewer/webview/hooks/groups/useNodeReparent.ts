@@ -12,6 +12,8 @@ import { sendCommandToExtension } from '../../utils/extensionMessaging';
 export interface UseNodeReparentOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
+  /** Callback fired when membership is about to change, before applying the change */
+  onMembershipWillChange?: (nodeId: string, oldGroupId: string | null, newGroupId: string | null) => void;
 }
 
 export interface UseNodeReparentDeps {
@@ -46,9 +48,13 @@ function handleMembershipChange(
   nodeId: string,
   oldGroupId: string | null,
   newGroupId: string | null,
-  actions: MembershipActions
+  actions: MembershipActions,
+  onMembershipWillChange?: (nodeId: string, oldGroupId: string | null, newGroupId: string | null) => void
 ): void {
   if (oldGroupId === newGroupId) return;
+
+  // Notify before applying change (for undo tracking)
+  onMembershipWillChange?.(nodeId, oldGroupId, newGroupId);
 
   if (oldGroupId && !newGroupId) {
     actions.removeNodeFromGroup(nodeId);
@@ -73,7 +79,7 @@ function handleMembershipChange(
 }
 
 export function useNodeReparent(cy: Core | null, options: UseNodeReparentOptions, deps: UseNodeReparentDeps): void {
-  const { mode, isLocked } = options;
+  const { mode, isLocked, onMembershipWillChange } = options;
   const { groups, addNodeToGroup, removeNodeFromGroup } = deps;
   const nodeGroupRef = useRef<Map<string, string | null>>(new Map());
 
@@ -93,8 +99,8 @@ export function useNodeReparent(cy: Core | null, options: UseNodeReparentOptions
     const newGroupId = findGroupForNode(node, groups)?.id ?? null;
     nodeGroupRef.current.delete(nodeId);
 
-    handleMembershipChange(nodeId, oldGroupId, newGroupId, { addNodeToGroup, removeNodeFromGroup });
-  }, [groups, addNodeToGroup, removeNodeFromGroup]);
+    handleMembershipChange(nodeId, oldGroupId, newGroupId, { addNodeToGroup, removeNodeFromGroup }, onMembershipWillChange);
+  }, [groups, addNodeToGroup, removeNodeFromGroup, onMembershipWillChange]);
 
   useEffect(() => {
     if (!cy || mode !== 'edit' || isLocked) return;

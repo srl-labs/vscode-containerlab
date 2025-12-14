@@ -111,6 +111,7 @@ export interface UseGroupsReturn {
   ) => GroupUndoAction;
   findGroupAtPosition: (position: { x: number; y: number }) => GroupStyleAnnotation | null;
   getGroupMembers: (groupId: string) => string[];
+  getNodeMembership: (nodeId: string) => string | null;
   addNodeToGroup: (nodeId: string, groupId: string) => void;
   removeNodeFromGroup: (nodeId: string) => void;
   initializeMembership: (memberships: Array<{ nodeId: string; groupId: string }>) => void;

@@ -328,6 +328,31 @@ function useUpdateGroupSize(
   );
 }
 
+/** Helper to add a node to a group */
+function addNodeToGroupHelper(
+  membershipRef: React.RefObject<Map<string, string>>,
+  groups: GroupStyleAnnotation[],
+  nodeId: string,
+  groupId: string
+): void {
+  const group = groups.find(g => g.id === groupId);
+  if (!group) return;
+  membershipRef.current.set(nodeId, groupId);
+  const { name, level } = parseGroupId(groupId);
+  sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, { nodeId, group: name, level });
+  log.info(`[Groups] Added node ${nodeId} to group ${groupId}`);
+}
+
+/** Helper to remove a node from its group */
+function removeNodeFromGroupHelper(
+  membershipRef: React.RefObject<Map<string, string>>,
+  nodeId: string
+): void {
+  membershipRef.current.delete(nodeId);
+  sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, { nodeId, group: null, level: null });
+  log.info(`[Groups] Removed node ${nodeId} from group`);
+}
+
 /**
  * Hook for managing node group membership.
  */
@@ -343,10 +368,8 @@ function useNodeGroupMembership(
     [groups]
   );
 
-  // Track node memberships (node ID -> group ID)
   const membershipRef = useRef<Map<string, string>>(new Map());
 
-  // Initialize membership from loaded node annotations
   const initializeMembership = useCallback(
     (memberships: Array<{ nodeId: string; groupId: string }>): void => {
       membershipRef.current.clear();
@@ -358,52 +381,25 @@ function useNodeGroupMembership(
     []
   );
 
-  const getGroupMembers = useCallback(
-    (groupId: string): string[] => {
-      const members: string[] = [];
-      membershipRef.current.forEach((gId, nodeId) => {
-        if (gId === groupId) members.push(nodeId);
-      });
-      return members;
-    },
-    []
-  );
+  const getGroupMembers = useCallback((groupId: string): string[] => {
+    const members: string[] = [];
+    membershipRef.current.forEach((gId, nodeId) => { if (gId === groupId) members.push(nodeId); });
+    return members;
+  }, []);
 
-  const addNodeToGroup = useCallback(
-    (nodeId: string, groupId: string): void => {
-      if (mode === 'view' || isLocked) return;
+  const getNodeMembership = useCallback((nodeId: string): string | null => membershipRef.current.get(nodeId) ?? null, []);
 
-      const group = groups.find(g => g.id === groupId);
-      if (!group) return;
+  const addNodeToGroup = useCallback((nodeId: string, groupId: string): void => {
+    if (mode === 'view' || isLocked) return;
+    addNodeToGroupHelper(membershipRef, groups, nodeId, groupId);
+  }, [mode, isLocked, groups]);
 
-      membershipRef.current.set(nodeId, groupId);
-      const { name, level } = parseGroupId(groupId);
-      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
-        nodeId,
-        group: name,
-        level
-      });
-      log.info(`[Groups] Added node ${nodeId} to group ${groupId}`);
-    },
-    [mode, isLocked, groups]
-  );
+  const removeNodeFromGroup = useCallback((nodeId: string): void => {
+    if (mode === 'view' || isLocked) return;
+    removeNodeFromGroupHelper(membershipRef, nodeId);
+  }, [mode, isLocked]);
 
-  const removeNodeFromGroup = useCallback(
-    (nodeId: string): void => {
-      if (mode === 'view' || isLocked) return;
-
-      membershipRef.current.delete(nodeId);
-      sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
-        nodeId,
-        group: null,
-        level: null
-      });
-      log.info(`[Groups] Removed node ${nodeId} from group`);
-    },
-    [mode, isLocked]
-  );
-
-  return { findGroupAtPosition, getGroupMembers, addNodeToGroup, removeNodeFromGroup, initializeMembership };
+  return { findGroupAtPosition, getGroupMembers, getNodeMembership, addNodeToGroup, removeNodeFromGroup, initializeMembership };
 }
 
 /**
@@ -481,6 +477,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       getUndoRedoAction,
       findGroupAtPosition: membership.findGroupAtPosition,
       getGroupMembers: membership.getGroupMembers,
+      getNodeMembership: membership.getNodeMembership,
       addNodeToGroup: membership.addNodeToGroup,
       removeNodeFromGroup: membership.removeNodeFromGroup,
       initializeMembership: membership.initializeMembership

@@ -8,6 +8,7 @@ import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoAction, UndoRedoActionGroupMove, NodePositionEntry } from '../state/useUndoRedo';
 import type { UseGroupsReturn } from './groupTypes';
 import { log } from '../../utils/logger';
+import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 interface UndoRedoApi {
   pushAction: (action: UndoRedoAction) => void;
@@ -109,6 +110,28 @@ function createGroupMoveAction(
   };
 }
 
+/** Send node positions to extension for persistence */
+function sendNodePositionsToExtension(positions: NodePositionEntry[]): void {
+  if (positions.length === 0) return;
+  sendCommandToExtension('save-node-positions', { positions });
+  log.info(`[GroupDragUndo] Sent ${positions.length} member node positions to extension`);
+}
+
+/** Handle fallback drag end when start state is missing */
+function handleFallbackDragEnd(
+  groupId: string,
+  finalPosition: { x: number; y: number },
+  getGroupMembers: (id: string) => string[],
+  capturePositions: (ids: string[]) => NodePositionEntry[],
+  updateGroupPosition: (id: string, pos: { x: number; y: number }) => void
+): void {
+  const memberIds = getGroupMembers(groupId);
+  if (memberIds.length > 0) {
+    sendNodePositionsToExtension(capturePositions(memberIds));
+  }
+  updateGroupPosition(groupId, finalPosition);
+}
+
 /** Process drag end and potentially push undo action */
 function processDragEnd(
   startState: DragStartState,
@@ -122,6 +145,8 @@ function processDragEnd(
 
   if (posChanged || nodesChanged) {
     pushAction(createGroupMoveAction(startState, finalPosition, nodesAfter));
+    // Persist node positions to annotations.json
+    sendNodePositionsToExtension(nodesAfter);
     log.info(`[GroupDragUndo] Recorded group move for ${groupId} with ${nodesAfter.length} nodes`);
   }
 }
@@ -147,7 +172,7 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
     if (!cyInstance || isApplyingGroupUndoRedo.current) return;
     const startState = dragStartRef.current;
     if (!startState || startState.groupId !== groupId) {
-      groups.updateGroupPosition(groupId, finalPosition);
+      handleFallbackDragEnd(groupId, finalPosition, groups.getGroupMembers, undoRedo.capturePositions, groups.updateGroupPosition);
       return;
     }
     const nodesAfter = undoRedo.capturePositions(startState.memberNodeIds);

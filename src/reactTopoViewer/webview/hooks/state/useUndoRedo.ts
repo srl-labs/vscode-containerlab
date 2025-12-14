@@ -23,6 +23,14 @@ export interface NodePositionEntry {
 }
 
 /**
+ * Represents a node's group membership
+ */
+export interface MembershipEntry {
+  nodeId: string;
+  groupId: string | null;
+}
+
+/**
  * Represents a single undo/redo action
  */
 type GraphEntity = 'node' | 'edge';
@@ -41,6 +49,10 @@ export interface UndoRedoActionMove {
   before: NodePositionEntry[];
   /** Positions after the action (for redo) */
   after: NodePositionEntry[];
+  /** Group membership before the move (optional, for undo) */
+  membershipBefore?: MembershipEntry[];
+  /** Group membership after the move (optional, for redo) */
+  membershipAfter?: MembershipEntry[];
   [key: string]: unknown;
 }
 
@@ -197,6 +209,35 @@ function sendPositionsToExtension(positions: NodePositionEntry[]): void {
 }
 
 /**
+ * Send membership changes to extension for persistence
+ */
+function sendMembershipToExtension(memberships: MembershipEntry[]): void {
+  if (typeof vscode === 'undefined') {
+    log.warn('[UndoRedo] VS Code API not available');
+    return;
+  }
+
+  for (const entry of memberships) {
+    // Parse groupId to get name and level (groupId format: "name:level")
+    let group: string | null = null;
+    let level: string | null = null;
+    if (entry.groupId) {
+      const parts = entry.groupId.split(':');
+      group = parts[0];
+      level = parts[1] ?? '1';
+    }
+    vscode.postMessage({
+      command: 'save-node-group-membership',
+      nodeId: entry.nodeId,
+      group,
+      level
+    });
+  }
+
+  log.info(`[UndoRedo] Sent ${memberships.length} membership changes to extension`);
+}
+
+/**
  * Options for the useUndoRedo hook
  */
 export interface UseUndoRedoOptions {
@@ -221,6 +262,10 @@ export interface UseUndoRedoOptions {
    * @param isUndo True if this is an undo operation, false for redo
    */
   applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
+  /** Apply membership changes for undo/redo (updates in-memory membership)
+   * @param memberships The membership entries to apply
+   */
+  applyMembershipChange?: (memberships: MembershipEntry[]) => void;
 }
 
 /**
@@ -241,8 +286,8 @@ export interface UseUndoRedoReturn {
   redo: () => void;
   /** Push a new action to history */
   pushAction: (action: UndoRedoAction) => void;
-  /** Record a node move (captures before/after positions) */
-  recordMove: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void;
+  /** Record a node move (captures before/after positions and optional membership) */
+  recordMove: (nodeIds: string[], beforePositions: NodePositionEntry[], membershipBefore?: MembershipEntry[], membershipAfter?: MembershipEntry[]) => void;
   /** Clear all history */
   clearHistory: () => void;
   /** Capture current positions for specified nodes (use before drag starts) */
@@ -294,7 +339,8 @@ function useUndoAction(
   applyGraphChanges?: (changes: GraphChange[]) => void,
   applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
-  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void
+  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void,
+  applyMembershipChange?: (memberships: MembershipEntry[]) => void
 ) {
   return useCallback(() => {
     if (!canUndo || !cy) return;
@@ -303,6 +349,11 @@ function useUndoAction(
       log.info(`[UndoRedo] Undoing move for ${lastAction.before.length} node(s)`);
       applyPositionsToGraph(cy, lastAction.before);
       sendPositionsToExtension(lastAction.before);
+      // Restore membership if present
+      if (lastAction.membershipBefore && lastAction.membershipBefore.length > 0) {
+        applyMembershipChange?.(lastAction.membershipBefore);
+        sendMembershipToExtension(lastAction.membershipBefore);
+      }
     } else if (lastAction.type === 'graph') {
       log.info(`[UndoRedo] Undoing graph action with ${lastAction.before.length} change(s)`);
       applyGraphChanges?.(lastAction.before);
@@ -320,7 +371,7 @@ function useUndoAction(
       sendPositionsToExtension(lastAction.nodesBefore);
     }
     dispatch({ type: 'UNDO' });
-  }, [canUndo, cy, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange]);
+  }, [canUndo, cy, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange]);
 }
 
 /** Helper hook for redo operation */
@@ -332,7 +383,8 @@ function useRedoAction(
   applyGraphChanges?: (changes: GraphChange[]) => void,
   applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
-  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void
+  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void,
+  applyMembershipChange?: (memberships: MembershipEntry[]) => void
 ) {
   return useCallback(() => {
     if (!canRedo || !cy) return;
@@ -341,6 +393,11 @@ function useRedoAction(
       log.info(`[UndoRedo] Redoing move for ${nextAction.after.length} node(s)`);
       applyPositionsToGraph(cy, nextAction.after);
       sendPositionsToExtension(nextAction.after);
+      // Restore membership if present
+      if (nextAction.membershipAfter && nextAction.membershipAfter.length > 0) {
+        applyMembershipChange?.(nextAction.membershipAfter);
+        sendMembershipToExtension(nextAction.membershipAfter);
+      }
     } else if (nextAction.type === 'graph') {
       log.info(`[UndoRedo] Redoing graph action with ${nextAction.after.length} change(s)`);
       applyGraphChanges?.(nextAction.after);
@@ -358,13 +415,13 @@ function useRedoAction(
       sendPositionsToExtension(nextAction.nodesAfter);
     }
     dispatch({ type: 'REDO' });
-  }, [canRedo, cy, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange]);
+  }, [canRedo, cy, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange]);
 }
 
 /**
  * Hook for managing undo/redo functionality for node positions
  */
-export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange }: UseUndoRedoOptions): UseUndoRedoReturn {
+export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange }: UseUndoRedoOptions): UseUndoRedoReturn {
   const [state, dispatch] = useReducer(undoRedoReducer, initialState);
 
   const canUndo = enabled && state.past.length > 0;
@@ -372,10 +429,10 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
 
   const capturePositions = useCapturePositions(cy);
   const pushAction = usePushAction(enabled, dispatch);
-  const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange);
-  const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange);
+  const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange);
+  const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange);
 
-  const recordMove = useCallback((nodeIds: string[], beforePositions: NodePositionEntry[]) => {
+  const recordMove = useCallback((nodeIds: string[], beforePositions: NodePositionEntry[], membershipBefore?: MembershipEntry[], membershipAfter?: MembershipEntry[]) => {
     if (!enabled || !cy) return;
     const afterPositions = capturePositions(nodeIds);
     const hasChanged = beforePositions.some(before => {
@@ -383,7 +440,7 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
       return after && (before.position.x !== after.position.x || before.position.y !== after.position.y);
     });
     if (hasChanged) {
-      pushAction({ type: 'move', before: beforePositions, after: afterPositions });
+      pushAction({ type: 'move', before: beforePositions, after: afterPositions, membershipBefore, membershipAfter });
     }
   }, [enabled, cy, capturePositions, pushAction]);
 

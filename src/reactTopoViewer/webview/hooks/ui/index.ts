@@ -30,3 +30,4 @@ export type {
 } from './usePanelCommands';
 
 export { useAppHandlers } from './useAppHandlers';
+export type { PendingMembershipChange } from './useAppHandlers';

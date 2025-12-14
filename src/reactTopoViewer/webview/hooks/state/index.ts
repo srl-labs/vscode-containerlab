@@ -5,6 +5,7 @@
 export { useUndoRedo } from './useUndoRedo';
 export type {
   NodePositionEntry,
+  MembershipEntry,
   GraphChange,
   UndoRedoActionMove,
   UndoRedoActionGraph,

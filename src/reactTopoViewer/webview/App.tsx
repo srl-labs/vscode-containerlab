@@ -60,7 +60,8 @@ import {
   usePanelVisibility,
   useFloatingPanelCommands
 } from './hooks';
-import type { GraphChangeEntry } from './hooks';
+import type { GraphChangeEntry, PendingMembershipChange } from './hooks';
+import type { MembershipEntry } from './hooks/state';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
 import type { NodeEditorData } from './components/panels/node-editor/types';
@@ -268,6 +269,30 @@ function useNodeCreationHandlers(
 }
 
 /**
+ * Hook for membership change callbacks (reduces App complexity)
+ */
+function useMembershipCallbacks(
+  groups: { addNodeToGroup: (nodeId: string, groupId: string) => void; removeNodeFromGroup: (nodeId: string) => void },
+  pendingMembershipChangesRef: React.RefObject<Map<string, PendingMembershipChange>>
+) {
+  const applyMembershipChange = React.useCallback((memberships: MembershipEntry[]) => {
+    for (const entry of memberships) {
+      if (entry.groupId) {
+        groups.addNodeToGroup(entry.nodeId, entry.groupId);
+      } else {
+        groups.removeNodeFromGroup(entry.nodeId);
+      }
+    }
+  }, [groups]);
+
+  const onMembershipWillChange = React.useCallback((nodeId: string, oldGroupId: string | null, newGroupId: string | null) => {
+    pendingMembershipChangesRef.current.set(nodeId, { nodeId, oldGroupId, newGroupId });
+  }, [pendingMembershipChangesRef]);
+
+  return { applyMembershipChange, onMembershipWillChange };
+}
+
+/**
  * Determines if an info panel should be visible (only in view mode)
  */
 function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view'): boolean {
@@ -283,6 +308,9 @@ export const App: React.FC = () => {
 
   // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
+
+  // Ref to track pending membership changes during node drag (for undo/redo coordination)
+  const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
 
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge);
@@ -333,6 +361,9 @@ export const App: React.FC = () => {
     applyFreeShapeChange
   });
 
+  // Membership change callbacks for undo/redo coordination
+  const { applyMembershipChange, onMembershipWillChange } = useMembershipCallbacks(groups, pendingMembershipChangesRef);
+
   const {
     undoRedo,
     handleEdgeCreated,
@@ -347,7 +378,8 @@ export const App: React.FC = () => {
     addEdge,
     menuHandlers,
     applyAnnotationChange,
-    applyGroupMoveChange
+    applyGroupMoveChange,
+    applyMembershipChange
   });
 
   // Group undo/redo handlers (must be after useGraphUndoRedoHandlers)
@@ -431,7 +463,8 @@ export const App: React.FC = () => {
     selectionCallbacks: { selectNode, selectEdge, editNode, editEdge },
     undoRedo,
     floatingPanelRef,
-    isLocked: state.isLocked
+    isLocked: state.isLocked,
+    pendingMembershipChangesRef
   });
 
   // Set up context menus
@@ -458,7 +491,8 @@ export const App: React.FC = () => {
   // Set up drag-to-reparent for groups (overlay-based)
   useNodeReparent(cyInstance, {
     mode: state.mode,
-    isLocked: state.isLocked
+    isLocked: state.isLocked,
+    onMembershipWillChange
   }, {
     groups: groups.groups,
     addNodeToGroup: groups.addNodeToGroup,
