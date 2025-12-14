@@ -2,6 +2,7 @@
  * Shared annotation handles for rotation and line resize
  */
 import React, { useCallback, useRef, useState, useEffect } from 'react';
+import { useReactFlow } from '@xyflow/react';
 import { SELECTION_COLOR } from '../types';
 
 // ============================================================================
@@ -92,12 +93,13 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
     const handle = handleRef.current;
     if (!handle) return;
 
-    // Calculate center from the handle's position
-    // The handle is positioned at left: 50% of the parent and top: -ROTATION_HANDLE_OFFSET
-    // So the center of the node is directly below the handle's center
-    const handleRect = handle.getBoundingClientRect();
-    const centerX = handleRect.left + handleRect.width / 2;
-    const centerY = handleRect.top + handleRect.height / 2 + ROTATION_HANDLE_OFFSET;
+    // Calculate the rotation center from the parent node container.
+    // This keeps rotation stable regardless of node size or handle offset.
+    const parent = handle.parentElement;
+    if (!parent) return;
+    const parentRect = parent.getBoundingClientRect();
+    const centerX = parentRect.left + parentRect.width / 2;
+    const centerY = parentRect.top + parentRect.height / 2;
 
     const startAngle = calculateAngle(centerX, centerY, e.clientX, e.clientY);
 
@@ -165,6 +167,8 @@ interface LineEndHandleProps {
   readonly endPosition: { x: number; y: number };
   /** Offset of line start within the node (for bounding box positioning) */
   readonly lineStartOffset: { x: number; y: number };
+  /** Current node rotation in degrees (applied to the node wrapper) */
+  readonly rotation?: number;
   readonly onEndPositionChange: (id: string, endPosition: { x: number; y: number }) => void;
 }
 
@@ -175,14 +179,18 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
   startPosition,
   endPosition,
   lineStartOffset,
+  rotation = 0,
   onEndPositionChange
 }) => {
   const [isResizing, setIsResizing] = useState(false);
+  const reactFlow = useReactFlow();
   const dragStartRef = useRef<{
     startClientX: number;
     startClientY: number;
     startEndX: number;
     startEndY: number;
+    rotationRad: number;
+    zoom: number;
   } | null>(null);
 
   useEffect(() => {
@@ -191,11 +199,20 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
 
-      const deltaX = e.clientX - dragStartRef.current.startClientX;
-      const deltaY = e.clientY - dragStartRef.current.startClientY;
+      const deltaClientX = e.clientX - dragStartRef.current.startClientX;
+      const deltaClientY = e.clientY - dragStartRef.current.startClientY;
 
-      let newEndX = dragStartRef.current.startEndX + deltaX;
-      let newEndY = dragStartRef.current.startEndY + deltaY;
+      const deltaX = deltaClientX / dragStartRef.current.zoom;
+      const deltaY = deltaClientY / dragStartRef.current.zoom;
+
+      // Convert screen delta into model-space delta for the unrotated line.
+      const cos = Math.cos(-dragStartRef.current.rotationRad);
+      const sin = Math.sin(-dragStartRef.current.rotationRad);
+      const rotatedDx = deltaX * cos - deltaY * sin;
+      const rotatedDy = deltaX * sin + deltaY * cos;
+
+      let newEndX = dragStartRef.current.startEndX + rotatedDx;
+      let newEndY = dragStartRef.current.startEndY + rotatedDy;
 
       // Ensure minimum line length
       const dx = newEndX - startPosition.x;
@@ -233,13 +250,16 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
     e.stopPropagation();
 
     setIsResizing(true);
+    const viewport = reactFlow.getViewport();
     dragStartRef.current = {
       startClientX: e.clientX,
       startClientY: e.clientY,
       startEndX: endPosition.x,
-      startEndY: endPosition.y
+      startEndY: endPosition.y,
+      rotationRad: (rotation * Math.PI) / 180,
+      zoom: viewport.zoom || 1
     };
-  }, [endPosition]);
+  }, [endPosition, reactFlow, rotation]);
 
   // Calculate the handle position relative to the node (line start offset + relative end)
   const handleX = lineStartOffset.x + (endPosition.x - startPosition.x);

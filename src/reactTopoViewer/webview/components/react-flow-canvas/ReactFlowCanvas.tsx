@@ -191,29 +191,47 @@ function useSyncAnnotationNodes(
     if (!annotationNodes) return;
 
     setNodes(currentNodes => {
-      // Build map for quick lookup of current annotation nodes
-      const currentAnnotationMap = new Map<string, Node>();
-
-      for (const node of currentNodes) {
-        if (ANNOTATION_NODE_TYPES_SET.has(node.type || '')) {
-          currentAnnotationMap.set(node.id, node);
-        }
+      const incomingById = new Map<string, Node>();
+      for (const node of annotationNodes) {
+        incomingById.set(node.id, node);
       }
 
-      // Filter out old annotation nodes, keep topology nodes
-      const topologyNodes = currentNodes.filter(n => !ANNOTATION_NODE_TYPES_SET.has(n.type || ''));
+      const nextNodes: Node[] = [];
 
-      // Build new annotation nodes list, preserving React Flow's position for existing nodes
-      const newAnnotationNodes = annotationNodes.map(node => {
-        const existing = currentAnnotationMap.get(node.id);
-        if (existing) {
-          // Preserve React Flow's position (for smooth dragging), update other data
-          return { ...node, position: existing.position };
+      // Update existing nodes in-place (preserve React Flow internals like `selected`)
+      for (const currentNode of currentNodes) {
+        const isAnnotation = ANNOTATION_NODE_TYPES_SET.has(currentNode.type || '');
+        if (!isAnnotation) {
+          nextNodes.push(currentNode);
+          continue;
         }
-        return node;
-      });
 
-      return [...topologyNodes, ...newAnnotationNodes];
+        const incoming = incomingById.get(currentNode.id);
+        if (!incoming) {
+          // Annotation was removed
+          continue;
+        }
+        incomingById.delete(currentNode.id);
+
+        nextNodes.push({
+          ...currentNode,
+          ...incoming,
+          // Preserve React Flow's position to avoid jitter while dragging.
+          position: currentNode.position,
+          // Always update to the latest annotation data.
+          data: incoming.data,
+          // Preserve selection/dragging state managed by React Flow.
+          selected: currentNode.selected,
+          dragging: currentNode.dragging
+        });
+      }
+
+      // Add any new annotation nodes that weren't in the current state yet
+      for (const node of incomingById.values()) {
+        nextNodes.push(node);
+      }
+
+      return nextNodes;
     });
   }, [annotationNodes, setNodes]);
 }

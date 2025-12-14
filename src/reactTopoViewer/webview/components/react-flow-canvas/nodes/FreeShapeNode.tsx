@@ -202,34 +202,29 @@ function LineShape(props: LineShapeProps): React.ReactElement {
 // Container Style Builders
 // ============================================================================
 
-/** Build outer wrapper style for rectangle/circle (no rotation - for correct handle positioning) */
-function buildBoxWrapperStyle(): React.CSSProperties {
+/** Build wrapper style for rectangle/circle */
+function buildBoxWrapperStyle(rotation: number): React.CSSProperties {
   return {
     position: 'relative',
     width: '100%',
     height: '100%',
     minWidth: MIN_WIDTH,
-    minHeight: MIN_HEIGHT
-  };
-}
-
-/** Build inner container style for rectangle/circle (with rotation) */
-function buildBoxRotatedContainerStyle(rotation: number): React.CSSProperties {
-  return {
-    width: '100%',
-    height: '100%',
+    minHeight: MIN_HEIGHT,
+    cursor: 'move',
     transform: rotation ? `rotate(${rotation}deg)` : undefined,
-    cursor: 'move'
+    transformOrigin: 'center center'
   };
 }
 
 /** Build container style for line - uses 100% to fill the bounding box */
-function buildLineContainerStyle(): React.CSSProperties {
+function buildLineContainerStyle(rotation: number): React.CSSProperties {
   return {
     position: 'relative',
     cursor: 'move',
     width: '100%',
-    height: '100%'
+    height: '100%',
+    transform: rotation ? `rotate(${rotation}deg)` : undefined,
+    transformOrigin: 'center center'
   };
 }
 
@@ -288,9 +283,10 @@ function getLineStyleProps(data: FreeShapeNodeData): {
 function LineNode({ id, data, isSelected, showHandles, annotationHandlers }: LineNodeProps): React.ReactElement {
   const { relativeEnd, startPosition, endPosition, lineStartInNode } = getLinePositions(data);
   const styleProps = getLineStyleProps(data);
+  const rotation = data.rotation ?? 0;
 
   return (
-    <div style={buildLineContainerStyle()} className="free-shape-node free-shape-line-node">
+    <div style={buildLineContainerStyle(rotation)} className="free-shape-node free-shape-line-node">
       <LineShape
         startX={lineStartInNode.x}
         startY={lineStartInNode.y}
@@ -306,13 +302,14 @@ function LineNode({ id, data, isSelected, showHandles, annotationHandlers }: Lin
           startPosition={startPosition}
           endPosition={endPosition}
           lineStartOffset={lineStartInNode}
+          rotation={rotation}
           onEndPositionChange={annotationHandlers.onUpdateFreeShapeEndPosition}
         />
       )}
       {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (
         <RotationHandle
           nodeId={id}
-          currentRotation={data.rotation ?? 0}
+          currentRotation={rotation}
           onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
         />
       )}
@@ -334,8 +331,8 @@ interface BoxNodeProps {
 }
 
 function BoxNode({ id, data, isSelected, showHandles, annotationHandlers, onResizeEnd }: BoxNodeProps): React.ReactElement {
-  const wrapperStyle = buildBoxWrapperStyle();
-  const rotatedContainerStyle = buildBoxRotatedContainerStyle(data.rotation ?? 0);
+  const rotation = data.rotation ?? 0;
+  const wrapperStyle = buildBoxWrapperStyle(rotation);
 
   const shapeProps = {
     fillColor: data.fillColor ?? 'rgba(100, 100, 100, 0.2)',
@@ -365,13 +362,11 @@ function BoxNode({ id, data, isSelected, showHandles, annotationHandlers, onResi
           onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
         />
       )}
-      <div style={rotatedContainerStyle}>
-        {data.shapeType === 'rectangle' ? (
-          <RectangleShape {...shapeProps} cornerRadius={data.cornerRadius ?? 0} />
-        ) : (
-          <CircleShape {...shapeProps} />
-        )}
-      </div>
+      {data.shapeType === 'rectangle' ? (
+        <RectangleShape {...shapeProps} cornerRadius={data.cornerRadius ?? 0} />
+      ) : (
+        <CircleShape {...shapeProps} />
+      )}
     </div>
   );
 }

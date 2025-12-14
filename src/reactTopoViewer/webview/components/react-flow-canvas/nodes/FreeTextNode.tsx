@@ -15,27 +15,21 @@ import { RotationHandle } from './AnnotationHandles';
 const MIN_WIDTH = 40;
 const MIN_HEIGHT = 20;
 
-/** Build outer wrapper style (no rotation - for correct handle positioning) */
+/** Build wrapper style for the node */
 function buildWrapperStyle(
   width: number | undefined,
-  height: number | undefined
+  height: number | undefined,
+  rotation: number
 ): React.CSSProperties {
   return {
     position: 'relative',
     width: width ? `${width}px` : 'auto',
     height: height ? `${height}px` : 'auto',
     minWidth: MIN_WIDTH,
-    minHeight: MIN_HEIGHT
-  };
-}
-
-/** Build inner container style (with rotation) */
-function buildRotatedContainerStyle(rotation: number): React.CSSProperties {
-  return {
-    width: '100%',
-    height: '100%',
+    minHeight: MIN_HEIGHT,
+    cursor: 'move',
     transform: rotation ? `rotate(${rotation}deg)` : undefined,
-    cursor: 'move'
+    transformOrigin: 'center center'
   };
 }
 
@@ -93,14 +87,14 @@ const FreeTextNodeComponent: React.FC<NodeProps<FreeTextNodeData>> = ({ id, data
   const { state } = useTopoViewer();
   const annotationHandlers = useAnnotationHandlers();
   const isEditMode = state.mode === 'edit' && !state.isLocked;
+  const rotation = data.rotation ?? 0;
 
   const handleResizeEnd = useCallback((_event: unknown, params: ResizeParams) => {
     annotationHandlers?.onUpdateFreeTextSize?.(id, params.width, params.height);
   }, [id, annotationHandlers]);
 
   const renderedHtml = useMemo(() => renderMarkdown(data.text || ''), [data.text]);
-  const wrapperStyle = useMemo(() => buildWrapperStyle(data.width, data.height), [data.width, data.height]);
-  const rotatedContainerStyle = useMemo(() => buildRotatedContainerStyle(data.rotation || 0), [data.rotation]);
+  const wrapperStyle = useMemo(() => buildWrapperStyle(data.width, data.height, rotation), [data.width, data.height, rotation]);
   const textStyle = useMemo(() => buildTextStyle(data, selected), [data, selected]);
   const showHandles = selected && isEditMode;
 
@@ -122,14 +116,12 @@ const FreeTextNodeComponent: React.FC<NodeProps<FreeTextNodeData>> = ({ id, data
           onRotationChange={annotationHandlers.onUpdateFreeTextRotation}
         />
       )}
-      <div style={rotatedContainerStyle}>
-        <div
-          style={textStyle}
-          className="free-text-content free-text-markdown nowheel"
-          dangerouslySetInnerHTML={{ __html: renderedHtml }}
-          onWheel={handleWheelEvent}
-        />
-      </div>
+      <div
+        style={textStyle}
+        className="free-text-content free-text-markdown nowheel"
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        onWheel={handleWheelEvent}
+      />
     </div>
   );
 };
