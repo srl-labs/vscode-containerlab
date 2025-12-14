@@ -14,13 +14,30 @@ interface UndoRedoApi {
 export interface UseGroupUndoRedoHandlersReturn {
   createGroupWithUndo: (selectedNodeIds?: string[]) => string | null;
   deleteGroupWithUndo: (groupId: string) => void;
+  updateGroupPositionWithUndo: (groupId: string, position: { x: number; y: number }) => void;
+  updateGroupSizeWithUndo: (groupId: string, width: number, height: number) => void;
   applyGroupAnnotationChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
   isApplyingGroupUndoRedo: React.RefObject<boolean>;
 }
 
 function cloneGroup(group: GroupStyleAnnotation | undefined): GroupStyleAnnotation | null {
   if (!group) return null;
-  return { ...group };
+  return { ...group, position: { ...group.position } };
+}
+
+function updateGroupPosition(
+  group: GroupStyleAnnotation,
+  position: { x: number; y: number }
+): GroupStyleAnnotation {
+  return { ...group, position: { ...position } };
+}
+
+function updateGroupSize(
+  group: GroupStyleAnnotation,
+  width: number,
+  height: number
+): GroupStyleAnnotation {
+  return { ...group, width, height };
 }
 
 function pushUndo(
@@ -32,6 +49,37 @@ function pushUndo(
 ): void {
   if (isApplyingRef.current) return;
   undoRedo.pushAction(groupsApi.getUndoRedoAction(before, after));
+}
+
+function updateGroupPositionWithUndoInternal(
+  id: string,
+  position: { x: number; y: number },
+  groupsApi: Pick<UseGroupsReturn, 'groups' | 'updateGroupPosition' | 'getUndoRedoAction'>,
+  undoRedo: UndoRedoApi,
+  isApplyingRef: React.RefObject<boolean>
+): void {
+  const beforeCopy = cloneGroup(groupsApi.groups.find(g => g.id === id) || undefined);
+  if (beforeCopy) {
+    const after = updateGroupPosition(beforeCopy, position);
+    pushUndo(undoRedo, groupsApi, isApplyingRef, beforeCopy, after);
+  }
+  groupsApi.updateGroupPosition(id, position);
+}
+
+function updateGroupSizeWithUndoInternal(
+  id: string,
+  width: number,
+  height: number,
+  groupsApi: Pick<UseGroupsReturn, 'groups' | 'updateGroupSize' | 'getUndoRedoAction'>,
+  undoRedo: UndoRedoApi,
+  isApplyingRef: React.RefObject<boolean>
+): void {
+  const beforeCopy = cloneGroup(groupsApi.groups.find(g => g.id === id) || undefined);
+  if (beforeCopy) {
+    const after = updateGroupSize(beforeCopy, width, height);
+    pushUndo(undoRedo, groupsApi, isApplyingRef, beforeCopy, after);
+  }
+  groupsApi.updateGroupSize(id, width, height);
 }
 
 function applyGroupAnnotationChangeInternal(
@@ -93,6 +141,20 @@ export function useGroupUndoRedoHandlers(
     [groupsApi, undoRedo]
   );
 
+  const updateGroupPositionWithUndo = React.useCallback(
+    (groupId: string, position: { x: number; y: number }): void => {
+      updateGroupPositionWithUndoInternal(groupId, position, groupsApi, undoRedo, isApplyingGroupUndoRedo);
+    },
+    [groupsApi, undoRedo]
+  );
+
+  const updateGroupSizeWithUndo = React.useCallback(
+    (groupId: string, width: number, height: number): void => {
+      updateGroupSizeWithUndoInternal(groupId, width, height, groupsApi, undoRedo, isApplyingGroupUndoRedo);
+    },
+    [groupsApi, undoRedo]
+  );
+
   const applyGroupAnnotationChange = React.useCallback(
     (action: UndoRedoActionAnnotation, isUndo: boolean): void => {
       applyGroupAnnotationChangeInternal(action, isUndo, groupsApi, isApplyingGroupUndoRedo);
@@ -103,6 +165,8 @@ export function useGroupUndoRedoHandlers(
   return {
     createGroupWithUndo,
     deleteGroupWithUndo,
+    updateGroupPositionWithUndo,
+    updateGroupSizeWithUndo,
     applyGroupAnnotationChange,
     isApplyingGroupUndoRedo
   };

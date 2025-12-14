@@ -41,10 +41,10 @@ import {
   useAppGroups,
   useCombinedAnnotationApplier,
   useAppGroupUndoHandlers,
-  useGroupPositionHandler,
-  useGroupDragMoveHandler,
+  useGroupDragUndo,
   useGroupLayer,
   useNodeReparent,
+  useGroupUndoRedoHandlers,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
@@ -328,7 +328,7 @@ export const App: React.FC = () => {
   });
 
   // Combined annotation change handler for undo/redo (freeShape + group)
-  const { applyAnnotationChange } = useCombinedAnnotationApplier({
+  const { applyAnnotationChange, applyGroupMoveChange } = useCombinedAnnotationApplier({
     groups,
     applyFreeShapeChange
   });
@@ -346,7 +346,8 @@ export const App: React.FC = () => {
     addNode,
     addEdge,
     menuHandlers,
-    applyAnnotationChange
+    applyAnnotationChange,
+    applyGroupMoveChange
   });
 
   // Group undo/redo handlers (must be after useGraphUndoRedoHandlers)
@@ -354,6 +355,17 @@ export const App: React.FC = () => {
     cyInstance,
     groups,
     undoRedo
+  });
+
+  // Get isApplyingGroupUndoRedo ref from group undo handlers
+  const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
+
+  // Group drag undo tracking - handles group + member node moves as single undo step
+  const groupDragUndo = useGroupDragUndo({
+    cyInstance,
+    groups,
+    undoRedo,
+    isApplyingGroupUndoRedo: groupUndoHandlers.isApplyingGroupUndoRedo
   });
 
   // Editor handlers with undo/redo support
@@ -453,9 +465,9 @@ export const App: React.FC = () => {
     removeNodeFromGroup: groups.removeNodeFromGroup
   });
 
-  // Handlers for group dragging - position change and real-time node movement
-  const handleGroupPositionChange = useGroupPositionHandler({ cyInstance, groups });
-  const handleGroupDragMove = useGroupDragMoveHandler({ cyInstance, groups });
+  // Handlers for group dragging with undo support
+  // onDragStart captures initial state, onDragEnd records compound undo action
+  // onDragMove moves member nodes in real-time during drag
 
   // Create group background + interaction layers using cytoscape-layers
   const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cyInstance);
@@ -565,9 +577,10 @@ export const App: React.FC = () => {
           isLocked={state.isLocked}
           onGroupEdit={groups.editGroup}
           onGroupDelete={deleteGroupWithUndo}
-          onPositionChange={handleGroupPositionChange}
-          onDragMove={handleGroupDragMove}
-          onSizeChange={groups.updateGroupSize}
+          onDragStart={groupDragUndo.onGroupDragStart}
+          onPositionChange={groupDragUndo.onGroupDragEnd}
+          onDragMove={groupDragUndo.onGroupDragMove}
+          onSizeChange={groupUndoHandlers.updateGroupSizeWithUndo}
         />
 	        <FreeTextLayer
 	          cy={cyInstance}

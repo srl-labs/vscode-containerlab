@@ -21,6 +21,7 @@ interface GroupLayerProps {
   isLocked: boolean;
   onGroupEdit: (id: string) => void;
   onGroupDelete: (id: string) => void;
+  onDragStart?: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
   onSizeChange: (id: string, width: number, height: number) => void;
@@ -35,6 +36,7 @@ interface GroupInteractionItemProps {
   isLocked: boolean;
   isSelected: boolean;
   onGroupEdit: (id: string) => void;
+  onDragStart?: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
   onSizeChange: (id: string, width: number, height: number) => void;
@@ -322,6 +324,7 @@ interface UseGroupDragInteractionOptions {
   groupId: string;
   isLocked: boolean;
   position: { x: number; y: number };
+  onDragStart?: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
   onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
@@ -334,6 +337,7 @@ function useGroupDragInteraction(options: UseGroupDragInteractionOptions) {
     groupId,
     isLocked,
     position,
+    onDragStart,
     onPositionChange,
     onDragMove,
     onVisualPositionChange,
@@ -403,8 +407,9 @@ function useGroupDragInteraction(options: UseGroupDragInteractionOptions) {
       modelX: position.x,
       modelY: position.y
     };
+    onDragStart?.(groupId);
     setIsDragging(true);
-  }, [isLocked, position.x, position.y]);
+  }, [isLocked, position.x, position.y, onDragStart, groupId]);
 
   return { isDragging, dragPos, handleMouseDown };
 }
@@ -555,6 +560,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     isLocked,
     isSelected,
     onGroupEdit,
+    onDragStart,
     onPositionChange,
     onDragMove,
     onSizeChange,
@@ -572,6 +578,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     groupId: group.id,
     isLocked,
     position: group.position,
+    onDragStart,
     onPositionChange,
     onDragMove,
     onVisualPositionChange,
@@ -763,6 +770,7 @@ const GroupInteractionPortal: React.FC<{
   isLocked: boolean;
   selectedGroupIds: Set<string>;
   onGroupEdit: (id: string) => void;
+  onDragStart?: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
   onSizeChange: (id: string, width: number, height: number) => void;
@@ -778,6 +786,7 @@ const GroupInteractionPortal: React.FC<{
   isLocked,
   selectedGroupIds,
   onGroupEdit,
+  onDragStart,
   onPositionChange,
   onDragMove,
   onSizeChange,
@@ -796,6 +805,7 @@ const GroupInteractionPortal: React.FC<{
         isLocked={isLocked}
         isSelected={selectedGroupIds.has(group.id)}
         onGroupEdit={onGroupEdit}
+        onDragStart={onDragStart}
         onPositionChange={onPositionChange}
         onDragMove={onDragMove}
         onSizeChange={onSizeChange}
@@ -818,6 +828,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   isLocked,
   onGroupEdit,
   onGroupDelete,
+  onDragStart,
   onPositionChange,
   onDragMove,
   onSizeChange,
@@ -860,6 +871,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           isLocked={isLocked}
           selectedGroupIds={selectedGroupIds}
           onGroupEdit={onGroupEdit}
+          onDragStart={onDragStart}
           onPositionChange={onPositionChange}
           onDragMove={onDragMove}
           onSizeChange={onSizeChange}

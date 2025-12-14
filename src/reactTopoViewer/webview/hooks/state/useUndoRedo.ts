@@ -83,7 +83,23 @@ export interface UndoRedoActionAnnotation {
   [key: string]: unknown;
 }
 
-export type UndoRedoAction = UndoRedoActionMove | UndoRedoActionGraph | UndoRedoActionPropertyEdit | UndoRedoActionAnnotation;
+/**
+ * Represents a compound group move action (group + member nodes move together)
+ */
+export interface UndoRedoActionGroupMove {
+  type: 'group-move';
+  /** Group state before the move */
+  groupBefore: Record<string, unknown>;
+  /** Group state after the move */
+  groupAfter: Record<string, unknown>;
+  /** Node positions before the move */
+  nodesBefore: NodePositionEntry[];
+  /** Node positions after the move */
+  nodesAfter: NodePositionEntry[];
+  [key: string]: unknown;
+}
+
+export type UndoRedoAction = UndoRedoActionMove | UndoRedoActionGraph | UndoRedoActionPropertyEdit | UndoRedoActionAnnotation | UndoRedoActionGroupMove;
 
 /**
  * State shape for the undo/redo system
@@ -103,6 +119,7 @@ type UndoRedoReducerAction =
   | { type: 'CLEAR' };
 
 const MAX_HISTORY_SIZE = 50;
+const ACTION_TYPE_GROUP_MOVE = 'group-move';
 
 const initialState: UndoRedoState = {
   past: [],
@@ -199,6 +216,11 @@ export interface UseUndoRedoOptions {
    * @param isUndo True if this is an undo operation, false for redo
    */
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
+  /** Apply group move action for undo/redo (group + nodes moved together)
+   * @param action The full action containing group and node states
+   * @param isUndo True if this is an undo operation, false for redo
+   */
+  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
 }
 
 /**
@@ -249,7 +271,16 @@ function usePushAction(enabled: boolean, dispatch: React.Dispatch<UndoRedoReduce
   return useCallback((action: UndoRedoAction) => {
     if (!enabled) return;
     dispatch({ type: 'PUSH', action });
-    const count = action.type === 'move' ? action.after.length : action.after?.length ?? 0;
+    let count = 0;
+    if (action.type === 'move') {
+      count = action.after.length;
+    } else if (action.type === ACTION_TYPE_GROUP_MOVE) {
+      count = action.nodesAfter.length + 1; // nodes + group
+    } else if (action.type === 'graph' && Array.isArray(action.after)) {
+      count = action.after.length;
+    } else {
+      count = 1;
+    }
     log.info(`[UndoRedo] Pushed action: ${action.type} for ${count} item(s)`);
   }, [enabled, dispatch]);
 }
@@ -262,7 +293,8 @@ function useUndoAction(
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   applyGraphChanges?: (changes: GraphChange[]) => void,
   applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
-  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void
+  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
+  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void
 ) {
   return useCallback(() => {
     if (!canUndo || !cy) return;
@@ -280,9 +312,15 @@ function useUndoAction(
     } else if (lastAction.type === 'annotation') {
       log.info(`[UndoRedo] Undoing ${lastAction.annotationType} annotation change`);
       applyAnnotationChange?.(lastAction, true);
+    } else if (lastAction.type === ACTION_TYPE_GROUP_MOVE) {
+      log.info(`[UndoRedo] Undoing group move with ${lastAction.nodesBefore.length} node(s)`);
+      applyGroupMoveChange?.(lastAction, true);
+      // Also restore node positions
+      applyPositionsToGraph(cy, lastAction.nodesBefore);
+      sendPositionsToExtension(lastAction.nodesBefore);
     }
     dispatch({ type: 'UNDO' });
-  }, [canUndo, cy, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange]);
+  }, [canUndo, cy, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange]);
 }
 
 /** Helper hook for redo operation */
@@ -293,7 +331,8 @@ function useRedoAction(
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   applyGraphChanges?: (changes: GraphChange[]) => void,
   applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
-  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void
+  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
+  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void
 ) {
   return useCallback(() => {
     if (!canRedo || !cy) return;
@@ -311,15 +350,21 @@ function useRedoAction(
     } else if (nextAction.type === 'annotation') {
       log.info(`[UndoRedo] Redoing ${nextAction.annotationType} annotation change`);
       applyAnnotationChange?.(nextAction, false);
+    } else if (nextAction.type === ACTION_TYPE_GROUP_MOVE) {
+      log.info(`[UndoRedo] Redoing group move with ${nextAction.nodesAfter.length} node(s)`);
+      applyGroupMoveChange?.(nextAction, false);
+      // Also restore node positions
+      applyPositionsToGraph(cy, nextAction.nodesAfter);
+      sendPositionsToExtension(nextAction.nodesAfter);
     }
     dispatch({ type: 'REDO' });
-  }, [canRedo, cy, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange]);
+  }, [canRedo, cy, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange]);
 }
 
 /**
  * Hook for managing undo/redo functionality for node positions
  */
-export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyPropertyEdit, applyAnnotationChange }: UseUndoRedoOptions): UseUndoRedoReturn {
+export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange }: UseUndoRedoOptions): UseUndoRedoReturn {
   const [state, dispatch] = useReducer(undoRedoReducer, initialState);
 
   const canUndo = enabled && state.past.length > 0;
@@ -327,8 +372,8 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
 
   const capturePositions = useCapturePositions(cy);
   const pushAction = usePushAction(enabled, dispatch);
-  const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange);
-  const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange);
+  const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange);
+  const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange);
 
   const recordMove = useCallback((nodeIds: string[], beforePositions: NodePositionEntry[]) => {
     if (!enabled || !cy) return;
