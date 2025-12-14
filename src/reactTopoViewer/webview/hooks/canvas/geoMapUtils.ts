@@ -676,6 +676,10 @@ function initCytoscapeLeaflet(cy: Core, state: GeoMapState, geoContainer: HTMLEl
 
   state.leafletMap = state.cytoscapeLeaflet.map;
 
+  // Disable zoom animation for instant zoom response
+  state.leafletMap.options.zoomAnimation = false;
+  state.leafletMap.options.fadeAnimation = false;
+
   window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
     subdomains: 'abcd',
