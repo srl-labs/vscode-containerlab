@@ -9,8 +9,9 @@ import {
   useDrawerSide,
   useShakeAnimation,
   savePanelState,
-  buildLockButtonClass
-} from './usePanelPosition';
+  buildLockButtonClass,
+  PANEL_STORAGE_KEY
+} from '../../../hooks/ui/usePanelDrag';
 import { PanelButton, DeployButtonGroup } from './DeployControls';
 import { PanelButtonWithDropdown, DropdownMenuItem, CustomNodeActions } from './DropdownMenu';
 
@@ -124,13 +125,14 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const { isShaking, trigger: triggerLockShake } = useShakeAnimation();
-    const { panelRef, position, handleMouseDown } = usePanelDrag(isLocked);
+    const { panelRef, position, handleMouseDown } = usePanelDrag({ isLocked, storageKey: PANEL_STORAGE_KEY });
     const drawerSide = useDrawerSide(panelRef, position);
 
     useImperativeHandle(ref, () => ({
       triggerShake: triggerLockShake
     }), [triggerLockShake]);
 
+    // Save collapsed state separately since the hook handles position
     useEffect(() => { savePanelState(position, isCollapsed); }, [position, isCollapsed]);
 
     const handleLockClick = useCallback((e: React.MouseEvent) => {
@@ -149,7 +151,7 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
       <div
         ref={panelRef}
         className="floating-action-panel"
-        style={{ left: position.left, top: position.top, cursor: panelCursor }}
+        style={{ left: position.x, top: position.y, cursor: panelCursor }}
         onMouseDown={handleMouseDown}
       >
         <div className="floating-panel-drag-handle" style={{ cursor: panelCursor }} />

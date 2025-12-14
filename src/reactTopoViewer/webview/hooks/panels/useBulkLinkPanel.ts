@@ -3,9 +3,9 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import type { GraphChangeEntry } from '../../../hooks';
-import type { LinkCandidate } from './bulkLinkUtils';
-import { computeAndValidateCandidates, confirmAndCreateLinks } from './bulkLinkHandlers';
+import type { GraphChangeEntry } from '../index';
+import type { LinkCandidate } from '../../components/panels/bulk-link/bulkLinkUtils';
+import { computeAndValidateCandidates, confirmAndCreateLinks } from '../../components/panels/bulk-link/bulkLinkHandlers';
 
 interface UseBulkLinkPanelOptions {
   isVisible: boolean;

@@ -39,3 +39,29 @@ export type { DropdownKeyboardActions, DropdownKeyboardState } from './useDropdo
 
 export { useFilterableDropdown } from './useFilterableDropdown';
 export type { FilterableDropdownOption, UseFilterableDropdownReturn } from './useFilterableDropdown';
+
+// Panel drag hooks (consolidated)
+export {
+  usePanelDrag,
+  useDrawerSide,
+  useShakeAnimation,
+  buildLockButtonClass,
+  loadInitialPosition,
+  savePanelState,
+  PANEL_STORAGE_KEY
+} from './usePanelDrag';
+export type { Position, UsePanelDragOptions, UsePanelDragReturn } from './usePanelDrag';
+
+// Dropdown state hooks
+export { useDropdownState, useFloatingDropdownKeyboard, useFocusOnOpen } from './useDropdownState';
+
+// Simple dropdown hook
+export { useDropdown } from './useDropdown';
+export type { UseDropdownReturn } from './useDropdown';
+
+// Escape key hook
+export { useEscapeKey } from './useEscapeKey';
+
+// Delayed hover hook
+export { useDelayedHover } from './useDelayedHover';
+export type { UseDelayedHoverReturn } from './useDelayedHover';

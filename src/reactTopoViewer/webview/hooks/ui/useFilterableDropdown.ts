@@ -136,9 +136,9 @@ function useSelectionHandlers(
 }
 
 export interface UseFilterableDropdownReturn {
-  containerRef: React.RefObject<HTMLDivElement>;
-  inputRef: React.RefObject<HTMLInputElement>;
-  menuRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  menuRef: React.RefObject<HTMLDivElement | null>;
   isOpen: boolean;
   filterText: string;
   highlightedIndex: number;

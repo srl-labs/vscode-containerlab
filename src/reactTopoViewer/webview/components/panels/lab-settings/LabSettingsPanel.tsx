@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { BasePanel } from '../../shared/editor/BasePanel';
 import { BasicTab } from './BasicTab';
 import { MgmtTab } from './MgmtTab';
-import { useLabSettingsState } from './useLabSettingsState';
+import { useLabSettingsState } from '../../../hooks/panels/useLabSettings';
 import type { LabSettings, TabId } from './types';
 
 interface LabSettingsPanelProps {

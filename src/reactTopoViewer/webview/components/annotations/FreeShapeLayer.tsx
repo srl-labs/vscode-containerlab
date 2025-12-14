@@ -2,15 +2,20 @@
  * FreeShapeLayer - SVG overlay layer for rendering free shape annotations
  * Renders rectangle, circle, and line annotations on top of the Cytoscape canvas.
  */
-import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
-import { log } from '../../utils/logger';
-import { renderedToModel } from './freeTextLayerHelpers';
-import { useAnnotationDrag } from './useAnnotationDrag';
-import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
+import {
+  useAnnotationDrag,
+  useRotationDrag,
+  useResizeDrag,
+  useLineResizeDrag,
+  useAnnotationClickHandlers,
+  useLayerClickHandler,
+  useAnnotationBoxSelection
+} from '../../hooks/annotations';
 import { buildShapeSvg } from './freeShapeLayerHelpers';
-import { getLineCenter, MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from '../../hooks/annotations/freeShapeHelpers';
+import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
 
 // ============================================================================
 // Types
@@ -201,111 +206,6 @@ function computeShowHandles(params: { isHovered: boolean; isInteracting: boolean
 
 // Tooltip constants
 const UNLOCKED_ANNOTATION_TOOLTIP = 'Click to select, drag to move, right-click for menu';
-
-function useLineResizeDrag(
-  cy: CyCore,
-  annotation: FreeShapeAnnotation,
-  isLocked: boolean,
-  onEndPositionChange: (pos: { x: number; y: number }) => void
-) {
-  const [isResizing, setIsResizing] = useState(false);
-  const dragRef = useRef<{
-    startClientX: number;
-    startClientY: number;
-    startDx: number;
-    startDy: number;
-    rotationRad: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const zoom = cy.zoom();
-      const dxClient = e.clientX - dragRef.current.startClientX;
-      const dyClient = e.clientY - dragRef.current.startClientY;
-
-      const rotatedDx = (dxClient * Math.cos(-dragRef.current.rotationRad) - dyClient * Math.sin(-dragRef.current.rotationRad)) / zoom;
-      const rotatedDy = (dxClient * Math.sin(-dragRef.current.rotationRad) + dyClient * Math.cos(-dragRef.current.rotationRad)) / zoom;
-
-      let newDx = dragRef.current.startDx + rotatedDx;
-      let newDy = dragRef.current.startDy + rotatedDy;
-      const length = Math.hypot(newDx, newDy);
-      if (length > 0 && length < MIN_SHAPE_SIZE) {
-        const scale = MIN_SHAPE_SIZE / length;
-        newDx *= scale;
-        newDy *= scale;
-      }
-
-      onEndPositionChange({
-        x: annotation.position.x + newDx,
-        y: annotation.position.y + newDy
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      dragRef.current = null;
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, cy, annotation.position.x, annotation.position.y, onEndPositionChange]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const end = annotation.endPosition ?? {
-      x: annotation.position.x + DEFAULT_LINE_LENGTH,
-      y: annotation.position.y
-    };
-    dragRef.current = {
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startDx: end.x - annotation.position.x,
-      startDy: end.y - annotation.position.y,
-      rotationRad: ((annotation.rotation ?? 0) * Math.PI) / 180
-    };
-    setIsResizing(true);
-  }, [isLocked, annotation]);
-
-  return { isResizing, handleMouseDown };
-}
-
-function useAnnotationClickHandlers(
-  isLocked: boolean,
-  onSelect: () => void,
-  onToggleSelect: () => void
-) {
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    if (e.button === 2) return;
-    e.stopPropagation();
-    if (e.ctrlKey || e.metaKey) {
-      onToggleSelect();
-    } else {
-      onSelect();
-    }
-  }, [onSelect, onToggleSelect]);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isLocked) setContextMenu({ x: e.clientX, y: e.clientY });
-  }, [isLocked]);
-
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
-
-  return { contextMenu, handleClick, handleContextMenu, closeContextMenu };
-}
 
 const AnnotationContextMenu: React.FC<{
   position: { x: number; y: number };
@@ -552,65 +452,9 @@ const CLICK_CAPTURE_STYLE: React.CSSProperties = {
   zIndex: 8
 };
 
-function useLayerClickHandler(cy: CyCore | null, onCanvasClick: (pos: { x: number; y: number }) => void) {
-  return useCallback((e: React.MouseEvent) => {
-    if (!cy) return;
-    const container = cy.container();
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const modelPos = renderedToModel(cy, e.clientX - rect.left, e.clientY - rect.top);
-    onCanvasClick(modelPos);
-    log.info(`[FreeShapeLayer] Canvas clicked at model (${modelPos.x}, ${modelPos.y})`);
-  }, [cy, onCanvasClick]);
-}
-
-function isAnnotationInBox(annotation: FreeShapeAnnotation, box: { x1: number; y1: number; x2: number; y2: number }): boolean {
-  const center = annotation.shapeType === 'line' ? getLineCenter(annotation) : annotation.position;
-  const minX = Math.min(box.x1, box.x2);
-  const maxX = Math.max(box.x1, box.x2);
-  const minY = Math.min(box.y1, box.y2);
-  const maxY = Math.max(box.y1, box.y2);
-  return center.x >= minX && center.x <= maxX && center.y >= minY && center.y <= maxY;
-}
-
-function useAnnotationBoxSelection(
-  cy: CyCore | null,
-  annotations: FreeShapeAnnotation[],
-  onBoxSelect?: (ids: string[]) => void
-) {
-  const boxStartRef = useRef<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    if (!cy || !onBoxSelect) return;
-
-    const handleBoxStart = (event: { position: { x: number; y: number } }) => {
-      boxStartRef.current = { x: event.position.x, y: event.position.y };
-    };
-
-    const handleBoxEnd = (event: { position: { x: number; y: number } }) => {
-      if (!boxStartRef.current) return;
-      const box = {
-        x1: boxStartRef.current.x,
-        y1: boxStartRef.current.y,
-        x2: event.position.x,
-        y2: event.position.y
-      };
-
-      const selectedIds = annotations.filter(a => isAnnotationInBox(a, box)).map(a => a.id);
-      if (selectedIds.length > 0) {
-        log.info(`[FreeShapeLayer] Box selected ${selectedIds.length} annotations`);
-        onBoxSelect(selectedIds);
-      }
-      boxStartRef.current = null;
-    };
-
-    cy.on('boxstart', handleBoxStart);
-    cy.on('boxend', handleBoxEnd);
-    return () => {
-      cy.off('boxstart', handleBoxStart);
-      cy.off('boxend', handleBoxEnd);
-    };
-  }, [cy, annotations, onBoxSelect]);
+/** Get center position for shape annotations (lines use midpoint) */
+function getShapeCenter(annotation: FreeShapeAnnotation): { x: number; y: number } {
+  return annotation.shapeType === 'line' ? getLineCenter(annotation) : annotation.position;
 }
 
 // ============================================================================
@@ -635,9 +479,9 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   onAnnotationBoxSelect
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
-  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick);
+  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeShapeLayer');
 
-  useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect);
+  useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, getShapeCenter, 'FreeShapeLayer');
 
   if (!cy || (annotations.length === 0 && !isAddShapeMode)) return null;
 

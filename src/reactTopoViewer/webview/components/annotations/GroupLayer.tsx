@@ -8,6 +8,14 @@ import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { getLabelPositionStyles } from '../../hooks/groups/groupHelpers';
+import { useDelayedHover } from '../../hooks/ui/useDelayedHover';
+import {
+  useGroupDragInteraction,
+  useGroupResize,
+  useGroupItemHandlers,
+  useDragPositionOverrides,
+  ResizeCorner
+} from '../../hooks/groups';
 
 // ============================================================================
 // Types
@@ -47,8 +55,6 @@ interface GroupInteractionItemProps {
   /** Callback to show context menu - rendered outside portal to avoid transform issues */
   onShowContextMenu: (groupId: string, position: { x: number; y: number }) => void;
 }
-
-type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
 
 // ============================================================================
 // Constants
@@ -284,258 +290,6 @@ const GroupContextMenu: React.FC<{
 };
 
 // ============================================================================
-// Hover Hook (with delayed off for reaching resize handles)
-// ============================================================================
-
-function useDelayedHover(delay: number = 150) {
-  const [isHovered, setIsHovered] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const onEnter = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setIsHovered(true);
-  }, []);
-
-  const onLeave = useCallback(() => {
-    timeoutRef.current = setTimeout(() => setIsHovered(false), delay);
-  }, [delay]);
-
-  return { isHovered, onEnter, onLeave };
-}
-
-// ============================================================================
-// Drag/Resize Hooks
-// ============================================================================
-
-interface DragState {
-  startX: number;
-  startY: number;
-  lastX: number;
-  lastY: number;
-  modelX: number;
-  modelY: number;
-}
-
-interface UseGroupDragInteractionOptions {
-  cy: CyCore;
-  groupId: string;
-  isLocked: boolean;
-  position: { x: number; y: number };
-  onDragStart?: (id: string) => void;
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
-  onVisualPositionClear?: (id: string) => void;
-}
-
-function useGroupDragInteraction(options: UseGroupDragInteractionOptions) {
-  const {
-    cy,
-    groupId,
-    isLocked,
-    position,
-    onDragStart,
-    onPositionChange,
-    onDragMove,
-    onVisualPositionChange,
-    onVisualPositionClear
-  } = options;
-
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragPos, setDragPos] = useState(position);
-  const dragRef = useRef<DragState | null>(null);
-
-  useEffect(() => {
-    if (!isDragging) setDragPos(position);
-  }, [position, isDragging]);
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const ref = dragRef.current;
-      if (!ref) return;
-      const zoom = cy.zoom();
-
-      const incrDx = (e.clientX - ref.lastX) / zoom;
-      const incrDy = (e.clientY - ref.lastY) / zoom;
-      const totalDx = (e.clientX - ref.startX) / zoom;
-      const totalDy = (e.clientY - ref.startY) / zoom;
-
-      ref.lastX = e.clientX;
-      ref.lastY = e.clientY;
-
-      const nextPos = { x: ref.modelX + totalDx, y: ref.modelY + totalDy };
-      setDragPos(nextPos);
-      onVisualPositionChange?.(groupId, nextPos);
-
-      onDragMove?.(groupId, { dx: incrDx, dy: incrDy });
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      const ref = dragRef.current;
-      if (!ref) return;
-      const zoom = cy.zoom();
-      const dx = (e.clientX - ref.startX) / zoom;
-      const dy = (e.clientY - ref.startY) / zoom;
-      onPositionChange(groupId, { x: ref.modelX + dx, y: ref.modelY + dy }, { dx, dy });
-      setIsDragging(false);
-      dragRef.current = null;
-      onVisualPositionClear?.(groupId);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, cy, groupId, onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      lastX: e.clientX,
-      lastY: e.clientY,
-      modelX: position.x,
-      modelY: position.y
-    };
-    onDragStart?.(groupId);
-    setIsDragging(true);
-  }, [isLocked, position.x, position.y, onDragStart, groupId]);
-
-  return { isDragging, dragPos, handleMouseDown };
-}
-
-interface ResizeState {
-  corner: ResizeCorner;
-  startX: number;
-  startY: number;
-  width: number;
-  height: number;
-  posX: number;
-  posY: number;
-}
-
-function calcResizedDimensions(ref: ResizeState, dx: number, dy: number): { w: number; h: number } {
-  const isEast = ref.corner === 'se' || ref.corner === 'ne';
-  const isSouth = ref.corner === 'se' || ref.corner === 'sw';
-  // Allow any size down to 20px minimum (just to prevent collapse)
-  const w = Math.max(20, ref.width + dx * (isEast ? 1 : -1));
-  const h = Math.max(20, ref.height + dy * (isSouth ? 1 : -1));
-  return { w, h };
-}
-
-function calcResizedPosition(ref: ResizeState, w: number, h: number): { x: number; y: number } {
-  const dw = (w - ref.width) / 2;
-  const dh = (h - ref.height) / 2;
-  const xMult = ref.corner.includes('e') ? 1 : -1;
-  const yMult = ref.corner.includes('s') ? 1 : -1;
-  return { x: ref.posX + dw * xMult, y: ref.posY + dh * yMult };
-}
-
-function useGroupResize(
-  cy: CyCore,
-  group: GroupStyleAnnotation,
-  groupId: string,
-  isLocked: boolean,
-  onSizeChange: (id: string, width: number, height: number) => void,
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void
-) {
-  const [isResizing, setIsResizing] = useState(false);
-  const dragRef = useRef<ResizeState | null>(null);
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const zoom = cy.zoom();
-      const dx = (e.clientX - dragRef.current.startX) / zoom;
-      const dy = (e.clientY - dragRef.current.startY) / zoom;
-
-      const { w, h } = calcResizedDimensions(dragRef.current, dx, dy);
-      const pos = calcResizedPosition(dragRef.current, w, h);
-      onSizeChange(groupId, w, h);
-      onPositionChange(groupId, pos, { dx: 0, dy: 0 });
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      dragRef.current = null;
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, cy, groupId, onSizeChange, onPositionChange]);
-
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent, corner: ResizeCorner) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    dragRef.current = {
-      corner,
-      startX: e.clientX,
-      startY: e.clientY,
-      width: group.width,
-      height: group.height,
-      posX: group.position.x,
-      posY: group.position.y
-    };
-    setIsResizing(true);
-  }, [isLocked, group]);
-
-  return { isResizing, handleResizeMouseDown };
-}
-
-// ============================================================================
-// Group Item Event Handlers Hook
-// ============================================================================
-
-function useGroupItemHandlers(
-  groupId: string,
-  isLocked: boolean,
-  onGroupEdit: (id: string) => void,
-  onGroupSelect: ((id: string) => void) | undefined,
-  onGroupToggleSelect: ((id: string) => void) | undefined,
-  onShowContextMenu: (groupId: string, position: { x: number; y: number }) => void
-) {
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    if (e.button === 2) return;
-    e.stopPropagation();
-    if (e.ctrlKey || e.metaKey) {
-      onGroupToggleSelect?.(groupId);
-      return;
-    }
-    onGroupSelect?.(groupId);
-  }, [groupId, onGroupSelect, onGroupToggleSelect]);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isLocked) onShowContextMenu(groupId, { x: e.clientX, y: e.clientY });
-  }, [isLocked, groupId, onShowContextMenu]);
-
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isLocked) onGroupEdit(groupId);
-  }, [groupId, isLocked, onGroupEdit]);
-
-  return { handleClick, handleContextMenu, handleDoubleClick };
-}
-
-// ============================================================================
 // Group Item Components
 // ============================================================================
 
@@ -725,25 +479,6 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
 
 function sortGroupsByZIndex(groups: GroupStyleAnnotation[]): GroupStyleAnnotation[] {
   return [...groups].sort((a, b) => (a.zIndex ?? 5) - (b.zIndex ?? 5));
-}
-
-function useDragPositionOverrides() {
-  const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({});
-
-  const setDragPosition = useCallback((groupId: string, position: { x: number; y: number }) => {
-    setDragPositions(prev => ({ ...prev, [groupId]: position }));
-  }, []);
-
-  const clearDragPosition = useCallback((groupId: string) => {
-    setDragPositions(prev => {
-      if (!(groupId in prev)) return prev;
-      const next = { ...prev };
-      delete next[groupId];
-      return next;
-    });
-  }, []);
-
-  return { dragPositions, setDragPosition, clearDragPosition };
 }
 
 const GroupBackgroundPortal: React.FC<{

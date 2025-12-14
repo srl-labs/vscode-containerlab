@@ -2,8 +2,8 @@
  * BasePanel - Core draggable and resizable panel component
  */
 import React, { ReactNode } from 'react';
-import { usePanelDrag } from './usePanelDrag';
-import { usePanelResize } from './usePanelResize';
+import { usePanelDrag } from '../../../hooks/ui/usePanelDrag';
+import { usePanelResize } from '../../../hooks/panels/usePanelResize';
 import { PanelHeader, PanelFooter, ResizeHandle, Backdrop } from './BasePanelComponents';
 
 const DEFAULT_POSITION = { x: 20, y: 80 };
@@ -63,7 +63,7 @@ export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement |
   const btn = getButtonDefaults(props);
   const sz = getSizeDefaults(props);
 
-  const { position, isDragging, handleMouseDown } = usePanelDrag(storageKey, sz.initialPosition, sz.width);
+  const { position, isDragging, handleMouseDown } = usePanelDrag({ storageKey, initialPosition: sz.initialPosition, panelWidth: sz.width });
   const { size, isResizing, handleResizeStart } = usePanelResize(storageKey, sz.width, height, position, sz.minWidth, sz.minHeight);
 
   if (!isVisible) return null;

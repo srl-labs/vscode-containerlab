@@ -2,9 +2,11 @@
  * IconSelectorModal - Modal for selecting and customizing node icons
  * Built on top of BasePanel
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { BasePanel } from './editor/BasePanel';
 import { generateEncodedSVG, NodeType } from '../../utils/SvgGenerator';
+import { useEscapeKey } from '../../hooks/ui/useEscapeKey';
+import { useIconSelectorState } from '../../hooks/panels/useIconSelector';
 
 const AVAILABLE_ICONS: NodeType[] = [
   'pe', 'dcgw', 'leaf', 'switch', 'bridge', 'spine',
@@ -82,46 +84,6 @@ const Preview: React.FC<{ icon: string; color: string; radius: number }> = ({ ic
     </div>
   </div>
 );
-
-/**
- * Hook to manage icon selector form state
- */
-function useIconSelectorState(
-  isOpen: boolean,
-  initialIcon: string,
-  initialColor: string | null,
-  initialCornerRadius: number
-) {
-  const [icon, setIcon] = useState(initialIcon);
-  const [color, setColor] = useState(initialColor || DEFAULT_COLOR);
-  const [radius, setRadius] = useState(initialCornerRadius);
-  const [useColor, setUseColor] = useState(!!initialColor);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIcon(initialIcon);
-      setColor(initialColor || DEFAULT_COLOR);
-      setRadius(initialCornerRadius);
-      setUseColor(!!initialColor);
-    }
-  }, [isOpen, initialIcon, initialColor, initialCornerRadius]);
-
-  const displayColor = useColor ? color : DEFAULT_COLOR;
-  const resultColor = useColor && color !== DEFAULT_COLOR ? color : null;
-
-  return { icon, setIcon, color, setColor, radius, setRadius, useColor, setUseColor, displayColor, resultColor };
-}
-
-/**
- * Hook for ESC key handler
- */
-function useEscapeKey(isOpen: boolean, onClose: () => void) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && isOpen) onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
-}
 
 export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
   isOpen, onClose, onSave, initialIcon = 'pe', initialColor = null, initialCornerRadius = 0

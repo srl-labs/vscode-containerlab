@@ -20,6 +20,12 @@ export * from './annotations';
 // Groups
 export * from './groups';
 
+// Panels
+export * from './panels';
+
+// Canvas (Cytoscape)
+export * from './canvas';
+
 // Root-level hooks
 export {
   useCytoscapeInstance,

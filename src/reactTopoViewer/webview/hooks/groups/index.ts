@@ -14,3 +14,7 @@ export * from './useCombinedAnnotationApplier';
 export * from './useNodeReparent';
 export * from './useGroupLayer';
 export * from './useGroupDragUndo';
+export * from './useGroupDrag';
+export * from './useGroupResize';
+export * from './useGroupHandlers';
+export * from './useDragPositionOverrides';

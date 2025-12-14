@@ -9,10 +9,10 @@ import type {
   DriverOption,
   BasicSettingsState,
   MgmtSettingsState
-} from './types';
-import { sendCommandToExtension } from '../../../utils/extensionMessaging';
+} from '../../components/panels/lab-settings/types';
+import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
-interface UseLabSettingsStateResult {
+export interface UseLabSettingsStateResult {
   basic: BasicSettingsState;
   mgmt: MgmtSettingsState;
   setBasic: {

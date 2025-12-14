@@ -38,7 +38,7 @@ const DropdownItem: React.FC<{
 );
 
 const DropdownMenu: React.FC<{
-  menuRef: React.RefObject<HTMLDivElement>;
+  menuRef: React.RefObject<HTMLDivElement | null>;
   menuClassName: string;
   options: FilterableDropdownOption[];
   highlightedIndex: number;

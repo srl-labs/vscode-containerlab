@@ -2,11 +2,12 @@
  * Navbar Component for React TopoViewer
  * Complete implementation matching legacy features
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { useTopoViewer, LinkLabelMode } from '../../context/TopoViewerContext';
 import { DEFAULT_GRID_LINE_WIDTH } from '../../hooks';
 import type { LayoutOption } from '../../hooks';
 import { ContainerlabLogo } from './ContainerlabLogo';
+import { useDropdown } from '../../hooks/ui/useDropdown';
 
 interface NavbarProps {
   onZoomToFit?: () => void;
@@ -32,33 +33,6 @@ interface NavbarProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
-}
-
-function useDropdown(): {
-  isOpen: boolean;
-  toggle: () => void;
-  close: () => void;
-  ref: React.RefObject<HTMLDivElement | null>;
-} {
-  const [isOpen, setIsOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return {
-    isOpen,
-    toggle: () => setIsOpen(prev => !prev),
-    close: () => setIsOpen(false),
-    ref
-  };
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
