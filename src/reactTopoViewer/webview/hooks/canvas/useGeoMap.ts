@@ -9,7 +9,7 @@ import {
   UseGeoMapReturn,
   initializeGeoMap,
   cleanupGeoMapState,
-  handleZoomScaleFast,
+  handleZoomStart,
   handleZoomScaleFinal,
   handleGeoModeChange,
   createInitialGeoMapState
@@ -21,12 +21,12 @@ import {
 export function useGeoMap({ cyInstance, isGeoLayout, geoMode }: UseGeoMapOptions): UseGeoMapReturn {
   const stateRef = useRef<GeoMapState>(createInitialGeoMapState());
 
-  // During zoom: apply CSS transform for instant visual scaling (GPU-accelerated)
+  // On zoom start: begin animation loop for smooth position updates
   const handleZoom = useCallback(() => {
-    handleZoomScaleFast(cyInstance, stateRef.current);
+    handleZoomStart(cyInstance, stateRef.current);
   }, [cyInstance]);
 
-  // On zoom end: remove CSS transform and apply actual Cytoscape styles
+  // On zoom end: stop animation loop and ensure final accuracy
   const handleZoomEnd = useCallback(() => {
     handleZoomScaleFinal(cyInstance, stateRef.current);
   }, [cyInstance]);

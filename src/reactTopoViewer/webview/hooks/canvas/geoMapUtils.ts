@@ -26,6 +26,12 @@ const STYLE_ARROW_SCALE = 'arrow-scale';
 const STYLE_WIDTH = 'width';
 const STYLE_HEIGHT = 'height';
 
+// Minimum sizes to prevent nodes from becoming too small when zoomed out
+const MIN_NODE_SIZE = 20;
+const MIN_FONT_SIZE = 8;
+const MIN_EDGE_WIDTH = 1;
+const MIN_BORDER_WIDTH = 1;
+
 export interface GeoMapState {
   isInitialized: boolean;
   leafletMap: any;
@@ -34,8 +40,8 @@ export interface GeoMapState {
   scaleFactor: number;
   scaleApplied: boolean;
   lastScale: number;
-  cssTransformApplied: boolean;
-  initialZoomForTransform: number;
+  isZooming: boolean;
+  zoomAnimationFrameId: number | null;
 }
 
 export interface UseGeoMapOptions {
@@ -252,14 +258,14 @@ function scaleNode(n: any, factor: number, labelFactor: number): void {
   const origFont = ensureFontSize(n, '_origFont');
 
   n.style({
-    [STYLE_WIDTH]: origW * factor,
-    [STYLE_HEIGHT]: origH * factor,
-    [STYLE_FONT_SIZE]: `${origFont * labelFactor}px`
+    [STYLE_WIDTH]: Math.max(origW * factor, MIN_NODE_SIZE),
+    [STYLE_HEIGHT]: Math.max(origH * factor, MIN_NODE_SIZE),
+    [STYLE_FONT_SIZE]: `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px`
   });
 
   if (n.data('topoViewerRole') === 'group') {
     const origBorder = ensureNumericData(n, '_origBorderWidth', STYLE_BORDER_WIDTH);
-    n.style(STYLE_BORDER_WIDTH, origBorder * factor);
+    n.style(STYLE_BORDER_WIDTH, Math.max(origBorder * factor, MIN_BORDER_WIDTH));
   }
 }
 
@@ -271,9 +277,9 @@ function scaleEdge(e: any, factor: number, labelFactor: number): void {
   const origFont = ensureFontSize(e, '_origFont');
   const origArrow = ensureNumericData(e, '_origArrow', STYLE_ARROW_SCALE);
 
-  if (origWidth) e.style(STYLE_WIDTH, origWidth * factor);
-  if (origFont) e.style(STYLE_FONT_SIZE, `${origFont * labelFactor}px`);
-  if (origArrow) e.style(STYLE_ARROW_SCALE, origArrow * factor);
+  if (origWidth) e.style(STYLE_WIDTH, Math.max(origWidth * factor, MIN_EDGE_WIDTH));
+  if (origFont) e.style(STYLE_FONT_SIZE, `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px`);
+  if (origArrow) e.style(STYLE_ARROW_SCALE, Math.max(origArrow * factor, 0.3));
 }
 
 /**
@@ -356,17 +362,21 @@ function scaleNodeImmediate(n: any, factor: number, labelFactor: number): void {
   const origFont = n.data('_origFont');
 
   if (origW !== undefined && origH !== undefined) {
+    const scaledW = Math.max(origW * factor, MIN_NODE_SIZE);
+    const scaledH = Math.max(origH * factor, MIN_NODE_SIZE);
+    const scaledFont = origFont ? Math.max(origFont * labelFactor, MIN_FONT_SIZE) : undefined;
+
     n.style({
-      [STYLE_WIDTH]: origW * factor,
-      [STYLE_HEIGHT]: origH * factor,
-      [STYLE_FONT_SIZE]: origFont ? `${origFont * labelFactor}px` : undefined
+      [STYLE_WIDTH]: scaledW,
+      [STYLE_HEIGHT]: scaledH,
+      [STYLE_FONT_SIZE]: scaledFont ? `${scaledFont}px` : undefined
     });
   }
 
   if (n.data('topoViewerRole') === 'group') {
     const origBorder = n.data('_origBorderWidth');
     if (origBorder !== undefined) {
-      n.style(STYLE_BORDER_WIDTH, origBorder * factor);
+      n.style(STYLE_BORDER_WIDTH, Math.max(origBorder * factor, MIN_BORDER_WIDTH));
     }
   }
 }
@@ -376,9 +386,9 @@ function scaleEdgeImmediate(e: any, factor: number, labelFactor: number): void {
   const origFont = e.data('_origFont');
   const origArrow = e.data('_origArrow');
 
-  if (origWidth !== undefined) e.style(STYLE_WIDTH, origWidth * factor);
-  if (origFont !== undefined) e.style(STYLE_FONT_SIZE, `${origFont * labelFactor}px`);
-  if (origArrow !== undefined) e.style(STYLE_ARROW_SCALE, origArrow * factor);
+  if (origWidth !== undefined) e.style(STYLE_WIDTH, Math.max(origWidth * factor, MIN_EDGE_WIDTH));
+  if (origFont !== undefined) e.style(STYLE_FONT_SIZE, `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px`);
+  if (origArrow !== undefined) e.style(STYLE_ARROW_SCALE, Math.max(origArrow * factor, 0.3));
 }
 
 /**
@@ -393,76 +403,82 @@ export function calculateGeoScale(state: GeoMapState): number {
 }
 
 /**
- * Apply CSS transform to Cytoscape container for GPU-accelerated scaling during zoom
+ * Update node positions from their geographic coordinates
+ * Converts lat/lng to screen coordinates using Leaflet's projection
  */
-function applyCssTransform(cy: any, scaleFactor: number): void {
-  const container = cy.container();
-  if (!container) return;
+function updateNodePositionsFromGeo(cy: Core, state: GeoMapState): void {
+  if (!state.leafletMap) return;
 
-  // Get the canvas layer inside Cytoscape
-  const canvas = container.querySelector('canvas[data-id="layer2-node"]') as HTMLCanvasElement | null;
-  if (canvas) {
-    canvas.style.transform = `scale(${scaleFactor})`;
-    canvas.style.transformOrigin = 'center center';
+  cy.batch(() => {
+    cy.nodes().forEach((node: any) => {
+      const lat = parseFloat(node.data('lat'));
+      const lng = parseFloat(node.data('lng'));
+      if (!isNaN(lat) && !isNaN(lng)) {
+        const point = state.leafletMap.latLngToContainerPoint([lat, lng]);
+        node.position({ x: point.x, y: point.y });
+      }
+    });
+  });
+}
+
+/**
+ * Animation loop that continuously updates node positions during zoom
+ * Uses requestAnimationFrame for smooth 60fps updates
+ */
+function zoomAnimationLoop(cy: any, state: GeoMapState): void {
+  if (!state.isZooming || !cy || !state.isInitialized) {
+    state.zoomAnimationFrameId = null;
+    return;
   }
 
-  // Also scale all other canvas layers for consistency
-  const allCanvases = container.querySelectorAll('canvas');
-  allCanvases.forEach((c: HTMLCanvasElement) => {
-    c.style.transform = `scale(${scaleFactor})`;
-    c.style.transformOrigin = 'center center';
-  });
+  // Update positions to match geographic coordinates
+  updateNodePositionsFromGeo(cy, state);
+
+  // Update scale (sizes) simultaneously
+  const factor = calculateGeoScale(state);
+  applyGeoScaleImmediate(cy, state, factor);
+
+  // Continue the animation loop
+  state.zoomAnimationFrameId = window.requestAnimationFrame(() => zoomAnimationLoop(cy, state));
 }
 
 /**
- * Remove CSS transform from Cytoscape container
+ * Handle zoom start - begins the animation loop
+ * Called on 'zoomstart' event for continuous updates during zoom animation
  */
-function removeCssTransform(cy: any): void {
-  const container = cy.container();
-  if (!container) return;
-
-  const allCanvases = container.querySelectorAll('canvas');
-  allCanvases.forEach((c: HTMLCanvasElement) => {
-    c.style.transform = '';
-    c.style.transformOrigin = '';
-  });
-}
-
-/**
- * Handle zoom scale update during active zooming (lightweight CSS transform)
- * Uses GPU-accelerated CSS transforms for instant visual feedback
- */
-export function handleZoomScaleFast(cy: any, state: GeoMapState): void {
+export function handleZoomStart(cy: any, state: GeoMapState): void {
   if (!cy || !state.isInitialized || !state.leafletMap) return;
 
-  const currentZoom = state.leafletMap.getZoom();
+  // Start zooming state
+  state.isZooming = true;
 
-  // On first zoom tick, store the initial zoom level
-  if (!state.cssTransformApplied) {
-    state.initialZoomForTransform = currentZoom;
-    state.cssTransformApplied = true;
+  // Cancel any existing animation frame
+  if (state.zoomAnimationFrameId !== null) {
+    window.cancelAnimationFrame(state.zoomAnimationFrameId);
   }
 
-  // Calculate relative scale change since zoom started
-  const zoomDiff = currentZoom - state.initialZoomForTransform;
-  const relativeScale = Math.pow(2, zoomDiff);
-
-  // Apply CSS transform for instant visual scaling (GPU-accelerated)
-  applyCssTransform(cy, relativeScale);
+  // Start the animation loop
+  state.zoomAnimationFrameId = window.requestAnimationFrame(() => zoomAnimationLoop(cy, state));
 }
 
 /**
- * Handle zoom scale update on zoom end (full style update)
- * Removes CSS transform and applies actual Cytoscape styles
+ * Handle zoom scale update on zoom end
+ * Stops the animation loop and ensures final position accuracy
  */
 export function handleZoomScaleFinal(cy: any, state: GeoMapState): void {
   if (!cy || !state.isInitialized) return;
 
-  // Remove the CSS transform
-  removeCssTransform(cy);
-  state.cssTransformApplied = false;
+  // Stop the animation loop
+  state.isZooming = false;
+  if (state.zoomAnimationFrameId !== null) {
+    window.cancelAnimationFrame(state.zoomAnimationFrameId);
+    state.zoomAnimationFrameId = null;
+  }
 
-  // Apply actual Cytoscape styles
+  // Final position sync for accuracy
+  updateNodePositionsFromGeo(cy, state);
+
+  // Final style application
   const factor = calculateGeoScale(state);
   applyGeoScaleImmediate(cy, state, factor);
 }
@@ -479,8 +495,8 @@ export function createInitialGeoMapState(): GeoMapState {
     scaleFactor: 4,
     scaleApplied: false,
     lastScale: 4,
-    cssTransformApplied: false,
-    initialZoomForTransform: 0
+    isZooming: false,
+    zoomAnimationFrameId: null
   };
 }
 
@@ -544,8 +560,15 @@ export function cleanupGeoMapState(
 
   restoreOriginalPositions(cy);
 
+  // Stop any running animation loop
+  state.isZooming = false;
+  if (state.zoomAnimationFrameId !== null) {
+    window.cancelAnimationFrame(state.zoomAnimationFrameId);
+    state.zoomAnimationFrameId = null;
+  }
+
   if (state.leafletMap) {
-    state.leafletMap.off('zoom', handleZoom);
+    state.leafletMap.off('zoomstart', handleZoom);
     state.leafletMap.off('zoomend', handleZoomEnd);
   }
 
@@ -651,8 +674,8 @@ function overrideGetNodeLatLng(state: GeoMapState): void {
   };
 }
 
-function setupZoomHandlers(state: GeoMapState, handleZoom: () => void, handleZoomEnd: () => void): void {
-  state.leafletMap.on('zoom', handleZoom);
+function setupZoomHandlers(state: GeoMapState, handleZoomStart: () => void, handleZoomEnd: () => void): void {
+  state.leafletMap.on('zoomstart', handleZoomStart);
   state.leafletMap.on('zoomend', handleZoomEnd);
 }
 
