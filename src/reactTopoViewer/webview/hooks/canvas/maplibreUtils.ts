@@ -197,34 +197,35 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
 /**
  * Store original node sizes for scaling
  */
+function setDefaultNumericData(target: any, dataKey: string, styleKey: string, fallback: number): void {
+  if (target.data(dataKey) !== undefined) return;
+  const parsed = parseFloat(target.style(styleKey));
+  target.data(dataKey, Number.isFinite(parsed) ? parsed : fallback);
+}
+
+function cacheNodeOriginalStyles(node: any): void {
+  setDefaultNumericData(node, '_origWidth', STYLE_WIDTH, 50);
+  setDefaultNumericData(node, '_origHeight', STYLE_HEIGHT, 50);
+  setDefaultNumericData(node, '_origFont', STYLE_FONT_SIZE, 12);
+
+  if (node.data('topoViewerRole') === 'group') {
+    setDefaultNumericData(node, '_origBorderWidth', STYLE_BORDER_WIDTH, 2);
+  }
+}
+
+function cacheEdgeOriginalStyles(edge: any): void {
+  setDefaultNumericData(edge, '_origWidth', STYLE_WIDTH, 2);
+  setDefaultNumericData(edge, '_origFont', STYLE_FONT_SIZE, 10);
+  setDefaultNumericData(edge, '_origArrow', STYLE_ARROW_SCALE, 1);
+}
+
 function ensureOriginalSizes(cy: Core): void {
   cy.nodes().forEach((n: any) => {
-    if (n.data('_origWidth') === undefined) {
-      n.data('_origWidth', parseFloat(n.style(STYLE_WIDTH)) || 50);
-    }
-    if (n.data('_origHeight') === undefined) {
-      n.data('_origHeight', parseFloat(n.style(STYLE_HEIGHT)) || 50);
-    }
-    if (n.data('_origFont') === undefined) {
-      const fs = parseFloat(n.style(STYLE_FONT_SIZE)) || 12;
-      n.data('_origFont', fs);
-    }
-    if (n.data('topoViewerRole') === 'group' && n.data('_origBorderWidth') === undefined) {
-      n.data('_origBorderWidth', parseFloat(n.style(STYLE_BORDER_WIDTH)) || 2);
-    }
+    cacheNodeOriginalStyles(n);
   });
 
   cy.edges().forEach((e: any) => {
-    if (e.data('_origWidth') === undefined) {
-      e.data('_origWidth', parseFloat(e.style(STYLE_WIDTH)) || 2);
-    }
-    if (e.data('_origFont') === undefined) {
-      const fs = parseFloat(e.style(STYLE_FONT_SIZE)) || 10;
-      e.data('_origFont', fs);
-    }
-    if (e.data('_origArrow') === undefined) {
-      e.data('_origArrow', parseFloat(e.style(STYLE_ARROW_SCALE)) || 1);
-    }
+    cacheEdgeOriginalStyles(e);
   });
 }
 
@@ -332,6 +333,54 @@ function updateNodeGeoData(node: any, state: MapLibreState): void {
   const lngLat = state.map.unproject([pos.x, pos.y]);
   node.data('lat', lngLat.lat.toFixed(15));
   node.data('lng', lngLat.lng.toFixed(15));
+}
+
+function cleanupMapInitializationFailure(
+  cy: Core,
+  state: MapLibreState,
+  container: HTMLElement,
+  onMove: () => void,
+  onDragFree: (event: any) => void
+): void {
+  try {
+    cy.off('dragfree', onDragFree);
+  } catch {
+    // ignore
+  }
+
+  if (state.map) {
+    try {
+      state.map.off('move', onMove);
+      state.map.remove();
+    } catch {
+      // ignore
+    }
+    state.map = null;
+  }
+
+  if (state.mapContainer) {
+    state.mapContainer.remove();
+    state.mapContainer = null;
+  }
+
+  container.classList.remove(CLASS_MAPLIBRE_ACTIVE);
+  (container as HTMLElement).style.background = '';
+  (container as HTMLElement).style.pointerEvents = '';
+
+  cy.nodes().forEach((node) => {
+    const origPos = state.originalPositions.get(node.id());
+    if (origPos) node.position(origPos);
+  });
+  state.originalPositions.clear();
+
+  cy.userZoomingEnabled(true);
+  cy.userPanningEnabled(true);
+  cy.zoom(state.originalZoom);
+  cy.pan(state.originalPan);
+
+  showGridOverlay(container);
+  state.isInitialized = false;
+  state.scaleApplied = false;
 }
 
 /**
@@ -477,49 +526,7 @@ export async function initializeMapLibre(
     log.info('[MapLibre] Geo map initialization complete');
   } catch (err) {
     log.error(`[MapLibre] Failed to initialize geo map: ${err}`);
-
-    // Best-effort cleanup of partially initialized state
-    try {
-      cy.off('dragfree', onDragFree);
-    } catch {
-      // ignore
-    }
-
-    if (state.map) {
-      try {
-        state.map.off('move', onMove);
-        state.map.remove();
-      } catch {
-        // ignore
-      }
-      state.map = null;
-    }
-
-    if (state.mapContainer) {
-      state.mapContainer.remove();
-      state.mapContainer = null;
-    }
-
-    container.classList.remove(CLASS_MAPLIBRE_ACTIVE);
-    (container as HTMLElement).style.background = '';
-    (container as HTMLElement).style.pointerEvents = '';
-
-    // Restore original positions
-    cy.nodes().forEach((node) => {
-      const origPos = state.originalPositions.get(node.id());
-      if (origPos) node.position(origPos);
-    });
-    state.originalPositions.clear();
-
-    // Restore Cytoscape zoom/pan
-    cy.userZoomingEnabled(true);
-    cy.userPanningEnabled(true);
-    cy.zoom(state.originalZoom);
-    cy.pan(state.originalPan);
-
-    showGridOverlay(container);
-    state.isInitialized = false;
-    state.scaleApplied = false;
+    cleanupMapInitializationFailure(cy, state, container, onMove, onDragFree);
   }
 }
 
