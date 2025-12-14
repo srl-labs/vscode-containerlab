@@ -373,7 +373,7 @@ declare global {
     __INITIAL_DATA__: ReturnType<typeof buildInitialData>;
     // Dev mode utilities (only exists in dev mode)
     __DEV__: {
-      loadTopology: (name: 'sample' | 'empty' | 'large') => void;
+      loadTopology: (name: 'sample' | 'empty' | 'large' | 'large100' | 'large1000') => void;
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
       toggleSplitView: () => void;
@@ -407,9 +407,9 @@ window.__INITIAL_DATA__ = initialData;
 window.__DEV__ = {
   /**
    * Load different topology configurations
-   * Usage: __DEV__.loadTopology('large')
+   * Usage: __DEV__.loadTopology('large1000')
    */
-  loadTopology: (name: 'sample' | 'empty' | 'large') => {
+  loadTopology: (name: 'sample' | 'empty' | 'large' | 'large100' | 'large1000') => {
     let elements;
     switch (name) {
       case 'empty':
@@ -417,6 +417,12 @@ window.__DEV__ = {
         break;
       case 'large':
         elements = generateLargeTopology(25);
+        break;
+      case 'large100':
+        elements = generateLargeTopology(100);
+        break;
+      case 'large1000':
+        elements = generateLargeTopology(1000);
         break;
       case 'sample':
       default:
@@ -493,7 +499,7 @@ window.__DEV__ = {
 
 console.log('%c[React TopoViewer - Dev Mode]', 'color: #E91E63; font-weight: bold; font-size: 14px;');
 console.log('Available dev utilities:');
-console.log('  __DEV__.loadTopology("sample" | "empty" | "large")');
+console.log('  __DEV__.loadTopology("sample" | "empty" | "large" | "large100" | "large1000")');
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed" | "unknown")');
 console.log('  __DEV__.toggleSplitView()     - Toggle split view (clab.yml + annotations)');

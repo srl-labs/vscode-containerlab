@@ -258,7 +258,7 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
     return {};
   }
   const obj = data as Record<string, unknown>;
-  return {
+  const result: Partial<TopoViewerState> = {
     elements: (obj.elements as CyElement[]) || [],
     labName: (obj.labName as string) || '',
     mode: (obj.mode as 'edit' | 'view') || 'edit',
@@ -266,6 +266,11 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
     customNodes: (obj.customNodes as CustomNodeTemplate[]) || [],
     defaultNode: (obj.defaultNode as string) || ''
   };
+  // Only set isLocked if explicitly provided (allows dev mode to override default)
+  if (typeof obj.isLocked === 'boolean') {
+    result.isLocked = obj.isLocked;
+  }
+  return result;
 }
 
 /**

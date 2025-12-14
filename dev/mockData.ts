@@ -198,6 +198,7 @@ export function buildInitialData(options: {
     labName: 'dev-topology',
     mode: options.mode || 'edit',
     deploymentState: options.deploymentState || 'undeployed',
+    isLocked: false, // Always unlocked in dev mode
     customNodes: sampleCustomNodes,
     defaultNode: 'SRLinux Latest',
     // Additional data that gets stored on window

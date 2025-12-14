@@ -23,7 +23,7 @@ Click the **⚙ gear button** (bottom-right) to open the settings panel:
 
 | Setting | Options | Description |
 |---------|---------|-------------|
-| **Topology** | Sample, Empty, Large (25) | Load different test topologies |
+| **Topology** | Sample, Empty, Large (25), Large (100), Massive (1000) | Load different test topologies |
 | **Mode** | Edit, View | Switch between editor and viewer modes |
 | **Deployment State** | Deployed, Undeployed, Unknown | Simulate lab deployment status |
 | **Light Theme** | Toggle switch | Switch between dark/light themes |
@@ -38,6 +38,8 @@ The same utilities are also available in the browser console:
 __DEV__.loadTopology('sample')        // spine-leaf topology (6 nodes)
 __DEV__.loadTopology('empty')         // empty canvas
 __DEV__.loadTopology('large')         // 25-node grid
+__DEV__.loadTopology('large100')      // 100-node grid
+__DEV__.loadTopology('large1000')     // 1000-node grid
 
 __DEV__.setMode('edit')               // editor mode
 __DEV__.setMode('view')               // view-only mode
