@@ -99,6 +99,16 @@ function buildNodeEditMenuItems(
 }
 
 /**
+ * Get the node name for container operations.
+ * Uses longname (full container name) for running labs, falls back to short name.
+ * This matches the legacy TopoViewer behavior.
+ */
+function getNodeName(nodeData: Record<string, unknown>, nodeId: string): string {
+  const extraData = nodeData.extraData as Record<string, unknown> | undefined;
+  return (extraData?.longname as string) || (nodeData.name as string) || nodeId;
+}
+
+/**
  * Build menu items for node in view mode
  */
 function buildNodeViewMenuItems(
@@ -106,15 +116,16 @@ function buildNodeViewMenuItems(
   nodeData: Record<string, unknown>,
   options: ContextMenuOptions
 ): ContextMenuItem[] {
+  const nodeName = getNodeName(nodeData, nodeId);
   return [
     {
       id: 'ssh-node',
       label: 'SSH',
       icon: 'fas fa-terminal',
       onClick: () => {
-        log.info(`[ContextMenu] SSH to node: ${nodeData.name || nodeId}`);
+        log.info(`[ContextMenu] SSH to node: ${nodeName}`);
         sendToExtension('clab-node-connect-ssh', {
-          nodeName: nodeData.name || nodeId,
+          nodeName,
           labName: nodeData.labName
         });
       }
@@ -124,9 +135,9 @@ function buildNodeViewMenuItems(
       label: 'Shell',
       icon: 'fas fa-cube',
       onClick: () => {
-        log.info(`[ContextMenu] Shell to node: ${nodeData.name || nodeId}`);
+        log.info(`[ContextMenu] Shell to node: ${nodeName}`);
         sendToExtension('clab-node-attach-shell', {
-          nodeName: nodeData.name || nodeId,
+          nodeName,
           labName: nodeData.labName
         });
       }
@@ -136,9 +147,9 @@ function buildNodeViewMenuItems(
       label: 'Logs',
       icon: 'fas fa-file-alt',
       onClick: () => {
-        log.info(`[ContextMenu] View logs for: ${nodeData.name || nodeId}`);
+        log.info(`[ContextMenu] View logs for: ${nodeName}`);
         sendToExtension('clab-node-view-logs', {
-          nodeName: nodeData.name || nodeId,
+          nodeName,
           labName: nodeData.labName
         });
       }
