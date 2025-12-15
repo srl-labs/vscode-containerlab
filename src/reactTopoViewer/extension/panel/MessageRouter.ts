@@ -1039,7 +1039,8 @@ export class MessageRouter {
   }
 
   /**
-   * Save network node position to annotations file
+   * Save network node position to annotations file.
+   * For bridge and ovs-bridge types, also adds the node to topology.nodes in the YAML.
    */
   private async handleSaveNetworkPosition(message: WebviewMessage): Promise<void> {
     if (!this.context.yamlFilePath) {
@@ -1058,6 +1059,27 @@ export class MessageRouter {
       if (!payload.networkId || !payload.position) {
         log.warn('[ReactTopoViewer] Cannot save network position: missing networkId or position');
         return;
+      }
+
+      // For bridge and ovs-bridge, also add to YAML topology.nodes
+      const isBridgeType = payload.networkType === 'bridge' || payload.networkType === 'ovs-bridge';
+      if (isBridgeType && !this.context.isViewMode && saveTopologyService.isInitialized()) {
+        const nodeData: NodeSaveData = {
+          id: payload.networkId,
+          name: payload.networkId,
+          extraData: {
+            kind: payload.networkType  // 'bridge' or 'ovs-bridge'
+          },
+          position: payload.position
+        };
+
+        const result = await saveTopologyService.addNode(nodeData);
+        if (result.success) {
+          log.info(`[ReactTopoViewer] Added ${payload.networkType} node to YAML: ${payload.networkId}`);
+        } else if (!result.error?.includes('already exists')) {
+          // Only log error if it's not a duplicate (which is fine for re-saves)
+          log.error(`[ReactTopoViewer] Failed to add ${payload.networkType} node to YAML: ${result.error}`);
+        }
       }
 
       await annotationsManager.modifyAnnotations(this.context.yamlFilePath, (annotations) => {

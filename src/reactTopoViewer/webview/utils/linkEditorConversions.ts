@@ -2,6 +2,7 @@
  * Conversions for link editor data.
  */
 import type { LinkEditorData } from '../components/panels/link-editor/types';
+import { isSpecialEndpointId } from '../../shared/utilities/LinkTypes';
 
 /**
  * Converts raw Cytoscape edge data to LinkEditorData.
@@ -28,7 +29,9 @@ export function convertToLinkEditorData(rawData: Record<string, unknown> | null)
     originalSource: source,
     originalTarget: target,
     originalSourceEndpoint: sourceEndpoint,
-    originalTargetEndpoint: targetEndpoint
+    originalTargetEndpoint: targetEndpoint,
+    sourceIsNetwork: isSpecialEndpointId(source),
+    targetIsNetwork: isSpecialEndpointId(target)
   };
 }
 

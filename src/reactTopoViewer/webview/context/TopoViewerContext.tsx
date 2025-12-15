@@ -69,6 +69,7 @@ export interface TopoViewerState {
   selectedEdge: string | null;
   editingNode: string | null;
   editingEdge: string | null;
+  editingNetwork: string | null;
   isLocked: boolean;
   isLoading: boolean;
   linkLabelMode: LinkLabelMode;
@@ -95,6 +96,7 @@ const initialState: TopoViewerState = {
   selectedEdge: null,
   editingNode: null,
   editingEdge: null,
+  editingNetwork: null,
   isLocked: true,
   isLoading: false,
   linkLabelMode: 'show-all',
@@ -117,6 +119,7 @@ type TopoViewerAction =
   | { type: 'SELECT_EDGE'; payload: string | null }
   | { type: 'EDIT_NODE'; payload: string | null }
   | { type: 'EDIT_EDGE'; payload: string | null }
+  | { type: 'EDIT_NETWORK'; payload: string | null }
   | { type: 'TOGGLE_LOCK' }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_LINK_LABEL_MODE'; payload: LinkLabelMode }
@@ -146,8 +149,9 @@ const reducerHandlers: ReducerHandlers = {
   SET_DEPLOYMENT_STATE: (state, action) => ({ ...state, deploymentState: action.payload }),
   SELECT_NODE: (state, action) => ({ ...state, selectedNode: action.payload, selectedEdge: null }),
   SELECT_EDGE: (state, action) => ({ ...state, selectedEdge: action.payload, selectedNode: null }),
-  EDIT_NODE: (state, action) => ({ ...state, editingNode: action.payload, editingEdge: null, selectedNode: null, selectedEdge: null }),
-  EDIT_EDGE: (state, action) => ({ ...state, editingEdge: action.payload, editingNode: null, selectedNode: null, selectedEdge: null }),
+  EDIT_NODE: (state, action) => ({ ...state, editingNode: action.payload, editingEdge: null, editingNetwork: null, selectedNode: null, selectedEdge: null }),
+  EDIT_EDGE: (state, action) => ({ ...state, editingEdge: action.payload, editingNode: null, editingNetwork: null, selectedNode: null, selectedEdge: null }),
+  EDIT_NETWORK: (state, action) => ({ ...state, editingNetwork: action.payload, editingNode: null, editingEdge: null, selectedNode: null, selectedEdge: null }),
   TOGGLE_LOCK: (state) => ({ ...state, isLocked: !state.isLocked }),
   SET_LOADING: (state, action) => ({ ...state, isLoading: action.payload }),
   SET_LINK_LABEL_MODE: (state, action) => ({ ...state, linkLabelMode: action.payload }),
@@ -212,6 +216,7 @@ const reducerHandlers: ReducerHandlers = {
     // Clear other editing states when opening custom template editor
     editingNode: action.payload ? null : state.editingNode,
     editingEdge: action.payload ? null : state.editingEdge,
+    editingNetwork: action.payload ? null : state.editingNetwork,
     selectedNode: action.payload ? null : state.selectedNode,
     selectedEdge: action.payload ? null : state.selectedEdge
   }),
@@ -242,6 +247,7 @@ interface TopoViewerContextValue {
   selectEdge: (edgeId: string | null) => void;
   editNode: (nodeId: string | null) => void;
   editEdge: (edgeId: string | null) => void;
+  editNetwork: (nodeId: string | null) => void;
   toggleLock: () => void;
   setMode: (mode: 'edit' | 'view') => void;
   setLoading: (loading: boolean) => void;
@@ -390,6 +396,9 @@ function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
     }, [dispatch]),
     editEdge: useCallback((edgeId: string | null) => {
       dispatch({ type: 'EDIT_EDGE', payload: edgeId });
+    }, [dispatch]),
+    editNetwork: useCallback((nodeId: string | null) => {
+      dispatch({ type: 'EDIT_NETWORK', payload: nodeId });
     }, [dispatch])
   };
 }

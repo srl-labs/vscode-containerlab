@@ -414,12 +414,14 @@ interface SelectionCallbacks {
   selectEdge: (id: string | null) => void;
   editNode: (id: string | null) => void;
   editEdge: (id: string | null) => void;
+  editNetwork: (id: string | null) => void;
   removeNodeAndEdges: (id: string) => void;
   removeEdge: (id: string) => void;
 }
 
 interface ContextMenuHandlersResult {
   handleEditNode: (nodeId: string) => void;
+  handleEditNetwork: (nodeId: string) => void;
   handleDeleteNode: (nodeId: string) => void;
   handleCreateLinkFromNode: (nodeId: string) => void;
   handleEditLink: (edgeId: string) => void;
@@ -437,12 +439,17 @@ export function useContextMenuHandlers(
   cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
   callbacks: SelectionCallbacks
 ): ContextMenuHandlersResult {
-  const { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge } = callbacks;
+  const { selectNode, selectEdge, editNode, editEdge, editNetwork, removeNodeAndEdges, removeEdge } = callbacks;
 
   const handleEditNode = useCallback((nodeId: string) => {
     sendCommandToExtension('panel-edit-node', { nodeId });
     editNode(nodeId);
   }, [editNode]);
+
+  const handleEditNetwork = useCallback((nodeId: string) => {
+    sendCommandToExtension('panel-edit-network', { nodeId });
+    editNetwork(nodeId);
+  }, [editNetwork]);
 
   const handleCreateLinkFromNode = useCallback((nodeId: string) => {
     sendCommandToExtension('panel-start-link', { nodeId });
@@ -500,6 +507,7 @@ export function useContextMenuHandlers(
 
   return {
     handleEditNode,
+    handleEditNetwork,
     handleDeleteNode,
     handleCreateLinkFromNode,
     handleEditLink,

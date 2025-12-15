@@ -34,6 +34,9 @@ export interface LinkEditorData {
   originalTarget?: string;
   originalSourceEndpoint?: string;
   originalTargetEndpoint?: string;
+  // Network endpoint flags (for read-only handling)
+  sourceIsNetwork?: boolean;
+  targetIsNetwork?: boolean;
 }
 
 /**

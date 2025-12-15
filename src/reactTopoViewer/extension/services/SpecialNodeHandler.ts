@@ -52,14 +52,21 @@ export function determineSpecialNode(
 
 /**
  * Registers an endpoint as a special node if applicable.
+ * Bare endpoints (no interface) that aren't topology nodes are treated as implicit bridges.
  */
 export function registerEndpoint(
   specialNodes: Map<string, { type: string; label: string }>,
-  end: unknown
+  end: unknown,
+  topologyNodeNames?: Set<string>
 ): void {
   const { node, iface } = splitEndpoint(end as string | { node: string; interface?: string });
   const info = determineSpecialNode(node, iface);
-  if (info) specialNodes.set(info.id, { type: info.type, label: info.label });
+  if (info) {
+    specialNodes.set(info.id, { type: info.type, label: info.label });
+  } else if (!iface && !topologyNodeNames?.has(node) && !specialNodes.has(node)) {
+    // Bare endpoint not in topology nodes - treat as implicit bridge
+    specialNodes.set(node, { type: NODE_KIND_BRIDGE, label: node });
+  }
 }
 
 /**
@@ -163,12 +170,15 @@ export function collectSpecialNodes(
   const links = parsed.topology?.links;
   if (!links) return { specialNodes, specialNodeProps };
 
+  // Create set of topology node names to distinguish explicit nodes from implicit bridges
+  const topologyNodeNames = new Set(Object.keys(parsed.topology?.nodes || {}));
+
   for (const linkObj of links) {
     const norm = normalizeLinkToTwoEndpoints(linkObj as Record<string, unknown>, ctx);
     if (!norm) continue;
     const { endA, endB } = norm;
-    registerEndpoint(specialNodes, endA);
-    registerEndpoint(specialNodes, endB);
+    registerEndpoint(specialNodes, endA, topologyNodeNames);
+    registerEndpoint(specialNodes, endB, topologyNodeNames);
     mergeSpecialNodeProps(linkObj as Record<string, unknown>, endA, endB, specialNodeProps);
   }
 

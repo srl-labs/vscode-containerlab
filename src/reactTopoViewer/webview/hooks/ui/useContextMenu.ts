@@ -21,6 +21,7 @@ export interface ContextMenuOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onEditNode?: (nodeId: string) => void;
+  onEditNetwork?: (nodeId: string) => void;
   onDeleteNode?: (nodeId: string) => void;
   onCreateLinkFromNode?: (nodeId: string) => void;
   onEditLink?: (edgeId: string) => void;
@@ -48,6 +49,11 @@ const INITIAL_STATE: ContextMenuState = {
 // Scratch key for context menu state (must match events.ts)
 const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
 
+// Icon constants for context menu items
+const ICON_EDIT = 'fas fa-pen';
+const ICON_DELETE = 'fas fa-trash';
+const ICON_LINK = 'fas fa-link';
+
 /**
  * Send message to VS Code extension
  */
@@ -59,19 +65,64 @@ function sendToExtension(command: string, data: Record<string, unknown>): void {
 }
 
 /**
+ * Check if a node is a network node (cloud/special endpoint or bridge)
+ * - 'cloud': special endpoints created via UI or loaded from YAML (host, mgmt-net, vxlan, etc.)
+ * - 'bridge': bridge nodes loaded from YAML via AliasNodeHandler
+ */
+function isNetworkNode(nodeData: Record<string, unknown>): boolean {
+  const role = nodeData.topoViewerRole;
+  return role === 'cloud' || role === 'bridge';
+}
+
+/**
  * Build menu items for node in edit mode
  */
 function buildNodeEditMenuItems(
   nodeId: string,
+  nodeData: Record<string, unknown>,
   options: ContextMenuOptions
 ): ContextMenuItem[] {
   if (options.isLocked) return [];
 
+  // Network nodes get a different menu with "Edit Network" instead of "Edit"
+  if (isNetworkNode(nodeData)) {
+    return [
+      {
+        id: 'edit-network',
+        label: 'Edit Network',
+        icon: ICON_EDIT,
+        onClick: () => {
+          log.info(`[ContextMenu] Edit network: ${nodeId}`);
+          options.onEditNetwork?.(nodeId);
+        }
+      },
+      {
+        id: 'delete-node',
+        label: 'Delete',
+        icon: ICON_DELETE,
+        onClick: () => {
+          log.info(`[ContextMenu] Delete network node: ${nodeId}`);
+          options.onDeleteNode?.(nodeId);
+        }
+      },
+      {
+        id: 'link-node',
+        label: 'Create Link',
+        icon: ICON_LINK,
+        onClick: () => {
+          log.info(`[ContextMenu] Add link from network: ${nodeId}`);
+          options.onCreateLinkFromNode?.(nodeId);
+        }
+      }
+    ];
+  }
+
+  // Regular nodes get the standard menu
   return [
     {
       id: 'edit-node',
       label: 'Edit',
-      icon: 'fas fa-pen',
+      icon: ICON_EDIT,
       onClick: () => {
         log.info(`[ContextMenu] Edit node: ${nodeId}`);
         options.onEditNode?.(nodeId);
@@ -80,7 +131,7 @@ function buildNodeEditMenuItems(
     {
       id: 'delete-node',
       label: 'Delete',
-      icon: 'fas fa-trash',
+      icon: ICON_DELETE,
       onClick: () => {
         log.info(`[ContextMenu] Delete node: ${nodeId}`);
         options.onDeleteNode?.(nodeId);
@@ -89,7 +140,7 @@ function buildNodeEditMenuItems(
     {
       id: 'link-node',
       label: 'Create Link',
-      icon: 'fas fa-link',
+      icon: ICON_LINK,
       onClick: () => {
         log.info(`[ContextMenu] Add link from: ${nodeId}`);
         options.onCreateLinkFromNode?.(nodeId);
@@ -116,6 +167,11 @@ function buildNodeViewMenuItems(
   nodeData: Record<string, unknown>,
   options: ContextMenuOptions
 ): ContextMenuItem[] {
+  // Network nodes have no context menu in view mode
+  if (isNetworkNode(nodeData)) {
+    return [];
+  }
+
   const nodeName = getNodeName(nodeData, nodeId);
   return [
     {
@@ -268,6 +324,11 @@ function useMenuEvents(
       const role = node.data('topoViewerRole');
       if (role === 'freeText' || role === 'freeShape') return;
 
+      // Network nodes have no context menu in view mode
+      if (role === 'cloud' && options.mode === 'view') {
+        return;
+      }
+
       evt.originalEvent?.preventDefault();
       openNodeMenu(node.id(), node.data(), getEventPosition(evt));
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
@@ -304,7 +365,7 @@ function buildMenuItems(
 
   if (menuState.elementType === 'node') {
     return options.mode === 'edit'
-      ? buildNodeEditMenuItems(menuState.elementId, options)
+      ? buildNodeEditMenuItems(menuState.elementId, nodeData, options)
       : buildNodeViewMenuItems(menuState.elementId, nodeData, options);
   }
 

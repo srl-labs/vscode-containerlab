@@ -9,6 +9,7 @@ import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel } from './components/panels/node-editor';
+import { NetworkEditorPanel, NetworkEditorData } from './components/panels/network-editor';
 import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
@@ -77,6 +78,7 @@ import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './h
 import type { MembershipEntry } from './hooks/state';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
+import { convertToNetworkEditorData } from '../shared/utilities/networkEditorConversions';
 import type { NodeEditorData } from './components/panels/node-editor/types';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 
@@ -227,6 +229,29 @@ function useLinkEditorHandlers(
   return { handleClose, handleSave, handleApply };
 }
 
+/**
+ * Hook for network editor handlers
+ */
+function useNetworkEditorHandlers(
+  editNetwork: (id: string | null) => void,
+  _editingNetworkData: NetworkEditorData | null
+) {
+  const handleClose = React.useCallback(() => {
+    editNetwork(null);
+  }, [editNetwork]);
+
+  const handleSave = React.useCallback((data: NetworkEditorData) => {
+    sendCommandToExtension('save-network-editor', { networkData: data });
+    editNetwork(null);
+  }, [editNetwork]);
+
+  const handleApply = React.useCallback((data: NetworkEditorData) => {
+    sendCommandToExtension('apply-network-editor', { networkData: data });
+  }, []);
+
+  return { handleClose, handleSave, handleApply };
+}
+
 /** State shape for node creation handlers */
 interface NodeCreationState {
   isLocked: boolean;
@@ -313,7 +338,7 @@ function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view')
 }
 
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -338,8 +363,10 @@ export const App: React.FC = () => {
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge);
   const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null);
+  const { selectedNodeData: editingNetworkRawData } = useSelectionData(cytoscapeRef, state.editingNetwork, null);
   const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge);
   const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
+  const editingNetworkData = React.useMemo(() => convertToNetworkEditorData(editingNetworkRawData), [editingNetworkRawData]);
   const editingLinkData = React.useMemo(() => convertToLinkEditorData(editingLinkRawData), [editingLinkRawData]);
 
   // Navbar actions
@@ -347,7 +374,7 @@ export const App: React.FC = () => {
   const navbarCommands = useNavbarCommands();
 
   // Context menu handlers
-  const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, removeNodeAndEdges, removeEdge });
+  const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, editNetwork, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
@@ -496,6 +523,7 @@ export const App: React.FC = () => {
   // Editor handlers with undo/redo support
   const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit);
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
+  const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData);
 
   // Copy/paste handler - records graph changes for undo/redo
   const recordGraphChanges = React.useCallback((before: GraphChangeEntry[], after: GraphChangeEntry[]) => {
@@ -610,6 +638,7 @@ export const App: React.FC = () => {
     mode: state.mode,
     isLocked: state.isLocked,
     onEditNode: menuHandlers.handleEditNode,
+    onEditNetwork: menuHandlers.handleEditNetwork,
     onDeleteNode: handleDeleteNodeWithUndo,
     onCreateLinkFromNode: handleCreateLinkFromNode,
     onEditLink: menuHandlers.handleEditLink,
@@ -822,6 +851,13 @@ export const App: React.FC = () => {
           onClose={nodeEditorHandlers.handleClose}
           onSave={nodeEditorHandlers.handleSave}
           onApply={nodeEditorHandlers.handleApply}
+        />
+        <NetworkEditorPanel
+          isVisible={!!state.editingNetwork}
+          nodeData={editingNetworkData}
+          onClose={networkEditorHandlers.handleClose}
+          onSave={networkEditorHandlers.handleSave}
+          onApply={networkEditorHandlers.handleApply}
         />
         {/* Custom Node Template Editor */}
         <NodeEditorPanel

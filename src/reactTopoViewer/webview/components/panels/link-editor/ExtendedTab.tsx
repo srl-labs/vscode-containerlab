@@ -138,10 +138,11 @@ export function validateLinkEditorData(data: LinkEditorData): string[] {
   if (!data.target) {
     errors.push('Target node is required');
   }
-  if (!data.sourceEndpoint) {
+  // Only require interface for regular (non-network) endpoints
+  if (!data.sourceEndpoint && !data.sourceIsNetwork) {
     errors.push('Source interface is required');
   }
-  if (!data.targetEndpoint) {
+  if (!data.targetEndpoint && !data.targetIsNetwork) {
     errors.push('Target interface is required');
   }
   if (data.source && data.target && data.source === data.target) {

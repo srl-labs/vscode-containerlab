@@ -15,9 +15,13 @@ interface LinkEditorPanelProps {
   onApply: (data: LinkEditorData) => void;
 }
 
-const TABS: TabDefinition[] = [
+const ALL_TABS: TabDefinition[] = [
   { id: 'basic', label: 'Basic' },
   { id: 'extended', label: 'Extended' }
+];
+
+const BASIC_ONLY_TABS: TabDefinition[] = [
+  { id: 'basic', label: 'Basic' }
 ];
 
 /**
@@ -141,6 +145,13 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
   const isNewLink = !linkData?.id || linkData.id.startsWith('temp-');
   const title = isNewLink ? 'Create Link' : 'Link Editor';
 
+  // Only show Extended tab for veth links (both endpoints are regular nodes)
+  const isVethLink = !formData.sourceIsNetwork && !formData.targetIsNetwork;
+  const tabs = isVethLink ? ALL_TABS : BASIC_ONLY_TABS;
+
+  // Force basic tab if on extended tab but not a veth link
+  const effectiveActiveTab = (!isVethLink && activeTab === 'extended') ? 'basic' : activeTab;
+
   return (
     <EditorPanel
       title={title}
@@ -148,8 +159,8 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
       onClose={onClose}
       onApply={handleApply}
       onSave={handleSave}
-      tabs={TABS}
-      activeTab={activeTab}
+      tabs={tabs}
+      activeTab={effectiveActiveTab}
       onTabChange={(id) => setActiveTab(id as LinkEditorTabId)}
       storageKey="link-editor"
       width={400}
@@ -157,7 +168,7 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
     >
       <ValidationBanner errors={validationErrors} />
       <TabContent
-        activeTab={activeTab}
+        activeTab={effectiveActiveTab}
         formData={formData}
         onChange={handleChange}
       />

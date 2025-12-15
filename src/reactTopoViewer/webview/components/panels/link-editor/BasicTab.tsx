@@ -34,14 +34,20 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
         <FormField label="Node">
           <ReadOnlyBadge>{data.source || 'Unknown'}</ReadOnlyBadge>
         </FormField>
-        <FormField label="Interface" required>
-          <InputField
-            id="link-source-interface"
-            value={data.sourceEndpoint || ''}
-            onChange={(value) => onChange({ sourceEndpoint: value })}
-            placeholder="e.g., eth1, e1-1"
-          />
-        </FormField>
+        {data.sourceIsNetwork ? (
+          <FormField label="Interface">
+            <ReadOnlyBadge>{data.source || 'Unknown'}</ReadOnlyBadge>
+          </FormField>
+        ) : (
+          <FormField label="Interface" required>
+            <InputField
+              id="link-source-interface"
+              value={data.sourceEndpoint || ''}
+              onChange={(value) => onChange({ sourceEndpoint: value })}
+              placeholder="e.g., eth1, e1-1"
+            />
+          </FormField>
+        )}
       </div>
 
       {/* Target Endpoint Section */}
@@ -52,14 +58,20 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
         <FormField label="Node">
           <ReadOnlyBadge>{data.target || 'Unknown'}</ReadOnlyBadge>
         </FormField>
-        <FormField label="Interface" required>
-          <InputField
-            id="link-target-interface"
-            value={data.targetEndpoint || ''}
-            onChange={(value) => onChange({ targetEndpoint: value })}
-            placeholder="e.g., eth1, e1-1"
-          />
-        </FormField>
+        {data.targetIsNetwork ? (
+          <FormField label="Interface">
+            <ReadOnlyBadge>{data.target || 'Unknown'}</ReadOnlyBadge>
+          </FormField>
+        ) : (
+          <FormField label="Interface" required>
+            <InputField
+              id="link-target-interface"
+              value={data.targetEndpoint || ''}
+              onChange={(value) => onChange({ targetEndpoint: value })}
+              placeholder="e.g., eth1, e1-1"
+            />
+          </FormField>
+        )}
       </div>
     </div>
   );
