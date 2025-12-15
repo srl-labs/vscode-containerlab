@@ -20,6 +20,7 @@ import { SvgExportPanel } from './components/panels/SvgExportPanel';
 import { LabSettingsPanel } from './components/panels/lab-settings';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
+import { PartyMode } from './components/PartyMode';
 import {
   assignMissingGeoCoordinatesToAnnotations,
   assignMissingGeoCoordinatesToShapeAnnotations
@@ -72,7 +73,9 @@ import {
   useFloatingPanelCommands,
   // Canvas hooks
   useLinkLabelVisibility,
-  useGeoMap
+  useGeoMap,
+  // Easter egg
+  useEasterEgg
 } from './hooks';
 import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './hooks';
 import type { MembershipEntry } from './hooks/state';
@@ -744,6 +747,9 @@ export const App: React.FC = () => {
     onCreateGroup: handleAddGroupWithUndo
   });
 
+  // Easter egg: Konami code party mode
+  const easterEgg = useEasterEgg({ cyInstance });
+
   if (initLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
@@ -771,6 +777,9 @@ export const App: React.FC = () => {
         canRedo={undoRedo.canRedo}
         onUndo={undoRedo.undo}
         onRedo={undoRedo.redo}
+        onLogoClick={easterEgg.handleLogoClick}
+        logoClickProgress={easterEgg.state.progress}
+        isPartyMode={easterEgg.state.isPartyMode}
       />
       <main className="topoviewer-main">
         <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
@@ -953,6 +962,11 @@ export const App: React.FC = () => {
           position={menuState.position}
           items={menuItems}
           onClose={closeMenu}
+        />
+        {/* Easter egg: Logo click party mode */}
+        <PartyMode
+          isActive={easterEgg.state.isPartyMode}
+          onClose={easterEgg.endPartyMode}
         />
       </main>
     </div>

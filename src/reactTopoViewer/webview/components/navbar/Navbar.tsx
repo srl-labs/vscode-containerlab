@@ -34,6 +34,12 @@ interface NavbarProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  /** Easter egg logo click handler and state */
+  onLogoClick?: () => void;
+  /** Easter egg click progress (0-10) */
+  logoClickProgress?: number;
+  /** Whether party mode is active (logo has exploded) */
+  isPartyMode?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -57,7 +63,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   canUndo = false,
   canRedo = false,
   onUndo,
-  onRedo
+  onRedo,
+  onLogoClick,
+  logoClickProgress = 0,
+  isPartyMode = false
 }) => {
   const { state, setLinkLabelMode, toggleDummyLinks } = useTopoViewer();
 
@@ -80,23 +89,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     <nav className="navbar" role="navigation" aria-label="main navigation">
       {/* Left: Logo + Title */}
       <div className="navbar-brand">
-        <a
-          href="https://containerlab.dev/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center"
-        >
-          <ContainerlabLogo className="navbar-logo" />
-        </a>
-        <div className="navbar-title pl-0">
-          <span className="navbar-title-main">TopoViewer</span>
-          <span className="navbar-title-sub">
-            <span className={`mode-badge ${state.mode === 'view' ? 'viewer' : 'editor'}`}>
-              {state.mode === 'view' ? 'viewer' : 'editor'}
-            </span>
-            <span className="font-light">· {state.labName || 'Unknown Lab'}</span>
-          </span>
-        </div>
+        <NavbarLogo
+          onClick={onLogoClick}
+          clickProgress={logoClickProgress}
+          isPartyMode={isPartyMode}
+        />
+        <NavbarTitle mode={state.mode} labName={state.labName} />
       </div>
 
       {/* Center: Buttons */}
@@ -429,5 +427,53 @@ const NavButton: React.FC<NavButtonProps> = ({ icon, title, onClick, active, dis
         <i className={`fas ${icon}`}></i>
       </span>
     </button>
+  );
+};
+
+/**
+ * Logo section with easter egg click handling
+ */
+interface NavbarLogoProps {
+  onClick?: () => void;
+  clickProgress?: number;
+  isPartyMode?: boolean;
+}
+
+const NavbarLogo: React.FC<NavbarLogoProps> = ({ onClick, clickProgress = 0, isPartyMode = false }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="navbar-logo-button flex items-center bg-transparent border-none cursor-pointer p-0"
+    aria-label="Containerlab logo"
+  >
+    <ContainerlabLogo
+      className="navbar-logo"
+      clickProgress={clickProgress}
+      isExploded={isPartyMode}
+    />
+  </button>
+);
+
+/**
+ * Navbar title section showing mode and lab name
+ */
+interface NavbarTitleProps {
+  mode: 'view' | 'edit';
+  labName: string | null;
+}
+
+const NavbarTitle: React.FC<NavbarTitleProps> = ({ mode, labName }) => {
+  const modeClass = mode === 'view' ? 'viewer' : 'editor';
+  const modeLabel = mode === 'view' ? 'viewer' : 'editor';
+  const displayName = labName || 'Unknown Lab';
+
+  return (
+    <div className="navbar-title pl-0">
+      <span className="navbar-title-main">TopoViewer</span>
+      <span className="navbar-title-sub">
+        <span className={`mode-badge ${modeClass}`}>{modeLabel}</span>
+        <span className="font-light">· {displayName}</span>
+      </span>
+    </div>
   );
 };

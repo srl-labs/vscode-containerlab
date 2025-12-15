@@ -65,3 +65,7 @@ export { useEscapeKey } from './useEscapeKey';
 // Delayed hover hook
 export { useDelayedHover } from './useDelayedHover';
 export type { UseDelayedHoverReturn } from './useDelayedHover';
+
+// Easter egg hook
+export { useEasterEgg } from './useEasterEgg';
+export type { EasterEggState, UseEasterEggOptions, UseEasterEggReturn } from './useEasterEgg';
