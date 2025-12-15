@@ -6,7 +6,7 @@ import { FilterUtils } from "../helpers/filterUtils";
 
 import path = require("path");
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions, outputChannel } from "../extension";
-import { getCurrentTopoViewer } from "../commands/graph";
+import { getCurrentTopoViewer, getCurrentReactTopoViewer } from "../commands/graph";
 
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry, ClabInterfaceStats } from "../types/containerlab";
 
@@ -162,20 +162,26 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      * are only triggered by successful deploy/destroy command completion.
      */
     private async refreshTopoViewerIfOpen(): Promise<void> {
+        // Legacy TopoViewer
         const viewer = getCurrentTopoViewer();
-        if (!viewer || !viewer.currentPanel) {
-            return;
+        if (viewer?.currentPanel && viewer.isViewMode) {
+            try {
+                await viewer.refreshLinkStatesFromInspect(this.labsSnapshot);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.error(`[RunningLabTreeDataProvider]:\tFailed to refresh TopoViewer link states: ${message}`);
+            }
         }
 
-        if (!viewer.isViewMode) {
-            return;
-        }
-
-        try {
-            await viewer.refreshLinkStatesFromInspect(this.labsSnapshot);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            console.error(`[RunningLabTreeDataProvider]:\tFailed to refresh TopoViewer link states: ${message}`);
+        // React TopoViewer
+        const reactViewer = getCurrentReactTopoViewer();
+        if (reactViewer?.currentPanel && reactViewer.isViewMode) {
+            try {
+                await reactViewer.refreshLinkStatesFromInspect(this.labsSnapshot);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.error(`[RunningLabTreeDataProvider]:\tFailed to refresh React TopoViewer link states: ${message}`);
+            }
         }
     }
 

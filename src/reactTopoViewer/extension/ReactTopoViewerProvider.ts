@@ -28,6 +28,14 @@ import {
 import { MessageRouter, WebviewMessage } from './panel/MessageRouter';
 import { WatcherManager } from './panel/Watchers';
 import { buildBootstrapData } from './panel/BootstrapDataBuilder';
+import { findInterfaceNode } from './services/TreeUtils';
+import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from './services/EdgeElementBuilder';
+
+/** Message type for topology data updates sent to webview */
+const MSG_TOPOLOGY_DATA = 'topology-data';
+
+/** Message type for incremental edge stats updates */
+const MSG_EDGE_STATS_UPDATE = 'edge-stats-update';
 
 /**
  * React TopoViewer class that manages the webview panel
@@ -102,7 +110,7 @@ export class ReactTopoViewer {
   private initializeWatchers(panel: vscode.WebviewPanel): void {
     const updateController = { isInternalUpdate: () => this.isInternalUpdate };
     const postTopologyData = (data: unknown) => {
-      panel.webview.postMessage({ type: 'topology-data', data });
+      panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data });
     };
 
     this.watcherManager.setupFileWatcher(
@@ -360,7 +368,7 @@ export class ReactTopoViewer {
 
       // Send topology data update to webview
       this.currentPanel.webview.postMessage({
-        type: 'topology-data',
+        type: MSG_TOPOLOGY_DATA,
         data: topologyData
       });
 
@@ -394,6 +402,180 @@ export class ReactTopoViewer {
     });
 
     log.info(`[ReactTopoViewer] Mode changed to: ${mode}`);
+  }
+
+  /**
+   * Refresh link states from running labs inspection data.
+   * This is called periodically by the runningLabsProvider when tree data changes.
+   * Updates edge elements with fresh interface stats (rxBps, txBps, etc.).
+   */
+  public async refreshLinkStatesFromInspect(
+    labsData?: Record<string, ClabLabTreeNode>
+  ): Promise<void> {
+    if (!this.currentPanel || !this.isViewMode) {
+      return;
+    }
+
+    try {
+      // Update cached labs data
+      this.cacheClabTreeDataToTopoviewer = labsData;
+
+      // Build edge stats updates from cached elements
+      const edgeUpdates = this.buildEdgeStatsUpdates(labsData);
+
+      if (edgeUpdates.length > 0) {
+        // Send only edge stats updates (not full topology)
+        this.currentPanel.webview.postMessage({
+          type: MSG_EDGE_STATS_UPDATE,
+          data: { edgeUpdates }
+        });
+      }
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to refresh link states: ${err}`);
+    }
+  }
+
+  /**
+   * Build edge stats updates from cached elements and fresh labs data.
+   * Only updates the extraData fields related to stats and interface state.
+   */
+  private buildEdgeStatsUpdates(
+    labs: Record<string, ClabLabTreeNode> | undefined
+  ): Array<{ id: string; extraData: Record<string, unknown>; classes?: string }> {
+    if (!labs || this.lastTopologyElements.length === 0) {
+      return [];
+    }
+
+    const updates: Array<{ id: string; extraData: Record<string, unknown>; classes?: string }> = [];
+    const topology = this.adaptor.currentClabTopo?.topology;
+
+    for (const el of this.lastTopologyElements) {
+      if (el.group !== 'edges') continue;
+      const update = this.buildSingleEdgeUpdate(el, labs, topology);
+      if (update) {
+        updates.push(update);
+      }
+    }
+
+    return updates;
+  }
+
+  /**
+   * Build update for a single edge element.
+   */
+  private buildSingleEdgeUpdate(
+    el: CyElement,
+    labs: Record<string, ClabLabTreeNode>,
+    topology: ClabTopology['topology'] | undefined
+  ): { id: string; extraData: Record<string, unknown>; classes?: string } | null {
+    const data = el.data as Record<string, unknown>;
+    const edgeId = data.id as string;
+    const extraData = (data.extraData ?? {}) as Record<string, unknown>;
+
+    // Look up fresh interface data
+    const { sourceIface, targetIface } = this.lookupEdgeInterfaces(data, extraData, labs);
+
+    // Build updated extraData from interfaces
+    const updatedExtraData = this.buildInterfaceExtraData(sourceIface, targetIface);
+
+    // Compute edge class based on interface states
+    const edgeClass = this.computeEdgeClassForUpdate(
+      topology, extraData, data, sourceIface?.state, targetIface?.state
+    );
+
+    // Only return update if we have something to update
+    if (Object.keys(updatedExtraData).length === 0) {
+      return null;
+    }
+
+    return { id: edgeId, extraData: updatedExtraData, classes: edgeClass };
+  }
+
+  /**
+   * Look up source and target interfaces for an edge.
+   */
+  private lookupEdgeInterfaces(
+    data: Record<string, unknown>,
+    extraData: Record<string, unknown>,
+    labs: Record<string, ClabLabTreeNode>
+  ): { sourceIface: ReturnType<typeof findInterfaceNode>; targetIface: ReturnType<typeof findInterfaceNode> } {
+    const sourceIfaceName = this.normalizeInterfaceName(extraData.clabSourcePort, data.sourceEndpoint);
+    const targetIfaceName = this.normalizeInterfaceName(extraData.clabTargetPort, data.targetEndpoint);
+
+    const sourceIface = findInterfaceNode(
+      labs, (extraData.clabSourceLongName as string) ?? '', sourceIfaceName, this.currentLabName
+    );
+    const targetIface = findInterfaceNode(
+      labs, (extraData.clabTargetLongName as string) ?? '', targetIfaceName, this.currentLabName
+    );
+
+    return { sourceIface, targetIface };
+  }
+
+  /**
+   * Build extraData object from interface data.
+   */
+  private buildInterfaceExtraData(
+    sourceIface: ReturnType<typeof findInterfaceNode>,
+    targetIface: ReturnType<typeof findInterfaceNode>
+  ): Record<string, unknown> {
+    const updatedExtraData: Record<string, unknown> = {};
+
+    if (sourceIface) {
+      this.applyInterfaceToExtraData(updatedExtraData, 'Source', sourceIface);
+    }
+    if (targetIface) {
+      this.applyInterfaceToExtraData(updatedExtraData, 'Target', targetIface);
+    }
+
+    return updatedExtraData;
+  }
+
+  /**
+   * Apply interface data to extraData object with given prefix.
+   */
+  private applyInterfaceToExtraData(
+    extraData: Record<string, unknown>,
+    prefix: 'Source' | 'Target',
+    iface: NonNullable<ReturnType<typeof findInterfaceNode>>
+  ): void {
+    extraData[`clab${prefix}InterfaceState`] = iface.state || '';
+    extraData[`clab${prefix}MacAddress`] = iface.mac ?? '';
+    extraData[`clab${prefix}Mtu`] = iface.mtu ?? '';
+    extraData[`clab${prefix}Type`] = iface.type ?? '';
+    const stats = extractEdgeInterfaceStats(iface);
+    if (stats) {
+      extraData[`clab${prefix}Stats`] = stats;
+    }
+  }
+
+  /**
+   * Compute edge class for an update.
+   */
+  private computeEdgeClassForUpdate(
+    topology: ClabTopology['topology'] | undefined,
+    extraData: Record<string, unknown>,
+    data: Record<string, unknown>,
+    sourceState?: string,
+    targetState?: string
+  ): string | undefined {
+    if (!topology) return undefined;
+    const sourceNodeId = (extraData.yamlSourceNodeId as string) || (data.source as string);
+    const targetNodeId = (extraData.yamlTargetNodeId as string) || (data.target as string);
+    return computeEdgeClassFromStates(topology, sourceNodeId, targetNodeId, sourceState, targetState);
+  }
+
+  /**
+   * Normalize interface name, using fallback if primary is empty.
+   */
+  private normalizeInterfaceName(value: unknown, fallback: unknown): string {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+    if (typeof fallback === 'string' && fallback.trim()) {
+      return fallback;
+    }
+    return '';
   }
 }
 

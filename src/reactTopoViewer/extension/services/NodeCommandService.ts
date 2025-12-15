@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import { log } from './logger';
-import { ClabContainerTreeNode } from '../../../treeView/common';
+import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { runningLabsProvider } from '../../../extension';
 
 /**
@@ -33,6 +33,28 @@ function createDefaultContainerNode(nodeName: string): ClabContainerTreeNode {
     IPv4Address: '',
     IPv6Address: ''
   } as ClabContainerTreeNode;
+}
+
+/**
+ * Creates an interface object for capture command execution.
+ */
+function createInterfaceObject(
+  nodeName: string,
+  interfaceName: string,
+  alias?: string
+): ClabInterfaceTreeNode {
+  return {
+    label: interfaceName,
+    parentName: nodeName,
+    cID: nodeName,
+    name: interfaceName,
+    type: '',
+    alias: alias || '',
+    mac: '',
+    mtu: 0,
+    ifIndex: 0,
+    state: ''
+  } as ClabInterfaceTreeNode;
 }
 
 /**
@@ -199,6 +221,57 @@ export class NodeCommandService {
     }
 
     return { result, error };
+  }
+
+  /**
+   * Resolves the actual interface name from a logical name using the running labs data.
+   */
+  async resolveInterfaceName(nodeName: string, interfaceName: string): Promise<string> {
+    if (!runningLabsProvider) return interfaceName;
+    const treeData = await runningLabsProvider.discoverInspectLabs();
+    if (!treeData) return interfaceName;
+
+    for (const lab of Object.values(treeData)) {
+      const labAny = lab as { containers?: ClabContainerTreeNode[] };
+      const container = labAny.containers?.find(
+        (c) => c.name === nodeName || c.name_short === nodeName
+      );
+      const intf = container?.interfaces?.find(
+        (i) => i.name === interfaceName || i.alias === interfaceName
+      );
+      if (intf) return intf.name;
+    }
+    return interfaceName;
+  }
+
+  /**
+   * Handles interface-related endpoint commands (capture).
+   */
+  async handleInterfaceEndpoint(
+    endpointName: string,
+    payloadObj: { nodeName: string; interfaceName: string }
+  ): Promise<EndpointResult> {
+    if (endpointName === 'clab-interface-capture') {
+      try {
+        const { nodeName, interfaceName } = payloadObj;
+        const actualInterfaceName = await this.resolveInterfaceName(nodeName, interfaceName);
+        const iface = createInterfaceObject(
+          nodeName,
+          actualInterfaceName,
+          interfaceName !== actualInterfaceName ? interfaceName : ''
+        );
+        await vscode.commands.executeCommand('containerlab.interface.capture', iface);
+        return { result: `Capture executed for ${nodeName}/${actualInterfaceName}`, error: null };
+      } catch (innerError) {
+        const errorMsg = `Error executing capture: ${innerError}`;
+        log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+        return { result: null, error: errorMsg };
+      }
+    }
+
+    const errorMsg = `Unknown interface endpoint "${endpointName}".`;
+    log.error(errorMsg);
+    return { result: null, error: errorMsg };
   }
 }
 

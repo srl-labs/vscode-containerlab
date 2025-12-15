@@ -198,6 +198,8 @@ export function resolveContainerAndInterface(params: {
     return { containerName, ifaceData: directIface };
   }
 
+  log.debug(`[EdgeBuilder] Interface not found: ${containerName}:${ifaceName} in lab ${clabName}`);
+
   const topologyNode = parsed.topology?.nodes?.[nodeName] ?? {};
   const resolvedNode = resolveNodeConfig(parsed, topologyNode);
 
@@ -226,7 +228,9 @@ export function extractEdgeInterfaceStats(ifaceData: unknown): Record<string, nu
     return undefined;
   }
 
-  const sourceStats = (ifaceData as { stats?: Record<string, unknown> }).stats || ifaceData;
+  // Try to get stats from .stats property first (ClabInterfaceTreeNode), then fall back to ifaceData itself
+  const ifaceObj = ifaceData as { stats?: Record<string, unknown>; name?: string };
+  const sourceStats = ifaceObj.stats ?? ifaceData;
   if (!sourceStats || typeof sourceStats !== 'object') {
     return undefined;
   }

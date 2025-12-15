@@ -111,6 +111,15 @@ const initialState: TopoViewerState = {
 /**
  * Action types
  */
+/**
+ * Edge stats update payload for incremental updates
+ */
+interface EdgeStatsUpdate {
+  id: string;
+  extraData: Record<string, unknown>;
+  classes?: string;
+}
+
 type TopoViewerAction =
   | { type: 'SET_ELEMENTS'; payload: CyElement[] }
   | { type: 'SET_MODE'; payload: 'edit' | 'view' }
@@ -131,7 +140,8 @@ type TopoViewerAction =
   | { type: 'REMOVE_EDGE'; payload: string }
   | { type: 'SET_CUSTOM_NODES'; payload: { customNodes: CustomNodeTemplate[]; defaultNode: string } }
   | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null }
-  | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } };
+  | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } }
+  | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] };
 
 /**
  * Reducer function
@@ -224,7 +234,34 @@ const reducerHandlers: ReducerHandlers = {
     ...state,
     isProcessing: action.payload.isProcessing,
     processingMode: action.payload.mode
-  })
+  }),
+  UPDATE_EDGE_STATS: (state, action) => {
+    const updates = action.payload;
+    if (!updates || updates.length === 0) return state;
+
+    // Create a map for O(1) lookup
+    const updateMap = new Map(updates.map(u => [u.id, u]));
+
+    // Update only the edges that have updates
+    const newElements = state.elements.map(el => {
+      if (el.group !== 'edges') return el;
+      const edgeId = (el.data as Record<string, unknown>)?.id as string;
+      const update = updateMap.get(edgeId);
+      if (!update) return el;
+
+      // Merge extraData
+      const oldExtraData = ((el.data as Record<string, unknown>)?.extraData ?? {}) as Record<string, unknown>;
+      const newExtraData = { ...oldExtraData, ...update.extraData };
+
+      return {
+        ...el,
+        data: { ...el.data, extraData: newExtraData },
+        classes: update.classes ?? el.classes
+      };
+    });
+
+    return { ...state, elements: newElements };
+  }
 };
 
 function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): TopoViewerState {
@@ -350,6 +387,12 @@ function handleExtensionMessage(
     'topology-data': () => {
       if (message.data?.elements) {
         dispatch({ type: 'SET_ELEMENTS', payload: message.data.elements as CyElement[] });
+      }
+    },
+    'edge-stats-update': () => {
+      const edgeUpdates = message.data?.edgeUpdates as EdgeStatsUpdate[] | undefined;
+      if (edgeUpdates && edgeUpdates.length > 0) {
+        dispatch({ type: 'UPDATE_EDGE_STATS', payload: edgeUpdates });
       }
     },
     'topo-mode-changed': () => {

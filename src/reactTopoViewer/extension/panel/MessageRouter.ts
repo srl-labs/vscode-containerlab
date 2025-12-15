@@ -1,6 +1,7 @@
 /**
  * MessageRouter - Handles webview message routing for ReactTopoViewer
  */
+/* eslint-disable max-lines */
 
 import * as vscode from 'vscode';
 import { log } from '../services/logger';
@@ -63,6 +64,10 @@ const NODE_COMMANDS = new Set([
   'clab-node-connect-ssh',
   'clab-node-attach-shell',
   'clab-node-view-logs'
+]);
+
+const INTERFACE_COMMANDS = new Set([
+  'clab-interface-capture'
 ]);
 
 const LIFECYCLE_COMMANDS = new Set([
@@ -532,6 +537,21 @@ export class MessageRouter {
     return true;
   }
 
+  private async handleInterfaceCommand(command: string, message: WebviewMessage): Promise<void> {
+    nodeCommandService.setYamlFilePath(this.context.yamlFilePath);
+    const payload = message as unknown as { nodeName?: string; interfaceName?: string };
+    if (!payload.nodeName || !payload.interfaceName) {
+      log.warn(`[ReactTopoViewer] Invalid interface command payload: ${JSON.stringify(message)}`);
+      return;
+    }
+    const { result, error } = await nodeCommandService.handleInterfaceEndpoint(
+      command,
+      { nodeName: payload.nodeName, interfaceName: payload.interfaceName }
+    );
+    if (error) log.error(`[ReactTopoViewer] ${error}`);
+    else if (result) log.info(`[ReactTopoViewer] ${result}`);
+  }
+
   private async handleLifecycleCommand(command: string, _panel: vscode.WebviewPanel): Promise<void> {
     if (!this.context.yamlFilePath) {
       log.warn(`[ReactTopoViewer] Cannot run ${command}: no YAML path available`);
@@ -885,6 +905,11 @@ export class MessageRouter {
 
     if (NODE_COMMANDS.has(command)) {
       return this.handleNodeCommand(command, message);
+    }
+
+    if (INTERFACE_COMMANDS.has(command)) {
+      await this.handleInterfaceCommand(command, message);
+      return true;
     }
 
     if (LIFECYCLE_COMMANDS.has(command)) {

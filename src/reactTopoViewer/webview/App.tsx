@@ -361,7 +361,8 @@ export const App: React.FC = () => {
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
 
   // Selection and editing data
-  const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge);
+  // Pass state.elements as refreshTrigger so link data refreshes when edge stats update
+  const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge, state.elements);
   const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null);
   const { selectedNodeData: editingNetworkRawData } = useSelectionData(cytoscapeRef, state.editingNetwork, null);
   const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge);

@@ -433,6 +433,34 @@
     border-color: var(--accent);
   }
 
+  /* Panel block scrollbar styling */
+  .panel-block {
+    scrollbar-width: thin;
+    scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
+    overflow-x: hidden;
+  }
+
+  .panel-block::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .panel-block::-webkit-scrollbar:horizontal {
+    display: none;
+  }
+
+  .panel-block::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .panel-block::-webkit-scrollbar-thumb {
+    background-color: var(--vscode-scrollbarSlider-background);
+    border-radius: 4px;
+  }
+
+  .panel-block::-webkit-scrollbar-thumb:hover {
+    background-color: var(--vscode-scrollbarSlider-hoverBackground);
+  }
+
   /* Button styles */
   .btn {
     display: inline-flex;

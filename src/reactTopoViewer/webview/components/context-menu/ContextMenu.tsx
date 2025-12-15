@@ -8,6 +8,7 @@ export interface ContextMenuItem {
   id: string;
   label: string;
   icon?: string;
+  iconComponent?: React.ReactNode;
   disabled?: boolean;
   divider?: boolean;
   onClick?: () => void;
@@ -103,7 +104,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
       onClick={handleClick}
       disabled={item.disabled}
     >
-      {item.icon && <i className={item.icon} />}
+      {item.iconComponent ? item.iconComponent : item.icon && <i className={item.icon} />}
       <span>{item.label}</span>
     </button>
   );

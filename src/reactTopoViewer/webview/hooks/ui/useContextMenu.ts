@@ -4,8 +4,10 @@
  */
 import { useEffect, useCallback, useState } from 'react';
 import type { Core, EventObject } from 'cytoscape';
+import React from 'react';
 import { log } from '../../utils/logger';
 import { ContextMenuItem } from '../../components/context-menu/ContextMenu';
+import { WiresharkIcon } from '../../components/context-menu/WiresharkIcon';
 
 /**
  * VS Code API interface
@@ -53,6 +55,23 @@ const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
 const ICON_EDIT = 'fas fa-pen';
 const ICON_DELETE = 'fas fa-trash';
 const ICON_LINK = 'fas fa-link';
+
+/**
+ * Extract capture endpoints from edge data (similar to legacy ContextMenuManager)
+ */
+function computeEdgeCaptureEndpoints(edgeData: Record<string, unknown>): {
+  srcNode: string;
+  srcIf: string;
+  dstNode: string;
+  dstIf: string;
+} {
+  const extraData = (edgeData.extraData || {}) as Record<string, unknown>;
+  const srcNode = (extraData.clabSourceLongName as string) || (edgeData.source as string) || '';
+  const dstNode = (extraData.clabTargetLongName as string) || (edgeData.target as string) || '';
+  const srcIf = (edgeData.sourceEndpoint as string) || '';
+  const dstIf = (edgeData.targetEndpoint as string) || '';
+  return { srcNode, srcIf, dstNode, dstIf };
+}
 
 /**
  * Send message to VS Code extension
@@ -255,22 +274,54 @@ function buildEdgeEditMenuItems(
 
 /**
  * Build menu items for edge in view mode
+ * Includes capture options for both endpoints and info option
  */
 function buildEdgeViewMenuItems(
   edgeId: string,
+  edgeData: Record<string, unknown>,
   options: ContextMenuOptions
 ): ContextMenuItem[] {
-  return [
-    {
-      id: 'info-edge',
-      label: 'Info',
-      icon: 'fas fa-info-circle',
+  const { srcNode, srcIf, dstNode, dstIf } = computeEdgeCaptureEndpoints(edgeData);
+  const items: ContextMenuItem[] = [];
+
+  // Add capture item for source endpoint
+  if (srcNode && srcIf) {
+    items.push({
+      id: 'capture-source',
+      label: `${srcNode} - ${srcIf}`,
+      iconComponent: React.createElement(WiresharkIcon),
       onClick: () => {
-        log.info(`[ContextMenu] Show link properties: ${edgeId}`);
-        options.onShowLinkProperties?.(edgeId);
+        log.info(`[ContextMenu] Capture source: ${srcNode}/${srcIf}`);
+        sendToExtension('clab-interface-capture', { nodeName: srcNode, interfaceName: srcIf });
       }
+    });
+  }
+
+  // Add capture item for target endpoint
+  if (dstNode && dstIf) {
+    items.push({
+      id: 'capture-target',
+      label: `${dstNode} - ${dstIf}`,
+      iconComponent: React.createElement(WiresharkIcon),
+      onClick: () => {
+        log.info(`[ContextMenu] Capture target: ${dstNode}/${dstIf}`);
+        sendToExtension('clab-interface-capture', { nodeName: dstNode, interfaceName: dstIf });
+      }
+    });
+  }
+
+  // Add info item
+  items.push({
+    id: 'info-edge',
+    label: 'Info',
+    icon: 'fas fa-info-circle',
+    onClick: () => {
+      log.info(`[ContextMenu] Show link properties: ${edgeId}`);
+      options.onShowLinkProperties?.(edgeId);
     }
-  ];
+  });
+
+  return items;
 }
 
 /** Return type for the hook */
@@ -289,6 +340,7 @@ function getEventPosition(evt: EventObject): { x: number; y: number } {
 function useMenuState(cy: Core | null) {
   const [menuState, setMenuState] = useState<ContextMenuState>(INITIAL_STATE);
   const [nodeData, setNodeData] = useState<Record<string, unknown>>({});
+  const [edgeData, setEdgeData] = useState<Record<string, unknown>>({});
 
   const closeMenu = useCallback(() => {
     setMenuState(INITIAL_STATE);
@@ -300,11 +352,12 @@ function useMenuState(cy: Core | null) {
     setMenuState({ isVisible: true, position, elementId: nodeId, elementType: 'node' });
   }, []);
 
-  const openEdgeMenu = useCallback((edgeId: string, position: { x: number; y: number }) => {
+  const openEdgeMenu = useCallback((edgeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
+    setEdgeData(data);
     setMenuState({ isVisible: true, position, elementId: edgeId, elementType: 'edge' });
   }, []);
 
-  return { menuState, nodeData, closeMenu, openNodeMenu, openEdgeMenu };
+  return { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu };
 }
 
 /** Hook for setting up context menu events */
@@ -312,7 +365,7 @@ function useMenuEvents(
   cy: Core | null,
   options: ContextMenuOptions,
   openNodeMenu: (nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => void,
-  openEdgeMenu: (edgeId: string, position: { x: number; y: number }) => void
+  openEdgeMenu: (edgeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => void
 ) {
   useEffect(() => {
     if (!cy) return;
@@ -337,8 +390,9 @@ function useMenuEvents(
 
     const handleEdgeContextMenu = (evt: EventObject) => {
       evt.originalEvent?.preventDefault();
-      const edgeId = evt.target.id();
-      openEdgeMenu(edgeId, getEventPosition(evt));
+      const edge = evt.target;
+      const edgeId = edge.id();
+      openEdgeMenu(edgeId, edge.data(), getEventPosition(evt));
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
       log.info(`[ContextMenu] Edge context menu opened for: ${edgeId}`);
     };
@@ -359,6 +413,7 @@ function useMenuEvents(
 function buildMenuItems(
   menuState: ContextMenuState,
   nodeData: Record<string, unknown>,
+  edgeData: Record<string, unknown>,
   options: ContextMenuOptions
 ): ContextMenuItem[] {
   if (!menuState.isVisible || !menuState.elementId) return [];
@@ -372,7 +427,7 @@ function buildMenuItems(
   if (menuState.elementType === 'edge') {
     return options.mode === 'edit'
       ? buildEdgeEditMenuItems(menuState.elementId, options)
-      : buildEdgeViewMenuItems(menuState.elementId, options);
+      : buildEdgeViewMenuItems(menuState.elementId, edgeData, options);
   }
 
   return [];
@@ -386,9 +441,9 @@ export function useContextMenu(
   cy: Core | null,
   options: ContextMenuOptions
 ): UseContextMenuReturn {
-  const { menuState, nodeData, closeMenu, openNodeMenu, openEdgeMenu } = useMenuState(cy);
+  const { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu } = useMenuState(cy);
   useMenuEvents(cy, options, openNodeMenu, openEdgeMenu);
-  const menuItems = buildMenuItems(menuState, nodeData, options);
+  const menuItems = buildMenuItems(menuState, nodeData, edgeData, options);
 
   return { menuState, menuItems, closeMenu };
 }

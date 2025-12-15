@@ -230,7 +230,6 @@ function useDragHandlers(
     if (!cy) return;
     cy.on('grab', 'node', handleDragStart);
     cy.on('dragfree', 'node', handleDragFree);
-    log.info('[NodeDragging] Drag event handlers registered');
     return () => {
       cy.off('grab', 'node', handleDragStart);
       cy.off('dragfree', 'node', handleDragFree);

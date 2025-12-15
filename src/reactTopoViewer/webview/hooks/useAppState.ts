@@ -84,11 +84,13 @@ export function useCytoscapeInstance(elements: unknown[]): {
 
 /**
  * Hook for selection data
+ * @param refreshTrigger - Optional value that triggers re-fetch when changed (e.g., elements array for stats updates)
  */
 export function useSelectionData(
   cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
   selectedNode: string | null,
-  selectedEdge: string | null
+  selectedEdge: string | null,
+  refreshTrigger?: unknown
 ): { selectedNodeData: NodeData | null; selectedLinkData: LinkData | null } {
   const [selectedNodeData, setSelectedNodeData] = useState<NodeData | null>(null);
   const [selectedLinkData, setSelectedLinkData] = useState<LinkData | null>(null);
@@ -97,7 +99,7 @@ export function useSelectionData(
     const cy = cytoscapeRef.current?.getCy();
     setSelectedNodeData(getNodeDataFromCy(cy || null, selectedNode));
     setSelectedLinkData(getLinkDataFromCy(cy || null, selectedEdge));
-  }, [selectedNode, selectedEdge, cytoscapeRef]);
+  }, [selectedNode, selectedEdge, cytoscapeRef, refreshTrigger]);
 
   return { selectedNodeData, selectedLinkData };
 }

@@ -251,3 +251,34 @@ export interface TopologyAnnotations {
 // ============================================================================
 
 export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
+
+// ============================================================================
+// Interface Statistics Types
+// ============================================================================
+
+/**
+ * Interface statistics payload for traffic rate display.
+ * Contains RX/TX rates in bits per second and packets per second.
+ */
+export interface InterfaceStatsPayload {
+  rxBps?: number;
+  txBps?: number;
+  rxPps?: number;
+  txPps?: number;
+  rxBytes?: number;
+  txBytes?: number;
+  rxPackets?: number;
+  txPackets?: number;
+  statsIntervalSeconds?: number;
+}
+
+/**
+ * Endpoint statistics history for rolling chart display.
+ */
+export interface EndpointStatsHistory {
+  timestamps: number[];
+  rxBps: number[];
+  txBps: number[];
+  rxPps: number[];
+  txPps: number[];
+}
