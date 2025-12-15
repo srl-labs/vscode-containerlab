@@ -1,8 +1,9 @@
 /**
  * FreeShapeLayer - SVG overlay layer for rendering free shape annotations
- * Renders rectangle, circle, and line annotations on top of the Cytoscape canvas.
+ * Renders shape visuals below nodes (via cytoscape-layers) and interaction handles above nodes.
  */
 import React, { useRef, useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import {
@@ -16,7 +17,7 @@ import {
 } from '../../hooks/annotations';
 import { buildShapeSvg } from './freeShapeLayerHelpers';
 import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
-import { MapLibreState } from '../../hooks/canvas/maplibreUtils';
+import { MapLibreState, projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
 
 // ============================================================================
 // Types
@@ -38,6 +39,8 @@ interface FreeShapeLayerProps {
   onAnnotationSelect?: (id: string) => void;
   onAnnotationToggleSelect?: (id: string) => void;
   onAnnotationBoxSelect?: (ids: string[]) => void;
+  // Cytoscape layer node for rendering below nodes
+  shapeLayerNode?: HTMLElement | null;
   // Geo mode props
   isGeoMode?: boolean;
   geoMode?: 'pan' | 'edit';
@@ -47,7 +50,7 @@ interface FreeShapeLayerProps {
 }
 
 // ============================================================================
-// Handle Components (copied from FreeTextLayer with minimal tweaks)
+// Handle Components
 // ============================================================================
 
 const HANDLE_SIZE = 6;
@@ -58,7 +61,6 @@ const CENTER_TRANSLATE = 'translate(-50%, -50%)';
 
 const RotationHandle: React.FC<{ onMouseDown: (e: React.MouseEvent) => void }> = ({ onMouseDown }) => (
   <>
-    {/* Wider invisible hit area for easier access to rotation handle */}
     <div
       style={{
         position: 'absolute',
@@ -70,7 +72,6 @@ const RotationHandle: React.FC<{ onMouseDown: (e: React.MouseEvent) => void }> =
         pointerEvents: 'auto'
       }}
     />
-    {/* Visual connecting line */}
     <div
       style={{
         position: 'absolute',
@@ -176,42 +177,12 @@ const LineEndHandle: React.FC<{ position: { x: number; y: number }; onMouseDown:
 );
 
 // ============================================================================
-// Interaction Hooks
+// Helper Functions
 // ============================================================================
 
 function getCursorStyle(isLocked: boolean, isDragging: boolean): string {
   if (isLocked) return 'default';
   return isDragging ? 'grabbing' : 'grab';
-}
-
-/** Compute outer wrapper style for positioning (centering only) */
-function computeOuterWrapperStyle(
-  renderedPos: { x: number; y: number },
-  zIndex: number
-): React.CSSProperties {
-  return {
-    position: 'absolute',
-    left: renderedPos.x,
-    top: renderedPos.y,
-    // Only translate for centering - NOT affected by scale
-    transform: CENTER_TRANSLATE,
-    zIndex,
-    pointerEvents: 'auto'
-  };
-}
-
-/** Compute inner wrapper style for scale and rotation */
-function computeInnerWrapperStyle(
-  zoom: number,
-  rotation: number
-): React.CSSProperties {
-  return {
-    // Scale and rotate around center
-    transform: `rotate(${rotation}deg) scale(${zoom})`,
-    transformOrigin: 'center center',
-    padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
-    margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`
-  };
 }
 
 function getModelPosition(annotation: FreeShapeAnnotation): { x: number; y: number } {
@@ -223,8 +194,33 @@ function computeShowHandles(params: { isHovered: boolean; isInteracting: boolean
   return (isHovered || isInteracting || isSelected) && !isLocked;
 }
 
-// Tooltip constants
+/**
+ * Compute rendered position for a shape in geo mode or standard mode.
+ * Returns model position (for cytoscape-layer which handles transform).
+ */
+function computeShapeRenderedPosition(
+  annotation: FreeShapeAnnotation,
+  mapLibreState: MapLibreState | null | undefined,
+  isGeoMode: boolean | undefined
+): { x: number; y: number; scale: number } {
+  const modelPos = getModelPosition(annotation);
+
+  if (isGeoMode && mapLibreState?.isInitialized && annotation.geoCoordinates) {
+    const projected = projectAnnotationGeoCoords(mapLibreState, annotation.geoCoordinates);
+    if (projected) {
+      const scale = calculateScale(mapLibreState);
+      return { x: projected.x, y: projected.y, scale };
+    }
+  }
+  // Return model position with scale 1 (cytoscape-layer handles transform)
+  return { x: modelPos.x, y: modelPos.y, scale: 1 };
+}
+
 const UNLOCKED_ANNOTATION_TOOLTIP = 'Click to select, drag to move, right-click for menu';
+
+// ============================================================================
+// Context Menu
+// ============================================================================
 
 const AnnotationContextMenu: React.FC<{
   position: { x: number; y: number };
@@ -304,10 +300,41 @@ const AnnotationContextMenu: React.FC<{
 };
 
 // ============================================================================
-// Individual Shape Annotation Component
+// Background Item (rendered in cytoscape-layer, below nodes)
 // ============================================================================
 
-interface ShapeAnnotationItemProps {
+interface ShapeBackgroundItemProps {
+  annotation: FreeShapeAnnotation;
+  position: { x: number; y: number; scale: number };
+}
+
+const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({ annotation, position }) => {
+  const { svg, width, height } = useMemo(() => buildShapeSvg(annotation), [annotation]);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: position.x,
+        top: position.y,
+        transform: `translate(-50%, -50%) rotate(${annotation.rotation ?? 0}deg) scale(${position.scale})`,
+        transformOrigin: 'center center',
+        width: `${width}px`,
+        height: `${height}px`,
+        zIndex: annotation.zIndex ?? 10,
+        pointerEvents: 'none'
+      }}
+    >
+      {svg}
+    </div>
+  );
+};
+
+// ============================================================================
+// Interaction Item (rendered above nodes for handle access)
+// ============================================================================
+
+interface ShapeInteractionItemProps {
   annotation: FreeShapeAnnotation;
   cy: CyCore;
   isLocked: boolean;
@@ -320,15 +347,16 @@ interface ShapeAnnotationItemProps {
   onEndPositionChange: (endPosition: { x: number; y: number }) => void;
   onSelect: () => void;
   onToggleSelect: () => void;
-  // Geo mode props
+  // Drag visual sync callbacks
+  onVisualPositionChange?: (position: { x: number; y: number }) => void;
+  onVisualPositionClear?: () => void;
   isGeoMode?: boolean;
   geoMode?: 'pan' | 'edit';
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
-  // Note: onEndGeoPositionChange not yet implemented - will be added when useLineResizeDrag supports geo mode
 }
 
-const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
+const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   annotation,
   cy,
   isLocked,
@@ -341,19 +369,17 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
   onEndPositionChange,
   onSelect,
   onToggleSelect,
+  onVisualPositionChange,
+  onVisualPositionClear,
   isGeoMode,
   geoMode,
   mapLibreState,
   onGeoPositionChange
-  // [FUTURE] Use for line endpoint geo updates when useLineResizeDrag supports geo mode
-  // onEndGeoPositionChange prop intentionally ignored - not yet supported by useLineResizeDrag
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // In geo pan mode, treat as locked (no interactions)
   const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === 'pan');
-
   const modelPosition = getModelPosition(annotation);
   const isLine = annotation.shapeType === 'line';
 
@@ -362,6 +388,8 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
     modelPosition,
     isLocked: effectivelyLocked,
     onPositionChange,
+    onDragMove: onVisualPositionChange,
+    onDragEnd: onVisualPositionClear,
     isGeoMode: isGeoMode ?? false,
     geoMode,
     geoCoordinates: annotation.geoCoordinates,
@@ -398,49 +426,45 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
   const isInteracting = [isDragging, isRotating, isBoxResizing, isLineResizing].some(Boolean);
   const showHandles = computeShowHandles({ isHovered, isInteracting, isSelected, isLocked: effectivelyLocked });
 
-  const { svg, width, height, endHandlePos } = useMemo(
-    () => buildShapeSvg(annotation),
-    [annotation]
-  );
+  const { width, height, endHandlePos } = useMemo(() => buildShapeSvg(annotation), [annotation]);
 
-  const outerWrapperStyle = computeOuterWrapperStyle(renderedPos, annotation.zIndex ?? 10);
-  const innerWrapperStyle = computeInnerWrapperStyle(renderedPos.zoom, annotation.rotation ?? 0);
-
-  const contentStyle: React.CSSProperties = {
-    position: 'relative',
+  // Use same transform approach as background layer for alignment
+  const wrapperStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: renderedPos.x,
+    top: renderedPos.y,
+    transform: `translate(-50%, -50%) rotate(${annotation.rotation ?? 0}deg) scale(${renderedPos.zoom})`,
+    transformOrigin: 'center center',
     width: `${width}px`,
     height: `${height}px`,
+    zIndex: annotation.zIndex ?? 10,
     cursor: getCursorStyle(effectivelyLocked, isDragging),
     pointerEvents: 'auto'
   };
 
   return (
     <>
-      {/* Outer wrapper: positions center at rendered coordinates */}
-      <div style={outerWrapperStyle}>
-        {/* Inner wrapper: applies scale and rotation around center */}
-        <div style={innerWrapperStyle}>
-          <div
-            ref={contentRef}
-            style={contentStyle}
-            onClick={handleClick}
-            onMouseDown={handleMouseDown}
-            onContextMenu={handleContextMenu}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            title={effectivelyLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
-          >
-            {svg}
-            <ShapeHandles
-              showHandles={showHandles}
-              isLine={isLine}
-              endHandlePos={endHandlePos}
-              onRotationMouseDown={handleRotationMouseDown}
-              onResizeMouseDown={handleResizeMouseDown}
-              onLineResizeMouseDown={handleLineResizeMouseDown}
-            />
-          </div>
-        </div>
+      <div
+        ref={contentRef}
+        style={wrapperStyle}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onContextMenu={handleContextMenu}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        title={effectivelyLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
+      >
+        {showHandles && (
+          isLine ? (
+            <>
+              <SelectionOutline />
+              <RotationHandle onMouseDown={handleRotationMouseDown} />
+              {endHandlePos && <LineEndHandle position={endHandlePos} onMouseDown={handleLineResizeMouseDown} />}
+            </>
+          ) : (
+            <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />
+          )
+        )}
       </div>
       {contextMenu && (
         <AnnotationContextMenu position={contextMenu} onEdit={onEdit} onDelete={onDelete} onClose={closeContextMenu} />
@@ -449,32 +473,21 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
   );
 };
 
-const ShapeHandles: React.FC<{
-  showHandles: boolean;
-  isLine: boolean;
-  endHandlePos?: { x: number; y: number };
-  onRotationMouseDown: (e: React.MouseEvent) => void;
-  onResizeMouseDown: (e: React.MouseEvent, corner: ResizeCorner) => void;
-  onLineResizeMouseDown: (e: React.MouseEvent) => void;
-}> = ({ showHandles, isLine, endHandlePos, onRotationMouseDown, onResizeMouseDown, onLineResizeMouseDown }) => {
-  if (!showHandles) return null;
-  if (isLine) {
-    return (
-      <>
-        <SelectionOutline />
-        <RotationHandle onMouseDown={onRotationMouseDown} />
-        {endHandlePos && <LineEndHandle position={endHandlePos} onMouseDown={onLineResizeMouseDown} />}
-      </>
-    );
-  }
-  return <AnnotationHandles onRotation={onRotationMouseDown} onResize={onResizeMouseDown} />;
-};
-
 // ============================================================================
 // Layer Styles
 // ============================================================================
 
-const LAYER_STYLE: React.CSSProperties = {
+const PORTAL_CONTENT_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  pointerEvents: 'none',
+  overflow: 'visible'
+};
+
+const INTERACTION_LAYER_STYLE: React.CSSProperties = {
   position: 'absolute',
   top: 0,
   left: 0,
@@ -496,12 +509,10 @@ const CLICK_CAPTURE_STYLE: React.CSSProperties = {
   zIndex: 8
 };
 
-/** Get center position for shape annotations (lines use midpoint) */
 function getShapeCenter(annotation: FreeShapeAnnotation): { x: number; y: number } {
   return annotation.shapeType === 'line' ? getLineCenter(annotation) : annotation.position;
 }
 
-/** Create bound callback props for ShapeAnnotationItem to reduce main component complexity */
 function createAnnotationCallbacks(
   annotation: FreeShapeAnnotation,
   handlers: {
@@ -550,14 +561,29 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   onAnnotationSelect,
   onAnnotationToggleSelect,
   onAnnotationBoxSelect,
+  shapeLayerNode,
   isGeoMode,
   geoMode,
   mapLibreState,
   onGeoPositionChange
-  // Note: onEndGeoPositionChange intentionally not destructured - will be used when line endpoint geo mode is implemented
 }) => {
-  const layerRef = useRef<HTMLDivElement>(null);
   const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeShapeLayer');
+
+  // Track drag positions for syncing background layer during drag
+  const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({});
+
+  const setDragPosition = React.useCallback((id: string, position: { x: number; y: number }) => {
+    setDragPositions(prev => ({ ...prev, [id]: position }));
+  }, []);
+
+  const clearDragPosition = React.useCallback((id: string) => {
+    setDragPositions(prev => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
 
   useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, getShapeCenter, 'FreeShapeLayer');
 
@@ -569,18 +595,40 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
     onGeoPositionChange
   };
 
-  return (
-    <div ref={layerRef} className="free-shape-layer" style={LAYER_STYLE}>
-      {isAddShapeMode && <div style={CLICK_CAPTURE_STYLE} onClick={handleLayerClick} />}
+  // Background content: shape visuals rendered into cytoscape-layer (below nodes)
+  const backgroundContent = shapeLayerNode && (
+    <div className="free-shape-layer-background" style={PORTAL_CONTENT_STYLE}>
+      {annotations.map(annotation => {
+        // Use drag position if available, otherwise compute from model/geo
+        const dragPos = dragPositions[annotation.id];
+        const pos = dragPos
+          ? { x: dragPos.x, y: dragPos.y, scale: 1 }
+          : computeShapeRenderedPosition(annotation, mapLibreState, isGeoMode);
+        return (
+          <ShapeBackgroundItem
+            key={annotation.id}
+            annotation={annotation}
+            position={pos}
+          />
+        );
+      })}
+    </div>
+  );
+
+  // Interaction content: handles and hit areas (above nodes in main DOM)
+  const interactionContent = (
+    <div className="free-shape-layer-interaction" style={INTERACTION_LAYER_STYLE}>
       {annotations.map(annotation => {
         const callbacks = createAnnotationCallbacks(annotation, handlers);
         return (
-          <ShapeAnnotationItem
+          <ShapeInteractionItem
             key={annotation.id}
             annotation={annotation}
             cy={cy}
             isLocked={isLocked}
             isSelected={selectedAnnotationIds.has(annotation.id)}
+            onVisualPositionChange={(pos) => setDragPosition(annotation.id, pos)}
+            onVisualPositionClear={() => clearDragPosition(annotation.id)}
             isGeoMode={isGeoMode}
             geoMode={geoMode}
             mapLibreState={mapLibreState}
@@ -589,6 +637,17 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
         );
       })}
     </div>
+  );
+
+  return (
+    <>
+      {/* Shape visuals rendered into cytoscape-layer (below nodes) */}
+      {shapeLayerNode && createPortal(backgroundContent, shapeLayerNode)}
+      {/* Interaction layer (above nodes) */}
+      {interactionContent}
+      {/* Click capture overlay for add-shape mode */}
+      {isAddShapeMode && <div style={CLICK_CAPTURE_STYLE} onClick={handleLayerClick} />}
+    </>
   );
 };
 

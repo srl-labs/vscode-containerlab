@@ -18,6 +18,9 @@ interface UseAnnotationDragOptions {
   modelPosition: { x: number; y: number };
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;
+  // Drag visual feedback callbacks (for syncing with background layers)
+  onDragMove?: (modelPosition: { x: number; y: number }) => void;
+  onDragEnd?: () => void;
   // Geo mode options
   isGeoMode?: boolean;
   geoMode?: 'pan' | 'edit';
@@ -158,7 +161,9 @@ function useDragHandlers(
   setRenderedPos: React.Dispatch<React.SetStateAction<RenderedPosition>>,
   onPositionChange: (position: { x: number; y: number }) => void,
   mapLibreState?: MapLibreState | null,
-  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void
+  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void,
+  onDragMove?: (modelPosition: { x: number; y: number }) => void,
+  onDragEnd?: () => void
 ): void {
   useEffect(() => {
     if (!isDragging) return;
@@ -171,6 +176,12 @@ function useDragHandlers(
         const zoomFactor = getZoomFactor(cy, mapLibreState);
         const { deltaX, deltaY } = calculateDelta(e, dragStartRef.current, zoomFactor);
         handleNonGeoModeMove(cy, dragStartRef.current, deltaX, deltaY, setRenderedPos);
+        // Report model position during drag for background layer sync
+        if (onDragMove) {
+          const newModelX = dragStartRef.current.modelX + deltaX;
+          const newModelY = dragStartRef.current.modelY + deltaY;
+          onDragMove({ x: newModelX, y: newModelY });
+        }
       }
     };
 
@@ -184,6 +195,8 @@ function useDragHandlers(
         finalizeNonGeoDrag(cy, e, dragStartRef.current, modelPosition, onPositionChange);
       }
       dragStartRef.current = null;
+      // Notify that drag ended (clear visual override)
+      onDragEnd?.();
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -192,7 +205,7 @@ function useDragHandlers(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, cy, modelPosition.x, modelPosition.y, dragStartRef, setIsDragging, setRenderedPos, onPositionChange, mapLibreState, onGeoPositionChange]);
+  }, [isDragging, cy, modelPosition.x, modelPosition.y, dragStartRef, setIsDragging, setRenderedPos, onPositionChange, mapLibreState, onGeoPositionChange, onDragMove, onDragEnd]);
 }
 
 export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotationDragReturn {
@@ -201,6 +214,8 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
     modelPosition,
     isLocked,
     onPositionChange,
+    onDragMove,
+    onDragEnd,
     isGeoMode,
     geoMode,
     geoCoordinates,
@@ -225,7 +240,9 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
     setRenderedPos,
     onPositionChange,
     mapLibreState,
-    onGeoPositionChange
+    onGeoPositionChange,
+    onDragMove,
+    onDragEnd
   );
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

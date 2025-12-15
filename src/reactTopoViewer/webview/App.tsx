@@ -51,6 +51,7 @@ import {
   useAppGroupUndoHandlers,
   useGroupDragUndo,
   useGroupLayer,
+  useShapeLayer,
   useNodeReparent,
   useGroupUndoRedoHandlers,
   // UI hooks
@@ -597,6 +598,9 @@ export const App: React.FC = () => {
   // Create group background + interaction layers using cytoscape-layers
   const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cyInstance);
 
+  // Create shape layer below nodes using cytoscape-layers
+  const { shapeLayerNode } = useShapeLayer(cyInstance);
+
   // Shortcut display hook
   const shortcutDisplay = useShortcutDisplay();
 
@@ -736,6 +740,7 @@ export const App: React.FC = () => {
           annotations={freeShapeAnnotations.annotations}
           isLocked={state.isLocked}
           isAddShapeMode={freeShapeAnnotations.isAddShapeMode}
+          shapeLayerNode={shapeLayerNode}
           onAnnotationEdit={freeShapeAnnotations.editAnnotation}
           onAnnotationDelete={freeShapeUndoHandlers.deleteAnnotationWithUndo}
           onPositionChange={freeShapeUndoHandlers.updatePositionWithUndo}
