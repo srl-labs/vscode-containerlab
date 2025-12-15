@@ -83,6 +83,17 @@ export const sampleElements: CyElement[] = [
     },
     position: { x: 500, y: 400 },
   },
+  // Network node (management network)
+  {
+    group: 'nodes',
+    data: {
+      id: 'mgmt-net',
+      name: 'mgmt-net',
+      type: 'host',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 600, y: 100 },
+  },
 
   // Edges - Spine to Leaf connections
   {
@@ -144,6 +155,17 @@ export const sampleElements: CyElement[] = [
       target: 'client2',
       sourceEndpoint: 'e1-1',
       targetEndpoint: 'eth1',
+    },
+  },
+  // Edge to network node (should be dashed with stub-link class)
+  {
+    group: 'edges',
+    data: {
+      id: 'spine1-mgmt',
+      source: 'spine1',
+      target: 'mgmt-net',
+      sourceEndpoint: 'mgmt0',
+      targetEndpoint: 'host',
     },
   },
 ];
@@ -776,6 +798,258 @@ export function buildInitialData(options: {
  * Empty topology for testing new topology creation
  */
 export const emptyElements: CyElement[] = [];
+
+/**
+ * Network topology - showcases all network types with connections
+ * Network types: host, mgmt-net, macvlan, vxlan, vxlan-stitch, dummy, bridge, ovs-bridge
+ */
+export const networkElements: CyElement[] = [
+  // Central router node
+  {
+    group: 'nodes',
+    data: {
+      id: 'router1',
+      name: 'router1',
+      kind: 'nokia_srlinux',
+      type: 'ixrd3',
+      image: 'ghcr.io/nokia/srlinux:latest',
+      topoViewerRole: 'router',
+    },
+    position: { x: 400, y: 300 },
+  },
+  // Second router for additional connections
+  {
+    group: 'nodes',
+    data: {
+      id: 'router2',
+      name: 'router2',
+      kind: 'nokia_srlinux',
+      type: 'ixrd2',
+      image: 'ghcr.io/nokia/srlinux:latest',
+      topoViewerRole: 'router',
+    },
+    position: { x: 600, y: 300 },
+  },
+  // Client node
+  {
+    group: 'nodes',
+    data: {
+      id: 'client1',
+      name: 'client1',
+      kind: 'linux',
+      image: 'ghcr.io/srl-labs/network-multitool:latest',
+      topoViewerRole: 'client',
+    },
+    position: { x: 500, y: 450 },
+  },
+
+  // === Network Nodes (all types) ===
+
+  // Host network
+  {
+    group: 'nodes',
+    data: {
+      id: 'host:eth0',
+      name: 'host:eth0',
+      type: 'host',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 200, y: 100 },
+  },
+  // Management network
+  {
+    group: 'nodes',
+    data: {
+      id: 'mgmt-net:eth0',
+      name: 'mgmt-net:eth0',
+      type: 'mgmt-net',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 400, y: 100 },
+  },
+  // Macvlan network
+  {
+    group: 'nodes',
+    data: {
+      id: 'macvlan:bond0',
+      name: 'macvlan:bond0',
+      type: 'macvlan',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 600, y: 100 },
+  },
+  // VXLAN network
+  {
+    group: 'nodes',
+    data: {
+      id: 'vxlan:vni100',
+      name: 'vxlan:vni100',
+      type: 'vxlan',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 800, y: 100 },
+  },
+  // VXLAN Stitch network
+  {
+    group: 'nodes',
+    data: {
+      id: 'vxlan-stitch:vni200',
+      name: 'vxlan-stitch:vni200',
+      type: 'vxlan-stitch',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 200, y: 500 },
+  },
+  // Dummy network
+  {
+    group: 'nodes',
+    data: {
+      id: 'dummy-net1',
+      name: 'dummy-net1',
+      type: 'dummy',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 800, y: 300 },
+  },
+  // Bridge network
+  {
+    group: 'nodes',
+    data: {
+      id: 'br-lab1',
+      name: 'br-lab1',
+      type: 'bridge',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 200, y: 300 },
+  },
+  // OVS Bridge network
+  {
+    group: 'nodes',
+    data: {
+      id: 'ovs-br1',
+      name: 'ovs-br1',
+      type: 'ovs-bridge',
+      topoViewerRole: 'cloud',
+    },
+    position: { x: 800, y: 500 },
+  },
+
+  // === Edges ===
+
+  // Router to router connection (regular edge - solid)
+  {
+    group: 'edges',
+    data: {
+      id: 'router1-router2',
+      source: 'router1',
+      target: 'router2',
+      sourceEndpoint: 'e1-1',
+      targetEndpoint: 'e1-1',
+    },
+  },
+  // Router to client (regular edge - solid)
+  {
+    group: 'edges',
+    data: {
+      id: 'router1-client1',
+      source: 'router1',
+      target: 'client1',
+      sourceEndpoint: 'e1-2',
+      targetEndpoint: 'eth1',
+    },
+  },
+
+  // === Network connections (should all be dashed with stub-link) ===
+
+  // Host network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'router1-host',
+      source: 'router1',
+      target: 'host:eth0',
+      sourceEndpoint: 'mgmt0',
+      targetEndpoint: 'eth0',
+    },
+  },
+  // Management network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'router2-mgmt',
+      source: 'router2',
+      target: 'mgmt-net:eth0',
+      sourceEndpoint: 'mgmt0',
+      targetEndpoint: 'eth0',
+    },
+  },
+  // Macvlan network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'router2-macvlan',
+      source: 'router2',
+      target: 'macvlan:bond0',
+      sourceEndpoint: 'e1-2',
+      targetEndpoint: 'bond0',
+    },
+  },
+  // VXLAN network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'router2-vxlan',
+      source: 'router2',
+      target: 'vxlan:vni100',
+      sourceEndpoint: 'e1-3',
+      targetEndpoint: 'vni100',
+    },
+  },
+  // VXLAN Stitch network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'client1-vxlan-stitch',
+      source: 'client1',
+      target: 'vxlan-stitch:vni200',
+      sourceEndpoint: 'eth2',
+      targetEndpoint: 'vni200',
+    },
+  },
+  // Dummy network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'router2-dummy',
+      source: 'router2',
+      target: 'dummy-net1',
+      sourceEndpoint: 'e1-4',
+      targetEndpoint: 'dummy',
+    },
+  },
+  // Bridge network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'router1-bridge',
+      source: 'router1',
+      target: 'br-lab1',
+      sourceEndpoint: 'e1-3',
+      targetEndpoint: 'br-lab1',
+    },
+  },
+  // OVS Bridge network connection
+  {
+    group: 'edges',
+    data: {
+      id: 'client1-ovs',
+      source: 'client1',
+      target: 'ovs-br1',
+      sourceEndpoint: 'eth3',
+      targetEndpoint: 'ovs-br1',
+    },
+  },
+];
 
 /**
  * Larger topology for performance testing

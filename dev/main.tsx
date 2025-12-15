@@ -15,6 +15,7 @@ import {
   annotatedElements,
   annotatedTopologyAnnotations,
   emptyElements,
+  networkElements,
   generateLargeTopology,
   generateYamlFromElements
 } from './mockData';
@@ -57,10 +58,22 @@ function stripPositions(elements: typeof sampleElements): typeof sampleElements 
   });
 }
 
+// Default annotations for sampleWithAnnotations - node positions only
+const sampleWithAnnotationsDefault: TopologyAnnotations = {
+  freeTextAnnotations: [],
+  freeShapeAnnotations: [],
+  groupStyleAnnotations: [],
+  cloudNodeAnnotations: [],
+  nodeAnnotations: sampleElements
+    .filter(el => el.group === 'nodes' && el.position)
+    .map(el => ({ id: el.data.id as string, position: el.position! })),
+  aliasEndpointAnnotations: []
+};
+
 const devState: DevState = {
   splitViewOpen: false,
-  currentElements: stripPositions(sampleElements),  // No positions = triggers COSE layout
-  currentAnnotations: { ...emptyAnnotationsDefault },  // Start with empty annotations
+  currentElements: sampleElements,  // Use sampleWithAnnotations by default (with positions)
+  currentAnnotations: { ...sampleWithAnnotationsDefault },  // Include node positions
   clipboard: null,
   graphBatchDepth: 0,
   pendingTopologyBroadcast: false
@@ -364,16 +377,41 @@ function handleMockExtensionResponse(message: MockMessage) {
           return el;
         });
 
-        // Update node annotations (merge with existing)
+        // Initialize annotation arrays if needed
         if (!devState.currentAnnotations.nodeAnnotations) {
           devState.currentAnnotations.nodeAnnotations = [];
         }
+        if (!(devState.currentAnnotations as any).networkNodeAnnotations) {
+          (devState.currentAnnotations as any).networkNodeAnnotations = [];
+        }
+
         for (const posData of positionsArray) {
-          const existing = devState.currentAnnotations.nodeAnnotations.find(a => a.id === posData.id);
-          if (existing) {
-            existing.position = posData.position;
+          // Check if this is a network/cloud node
+          const element = devState.currentElements.find(el => el.group === 'nodes' && el.data.id === posData.id);
+          const isNetworkNode = element?.data.topoViewerRole === 'cloud';
+
+          if (isNetworkNode) {
+            // Update networkNodeAnnotations
+            const networkAnnotations = (devState.currentAnnotations as any).networkNodeAnnotations;
+            const existing = networkAnnotations.find((a: any) => a.id === posData.id);
+            if (existing) {
+              existing.position = posData.position;
+            } else {
+              networkAnnotations.push({
+                id: posData.id,
+                type: element?.data.type || 'host',
+                label: element?.data.name || posData.id,
+                position: posData.position
+              });
+            }
           } else {
-            devState.currentAnnotations.nodeAnnotations.push({ id: posData.id, position: posData.position });
+            // Update regular nodeAnnotations
+            const existing = devState.currentAnnotations.nodeAnnotations.find(a => a.id === posData.id);
+            if (existing) {
+              existing.position = posData.position;
+            } else {
+              devState.currentAnnotations.nodeAnnotations.push({ id: posData.id, position: posData.position });
+            }
           }
         }
         updateSplitViewContent();
@@ -438,7 +476,7 @@ declare global {
     __INITIAL_DATA__: ReturnType<typeof buildInitialData>;
     // Dev mode utilities (only exists in dev mode)
     __DEV__: {
-      loadTopology: (name: 'sample' | 'sampleWithAnnotations' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => void;
+      loadTopology: (name: 'sample' | 'sampleWithAnnotations' | 'annotated' | 'network' | 'empty' | 'large' | 'large100' | 'large1000') => void;
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
       toggleSplitView: () => void;
@@ -458,18 +496,19 @@ declare global {
 const initialData = buildInitialData({
   mode: 'edit',
   deploymentState: 'undeployed',
-  elements: stripPositions(sampleElements),  // No positions = triggers COSE layout
-  includeAnnotations: false  // Simulate empty annotations.json on load
+  elements: sampleElements,  // Use sampleWithAnnotations by default (with positions)
+  includeAnnotations: false  // We'll add our own annotations below
 });
 
 // Flatten annotations to top level - hooks expect __INITIAL_DATA__.freeTextAnnotations, not nested
+// Use sampleWithAnnotationsDefault (node positions only, no groups/text/shapes)
 const flattenedInitialData = {
   ...initialData,
-  freeTextAnnotations: initialData.annotations?.freeTextAnnotations,
-  freeShapeAnnotations: initialData.annotations?.freeShapeAnnotations,
-  groupStyleAnnotations: initialData.annotations?.groupStyleAnnotations,
-  nodeAnnotations: initialData.annotations?.nodeAnnotations,
-  cloudNodeAnnotations: initialData.annotations?.cloudNodeAnnotations
+  freeTextAnnotations: sampleWithAnnotationsDefault.freeTextAnnotations,
+  freeShapeAnnotations: sampleWithAnnotationsDefault.freeShapeAnnotations,
+  groupStyleAnnotations: sampleWithAnnotationsDefault.groupStyleAnnotations,
+  nodeAnnotations: sampleWithAnnotationsDefault.nodeAnnotations,
+  cloudNodeAnnotations: sampleWithAnnotationsDefault.cloudNodeAnnotations
 };
 
 window.__INITIAL_DATA__ = flattenedInitialData;
@@ -486,7 +525,7 @@ window.__DEV__ = {
    * Load different topology configurations
    * Usage: __DEV__.loadTopology('annotated')
    */
-  loadTopology: (name: 'sample' | 'sampleWithAnnotations' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => {
+  loadTopology: (name: 'sample' | 'sampleWithAnnotations' | 'annotated' | 'network' | 'empty' | 'large' | 'large100' | 'large1000') => {
     let elements;
     let annotations: TopologyAnnotations;
     const emptyAnnotations: TopologyAnnotations = {
@@ -501,6 +540,30 @@ window.__DEV__ = {
       case 'empty':
         elements = emptyElements;
         annotations = emptyAnnotations;
+        break;
+      case 'network':
+        // All network types: host, mgmt-net, macvlan, vxlan, vxlan-stitch, dummy, bridge, ovs-bridge
+        elements = networkElements;
+        annotations = {
+          freeTextAnnotations: [],
+          freeShapeAnnotations: [],
+          groupStyleAnnotations: [],
+          cloudNodeAnnotations: [],
+          // Regular nodes (non-cloud)
+          nodeAnnotations: networkElements
+            .filter(el => el.group === 'nodes' && el.position && el.data.topoViewerRole !== 'cloud')
+            .map(el => ({ id: el.data.id as string, position: el.position! })),
+          // Network/cloud nodes
+          networkNodeAnnotations: networkElements
+            .filter(el => el.group === 'nodes' && el.position && el.data.topoViewerRole === 'cloud')
+            .map(el => ({
+              id: el.data.id as string,
+              type: el.data.type as 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy' | 'bridge' | 'ovs-bridge',
+              label: el.data.name as string,
+              position: el.position!
+            })),
+          aliasEndpointAnnotations: []
+        };
         break;
       case 'large':
         elements = generateLargeTopology(25);
@@ -548,7 +611,8 @@ window.__DEV__ = {
         freeShapeAnnotations: annotations.freeShapeAnnotations,
         groupStyleAnnotations: annotations.groupStyleAnnotations,
         nodeAnnotations: annotations.nodeAnnotations,
-        cloudNodeAnnotations: annotations.cloudNodeAnnotations
+        cloudNodeAnnotations: annotations.cloudNodeAnnotations,
+        networkNodeAnnotations: (annotations as any).networkNodeAnnotations
       }
     }, '*');
     // Update split view if open
@@ -615,10 +679,11 @@ window.__DEV__ = {
 
 console.log('%c[React TopoViewer - Dev Mode]', 'color: #E91E63; font-weight: bold; font-size: 14px;');
 console.log('Available dev utilities:');
-console.log('  __DEV__.loadTopology("sample" | "sampleWithAnnotations" | "annotated" | "empty" | ...)');
+console.log('  __DEV__.loadTopology("sample" | "sampleWithAnnotations" | "annotated" | "network" | "empty" | ...)');
 console.log('    - sample: Spine-leaf without annotations.json (triggers COSE layout)');
 console.log('    - sampleWithAnnotations: Spine-leaf with saved positions and annotations');
 console.log('    - annotated: DC topology with groups, freetext, and freeshapes');
+console.log('    - network: All network types (host, mgmt-net, macvlan, vxlan, vxlan-stitch, dummy, bridge, ovs-bridge)');
 console.log('    - empty: Empty canvas (no nodes, links, or annotations)');
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed" | "unknown")');

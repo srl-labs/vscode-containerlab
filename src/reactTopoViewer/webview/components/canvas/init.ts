@@ -11,6 +11,20 @@ import { cytoscapeStyles } from './styles';
 let colaRegistered = false;
 let gridGuideRegistered = false;
 
+/**
+ * Apply stub-link class to edges connected to network nodes (cloud)
+ * This ensures dashed styling for network connections regardless of how elements were loaded
+ */
+export function applyStubLinkClasses(cy: Core): void {
+  cy.edges().forEach(edge => {
+    const sourceRole = edge.source().data('topoViewerRole');
+    const targetRole = edge.target().data('topoViewerRole');
+    if (sourceRole === 'cloud' || targetRole === 'cloud') {
+      edge.addClass('stub-link');
+    }
+  });
+}
+
 export function ensureColaRegistered(): void {
   if (!colaRegistered) {
     cytoscape.use(cola);
@@ -124,6 +138,9 @@ export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
     cy.add(elements);
   });
 
+  // Apply stub-link class to edges connected to network/cloud nodes
+  applyStubLinkClasses(cy);
+
   if (!usePresetLayout) {
     cy.layout(getLayoutOptions('cose')).run();
   } else {
@@ -156,6 +173,9 @@ export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
     const bb = firstNode.boundingBox();
     log.info(`[CytoscapeCanvas] First node - pos: (${pos.x}, ${pos.y}), bbox: w=${bb.w}, h=${bb.h}`);
   }
+
+  // Apply stub-link class to edges connected to network/cloud nodes
+  applyStubLinkClasses(cy);
 
   // Only run layout if no preset positions
   if (!usePresetLayout) {
