@@ -362,25 +362,6 @@
     </div>
 
     <div class="dev-settings-section">
-      <div class="dev-settings-label">Deployment State</div>
-      <div class="dev-settings-buttons">
-        <button class="dev-settings-btn" onclick="setDeployState('deployed')">Deployed</button>
-        <button class="dev-settings-btn active" id="stateUndeployed" onclick="setDeployState('undeployed')">Undeployed</button>
-        <button class="dev-settings-btn" onclick="setDeployState('unknown')">Unknown</button>
-      </div>
-    </div>
-
-    <div class="dev-settings-section">
-      <div class="dev-settings-label">Latency Profile</div>
-      <div class="dev-settings-buttons">
-        <button class="dev-settings-btn" onclick="setLatency('instant')" title="0ms delay">Instant</button>
-        <button class="dev-settings-btn active" id="latencyFast" onclick="setLatency('fast')" title="50-100ms delay">Fast</button>
-        <button class="dev-settings-btn" onclick="setLatency('normal')" title="150-300ms delay">Normal</button>
-        <button class="dev-settings-btn" onclick="setLatency('slow')" title="500-1000ms delay">Slow</button>
-      </div>
-    </div>
-
-    <div class="dev-settings-section">
       <div class="dev-settings-label">Split View</div>
       <div class="dev-settings-buttons">
         <button class="dev-settings-btn" id="splitViewBtn" onclick="toggleSplitView()">Toggle YAML + Annotations</button>
@@ -431,25 +412,8 @@
       document.getElementById('modeView').classList.toggle('active', mode === 'view');
     }
 
-    function setDeployState(state) {
-      if (window.__DEV__) window.__DEV__.setDeploymentState(state);
-      document.querySelectorAll('.dev-settings-section:nth-child(3) .dev-settings-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      event.target.classList.add('active');
-    }
-
     function toggleSplitView() {
       if (window.__DEV__) window.__DEV__.toggleSplitView();
-    }
-
-    function setLatency(profile) {
-      if (window.__DEV__) window.__DEV__.setLatencyProfile(profile);
-      // Update active state for latency buttons
-      document.querySelectorAll('.dev-settings-section:nth-child(4) .dev-settings-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      event.target.classList.add('active');
     }
 
     // Close panel when clicking outside
