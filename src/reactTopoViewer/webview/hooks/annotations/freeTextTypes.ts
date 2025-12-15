@@ -28,6 +28,8 @@ export interface UseFreeTextAnnotationsReturn {
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
+  /** Update geo coordinates for an annotation */
+  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
   getUndoRedoAction: (before: FreeTextAnnotation | null, after: FreeTextAnnotation | null) => AnnotationUndoAction;
   /** IDs of currently selected annotations */

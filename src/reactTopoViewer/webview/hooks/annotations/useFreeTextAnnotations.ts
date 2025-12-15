@@ -91,6 +91,7 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
     updatePosition: actions.updatePosition,
     updateSize: actions.updateSize,
     updateRotation: actions.updateRotation,
+    updateGeoPosition: actions.updateGeoPosition,
     loadAnnotations: actions.loadAnnotations,
     getUndoRedoAction,
     selectedAnnotationIds,

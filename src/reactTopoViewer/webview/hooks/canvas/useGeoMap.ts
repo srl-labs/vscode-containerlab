@@ -5,7 +5,7 @@
  * This replaces the previous Leaflet-based implementation with MapLibre GL
  * for smoother WebGL-powered animations that match Google Maps quality.
  */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import type { Core } from 'cytoscape';
 import {
   MapLibreState,
@@ -21,10 +21,13 @@ export interface UseGeoMapOptions {
   cyInstance: Core | null;
   isGeoLayout: boolean;
   geoMode: 'pan' | 'edit';
+  /** Callback fired when geomap is fully initialized */
+  onGeoMapReady?: (state: MapLibreState) => void;
 }
 
 export interface UseGeoMapReturn {
   isGeoMapActive: boolean;
+  mapLibreState: MapLibreState | null;
 }
 
 type WritableRef<T> = { current: T };
@@ -35,76 +38,15 @@ function cancelPendingMoveRequest(moveRafRef: WritableRef<number | null>): void 
   moveRafRef.current = null;
 }
 
-function resetGeoMapState(
-  cyInstance: Core | null,
-  stateRef: WritableRef<MapLibreState>,
-  moveRafRef: WritableRef<number | null>,
-  handleMove: () => void,
-  handleDragFree: (event: any) => void
-): void {
-  if (!stateRef.current.isInitialized) return;
-  cancelPendingMoveRequest(moveRafRef);
-  cleanupMapLibreState(cyInstance, stateRef.current, handleMove, handleDragFree);
-  stateRef.current = createInitialMapLibreState();
-}
-
-interface GeoLifecycleParams {
-  cyInstance: Core | null;
-  isGeoLayout: boolean;
-  geoMode: 'pan' | 'edit';
-  stateRef: WritableRef<MapLibreState>;
-  isInitializingRef: WritableRef<boolean>;
-  moveRafRef: WritableRef<number | null>;
-  handleMove: () => void;
-  handleDragFree: (event: any) => void;
-}
-
-function manageGeoLifecycle({
-  cyInstance,
-  isGeoLayout,
-  geoMode,
-  stateRef,
-  isInitializingRef,
-  moveRafRef,
-  handleMove,
-  handleDragFree
-}: GeoLifecycleParams): (() => void) | void {
-  let didCancel = false;
-
-  if (!cyInstance || !isGeoLayout) {
-    resetGeoMapState(cyInstance, stateRef, moveRafRef, handleMove, handleDragFree);
-    isInitializingRef.current = false;
-    return;
-  }
-
-  if (stateRef.current.isInitialized || isInitializingRef.current) {
-    return;
-  }
-
-  isInitializingRef.current = true;
-  void (async () => {
-    try {
-      await initializeMapLibre(cyInstance, stateRef.current, handleMove, handleDragFree);
-      if (!didCancel) {
-        handleGeoModeChange(cyInstance, stateRef.current, geoMode);
-      }
-    } finally {
-      isInitializingRef.current = false;
-    }
-  })();
-
-  return () => {
-    didCancel = true;
-  };
-}
-
 /**
  * Hook for managing MapLibre GL geo map integration
  */
-export function useGeoMap({ cyInstance, isGeoLayout, geoMode }: UseGeoMapOptions): UseGeoMapReturn {
+export function useGeoMap({ cyInstance, isGeoLayout, geoMode, onGeoMapReady }: UseGeoMapOptions): UseGeoMapReturn {
   const stateRef = useRef<MapLibreState>(createInitialMapLibreState());
   const isInitializingRef = useRef(false);
   const moveRafRef = useRef<number | null>(null);
+  // State to trigger re-renders when map initializes (refs don't cause re-renders)
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Map move handler - updates positions and scale on pan/zoom
   const handleMove = useCallback(() => {
@@ -128,22 +70,52 @@ export function useGeoMap({ cyInstance, isGeoLayout, geoMode }: UseGeoMapOptions
 
   // Geo map lifecycle
   useEffect(() => {
-    return manageGeoLifecycle({
-      cyInstance,
-      isGeoLayout,
-      geoMode,
-      stateRef,
-      isInitializingRef,
-      moveRafRef,
-      handleMove,
-      handleDragFree
-    });
-  }, [cyInstance, isGeoLayout, geoMode, handleMove, handleDragFree]);
+    let didCancel = false;
+
+    if (!cyInstance || !isGeoLayout) {
+      // Reset state when geomap is disabled
+      if (stateRef.current.isInitialized) {
+        cancelPendingMoveRequest(moveRafRef);
+        cleanupMapLibreState(cyInstance, stateRef.current, handleMove, handleDragFree);
+        stateRef.current = createInitialMapLibreState();
+        setIsInitialized(false);
+      }
+      isInitializingRef.current = false;
+      return;
+    }
+
+    if (stateRef.current.isInitialized || isInitializingRef.current) {
+      return;
+    }
+
+    isInitializingRef.current = true;
+    void (async () => {
+      try {
+        await initializeMapLibre(cyInstance, stateRef.current, handleMove, handleDragFree);
+        if (!didCancel && stateRef.current.isInitialized) {
+          handleGeoModeChange(cyInstance, stateRef.current, geoMode);
+          // Update state to trigger re-render so consumers get the initialized state
+          setIsInitialized(true);
+          // Notify that geomap is ready
+          onGeoMapReady?.(stateRef.current);
+        }
+      } finally {
+        isInitializingRef.current = false;
+      }
+    })();
+
+    return () => {
+      didCancel = true;
+    };
+  }, [cyInstance, isGeoLayout, geoMode, handleMove, handleDragFree, onGeoMapReady]);
 
   // Handle pan/edit mode changes
   useEffect(() => {
     handleGeoModeChange(cyInstance, stateRef.current, geoMode);
   }, [cyInstance, geoMode]);
 
-  return { isGeoMapActive: stateRef.current.isInitialized };
+  return {
+    isGeoMapActive: isInitialized,
+    mapLibreState: isInitialized ? stateRef.current : null
+  };
 }

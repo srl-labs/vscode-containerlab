@@ -159,6 +159,128 @@ function getNodeLngLat(node: any): maplibregl.LngLat | null {
   return new maplibregl.LngLat(lng, lat);
 }
 
+// ============================================================================
+// Annotation Geo Coordinate Functions
+// ============================================================================
+
+/**
+ * Project annotation geo coordinates to screen position
+ */
+export function projectAnnotationGeoCoords(
+  state: MapLibreState,
+  geoCoords: { lat: number; lng: number }
+): { x: number; y: number } | null {
+  if (!state.map || !state.isInitialized) return null;
+  const point = state.map.project(new maplibregl.LngLat(geoCoords.lng, geoCoords.lat));
+  return { x: point.x, y: point.y };
+}
+
+/**
+ * Convert screen position to geo coordinates (for dragging in geo mode)
+ */
+export function unprojectToGeoCoords(
+  state: MapLibreState,
+  screenPos: { x: number; y: number }
+): { lat: number; lng: number } | null {
+  if (!state.map || !state.isInitialized) return null;
+  const lngLat = state.map.unproject([screenPos.x, screenPos.y]);
+  return { lat: lngLat.lat, lng: lngLat.lng };
+}
+
+/**
+ * Result of assigning missing geo coordinates to annotations
+ */
+export interface AssignGeoResult<T> {
+  updated: T[];
+  hasChanges: boolean;
+}
+
+/**
+ * Base annotation type that supports geo coordinates
+ */
+interface GeoCapableAnnotation {
+  position: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
+}
+
+/**
+ * Extended annotation type for shapes with end positions (like lines)
+ */
+interface GeoCapableShapeAnnotation extends GeoCapableAnnotation {
+  endPosition?: { x: number; y: number };
+  endGeoCoordinates?: { lat: number; lng: number };
+}
+
+/**
+ * Assign missing geo coordinates to annotations based on their model position.
+ * This is called when geomap is initialized to ensure all annotations have geo coords.
+ *
+ * @param state - The MapLibre state
+ * @param annotations - Array of annotations to process
+ * @returns Object with updated annotations and flag indicating if changes were made
+ */
+export function assignMissingGeoCoordinatesToAnnotations<T extends GeoCapableAnnotation>(
+  state: MapLibreState,
+  annotations: T[]
+): AssignGeoResult<T> {
+  if (!state.map || !state.isInitialized) return { updated: annotations, hasChanges: false };
+
+  let hasChanges = false;
+  const updated = annotations.map(ann => {
+    if (!ann.geoCoordinates) {
+      const geoCoords = unprojectToGeoCoords(state, ann.position);
+      if (geoCoords) {
+        hasChanges = true;
+        return { ...ann, geoCoordinates: geoCoords };
+      }
+    }
+    return ann;
+  });
+
+  return { updated: updated as T[], hasChanges };
+}
+
+/**
+ * Assign missing geo coordinates to shape annotations, including end positions for lines.
+ *
+ * @param state - The MapLibre state
+ * @param annotations - Array of shape annotations to process
+ * @returns Object with updated annotations and flag indicating if changes were made
+ */
+export function assignMissingGeoCoordinatesToShapeAnnotations<T extends GeoCapableShapeAnnotation>(
+  state: MapLibreState,
+  annotations: T[]
+): AssignGeoResult<T> {
+  if (!state.map || !state.isInitialized) return { updated: annotations, hasChanges: false };
+
+  let hasChanges = false;
+  const updated = annotations.map(ann => {
+    let modified = { ...ann };
+
+    // Assign geo coords for main position if missing
+    if (!modified.geoCoordinates) {
+      const geoCoords = unprojectToGeoCoords(state, modified.position);
+      if (geoCoords) {
+        hasChanges = true;
+        modified = { ...modified, geoCoordinates: geoCoords };
+      }
+    }
+
+    // Assign geo coords for end position if missing (for lines)
+    if (modified.endPosition && !modified.endGeoCoordinates) {
+      const endGeoCoords = unprojectToGeoCoords(state, modified.endPosition);
+      if (endGeoCoords) {
+        hasChanges = true;
+        modified = { ...modified, endGeoCoordinates: endGeoCoords };
+      }
+    }
+
+    return modified;
+  });
+
+  return { updated: updated as T[], hasChanges };
+}
+
 /**
  * Get bounds containing all nodes
  */
@@ -178,10 +300,20 @@ function getNodeBounds(cy: Core): maplibregl.LngLatBounds | null {
 }
 
 /**
- * Update all node positions based on current map projection
+ * Update all node positions based on current map projection.
+ * Temporarily unlocks nodes to allow position updates (Cytoscape's lock()
+ * can prevent programmatic position changes in some cases).
  */
 function updateNodePositions(cy: Core, state: MapLibreState): void {
   if (!state.map) return;
+
+  // Collect locked nodes so we can re-lock them after update
+  const lockedNodes = cy.nodes().filter((node: any) => node.locked());
+
+  // Temporarily unlock all nodes to allow position updates
+  if (lockedNodes.length > 0) {
+    lockedNodes.unlock();
+  }
 
   cy.batch(() => {
     cy.nodes().forEach((node: any) => {
@@ -192,6 +324,11 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
       }
     });
   });
+
+  // Re-lock the nodes that were previously locked
+  if (lockedNodes.length > 0) {
+    lockedNodes.lock();
+  }
 }
 
 /**
@@ -511,7 +648,7 @@ export async function initializeMapLibre(
     // Store original sizes and apply initial scale
     ensureOriginalSizes(cy);
 
-    // Update positions and apply scale
+    // Update positions and apply initial scale
     updateNodePositions(cy, state);
     const factor = calculateScale(state);
     applyScale(cy, state, factor);
@@ -548,6 +685,9 @@ export function handleNodeDragFree(node: any, state: MapLibreState): void {
   updateNodeGeoData(node, state);
 }
 
+// Store wheel handler reference for cleanup
+let editModeWheelHandler: ((e: WheelEvent) => void) | null = null;
+
 /**
  * Enable full map interactivity (pan/zoom)
  */
@@ -562,14 +702,17 @@ function enableMapNavigation(map: maplibregl.Map): void {
 
 /**
  * Disable map dragging while keeping zoom controls available
+ * In edit mode, users can zoom but not pan the map
  */
 function disableMapDrag(map: maplibregl.Map): void {
   map.dragPan.disable();
-  map.scrollZoom.disable();
+  // Keep scroll zoom enabled so users can zoom while editing
+  map.scrollZoom.enable();
   map.boxZoom.disable();
   map.keyboard.disable();
   map.doubleClickZoom.disable();
-  map.touchZoomRotate.disable();
+  // Disable touch zoom/rotate panning but keep pinch zoom
+  map.touchZoomRotate.disableRotation();
 }
 
 /**
@@ -580,6 +723,12 @@ export function switchToPanMode(cy: Core, state: MapLibreState): void {
   const container = cy.container();
   if (container) {
     (container as HTMLElement).style.pointerEvents = 'none';
+
+    // Remove wheel handler from edit mode
+    if (editModeWheelHandler) {
+      container.removeEventListener('wheel', editModeWheelHandler);
+      editModeWheelHandler = null;
+    }
   }
   enableMapNavigation(state.map);
   log.info('[MapLibre] Switched to pan mode');
@@ -587,12 +736,50 @@ export function switchToPanMode(cy: Core, state: MapLibreState): void {
 
 /**
  * Switch to edit mode (node dragging enabled, map dragging disabled)
+ * Scroll wheel events are forwarded to MapLibre for zooming
  */
 export function switchToEditMode(cy: Core, state: MapLibreState): void {
   if (!state.map) return;
   const container = cy.container();
   if (container) {
     (container as HTMLElement).style.pointerEvents = '';
+
+    // Remove any existing wheel handler
+    if (editModeWheelHandler) {
+      container.removeEventListener('wheel', editModeWheelHandler);
+      editModeWheelHandler = null;
+    }
+
+    // Forward wheel events from Cytoscape container to MapLibre for zooming
+    editModeWheelHandler = (e: WheelEvent) => {
+      if (!state.map) return;
+      // Prevent default to avoid any browser zoom
+      e.preventDefault();
+
+      // Get the map canvas and forward the wheel event
+      const mapCanvas = state.mapContainer?.querySelector('canvas');
+      if (mapCanvas) {
+        // Create and dispatch a synthetic wheel event to the map
+        const syntheticEvent = new WheelEvent('wheel', {
+          deltaX: e.deltaX,
+          deltaY: e.deltaY,
+          deltaZ: e.deltaZ,
+          deltaMode: e.deltaMode,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          screenX: e.screenX,
+          screenY: e.screenY,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+          bubbles: true,
+          cancelable: true
+        });
+        mapCanvas.dispatchEvent(syntheticEvent);
+      }
+    };
+    container.addEventListener('wheel', editModeWheelHandler, { passive: false });
   }
   disableMapDrag(state.map);
   log.info('[MapLibre] Switched to edit mode');
@@ -626,11 +813,17 @@ export function cleanupMapLibreState(
 
   const container = cy.container();
 
-  // Remove container styling
+  // Remove container styling and wheel handler
   if (container) {
     container.classList.remove(CLASS_MAPLIBRE_ACTIVE);
     (container as HTMLElement).style.pointerEvents = '';
     (container as HTMLElement).style.background = '';
+
+    // Remove wheel handler if present
+    if (editModeWheelHandler) {
+      container.removeEventListener('wheel', editModeWheelHandler);
+      editModeWheelHandler = null;
+    }
   }
 
   // Remove Cytoscape event listener

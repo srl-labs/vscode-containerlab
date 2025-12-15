@@ -197,7 +197,6 @@ export class CopyPasteManager {
    * @param usedIds - Set of ids already used in the graph.
    * @param usedNames - Set of names already used in the graph.
    */
-  // eslint-disable-next-line aggregate-complexity/aggregate-complexity
   private createNode(el: any, usedIds: Set<string>, usedNames: Set<string>) {
     const isTemplateNode = el.data.id.startsWith('nodeId-');
     let newId: string;

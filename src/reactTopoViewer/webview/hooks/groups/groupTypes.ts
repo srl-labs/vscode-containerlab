@@ -104,6 +104,7 @@ export interface UseGroupsReturn {
   updateGroup: (groupId: string, updates: Partial<GroupStyleAnnotation>) => void;
   updateGroupPosition: (groupId: string, position: { x: number; y: number }) => void;
   updateGroupSize: (groupId: string, width: number, height: number) => void;
+  updateGroupGeoPosition: (groupId: string, geoCoordinates: { lat: number; lng: number }) => void;
   loadGroups: (groups: GroupStyleAnnotation[]) => void;
   getUndoRedoAction: (
     before: GroupStyleAnnotation | null,

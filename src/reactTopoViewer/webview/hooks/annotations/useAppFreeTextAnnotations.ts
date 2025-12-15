@@ -38,6 +38,8 @@ export interface UseAppFreeTextAnnotationsReturn {
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
+  /** Update geo coordinates for an annotation */
+  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   /** IDs of currently selected annotations */
   selectedAnnotationIds: Set<string>;
   /** Select a single annotation (clears existing selection) */
@@ -122,6 +124,7 @@ export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOpti
     updatePosition: freeTextAnnotations.updatePosition,
     updateSize: freeTextAnnotations.updateSize,
     updateRotation: freeTextAnnotations.updateRotation,
+    updateGeoPosition: freeTextAnnotations.updateGeoPosition,
     selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
     selectAnnotation: freeTextAnnotations.selectAnnotation,
     toggleAnnotationSelection: freeTextAnnotations.toggleAnnotationSelection,

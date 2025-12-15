@@ -99,6 +99,8 @@ export interface UseFreeShapeActionsReturn {
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
   updateEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
+  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  updateEndGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
   selectAnnotation: (id: string) => void;
   toggleAnnotationSelection: (id: string) => void;
@@ -207,6 +209,31 @@ function useAnnotationUpdates(
   }, [setAnnotations, saveAnnotationsToExtension]);
 
   return { updatePosition, updateSize, updateRotation, updateEndPosition };
+}
+
+function useGeoUpdates(
+  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
+  saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
+) {
+  const updateGeoPosition = useCallback((id: string, geoCoords: { lat: number; lng: number }) => {
+    setAnnotations(prev => {
+      const updated = updateAnnotationInList(prev, id, a => ({ ...a, geoCoordinates: geoCoords }));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+    log.info(`[FreeShape] Updated geo position for annotation ${id}`);
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  const updateEndGeoPosition = useCallback((id: string, geoCoords: { lat: number; lng: number }) => {
+    setAnnotations(prev => {
+      const updated = updateAnnotationInList(prev, id, a => ({ ...a, endGeoCoordinates: geoCoords }));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+    log.info(`[FreeShape] Updated end geo position for annotation ${id}`);
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  return { updateGeoPosition, updateEndGeoPosition };
 }
 
 function useBasicSelection(
@@ -431,6 +458,7 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
   const modeActions = useModeActions(mode, isLocked, onLockedAction, setIsAddShapeMode, setPendingShapeType);
   const crudActions = useAnnotationCrud(setAnnotations, lastStyleRef, saveAnnotationsToExtension);
   const updateActions = useAnnotationUpdates(setAnnotations, saveAnnotationsToExtension);
+  const geoActions = useGeoUpdates(setAnnotations, saveAnnotationsToExtension);
   const selectionActions = useAnnotationSelection(
     annotations,
     setAnnotations,
@@ -453,6 +481,7 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
     ...modeActions,
     ...crudActions,
     ...updateActions,
+    ...geoActions,
     ...selectionActions,
     ...copyPasteActions
   };

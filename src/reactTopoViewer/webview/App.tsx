@@ -19,6 +19,10 @@ import { SvgExportPanel } from './components/panels/SvgExportPanel';
 import { LabSettingsPanel } from './components/panels/lab-settings';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
+import {
+  assignMissingGeoCoordinatesToAnnotations,
+  assignMissingGeoCoordinatesToShapeAnnotations
+} from './hooks/canvas/maplibreUtils';
 import { ContextMenu } from './components/context-menu/ContextMenu';
 import { FreeTextEditorPanel } from './components/panels/free-text-editor';
 import { FreeShapeEditorPanel } from './components/panels/free-shape-editor';
@@ -314,7 +318,7 @@ export const App: React.FC = () => {
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
 
   // Geo map integration - manages MapLibre overlay for geographic positioning
-  useGeoMap({
+  const { mapLibreState } = useGeoMap({
     cyInstance,
     isGeoLayout: layoutControls.isGeoLayout,
     geoMode: layoutControls.geoMode
@@ -371,6 +375,76 @@ export const App: React.FC = () => {
     isLocked: state.isLocked,
     onLockedAction: () => floatingPanelRef.current?.triggerShake()
   });
+
+  // Assign geo coordinates to annotations when geomap initializes
+  // This runs once when the geomap becomes available and assigns lat/lng to any
+  // freeText, freeShape, or group annotation that doesn't have geoCoordinates yet
+  const geoAssignedRef = React.useRef(false);
+  React.useEffect(() => {
+    // Only run when geomap is initialized and is the active layout
+    if (!mapLibreState?.isInitialized || !layoutControls.isGeoLayout) {
+      // Reset flag when geomap is disabled so we reassign next time
+      geoAssignedRef.current = false;
+      return;
+    }
+    // Only assign once per geomap session
+    if (geoAssignedRef.current) return;
+    geoAssignedRef.current = true;
+
+    // Assign geo coordinates to freeText annotations
+    const freeTextResult = assignMissingGeoCoordinatesToAnnotations(
+      mapLibreState,
+      freeTextAnnotations.annotations
+    );
+    if (freeTextResult.hasChanges) {
+      freeTextResult.updated.forEach(ann => {
+        if (ann.geoCoordinates) {
+          freeTextAnnotations.updateGeoPosition(ann.id, ann.geoCoordinates);
+        }
+      });
+    }
+
+    // Assign geo coordinates to freeShape annotations (handles both position and endPosition)
+    const freeShapeResult = assignMissingGeoCoordinatesToShapeAnnotations(
+      mapLibreState,
+      freeShapeAnnotations.annotations
+    );
+    if (freeShapeResult.hasChanges) {
+      freeShapeResult.updated.forEach(ann => {
+        if (ann.geoCoordinates) {
+          freeShapeAnnotations.updateGeoPosition(ann.id, ann.geoCoordinates);
+        }
+        // For line shapes, also update end geo coordinates
+        if ('endGeoCoordinates' in ann && ann.endGeoCoordinates) {
+          freeShapeAnnotations.updateEndGeoPosition(ann.id, ann.endGeoCoordinates);
+        }
+      });
+    }
+
+    // Assign geo coordinates to group annotations
+    const groupResult = assignMissingGeoCoordinatesToAnnotations(
+      mapLibreState,
+      groups.groups
+    );
+    if (groupResult.hasChanges) {
+      groupResult.updated.forEach(grp => {
+        if (grp.geoCoordinates) {
+          groups.updateGroupGeoPosition(grp.id, grp.geoCoordinates);
+        }
+      });
+    }
+  }, [
+    mapLibreState?.isInitialized,
+    layoutControls.isGeoLayout,
+    freeTextAnnotations.annotations,
+    freeTextAnnotations.updateGeoPosition,
+    freeShapeAnnotations.annotations,
+    freeShapeAnnotations.updateGeoPosition,
+    freeShapeAnnotations.updateEndGeoPosition,
+    groups.groups,
+    groups.updateGroupGeoPosition,
+    mapLibreState
+  ]);
 
   // Combined annotation change handler for undo/redo (freeShape + group)
   const { applyAnnotationChange, applyGroupMoveChange } = useCombinedAnnotationApplier({
@@ -632,12 +706,16 @@ export const App: React.FC = () => {
           onPositionChange={groupDragUndo.onGroupDragEnd}
           onDragMove={groupDragUndo.onGroupDragMove}
           onSizeChange={groupUndoHandlers.updateGroupSizeWithUndo}
+          isGeoMode={layoutControls.isGeoLayout}
+          geoMode={layoutControls.geoMode}
+          mapLibreState={mapLibreState}
+          onGeoPositionChange={groups.updateGroupGeoPosition}
         />
-	        <FreeTextLayer
-	          cy={cyInstance}
-	          annotations={freeTextAnnotations.annotations}
-	          isLocked={state.isLocked}
-	          isAddTextMode={freeTextAnnotations.isAddTextMode}
+        <FreeTextLayer
+          cy={cyInstance}
+          annotations={freeTextAnnotations.annotations}
+          isLocked={state.isLocked}
+          isAddTextMode={freeTextAnnotations.isAddTextMode}
           onAnnotationDoubleClick={freeTextAnnotations.editAnnotation}
           onAnnotationDelete={freeTextAnnotations.deleteAnnotation}
           onPositionChange={freeTextAnnotations.updatePosition}
@@ -646,9 +724,13 @@ export const App: React.FC = () => {
           onCanvasClick={freeTextAnnotations.handleCanvasClick}
           selectedAnnotationIds={freeTextAnnotations.selectedAnnotationIds}
           onAnnotationSelect={freeTextAnnotations.selectAnnotation}
-	          onAnnotationToggleSelect={freeTextAnnotations.toggleAnnotationSelection}
-	          onAnnotationBoxSelect={freeTextAnnotations.boxSelectAnnotations}
-	        />
+          onAnnotationToggleSelect={freeTextAnnotations.toggleAnnotationSelection}
+          onAnnotationBoxSelect={freeTextAnnotations.boxSelectAnnotations}
+          isGeoMode={layoutControls.isGeoLayout}
+          geoMode={layoutControls.geoMode}
+          mapLibreState={mapLibreState}
+          onGeoPositionChange={freeTextAnnotations.updateGeoPosition}
+        />
         <FreeShapeLayer
           cy={cyInstance}
           annotations={freeShapeAnnotations.annotations}
@@ -665,6 +747,11 @@ export const App: React.FC = () => {
           onAnnotationSelect={freeShapeAnnotations.selectAnnotation}
           onAnnotationToggleSelect={freeShapeAnnotations.toggleAnnotationSelection}
           onAnnotationBoxSelect={freeShapeAnnotations.boxSelectAnnotations}
+          isGeoMode={layoutControls.isGeoLayout}
+          geoMode={layoutControls.geoMode}
+          mapLibreState={mapLibreState}
+          onGeoPositionChange={freeShapeAnnotations.updateGeoPosition}
+          onEndGeoPositionChange={freeShapeAnnotations.updateEndGeoPosition}
         />
 	        <NodeInfoPanel
 	          isVisible={shouldShowInfoPanel(state.selectedNode, state.mode)}

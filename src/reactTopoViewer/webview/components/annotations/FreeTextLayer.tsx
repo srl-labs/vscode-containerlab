@@ -13,6 +13,7 @@ import {
   useAnnotationBoxSelection
 } from '../../hooks/annotations';
 import { renderMarkdown } from '../../utils/markdownRenderer';
+import { MapLibreState } from '../../hooks/canvas/maplibreUtils';
 
 // ============================================================================
 // Types
@@ -37,6 +38,11 @@ interface FreeTextLayerProps {
   onAnnotationToggleSelect?: (id: string) => void;
   /** Handler for box selection of multiple annotations */
   onAnnotationBoxSelect?: (ids: string[]) => void;
+  // Geo mode props
+  isGeoMode?: boolean;
+  geoMode?: 'pan' | 'edit';
+  mapLibreState?: MapLibreState | null;
+  onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
 
 // ============================================================================
@@ -159,6 +165,11 @@ interface TextAnnotationItemProps {
   onSizeChange: (width: number, height: number) => void;
   onSelect: () => void;
   onToggleSelect: () => void;
+  // Geo mode props
+  isGeoMode?: boolean;
+  geoMode?: 'pan' | 'edit';
+  mapLibreState?: MapLibreState | null;
+  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
 }
 
 /** Get cursor style for annotation content */
@@ -315,58 +326,79 @@ const AnnotationHandles: React.FC<{
   </>
 );
 
+/** Hook to compute all styles for a text annotation to reduce component complexity */
+function useTextAnnotationStyles(
+  annotation: FreeTextAnnotation,
+  renderedPos: { x: number; y: number; zoom: number },
+  isInteracting: boolean,
+  isHovered: boolean,
+  effectivelyLocked: boolean,
+  isDragging: boolean
+) {
+  return useMemo(() => ({
+    outerWrapperStyle: computeOuterWrapperStyle(renderedPos, annotation.zIndex || 11),
+    innerWrapperStyle: computeInnerWrapperStyle(renderedPos.zoom, annotation.rotation || 0),
+    contentStyle: computeContentStyle(
+      computeAnnotationStyle(annotation, renderedPos, isInteracting, isHovered, effectivelyLocked),
+      effectivelyLocked,
+      isDragging
+    ),
+    markdownStyle: getMarkdownContentStyle(annotation)
+  }), [annotation, renderedPos, isInteracting, isHovered, effectivelyLocked, isDragging]);
+}
+
+/** Calculate if annotation should be effectively locked (geo pan mode or locked state) */
+function calculateEffectivelyLocked(isLocked: boolean, isGeoMode?: boolean, geoMode?: 'pan' | 'edit'): boolean {
+  return isLocked || (isGeoMode === true && geoMode === 'pan');
+}
+
+/** Calculate if handles should be shown */
+function calculateShowHandles(isHovered: boolean, isInteracting: boolean, isSelected: boolean, effectivelyLocked: boolean): boolean {
+  return (isHovered || isInteracting || isSelected) && !effectivelyLocked;
+}
+
 const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
-  annotation, cy, isLocked, isSelected, onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange, onSelect, onToggleSelect
+  annotation, cy, isLocked, isSelected, onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange, onSelect, onToggleSelect,
+  isGeoMode, geoMode, mapLibreState, onGeoPositionChange
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const effectivelyLocked = calculateEffectivelyLocked(isLocked, isGeoMode, geoMode);
 
-  const interactions = useAnnotationInteractions(cy, annotation, isLocked, onPositionChange, onRotationChange, onSizeChange, contentRef);
+  const interactions = useAnnotationInteractions(
+    cy, annotation, effectivelyLocked, onPositionChange, onRotationChange, onSizeChange, contentRef,
+    isGeoMode ?? false, geoMode, mapLibreState ?? null, onGeoPositionChange
+  );
   const { isDragging, isRotating, isResizing, renderedPos, handleMouseDown, handleRotationMouseDown, handleResizeMouseDown } = interactions;
-  const { contextMenu, handleClick, handleDoubleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(isLocked, onSelect, onToggleSelect, onDoubleClick);
+  const { contextMenu, handleClick, handleDoubleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, onDoubleClick);
 
   const isInteracting = isDragging || isRotating || isResizing;
-  const showHandles = (isHovered || isInteracting || isSelected) && !isLocked;
+  const showHandles = calculateShowHandles(isHovered, isInteracting, isSelected, effectivelyLocked);
   const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
-
-  const outerWrapperStyle = computeOuterWrapperStyle(renderedPos, annotation.zIndex || 11);
-  const innerWrapperStyle = computeInnerWrapperStyle(renderedPos.zoom, annotation.rotation || 0);
-  const baseStyle = computeAnnotationStyle(annotation, renderedPos, isInteracting, isHovered, isLocked);
-  const contentStyle = computeContentStyle(baseStyle, isLocked, isDragging);
-  const markdownStyle = getMarkdownContentStyle(annotation);
+  const styles = useTextAnnotationStyles(annotation, renderedPos, isInteracting, isHovered, effectivelyLocked, isDragging);
 
   return (
     <>
-      {/* Outer wrapper: positions center at rendered coordinates */}
-      <div style={outerWrapperStyle}>
-        {/* Inner wrapper: applies scale and rotation around center */}
-        <div style={innerWrapperStyle}>
+      <div style={styles.outerWrapperStyle}>
+        <div style={styles.innerWrapperStyle}>
           <div
             ref={contentRef}
-            style={contentStyle}
+            style={styles.contentStyle}
             onClick={handleClick}
             onMouseDown={handleMouseDown}
             onDoubleClick={handleDoubleClick}
             onContextMenu={handleContextMenu}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            title={isLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
+            title={effectivelyLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
           >
-            {/* Markdown content with scrolling when resized */}
-            <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
-            {/* Handles inside content div for proper positioning */}
+            <div className="free-text-markdown" style={styles.markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
             {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />}
           </div>
         </div>
       </div>
-      {/* Context menu */}
       {contextMenu && (
-        <AnnotationContextMenu
-          position={contextMenu}
-          onEdit={onDoubleClick}
-          onDelete={onDelete}
-          onClose={closeContextMenu}
-        />
+        <AnnotationContextMenu position={contextMenu} onEdit={onDoubleClick} onDelete={onDelete} onClose={closeContextMenu} />
       )}
     </>
   );
@@ -401,6 +433,37 @@ const CLICK_CAPTURE_STYLE: React.CSSProperties = {
 };
 
 // ============================================================================
+// Helper for callback binding
+// ============================================================================
+
+/** Create bound callback props for TextAnnotationItem to reduce main component complexity */
+function createTextAnnotationCallbacks(
+  annotation: FreeTextAnnotation,
+  handlers: {
+    onAnnotationDoubleClick: (id: string) => void;
+    onAnnotationDelete: (id: string) => void;
+    onPositionChange: (id: string, position: { x: number; y: number }) => void;
+    onRotationChange: (id: string, rotation: number) => void;
+    onSizeChange: (id: string, width: number, height: number) => void;
+    onAnnotationSelect?: (id: string) => void;
+    onAnnotationToggleSelect?: (id: string) => void;
+    onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  }
+) {
+  const id = annotation.id;
+  return {
+    onDoubleClick: () => handlers.onAnnotationDoubleClick(id),
+    onDelete: () => handlers.onAnnotationDelete(id),
+    onPositionChange: (pos: { x: number; y: number }) => handlers.onPositionChange(id, pos),
+    onRotationChange: (rotation: number) => handlers.onRotationChange(id, rotation),
+    onSizeChange: (width: number, height: number) => handlers.onSizeChange(id, width, height),
+    onSelect: () => handlers.onAnnotationSelect?.(id),
+    onToggleSelect: () => handlers.onAnnotationToggleSelect?.(id),
+    onGeoPositionChange: handlers.onGeoPositionChange ? (geoCoords: { lat: number; lng: number }) => handlers.onGeoPositionChange!(id, geoCoords) : undefined
+  };
+}
+
+// ============================================================================
 // Main Layer Component
 // ============================================================================
 
@@ -410,7 +473,11 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
   selectedAnnotationIds = new Set(),
   onAnnotationSelect,
   onAnnotationToggleSelect,
-  onAnnotationBoxSelect
+  onAnnotationBoxSelect,
+  isGeoMode,
+  geoMode,
+  mapLibreState,
+  onGeoPositionChange
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
   const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeTextLayer');
@@ -420,25 +487,30 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
 
   if (!cy || (annotations.length === 0 && !isAddTextMode)) return null;
 
+  const handlers = {
+    onAnnotationDoubleClick, onAnnotationDelete, onPositionChange, onRotationChange,
+    onSizeChange, onAnnotationSelect, onAnnotationToggleSelect, onGeoPositionChange
+  };
+
   return (
     <div ref={layerRef} className="free-text-layer" style={LAYER_STYLE}>
       {isAddTextMode && <div style={CLICK_CAPTURE_STYLE} onClick={handleLayerClick} />}
-      {annotations.map(annotation => (
-        <TextAnnotationItem
-          key={annotation.id}
-          annotation={annotation}
-          cy={cy}
-          isLocked={isLocked}
-          isSelected={selectedAnnotationIds.has(annotation.id)}
-          onDoubleClick={() => onAnnotationDoubleClick(annotation.id)}
-          onDelete={() => onAnnotationDelete(annotation.id)}
-          onPositionChange={(pos) => onPositionChange(annotation.id, pos)}
-          onRotationChange={(rotation) => onRotationChange(annotation.id, rotation)}
-          onSizeChange={(width, height) => onSizeChange(annotation.id, width, height)}
-          onSelect={() => onAnnotationSelect?.(annotation.id)}
-          onToggleSelect={() => onAnnotationToggleSelect?.(annotation.id)}
-        />
-      ))}
+      {annotations.map(annotation => {
+        const callbacks = createTextAnnotationCallbacks(annotation, handlers);
+        return (
+          <TextAnnotationItem
+            key={annotation.id}
+            annotation={annotation}
+            cy={cy}
+            isLocked={isLocked}
+            isSelected={selectedAnnotationIds.has(annotation.id)}
+            isGeoMode={isGeoMode}
+            geoMode={geoMode}
+            mapLibreState={mapLibreState}
+            {...callbacks}
+          />
+        );
+      })}
     </div>
   );
 };

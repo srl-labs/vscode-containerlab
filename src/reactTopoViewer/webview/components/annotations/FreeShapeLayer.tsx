@@ -16,6 +16,7 @@ import {
 } from '../../hooks/annotations';
 import { buildShapeSvg } from './freeShapeLayerHelpers';
 import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
+import { MapLibreState } from '../../hooks/canvas/maplibreUtils';
 
 // ============================================================================
 // Types
@@ -37,6 +38,12 @@ interface FreeShapeLayerProps {
   onAnnotationSelect?: (id: string) => void;
   onAnnotationToggleSelect?: (id: string) => void;
   onAnnotationBoxSelect?: (ids: string[]) => void;
+  // Geo mode props
+  isGeoMode?: boolean;
+  geoMode?: 'pan' | 'edit';
+  mapLibreState?: MapLibreState | null;
+  onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  onEndGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
 
 // ============================================================================
@@ -313,6 +320,12 @@ interface ShapeAnnotationItemProps {
   onEndPositionChange: (endPosition: { x: number; y: number }) => void;
   onSelect: () => void;
   onToggleSelect: () => void;
+  // Geo mode props
+  isGeoMode?: boolean;
+  geoMode?: 'pan' | 'edit';
+  mapLibreState?: MapLibreState | null;
+  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
+  // Note: onEndGeoPositionChange not yet implemented - will be added when useLineResizeDrag supports geo mode
 }
 
 const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
@@ -327,10 +340,19 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
   onSizeChange,
   onEndPositionChange,
   onSelect,
-  onToggleSelect
+  onToggleSelect,
+  isGeoMode,
+  geoMode,
+  mapLibreState,
+  onGeoPositionChange
+  // [FUTURE] Use for line endpoint geo updates when useLineResizeDrag supports geo mode
+  // onEndGeoPositionChange prop intentionally ignored - not yet supported by useLineResizeDrag
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // In geo pan mode, treat as locked (no interactions)
+  const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === 'pan');
 
   const modelPosition = getModelPosition(annotation);
   const isLine = annotation.shapeType === 'line';
@@ -338,15 +360,20 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
     cy,
     modelPosition,
-    isLocked,
-    onPositionChange
+    isLocked: effectivelyLocked,
+    onPositionChange,
+    isGeoMode: isGeoMode ?? false,
+    geoMode,
+    geoCoordinates: annotation.geoCoordinates,
+    mapLibreState: mapLibreState ?? null,
+    onGeoPositionChange
   });
 
   const { isRotating, handleRotationMouseDown } = useRotationDrag({
     cy,
     renderedPos,
     currentRotation: annotation.rotation ?? 0,
-    isLocked,
+    isLocked: effectivelyLocked,
     onRotationChange
   });
 
@@ -355,21 +382,21 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
     currentWidth: annotation.width,
     currentHeight: annotation.height,
     contentRef,
-    isLocked,
+    isLocked: effectivelyLocked,
     onSizeChange
   });
 
   const { isResizing: isLineResizing, handleMouseDown: handleLineResizeMouseDown } = useLineResizeDrag(
     cy,
     annotation,
-    isLocked,
+    effectivelyLocked,
     onEndPositionChange
   );
 
-  const { contextMenu, handleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(isLocked, onSelect, onToggleSelect);
+  const { contextMenu, handleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect);
 
   const isInteracting = [isDragging, isRotating, isBoxResizing, isLineResizing].some(Boolean);
-  const showHandles = computeShowHandles({ isHovered, isInteracting, isSelected, isLocked });
+  const showHandles = computeShowHandles({ isHovered, isInteracting, isSelected, isLocked: effectivelyLocked });
 
   const { svg, width, height, endHandlePos } = useMemo(
     () => buildShapeSvg(annotation),
@@ -383,7 +410,7 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
     position: 'relative',
     width: `${width}px`,
     height: `${height}px`,
-    cursor: getCursorStyle(isLocked, isDragging),
+    cursor: getCursorStyle(effectivelyLocked, isDragging),
     pointerEvents: 'auto'
   };
 
@@ -401,7 +428,7 @@ const ShapeAnnotationItem: React.FC<ShapeAnnotationItemProps> = ({
             onContextMenu={handleContextMenu}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            title={isLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
+            title={effectivelyLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
           >
             {svg}
             <ShapeHandles
@@ -474,6 +501,35 @@ function getShapeCenter(annotation: FreeShapeAnnotation): { x: number; y: number
   return annotation.shapeType === 'line' ? getLineCenter(annotation) : annotation.position;
 }
 
+/** Create bound callback props for ShapeAnnotationItem to reduce main component complexity */
+function createAnnotationCallbacks(
+  annotation: FreeShapeAnnotation,
+  handlers: {
+    onAnnotationEdit: (id: string) => void;
+    onAnnotationDelete: (id: string) => void;
+    onPositionChange: (id: string, position: { x: number; y: number }) => void;
+    onRotationChange: (id: string, rotation: number) => void;
+    onSizeChange: (id: string, width: number, height: number) => void;
+    onEndPositionChange: (id: string, endPosition: { x: number; y: number }) => void;
+    onAnnotationSelect?: (id: string) => void;
+    onAnnotationToggleSelect?: (id: string) => void;
+    onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  }
+) {
+  const id = annotation.id;
+  return {
+    onEdit: () => handlers.onAnnotationEdit(id),
+    onDelete: () => handlers.onAnnotationDelete(id),
+    onPositionChange: (pos: { x: number; y: number }) => handlers.onPositionChange(id, pos),
+    onRotationChange: (rotation: number) => handlers.onRotationChange(id, rotation),
+    onSizeChange: (width: number, height: number) => handlers.onSizeChange(id, width, height),
+    onEndPositionChange: (endPos: { x: number; y: number }) => handlers.onEndPositionChange(id, endPos),
+    onSelect: () => handlers.onAnnotationSelect?.(id),
+    onToggleSelect: () => handlers.onAnnotationToggleSelect?.(id),
+    onGeoPositionChange: handlers.onGeoPositionChange ? (geoCoords: { lat: number; lng: number }) => handlers.onGeoPositionChange!(id, geoCoords) : undefined
+  };
+}
+
 // ============================================================================
 // Main Layer Component
 // ============================================================================
@@ -493,7 +549,12 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   selectedAnnotationIds = new Set(),
   onAnnotationSelect,
   onAnnotationToggleSelect,
-  onAnnotationBoxSelect
+  onAnnotationBoxSelect,
+  isGeoMode,
+  geoMode,
+  mapLibreState,
+  onGeoPositionChange
+  // Note: onEndGeoPositionChange intentionally not destructured - will be used when line endpoint geo mode is implemented
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
   const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeShapeLayer');
@@ -502,26 +563,31 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
 
   if (!cy || (annotations.length === 0 && !isAddShapeMode)) return null;
 
+  const handlers = {
+    onAnnotationEdit, onAnnotationDelete, onPositionChange, onRotationChange,
+    onSizeChange, onEndPositionChange, onAnnotationSelect, onAnnotationToggleSelect,
+    onGeoPositionChange
+  };
+
   return (
     <div ref={layerRef} className="free-shape-layer" style={LAYER_STYLE}>
       {isAddShapeMode && <div style={CLICK_CAPTURE_STYLE} onClick={handleLayerClick} />}
-      {annotations.map(annotation => (
-        <ShapeAnnotationItem
-          key={annotation.id}
-          annotation={annotation}
-          cy={cy}
-          isLocked={isLocked}
-          isSelected={selectedAnnotationIds.has(annotation.id)}
-          onEdit={() => onAnnotationEdit(annotation.id)}
-          onDelete={() => onAnnotationDelete(annotation.id)}
-          onPositionChange={(pos) => onPositionChange(annotation.id, pos)}
-          onRotationChange={(rotation) => onRotationChange(annotation.id, rotation)}
-          onSizeChange={(width, height) => onSizeChange(annotation.id, width, height)}
-          onEndPositionChange={(endPos) => onEndPositionChange(annotation.id, endPos)}
-          onSelect={() => onAnnotationSelect?.(annotation.id)}
-          onToggleSelect={() => onAnnotationToggleSelect?.(annotation.id)}
-        />
-      ))}
+      {annotations.map(annotation => {
+        const callbacks = createAnnotationCallbacks(annotation, handlers);
+        return (
+          <ShapeAnnotationItem
+            key={annotation.id}
+            annotation={annotation}
+            cy={cy}
+            isLocked={isLocked}
+            isSelected={selectedAnnotationIds.has(annotation.id)}
+            isGeoMode={isGeoMode}
+            geoMode={geoMode}
+            mapLibreState={mapLibreState}
+            {...callbacks}
+          />
+        );
+      })}
     </div>
   );
 };

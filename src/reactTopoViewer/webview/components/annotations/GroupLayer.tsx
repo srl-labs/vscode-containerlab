@@ -16,6 +16,7 @@ import {
   useDragPositionOverrides,
   ResizeCorner
 } from '../../hooks/groups';
+import { MapLibreState, projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
 
 // ============================================================================
 // Types
@@ -36,6 +37,11 @@ interface GroupLayerProps {
   selectedGroupIds?: Set<string>;
   onGroupSelect?: (id: string) => void;
   onGroupToggleSelect?: (id: string) => void;
+  // Geo mode props
+  isGeoMode?: boolean;
+  geoMode?: 'pan' | 'edit';
+  mapLibreState?: MapLibreState | null;
+  onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
 
 interface GroupInteractionItemProps {
@@ -54,6 +60,9 @@ interface GroupInteractionItemProps {
   onVisualPositionClear?: (id: string) => void;
   /** Callback to show context menu - rendered outside portal to avoid transform issues */
   onShowContextMenu: (groupId: string, position: { x: number; y: number }) => void;
+  // Geo mode props
+  isGeoMode?: boolean;
+  mapLibreState?: MapLibreState | null;
 }
 
 // ============================================================================
@@ -158,6 +167,32 @@ function buildLabelStyle(
     pointerEvents: 'none',
     userSelect: 'none'
   };
+}
+
+// ============================================================================
+// Geo Position Helpers
+// ============================================================================
+
+/**
+ * Compute rendered position for a group in geo mode.
+ * If geo coordinates are available and map is initialized, project them to screen position.
+ * Otherwise fall back to model position.
+ */
+function computeGroupRenderedPosition(
+  group: GroupStyleAnnotation,
+  mapLibreState: MapLibreState | null | undefined,
+  isGeoMode: boolean | undefined
+): { x: number; y: number; scale: number } {
+  // If geo mode is active and group has geo coordinates, project them
+  if (isGeoMode && mapLibreState?.isInitialized && group.geoCoordinates) {
+    const projected = projectAnnotationGeoCoords(mapLibreState, group.geoCoordinates);
+    if (projected) {
+      const scale = calculateScale(mapLibreState);
+      return { x: projected.x, y: projected.y, scale };
+    }
+  }
+  // Fall back to model position
+  return { x: group.position.x, y: group.position.y, scale: 1 };
 }
 
 // ============================================================================
@@ -295,17 +330,23 @@ const GroupContextMenu: React.FC<{
 
 const GroupBackgroundItem: React.FC<{
   group: GroupStyleAnnotation;
-  position: { x: number; y: number };
-}> = ({ group, position }) => (
-  <div
-    style={{
-      ...buildWrapperStyle(position.x, position.y, group.width, group.height, group.zIndex ?? 5),
-      pointerEvents: 'none'
-    }}
-  >
-    <div style={buildContentStyle(group)} />
-  </div>
-);
+  position: { x: number; y: number; scale: number };
+}> = ({ group, position }) => {
+  // Apply scale to dimensions
+  const scaledWidth = group.width * position.scale;
+  const scaledHeight = group.height * position.scale;
+
+  return (
+    <div
+      style={{
+        ...buildWrapperStyle(position.x, position.y, scaledWidth, scaledHeight, group.zIndex ?? 5),
+        pointerEvents: 'none'
+      }}
+    >
+      <div style={buildContentStyle(group)} />
+    </div>
+  );
+};
 
 const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
   const {
@@ -322,7 +363,9 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onToggleSelect,
     onVisualPositionChange,
     onVisualPositionClear,
-    onShowContextMenu
+    onShowContextMenu,
+    isGeoMode,
+    mapLibreState
   } = props;
 
   const { isHovered, onEnter: handleMouseEnter, onLeave: handleMouseLeave } = useDelayedHover();
@@ -357,16 +400,34 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onShowContextMenu
   );
 
+  // Force re-render on map move for geo mode
+  const [, setMapMoveCounter] = useState(0);
+  useEffect(() => {
+    if (!isGeoMode || !mapLibreState?.isInitialized || !mapLibreState.map) return;
+    const handleMapMove = () => setMapMoveCounter(c => c + 1);
+    mapLibreState.map.on('move', handleMapMove);
+    return () => { mapLibreState.map?.off('move', handleMapMove); };
+  }, [isGeoMode, mapLibreState]);
+
+  // Compute rendered position: use geo coordinates in geo mode, otherwise use drag position
+  const renderedPos = isDragging
+    ? { x: dragPos.x, y: dragPos.y, scale: 1 }
+    : computeGroupRenderedPosition(group, mapLibreState, isGeoMode);
+
   const showHandles = !isLocked && (isHovered || isDragging || isResizing || isSelected);
   const cursor = getCursor(isLocked, isDragging);
 
-  // Border width for draggable frame
-  const borderDragWidth = 12;
+  // Apply scale to dimensions in geo mode
+  const scaledWidth = group.width * renderedPos.scale;
+  const scaledHeight = group.height * renderedPos.scale;
+
+  // Border width for draggable frame (also scaled in geo mode)
+  const borderDragWidth = 12 * renderedPos.scale;
 
   return (
     <div
       style={{
-        ...buildWrapperStyle(dragPos.x, dragPos.y, group.width, group.height, group.zIndex ?? 5),
+        ...buildWrapperStyle(renderedPos.x, renderedPos.y, scaledWidth, scaledHeight, group.zIndex ?? 5),
         pointerEvents: 'none'
       }}
     >
@@ -485,15 +546,24 @@ const GroupBackgroundPortal: React.FC<{
   layerNode: HTMLElement;
   groups: GroupStyleAnnotation[];
   dragPositions: Record<string, { x: number; y: number }>;
-}> = ({ layerNode, groups, dragPositions }) => createPortal(
+  isGeoMode?: boolean;
+  mapLibreState?: MapLibreState | null;
+}> = ({ layerNode, groups, dragPositions, isGeoMode, mapLibreState }) => createPortal(
   <div className="group-layer-content group-layer-content--background" style={LAYER_CONTENT_STYLE}>
-    {groups.map(group => (
-      <GroupBackgroundItem
-        key={group.id}
-        group={group}
-        position={dragPositions[group.id] ?? group.position}
-      />
-    ))}
+    {groups.map(group => {
+      // Use drag position if available (scale: 1 during drag), otherwise compute from geo coordinates
+      const dragPos = dragPositions[group.id];
+      const pos = dragPos
+        ? { x: dragPos.x, y: dragPos.y, scale: 1 }
+        : computeGroupRenderedPosition(group, mapLibreState, isGeoMode);
+      return (
+        <GroupBackgroundItem
+          key={group.id}
+          group={group}
+          position={pos}
+        />
+      );
+    })}
   </div>,
   layerNode
 );
@@ -514,6 +584,9 @@ const GroupInteractionPortal: React.FC<{
   onVisualPositionChange: (id: string, position: { x: number; y: number }) => void;
   onVisualPositionClear: (id: string) => void;
   onShowContextMenu: (groupId: string, position: { x: number; y: number }) => void;
+  // Geo mode props
+  isGeoMode?: boolean;
+  mapLibreState?: MapLibreState | null;
 }> = ({
   layerNode,
   groups,
@@ -529,7 +602,9 @@ const GroupInteractionPortal: React.FC<{
   onGroupToggleSelect,
   onVisualPositionChange,
   onVisualPositionClear,
-  onShowContextMenu
+  onShowContextMenu,
+  isGeoMode,
+  mapLibreState
 }) => createPortal(
   <div className="group-layer-content group-layer-content--interaction" style={LAYER_CONTENT_STYLE}>
     {groups.map(group => (
@@ -549,6 +624,8 @@ const GroupInteractionPortal: React.FC<{
         onVisualPositionChange={onVisualPositionChange}
         onVisualPositionClear={onVisualPositionClear}
         onShowContextMenu={onShowContextMenu}
+        isGeoMode={isGeoMode}
+        mapLibreState={mapLibreState}
       />
     ))}
   </div>,
@@ -569,9 +646,28 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   onSizeChange,
   selectedGroupIds = new Set(),
   onGroupSelect,
-  onGroupToggleSelect
+  onGroupToggleSelect,
+  isGeoMode,
+  geoMode,
+  mapLibreState,
+  onGeoPositionChange
 }) => {
+  // In geo pan mode, groups should not be interactive
+  const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === 'pan');
   const dragOverrides = useDragPositionOverrides();
+
+  // Force re-render when map moves in geo mode so groups stay at their geo positions
+  const [, setMapMoveCounter] = useState(0);
+  useEffect(() => {
+    if (!isGeoMode || !mapLibreState?.isInitialized || !mapLibreState.map) return;
+
+    const handleMapMove = () => {
+      setMapMoveCounter(c => c + 1);
+    };
+
+    mapLibreState.map.on('move', handleMapMove);
+    return () => { mapLibreState.map?.off('move', handleMapMove); };
+  }, [isGeoMode, mapLibreState]);
 
   // Context menu state - lifted out of portal to avoid transform issues with position:fixed
   const [contextMenu, setContextMenu] = useState<{ groupId: string; x: number; y: number } | null>(null);
@@ -583,6 +679,24 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
+
+  // Wrapper for position change that also updates geo coordinates when in geo mode
+  const handlePositionChangeWithGeo = useCallback((
+    id: string,
+    position: { x: number; y: number },
+    delta: { dx: number; dy: number }
+  ) => {
+    // Always call the original position change handler
+    onPositionChange(id, position, delta);
+
+    // In geo mode, also update the geo coordinates
+    if (isGeoMode && mapLibreState?.isInitialized && onGeoPositionChange) {
+      const geoCoords = unprojectToGeoCoords(mapLibreState, position);
+      if (geoCoords) {
+        onGeoPositionChange(id, geoCoords);
+      }
+    }
+  }, [onPositionChange, isGeoMode, mapLibreState, onGeoPositionChange]);
 
   // Don't render if no cy, no groups, or no layer nodes from cytoscape-layers
   if (!cy || groups.length === 0 || (!backgroundLayerNode && !interactionLayerNode)) return null;
@@ -596,6 +710,8 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           layerNode={backgroundLayerNode}
           groups={sortedGroups}
           dragPositions={dragOverrides.dragPositions}
+          isGeoMode={isGeoMode}
+          mapLibreState={mapLibreState}
         />
       )}
       {interactionLayerNode && (
@@ -603,11 +719,11 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           layerNode={interactionLayerNode}
           groups={sortedGroups}
           cy={cy}
-          isLocked={isLocked}
+          isLocked={effectivelyLocked}
           selectedGroupIds={selectedGroupIds}
           onGroupEdit={onGroupEdit}
           onDragStart={onDragStart}
-          onPositionChange={onPositionChange}
+          onPositionChange={handlePositionChangeWithGeo}
           onDragMove={onDragMove}
           onSizeChange={onSizeChange}
           onGroupSelect={onGroupSelect}
@@ -615,6 +731,8 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           onVisualPositionChange={dragOverrides.setDragPosition}
           onVisualPositionClear={dragOverrides.clearDragPosition}
           onShowContextMenu={handleShowContextMenu}
+          isGeoMode={isGeoMode}
+          mapLibreState={mapLibreState}
         />
       )}
       {/* Context menu rendered outside portals to avoid transform issues */}

@@ -4,6 +4,7 @@
 import type { Core as CyCore } from 'cytoscape';
 import type React from 'react';
 import { FreeTextAnnotation } from '../../../shared/types/topology';
+import { MapLibreState, projectAnnotationGeoCoords, calculateScale } from '../canvas/maplibreUtils';
 
 // ============================================================================
 // Coordinate Conversion
@@ -19,6 +20,29 @@ export function renderedToModel(cy: CyCore, renderedX: number, renderedY: number
   const pan = cy.pan();
   const zoom = cy.zoom();
   return { x: (renderedX - pan.x) / zoom, y: (renderedY - pan.y) / zoom };
+}
+
+/**
+ * Convert model coordinates to rendered coordinates with geo mode support.
+ * When geo mode is active and annotation has geo coords, use MapLibre projection.
+ * The zoom returned is the scale factor for annotation sizing.
+ */
+export function modelToRenderedGeo(
+  mapLibreState: MapLibreState | null,
+  geoCoords: { lat: number; lng: number } | undefined,
+  modelX: number,
+  modelY: number
+): RenderedPosition {
+  // If geo mode is active and annotation has geo coordinates, project them
+  if (mapLibreState?.isInitialized && geoCoords) {
+    const projected = projectAnnotationGeoCoords(mapLibreState, geoCoords);
+    if (projected) {
+      const scale = calculateScale(mapLibreState);
+      return { x: projected.x, y: projected.y, zoom: scale };
+    }
+  }
+  // Fallback to model position (non-geo mode or no geo coords)
+  return { x: modelX, y: modelY, zoom: 1 };
 }
 
 // ============================================================================

@@ -97,6 +97,7 @@ export interface FreeTextAnnotation {
   id: string;
   text: string;
   position: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
   fontSize?: number;
   fontColor?: string;
   backgroundColor?: string;
@@ -120,9 +121,11 @@ export interface FreeShapeAnnotation {
   id: string;
   shapeType: 'rectangle' | 'circle' | 'line';
   position: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
   width?: number;
   height?: number;
   endPosition?: { x: number; y: number };
+  endGeoCoordinates?: { lat: number; lng: number };
   fillColor?: string;
   fillOpacity?: number;
   borderColor?: string;
@@ -149,6 +152,8 @@ export interface GroupStyleAnnotation {
   position: { x: number; y: number };
   width: number;
   height: number;
+  // Geo coordinates for geomap mode
+  geoCoordinates?: { lat: number; lng: number };
   // Style
   color?: string;
   backgroundColor?: string;

@@ -126,6 +126,8 @@ export interface UseFreeTextActionsReturn {
   duplicateSelectedAnnotations: () => void;
   /** Check if clipboard has annotations */
   hasClipboardContent: () => boolean;
+  /** Update geo coordinates for an annotation */
+  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
 
 // Hook for mode toggle actions
@@ -222,7 +224,16 @@ function useAnnotationUpdates(
     });
   }, [setAnnotations, saveAnnotationsToExtension]);
 
-  return { updatePosition, updateSize, updateRotation };
+  const updateGeoPosition = useCallback((id: string, geoCoords: { lat: number; lng: number }) => {
+    setAnnotations(prev => {
+      const updated = updateAnnotationInList(prev, id, a => ({ ...a, geoCoordinates: geoCoords }));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+    log.info(`[FreeText] Updated geo position for annotation ${id}: ${geoCoords.lat}, ${geoCoords.lng}`);
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  return { updatePosition, updateSize, updateRotation, updateGeoPosition };
 }
 
 // Hook for basic selection operations (select, toggle, clear)

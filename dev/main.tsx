@@ -33,10 +33,34 @@ interface DevState {
   pendingTopologyBroadcast: boolean;
 }
 
+// Empty annotations to simulate no annotations.json file on load
+const emptyAnnotationsDefault: TopologyAnnotations = {
+  freeTextAnnotations: [],
+  freeShapeAnnotations: [],
+  groupStyleAnnotations: [],
+  cloudNodeAnnotations: [],
+  nodeAnnotations: [],
+  aliasEndpointAnnotations: []
+};
+
+/**
+ * Strip positions from elements to simulate no annotations.json (triggers COSE layout)
+ */
+function stripPositions(elements: typeof sampleElements): typeof sampleElements {
+  return elements.map(el => {
+    if (el.group === 'nodes') {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { position, ...rest } = el;
+      return rest as typeof el;
+    }
+    return el;
+  });
+}
+
 const devState: DevState = {
   splitViewOpen: false,
-  currentElements: sampleElements,
-  currentAnnotations: { ...sampleAnnotations },
+  currentElements: stripPositions(sampleElements),  // No positions = triggers COSE layout
+  currentAnnotations: { ...emptyAnnotationsDefault },  // Start with empty annotations
   clipboard: null,
   graphBatchDepth: 0,
   pendingTopologyBroadcast: false
@@ -414,7 +438,7 @@ declare global {
     __INITIAL_DATA__: ReturnType<typeof buildInitialData>;
     // Dev mode utilities (only exists in dev mode)
     __DEV__: {
-      loadTopology: (name: 'sample' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => void;
+      loadTopology: (name: 'sample' | 'sampleWithAnnotations' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => void;
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
       toggleSplitView: () => void;
@@ -433,7 +457,9 @@ declare global {
 
 const initialData = buildInitialData({
   mode: 'edit',
-  deploymentState: 'undeployed'
+  deploymentState: 'undeployed',
+  elements: stripPositions(sampleElements),  // No positions = triggers COSE layout
+  includeAnnotations: false  // Simulate empty annotations.json on load
 });
 
 // Flatten annotations to top level - hooks expect __INITIAL_DATA__.freeTextAnnotations, not nested
@@ -460,7 +486,7 @@ window.__DEV__ = {
    * Load different topology configurations
    * Usage: __DEV__.loadTopology('annotated')
    */
-  loadTopology: (name: 'sample' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => {
+  loadTopology: (name: 'sample' | 'sampleWithAnnotations' | 'annotated' | 'empty' | 'large' | 'large100' | 'large1000') => {
     let elements;
     let annotations: TopologyAnnotations;
     const emptyAnnotations: TopologyAnnotations = {
@@ -492,10 +518,24 @@ window.__DEV__ = {
         elements = annotatedElements;
         annotations = { ...annotatedTopologyAnnotations };
         break;
+      case 'sampleWithAnnotations':
+        elements = sampleElements;
+        // Only node positions - no groups, text, or shapes
+        annotations = {
+          freeTextAnnotations: [],
+          freeShapeAnnotations: [],
+          groupStyleAnnotations: [],
+          cloudNodeAnnotations: [],
+          nodeAnnotations: sampleElements
+            .filter(el => el.group === 'nodes' && el.position)
+            .map(el => ({ id: el.data.id as string, position: el.position! })),
+          aliasEndpointAnnotations: []
+        };
+        break;
       case 'sample':
       default:
-        elements = sampleElements;
-        annotations = { ...sampleAnnotations };
+        elements = stripPositions(sampleElements);  // No positions = triggers COSE layout
+        annotations = emptyAnnotations;  // No annotations.json
     }
     devState.currentElements = elements;
     devState.currentAnnotations = annotations;
@@ -575,9 +615,11 @@ window.__DEV__ = {
 
 console.log('%c[React TopoViewer - Dev Mode]', 'color: #E91E63; font-weight: bold; font-size: 14px;');
 console.log('Available dev utilities:');
-console.log('  __DEV__.loadTopology("sample" | "annotated" | "empty" | "large" | "large100" | "large1000")');
-console.log('    - sample: Basic spine-leaf topology');
+console.log('  __DEV__.loadTopology("sample" | "sampleWithAnnotations" | "annotated" | "empty" | ...)');
+console.log('    - sample: Spine-leaf without annotations.json (triggers COSE layout)');
+console.log('    - sampleWithAnnotations: Spine-leaf with saved positions and annotations');
 console.log('    - annotated: DC topology with groups, freetext, and freeshapes');
+console.log('    - empty: Empty canvas (no nodes, links, or annotations)');
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed" | "unknown")');
 console.log('  __DEV__.toggleSplitView()     - Toggle split view (clab.yml + annotations)');

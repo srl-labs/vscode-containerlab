@@ -328,6 +328,28 @@ function useUpdateGroupSize(
   );
 }
 
+/**
+ * Hook for updating group geo position (for geomap mode).
+ * Note: This doesn't check isLocked because geo coordinate assignment
+ * is a system operation that should work regardless of lock state.
+ */
+function useUpdateGroupGeoPosition(
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
+) {
+  return useCallback(
+    (groupId: string, geoCoordinates: { lat: number; lng: number }): void => {
+      setGroups(prev => {
+        const updated = updateGroupInList(prev, groupId, { geoCoordinates });
+        saveGroupsToExtension(updated);
+        return updated;
+      });
+      log.info(`[Groups] Updated geo position for group ${groupId}`);
+    },
+    [setGroups, saveGroupsToExtension]
+  );
+}
+
 /** Helper to add a node to a group */
 function addNodeToGroupHelper(
   membershipRef: React.RefObject<Map<string, string>>,
@@ -440,6 +462,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   const updateGroup = useUpdateGroup(mode, isLocked, setGroups, saveGroupsToExtension);
   const updateGroupPosition = useUpdateGroupPosition(mode, isLocked, setGroups, saveGroupsToExtension);
   const updateGroupSize = useUpdateGroupSize(mode, isLocked, setGroups, saveGroupsToExtension);
+  const updateGroupGeoPosition = useUpdateGroupGeoPosition(setGroups, saveGroupsToExtension);
 
   const loadGroups = useCallback(
     (loadedGroups: GroupStyleAnnotation[]): void => {
@@ -473,6 +496,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       updateGroup,
       updateGroupPosition,
       updateGroupSize,
+      updateGroupGeoPosition,
       loadGroups,
       getUndoRedoAction,
       findGroupAtPosition: membership.findGroupAtPosition,
@@ -484,7 +508,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     }),
     [
       groups, editingGroup, createGroup, deleteGroup, editGroup, closeEditor,
-      saveGroup, updateGroup, updateGroupPosition, updateGroupSize, loadGroups,
+      saveGroup, updateGroup, updateGroupPosition, updateGroupSize, updateGroupGeoPosition, loadGroups,
       getUndoRedoAction, membership
     ]
   );
