@@ -1458,7 +1458,7 @@
     "postcss-loader": "^8.2.0",
     "prettier": "^3.7.4",
     "sinon": "^21.0.0",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "tippy.js": "^6.3.7",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
