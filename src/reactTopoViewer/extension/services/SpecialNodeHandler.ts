@@ -187,22 +187,70 @@ function shouldSkipCloudNode(
   return isBridgeType && (yamlNodeIds?.has(nodeId) ?? false);
 }
 
+interface NetworkAnnotation {
+  id: string;
+  position?: { x: number; y: number };
+  label?: string;
+  geoCoordinates?: { lat: number; lng: number };
+}
+
+interface CloudAnnotation {
+  id: string;
+  position?: { x: number; y: number };
+  label?: string;
+}
+
+interface AnnotationsWithNetwork {
+  networkNodeAnnotations?: NetworkAnnotation[];
+  cloudNodeAnnotations?: CloudAnnotation[];
+}
+
+interface PlacementResult {
+  position: { x: number; y: number };
+  label?: string;
+  geoCoordinates?: { lat: number; lng: number };
+}
+
 /**
- * Resolves position and label from cloud node annotations.
+ * Extract placement from a network annotation.
+ */
+function extractNetworkPlacement(saved: NetworkAnnotation): PlacementResult {
+  return {
+    position: saved.position || { x: 0, y: 0 },
+    label: saved.label,
+    geoCoordinates: saved.geoCoordinates
+  };
+}
+
+/**
+ * Extract placement from a cloud annotation (legacy).
+ */
+function extractCloudPlacement(saved: CloudAnnotation | undefined): PlacementResult {
+  return {
+    position: saved?.position || { x: 0, y: 0 },
+    label: saved?.label
+  };
+}
+
+/**
+ * Resolves position and label from network node annotations.
+ * Checks networkNodeAnnotations first (new format), then falls back to cloudNodeAnnotations (legacy).
  */
 function resolveCloudNodePlacement(
   nodeId: string,
   annotations: Record<string, unknown> | undefined
-): { position: { x: number; y: number }; label?: string } {
-  let position = { x: 0, y: 0 };
-  let label: string | undefined;
-  const cloudAnns = (annotations as { cloudNodeAnnotations?: Array<{ id: string; position?: { x: number; y: number }; label?: string }> })?.cloudNodeAnnotations;
-  if (!cloudAnns) return { position, label };
+): PlacementResult {
+  const typedAnnotations = annotations as AnnotationsWithNetwork | undefined;
 
-  const saved = cloudAnns.find((cn) => cn.id === nodeId);
-  if (saved?.position) position = saved.position;
-  if (saved?.label) label = saved.label;
-  return { position, label };
+  // Check networkNodeAnnotations first (new format)
+  const networkSaved = typedAnnotations?.networkNodeAnnotations?.find((nn) => nn.id === nodeId);
+  if (networkSaved) {
+    return extractNetworkPlacement(networkSaved);
+  }
+
+  // Fallback to cloudNodeAnnotations (legacy format)
+  const cloudSaved = typedAnnotations?.cloudNodeAnnotations?.find((cn) => cn.id === nodeId);
+  return extractCloudPlacement(cloudSaved);
 }
 
 /**
@@ -213,7 +261,8 @@ function createCloudNodeElement(
   nodeInfo: SpecialNodeInfo,
   position: { x: number; y: number },
   extraProps: Record<string, unknown>,
-  savedLabel?: string
+  savedLabel?: string,
+  geoCoordinates?: { lat: number; lng: number }
 ): CyElement {
   const displayLabel = savedLabel || nodeInfo.label;
   return {
@@ -223,8 +272,8 @@ function createCloudNodeElement(
       weight: '30',
       name: displayLabel,
       topoViewerRole: 'cloud',
-      lat: '',
-      lng: '',
+      lat: geoCoordinates?.lat?.toString() || '',
+      lng: geoCoordinates?.lng?.toString() || '',
       extraData: {
         clabServerUsername: '',
         fqdn: '',
@@ -275,9 +324,9 @@ export function addCloudNodes(
   for (const [nodeId, nodeInfo] of specialNodes) {
     if (shouldSkipCloudNode(nodeId, nodeInfo, yamlNodeIds)) continue;
 
-    const { position, label } = resolveCloudNodePlacement(nodeId, opts.annotations);
+    const { position, label, geoCoordinates } = resolveCloudNodePlacement(nodeId, opts.annotations);
     const extraProps = specialNodeProps.get(nodeId) || {};
-    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, position, extraProps, label);
+    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, position, extraProps, label, geoCoordinates);
     elements.push(cloudNodeEl);
   }
 }

@@ -6,7 +6,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { log } from './logger';
-import { TopologyAnnotations } from '../../shared/types/topology';
+// eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
+import { TopologyAnnotations, CloudNodeAnnotation, NetworkNodeAnnotation } from '../../shared/types/topology';
 
 /**
  * Manages topology annotations (positions, styles, text, shapes).
@@ -19,6 +20,40 @@ export class AnnotationsManager {
   private saveQueues: Map<string, Promise<void>> = new Map();
   /** Per-file modification locks to serialize read-modify-write operations */
   private modificationLocks: Map<string, Promise<void>> = new Map();
+
+  /**
+   * Migrate cloudNodeAnnotations to networkNodeAnnotations.
+   * This provides backward compatibility - reads old format, writes new format.
+   */
+  private migrateCloudToNetworkAnnotations(annotations: TopologyAnnotations): TopologyAnnotations {
+    // If networkNodeAnnotations already exists, no migration needed
+    if (annotations.networkNodeAnnotations && annotations.networkNodeAnnotations.length > 0) {
+      return annotations;
+    }
+
+    // If cloudNodeAnnotations exists, migrate to networkNodeAnnotations
+    // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
+    if (annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0) {
+      // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
+      log.info(`Migrating ${annotations.cloudNodeAnnotations.length} cloudNodeAnnotations to networkNodeAnnotations`);
+
+      // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
+      annotations.networkNodeAnnotations = annotations.cloudNodeAnnotations.map((cloud: CloudNodeAnnotation): NetworkNodeAnnotation => ({
+        id: cloud.id,
+        type: cloud.type,
+        label: cloud.label,
+        position: cloud.position,
+        group: cloud.group,
+        level: cloud.level
+      }));
+
+      // Clear the old format (will be written as new format on next save)
+      // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
+      delete annotations.cloudNodeAnnotations;
+    }
+
+    return annotations;
+  }
 
   /**
    * Get the annotations file path for a given YAML file.
@@ -93,8 +128,12 @@ export class AnnotationsManager {
       const exists = await fs.promises.access(annotationsPath).then(() => true).catch(() => false);
       if (exists) {
         const content = await fs.promises.readFile(annotationsPath, 'utf8');
-        const annotations = JSON.parse(content) as TopologyAnnotations;
+        let annotations = JSON.parse(content) as TopologyAnnotations;
         log.info(`Loaded annotations from ${annotationsPath}`);
+
+        // Migrate cloudNodeAnnotations to networkNodeAnnotations if needed
+        annotations = this.migrateCloudToNetworkAnnotations(annotations);
+
         this.cache.set(annotationsPath, { data: annotations, timestamp: Date.now() });
         return annotations;
       }
@@ -106,7 +145,7 @@ export class AnnotationsManager {
       freeTextAnnotations: [],
       freeShapeAnnotations: [],
       groupStyleAnnotations: [],
-      cloudNodeAnnotations: [],
+      networkNodeAnnotations: [],
       nodeAnnotations: [],
       aliasEndpointAnnotations: []
     };
@@ -180,6 +219,9 @@ export class AnnotationsManager {
     if (this.hasContent(annotations.freeTextAnnotations)) return true;
     if (this.hasContent(annotations.freeShapeAnnotations)) return true;
     if (this.hasContent(annotations.groupStyleAnnotations)) return true;
+    if (this.hasContent(annotations.networkNodeAnnotations)) return true;
+    // Also check legacy format for backward compatibility during migration
+    // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
     if (this.hasContent(annotations.cloudNodeAnnotations)) return true;
     if (this.hasContent(annotations.nodeAnnotations)) return true;
     if (this.hasContent(annotations.aliasEndpointAnnotations)) return true;

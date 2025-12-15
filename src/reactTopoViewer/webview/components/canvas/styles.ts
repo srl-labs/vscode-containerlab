@@ -150,6 +150,19 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
       'line-color': '#df2b00'
     }
   },
+  // Stub link styles for network connections (dashed lines)
+  {
+    selector: 'edge.stub-link',
+    style: {
+      'target-arrow-shape': 'circle',
+      'source-arrow-shape': 'circle',
+      'target-arrow-color': '#969799',
+      'source-arrow-color': '#969799',
+      'arrow-scale': 0.5,
+      'line-style': 'dashed',
+      'line-dash-pattern': [6, 3]
+    }
+  },
   // Special endpoint nodes (host, mgmt-net, etc.)
   {
     selector: 'node.special-endpoint',

@@ -33,6 +33,7 @@ import {
   useNodeDragging,
   useEdgeCreation,
   useNodeCreation,
+  useNetworkCreation,
   useCopyPaste,
   // State hooks
   useGraphUndoRedoHandlers,
@@ -72,7 +73,7 @@ import {
   useLinkLabelVisibility,
   useGeoMap
 } from './hooks';
-import type { GraphChangeEntry, PendingMembershipChange } from './hooks';
+import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './hooks';
 import type { MembershipEntry } from './hooks/state';
 import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
@@ -550,6 +551,51 @@ export const App: React.FC = () => {
     floatingPanelRef, nodeCreationState, cyInstance, createNodeAtPosition, customNodeCommands.onNewCustomNode
   );
 
+  // Network creation callback for undo/redo support
+  const handleNetworkCreatedCallback = React.useCallback((
+    networkId: string,
+    networkElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: { x: number; y: number }; classes?: string },
+    position: { x: number; y: number }
+  ) => {
+    // Add network to state for tracking
+    addNode(networkElement);
+
+    // Save network position to annotations via extension
+    sendCommandToExtension('save-network-position', {
+      networkId,
+      position,
+      networkType: networkElement.data.type,
+      networkLabel: networkElement.data.name
+    });
+  }, [addNode]);
+
+  // Set up network creation hook
+  const { createNetworkAtPosition } = useNetworkCreation(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onNetworkCreated: handleNetworkCreatedCallback,
+    onLockedClick: () => floatingPanelRef.current?.triggerShake()
+  });
+
+  // Handler for Add Network button from FloatingActionPanel
+  const handleAddNetworkFromPanel = React.useCallback((networkType?: string) => {
+    if (!cyInstance) return;
+
+    if (state.isLocked) {
+      floatingPanelRef.current?.triggerShake();
+      return;
+    }
+
+    // Get viewport center for placement
+    const extent = cyInstance.extent();
+    const position = {
+      x: (extent.x1 + extent.x2) / 2,
+      y: (extent.y1 + extent.y2) / 2
+    };
+
+    createNetworkAtPosition(position, (networkType || 'host') as NetworkType);
+  }, [cyInstance, state.isLocked, createNetworkAtPosition, floatingPanelRef]);
+
   // App-level handlers for drag, deselect, and lock state sync
   const { handleLockedDrag, handleMoveComplete, handleDeselectAll } = useAppHandlers({
     selectionCallbacks: { selectNode, selectEdge, editNode, editEdge },
@@ -807,7 +853,7 @@ export const App: React.FC = () => {
           onRedeploy={floatingPanelCommands.onRedeploy}
           onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
           onAddNode={handleAddNodeFromPanel}
-          onAddNetwork={floatingPanelCommands.onAddNetwork}
+          onAddNetwork={handleAddNetworkFromPanel}
           onAddGroup={handleAddGroupWithUndo}
           onAddText={freeTextAnnotations.handleAddText}
           onAddShapes={handleAddShapes}

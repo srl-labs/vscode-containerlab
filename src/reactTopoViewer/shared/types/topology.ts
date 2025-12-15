@@ -170,12 +170,28 @@ export interface GroupStyleAnnotation {
 
 /**
  * Cloud node annotation for external network endpoints.
+ * @deprecated Use NetworkNodeAnnotation instead. Kept for migration compatibility.
  */
 export interface CloudNodeAnnotation {
   id: string;
   type: 'host' | 'mgmt-net' | 'macvlan';
   label: string;
   position: { x: number; y: number };
+  group?: string;
+  level?: string;
+}
+
+/**
+ * Network node annotation for external network endpoints.
+ * Networks are endpoints that connect to external resources like host interfaces,
+ * management networks, VXLANs, etc.
+ */
+export interface NetworkNodeAnnotation {
+  id: string;
+  type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy' | 'bridge' | 'ovs-bridge';
+  label?: string;
+  position: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
   group?: string;
   level?: string;
 }
@@ -216,7 +232,12 @@ export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
   freeShapeAnnotations?: FreeShapeAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
+  /**
+   * @deprecated Use networkNodeAnnotations instead. Kept for migration compatibility.
+   */
+  // eslint-disable-next-line sonarjs/deprecation
   cloudNodeAnnotations?: CloudNodeAnnotation[];
+  networkNodeAnnotations?: NetworkNodeAnnotation[];
   nodeAnnotations?: NodeAnnotation[];
   aliasEndpointAnnotations?: AliasEndpointAnnotation[];
   viewerSettings?: {

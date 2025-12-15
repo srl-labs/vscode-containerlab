@@ -159,12 +159,18 @@ function collectUsedIndices(cy: CyCore, nodeId: string, parsed: ParsedInterfaceP
 
 /**
  * Get the next available endpoint for a node using its interface pattern
+ * Network nodes don't have interface endpoints - they return empty string
  */
 function getNextEndpointForNode(
   cy: CyCore,
   node: NodeSingular,
   interfacePatternMapping: Record<string, string>
 ): string {
+  // Network nodes don't have interface endpoints
+  if (node.data('topoViewerRole') === 'cloud') {
+    return '';
+  }
+
   const pattern = getNodeInterfacePattern(node, interfacePatternMapping);
   const parsed = parseInterfacePattern(pattern);
   const usedIndices = collectUsedIndices(cy, node.id(), parsed);
@@ -179,20 +185,40 @@ function getNextEndpointForNode(
 }
 
 /**
+ * Check if a node is a network node (cloud/special endpoint)
+ */
+function isNetworkNode(node: NodeSingular): boolean {
+  return node.data('topoViewerRole') === 'cloud';
+}
+
+/**
  * Check if edge connection is valid
+ * Network-to-network connections are not allowed
+ * Network-to-node and node-to-network connections are allowed
  */
 function canConnect(sourceNode: NodeSingular, targetNode: NodeSingular): boolean {
   const sourceRole = sourceNode.data('topoViewerRole');
   const targetRole = targetNode.data('topoViewerRole');
   const invalidRoles = ['freeText', 'group'];
 
-  return (
+  log.info(`[EdgeCreation] canConnect check: ${sourceNode.id()} (${sourceRole}) -> ${targetNode.id()} (${targetRole})`);
+
+  // Network-to-network connections not allowed
+  if (isNetworkNode(sourceNode) && isNetworkNode(targetNode)) {
+    log.info('[EdgeCreation] canConnect: REJECTED - network-to-network');
+    return false;
+  }
+
+  const result = (
     !invalidRoles.includes(sourceRole) &&
     !invalidRoles.includes(targetRole) &&
     !sourceNode.same(targetNode) &&
     !sourceNode.isParent() &&
     !targetNode.isParent()
   );
+
+  log.info(`[EdgeCreation] canConnect: ${result ? 'ALLOWED' : 'REJECTED'}`);
+  return result;
 }
 
 /**
@@ -249,6 +275,12 @@ function processEdgeCreation(
   onEdgeCreated?: (sourceId: string, targetId: string, edgeData: EdgeData) => void
 ): void {
   log.info(`[EdgeCreation] Edge created: ${sourceNode.id()} -> ${targetNode.id()}`);
+
+  // Add stub-link class if either endpoint is a network node (dashed line styling)
+  if (isNetworkNode(sourceNode) || isNetworkNode(targetNode)) {
+    addedEdge.addClass('stub-link');
+    log.info('[EdgeCreation] Added stub-link class for network connection');
+  }
 
   if (!onEdgeCreated) return;
 

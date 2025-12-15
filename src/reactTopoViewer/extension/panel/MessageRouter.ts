@@ -10,7 +10,7 @@ import { splitViewManager } from '../services/SplitViewManager';
 import { saveTopologyService, NodeSaveData, LinkSaveData } from '../services/SaveTopologyService';
 import { annotationsManager } from '../services/AnnotationsManager';
 import { convertEditorDataToYaml } from '../../shared/utilities/nodeEditorConversions';
-import { CyElement } from '../../shared/types/topology';
+import { CyElement, TopologyAnnotations, NetworkNodeAnnotation } from '../../shared/types/topology';
 import { customNodeConfigManager } from '../../../topoViewer/extension/services/CustomNodeConfigManager';
 import { yamlSettingsManager } from '../../../topoViewer/extension/services/YamlSettingsManager';
 import * as YAML from 'yaml';
@@ -184,14 +184,21 @@ export class MessageRouter {
     const nodeId = this.getNodeIdFromMessage(message);
     if (!nodeId) return;
 
+    // Try to delete from YAML if in edit mode
     if (!this.context.isViewMode && saveTopologyService.isInitialized()) {
-      const result = await saveTopologyService.deleteNode(nodeId);
-      if (!result.success) {
-        log.error(`[ReactTopoViewer] Failed to delete node from YAML: ${result.error}`);
+      if (this.isNetworkNode(nodeId)) {
+        // Network nodes are defined by links - delete connected links instead
+        await this.deleteConnectedLinks(nodeId);
+      } else {
+        const result = await saveTopologyService.deleteNode(nodeId);
+        if (!result.success) {
+          log.error(`[ReactTopoViewer] Failed to delete node from YAML: ${result.error}`);
+        }
       }
-    } else {
-      await this.removeNodeFromAnnotations(nodeId);
     }
+
+    // Always remove from annotations (network nodes aren't in YAML nodes section)
+    await this.removeNodeFromAnnotations(nodeId);
 
     // Update cached elements
     const updatedElements = this.context.lastTopologyElements.filter(el => {
@@ -206,6 +213,36 @@ export class MessageRouter {
     });
     this.context.updateCachedElements(updatedElements);
     this.postPanelAction(panel, 'delete-node', { nodeId });
+  }
+
+  /**
+   * Delete all links connected to a network node
+   */
+  private async deleteConnectedLinks(networkNodeId: string): Promise<void> {
+    const connectedEdges = this.context.lastTopologyElements.filter(el => {
+      if (el.group !== 'edges') return false;
+      const data = el.data || {};
+      const source = (data as Record<string, unknown>)?.source;
+      const target = (data as Record<string, unknown>)?.target;
+      return source === networkNodeId || target === networkNodeId;
+    });
+
+    for (const edge of connectedEdges) {
+      const data = edge.data as Record<string, unknown>;
+      const linkData: LinkSaveData = {
+        id: data.id as string,
+        source: data.source as string,
+        target: data.target as string,
+        sourceEndpoint: data.sourceEndpoint as string | undefined,
+        targetEndpoint: data.targetEndpoint as string | undefined
+      };
+      const result = await saveTopologyService.deleteLink(linkData);
+      if (!result.success) {
+        log.error(`[ReactTopoViewer] Failed to delete link ${linkData.id}: ${result.error}`);
+      } else {
+        log.info(`[ReactTopoViewer] Deleted link connected to network node: ${linkData.id}`);
+      }
+    }
   }
 
   private handleStartLink(panel: vscode.WebviewPanel, message: WebviewMessage): void {
@@ -260,10 +297,25 @@ export class MessageRouter {
     if (!this.context.yamlFilePath) return;
     try {
       const annotations = await annotationsManager.loadAnnotations(this.context.yamlFilePath);
-      const existing = annotations.nodeAnnotations || [];
-      const updatedNodes = existing.filter((n: { id: string }) => n.id !== nodeId);
-      if (updatedNodes.length !== existing.length) {
+      let changed = false;
+
+      // Remove from nodeAnnotations
+      const existingNodes = annotations.nodeAnnotations || [];
+      const updatedNodes = existingNodes.filter((n: { id: string }) => n.id !== nodeId);
+      if (updatedNodes.length !== existingNodes.length) {
         annotations.nodeAnnotations = updatedNodes;
+        changed = true;
+      }
+
+      // Remove from networkNodeAnnotations (for network/cloud nodes)
+      const existingNetworks = annotations.networkNodeAnnotations || [];
+      const updatedNetworks = existingNetworks.filter((n: { id: string }) => n.id !== nodeId);
+      if (updatedNetworks.length !== existingNetworks.length) {
+        annotations.networkNodeAnnotations = updatedNetworks;
+        changed = true;
+      }
+
+      if (changed) {
         await annotationsManager.saveAnnotations(this.context.yamlFilePath, annotations);
       }
     } catch (err) {
@@ -868,6 +920,10 @@ export class MessageRouter {
       await this.handleSaveNodePositions(message.positions);
       return true;
     }
+    if (command === 'save-network-position') {
+      await this.handleSaveNetworkPosition(message);
+      return true;
+    }
     if (command === 'save-free-text-annotations') {
       await this.handleSaveFreeTextAnnotations(message);
       return true;
@@ -896,6 +952,66 @@ export class MessageRouter {
   }
 
   /**
+   * Check if a node is a network node by looking at cached elements
+   */
+  private isNetworkNode(nodeId: string): boolean {
+    const node = this.findCachedNode(nodeId);
+    return node?.data?.topoViewerRole === 'cloud';
+  }
+
+  /**
+   * Get network type from cached node element
+   */
+  private getNetworkType(nodeId: string): NetworkNodeAnnotation['type'] {
+    const cachedNode = this.findCachedNode(nodeId);
+    const extraData = cachedNode?.data?.extraData as { kind?: string } | undefined;
+    return (extraData?.kind || 'host') as NetworkNodeAnnotation['type'];
+  }
+
+  /**
+   * Save a network node position to networkNodeAnnotations
+   */
+  private saveNetworkNodePosition(
+    annotations: TopologyAnnotations,
+    posData: NodePositionData
+  ): void {
+    if (!annotations.networkNodeAnnotations) {
+      annotations.networkNodeAnnotations = [];
+    }
+    const existing = annotations.networkNodeAnnotations.find(n => n.id === posData.id);
+    if (existing) {
+      existing.position = posData.position;
+    } else {
+      annotations.networkNodeAnnotations.push({
+        id: posData.id,
+        type: this.getNetworkType(posData.id),
+        position: posData.position
+      });
+    }
+  }
+
+  /**
+   * Save a regular node position to nodeAnnotations
+   */
+  private saveRegularNodePosition(
+    annotations: TopologyAnnotations,
+    posData: NodePositionData
+  ): void {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+    const existing = annotations.nodeAnnotations.find(n => n.id === posData.id);
+    if (existing) {
+      existing.position = posData.position;
+    } else {
+      annotations.nodeAnnotations.push({
+        id: posData.id,
+        position: posData.position
+      });
+    }
+  }
+
+  /**
    * Save node positions to annotations file
    */
   private async handleSaveNodePositions(positions: NodePositionData[]): Promise<void> {
@@ -908,17 +1024,10 @@ export class MessageRouter {
       const annotations = await annotationsManager.loadAnnotations(this.context.yamlFilePath);
 
       for (const posData of positions) {
-        const existingNode = annotations.nodeAnnotations?.find(n => n.id === posData.id);
-        if (existingNode) {
-          existingNode.position = posData.position;
+        if (this.isNetworkNode(posData.id)) {
+          this.saveNetworkNodePosition(annotations, posData);
         } else {
-          if (!annotations.nodeAnnotations) {
-            annotations.nodeAnnotations = [];
-          }
-          annotations.nodeAnnotations.push({
-            id: posData.id,
-            position: posData.position
-          });
+          this.saveRegularNodePosition(annotations, posData);
         }
       }
 
@@ -926,6 +1035,55 @@ export class MessageRouter {
       log.info(`[ReactTopoViewer] Saved ${positions.length} node positions`);
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to save node positions: ${err}`);
+    }
+  }
+
+  /**
+   * Save network node position to annotations file
+   */
+  private async handleSaveNetworkPosition(message: WebviewMessage): Promise<void> {
+    if (!this.context.yamlFilePath) {
+      log.warn('[ReactTopoViewer] Cannot save network position: no YAML file path');
+      return;
+    }
+
+    try {
+      const payload = message as unknown as {
+        networkId?: string;
+        position?: { x: number; y: number };
+        networkType?: string;
+        networkLabel?: string;
+      };
+
+      if (!payload.networkId || !payload.position) {
+        log.warn('[ReactTopoViewer] Cannot save network position: missing networkId or position');
+        return;
+      }
+
+      await annotationsManager.modifyAnnotations(this.context.yamlFilePath, (annotations) => {
+        if (!annotations.networkNodeAnnotations) {
+          annotations.networkNodeAnnotations = [];
+        }
+
+        const existing = annotations.networkNodeAnnotations.find(n => n.id === payload.networkId);
+        if (existing) {
+          existing.position = payload.position!;
+          if (payload.networkLabel) existing.label = payload.networkLabel;
+        } else {
+          annotations.networkNodeAnnotations.push({
+            id: payload.networkId!,
+            type: (payload.networkType || 'host') as 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy' | 'bridge' | 'ovs-bridge',
+            label: payload.networkLabel,
+            position: payload.position!
+          });
+        }
+
+        return annotations;
+      });
+
+      log.info(`[ReactTopoViewer] Saved network position for ${payload.networkId}`);
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to save network position: ${err}`);
     }
   }
 
