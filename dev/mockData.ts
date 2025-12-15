@@ -847,7 +847,8 @@ export const sampleFreeTextAnnotations: FreeTextAnnotation[] = [
     textAlign: 'center',
     fontFamily: 'monospace',
     rotation: 0,
-    roundedBackground: true
+    roundedBackground: true,
+    geoCoordinates: { lat: 48.8566, lng: 2.3522 } // Paris
   },
   {
     id: 'freeText_dev_2',
@@ -862,7 +863,8 @@ export const sampleFreeTextAnnotations: FreeTextAnnotation[] = [
     textAlign: 'center',
     fontFamily: 'monospace',
     rotation: 0,
-    roundedBackground: true
+    roundedBackground: true,
+    geoCoordinates: { lat: 51.5074, lng: -0.1278 } // London
   },
   {
     id: 'freeText_dev_3',
@@ -929,7 +931,8 @@ export const sampleFreeShapeAnnotations: FreeShapeAnnotation[] = [
     borderStyle: 'dashed',
     rotation: 0,
     zIndex: -1,
-    cornerRadius: 8
+    cornerRadius: 8,
+    geoCoordinates: { lat: 40.7128, lng: -74.0060 } // New York
   },
   // Rectangle around leaf layer
   {

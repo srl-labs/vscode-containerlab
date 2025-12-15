@@ -294,6 +294,34 @@ function handleMockExtensionResponse(message: MockMessage) {
       }
       break;
 
+    case 'save-node-group-membership': {
+      console.log('%c[Mock Extension]', 'color: #FF9800;', 'Saving node group membership:', message);
+      const { nodeId, group, level } = message as { nodeId?: string; group?: string | null; level?: string | null };
+      if (nodeId) {
+        if (!devState.currentAnnotations.nodeAnnotations) {
+          devState.currentAnnotations.nodeAnnotations = [];
+        }
+        const existing = devState.currentAnnotations.nodeAnnotations.find(a => a.id === nodeId);
+        if (existing) {
+          if (group) {
+            existing.group = group;
+            existing.level = level || '1';
+          } else {
+            delete existing.group;
+            delete existing.level;
+          }
+        } else if (group) {
+          devState.currentAnnotations.nodeAnnotations.push({
+            id: nodeId,
+            group,
+            level: level || '1'
+          });
+        }
+        updateSplitViewContent();
+      }
+      break;
+    }
+
     case 'save-node-positions':
       console.log('%c[Mock Extension]', 'color: #FF9800;', 'Saving node positions:', message);
       // Update node positions in current elements and annotations
