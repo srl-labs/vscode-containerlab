@@ -41,22 +41,28 @@ export function ensureGridGuideRegistered(): void {
 
 /**
  * Check if elements have preset positions (from annotations file)
- * Returns true if all regular nodes have non-zero positions
- * Group nodes are excluded since their positions are computed from children
+ * Returns true if ANY regular topology node has a non-zero position
+ * This preserves existing positions while allowing new nodes to be added
+ *
+ * Excluded from check:
+ * - Group nodes (their positions are computed from children)
+ * - Free text/shape annotations (user-created, always have positions)
+ * - Cloud/network nodes (dynamically discovered from links, may not have stored positions)
  */
 export function hasPresetPositions(elements: CyElement[]): boolean {
-  // Filter to only regular nodes - exclude groups (their positions are computed from children)
+  // Filter to regular topology nodes only
   const regularNodes = elements.filter(el => {
     if (el.group !== 'nodes') return false;
     const role = el.data?.topoViewerRole;
-    // Exclude group nodes, free text, and free shape annotations
-    return role !== 'group' && role !== 'freeText' && role !== 'freeShape';
+    // Exclude group nodes, annotations, and cloud/network nodes
+    return role !== 'group' && role !== 'freeText' && role !== 'freeShape' && role !== 'cloud';
   });
 
   if (regularNodes.length === 0) return false;
 
-  // Check if all regular nodes have valid positions
-  return regularNodes.every(node => {
+  // Use preset layout if ANY regular topology node has a stored position
+  // This preserves existing positions when new nodes are added
+  return regularNodes.some(node => {
     const pos = node.position;
     return pos && (pos.x !== 0 || pos.y !== 0);
   });
