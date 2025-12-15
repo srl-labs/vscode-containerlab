@@ -322,6 +322,79 @@ export class ReactTopoViewer {
       return false;
     }
   }
+
+  /**
+   * Refresh after an external command (deploy/destroy) completes.
+   * This is called by the command system after a lifecycle operation finishes.
+   */
+  public async refreshAfterExternalCommand(
+    newDeploymentState: 'deployed' | 'undeployed'
+  ): Promise<boolean> {
+    if (!this.currentPanel) {
+      return false;
+    }
+
+    try {
+      // Update internal state
+      this.deploymentState = newDeploymentState;
+      this.isViewMode = newDeploymentState === 'deployed';
+
+      // Update message router context
+      if (this.messageRouter) {
+        this.messageRouter.updateContext({ isViewMode: this.isViewMode });
+      }
+
+      // Reload running lab data if switching to view mode
+      if (this.isViewMode) {
+        try {
+          this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
+        } catch (err) {
+          log.warn(`Failed to load running lab data: ${err}`);
+        }
+      } else {
+        this.cacheClabTreeDataToTopoviewer = undefined;
+      }
+
+      // Reload topology data
+      const topologyData = await this.loadTopologyData();
+
+      // Send topology data update to webview
+      this.currentPanel.webview.postMessage({
+        type: 'topology-data',
+        data: topologyData
+      });
+
+      // Notify webview of mode change
+      await this.notifyWebviewModeChanged();
+
+      log.info(`[ReactTopoViewer] Refreshed after ${newDeploymentState === 'deployed' ? 'deploy' : 'destroy'}`);
+      return true;
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to refresh after external command: ${err}`);
+      return false;
+    }
+  }
+
+  /**
+   * Notify the webview about a mode change
+   */
+  private async notifyWebviewModeChanged(): Promise<void> {
+    if (!this.currentPanel) {
+      return;
+    }
+
+    const mode = this.isViewMode ? 'viewer' : 'editor';
+
+    this.currentPanel.webview.postMessage({
+      type: 'topo-mode-changed',
+      data: {
+        mode,
+        deploymentState: this.deploymentState
+      }
+    });
+
+    log.info(`[ReactTopoViewer] Mode changed to: ${mode}`);
+  }
 }
 
 /**

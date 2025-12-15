@@ -15,6 +15,11 @@ export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
 export type LinkLabelMode = 'show-all' | 'on-select' | 'hide';
 
 /**
+ * Processing mode for lifecycle operations
+ */
+export type ProcessingMode = 'deploy' | 'destroy' | null;
+
+/**
  * Custom node template from configuration
  */
 export interface CustomNodeTemplate {
@@ -72,6 +77,10 @@ export interface TopoViewerState {
   defaultNode: string;
   /** Custom template being edited (not a graph node) */
   editingCustomTemplate: CustomTemplateEditorData | null;
+  /** Whether a lifecycle operation is in progress */
+  isProcessing: boolean;
+  /** Current processing mode for visual feedback */
+  processingMode: ProcessingMode;
 }
 
 /**
@@ -92,7 +101,9 @@ const initialState: TopoViewerState = {
   showDummyLinks: true,
   customNodes: [],
   defaultNode: '',
-  editingCustomTemplate: null
+  editingCustomTemplate: null,
+  isProcessing: false,
+  processingMode: null
 };
 
 /**
@@ -116,7 +127,8 @@ type TopoViewerAction =
   | { type: 'REMOVE_NODE_AND_EDGES'; payload: string }
   | { type: 'REMOVE_EDGE'; payload: string }
   | { type: 'SET_CUSTOM_NODES'; payload: { customNodes: CustomNodeTemplate[]; defaultNode: string } }
-  | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null };
+  | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null }
+  | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } };
 
 /**
  * Reducer function
@@ -202,6 +214,11 @@ const reducerHandlers: ReducerHandlers = {
     editingEdge: action.payload ? null : state.editingEdge,
     selectedNode: action.payload ? null : state.selectedNode,
     selectedEdge: action.payload ? null : state.selectedEdge
+  }),
+  SET_PROCESSING: (state, action) => ({
+    ...state,
+    isProcessing: action.payload.isProcessing,
+    processingMode: action.payload.mode
   })
 };
 
@@ -236,6 +253,7 @@ interface TopoViewerContextValue {
   removeEdge: (edgeId: string) => void;
   setCustomNodes: (customNodes: CustomNodeTemplate[], defaultNode: string) => void;
   editCustomTemplate: (data: CustomTemplateEditorData | null) => void;
+  setProcessing: (isProcessing: boolean, mode?: 'deploy' | 'destroy') => void;
 }
 
 /**
@@ -346,6 +364,10 @@ function handleExtensionMessage(
           payload: { customNodes, defaultNode: defaultNode || '' }
         });
       }
+    },
+    'lab-lifecycle-status': () => {
+      // Lifecycle operation completed - clear processing state
+      dispatch({ type: 'SET_PROCESSING', payload: { isProcessing: false, mode: null } });
     }
   };
 
@@ -417,6 +439,9 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     }, [dispatch]),
     editCustomTemplate: useCallback((data: CustomTemplateEditorData | null) => {
       dispatch({ type: 'EDIT_CUSTOM_TEMPLATE', payload: data });
+    }, [dispatch]),
+    setProcessing: useCallback((isProcessing: boolean, mode?: 'deploy' | 'destroy') => {
+      dispatch({ type: 'SET_PROCESSING', payload: { isProcessing, mode: mode ?? null } });
     }, [dispatch])
   };
 }

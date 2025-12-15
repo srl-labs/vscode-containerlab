@@ -651,26 +651,64 @@
     color: var(--vscode-charts-green, #89d185);
   }
 
-  /* Loading indicator */
+  /* Loading indicator - Enhanced with deploy/destroy modes */
   .navbar-loading-indicator {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
     height: 3px;
+    pointer-events: none;
     overflow: hidden;
+    opacity: 0;
+    transition: opacity 180ms ease-in-out;
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1)) 70%,
+      transparent
+    );
+    border-bottom: 1px solid var(--vscode-tab-border, transparent);
+  }
+
+  .navbar-loading-indicator.is-active {
+    opacity: 1;
   }
 
   .navbar-loading-indicator__bar {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    opacity: 0;
+    background-size: 220% 100%;
+    transform-origin: left center;
+  }
+
+  .navbar-loading-indicator.is-active .navbar-loading-indicator__bar {
+    opacity: 0.9;
+  }
+
+  .navbar-loading-indicator.is-active.is-deploy .navbar-loading-indicator__bar {
+    background-image: linear-gradient(
       90deg,
       transparent 0%,
-      var(--vscode-progressBar-background, #0078d4) 50%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
       transparent 100%
     );
-    animation: loading-slide 1.5s infinite ease-in-out;
+    animation: navbar-progress-sweep 1.15s linear infinite;
+  }
+
+  .navbar-loading-indicator.is-active.is-destroy .navbar-loading-indicator__bar {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
+      transparent 100%
+    );
+    animation: navbar-progress-sweep 1.15s linear infinite;
   }
 }
 
@@ -713,6 +751,24 @@
   }
   75% {
     transform: translateX(3px);
+  }
+}
+
+@keyframes navbar-progress-sweep {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+@keyframes deploy-processing-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
 
@@ -805,6 +861,65 @@
 
 .floating-panel-btn.lock-shake {
   animation: lock-shake 0.3s;
+}
+
+/* Button processing state for deployment animations */
+.floating-panel-btn.processing {
+  position: relative;
+  cursor: wait;
+}
+
+.floating-panel-btn.processing i {
+  opacity: 0.35;
+}
+
+.floating-panel-btn.processing::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  opacity: 0;
+  animation: deploy-processing-spinner 0.9s linear infinite;
+}
+
+.floating-panel-btn.processing.processing--deploy {
+  color: var(--vscode-button-foreground);
+  background-color: color-mix(
+    in srgb,
+    var(--vscode-testing-iconPassed, #73c991) 40%,
+    var(--vscode-button-background, rgba(0, 0, 0, 0))
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 65%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent);
+}
+
+.floating-panel-btn.processing.processing--deploy::after {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 80%, transparent);
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+.floating-panel-btn.processing.processing--destroy {
+  color: var(--vscode-button-foreground);
+  background-color: color-mix(
+    in srgb,
+    var(--vscode-testing-iconFailed, #f14c4c) 40%,
+    var(--vscode-button-background, rgba(0, 0, 0, 0))
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 65%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 25%, transparent);
+}
+
+.floating-panel-btn.processing.processing--destroy::after {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 85%, transparent);
+  border-top-color: transparent;
+  border-right-color: transparent;
 }
 
 /* Deploy Button Group */

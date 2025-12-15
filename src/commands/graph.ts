@@ -228,6 +228,20 @@ async function postLifecycleStatus(
   status: 'success' | 'error',
   errorMessage?: string
 ): Promise<void> {
+  // Try React TopoViewer first
+  if (currentReactTopoViewer?.currentPanel) {
+    try {
+      await currentReactTopoViewer.currentPanel.webview.postMessage({
+        type: 'lab-lifecycle-status',
+        data: { commandType, status, errorMessage }
+      });
+    } catch (err) {
+      console.error(`Failed to publish lifecycle status to React TopoViewer (${status}) for ${commandType}:`, err);
+    }
+    return;
+  }
+
+  // Fallback to legacy TopoViewer
   if (!currentTopoViewer || !currentTopoViewerPanel) {
     return;
   }
@@ -251,15 +265,29 @@ async function postLifecycleStatus(
  * This should ONLY be called after a containerlab command has successfully completed
  */
 export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: LifecycleCommandType) {
-  // Only notify the current active TopoViewer
+  // Determine the new state based on the command
+  const newDeploymentState = commandType === 'destroy' ? 'undeployed' : 'deployed';
+
+  // Try React TopoViewer first
+  if (currentReactTopoViewer?.currentPanel) {
+    try {
+      if (typeof currentReactTopoViewer.refreshAfterExternalCommand === 'function') {
+        await currentReactTopoViewer.refreshAfterExternalCommand(newDeploymentState);
+      }
+    } catch (error) {
+      console.error(`Failed to update React TopoViewer after ${commandType}:`, error);
+    } finally {
+      await postLifecycleStatus(commandType, 'success');
+    }
+    return;
+  }
+
+  // Fallback to legacy TopoViewer
   if (!currentTopoViewer || !currentTopoViewerPanel) {
     return;
   }
 
   try {
-    // Determine the new state based on the command
-    const newDeploymentState = commandType === 'destroy' ? 'undeployed' : 'deployed';
-
     if (typeof (currentTopoViewer as any).refreshAfterExternalCommand === 'function') {
       await (currentTopoViewer as any).refreshAfterExternalCommand(newDeploymentState);
     } else if (currentTopoViewer.updatePanelHtml) {

@@ -480,7 +480,7 @@ export class MessageRouter {
     return true;
   }
 
-  private async handleLifecycleCommand(command: string): Promise<void> {
+  private async handleLifecycleCommand(command: string, _panel: vscode.WebviewPanel): Promise<void> {
     if (!this.context.yamlFilePath) {
       log.warn(`[ReactTopoViewer] Cannot run ${command}: no YAML path available`);
       return;
@@ -491,6 +491,10 @@ export class MessageRouter {
     } else if (result) {
       log.info(`[ReactTopoViewer] ${result}`);
     }
+    // NOTE: Do NOT send lab-lifecycle-status here!
+    // The command is executed asynchronously via vscode.commands.executeCommand().
+    // The actual completion notification comes from graph.ts via notifyCurrentTopoViewerOfCommandSuccess()
+    // which calls refreshAfterExternalCommand() and postLifecycleStatus().
   }
 
   private async handleSplitViewCommand(panel: vscode.WebviewPanel): Promise<boolean> {
@@ -832,7 +836,7 @@ export class MessageRouter {
     }
 
     if (LIFECYCLE_COMMANDS.has(command)) {
-      await this.handleLifecycleCommand(command);
+      await this.handleLifecycleCommand(command, panel);
       return true;
     }
 

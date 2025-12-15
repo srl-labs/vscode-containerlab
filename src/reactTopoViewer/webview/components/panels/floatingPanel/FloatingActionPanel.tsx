@@ -231,11 +231,35 @@ const PanelContent: React.FC<PanelContentProps> = ({
   onDeleteCustomNode,
   onSetDefaultCustomNode
 }) => {
-  const { state } = useTopoViewer();
+  const { state, setProcessing } = useTopoViewer();
+  const { isProcessing, processingMode } = state;
 
   const handleDeployClick = useCallback(() => {
+    const mode = isViewerMode ? 'destroy' : 'deploy';
+    setProcessing(true, mode);
     if (isViewerMode) { onDestroy?.(); } else { onDeploy?.(); }
-  }, [isViewerMode, onDeploy, onDestroy]);
+  }, [isViewerMode, onDeploy, onDestroy, setProcessing]);
+
+  // Wrap cleanup/redeploy handlers to set processing state
+  const handleDeployCleanup = useCallback(() => {
+    setProcessing(true, 'deploy');
+    onDeployCleanup?.();
+  }, [onDeployCleanup, setProcessing]);
+
+  const handleDestroyCleanup = useCallback(() => {
+    setProcessing(true, 'destroy');
+    onDestroyCleanup?.();
+  }, [onDestroyCleanup, setProcessing]);
+
+  const handleRedeploy = useCallback(() => {
+    setProcessing(true, 'deploy');
+    onRedeploy?.();
+  }, [onRedeploy, setProcessing]);
+
+  const handleRedeployCleanup = useCallback(() => {
+    setProcessing(true, 'deploy');
+    onRedeployCleanup?.();
+  }, [onRedeployCleanup, setProcessing]);
 
   const createLockAwareHandler = useLockAwareHandler(isLocked, onLockedClick);
 
@@ -260,10 +284,12 @@ const PanelContent: React.FC<PanelContentProps> = ({
         isViewerMode={isViewerMode}
         drawerSide={drawerSide}
         onDeployClick={handleDeployClick}
-        onDeployCleanup={onDeployCleanup}
-        onDestroyCleanup={onDestroyCleanup}
-        onRedeploy={onRedeploy}
-        onRedeployCleanup={onRedeployCleanup}
+        onDeployCleanup={handleDeployCleanup}
+        onDestroyCleanup={handleDestroyCleanup}
+        onRedeploy={handleRedeploy}
+        onRedeployCleanup={handleRedeployCleanup}
+        isProcessing={isProcessing}
+        processingMode={processingMode}
       />
 
       {!isViewerMode && <div className="floating-panel-divider" />}

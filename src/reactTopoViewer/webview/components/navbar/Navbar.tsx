@@ -7,6 +7,7 @@ import { useTopoViewer, LinkLabelMode } from '../../context/TopoViewerContext';
 import { DEFAULT_GRID_LINE_WIDTH } from '../../hooks';
 import type { LayoutOption } from '../../hooks';
 import { ContainerlabLogo } from './ContainerlabLogo';
+import { NavbarLoadingIndicator } from './NavbarLoadingIndicator';
 import { useDropdown } from '../../hooks/ui/useDropdown';
 
 interface NavbarProps {
@@ -236,12 +237,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* Loading Indicator */}
-      {state.isLoading && (
-        <div className="navbar-loading-indicator" role="presentation" aria-hidden="true">
-          <div className="navbar-loading-indicator__bar"></div>
-        </div>
-      )}
+      {/* Loading Indicator - shows during deployment/destroy operations */}
+      <NavbarLoadingIndicator
+        isActive={state.isProcessing}
+        mode={state.processingMode}
+      />
     </nav>
   );
 };
