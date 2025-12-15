@@ -332,18 +332,30 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
 }
 
 /**
- * Store original node sizes for scaling
+ * Store original node sizes for scaling.
+ * For font-size, always use the fallback since the stylesheet uses relative units (em)
+ * that don't work well with the geo map scaling system.
  */
 function setDefaultNumericData(target: any, dataKey: string, styleKey: string, fallback: number): void {
   if (target.data(dataKey) !== undefined) return;
-  const parsed = parseFloat(target.style(styleKey));
+
+  // For font-size, always use fallback since stylesheet uses em units
+  // that don't translate well to the pixel-based scaling system
+  if (styleKey === STYLE_FONT_SIZE) {
+    target.data(dataKey, fallback);
+    return;
+  }
+
+  const styleValue = target.style(styleKey);
+  const parsed = parseFloat(styleValue);
   target.data(dataKey, Number.isFinite(parsed) ? parsed : fallback);
 }
 
 function cacheNodeOriginalStyles(node: any): void {
   setDefaultNumericData(node, '_origWidth', STYLE_WIDTH, 50);
   setDefaultNumericData(node, '_origHeight', STYLE_HEIGHT, 50);
-  setDefaultNumericData(node, '_origFont', STYLE_FONT_SIZE, 12);
+  // Use small value similar to what 0.58em would parse to, since labelFactor multiplies by 8*scaleFactor
+  setDefaultNumericData(node, '_origFont', STYLE_FONT_SIZE, 0.5);
 
   if (node.data('topoViewerRole') === 'group') {
     setDefaultNumericData(node, '_origBorderWidth', STYLE_BORDER_WIDTH, 2);
@@ -352,7 +364,8 @@ function cacheNodeOriginalStyles(node: any): void {
 
 function cacheEdgeOriginalStyles(edge: any): void {
   setDefaultNumericData(edge, '_origWidth', STYLE_WIDTH, 2);
-  setDefaultNumericData(edge, '_origFont', STYLE_FONT_SIZE, 10);
+  // Use small value similar to what 0.42em would parse to, since labelFactor multiplies by 8*scaleFactor
+  setDefaultNumericData(edge, '_origFont', STYLE_FONT_SIZE, 0.4);
   setDefaultNumericData(edge, '_origArrow', STYLE_ARROW_SCALE, 1);
 }
 
@@ -424,40 +437,39 @@ export function applyScale(cy: Core, state: MapLibreState, factor: number): void
 }
 
 /**
- * Reset node/edge styles to original values
+ * Reset node/edge styles by removing inline styles so stylesheet takes over.
+ * This is cleaner than trying to restore values since the original styles
+ * may use relative units (em) that don't convert well to pixels.
  */
 function resetStyles(cy: Core): void {
-  cy.nodes().forEach((n: any) => {
-    const w = n.data('_origWidth');
-    const h = n.data('_origHeight');
-    const fs = n.data('_origFont');
-    const bw = n.data('_origBorderWidth');
+  cy.batch(() => {
+    cy.nodes().forEach((n: any) => {
+      // Remove inline styles - let stylesheet take over
+      n.removeStyle(STYLE_WIDTH);
+      n.removeStyle(STYLE_HEIGHT);
+      n.removeStyle(STYLE_FONT_SIZE);
+      if (n.data('topoViewerRole') === 'group') {
+        n.removeStyle(STYLE_BORDER_WIDTH);
+      }
 
-    if (w !== undefined) n.style(STYLE_WIDTH, w);
-    if (h !== undefined) n.style(STYLE_HEIGHT, h);
-    if (fs !== undefined && fs !== 0) n.style(STYLE_FONT_SIZE, `${fs}px`);
-    if (bw !== undefined && n.data('topoViewerRole') === 'group') {
-      n.style(STYLE_BORDER_WIDTH, bw);
-    }
+      // Clean up cached data
+      n.removeData('_origWidth');
+      n.removeData('_origHeight');
+      n.removeData('_origFont');
+      n.removeData('_origBorderWidth');
+    });
 
-    n.removeData('_origWidth');
-    n.removeData('_origHeight');
-    n.removeData('_origFont');
-    n.removeData('_origBorderWidth');
-  });
+    cy.edges().forEach((e: any) => {
+      // Remove inline styles - let stylesheet take over
+      e.removeStyle(STYLE_WIDTH);
+      e.removeStyle(STYLE_FONT_SIZE);
+      e.removeStyle(STYLE_ARROW_SCALE);
 
-  cy.edges().forEach((e: any) => {
-    const w = e.data('_origWidth');
-    const fs = e.data('_origFont');
-    const ar = e.data('_origArrow');
-
-    if (w !== undefined) e.style(STYLE_WIDTH, w);
-    if (fs !== undefined && fs !== 0) e.style(STYLE_FONT_SIZE, `${fs}px`);
-    if (ar !== undefined) e.style(STYLE_ARROW_SCALE, ar);
-
-    e.removeData('_origWidth');
-    e.removeData('_origFont');
-    e.removeData('_origArrow');
+      // Clean up cached data
+      e.removeData('_origWidth');
+      e.removeData('_origFont');
+      e.removeData('_origArrow');
+    });
   });
 }
 
@@ -862,15 +874,8 @@ export function cleanupMapLibreState(
 
   showGridOverlay(container);
 
-  // Run cola layout to reorganize nodes
-  cy.layout({
-    name: 'cola',
-    nodeGap: 5,
-    edgeLength: 100,
-    animate: true,
-    randomize: false,
-    maxSimulationTime: 1500
-  } as any).run();
+  // Fit the view to show all nodes after restoring positions
+  cy.fit(undefined, 50);
 
   state.isInitialized = false;
   state.scaleApplied = false;
