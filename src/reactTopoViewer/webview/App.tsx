@@ -790,9 +790,9 @@ export const App: React.FC = () => {
           onAnnotationEdit={freeShapeAnnotations.editAnnotation}
           onAnnotationDelete={freeShapeUndoHandlers.deleteAnnotationWithUndo}
           onPositionChange={freeShapeUndoHandlers.updatePositionWithUndo}
-          onRotationChange={freeShapeUndoHandlers.updateRotationWithUndo}
-          onSizeChange={freeShapeUndoHandlers.updateSizeWithUndo}
-          onEndPositionChange={freeShapeUndoHandlers.updateEndPositionWithUndo}
+          onRotationChange={freeShapeAnnotations.updateRotation}
+          onSizeChange={freeShapeAnnotations.updateSize}
+          onEndPositionChange={freeShapeAnnotations.updateEndPosition}
           onCanvasClick={freeShapeUndoHandlers.handleCanvasClickWithUndo}
           selectedAnnotationIds={freeShapeAnnotations.selectedAnnotationIds}
           onAnnotationSelect={freeShapeAnnotations.selectAnnotation}
@@ -803,6 +803,8 @@ export const App: React.FC = () => {
           mapLibreState={mapLibreState}
           onGeoPositionChange={freeShapeAnnotations.updateGeoPosition}
           onEndGeoPositionChange={freeShapeAnnotations.updateEndGeoPosition}
+          onCaptureAnnotationBefore={freeShapeUndoHandlers.captureAnnotationBefore}
+          onFinalizeWithUndo={freeShapeUndoHandlers.finalizeWithUndo}
         />
 	        <NodeInfoPanel
 	          isVisible={shouldShowInfoPanel(state.selectedNode, state.mode)}

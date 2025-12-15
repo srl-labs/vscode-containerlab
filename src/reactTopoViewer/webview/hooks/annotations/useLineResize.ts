@@ -6,15 +6,22 @@ import type { Core as CyCore } from 'cytoscape';
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShapeHelpers';
 
+interface UseLineResizeDragOptions {
+  cy: CyCore;
+  annotation: FreeShapeAnnotation;
+  isLocked: boolean;
+  onEndPositionChange: (pos: { x: number; y: number }) => void;
+  // Deferred undo callbacks - capture state at drag start, record undo at drag end
+  onDragStart?: () => FreeShapeAnnotation | null;
+  onDragEnd?: (before: FreeShapeAnnotation | null) => void;
+}
+
 /**
  * Hook for handling line endpoint resize drag operations
  */
-export function useLineResizeDrag(
-  cy: CyCore,
-  annotation: FreeShapeAnnotation,
-  isLocked: boolean,
-  onEndPositionChange: (pos: { x: number; y: number }) => void
-) {
+export function useLineResizeDrag(options: UseLineResizeDragOptions) {
+  const { cy, annotation, isLocked, onEndPositionChange, onDragStart, onDragEnd } = options;
+
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef<{
     startClientX: number;
@@ -23,6 +30,7 @@ export function useLineResizeDrag(
     startDy: number;
     rotationRad: number;
   } | null>(null);
+  const beforeStateRef = useRef<FreeShapeAnnotation | null>(null);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -53,7 +61,12 @@ export function useLineResizeDrag(
 
     const handleMouseUp = () => {
       setIsResizing(false);
+      // Record single undo at drag end
+      if (onDragEnd) {
+        onDragEnd(beforeStateRef.current);
+      }
       dragRef.current = null;
+      beforeStateRef.current = null;
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -62,12 +75,17 @@ export function useLineResizeDrag(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, cy, annotation.position.x, annotation.position.y, onEndPositionChange]);
+  }, [isResizing, cy, annotation.position.x, annotation.position.y, onEndPositionChange, onDragEnd]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isLocked || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Capture before state for deferred undo
+    if (onDragStart) {
+      beforeStateRef.current = onDragStart();
+    }
 
     const end = annotation.endPosition ?? {
       x: annotation.position.x + DEFAULT_LINE_LENGTH,
@@ -81,7 +99,7 @@ export function useLineResizeDrag(
       rotationRad: ((annotation.rotation ?? 0) * Math.PI) / 180
     };
     setIsResizing(true);
-  }, [isLocked, annotation]);
+  }, [isLocked, annotation, onDragStart]);
 
   return { isResizing, handleMouseDown };
 }

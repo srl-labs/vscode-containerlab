@@ -47,6 +47,9 @@ interface FreeShapeLayerProps {
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
   onEndGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  // Deferred undo callbacks for drag operations
+  onCaptureAnnotationBefore?: (id: string) => FreeShapeAnnotation | null;
+  onFinalizeWithUndo?: (before: FreeShapeAnnotation | null, id: string) => void;
 }
 
 // ============================================================================
@@ -354,6 +357,9 @@ interface ShapeInteractionItemProps {
   geoMode?: 'pan' | 'edit';
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
+  // Deferred undo callbacks for drag operations
+  onDragStart?: () => FreeShapeAnnotation | null;
+  onDragEnd?: (before: FreeShapeAnnotation | null) => void;
 }
 
 const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
@@ -374,7 +380,9 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   isGeoMode,
   geoMode,
   mapLibreState,
-  onGeoPositionChange
+  onGeoPositionChange,
+  onDragStart,
+  onDragEnd
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -402,7 +410,9 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
     renderedPos,
     currentRotation: annotation.rotation ?? 0,
     isLocked: effectivelyLocked,
-    onRotationChange
+    onRotationChange,
+    onDragStart,
+    onDragEnd
   });
 
   const { isResizing: isBoxResizing, handleResizeMouseDown } = useResizeDrag({
@@ -411,15 +421,19 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
     currentHeight: annotation.height,
     contentRef,
     isLocked: effectivelyLocked,
-    onSizeChange
+    onSizeChange,
+    onDragStart,
+    onDragEnd
   });
 
-  const { isResizing: isLineResizing, handleMouseDown: handleLineResizeMouseDown } = useLineResizeDrag(
+  const { isResizing: isLineResizing, handleMouseDown: handleLineResizeMouseDown } = useLineResizeDrag({
     cy,
     annotation,
-    effectivelyLocked,
-    onEndPositionChange
-  );
+    isLocked: effectivelyLocked,
+    onEndPositionChange,
+    onDragStart,
+    onDragEnd
+  });
 
   const { contextMenu, handleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect);
 
@@ -525,6 +539,8 @@ function createAnnotationCallbacks(
     onAnnotationSelect?: (id: string) => void;
     onAnnotationToggleSelect?: (id: string) => void;
     onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
+    onCaptureAnnotationBefore?: (id: string) => FreeShapeAnnotation | null;
+    onFinalizeWithUndo?: (before: FreeShapeAnnotation | null, id: string) => void;
   }
 ) {
   const id = annotation.id;
@@ -537,7 +553,9 @@ function createAnnotationCallbacks(
     onEndPositionChange: (endPos: { x: number; y: number }) => handlers.onEndPositionChange(id, endPos),
     onSelect: () => handlers.onAnnotationSelect?.(id),
     onToggleSelect: () => handlers.onAnnotationToggleSelect?.(id),
-    onGeoPositionChange: handlers.onGeoPositionChange ? (geoCoords: { lat: number; lng: number }) => handlers.onGeoPositionChange!(id, geoCoords) : undefined
+    onGeoPositionChange: handlers.onGeoPositionChange ? (geoCoords: { lat: number; lng: number }) => handlers.onGeoPositionChange!(id, geoCoords) : undefined,
+    onDragStart: handlers.onCaptureAnnotationBefore ? () => handlers.onCaptureAnnotationBefore!(id) : undefined,
+    onDragEnd: handlers.onFinalizeWithUndo ? (before: FreeShapeAnnotation | null) => handlers.onFinalizeWithUndo!(before, id) : undefined
   };
 }
 
@@ -565,7 +583,9 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   isGeoMode,
   geoMode,
   mapLibreState,
-  onGeoPositionChange
+  onGeoPositionChange,
+  onCaptureAnnotationBefore,
+  onFinalizeWithUndo
 }) => {
   const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeShapeLayer');
 
@@ -592,7 +612,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   const handlers = {
     onAnnotationEdit, onAnnotationDelete, onPositionChange, onRotationChange,
     onSizeChange, onEndPositionChange, onAnnotationSelect, onAnnotationToggleSelect,
-    onGeoPositionChange
+    onGeoPositionChange, onCaptureAnnotationBefore, onFinalizeWithUndo
   };
 
   // Background content: shape visuals rendered into cytoscape-layer (below nodes)

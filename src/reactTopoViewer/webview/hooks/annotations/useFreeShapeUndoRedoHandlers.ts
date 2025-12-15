@@ -25,6 +25,9 @@ export interface UseFreeShapeUndoRedoHandlersReturn {
   updateEndPositionWithUndo: (id: string, endPosition: { x: number; y: number }) => void;
   deleteSelectedWithUndo: () => void;
   cutSelectedWithUndo: () => void;
+  // Deferred undo for drag operations (captures before state, records undo at drag end)
+  captureAnnotationBefore: (id: string) => FreeShapeAnnotation | null;
+  finalizeWithUndo: (before: FreeShapeAnnotation | null, id: string) => void;
 }
 
 export interface UseFreeShapeAnnotationApplierReturn {
@@ -222,6 +225,23 @@ export function useFreeShapeUndoRedoHandlers(
     freeShapeAnnotations.cutSelectedAnnotations();
   }, [freeShapeAnnotations, undoRedo]);
 
+  // Capture annotation state before a drag operation (for deferred undo)
+  const captureAnnotationBefore = React.useCallback((id: string): FreeShapeAnnotation | null => {
+    return cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
+  }, [freeShapeAnnotations.annotations]);
+
+  // Record undo at drag end with before state captured at drag start
+  const finalizeWithUndo = React.useCallback((before: FreeShapeAnnotation | null, id: string) => {
+    if (!before || isApplyingAnnotationUndoRedo.current) return;
+    const after = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
+    if (!after) return;
+    // Only record if something actually changed
+    const hasChanged = JSON.stringify(before) !== JSON.stringify(after);
+    if (hasChanged) {
+      undoRedo.pushAction(freeShapeAnnotations.getUndoRedoAction(before, after));
+    }
+  }, [freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo]);
+
   return {
     handleCanvasClickWithUndo,
     deleteAnnotationWithUndo,
@@ -230,6 +250,8 @@ export function useFreeShapeUndoRedoHandlers(
     updateRotationWithUndo,
     updateEndPositionWithUndo,
     deleteSelectedWithUndo,
-    cutSelectedWithUndo
+    cutSelectedWithUndo,
+    captureAnnotationBefore,
+    finalizeWithUndo
   };
 }

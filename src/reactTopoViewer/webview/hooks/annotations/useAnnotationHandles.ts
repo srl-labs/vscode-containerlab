@@ -4,6 +4,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { RenderedPosition } from './freeTextLayerHelpers';
+import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 
 // ============================================================================
 // Rotation Hook
@@ -15,6 +16,9 @@ interface UseRotationDragOptions {
   currentRotation: number;
   isLocked: boolean;
   onRotationChange: (rotation: number) => void;
+  // Deferred undo callbacks - capture state at drag start, record undo at drag end
+  onDragStart?: () => FreeShapeAnnotation | null;
+  onDragEnd?: (before: FreeShapeAnnotation | null) => void;
 }
 
 interface UseRotationDragReturn {
@@ -42,10 +46,11 @@ function normalizeRotation(rotation: number): number {
 }
 
 export function useRotationDrag(options: UseRotationDragOptions): UseRotationDragReturn {
-  const { cy, renderedPos, currentRotation, isLocked, onRotationChange } = options;
+  const { cy, renderedPos, currentRotation, isLocked, onRotationChange, onDragStart, onDragEnd } = options;
 
   const [isRotating, setIsRotating] = useState(false);
   const dragStartRef = useRef<RotationDragStart | null>(null);
+  const beforeStateRef = useRef<FreeShapeAnnotation | null>(null);
 
   useEffect(() => {
     if (!isRotating) return;
@@ -64,7 +69,12 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
 
     const handleMouseUp = () => {
       setIsRotating(false);
+      // Record single undo at drag end
+      if (onDragEnd) {
+        onDragEnd(beforeStateRef.current);
+      }
       dragStartRef.current = null;
+      beforeStateRef.current = null;
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -73,12 +83,17 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isRotating, onRotationChange]);
+  }, [isRotating, onRotationChange, onDragEnd]);
 
   const handleRotationMouseDown = useCallback((e: React.MouseEvent) => {
     if (isLocked || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Capture before state for deferred undo
+    if (onDragStart) {
+      beforeStateRef.current = onDragStart();
+    }
 
     // Get the center of the annotation in screen coordinates
     const container = cy.container();
@@ -98,7 +113,7 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
       startAngle,
       currentRotation
     };
-  }, [cy, isLocked, renderedPos.x, renderedPos.y, currentRotation]);
+  }, [cy, isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]);
 
   return { isRotating, handleRotationMouseDown };
 }
@@ -117,6 +132,9 @@ interface UseResizeDragOptions {
   contentRef: React.RefObject<HTMLDivElement | null>;
   isLocked: boolean;
   onSizeChange: (width: number, height: number) => void;
+  // Deferred undo callbacks - capture state at drag start, record undo at drag end
+  onDragStart?: () => FreeShapeAnnotation | null;
+  onDragEnd?: (before: FreeShapeAnnotation | null) => void;
 }
 
 interface UseResizeDragReturn {
@@ -168,9 +186,11 @@ function applyAspectRatio(width: number, height: number, startWidth: number, sta
 function useResizeDragHandlers(
   isResizing: boolean,
   dragStartRef: React.RefObject<ResizeDragStart | null>,
+  beforeStateRef: React.RefObject<FreeShapeAnnotation | null>,
   zoom: number,
   setIsResizing: React.Dispatch<React.SetStateAction<boolean>>,
-  onSizeChange: (width: number, height: number) => void
+  onSizeChange: (width: number, height: number) => void,
+  onDragEnd?: (before: FreeShapeAnnotation | null) => void
 ): void {
   useEffect(() => {
     if (!isResizing) return;
@@ -192,6 +212,10 @@ function useResizeDragHandlers(
 
     const handleMouseUp = () => {
       setIsResizing(false);
+      // Record single undo at drag end
+      if (onDragEnd) {
+        onDragEnd(beforeStateRef.current);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -200,21 +224,27 @@ function useResizeDragHandlers(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, dragStartRef, zoom, setIsResizing, onSizeChange]);
+  }, [isResizing, dragStartRef, beforeStateRef, zoom, setIsResizing, onSizeChange, onDragEnd]);
 }
 
 export function useResizeDrag(options: UseResizeDragOptions): UseResizeDragReturn {
-  const { renderedPos, currentWidth, currentHeight, contentRef, isLocked, onSizeChange } = options;
+  const { renderedPos, currentWidth, currentHeight, contentRef, isLocked, onSizeChange, onDragStart, onDragEnd } = options;
 
   const [isResizing, setIsResizing] = useState(false);
   const dragStartRef = useRef<ResizeDragStart | null>(null);
+  const beforeStateRef = useRef<FreeShapeAnnotation | null>(null);
 
-  useResizeDragHandlers(isResizing, dragStartRef, renderedPos.zoom, setIsResizing, onSizeChange);
+  useResizeDragHandlers(isResizing, dragStartRef, beforeStateRef, renderedPos.zoom, setIsResizing, onSizeChange, onDragEnd);
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent, corner: ResizeCorner) => {
     if (isLocked || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Capture before state for deferred undo
+    if (onDragStart) {
+      beforeStateRef.current = onDragStart();
+    }
 
     let startWidth = currentWidth || 100;
     let startHeight = currentHeight || 50;
@@ -227,7 +257,7 @@ export function useResizeDrag(options: UseResizeDragOptions): UseResizeDragRetur
 
     setIsResizing(true);
     dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, startWidth, startHeight, corner };
-  }, [isLocked, currentWidth, currentHeight, contentRef, renderedPos.zoom]);
+  }, [isLocked, currentWidth, currentHeight, contentRef, renderedPos.zoom, onDragStart]);
 
   return { isResizing, handleResizeMouseDown };
 }
