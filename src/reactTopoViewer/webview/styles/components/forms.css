@@ -1,0 +1,35 @@
+/* =============================================================================
+ * Form Component Styles
+ * Form groups, labels, and input fields
+ * ============================================================================= */
+
+@layer components {
+  /* Form styles */
+  .form-group {
+    padding-bottom: 0.5rem;
+  }
+
+  .vscode-label {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    font-weight: 600;
+    color: var(--vscode-foreground);
+    display: block;
+  }
+
+  /* Input styles */
+  .input-field {
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border);
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    outline: none;
+  }
+
+  .input-field:focus {
+    border-color: var(--vscode-focusBorder);
+    box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+  }
+}

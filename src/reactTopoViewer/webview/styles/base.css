@@ -1,0 +1,86 @@
+/* =============================================================================
+ * Base Styles
+ * Theme configuration, CSS variables, and base layer styles
+ * ============================================================================= */
+
+@theme {
+  /* Custom colors from tailwind.config.js */
+  --color-vscode-bg: var(--vscode-editor-background);
+  --color-vscode-fg: var(--vscode-editor-foreground);
+  --color-vscode-panel-bg: var(--vscode-panel-background);
+  --color-vscode-panel-fg: var(--vscode-panel-foreground);
+  --color-vscode-sidebar-bg: var(--vscode-sideBar-background);
+  --color-vscode-sidebar-fg: var(--vscode-sideBar-foreground);
+  --color-vscode-button-bg: var(--vscode-button-background);
+  --color-vscode-button-fg: var(--vscode-button-foreground);
+  --color-vscode-button-hover: var(--vscode-button-hoverBackground);
+  --color-vscode-input-bg: var(--vscode-input-background);
+  --color-vscode-input-fg: var(--vscode-input-foreground);
+  --color-vscode-input-border: var(--vscode-input-border);
+  --color-vscode-dropdown-bg: var(--vscode-dropdown-background);
+  --color-vscode-dropdown-fg: var(--vscode-dropdown-foreground);
+  --color-vscode-dropdown-border: var(--vscode-dropdown-border);
+  --color-vscode-link: var(--vscode-textLink-foreground);
+  --color-vscode-link-hover: var(--vscode-textLink-activeForeground);
+
+  /* Custom font sizes */
+  --font-size-xxs: 0.625rem;
+
+  /* Custom spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+
+  /* Custom box shadows */
+  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-navbar: 0px 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* VSCode Theme Variables */
+:root {
+  --bg-primary: var(--vscode-editor-background);
+  --bg-secondary: var(--vscode-panel-background);
+  --bg-hover: var(--vscode-list-hoverBackground);
+  --text-primary: var(--vscode-editor-foreground);
+  --text-secondary: var(--vscode-descriptionForeground);
+  --border: var(--vscode-panel-border);
+  --accent: var(--vscode-button-background);
+  --accent-hover: var(--vscode-button-hoverBackground);
+  --success: var(--vscode-charts-green);
+  --warning: var(--vscode-charts-yellow);
+  --error: var(--vscode-charts-red);
+  --info: var(--vscode-charts-blue);
+  /* Navbar height for viewport offset */
+  --navbar-height: 4.5rem;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+  }
+
+  #root {
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Prevent text selection globally */
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Allow text selection in inputs */
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}

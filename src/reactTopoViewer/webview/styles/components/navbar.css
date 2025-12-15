@@ -1,0 +1,214 @@
+/* =============================================================================
+ * Navbar Component Styles
+ * Top navigation bar, brand, buttons, menus, and loading indicator
+ * ============================================================================= */
+
+@layer components {
+  /* Navbar styles */
+  .navbar {
+    background-color: var(--vscode-tab-activeBackground);
+    border-bottom: 1px solid var(--vscode-tab-border);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    height: var(--navbar-height);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .navbar-logo {
+    height: 3rem;
+    width: auto;
+  }
+
+  .navbar-title {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .navbar-title-main {
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+
+  .navbar-title-sub {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  /* Mode badge */
+  .mode-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.625rem;
+    font-weight: 300;
+    border-radius: 0.25rem;
+    text-transform: uppercase;
+    color: white;
+  }
+
+  .mode-badge.viewer {
+    background-color: #10b981;
+  }
+
+  .mode-badge.editor {
+    background-color: #3b82f6;
+  }
+
+  /* Navbar buttons */
+  .navbar-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+
+  /* Navbar menu dropdown */
+  .navbar-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.25rem);
+    min-width: 14rem;
+    padding: 0.25rem 0;
+    background-color: var(--vscode-menu-background, var(--vscode-dropdown-background));
+    color: var(--vscode-menu-foreground, var(--text-primary));
+    border: 1px solid var(--vscode-menu-border, rgba(128, 128, 128, 0.35));
+    border-radius: 0.375rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    z-index: 100;
+  }
+
+  .grid-menu {
+    min-width: 14rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .grid-line-slider {
+    width: 100%;
+    accent-color: var(--vscode-focusBorder, #0e639c);
+    margin: 0.5rem 0 0.25rem 0;
+  }
+
+  .grid-line-display {
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--vscode-menu-border, rgba(128, 128, 128, 0.35));
+    border-radius: 0.25rem;
+    background: var(--bg-secondary, var(--vscode-sideBar-background));
+    color: var(--vscode-menu-foreground, var(--text-primary));
+  }
+
+  .grid-reset-button {
+    border: 1px solid var(--vscode-menu-border, rgba(128, 128, 128, 0.35));
+    border-radius: 0.35rem;
+    justify-content: center;
+    font-weight: 600;
+    background: var(--vscode-button-secondaryBackground, rgba(255, 255, 255, 0.06));
+  }
+
+  .grid-reset-button:hover {
+    background: var(--vscode-button-hoverBackground, rgba(64, 166, 255, 0.18));
+  }
+
+  .navbar-menu-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    gap: 0.5rem;
+    transition: background-color 0.1s ease;
+  }
+
+  .navbar-menu-option:hover {
+    background-color: var(--vscode-menu-selectionBackground, rgba(64, 166, 255, 0.18));
+  }
+
+  .navbar-menu-option-check {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--vscode-charts-green, #89d185);
+  }
+
+  /* Loading indicator - Enhanced with deploy/destroy modes */
+  .navbar-loading-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 180ms ease-in-out;
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1)) 70%,
+      transparent
+    );
+    border-bottom: 1px solid var(--vscode-tab-border, transparent);
+  }
+
+  .navbar-loading-indicator.is-active {
+    opacity: 1;
+  }
+
+  .navbar-loading-indicator__bar {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    opacity: 0;
+    background-size: 220% 100%;
+    transform-origin: left center;
+  }
+
+  .navbar-loading-indicator.is-active .navbar-loading-indicator__bar {
+    opacity: 0.9;
+  }
+
+  .navbar-loading-indicator.is-active.is-deploy .navbar-loading-indicator__bar {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 90%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent) 75%,
+      transparent 100%
+    );
+    animation: navbar-progress-sweep 1.15s linear infinite;
+  }
+
+  .navbar-loading-indicator.is-active.is-destroy .navbar-loading-indicator__bar {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 15%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 95%, transparent) 45%,
+      color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 30%, transparent) 75%,
+      transparent 100%
+    );
+    animation: navbar-progress-sweep 1.15s linear infinite;
+  }
+}

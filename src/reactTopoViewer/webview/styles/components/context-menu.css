@@ -1,0 +1,53 @@
+/* =============================================================================
+ * Context Menu Styles
+ * Dropdown context menu for nodes and edges
+ * ============================================================================= */
+
+@layer components {
+  .context-menu {
+    background-color: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 4px 0;
+    min-width: 140px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 14px;
+    border: none;
+    background: none;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.1s ease;
+  }
+
+  .context-menu-item:hover:not(.disabled) {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .context-menu-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .context-menu-item i {
+    width: 16px;
+    text-align: center;
+    font-size: 12px;
+    opacity: 0.9;
+  }
+
+  .context-menu-divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.1);
+    margin: 4px 0;
+  }
+}

@@ -1,0 +1,19 @@
+/* =============================================================================
+ * Custom Utilities
+ * Additional utility classes extending Tailwind
+ * ============================================================================= */
+
+@layer utilities {
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-2xs {
+    font-size: var(--font-size-xxs);
+    line-height: 1rem;
+  }
+
+  .border-default {
+    border-color: var(--border);
+  }
+}
