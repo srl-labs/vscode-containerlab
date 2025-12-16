@@ -1,7 +1,7 @@
 /**
  * Nightcall Audio Hook
  *
- * Generates the iconic Nightcall by Kavinsky melody with arpeggio accompaniment.
+ * Generates the Nightcall melody with arpeggio accompaniment.
  * Classic synthwave with the Am - G/B - F - Dm progression.
  *
  * Uses pre-rendered audio for smooth playback on slow hardware.
@@ -10,38 +10,13 @@
  * Tempo: ~91 BPM
  */
 
-import { useCallback, useRef, useState } from 'react';
-
-/**
- * A minor scale frequencies
- * A minor: A, B, C, D, E, F, G
- */
-const A_MINOR_SCALE: Record<number, number[]> = {
-  [-2]: [55.0, 61.74, 65.41, 73.42, 82.41, 87.31, 98.0],
-  [-1]: [110.0, 123.47, 130.81, 146.83, 164.81, 174.61, 196.0],
-  [0]: [220.0, 246.94, 261.63, 293.66, 329.63, 349.23, 392.0],
-  [1]: [440.0, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99],
-};
-
-function getAMinorFrequency(sd: number, octave: number): number {
-  const scaleIndex = sd - 1;
-  const frequencies = A_MINOR_SCALE[octave];
-  if (!frequencies || scaleIndex < 0 || scaleIndex >= 7) {
-    return A_MINOR_SCALE[0][Math.max(0, Math.min(6, scaleIndex))];
-  }
-  return frequencies[scaleIndex];
-}
+import { useCallback } from 'react';
+import { getAMinorFrequency, useAudioEngine, type MelodyNote } from './core';
 
 const BEAT = 0.659;
 const SIXTEENTH = BEAT / 4;
 const LOOP_DURATION = 32 * BEAT;
 const SAMPLE_RATE = 44100;
-
-interface MelodyNote {
-  frequency: number;
-  beat: number;
-  duration: number;
-}
 
 function buildMelody(): MelodyNote[] {
   const rawNotes = [
@@ -111,9 +86,6 @@ let cachedBuffer: AudioBuffer | null = null;
 let isRendering = false;
 let renderPromise: Promise<AudioBuffer> | null = null;
 
-/**
- * Create lead synth note in offline context
- */
 function createLeadNoteOffline(
   ctx: OfflineAudioContext,
   frequency: number,
@@ -202,9 +174,6 @@ function createLeadNoteOffline(
   sub.stop(stopTime);
 }
 
-/**
- * Create arpeggio note in offline context
- */
 function createArpNoteOffline(
   ctx: OfflineAudioContext,
   frequency: number,
@@ -256,9 +225,6 @@ function createArpNoteOffline(
   osc2.stop(stopTime);
 }
 
-/**
- * Create bass note in offline context
- */
 function createBassNoteOffline(
   ctx: OfflineAudioContext,
   frequency: number,
@@ -305,17 +271,9 @@ function createBassNoteOffline(
   punch.stop(stopTime);
 }
 
-/**
- * Pre-render one loop of the Nightcall audio
- */
 async function renderLoop(): Promise<AudioBuffer> {
-  if (cachedBuffer) {
-    return cachedBuffer;
-  }
-
-  if (isRendering && renderPromise) {
-    return renderPromise;
-  }
+  if (cachedBuffer) return cachedBuffer;
+  if (isRendering && renderPromise) return renderPromise;
 
   isRendering = true;
 
@@ -443,25 +401,16 @@ export interface UseNightcallAudioReturn {
 }
 
 export function useNightcallAudio(): UseNightcallAudioReturn {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const startTimeRef = useRef(0);
-  // Generation counter to cancel pending loads when stop() is called
-  const loadGenRef = useRef<number>(0);
-  // Track muted state in ref for use in play() without stale closure
-  const isMutedRef = useRef(false);
-
-  const emptyFrequencyData = useRef(new Uint8Array(128));
-  const emptyTimeDomainData = useRef(new Uint8Array(128));
+  const engine = useAudioEngine(renderLoop, {
+    loop: true,
+    loopEnd: LOOP_DURATION,
+    fftSize: 256,
+    smoothingTimeConstant: 0.85,
+  });
 
   const getCurrentChord = useCallback((): string => {
-    if (!audioContextRef.current || !isPlaying) return 'Am';
+    const { audioContextRef, startTimeRef } = engine.refs;
+    if (!audioContextRef.current || !engine.isPlaying) return 'Am';
 
     const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
     const positionInLoop = elapsed % LOOP_DURATION;
@@ -475,124 +424,28 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     if (currentBeat < 24) return 'GB';
     if (currentBeat < 28) return 'F';
     return 'Dm';
-  }, [isPlaying]);
+  }, [engine.isPlaying, engine.refs]);
 
   const getBeatIntensity = useCallback((): number => {
-    if (!audioContextRef.current || !isPlaying) return 0;
+    const { audioContextRef, startTimeRef } = engine.refs;
+    if (!audioContextRef.current || !engine.isPlaying) return 0;
 
     const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
     const positionInLoop = elapsed % LOOP_DURATION;
     const sixteenthPosition = (positionInLoop / SIXTEENTH) % 1;
 
-    // Pulse on each 16th note
     return Math.max(0, 1 - sixteenthPosition * 4);
-  }, [isPlaying]);
-
-  const play = useCallback(async () => {
-    if (isPlaying || isLoading) return;
-
-    setIsLoading(true);
-    const currentGen = ++loadGenRef.current;
-
-    try {
-      const buffer = await renderLoop();
-
-      // Check if cancelled during loading
-      if (loadGenRef.current !== currentGen) {
-        return;
-      }
-
-      const ctx = new AudioContext({ latencyHint: 'playback' });
-      audioContextRef.current = ctx;
-
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.85;
-      analyserRef.current = analyser;
-
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-      source.loopEnd = LOOP_DURATION;
-      sourceNodeRef.current = source;
-
-      // Create gain node for mute control
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = isMutedRef.current ? 0 : 1;
-      gainNodeRef.current = gainNode;
-
-      // Connect: source -> analyser -> gainNode -> destination
-      source.connect(analyser);
-      analyser.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      startTimeRef.current = ctx.currentTime;
-      source.start(0);
-
-      setIsPlaying(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isPlaying, isLoading]);
-
-  const stop = useCallback(() => {
-    // Cancel any pending load operations
-    loadGenRef.current++;
-
-    if (sourceNodeRef.current) {
-      try {
-        sourceNodeRef.current.stop();
-      } catch {
-        // Node may already be stopped
-      }
-      sourceNodeRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    analyserRef.current = null;
-    gainNodeRef.current = null;
-    setIsPlaying(false);
-  }, []);
-
-  /**
-   * Toggle mute state
-   */
-  const toggleMute = useCallback(() => {
-    const newMuted = !isMutedRef.current;
-    isMutedRef.current = newMuted;
-    setIsMuted(newMuted);
-    if (gainNodeRef.current) {
-      gainNodeRef.current.gain.value = newMuted ? 0 : 1;
-    }
-  }, []);
-
-  const getFrequencyData = useCallback((): Uint8Array<ArrayBuffer> => {
-    if (!analyserRef.current) return emptyFrequencyData.current;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(data);
-    return data;
-  }, []);
-
-  const getTimeDomainData = useCallback((): Uint8Array<ArrayBuffer> => {
-    if (!analyserRef.current) return emptyTimeDomainData.current;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteTimeDomainData(data);
-    return data;
-  }, []);
+  }, [engine.isPlaying, engine.refs]);
 
   return {
-    play,
-    stop,
-    isPlaying,
-    isLoading,
-    isMuted,
-    toggleMute,
-    getFrequencyData,
-    getTimeDomainData,
+    play: engine.play,
+    stop: engine.stop,
+    isPlaying: engine.isPlaying,
+    isLoading: engine.isLoading,
+    isMuted: engine.isMuted,
+    toggleMute: engine.toggleMute,
+    getFrequencyData: engine.getFrequencyData,
+    getTimeDomainData: engine.getTimeDomainData,
     getBeatIntensity,
     getCurrentChord,
   };

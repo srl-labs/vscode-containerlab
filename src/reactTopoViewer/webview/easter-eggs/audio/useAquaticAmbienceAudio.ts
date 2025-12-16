@@ -10,7 +10,8 @@
  * Chords: Cm(add9) - Abm(add9) - Cm(add9) - Abm(add9) - Fmaj7 - Bdim(add9)
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback } from 'react';
+import { getCMinorFrequency, useAudioEngine, type MelodyNote } from './core';
 
 const NOTES = {
   C3: 130.81, D3: 146.83, Eb3: 155.56, F3: 174.61, G3: 196.0, Ab3: 207.65, Bb3: 233.08,
@@ -23,30 +24,6 @@ const BEAT = 0.923;
 const TOTAL_BEATS = 48;
 const TOTAL_DURATION = TOTAL_BEATS * BEAT;
 const SAMPLE_RATE = 44100;
-
-function getFrequency(sd: string, octave: number): number {
-  const sdNum = parseInt(sd, 10);
-  const baseOctave = 4;
-  const actualOctave = baseOctave + octave;
-
-  const scaleMap: Record<number, Record<number, number>> = {
-    3: { 1: NOTES.C3, 2: NOTES.D3, 3: NOTES.Eb3, 4: NOTES.F3, 5: NOTES.G3, 6: NOTES.Ab3, 7: NOTES.Bb3 },
-    4: { 1: NOTES.C4, 2: NOTES.D4, 3: NOTES.Eb4, 4: NOTES.F4, 5: NOTES.G4, 6: NOTES.Ab4, 7: NOTES.Bb4 },
-    5: { 1: NOTES.C5, 2: NOTES.D5, 3: NOTES.Eb5, 4: NOTES.F5, 5: NOTES.G5, 6: NOTES.Ab5, 7: NOTES.Bb5 },
-    6: { 1: NOTES.C6, 2: NOTES.D6, 3: NOTES.Eb6, 7: NOTES.Bb6 },
-  };
-
-  const octaveNotes = scaleMap[actualOctave];
-  if (!octaveNotes) return NOTES.C4;
-  return octaveNotes[sdNum] || NOTES.C4;
-}
-
-interface MelodyNote {
-  frequency: number;
-  beat: number;
-  duration: number;
-  isRest: boolean;
-}
 
 function buildMelody(): MelodyNote[] {
   const rawNotes = [
@@ -138,7 +115,7 @@ function buildMelody(): MelodyNote[] {
   ];
 
   return rawNotes.map(note => ({
-    frequency: note.isRest ? 0 : getFrequency(note.sd, note.octave),
+    frequency: note.isRest ? 0 : getCMinorFrequency(note.sd, note.octave),
     beat: note.beat,
     duration: note.duration,
     isRest: note.isRest,
@@ -398,25 +375,15 @@ export interface UseAquaticAmbienceAudioReturn {
 }
 
 export function useAquaticAmbienceAudio(): UseAquaticAmbienceAudioReturn {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const startTimeRef = useRef(0);
-  // Generation counter to cancel pending loads when stop() is called
-  const loadGenRef = useRef<number>(0);
-  // Track muted state in ref for use in play() without stale closure
-  const isMutedRef = useRef(false);
-
-  const emptyFrequencyData = useRef(new Uint8Array(64));
-  const emptyTimeDomainData = useRef(new Uint8Array(64));
+  const engine = useAudioEngine(renderAudio, {
+    loop: false,
+    fftSize: 256,
+    smoothingTimeConstant: 0.93,
+  });
 
   const getCurrentSection = useCallback((): number => {
-    if (!audioContextRef.current || !isPlaying) return 0;
+    const { audioContextRef, startTimeRef } = engine.refs;
+    if (!audioContextRef.current || !engine.isPlaying) return 0;
 
     const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
     const currentBeat = elapsed / BEAT;
@@ -427,125 +394,27 @@ export function useAquaticAmbienceAudio(): UseAquaticAmbienceAudioReturn {
     if (currentBeat < 32) return 3;
     if (currentBeat < 40) return 4;
     return 5;
-  }, [isPlaying]);
+  }, [engine.isPlaying, engine.refs]);
 
   const getBeatIntensity = useCallback((): number => {
-    if (!audioContextRef.current || !isPlaying) return 0;
+    const { audioContextRef, startTimeRef } = engine.refs;
+    if (!audioContextRef.current || !engine.isPlaying) return 0;
 
     const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
     const beatPosition = (elapsed / BEAT) % 1;
 
     return Math.max(0, 0.7 - beatPosition * 0.7);
-  }, [isPlaying]);
-
-  const play = useCallback(async () => {
-    if (isPlaying || isLoading) return;
-
-    setIsLoading(true);
-    const currentGen = ++loadGenRef.current;
-
-    try {
-      const buffer = await renderAudio();
-
-      // Check if cancelled during loading
-      if (loadGenRef.current !== currentGen) {
-        return;
-      }
-
-      const ctx = new AudioContext({ latencyHint: 'playback' });
-      audioContextRef.current = ctx;
-
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.93;
-      analyserRef.current = analyser;
-
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = false;
-      sourceNodeRef.current = source;
-
-      // Create gain node for mute control
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = isMutedRef.current ? 0 : 1;
-      gainNodeRef.current = gainNode;
-
-      // Connect: source -> analyser -> gainNode -> destination
-      source.connect(analyser);
-      analyser.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      source.onended = () => {
-        setIsPlaying(false);
-      };
-
-      startTimeRef.current = ctx.currentTime;
-      source.start(0);
-
-      setIsPlaying(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isPlaying, isLoading]);
-
-  const stop = useCallback(() => {
-    // Cancel any pending load operations
-    loadGenRef.current++;
-
-    if (sourceNodeRef.current) {
-      try {
-        sourceNodeRef.current.stop();
-      } catch {
-        // Already stopped
-      }
-      sourceNodeRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    analyserRef.current = null;
-    gainNodeRef.current = null;
-    setIsPlaying(false);
-  }, []);
-
-  /**
-   * Toggle mute state
-   */
-  const toggleMute = useCallback(() => {
-    const newMuted = !isMutedRef.current;
-    isMutedRef.current = newMuted;
-    setIsMuted(newMuted);
-    if (gainNodeRef.current) {
-      gainNodeRef.current.gain.value = newMuted ? 0 : 1;
-    }
-  }, []);
-
-  const getFrequencyData = useCallback((): Uint8Array<ArrayBuffer> => {
-    if (!analyserRef.current) return emptyFrequencyData.current;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(data);
-    return data;
-  }, []);
-
-  const getTimeDomainData = useCallback((): Uint8Array<ArrayBuffer> => {
-    if (!analyserRef.current) return emptyTimeDomainData.current;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteTimeDomainData(data);
-    return data;
-  }, []);
+  }, [engine.isPlaying, engine.refs]);
 
   return {
-    play,
-    stop,
-    isPlaying,
-    isLoading,
-    isMuted,
-    toggleMute,
-    getFrequencyData,
-    getTimeDomainData,
+    play: engine.play,
+    stop: engine.stop,
+    isPlaying: engine.isPlaying,
+    isLoading: engine.isLoading,
+    isMuted: engine.isMuted,
+    toggleMute: engine.toggleMute,
+    getFrequencyData: engine.getFrequencyData,
+    getTimeDomainData: engine.getTimeDomainData,
     getBeatIntensity,
     getCurrentSection,
   };
