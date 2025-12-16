@@ -1,443 +1,528 @@
 /**
  * Nightcall Audio Hook
  *
- * Generates a smooth synthwave melody inspired by 80s retro vibes.
- * Dreamy arpeggios with lush pads at 91 BPM.
+ * Generates the iconic Nightcall by Kavinsky melody with arpeggio accompaniment.
+ * Classic synthwave with the Am - G/B - F - Dm progression.
  *
- * High-quality synthesis with:
- * - Multiple oscillator layers per note
- * - LFO-modulated chorus effect
- * - Rich 3-tap reverb chain
- * - Warm analog-style filtering
+ * Uses pre-rendered audio for smooth playback on slow hardware.
+ *
+ * Key: A minor
+ * Tempo: ~91 BPM
  */
 
 import { useCallback, useRef, useState } from 'react';
 
 /**
- * Note frequencies in Hz
- * Based on the Am - G/B - F - Dm progression
+ * A minor scale frequencies
+ * A minor: A, B, C, D, E, F, G
  */
-const NOTES = {
-  // Bass notes
-  E2: 82.41,
-  A2: 110.0,
-  B2: 123.47,
-  C3: 130.81,
-  D3: 146.83,
-  E3: 164.81,
-  F3: 174.61,
-  G3: 196.0,
-  A3: 220.0,
-  B3: 246.94,
-  C4: 261.63,
-  D4: 293.66,
-  E4: 329.63,
-  F4: 349.23,
-  G4: 392.0,
-  A4: 440.0,
-  REST: 0,
-} as const;
-
-/** 91 BPM = 659ms per beat, ~165ms per 16th note */
-const SIXTEENTH = 0.165;
-
-/**
- * Main arpeggio pattern (Am - G/B - F - Dm)
- * Each chord is arpeggiated over one bar
- */
-const AM_ARPEGGIO = [
-  NOTES.E3, NOTES.A3, NOTES.C4, NOTES.A3, NOTES.E3, NOTES.A3, NOTES.C4, NOTES.A3,
-];
-
-const GB_ARPEGGIO = [
-  NOTES.D3, NOTES.G3, NOTES.B3, NOTES.G3, NOTES.D3, NOTES.G3, NOTES.B3, NOTES.G3,
-];
-
-const F_ARPEGGIO = [
-  NOTES.C3, NOTES.F3, NOTES.A3, NOTES.F3, NOTES.C3, NOTES.F3, NOTES.A3, NOTES.F3,
-];
-
-const DM_ARPEGGIO = [
-  NOTES.D3, NOTES.F3, NOTES.A3, NOTES.F3, NOTES.D3, NOTES.F3, NOTES.A3, NOTES.F3,
-];
-
-/** Chord root notes for pad */
-const CHORD_ROOTS = {
-  Am: [NOTES.A2, NOTES.E3, NOTES.A3, NOTES.C4],
-  GB: [NOTES.B2, NOTES.D3, NOTES.G3, NOTES.B3],
-  F: [NOTES.C3, NOTES.F3, NOTES.A3, NOTES.C4],
-  Dm: [NOTES.D3, NOTES.F3, NOTES.A3, NOTES.D4],
+const A_MINOR_SCALE: Record<number, number[]> = {
+  [-2]: [55.0, 61.74, 65.41, 73.42, 82.41, 87.31, 98.0],
+  [-1]: [110.0, 123.47, 130.81, 146.83, 164.81, 174.61, 196.0],
+  [0]: [220.0, 246.94, 261.63, 293.66, 329.63, 349.23, 392.0],
+  [1]: [440.0, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99],
 };
 
-/**
- * Build the full intro melody (4 bars repeated)
- */
-function buildMelody(): Array<{ notes: number[]; chord: string }> {
-  const pattern: Array<{ notes: number[]; chord: string }> = [];
-
-  // Repeat the progression 4 times for a nice length
-  for (let rep = 0; rep < 4; rep++) {
-    // Am bar
-    for (const note of AM_ARPEGGIO) {
-      pattern.push({ notes: [note], chord: 'Am' });
-    }
-    // G/B bar
-    for (const note of GB_ARPEGGIO) {
-      pattern.push({ notes: [note], chord: 'GB' });
-    }
-    // F bar
-    for (const note of F_ARPEGGIO) {
-      pattern.push({ notes: [note], chord: 'F' });
-    }
-    // Dm bar
-    for (const note of DM_ARPEGGIO) {
-      pattern.push({ notes: [note], chord: 'Dm' });
-    }
+function getAMinorFrequency(sd: number, octave: number): number {
+  const scaleIndex = sd - 1;
+  const frequencies = A_MINOR_SCALE[octave];
+  if (!frequencies || scaleIndex < 0 || scaleIndex >= 7) {
+    return A_MINOR_SCALE[0][Math.max(0, Math.min(6, scaleIndex))];
   }
+  return frequencies[scaleIndex];
+}
 
-  return pattern;
+const BEAT = 0.659;
+const SIXTEENTH = BEAT / 4;
+const LOOP_DURATION = 32 * BEAT;
+const SAMPLE_RATE = 44100;
+
+interface MelodyNote {
+  frequency: number;
+  beat: number;
+  duration: number;
+}
+
+function buildMelody(): MelodyNote[] {
+  const rawNotes = [
+    { sd: 1, octave: 0, beat: 1, duration: 3.5 },
+    { sd: 2, octave: 0, beat: 4.5, duration: 3.5 },
+    { sd: 7, octave: -1, beat: 8, duration: 0.5 },
+    { sd: 6, octave: -1, beat: 8.5, duration: 3.5 },
+    { sd: 5, octave: -1, beat: 12, duration: 0.5 },
+    { sd: 4, octave: -1, beat: 12.5, duration: 3.5 },
+    { sd: 3, octave: -1, beat: 16, duration: 0.5 },
+    { sd: 1, octave: 0, beat: 16.5, duration: 4 },
+    { sd: 2, octave: 0, beat: 20.5, duration: 3.5 },
+    { sd: 7, octave: -1, beat: 24, duration: 0.5 },
+    { sd: 6, octave: -1, beat: 24.5, duration: 3.5 },
+    { sd: 5, octave: -1, beat: 28, duration: 0.5 },
+    { sd: 4, octave: -1, beat: 28.5, duration: 4 },
+    { sd: 3, octave: -1, beat: 32.5, duration: 0.5 },
+  ];
+
+  return rawNotes.map(note => ({
+    frequency: getAMinorFrequency(note.sd, note.octave),
+    beat: note.beat,
+    duration: note.duration,
+  }));
 }
 
 const FULL_MELODY = buildMelody();
+
+const ARPEGGIO_PATTERNS = {
+  Am: [
+    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
+    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
+    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
+    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
+  ],
+  GB: [
+    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
+    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
+    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
+    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
+  ],
+  F: [
+    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
+    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
+    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
+    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
+  ],
+  Dm: [
+    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
+    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
+    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
+    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
+  ],
+};
+
+const BASS_NOTES = {
+  Am: getAMinorFrequency(1, -2),
+  GB: getAMinorFrequency(7, -2),
+  F: getAMinorFrequency(6, -2),
+  Dm: getAMinorFrequency(4, -2),
+};
+
+type NightcallChord = 'Am' | 'GB' | 'F' | 'Dm';
+
+// Module-level cache for pre-rendered audio buffer
+let cachedBuffer: AudioBuffer | null = null;
+let isRendering = false;
+let renderPromise: Promise<AudioBuffer> | null = null;
+
+/**
+ * Create lead synth note in offline context
+ */
+function createLeadNoteOffline(
+  ctx: OfflineAudioContext,
+  frequency: number,
+  startTime: number,
+  duration: number,
+  destination: AudioNode,
+  volume: number = 0.15
+): void {
+  const saw1 = ctx.createOscillator();
+  saw1.type = 'sawtooth';
+  saw1.frequency.value = frequency;
+
+  const saw2 = ctx.createOscillator();
+  saw2.type = 'sawtooth';
+  saw2.frequency.value = frequency * 1.007;
+
+  const saw3 = ctx.createOscillator();
+  saw3.type = 'sawtooth';
+  saw3.frequency.value = frequency * 0.993;
+
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.value = frequency / 2;
+
+  const saw1Gain = ctx.createGain();
+  const saw2Gain = ctx.createGain();
+  const saw3Gain = ctx.createGain();
+  const subGain = ctx.createGain();
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.Q.value = 2;
+
+  filter.frequency.setValueAtTime(400, startTime);
+  filter.frequency.linearRampToValueAtTime(3500, startTime + 0.08);
+  filter.frequency.exponentialRampToValueAtTime(1800, startTime + 0.3);
+  filter.frequency.exponentialRampToValueAtTime(800, startTime + duration);
+
+  saw1.connect(saw1Gain);
+  saw2.connect(saw2Gain);
+  saw3.connect(saw3Gain);
+  sub.connect(subGain);
+
+  saw1Gain.connect(filter);
+  saw2Gain.connect(filter);
+  saw3Gain.connect(filter);
+  subGain.connect(filter);
+  filter.connect(destination);
+
+  const attack = 0.02;
+  const decay = 0.15;
+  const sustain = 0.7;
+  const release = 0.5;
+
+  saw1Gain.gain.setValueAtTime(0, startTime);
+  saw1Gain.gain.linearRampToValueAtTime(volume, startTime + attack);
+  saw1Gain.gain.linearRampToValueAtTime(volume * sustain, startTime + attack + decay);
+  saw1Gain.gain.setValueAtTime(volume * sustain, startTime + duration);
+  saw1Gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + release);
+
+  saw2Gain.gain.setValueAtTime(0, startTime);
+  saw2Gain.gain.linearRampToValueAtTime(volume * 0.7, startTime + attack);
+  saw2Gain.gain.linearRampToValueAtTime(volume * sustain * 0.7, startTime + attack + decay);
+  saw2Gain.gain.setValueAtTime(volume * sustain * 0.7, startTime + duration);
+  saw2Gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + release);
+
+  saw3Gain.gain.setValueAtTime(0, startTime);
+  saw3Gain.gain.linearRampToValueAtTime(volume * 0.7, startTime + attack);
+  saw3Gain.gain.linearRampToValueAtTime(volume * sustain * 0.7, startTime + attack + decay);
+  saw3Gain.gain.setValueAtTime(volume * sustain * 0.7, startTime + duration);
+  saw3Gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + release);
+
+  subGain.gain.setValueAtTime(0, startTime);
+  subGain.gain.linearRampToValueAtTime(volume * 0.5, startTime + attack);
+  subGain.gain.setValueAtTime(volume * 0.4, startTime + duration);
+  subGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + release);
+
+  const stopTime = startTime + duration + release + 0.1;
+  saw1.start(startTime);
+  saw1.stop(stopTime);
+  saw2.start(startTime);
+  saw2.stop(stopTime);
+  saw3.start(startTime);
+  saw3.stop(stopTime);
+  sub.start(startTime);
+  sub.stop(stopTime);
+}
+
+/**
+ * Create arpeggio note in offline context
+ */
+function createArpNoteOffline(
+  ctx: OfflineAudioContext,
+  frequency: number,
+  startTime: number,
+  destination: AudioNode,
+  volume: number = 0.08
+): void {
+  const duration = SIXTEENTH * 0.9;
+
+  const osc1 = ctx.createOscillator();
+  osc1.type = 'square';
+  osc1.frequency.value = frequency;
+
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sawtooth';
+  osc2.frequency.value = frequency * 1.003;
+
+  const osc1Gain = ctx.createGain();
+  const osc2Gain = ctx.createGain();
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.Q.value = 4;
+
+  filter.frequency.setValueAtTime(300, startTime);
+  filter.frequency.linearRampToValueAtTime(2800, startTime + 0.01);
+  filter.frequency.exponentialRampToValueAtTime(600, startTime + duration);
+
+  osc1.connect(osc1Gain);
+  osc2.connect(osc2Gain);
+  osc1Gain.connect(filter);
+  osc2Gain.connect(filter);
+  filter.connect(destination);
+
+  osc1Gain.gain.setValueAtTime(0, startTime);
+  osc1Gain.gain.linearRampToValueAtTime(volume, startTime + 0.005);
+  osc1Gain.gain.exponentialRampToValueAtTime(volume * 0.5, startTime + 0.03);
+  osc1Gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+  osc2Gain.gain.setValueAtTime(0, startTime);
+  osc2Gain.gain.linearRampToValueAtTime(volume * 0.6, startTime + 0.005);
+  osc2Gain.gain.exponentialRampToValueAtTime(volume * 0.3, startTime + 0.03);
+  osc2Gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+  const stopTime = startTime + duration + 0.05;
+  osc1.start(startTime);
+  osc1.stop(stopTime);
+  osc2.start(startTime);
+  osc2.stop(stopTime);
+}
+
+/**
+ * Create bass note in offline context
+ */
+function createBassNoteOffline(
+  ctx: OfflineAudioContext,
+  frequency: number,
+  startTime: number,
+  duration: number,
+  destination: AudioNode,
+  volume: number = 0.2
+): void {
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.value = frequency;
+
+  const punch = ctx.createOscillator();
+  punch.type = 'square';
+  punch.frequency.value = frequency;
+
+  const subGain = ctx.createGain();
+  const punchGain = ctx.createGain();
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 200;
+  filter.Q.value = 1;
+
+  sub.connect(subGain);
+  punch.connect(punchGain);
+  punchGain.connect(filter);
+  subGain.connect(destination);
+  filter.connect(destination);
+
+  subGain.gain.setValueAtTime(0, startTime);
+  subGain.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+  subGain.gain.setValueAtTime(volume * 0.8, startTime + duration * 0.8);
+  subGain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+  punchGain.gain.setValueAtTime(0, startTime);
+  punchGain.gain.linearRampToValueAtTime(volume * 0.4, startTime + 0.01);
+  punchGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.15);
+
+  const stopTime = startTime + duration + 0.1;
+  sub.start(startTime);
+  sub.stop(stopTime);
+  punch.start(startTime);
+  punch.stop(stopTime);
+}
+
+/**
+ * Pre-render one loop of the Nightcall audio
+ */
+async function renderLoop(): Promise<AudioBuffer> {
+  if (cachedBuffer) {
+    return cachedBuffer;
+  }
+
+  if (isRendering && renderPromise) {
+    return renderPromise;
+  }
+
+  isRendering = true;
+
+  renderPromise = (async () => {
+    const totalDuration = LOOP_DURATION + 2;
+    const ctx = new OfflineAudioContext(2, totalDuration * SAMPLE_RATE, SAMPLE_RATE);
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 0.6;
+
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 20;
+    compressor.ratio.value = 3;
+    compressor.attack.value = 0.02;
+    compressor.release.value = 0.25;
+
+    const chorusDelay = ctx.createDelay(0.05);
+    chorusDelay.delayTime.value = 0.018;
+
+    const chorusLfo = ctx.createOscillator();
+    chorusLfo.type = 'sine';
+    chorusLfo.frequency.value = 0.5;
+    const chorusDepth = ctx.createGain();
+    chorusDepth.gain.value = 0.003;
+    chorusLfo.connect(chorusDepth);
+    chorusDepth.connect(chorusDelay.delayTime);
+    chorusLfo.start(0);
+    chorusLfo.stop(totalDuration);
+
+    const chorusGain = ctx.createGain();
+    chorusGain.gain.value = 0.4;
+
+    const reverb1 = ctx.createDelay(0.5);
+    reverb1.delayTime.value = 0.18;
+    const reverb1Gain = ctx.createGain();
+    reverb1Gain.gain.value = 0.4;
+
+    const reverb2 = ctx.createDelay(0.5);
+    reverb2.delayTime.value = 0.35;
+    const reverb2Gain = ctx.createGain();
+    reverb2Gain.gain.value = 0.3;
+
+    const reverb3 = ctx.createDelay(0.6);
+    reverb3.delayTime.value = 0.5;
+    const reverb3Gain = ctx.createGain();
+    reverb3Gain.gain.value = 0.2;
+
+    const reverbFilter = ctx.createBiquadFilter();
+    reverbFilter.type = 'lowpass';
+    reverbFilter.frequency.value = 1500;
+
+    const outputMixer = ctx.createGain();
+    outputMixer.gain.value = 1.0;
+
+    masterGain.connect(compressor);
+    compressor.connect(outputMixer);
+
+    compressor.connect(chorusDelay);
+    chorusDelay.connect(chorusGain);
+    chorusGain.connect(outputMixer);
+
+    compressor.connect(reverb1);
+    reverb1.connect(reverbFilter);
+    reverbFilter.connect(reverb1Gain);
+    reverb1Gain.connect(outputMixer);
+    reverb1Gain.connect(reverb2);
+
+    reverb2.connect(reverb2Gain);
+    reverb2Gain.connect(outputMixer);
+    reverb2Gain.connect(reverb3);
+
+    reverb3.connect(reverb3Gain);
+    reverb3Gain.connect(outputMixer);
+
+    outputMixer.connect(ctx.destination);
+
+    const startTime = 0;
+
+    // Schedule melody
+    FULL_MELODY.forEach(note => {
+      const noteStart = startTime + (note.beat - 1) * BEAT;
+      createLeadNoteOffline(ctx, note.frequency, noteStart, note.duration * BEAT, masterGain, 0.12);
+    });
+
+    // Schedule arpeggios
+    const chords: NightcallChord[] = ['Am', 'GB', 'F', 'Dm', 'Am', 'GB', 'F', 'Dm'];
+    chords.forEach((chord, i) => {
+      const chordStart = startTime + i * 4 * BEAT;
+      const pattern = ARPEGGIO_PATTERNS[chord];
+      pattern.forEach((note, j) => {
+        const noteTime = chordStart + j * SIXTEENTH;
+        const freq = getAMinorFrequency(note.sd, note.octave);
+        createArpNoteOffline(ctx, freq, noteTime, masterGain);
+      });
+    });
+
+    // Schedule bass
+    chords.forEach((chord, i) => {
+      const bassStart = startTime + i * 4 * BEAT;
+      const bassFreq = BASS_NOTES[chord];
+      createBassNoteOffline(ctx, bassFreq, bassStart, 4 * BEAT, masterGain, 0.15);
+    });
+
+    const buffer = await ctx.startRendering();
+    cachedBuffer = buffer;
+    isRendering = false;
+    return buffer;
+  })();
+
+  return renderPromise;
+}
 
 export interface UseNightcallAudioReturn {
   play: () => void;
   stop: () => void;
   isPlaying: boolean;
+  isLoading: boolean;
   getFrequencyData: () => Uint8Array<ArrayBuffer>;
   getTimeDomainData: () => Uint8Array<ArrayBuffer>;
   getBeatIntensity: () => number;
   getCurrentChord: () => string;
 }
 
-/**
- * Hook for generating and playing the synthwave melody
- */
 export function useNightcallAudio(): UseNightcallAudioReturn {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
-  const oscillatorsRef = useRef<OscillatorNode[]>([]);
-  const frequencyDataRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(64));
-  const timeDomainDataRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(64));
-  const beatIntensityRef = useRef<number>(0);
-  const currentChordRef = useRef<string>('Am');
-  const beatDecayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const padOscillatorsRef = useRef<OscillatorNode[]>([]);
+  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const startTimeRef = useRef(0);
 
-  /**
-   * Create a lush, evolving pad chord with multiple oscillator layers
-   */
-  const createPadChord = useCallback(
-    (
-      ctx: AudioContext,
-      masterGain: GainNode,
-      frequencies: number[],
-      startTime: number,
-      duration: number
-    ): void => {
-      for (const freq of frequencies) {
-        // Layer 1: Main sine tone
-        const osc1 = ctx.createOscillator();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(freq, startTime);
+  const emptyFrequencyData = useRef(new Uint8Array(128));
+  const emptyTimeDomainData = useRef(new Uint8Array(128));
 
-        // Layer 2: Slight detune for width (synthwave sound)
-        const osc2 = ctx.createOscillator();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(freq * 1.004, startTime);
+  const getCurrentChord = useCallback((): string => {
+    if (!audioContextRef.current || !isPlaying) return 'Am';
 
-        // Layer 3: Triangle for warmth
-        const osc3 = ctx.createOscillator();
-        osc3.type = 'triangle';
-        osc3.frequency.setValueAtTime(freq * 0.5, startTime);
+    const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
+    const positionInLoop = elapsed % LOOP_DURATION;
+    const currentBeat = positionInLoop / BEAT;
 
-        // Very slow, gentle envelope
-        const oscGain = ctx.createGain();
-        oscGain.gain.setValueAtTime(0, startTime);
-        oscGain.gain.linearRampToValueAtTime(0.015, startTime + 0.5);
-        oscGain.gain.setValueAtTime(0.015, startTime + duration - 0.5);
-        oscGain.gain.linearRampToValueAtTime(0, startTime + duration);
+    if (currentBeat < 4) return 'Am';
+    if (currentBeat < 8) return 'GB';
+    if (currentBeat < 12) return 'F';
+    if (currentBeat < 16) return 'Dm';
+    if (currentBeat < 20) return 'Am';
+    if (currentBeat < 24) return 'GB';
+    if (currentBeat < 28) return 'F';
+    return 'Dm';
+  }, [isPlaying]);
 
-        osc1.connect(oscGain);
-        osc2.connect(oscGain);
-        osc3.connect(oscGain);
-        oscGain.connect(masterGain);
+  const getBeatIntensity = useCallback((): number => {
+    if (!audioContextRef.current || !isPlaying) return 0;
 
-        osc1.start(startTime);
-        osc1.stop(startTime + duration + 0.2);
-        osc2.start(startTime);
-        osc2.stop(startTime + duration + 0.2);
-        osc3.start(startTime);
-        osc3.stop(startTime + duration + 0.2);
+    const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
+    const positionInLoop = elapsed % LOOP_DURATION;
+    const sixteenthPosition = (positionInLoop / SIXTEENTH) % 1;
 
-        padOscillatorsRef.current.push(osc1, osc2, osc3);
-      }
-    },
-    []
-  );
+    // Pulse on each 16th note
+    return Math.max(0, 1 - sixteenthPosition * 4);
+  }, [isPlaying]);
 
-  /**
-   * Schedule a rich arpeggio note with multiple oscillator layers
-   */
-  const scheduleNote = useCallback(
-    (
-      ctx: AudioContext,
-      masterGain: GainNode,
-      frequency: number,
-      startTime: number,
-      duration: number,
-      chord: string
-    ): OscillatorNode | null => {
-      if (frequency === 0) return null;
+  const play = useCallback(async () => {
+    if (isPlaying || isLoading) return;
 
-      const noteMixer = ctx.createGain();
-      noteMixer.connect(masterGain);
+    setIsLoading(true);
 
-      // --- Layer 1: Pure fundamental (sine) ---
-      const mainOsc = ctx.createOscillator();
-      mainOsc.type = 'sine';
-      mainOsc.frequency.setValueAtTime(frequency, startTime);
+    try {
+      const buffer = await renderLoop();
 
-      const mainGain = ctx.createGain();
-      mainGain.gain.setValueAtTime(0, startTime);
-      mainGain.gain.linearRampToValueAtTime(0.11, startTime + 0.03);
-      mainGain.gain.exponentialRampToValueAtTime(0.08, startTime + 0.12);
-      mainGain.gain.setValueAtTime(0.08, startTime + duration * 0.5);
-      mainGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + 0.4);
+      const ctx = new AudioContext({ latencyHint: 'playback' });
+      audioContextRef.current = ctx;
 
-      mainOsc.connect(mainGain);
-      mainGain.connect(noteMixer);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.85;
+      analyserRef.current = analyser;
 
-      // --- Layer 2: Sub bass for warmth (octave down) ---
-      const subOsc = ctx.createOscillator();
-      subOsc.type = 'sine';
-      subOsc.frequency.setValueAtTime(frequency / 2, startTime);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      source.loopEnd = LOOP_DURATION;
+      sourceNodeRef.current = source;
 
-      const subGain = ctx.createGain();
-      subGain.gain.setValueAtTime(0, startTime);
-      subGain.gain.linearRampToValueAtTime(0.03, startTime + 0.05);
-      subGain.gain.setValueAtTime(0.03, startTime + duration * 0.6);
-      subGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + 0.3);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
 
-      subOsc.connect(subGain);
-      subGain.connect(noteMixer);
+      startTimeRef.current = ctx.currentTime;
+      source.start(0);
 
-      // --- Layer 3: Triangle for body ---
-      const bodyOsc = ctx.createOscillator();
-      bodyOsc.type = 'triangle';
-      bodyOsc.frequency.setValueAtTime(frequency, startTime);
-
-      const bodyGain = ctx.createGain();
-      bodyGain.gain.setValueAtTime(0, startTime);
-      bodyGain.gain.linearRampToValueAtTime(0.025, startTime + 0.04);
-      bodyGain.gain.exponentialRampToValueAtTime(0.015, startTime + 0.15);
-      bodyGain.gain.setValueAtTime(0.015, startTime + duration * 0.4);
-      bodyGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + 0.25);
-
-      bodyOsc.connect(bodyGain);
-      bodyGain.connect(noteMixer);
-
-      // Schedule beat intensity update
-      const delayMs = (startTime - ctx.currentTime) * 1000;
-      if (delayMs > 0) {
-        setTimeout(() => {
-          beatIntensityRef.current = 0.8;
-          currentChordRef.current = chord;
-        }, delayMs);
-      }
-
-      const endTime = startTime + duration + 0.6;
-
-      mainOsc.start(startTime);
-      mainOsc.stop(endTime);
-
-      subOsc.start(startTime);
-      subOsc.stop(endTime);
-
-      bodyOsc.start(startTime);
-      bodyOsc.stop(endTime);
-
-      return mainOsc;
-    },
-    []
-  );
-
-  /**
-   * Start playing the melody
-   */
-  const play = useCallback(() => {
-    if (isPlaying) return;
-
-    const ctx = new AudioContext();
-    audioContextRef.current = ctx;
-
-    if (ctx.state === 'suspended') {
-      ctx.resume();
+      setIsPlaying(true);
+    } finally {
+      setIsLoading(false);
     }
+  }, [isPlaying, isLoading]);
 
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.88;
-    analyserRef.current = analyser;
-
-    // Master gain - soft overall volume
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.30, ctx.currentTime);
-    gainRef.current = masterGain;
-
-    // Warm low-pass filter for analog synth sound
-    const warmFilter = ctx.createBiquadFilter();
-    warmFilter.type = 'lowpass';
-    warmFilter.frequency.setValueAtTime(1800, ctx.currentTime);
-    warmFilter.Q.setValueAtTime(0.4, ctx.currentTime);
-
-    // High-pass to clean up
-    const cleanFilter = ctx.createBiquadFilter();
-    cleanFilter.type = 'highpass';
-    cleanFilter.frequency.setValueAtTime(70, ctx.currentTime);
-
-    // LFO-modulated chorus effect (like Aquatic Ambience)
-    const chorusDelay = ctx.createDelay(0.1);
-    chorusDelay.delayTime.setValueAtTime(0.022, ctx.currentTime);
-
-    const chorusLFO = ctx.createOscillator();
-    chorusLFO.type = 'sine';
-    chorusLFO.frequency.setValueAtTime(0.4, ctx.currentTime);
-
-    const chorusDepth = ctx.createGain();
-    chorusDepth.gain.setValueAtTime(0.004, ctx.currentTime);
-
-    chorusLFO.connect(chorusDepth);
-    chorusDepth.connect(chorusDelay.delayTime);
-    chorusLFO.start(ctx.currentTime);
-
-    const chorusGain = ctx.createGain();
-    chorusGain.gain.setValueAtTime(0.35, ctx.currentTime);
-
-    // Rich 3-tap reverb chain
-    const reverbDelay1 = ctx.createDelay(2.0);
-    reverbDelay1.delayTime.setValueAtTime(0.2, ctx.currentTime);
-
-    const reverbGain1 = ctx.createGain();
-    reverbGain1.gain.setValueAtTime(0.28, ctx.currentTime);
-
-    const reverbFilter = ctx.createBiquadFilter();
-    reverbFilter.type = 'lowpass';
-    reverbFilter.frequency.setValueAtTime(1100, ctx.currentTime);
-
-    const reverbDelay2 = ctx.createDelay(2.0);
-    reverbDelay2.delayTime.setValueAtTime(0.4, ctx.currentTime);
-
-    const reverbGain2 = ctx.createGain();
-    reverbGain2.gain.setValueAtTime(0.18, ctx.currentTime);
-
-    const reverbDelay3 = ctx.createDelay(2.0);
-    reverbDelay3.delayTime.setValueAtTime(0.7, ctx.currentTime);
-
-    const reverbGain3 = ctx.createGain();
-    reverbGain3.gain.setValueAtTime(0.10, ctx.currentTime);
-
-    // Soft compressor
-    const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-20, ctx.currentTime);
-    compressor.knee.setValueAtTime(22, ctx.currentTime);
-    compressor.ratio.setValueAtTime(2.5, ctx.currentTime);
-    compressor.attack.setValueAtTime(0.02, ctx.currentTime);
-    compressor.release.setValueAtTime(0.3, ctx.currentTime);
-
-    // Connect main chain
-    masterGain.connect(cleanFilter);
-    cleanFilter.connect(warmFilter);
-    warmFilter.connect(compressor);
-
-    // Chorus
-    warmFilter.connect(chorusDelay);
-    chorusDelay.connect(chorusGain);
-    chorusGain.connect(compressor);
-
-    // 3-tap reverb chain
-    warmFilter.connect(reverbDelay1);
-    reverbDelay1.connect(reverbFilter);
-    reverbFilter.connect(reverbGain1);
-    reverbGain1.connect(compressor);
-
-    reverbFilter.connect(reverbDelay2);
-    reverbDelay2.connect(reverbGain2);
-    reverbGain2.connect(compressor);
-
-    reverbDelay2.connect(reverbDelay3);
-    reverbDelay3.connect(reverbGain3);
-    reverbGain3.connect(compressor);
-
-    compressor.connect(analyser);
-    analyser.connect(ctx.destination);
-
-    frequencyDataRef.current = new Uint8Array(analyser.frequencyBinCount);
-    timeDomainDataRef.current = new Uint8Array(analyser.frequencyBinCount);
-
-    // Beat decay
-    beatDecayIntervalRef.current = setInterval(() => {
-      beatIntensityRef.current = Math.max(0, beatIntensityRef.current - 0.06);
-    }, 16);
-
-    // Schedule pad chords (one per bar)
-    let padTime = ctx.currentTime + 0.1;
-    const barDuration = SIXTEENTH * 8;
-
-    for (let rep = 0; rep < 4; rep++) {
-      createPadChord(ctx, masterGain, CHORD_ROOTS.Am, padTime, barDuration);
-      padTime += barDuration;
-      createPadChord(ctx, masterGain, CHORD_ROOTS.GB, padTime, barDuration);
-      padTime += barDuration;
-      createPadChord(ctx, masterGain, CHORD_ROOTS.F, padTime, barDuration);
-      padTime += barDuration;
-      createPadChord(ctx, masterGain, CHORD_ROOTS.Dm, padTime, barDuration);
-      padTime += barDuration;
-    }
-
-    // Schedule arpeggio notes
-    let currentTime = ctx.currentTime + 0.1;
-
-    for (const { notes, chord } of FULL_MELODY) {
-      for (const note of notes) {
-        const osc = scheduleNote(ctx, masterGain, note, currentTime, SIXTEENTH * 1.5, chord);
-        if (osc) {
-          oscillatorsRef.current.push(osc);
-        }
-      }
-      currentTime += SIXTEENTH;
-    }
-
-    setIsPlaying(true);
-
-    // Auto-stop when done
-    const totalDuration = (currentTime - ctx.currentTime) * 1000 + 2000;
-    setTimeout(() => {
-      stop();
-    }, totalDuration);
-  }, [isPlaying, scheduleNote, createPadChord]);
-
-  /**
-   * Stop playing
-   */
   const stop = useCallback(() => {
-    if (beatDecayIntervalRef.current) {
-      clearInterval(beatDecayIntervalRef.current);
-      beatDecayIntervalRef.current = null;
+    if (sourceNodeRef.current) {
+      try {
+        sourceNodeRef.current.stop();
+      } catch {
+        // Node may already be stopped
+      }
+      sourceNodeRef.current = null;
     }
-
-    for (const osc of oscillatorsRef.current) {
-      try { osc.stop(); } catch { /* Already stopped */ }
-    }
-    oscillatorsRef.current = [];
-
-    for (const osc of padOscillatorsRef.current) {
-      try { osc.stop(); } catch { /* Already stopped */ }
-    }
-    padOscillatorsRef.current = [];
 
     if (audioContextRef.current) {
       audioContextRef.current.close();
@@ -445,38 +530,28 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     }
 
     analyserRef.current = null;
-    gainRef.current = null;
-    beatIntensityRef.current = 0;
-    currentChordRef.current = 'Am';
     setIsPlaying(false);
   }, []);
 
   const getFrequencyData = useCallback((): Uint8Array<ArrayBuffer> => {
-    if (analyserRef.current) {
-      analyserRef.current.getByteFrequencyData(frequencyDataRef.current);
-    }
-    return frequencyDataRef.current;
+    if (!analyserRef.current) return emptyFrequencyData.current;
+    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(data);
+    return data;
   }, []);
 
   const getTimeDomainData = useCallback((): Uint8Array<ArrayBuffer> => {
-    if (analyserRef.current) {
-      analyserRef.current.getByteTimeDomainData(timeDomainDataRef.current);
-    }
-    return timeDomainDataRef.current;
-  }, []);
-
-  const getBeatIntensity = useCallback((): number => {
-    return beatIntensityRef.current;
-  }, []);
-
-  const getCurrentChord = useCallback((): string => {
-    return currentChordRef.current;
+    if (!analyserRef.current) return emptyTimeDomainData.current;
+    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteTimeDomainData(data);
+    return data;
   }, []);
 
   return {
     play,
     stop,
     isPlaying,
+    isLoading,
     getFrequencyData,
     getTimeDomainData,
     getBeatIntensity,

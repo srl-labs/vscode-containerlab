@@ -12,6 +12,8 @@ import { useNightcallAudio } from '../hooks/ui/useNightcallAudio';
 interface NightcallModeProps {
   isActive: boolean;
   onClose?: () => void;
+  onSwitchMode?: () => void;
+  modeName?: string;
   cyInstance?: CyCore | null;
 }
 
@@ -460,6 +462,8 @@ function useNodeGlow(
 export const NightcallMode: React.FC<NightcallModeProps> = ({
   isActive,
   onClose,
+  onSwitchMode,
+  modeName,
   cyInstance,
 }) => {
   const [visible, setVisible] = useState(false);
@@ -470,7 +474,7 @@ export const NightcallMode: React.FC<NightcallModeProps> = ({
 
   // Start audio when activated
   useEffect(() => {
-    if (isActive && !audio.isPlaying) {
+    if (isActive && !audio.isPlaying && !audio.isLoading) {
       audio.play();
       setVisible(true);
     } else if (!isActive && audio.isPlaying) {
@@ -484,6 +488,11 @@ export const NightcallMode: React.FC<NightcallModeProps> = ({
     onClose?.();
   };
 
+  const handleSwitch = (): void => {
+    audio.stop();
+    onSwitchMode?.();
+  };
+
   if (!isActive) return null;
 
   return (
@@ -495,8 +504,28 @@ export const NightcallMode: React.FC<NightcallModeProps> = ({
         getCurrentChord={audio.getCurrentChord}
       />
 
-      {/* Close button - retro style */}
-      <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8">
+      {/* Control buttons - retro style */}
+      <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
+        <button
+          onClick={handleSwitch}
+          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
+            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+          style={{
+            background: 'linear-gradient(135deg, rgba(0, 255, 255, 0.6) 0%, rgba(138, 43, 226, 0.6) 100%)',
+            border: '2px solid rgba(255, 0, 128, 0.5)',
+            color: '#ff0080',
+            cursor: 'pointer',
+            backdropFilter: 'blur(10px)',
+            fontSize: '14px',
+            fontWeight: 600,
+            textShadow: '0 0 10px rgba(255, 0, 128, 0.8)',
+            boxShadow: '0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(255, 0, 128, 0.1)',
+          }}
+          title={`Current: ${modeName}`}
+        >
+          Switch
+        </button>
         <button
           onClick={handleClose}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${

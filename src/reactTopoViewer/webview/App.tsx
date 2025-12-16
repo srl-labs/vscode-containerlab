@@ -24,6 +24,7 @@ import { NightcallMode } from './components/NightcallMode';
 import { StickerbushMode } from './components/StickerbushMode';
 import { AquaticAmbienceMode } from './components/AquaticAmbienceMode';
 import { VaporwaveMode } from './components/VaporwaveMode';
+import { DeusExMode } from './components/DeusExMode';
 import {
   assignMissingGeoCoordinatesToAnnotations,
   assignMissingGeoCoordinatesToShapeAnnotations
@@ -971,6 +972,8 @@ export const App: React.FC = () => {
           <NightcallMode
             isActive={easterEgg.state.isPartyMode}
             onClose={easterEgg.endPartyMode}
+            onSwitchMode={easterEgg.nextMode}
+            modeName={easterEgg.getModeName()}
             cyInstance={cyInstance}
           />
         )}
@@ -978,6 +981,8 @@ export const App: React.FC = () => {
           <StickerbushMode
             isActive={easterEgg.state.isPartyMode}
             onClose={easterEgg.endPartyMode}
+            onSwitchMode={easterEgg.nextMode}
+            modeName={easterEgg.getModeName()}
             cyInstance={cyInstance}
           />
         )}
@@ -985,6 +990,8 @@ export const App: React.FC = () => {
           <AquaticAmbienceMode
             isActive={easterEgg.state.isPartyMode}
             onClose={easterEgg.endPartyMode}
+            onSwitchMode={easterEgg.nextMode}
+            modeName={easterEgg.getModeName()}
             cyInstance={cyInstance}
           />
         )}
@@ -992,6 +999,17 @@ export const App: React.FC = () => {
           <VaporwaveMode
             isActive={easterEgg.state.isPartyMode}
             onClose={easterEgg.endPartyMode}
+            onSwitchMode={easterEgg.nextMode}
+            modeName={easterEgg.getModeName()}
+            cyInstance={cyInstance}
+          />
+        )}
+        {easterEgg.state.easterEggMode === 'deusex' && (
+          <DeusExMode
+            isActive={easterEgg.state.isPartyMode}
+            onClose={easterEgg.endPartyMode}
+            onSwitchMode={easterEgg.nextMode}
+            modeName={easterEgg.getModeName()}
             cyInstance={cyInstance}
           />
         )}

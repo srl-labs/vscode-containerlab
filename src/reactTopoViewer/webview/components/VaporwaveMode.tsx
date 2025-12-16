@@ -12,6 +12,8 @@ import { useVaporwaveAudio } from '../hooks/ui/useVaporwaveAudio';
 interface VaporwaveModeProps {
   isActive: boolean;
   onClose?: () => void;
+  onSwitchMode?: () => void;
+  modeName?: string;
   cyInstance?: CyCore | null;
 }
 
@@ -25,19 +27,20 @@ const COLORS = {
   darkPurple: { r: 25, g: 4, b: 50 },     // Dark background
 };
 
-/** Section to color mapping */
+/** Section to color mapping - Lisa Frank 420 chord progression */
 const SECTION_COLORS: Record<string, { r: number; g: number; b: number }> = {
-  fmaj9: COLORS.pink,
-  dm9: COLORS.cyan,
-  bbmaj7: COLORS.purple,
-  c9: COLORS.yellow,
+  em7: COLORS.pink,
+  bm: COLORS.cyan,
+  em: COLORS.purple,
+  csm7: COLORS.yellow,
+  a: COLORS.blue,
 };
 
 /**
  * Get color for current section
  */
 function getSectionColor(section: string): { r: number; g: number; b: number } {
-  return SECTION_COLORS[section] || COLORS.pink;
+  return SECTION_COLORS[section] || COLORS.cyan;
 }
 
 /**
@@ -537,6 +540,8 @@ function useNodeGlow(
 export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
   isActive,
   onClose,
+  onSwitchMode,
+  modeName,
   cyInstance,
 }) => {
   const [visible, setVisible] = useState(false);
@@ -547,7 +552,7 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
 
   // Start audio when activated
   useEffect(() => {
-    if (isActive && !audio.isPlaying) {
+    if (isActive && !audio.isPlaying && !audio.isLoading) {
       audio.play();
       setVisible(true);
     } else if (!isActive && audio.isPlaying) {
@@ -561,6 +566,11 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
     onClose?.();
   };
 
+  const handleSwitch = (): void => {
+    audio.stop();
+    onSwitchMode?.();
+  };
+
   if (!isActive) return null;
 
   return (
@@ -571,8 +581,28 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      {/* Close button - vaporwave style */}
-      <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8">
+      {/* Control buttons - vaporwave style */}
+      <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
+        <button
+          onClick={handleSwitch}
+          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
+            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+          style={{
+            background: 'linear-gradient(135deg, rgba(120, 129, 255, 0.8) 0%, rgba(185, 103, 255, 0.8) 100%)',
+            border: '2px solid rgba(255, 255, 255, 0.4)',
+            color: '#ffffff',
+            cursor: 'pointer',
+            backdropFilter: 'blur(10px)',
+            fontSize: '14px',
+            fontWeight: 600,
+            textShadow: '0 0 10px rgba(185, 103, 255, 0.8)',
+            boxShadow: '0 0 20px rgba(120, 129, 255, 0.5), inset 0 0 20px rgba(185, 103, 255, 0.1)',
+          }}
+          title={`Current: ${modeName}`}
+        >
+          S W I T C H
+        </button>
         <button
           onClick={handleClose}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
