@@ -8,6 +8,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+import { lerpColor, applyNodeGlow, restoreNodeStyles } from '../shared';
+import type { RGBColor } from '../shared';
 
 interface DeusExModeProps {
   isActive: boolean;
@@ -18,7 +20,7 @@ interface DeusExModeProps {
 }
 
 /** Deus Ex color palette with neon accents */
-const COLORS = {
+const COLORS: Record<string, RGBColor> = {
   silver: { r: 192, g: 192, b: 192 },    // Primary silver
   chrome: { r: 220, g: 220, b: 225 },    // Chrome accent
   steel: { r: 113, g: 121, b: 126 },     // Steel gray
@@ -27,21 +29,6 @@ const COLORS = {
   cyan: { r: 0, g: 255, b: 255 },        // Neon cyan
   magenta: { r: 255, g: 0, b: 255 },     // Neon magenta
 };
-
-/**
- * Interpolate between two colors
- */
-function lerpColor(
-  c1: { r: number; g: number; b: number },
-  c2: { r: number; g: number; b: number },
-  t: number
-): { r: number; g: number; b: number } {
-  return {
-    r: Math.round(c1.r + (c2.r - c1.r) * t),
-    g: Math.round(c1.g + (c2.g - c1.g) * t),
-    b: Math.round(c1.b + (c2.b - c1.b) * t),
-  };
-}
 
 /** Containerlab SVG content with original blue water/bubbles */
 const CONTAINERLAB_SVG_CONTENT = `<?xml version="1.0" encoding="utf-8"?>
@@ -229,7 +216,7 @@ function drawLogoGlow(
   width: number,
   height: number,
   angle: number,
-  color: { r: number; g: number; b: number }
+  color: RGBColor
 ): void {
   const centerX = width / 2;
   const centerY = height * 0.35; // Match logo position
@@ -252,46 +239,9 @@ function drawLogoGlow(
 }
 
 /**
- * Apply neon glow to nodes with cycling colors
- */
-function applyNodeGlow(
-  cyInstance: CyCore,
-  color: { r: number; g: number; b: number },
-  intensity: number
-): void {
-  const borderWidth = `${2 + intensity * 3}px`;
-  const borderColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.7 + intensity * 0.3})`;
-
-  cyInstance.nodes().forEach(node => {
-    node.style({
-      'border-width': borderWidth,
-      'border-color': borderColor,
-    });
-  });
-}
-
-/**
- * Restore original node styles
- */
-function restoreNodeStyles(
-  cyInstance: CyCore,
-  originalStyles: Map<string, Record<string, string>>
-): void {
-  cyInstance.nodes().forEach(node => {
-    const original = originalStyles.get(node.id());
-    if (original) {
-      node.style({
-        'border-width': original['border-width'],
-        'border-color': original['border-color'],
-      });
-    }
-  });
-}
-
-/**
  * Hook to apply cycling neon glow to nodes
  */
-function useNodeGlow(
+function useDeusExNodeGlow(
   cyInstance: CyCore | null | undefined,
   isActive: boolean,
   getRotationAngle: () => number
@@ -360,7 +310,7 @@ export const DeusExMode: React.FC<DeusExModeProps> = ({
   };
 
   // Apply gold glow to nodes
-  useNodeGlow(cyInstance, isActive, getRotationAngle);
+  useDeusExNodeGlow(cyInstance, isActive, getRotationAngle);
 
   // Create cytoscape layer for rotating logo (behind nodes)
   useDeusExLayer(cyInstance, isActive, getRotationAngle);

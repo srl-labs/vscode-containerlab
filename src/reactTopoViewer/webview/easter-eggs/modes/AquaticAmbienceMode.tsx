@@ -7,7 +7,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { useAquaticAmbienceAudio } from '../hooks/ui/useAquaticAmbienceAudio';
+import { useAquaticAmbienceAudio } from '../audio';
+import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, applyNodeGlow, restoreNodeStyles, MuteButton } from '../shared';
+import type { RGBColor } from '../shared';
 
 interface AquaticAmbienceModeProps {
   isActive: boolean;
@@ -16,11 +18,6 @@ interface AquaticAmbienceModeProps {
   modeName?: string;
   cyInstance?: CyCore | null;
 }
-
-/** Button transition classes */
-const BTN_VISIBLE = 'opacity-100 translate-y-0';
-const BTN_HIDDEN = 'opacity-0 translate-y-4';
-const BTN_BLUR = 'blur(10px)';
 
 /** Underwater color palette */
 const COLORS = {
@@ -33,7 +30,7 @@ const COLORS = {
 };
 
 /** Section to color mapping */
-const SECTION_COLORS: Array<{ r: number; g: number; b: number }> = [
+const SECTION_COLORS: RGBColor[] = [
   COLORS.teal,       // Cm(add9)
   COLORS.oceanBlue,  // Abm(add9)
   COLORS.teal,       // Cm(add9)
@@ -45,7 +42,7 @@ const SECTION_COLORS: Array<{ r: number; g: number; b: number }> = [
 /**
  * Get color for current section
  */
-function getSectionColor(section: number): { r: number; g: number; b: number } {
+function getSectionColor(section: number): RGBColor {
   return SECTION_COLORS[section % SECTION_COLORS.length];
 }
 
@@ -377,46 +374,9 @@ function drawBubbles(
 }
 
 /**
- * Apply aquatic glow to nodes
+ * Hook to apply aquatic glow to nodes (section-based coloring)
  */
-function applyNodeGlow(
-  cyInstance: CyCore,
-  color: { r: number; g: number; b: number },
-  intensity: number
-): void {
-  const borderWidth = `${2 + intensity * 2}px`;
-  const borderColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.6 + intensity * 0.4})`;
-
-  cyInstance.nodes().forEach(node => {
-    node.style({
-      'border-width': borderWidth,
-      'border-color': borderColor,
-    });
-  });
-}
-
-/**
- * Restore original node styles
- */
-function restoreNodeStyles(
-  cyInstance: CyCore,
-  originalStyles: Map<string, Record<string, string>>
-): void {
-  cyInstance.nodes().forEach(node => {
-    const original = originalStyles.get(node.id());
-    if (original) {
-      node.style({
-        'border-width': original['border-width'],
-        'border-color': original['border-color'],
-      });
-    }
-  });
-}
-
-/**
- * Hook to apply aquatic glow to nodes
- */
-function useNodeGlow(
+function useAquaticNodeGlow(
   cyInstance: CyCore | null | undefined,
   isActive: boolean,
   getBeatIntensity: () => number,
@@ -476,7 +436,7 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
   const audio = useAquaticAmbienceAudio();
 
   // Apply aquatic glow to nodes
-  useNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentSection);
+  useAquaticNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentSection);
 
   // Start audio when activated
   useEffect(() => {
@@ -532,37 +492,13 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
         >
           Switch
         </button>
-        <button
-          onClick={audio.toggleMute}
-          className={`p-3 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? BTN_VISIBLE : BTN_HIDDEN
-          }`}
-          style={{
-            background: audio.isMuted
-              ? 'linear-gradient(135deg, rgba(100, 100, 100, 0.8) 0%, rgba(60, 60, 60, 0.8) 100%)'
-              : 'linear-gradient(135deg, rgba(0, 180, 200, 0.8) 0%, rgba(135, 206, 235, 0.8) 100%)',
-            border: '2px solid rgba(255, 255, 255, 0.5)',
-            cursor: 'pointer',
-            backdropFilter: BTN_BLUR,
-            boxShadow: audio.isMuted
-              ? '0 0 20px rgba(100, 100, 100, 0.5), inset 0 0 20px rgba(60, 60, 60, 0.1)'
-              : '0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(135, 206, 235, 0.1)',
-          }}
-          title={audio.isMuted ? 'Unmute' : 'Mute'}
-        >
-          {audio.isMuted ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 5L6 9H2v6h4l5 4V5z"/>
-              <line x1="23" y1="9" x2="17" y2="15"/>
-              <line x1="17" y1="9" x2="23" y2="15"/>
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 5L6 9H2v6h4l5 4V5z"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
-            </svg>
-          )}
-        </button>
+        <MuteButton
+          isMuted={audio.isMuted}
+          onToggle={audio.toggleMute}
+          visible={visible}
+          unmutedBackground="linear-gradient(135deg, rgba(0, 180, 200, 0.8) 0%, rgba(135, 206, 235, 0.8) 100%)"
+          unmutedShadow="0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(135, 206, 235, 0.1)"
+        />
         <button
           onClick={handleClose}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${

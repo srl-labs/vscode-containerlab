@@ -20,11 +20,14 @@ import { SvgExportPanel } from './components/panels/SvgExportPanel';
 import { LabSettingsPanel } from './components/panels/lab-settings';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
-import { NightcallMode } from './components/NightcallMode';
-import { StickerbushMode } from './components/StickerbushMode';
-import { AquaticAmbienceMode } from './components/AquaticAmbienceMode';
-import { VaporwaveMode } from './components/VaporwaveMode';
-import { DeusExMode } from './components/DeusExMode';
+import {
+  NightcallMode,
+  StickerbushMode,
+  AquaticAmbienceMode,
+  VaporwaveMode,
+  DeusExMode,
+  useEasterEgg
+} from './easter-eggs';
 import {
   assignMissingGeoCoordinatesToAnnotations,
   assignMissingGeoCoordinatesToShapeAnnotations
@@ -77,9 +80,7 @@ import {
   useFloatingPanelCommands,
   // Canvas hooks
   useLinkLabelVisibility,
-  useGeoMap,
-  // Easter egg
-  useEasterEgg
+  useGeoMap
 } from './hooks';
 import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './hooks';
 import type { MembershipEntry } from './hooks/state';

@@ -7,7 +7,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { useVaporwaveAudio } from '../hooks/ui/useVaporwaveAudio';
+import { useVaporwaveAudio } from '../audio';
+import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, applyNodeGlow, restoreNodeStyles, MuteButton } from '../shared';
+import type { RGBColor } from '../shared';
 
 interface VaporwaveModeProps {
   isActive: boolean;
@@ -17,11 +19,8 @@ interface VaporwaveModeProps {
   cyInstance?: CyCore | null;
 }
 
-/** Button transition classes */
-const BTN_VISIBLE = 'opacity-100 translate-y-0';
-const BTN_HIDDEN = 'opacity-0 translate-y-4';
+/** Button border */
 const BTN_BORDER = '2px solid rgba(255, 255, 255, 0.4)';
-const BTN_BLUR = 'blur(10px)';
 
 /** Vaporwave color palette */
 const COLORS = {
@@ -34,7 +33,7 @@ const COLORS = {
 };
 
 /** Section to color mapping - Lisa Frank 420 chord progression */
-const SECTION_COLORS: Record<string, { r: number; g: number; b: number }> = {
+const SECTION_COLORS: Record<string, RGBColor> = {
   em7: COLORS.pink,
   bm: COLORS.cyan,
   em: COLORS.purple,
@@ -45,23 +44,8 @@ const SECTION_COLORS: Record<string, { r: number; g: number; b: number }> = {
 /**
  * Get color for current section
  */
-function getSectionColor(section: string): { r: number; g: number; b: number } {
+function getSectionColor(section: string): RGBColor {
   return SECTION_COLORS[section] || COLORS.cyan;
-}
-
-/**
- * Interpolate between two colors
- */
-function lerpColor(
-  c1: { r: number; g: number; b: number },
-  c2: { r: number; g: number; b: number },
-  t: number
-): { r: number; g: number; b: number } {
-  return {
-    r: Math.round(c1.r + (c2.r - c1.r) * t),
-    g: Math.round(c1.g + (c2.g - c1.g) * t),
-    b: Math.round(c1.b + (c2.b - c1.b) * t),
-  };
 }
 
 /**
@@ -454,46 +438,9 @@ function drawFloatingShapes(
 }
 
 /**
- * Apply vaporwave style to nodes
- */
-function applyNodeGlow(
-  cyInstance: CyCore,
-  color: { r: number; g: number; b: number },
-  intensity: number
-): void {
-  const borderWidth = `${2 + intensity * 2}px`;
-  const borderColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.6 + intensity * 0.3})`;
-
-  cyInstance.nodes().forEach(node => {
-    node.style({
-      'border-width': borderWidth,
-      'border-color': borderColor,
-    });
-  });
-}
-
-/**
- * Restore original node styles
- */
-function restoreNodeStyles(
-  cyInstance: CyCore,
-  originalStyles: Map<string, Record<string, string>>
-): void {
-  cyInstance.nodes().forEach(node => {
-    const original = originalStyles.get(node.id());
-    if (original) {
-      node.style({
-        'border-width': original['border-width'],
-        'border-color': original['border-color'],
-      });
-    }
-  });
-}
-
-/**
  * Hook to apply vaporwave glow to nodes
  */
-function useNodeGlow(
+function useVaporwaveNodeGlow(
   cyInstance: CyCore | null | undefined,
   isActive: boolean,
   getCurrentSection: () => string
@@ -554,7 +501,7 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
   const audio = useVaporwaveAudio();
 
   // Apply vaporwave glow to nodes
-  useNodeGlow(cyInstance, isActive, audio.getCurrentSection);
+  useVaporwaveNodeGlow(cyInstance, isActive, audio.getCurrentSection);
 
   // Start audio when activated
   useEffect(() => {
@@ -609,37 +556,14 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
         >
           S W I T C H
         </button>
-        <button
-          onClick={audio.toggleMute}
-          className={`p-3 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? BTN_VISIBLE : BTN_HIDDEN
-          }`}
-          style={{
-            background: audio.isMuted
-              ? 'linear-gradient(135deg, rgba(100, 100, 100, 0.8) 0%, rgba(60, 60, 60, 0.8) 100%)'
-              : 'linear-gradient(135deg, rgba(254, 255, 156, 0.8) 0%, rgba(255, 113, 206, 0.8) 100%)',
-            border: BTN_BORDER,
-            cursor: 'pointer',
-            backdropFilter: BTN_BLUR,
-            boxShadow: audio.isMuted
-              ? '0 0 20px rgba(100, 100, 100, 0.5), inset 0 0 20px rgba(60, 60, 60, 0.1)'
-              : '0 0 20px rgba(254, 255, 156, 0.5), inset 0 0 20px rgba(255, 113, 206, 0.1)',
-          }}
-          title={audio.isMuted ? 'Unmute' : 'Mute'}
-        >
-          {audio.isMuted ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 5L6 9H2v6h4l5 4V5z"/>
-              <line x1="23" y1="9" x2="17" y2="15"/>
-              <line x1="17" y1="9" x2="23" y2="15"/>
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 5L6 9H2v6h4l5 4V5z"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
-            </svg>
-          )}
-        </button>
+        <MuteButton
+          isMuted={audio.isMuted}
+          onToggle={audio.toggleMute}
+          visible={visible}
+          unmutedBackground="linear-gradient(135deg, rgba(254, 255, 156, 0.8) 0%, rgba(255, 113, 206, 0.8) 100%)"
+          unmutedShadow="0 0 20px rgba(254, 255, 156, 0.5), inset 0 0 20px rgba(255, 113, 206, 0.1)"
+          borderColor="rgba(255, 255, 255, 0.4)"
+        />
         <button
           onClick={handleClose}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
