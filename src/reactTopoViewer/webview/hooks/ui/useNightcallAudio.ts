@@ -434,6 +434,8 @@ export interface UseNightcallAudioReturn {
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;
+  isMuted: boolean;
+  toggleMute: () => void;
   getFrequencyData: () => Uint8Array<ArrayBuffer>;
   getTimeDomainData: () => Uint8Array<ArrayBuffer>;
   getBeatIntensity: () => number;
@@ -443,11 +445,17 @@ export interface UseNightcallAudioReturn {
 export function useNightcallAudio(): UseNightcallAudioReturn {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const startTimeRef = useRef(0);
+  // Generation counter to cancel pending loads when stop() is called
+  const loadGenRef = useRef<number>(0);
+  // Track muted state in ref for use in play() without stale closure
+  const isMutedRef = useRef(false);
 
   const emptyFrequencyData = useRef(new Uint8Array(128));
   const emptyTimeDomainData = useRef(new Uint8Array(128));
@@ -484,9 +492,15 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     if (isPlaying || isLoading) return;
 
     setIsLoading(true);
+    const currentGen = ++loadGenRef.current;
 
     try {
       const buffer = await renderLoop();
+
+      // Check if cancelled during loading
+      if (loadGenRef.current !== currentGen) {
+        return;
+      }
 
       const ctx = new AudioContext({ latencyHint: 'playback' });
       audioContextRef.current = ctx;
@@ -502,8 +516,15 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
       source.loopEnd = LOOP_DURATION;
       sourceNodeRef.current = source;
 
+      // Create gain node for mute control
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = isMutedRef.current ? 0 : 1;
+      gainNodeRef.current = gainNode;
+
+      // Connect: source -> analyser -> gainNode -> destination
       source.connect(analyser);
-      analyser.connect(ctx.destination);
+      analyser.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
       startTimeRef.current = ctx.currentTime;
       source.start(0);
@@ -515,6 +536,9 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
   }, [isPlaying, isLoading]);
 
   const stop = useCallback(() => {
+    // Cancel any pending load operations
+    loadGenRef.current++;
+
     if (sourceNodeRef.current) {
       try {
         sourceNodeRef.current.stop();
@@ -530,7 +554,20 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     }
 
     analyserRef.current = null;
+    gainNodeRef.current = null;
     setIsPlaying(false);
+  }, []);
+
+  /**
+   * Toggle mute state
+   */
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMutedRef.current;
+    isMutedRef.current = newMuted;
+    setIsMuted(newMuted);
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = newMuted ? 0 : 1;
+    }
   }, []);
 
   const getFrequencyData = useCallback((): Uint8Array<ArrayBuffer> => {
@@ -552,6 +589,8 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     stop,
     isPlaying,
     isLoading,
+    isMuted,
+    toggleMute,
     getFrequencyData,
     getTimeDomainData,
     getBeatIntensity,

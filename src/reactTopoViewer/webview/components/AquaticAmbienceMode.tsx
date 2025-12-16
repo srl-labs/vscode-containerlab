@@ -17,6 +17,11 @@ interface AquaticAmbienceModeProps {
   cyInstance?: CyCore | null;
 }
 
+/** Button transition classes */
+const BTN_VISIBLE = 'opacity-100 translate-y-0';
+const BTN_HIDDEN = 'opacity-0 translate-y-4';
+const BTN_BLUR = 'blur(10px)';
+
 /** Underwater color palette */
 const COLORS = {
   deepBlue: { r: 10, g: 30, b: 80 },
@@ -510,14 +515,14 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
         <button
           onClick={handleSwitch}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
             background: 'linear-gradient(135deg, rgba(135, 206, 235, 0.6) 0%, rgba(0, 180, 200, 0.6) 100%)',
             border: '2px solid rgba(255, 255, 255, 0.5)',
             color: '#ffffff',
             cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
+            backdropFilter: BTN_BLUR,
             fontSize: '14px',
             fontWeight: 600,
             textShadow: '0 0 10px rgba(135, 206, 235, 0.8)',
@@ -528,16 +533,47 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
           Switch
         </button>
         <button
+          onClick={audio.toggleMute}
+          className={`p-3 rounded-full pointer-events-auto transition-all duration-500 ${
+            visible ? BTN_VISIBLE : BTN_HIDDEN
+          }`}
+          style={{
+            background: audio.isMuted
+              ? 'linear-gradient(135deg, rgba(100, 100, 100, 0.8) 0%, rgba(60, 60, 60, 0.8) 100%)'
+              : 'linear-gradient(135deg, rgba(0, 180, 200, 0.8) 0%, rgba(135, 206, 235, 0.8) 100%)',
+            border: '2px solid rgba(255, 255, 255, 0.5)',
+            cursor: 'pointer',
+            backdropFilter: BTN_BLUR,
+            boxShadow: audio.isMuted
+              ? '0 0 20px rgba(100, 100, 100, 0.5), inset 0 0 20px rgba(60, 60, 60, 0.1)'
+              : '0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(135, 206, 235, 0.1)',
+          }}
+          title={audio.isMuted ? 'Unmute' : 'Mute'}
+        >
+          {audio.isMuted ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+              <line x1="23" y1="9" x2="17" y2="15"/>
+              <line x1="17" y1="9" x2="23" y2="15"/>
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          )}
+        </button>
+        <button
           onClick={handleClose}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
             background: 'linear-gradient(135deg, rgba(0, 128, 128, 0.8) 0%, rgba(30, 80, 140, 0.8) 100%)',
             border: '2px solid rgba(0, 180, 200, 0.5)',
             color: '#00b4c8',
             cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
+            backdropFilter: BTN_BLUR,
             fontSize: '14px',
             fontWeight: 600,
             textShadow: '0 0 10px rgba(0, 180, 200, 0.8)',

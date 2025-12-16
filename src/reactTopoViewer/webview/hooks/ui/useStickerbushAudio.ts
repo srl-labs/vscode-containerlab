@@ -10,8 +10,9 @@
  * - Rich 3-tap reverb chain
  * - Warm ethereal filtering
  *
- * Key: A minor
- * Pattern: B-C-B-C-G repeating with chord changes
+ * Key: A minor (from Hooktheory transcription)
+ * Pattern: B-C-B-C-G(bass) repeating with Am7/Cmaj7 chord changes
+ * G4 transitions only at phrase endings (beats 16.5-16.75, 32.5-32.75)
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -76,52 +77,43 @@ interface MelodyNote {
 }
 
 /**
- * Build the Stickerbrush melody from the correct JSON data
+ * Build the Stickerbrush melody from Hooktheory transcription data
+ * Authentic melody: B-C-B-C-G(bass) pattern with G4 transitions at phrase endings only
  */
 function buildMelody(): MelodyNote[] {
-  // Complete Stickerbrush Symphony melody with all 22 G notes (scale degree 7)
-  // Pattern: B-C-B-C-G with high G shimmer notes throughout
+  // Exact Hooktheory transcription - clean B-C-B-C-G(bass) pattern
+  // G4 transition notes only appear at beats 16.5-16.75 and 32.5-32.75
   const rawNotes = [
     // Phrase 1 (beats 1-8) - Am7 chord
-    { sd: 7, octave: 0, beat: 1, duration: 0.25 },      // G4 shimmer
     { sd: 2, octave: 0, beat: 1.5, duration: 0.5 },     // B4
     { sd: 3, octave: 0, beat: 2, duration: 0.75 },      // C5
-    { sd: 7, octave: 0, beat: 2.5, duration: 0.25 },    // G4 shimmer
     { sd: 2, octave: 0, beat: 2.75, duration: 0.75 },   // B4
     { sd: 3, octave: 0, beat: 3.5, duration: 0.5 },     // C5
     { sd: 7, octave: -1, beat: 4, duration: 1 },        // G3 bass
-    { sd: 7, octave: 0, beat: 5, duration: 0.25 },      // G4 shimmer
     { sd: 2, octave: 0, beat: 5.5, duration: 0.5 },     // B4
     { sd: 3, octave: 0, beat: 6, duration: 0.75 },      // C5
-    { sd: 7, octave: 0, beat: 6.5, duration: 0.25 },    // G4 shimmer
     { sd: 2, octave: 0, beat: 6.75, duration: 0.75 },   // B4
     { sd: 3, octave: 0, beat: 7.5, duration: 0.5 },     // C5
     { sd: 7, octave: -1, beat: 8, duration: 1 },        // G3 bass
     // Phrase 2 (beats 9-16) - Cmaj7 chord
-    { sd: 7, octave: 0, beat: 9, duration: 0.25 },      // G4 shimmer
     { sd: 2, octave: 0, beat: 9.5, duration: 0.5 },     // B4
     { sd: 3, octave: 0, beat: 10, duration: 0.75 },     // C5
-    { sd: 7, octave: 0, beat: 10.5, duration: 0.25 },   // G4 shimmer
     { sd: 2, octave: 0, beat: 10.75, duration: 0.75 },  // B4
     { sd: 3, octave: 0, beat: 11.5, duration: 0.5 },    // C5
     { sd: 7, octave: -1, beat: 12, duration: 1 },       // G3 bass
-    { sd: 7, octave: 0, beat: 13, duration: 0.25 },     // G4 shimmer
     { sd: 2, octave: 0, beat: 13.5, duration: 0.5 },    // B4
     { sd: 3, octave: 0, beat: 14, duration: 0.75 },     // C5
-    { sd: 7, octave: 0, beat: 14.5, duration: 0.25 },   // G4 shimmer
     { sd: 2, octave: 0, beat: 14.75, duration: 0.75 },  // B4
     { sd: 3, octave: 0, beat: 15.5, duration: 0.5 },    // C5
-    { sd: 7, octave: -1, beat: 16, duration: 0.5 },     // G3 bass
+    { sd: 7, octave: -1, beat: 16, duration: 0.5 },     // G3 bass (short)
     { sd: 7, octave: 0, beat: 16.5, duration: 0.25 },   // G4 transition
     { sd: 7, octave: 0, beat: 16.75, duration: 0.25 },  // G4 transition
     // Phrase 3 (beats 17-24) - Am7 chord
-    { sd: 7, octave: 0, beat: 17, duration: 0.25 },     // G4 shimmer
     { sd: 2, octave: 0, beat: 17.5, duration: 0.5 },    // B4
     { sd: 3, octave: 0, beat: 18, duration: 0.75 },     // C5
     { sd: 2, octave: 0, beat: 18.75, duration: 0.75 },  // B4
     { sd: 3, octave: 0, beat: 19.5, duration: 0.5 },    // C5
     { sd: 7, octave: -1, beat: 20, duration: 1 },       // G3 bass
-    { sd: 7, octave: 0, beat: 21, duration: 0.25 },     // G4 shimmer
     { sd: 2, octave: 0, beat: 21.5, duration: 0.5 },    // B4
     { sd: 3, octave: 0, beat: 22, duration: 0.75 },     // C5
     { sd: 2, octave: 0, beat: 22.75, duration: 0.75 },  // B4
@@ -137,7 +129,7 @@ function buildMelody(): MelodyNote[] {
     { sd: 3, octave: 0, beat: 30, duration: 0.75 },     // C5
     { sd: 2, octave: 0, beat: 30.75, duration: 0.75 },  // B4
     { sd: 3, octave: 0, beat: 31.5, duration: 0.5 },    // C5
-    { sd: 7, octave: -1, beat: 32, duration: 0.5 },     // G3 bass
+    { sd: 7, octave: -1, beat: 32, duration: 0.5 },     // G3 bass (short)
     { sd: 7, octave: 0, beat: 32.5, duration: 0.25 },   // G4 transition
     { sd: 7, octave: 0, beat: 32.75, duration: 0.25 },  // G4 transition
   ];
@@ -165,7 +157,8 @@ let isRendering = false;
 let renderPromise: Promise<AudioBuffer> | null = null;
 
 /**
- * Schedule a pad chord in the offline context
+ * Schedule a lush pad chord - the iconic Stickerbush sound
+ * Multiple detuned layers with slow LFO modulation for dreamy movement
  */
 function schedulePadChord(
   ctx: OfflineAudioContext,
@@ -174,40 +167,98 @@ function schedulePadChord(
   startTime: number,
   duration: number
 ): void {
+  // Pad mixer with its own gain
+  const padMixer = ctx.createGain();
+  padMixer.gain.setValueAtTime(0.7, startTime); // Prominent pad level
+  padMixer.connect(masterGain);
+
+  // Warm low-pass filter for the pad
+  const padFilter = ctx.createBiquadFilter();
+  padFilter.type = 'lowpass';
+  padFilter.frequency.setValueAtTime(800, startTime);
+  padFilter.Q.setValueAtTime(0.5, startTime);
+  padFilter.connect(padMixer);
+
+  // Slow LFO for filter cutoff movement (breathing effect)
+  const filterLFO = ctx.createOscillator();
+  filterLFO.type = 'sine';
+  filterLFO.frequency.setValueAtTime(0.08, startTime); // Very slow ~8 second cycle
+  const filterLFOGain = ctx.createGain();
+  filterLFOGain.gain.setValueAtTime(200, startTime); // Modulate cutoff by ±200Hz
+  filterLFO.connect(filterLFOGain);
+  filterLFOGain.connect(padFilter.frequency);
+  filterLFO.start(startTime);
+  filterLFO.stop(startTime + duration + 1);
+
   for (const freq of frequencies) {
-    // Layer 1: Main sine tone
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(freq, startTime);
+    // Create per-voice mixer
+    const voiceMixer = ctx.createGain();
+    voiceMixer.connect(padFilter);
 
-    // Layer 2: Slight detune for ethereal width
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(freq * 1.003, startTime);
+    // Envelope for this voice
+    const envelope = ctx.createGain();
+    envelope.gain.setValueAtTime(0, startTime);
+    envelope.gain.linearRampToValueAtTime(0.08, startTime + 1.5); // Slow attack
+    envelope.gain.setValueAtTime(0.08, startTime + duration - 2.0);
+    envelope.gain.linearRampToValueAtTime(0, startTime + duration + 0.5); // Slow release
+    envelope.connect(voiceMixer);
 
-    // Layer 3: Triangle for warmth (octave down)
-    const osc3 = ctx.createOscillator();
-    osc3.type = 'triangle';
-    osc3.frequency.setValueAtTime(freq * 0.5, startTime);
+    // Layer 1: Main saw wave (characteristic pad sound)
+    const saw1 = ctx.createOscillator();
+    saw1.type = 'sawtooth';
+    saw1.frequency.setValueAtTime(freq, startTime);
+    const saw1Gain = ctx.createGain();
+    saw1Gain.gain.setValueAtTime(0.15, startTime);
+    saw1.connect(saw1Gain);
+    saw1Gain.connect(envelope);
 
-    // Very slow, gentle envelope
-    const oscGain = ctx.createGain();
-    oscGain.gain.setValueAtTime(0, startTime);
-    oscGain.gain.linearRampToValueAtTime(0.012, startTime + 2.0);
-    oscGain.gain.setValueAtTime(0.012, startTime + duration - 2.5);
-    oscGain.gain.linearRampToValueAtTime(0, startTime + duration);
+    // Layer 2: Detuned saw +5 cents
+    const saw2 = ctx.createOscillator();
+    saw2.type = 'sawtooth';
+    saw2.frequency.setValueAtTime(freq * 1.003, startTime);
+    const saw2Gain = ctx.createGain();
+    saw2Gain.gain.setValueAtTime(0.12, startTime);
+    saw2.connect(saw2Gain);
+    saw2Gain.connect(envelope);
 
-    osc1.connect(oscGain);
-    osc2.connect(oscGain);
-    osc3.connect(oscGain);
-    oscGain.connect(masterGain);
+    // Layer 3: Detuned saw -5 cents
+    const saw3 = ctx.createOscillator();
+    saw3.type = 'sawtooth';
+    saw3.frequency.setValueAtTime(freq * 0.997, startTime);
+    const saw3Gain = ctx.createGain();
+    saw3Gain.gain.setValueAtTime(0.12, startTime);
+    saw3.connect(saw3Gain);
+    saw3Gain.connect(envelope);
 
-    osc1.start(startTime);
-    osc1.stop(startTime + duration + 0.5);
-    osc2.start(startTime);
-    osc2.stop(startTime + duration + 0.5);
-    osc3.start(startTime);
-    osc3.stop(startTime + duration + 0.5);
+    // Layer 4: Sub octave sine for warmth
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(freq * 0.5, startTime);
+    const subGain = ctx.createGain();
+    subGain.gain.setValueAtTime(0.10, startTime);
+    sub.connect(subGain);
+    subGain.connect(envelope);
+
+    // Layer 5: High octave triangle for shimmer
+    const shimmer = ctx.createOscillator();
+    shimmer.type = 'triangle';
+    shimmer.frequency.setValueAtTime(freq * 2, startTime);
+    const shimmerGain = ctx.createGain();
+    shimmerGain.gain.setValueAtTime(0.03, startTime);
+    shimmer.connect(shimmerGain);
+    shimmerGain.connect(envelope);
+
+    const endTime = startTime + duration + 1;
+    saw1.start(startTime);
+    saw1.stop(endTime);
+    saw2.start(startTime);
+    saw2.stop(endTime);
+    saw3.start(startTime);
+    saw3.stop(endTime);
+    sub.start(startTime);
+    sub.stop(endTime);
+    shimmer.start(startTime);
+    shimmer.stop(endTime);
   }
 }
 
@@ -422,6 +473,8 @@ export interface UseStickerbushAudioReturn {
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;
+  isMuted: boolean;
+  toggleMute: () => void;
   getFrequencyData: () => Uint8Array<ArrayBuffer>;
   getTimeDomainData: () => Uint8Array<ArrayBuffer>;
   getBeatIntensity: () => number;
@@ -434,10 +487,12 @@ export interface UseStickerbushAudioReturn {
 export function useStickerbushAudio(): UseStickerbushAudioReturn {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const frequencyDataRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(64));
   const timeDomainDataRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(64));
   const beatIntensityRef = useRef<number>(0);
@@ -445,6 +500,10 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
   const beatDecayIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sectionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playbackStartTimeRef = useRef<number>(0);
+  // Generation counter to cancel pending loads when stop() is called
+  const loadGenRef = useRef<number>(0);
+  // Track muted state in ref for use in play() without stale closure
+  const isMutedRef = useRef(false);
 
   /**
    * Start playing the melody
@@ -453,9 +512,15 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
     if (isPlaying || isLoading) return;
 
     setIsLoading(true);
+    const currentGen = ++loadGenRef.current;
 
     try {
       const buffer = await renderAudio();
+
+      // Check if cancelled during loading
+      if (loadGenRef.current !== currentGen) {
+        return;
+      }
 
       const ctx = new AudioContext({ latencyHint: 'playback' });
       audioContextRef.current = ctx;
@@ -477,8 +542,15 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
       source.loop = false;
       sourceRef.current = source;
 
+      // Create gain node for mute control
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = isMutedRef.current ? 0 : 1;
+      gainNodeRef.current = gainNode;
+
+      // Connect: source -> analyser -> gainNode -> destination
       source.connect(analyser);
-      analyser.connect(ctx.destination);
+      analyser.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
       playbackStartTimeRef.current = ctx.currentTime;
 
@@ -519,6 +591,9 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
    * Stop playing
    */
   const stop = useCallback(() => {
+    // Cancel any pending load operations
+    loadGenRef.current++;
+
     if (beatDecayIntervalRef.current) {
       clearInterval(beatDecayIntervalRef.current);
       beatDecayIntervalRef.current = null;
@@ -540,9 +615,22 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
     }
 
     analyserRef.current = null;
+    gainNodeRef.current = null;
     beatIntensityRef.current = 0;
     currentSectionRef.current = 0;
     setIsPlaying(false);
+  }, []);
+
+  /**
+   * Toggle mute state
+   */
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMutedRef.current;
+    isMutedRef.current = newMuted;
+    setIsMuted(newMuted);
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = newMuted ? 0 : 1;
+    }
   }, []);
 
   const getFrequencyData = useCallback((): Uint8Array<ArrayBuffer> => {
@@ -572,6 +660,8 @@ export function useStickerbushAudio(): UseStickerbushAudioReturn {
     stop,
     isPlaying,
     isLoading,
+    isMuted,
+    toggleMute,
     getFrequencyData,
     getTimeDomainData,
     getBeatIntensity,

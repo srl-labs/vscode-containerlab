@@ -375,6 +375,8 @@ export interface UseVaporwaveAudioReturn {
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;
+  isMuted: boolean;
+  toggleMute: () => void;
   getFrequencyData: () => Uint8Array<ArrayBuffer>;
   getTimeDomainData: () => Uint8Array<ArrayBuffer>;
   getCurrentSection: () => VaporwaveSection;
@@ -386,11 +388,17 @@ export interface UseVaporwaveAudioReturn {
 export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const startTimeRef = useRef(0);
+  // Generation counter to cancel pending loads when stop() is called
+  const loadGenRef = useRef<number>(0);
+  // Track muted state in ref for use in play() without stale closure
+  const isMutedRef = useRef(false);
 
   // Empty frequency data for when not playing
   const emptyFrequencyData = useRef(new Uint8Array(128));
@@ -424,10 +432,16 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
     if (isPlaying || isLoading) return;
 
     setIsLoading(true);
+    const currentGen = ++loadGenRef.current;
 
     try {
       // Pre-render the audio (uses cache if already rendered)
       const buffer = await renderLoop();
+
+      // Check if cancelled during loading
+      if (loadGenRef.current !== currentGen) {
+        return;
+      }
 
       // Create playback context
       const ctx = new AudioContext({ latencyHint: 'playback' });
@@ -445,9 +459,15 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
       source.loopEnd = LOOP_DURATION; // Loop at the exact loop duration, before reverb tail
       sourceNodeRef.current = source;
 
-      // Connect: source -> analyser -> destination
+      // Create gain node for mute control
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = isMutedRef.current ? 0 : 1;
+      gainNodeRef.current = gainNode;
+
+      // Connect: source -> analyser -> gainNode -> destination
       source.connect(analyser);
-      analyser.connect(ctx.destination);
+      analyser.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
       // Start playback
       startTimeRef.current = ctx.currentTime;
@@ -463,6 +483,9 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
    * Stop playback
    */
   const stop = useCallback(() => {
+    // Cancel any pending load operations
+    loadGenRef.current++;
+
     if (sourceNodeRef.current) {
       try {
         sourceNodeRef.current.stop();
@@ -478,7 +501,20 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
     }
 
     analyserRef.current = null;
+    gainNodeRef.current = null;
     setIsPlaying(false);
+  }, []);
+
+  /**
+   * Toggle mute state
+   */
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMutedRef.current;
+    isMutedRef.current = newMuted;
+    setIsMuted(newMuted);
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = newMuted ? 0 : 1;
+    }
   }, []);
 
   /**
@@ -506,6 +542,8 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
     stop,
     isPlaying,
     isLoading,
+    isMuted,
+    toggleMute,
     getFrequencyData,
     getTimeDomainData,
     getCurrentSection,
