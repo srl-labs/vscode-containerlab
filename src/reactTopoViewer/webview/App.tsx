@@ -20,7 +20,10 @@ import { SvgExportPanel } from './components/panels/SvgExportPanel';
 import { LabSettingsPanel } from './components/panels/lab-settings';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
-import { PartyMode } from './components/PartyMode';
+import { NightcallMode } from './components/NightcallMode';
+import { StickerbushMode } from './components/StickerbushMode';
+import { AquaticAmbienceMode } from './components/AquaticAmbienceMode';
+import { VaporwaveMode } from './components/VaporwaveMode';
 import {
   assignMissingGeoCoordinatesToAnnotations,
   assignMissingGeoCoordinatesToShapeAnnotations
@@ -963,11 +966,35 @@ export const App: React.FC = () => {
           items={menuItems}
           onClose={closeMenu}
         />
-        {/* Easter egg: Logo click party mode */}
-        <PartyMode
-          isActive={easterEgg.state.isPartyMode}
-          onClose={easterEgg.endPartyMode}
-        />
+        {/* Easter egg: Logo click - Nightcall, Stickerbrush, Aquatic, or Vaporwave (25% each) */}
+        {easterEgg.state.easterEggMode === 'nightcall' && (
+          <NightcallMode
+            isActive={easterEgg.state.isPartyMode}
+            onClose={easterEgg.endPartyMode}
+            cyInstance={cyInstance}
+          />
+        )}
+        {easterEgg.state.easterEggMode === 'stickerbrush' && (
+          <StickerbushMode
+            isActive={easterEgg.state.isPartyMode}
+            onClose={easterEgg.endPartyMode}
+            cyInstance={cyInstance}
+          />
+        )}
+        {easterEgg.state.easterEggMode === 'aquatic' && (
+          <AquaticAmbienceMode
+            isActive={easterEgg.state.isPartyMode}
+            onClose={easterEgg.endPartyMode}
+            cyInstance={cyInstance}
+          />
+        )}
+        {easterEgg.state.easterEggMode === 'vaporwave' && (
+          <VaporwaveMode
+            isActive={easterEgg.state.isPartyMode}
+            onClose={easterEgg.endPartyMode}
+            cyInstance={cyInstance}
+          />
+        )}
       </main>
     </div>
   );

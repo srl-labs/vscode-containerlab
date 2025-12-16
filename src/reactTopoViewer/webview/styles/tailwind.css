@@ -22,7 +22,6 @@
 @import "./features/loading-states.css";
 @import "./features/free-text-markdown.css";
 @import "./features/geo-map.css";
-@import "./easter-eggs/party-mode.css";
 @import "./easter-eggs/logo-animations.css";
 
 /* Tailwind v4 - must come after all @import statements */
