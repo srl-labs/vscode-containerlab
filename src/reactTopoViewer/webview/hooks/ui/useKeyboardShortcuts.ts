@@ -7,6 +7,7 @@ import { log } from '../../utils/logger';
 
 interface KeyboardShortcutsOptions {
   mode: 'edit' | 'view';
+  isLocked: boolean;
   selectedNode: string | null;
   selectedEdge: string | null;
   cyInstance: Core | null;
@@ -300,6 +301,7 @@ function handleSelectAll(event: KeyboardEvent, cyInstance: Core | null): boolean
 function handleDelete(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
+  isLocked: boolean,
   selectedNode: string | null,
   selectedEdge: string | null,
   onDeleteNode: (nodeId: string) => void,
@@ -309,6 +311,7 @@ function handleDelete(
 ): boolean {
   if (event.key !== 'Delete' && event.key !== 'Backspace') return false;
   if (mode !== 'edit') return false;
+  if (isLocked) return false;
 
   let handled = false;
 
@@ -379,6 +382,7 @@ function handleEscape(
 export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
   const {
     mode,
+    isLocked,
     selectedNode,
     selectedEdge,
     cyInstance,
@@ -419,10 +423,10 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     if (handleCreateGroup(event, mode, cyInstance, onCreateGroup)) return;
     // Other shortcuts
     if (handleSelectAll(event, cyInstance)) return;
-    if (handleDelete(event, mode, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge, selectedAnnotationIds, onDeleteAnnotations)) return;
+    if (handleDelete(event, mode, isLocked, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge, selectedAnnotationIds, onDeleteAnnotations)) return;
     handleEscape(event, cyInstance, selectedNode, selectedEdge, onDeselectAll, selectedAnnotationIds, onClearAnnotationSelection);
   }, [
-    mode, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll,
+    mode, isLocked, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll,
     onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onCut, onDuplicate,
     selectedAnnotationIds, onCopyAnnotations, onPasteAnnotations, onCutAnnotations,
     onDuplicateAnnotations, onDeleteAnnotations, onClearAnnotationSelection, hasAnnotationClipboard,

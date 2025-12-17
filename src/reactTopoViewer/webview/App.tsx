@@ -878,6 +878,7 @@ export const App: React.FC = () => {
   // The handlers use debouncing to prevent double-execution in the same event
   useKeyboardShortcuts({
     mode: state.mode,
+    isLocked: state.isLocked,
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
     cyInstance,

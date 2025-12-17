@@ -63,6 +63,14 @@ export interface EditEventOptions {
 }
 
 /**
+ * Check if Ctrl/Cmd key is pressed (for multi-select)
+ */
+function isCtrlPressed(evt: EventObject): boolean {
+  const originalEvent = evt.originalEvent as MouseEvent;
+  return originalEvent?.ctrlKey || originalEvent?.metaKey;
+}
+
+/**
  * Setup tap handlers for node/edge selection
  */
 function setupTapHandlers(
@@ -73,11 +81,19 @@ function setupTapHandlers(
   cy.on('tap', 'node', (evt) => {
     if (shouldSkipSelection(cy, evt)) return;
     if (!isSelectableNode(evt)) return;
+    // If Ctrl/Cmd is NOT pressed, clear existing selection first (replace behavior)
+    if (!isCtrlPressed(evt)) {
+      cy.elements().unselect();
+    }
     selectNode(evt.target.id());
   });
 
   cy.on('tap', 'edge', (evt) => {
     if (shouldSkipSelection(cy, evt)) return;
+    // If Ctrl/Cmd is NOT pressed, clear existing selection first (replace behavior)
+    if (!isCtrlPressed(evt)) {
+      cy.elements().unselect();
+    }
     selectEdge(evt.target.id());
   });
 
