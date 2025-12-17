@@ -6,10 +6,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './specs',
-  fullyParallel: false, // Run sequentially to avoid port conflicts
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1, // Single worker for dev server
+  workers: process.env.CI ? 4 : undefined, // undefined = 50% of CPU cores
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: '../../playwright-report' }]
