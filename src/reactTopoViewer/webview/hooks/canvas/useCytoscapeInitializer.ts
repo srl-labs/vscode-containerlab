@@ -19,6 +19,7 @@ export interface CytoscapeInitOptions {
   editNode?: SelectCallback;
   editEdge?: SelectCallback;
   getMode?: () => 'edit' | 'view';
+  getIsLocked?: () => boolean;
 }
 
 /**
@@ -57,7 +58,8 @@ export function useCytoscapeInitializer(
     setupEventHandlers(cy, selectNode, selectEdge, {
       editNode: options?.editNode,
       editEdge: options?.editEdge,
-      getMode: options?.getMode
+      getMode: options?.getMode,
+      getIsLocked: options?.getIsLocked
     });
 
     cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
@@ -67,5 +69,5 @@ export function useCytoscapeInitializer(
       cy.destroy();
       cyRef.current = null;
     };
-  }, [selectNode, selectEdge, containerRef, cyRef, options?.editNode, options?.editEdge, options?.getMode]);
+  }, [selectNode, selectEdge, containerRef, cyRef, options?.editNode, options?.editEdge, options?.getMode, options?.getIsLocked]);
 }

@@ -193,13 +193,7 @@ test.describe('Node Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  /**
-   * BUG-002: This test documents a bug where the node editor panel opens
-   * even when the canvas is locked. Locking should prevent all editing operations.
-   * Expected: Panel should NOT open when canvas is locked
-   * Actual: Panel opens regardless of lock state
-   */
-  test.fail('node editor panel does not open when canvas is locked', async ({ page, topoViewerPage }) => {
+  test('node editor panel does not open when canvas is locked', async ({ page, topoViewerPage }) => {
     // Lock the canvas
     await topoViewerPage.lock();
 

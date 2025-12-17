@@ -306,6 +306,7 @@ function handleDelete(
   selectedEdge: string | null,
   onDeleteNode: (nodeId: string) => void,
   onDeleteEdge: (edgeId: string) => void,
+  cyInstance: Core | null,
   selectedAnnotationIds?: Set<string>,
   onDeleteAnnotations?: () => void
 ): boolean {
@@ -322,18 +323,40 @@ function handleDelete(
     handled = true;
   }
 
-  // Also delete selected node
-  if (selectedNode) {
-    log.info(`[Keyboard] Deleting node: ${selectedNode}`);
-    onDeleteNode(selectedNode);
-    handled = true;
-  }
+  // Delete all selected nodes from Cytoscape
+  if (cyInstance) {
+    const selectedNodes = cyInstance.nodes(':selected');
+    selectedNodes.forEach((node) => {
+      const nodeId = node.id();
+      log.info(`[Keyboard] Deleting node: ${nodeId}`);
+      onDeleteNode(nodeId);
+    });
+    if (selectedNodes.length > 0) {
+      handled = true;
+    }
 
-  // Also delete selected edge
-  if (selectedEdge) {
-    log.info(`[Keyboard] Deleting edge: ${selectedEdge}`);
-    onDeleteEdge(selectedEdge);
-    handled = true;
+    // Delete all selected edges from Cytoscape
+    const selectedEdges = cyInstance.edges(':selected');
+    selectedEdges.forEach((edge) => {
+      const edgeId = edge.id();
+      log.info(`[Keyboard] Deleting edge: ${edgeId}`);
+      onDeleteEdge(edgeId);
+    });
+    if (selectedEdges.length > 0) {
+      handled = true;
+    }
+  } else {
+    // Fallback to single selection if no cyInstance
+    if (selectedNode) {
+      log.info(`[Keyboard] Deleting node: ${selectedNode}`);
+      onDeleteNode(selectedNode);
+      handled = true;
+    }
+    if (selectedEdge) {
+      log.info(`[Keyboard] Deleting edge: ${selectedEdge}`);
+      onDeleteEdge(selectedEdge);
+      handled = true;
+    }
   }
 
   if (handled) {
@@ -423,7 +446,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     if (handleCreateGroup(event, mode, cyInstance, onCreateGroup)) return;
     // Other shortcuts
     if (handleSelectAll(event, cyInstance)) return;
-    if (handleDelete(event, mode, isLocked, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge, selectedAnnotationIds, onDeleteAnnotations)) return;
+    if (handleDelete(event, mode, isLocked, selectedNode, selectedEdge, onDeleteNode, onDeleteEdge, cyInstance, selectedAnnotationIds, onDeleteAnnotations)) return;
     handleEscape(event, cyInstance, selectedNode, selectedEdge, onDeselectAll, selectedAnnotationIds, onClearAnnotationSelection);
   }, [
     mode, isLocked, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll,

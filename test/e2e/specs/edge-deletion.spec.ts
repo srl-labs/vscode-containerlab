@@ -83,13 +83,7 @@ test.describe('Edge Deletion', () => {
     expect(finalEdgeIds).not.toContain(edgeToDelete);
   });
 
-  /**
-   * BUG-001: This test documents a bug where multi-edge deletion doesn't work.
-   * When multiple edges are selected, only one gets deleted instead of all.
-   * Expected: Both selected edges should be deleted
-   * Actual: Only one edge is deleted
-   */
-  test.fail('deletes multiple selected edges', async ({ page, topoViewerPage }) => {
+  test('deletes multiple selected edges', async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     expect(initialEdgeCount).toBeGreaterThanOrEqual(2);
 

@@ -60,6 +60,7 @@ export interface EditEventOptions {
   editNode?: (nodeId: string | null) => void;
   editEdge?: (edgeId: string | null) => void;
   getMode?: () => 'edit' | 'view';
+  getIsLocked?: () => boolean;
 }
 
 /**
@@ -106,7 +107,7 @@ function setupTapHandlers(
 }
 
 /**
- * Setup double-tap handlers for editing (only in edit mode)
+ * Setup double-tap handlers for editing (only in edit mode and when not locked)
  */
 function setupDoubleTapHandlers(cy: Core, options: EditEventOptions): void {
   if (options.editNode) {
@@ -115,7 +116,8 @@ function setupDoubleTapHandlers(cy: Core, options: EditEventOptions): void {
       if (shouldSkipSelection(cy, evt)) return;
       if (!isSelectableNode(evt)) return;
       const mode = options.getMode?.() ?? 'view';
-      if (mode === 'edit') {
+      const isLocked = options.getIsLocked?.() ?? true;
+      if (mode === 'edit' && !isLocked) {
         editNode(evt.target.id());
       }
     });
@@ -126,7 +128,8 @@ function setupDoubleTapHandlers(cy: Core, options: EditEventOptions): void {
     cy.on('dbltap', 'edge', (evt) => {
       if (shouldSkipSelection(cy, evt)) return;
       const mode = options.getMode?.() ?? 'view';
-      if (mode === 'edit') {
+      const isLocked = options.getIsLocked?.() ?? true;
+      if (mode === 'edit' && !isLocked) {
         editEdge(evt.target.id());
       }
     });

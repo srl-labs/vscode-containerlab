@@ -62,6 +62,11 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     modeRef.current = state.mode;
     const getMode = useCallback(() => modeRef.current, []);
 
+    // Store isLocked in ref to avoid stale closures in event handlers
+    const isLockedRef = useRef(state.isLocked);
+    isLockedRef.current = state.isLocked;
+    const getIsLocked = useCallback(() => isLockedRef.current, []);
+
     if (initialElementsRef.current === null) {
       initialElementsRef.current = elements;
     }
@@ -74,7 +79,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
       cyRef,
       selectNode,
       selectEdge,
-      { editNode, editEdge, getMode }
+      { editNode, editEdge, getMode, getIsLocked }
     );
 
     useDelayedCytoscapeInit(
