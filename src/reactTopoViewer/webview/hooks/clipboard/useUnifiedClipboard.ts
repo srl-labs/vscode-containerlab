@@ -195,7 +195,7 @@ function collectNodeIdsToInclude(
   getGroupMembers: (groupId: string) => string[]
 ): Set<string> {
   const nodeIdsToInclude = new Set<string>();
-  selectedNodes.forEach(node => nodeIdsToInclude.add(node.id()));
+  selectedNodes.forEach(node => { nodeIdsToInclude.add(node.id()); });
 
   for (const groupId of groupIdsToInclude) {
     const members = getGroupMembers(groupId);
