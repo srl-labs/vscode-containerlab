@@ -90,6 +90,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     return (
       <div
         ref={containerRef}
+        data-testid="cytoscape-canvas"
         className="cytoscape-container"
         style={{
           width: '100%',

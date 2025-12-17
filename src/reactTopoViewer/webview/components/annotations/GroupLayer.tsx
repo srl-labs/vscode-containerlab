@@ -210,11 +210,13 @@ function computeGroupRenderedPosition(
 
 const ResizeHandle: React.FC<{
   position: ResizeCorner;
+  groupId: string;
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-}> = ({ position, onMouseDown, onMouseEnter, onMouseLeave }) => (
+}> = ({ position, groupId, onMouseDown, onMouseEnter, onMouseLeave }) => (
   <div
+    data-testid={`resize-${position}-${groupId}`}
     onMouseDown={onMouseDown}
     onMouseEnter={onMouseEnter}
     onMouseLeave={onMouseLeave}
@@ -234,10 +236,11 @@ const ResizeHandle: React.FC<{
 );
 
 const GroupHandles: React.FC<{
+  groupId: string;
   onResize: (e: React.MouseEvent, corner: ResizeCorner) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-}> = ({ onResize, onMouseEnter, onMouseLeave }) => (
+}> = ({ groupId, onResize, onMouseEnter, onMouseLeave }) => (
   <>
     <div style={{
       position: 'absolute',
@@ -246,10 +249,10 @@ const GroupHandles: React.FC<{
       borderRadius: '4px',
       pointerEvents: 'none'
     }} />
-    <ResizeHandle position="nw" onMouseDown={(e) => onResize(e, 'nw')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
-    <ResizeHandle position="ne" onMouseDown={(e) => onResize(e, 'ne')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
-    <ResizeHandle position="sw" onMouseDown={(e) => onResize(e, 'sw')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
-    <ResizeHandle position="se" onMouseDown={(e) => onResize(e, 'se')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+    <ResizeHandle groupId={groupId} position="nw" onMouseDown={(e) => onResize(e, 'nw')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+    <ResizeHandle groupId={groupId} position="ne" onMouseDown={(e) => onResize(e, 'ne')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+    <ResizeHandle groupId={groupId} position="sw" onMouseDown={(e) => onResize(e, 'sw')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+    <ResizeHandle groupId={groupId} position="se" onMouseDown={(e) => onResize(e, 'se')} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
   </>
 );
 
@@ -347,6 +350,7 @@ const GroupBackgroundItem: React.FC<{
 
   return (
     <div
+      data-testid={`group-bg-${group.id}`}
       style={{
         ...buildWrapperStyle(position.x, position.y, scaledWidth, scaledHeight, group.zIndex ?? 5),
         pointerEvents: 'none'
@@ -437,6 +441,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
 
   return (
     <div
+      data-testid={`group-${group.id}`}
       style={{
         ...buildWrapperStyle(renderedPos.x, renderedPos.y, scaledWidth, scaledHeight, group.zIndex ?? 5),
         pointerEvents: 'none'
@@ -444,6 +449,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     >
       {/* Draggable border frame - top */}
       <div
+        data-testid={`group-drag-top-${group.id}`}
         style={{
           position: 'absolute',
           top: 0,
@@ -462,6 +468,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
       />
       {/* Draggable border frame - bottom */}
       <div
+        data-testid={`group-drag-bottom-${group.id}`}
         style={{
           position: 'absolute',
           bottom: 0,
@@ -480,6 +487,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
       />
       {/* Draggable border frame - left */}
       <div
+        data-testid={`group-drag-left-${group.id}`}
         style={{
           position: 'absolute',
           top: borderDragWidth,
@@ -498,6 +506,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
       />
       {/* Draggable border frame - right */}
       <div
+        data-testid={`group-drag-right-${group.id}`}
         style={{
           position: 'absolute',
           top: borderDragWidth,
@@ -516,6 +525,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
       />
       {/* Label is outside the border */}
       <div
+        data-testid={`group-label-${group.id}`}
         style={{
           ...buildLabelStyle(group.labelPosition, group.labelColor),
           pointerEvents: isLocked ? 'none' : 'auto',
@@ -536,6 +546,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
       </div>
       {showHandles && (
         <GroupHandles
+          groupId={group.id}
           onResize={handleResizeMouseDown}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}

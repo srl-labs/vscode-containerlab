@@ -346,7 +346,7 @@ function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view')
 }
 
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate } = useTopoViewer();
+  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate, toggleLock } = useTopoViewer();
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -361,6 +361,21 @@ export const App: React.FC = () => {
 
   // Apply link label visibility based on mode
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);
+
+  // Expose cy instance and lock control for E2E testing (dev mode only)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).__DEV__) {
+      if (cyInstance) {
+        (window as any).__DEV__.cy = cyInstance;
+      }
+      (window as any).__DEV__.isLocked = () => state.isLocked;
+      (window as any).__DEV__.setLocked = (locked: boolean) => {
+        if (state.isLocked !== locked) {
+          toggleLock();
+        }
+      };
+    }
+  }, [cyInstance, state.isLocked, toggleLock]);
 
   // Ref for FloatingActionPanel to trigger shake animation
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
@@ -898,7 +913,7 @@ export const App: React.FC = () => {
   if (error) return <ErrorState message={error} />;
 
   return (
-    <div className="topoviewer-app">
+    <div className="topoviewer-app" data-testid="topoviewer-app">
       <Navbar
         onZoomToFit={handleZoomToFit}
         onToggleLayout={navbarCommands.onLayoutToggle}

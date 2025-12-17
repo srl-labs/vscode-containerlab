@@ -1430,10 +1430,14 @@
     "format": "npm run format:html",
     "format:html": "prettier --write \"src/topoViewer/webview/assets/templates/**/*.html\"",
     "test": "npm run test:compile && mocha --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
-    "test:compile": "tsc -p test/tsconfig.json"
+    "test:compile": "tsc -p test/tsconfig.json",
+    "test:e2e": "playwright test --config test/e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --config test/e2e/playwright.config.ts --ui",
+    "test:e2e:debug": "playwright test --config test/e2e/playwright.config.ts --debug"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.1",
