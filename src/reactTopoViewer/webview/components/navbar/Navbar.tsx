@@ -104,6 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-gear"
           title="Lab Settings"
           onClick={onLabSettings}
+          testId="navbar-lab-settings"
         />
 
         {/* Undo - only show in edit mode */}
@@ -113,6 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Undo (Ctrl+Z)"
             onClick={onUndo}
             disabled={!canUndo}
+            testId="navbar-undo"
           />
         )}
 
@@ -123,6 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Redo (Ctrl+Y)"
             onClick={onRedo}
             disabled={!canRedo}
+            testId="navbar-redo"
           />
         )}
 
@@ -131,6 +134,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-expand"
           title="Fit to Viewport"
           onClick={onZoomToFit}
+          testId="navbar-fit-viewport"
         />
 
         {/* Toggle YAML Split View */}
@@ -138,6 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-columns"
           title="Toggle YAML Split View"
           onClick={onToggleSplit}
+          testId="navbar-split-view"
         />
 
         {/* Layout Manager */}
@@ -147,6 +152,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title={`Layout: ${getLayoutLabel(layout)}`}
             onClick={layoutDropdown.toggle}
             active={layoutDropdown.isOpen}
+            testId="navbar-layout"
           />
           {layoutDropdown.isOpen && (
             <LayoutMenu
@@ -163,6 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Grid line width"
             onClick={gridDropdown.toggle}
             active={gridDropdown.isOpen}
+            testId="navbar-grid"
           />
           {gridDropdown.isOpen && (
             <GridSettingsMenu
@@ -177,6 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-binoculars"
           title="Find Node"
           onClick={onFindNode}
+          testId="navbar-find-node"
         />
 
         {/* Link Labels Dropdown */}
@@ -186,6 +194,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Link Labels"
             onClick={linkDropdown.toggle}
             active={linkDropdown.isOpen}
+            testId="navbar-link-labels"
           />
           {linkDropdown.isOpen && (
             <LinkLabelMenu
@@ -202,6 +211,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-camera"
           title="Capture Viewport as SVG"
           onClick={onCaptureViewport}
+          testId="navbar-capture"
         />
 
         {/* Shortcuts */}
@@ -209,6 +219,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-keyboard"
           title="Shortcuts"
           onClick={onShowShortcuts}
+          testId="navbar-shortcuts"
         />
 
         {/* Toggle Shortcut Display */}
@@ -217,6 +228,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Toggle Shortcut Display"
           onClick={onToggleShortcutDisplay}
           active={shortcutDisplayEnabled}
+          testId="navbar-shortcut-display"
         />
 
         {/* About */}
@@ -224,6 +236,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-circle-info"
           title="About TopoViewer"
           onClick={onShowAbout}
+          testId="navbar-about"
         />
 
         {/* Geo mode toggle (when applicable) */}
@@ -413,15 +426,17 @@ interface NavButtonProps {
   onClick?: () => void;
   active?: boolean;
   disabled?: boolean;
+  testId?: string;
 }
 
-const NavButton: React.FC<NavButtonProps> = ({ icon, title, onClick, active, disabled }) => {
+const NavButton: React.FC<NavButtonProps> = ({ icon, title, onClick, active, disabled, testId }) => {
   return (
     <button
       className={`btn-icon ${active ? 'active' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       title={title}
       onClick={onClick}
       disabled={disabled}
+      data-testid={testId}
     >
       <span className="inline-flex items-center justify-center text-xl">
         <i className={`fas ${icon}`}></i>

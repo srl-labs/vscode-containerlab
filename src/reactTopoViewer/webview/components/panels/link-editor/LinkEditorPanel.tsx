@@ -165,6 +165,7 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
       storageKey="link-editor"
       width={400}
       hasChanges={hasChanges}
+      testId="link-editor"
     >
       <ValidationBanner errors={validationErrors} />
       <TabContent

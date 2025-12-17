@@ -65,6 +65,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, o
               className={`panel-tab-button ${activeTab === tab.id ? 'tab-active' : ''}`}
               onClick={() => onTabChange(tab.id)}
               data-tab={tab.id}
+              data-testid={`panel-tab-${tab.id}`}
             >
               {tab.label}
             </button>

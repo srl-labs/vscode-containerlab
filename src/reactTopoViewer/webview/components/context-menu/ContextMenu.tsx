@@ -106,6 +106,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
       role="menuitem"
       onClick={handleClick}
       disabled={item.disabled}
+      data-testid={`context-menu-item-${item.id}`}
     >
       {item.iconComponent ? item.iconComponent : item.icon && <i className={item.icon} />}
       <span>{item.label}</span>

@@ -55,7 +55,7 @@ function formatResultMessage(count: number): string {
 const SearchResultStatus: React.FC<{ count: number }> = ({ count }) => {
   const colorClass = count > 0 ? 'text-green-500' : 'text-orange-500';
   return (
-    <span className={`text-sm ${colorClass}`}>
+    <span className={`text-sm ${colorClass}`} data-testid="find-node-result">
       {formatResultMessage(count)}
     </span>
   );
@@ -136,6 +136,7 @@ export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose
       footer={false}
       minWidth={250}
       minHeight={150}
+      testId="find-node-panel"
     >
       <div className="space-y-3">
         <div>
@@ -154,6 +155,7 @@ export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose
             placeholder="Search for nodes ..."
             className="input-field pl-8 pr-8 text-sm w-full"
             autoFocus
+            data-testid="find-node-input"
           />
           <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-secondary">
             <i className="fas fa-search" aria-hidden="true"></i>
@@ -175,6 +177,7 @@ export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose
             type="button"
             className="btn btn-primary btn-small"
             onClick={handleSearch}
+            data-testid="find-node-search-btn"
           >
             Search
           </button>
