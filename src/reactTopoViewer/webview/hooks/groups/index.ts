@@ -4,8 +4,11 @@
 
 export * from './groupTypes';
 export * from './groupHelpers';
+export * from './hierarchyUtils';
 export * from './useGroupState';
 export * from './useGroups';
+export * from './useGroupHierarchy';
+export * from './useGroupClipboard';
 export * from './useAppGroups';
 export * from './useGroupUndoRedoHandlers';
 export * from './useGroupAnnotationApplier';

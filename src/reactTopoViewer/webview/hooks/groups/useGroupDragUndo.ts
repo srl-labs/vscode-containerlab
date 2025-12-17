@@ -1,14 +1,16 @@
 /**
  * Hook for tracking group drag operations with undo support.
  * Captures group + member node positions on drag start/end to create compound undo actions.
+ * Supports hierarchical group movement - dragging a parent moves all descendants.
  */
 import React, { useCallback, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
-import type { GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoAction, UndoRedoActionGroupMove, NodePositionEntry } from '../state/useUndoRedo';
 import type { UseGroupsReturn } from './groupTypes';
 import { log } from '../../utils/logger';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { getDescendantGroups, getAllAnnotationsInHierarchy } from './hierarchyUtils';
 
 interface UndoRedoApi {
   pushAction: (action: UndoRedoAction) => void;
@@ -20,6 +22,11 @@ interface DragStartState {
   groupBefore: GroupStyleAnnotation;
   nodesBefore: NodePositionEntry[];
   memberNodeIds: string[];
+  // Hierarchical state
+  descendantGroupsBefore: GroupStyleAnnotation[];
+  descendantNodeIds: string[];
+  textAnnotationsBefore: FreeTextAnnotation[];
+  shapeAnnotationsBefore: FreeShapeAnnotation[];
 }
 
 export interface UseGroupDragUndoOptions {
@@ -27,6 +34,11 @@ export interface UseGroupDragUndoOptions {
   groups: UseGroupsReturn;
   undoRedo: UndoRedoApi;
   isApplyingGroupUndoRedo: React.RefObject<boolean>;
+  // Annotation state for hierarchical movement
+  textAnnotations?: FreeTextAnnotation[];
+  shapeAnnotations?: FreeShapeAnnotation[];
+  onUpdateTextAnnotation?: (id: string, updates: Partial<FreeTextAnnotation>) => void;
+  onUpdateShapeAnnotation?: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
 }
 
 export interface UseGroupDragUndoReturn {
@@ -65,18 +77,45 @@ function hasNodesChanged(
   });
 }
 
-/** Capture drag start state */
+/** Capture drag start state including full hierarchy */
 function captureDragStartState(
   group: GroupStyleAnnotation,
   memberNodeIds: string[],
   capturePositions: (ids: string[]) => NodePositionEntry[],
-  groupId: string
+  groupId: string,
+  allGroups: GroupStyleAnnotation[],
+  getGroupMembers: (id: string) => string[],
+  textAnnotations: FreeTextAnnotation[],
+  shapeAnnotations: FreeShapeAnnotation[]
 ): DragStartState {
+  // Get all descendant groups
+  const descendantGroups = getDescendantGroups(groupId, allGroups);
+
+  // Collect all member node IDs from the entire hierarchy
+  const allMemberNodeIds = new Set<string>(memberNodeIds);
+  for (const descendant of descendantGroups) {
+    const members = getGroupMembers(descendant.id);
+    members.forEach(id => allMemberNodeIds.add(id));
+  }
+
+  // Get all annotations in the hierarchy
+  const { texts, shapes } = getAllAnnotationsInHierarchy(
+    groupId,
+    allGroups,
+    textAnnotations,
+    shapeAnnotations
+  );
+
   return {
     groupId,
     groupBefore: cloneGroup(group),
     nodesBefore: capturePositions(memberNodeIds),
-    memberNodeIds
+    memberNodeIds,
+    // Hierarchical state
+    descendantGroupsBefore: descendantGroups.map(g => cloneGroup(g)),
+    descendantNodeIds: Array.from(allMemberNodeIds).filter(id => !memberNodeIds.includes(id)),
+    textAnnotationsBefore: texts.map(t => ({ ...t, position: { ...t.position } })),
+    shapeAnnotationsBefore: shapes.map(s => ({ ...s, position: { ...s.position } }))
   };
 }
 
@@ -91,6 +130,68 @@ function moveMemberNodes(
     if (node.length > 0) {
       const currentPos = node.position();
       node.position({ x: currentPos.x + delta.dx, y: currentPos.y + delta.dy });
+    }
+  });
+}
+
+/** Move descendant groups by delta */
+function moveDescendantGroups(
+  descendantIds: string[],
+  delta: { dx: number; dy: number },
+  updateGroupPosition: (id: string, pos: { x: number; y: number }) => void,
+  groups: GroupStyleAnnotation[]
+): void {
+  descendantIds.forEach(groupId => {
+    const group = groups.find(g => g.id === groupId);
+    if (group) {
+      const newPos = {
+        x: group.position.x + delta.dx,
+        y: group.position.y + delta.dy
+      };
+      updateGroupPosition(groupId, newPos);
+    }
+  });
+}
+
+/** Move annotations by delta */
+function moveAnnotations(
+  textAnnotations: FreeTextAnnotation[],
+  shapeAnnotations: FreeShapeAnnotation[],
+  textIds: string[],
+  shapeIds: string[],
+  delta: { dx: number; dy: number },
+  onUpdateText?: (id: string, updates: Partial<FreeTextAnnotation>) => void,
+  onUpdateShape?: (id: string, updates: Partial<FreeShapeAnnotation>) => void
+): void {
+  textIds.forEach(id => {
+    const annotation = textAnnotations.find(t => t.id === id);
+    if (annotation && onUpdateText) {
+      onUpdateText(id, {
+        position: {
+          x: annotation.position.x + delta.dx,
+          y: annotation.position.y + delta.dy
+        }
+      });
+    }
+  });
+
+  shapeIds.forEach(id => {
+    const annotation = shapeAnnotations.find(s => s.id === id);
+    if (annotation && onUpdateShape) {
+      const updates: Partial<FreeShapeAnnotation> = {
+        position: {
+          x: annotation.position.x + delta.dx,
+          y: annotation.position.y + delta.dy
+        }
+      };
+      // Also move endPosition for lines
+      if (annotation.endPosition) {
+        updates.endPosition = {
+          x: annotation.endPosition.x + delta.dx,
+          y: annotation.endPosition.y + delta.dy
+        };
+      }
+      onUpdateShape(id, updates);
     }
   });
 }
@@ -152,7 +253,16 @@ function processDragEnd(
 }
 
 export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDragUndoReturn {
-  const { cyInstance, groups, undoRedo, isApplyingGroupUndoRedo } = options;
+  const {
+    cyInstance,
+    groups,
+    undoRedo,
+    isApplyingGroupUndoRedo,
+    textAnnotations = [],
+    shapeAnnotations = [],
+    onUpdateTextAnnotation,
+    onUpdateShapeAnnotation
+  } = options;
   const dragStartRef = useRef<DragStartState | null>(null);
 
   const onGroupDragStart = useCallback((groupId: string) => {
@@ -160,9 +270,27 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
     const group = groups.groups.find(g => g.id === groupId);
     if (!group) return;
     const memberNodeIds = groups.getGroupMembers(groupId);
-    dragStartRef.current = captureDragStartState(group, memberNodeIds, undoRedo.capturePositions, groupId);
-    log.info(`[GroupDragUndo] Drag started for group ${groupId} with ${memberNodeIds.length} members`);
-  }, [cyInstance, groups, undoRedo, isApplyingGroupUndoRedo]);
+
+    // Capture full hierarchical state
+    dragStartRef.current = captureDragStartState(
+      group,
+      memberNodeIds,
+      undoRedo.capturePositions,
+      groupId,
+      groups.groups,
+      groups.getGroupMembers,
+      textAnnotations,
+      shapeAnnotations
+    );
+
+    const descendantCount = dragStartRef.current.descendantGroupsBefore.length;
+    const textCount = dragStartRef.current.textAnnotationsBefore.length;
+    const shapeCount = dragStartRef.current.shapeAnnotationsBefore.length;
+    log.info(
+      `[GroupDragUndo] Drag started for group ${groupId} with ${memberNodeIds.length} members, ` +
+      `${descendantCount} descendant groups, ${textCount} texts, ${shapeCount} shapes`
+    );
+  }, [cyInstance, groups, undoRedo, isApplyingGroupUndoRedo, textAnnotations, shapeAnnotations]);
 
   const onGroupDragEnd = useCallback((
     groupId: string,
@@ -175,7 +303,11 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
       handleFallbackDragEnd(groupId, finalPosition, groups.getGroupMembers, undoRedo.capturePositions, groups.updateGroupPosition);
       return;
     }
-    const nodesAfter = undoRedo.capturePositions(startState.memberNodeIds);
+
+    // Capture all node positions (including from descendants)
+    const allNodeIds = [...startState.memberNodeIds, ...startState.descendantNodeIds];
+    const nodesAfter = undoRedo.capturePositions(allNodeIds);
+
     processDragEnd(startState, finalPosition, nodesAfter, undoRedo.pushAction, groupId);
     groups.updateGroupPosition(groupId, finalPosition);
     dragStartRef.current = null;
@@ -183,8 +315,41 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
 
   const onGroupDragMove = useCallback((groupId: string, delta: { dx: number; dy: number }) => {
     if (!cyInstance || (delta.dx === 0 && delta.dy === 0)) return;
-    moveMemberNodes(cyInstance, groups.getGroupMembers(groupId), delta);
-  }, [cyInstance, groups]);
+
+    const startState = dragStartRef.current;
+    if (!startState) {
+      // Fallback: just move direct members
+      moveMemberNodes(cyInstance, groups.getGroupMembers(groupId), delta);
+      return;
+    }
+
+    // Move all member nodes (including descendants)
+    const allNodeIds = [...startState.memberNodeIds, ...startState.descendantNodeIds];
+    moveMemberNodes(cyInstance, allNodeIds, delta);
+
+    // Move descendant groups
+    if (startState.descendantGroupsBefore.length > 0) {
+      moveDescendantGroups(
+        startState.descendantGroupsBefore.map(g => g.id),
+        delta,
+        groups.updateGroupPosition,
+        groups.groups
+      );
+    }
+
+    // Move annotations in the hierarchy
+    if (startState.textAnnotationsBefore.length > 0 || startState.shapeAnnotationsBefore.length > 0) {
+      moveAnnotations(
+        textAnnotations,
+        shapeAnnotations,
+        startState.textAnnotationsBefore.map(t => t.id),
+        startState.shapeAnnotationsBefore.map(s => s.id),
+        delta,
+        onUpdateTextAnnotation,
+        onUpdateShapeAnnotation
+      );
+    }
+  }, [cyInstance, groups, textAnnotations, shapeAnnotations, onUpdateTextAnnotation, onUpdateShapeAnnotation]);
 
   return { onGroupDragStart, onGroupDragEnd, onGroupDragMove };
 }

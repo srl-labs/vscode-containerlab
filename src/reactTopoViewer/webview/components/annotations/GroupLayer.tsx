@@ -14,7 +14,10 @@ import {
   useGroupResize,
   useGroupItemHandlers,
   useDragPositionOverrides,
-  ResizeCorner
+  ResizeCorner,
+  getGroupDepth,
+  findDeepestGroupAtPosition,
+  validateNoCircularReference
 } from '../../hooks/groups';
 import { MapLibreState, projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
 
@@ -37,6 +40,8 @@ interface GroupLayerProps {
   selectedGroupIds?: Set<string>;
   onGroupSelect?: (id: string) => void;
   onGroupToggleSelect?: (id: string) => void;
+  /** Called when a group is reparented by dragging into another group */
+  onGroupReparent?: (groupId: string, newParentId: string | null) => void;
   // Geo mode props
   isGeoMode?: boolean;
   geoMode?: 'pan' | 'edit';
@@ -60,6 +65,8 @@ interface GroupInteractionItemProps {
   onVisualPositionClear?: (id: string) => void;
   /** Callback to show context menu - rendered outside portal to avoid transform issues */
   onShowContextMenu: (groupId: string, position: { x: number; y: number }) => void;
+  /** Called when drag ends, used for detecting drop targets */
+  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
   // Geo mode props
   isGeoMode?: boolean;
   mapLibreState?: MapLibreState | null;
@@ -364,6 +371,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onVisualPositionChange,
     onVisualPositionClear,
     onShowContextMenu,
+    onDragEnd,
     isGeoMode,
     mapLibreState
   } = props;
@@ -379,7 +387,8 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onPositionChange,
     onDragMove,
     onVisualPositionChange,
-    onVisualPositionClear
+    onVisualPositionClear,
+    onDragEnd
   });
 
   const { isResizing, handleResizeMouseDown } = useGroupResize(
@@ -538,8 +547,23 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
 // Main Layer Component
 // ============================================================================
 
-function sortGroupsByZIndex(groups: GroupStyleAnnotation[]): GroupStyleAnnotation[] {
-  return [...groups].sort((a, b) => (a.zIndex ?? 5) - (b.zIndex ?? 5));
+/**
+ * Sort groups by depth (parents first) then by zIndex.
+ * This ensures parent groups render before their children.
+ */
+function sortGroupsByDepthThenZIndex(groups: GroupStyleAnnotation[]): GroupStyleAnnotation[] {
+  return [...groups].sort((a, b) => {
+    const depthA = getGroupDepth(a.id, groups);
+    const depthB = getGroupDepth(b.id, groups);
+
+    // Sort by depth first (lower depth = parent = render first)
+    if (depthA !== depthB) {
+      return depthA - depthB;
+    }
+
+    // Then by zIndex
+    return (a.zIndex ?? 5) - (b.zIndex ?? 5);
+  });
 }
 
 const GroupBackgroundPortal: React.FC<{
@@ -584,6 +608,7 @@ const GroupInteractionPortal: React.FC<{
   onVisualPositionChange: (id: string, position: { x: number; y: number }) => void;
   onVisualPositionClear: (id: string) => void;
   onShowContextMenu: (groupId: string, position: { x: number; y: number }) => void;
+  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
   // Geo mode props
   isGeoMode?: boolean;
   mapLibreState?: MapLibreState | null;
@@ -603,6 +628,7 @@ const GroupInteractionPortal: React.FC<{
   onVisualPositionChange,
   onVisualPositionClear,
   onShowContextMenu,
+  onDragEnd,
   isGeoMode,
   mapLibreState
 }) => createPortal(
@@ -624,6 +650,7 @@ const GroupInteractionPortal: React.FC<{
         onVisualPositionChange={onVisualPositionChange}
         onVisualPositionClear={onVisualPositionClear}
         onShowContextMenu={onShowContextMenu}
+        onDragEnd={onDragEnd}
         isGeoMode={isGeoMode}
         mapLibreState={mapLibreState}
       />
@@ -647,6 +674,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   selectedGroupIds = new Set(),
   onGroupSelect,
   onGroupToggleSelect,
+  onGroupReparent,
   isGeoMode,
   geoMode,
   mapLibreState,
@@ -698,10 +726,49 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
     }
   }, [onPositionChange, isGeoMode, mapLibreState, onGeoPositionChange]);
 
+  // Handler for detecting drop targets when a group drag ends
+  const handleDragEnd = useCallback((draggedGroupId: string, finalPosition: { x: number; y: number }) => {
+    if (!onGroupReparent) return;
+
+    const draggedGroup = groups.find(g => g.id === draggedGroupId);
+    if (!draggedGroup) return;
+
+    // Find the deepest group at the drop position, excluding the dragged group and its descendants
+    // We need to exclude descendants to avoid reparenting into own children
+    const descendantIds = new Set<string>();
+    const collectDescendants = (parentId: string) => {
+      for (const g of groups) {
+        if (g.parentId === parentId) {
+          descendantIds.add(g.id);
+          collectDescendants(g.id);
+        }
+      }
+    };
+    collectDescendants(draggedGroupId);
+
+    const eligibleGroups = groups.filter(g => g.id !== draggedGroupId && !descendantIds.has(g.id));
+    const dropTarget = findDeepestGroupAtPosition(finalPosition, eligibleGroups);
+
+    if (dropTarget) {
+      // Dropped inside another group - make it a child
+      if (validateNoCircularReference(draggedGroupId, dropTarget.id, groups)) {
+        // Only reparent if the target is different from current parent
+        if (draggedGroup.parentId !== dropTarget.id) {
+          onGroupReparent(draggedGroupId, dropTarget.id);
+        }
+      }
+    } else {
+      // Dropped outside all groups - remove from parent (make root)
+      if (draggedGroup.parentId) {
+        onGroupReparent(draggedGroupId, null);
+      }
+    }
+  }, [groups, onGroupReparent]);
+
   // Don't render if no cy, no groups, or no layer nodes from cytoscape-layers
   if (!cy || groups.length === 0 || (!backgroundLayerNode && !interactionLayerNode)) return null;
 
-  const sortedGroups = sortGroupsByZIndex(groups);
+  const sortedGroups = sortGroupsByDepthThenZIndex(groups);
 
   return (
     <>
@@ -731,6 +798,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           onVisualPositionChange={dragOverrides.setDragPosition}
           onVisualPositionClear={dragOverrides.clearDragPosition}
           onShowContextMenu={handleShowContextMenu}
+          onDragEnd={handleDragEnd}
           isGeoMode={isGeoMode}
           mapLibreState={mapLibreState}
         />

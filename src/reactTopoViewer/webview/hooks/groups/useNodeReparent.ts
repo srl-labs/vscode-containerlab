@@ -6,7 +6,8 @@ import { useEffect, useCallback, useRef } from 'react';
 import type { Core, NodeSingular, EventObject } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { isPointInsideGroup, parseGroupId, CMD_SAVE_NODE_GROUP_MEMBERSHIP } from './groupHelpers';
+import { parseGroupId, CMD_SAVE_NODE_GROUP_MEMBERSHIP } from './groupHelpers';
+import { findDeepestGroupAtPosition } from './hierarchyUtils';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 export interface UseNodeReparentOptions {
@@ -29,13 +30,13 @@ function canHaveGroupMembership(node: NodeSingular): boolean {
   return role !== 'freeText' && role !== 'freeShape';
 }
 
+/**
+ * Find the deepest group at the node's position.
+ * For nested groups, returns the most deeply nested group containing the position.
+ */
 function findGroupForNode(node: NodeSingular, groups: GroupStyleAnnotation[]): GroupStyleAnnotation | null {
   const nodePos = node.position();
-  const sorted = [...groups].sort((a, b) => (b.zIndex ?? 5) - (a.zIndex ?? 5));
-  for (const group of sorted) {
-    if (isPointInsideGroup(nodePos, group)) return group;
-  }
-  return null;
+  return findDeepestGroupAtPosition(nodePos, groups);
 }
 
 function saveNodeMembership(nodeId: string, groupId: string | null): void {

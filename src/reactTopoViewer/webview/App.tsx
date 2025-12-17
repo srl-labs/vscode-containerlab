@@ -387,32 +387,45 @@ export const App: React.FC = () => {
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
-  // Free text annotations
-  const freeTextAnnotations = useAppFreeTextAnnotations({
-    cyInstance,
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onLockedAction: () => floatingPanelRef.current?.triggerShake()
-  });
+  // Refs for late-bound migration callbacks (annotations are defined after groups)
+  const migrateTextAnnotationsRef = React.useRef<((oldGroupId: string, newGroupId: string) => void) | undefined>(undefined);
+  const migrateShapeAnnotationsRef = React.useRef<((oldGroupId: string, newGroupId: string) => void) | undefined>(undefined);
 
-  // Free shape annotations
-  const freeShapeAnnotations = useAppFreeShapeAnnotations({
-    cyInstance,
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onLockedAction: () => floatingPanelRef.current?.triggerShake()
-  });
-
-  const { isApplyingAnnotationUndoRedo, applyAnnotationChange: applyFreeShapeChange } =
-    useFreeShapeAnnotationApplier(freeShapeAnnotations);
-
-  // Groups
+  // Groups - initialized before annotations so they can auto-assign groupId
+  // Migration callbacks use refs because annotation hooks are defined after groups
   const { groups } = useAppGroups({
     cyInstance,
     mode: state.mode,
     isLocked: state.isLocked,
-    onLockedAction: () => floatingPanelRef.current?.triggerShake()
+    onLockedAction: () => floatingPanelRef.current?.triggerShake(),
+    onMigrateTextAnnotations: (old, newId) => migrateTextAnnotationsRef.current?.(old, newId),
+    onMigrateShapeAnnotations: (old, newId) => migrateShapeAnnotationsRef.current?.(old, newId)
   });
+
+  // Free text annotations - groups passed for auto-assignment when creating inside groups
+  const freeTextAnnotations = useAppFreeTextAnnotations({
+    cyInstance,
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake(),
+    groups: groups.groups
+  });
+
+  // Free shape annotations - groups passed for auto-assignment when creating inside groups
+  const freeShapeAnnotations = useAppFreeShapeAnnotations({
+    cyInstance,
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onLockedAction: () => floatingPanelRef.current?.triggerShake(),
+    groups: groups.groups
+  });
+
+  // Set late-bound migration callbacks now that annotation hooks are defined
+  migrateTextAnnotationsRef.current = freeTextAnnotations.migrateGroupId;
+  migrateShapeAnnotationsRef.current = freeShapeAnnotations.migrateGroupId;
+
+  const { isApplyingAnnotationUndoRedo, applyAnnotationChange: applyFreeShapeChange } =
+    useFreeShapeAnnotationApplier(freeShapeAnnotations);
 
   // Assign geo coordinates to annotations when geomap initializes
   // This runs once when the geomap becomes available and assigns lat/lng to any
@@ -522,11 +535,16 @@ export const App: React.FC = () => {
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
 
   // Group drag undo tracking - handles group + member node moves as single undo step
+  // Also moves annotations that belong to groups
   const groupDragUndo = useGroupDragUndo({
     cyInstance,
     groups,
     undoRedo,
-    isApplyingGroupUndoRedo: groupUndoHandlers.isApplyingGroupUndoRedo
+    isApplyingGroupUndoRedo: groupUndoHandlers.isApplyingGroupUndoRedo,
+    textAnnotations: freeTextAnnotations.annotations,
+    shapeAnnotations: freeShapeAnnotations.annotations,
+    onUpdateTextAnnotation: freeTextAnnotations.updateAnnotation,
+    onUpdateShapeAnnotation: freeShapeAnnotations.updateAnnotation
   });
 
   // Editor handlers with undo/redo support
@@ -800,6 +818,7 @@ export const App: React.FC = () => {
           onPositionChange={groupDragUndo.onGroupDragEnd}
           onDragMove={groupDragUndo.onGroupDragMove}
           onSizeChange={groupUndoHandlers.updateGroupSizeWithUndo}
+          onGroupReparent={groups.updateGroupParent}
           isGeoMode={layoutControls.isGeoLayout}
           geoMode={layoutControls.geoMode}
           mapLibreState={mapLibreState}
@@ -810,6 +829,7 @@ export const App: React.FC = () => {
           annotations={freeTextAnnotations.annotations}
           isLocked={state.isLocked}
           isAddTextMode={freeTextAnnotations.isAddTextMode}
+          mode={state.mode}
           onAnnotationDoubleClick={freeTextAnnotations.editAnnotation}
           onAnnotationDelete={freeTextAnnotations.deleteAnnotation}
           onPositionChange={freeTextAnnotations.updatePosition}
@@ -824,12 +844,15 @@ export const App: React.FC = () => {
           geoMode={layoutControls.geoMode}
           mapLibreState={mapLibreState}
           onGeoPositionChange={freeTextAnnotations.updateGeoPosition}
+          groups={groups.groups}
+          onUpdateGroupId={(id, groupId) => freeTextAnnotations.updateAnnotation(id, { groupId })}
         />
         <FreeShapeLayer
           cy={cyInstance}
           annotations={freeShapeAnnotations.annotations}
           isLocked={state.isLocked}
           isAddShapeMode={freeShapeAnnotations.isAddShapeMode}
+          mode={state.mode}
           shapeLayerNode={shapeLayerNode}
           onAnnotationEdit={freeShapeAnnotations.editAnnotation}
           onAnnotationDelete={freeShapeUndoHandlers.deleteAnnotationWithUndo}
@@ -849,6 +872,8 @@ export const App: React.FC = () => {
           onEndGeoPositionChange={freeShapeAnnotations.updateEndGeoPosition}
           onCaptureAnnotationBefore={freeShapeUndoHandlers.captureAnnotationBefore}
           onFinalizeWithUndo={freeShapeUndoHandlers.finalizeWithUndo}
+          groups={groups.groups}
+          onUpdateGroupId={(id, groupId) => freeShapeAnnotations.updateAnnotation(id, { groupId })}
         />
 	        <NodeInfoPanel
 	          isVisible={shouldShowInfoPanel(state.selectedNode, state.mode)}

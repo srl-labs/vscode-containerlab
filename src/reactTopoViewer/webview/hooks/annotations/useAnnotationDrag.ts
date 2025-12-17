@@ -19,8 +19,10 @@ interface UseAnnotationDragOptions {
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;
   // Drag visual feedback callbacks (for syncing with background layers)
+  onDragStart?: () => void;
   onDragMove?: (modelPosition: { x: number; y: number }) => void;
-  onDragEnd?: () => void;
+  /** Called with final model position when drag ends */
+  onDragEnd?: (finalPosition: { x: number; y: number }) => void;
   // Geo mode options
   isGeoMode?: boolean;
   geoMode?: 'pan' | 'edit';
@@ -163,7 +165,7 @@ function useDragHandlers(
   mapLibreState?: MapLibreState | null,
   onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void,
   onDragMove?: (modelPosition: { x: number; y: number }) => void,
-  onDragEnd?: () => void
+  onDragEnd?: (finalPosition: { x: number; y: number }) => void
 ): void {
   useEffect(() => {
     if (!isDragging) return;
@@ -189,14 +191,21 @@ function useDragHandlers(
       if (!dragStartRef.current) return;
       setIsDragging(false);
 
+      // Calculate final position
+      const zoomFactor = getZoomFactor(cy, mapLibreState);
+      const { deltaX, deltaY } = calculateDelta(e, dragStartRef.current, zoomFactor);
+      const finalX = Math.round(dragStartRef.current.modelX + deltaX);
+      const finalY = Math.round(dragStartRef.current.modelY + deltaY);
+      const finalPosition = { x: finalX, y: finalY };
+
       if (mapLibreState?.isInitialized && onGeoPositionChange) {
         finalizeGeoDrag(cy, e, mapLibreState, onGeoPositionChange);
       } else {
         finalizeNonGeoDrag(cy, e, dragStartRef.current, modelPosition, onPositionChange);
       }
       dragStartRef.current = null;
-      // Notify that drag ended (clear visual override)
-      onDragEnd?.();
+      // Notify that drag ended with final position (for reparenting)
+      onDragEnd?.(finalPosition);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -214,6 +223,7 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
     modelPosition,
     isLocked,
     onPositionChange,
+    onDragStart,
     onDragMove,
     onDragEnd,
     isGeoMode,
@@ -256,7 +266,9 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
       modelX: modelPosition.x,
       modelY: modelPosition.y
     };
-  }, [effectivelyLocked, modelPosition.x, modelPosition.y]);
+    // Notify drag started (for reparenting)
+    onDragStart?.();
+  }, [effectivelyLocked, modelPosition.x, modelPosition.y, onDragStart]);
 
   return { isDragging, renderedPos, handleMouseDown };
 }

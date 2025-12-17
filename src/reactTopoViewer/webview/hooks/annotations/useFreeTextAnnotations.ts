@@ -7,6 +7,7 @@ import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { createDefaultAnnotation } from './freeTextHelpers';
 import { useFreeTextState, useFreeTextActions } from './useFreeTextState';
+import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
 import type {
   UseFreeTextAnnotationsOptions,
   UseFreeTextAnnotationsReturn,
@@ -20,7 +21,7 @@ export type { UseFreeTextAnnotationsOptions, UseFreeTextAnnotationsReturn, Annot
  * Main hook for free text annotations
  */
 export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): UseFreeTextAnnotationsReturn {
-  const { mode, isLocked, onLockedAction } = options;
+  const { mode, isLocked, onLockedAction, groups } = options;
 
   // State management
   const state = useFreeTextState();
@@ -41,17 +42,23 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
   const handleCanvasClick = useCallback((position: { x: number; y: number }) => {
     if (!isAddTextMode) return;
     const defaultAnnotation = createDefaultAnnotation(position);
+
+    // Check if position is inside a group and auto-assign groupId
+    const parentGroup = groups ? findDeepestGroupAtPosition(position, groups) : null;
+
     const newAnnotation: FreeTextAnnotation = {
       ...defaultAnnotation,
       ...lastStyleRef.current,
       id: defaultAnnotation.id,
       text: '',
-      position: defaultAnnotation.position
+      position: defaultAnnotation.position,
+      groupId: parentGroup?.id
     };
     setEditingAnnotation(newAnnotation);
     setIsAddTextMode(false);
-    log.info(`[FreeText] Creating annotation at (${position.x}, ${position.y})`);
-  }, [isAddTextMode, lastStyleRef, setEditingAnnotation, setIsAddTextMode]);
+    const groupInfo = parentGroup ? ` in group ${parentGroup.id}` : '';
+    log.info(`[FreeText] Creating annotation at (${position.x}, ${position.y})${groupInfo}`);
+  }, [isAddTextMode, lastStyleRef, setEditingAnnotation, setIsAddTextMode, groups]);
 
   // Edit existing annotation
   const editAnnotation = useCallback((id: string) => {
@@ -91,7 +98,9 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
     updatePosition: actions.updatePosition,
     updateSize: actions.updateSize,
     updateRotation: actions.updateRotation,
+    updateAnnotation: actions.updateAnnotation,
     updateGeoPosition: actions.updateGeoPosition,
+    migrateGroupId: actions.migrateGroupId,
     loadAnnotations: actions.loadAnnotations,
     getUndoRedoAction,
     selectedAnnotationIds,

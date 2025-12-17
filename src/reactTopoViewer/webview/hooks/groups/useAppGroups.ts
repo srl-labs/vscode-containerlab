@@ -89,6 +89,10 @@ interface UseAppGroupsOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;
+  /** Callback to migrate text annotations when a group is renamed */
+  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string) => void;
+  /** Callback to migrate shape annotations when a group is renamed */
+  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string) => void;
 }
 
 /**
@@ -130,9 +134,16 @@ function useGroupDataLoader(
 }
 
 export function useAppGroups(options: UseAppGroupsOptions) {
-  const { cyInstance, mode, isLocked, onLockedAction } = options;
+  const { cyInstance, mode, isLocked, onLockedAction, onMigrateTextAnnotations, onMigrateShapeAnnotations } = options;
 
-  const groupsHook = useGroups({ cy: cyInstance, mode, isLocked, onLockedAction });
+  const groupsHook = useGroups({
+    cy: cyInstance,
+    mode,
+    isLocked,
+    onLockedAction,
+    onMigrateTextAnnotations,
+    onMigrateShapeAnnotations
+  });
   useGroupDataLoader(groupsHook.loadGroups, groupsHook.initializeMembership);
 
   const handleAddGroup = useCallback(() => {

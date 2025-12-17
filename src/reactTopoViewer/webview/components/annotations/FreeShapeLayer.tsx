@@ -2,10 +2,10 @@
  * FreeShapeLayer - SVG overlay layer for rendering free shape annotations
  * Renders shape visuals below nodes (via cytoscape-layers) and interaction handles above nodes.
  */
-import React, { useRef, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
-import { FreeShapeAnnotation } from '../../../shared/types/topology';
+import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import {
   useAnnotationDrag,
   useRotationDrag,
@@ -15,6 +15,7 @@ import {
   useLayerClickHandler,
   useAnnotationBoxSelection
 } from '../../hooks/annotations';
+import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationReparent';
 import { buildShapeSvg } from './freeShapeLayerHelpers';
 import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
 import { MapLibreState, projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
@@ -28,6 +29,7 @@ interface FreeShapeLayerProps {
   annotations: FreeShapeAnnotation[];
   isLocked: boolean;
   isAddShapeMode: boolean;
+  mode: 'edit' | 'view';
   onAnnotationEdit: (id: string) => void;
   onAnnotationDelete: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }) => void;
@@ -50,6 +52,12 @@ interface FreeShapeLayerProps {
   // Deferred undo callbacks for drag operations
   onCaptureAnnotationBefore?: (id: string) => FreeShapeAnnotation | null;
   onFinalizeWithUndo?: (before: FreeShapeAnnotation | null, id: string) => void;
+  /** Offsets to apply during group drag operations */
+  groupDragOffsets?: Map<string, { dx: number; dy: number }>;
+  /** Groups for drag-to-reparent functionality */
+  groups?: GroupStyleAnnotation[];
+  /** Callback to update annotation's groupId */
+  onUpdateGroupId?: (annotationId: string, groupId: string | undefined) => void;
 }
 
 // ============================================================================
@@ -309,17 +317,23 @@ const AnnotationContextMenu: React.FC<{
 interface ShapeBackgroundItemProps {
   annotation: FreeShapeAnnotation;
   position: { x: number; y: number; scale: number };
+  /** Offset to apply during group drag (from parent group being dragged) */
+  groupDragOffset?: { dx: number; dy: number };
 }
 
-const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({ annotation, position }) => {
+const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({ annotation, position, groupDragOffset }) => {
   const { svg, width, height } = useMemo(() => buildShapeSvg(annotation), [annotation]);
+
+  // Apply group drag offset if present
+  const finalX = groupDragOffset ? position.x + groupDragOffset.dx : position.x;
+  const finalY = groupDragOffset ? position.y + groupDragOffset.dy : position.y;
 
   return (
     <div
       style={{
         position: 'absolute',
-        left: position.x,
-        top: position.y,
+        left: finalX,
+        top: finalY,
         transform: `translate(-50%, -50%) rotate(${annotation.rotation ?? 0}deg) scale(${position.scale})`,
         transformOrigin: 'center center',
         width: `${width}px`,
@@ -360,6 +374,12 @@ interface ShapeInteractionItemProps {
   // Deferred undo callbacks for drag operations
   onDragStart?: () => FreeShapeAnnotation | null;
   onDragEnd?: (before: FreeShapeAnnotation | null) => void;
+  /** Offset to apply during group drag (from parent group being dragged) */
+  groupDragOffset?: { dx: number; dy: number };
+  /** Called when drag starts (for reparenting) */
+  onReparentDragStart?: () => void;
+  /** Called when drag ends with final position (for reparenting) */
+  onReparentDragEnd?: (finalPosition: { x: number; y: number }) => void;
 }
 
 const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
@@ -382,7 +402,10 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   mapLibreState,
   onGeoPositionChange,
   onDragStart,
-  onDragEnd
+  onDragEnd,
+  groupDragOffset,
+  onReparentDragStart,
+  onReparentDragEnd
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -391,13 +414,20 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   const modelPosition = getModelPosition(annotation);
   const isLine = annotation.shapeType === 'line';
 
+  // Compose drag end handlers: clear visual position AND call reparent callback
+  const handleDragEnd = useCallback((finalPosition: { x: number; y: number }) => {
+    onVisualPositionClear?.();
+    onReparentDragEnd?.(finalPosition);
+  }, [onVisualPositionClear, onReparentDragEnd]);
+
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
     cy,
     modelPosition,
     isLocked: effectivelyLocked,
     onPositionChange,
+    onDragStart: onReparentDragStart,
     onDragMove: onVisualPositionChange,
-    onDragEnd: onVisualPositionClear,
+    onDragEnd: handleDragEnd,
     isGeoMode: isGeoMode ?? false,
     geoMode,
     geoCoordinates: annotation.geoCoordinates,
@@ -442,11 +472,15 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
 
   const { width, height, endHandlePos } = useMemo(() => buildShapeSvg(annotation), [annotation]);
 
+  // Apply group drag offset if present
+  const finalX = groupDragOffset ? renderedPos.x + groupDragOffset.dx : renderedPos.x;
+  const finalY = groupDragOffset ? renderedPos.y + groupDragOffset.dy : renderedPos.y;
+
   // Use same transform approach as background layer for alignment
   const wrapperStyle: React.CSSProperties = {
     position: 'absolute',
-    left: renderedPos.x,
-    top: renderedPos.y,
+    left: finalX,
+    top: finalY,
     transform: `translate(-50%, -50%) rotate(${annotation.rotation ?? 0}deg) scale(${renderedPos.zoom})`,
     transformOrigin: 'center center',
     width: `${width}px`,
@@ -568,6 +602,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   annotations,
   isLocked,
   isAddShapeMode,
+  mode,
   onAnnotationEdit,
   onAnnotationDelete,
   onPositionChange,
@@ -585,7 +620,10 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   mapLibreState,
   onGeoPositionChange,
   onCaptureAnnotationBefore,
-  onFinalizeWithUndo
+  onFinalizeWithUndo,
+  groupDragOffsets,
+  groups = [],
+  onUpdateGroupId
 }) => {
   const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeShapeLayer');
 
@@ -607,6 +645,20 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
 
   useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, getShapeCenter, 'FreeShapeLayer');
 
+  // Reparenting hook - allows dragging annotations into/out of groups
+  const reparent = useAnnotationReparent({
+    mode,
+    isLocked,
+    groups,
+    onUpdateGroupId: onUpdateGroupId ?? (() => {})
+  });
+
+  // Create stable callbacks for reparenting
+  const createReparentCallbacks = useCallback((annotation: FreeShapeAnnotation) => ({
+    onReparentDragStart: () => reparent.onDragStart(annotation.id, annotation.groupId),
+    onReparentDragEnd: (finalPosition: { x: number; y: number }) => reparent.onDragEnd(annotation.id, finalPosition)
+  }), [reparent]);
+
   if (!cy || (annotations.length === 0 && !isAddShapeMode)) return null;
 
   const handlers = {
@@ -624,11 +676,14 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
         const pos = dragPos
           ? { x: dragPos.x, y: dragPos.y, scale: 1 }
           : computeShapeRenderedPosition(annotation, mapLibreState, isGeoMode);
+        // Get offset for this annotation if its group is being dragged
+        const offset = annotation.groupId ? groupDragOffsets?.get(annotation.groupId) : undefined;
         return (
           <ShapeBackgroundItem
             key={annotation.id}
             annotation={annotation}
             position={pos}
+            groupDragOffset={offset}
           />
         );
       })}
@@ -640,6 +695,9 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
     <div className="free-shape-layer-interaction" style={INTERACTION_LAYER_STYLE}>
       {annotations.map(annotation => {
         const callbacks = createAnnotationCallbacks(annotation, handlers);
+        const reparentCallbacks = createReparentCallbacks(annotation);
+        // Get offset for this annotation if its group is being dragged
+        const offset = annotation.groupId ? groupDragOffsets?.get(annotation.groupId) : undefined;
         return (
           <ShapeInteractionItem
             key={annotation.id}
@@ -652,7 +710,9 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
             isGeoMode={isGeoMode}
             geoMode={geoMode}
             mapLibreState={mapLibreState}
+            groupDragOffset={offset}
             {...callbacks}
+            {...reparentCallbacks}
           />
         );
       })}

@@ -9,38 +9,51 @@ import { useAnnotationDrag } from './useAnnotationDrag';
 import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
 import { MapLibreState } from '../canvas/maplibreUtils';
 
+interface UseAnnotationInteractionsOptions {
+  cy: CyCore;
+  annotation: FreeTextAnnotation;
+  isLocked: boolean;
+  onPositionChange: (position: { x: number; y: number }) => void;
+  onRotationChange: (rotation: number) => void;
+  onSizeChange: (width: number, height: number) => void;
+  contentRef: React.RefObject<HTMLDivElement | null>;
+  isGeoMode?: boolean;
+  geoMode?: 'pan' | 'edit';
+  mapLibreState?: MapLibreState | null;
+  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
+  /** Called when drag starts (for reparenting) */
+  onDragStart?: () => void;
+  /** Called when drag ends with final position (for reparenting) */
+  onDragEnd?: (finalPosition: { x: number; y: number }) => void;
+}
+
 /**
  * Combined hook for all annotation interaction behaviors
- * @param cy - Cytoscape core instance
- * @param annotation - The annotation being interacted with
- * @param isLocked - Whether editing is locked
- * @param onPositionChange - Handler for position changes
- * @param onRotationChange - Handler for rotation changes
- * @param onSizeChange - Handler for size changes
- * @param contentRef - Ref to the content element for size calculations
- * @param isGeoMode - Whether geo mode is active
- * @param geoMode - Current geo mode ('pan' or 'edit')
- * @param mapLibreState - MapLibre state for geo projections
- * @param onGeoPositionChange - Handler for geo position changes
  */
-export function useAnnotationInteractions(
-  cy: CyCore,
-  annotation: FreeTextAnnotation,
-  isLocked: boolean,
-  onPositionChange: (position: { x: number; y: number }) => void,
-  onRotationChange: (rotation: number) => void,
-  onSizeChange: (width: number, height: number) => void,
-  contentRef: React.RefObject<HTMLDivElement | null>,
-  isGeoMode?: boolean,
-  geoMode?: 'pan' | 'edit',
-  mapLibreState?: MapLibreState | null,
-  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void
-) {
+export function useAnnotationInteractions(options: UseAnnotationInteractionsOptions) {
+  const {
+    cy,
+    annotation,
+    isLocked,
+    onPositionChange,
+    onRotationChange,
+    onSizeChange,
+    contentRef,
+    isGeoMode,
+    geoMode,
+    mapLibreState,
+    onGeoPositionChange,
+    onDragStart,
+    onDragEnd
+  } = options;
+
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
     cy,
     modelPosition: annotation.position,
     isLocked,
     onPositionChange,
+    onDragStart,
+    onDragEnd,
     isGeoMode,
     geoMode,
     geoCoordinates: annotation.geoCoordinates,

@@ -2,7 +2,7 @@
  * Types for free text annotations
  */
 import type { Core as CyCore } from 'cytoscape';
-import { FreeTextAnnotation } from '../../../shared/types/topology';
+import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
 // Re-export FreeTextAnnotation for consumers
 export type { FreeTextAnnotation };
@@ -12,6 +12,8 @@ export interface UseFreeTextAnnotationsOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;
+  /** Optional: groups array for auto-assigning groupId when creating annotations */
+  groups?: GroupStyleAnnotation[];
 }
 
 export interface UseFreeTextAnnotationsReturn {
@@ -28,8 +30,12 @@ export interface UseFreeTextAnnotationsReturn {
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
+  /** Generic update for any annotation fields (used by group drag) */
+  updateAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
   /** Update geo coordinates for an annotation */
   updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  /** Migrate all annotations from one groupId to another (used when group is renamed) */
+  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
   loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
   getUndoRedoAction: (before: FreeTextAnnotation | null, after: FreeTextAnnotation | null) => AnnotationUndoAction;
   /** IDs of currently selected annotations */

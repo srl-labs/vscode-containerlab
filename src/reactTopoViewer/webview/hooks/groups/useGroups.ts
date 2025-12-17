@@ -1,6 +1,7 @@
 /**
  * Main hook for overlay-based group management in React TopoViewer.
  * Groups are rendered as HTML overlays, not Cytoscape nodes.
+ * Supports hierarchical nesting via parentId.
  */
 import React, { useCallback, useMemo, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
@@ -19,6 +20,13 @@ import {
   calculateBoundingBox,
   CMD_SAVE_NODE_GROUP_MEMBERSHIP
 } from './groupHelpers';
+import {
+  getDescendantGroups,
+  getChildGroups as getChildGroupsUtil,
+  getParentGroup as getParentGroupUtil,
+  getGroupDepth as getGroupDepthUtil,
+  validateNoCircularReference
+} from './hierarchyUtils';
 import {
   DEFAULT_GROUP_WIDTH,
   DEFAULT_GROUP_HEIGHT,
@@ -72,7 +80,7 @@ function useCreateGroup(
   lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>
 ) {
   return useCallback(
-    (selectedNodeIds?: string[]): string | null => {
+    (selectedNodeIds?: string[], parentId?: string): string | null => {
       if (mode === 'view' || isLocked || !cy) {
         if (isLocked) onLockedAction?.();
         return null;
@@ -111,13 +119,19 @@ function useCreateGroup(
       newGroup.width = width;
       newGroup.height = height;
 
+      // Set parent if provided
+      if (parentId) {
+        newGroup.parentId = parentId;
+      }
+
       setGroups(prev => {
         const updated = [...prev, newGroup];
         saveGroupsToExtension(updated);
         return updated;
       });
 
-      log.info(`[Groups] Created overlay group: ${groupId}`);
+      const parentInfo = parentId ? ' (parent: ' + parentId + ')' : '';
+      log.info('[Groups] Created overlay group: ' + groupId + parentInfo);
       return groupId;
     },
     [cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef]
@@ -126,6 +140,7 @@ function useCreateGroup(
 
 /**
  * Hook for deleting a group.
+ * Promotes child groups to the deleted group's parent level.
  */
 function useDeleteGroup(
   mode: 'edit' | 'view',
@@ -144,16 +159,33 @@ function useDeleteGroup(
       }
 
       setGroups(prev => {
-        const updated = removeGroupFromList(prev, groupId);
-        saveGroupsToExtension(updated);
-        return updated;
+        // Find the group being deleted
+        const deletedGroup = prev.find(g => g.id === groupId);
+        if (!deletedGroup) return prev;
+
+        // Get the parent ID to promote children to
+        const newParentId = deletedGroup.parentId;
+
+        // Promote child groups to the deleted group's parent
+        const updated = prev.map(g => {
+          if (g.parentId === groupId) {
+            // This is a direct child - promote to grandparent
+            return { ...g, parentId: newParentId };
+          }
+          return g;
+        });
+
+        // Remove the deleted group
+        const final = removeGroupFromList(updated, groupId);
+        saveGroupsToExtension(final);
+
+        log.info(`[Groups] Deleted group ${groupId}, promoted children to parent: ${newParentId ?? 'root'}`);
+        return final;
       });
 
       if (editingGroup?.id === groupId) {
         setEditingGroup(null);
       }
-
-      log.info(`[Groups] Deleted overlay group: ${groupId}`);
     },
     [mode, isLocked, onLockedAction, editingGroup, setGroups, setEditingGroup, saveGroupsToExtension]
   );
@@ -197,15 +229,20 @@ function useEditGroup(
 
 /**
  * Hook for saving group edits.
+ * Handles migration of child groups, node memberships, and annotation groupIds when group is renamed.
  */
 function useSaveGroup(
+  cy: CyCore | null,
   mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
   setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>,
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void,
-  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>
+  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>,
+  onMigrateNodeMemberships: (oldGroupId: string, newGroupId: string) => void,
+  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string) => void,
+  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string) => void
 ) {
   return useCallback(
     (data: GroupEditorData): void => {
@@ -218,6 +255,9 @@ function useSaveGroup(
       const newGroupId = buildGroupId(data.name, data.level);
       lastStyleRef.current = { ...data.style };
 
+      // Track if we're doing a rename so we can trigger annotation migration after state update
+      const isRename = oldGroupId !== newGroupId;
+
       setGroups(prev => {
         const oldGroup = prev.find(g => g.id === oldGroupId);
         if (!oldGroup) {
@@ -226,7 +266,7 @@ function useSaveGroup(
         }
 
         let updated: GroupStyleAnnotation[];
-        if (oldGroupId !== newGroupId) {
+        if (isRename) {
           // Rename: remove old, add new with updated ID
           updated = removeGroupFromList(prev, oldGroupId);
           updated = [...updated, {
@@ -236,8 +276,45 @@ function useSaveGroup(
             level: data.level,
             position: oldGroup.position,
             width: oldGroup.width,
-            height: oldGroup.height
+            height: oldGroup.height,
+            parentId: oldGroup.parentId  // Preserve parentId
           }];
+
+          // MIGRATION 1: Update child group parentIds to point to new ID
+          updated = updated.map(g => {
+            if (g.parentId === oldGroupId) {
+              return { ...g, parentId: newGroupId };
+            }
+            return g;
+          });
+
+          // MIGRATION 2: Update node memberships
+          const { name: oldName, level: oldLevel } = parseGroupId(oldGroupId);
+
+          // Update the membership map (this is what getGroupMembers uses)
+          onMigrateNodeMemberships(oldGroupId, newGroupId);
+
+          // Update Cytoscape node data and persist
+          if (cy) {
+            const migratedNodes: Array<{ nodeId: string; group: string; level: string }> = [];
+            cy.nodes().forEach(node => {
+              const annotation = node.data('clabAnnotation');
+              if (annotation?.group === oldName && annotation?.level === oldLevel) {
+                node.data('clabAnnotation', {
+                  ...annotation,
+                  group: data.name,
+                  level: data.level
+                });
+                migratedNodes.push({ nodeId: node.id(), group: data.name, level: data.level });
+              }
+            });
+            // Persist node membership changes
+            if (migratedNodes.length > 0) {
+              sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, { memberships: migratedNodes });
+              log.info(`[Groups] Migrated ${migratedNodes.length} node memberships to new group ID`);
+            }
+          }
+
           log.info(`[Groups] Renamed group: ${oldGroupId} -> ${newGroupId}`);
         } else {
           // Just update style
@@ -253,9 +330,15 @@ function useSaveGroup(
         return updated;
       });
 
+      // MIGRATION 3: Update annotation groupIds (after state update)
+      if (isRename) {
+        onMigrateTextAnnotations?.(oldGroupId, newGroupId);
+        onMigrateShapeAnnotations?.(oldGroupId, newGroupId);
+      }
+
       setEditingGroup(null);
     },
-    [mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef]
+    [cy, mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef, onMigrateNodeMemberships, onMigrateTextAnnotations, onMigrateShapeAnnotations]
   );
 }
 
@@ -421,14 +504,24 @@ function useNodeGroupMembership(
     removeNodeFromGroupHelper(membershipRef, nodeId);
   }, [mode, isLocked]);
 
-  return { findGroupAtPosition, getGroupMembers, getNodeMembership, addNodeToGroup, removeNodeFromGroup, initializeMembership };
+  /** Migrate all node memberships from one groupId to another (used when group is renamed) */
+  const migrateMemberships = useCallback((oldGroupId: string, newGroupId: string): void => {
+    membershipRef.current.forEach((gId, nodeId) => {
+      if (gId === oldGroupId) {
+        membershipRef.current.set(nodeId, newGroupId);
+      }
+    });
+    log.info(`[Groups] Migrated node memberships from ${oldGroupId} to ${newGroupId}`);
+  }, []);
+
+  return { findGroupAtPosition, getGroupMembers, getNodeMembership, addNodeToGroup, removeNodeFromGroup, initializeMembership, migrateMemberships };
 }
 
 /**
  * Main hook for overlay-based group management.
  */
 export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
-  const { cy, mode, isLocked, onLockedAction } = options;
+  const { cy, mode, isLocked, onLockedAction, onMigrateTextAnnotations, onMigrateShapeAnnotations } = options;
 
   const state = useGroupState();
   const {
@@ -455,8 +548,12 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     log.info('[Groups] Editor closed');
   }, [setEditingGroup]);
 
+  // Node membership management - must be before saveGroup for migration callbacks
+  const membership = useNodeGroupMembership(mode, isLocked, groups);
+
   const saveGroup = useSaveGroup(
-    mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef
+    cy, mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef,
+    membership.migrateMemberships, onMigrateTextAnnotations, onMigrateShapeAnnotations
   );
 
   const updateGroup = useUpdateGroup(mode, isLocked, setGroups, saveGroupsToExtension);
@@ -482,7 +579,55 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     []
   );
 
-  const membership = useNodeGroupMembership(mode, isLocked, groups);
+  // Hierarchy methods
+  const updateGroupParent = useCallback(
+    (groupId: string, parentId: string | null): void => {
+      if (mode === 'view' || isLocked) return;
+
+      // Validate no circular reference
+      if (parentId && !validateNoCircularReference(groupId, parentId, groups)) {
+        log.warn(`[Groups] Cannot set parent: would create circular reference`);
+        return;
+      }
+
+      setGroups(prev => {
+        const updated = updateGroupInList(prev, groupId, { parentId: parentId ?? undefined });
+        saveGroupsToExtension(updated);
+        return updated;
+      });
+
+      log.info(`[Groups] Updated parent of ${groupId} to ${parentId ?? 'root'}`);
+    },
+    [mode, isLocked, groups, setGroups, saveGroupsToExtension]
+  );
+
+  const getChildGroups = useCallback(
+    (groupId: string): GroupStyleAnnotation[] => {
+      return getChildGroupsUtil(groupId, groups);
+    },
+    [groups]
+  );
+
+  const getDescendantGroupsMethod = useCallback(
+    (groupId: string): GroupStyleAnnotation[] => {
+      return getDescendantGroups(groupId, groups);
+    },
+    [groups]
+  );
+
+  const getParentGroup = useCallback(
+    (groupId: string): GroupStyleAnnotation | null => {
+      return getParentGroupUtil(groupId, groups);
+    },
+    [groups]
+  );
+
+  const getGroupDepth = useCallback(
+    (groupId: string): number => {
+      return getGroupDepthUtil(groupId, groups);
+    },
+    [groups]
+  );
 
   return useMemo(
     () => ({
@@ -504,12 +649,19 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       getNodeMembership: membership.getNodeMembership,
       addNodeToGroup: membership.addNodeToGroup,
       removeNodeFromGroup: membership.removeNodeFromGroup,
-      initializeMembership: membership.initializeMembership
+      initializeMembership: membership.initializeMembership,
+      // Hierarchy methods
+      updateGroupParent,
+      getChildGroups,
+      getDescendantGroups: getDescendantGroupsMethod,
+      getParentGroup,
+      getGroupDepth
     }),
     [
       groups, editingGroup, createGroup, deleteGroup, editGroup, closeEditor,
       saveGroup, updateGroup, updateGroupPosition, updateGroupSize, updateGroupGeoPosition, loadGroups,
-      getUndoRedoAction, membership
+      getUndoRedoAction, membership, updateGroupParent, getChildGroups, getDescendantGroupsMethod,
+      getParentGroup, getGroupDepth
     ]
   );
 }

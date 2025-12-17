@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { FreeTextAnnotation } from '../../../shared/types/topology';
+import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import { useFreeTextAnnotations } from './useFreeTextAnnotations';
 
 interface InitialData {
@@ -23,6 +23,8 @@ interface UseAppFreeTextAnnotationsOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction: () => void;
+  /** Groups for auto-assigning groupId when creating annotations inside groups */
+  groups?: GroupStyleAnnotation[];
 }
 
 export interface UseAppFreeTextAnnotationsReturn {
@@ -38,6 +40,8 @@ export interface UseAppFreeTextAnnotationsReturn {
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
+  /** Generic update for any annotation fields (used by group drag) */
+  updateAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
   /** Update geo coordinates for an annotation */
   updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   /** IDs of currently selected annotations */
@@ -64,6 +68,8 @@ export interface UseAppFreeTextAnnotationsReturn {
   duplicateSelectedAnnotations: () => void;
   /** Check if clipboard has annotations */
   hasClipboardContent: () => boolean;
+  /** Migrate all annotations from one groupId to another (used when group is renamed) */
+  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
 }
 
 /**
@@ -71,13 +77,14 @@ export interface UseAppFreeTextAnnotationsReturn {
  * Handles initialization from __INITIAL_DATA__ and message listeners
  */
 export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOptions): UseAppFreeTextAnnotationsReturn {
-  const { cyInstance, mode, isLocked, onLockedAction } = options;
+  const { cyInstance, mode, isLocked, onLockedAction, groups } = options;
 
   const freeTextAnnotations = useFreeTextAnnotations({
     cy: cyInstance,
     mode,
     isLocked,
-    onLockedAction
+    onLockedAction,
+    groups
   });
 
   // Handle Add Text button from panel - enable add text mode
@@ -124,6 +131,7 @@ export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOpti
     updatePosition: freeTextAnnotations.updatePosition,
     updateSize: freeTextAnnotations.updateSize,
     updateRotation: freeTextAnnotations.updateRotation,
+    updateAnnotation: freeTextAnnotations.updateAnnotation,
     updateGeoPosition: freeTextAnnotations.updateGeoPosition,
     selectedAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
     selectAnnotation: freeTextAnnotations.selectAnnotation,
@@ -136,6 +144,7 @@ export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOpti
     pasteAnnotations: freeTextAnnotations.pasteAnnotations,
     cutSelectedAnnotations: freeTextAnnotations.cutSelectedAnnotations,
     duplicateSelectedAnnotations: freeTextAnnotations.duplicateSelectedAnnotations,
-    hasClipboardContent: freeTextAnnotations.hasClipboardContent
+    hasClipboardContent: freeTextAnnotations.hasClipboardContent,
+    migrateGroupId: freeTextAnnotations.migrateGroupId
   };
 }

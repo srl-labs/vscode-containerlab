@@ -98,6 +98,7 @@ export interface FreeTextAnnotation {
   text: string;
   position: { x: number; y: number };
   geoCoordinates?: { lat: number; lng: number };
+  groupId?: string; // Parent group ID for hierarchy membership
   fontSize?: number;
   fontColor?: string;
   backgroundColor?: string;
@@ -122,6 +123,7 @@ export interface FreeShapeAnnotation {
   shapeType: 'rectangle' | 'circle' | 'line';
   position: { x: number; y: number };
   geoCoordinates?: { lat: number; lng: number };
+  groupId?: string; // Parent group ID for hierarchy membership
   width?: number;
   height?: number;
   endPosition?: { x: number; y: number };
@@ -143,11 +145,13 @@ export interface FreeShapeAnnotation {
 /**
  * Group annotation for overlay groups (rendered as HTML/SVG, not Cytoscape nodes).
  * Members are tracked via NodeAnnotation.group/level fields.
+ * Groups can be nested via parentId for hierarchical organization.
  */
 export interface GroupStyleAnnotation {
   id: string;
   name: string;
   level: string;
+  parentId?: string; // Parent group ID for nested groups
   // Geometry
   position: { x: number; y: number };
   width: number;

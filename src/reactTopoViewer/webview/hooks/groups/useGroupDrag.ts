@@ -23,6 +23,8 @@ export interface UseGroupDragInteractionOptions {
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
   onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
   onVisualPositionClear?: (id: string) => void;
+  /** Called when drag ends, allowing parent to detect drop target for reparenting */
+  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
 }
 
 export interface UseGroupDragInteractionReturn {
@@ -44,7 +46,8 @@ function useGroupDragEvents(
   onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void,
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void,
   onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void,
-  onVisualPositionClear?: (id: string) => void
+  onVisualPositionClear?: (id: string) => void,
+  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void
 ): void {
   useEffect(() => {
     if (!isDragging) return;
@@ -74,9 +77,12 @@ function useGroupDragEvents(
       const zoom = cy.zoom();
       const dx = (e.clientX - ref.startX) / zoom;
       const dy = (e.clientY - ref.startY) / zoom;
-      onPositionChange(groupId, { x: ref.modelX + dx, y: ref.modelY + dy }, { dx, dy });
+      const finalPosition = { x: ref.modelX + dx, y: ref.modelY + dy };
+      onPositionChange(groupId, finalPosition, { dx, dy });
       setIsDragging(false);
       onVisualPositionClear?.(groupId);
+      // Call onDragEnd to allow parent to detect drop target for reparenting
+      onDragEnd?.(groupId, finalPosition);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -85,7 +91,7 @@ function useGroupDragEvents(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, cy, groupId, dragRef, setIsDragging, setDragPos, onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear]);
+  }, [isDragging, cy, groupId, dragRef, setIsDragging, setDragPos, onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear, onDragEnd]);
 }
 
 export function useGroupDragInteraction(options: UseGroupDragInteractionOptions): UseGroupDragInteractionReturn {
@@ -98,7 +104,8 @@ export function useGroupDragInteraction(options: UseGroupDragInteractionOptions)
     onPositionChange,
     onDragMove,
     onVisualPositionChange,
-    onVisualPositionClear
+    onVisualPositionClear,
+    onDragEnd
   } = options;
 
   const [isDragging, setIsDragging] = useState(false);
@@ -111,7 +118,7 @@ export function useGroupDragInteraction(options: UseGroupDragInteractionOptions)
 
   useGroupDragEvents(
     isDragging, cy, groupId, dragRef, setIsDragging, setDragPos,
-    onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear
+    onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear, onDragEnd
   );
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

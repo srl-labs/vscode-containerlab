@@ -2,13 +2,15 @@
  * Types for free shape annotations
  */
 import type { Core as CyCore } from 'cytoscape';
-import { FreeShapeAnnotation } from '../../../shared/types/topology';
+import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
 export interface UseFreeShapeAnnotationsOptions {
   cy: CyCore | null;
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;
+  /** Optional: groups array for auto-assigning groupId when creating annotations */
+  groups?: GroupStyleAnnotation[];
 }
 
 export interface UseFreeShapeAnnotationsReturn {
@@ -32,10 +34,14 @@ export interface UseFreeShapeAnnotationsReturn {
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
   updateEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
+  /** Generic update for any annotation fields (used by group drag) */
+  updateAnnotation: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
   /** Update geo coordinates for an annotation */
   updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   /** Update end geo coordinates for a line annotation */
   updateEndGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  /** Migrate all annotations from one groupId to another (used when group is renamed) */
+  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
   loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
   getUndoRedoAction: (before: FreeShapeAnnotation | null, after: FreeShapeAnnotation | null) => AnnotationUndoAction;
   /** IDs of currently selected annotations */

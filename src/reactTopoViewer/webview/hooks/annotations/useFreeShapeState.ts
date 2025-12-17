@@ -99,8 +99,12 @@ export interface UseFreeShapeActionsReturn {
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
   updateEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
+  /** Generic update for any annotation fields (used by group drag) */
+  updateAnnotation: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
   updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   updateEndGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  /** Migrate all annotations from one groupId to another (used when group is renamed) */
+  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
   loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
   selectAnnotation: (id: string) => void;
   toggleAnnotationSelection: (id: string) => void;
@@ -208,7 +212,32 @@ function useAnnotationUpdates(
     });
   }, [setAnnotations, saveAnnotationsToExtension]);
 
-  return { updatePosition, updateSize, updateRotation, updateEndPosition };
+  /** Generic update for any annotation fields (used by group drag) */
+  const updateAnnotation = useCallback((id: string, updates: Partial<FreeShapeAnnotation>) => {
+    setAnnotations(prev => {
+      const updated = updateAnnotationInList(prev, id, a => ({ ...a, ...updates }));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  /** Migrate all annotations from one groupId to another (used when group is renamed) */
+  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string) => {
+    setAnnotations(prev => {
+      const updated = prev.map(a =>
+        a.groupId === oldGroupId ? { ...a, groupId: newGroupId } : a
+      );
+      // Only save if something actually changed
+      const hasChanges = updated.some((a, i) => a !== prev[i]);
+      if (hasChanges) {
+        saveAnnotationsToExtension(updated);
+        log.info(`[FreeShape] Migrated annotations from group ${oldGroupId} to ${newGroupId}`);
+      }
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  return { updatePosition, updateSize, updateRotation, updateEndPosition, updateAnnotation, migrateGroupId };
 }
 
 function useGeoUpdates(

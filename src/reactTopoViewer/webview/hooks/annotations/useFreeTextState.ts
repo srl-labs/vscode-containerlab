@@ -103,6 +103,10 @@ export interface UseFreeTextActionsReturn {
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, width: number, height: number) => void;
   updateRotation: (id: string, rotation: number) => void;
+  /** Generic update for any annotation fields (used by group drag) */
+  updateAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
+  /** Migrate all annotations from one groupId to another (used when group is renamed) */
+  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
   loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
   /** Select a single annotation (clears existing selection) */
   selectAnnotation: (id: string) => void;
@@ -233,7 +237,32 @@ function useAnnotationUpdates(
     log.info(`[FreeText] Updated geo position for annotation ${id}: ${geoCoords.lat}, ${geoCoords.lng}`);
   }, [setAnnotations, saveAnnotationsToExtension]);
 
-  return { updatePosition, updateSize, updateRotation, updateGeoPosition };
+  /** Generic update for any annotation fields (used by group drag) */
+  const updateAnnotation = useCallback((id: string, updates: Partial<FreeTextAnnotation>) => {
+    setAnnotations(prev => {
+      const updated = updateAnnotationInList(prev, id, a => ({ ...a, ...updates }));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  /** Migrate all annotations from one groupId to another (used when group is renamed) */
+  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string) => {
+    setAnnotations(prev => {
+      const updated = prev.map(a =>
+        a.groupId === oldGroupId ? { ...a, groupId: newGroupId } : a
+      );
+      // Only save if something actually changed
+      const hasChanges = updated.some((a, i) => a !== prev[i]);
+      if (hasChanges) {
+        saveAnnotationsToExtension(updated);
+        log.info(`[FreeText] Migrated annotations from group ${oldGroupId} to ${newGroupId}`);
+      }
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  return { updatePosition, updateSize, updateRotation, updateGeoPosition, updateAnnotation, migrateGroupId };
 }
 
 // Hook for basic selection operations (select, toggle, clear)

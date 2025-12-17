@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { FreeShapeAnnotation } from '../../../shared/types/topology';
+import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
 
 interface InitialData {
@@ -22,16 +22,19 @@ interface UseAppFreeShapeAnnotationsOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction: () => void;
+  /** Groups for auto-assigning groupId when creating annotations inside groups */
+  groups?: GroupStyleAnnotation[];
 }
 
 export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOptions) {
-  const { cyInstance, mode, isLocked, onLockedAction } = options;
+  const { cyInstance, mode, isLocked, onLockedAction, groups } = options;
 
   const freeShapeAnnotations = useFreeShapeAnnotations({
     cy: cyInstance,
     mode,
     isLocked,
-    onLockedAction
+    onLockedAction,
+    groups
   });
 
   const { loadAnnotations } = freeShapeAnnotations;

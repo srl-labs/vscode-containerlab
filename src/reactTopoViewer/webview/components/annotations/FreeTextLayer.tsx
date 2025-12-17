@@ -2,9 +2,9 @@
  * FreeTextLayer - HTML overlay layer for rendering free text annotations
  * Renders text annotations with markdown support on top of the Cytoscape canvas.
  */
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { FreeTextAnnotation } from '../../../shared/types/topology';
+import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import {
   computeAnnotationStyle,
   useAnnotationInteractions,
@@ -12,6 +12,7 @@ import {
   useLayerClickHandler,
   useAnnotationBoxSelection
 } from '../../hooks/annotations';
+import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationReparent';
 import { renderMarkdown } from '../../utils/markdownRenderer';
 import { MapLibreState } from '../../hooks/canvas/maplibreUtils';
 
@@ -24,6 +25,7 @@ interface FreeTextLayerProps {
   annotations: FreeTextAnnotation[];
   isLocked: boolean;
   isAddTextMode: boolean;
+  mode: 'edit' | 'view';
   onAnnotationDoubleClick: (id: string) => void;
   onAnnotationDelete: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }) => void;
@@ -43,6 +45,12 @@ interface FreeTextLayerProps {
   geoMode?: 'pan' | 'edit';
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  /** Offsets to apply during group drag operations */
+  groupDragOffsets?: Map<string, { dx: number; dy: number }>;
+  /** Groups for drag-to-reparent functionality */
+  groups?: GroupStyleAnnotation[];
+  /** Callback to update annotation's groupId */
+  onUpdateGroupId?: (annotationId: string, groupId: string | undefined) => void;
 }
 
 // ============================================================================
@@ -170,6 +178,12 @@ interface TextAnnotationItemProps {
   geoMode?: 'pan' | 'edit';
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
+  /** Offset to apply during group drag (from parent group being dragged) */
+  groupDragOffset?: { dx: number; dy: number };
+  /** Called when drag starts (for reparenting) */
+  onDragStart?: () => void;
+  /** Called when drag ends with final position (for reparenting) */
+  onDragEnd?: (finalPosition: { x: number; y: number }) => void;
 }
 
 /** Get cursor style for annotation content */
@@ -359,23 +373,40 @@ function calculateShowHandles(isHovered: boolean, isInteracting: boolean, isSele
 
 const TextAnnotationItem: React.FC<TextAnnotationItemProps> = ({
   annotation, cy, isLocked, isSelected, onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange, onSelect, onToggleSelect,
-  isGeoMode, geoMode, mapLibreState, onGeoPositionChange
+  isGeoMode, geoMode, mapLibreState, onGeoPositionChange, groupDragOffset, onDragStart, onDragEnd
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const effectivelyLocked = calculateEffectivelyLocked(isLocked, isGeoMode, geoMode);
 
-  const interactions = useAnnotationInteractions(
-    cy, annotation, effectivelyLocked, onPositionChange, onRotationChange, onSizeChange, contentRef,
-    isGeoMode ?? false, geoMode, mapLibreState ?? null, onGeoPositionChange
-  );
+  const interactions = useAnnotationInteractions({
+    cy,
+    annotation,
+    isLocked: effectivelyLocked,
+    onPositionChange,
+    onRotationChange,
+    onSizeChange,
+    contentRef,
+    isGeoMode: isGeoMode ?? false,
+    geoMode,
+    mapLibreState: mapLibreState ?? null,
+    onGeoPositionChange,
+    onDragStart,
+    onDragEnd
+  });
   const { isDragging, isRotating, isResizing, renderedPos, handleMouseDown, handleRotationMouseDown, handleResizeMouseDown } = interactions;
   const { contextMenu, handleClick, handleDoubleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, onDoubleClick);
+
+  // Apply group drag offset if annotation is in a group being dragged
+  const finalRenderedPos = useMemo(() => {
+    if (!groupDragOffset) return renderedPos;
+    return { x: renderedPos.x + groupDragOffset.dx, y: renderedPos.y + groupDragOffset.dy, zoom: renderedPos.zoom };
+  }, [renderedPos, groupDragOffset]);
 
   const isInteracting = isDragging || isRotating || isResizing;
   const showHandles = calculateShowHandles(isHovered, isInteracting, isSelected, effectivelyLocked);
   const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
-  const styles = useTextAnnotationStyles(annotation, renderedPos, isInteracting, isHovered, effectivelyLocked, isDragging);
+  const styles = useTextAnnotationStyles(annotation, finalRenderedPos, isInteracting, isHovered, effectivelyLocked, isDragging);
 
   return (
     <>
@@ -468,7 +499,7 @@ function createTextAnnotationCallbacks(
 // ============================================================================
 
 export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
-  cy, annotations, isLocked, isAddTextMode,
+  cy, annotations, isLocked, isAddTextMode, mode,
   onAnnotationDoubleClick, onAnnotationDelete, onPositionChange, onRotationChange, onSizeChange, onCanvasClick,
   selectedAnnotationIds = new Set(),
   onAnnotationSelect,
@@ -477,13 +508,30 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
   isGeoMode,
   geoMode,
   mapLibreState,
-  onGeoPositionChange
+  onGeoPositionChange,
+  groupDragOffsets,
+  groups = [],
+  onUpdateGroupId
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
   const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeTextLayer');
 
   // Enable box selection of annotations when shift+dragging in Cytoscape
   useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, undefined, 'FreeTextLayer');
+
+  // Reparenting hook - allows dragging annotations into/out of groups
+  const reparent = useAnnotationReparent({
+    mode,
+    isLocked,
+    groups,
+    onUpdateGroupId: onUpdateGroupId ?? (() => {})
+  });
+
+  // Create stable callbacks for reparenting
+  const createDragCallbacks = useCallback((annotation: FreeTextAnnotation) => ({
+    onDragStart: () => reparent.onDragStart(annotation.id, annotation.groupId),
+    onDragEnd: (finalPosition: { x: number; y: number }) => reparent.onDragEnd(annotation.id, finalPosition)
+  }), [reparent]);
 
   if (!cy || (annotations.length === 0 && !isAddTextMode)) return null;
 
@@ -497,6 +545,9 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
       {isAddTextMode && <div style={CLICK_CAPTURE_STYLE} onClick={handleLayerClick} />}
       {annotations.map(annotation => {
         const callbacks = createTextAnnotationCallbacks(annotation, handlers);
+        const dragCallbacks = createDragCallbacks(annotation);
+        // Get offset for this annotation if its group is being dragged
+        const offset = annotation.groupId ? groupDragOffsets?.get(annotation.groupId) : undefined;
         return (
           <TextAnnotationItem
             key={annotation.id}
@@ -507,7 +558,9 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
             isGeoMode={isGeoMode}
             geoMode={geoMode}
             mapLibreState={mapLibreState}
+            groupDragOffset={offset}
             {...callbacks}
+            {...dragCallbacks}
           />
         );
       })}
