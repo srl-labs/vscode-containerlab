@@ -500,7 +500,10 @@ export const App: React.FC = () => {
   // Combined annotation change handler for undo/redo (freeShape + group)
   const { applyAnnotationChange, applyGroupMoveChange } = useCombinedAnnotationApplier({
     groups,
-    applyFreeShapeChange
+    applyFreeShapeChange,
+    // Pass annotation update callbacks for group move undo/redo
+    onUpdateTextAnnotation: freeTextAnnotations.updateAnnotation,
+    onUpdateShapeAnnotation: freeShapeAnnotations.updateAnnotation
   });
 
   // Membership change callbacks for undo/redo coordination

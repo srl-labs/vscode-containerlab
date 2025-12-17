@@ -108,6 +108,18 @@ export interface UndoRedoActionGroupMove {
   nodesBefore: NodePositionEntry[];
   /** Node positions after the move */
   nodesAfter: NodePositionEntry[];
+  /** Descendant group states before the move (for hierarchical groups) */
+  descendantGroupsBefore?: Record<string, unknown>[];
+  /** Descendant group states after the move (for hierarchical groups) */
+  descendantGroupsAfter?: Record<string, unknown>[];
+  /** Text annotations before the move */
+  textAnnotationsBefore?: Record<string, unknown>[];
+  /** Text annotations after the move */
+  textAnnotationsAfter?: Record<string, unknown>[];
+  /** Shape annotations before the move */
+  shapeAnnotationsBefore?: Record<string, unknown>[];
+  /** Shape annotations after the move */
+  shapeAnnotationsAfter?: Record<string, unknown>[];
   [key: string]: unknown;
 }
 
