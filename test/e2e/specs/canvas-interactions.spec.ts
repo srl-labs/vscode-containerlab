@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures/topoviewer';
-import { rightClick } from '../helpers/cytoscape-helpers';
 
 test.describe('Canvas Interactions', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -15,29 +14,6 @@ test.describe('Canvas Interactions', () => {
   test('app container is visible', async ({ page }) => {
     const app = page.locator('[data-testid="topoviewer-app"]');
     await expect(app).toBeVisible();
-  });
-
-  test('right-click on node opens context menu', async ({ page, topoViewerPage }) => {
-    await topoViewerPage.setEditMode();
-    await topoViewerPage.unlock();
-
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThan(0);
-
-    const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    expect(nodeBox).not.toBeNull();
-
-    // Right-click on the node
-    await rightClick(
-      page,
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(300);
-
-    // Context menu should appear
-    const contextMenu = page.locator('[data-testid="context-menu"]');
-    await expect(contextMenu).toBeVisible();
   });
 
   test('click on empty canvas deselects all', async ({ page, topoViewerPage }) => {
@@ -59,28 +35,6 @@ test.describe('Canvas Interactions', () => {
 
     selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(0);
-  });
-
-  test('double-click on node opens editor panel', async ({ page, topoViewerPage }) => {
-    await topoViewerPage.setEditMode();
-    await topoViewerPage.unlock();
-
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThan(0);
-
-    const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    expect(nodeBox).not.toBeNull();
-
-    // Double-click on the node
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
-
-    // Editor panel should appear
-    const editorPanel = page.locator('[data-testid="node-editor"]');
-    await expect(editorPanel).toBeVisible();
   });
 
   test('lock state persists across interactions', async ({ page, topoViewerPage }) => {

@@ -30,24 +30,6 @@ test.describe('Edge Selection', () => {
     expect(selectedIds).toContain(edgeId);
   });
 
-  test('deselects edge when clicking empty canvas', async ({ page, topoViewerPage }) => {
-    const edgeIds = await topoViewerPage.getEdgeIds();
-    expect(edgeIds.length).toBeGreaterThan(0);
-
-    // Select an edge first
-    await topoViewerPage.selectEdge(edgeIds[0]);
-    let selectedIds = await topoViewerPage.getSelectedEdgeIds();
-    expect(selectedIds.length).toBeGreaterThan(0);
-
-    // Click on empty area
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 300, canvasCenter.y + 300);
-    await page.waitForTimeout(200);
-
-    selectedIds = await topoViewerPage.getSelectedEdgeIds();
-    expect(selectedIds.length).toBe(0);
-  });
-
   test('can select multiple edges with Ctrl+Click', async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     if (edgeIds.length < 2) {

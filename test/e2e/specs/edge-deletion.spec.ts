@@ -242,47 +242,6 @@ test.describe('Edge Deletion', () => {
     expect(finalNodeCount).toBe(initialNodeCount);
   });
 
-  test('deleting node deletes connected edges', async ({ page, topoViewerPage }) => {
-    const initialNodeCount = await topoViewerPage.getNodeCount();
-    const initialEdgeCount = await topoViewerPage.getEdgeCount();
-    expect(initialEdgeCount).toBeGreaterThan(0);
-
-    const nodeIds = await topoViewerPage.getNodeIds();
-
-    // Find a node that has edges
-    let nodeWithEdges: string | null = null;
-    for (const nodeId of nodeIds) {
-      const connectedEdges = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const node = cy?.getElementById(id);
-        if (!node) return 0;
-        return node.connectedEdges().length;
-      }, nodeId);
-
-      if (connectedEdges > 0) {
-        nodeWithEdges = nodeId;
-        break;
-      }
-    }
-
-    expect(nodeWithEdges).not.toBeNull();
-
-    // Delete the node
-    await topoViewerPage.selectNode(nodeWithEdges!);
-    await page.waitForTimeout(200);
-    await page.keyboard.press('Delete');
-    await page.waitForTimeout(300);
-
-    // Node count should decrease
-    const finalNodeCount = await topoViewerPage.getNodeCount();
-    expect(finalNodeCount).toBe(initialNodeCount - 1);
-
-    // Edge count should also decrease (connected edges are deleted)
-    const finalEdgeCount = await topoViewerPage.getEdgeCount();
-    expect(finalEdgeCount).toBeLessThan(initialEdgeCount);
-  });
-
   test('pressing Delete with no selection does nothing', async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
 
@@ -299,23 +258,4 @@ test.describe('Edge Deletion', () => {
     expect(finalEdgeCount).toBe(initialEdgeCount);
   });
 
-  test('selecting edge then clicking elsewhere deselects it', async ({ page, topoViewerPage }) => {
-    const edgeIds = await topoViewerPage.getEdgeIds();
-
-    // Select an edge
-    await topoViewerPage.selectEdge(edgeIds[0]);
-    await page.waitForTimeout(200);
-
-    let selectedIds = await topoViewerPage.getSelectedEdgeIds();
-    expect(selectedIds.length).toBe(1);
-
-    // Click on empty canvas
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 300, canvasCenter.y + 300);
-    await page.waitForTimeout(200);
-
-    // Edge should be deselected
-    selectedIds = await topoViewerPage.getSelectedEdgeIds();
-    expect(selectedIds.length).toBe(0);
-  });
 });

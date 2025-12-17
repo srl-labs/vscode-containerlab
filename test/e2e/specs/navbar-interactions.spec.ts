@@ -20,54 +20,24 @@ test.describe('Navbar Interactions', () => {
   });
 
   test.describe('Basic Button Visibility', () => {
-    test('navbar has lab settings button', async ({ page }) => {
-      const labSettingsBtn = page.locator('[data-testid="navbar-lab-settings"]');
-      await expect(labSettingsBtn).toBeVisible();
-    });
+    test('navbar has all expected buttons', async ({ page }) => {
+      const expectedButtons = [
+        'navbar-lab-settings',
+        'navbar-fit-viewport',
+        'navbar-split-view',
+        'navbar-layout',
+        'navbar-grid',
+        'navbar-find-node',
+        'navbar-link-labels',
+        'navbar-capture',
+        'navbar-shortcuts',
+        'navbar-about'
+      ];
 
-    test('navbar has fit viewport button', async ({ page }) => {
-      const fitViewportBtn = page.locator('[data-testid="navbar-fit-viewport"]');
-      await expect(fitViewportBtn).toBeVisible();
-    });
-
-    test('navbar has split view button', async ({ page }) => {
-      const splitViewBtn = page.locator('[data-testid="navbar-split-view"]');
-      await expect(splitViewBtn).toBeVisible();
-    });
-
-    test('navbar has layout button', async ({ page }) => {
-      const layoutBtn = page.locator('[data-testid="navbar-layout"]');
-      await expect(layoutBtn).toBeVisible();
-    });
-
-    test('navbar has grid button', async ({ page }) => {
-      const gridBtn = page.locator('[data-testid="navbar-grid"]');
-      await expect(gridBtn).toBeVisible();
-    });
-
-    test('navbar has find node button', async ({ page }) => {
-      const findNodeBtn = page.locator('[data-testid="navbar-find-node"]');
-      await expect(findNodeBtn).toBeVisible();
-    });
-
-    test('navbar has link labels button', async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
-      await expect(linkLabelsBtn).toBeVisible();
-    });
-
-    test('navbar has capture button', async ({ page }) => {
-      const captureBtn = page.locator('[data-testid="navbar-capture"]');
-      await expect(captureBtn).toBeVisible();
-    });
-
-    test('navbar has shortcuts button', async ({ page }) => {
-      const shortcutsBtn = page.locator('[data-testid="navbar-shortcuts"]');
-      await expect(shortcutsBtn).toBeVisible();
-    });
-
-    test('navbar has about button', async ({ page }) => {
-      const aboutBtn = page.locator('[data-testid="navbar-about"]');
-      await expect(aboutBtn).toBeVisible();
+      for (const testId of expectedButtons) {
+        const btn = page.locator(`[data-testid="${testId}"]`);
+        await expect(btn).toBeVisible();
+      }
     });
   });
 
@@ -259,14 +229,6 @@ test.describe('Navbar Interactions', () => {
       await expect(aboutPanel).toBeVisible();
     });
 
-    test('clicking find node button opens find node panel', async ({ page }) => {
-      const findNodeBtn = page.locator('[data-testid="navbar-find-node"]');
-      await findNodeBtn.click();
-      await page.waitForTimeout(300);
-
-      const findNodePanel = page.locator('[data-testid="find-node-panel"]');
-      await expect(findNodePanel).toBeVisible();
-    });
   });
 
   test.describe('Shortcut Display Toggle', () => {

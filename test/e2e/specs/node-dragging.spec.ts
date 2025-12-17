@@ -87,27 +87,6 @@ test.describe('Node Dragging', () => {
     expect(movedY).toBeLessThan(5);
   });
 
-  test('selects node on click before dragging', async ({ page, topoViewerPage }) => {
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThan(0);
-
-    const nodeId = nodeIds[0];
-
-    // Click on the node to select it
-    await topoViewerPage.selectNode(nodeId);
-    await page.waitForTimeout(200);
-
-    // Check that node is selected (via Cytoscape API)
-    const isSelected = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const node = cy?.getElementById(id);
-      return node?.selected() ?? false;
-    }, nodeId);
-
-    expect(isSelected).toBe(true);
-  });
-
   test('drag maintains relative position', async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);

@@ -21,24 +21,6 @@ test.describe('Node Selection', () => {
     expect(selectedIds.length).toBe(1);
   });
 
-  test('deselects node when clicking empty canvas', async ({ page, topoViewerPage }) => {
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThan(0);
-
-    // Select a node first
-    await topoViewerPage.selectNode(nodeIds[0]);
-    let selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(1);
-
-    // Click on empty area (far from center to avoid nodes)
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 300, canvasCenter.y + 300);
-    await page.waitForTimeout(200);
-
-    selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(0);
-  });
-
   test('selects multiple nodes with Ctrl+Click', async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(1);
