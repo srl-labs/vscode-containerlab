@@ -326,6 +326,7 @@ function handleDelete(
   // Delete all selected nodes from Cytoscape
   if (cyInstance) {
     const selectedNodes = cyInstance.nodes(':selected');
+    log.info(`[Keyboard] Delete pressed - ${selectedNodes.length} nodes selected: ${selectedNodes.map((n) => n.id()).join(', ')}`);
     selectedNodes.forEach((node) => {
       const nodeId = node.id();
       log.info(`[Keyboard] Deleting node: ${nodeId}`);

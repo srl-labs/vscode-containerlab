@@ -39,7 +39,9 @@ export function useAppGroupUndoHandlers(options: UseAppGroupUndoHandlersOptions)
   // Group undo/redo handlers
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
 
-  // Undo-aware handleAddGroup that creates group from selected nodes and opens editor
+  // Undo-aware handleAddGroup that creates group from selected nodes
+  // Note: Do NOT auto-open editor - it blocks clicks on nodes inside the group
+  // Users can double-click or right-click the group to edit it later
   const handleAddGroupWithUndo = useCallback(() => {
     if (!cyInstance) return;
     const selectedNodeIds = cyInstance
@@ -51,7 +53,11 @@ export function useAppGroupUndoHandlers(options: UseAppGroupUndoHandlersOptions)
       selectedNodeIds.length > 0 ? selectedNodeIds : undefined
     );
     if (groupId) {
-      groups.editGroup(groupId);
+      // Clear all selections after creating group to prevent:
+      // 1. BUG-004: Cytoscape selection blocking subsequent clicks
+      // 2. Accidental group deletion when pressing Delete
+      cyInstance.elements().unselect();
+      groups.clearGroupSelection();
     }
   }, [cyInstance, groupUndoHandlers, groups]);
 
