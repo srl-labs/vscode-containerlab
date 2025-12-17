@@ -43,7 +43,6 @@ import {
   useEdgeCreation,
   useNodeCreation,
   useNetworkCreation,
-  useCopyPaste,
   // State hooks
   useGraphUndoRedoHandlers,
   useCustomTemplateEditor,
@@ -52,7 +51,6 @@ import {
   useAppFreeShapeAnnotations,
   useFreeShapeAnnotationApplier,
   useFreeShapeUndoRedoHandlers,
-  useCombinedAnnotationShortcuts,
   useAnnotationEffects,
   useAddShapesHandler,
   // Group hooks
@@ -64,6 +62,7 @@ import {
   useShapeLayer,
   useNodeReparent,
   useGroupUndoRedoHandlers,
+  generateGroupId,
   // UI hooks
   useKeyboardShortcuts,
   useShortcutDisplay,
@@ -82,6 +81,7 @@ import {
   useLinkLabelVisibility,
   useGeoMap
 } from './hooks';
+import { useUnifiedClipboard } from './hooks/clipboard';
 import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './hooks';
 import type { MembershipEntry } from './hooks/state';
 import { sendCommandToExtension } from './utils/extensionMessaging';
@@ -564,13 +564,6 @@ export const App: React.FC = () => {
     });
   }, [undoRedo]);
 
-  // Set up copy/paste functionality
-  const copyPaste = useCopyPaste(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    recordGraphChanges
-  });
-
   // Custom template editor data and handlers
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
@@ -713,7 +706,7 @@ export const App: React.FC = () => {
   const panelVisibility = usePanelVisibility();
   const [showBulkLinkPanel, setShowBulkLinkPanel] = React.useState(false);
 
-  // Combined annotation effects (group move, background clear for both text and shapes)
+  // Combined annotation effects (group move, background clear for text, shapes, and groups)
   useAnnotationEffects({
     cy: cyInstance,
     isLocked: state.isLocked,
@@ -722,7 +715,9 @@ export const App: React.FC = () => {
     onFreeTextPositionChange: freeTextAnnotations.updatePosition,
     onFreeTextClearSelection: freeTextAnnotations.clearAnnotationSelection,
     freeShapeSelectedIds: freeShapeAnnotations.selectedAnnotationIds,
-    onFreeShapeClearSelection: freeShapeAnnotations.clearAnnotationSelection
+    onFreeShapeClearSelection: freeShapeAnnotations.clearAnnotationSelection,
+    groupSelectedIds: groups.selectedGroupIds,
+    onGroupClearSelection: groups.clearGroupSelection
   });
 
   // Free shape undo handlers - extracted to useFreeShapeUndoRedoHandlers
@@ -732,12 +727,127 @@ export const App: React.FC = () => {
     isApplyingAnnotationUndoRedo
   );
 
-  // Combined annotation selection + clipboard for keyboard shortcuts - extracted to useCombinedAnnotationShortcuts
-  const combinedAnnotations = useCombinedAnnotationShortcuts(
-    freeTextAnnotations,
-    freeShapeAnnotations,
-    freeShapeUndoHandlers
-  );
+  // Helper to get viewport center for paste operations
+  const getViewportCenter = React.useCallback(() => {
+    if (!cyInstance) return { x: 0, y: 0 };
+    const extent = cyInstance.extent();
+    return {
+      x: (extent.x1 + extent.x2) / 2,
+      y: (extent.y1 + extent.y2) / 2
+    };
+  }, [cyInstance]);
+
+  // Generate unique group ID callback
+  const generateGroupIdCallback = React.useCallback(() => {
+    return generateGroupId(groups.groups);
+  }, [groups.groups]);
+
+  // Unified clipboard - handles nodes, groups, and annotations together
+  const unifiedClipboard = useUnifiedClipboard({
+    cyInstance,
+    groups: groups.groups,
+    textAnnotations: freeTextAnnotations.annotations,
+    shapeAnnotations: freeShapeAnnotations.annotations,
+    getNodeMembership: groups.getNodeMembership,
+    getGroupMembers: groups.getGroupMembers,
+    selectedGroupIds: groups.selectedGroupIds,
+    selectedTextAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
+    selectedShapeAnnotationIds: freeShapeAnnotations.selectedAnnotationIds,
+    onAddGroup: groups.addGroup,
+    onAddTextAnnotation: freeTextAnnotations.saveAnnotation,
+    onAddShapeAnnotation: freeShapeAnnotations.saveAnnotation,
+    onAddNodeToGroup: groups.addNodeToGroup,
+    generateGroupId: generateGroupIdCallback
+  });
+
+  // Combined selection IDs for keyboard shortcuts (text + shape + groups)
+  const combinedSelectedAnnotationIds = React.useMemo(() => {
+    const combined = new Set<string>([
+      ...freeTextAnnotations.selectedAnnotationIds,
+      ...freeShapeAnnotations.selectedAnnotationIds
+    ]);
+    groups.selectedGroupIds.forEach(id => combined.add(id));
+    return combined;
+  }, [freeTextAnnotations.selectedAnnotationIds, freeShapeAnnotations.selectedAnnotationIds, groups.selectedGroupIds]);
+
+  // Refs to prevent double-calling handlers in same event (keyboard handler may call both graph and annotation handlers)
+  const lastCopyTimeRef = React.useRef(0);
+  const lastPasteTimeRef = React.useRef(0);
+  const lastCutTimeRef = React.useRef(0);
+  const lastDuplicateTimeRef = React.useRef(0);
+  const DEBOUNCE_MS = 50; // Prevent calls within 50ms of each other
+
+  // Unified copy handler - copies everything selected (nodes, groups, annotations)
+  const handleUnifiedCopy = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastCopyTimeRef.current < DEBOUNCE_MS) return;
+    lastCopyTimeRef.current = now;
+    unifiedClipboard.copy();
+  }, [unifiedClipboard]);
+
+  // Unified paste handler
+  const handleUnifiedPaste = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastPasteTimeRef.current < DEBOUNCE_MS) return;
+    lastPasteTimeRef.current = now;
+    const center = getViewportCenter();
+    unifiedClipboard.paste(center);
+  }, [unifiedClipboard, getViewportCenter]);
+
+  // Unified cut handler
+  const handleUnifiedCut = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastCutTimeRef.current < DEBOUNCE_MS) return;
+    lastCutTimeRef.current = now;
+    // First copy
+    const success = unifiedClipboard.copy();
+    if (success && cyInstance) {
+      // Delete selected graph elements
+      cyInstance.elements(':selected').remove();
+      // Delete selected groups
+      groups.selectedGroupIds.forEach(id => deleteGroupWithUndo(id));
+      groups.clearGroupSelection();
+      // Delete selected annotations
+      freeTextAnnotations.deleteSelectedAnnotations();
+      freeShapeAnnotations.deleteSelectedAnnotations();
+    }
+  }, [unifiedClipboard, cyInstance, groups, deleteGroupWithUndo, freeTextAnnotations, freeShapeAnnotations]);
+
+  // Unified duplicate handler
+  const handleUnifiedDuplicate = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastDuplicateTimeRef.current < DEBOUNCE_MS) return;
+    lastDuplicateTimeRef.current = now;
+    const success = unifiedClipboard.copy();
+    if (success) {
+      const center = getViewportCenter();
+      unifiedClipboard.paste(center);
+    }
+  }, [unifiedClipboard, getViewportCenter]);
+
+  // Unified delete handler
+  const handleUnifiedDelete = React.useCallback(() => {
+    if (cyInstance) {
+      // Delete selected graph elements
+      const selectedNodes = cyInstance.nodes(':selected');
+      const selectedEdges = cyInstance.edges(':selected');
+      selectedEdges.remove();
+      selectedNodes.remove();
+    }
+    // Delete selected groups
+    groups.selectedGroupIds.forEach(id => deleteGroupWithUndo(id));
+    groups.clearGroupSelection();
+    // Delete selected annotations
+    freeTextAnnotations.deleteSelectedAnnotations();
+    freeShapeAnnotations.deleteSelectedAnnotations();
+  }, [cyInstance, groups, deleteGroupWithUndo, freeTextAnnotations, freeShapeAnnotations]);
+
+  // Clear all selections
+  const handleClearAllSelection = React.useCallback(() => {
+    freeTextAnnotations.clearAnnotationSelection();
+    freeShapeAnnotations.clearAnnotationSelection();
+    groups.clearGroupSelection();
+  }, [freeTextAnnotations, freeShapeAnnotations, groups]);
 
   const handleAddShapes = useAddShapesHandler({
     isLocked: state.isLocked,
@@ -745,7 +855,12 @@ export const App: React.FC = () => {
     enableAddShapeMode: freeShapeAnnotations.enableAddShapeMode
   });
 
-  // Set up keyboard shortcuts (must be after freeTextAnnotations is defined)
+  // Set up keyboard shortcuts with unified clipboard
+  // The unified clipboard handles everything (nodes, groups, annotations) together
+  // Handlers are passed to BOTH graph and annotation callbacks because:
+  // - Graph callbacks trigger when cytoscape nodes are selected
+  // - Annotation callbacks trigger when annotations/groups are selected
+  // The handlers use debouncing to prevent double-execution in the same event
   useKeyboardShortcuts({
     mode: state.mode,
     selectedNode: state.selectedNode,
@@ -758,18 +873,21 @@ export const App: React.FC = () => {
     onRedo: undoRedo.redo,
     canUndo: undoRedo.canUndo,
     canRedo: undoRedo.canRedo,
-    onCopy: copyPaste.handleCopy,
-    onPaste: copyPaste.handlePaste,
-    onCut: copyPaste.handleCut,
-    onDuplicate: copyPaste.handleDuplicate,
-    selectedAnnotationIds: combinedAnnotations.selectedAnnotationIds,
-    onCopyAnnotations: combinedAnnotations.copySelectedAnnotations,
-    onPasteAnnotations: combinedAnnotations.pasteAnnotations,
-    onCutAnnotations: combinedAnnotations.cutSelectedAnnotations,
-    onDuplicateAnnotations: combinedAnnotations.duplicateSelectedAnnotations,
-    onDeleteAnnotations: combinedAnnotations.deleteSelectedAnnotations,
-    onClearAnnotationSelection: combinedAnnotations.clearAnnotationSelection,
-    hasAnnotationClipboard: combinedAnnotations.hasAnnotationClipboard,
+    // Graph clipboard handlers - unified (handles everything, debounced)
+    onCopy: handleUnifiedCopy,
+    onPaste: handleUnifiedPaste,
+    onCut: handleUnifiedCut,
+    onDuplicate: handleUnifiedDuplicate,
+    // Selected annotation IDs includes groups and annotations
+    selectedAnnotationIds: combinedSelectedAnnotationIds,
+    // Annotation clipboard handlers - same unified handlers (debounced)
+    onCopyAnnotations: handleUnifiedCopy,
+    onPasteAnnotations: handleUnifiedPaste,
+    onCutAnnotations: handleUnifiedCut,
+    onDuplicateAnnotations: handleUnifiedDuplicate,
+    onDeleteAnnotations: handleUnifiedDelete,
+    onClearAnnotationSelection: handleClearAllSelection,
+    hasAnnotationClipboard: unifiedClipboard.hasClipboardData,
     onCreateGroup: handleAddGroupWithUndo
   });
 
@@ -821,6 +939,10 @@ export const App: React.FC = () => {
           onPositionChange={groupDragUndo.onGroupDragEnd}
           onDragMove={groupDragUndo.onGroupDragMove}
           onSizeChange={groupUndoHandlers.updateGroupSizeWithUndo}
+          selectedGroupIds={groups.selectedGroupIds}
+          onGroupSelect={groups.selectGroup}
+          onGroupToggleSelect={groups.toggleGroupSelection}
+          onGroupBoxSelect={groups.boxSelectGroups}
           onGroupReparent={groups.updateGroupParent}
           isGeoMode={layoutControls.isGeoLayout}
           geoMode={layoutControls.geoMode}

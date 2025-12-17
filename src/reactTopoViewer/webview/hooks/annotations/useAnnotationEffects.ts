@@ -17,6 +17,9 @@ interface AnnotationEffectsOptions {
   // Free shape annotations
   freeShapeSelectedIds: Set<string>;
   onFreeShapeClearSelection: () => void;
+  // Group annotations
+  groupSelectedIds?: Set<string>;
+  onGroupClearSelection?: () => void;
 }
 
 /**
@@ -30,7 +33,9 @@ export function useAnnotationEffects({
   onFreeTextPositionChange,
   onFreeTextClearSelection,
   freeShapeSelectedIds,
-  onFreeShapeClearSelection
+  onFreeShapeClearSelection,
+  groupSelectedIds,
+  onGroupClearSelection
 }: AnnotationEffectsOptions): void {
   // Enable synchronized movement of annotations with nodes during drag
   useAnnotationGroupMove({
@@ -53,5 +58,12 @@ export function useAnnotationEffects({
     cy,
     selectedAnnotationIds: freeShapeSelectedIds,
     onClearSelection: onFreeShapeClearSelection
+  });
+
+  // Clear group selection when clicking on canvas background
+  useAnnotationBackgroundClear({
+    cy,
+    selectedAnnotationIds: groupSelectedIds ?? new Set(),
+    onClearSelection: onGroupClearSelection ?? (() => {})
   });
 }

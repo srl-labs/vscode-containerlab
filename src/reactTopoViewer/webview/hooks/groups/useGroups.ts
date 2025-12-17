@@ -436,12 +436,13 @@ function useUpdateGroupGeoPosition(
 /** Helper to add a node to a group */
 function addNodeToGroupHelper(
   membershipRef: React.RefObject<Map<string, string>>,
-  groups: GroupStyleAnnotation[],
   nodeId: string,
   groupId: string
 ): void {
-  const group = groups.find(g => g.id === groupId);
-  if (!group) return;
+  // Note: We don't validate group existence here because this may be called
+  // right after a group is added but before React re-renders.
+  // The membership is stored immediately; the group will exist by the time
+  // the UI needs to display it.
   membershipRef.current.set(nodeId, groupId);
   const { name, level } = parseGroupId(groupId);
   sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, { nodeId, group: name, level });
@@ -496,8 +497,8 @@ function useNodeGroupMembership(
 
   const addNodeToGroup = useCallback((nodeId: string, groupId: string): void => {
     if (mode === 'view' || isLocked) return;
-    addNodeToGroupHelper(membershipRef, groups, nodeId, groupId);
-  }, [mode, isLocked, groups]);
+    addNodeToGroupHelper(membershipRef, nodeId, groupId);
+  }, [mode, isLocked]);
 
   const removeNodeFromGroup = useCallback((nodeId: string): void => {
     if (mode === 'view' || isLocked) return;
@@ -530,7 +531,12 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     editingGroup,
     setEditingGroup,
     saveGroupsToExtension,
-    lastStyleRef
+    lastStyleRef,
+    selectedGroupIds,
+    selectGroup,
+    toggleGroupSelection,
+    boxSelectGroups,
+    clearGroupSelection
   } = state;
 
   const createGroup = useCreateGroup(
@@ -567,6 +573,19 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       log.info(`[Groups] Loaded ${loadedGroups.length} overlay groups`);
     },
     [setGroups]
+  );
+
+  /** Add a single group (used by clipboard paste) */
+  const addGroup = useCallback(
+    (group: GroupStyleAnnotation): void => {
+      setGroups(prev => {
+        const updated = [...prev, group];
+        saveGroupsToExtension(updated);
+        return updated;
+      });
+      log.info(`[Groups] Added group: ${group.id}`);
+    },
+    [setGroups, saveGroupsToExtension]
   );
 
   const getUndoRedoAction = useCallback(
@@ -643,6 +662,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       updateGroupSize,
       updateGroupGeoPosition,
       loadGroups,
+      addGroup,
       getUndoRedoAction,
       findGroupAtPosition: membership.findGroupAtPosition,
       getGroupMembers: membership.getGroupMembers,
@@ -650,6 +670,12 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       addNodeToGroup: membership.addNodeToGroup,
       removeNodeFromGroup: membership.removeNodeFromGroup,
       initializeMembership: membership.initializeMembership,
+      // Selection methods
+      selectedGroupIds,
+      selectGroup,
+      toggleGroupSelection,
+      boxSelectGroups,
+      clearGroupSelection,
       // Hierarchy methods
       updateGroupParent,
       getChildGroups,
@@ -660,7 +686,8 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     [
       groups, editingGroup, createGroup, deleteGroup, editGroup, closeEditor,
       saveGroup, updateGroup, updateGroupPosition, updateGroupSize, updateGroupGeoPosition, loadGroups,
-      getUndoRedoAction, membership, updateGroupParent, getChildGroups, getDescendantGroupsMethod,
+      addGroup, getUndoRedoAction, membership, selectedGroupIds, selectGroup, toggleGroupSelection,
+      boxSelectGroups, clearGroupSelection, updateGroupParent, getChildGroups, getDescendantGroupsMethod,
       getParentGroup, getGroupDepth
     ]
   );

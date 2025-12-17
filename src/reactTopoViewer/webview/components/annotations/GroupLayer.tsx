@@ -19,6 +19,7 @@ import {
   findDeepestGroupAtPosition,
   validateNoCircularReference
 } from '../../hooks/groups';
+import { useAnnotationBoxSelection } from '../../hooks/annotations/useAnnotationSelection';
 import { MapLibreState, projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
 
 // ============================================================================
@@ -40,6 +41,7 @@ interface GroupLayerProps {
   selectedGroupIds?: Set<string>;
   onGroupSelect?: (id: string) => void;
   onGroupToggleSelect?: (id: string) => void;
+  onGroupBoxSelect?: (ids: string[]) => void;
   /** Called when a group is reparented by dragging into another group */
   onGroupReparent?: (groupId: string, newParentId: string | null) => void;
   // Geo mode props
@@ -674,6 +676,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   selectedGroupIds = new Set(),
   onGroupSelect,
   onGroupToggleSelect,
+  onGroupBoxSelect,
   onGroupReparent,
   isGeoMode,
   geoMode,
@@ -683,6 +686,9 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   // In geo pan mode, groups should not be interactive
   const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === 'pan');
   const dragOverrides = useDragPositionOverrides();
+
+  // Enable box selection of groups
+  useAnnotationBoxSelection(cy, groups, onGroupBoxSelect, undefined, 'GroupLayer');
 
   // Force re-render when map moves in geo mode so groups stay at their geo positions
   const [, setMapMoveCounter] = useState(0);

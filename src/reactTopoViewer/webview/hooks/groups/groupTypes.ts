@@ -74,6 +74,12 @@ export interface UseGroupStateReturn {
   setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>;
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void;
   lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>;
+  // Selection state and methods
+  selectedGroupIds: Set<string>;
+  selectGroup: (id: string) => void;
+  toggleGroupSelection: (id: string) => void;
+  boxSelectGroups: (ids: string[]) => void;
+  clearGroupSelection: () => void;
 }
 
 /**
@@ -214,6 +220,7 @@ export interface UseGroupsReturn {
   updateGroupSize: (groupId: string, width: number, height: number) => void;
   updateGroupGeoPosition: (groupId: string, geoCoordinates: { lat: number; lng: number }) => void;
   loadGroups: (groups: GroupStyleAnnotation[]) => void;
+  addGroup: (group: GroupStyleAnnotation) => void;
   getUndoRedoAction: (
     before: GroupStyleAnnotation | null,
     after: GroupStyleAnnotation | null
@@ -224,6 +231,12 @@ export interface UseGroupsReturn {
   addNodeToGroup: (nodeId: string, groupId: string) => void;
   removeNodeFromGroup: (nodeId: string) => void;
   initializeMembership: (memberships: Array<{ nodeId: string; groupId: string }>) => void;
+  // Selection methods
+  selectedGroupIds: Set<string>;
+  selectGroup: (id: string) => void;
+  toggleGroupSelection: (id: string) => void;
+  boxSelectGroups: (ids: string[]) => void;
+  clearGroupSelection: () => void;
   // Hierarchy methods
   updateGroupParent: (groupId: string, parentId: string | null) => void;
   getChildGroups: (groupId: string) => GroupStyleAnnotation[];
