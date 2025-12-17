@@ -75,15 +75,15 @@ test.describe('Edge Selection', () => {
       };
     }, edgeIds[1]);
 
-    if (midpoint) {
-      await ctrlClick(page, midpoint.x, midpoint.y);
-      await page.waitForTimeout(200);
+    expect(midpoint).not.toBeNull();
 
-      const selectedIds = await topoViewerPage.getSelectedEdgeIds();
-      expect(selectedIds.length).toBe(2);
-      expect(selectedIds).toContain(edgeIds[0]);
-      expect(selectedIds).toContain(edgeIds[1]);
-    }
+    await ctrlClick(page, midpoint!.x, midpoint!.y);
+    await page.waitForTimeout(200);
+
+    const selectedIds = await topoViewerPage.getSelectedEdgeIds();
+    expect(selectedIds.length).toBe(2);
+    expect(selectedIds).toContain(edgeIds[0]);
+    expect(selectedIds).toContain(edgeIds[1]);
   });
 
   test('clears edge selection with Escape key', async ({ page, topoViewerPage }) => {

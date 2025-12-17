@@ -69,24 +69,26 @@ test.describe('Zoom and Pan', () => {
     const initialPan = await topoViewerPage.getPan();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
+    const dragDistance = 100;
     // Drag the canvas (without clicking on a node)
     // Click on empty area and drag
     await drag(
       page,
       { x: canvasCenter.x + 200, y: canvasCenter.y + 200 },
-      { x: canvasCenter.x + 100, y: canvasCenter.y + 100 },
+      { x: canvasCenter.x + 200 - dragDistance, y: canvasCenter.y + 200 - dragDistance },
       { steps: 5 }
     );
     await page.waitForTimeout(300);
 
     const newPan = await topoViewerPage.getPan();
 
-    // Pan should have changed
+    // Pan should have changed by approximately the drag distance
     const panDeltaX = Math.abs(newPan.x - initialPan.x);
     const panDeltaY = Math.abs(newPan.y - initialPan.y);
 
-    // At least one direction should have moved
-    expect(panDeltaX + panDeltaY).toBeGreaterThan(0);
+    // Each direction should have moved at least 50% of drag distance
+    expect(panDeltaX).toBeGreaterThan(dragDistance * 0.5);
+    expect(panDeltaY).toBeGreaterThan(dragDistance * 0.5);
   });
 
   test('fit to viewport centers and scales graph', async ({ topoViewerPage }) => {

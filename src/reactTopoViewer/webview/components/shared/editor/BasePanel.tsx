@@ -31,6 +31,7 @@ export interface BasePanelProps {
   readonly resizable?: boolean;
   readonly minWidth?: number;
   readonly minHeight?: number;
+  readonly testId?: string;
 }
 
 const noop = () => {};
@@ -59,7 +60,7 @@ function getSizeDefaults(p: BasePanelProps) {
 }
 
 export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement | null {
-  const { title, isVisible, onClose, children, storageKey, height } = props;
+  const { title, isVisible, onClose, children, storageKey, height, testId } = props;
   const btn = getButtonDefaults(props);
   const sz = getSizeDefaults(props);
 
@@ -75,7 +76,7 @@ export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement |
   return (
     <>
       {sz.backdrop && <Backdrop zIndex={sz.zIndex} onClick={onClose} />}
-      <div className={cls} style={style}>
+      <div className={cls} style={style} data-testid={testId}>
         <PanelHeader title={title} isDragging={isDragging} onMouseDown={handleMouseDown} onClose={onClose} />
         <div className="panel-block p-2 overflow-y-auto flex-1 min-h-0">{children}</div>
         {btn.footer && <PanelFooter hasChanges={btn.hasChanges} onPrimary={btn.onPrimaryClick} onSecondary={btn.onSecondaryClick} primary={btn.primaryLabel} secondary={btn.secondaryLabel} />}

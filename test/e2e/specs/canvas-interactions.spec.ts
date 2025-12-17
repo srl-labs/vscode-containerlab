@@ -35,11 +35,9 @@ test.describe('Canvas Interactions', () => {
     );
     await page.waitForTimeout(300);
 
-    // Context menu should appear - check for menu by various selectors
-    const contextMenu = page.locator('[role="menu"], .context-menu, [data-testid="context-menu"]');
-    const menuVisible = await contextMenu.isVisible().catch(() => false);
-    // Menu visibility depends on implementation - test just verifies no crash on right-click
-    expect(menuVisible).toBeDefined();
+    // Context menu should appear
+    const contextMenu = page.locator('[data-testid="context-menu"]');
+    await expect(contextMenu).toBeVisible();
   });
 
   test('click on empty canvas deselects all', async ({ page, topoViewerPage }) => {
@@ -63,7 +61,7 @@ test.describe('Canvas Interactions', () => {
     expect(selectedIds.length).toBe(0);
   });
 
-  test('double-click on node triggers interaction', async ({ page, topoViewerPage }) => {
+  test('double-click on node opens editor panel', async ({ page, topoViewerPage }) => {
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
@@ -80,12 +78,9 @@ test.describe('Canvas Interactions', () => {
     );
     await page.waitForTimeout(500);
 
-    // Editor panel may or may not be visible depending on implementation
-    // The actual selector depends on the implementation
-    const editorPanel = page.locator('[data-testid="node-editor"], .node-editor-panel, .editor-panel');
-    const panelVisible = await editorPanel.isVisible().catch(() => false);
-    // Double-click behavior varies - just verify no crash and check result
-    expect(panelVisible).toBeDefined();
+    // Editor panel should appear
+    const editorPanel = page.locator('[data-testid="node-editor"]');
+    await expect(editorPanel).toBeVisible();
   });
 
   test('lock state persists across interactions', async ({ page, topoViewerPage }) => {

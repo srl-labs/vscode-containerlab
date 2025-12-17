@@ -28,6 +28,8 @@ interface EditorPanelProps {
   minWidth?: number;
   /** Minimum height when resizing */
   minHeight?: number;
+  /** Test ID for E2E testing */
+  testId?: string;
 }
 
 export const EditorPanel: React.FC<EditorPanelProps> = ({
@@ -47,7 +49,8 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   hasChanges = false,
   resizable = true,
   minWidth,
-  minHeight
+  minHeight,
+  testId
 }) => (
   <BasePanel
     title={title}
@@ -65,6 +68,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     resizable={resizable}
     minWidth={minWidth}
     minHeight={minHeight}
+    testId={testId}
   >
     {tabs && activeTab && onTabChange && (
       <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />

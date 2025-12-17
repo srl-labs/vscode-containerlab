@@ -131,6 +131,7 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
       storageKey="node-editor"
       width={420}
       hasChanges={hasChanges}
+      testId="node-editor"
     >
       <TabContent activeTab={activeTab} formData={formData} onChange={handleChange} />
     </EditorPanel>

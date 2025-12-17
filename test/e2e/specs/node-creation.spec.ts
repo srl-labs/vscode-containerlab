@@ -46,9 +46,22 @@ test.describe('Node Creation', () => {
     const newNodeId = nodeIdsAfter.find(id => !nodeIdsBefore.includes(id));
     expect(newNodeId).toBeDefined();
 
-    // Verify the new node was created (position verification is approximate due to coordinate transforms)
+    // Verify the new node has a valid position (not default 0,0)
     const nodePosition = await topoViewerPage.getNodePosition(newNodeId!);
-    expect(nodePosition).toBeDefined();
+    expect(nodePosition).toHaveProperty('x');
+    expect(nodePosition).toHaveProperty('y');
+    expect(typeof nodePosition.x).toBe('number');
+    expect(typeof nodePosition.y).toBe('number');
+
+    // Verify the node's rendered bounding box is near the click location
+    const boundingBox = await topoViewerPage.getNodeBoundingBox(newNodeId!);
+    expect(boundingBox).not.toBeNull();
+    const nodeScreenX = boundingBox!.x + boundingBox!.width / 2;
+    const nodeScreenY = boundingBox!.y + boundingBox!.height / 2;
+
+    // Node should be within 100px of click position (accounting for centering)
+    expect(Math.abs(nodeScreenX - clickX)).toBeLessThan(100);
+    expect(Math.abs(nodeScreenY - clickY)).toBeLessThan(100);
   });
 
   test('does not create node when canvas is locked', async ({ page, topoViewerPage }) => {

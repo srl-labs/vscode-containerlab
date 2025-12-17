@@ -43,9 +43,9 @@ test.describe('Node Dragging', () => {
     const movedX = newBox!.x - initialBox!.x;
     const movedY = newBox!.y - initialBox!.y;
 
-    // Allow some tolerance for coordinate transforms
-    expect(movedX).toBeGreaterThan(dragDistance * 0.5);
-    expect(movedY).toBeGreaterThan(dragDistance * 0.5);
+    // Allow some tolerance for coordinate transforms (80% of expected)
+    expect(movedX).toBeGreaterThan(dragDistance * 0.8);
+    expect(movedY).toBeGreaterThan(dragDistance * 0.8);
   });
 
   test('does not drag node when canvas is locked', async ({ page, topoViewerPage }) => {

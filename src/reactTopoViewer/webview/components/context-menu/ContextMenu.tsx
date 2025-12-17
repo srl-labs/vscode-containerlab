@@ -59,6 +59,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     <div
       ref={menuRef}
       className="context-menu"
+      role="menu"
+      data-testid="context-menu"
       style={{
         position: 'fixed',
         left: position.x,
@@ -101,6 +103,7 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
   return (
     <button
       className={`context-menu-item ${item.disabled ? 'disabled' : ''}`}
+      role="menuitem"
       onClick={handleClick}
       disabled={item.disabled}
     >

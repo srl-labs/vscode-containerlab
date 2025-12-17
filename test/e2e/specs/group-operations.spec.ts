@@ -8,11 +8,6 @@ test.describe('Group Operations', () => {
     await topoViewerPage.unlock();
   });
 
-  test('sample topology has groups', async ({ topoViewerPage }) => {
-    const groupCount = await topoViewerPage.getGroupCount();
-    expect(groupCount).toBeGreaterThanOrEqual(0);
-  });
-
   test('gets group IDs', async ({ topoViewerPage }) => {
     const groupIds = await topoViewerPage.getGroupIds();
     const groupCount = await topoViewerPage.getGroupCount();
@@ -56,17 +51,20 @@ test.describe('Group Operations', () => {
     expect(newGroupCount).toBe(initialGroupCount + 1);
   });
 
-  test('group is removed when all members are deleted', async ({ page, topoViewerPage }) => {
-    // First create a group with some nodes
+  test('group persists after all members are deleted', async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     if (nodeIds.length < 2) {
       test.skip();
       return;
     }
 
+    const initialGroupCount = await topoViewerPage.getGroupCount();
+    const node1 = nodeIds[0];
+    const node2 = nodeIds[1];
+
     // Select two nodes
-    await topoViewerPage.selectNode(nodeIds[0]);
-    const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
+    await topoViewerPage.selectNode(node1);
+    const secondNodeBox = await topoViewerPage.getNodeBoundingBox(node2);
     await page.keyboard.down('Control');
     await page.mouse.click(
       secondNodeBox!.x + secondNodeBox!.width / 2,
@@ -82,10 +80,20 @@ test.describe('Group Operations', () => {
     await page.waitForTimeout(500);
 
     const groupCountAfterCreate = await topoViewerPage.getGroupCount();
-    expect(groupCountAfterCreate).toBeGreaterThan(0);
+    expect(groupCountAfterCreate).toBe(initialGroupCount + 1);
 
-    // Get the group IDs
-    const groupIds = await topoViewerPage.getGroupIds();
-    expect(groupIds.length).toBeGreaterThan(0);
+    // Delete first node
+    await topoViewerPage.selectNode(node1);
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(300);
+
+    // Delete second node
+    await topoViewerPage.selectNode(node2);
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(300);
+
+    // Group should persist even after all members are deleted (intended behavior)
+    const groupCountAfterDelete = await topoViewerPage.getGroupCount();
+    expect(groupCountAfterDelete).toBe(initialGroupCount + 1);
   });
 });
