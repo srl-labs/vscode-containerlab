@@ -156,9 +156,14 @@ function updateNodeYaml(
     const value = extra[prop];
     const inherited = inheritedConfig[prop];
 
-    // Skip if value matches inherited or is empty
+    // Only delete properties that are explicitly set to null
+    // Undefined means "not provided" - preserve existing value
     if (value === undefined) {
-      // If no value provided, remove from node-level (will inherit)
+      continue;
+    }
+
+    // Explicit null means "delete this property"
+    if (value === null) {
       if (nodeMap.has(prop)) nodeMap.delete(prop);
       continue;
     }

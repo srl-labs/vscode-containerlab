@@ -65,6 +65,17 @@ export interface ModeChangedMessage extends PushMessage {
 }
 
 /**
+ * Node renamed message - sent after a node is renamed to trigger in-place update
+ */
+export interface NodeRenamedMessage extends PushMessage {
+  type: 'node-renamed';
+  data: {
+    oldId: string;
+    newId: string;
+  };
+}
+
+/**
  * Node data for Cytoscape nodes
  */
 export interface NodeData {

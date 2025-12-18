@@ -141,7 +141,8 @@ type TopoViewerAction =
   | { type: 'SET_CUSTOM_NODES'; payload: { customNodes: CustomNodeTemplate[]; defaultNode: string } }
   | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null }
   | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } }
-  | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] };
+  | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] }
+  | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string } };
 
 /**
  * Reducer function
@@ -261,6 +262,35 @@ const reducerHandlers: ReducerHandlers = {
     });
 
     return { ...state, elements: newElements };
+  },
+  RENAME_NODE: (state, action) => {
+    const { oldId, newId } = action.payload;
+    // Update node ID and name, and update edge references
+    const elements = state.elements.map(el => {
+      if (el.group === 'nodes' && (el.data as Record<string, unknown>)?.id === oldId) {
+        return {
+          ...el,
+          data: { ...el.data, id: newId, name: newId }
+        };
+      }
+      if (el.group === 'edges') {
+        const data = el.data as Record<string, unknown>;
+        const source = data.source as string;
+        const target = data.target as string;
+        if (source === oldId || target === oldId) {
+          return {
+            ...el,
+            data: {
+              ...data,
+              source: source === oldId ? newId : source,
+              target: target === oldId ? newId : target
+            }
+          };
+        }
+      }
+      return el;
+    });
+    return { ...state, elements };
   }
 };
 
@@ -386,7 +416,14 @@ function handleExtensionMessage(
   const handlers: Record<string, () => void> = {
     'topology-data': () => {
       if (message.data?.elements) {
-        dispatch({ type: 'SET_ELEMENTS', payload: message.data.elements as CyElement[] });
+        const elements = message.data.elements as CyElement[];
+        dispatch({ type: 'SET_ELEMENTS', payload: elements });
+      }
+    },
+    'node-renamed': () => {
+      const data = message.data as { oldId?: string; newId?: string } | undefined;
+      if (data?.oldId && data?.newId) {
+        dispatch({ type: 'RENAME_NODE', payload: { oldId: data.oldId, newId: data.newId } });
       }
     },
     'edge-stats-update': () => {

@@ -37,6 +37,86 @@ function canSkipUpdate(cy: Core, elements: CyElement[]): boolean {
 }
 
 /**
+ * Detect if the change is a single node rename (same element count, one ID swapped)
+ * Returns the old and new ID if it's a rename, null otherwise
+ */
+function detectRename(cy: Core, elements: CyElement[]): { oldId: string; newId: string } | null {
+  const cyNodeIds = new Set(cy.nodes().map(n => n.id()));
+  const reactNodeIds = new Set(
+    elements.filter(e => e.group === 'nodes').map(e => (e.data as Record<string, unknown>)?.id as string).filter(Boolean)
+  );
+
+  // Must have same number of nodes
+  if (cyNodeIds.size !== reactNodeIds.size) return null;
+
+  let missing: string | null = null;
+  let added: string | null = null;
+
+  // Find the node that's in Cytoscape but not in React (the old ID)
+  for (const id of cyNodeIds) {
+    if (!reactNodeIds.has(id)) {
+      if (missing) return null; // More than one missing - not a simple rename
+      missing = id;
+    }
+  }
+
+  // Find the node that's in React but not in Cytoscape (the new ID)
+  for (const id of reactNodeIds) {
+    if (!cyNodeIds.has(id)) {
+      if (added) return null; // More than one added - not a simple rename
+      added = id;
+    }
+  }
+
+  if (missing && added) {
+    return { oldId: missing, newId: added };
+  }
+  return null;
+}
+
+/**
+ * Handle node rename in-place without full graph reload
+ * Preserves position and updates edges surgically
+ *
+ * IMPORTANT: When removing a node in Cytoscape, connected edges are automatically removed too.
+ * So we must save the edge data, remove the node (which removes edges), add the new node,
+ * then re-add the edges with updated source/target references.
+ */
+function handleRenameInPlace(cy: Core, oldId: string, newId: string, elements: CyElement[]): void {
+  const oldNode = cy.getElementById(oldId);
+  if (!oldNode.length) return;
+
+  // Get the new node element data from React state
+  const newNodeEl = elements.find(
+    e => e.group === 'nodes' && (e.data as Record<string, unknown>)?.id === newId
+  );
+  if (!newNodeEl) return;
+
+  // Preserve the current position
+  const position = oldNode.position();
+
+  // Save connected edges BEFORE removing the node (they'll be auto-removed with the node)
+  // Update source/target references to point to the new node ID
+  const edgesToRestore: Array<{ group: 'edges'; data: Record<string, unknown> }> = [];
+  oldNode.connectedEdges().forEach(edge => {
+    const edgeData = { ...edge.data() };
+    // Update source/target to new node ID
+    if (edgeData.source === oldId) edgeData.source = newId;
+    if (edgeData.target === oldId) edgeData.target = newId;
+    edgesToRestore.push({ group: 'edges', data: edgeData });
+  });
+
+  cy.batch(() => {
+    // Remove old node (this also removes connected edges)
+    oldNode.remove();
+    // Add new node with preserved position
+    cy.add({ ...newNodeEl, position });
+    // Re-add the edges with updated references
+    edgesToRestore.forEach(edge => cy.add(edge));
+  });
+}
+
+/**
  * Hook for updating elements when they change
  * Uses useLayoutEffect to ensure updates complete before other effects (like useSelectionData) read data
  *
@@ -63,6 +143,16 @@ export function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements:
       return;
     }
 
+    // Check if this is a node rename - handle it surgically without full reload
+    if (isInitializedRef.current) {
+      const rename = detectRename(cy, elements);
+      if (rename) {
+        handleRenameInPlace(cy, rename.oldId, rename.newId, elements);
+        return;
+      }
+    }
+
+    // Full update for other cases
     updateCytoscapeElements(cy, elements);
     isInitializedRef.current = true;
   }, [cyRef, elements]);

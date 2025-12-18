@@ -176,29 +176,56 @@ interface TopoViewerPage {
 
   /** Reset all topology and annotation files to defaults (for test isolation) */
   resetFiles(): Promise<void>;
+
+  /** Select a group by ID (programmatic) */
+  selectGroup(groupId: string): Promise<void>;
+
+  /** Get member node IDs for a group */
+  getGroupMembers(groupId: string): Promise<string[]>;
+
+  /** Perform copy (Ctrl+C) */
+  copy(): Promise<void>;
+
+  /** Perform paste (Ctrl+V) */
+  paste(): Promise<void>;
+
+  /** Perform cut (Ctrl+X) */
+  cut(): Promise<void>;
+
+  /** Create a group from selected nodes (Ctrl+G) */
+  createGroup(): Promise<void>;
+
+  /** Delete a node by ID */
+  deleteNode(nodeId: string): Promise<void>;
+
+  /** Delete an edge by ID */
+  deleteEdge(edgeId: string): Promise<void>;
 }
 
 /**
  * Extended test fixture with TopoViewer helpers
  */
+// Base URL for API requests (must be absolute since page hasn't navigated yet)
+const API_BASE_URL = 'http://localhost:5173';
+
 export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
-  topoViewerPage: async ({ page }, use) => {
+  topoViewerPage: async ({ page, request }, use) => {
     // Generate unique session ID for test isolation
     const sessionId = generateSessionId();
 
-    // Helper to add session ID to API URLs
+    // Helper to add session ID to API URLs (uses absolute URL for API calls)
     const withSession = (url: string) => {
       const separator = url.includes('?') ? '&' : '?';
-      return `${url}${separator}sessionId=${sessionId}`;
+      return `${API_BASE_URL}${url}${separator}sessionId=${sessionId}`;
     };
 
-    // Initialize session with default files
-    await page.request.post(withSession('/api/reset'));
+    // Initialize session with default files using request fixture
+    await request.post(withSession('/api/reset'));
 
     const topoViewerPage: TopoViewerPage = {
       goto: async (topology: TopologyName = 'sampleWithAnnotations') => {
         // Pass session ID via URL so auto-load uses correct session
-        await page.goto(`/?sessionId=${sessionId}`);
+        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`);
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
 
         // Wait for auto-load to complete
@@ -219,7 +246,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       gotoFile: async (filename: string) => {
         // Pass session ID via URL so auto-load uses correct session
-        await page.goto(`/?sessionId=${sessionId}`);
+        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`);
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
 
         // Wait for the page to be ready (including auto-load of default topology)
@@ -658,13 +685,76 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       resetFiles: async () => {
-        const response = await page.request.post(withSession('/api/reset'));
+        const response = await request.post(withSession('/api/reset'));
         const result = await response.json();
         if (!result.success) {
           throw new Error(result.error || 'Failed to reset files');
         }
         // Wait for session reset to settle
         await page.waitForTimeout(100);
+      },
+
+      selectGroup: async (groupId: string) => {
+        await page.evaluate((id) => {
+          const dev = (window as any).__DEV__;
+          if (dev?.stateManager?.groups?.selectGroup) {
+            dev.stateManager.groups.selectGroup(id);
+          } else if (dev?.groups?.selectGroup) {
+            dev.groups.selectGroup(id);
+          }
+        }, groupId);
+        await page.waitForTimeout(100);
+      },
+
+      getGroupMembers: async (groupId: string) => {
+        return await page.evaluate((id) => {
+          const dev = (window as any).__DEV__;
+          const annotations = dev?.stateManager?.getAnnotations?.();
+          if (!annotations?.nodeAnnotations) return [];
+          return annotations.nodeAnnotations
+            .filter((n: { id: string; group?: string }) => n.group === id || n.group?.startsWith(id.split('__')[0]))
+            .map((n: { id: string; group?: string }) => n.id);
+        }, groupId);
+      },
+
+      copy: async () => {
+        await page.keyboard.down('Control');
+        await page.keyboard.press('c');
+        await page.keyboard.up('Control');
+        await page.waitForTimeout(200);
+      },
+
+      paste: async () => {
+        await page.keyboard.down('Control');
+        await page.keyboard.press('v');
+        await page.keyboard.up('Control');
+        await page.waitForTimeout(300);
+      },
+
+      cut: async () => {
+        await page.keyboard.down('Control');
+        await page.keyboard.press('x');
+        await page.keyboard.up('Control');
+        await page.waitForTimeout(200);
+      },
+
+      createGroup: async () => {
+        await page.keyboard.down('Control');
+        await page.keyboard.press('g');
+        await page.keyboard.up('Control');
+        await page.waitForTimeout(500);
+      },
+
+      deleteNode: async (nodeId: string) => {
+        await topoViewerPage.selectNode(nodeId);
+        await page.keyboard.press('Delete');
+        await page.waitForTimeout(300);
+      },
+
+      deleteEdge: async (edgeId: string) => {
+        await topoViewerPage.selectEdge(edgeId);
+        await page.keyboard.press('Delete');
+        await page.waitForTimeout(300);
       }
     };
 

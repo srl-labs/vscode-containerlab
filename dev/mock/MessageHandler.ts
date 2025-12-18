@@ -289,13 +289,14 @@ export class MessageHandler {
   private handleEditorCommand(type: string, msg: WebviewMessage): void {
     console.log('%c[Mock Extension]', 'color: #FF9800;', `Editor: ${type}`, msg);
 
+    let wasRename = false;
     switch (type) {
       case 'create-node':
         this.handleCreateNode(msg);
         break;
       case 'save-node-editor':
       case 'apply-node-editor':
-        this.handleSaveNodeEditor(msg);
+        wasRename = this.handleSaveNodeEditor(msg);
         break;
       case 'create-link':
         this.handleCreateLink(msg);
@@ -310,7 +311,10 @@ export class MessageHandler {
     }
 
     this.updateSplitView();
-    this.maybeBroadcastTopology();
+    // Don't broadcast full topology for renames - targeted message was already sent
+    if (!wasRename) {
+      this.maybeBroadcastTopology();
+    }
   }
 
   private handleCreateNode(msg: WebviewMessage): void {
@@ -360,19 +364,24 @@ export class MessageHandler {
     }
   }
 
-  private handleSaveNodeEditor(msg: WebviewMessage): void {
+  /**
+   * Handle save/apply node editor. Returns true if this was a rename operation.
+   */
+  private handleSaveNodeEditor(msg: WebviewMessage): boolean {
     const nodeData = msg.nodeData || (msg.payload as Record<string, unknown>);
-    if (!nodeData) return;
+    if (!nodeData) return false;
 
     // In containerlab, the node name IS the ID in YAML
     // nodeData.name = the new name user entered
     // nodeData.id = original cytoscape ID (may differ from name after rename)
     const newName = (nodeData.name as string) || (nodeData.id as string);
-    if (!newName) return;
+    if (!newName) return false;
 
     // Handle rename if oldName is provided and different from new name
     const oldName = msg.oldName as string | undefined;
-    if (oldName && oldName !== newName) {
+    const isRename = oldName && oldName !== newName;
+
+    if (isRename) {
       console.log('%c[Mock]', 'color: #4CAF50;', `Renaming node: ${oldName} -> ${newName}`);
       // This is a rename - need to update the node ID in local state
       const elements = this.stateManager.getElements();
@@ -400,6 +409,12 @@ export class MessageHandler {
         a.id === oldName ? { ...a, id: newName } : a
       );
       this.stateManager.updateAnnotations({ nodeAnnotations });
+
+      // Send targeted node-renamed message (no flash)
+      sendMessageToWebviewWithLog(
+        { type: 'node-renamed', data: { oldId: oldName, newId: newName } },
+        'node-renamed'
+      );
     } else {
       // Just update the node data in local state (no rename)
       const existingId = (nodeData.id as string) || newName;
@@ -418,8 +433,7 @@ export class MessageHandler {
       });
     }
 
-    // Note: Don't broadcast - webview already has the data.
-    // Real extension just persists to files, doesn't reload canvas.
+    return !!isRename;
   }
 
   private handleCreateLink(msg: WebviewMessage): void {
@@ -794,6 +808,9 @@ export class MessageHandler {
   private maybeBroadcastTopology(): void {
     if (this.stateManager.isInBatch()) {
       this.stateManager.setPendingBroadcast(true);
+    } else {
+      // Not in batch mode - broadcast immediately
+      this.broadcastTopologyData();
     }
   }
 

@@ -377,7 +377,7 @@ export class MessageRouter {
     }
   }
 
-  private async handleSaveNodeEditor(message: WebviewMessage): Promise<void> {
+  private async handleSaveNodeEditor(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
     if (this.context.isViewMode || !saveTopologyService.isInitialized()) {
       log.warn('[ReactTopoViewer] Cannot save node: not in edit mode or service not initialized');
       return;
@@ -403,6 +403,15 @@ export class MessageRouter {
     if (result.success) {
       const renameInfo = result.renamed ? ` (renamed from ${result.renamed.oldId})` : '';
       log.info(`[ReactTopoViewer] Saved node: ${nodeData.name}${renameInfo}`);
+
+      // If a node was renamed, send targeted message for in-place update (no flash)
+      if (result.renamed) {
+        log.info(`[ReactTopoViewer] Node renamed from "${result.renamed.oldId}" to "${result.renamed.newId}"`);
+        panel.webview.postMessage({
+          type: 'node-renamed',
+          data: { oldId: result.renamed.oldId, newId: result.renamed.newId }
+        });
+      }
     } else {
       log.error(`[ReactTopoViewer] Failed to save node: ${result.error}`);
     }
@@ -411,7 +420,7 @@ export class MessageRouter {
   /**
    * Handle undo/redo of node rename - robustly finds and renames the node
    */
-  private async handleUndoRenameNode(message: WebviewMessage): Promise<void> {
+  private async handleUndoRenameNode(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
     if (this.context.isViewMode || !saveTopologyService.isInitialized()) {
       log.warn('[ReactTopoViewer] Cannot undo rename: not in edit mode or service not initialized');
       return;
@@ -443,6 +452,15 @@ export class MessageRouter {
     const result = await saveTopologyService.editNode(saveData);
     if (result.success) {
       log.info(`[ReactTopoViewer] Undo rename successful: ${currentName} -> ${targetName}`);
+
+      // Send targeted message for in-place update after undo/redo rename (no flash)
+      if (result.renamed) {
+        log.info(`[ReactTopoViewer] Undo rename: "${result.renamed.oldId}" -> "${result.renamed.newId}"`);
+        panel.webview.postMessage({
+          type: 'node-renamed',
+          data: { oldId: result.renamed.oldId, newId: result.renamed.newId }
+        });
+      }
     } else {
       log.error(`[ReactTopoViewer] Failed to undo rename: ${result.error}`);
     }
@@ -714,17 +732,17 @@ export class MessageRouter {
    * Handle editor save/apply commands (both node and link editors)
    * Returns true if the command was handled, false otherwise
    */
-  private async handleEditorCommand(command: string, message: WebviewMessage): Promise<boolean> {
+  private async handleEditorCommand(command: string, message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
     switch (command) {
       case 'create-node':
         await this.handleCreateNode(message);
         return true;
       case 'save-node-editor':
       case 'apply-node-editor':
-        await this.handleSaveNodeEditor(message);
+        await this.handleSaveNodeEditor(message, panel);
         return true;
       case 'undo-rename-node':
-        await this.handleUndoRenameNode(message);
+        await this.handleUndoRenameNode(message, panel);
         return true;
       case 'create-link':
         await this.handleCreateLink(message);
@@ -897,7 +915,7 @@ export class MessageRouter {
 
     if (await this.handleClipboardCommand(command, message, panel)) return true;
 
-    if (await this.handleEditorCommand(command, message)) return true;
+    if (await this.handleEditorCommand(command, message, panel)) return true;
 
     if (await this.handleCustomNodeCommand(command, message, panel)) return true;
 
