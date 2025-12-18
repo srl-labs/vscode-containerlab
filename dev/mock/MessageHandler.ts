@@ -346,11 +346,11 @@ export class MessageHandler {
       const extraData = nodeData.extraData as Record<string, unknown> | undefined;
       this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/node`, {
         name: nodeId,
-        kind: nodeData.kind || extraData?.kind,
-        type: nodeData.type || extraData?.type,
-        image: nodeData.image || extraData?.image,
         position: nodePosition,
         extraData: {
+          kind: nodeData.kind || extraData?.kind,
+          type: nodeData.type || extraData?.type,
+          image: nodeData.image || extraData?.image,
           topoViewerRole: extraData?.topoViewerRole,
           iconColor: extraData?.iconColor,
           iconCornerRadius: extraData?.iconCornerRadius,
@@ -563,7 +563,7 @@ export class MessageHandler {
   // Annotation Commands
   // --------------------------------------------------------------------------
 
-  private handleAnnotationCommand(type: string, msg: WebviewMessage): void {
+  private async handleAnnotationCommand(type: string, msg: WebviewMessage): Promise<void> {
     console.log('%c[Mock Extension]', 'color: #FF9800;', `Annotation: ${type}`);
 
     switch (type) {
@@ -587,8 +587,8 @@ export class MessageHandler {
         break;
     }
 
-    // Save annotations to file
-    this.saveAnnotationsToFile();
+    // Save annotations to file (await to ensure completion before returning)
+    await this.saveAnnotationsToFile();
 
     this.updateSplitView();
   }
@@ -599,16 +599,9 @@ export class MessageHandler {
       position: { x: number; y: number };
     }>;
     if (positions && Array.isArray(positions)) {
-      // Update local state
+      // Update local state - saveAnnotationsToFile() is called by the parent handler
+      // to persist changes to file (no separate TopologyIO call needed to avoid race)
       this.stateManager.updateNodePositions(positions);
-
-      // Persist via TopologyIO endpoint
-      const filename = this.stateManager.getCurrentFilePath();
-      if (filename) {
-        this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/positions`, {
-          positions
-        });
-      }
     }
   }
 
@@ -847,29 +840,28 @@ export class MessageHandler {
   }
 
   /** Save current annotations to file (if a file is loaded) */
-  private saveAnnotationsToFile(): void {
+  private async saveAnnotationsToFile(): Promise<void> {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return;
 
     const annotations = this.stateManager.getAnnotations();
     const url = this.buildApiUrl(`/api/annotations/${encodeURIComponent(filename)}`);
 
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(annotations)
-    })
-      .then(res => res.json())
-      .then(result => {
-        if (result.success) {
-          console.log('%c[File API]', 'color: #4CAF50;', `Saved annotations to ${filename}`);
-        } else {
-          console.warn('%c[File API]', 'color: #FF9800;', `Failed to save annotations: ${result.error}`);
-        }
-      })
-      .catch(err => {
-        console.error('%c[File API Error]', 'color: #f44336;', err);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(annotations)
       });
+      const result = await res.json();
+      if (result.success) {
+        console.log('%c[File API]', 'color: #4CAF50;', `Saved annotations to ${filename}`);
+      } else {
+        console.warn('%c[File API]', 'color: #FF9800;', `Failed to save annotations: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('%c[File API Error]', 'color: #f44336;', err);
+    }
   }
 
   /** Save current topology to YAML file (if a file is loaded) */

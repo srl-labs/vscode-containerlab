@@ -556,6 +556,16 @@ export const App: React.FC = () => {
   // Get isApplyingGroupUndoRedo ref from group undo handlers
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
 
+  // Expose undoRedo for E2E testing (dev mode only)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).__DEV__) {
+      (window as any).__DEV__.undoRedo = {
+        canUndo: undoRedo.canUndo,
+        canRedo: undoRedo.canRedo
+      };
+    }
+  }, [undoRedo.canUndo, undoRedo.canRedo]);
+
   // Group drag undo tracking - handles group + member node moves as single undo step
   // Also moves annotations that belong to groups
   const groupDragUndo = useGroupDragUndo({

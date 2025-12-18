@@ -80,6 +80,22 @@ installVscodeApiMock(vscodeMock);
 // ============================================================================
 
 /**
+ * Initialize session ID from URL parameter (for test isolation).
+ * This must be called early, before any API calls.
+ */
+function initSessionIdFromUrl(): void {
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get('sessionId');
+  if (sessionId) {
+    (window as any).__TEST_SESSION_ID__ = sessionId;
+    console.log(`%c[Dev] Session ID from URL: ${sessionId}`, 'color: #9C27B0;');
+  }
+}
+
+// Initialize session ID from URL before anything else
+initSessionIdFromUrl();
+
+/**
  * Get the current session ID (for test isolation)
  */
 function getSessionId(): string | undefined {
@@ -180,6 +196,8 @@ declare global {
       listTopologyFiles: () => Promise<Array<{ filename: string; hasAnnotations: boolean }>>;
       resetFiles: () => Promise<void>;
       getCurrentFile: () => string | null;
+      // Legacy: in-memory topology loading (maps to file-based)
+      loadTopology: (name: string) => Promise<void>;
       // Mode and state
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
@@ -191,6 +209,11 @@ declare global {
       // Managers
       stateManager: DevStateManager;
       latencySimulator: LatencySimulator;
+      // Set by App.tsx at runtime
+      cy?: unknown;
+      isLocked?: () => boolean;
+      setLocked?: (locked: boolean) => void;
+      undoRedo?: { canUndo: () => boolean; canRedo: () => boolean };
     };
   }
 }
@@ -217,12 +240,31 @@ const flattenedInitialData = {
 (window as any).__SCHEMA_DATA__ = initialData.schemaData;
 (window as any).__DOCKER_IMAGES__ = initialData.dockerImages || [];
 
+// Topology name to file mapping for backward compatibility with tests
+const topologyNameToFile: Record<string, string> = {
+  sample: 'simple.clab.yml',
+  sampleWithAnnotations: 'simple.clab.yml',
+  annotated: 'simple.clab.yml',
+  network: 'network.clab.yml',
+  empty: 'empty.clab.yml',
+  large: 'datacenter.clab.yml',
+  large100: 'datacenter.clab.yml',
+  large1000: 'datacenter.clab.yml'
+};
+
 // Dev utilities (console API)
 window.__DEV__ = {
   // File-based operations (real file I/O)
   loadTopologyFile,
   listTopologyFiles,
   getCurrentFile: () => stateManager.getCurrentFilePath(),
+
+  // Legacy: load topology by name (maps to file-based loading)
+  loadTopology: async (name: string) => {
+    const filename = topologyNameToFile[name] || 'simple.clab.yml';
+    console.log(`%c[Dev] loadTopology('${name}') -> ${filename}`, 'color: #9C27B0;');
+    await loadTopologyFile(filename);
+  },
 
   resetFiles: async () => {
     console.log('%c[Dev] Resetting files to original state...', 'color: #f44336;');

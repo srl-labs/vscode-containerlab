@@ -197,8 +197,15 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     const topoViewerPage: TopoViewerPage = {
       goto: async (topology: TopologyName = 'sampleWithAnnotations') => {
-        await page.goto('/');
+        // Pass session ID via URL so auto-load uses correct session
+        await page.goto(`/?sessionId=${sessionId}`);
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
+
+        // Wait for auto-load to complete
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.cy !== undefined,
+          { timeout: 15000 }
+        );
 
         // Load specific topology via dev API
         if (topology !== 'sample') {
@@ -211,7 +218,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       gotoFile: async (filename: string) => {
-        await page.goto('/');
+        // Pass session ID via URL so auto-load uses correct session
+        await page.goto(`/?sessionId=${sessionId}`);
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
 
         // Wait for the page to be ready (including auto-load of default topology)
@@ -219,11 +227,6 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           () => (window as any).__DEV__?.cy !== undefined,
           { timeout: 15000 }
         );
-
-        // Store session ID in window for API calls from within the page
-        await page.evaluate((sid) => {
-          (window as any).__TEST_SESSION_ID__ = sid;
-        }, sessionId);
 
         // Wait a bit for any auto-load to settle
         await page.waitForTimeout(200);

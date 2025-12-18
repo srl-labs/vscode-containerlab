@@ -70,10 +70,9 @@ test.describe.serial('File I/O Persistence', () => {
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
 
-      // Get initial positions
-      const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-      const spine1Initial = initialAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
-      const spine2Initial = initialAnnotations.nodeAnnotations?.find(n => n.id === 'spine2');
+      // Get initial positions from Cytoscape
+      const spine1InitialCy = await topoViewerPage.getNodePosition('spine1');
+      const spine2InitialCy = await topoViewerPage.getNodePosition('spine2');
 
       // Drag spine1
       const box1 = await topoViewerPage.getNodeBoundingBox('spine1');
@@ -84,7 +83,11 @@ test.describe.serial('File I/O Persistence', () => {
         { x: box1!.x + box1!.width / 2 + 30, y: box1!.y + box1!.height / 2 },
         { steps: 5 }
       );
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(500);
+
+      // Verify spine1 moved in Cytoscape memory
+      const spine1AfterDrag1 = await topoViewerPage.getNodePosition('spine1');
+      expect(spine1AfterDrag1.x).not.toBe(spine1InitialCy.x);
 
       // Drag spine2
       const box2 = await topoViewerPage.getNodeBoundingBox('spine2');
@@ -97,14 +100,24 @@ test.describe.serial('File I/O Persistence', () => {
       );
       await page.waitForTimeout(500);
 
-      // Read updated annotations
+      // Verify spine2 moved in Cytoscape memory
+      const spine2AfterDrag2 = await topoViewerPage.getNodePosition('spine2');
+      expect(spine2AfterDrag2.x).not.toBe(spine2InitialCy.x);
+
+      // Wait for file saves to complete
+      await page.waitForTimeout(1000);
+
+      // Read updated annotations from file
       const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
       const spine1Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
       const spine2Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine2');
 
-      // Both positions should have changed
-      expect(spine1Updated?.position?.x).not.toBe(spine1Initial?.position?.x);
-      expect(spine2Updated?.position?.x).not.toBe(spine2Initial?.position?.x);
+      // Get initial file positions for comparison
+      const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+
+      // Both positions in file should match Cytoscape positions (with some tolerance)
+      expect(Math.abs(spine1Updated!.position!.x - spine1AfterDrag1.x)).toBeLessThan(5);
+      expect(Math.abs(spine2Updated!.position!.x - spine2AfterDrag2.x)).toBeLessThan(5);
     });
   });
 

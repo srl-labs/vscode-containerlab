@@ -92,17 +92,27 @@ test.describe('Zoom and Pan', () => {
   });
 
   test('fit to viewport centers and scales graph', async ({ topoViewerPage }) => {
-    // First set an extreme zoom
+    // First set an extreme zoom and pan
     await topoViewerPage.setZoom(5.0);
     await topoViewerPage.setPan(500, 500);
+
+    // Record the pan position before fit
+    const panBeforeFit = await topoViewerPage.getPan();
 
     // Fit the graph
     await topoViewerPage.fit();
 
-    // After fit, graph should be reasonably zoomed and centered
+    // After fit, graph should be reasonably zoomed (cy.fit() calculates zoom
+    // geometrically based on viewport and element bounding box, not previous zoom)
     const zoom = await topoViewerPage.getZoom();
-    expect(zoom).toBeLessThan(5.0);
     expect(zoom).toBeGreaterThan(0.1);
+    expect(zoom).toBeLessThan(20); // sanity upper bound
+
+    // Pan should have changed from the extreme offset (500, 500) toward center
+    const panAfterFit = await topoViewerPage.getPan();
+    const panMoved = Math.abs(panAfterFit.x - panBeforeFit.x) > 50 ||
+                     Math.abs(panAfterFit.y - panBeforeFit.y) > 50;
+    expect(panMoved).toBe(true);
   });
 
   test('zoom can be set to extreme values', async ({ topoViewerPage }) => {

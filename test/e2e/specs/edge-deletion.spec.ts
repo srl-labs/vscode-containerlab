@@ -10,13 +10,6 @@ import { ctrlClick } from '../helpers/cytoscape-helpers';
  * - Delete multiple edges
  * - Undo edge deletion
  * - Protection in view mode and locked state
- *
- * KNOWN BUGS:
- * - BUG-001: Multi-edge deletion doesn't work - When multiple edges are selected with
- *   Ctrl+Click, pressing Delete only deletes one edge instead of all selected edges.
- *   This appears to be a bug in the edge deletion handler not iterating over all
- *   selected edges. The test "deletes multiple selected edges" is marked as failing
- *   to document this bug.
  */
 test.describe('Edge Deletion', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -84,6 +77,12 @@ test.describe('Edge Deletion', () => {
   });
 
   test('deletes multiple selected edges', async ({ page, topoViewerPage }) => {
+    // This test needs a topology with multiple edges - spine-leaf has 6 edges
+    await topoViewerPage.gotoFile('spine-leaf.clab.yml');
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     expect(initialEdgeCount).toBeGreaterThanOrEqual(2);
 
@@ -122,7 +121,7 @@ test.describe('Edge Deletion', () => {
     await page.keyboard.press('Delete');
     await page.waitForTimeout(300);
 
-    // Both edges should be deleted - BUG: only one is deleted
+    // Both edges should be deleted
     const finalEdgeCount = await topoViewerPage.getEdgeCount();
     expect(finalEdgeCount).toBe(initialEdgeCount - 2);
   });
