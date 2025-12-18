@@ -158,6 +158,9 @@ function useNodeEditorHandlers(
   }, [editNode, recordPropertyEdit]);
 
   const handleApply = React.useCallback((data: NodeEditorData) => {
+    // Capture oldName BEFORE updating initialDataRef for rename detection
+    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
+
     // Record for undo/redo if we have initial data and data changed
     if (recordPropertyEdit && initialDataRef.current) {
       const hasChanges = JSON.stringify(initialDataRef.current) !== JSON.stringify(data);
@@ -172,8 +175,6 @@ function useNodeEditorHandlers(
         initialDataRef.current = { ...data };
       }
     }
-    // Include oldName if renaming (name changed from initial)
-    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
     sendCommandToExtension('apply-node-editor', { nodeData: data, oldName });
   }, [recordPropertyEdit]);
 
