@@ -12,6 +12,7 @@ interface PanelButtonProps {
   onClick?: (e: React.MouseEvent) => void;
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
+  testId?: string;
 }
 
 export const PanelButton: React.FC<PanelButtonProps> = ({
@@ -19,7 +20,8 @@ export const PanelButton: React.FC<PanelButtonProps> = ({
   tooltip,
   onClick,
   disabled = false,
-  variant = 'secondary'
+  variant = 'secondary',
+  testId
 }) => {
   const getClass = () => {
     if (disabled) return 'floating-panel-btn disabled';
@@ -29,7 +31,7 @@ export const PanelButton: React.FC<PanelButtonProps> = ({
   };
 
   return (
-    <button className={getClass()} title={tooltip} onClick={onClick} disabled={disabled}>
+    <button className={getClass()} title={tooltip} onClick={onClick} disabled={disabled} data-testid={testId}>
       <i className={`fas ${icon}`}></i>
     </button>
   );
@@ -43,13 +45,15 @@ interface DrawerButtonProps {
   tooltip: string;
   onClick?: () => void;
   variant?: 'default' | 'danger';
+  testId?: string;
 }
 
 export const DrawerButton: React.FC<DrawerButtonProps> = ({
   icon,
   tooltip,
   onClick,
-  variant = 'default'
+  variant = 'default',
+  testId
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,6 +65,7 @@ export const DrawerButton: React.FC<DrawerButtonProps> = ({
       className={`floating-panel-btn ${variant === 'danger' ? 'danger' : ''}`}
       title={tooltip}
       onClick={handleClick}
+      data-testid={testId}
     >
       <i className={`fas ${icon}`}></i>
     </button>

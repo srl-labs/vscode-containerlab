@@ -92,6 +92,7 @@ export const FreeTextEditorPanel: React.FC<FreeTextEditorPanelProps> = ({
       hasChanges={hasChanges && canSave}
       storageKey="free-text-editor"
       width={400}
+      testId="free-text-editor"
     >
       <FreeTextFormContent
         formData={formData}

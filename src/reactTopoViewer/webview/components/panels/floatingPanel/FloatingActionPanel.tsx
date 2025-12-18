@@ -160,6 +160,7 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
           className={buildLockButtonClass(isLocked, isShaking)}
           title={isLocked ? 'Unlock Lab' : 'Lock Lab'}
           onClick={handleLockClick}
+          data-testid="floating-panel-lock-btn"
         >
           <i className={`fas ${isLocked ? 'fa-lock' : 'fa-unlock'}`}></i>
         </button>
@@ -180,6 +181,7 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
           icon={isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}
           tooltip={isCollapsed ? 'Expand Panel' : 'Collapse Panel'}
           onClick={handleCollapseClick}
+          testId="floating-panel-collapse-btn"
         />
       </div>
     );
@@ -305,6 +307,7 @@ const PanelContent: React.FC<PanelContentProps> = ({
           onSelect={handleNodeSelect}
           onLockedClick={onLockedClick}
           customNodeActions={customNodeActions}
+          testId="floating-panel-add-node-btn"
         />
       )}
       {!isViewerMode && (
@@ -317,10 +320,11 @@ const PanelContent: React.FC<PanelContentProps> = ({
           filterPlaceholder="Filter networks..."
           onSelect={handleNetworkSelect}
           onLockedClick={onLockedClick}
+          testId="floating-panel-add-network-btn"
         />
       )}
-      <PanelButton icon="fa-layer-group" tooltip="Add Group" onClick={createLockAwareHandler(onAddGroup)} disabled={isLocked} />
-      <PanelButton icon="fa-font" tooltip="Add Text" onClick={createLockAwareHandler(onAddText)} disabled={isLocked} />
+      <PanelButton icon="fa-layer-group" tooltip="Add Group" onClick={createLockAwareHandler(onAddGroup)} disabled={isLocked} testId="floating-panel-add-group-btn" />
+      <PanelButton icon="fa-font" tooltip="Add Text" onClick={createLockAwareHandler(onAddText)} disabled={isLocked} testId="floating-panel-add-text-btn" />
       <PanelButtonWithDropdown
         icon="fa-shapes"
         tooltip="Add Shapes"
@@ -330,9 +334,10 @@ const PanelContent: React.FC<PanelContentProps> = ({
         filterPlaceholder="Filter shapes..."
         onSelect={handleShapeSelect}
         onLockedClick={onLockedClick}
+        testId="floating-panel-add-shapes-btn"
       />
       {!isViewerMode && (
-        <PanelButton icon="fa-link" tooltip="Bulk Link Devices" onClick={createLockAwareHandler(onAddBulkLink)} disabled={isLocked} />
+        <PanelButton icon="fa-link" tooltip="Bulk Link Devices" onClick={createLockAwareHandler(onAddBulkLink)} disabled={isLocked} testId="floating-panel-bulk-link-btn" />
       )}
     </div>
   );

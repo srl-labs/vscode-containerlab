@@ -9,6 +9,7 @@ export * from './useAppFreeTextAnnotations';
 export { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
 export { useAppFreeShapeAnnotations } from './useAppFreeShapeAnnotations';
 export { useFreeShapeUndoRedoHandlers, useFreeShapeAnnotationApplier } from './useFreeShapeUndoRedoHandlers';
+export { useFreeTextUndoRedoHandlers, useFreeTextAnnotationApplier } from './useFreeTextUndoRedoHandlers';
 export { useCombinedAnnotationShortcuts } from './useCombinedAnnotationShortcuts';
 export * from './useAnnotationGroupMove';
 export * from './useAnnotationBackgroundClear';

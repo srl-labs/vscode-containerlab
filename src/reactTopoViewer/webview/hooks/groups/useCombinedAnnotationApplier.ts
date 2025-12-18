@@ -12,6 +12,7 @@ import { log } from '../../utils/logger';
 interface UseCombinedAnnotationApplierOptions {
   groups: UseGroupsReturn;
   applyFreeShapeChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
+  applyFreeTextChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
   /** Callback to update text annotation position (for group move undo/redo) */
   onUpdateTextAnnotation?: (id: string, updates: Partial<FreeTextAnnotation>) => void;
   /** Callback to update shape annotation position (for group move undo/redo) */
@@ -92,7 +93,7 @@ export interface UseCombinedAnnotationApplierReturn {
 export function useCombinedAnnotationApplier(
   options: UseCombinedAnnotationApplierOptions
 ): UseCombinedAnnotationApplierReturn {
-  const { groups, applyFreeShapeChange, onUpdateTextAnnotation, onUpdateShapeAnnotation } = options;
+  const { groups, applyFreeShapeChange, applyFreeTextChange, onUpdateTextAnnotation, onUpdateShapeAnnotation } = options;
 
   // Group annotation applier for undo/redo
   const { applyGroupAnnotationChange } = useGroupAnnotationApplier(groups);
@@ -102,11 +103,13 @@ export function useCombinedAnnotationApplier(
     (action: UndoRedoActionAnnotation, isUndo: boolean) => {
       if (action.annotationType === 'freeShape') {
         applyFreeShapeChange(action, isUndo);
+      } else if (action.annotationType === 'freeText') {
+        applyFreeTextChange(action, isUndo);
       } else if (action.annotationType === 'group') {
         applyGroupAnnotationChange(action, isUndo);
       }
     },
-    [applyFreeShapeChange, applyGroupAnnotationChange]
+    [applyFreeShapeChange, applyFreeTextChange, applyGroupAnnotationChange]
   );
 
   // Group move change handler for undo/redo (group + member nodes + descendant groups + annotations)

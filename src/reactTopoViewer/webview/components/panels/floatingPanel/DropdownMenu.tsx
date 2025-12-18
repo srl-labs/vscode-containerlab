@@ -163,6 +163,7 @@ interface PanelButtonWithDropdownProps {
   onLockedClick?: () => void;
   /** Optional actions for custom node items */
   customNodeActions?: CustomNodeActions;
+  testId?: string;
 }
 
 export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = ({
@@ -174,7 +175,8 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   filterPlaceholder = 'Filter...',
   onSelect,
   onLockedClick,
-  customNodeActions
+  customNodeActions,
+  testId
 }) => {
   const {
     isOpen, filter, focusedIndex,
@@ -220,6 +222,7 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
         title={tooltip}
         disabled={false}
         onClick={handleButtonClick}
+        data-testid={testId}
       >
         <i className={`fas ${icon}`}></i>
       </button>

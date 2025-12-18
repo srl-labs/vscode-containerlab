@@ -51,6 +51,8 @@ import {
   useAppFreeShapeAnnotations,
   useFreeShapeAnnotationApplier,
   useFreeShapeUndoRedoHandlers,
+  useFreeTextAnnotationApplier,
+  useFreeTextUndoRedoHandlers,
   useAnnotationEffects,
   useAddShapesHandler,
   // Group hooks
@@ -447,6 +449,10 @@ export const App: React.FC = () => {
   const { isApplyingAnnotationUndoRedo, applyAnnotationChange: applyFreeShapeChange } =
     useFreeShapeAnnotationApplier(freeShapeAnnotations);
 
+  // Free text annotation applier for undo/redo
+  const { isApplyingAnnotationUndoRedo: isApplyingTextUndoRedo, applyAnnotationChange: applyFreeTextChange } =
+    useFreeTextAnnotationApplier(freeTextAnnotations);
+
   // Assign geo coordinates to annotations when geomap initializes
   // This runs once when the geomap becomes available and assigns lat/lng to any
   // freeText, freeShape, or group annotation that doesn't have geoCoordinates yet
@@ -517,10 +523,11 @@ export const App: React.FC = () => {
     mapLibreState
   ]);
 
-  // Combined annotation change handler for undo/redo (freeShape + group)
+  // Combined annotation change handler for undo/redo (freeText + freeShape + group)
   const { applyAnnotationChange, applyGroupMoveChange } = useCombinedAnnotationApplier({
     groups,
     applyFreeShapeChange,
+    applyFreeTextChange,
     // Pass annotation update callbacks for group move undo/redo
     onUpdateTextAnnotation: freeTextAnnotations.updateAnnotation,
     onUpdateShapeAnnotation: freeShapeAnnotations.updateAnnotation
@@ -556,6 +563,13 @@ export const App: React.FC = () => {
 
   // Get isApplyingGroupUndoRedo ref from group undo handlers
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
+
+  // Free text undo handlers - wraps save/delete with undo recording
+  const freeTextUndoHandlers = useFreeTextUndoRedoHandlers(
+    freeTextAnnotations,
+    undoRedo,
+    isApplyingTextUndoRedo
+  );
 
   // Expose undoRedo and handlers for E2E testing (dev mode only)
   React.useEffect(() => {
@@ -909,6 +923,14 @@ export const App: React.FC = () => {
     enableAddShapeMode: freeShapeAnnotations.enableAddShapeMode
   });
 
+  // Wrapper for FreeTextEditorPanel's onSave to record undo actions
+  // Detects if annotation is new (text was empty) vs editing existing
+  const handleSaveTextAnnotationWithUndo = React.useCallback((annotation: Parameters<typeof freeTextAnnotations.saveAnnotation>[0]) => {
+    // Check if this is a new annotation (editingAnnotation had empty text)
+    const isNew = freeTextAnnotations.editingAnnotation?.text === '';
+    freeTextUndoHandlers.saveAnnotationWithUndo(annotation, isNew);
+  }, [freeTextAnnotations.editingAnnotation, freeTextUndoHandlers]);
+
   // Set up keyboard shortcuts with unified clipboard
   // The unified clipboard handles everything (nodes, groups, annotations) together
   // Handlers are passed to BOTH graph and annotation callbacks because:
@@ -1147,9 +1169,9 @@ export const App: React.FC = () => {
         <FreeTextEditorPanel
           isVisible={!!freeTextAnnotations.editingAnnotation}
           annotation={freeTextAnnotations.editingAnnotation}
-          onSave={freeTextAnnotations.saveAnnotation}
+          onSave={handleSaveTextAnnotationWithUndo}
           onClose={freeTextAnnotations.closeEditor}
-          onDelete={freeTextAnnotations.deleteAnnotation}
+          onDelete={freeTextUndoHandlers.deleteAnnotationWithUndo}
         />
         <FreeShapeEditorPanel
           isVisible={!!freeShapeAnnotations.editingAnnotation}

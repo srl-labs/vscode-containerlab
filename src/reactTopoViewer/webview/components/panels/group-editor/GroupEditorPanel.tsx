@@ -112,6 +112,7 @@ export const GroupEditorPanel: React.FC<GroupEditorPanelProps> = ({
       hasChanges={hasChanges}
       storageKey="group-editor"
       width={380}
+      testId="group-editor"
     >
       <GroupFormContent
         formData={formData}

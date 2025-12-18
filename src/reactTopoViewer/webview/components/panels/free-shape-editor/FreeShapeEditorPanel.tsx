@@ -93,6 +93,7 @@ export const FreeShapeEditorPanel: React.FC<FreeShapeEditorPanelProps> = ({
       hasChanges={hasChanges}
       storageKey="free-shape-editor"
       width={380}
+      testId="free-shape-editor"
     >
       <FreeShapeFormContent
         formData={formData}

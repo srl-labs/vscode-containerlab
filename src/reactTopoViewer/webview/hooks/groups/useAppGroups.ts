@@ -126,12 +126,22 @@ function useGroupDataLoader(
       const msgNodeAnnotations = data.nodeAnnotations;
       initializeMembership(extractMemberships(msgNodeAnnotations));
 
-      // IMPORTANT: Do NOT reload groups from topology-refresh messages.
-      // Groups are managed separately via save-group-style-annotations and
-      // have their own undo/redo handling. Reloading from topology-refresh
-      // causes race conditions where stale data overwrites local changes
-      // (during paste, undo, etc.).
-      // Groups are only loaded on initial page load (above), not on topology-refresh.
+      // Group reload logic:
+      // - Normally we DON'T reload groups from topology-refresh to avoid race conditions
+      //   during undo/redo where stale data could overwrite in-flight changes
+      // - HOWEVER, if React has no groups but the file has groups, this indicates
+      //   the topology was reloaded from file and we should sync the state
+      // This handles the "reload from file" case (BUG-NESTED-GROUP-CREATE-001)
+      const msgGroups = data.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
+      const hasMessageGroups = msgGroups && msgGroups.length > 0;
+      const hasNoLocalGroups = currentGroupsRef.current.length === 0;
+
+      if (hasMessageGroups && hasNoLocalGroups) {
+        const migratedGroups = migrateLegacyGroups(msgGroups, msgNodeAnnotations);
+        if (migratedGroups.length) {
+          loadGroups(migratedGroups, false);
+        }
+      }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
