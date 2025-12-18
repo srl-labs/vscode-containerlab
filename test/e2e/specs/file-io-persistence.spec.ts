@@ -112,9 +112,6 @@ test.describe.serial('File I/O Persistence', () => {
       const spine1Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
       const spine2Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine2');
 
-      // Get initial file positions for comparison
-      const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-
       // Both positions in file should match Cytoscape positions (with some tolerance)
       expect(Math.abs(spine1Updated!.position!.x - spine1AfterDrag1.x)).toBeLessThan(5);
       expect(Math.abs(spine2Updated!.position!.x - spine2AfterDrag2.x)).toBeLessThan(5);
