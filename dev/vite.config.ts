@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { fileApiPlugin } from './server/fileApi';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nodeModules = path.resolve(__dirname, '../node_modules');
@@ -12,6 +13,8 @@ export default defineConfig({
       // Disable Fast Refresh to avoid hook-related HMR issues
       fastRefresh: false,
     }),
+    // File API middleware for YAML and annotation file operations
+    fileApiPlugin(),
   ],
   root: __dirname,
   publicDir: path.resolve(__dirname, '../resources'),

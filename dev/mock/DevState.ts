@@ -38,6 +38,10 @@ export interface DevState {
   splitViewOpen: boolean;
   /** Lab name for YAML generation */
   labName: string;
+  /** Currently loaded topology file path (relative to dev/topologies/) */
+  currentFilePath: string | null;
+  /** Whether there are unsaved changes */
+  isDirty: boolean;
 }
 
 export type StateListener = (state: Readonly<DevState>) => void;
@@ -69,7 +73,9 @@ export function createDefaultState(): DevState {
     customNodes: [],
     defaultCustomNode: null,
     splitViewOpen: false,
-    labName: 'dev-topology'
+    labName: 'dev-topology',
+    currentFilePath: null,
+    isDirty: false
   };
 }
 
@@ -135,6 +141,16 @@ export class DevStateManager {
   /** Check if split view is open */
   isSplitViewOpen(): boolean {
     return this.state.splitViewOpen;
+  }
+
+  /** Get current file path */
+  getCurrentFilePath(): string | null {
+    return this.state.currentFilePath;
+  }
+
+  /** Check if there are unsaved changes */
+  getIsDirty(): boolean {
+    return this.state.isDirty;
   }
 
   // --------------------------------------------------------------------------
@@ -205,6 +221,34 @@ export class DevStateManager {
   setLabName(labName: string): void {
     this.state = { ...this.state, labName };
     this.notify();
+  }
+
+  /** Set current file path */
+  setCurrentFilePath(filePath: string | null): void {
+    this.state = { ...this.state, currentFilePath: filePath };
+    this.notify();
+  }
+
+  /** Set dirty flag */
+  setDirty(isDirty: boolean): void {
+    this.state = { ...this.state, isDirty };
+    this.notify();
+  }
+
+  /** Mark state as dirty (after any modification) */
+  markDirty(): void {
+    if (!this.state.isDirty) {
+      this.state = { ...this.state, isDirty: true };
+      this.notify();
+    }
+  }
+
+  /** Mark state as clean (after save) */
+  markClean(): void {
+    if (this.state.isDirty) {
+      this.state = { ...this.state, isDirty: false };
+      this.notify();
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -469,6 +513,24 @@ export class DevStateManager {
       currentElements: elements,
       currentAnnotations: annotations,
       labName: labName || this.state.labName
+    };
+    this.notify();
+  }
+
+  /** Load a topology from file (sets file path and marks clean) */
+  loadTopologyFromFile(
+    filePath: string,
+    elements: CyElement[],
+    annotations: TopologyAnnotations,
+    labName?: string
+  ): void {
+    this.state = {
+      ...this.state,
+      currentElements: elements,
+      currentAnnotations: annotations,
+      labName: labName || this.state.labName,
+      currentFilePath: filePath,
+      isDirty: false
     };
     this.notify();
   }

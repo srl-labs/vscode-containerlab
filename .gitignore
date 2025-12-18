@@ -20,6 +20,8 @@ playwright/.cache/
 clab-*/
 *.clab.yml*
 *.clab.yaml*
+!dev/topologies-original/**
+dev/topologies/
 CLAUDE.md
 AGENTS.md
 patch.sh

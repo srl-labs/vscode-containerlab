@@ -110,8 +110,9 @@ export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOpti
     // Also listen for topology data updates
     const handleMessage = (event: MessageEvent<TopologyDataMessage>) => {
       const message = event.data;
-      if (message?.type === 'topology-data' && message.data?.freeTextAnnotations) {
-        loadAnnotations(message.data.freeTextAnnotations);
+      if (message?.type === 'topology-data') {
+        // Always load to clear old annotations if empty
+        loadAnnotations(message.data?.freeTextAnnotations || []);
       }
     };
     window.addEventListener('message', handleMessage);

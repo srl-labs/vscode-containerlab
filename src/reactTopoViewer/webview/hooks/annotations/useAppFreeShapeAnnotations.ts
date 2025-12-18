@@ -47,8 +47,9 @@ export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOp
 
     const handleMessage = (event: MessageEvent<TopologyDataMessage>) => {
       const message = event.data;
-      if (message?.type === 'topology-data' && message.data?.freeShapeAnnotations) {
-        loadAnnotations(message.data.freeShapeAnnotations);
+      if (message?.type === 'topology-data') {
+        // Always load to clear old annotations if empty
+        loadAnnotations(message.data?.freeShapeAnnotations || []);
       }
     };
     window.addEventListener('message', handleMessage);

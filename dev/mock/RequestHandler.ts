@@ -38,7 +38,11 @@ export type EndpointName =
   | 'deployLab'
   | 'destroyLab'
   | 'redeployLab'
-  | 'get-topology-data';
+  | 'get-topology-data'
+  | 'list-topology-files'
+  | 'load-topology-file'
+  | 'save-topology-file'
+  | 'save-annotations-file';
 
 // ============================================================================
 // RequestHandler Class
@@ -121,6 +125,22 @@ export class RequestHandler {
           result = this.handleViewportSave(parsedPayload);
           break;
 
+        case 'list-topology-files':
+          result = await this.handleListTopologyFiles();
+          break;
+
+        case 'load-topology-file':
+          result = await this.handleLoadTopologyFile(parsedPayload);
+          break;
+
+        case 'save-topology-file':
+          result = await this.handleSaveTopologyFile(parsedPayload);
+          break;
+
+        case 'save-annotations-file':
+          result = await this.handleSaveAnnotationsFile(parsedPayload);
+          break;
+
         default:
           throw new Error(`Unknown endpoint: ${endpointName}`);
       }
@@ -197,15 +217,46 @@ export class RequestHandler {
     return { success: true };
   }
 
-  private handleLoadAnnotations(): unknown {
+  private async handleLoadAnnotations(): Promise<unknown> {
+    const filename = this.stateManager.getCurrentFilePath();
+    if (filename) {
+      // Load from file
+      try {
+        const response = await fetch(`/api/annotations/${encodeURIComponent(filename)}`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          return result.data;
+        }
+      } catch (error) {
+        console.warn('[RequestHandler] Failed to load annotations from file, using state:', error);
+      }
+    }
+    // Fallback to state
     return this.stateManager.getAnnotations();
   }
 
-  private handleSaveAnnotations(
+  private async handleSaveAnnotations(
     annotations: Record<string, unknown>
-  ): unknown {
+  ): Promise<unknown> {
     if (annotations) {
+      // Update state
       this.stateManager.updateAnnotations(annotations);
+
+      // Save to file if we have a file path
+      const filename = this.stateManager.getCurrentFilePath();
+      if (filename) {
+        try {
+          const fullAnnotations = this.stateManager.getAnnotations();
+          await fetch(`/api/annotations/${encodeURIComponent(filename)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fullAnnotations)
+          });
+          console.log('%c[File API]', 'color: #4CAF50;', `Saved annotations to ${filename}`);
+        } catch (error) {
+          console.warn('[RequestHandler] Failed to save annotations to file:', error);
+        }
+      }
     }
     return { success: true };
   }
@@ -247,5 +298,141 @@ export class RequestHandler {
       viewport
     );
     return { success: true };
+  }
+
+  // --------------------------------------------------------------------------
+  // File API Endpoints
+  // --------------------------------------------------------------------------
+
+  private async handleListTopologyFiles(): Promise<unknown> {
+    try {
+      const response = await fetch('/api/topologies');
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to list files');
+      }
+      console.log(
+        '%c[File API]',
+        'color: #4CAF50;',
+        'Listed topology files:',
+        result.data
+      );
+      return result.data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('%c[File API Error]', 'color: #f44336;', message);
+      throw error;
+    }
+  }
+
+  private async handleLoadTopologyFile(
+    payload: { filename: string }
+  ): Promise<unknown> {
+    const { filename } = payload;
+    if (!filename) {
+      throw new Error('Filename is required');
+    }
+
+    try {
+      // Fetch parsed elements from API
+      const response = await fetch(`/api/topology/${encodeURIComponent(filename)}/elements`);
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load topology');
+      }
+
+      const { elements, annotations, labName } = result.data;
+
+      // Update state manager
+      this.stateManager.loadTopologyFromFile(filename, elements, annotations, labName);
+
+      console.log(
+        '%c[File API]',
+        'color: #4CAF50;',
+        `Loaded topology from ${filename}:`,
+        { elements: elements.length, labName }
+      );
+
+      return {
+        success: true,
+        elements,
+        annotations,
+        labName
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('%c[File API Error]', 'color: #f44336;', message);
+      throw error;
+    }
+  }
+
+  private async handleSaveTopologyFile(
+    payload: { content: string; filename?: string }
+  ): Promise<unknown> {
+    const filename = payload.filename || this.stateManager.getCurrentFilePath();
+    if (!filename) {
+      throw new Error('No file to save to');
+    }
+
+    try {
+      const response = await fetch(`/api/topology/${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: payload.content })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save topology');
+      }
+
+      this.stateManager.markClean();
+      console.log(
+        '%c[File API]',
+        'color: #4CAF50;',
+        `Saved topology to ${filename}`
+      );
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('%c[File API Error]', 'color: #f44336;', message);
+      throw error;
+    }
+  }
+
+  private async handleSaveAnnotationsFile(
+    payload: { annotations: Record<string, unknown>; filename?: string }
+  ): Promise<unknown> {
+    const filename = payload.filename || this.stateManager.getCurrentFilePath();
+    if (!filename) {
+      throw new Error('No file to save to');
+    }
+
+    try {
+      const response = await fetch(`/api/annotations/${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload.annotations)
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save annotations');
+      }
+
+      console.log(
+        '%c[File API]',
+        'color: #4CAF50;',
+        `Saved annotations for ${filename}`
+      );
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('%c[File API Error]', 'color: #f44336;', message);
+      throw error;
+    }
   }
 }

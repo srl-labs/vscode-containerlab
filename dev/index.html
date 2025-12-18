@@ -340,17 +340,26 @@
     <h3>Dev Settings</h3>
 
     <div class="dev-settings-section">
-      <div class="dev-settings-label">Topology</div>
-      <div class="dev-settings-buttons">
-        <button class="dev-settings-btn" onclick="loadTopo('sample')" title="Spine-leaf topology without annotations.json (triggers COSE layout)">Sample</button>
-        <button class="dev-settings-btn" onclick="loadTopo('sampleWithAnnotations')" title="Spine-leaf topology with saved positions and annotations">Sample + Annot.</button>
-        <button class="dev-settings-btn" onclick="loadTopo('annotated')" title="DC topology with groups, text labels, and shapes">Annotated</button>
-        <button class="dev-settings-btn" onclick="loadTopo('network')" title="All network types: host, mgmt-net, macvlan, vxlan, vxlan-stitch, dummy, bridge, ovs-bridge">Network</button>
-        <button class="dev-settings-btn" onclick="loadTopo('empty')" title="Empty canvas - no nodes or links">Empty</button>
-        <button class="dev-settings-btn" onclick="loadTopo('large')">Large (25)</button>
-        <button class="dev-settings-btn" onclick="loadTopo('large100')">Large (100)</button>
-        <button class="dev-settings-btn" onclick="loadTopo('large1000')">Massive (1000)</button>
+      <div class="dev-settings-label">Topology Files</div>
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <select id="topologyFileSelect" onchange="loadSelectedFile()" style="
+          flex: 1;
+          padding: 5px 8px;
+          background: var(--vscode-dropdown-background);
+          color: var(--vscode-dropdown-foreground);
+          border: 1px solid var(--vscode-dropdown-border);
+          border-radius: 4px;
+          font-size: 11px;
+          cursor: pointer;
+        ">
+          <option value="">Loading...</option>
+        </select>
+        <button class="dev-settings-btn" onclick="refreshFileList()" title="Refresh file list">↻</button>
       </div>
+      <div style="display: flex; gap: 6px; align-items: center; margin-top: 6px;">
+        <button class="dev-settings-btn" onclick="resetFiles()" title="Reset all files to original state" style="color: #f44336; flex: 1;">⟲ Reset Files</button>
+      </div>
+      <div id="fileLoadStatus" style="font-size: 10px; color: var(--vscode-descriptionForeground); margin-top: 4px;"></div>
     </div>
 
     <div class="dev-settings-section">
@@ -381,13 +390,13 @@
   <!-- Split View Panel (must come after #root for flexbox to position on right) -->
   <div id="splitViewPanel">
     <div class="split-view-header">
-      <span>dev-topology.clab.yml</span>
+      <span id="splitViewFilePath">No file loaded</span>
       <button class="split-view-close" onclick="toggleSplitView()" title="Close">&times;</button>
     </div>
     <div class="split-view-content">
-      <div class="split-view-section-label">dev-topology.clab.yml</div>
+      <div class="split-view-section-label" id="splitViewYamlLabel">topology.clab.yml</div>
       <pre class="split-view-code" id="yamlContent"># Loading...</pre>
-      <div class="split-view-section-label">dev-topology.clab.yml.annotations.json</div>
+      <div class="split-view-section-label" id="splitViewAnnotLabel">topology.annotations.json</div>
       <pre class="split-view-code" id="annotationsContent">{}</pre>
     </div>
   </div>
@@ -402,10 +411,6 @@
       document.getElementById('themeSwitch').classList.toggle('on', isLight);
     }
 
-    function loadTopo(name) {
-      if (window.__DEV__) window.__DEV__.loadTopology(name);
-    }
-
     function setMode(mode) {
       if (window.__DEV__) window.__DEV__.setMode(mode);
       document.getElementById('modeEdit').classList.toggle('active', mode === 'edit');
@@ -416,6 +421,95 @@
       if (window.__DEV__) window.__DEV__.toggleSplitView();
     }
 
+    // Reset all files to original state
+    async function resetFiles() {
+      updateFileStatus('Resetting files...');
+
+      try {
+        const response = await fetch('/api/reset', { method: 'POST' });
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to reset files');
+        }
+
+        // Reload the page
+        window.location.reload();
+      } catch (error) {
+        console.error('Failed to reset files:', error);
+        updateFileStatus('Error: ' + error.message);
+      }
+    }
+
+    // File selector functions
+    async function refreshFileList() {
+      const select = document.getElementById('topologyFileSelect');
+      select.innerHTML = '<option value="">Loading...</option>';
+      updateFileStatus('Refreshing file list...');
+
+      try {
+        const response = await fetch('/api/topologies');
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to list files');
+        }
+
+        select.innerHTML = '<option value="">-- Select a file --</option>';
+        for (const file of result.data) {
+          const option = document.createElement('option');
+          option.value = file.filename;
+          option.textContent = file.filename + (file.hasAnnotations ? ' (+ annotations)' : '');
+          select.appendChild(option);
+        }
+
+        updateFileStatus('Found ' + result.data.length + ' topology files');
+
+        // Select current file if one is loaded
+        if (window.__DEV__) {
+          const currentFile = window.__DEV__.getCurrentFile();
+          if (currentFile) {
+            select.value = currentFile;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load file list:', error);
+        select.innerHTML = '<option value="">Error loading files</option>';
+        updateFileStatus('Error: ' + error.message);
+      }
+    }
+
+    async function loadSelectedFile() {
+      const select = document.getElementById('topologyFileSelect');
+      const filename = select.value;
+
+      if (!filename) return;
+
+      updateFileStatus('Loading ' + filename + '...');
+
+      try {
+        if (window.__DEV__) {
+          await window.__DEV__.loadTopologyFile(filename);
+          updateFileStatus('Loaded: ' + filename);
+
+          // Update split view labels
+          document.getElementById('splitViewFilePath').textContent = 'File: ' + filename;
+          document.getElementById('splitViewYamlLabel').textContent = filename;
+          document.getElementById('splitViewAnnotLabel').textContent = filename + '.annotations.json';
+        }
+      } catch (error) {
+        console.error('Failed to load file:', error);
+        updateFileStatus('Error: ' + error.message);
+      }
+    }
+
+    function updateFileStatus(message) {
+      const status = document.getElementById('fileLoadStatus');
+      if (status) {
+        status.textContent = message;
+      }
+    }
+
     // Close panel when clicking outside
     document.addEventListener('click', function(e) {
       const panel = document.getElementById('devSettingsPanel');
@@ -424,6 +518,19 @@
         panel.classList.remove('open');
       }
     });
+
+    // Initialize file list when page loads and __DEV__ is available
+    function initFileSelector() {
+      if (window.__DEV__) {
+        refreshFileList();
+      } else {
+        // Wait for __DEV__ to be available
+        setTimeout(initFileSelector, 100);
+      }
+    }
+
+    // Start initialization
+    setTimeout(initFileSelector, 200);
   </script>
   <script type="module" src="./main.tsx"></script>
 </body>

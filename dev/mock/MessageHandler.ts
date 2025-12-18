@@ -282,17 +282,24 @@ export class MessageHandler {
     switch (type) {
       case 'create-node':
         this.handleCreateNode(msg);
+        // Save both YAML and annotations (for position)
+        this.saveYamlToFile();
+        this.saveAnnotationsToFile();
         break;
       case 'save-node-editor':
       case 'apply-node-editor':
         this.handleSaveNodeEditor(msg);
+        this.saveYamlToFile();
+        this.saveAnnotationsToFile();
         break;
       case 'create-link':
         this.handleCreateLink(msg);
+        this.saveYamlToFile();
         break;
       case 'save-link-editor':
       case 'apply-link-editor':
         this.handleSaveLinkEditor(msg);
+        this.saveYamlToFile();
         break;
       case 'save-lab-settings':
         console.log('%c[Mock]', 'color: #4CAF50;', 'Lab settings:', msg);
@@ -334,26 +341,30 @@ export class MessageHandler {
     const nodeData = msg.nodeData || (msg.payload as Record<string, unknown>);
     if (!nodeData) return;
 
-    const nodeId = (nodeData.id || nodeData.name) as string;
-    if (!nodeId) return;
+    // In containerlab, the node name IS the ID in YAML
+    // nodeData.name = the new name user entered
+    // nodeData.id = original cytoscape ID (may differ from name after rename)
+    const newName = (nodeData.name as string) || (nodeData.id as string);
+    if (!newName) return;
 
-    // Handle rename if oldName is different
+    // Handle rename if oldName is provided and different from new name
     const oldName = msg.oldName as string | undefined;
-    if (oldName && oldName !== nodeId) {
+    if (oldName && oldName !== newName) {
+      console.log('%c[Mock]', 'color: #4CAF50;', `Renaming node: ${oldName} -> ${newName}`);
       // This is a rename - need to update the node ID
       const elements = this.stateManager.getElements();
       const updated = elements.map(el => {
         if (el.group === 'nodes' && el.data.id === oldName) {
           return {
             ...el,
-            data: { ...el.data, ...nodeData, id: nodeId }
+            data: { ...el.data, ...nodeData, id: newName, name: newName }
           };
         }
         // Update edges that reference the old name
         if (el.group === 'edges') {
           const newData = { ...el.data };
-          if (newData.source === oldName) newData.source = nodeId;
-          if (newData.target === oldName) newData.target = nodeId;
+          if (newData.source === oldName) newData.source = newName;
+          if (newData.target === oldName) newData.target = newName;
           return { ...el, data: newData };
         }
         return el;
@@ -363,16 +374,17 @@ export class MessageHandler {
       // Update annotations
       const annotations = this.stateManager.getAnnotations();
       const nodeAnnotations = (annotations.nodeAnnotations || []).map(a =>
-        a.id === oldName ? { ...a, id: nodeId } : a
+        a.id === oldName ? { ...a, id: newName } : a
       );
       this.stateManager.updateAnnotations({ nodeAnnotations });
     } else {
-      // Just update the node data
-      this.stateManager.updateNodeData(nodeId, nodeData);
+      // Just update the node data (no rename)
+      const existingId = (nodeData.id as string) || newName;
+      this.stateManager.updateNodeData(existingId, nodeData);
     }
 
-    // Broadcast update
-    this.broadcastTopologyData();
+    // Note: Don't broadcast - webview already has the data.
+    // Real extension just persists to files, doesn't reload canvas.
   }
 
   private handleCreateLink(msg: WebviewMessage): void {
@@ -424,8 +436,8 @@ export class MessageHandler {
       labels: linkData.labels
     });
 
-    // Broadcast update
-    this.broadcastTopologyData();
+    // Note: Don't broadcast - webview already has the data.
+    // Real extension just persists to files, doesn't reload canvas.
   }
 
   // --------------------------------------------------------------------------
@@ -439,6 +451,9 @@ export class MessageHandler {
       const nodeId = msg.nodeId as string;
       if (nodeId) {
         this.stateManager.removeNode(nodeId);
+        // Save both YAML and annotations
+        this.saveYamlToFile();
+        this.saveAnnotationsToFile();
         this.updateSplitView();
         this.maybeBroadcastTopology();
       }
@@ -446,6 +461,8 @@ export class MessageHandler {
       const edgeId = msg.edgeId as string;
       if (edgeId) {
         this.stateManager.removeEdge(edgeId);
+        // Save YAML
+        this.saveYamlToFile();
         this.updateSplitView();
         this.maybeBroadcastTopology();
       }
@@ -481,6 +498,9 @@ export class MessageHandler {
         this.handleSaveNodeGroupMembership(msg);
         break;
     }
+
+    // Save annotations to file
+    this.saveAnnotationsToFile();
 
     this.updateSplitView();
   }
@@ -685,6 +705,117 @@ export class MessageHandler {
     if (this.stateManager.isInBatch()) {
       this.stateManager.setPendingBroadcast(true);
     }
+  }
+
+  /** Build API URL with optional session ID */
+  private buildApiUrl(path: string): string {
+    const sessionId = (window as any).__TEST_SESSION_ID__;
+    if (sessionId) {
+      const separator = path.includes('?') ? '&' : '?';
+      return `${path}${separator}sessionId=${sessionId}`;
+    }
+    return path;
+  }
+
+  /** Save current annotations to file (if a file is loaded) */
+  private saveAnnotationsToFile(): void {
+    const filename = this.stateManager.getCurrentFilePath();
+    if (!filename) return;
+
+    const annotations = this.stateManager.getAnnotations();
+    const url = this.buildApiUrl(`/api/annotations/${encodeURIComponent(filename)}`);
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(annotations)
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          console.log('%c[File API]', 'color: #4CAF50;', `Saved annotations to ${filename}`);
+        } else {
+          console.warn('%c[File API]', 'color: #FF9800;', `Failed to save annotations: ${result.error}`);
+        }
+      })
+      .catch(err => {
+        console.error('%c[File API Error]', 'color: #f44336;', err);
+      });
+  }
+
+  /** Save current topology to YAML file (if a file is loaded) */
+  private saveYamlToFile(): void {
+    const filename = this.stateManager.getCurrentFilePath();
+    if (!filename) return;
+
+    const state = this.stateManager.getState();
+    const yaml = this.generateYamlFromState(state);
+    const url = this.buildApiUrl(`/api/topology/${encodeURIComponent(filename)}`);
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: yaml })
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          console.log('%c[File API]', 'color: #4CAF50;', `Saved YAML to ${filename}`);
+          this.stateManager.markClean();
+        } else {
+          console.warn('%c[File API]', 'color: #FF9800;', `Failed to save YAML: ${result.error}`);
+        }
+      })
+      .catch(err => {
+        console.error('%c[File API Error]', 'color: #f44336;', err);
+      });
+  }
+
+  /** Generate YAML content from current state */
+  private generateYamlFromState(state: ReturnType<typeof this.stateManager.getState>): string {
+    const nodes = state.currentElements.filter(
+      el => el.group === 'nodes' && el.data.topoViewerRole !== 'cloud'
+    );
+    const edges = state.currentElements.filter(el => el.group === 'edges');
+
+    // Build nodes section
+    const nodesYaml = nodes.map(node => {
+      const data = node.data;
+      // Handle both data structures:
+      // - From TopologyParser: kind/type/image directly on data
+      // - From useNodeCreation: kind/type/image nested in data.extraData
+      const extraData = data.extraData as Record<string, unknown> | undefined;
+      const kind = data.kind || extraData?.kind;
+      const type = data.type || extraData?.type;
+      const image = data.image || extraData?.image;
+
+      const lines = [`    ${data.id}:`];
+      if (kind) lines.push(`      kind: ${kind}`);
+      if (type) lines.push(`      type: ${type}`);
+      if (image) lines.push(`      image: ${image}`);
+      return lines.join('\n');
+    }).join('\n');
+
+    // Build links section - only include edges between actual nodes
+    const nodeIds = new Set(nodes.map(n => n.data.id));
+    const linksYaml = edges
+      .filter(edge => nodeIds.has(edge.data.source as string) && nodeIds.has(edge.data.target as string))
+      .map(edge => {
+        const data = edge.data;
+        const srcEp = data.sourceEndpoint || 'eth1';
+        const tgtEp = data.targetEndpoint || 'eth1';
+        return `    - endpoints: ["${data.source}:${srcEp}", "${data.target}:${tgtEp}"]`;
+      }).join('\n');
+
+    return `name: ${state.labName}
+
+topology:
+  nodes:
+${nodesYaml}
+
+  links:
+${linksYaml}
+`;
   }
 
   /**

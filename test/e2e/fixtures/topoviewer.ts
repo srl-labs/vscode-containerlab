@@ -1,11 +1,19 @@
 import { test as base, Locator } from '@playwright/test';
+import { randomUUID } from 'crypto';
 
 // Test selectors
 const CANVAS_SELECTOR = '[data-testid="cytoscape-canvas"]';
 const APP_SELECTOR = '[data-testid="topoviewer-app"]';
 
 /**
- * Topology names available in dev mode
+ * Generate a unique session ID for test isolation
+ */
+function generateSessionId(): string {
+  return `test-${randomUUID()}`;
+}
+
+/**
+ * Topology names available in dev mode (in-memory)
  */
 type TopologyName =
   | 'sample'
@@ -18,11 +26,49 @@ type TopologyName =
   | 'large1000';
 
 /**
+ * Topology files available in dev/topologies/ (file-based)
+ */
+type TopologyFileName =
+  | 'simple.clab.yml'
+  | 'spine-leaf.clab.yml'
+  | 'datacenter.clab.yml'
+  | 'network.clab.yml'
+  | 'empty.clab.yml'
+  | string; // Allow any filename for dynamic tests
+
+/**
+ * Annotations structure from file API
+ */
+interface TopologyAnnotations {
+  nodeAnnotations?: Array<{ id: string; position?: { x: number; y: number }; group?: string; level?: string }>;
+  freeTextAnnotations?: Array<{ id: string; text: string; position: { x: number; y: number } }>;
+  freeShapeAnnotations?: Array<{ id: string; shapeType: string; position: { x: number; y: number } }>;
+  groupStyleAnnotations?: Array<{ id: string; name: string }>;
+  networkNodeAnnotations?: Array<{ id: string; type: string; label: string; position: { x: number; y: number } }>;
+  aliasEndpointAnnotations?: Array<{ id: string }>;
+}
+
+/**
  * Helper interface for interacting with TopoViewer
  */
 interface TopoViewerPage {
-  /** Navigate to TopoViewer and optionally load a specific topology */
+  /** Navigate to TopoViewer and optionally load a specific topology (in-memory) */
   goto(topology?: TopologyName): Promise<void>;
+
+  /** Navigate to TopoViewer and load a file-based topology (real file I/O) */
+  gotoFile(filename: TopologyFileName): Promise<void>;
+
+  /** Get the currently loaded file path (null if in-memory) */
+  getCurrentFile(): Promise<string | null>;
+
+  /** Read annotations from file API */
+  getAnnotationsFromFile(filename: TopologyFileName): Promise<TopologyAnnotations>;
+
+  /** Read YAML content from file API */
+  getYamlFromFile(filename: TopologyFileName): Promise<string>;
+
+  /** List available topology files */
+  listTopologyFiles(): Promise<Array<{ filename: string; hasAnnotations: boolean }>>;
 
   /** Wait for the canvas to be fully initialized */
   waitForCanvasReady(): Promise<void>;
@@ -121,6 +167,15 @@ interface TopoViewerPage {
 
   /** Check if can redo */
   canRedo(): Promise<boolean>;
+
+  /** Create a node at a specific position */
+  createNode(nodeId: string, position: { x: number; y: number }, kind?: string): Promise<void>;
+
+  /** Create a link between two nodes */
+  createLink(sourceId: string, targetId: string, sourceEndpoint?: string, targetEndpoint?: string): Promise<void>;
+
+  /** Reset all topology and annotation files to defaults (for test isolation) */
+  resetFiles(): Promise<void>;
 }
 
 /**
@@ -128,6 +183,18 @@ interface TopoViewerPage {
  */
 export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
   topoViewerPage: async ({ page }, use) => {
+    // Generate unique session ID for test isolation
+    const sessionId = generateSessionId();
+
+    // Helper to add session ID to API URLs
+    const withSession = (url: string) => {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}sessionId=${sessionId}`;
+    };
+
+    // Initialize session with default files
+    await page.request.post(withSession('/api/reset'));
+
     const topoViewerPage: TopoViewerPage = {
       goto: async (topology: TopologyName = 'sampleWithAnnotations') => {
         await page.goto('/');
@@ -141,6 +208,76 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           // Wait for topology data to propagate
           await page.waitForTimeout(500);
         }
+      },
+
+      gotoFile: async (filename: string) => {
+        await page.goto('/');
+        await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
+
+        // Wait for the page to be ready (including auto-load of default topology)
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.cy !== undefined,
+          { timeout: 15000 }
+        );
+
+        // Store session ID in window for API calls from within the page
+        await page.evaluate((sid) => {
+          (window as any).__TEST_SESSION_ID__ = sid;
+        }, sessionId);
+
+        // Wait a bit for any auto-load to settle
+        await page.waitForTimeout(200);
+
+        // Load file-based topology via dev API with session ID
+        await page.evaluate(async ({ file, sid }) => {
+          await (window as any).__DEV__.loadTopologyFile(file, sid);
+        }, { file: filename, sid: sessionId });
+
+        // Wait for the topology data to propagate and confirm the file is loaded
+        await page.waitForFunction(
+          (expectedFile) => {
+            const currentFile = (window as any).__DEV__?.getCurrentFile?.();
+            return currentFile === expectedFile;
+          },
+          filename,
+          { timeout: 10000 }
+        );
+
+        // Additional wait for graph to stabilize
+        await page.waitForTimeout(300);
+      },
+
+      getCurrentFile: async () => {
+        return await page.evaluate(() => {
+          return (window as any).__DEV__.getCurrentFile();
+        });
+      },
+
+      getAnnotationsFromFile: async (filename: string) => {
+        const response = await page.request.get(withSession(`/api/annotations/${encodeURIComponent(filename)}`));
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to read annotations');
+        }
+        return result.data;
+      },
+
+      getYamlFromFile: async (filename: string) => {
+        const response = await page.request.get(withSession(`/api/topology/${encodeURIComponent(filename)}`));
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to read YAML');
+        }
+        return result.data.content;
+      },
+
+      listTopologyFiles: async () => {
+        const response = await page.request.get(withSession('/api/topologies'));
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to list files');
+        }
+        return result.data;
       },
 
       waitForCanvasReady: async () => {
@@ -427,6 +564,104 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const dev = (window as any).__DEV__;
           return dev?.undoRedo?.canRedo?.() ?? false;
         });
+      },
+
+      createNode: async (nodeId: string, position: { x: number; y: number }, kind = 'nokia_srlinux') => {
+        // Wait for vscode API to be available
+        await page.waitForFunction(() => (window as any).vscode !== undefined, { timeout: 10000 });
+
+        await page.evaluate(
+          ({ nodeId, position, kind }) => {
+            const vscode = (window as any).vscode;
+            if (!vscode) throw new Error('vscode API not available');
+
+            // Create node data matching the structure expected by MessageHandler
+            const nodeData = {
+              id: nodeId,
+              name: nodeId,
+              topoViewerRole: 'router',
+              extraData: {
+                kind,
+                image: 'ghcr.io/nokia/srlinux:latest',
+                longname: '',
+                mgmtIpv4Address: ''
+              }
+            };
+
+            // Also add to cytoscape directly for UI update
+            const dev = (window as any).__DEV__;
+            if (dev?.cy) {
+              dev.cy.add({
+                group: 'nodes',
+                data: nodeData,
+                position
+              });
+            }
+
+            // Send create-node command to backend
+            vscode.postMessage({
+              command: 'create-node',
+              nodeId,
+              nodeData,
+              position
+            });
+          },
+          { nodeId, position, kind }
+        );
+        await page.waitForTimeout(300);
+      },
+
+      createLink: async (
+        sourceId: string,
+        targetId: string,
+        sourceEndpoint = 'eth1',
+        targetEndpoint = 'eth1'
+      ) => {
+        // Wait for vscode API to be available
+        await page.waitForFunction(() => (window as any).vscode !== undefined, { timeout: 10000 });
+
+        await page.evaluate(
+          ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
+            const vscode = (window as any).vscode;
+            if (!vscode) throw new Error('vscode API not available');
+
+            const linkId = `${sourceId}-${targetId}`;
+            const linkData = {
+              id: linkId,
+              source: sourceId,
+              target: targetId,
+              sourceEndpoint,
+              targetEndpoint
+            };
+
+            // Also add to cytoscape directly for UI update
+            const dev = (window as any).__DEV__;
+            if (dev?.cy) {
+              dev.cy.add({
+                group: 'edges',
+                data: linkData
+              });
+            }
+
+            // Send create-link command to backend
+            vscode.postMessage({
+              command: 'create-link',
+              linkData
+            });
+          },
+          { sourceId, targetId, sourceEndpoint, targetEndpoint }
+        );
+        await page.waitForTimeout(300);
+      },
+
+      resetFiles: async () => {
+        const response = await page.request.post(withSession('/api/reset'));
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to reset files');
+        }
+        // Wait for session reset to settle
+        await page.waitForTimeout(100);
       }
     };
 

@@ -124,9 +124,9 @@ function useGroupDataLoader(
       const msgNodeAnnotations = data.nodeAnnotations;
       initializeMembership(extractMemberships(msgNodeAnnotations));
 
-      // Migrate legacy groups and load
+      // Migrate legacy groups and load (always call to clear old groups if empty)
       const msgGroups = migrateLegacyGroups(data.groupStyleAnnotations, msgNodeAnnotations);
-      if (msgGroups.length) loadGroups(msgGroups);
+      loadGroups(msgGroups);
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);

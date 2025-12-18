@@ -11,7 +11,8 @@ export {
   getLayoutOptions,
   createCytoscapeConfig,
   updateCytoscapeElements,
-  handleCytoscapeReady
+  handleCytoscapeReady,
+  applyStubLinkClasses
 } from './init';
 export {
   isCreatingEdge,

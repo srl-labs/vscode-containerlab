@@ -150,7 +150,9 @@ function useNodeEditorHandlers(
         after: data as unknown as Record<string, unknown>
       });
     }
-    sendCommandToExtension('save-node-editor', { nodeData: data });
+    // Include oldName if renaming (name changed from initial)
+    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
+    sendCommandToExtension('save-node-editor', { nodeData: data, oldName });
     initialDataRef.current = null;
     editNode(null);
   }, [editNode, recordPropertyEdit]);
@@ -170,7 +172,9 @@ function useNodeEditorHandlers(
         initialDataRef.current = { ...data };
       }
     }
-    sendCommandToExtension('apply-node-editor', { nodeData: data });
+    // Include oldName if renaming (name changed from initial)
+    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
+    sendCommandToExtension('apply-node-editor', { nodeData: data, oldName });
   }, [recordPropertyEdit]);
 
   return { handleClose, handleSave, handleApply };

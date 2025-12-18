@@ -1,0 +1,5 @@
+name: empty
+
+topology:
+  nodes: {}
+  links: []

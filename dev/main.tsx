@@ -22,32 +22,13 @@ import { createVscodeApiMock, installVscodeApiMock } from './mock/VscodeApiMock'
 import {
   buildInitialData,
   sampleElements,
-  annotatedElements,
-  annotatedTopologyAnnotations,
-  emptyElements,
-  networkElements,
-  generateLargeTopology,
   sampleCustomNodes
 } from './mockData';
 
 
 // ============================================================================
-// Topology Helpers
+// Initialize Mock System
 // ============================================================================
-
-/**
- * Strip positions from elements to simulate no annotations.json (triggers COSE layout)
- */
-function stripPositions(elements: CyElement[]): CyElement[] {
-  return elements.map(el => {
-    if (el.group === 'nodes') {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { position, ...rest } = el;
-      return rest as typeof el;
-    }
-    return el;
-  });
-}
 
 /**
  * Create node annotations from elements with positions
@@ -57,24 +38,6 @@ function createNodeAnnotations(elements: CyElement[]): TopologyAnnotations['node
     .filter(el => el.group === 'nodes' && el.position && el.data.topoViewerRole !== 'cloud')
     .map(el => ({ id: el.data.id as string, position: el.position! }));
 }
-
-/**
- * Create network node annotations from elements
- */
-function createNetworkNodeAnnotations(elements: CyElement[]): any[] {
-  return elements
-    .filter(el => el.group === 'nodes' && el.position && el.data.topoViewerRole === 'cloud')
-    .map(el => ({
-      id: el.data.id as string,
-      type: el.data.type as string || 'host',
-      label: el.data.name as string || el.data.id as string,
-      position: el.position!
-    }));
-}
-
-// ============================================================================
-// Initialize Mock System
-// ============================================================================
 
 // Create default annotations for initial load (just node positions)
 const defaultAnnotations: TopologyAnnotations = {
@@ -113,95 +76,94 @@ const vscodeMock = createVscodeApiMock(messageHandler, { verbose: true });
 installVscodeApiMock(vscodeMock);
 
 // ============================================================================
-// Load Topology Function
+// Load Topology Functions
 // ============================================================================
 
-type TopologyName =
-  | 'sample'
-  | 'sampleWithAnnotations'
-  | 'annotated'
-  | 'network'
-  | 'empty'
-  | 'large'
-  | 'large100'
-  | 'large1000';
+/**
+ * Get the current session ID (for test isolation)
+ */
+function getSessionId(): string | undefined {
+  return (window as any).__TEST_SESSION_ID__;
+}
 
-function loadTopology(name: TopologyName): void {
-  let elements: CyElement[];
-  let annotations: TopologyAnnotations;
+/**
+ * Build API URL with optional session ID
+ */
+function buildApiUrl(path: string): string {
+  const sessionId = getSessionId();
+  if (sessionId) {
+    const separator = path.includes('?') ? '&' : '?';
+    return `${path}${separator}sessionId=${sessionId}`;
+  }
+  return path;
+}
 
-  const emptyAnnotations = createDefaultAnnotations();
-
-  switch (name) {
-    case 'empty':
-      elements = emptyElements;
-      annotations = emptyAnnotations;
-      break;
-
-    case 'network':
-      elements = networkElements;
-      annotations = {
-        ...emptyAnnotations,
-        nodeAnnotations: createNodeAnnotations(networkElements),
-        networkNodeAnnotations: createNetworkNodeAnnotations(networkElements)
-      } as TopologyAnnotations;
-      break;
-
-    case 'large':
-      elements = generateLargeTopology(25);
-      annotations = emptyAnnotations;
-      break;
-
-    case 'large100':
-      elements = generateLargeTopology(100);
-      annotations = emptyAnnotations;
-      break;
-
-    case 'large1000':
-      elements = generateLargeTopology(1000);
-      annotations = emptyAnnotations;
-      break;
-
-    case 'annotated':
-      elements = annotatedElements;
-      annotations = { ...annotatedTopologyAnnotations };
-      break;
-
-    case 'sampleWithAnnotations':
-      elements = sampleElements;
-      annotations = {
-        ...emptyAnnotations,
-        nodeAnnotations: createNodeAnnotations(sampleElements)
-      };
-      break;
-
-    case 'sample':
-    default:
-      elements = stripPositions(sampleElements);
-      annotations = emptyAnnotations;
+/**
+ * Load a topology from a file (real file I/O via API)
+ */
+async function loadTopologyFile(filename: string, sessionId?: string): Promise<void> {
+  // Allow passing session ID directly (for tests)
+  if (sessionId) {
+    (window as any).__TEST_SESSION_ID__ = sessionId;
   }
 
-  // Update state
-  stateManager.loadTopology(elements, annotations);
+  console.log(`%c[Dev] Loading topology file: ${filename}`, 'color: #2196F3;');
 
-  // Broadcast to webview
-  window.postMessage({
-    type: 'topology-data',
-    data: {
-      elements,
-      freeTextAnnotations: annotations.freeTextAnnotations,
-      freeShapeAnnotations: annotations.freeShapeAnnotations,
-      groupStyleAnnotations: annotations.groupStyleAnnotations,
-      nodeAnnotations: annotations.nodeAnnotations,
-      cloudNodeAnnotations: annotations.cloudNodeAnnotations,
-      networkNodeAnnotations: (annotations as any).networkNodeAnnotations
+  try {
+    // Fetch parsed elements from API
+    const url = buildApiUrl(`/api/topology/${encodeURIComponent(filename)}/elements`);
+    const response = await fetch(url);
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to load topology');
     }
-  }, '*');
 
-  console.log(
-    `%c[Dev] Loaded ${name} topology with ${elements.length} elements`,
-    'color: #2196F3;'
-  );
+    const { elements, annotations, labName } = result.data;
+
+    // Update state manager with file info
+    stateManager.loadTopologyFromFile(filename, elements, annotations, labName);
+
+    // Broadcast to webview (same message format as real extension)
+    window.postMessage({
+      type: 'topology-data',
+      data: {
+        elements,
+        labName,
+        freeTextAnnotations: annotations.freeTextAnnotations || [],
+        freeShapeAnnotations: annotations.freeShapeAnnotations || [],
+        groupStyleAnnotations: annotations.groupStyleAnnotations || [],
+        nodeAnnotations: annotations.nodeAnnotations || [],
+        cloudNodeAnnotations: annotations.cloudNodeAnnotations || [],
+        networkNodeAnnotations: annotations.networkNodeAnnotations || []
+      }
+    }, '*');
+
+    console.log(
+      `%c[Dev] Loaded ${filename}: ${elements.length} elements`,
+      'color: #4CAF50;'
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`%c[Dev] Failed to load topology file: ${message}`, 'color: #f44336;');
+  }
+}
+
+/**
+ * List available topology files
+ */
+async function listTopologyFiles(): Promise<Array<{ filename: string; hasAnnotations: boolean }>> {
+  try {
+    const url = buildApiUrl('/api/topologies');
+    const response = await fetch(url);
+    const result = await response.json();
+    if (result.success && result.data) {
+      return result.data;
+    }
+  } catch (error) {
+    console.error('[Dev] Failed to list topology files:', error);
+  }
+  return [];
 }
 
 // ============================================================================
@@ -213,13 +175,20 @@ function loadTopology(name: TopologyName): void {
 declare global {
   interface Window {
     __DEV__: {
-      loadTopology: (name: TopologyName) => void;
+      // File-based operations (real file I/O)
+      loadTopologyFile: (filename: string, sessionId?: string) => Promise<void>;
+      listTopologyFiles: () => Promise<Array<{ filename: string; hasAnnotations: boolean }>>;
+      resetFiles: () => Promise<void>;
+      getCurrentFile: () => string | null;
+      // Mode and state
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
       setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => void;
+      // UI
       toggleSplitView: () => void;
       getYaml: () => string;
       getAnnotationsJson: () => string;
+      // Managers
       stateManager: DevStateManager;
       latencySimulator: LatencySimulator;
     };
@@ -250,7 +219,32 @@ const flattenedInitialData = {
 
 // Dev utilities (console API)
 window.__DEV__ = {
-  loadTopology,
+  // File-based operations (real file I/O)
+  loadTopologyFile,
+  listTopologyFiles,
+  getCurrentFile: () => stateManager.getCurrentFilePath(),
+
+  resetFiles: async () => {
+    console.log('%c[Dev] Resetting files to original state...', 'color: #f44336;');
+    try {
+      const response = await fetch('/api/reset', { method: 'POST' });
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to reset files');
+      }
+      console.log('%c[Dev] Files reset successfully', 'color: #4CAF50;');
+
+      // Reload current file if one is loaded
+      const currentFile = stateManager.getCurrentFilePath();
+      if (currentFile) {
+        await loadTopologyFile(currentFile);
+        console.log('%c[Dev] Reloaded: ' + currentFile, 'color: #4CAF50;');
+      }
+    } catch (error) {
+      console.error('%c[Dev] Reset failed:', 'color: #f44336;', error);
+      throw error;
+    }
+  },
 
   setMode: (mode: 'edit' | 'view') => {
     stateManager.setMode(mode);
@@ -306,11 +300,18 @@ console.log(
   '%c[React TopoViewer - Dev Mode]',
   'color: #E91E63; font-weight: bold; font-size: 14px;'
 );
-console.log('Available dev utilities:');
-console.log('  __DEV__.loadTopology("sample" | "sampleWithAnnotations" | "annotated" | ...)');
+console.log('%cFile operations:', 'color: #4CAF50; font-weight: bold;');
+console.log('  __DEV__.loadTopologyFile("simple.clab.yml")  - Load a YAML file');
+console.log('  __DEV__.listTopologyFiles()                  - List available topology files');
+console.log('  __DEV__.getCurrentFile()                     - Get currently loaded file path');
+console.log('  __DEV__.resetFiles()                         - Reset all files to original state');
+console.log('');
+console.log('%cMode and state:', 'color: #2196F3; font-weight: bold;');
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed" | "unknown")');
 console.log('  __DEV__.setLatencyProfile("instant" | "fast" | "normal" | "slow")');
+console.log('');
+console.log('%cUI utilities:', 'color: #9C27B0; font-weight: bold;');
 console.log('  __DEV__.toggleSplitView()');
 console.log('  __DEV__.getYaml() / __DEV__.getAnnotationsJson()');
 console.log('');
@@ -331,3 +332,15 @@ root.render(
     <App />
   </TopoViewerProvider>
 );
+
+// ============================================================================
+// Auto-load Default Topology
+// ============================================================================
+
+// Load the default topology file after app mounts (simulates real extension behavior)
+// Use setTimeout to ensure React has mounted before we send messages
+setTimeout(async () => {
+  const defaultTopology = 'simple.clab.yml';
+  console.log(`%c[Dev] Auto-loading default topology: ${defaultTopology}`, 'color: #9C27B0;');
+  await loadTopologyFile(defaultTopology);
+}, 100);

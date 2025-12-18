@@ -163,12 +163,62 @@ export class SplitViewPanel {
     console.log('%c[Dev] Split view closed', 'color: #2196F3;');
   }
 
-  /** Update the content */
+  /** Update the content - fetches from disk if a file is loaded */
   updateContent(): void {
     if (!this.isOpen) return;
 
     const state = this.stateManager.getState();
+    const filename = state.currentFilePath;
 
+    // Update file path header
+    this.updateFilePathHeader(filename);
+
+    if (filename) {
+      // Fetch from disk
+      this.fetchContentFromDisk(filename);
+    } else {
+      // Generate from memory (legacy behavior)
+      this.updateContentFromMemory(state);
+    }
+  }
+
+  /** Update content by fetching from disk */
+  private async fetchContentFromDisk(filename: string): Promise<void> {
+    try {
+      // Fetch YAML
+      const yamlRes = await fetch(`/api/topology/${encodeURIComponent(filename)}`);
+      const yamlResult = await yamlRes.json();
+
+      const yamlContent = document.getElementById(this.config.yamlContentId);
+      if (yamlContent) {
+        if (yamlResult.success && yamlResult.data) {
+          yamlContent.textContent = yamlResult.data.content;
+        } else {
+          yamlContent.textContent = `# Error loading YAML: ${yamlResult.error || 'Unknown error'}`;
+        }
+      }
+
+      // Fetch annotations
+      const annotRes = await fetch(`/api/annotations/${encodeURIComponent(filename)}`);
+      const annotResult = await annotRes.json();
+
+      const annotationsContent = document.getElementById(this.config.annotationsContentId);
+      if (annotationsContent) {
+        if (annotResult.success && annotResult.data) {
+          annotationsContent.textContent = JSON.stringify(annotResult.data, null, 2);
+        } else {
+          annotationsContent.textContent = '{}';
+        }
+      }
+    } catch (err) {
+      console.error('[SplitView] Failed to fetch from disk:', err);
+      // Fallback to memory
+      this.updateContentFromMemory(this.stateManager.getState());
+    }
+  }
+
+  /** Update content from memory (original behavior) */
+  private updateContentFromMemory(state: ReturnType<typeof this.stateManager.getState>): void {
     // Update YAML content
     const yaml = generateYamlFromElements(state.currentElements, state.labName);
     const yamlContent = document.getElementById(this.config.yamlContentId);
@@ -180,6 +230,14 @@ export class SplitViewPanel {
     const annotationsContent = document.getElementById(this.config.annotationsContentId);
     if (annotationsContent) {
       annotationsContent.textContent = JSON.stringify(state.currentAnnotations, null, 2);
+    }
+  }
+
+  /** Update file path display in header */
+  private updateFilePathHeader(filename: string | null): void {
+    const filePathEl = document.getElementById('splitViewFilePath');
+    if (filePathEl) {
+      filePathEl.textContent = filename ? `File: ${filename}` : 'No file loaded';
     }
   }
 
