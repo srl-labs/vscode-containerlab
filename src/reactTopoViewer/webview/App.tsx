@@ -557,15 +557,17 @@ export const App: React.FC = () => {
   // Get isApplyingGroupUndoRedo ref from group undo handlers
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
 
-  // Expose undoRedo for E2E testing (dev mode only)
+  // Expose undoRedo and handlers for E2E testing (dev mode only)
   React.useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).__DEV__) {
       (window as any).__DEV__.undoRedo = {
         canUndo: undoRedo.canUndo,
         canRedo: undoRedo.canRedo
       };
+      // Expose handleEdgeCreated for E2E tests to push undo actions when creating links
+      (window as any).__DEV__.handleEdgeCreated = handleEdgeCreated;
     }
-  }, [undoRedo.canUndo, undoRedo.canRedo]);
+  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated]);
 
   // Group drag undo tracking - handles group + member node moves as single undo step
   // Also moves annotations that belong to groups

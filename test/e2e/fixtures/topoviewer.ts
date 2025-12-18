@@ -647,13 +647,18 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         sourceEndpoint = 'eth1',
         targetEndpoint = 'eth1'
       ) => {
-        // Wait for vscode API to be available
-        await page.waitForFunction(() => (window as any).vscode !== undefined, { timeout: 10000 });
+        // Wait for handleEdgeCreated to be available (exposed via __DEV__)
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.handleEdgeCreated !== undefined,
+          { timeout: 10000 }
+        );
 
         await page.evaluate(
           ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
-            const vscode = (window as any).vscode;
-            if (!vscode) throw new Error('vscode API not available');
+            const dev = (window as any).__DEV__;
+            if (!dev?.handleEdgeCreated) {
+              throw new Error('handleEdgeCreated not available');
+            }
 
             const linkId = `${sourceId}-${targetId}`;
             const linkData = {
@@ -664,20 +669,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               targetEndpoint
             };
 
-            // Also add to cytoscape directly for UI update
-            const dev = (window as any).__DEV__;
-            if (dev?.cy) {
-              dev.cy.add({
-                group: 'edges',
-                data: linkData
-              });
-            }
-
-            // Send create-link command to backend
-            vscode.postMessage({
-              command: 'create-link',
-              linkData
-            });
+            // Call handleEdgeCreated which:
+            // 1. Adds the edge to Cytoscape
+            // 2. Sends create-link to extension
+            // 3. Pushes undo action
+            dev.handleEdgeCreated(sourceId, targetId, linkData);
           },
           { sourceId, targetId, sourceEndpoint, targetEndpoint }
         );
