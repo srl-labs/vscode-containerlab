@@ -19,6 +19,7 @@ import { drag, ctrlClick } from '../helpers/cytoscape-helpers';
 // Test configuration
 const TOPOLOGY_FILE = 'empty.clab.yml';
 const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
+const RENAMED_NODE = 'core-router';
 
 // Selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
@@ -35,6 +36,7 @@ test.describe('Full Workflow E2E Test', () => {
   // Increase timeout for comprehensive test (2 minutes)
   test.setTimeout(120000);
 
+  // eslint-disable-next-line complexity, sonarjs/cognitive-complexity
   test('comprehensive workflow: nodes, links, groups, undo/redo, copy/paste', async ({ page, topoViewerPage }) => {
     // ============================================================================
     // SETUP
@@ -149,7 +151,7 @@ test.describe('Full Workflow E2E Test', () => {
     // Change node name from router1 to core-router
     const nameInput = page.locator(SEL_NODE_NAME);
     await nameInput.clear();
-    await nameInput.fill('core-router');
+    await nameInput.fill(RENAMED_NODE);
     await page.waitForTimeout(200);
 
     // Click Apply button
@@ -163,7 +165,7 @@ test.describe('Full Workflow E2E Test', () => {
 
     // Debug: Check YAML after apply
     const yamlAfterApply = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
-    console.log(`[DEBUG] YAML after apply contains core-router: ${yamlAfterApply.includes('core-router')}`);
+    console.log(`[DEBUG] YAML after apply contains ${RENAMED_NODE}: ${yamlAfterApply.includes(RENAMED_NODE)}`);
 
     // Close the editor
     const okBtn = page.locator(SEL_OK_BTN);
@@ -176,16 +178,16 @@ test.describe('Full Workflow E2E Test', () => {
     // Verify node ID changed in graph
     nodeIds = await topoViewerPage.getNodeIds();
     console.log(`[DEBUG] Node IDs after close: ${nodeIds.join(', ')}`);
-    expect(nodeIds).toContain('core-router');
+    expect(nodeIds).toContain(RENAMED_NODE);
     expect(nodeIds).not.toContain('router1');
 
     // Verify YAML updated
     yaml = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
-    expect(yaml).toContain('core-router:');
+    expect(yaml).toContain(`${RENAMED_NODE}:`);
     expect(yaml).not.toContain('router1:');
 
     // Verify links were updated to reference new name
-    if (!yaml.includes('core-router:eth')) {
+    if (!yaml.includes(`${RENAMED_NODE}:eth`)) {
       logBug('BUG-RENAME-LINKS', 'Links not updated when node renamed');
     }
 
@@ -670,7 +672,7 @@ test.describe('Full Workflow E2E Test', () => {
     yaml = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
     expect(yaml).toContain('topology:');
     expect(yaml).toContain('nodes:');
-    expect(yaml).toContain('core-router:'); // Renamed from router1 in Step 3
+    expect(yaml).toContain(`${RENAMED_NODE}:`); // Renamed from router1 in Step 3
 
     // Final annotations verification
     annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
