@@ -81,13 +81,16 @@ export interface UndoRedoActionPropertyEdit {
   [key: string]: unknown;
 }
 
+/** Type of annotation (freeText, freeShape, or group) */
+export type AnnotationType = 'freeText' | 'freeShape' | 'group';
+
 /**
  * Represents an annotation action (for free text/shapes/groups)
  */
 export interface UndoRedoActionAnnotation {
   type: 'annotation';
   /** Annotation type being modified */
-  annotationType: 'freeText' | 'freeShape' | 'group';
+  annotationType: AnnotationType;
   /** Annotation state before the change (null = didn't exist) */
   before: Record<string, unknown> | null;
   /** Annotation state after the change (null = deleted) */
@@ -123,7 +126,28 @@ export interface UndoRedoActionGroupMove {
   [key: string]: unknown;
 }
 
-export type UndoRedoAction = UndoRedoActionMove | UndoRedoActionGraph | UndoRedoActionPropertyEdit | UndoRedoActionAnnotation | UndoRedoActionGroupMove;
+/** Entry for annotation changes in compound actions */
+export interface CompoundAnnotationEntry {
+  annotationType: string;
+  state: Record<string, unknown> | null;
+}
+
+/**
+ * Represents a compound action that batches multiple operations together.
+ * Used for paste operations that create multiple nodes, edges, and groups.
+ */
+export interface UndoRedoActionCompound {
+  type: 'compound';
+  /** Graph changes (nodes and edges) */
+  graphBefore: GraphChange[];
+  graphAfter: GraphChange[];
+  /** Annotation changes (groups, text, shapes) */
+  annotationsBefore: CompoundAnnotationEntry[];
+  annotationsAfter: CompoundAnnotationEntry[];
+  [key: string]: unknown;
+}
+
+export type UndoRedoAction = UndoRedoActionMove | UndoRedoActionGraph | UndoRedoActionPropertyEdit | UndoRedoActionAnnotation | UndoRedoActionGroupMove | UndoRedoActionCompound;
 
 /**
  * State shape for the undo/redo system
@@ -140,7 +164,8 @@ type UndoRedoReducerAction =
   | { type: 'PUSH'; action: UndoRedoAction }
   | { type: 'UNDO' }
   | { type: 'REDO' }
-  | { type: 'CLEAR' };
+  | { type: 'CLEAR' }
+  | { type: 'PUSH_BATCH'; actions: UndoRedoAction[] };
 
 const MAX_HISTORY_SIZE = 50;
 const ACTION_TYPE_GROUP_MOVE = 'group-move';
@@ -151,36 +176,205 @@ const initialState: UndoRedoState = {
 };
 
 /**
+ * Combine multiple actions into a single composite action.
+ * Handles both graph actions (nodes/edges) and annotation actions (groups).
+ */
+function combineActions(actions: UndoRedoAction[]): UndoRedoAction {
+  const graphBefore: GraphChange[] = [];
+  const graphAfter: GraphChange[] = [];
+  const annotationsBefore: CompoundAnnotationEntry[] = [];
+  const annotationsAfter: CompoundAnnotationEntry[] = [];
+
+  for (const action of actions) {
+    if (action.type === 'graph') {
+      graphBefore.push(...action.before);
+      graphAfter.push(...action.after);
+    } else if (action.type === 'annotation') {
+      annotationsBefore.push({
+        annotationType: action.annotationType,
+        state: action.before as Record<string, unknown> | null
+      });
+      annotationsAfter.push({
+        annotationType: action.annotationType,
+        state: action.after as Record<string, unknown> | null
+      });
+    }
+  }
+
+  // If we only have graph actions, return a simple graph action
+  const hasAnnotations = annotationsBefore.length > 0 || annotationsAfter.length > 0;
+  if (!hasAnnotations && graphBefore.length > 0) {
+    return { type: 'graph', before: graphBefore, after: graphAfter };
+  }
+
+  // If we only have annotation actions, return a simple annotation action (for single annotation)
+  if (graphBefore.length === 0 && annotationsBefore.length === 1) {
+    return {
+      type: 'annotation',
+      annotationType: annotationsBefore[0].annotationType as AnnotationType,
+      before: annotationsBefore[0].state,
+      after: annotationsAfter[0].state
+    };
+  }
+
+  // Mixed or multiple annotation actions - return compound action
+  return { type: 'compound', graphBefore, graphAfter, annotationsBefore, annotationsAfter };
+}
+
+/** Helper to apply compound action undo */
+function applyCompoundUndo(
+  action: UndoRedoActionCompound,
+  applyGraphChanges: ((changes: GraphChange[]) => void) | undefined,
+  applyAnnotationChange: ((action: UndoRedoActionAnnotation, isUndo: boolean) => void) | undefined
+): void {
+  const graphCount = action.graphBefore.length;
+  const annotationCount = action.annotationsAfter.length;
+  log.info(`[UndoRedo] Undoing compound action with ${graphCount} graph change(s) and ${annotationCount} annotation(s)`);
+
+  // Undo annotations first (they were created after nodes, so undo them first)
+  // Iterate over annotationsAfter because that contains the created items we need to delete
+  for (let i = 0; i < action.annotationsAfter.length; i++) {
+    const afterAnn = action.annotationsAfter[i];
+    const beforeAnn = action.annotationsBefore[i];
+    const syntheticAction: UndoRedoActionAnnotation = {
+      type: 'annotation',
+      annotationType: afterAnn.annotationType as AnnotationType,
+      before: beforeAnn?.state ?? null,
+      after: afterAnn.state
+    };
+    applyAnnotationChange?.(syntheticAction, true);
+  }
+
+  // Then undo graph changes
+  if (graphCount > 0) {
+    applyGraphChanges?.(action.graphBefore);
+  }
+}
+
+/** Helper to apply compound action redo */
+function applyCompoundRedo(
+  action: UndoRedoActionCompound,
+  applyGraphChanges: ((changes: GraphChange[]) => void) | undefined,
+  applyAnnotationChange: ((action: UndoRedoActionAnnotation, isUndo: boolean) => void) | undefined
+): void {
+  const graphCount = action.graphAfter.length;
+  const annotationCount = action.annotationsAfter.length;
+  log.info(`[UndoRedo] Redoing compound action with ${graphCount} graph change(s) and ${annotationCount} annotation(s)`);
+
+  // Redo graph changes first
+  if (graphCount > 0) {
+    applyGraphChanges?.(action.graphAfter);
+  }
+
+  // Then redo annotations
+  for (let i = 0; i < action.annotationsAfter.length; i++) {
+    const afterAnn = action.annotationsAfter[i];
+    const beforeAnn = action.annotationsBefore[i];
+    const syntheticAction: UndoRedoActionAnnotation = {
+      type: 'annotation',
+      annotationType: afterAnn.annotationType as AnnotationType,
+      before: beforeAnn?.state ?? null,
+      after: afterAnn.state
+    };
+    applyAnnotationChange?.(syntheticAction, false);
+  }
+}
+
+/** Helper to undo a move action */
+function applyMoveUndo(
+  action: UndoRedoActionMove,
+  cy: Core,
+  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
+): void {
+  log.info(`[UndoRedo] Undoing move for ${action.before.length} node(s)`);
+  applyPositionsToGraph(cy, action.before);
+  sendPositionsToExtension(action.before);
+  if (action.membershipBefore && action.membershipBefore.length > 0) {
+    applyMembershipChange?.(action.membershipBefore);
+    sendMembershipToExtension(action.membershipBefore);
+  }
+}
+
+/** Helper to redo a move action */
+function applyMoveRedo(
+  action: UndoRedoActionMove,
+  cy: Core,
+  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
+): void {
+  log.info(`[UndoRedo] Redoing move for ${action.after.length} node(s)`);
+  applyPositionsToGraph(cy, action.after);
+  sendPositionsToExtension(action.after);
+  if (action.membershipAfter && action.membershipAfter.length > 0) {
+    applyMembershipChange?.(action.membershipAfter);
+    sendMembershipToExtension(action.membershipAfter);
+  }
+}
+
+/** Helper to undo a group-move action */
+function applyGroupMoveUndo(
+  action: UndoRedoActionGroupMove,
+  cy: Core,
+  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
+): void {
+  log.info(`[UndoRedo] Undoing group move with ${action.nodesBefore.length} node(s)`);
+  applyGroupMoveChange?.(action, true);
+  applyPositionsToGraph(cy, action.nodesBefore);
+  sendPositionsToExtension(action.nodesBefore);
+}
+
+/** Helper to redo a group-move action */
+function applyGroupMoveRedo(
+  action: UndoRedoActionGroupMove,
+  cy: Core,
+  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
+): void {
+  log.info(`[UndoRedo] Redoing group move with ${action.nodesAfter.length} node(s)`);
+  applyGroupMoveChange?.(action, false);
+  applyPositionsToGraph(cy, action.nodesAfter);
+  sendPositionsToExtension(action.nodesAfter);
+}
+
+/**
+ * Helper to add action to past with size limit
+ */
+function addToPastWithLimit(past: UndoRedoAction[], action: UndoRedoAction): UndoRedoAction[] {
+  const newPast = [...past, action];
+  if (newPast.length > MAX_HISTORY_SIZE) {
+    newPast.shift();
+  }
+  return newPast;
+}
+
+/**
+ * Handle PUSH_BATCH reducer action
+ */
+function handlePushBatch(state: UndoRedoState, actions: UndoRedoAction[]): UndoRedoState {
+  if (actions.length === 0) return state;
+  if (actions.length === 1) {
+    return { past: addToPastWithLimit(state.past, actions[0]), future: [] };
+  }
+  const combinedAction = combineActions(actions);
+  return { past: addToPastWithLimit(state.past, combinedAction), future: [] };
+}
+
+/**
  * Reducer for undo/redo state management
  */
 function undoRedoReducer(state: UndoRedoState, reducerAction: UndoRedoReducerAction): UndoRedoState {
   switch (reducerAction.type) {
-    case 'PUSH': {
-      const newPast = [...state.past, reducerAction.action];
-      // Limit history size
-      if (newPast.length > MAX_HISTORY_SIZE) {
-        newPast.shift();
-      }
-      return {
-        past: newPast,
-        future: [] // Clear future on new action
-      };
-    }
+    case 'PUSH':
+      return { past: addToPastWithLimit(state.past, reducerAction.action), future: [] };
+    case 'PUSH_BATCH':
+      return handlePushBatch(state, reducerAction.actions);
     case 'UNDO': {
       if (state.past.length === 0) return state;
       const lastAction = state.past[state.past.length - 1];
-      return {
-        past: state.past.slice(0, -1),
-        future: [lastAction, ...state.future]
-      };
+      return { past: state.past.slice(0, -1), future: [lastAction, ...state.future] };
     }
     case 'REDO': {
       if (state.future.length === 0) return state;
       const nextAction = state.future[0];
-      return {
-        past: [...state.past, nextAction],
-        future: state.future.slice(1)
-      };
+      return { past: [...state.past, nextAction], future: state.future.slice(1) };
     }
     case 'CLEAR':
       return initialState;
@@ -304,6 +498,12 @@ export interface UseUndoRedoReturn {
   clearHistory: () => void;
   /** Capture current positions for specified nodes (use before drag starts) */
   capturePositions: (nodeIds: string[]) => NodePositionEntry[];
+  /** Begin a batch operation - actions will be collected and combined into a single undo entry */
+  beginBatch: () => void;
+  /** End a batch operation - commits all collected actions as a single undo entry */
+  endBatch: () => void;
+  /** Whether currently in batch mode */
+  isInBatch: () => boolean;
 }
 
 /** Helper hook for capturing node positions */
@@ -323,10 +523,23 @@ function useCapturePositions(cy: Core | null) {
   }, [cy]);
 }
 
-/** Helper hook for push action */
-function usePushAction(enabled: boolean, dispatch: React.Dispatch<UndoRedoReducerAction>) {
+/** Helper hook for push action with batch support */
+function usePushAction(
+  enabled: boolean,
+  dispatch: React.Dispatch<UndoRedoReducerAction>,
+  batchActionsRef: React.RefObject<UndoRedoAction[]>,
+  isBatchingRef: React.RefObject<boolean>
+) {
   return useCallback((action: UndoRedoAction) => {
     if (!enabled) return;
+
+    // If in batch mode, collect actions instead of pushing immediately
+    if (isBatchingRef.current) {
+      batchActionsRef.current.push(action);
+      log.info(`[UndoRedo] Collected action in batch: ${action.type}`);
+      return;
+    }
+
     dispatch({ type: 'PUSH', action });
     let count = 0;
     if (action.type === 'move') {
@@ -339,7 +552,7 @@ function usePushAction(enabled: boolean, dispatch: React.Dispatch<UndoRedoReduce
       count = 1;
     }
     log.info(`[UndoRedo] Pushed action: ${action.type} for ${count} item(s)`);
-  }, [enabled, dispatch]);
+  }, [enabled, dispatch, batchActionsRef, isBatchingRef]);
 }
 
 /** Helper hook for undo operation */
@@ -356,31 +569,29 @@ function useUndoAction(
 ) {
   return useCallback(() => {
     if (!canUndo || !cy) return;
-    const lastAction = past[past.length - 1];
-    if (lastAction.type === 'move') {
-      log.info(`[UndoRedo] Undoing move for ${lastAction.before.length} node(s)`);
-      applyPositionsToGraph(cy, lastAction.before);
-      sendPositionsToExtension(lastAction.before);
-      // Restore membership if present
-      if (lastAction.membershipBefore && lastAction.membershipBefore.length > 0) {
-        applyMembershipChange?.(lastAction.membershipBefore);
-        sendMembershipToExtension(lastAction.membershipBefore);
-      }
-    } else if (lastAction.type === 'graph') {
-      log.info(`[UndoRedo] Undoing graph action with ${lastAction.before.length} change(s)`);
-      applyGraphChanges?.(lastAction.before);
-    } else if (lastAction.type === 'property-edit') {
-      log.info(`[UndoRedo] Undoing property edit for ${lastAction.entityType} ${lastAction.entityId}`);
-      applyPropertyEdit?.(lastAction, true);
-    } else if (lastAction.type === 'annotation') {
-      log.info(`[UndoRedo] Undoing ${lastAction.annotationType} annotation change`);
-      applyAnnotationChange?.(lastAction, true);
-    } else if (lastAction.type === ACTION_TYPE_GROUP_MOVE) {
-      log.info(`[UndoRedo] Undoing group move with ${lastAction.nodesBefore.length} node(s)`);
-      applyGroupMoveChange?.(lastAction, true);
-      // Also restore node positions
-      applyPositionsToGraph(cy, lastAction.nodesBefore);
-      sendPositionsToExtension(lastAction.nodesBefore);
+    const action = past[past.length - 1];
+    switch (action.type) {
+      case 'move':
+        applyMoveUndo(action, cy, applyMembershipChange);
+        break;
+      case 'graph':
+        log.info(`[UndoRedo] Undoing graph action with ${action.before.length} change(s)`);
+        applyGraphChanges?.(action.before);
+        break;
+      case 'property-edit':
+        log.info(`[UndoRedo] Undoing property edit for ${action.entityType} ${action.entityId}`);
+        applyPropertyEdit?.(action, true);
+        break;
+      case 'annotation':
+        log.info(`[UndoRedo] Undoing ${action.annotationType} annotation change`);
+        applyAnnotationChange?.(action, true);
+        break;
+      case ACTION_TYPE_GROUP_MOVE:
+        applyGroupMoveUndo(action, cy, applyGroupMoveChange);
+        break;
+      case 'compound':
+        applyCompoundUndo(action, applyGraphChanges, applyAnnotationChange);
+        break;
     }
     dispatch({ type: 'UNDO' });
   }, [canUndo, cy, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange]);
@@ -400,31 +611,29 @@ function useRedoAction(
 ) {
   return useCallback(() => {
     if (!canRedo || !cy) return;
-    const nextAction = future[0];
-    if (nextAction.type === 'move') {
-      log.info(`[UndoRedo] Redoing move for ${nextAction.after.length} node(s)`);
-      applyPositionsToGraph(cy, nextAction.after);
-      sendPositionsToExtension(nextAction.after);
-      // Restore membership if present
-      if (nextAction.membershipAfter && nextAction.membershipAfter.length > 0) {
-        applyMembershipChange?.(nextAction.membershipAfter);
-        sendMembershipToExtension(nextAction.membershipAfter);
-      }
-    } else if (nextAction.type === 'graph') {
-      log.info(`[UndoRedo] Redoing graph action with ${nextAction.after.length} change(s)`);
-      applyGraphChanges?.(nextAction.after);
-    } else if (nextAction.type === 'property-edit') {
-      log.info(`[UndoRedo] Redoing property edit for ${nextAction.entityType} ${nextAction.entityId}`);
-      applyPropertyEdit?.(nextAction, false);
-    } else if (nextAction.type === 'annotation') {
-      log.info(`[UndoRedo] Redoing ${nextAction.annotationType} annotation change`);
-      applyAnnotationChange?.(nextAction, false);
-    } else if (nextAction.type === ACTION_TYPE_GROUP_MOVE) {
-      log.info(`[UndoRedo] Redoing group move with ${nextAction.nodesAfter.length} node(s)`);
-      applyGroupMoveChange?.(nextAction, false);
-      // Also restore node positions
-      applyPositionsToGraph(cy, nextAction.nodesAfter);
-      sendPositionsToExtension(nextAction.nodesAfter);
+    const action = future[0];
+    switch (action.type) {
+      case 'move':
+        applyMoveRedo(action, cy, applyMembershipChange);
+        break;
+      case 'graph':
+        log.info(`[UndoRedo] Redoing graph action with ${action.after.length} change(s)`);
+        applyGraphChanges?.(action.after);
+        break;
+      case 'property-edit':
+        log.info(`[UndoRedo] Redoing property edit for ${action.entityType} ${action.entityId}`);
+        applyPropertyEdit?.(action, false);
+        break;
+      case 'annotation':
+        log.info(`[UndoRedo] Redoing ${action.annotationType} annotation change`);
+        applyAnnotationChange?.(action, false);
+        break;
+      case ACTION_TYPE_GROUP_MOVE:
+        applyGroupMoveRedo(action, cy, applyGroupMoveChange);
+        break;
+      case 'compound':
+        applyCompoundRedo(action, applyGraphChanges, applyAnnotationChange);
+        break;
     }
     dispatch({ type: 'REDO' });
   }, [canRedo, cy, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange]);
@@ -436,11 +645,15 @@ function useRedoAction(
 export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange }: UseUndoRedoOptions): UseUndoRedoReturn {
   const [state, dispatch] = useReducer(undoRedoReducer, initialState);
 
+  // Batch mode refs - using refs to avoid re-renders during batch collection
+  const isBatchingRef = React.useRef(false);
+  const batchActionsRef = React.useRef<UndoRedoAction[]>([]);
+
   const canUndo = enabled && state.past.length > 0;
   const canRedo = enabled && state.future.length > 0;
 
   const capturePositions = useCapturePositions(cy);
-  const pushAction = usePushAction(enabled, dispatch);
+  const pushAction = usePushAction(enabled, dispatch, batchActionsRef, isBatchingRef);
   const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange);
   const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange);
 
@@ -461,6 +674,38 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
     log.info('[UndoRedo] History cleared');
   }, []);
 
+  // Begin batch mode - actions will be collected until endBatch is called
+  const beginBatch = useCallback(() => {
+    if (isBatchingRef.current) {
+      log.warn('[UndoRedo] Already in batch mode');
+      return;
+    }
+    isBatchingRef.current = true;
+    batchActionsRef.current = [];
+    log.info('[UndoRedo] Started batch mode');
+  }, []);
+
+  // End batch mode - commit all collected actions as a single undo entry
+  const endBatch = useCallback(() => {
+    if (!isBatchingRef.current) {
+      log.warn('[UndoRedo] Not in batch mode');
+      return;
+    }
+    isBatchingRef.current = false;
+    const actions = batchActionsRef.current;
+    batchActionsRef.current = [];
+
+    if (actions.length > 0) {
+      dispatch({ type: 'PUSH_BATCH', actions });
+      log.info(`[UndoRedo] Committed batch with ${actions.length} action(s)`);
+    } else {
+      log.info('[UndoRedo] Batch ended with no actions');
+    }
+  }, []);
+
+  // Check if currently in batch mode
+  const isInBatch = useCallback(() => isBatchingRef.current, []);
+
   return useMemo(() => ({
     canUndo,
     canRedo,
@@ -471,6 +716,9 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
     pushAction,
     recordMove,
     clearHistory,
-    capturePositions
-  }), [canUndo, canRedo, state.past.length, state.future.length, undo, redo, pushAction, recordMove, clearHistory, capturePositions]);
+    capturePositions,
+    beginBatch,
+    endBatch,
+    isInBatch
+  }), [canUndo, canRedo, state.past.length, state.future.length, undo, redo, pushAction, recordMove, clearHistory, capturePositions, beginBatch, endBatch, isInBatch]);
 }

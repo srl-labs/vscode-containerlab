@@ -774,6 +774,14 @@ export const App: React.FC = () => {
     return generateGroupId(groups.groups);
   }, [groups.groups]);
 
+  // Wrapper for adding groups with undo recording (for paste operations)
+  // This ensures group creation is recorded in the undo stack and can be batched
+  const addGroupWithUndo = React.useCallback((group: Parameters<typeof groups.addGroup>[0]) => {
+    groups.addGroup(group);
+    // Record undo action: before=null (didn't exist), after=group (created)
+    undoRedo.pushAction(groups.getUndoRedoAction(null, group));
+  }, [groups, undoRedo]);
+
   // Unified clipboard - handles nodes, groups, and annotations together
   const unifiedClipboard = useUnifiedClipboard({
     cyInstance,
@@ -785,13 +793,15 @@ export const App: React.FC = () => {
     selectedGroupIds: groups.selectedGroupIds,
     selectedTextAnnotationIds: freeTextAnnotations.selectedAnnotationIds,
     selectedShapeAnnotationIds: freeShapeAnnotations.selectedAnnotationIds,
-    onAddGroup: groups.addGroup,
+    onAddGroup: addGroupWithUndo,
     onAddTextAnnotation: freeTextAnnotations.saveAnnotation,
     onAddShapeAnnotation: freeShapeAnnotations.saveAnnotation,
     onAddNodeToGroup: groups.addNodeToGroup,
     generateGroupId: generateGroupIdCallback,
     onCreateNode: handleNodeCreatedCallback,
-    onCreateEdge: handleEdgeCreated
+    onCreateEdge: handleEdgeCreated,
+    beginUndoBatch: undoRedo.beginBatch,
+    endUndoBatch: undoRedo.endBatch
   });
 
   // Combined selection IDs for keyboard shortcuts (text + shape + groups)

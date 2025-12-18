@@ -116,6 +116,10 @@ export interface UseUnifiedClipboardOptions {
   onCreateNode?: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void;
   /** Callback to create an edge (persists to YAML) */
   onCreateEdge?: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void;
+  /** Begin undo batch mode - actions will be collected until endBatch is called */
+  beginUndoBatch?: () => void;
+  /** End undo batch mode - commits all collected actions as a single undo entry */
+  endUndoBatch?: () => void;
 }
 
 export interface UseUnifiedClipboardReturn {
@@ -640,7 +644,9 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     onAddNodeToGroup,
     generateGroupId,
     onCreateNode,
-    onCreateEdge
+    onCreateEdge,
+    beginUndoBatch,
+    endUndoBatch
   } = options;
 
   const clipboardRef = useRef<UnifiedClipboardData | null>(null);
@@ -746,24 +752,33 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     pasteCounterRef.current++;
     const offset = pasteCounterRef.current * 20;
 
+    // Determine if we have anything to paste that needs undo batching
+    const hasNodesToCreate = clipboardData.nodes.length > 0 && onCreateNode;
+    const hasEdgesToCreate = clipboardData.edges.length > 0 && onCreateEdge;
+    const hasGroupsToCreate = clipboardData.groups.length > 0;
+    const needsBatching = hasNodesToCreate || hasEdgesToCreate || hasGroupsToCreate;
+
+    // Begin undo batch BEFORE any paste operations to group everything into single undo entry
+    if (needsBatching && beginUndoBatch) {
+      beginUndoBatch();
+    }
+
+    // Begin extension batch to prevent race conditions when creating multiple nodes/edges
+    if (hasNodesToCreate || hasEdgesToCreate) {
+      sendCommandToExtension('begin-graph-batch');
+    }
+
     // Paste all elements using helper functions
     const newGroupIds = pasteGroups(
       clipboardData.groups, position, offset, idMapping, generateGroupId, onAddGroup
     );
-
-    // Begin batch to prevent race conditions when creating multiple nodes/edges
-    const hasNodesToCreate = clipboardData.nodes.length > 0 && onCreateNode;
-    const hasEdgesToCreate = clipboardData.edges.length > 0 && onCreateEdge;
-    if (hasNodesToCreate || hasEdgesToCreate) {
-      sendCommandToExtension('begin-graph-batch');
-    }
 
     const newNodeIds = pasteNodes(
       clipboardData.nodes, position, offset, idMapping, cyInstance, onAddNodeToGroup, onCreateNode
     );
     pasteEdges(clipboardData.edges, idMapping, cyInstance, onCreateEdge);
 
-    // End batch to flush all changes at once
+    // End extension batch to flush all changes at once
     if (hasNodesToCreate || hasEdgesToCreate) {
       sendCommandToExtension('end-graph-batch');
     }
@@ -774,6 +789,11 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     const newShapeAnnotationIds = pasteShapeAnnotations(
       clipboardData.shapeAnnotations, position, offset, idMapping, onAddShapeAnnotation
     );
+
+    // End undo batch - this commits all collected actions as a single undo entry
+    if (needsBatching && endUndoBatch) {
+      endUndoBatch();
+    }
 
     log.info(
       `[UnifiedClipboard] Pasted ${newNodeIds.length} nodes, ` +
@@ -789,7 +809,7 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
       newTextAnnotationIds,
       newShapeAnnotationIds
     };
-  }, [cyInstance, onAddGroup, onAddTextAnnotation, onAddShapeAnnotation, onAddNodeToGroup, generateGroupId, onCreateNode, onCreateEdge]);
+  }, [cyInstance, onAddGroup, onAddTextAnnotation, onAddShapeAnnotation, onAddNodeToGroup, generateGroupId, onCreateNode, onCreateEdge, beginUndoBatch, endUndoBatch]);
 
   const hasClipboardData = useCallback((): boolean => {
     return clipboardRef.current !== null;
