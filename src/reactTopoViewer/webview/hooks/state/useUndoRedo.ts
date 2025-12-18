@@ -231,7 +231,14 @@ function applyCompoundUndo(
   const annotationCount = action.annotationsAfter.length;
   log.info(`[UndoRedo] Undoing compound action with ${graphCount} graph change(s) and ${annotationCount} annotation(s)`);
 
-  // Undo annotations first (they were created after nodes, so undo them first)
+  // For paste operations: groups are created FIRST, then nodes with group membership.
+  // For undo: delete nodes FIRST, then delete groups.
+  // This ensures nodes are removed before their parent groups.
+  if (graphCount > 0) {
+    applyGraphChanges?.(action.graphBefore);
+  }
+
+  // Then undo annotations (groups)
   // Iterate over annotationsAfter because that contains the created items we need to delete
   for (let i = 0; i < action.annotationsAfter.length; i++) {
     const afterAnn = action.annotationsAfter[i];
@@ -243,11 +250,6 @@ function applyCompoundUndo(
       after: afterAnn.state
     };
     applyAnnotationChange?.(syntheticAction, true);
-  }
-
-  // Then undo graph changes
-  if (graphCount > 0) {
-    applyGraphChanges?.(action.graphBefore);
   }
 }
 
@@ -261,12 +263,8 @@ function applyCompoundRedo(
   const annotationCount = action.annotationsAfter.length;
   log.info(`[UndoRedo] Redoing compound action with ${graphCount} graph change(s) and ${annotationCount} annotation(s)`);
 
-  // Redo graph changes first
-  if (graphCount > 0) {
-    applyGraphChanges?.(action.graphAfter);
-  }
-
-  // Then redo annotations
+  // For paste operations: groups should be created FIRST, then nodes with group membership.
+  // Redo annotations (groups) first
   for (let i = 0; i < action.annotationsAfter.length; i++) {
     const afterAnn = action.annotationsAfter[i];
     const beforeAnn = action.annotationsBefore[i];
@@ -277,6 +275,11 @@ function applyCompoundRedo(
       after: afterAnn.state
     };
     applyAnnotationChange?.(syntheticAction, false);
+  }
+
+  // Then redo graph changes (nodes/edges with group membership)
+  if (graphCount > 0) {
+    applyGraphChanges?.(action.graphAfter);
   }
 }
 

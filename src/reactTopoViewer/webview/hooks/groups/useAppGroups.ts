@@ -2,7 +2,7 @@
  * App-level hook for group management.
  * Provides handlers for group operations with UI integration.
  */
-import { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';
 import { useGroups } from './useGroups';
@@ -101,7 +101,8 @@ interface UseAppGroupsOptions {
  */
 function useGroupDataLoader(
   loadGroups: (groups: GroupStyleAnnotation[], persistToExtension?: boolean) => void,
-  initializeMembership: (memberships: MembershipEntry[]) => void
+  initializeMembership: (memberships: MembershipEntry[]) => void,
+  currentGroupsRef: React.RefObject<GroupStyleAnnotation[]>
 ): void {
   useEffect(() => {
     const initialData = (window as unknown as { __INITIAL_DATA__?: InitialData }).__INITIAL_DATA__;
@@ -120,17 +121,21 @@ function useGroupDataLoader(
       const data = event.data?.data;
       if (event.data?.type !== 'topology-data' || !data) return;
 
-      // Extract memberships for migration
+      // Extract memberships for migration - always update from topology refresh
+      // as this syncs with the YAML file
       const msgNodeAnnotations = data.nodeAnnotations;
       initializeMembership(extractMemberships(msgNodeAnnotations));
 
-      // Migrate legacy groups and load (always call to clear old groups if empty)
-      const msgGroups = migrateLegacyGroups(data.groupStyleAnnotations, msgNodeAnnotations);
-      loadGroups(msgGroups, false);
+      // IMPORTANT: Do NOT reload groups from topology-refresh messages.
+      // Groups are managed separately via save-group-style-annotations and
+      // have their own undo/redo handling. Reloading from topology-refresh
+      // causes race conditions where stale data overwrites local changes
+      // (during paste, undo, etc.).
+      // Groups are only loaded on initial page load (above), not on topology-refresh.
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [loadGroups, initializeMembership]);
+  }, [loadGroups, initializeMembership, currentGroupsRef]);
 }
 
 export function useAppGroups(options: UseAppGroupsOptions) {
@@ -144,7 +149,12 @@ export function useAppGroups(options: UseAppGroupsOptions) {
     onMigrateTextAnnotations,
     onMigrateShapeAnnotations
   });
-  useGroupDataLoader(groupsHook.loadGroups, groupsHook.initializeMembership);
+
+  // Keep a ref to current groups for race condition handling
+  const currentGroupsRef = useRef<GroupStyleAnnotation[]>([]);
+  currentGroupsRef.current = groupsHook.groups;
+
+  useGroupDataLoader(groupsHook.loadGroups, groupsHook.initializeMembership, currentGroupsRef);
 
   const handleAddGroup = useCallback(() => {
     if (!cyInstance) return;

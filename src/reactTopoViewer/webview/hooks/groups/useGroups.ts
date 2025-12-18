@@ -500,6 +500,11 @@ function useNodeGroupMembership(
     addNodeToGroupHelper(membershipRef, nodeId, groupId);
   }, [mode, isLocked]);
 
+  /** Add node to group locally (in-memory only, no extension notification) */
+  const addNodeToGroupLocal = useCallback((nodeId: string, groupId: string): void => {
+    membershipRef.current.set(nodeId, groupId);
+  }, []);
+
   const removeNodeFromGroup = useCallback((nodeId: string): void => {
     if (mode === 'view' || isLocked) return;
     removeNodeFromGroupHelper(membershipRef, nodeId);
@@ -515,7 +520,7 @@ function useNodeGroupMembership(
     log.info(`[Groups] Migrated node memberships from ${oldGroupId} to ${newGroupId}`);
   }, []);
 
-  return { findGroupAtPosition, getGroupMembers, getNodeMembership, addNodeToGroup, removeNodeFromGroup, initializeMembership, migrateMemberships };
+  return { findGroupAtPosition, getGroupMembers, getNodeMembership, addNodeToGroup, addNodeToGroupLocal, removeNodeFromGroup, initializeMembership, migrateMemberships };
 }
 
 /**
@@ -556,6 +561,24 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
 
   // Node membership management - must be before saveGroup for migration callbacks
   const membership = useNodeGroupMembership(mode, isLocked, groups);
+
+  // Wrap createGroup to also update in-memory membership when creating with nodes
+  // This ensures getNodeMembership() returns correct results immediately after group creation
+  const createGroupWithMembership = useCallback(
+    (selectedNodeIds?: string[], parentId?: string): { groupId: string; group: GroupStyleAnnotation } | null => {
+      const result = createGroup(selectedNodeIds, parentId);
+      if (result && selectedNodeIds && selectedNodeIds.length > 0) {
+        // Update in-memory membership map (the extension is already notified by createGroup)
+        selectedNodeIds.forEach(nodeId => {
+          // Directly set the membership ref without re-notifying extension
+          // Note: createGroup already called sendCommandToExtension for each node
+          membership.addNodeToGroupLocal?.(nodeId, result.groupId);
+        });
+      }
+      return result;
+    },
+    [createGroup, membership]
+  );
 
   const saveGroup = useSaveGroup(
     cy, mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef,
@@ -656,7 +679,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     () => ({
       groups,
       editingGroup,
-      createGroup,
+      createGroup: createGroupWithMembership,
       deleteGroup,
       editGroup,
       closeEditor,
@@ -688,7 +711,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       getGroupDepth
     }),
     [
-      groups, editingGroup, createGroup, deleteGroup, editGroup, closeEditor,
+      groups, editingGroup, createGroupWithMembership, deleteGroup, editGroup, closeEditor,
       saveGroup, updateGroup, updateGroupPosition, updateGroupSize, updateGroupGeoPosition, loadGroups,
       addGroup, getUndoRedoAction, membership, selectedGroupIds, selectGroup, toggleGroupSelection,
       boxSelectGroups, clearGroupSelection, updateGroupParent, getChildGroups, getDescendantGroupsMethod,
