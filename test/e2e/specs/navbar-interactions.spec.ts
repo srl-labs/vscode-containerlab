@@ -1,5 +1,13 @@
 import { test, expect } from '../fixtures/topoviewer';
 
+// Test selectors
+const SEL_NAVBAR_UNDO = '[data-testid="navbar-undo"]';
+const SEL_NAVBAR_REDO = '[data-testid="navbar-redo"]';
+const SEL_NAVBAR_LAYOUT = '[data-testid="navbar-layout"]';
+const SEL_NAVBAR_MENU = '.navbar-menu';
+const SEL_NAVBAR_LINK_LABELS = '[data-testid="navbar-link-labels"]';
+const SEL_NAVBAR_GRID = '[data-testid="navbar-grid"]';
+
 /**
  * Navbar Interactions E2E Tests
  *
@@ -48,22 +56,22 @@ test.describe('Navbar Interactions', () => {
     });
 
     test('undo button is visible in edit mode', async ({ page }) => {
-      const undoBtn = page.locator('[data-testid="navbar-undo"]');
+      const undoBtn = page.locator(SEL_NAVBAR_UNDO);
       await expect(undoBtn).toBeVisible();
     });
 
     test('redo button is visible in edit mode', async ({ page }) => {
-      const redoBtn = page.locator('[data-testid="navbar-redo"]');
+      const redoBtn = page.locator(SEL_NAVBAR_REDO);
       await expect(redoBtn).toBeVisible();
     });
 
     test('undo button is initially disabled (no history)', async ({ page }) => {
-      const undoBtn = page.locator('[data-testid="navbar-undo"]');
+      const undoBtn = page.locator(SEL_NAVBAR_UNDO);
       await expect(undoBtn).toBeDisabled();
     });
 
     test('redo button is initially disabled (no history)', async ({ page }) => {
-      const redoBtn = page.locator('[data-testid="navbar-redo"]');
+      const redoBtn = page.locator(SEL_NAVBAR_REDO);
       await expect(redoBtn).toBeDisabled();
     });
   });
@@ -74,12 +82,12 @@ test.describe('Navbar Interactions', () => {
     });
 
     test('undo button is NOT visible in view mode', async ({ page }) => {
-      const undoBtn = page.locator('[data-testid="navbar-undo"]');
+      const undoBtn = page.locator(SEL_NAVBAR_UNDO);
       await expect(undoBtn).not.toBeVisible();
     });
 
     test('redo button is NOT visible in view mode', async ({ page }) => {
-      const redoBtn = page.locator('[data-testid="navbar-redo"]');
+      const redoBtn = page.locator(SEL_NAVBAR_REDO);
       await expect(redoBtn).not.toBeVisible();
     });
   });
@@ -104,17 +112,17 @@ test.describe('Navbar Interactions', () => {
 
   test.describe('Layout Dropdown', () => {
     test('clicking layout button opens dropdown menu', async ({ page }) => {
-      const layoutBtn = page.locator('[data-testid="navbar-layout"]');
+      const layoutBtn = page.locator(SEL_NAVBAR_LAYOUT);
       await layoutBtn.click();
       await page.waitForTimeout(200);
 
       // Menu should appear
-      const layoutMenu = page.locator('.navbar-menu');
+      const layoutMenu = page.locator(SEL_NAVBAR_MENU);
       await expect(layoutMenu).toBeVisible();
     });
 
     test('layout menu has expected options', async ({ page }) => {
-      const layoutBtn = page.locator('[data-testid="navbar-layout"]');
+      const layoutBtn = page.locator(SEL_NAVBAR_LAYOUT);
       await layoutBtn.click();
       await page.waitForTimeout(200);
 
@@ -125,11 +133,11 @@ test.describe('Navbar Interactions', () => {
     });
 
     test('clicking outside layout menu closes it', async ({ page, topoViewerPage }) => {
-      const layoutBtn = page.locator('[data-testid="navbar-layout"]');
+      const layoutBtn = page.locator(SEL_NAVBAR_LAYOUT);
       await layoutBtn.click();
       await page.waitForTimeout(200);
 
-      const layoutMenu = page.locator('.navbar-menu');
+      const layoutMenu = page.locator(SEL_NAVBAR_MENU);
       await expect(layoutMenu).toBeVisible();
 
       // Click elsewhere
@@ -143,16 +151,16 @@ test.describe('Navbar Interactions', () => {
 
   test.describe('Link Labels Dropdown', () => {
     test('clicking link labels button opens dropdown menu', async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
+      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
 
-      const linkMenu = page.locator('.navbar-menu');
+      const linkMenu = page.locator(SEL_NAVBAR_MENU);
       await expect(linkMenu).toBeVisible();
     });
 
     test('link labels menu has Show Labels option', async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
+      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
 
@@ -161,7 +169,7 @@ test.describe('Navbar Interactions', () => {
     });
 
     test('link labels menu has No Labels option', async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
+      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
 
@@ -170,7 +178,7 @@ test.describe('Navbar Interactions', () => {
     });
 
     test('link labels menu has Show Dummy Links option', async ({ page }) => {
-      const linkLabelsBtn = page.locator('[data-testid="navbar-link-labels"]');
+      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
 
@@ -181,7 +189,7 @@ test.describe('Navbar Interactions', () => {
 
   test.describe('Grid Settings Dropdown', () => {
     test('clicking grid button opens dropdown menu', async ({ page }) => {
-      const gridBtn = page.locator('[data-testid="navbar-grid"]');
+      const gridBtn = page.locator(SEL_NAVBAR_GRID);
       await gridBtn.click();
       await page.waitForTimeout(200);
 
@@ -190,7 +198,7 @@ test.describe('Navbar Interactions', () => {
     });
 
     test('grid menu has slider input', async ({ page }) => {
-      const gridBtn = page.locator('[data-testid="navbar-grid"]');
+      const gridBtn = page.locator(SEL_NAVBAR_GRID);
       await gridBtn.click();
       await page.waitForTimeout(200);
 
@@ -199,7 +207,7 @@ test.describe('Navbar Interactions', () => {
     });
 
     test('grid menu has reset button', async ({ page }) => {
-      const gridBtn = page.locator('[data-testid="navbar-grid"]');
+      const gridBtn = page.locator(SEL_NAVBAR_GRID);
       await gridBtn.click();
       await page.waitForTimeout(200);
 

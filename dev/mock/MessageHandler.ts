@@ -206,10 +206,20 @@ export class MessageHandler {
   // --------------------------------------------------------------------------
 
   private handleBatchCommand(type: string): void {
+    const filename = this.stateManager.getCurrentFilePath();
+
     if (type === 'begin-graph-batch') {
       this.stateManager.beginBatch();
+      // Start batch on server-side TopologyIO
+      if (filename) {
+        this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/batch/begin`);
+      }
     } else if (type === 'end-graph-batch') {
       const shouldBroadcast = this.stateManager.endBatch();
+      // End batch on server-side TopologyIO (flushes pending saves)
+      if (filename) {
+        this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/batch/end`);
+      }
       if (shouldBroadcast) {
         this.broadcastTopologyData();
       }
@@ -282,24 +292,17 @@ export class MessageHandler {
     switch (type) {
       case 'create-node':
         this.handleCreateNode(msg);
-        // Save both YAML and annotations (for position)
-        this.saveYamlToFile();
-        this.saveAnnotationsToFile();
         break;
       case 'save-node-editor':
       case 'apply-node-editor':
         this.handleSaveNodeEditor(msg);
-        this.saveYamlToFile();
-        this.saveAnnotationsToFile();
         break;
       case 'create-link':
         this.handleCreateLink(msg);
-        this.saveYamlToFile();
         break;
       case 'save-link-editor':
       case 'apply-link-editor':
         this.handleSaveLinkEditor(msg);
-        this.saveYamlToFile();
         break;
       case 'save-lab-settings':
         console.log('%c[Mock]', 'color: #4CAF50;', 'Lab settings:', msg);
@@ -326,14 +329,34 @@ export class MessageHandler {
       position: nodePosition
     };
 
+    // Update local state for UI
     this.stateManager.addNode(node);
 
-    // Add to node annotations
+    // Add to node annotations (local state)
     const annotations = this.stateManager.getAnnotations();
     const nodeAnnotations = [...(annotations.nodeAnnotations || [])];
     if (!nodeAnnotations.find(a => a.id === nodeId)) {
       nodeAnnotations.push({ id: nodeId, position: nodePosition });
       this.stateManager.updateAnnotations({ nodeAnnotations });
+    }
+
+    // Persist via TopologyIO endpoint (handles both YAML and annotations)
+    const filename = this.stateManager.getCurrentFilePath();
+    if (filename) {
+      const extraData = nodeData.extraData as Record<string, unknown> | undefined;
+      this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/node`, {
+        name: nodeId,
+        kind: nodeData.kind || extraData?.kind,
+        type: nodeData.type || extraData?.type,
+        image: nodeData.image || extraData?.image,
+        position: nodePosition,
+        extraData: {
+          topoViewerRole: extraData?.topoViewerRole,
+          iconColor: extraData?.iconColor,
+          iconCornerRadius: extraData?.iconCornerRadius,
+          interfacePattern: extraData?.interfacePattern,
+        },
+      });
     }
   }
 
@@ -351,7 +374,7 @@ export class MessageHandler {
     const oldName = msg.oldName as string | undefined;
     if (oldName && oldName !== newName) {
       console.log('%c[Mock]', 'color: #4CAF50;', `Renaming node: ${oldName} -> ${newName}`);
-      // This is a rename - need to update the node ID
+      // This is a rename - need to update the node ID in local state
       const elements = this.stateManager.getElements();
       const updated = elements.map(el => {
         if (el.group === 'nodes' && el.data.id === oldName) {
@@ -371,16 +394,28 @@ export class MessageHandler {
       });
       this.stateManager.updateElements(updated);
 
-      // Update annotations
+      // Update annotations in local state
       const annotations = this.stateManager.getAnnotations();
       const nodeAnnotations = (annotations.nodeAnnotations || []).map(a =>
         a.id === oldName ? { ...a, id: newName } : a
       );
       this.stateManager.updateAnnotations({ nodeAnnotations });
     } else {
-      // Just update the node data (no rename)
+      // Just update the node data in local state (no rename)
       const existingId = (nodeData.id as string) || newName;
       this.stateManager.updateNodeData(existingId, nodeData);
+    }
+
+    // Persist via TopologyIO endpoint (handles both YAML and annotation rename)
+    const filename = this.stateManager.getCurrentFilePath();
+    if (filename) {
+      this.callTopologyIOEndpoint('PUT', `/api/topology/${encodeURIComponent(filename)}/node`, {
+        id: oldName || newName, // Original ID for matching
+        name: newName,
+        kind: nodeData.kind,
+        type: nodeData.type,
+        image: nodeData.image,
+      });
     }
 
     // Note: Don't broadcast - webview already has the data.
@@ -400,18 +435,33 @@ export class MessageHandler {
 
     if (!linkData) return;
 
+    const srcEp = linkData.sourceEndpoint || 'eth1';
+    const tgtEp = linkData.targetEndpoint || 'eth1';
+
     const edge: CyElement = {
       group: 'edges',
       data: {
         id: linkData.id,
         source: linkData.source,
         target: linkData.target,
-        sourceEndpoint: linkData.sourceEndpoint || 'eth1',
-        targetEndpoint: linkData.targetEndpoint || 'eth1'
+        sourceEndpoint: srcEp,
+        targetEndpoint: tgtEp
       }
     };
 
+    // Update local state for UI
     this.stateManager.addEdge(edge);
+
+    // Persist via TopologyIO endpoint
+    const filename = this.stateManager.getCurrentFilePath();
+    if (filename) {
+      this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/link`, {
+        source: linkData.source,
+        target: linkData.target,
+        sourceEndpoint: srcEp,
+        targetEndpoint: tgtEp,
+      });
+    }
   }
 
   private handleSaveLinkEditor(msg: WebviewMessage): void {
@@ -421,7 +471,11 @@ export class MessageHandler {
     const edgeId = linkData.id as string;
     if (!edgeId) return;
 
-    // Update edge data with all fields from editor
+    // Get original endpoint values for link matching (before edit)
+    const originalSourceEndpoint = msg.originalSourceEndpoint as string | undefined;
+    const originalTargetEndpoint = msg.originalTargetEndpoint as string | undefined;
+
+    // Update edge data in local state with all fields from editor
     this.stateManager.updateEdgeData(edgeId, {
       source: linkData.source,
       target: linkData.target,
@@ -435,6 +489,20 @@ export class MessageHandler {
       vars: linkData.vars,
       labels: linkData.labels
     });
+
+    // Persist via TopologyIO endpoint
+    const filename = this.stateManager.getCurrentFilePath();
+    if (filename) {
+      this.callTopologyIOEndpoint('PUT', `/api/topology/${encodeURIComponent(filename)}/link`, {
+        source: linkData.source,
+        target: linkData.target,
+        sourceEndpoint: linkData.sourceEndpoint,
+        targetEndpoint: linkData.targetEndpoint,
+        // Original values for matching the link in YAML
+        originalSourceEndpoint,
+        originalTargetEndpoint,
+      });
+    }
 
     // Note: Don't broadcast - webview already has the data.
     // Real extension just persists to files, doesn't reload canvas.
@@ -450,19 +518,39 @@ export class MessageHandler {
     if (type === 'panel-delete-node') {
       const nodeId = msg.nodeId as string;
       if (nodeId) {
+        // Update local state
         this.stateManager.removeNode(nodeId);
-        // Save both YAML and annotations
-        this.saveYamlToFile();
-        this.saveAnnotationsToFile();
+
+        // Persist via TopologyIO endpoint (handles both YAML and annotations)
+        const filename = this.stateManager.getCurrentFilePath();
+        if (filename) {
+          this.callTopologyIOEndpoint('DELETE', `/api/topology/${encodeURIComponent(filename)}/node/${encodeURIComponent(nodeId)}`);
+        }
+
         this.updateSplitView();
         this.maybeBroadcastTopology();
       }
     } else if (type === 'panel-delete-link') {
       const edgeId = msg.edgeId as string;
       if (edgeId) {
+        // Find the edge to get source/target info for deletion
+        const elements = this.stateManager.getElements();
+        const edge = elements.find(el => el.group === 'edges' && el.data.id === edgeId);
+
+        // Update local state
         this.stateManager.removeEdge(edgeId);
-        // Save YAML
-        this.saveYamlToFile();
+
+        // Persist via TopologyIO endpoint
+        const filename = this.stateManager.getCurrentFilePath();
+        if (filename && edge) {
+          this.callTopologyIOEndpoint('DELETE', `/api/topology/${encodeURIComponent(filename)}/link`, {
+            source: edge.data.source,
+            target: edge.data.target,
+            sourceEndpoint: edge.data.sourceEndpoint,
+            targetEndpoint: edge.data.targetEndpoint,
+          });
+        }
+
         this.updateSplitView();
         this.maybeBroadcastTopology();
       }
@@ -511,7 +599,16 @@ export class MessageHandler {
       position: { x: number; y: number };
     }>;
     if (positions && Array.isArray(positions)) {
+      // Update local state
       this.stateManager.updateNodePositions(positions);
+
+      // Persist via TopologyIO endpoint
+      const filename = this.stateManager.getCurrentFilePath();
+      if (filename) {
+        this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/positions`, {
+          positions
+        });
+      }
     }
   }
 
@@ -715,6 +812,38 @@ export class MessageHandler {
       return `${path}${separator}sessionId=${sessionId}`;
     }
     return path;
+  }
+
+  /**
+   * Call a TopologyIO endpoint on the server.
+   * These endpoints use the same orchestration as the VS Code extension:
+   * - Save queue (prevents concurrent writes)
+   * - Batch deferral
+   * - Integrated annotation management
+   */
+  private callTopologyIOEndpoint(
+    method: 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    body?: Record<string, unknown>
+  ): void {
+    const url = this.buildApiUrl(path);
+
+    fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          console.log('%c[TopologyIO]', 'color: #4CAF50;', `${method} ${path} succeeded`);
+        } else {
+          console.warn('%c[TopologyIO]', 'color: #FF9800;', `${method} ${path} failed:`, result.error);
+        }
+      })
+      .catch(err => {
+        console.error('%c[TopologyIO Error]', 'color: #f44336;', err);
+      });
   }
 
   /** Save current annotations to file (if a file is loaded) */

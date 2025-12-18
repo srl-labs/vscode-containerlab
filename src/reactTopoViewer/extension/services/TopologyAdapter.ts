@@ -1,33 +1,30 @@
 /**
  * Topology adapter for converting Containerlab YAML to Cytoscape elements.
+ * This is the VS Code integration layer that wraps the shared parser.
  */
 
 import * as YAML from 'yaml';
 import { log } from './logger';
-import { ClabTopology, CyElement } from '../../shared/types/topology';
+import { ClabTopology, CyElement, TopologyAnnotations } from '../../shared/types/topology';
 import { ClabLabTreeNode } from '../../../treeView/common';
 import { annotationsManager } from './AnnotationsManager';
-import { DummyContext } from './LinkParser';
+import { ContainerDataAdapter } from './ContainerDataAdapter';
 import {
-  isPresetLayout,
-  computeFullPrefix,
-  addNodeElements,
-  InterfacePatternMigration,
-} from './NodeElementBuilder';
-import { migrateInterfacePatterns } from '../persistence/NodePersistence';
-import {
-  collectSpecialNodes,
-  addCloudNodes,
-} from './SpecialNodeHandler';
-import {
-  addAliasNodesFromAnnotations,
-  applyAliasMappingsToEdges,
-  hideBaseBridgeNodesWithAliases,
-} from './AliasNodeHandler';
-import {
-  addEdgeElements,
+  TopologyParser,
   computeEdgeClassFromStates as computeEdgeClassFromStatesImpl,
-} from './EdgeElementBuilder';
+  type ParserLogger,
+  type GraphLabelMigration,
+} from '../../shared/parsing';
+
+/**
+ * Adapter that wraps log to implement ParserLogger.
+ */
+const parserLogger: ParserLogger = {
+  info: (msg) => log.info(`[Parser] ${msg}`),
+  warn: (msg) => log.warn(`[Parser] ${msg}`),
+  debug: (msg) => log.debug(`[Parser] ${msg}`),
+  error: (msg) => log.error(`[Parser] ${msg}`),
+};
 
 /**
  * TopoViewerAdaptorClab is responsible for adapting Containerlab YAML configurations
@@ -40,7 +37,6 @@ export class TopoViewerAdaptorClab {
   public currentClabName: string | undefined;
   public currentClabPrefix: string | undefined;
   public allowedhostname: string | undefined;
-  private loggedUnmappedBaseBridges: Set<string> = new Set();
 
   /**
    * Transforms a Containerlab YAML string into Cytoscape elements compatible with TopoViewer.
@@ -55,23 +51,37 @@ export class TopoViewerAdaptorClab {
     const parsed = this.currentClabDoc.toJS() as ClabTopology;
     this.currentClabTopo = parsed;
 
+    // Load and migrate annotations
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
-    annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath);
 
-    const { elements, migrations } = this.buildCytoscapeElements(parsed, {
-      includeContainerData: true,
-      clabTreeData: clabTreeDataToTopoviewer,
-      annotations: annotations as Record<string, unknown>
+    // Create container data adapter for enrichment
+    const containerDataProvider = new ContainerDataAdapter(clabTreeDataToTopoviewer);
+
+    // Parse with the shared parser
+    const result = TopologyParser.parse(yamlContent, {
+      annotations: annotations as TopologyAnnotations | undefined,
+      containerDataProvider,
+      logger: parserLogger,
     });
 
+    // Store state for external access
+    this.currentIsPresetLayout = result.isPresetLayout;
+    this.currentClabName = result.labName;
+    this.currentClabPrefix = result.prefix;
+
+    // Handle graph label migrations (persist to annotations file)
+    if (yamlFilePath && result.graphLabelMigrations.length > 0) {
+      await this.persistGraphLabelMigrations(yamlFilePath, annotations, result.graphLabelMigrations);
+    }
+
     // Migrate interface patterns to annotations for nodes that don't have them
-    if (yamlFilePath && migrations.length > 0) {
-      migrateInterfacePatterns(yamlFilePath, migrations).catch(err => {
+    if (yamlFilePath && result.pendingMigrations.length > 0) {
+      this.migrateInterfacePatterns(yamlFilePath, result.pendingMigrations).catch(err => {
         log.warn(`[TopologyAdapter] Failed to migrate interface patterns: ${err}`);
       });
     }
 
-    return elements;
+    return result.elements;
   }
 
   /**
@@ -86,22 +96,30 @@ export class TopoViewerAdaptorClab {
     const parsed = this.currentClabDoc.toJS() as ClabTopology;
     this.currentClabTopo = parsed;
 
+    // Load and migrate annotations
     let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
-    annotations = await this.migrateGraphLabelsToAnnotations(parsed, annotations, yamlFilePath);
 
-    const { elements, migrations } = this.buildCytoscapeElements(parsed, {
-      includeContainerData: false,
-      annotations: annotations as Record<string, unknown>
-    });
+    // Parse without container data (editor mode)
+    const result = TopologyParser.parseForEditor(yamlContent, annotations as TopologyAnnotations | undefined);
+
+    // Store state for external access
+    this.currentIsPresetLayout = result.isPresetLayout;
+    this.currentClabName = result.labName;
+    this.currentClabPrefix = result.prefix;
+
+    // Handle graph label migrations (persist to annotations file)
+    if (yamlFilePath && result.graphLabelMigrations.length > 0) {
+      await this.persistGraphLabelMigrations(yamlFilePath, annotations, result.graphLabelMigrations);
+    }
 
     // Migrate interface patterns to annotations for nodes that don't have them
-    if (yamlFilePath && migrations.length > 0) {
-      migrateInterfacePatterns(yamlFilePath, migrations).catch(err => {
+    if (yamlFilePath && result.pendingMigrations.length > 0) {
+      this.migrateInterfacePatterns(yamlFilePath, result.pendingMigrations).catch(err => {
         log.warn(`[TopologyAdapter] Failed to migrate interface patterns: ${err}`);
       });
     }
 
-    return elements;
+    return result.elements;
   }
 
   /**
@@ -118,146 +136,83 @@ export class TopoViewerAdaptorClab {
   }
 
   /**
-   * Migrates graph-* labels from YAML to annotations file.
+   * Migrates interface patterns to annotations for nodes that don't have them.
+   * Uses annotationsManager.modifyAnnotations() for atomic read-modify-write.
    */
-  private async migrateGraphLabelsToAnnotations(
-    parsed: ClabTopology,
-    annotations: Record<string, unknown> | undefined,
-    yamlFilePath: string | undefined
-  ): Promise<Record<string, unknown> | undefined> {
-    if (!(yamlFilePath && parsed.topology?.nodes)) {
-      return annotations;
-    }
+  private async migrateInterfacePatterns(
+    yamlFilePath: string,
+    migrations: Array<{ nodeId: string; interfacePattern: string }>
+  ): Promise<void> {
+    if (migrations.length === 0) return;
 
-    type NodeAnnotation = { id: string; position?: unknown; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } };
+    await annotationsManager.modifyAnnotations(yamlFilePath, (annotations) => {
+      if (!annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = [];
+      }
+
+      let modified = false;
+      for (const { nodeId, interfacePattern } of migrations) {
+        const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+        if (existing) {
+          if (!existing.interfacePattern) {
+            existing.interfacePattern = interfacePattern;
+            modified = true;
+          }
+        } else {
+          annotations.nodeAnnotations.push({ id: nodeId, interfacePattern });
+          modified = true;
+        }
+      }
+
+      if (modified) {
+        log.info(`[TopologyAdapter] Migrated interface patterns for ${migrations.length} nodes`);
+      }
+
+      return annotations;
+    });
+  }
+
+  /**
+   * Persists graph label migrations to annotations file.
+   */
+  private async persistGraphLabelMigrations(
+    yamlFilePath: string,
+    annotations: Record<string, unknown> | undefined,
+    migrations: GraphLabelMigration[]
+  ): Promise<void> {
+    type NodeAnnotation = { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } };
+
     const localAnnotations = (annotations ?? {
       freeTextAnnotations: [],
       groupStyleAnnotations: [],
-      cloudNodeAnnotations: [],
       nodeAnnotations: []
     }) as { nodeAnnotations: NodeAnnotation[] };
     localAnnotations.nodeAnnotations = localAnnotations.nodeAnnotations ?? [];
 
-    let needsSave = false;
-    for (const [nodeName, nodeObj] of Object.entries(parsed.topology.nodes)) {
-      const existingAnnotation = localAnnotations.nodeAnnotations.find((na) => na.id === nodeName);
-      if (existingAnnotation || !nodeObj?.labels) continue;
+    const existingIds = new Set(localAnnotations.nodeAnnotations.map((na) => na.id));
+    for (const migration of migrations) {
+      if (existingIds.has(migration.nodeId)) continue;
 
-      const labels = nodeObj.labels as Record<string, unknown>;
-      if (!this.nodeHasGraphLabels(labels)) continue;
-
-      const newAnnotation = this.buildAnnotationFromLabels(nodeName, labels);
-      if (newAnnotation) {
-        localAnnotations.nodeAnnotations.push(newAnnotation);
-        needsSave = true;
-        log.info(`Migrated graph-* labels for node ${nodeName} to annotations.json`);
-      }
+      const annotation = buildAnnotationFromMigration(migration);
+      localAnnotations.nodeAnnotations.push(annotation);
+      log.info(`Migrated graph-* labels for node ${migration.nodeId} to annotations.json`);
     }
 
-    if (needsSave) {
-      await annotationsManager.saveAnnotations(yamlFilePath, localAnnotations as Record<string, unknown>);
-      log.info('Saved migrated graph-* labels to annotations.json');
-    }
-
-    return localAnnotations;
+    await annotationsManager.saveAnnotations(yamlFilePath, localAnnotations as Record<string, unknown>);
+    log.info('Saved migrated graph-* labels to annotations.json');
   }
+}
 
-  /**
-   * Checks if a node has graph-* labels.
-   */
-  private nodeHasGraphLabels(labels: Record<string, unknown>): boolean {
-    return Boolean(
-      labels['graph-posX'] ||
-      labels['graph-posY'] ||
-      labels['graph-icon'] ||
-      labels['graph-group'] ||
-      labels['graph-level'] ||
-      labels['graph-groupLabelPos'] ||
-      labels['graph-geoCoordinateLat'] ||
-      labels['graph-geoCoordinateLng']
-    );
-  }
-
-  /**
-   * Builds an annotation object from graph-* labels.
-   */
-  private buildAnnotationFromLabels(
-    nodeName: string,
-    labels: Record<string, unknown>
-  ): { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } } | null {
-    const annotation: { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } } = { id: nodeName };
-
-    if (labels['graph-posX'] && labels['graph-posY']) {
-      annotation.position = {
-        x: parseInt(labels['graph-posX'] as string, 10) || 0,
-        y: parseInt(labels['graph-posY'] as string, 10) || 0,
-      };
-    }
-
-    if (labels['graph-icon']) {
-      annotation.icon = labels['graph-icon'] as string;
-    }
-    if (labels['graph-group']) {
-      annotation.group = labels['graph-group'] as string;
-    }
-    if (labels['graph-level']) {
-      annotation.level = labels['graph-level'] as string;
-    }
-    if (labels['graph-groupLabelPos']) {
-      annotation.groupLabelPos = labels['graph-groupLabelPos'] as string;
-    }
-
-    if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
-      annotation.geoCoordinates = {
-        lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
-        lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0,
-      };
-    }
-
-    return annotation;
-  }
-
-  /**
-   * Builds Cytoscape elements from parsed topology.
-   */
-  private buildCytoscapeElements(
-    parsed: ClabTopology,
-    opts: { includeContainerData: boolean; clabTreeData?: Record<string, ClabLabTreeNode>; annotations?: Record<string, unknown> }
-  ): { elements: CyElement[]; migrations: InterfacePatternMigration[] } {
-    const elements: CyElement[] = [];
-    if (!parsed.topology) {
-      log.warn("Parsed YAML does not contain 'topology' object.");
-      return { elements, migrations: [] };
-    }
-
-    this.currentIsPresetLayout = isPresetLayout(parsed, opts.annotations);
-    log.info(`######### status preset layout: ${this.currentIsPresetLayout}`);
-
-    const clabName = parsed.name ?? '';
-    const fullPrefix = computeFullPrefix(parsed, clabName);
-
-    // Add node elements and collect migrations
-    const migrations = addNodeElements(parsed, opts, fullPrefix, clabName, elements);
-
-    // Collect and add special nodes (host, mgmt-net, macvlan, etc.)
-    const ctx: DummyContext = { dummyCounter: 0, dummyLinkMap: new Map() };
-    const { specialNodes, specialNodeProps } = collectSpecialNodes(parsed, ctx);
-    const yamlNodeIds = new Set(Object.keys(parsed.topology?.nodes || {}));
-    addCloudNodes(specialNodes, specialNodeProps, opts, elements, yamlNodeIds);
-
-    // Add edge elements
-    addEdgeElements(parsed, opts, fullPrefix, clabName, specialNodes, ctx, elements);
-
-    // Add alias nodes
-    addAliasNodesFromAnnotations(parsed, opts.annotations, elements);
-
-    // Rewire edges to alias nodes
-    applyAliasMappingsToEdges(opts.annotations, elements);
-
-    // Hide base bridge nodes that have aliases
-    hideBaseBridgeNodesWithAliases(opts.annotations, elements, this.loggedUnmappedBaseBridges);
-
-    log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
-    return { elements, migrations };
-  }
+/**
+ * Builds a NodeAnnotation from a GraphLabelMigration.
+ */
+function buildAnnotationFromMigration(migration: GraphLabelMigration): { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } } {
+  const annotation: { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } } = { id: migration.nodeId };
+  if (migration.position) annotation.position = migration.position;
+  if (migration.icon) annotation.icon = migration.icon;
+  if (migration.group) annotation.group = migration.group;
+  if (migration.level) annotation.level = migration.level;
+  if (migration.groupLabelPos) annotation.groupLabelPos = migration.groupLabelPos;
+  if (migration.geoCoordinates) annotation.geoCoordinates = migration.geoCoordinates;
+  return annotation;
 }

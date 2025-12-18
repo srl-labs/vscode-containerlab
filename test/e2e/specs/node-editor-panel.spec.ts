@@ -1,5 +1,8 @@
 import { test, expect } from '../fixtures/topoviewer';
 
+// Test selectors
+const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
+
 /**
  * Node Editor Panel E2E Tests
  *
@@ -38,7 +41,7 @@ test.describe('Node Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Editor panel should appear with correct test id
-    const editorPanel = page.locator('[data-testid="node-editor"]');
+    const editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
   });
 
@@ -125,7 +128,7 @@ test.describe('Node Editor Panel', () => {
     );
     await page.waitForTimeout(500);
 
-    const editorPanel = page.locator('[data-testid="node-editor"]');
+    const editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
 
     // Click close button
@@ -147,7 +150,7 @@ test.describe('Node Editor Panel', () => {
     );
     await page.waitForTimeout(500);
 
-    const editorPanel = page.locator('[data-testid="node-editor"]');
+    const editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
 
     // Click OK button
@@ -189,7 +192,7 @@ test.describe('Node Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Editor panel should NOT appear in view mode
-    const editorPanel = page.locator('[data-testid="node-editor"]');
+    const editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).not.toBeVisible();
   });
 
@@ -207,7 +210,7 @@ test.describe('Node Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Editor panel should NOT appear when locked - BUG: it opens anyway
-    const editorPanel = page.locator('[data-testid="node-editor"]');
+    const editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).not.toBeVisible();
   });
 
@@ -223,7 +226,7 @@ test.describe('Node Editor Panel', () => {
     );
     await page.waitForTimeout(500);
 
-    let editorPanel = page.locator('[data-testid="node-editor"]');
+    let editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
 
     // Close the panel
@@ -240,7 +243,7 @@ test.describe('Node Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Editor should open again
-    editorPanel = page.locator('[data-testid="node-editor"]');
+    editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
   });
 });

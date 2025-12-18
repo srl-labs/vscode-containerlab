@@ -296,6 +296,46 @@ function handleSelectAll(event: KeyboardEvent, cyInstance: Core | null): boolean
 }
 
 /**
+ * Delete annotations if any are selected.
+ */
+function deleteSelectedAnnotations(
+  selectedAnnotationIds: Set<string> | undefined,
+  onDeleteAnnotations: (() => void) | undefined
+): boolean {
+  if (!selectedAnnotationIds || selectedAnnotationIds.size === 0 || !onDeleteAnnotations) return false;
+  log.info(`[Keyboard] Deleting ${selectedAnnotationIds.size} annotations`);
+  onDeleteAnnotations();
+  return true;
+}
+
+/**
+ * Delete selected cytoscape elements (nodes and edges).
+ */
+function deleteCytoscapeElements(
+  cyInstance: Core,
+  onDeleteNode: (nodeId: string) => void,
+  onDeleteEdge: (edgeId: string) => void
+): boolean {
+  let handled = false;
+  const selectedNodes = cyInstance.nodes(':selected');
+  log.info(`[Keyboard] Delete pressed - ${selectedNodes.length} nodes selected: ${selectedNodes.map((n) => n.id()).join(', ')}`);
+  selectedNodes.forEach((node) => {
+    log.info(`[Keyboard] Deleting node: ${node.id()}`);
+    onDeleteNode(node.id());
+  });
+  if (selectedNodes.length > 0) handled = true;
+
+  const selectedEdges = cyInstance.edges(':selected');
+  selectedEdges.forEach((edge) => {
+    log.info(`[Keyboard] Deleting edge: ${edge.id()}`);
+    onDeleteEdge(edge.id());
+  });
+  if (selectedEdges.length > 0) handled = true;
+
+  return handled;
+}
+
+/**
  * Handle Delete/Backspace: Delete selected element (nodes/edges and/or annotations)
  */
 function handleDelete(
@@ -311,41 +351,12 @@ function handleDelete(
   onDeleteAnnotations?: () => void
 ): boolean {
   if (event.key !== 'Delete' && event.key !== 'Backspace') return false;
-  if (mode !== 'edit') return false;
-  if (isLocked) return false;
+  if (mode !== 'edit' || isLocked) return false;
 
-  let handled = false;
+  let handled = deleteSelectedAnnotations(selectedAnnotationIds, onDeleteAnnotations);
 
-  // Delete annotations if any are selected
-  if (selectedAnnotationIds && selectedAnnotationIds.size > 0 && onDeleteAnnotations) {
-    log.info(`[Keyboard] Deleting ${selectedAnnotationIds.size} annotations`);
-    onDeleteAnnotations();
-    handled = true;
-  }
-
-  // Delete all selected nodes from Cytoscape
   if (cyInstance) {
-    const selectedNodes = cyInstance.nodes(':selected');
-    log.info(`[Keyboard] Delete pressed - ${selectedNodes.length} nodes selected: ${selectedNodes.map((n) => n.id()).join(', ')}`);
-    selectedNodes.forEach((node) => {
-      const nodeId = node.id();
-      log.info(`[Keyboard] Deleting node: ${nodeId}`);
-      onDeleteNode(nodeId);
-    });
-    if (selectedNodes.length > 0) {
-      handled = true;
-    }
-
-    // Delete all selected edges from Cytoscape
-    const selectedEdges = cyInstance.edges(':selected');
-    selectedEdges.forEach((edge) => {
-      const edgeId = edge.id();
-      log.info(`[Keyboard] Deleting edge: ${edgeId}`);
-      onDeleteEdge(edgeId);
-    });
-    if (selectedEdges.length > 0) {
-      handled = true;
-    }
+    if (deleteCytoscapeElements(cyInstance, onDeleteNode, onDeleteEdge)) handled = true;
   } else {
     // Fallback to single selection if no cyInstance
     if (selectedNode) {
@@ -360,9 +371,7 @@ function handleDelete(
     }
   }
 
-  if (handled) {
-    event.preventDefault();
-  }
+  if (handled) event.preventDefault();
   return handled;
 }
 

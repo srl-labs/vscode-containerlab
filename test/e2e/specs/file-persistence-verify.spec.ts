@@ -1,6 +1,17 @@
 import { test, expect } from '../fixtures/topoviewer';
 import { drag } from '../helpers/cytoscape-helpers';
 
+// Test file names
+const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
+const SIMPLE_FILE = 'simple.clab.yml';
+const EMPTY_FILE = 'empty.clab.yml';
+
+// Node kinds
+const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
+
+// Test node names
+const NEW_ROUTER = 'new-router';
+
 /**
  * Verification tests for file persistence
  * These tests verify that changes are actually persisted to files
@@ -11,13 +22,13 @@ test.describe.serial('File Persistence Verification', () => {
     await topoViewerPage.resetFiles();
 
     // Load spine-leaf topology (has predefined positions in annotations)
-    await topoViewerPage.gotoFile('spine-leaf.clab.yml');
+    await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
     // Read initial annotations
-    const initialAnnotations = await topoViewerPage.getAnnotationsFromFile('spine-leaf.clab.yml');
+    const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
     const spine1Initial = initialAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
     console.log('Initial spine1 position:', spine1Initial?.position);
     expect(spine1Initial).toBeDefined();
@@ -42,7 +53,7 @@ test.describe.serial('File Persistence Verification', () => {
     await page.waitForTimeout(1000);
 
     // Read annotations again
-    const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile('spine-leaf.clab.yml');
+    const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
     const spine1Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
     console.log('Updated spine1 position:', spine1Updated?.position);
 
@@ -63,13 +74,13 @@ test.describe.serial('File Persistence Verification', () => {
     await topoViewerPage.resetFiles();
 
     // Load spine-leaf topology
-    await topoViewerPage.gotoFile('spine-leaf.clab.yml');
+    await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
     // Read initial YAML
-    const initialYaml = await topoViewerPage.getYamlFromFile('spine-leaf.clab.yml');
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
     const initialLinkCount = (initialYaml.match(/endpoints:/g) || []).length;
     console.log('Initial link count:', initialLinkCount);
 
@@ -85,7 +96,7 @@ test.describe.serial('File Persistence Verification', () => {
     await page.waitForTimeout(1000);
 
     // Read YAML again
-    const updatedYaml = await topoViewerPage.getYamlFromFile('spine-leaf.clab.yml');
+    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
     const updatedLinkCount = (updatedYaml.match(/endpoints:/g) || []).length;
     console.log('Updated link count:', updatedLinkCount);
     console.log('Updated YAML links section:', updatedYaml.split('links:')[1]?.substring(0, 500));
@@ -103,7 +114,7 @@ test.describe.serial('File Persistence Verification', () => {
     await topoViewerPage.resetFiles();
 
     // Load simple topology (has 2 nodes: srl1, srl2 from disk)
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile(SIMPLE_FILE);
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -120,7 +131,7 @@ test.describe.serial('File Persistence Verification', () => {
     console.log('srl2 initial position:', srl2PosInitial);
 
     // Create a new node
-    await topoViewerPage.createNode('new-router', { x: 300, y: 300 }, 'nokia_srlinux');
+    await topoViewerPage.createNode(NEW_ROUTER, { x: 300, y: 300 }, KIND_NOKIA_SRLINUX);
 
     // Wait for save
     await page.waitForTimeout(500);
@@ -142,8 +153,8 @@ test.describe.serial('File Persistence Verification', () => {
     expect(nodeCountAfterAdd).toBe(initialNodeCount + 1);
 
     // Connect new node to both existing nodes
-    await topoViewerPage.createLink('new-router', 'srl1', 'e1-1', 'e1-2');
-    await topoViewerPage.createLink('new-router', 'srl2', 'e1-2', 'e1-2');
+    await topoViewerPage.createLink(NEW_ROUTER, 'srl1', 'e1-1', 'e1-2');
+    await topoViewerPage.createLink(NEW_ROUTER, 'srl2', 'e1-2', 'e1-2');
 
     // Wait for saves
     await page.waitForTimeout(500);
@@ -153,18 +164,18 @@ test.describe.serial('File Persistence Verification', () => {
     expect(edgeCountAfterLinks).toBe(initialEdgeCount + 2);
 
     // Verify YAML persistence
-    const yaml = await topoViewerPage.getYamlFromFile('simple.clab.yml');
+    const yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
     console.log('YAML after changes:', yaml);
-    expect(yaml).toContain('new-router:');
-    expect(yaml).toContain('kind: nokia_srlinux');
-    expect(yaml).toContain('new-router:e1-1');
+    expect(yaml).toContain(`${NEW_ROUTER}:`);
+    expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
+    expect(yaml).toContain(`${NEW_ROUTER}:e1-1`);
     expect(yaml).toContain('srl1:e1-2');
-    expect(yaml).toContain('new-router:e1-2');
+    expect(yaml).toContain(`${NEW_ROUTER}:e1-2`);
     expect(yaml).toContain('srl2:e1-2');
 
     // Verify annotations persistence
-    const annotations = await topoViewerPage.getAnnotationsFromFile('simple.clab.yml');
-    const newRouterAnnotation = annotations.nodeAnnotations?.find(n => n.id === 'new-router');
+    const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+    const newRouterAnnotation = annotations.nodeAnnotations?.find(n => n.id === NEW_ROUTER);
     expect(newRouterAnnotation).toBeDefined();
     expect(newRouterAnnotation?.position).toBeDefined();
     console.log('new-router annotation:', newRouterAnnotation);
@@ -173,7 +184,7 @@ test.describe.serial('File Persistence Verification', () => {
     console.log(`State before reload: ${nodeCountAfterAdd} nodes, ${edgeCountAfterLinks} edges`);
 
     // RELOAD the topology to verify everything persists
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile(SIMPLE_FILE);
     await topoViewerPage.waitForCanvasReady();
 
     // Verify node and edge counts after reload
@@ -188,11 +199,11 @@ test.describe.serial('File Persistence Verification', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds).toContain('srl1');
     expect(nodeIds).toContain('srl2');
-    expect(nodeIds).toContain('new-router');
+    expect(nodeIds).toContain(NEW_ROUTER);
     console.log('Node IDs after reload:', nodeIds);
 
     // Verify new-router position was persisted (allow 20px tolerance for node centering)
-    const newRouterPosAfterReload = await topoViewerPage.getNodePosition('new-router');
+    const newRouterPosAfterReload = await topoViewerPage.getNodePosition(NEW_ROUTER);
     console.log('new-router position after reload:', newRouterPosAfterReload);
     expect(Math.abs(newRouterPosAfterReload.x - 300)).toBeLessThan(20);
     expect(Math.abs(newRouterPosAfterReload.y - 300)).toBeLessThan(20);
@@ -203,30 +214,30 @@ test.describe.serial('File Persistence Verification', () => {
     await topoViewerPage.resetFiles();
 
     // Load empty topology
-    await topoViewerPage.gotoFile('empty.clab.yml');
+    await topoViewerPage.gotoFile(EMPTY_FILE);
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
     // Initial YAML should have empty nodes
-    const initialYaml = await topoViewerPage.getYamlFromFile('empty.clab.yml');
+    const initialYaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
     console.log('Initial YAML:', initialYaml);
 
     // Create two nodes
-    await topoViewerPage.createNode('test-router1', { x: 200, y: 200 }, 'nokia_srlinux');
-    await topoViewerPage.createNode('test-router2', { x: 400, y: 200 }, 'nokia_srlinux');
+    await topoViewerPage.createNode('test-router1', { x: 200, y: 200 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode('test-router2', { x: 400, y: 200 }, KIND_NOKIA_SRLINUX);
 
     // Wait for save to complete
     await page.waitForTimeout(1000);
 
     // Read YAML again
-    const updatedYaml = await topoViewerPage.getYamlFromFile('empty.clab.yml');
+    const updatedYaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
     console.log('Updated YAML:', updatedYaml);
 
     // Check that both nodes have proper structure
     expect(updatedYaml).toContain('test-router1:');
     expect(updatedYaml).toContain('test-router2:');
-    expect(updatedYaml).toContain('kind: nokia_srlinux');
+    expect(updatedYaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
     expect(updatedYaml).toContain('image:');
   });
 });

@@ -1,5 +1,12 @@
 import { test, expect } from '../fixtures/topoviewer';
 
+// Test file names
+const EMPTY_FILE = 'empty.clab.yml';
+const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
+
+// Node kinds
+const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
+
 /**
  * Node creation workflow tests
  *
@@ -17,7 +24,7 @@ test.describe.serial('Node Creation Workflow', () => {
     await topoViewerPage.resetFiles();
 
     // Step 1: Load empty topology
-    await topoViewerPage.gotoFile('empty.clab.yml');
+    await topoViewerPage.gotoFile(EMPTY_FILE);
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -27,9 +34,9 @@ test.describe.serial('Node Creation Workflow', () => {
     expect(initialNodeCount).toBe(0);
 
     // Step 2: Create 3 nodes in a triangle pattern
-    await topoViewerPage.createNode('router1', { x: 300, y: 100 }, 'nokia_srlinux');
-    await topoViewerPage.createNode('router2', { x: 150, y: 300 }, 'nokia_srlinux');
-    await topoViewerPage.createNode('router3', { x: 450, y: 300 }, 'nokia_srlinux');
+    await topoViewerPage.createNode('router1', { x: 300, y: 100 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode('router2', { x: 150, y: 300 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode('router3', { x: 450, y: 300 }, KIND_NOKIA_SRLINUX);
 
     // Verify nodes were created in UI
     const nodesAfterCreation = await topoViewerPage.getNodeCount();
@@ -51,23 +58,23 @@ test.describe.serial('Node Creation Workflow', () => {
     await page.waitForTimeout(500);
 
     // Step 4: Verify YAML was saved correctly
-    const yaml = await topoViewerPage.getYamlFromFile('empty.clab.yml');
+    const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
     expect(yaml).toContain('router1:');
     expect(yaml).toContain('router2:');
     expect(yaml).toContain('router3:');
-    expect(yaml).toContain('kind: nokia_srlinux');
+    expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
     expect(yaml).toContain('image: ghcr.io/nokia/srlinux:latest');
     expect(yaml).toContain('endpoints:');
 
     // Step 5: Verify annotations were saved
-    const annotations = await topoViewerPage.getAnnotationsFromFile('empty.clab.yml');
+    const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
     expect(annotations.nodeAnnotations?.length).toBe(3);
 
     const nodeIds = annotations.nodeAnnotations?.map(n => n.id).sort();
     expect(nodeIds).toEqual(['router1', 'router2', 'router3']);
 
     // Step 6: Reload the topology to test persistence
-    await topoViewerPage.gotoFile('empty.clab.yml');
+    await topoViewerPage.gotoFile(EMPTY_FILE);
     await topoViewerPage.waitForCanvasReady();
 
     // Verify nodes and edges are restored
@@ -79,19 +86,19 @@ test.describe.serial('Node Creation Workflow', () => {
 
     // Verify node IDs are correct
     const reloadedNodeIds = await topoViewerPage.getNodeIds();
-    expect(reloadedNodeIds.sort()).toEqual(['router1', 'router2', 'router3']);
+    expect([...reloadedNodeIds].sort()).toEqual(['router1', 'router2', 'router3']);
 
     // Step 7: Verify files are untouched when in view mode (locked)
     await topoViewerPage.setViewMode();
-    const yamlBeforeLock = await topoViewerPage.getYamlFromFile('empty.clab.yml');
-    const annotationsBeforeLock = await topoViewerPage.getAnnotationsFromFile('empty.clab.yml');
+    const yamlBeforeLock = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+    const annotationsBeforeLock = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
 
     // Wait a moment
     await page.waitForTimeout(200);
 
     // Files should remain the same
-    const yamlAfterLock = await topoViewerPage.getYamlFromFile('empty.clab.yml');
-    const annotationsAfterLock = await topoViewerPage.getAnnotationsFromFile('empty.clab.yml');
+    const yamlAfterLock = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+    const annotationsAfterLock = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
 
     expect(yamlAfterLock).toBe(yamlBeforeLock);
     expect(JSON.stringify(annotationsAfterLock)).toBe(JSON.stringify(annotationsBeforeLock));
@@ -103,37 +110,37 @@ test.describe.serial('Node Creation Workflow', () => {
     await topoViewerPage.resetFiles();
 
     // Load empty and create nodes
-    await topoViewerPage.gotoFile('empty.clab.yml');
+    await topoViewerPage.gotoFile(EMPTY_FILE);
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
     // Create two test nodes
-    await topoViewerPage.createNode('test-node1', { x: 200, y: 200 }, 'nokia_srlinux');
-    await topoViewerPage.createNode('test-node2', { x: 400, y: 200 }, 'nokia_srlinux');
+    await topoViewerPage.createNode('test-node1', { x: 200, y: 200 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode('test-node2', { x: 400, y: 200 }, KIND_NOKIA_SRLINUX);
     await page.waitForTimeout(500);
 
     // Reload and check YAML content
-    await topoViewerPage.gotoFile('empty.clab.yml');
+    await topoViewerPage.gotoFile(EMPTY_FILE);
     await topoViewerPage.waitForCanvasReady();
 
-    const yaml = await topoViewerPage.getYamlFromFile('empty.clab.yml');
+    const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
 
     // Both nodes should have kind and image
     expect(yaml).toContain('test-node1:');
     expect(yaml).toContain('test-node2:');
-    expect(yaml).toContain('kind: nokia_srlinux');
+    expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
     expect(yaml).toContain('image: ghcr.io/nokia/srlinux:latest');
   });
 
-  test('topology renders correctly after multiple reloads', async ({ page, topoViewerPage }) => {
+  test('topology renders correctly after multiple reloads', async ({ topoViewerPage }) => {
     // Reset files to ensure clean state
     await topoViewerPage.resetFiles();
 
     // Use spine-leaf which has a fixed number of nodes
     // Load multiple times to ensure consistency
     for (let i = 0; i < 3; i++) {
-      await topoViewerPage.gotoFile('spine-leaf.clab.yml');
+      await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
       await topoViewerPage.waitForCanvasReady();
 
       const nodeCount = await topoViewerPage.getNodeCount();

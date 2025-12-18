@@ -1,5 +1,8 @@
 import { test, expect } from '../fixtures/topoviewer';
 
+// Test selectors
+const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
+
 /**
  * Link Editor Panel E2E Tests
  *
@@ -51,7 +54,7 @@ test.describe('Link Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Editor panel should appear
-    const editorPanel = page.locator('[data-testid="link-editor"]');
+    const editorPanel = page.locator(SEL_LINK_EDITOR);
     await expect(editorPanel).toBeVisible();
   });
 
@@ -132,7 +135,7 @@ test.describe('Link Editor Panel', () => {
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
 
-    const editorPanel = page.locator('[data-testid="link-editor"]');
+    const editorPanel = page.locator(SEL_LINK_EDITOR);
     await expect(editorPanel).toBeVisible();
 
     // Click close button
@@ -166,7 +169,7 @@ test.describe('Link Editor Panel', () => {
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
 
-    const editorPanel = page.locator('[data-testid="link-editor"]');
+    const editorPanel = page.locator(SEL_LINK_EDITOR);
     await expect(editorPanel).toBeVisible();
 
     // Click OK button
@@ -204,7 +207,7 @@ test.describe('Link Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Editor panel should NOT appear in view mode
-    const editorPanel = page.locator('[data-testid="link-editor"]');
+    const editorPanel = page.locator(SEL_LINK_EDITOR);
     await expect(editorPanel).not.toBeVisible();
   });
 
@@ -234,7 +237,7 @@ test.describe('Link Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Editor panel should NOT appear when locked - BUG: it opens anyway
-    const editorPanel = page.locator('[data-testid="link-editor"]');
+    const editorPanel = page.locator(SEL_LINK_EDITOR);
     await expect(editorPanel).not.toBeVisible();
   });
 

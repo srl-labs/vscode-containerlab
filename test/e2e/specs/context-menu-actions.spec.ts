@@ -1,6 +1,11 @@
 import { test, expect } from '../fixtures/topoviewer';
 import { rightClick } from '../helpers/cytoscape-helpers';
 
+// Test selectors
+const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
+const SEL_EDIT_NODE_ITEM = '[data-testid="context-menu-item-edit-node"]';
+const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
+
 /**
  * Context Menu Actions E2E Tests
  *
@@ -37,7 +42,7 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
     });
 
@@ -52,7 +57,7 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
-      const editItem = page.locator('[data-testid="context-menu-item-edit-node"]');
+      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
       await expect(editItem).toBeVisible();
     });
 
@@ -97,12 +102,12 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
-      const editItem = page.locator('[data-testid="context-menu-item-edit-node"]');
+      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
       await editItem.click();
       await page.waitForTimeout(500);
 
       // Context menu should close
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).not.toBeVisible();
 
       // Node editor should open
@@ -141,7 +146,7 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
 
       // Click elsewhere to close
@@ -163,7 +168,7 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
 
       await page.keyboard.press('Escape');
@@ -186,9 +191,9 @@ test.describe('Context Menu Actions', () => {
       await page.waitForTimeout(300);
 
       // Context menu should appear but with no items (empty)
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       // When locked, the menu items are empty so the menu itself won't render
-      const editItem = page.locator('[data-testid="context-menu-item-edit-node"]');
+      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
       const isMenuVisible = await contextMenu.count();
       const isEditItemVisible = await editItem.count();
 
@@ -218,7 +223,7 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
     });
 
@@ -293,7 +298,7 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
-      const editItem = page.locator('[data-testid="context-menu-item-edit-node"]');
+      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
       await expect(editItem).not.toBeVisible();
     });
   });
@@ -331,7 +336,7 @@ test.describe('Context Menu Actions', () => {
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
     });
 
@@ -357,7 +362,7 @@ test.describe('Context Menu Actions', () => {
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
-      const editItem = page.locator('[data-testid="context-menu-item-edit-edge"]');
+      const editItem = page.locator(SEL_EDIT_EDGE_ITEM);
       await expect(editItem).toBeVisible();
     });
 
@@ -409,7 +414,7 @@ test.describe('Context Menu Actions', () => {
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
-      const editItem = page.locator('[data-testid="context-menu-item-edit-edge"]');
+      const editItem = page.locator(SEL_EDIT_EDGE_ITEM);
       await editItem.click();
       await page.waitForTimeout(500);
 
@@ -480,7 +485,7 @@ test.describe('Context Menu Actions', () => {
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
-      const contextMenu = page.locator('[data-testid="context-menu"]');
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
     });
 
@@ -532,7 +537,7 @@ test.describe('Context Menu Actions', () => {
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
-      const editItem = page.locator('[data-testid="context-menu-item-edit-edge"]');
+      const editItem = page.locator(SEL_EDIT_EDGE_ITEM);
       await expect(editItem).not.toBeVisible();
     });
   });
