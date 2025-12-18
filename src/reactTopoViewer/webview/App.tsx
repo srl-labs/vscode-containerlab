@@ -789,7 +789,9 @@ export const App: React.FC = () => {
     onAddTextAnnotation: freeTextAnnotations.saveAnnotation,
     onAddShapeAnnotation: freeShapeAnnotations.saveAnnotation,
     onAddNodeToGroup: groups.addNodeToGroup,
-    generateGroupId: generateGroupIdCallback
+    generateGroupId: generateGroupIdCallback,
+    onCreateNode: handleNodeCreatedCallback,
+    onCreateEdge: handleEdgeCreated
   });
 
   // Combined selection IDs for keyboard shortcuts (text + shape + groups)

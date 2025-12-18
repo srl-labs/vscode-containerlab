@@ -104,6 +104,8 @@ export class MessageHandler {
   private requestHandler: RequestHandler;
   private latencySimulator: LatencySimulator;
   private splitViewPanel: SplitViewPanel | null = null;
+  /** Queue for TopologyIO operations to ensure sequential processing */
+  private ioQueue: Promise<void> = Promise.resolve();
 
   constructor(
     stateManager: DevStateManager,
@@ -830,30 +832,42 @@ export class MessageHandler {
    * - Save queue (prevents concurrent writes)
    * - Batch deferral
    * - Integrated annotation management
+   *
+   * Operations are queued to ensure sequential processing, preventing race
+   * conditions between batch begin/end and node/link operations.
    */
   private callTopologyIOEndpoint(
     method: 'POST' | 'PUT' | 'DELETE',
     path: string,
     body?: Record<string, unknown>
-  ): void {
+  ): Promise<{ success: boolean; error?: string }> {
     const url = this.buildApiUrl(path);
 
-    fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined
-    })
-      .then(res => res.json())
-      .then(result => {
+    // Chain this operation onto the IO queue to ensure sequential processing
+    const operation = this.ioQueue.then(async () => {
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        const result = await res.json();
         if (result.success) {
           console.log('%c[TopologyIO]', 'color: #4CAF50;', `${method} ${path} succeeded`);
         } else {
           console.warn('%c[TopologyIO]', 'color: #FF9800;', `${method} ${path} failed:`, result.error);
         }
-      })
-      .catch(err => {
+        return result;
+      } catch (err) {
         console.error('%c[TopologyIO Error]', 'color: #f44336;', err);
-      });
+        return { success: false, error: String(err) };
+      }
+    });
+
+    // Update the queue to wait for this operation (but don't block the caller)
+    this.ioQueue = operation.then(() => {});
+
+    return operation;
   }
 
   /** Save current annotations to file (if a file is loaded) */

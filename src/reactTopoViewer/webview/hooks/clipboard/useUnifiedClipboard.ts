@@ -10,7 +10,10 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from '../../../shared/types/topology';
+import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
+import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { getUniqueId } from '../../../shared/utilities/idUtils';
 
 /** Node data stored in clipboard */
 interface ClipboardNode {
@@ -109,6 +112,10 @@ export interface UseUnifiedClipboardOptions {
   onAddNodeToGroup: (nodeId: string, groupId: string) => void;
   /** Generate a unique group ID */
   generateGroupId: () => string;
+  /** Callback to create a node (persists to YAML) */
+  onCreateNode?: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void;
+  /** Callback to create an edge (persists to YAML) */
+  onCreateEdge?: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void;
 }
 
 export interface UseUnifiedClipboardReturn {
@@ -437,41 +444,60 @@ function pasteNodes(
   offset: number,
   idMapping: Map<string, string>,
   cyInstance: CyCore,
-  onAddNodeToGroup: (nodeId: string, groupId: string) => void
+  onAddNodeToGroup: (nodeId: string, groupId: string) => void,
+  onCreateNode?: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void
 ): string[] {
   const newNodeIds: string[] = [];
 
+  // Get existing node names to avoid duplicates
+  const usedNames = new Set<string>(cyInstance.nodes().map(node => node.data('name') || node.id()));
+
   for (const item of clipboardNodes) {
-    const newNodeId = generateId('node');
-    idMapping.set(item.id, newNodeId);
+    // Generate unique name based on original node name
+    const originalName = (item.data.name as string) || item.id;
+    const newNodeName = getUniqueId(originalName, usedNames);
+    usedNames.add(newNodeName); // Add to set to prevent duplicates in same paste
+
+    idMapping.set(item.id, newNodeName);
 
     const newPosition = {
       x: position.x + item.relativePosition.x + offset,
       y: position.y + item.relativePosition.y + offset
     };
 
-    const nodeData: Record<string, unknown> = { ...item.data, id: newNodeId };
+    const nodeData: Record<string, unknown> = { ...item.data, id: newNodeName, name: newNodeName };
     delete nodeData.position;
 
-    cyInstance.add({
-      group: 'nodes',
-      data: nodeData,
-      position: newPosition
-    });
+    if (onCreateNode) {
+      // Use the callback to create node with persistence
+      const nodeElement: CyElement = {
+        group: 'nodes',
+        data: nodeData,
+        position: newPosition
+      };
+      onCreateNode(newNodeName, nodeElement, newPosition);
+    } else {
+      // Fallback to direct cytoscape add (no persistence)
+      cyInstance.add({
+        group: 'nodes',
+        data: nodeData,
+        position: newPosition
+      });
+    }
 
-    newNodeIds.push(newNodeId);
+    newNodeIds.push(newNodeName);
 
     if (item.groupId) {
       const newGroupId = idMapping.get(item.groupId);
-      log.info(`[UnifiedClipboard] Node ${item.id} -> ${newNodeId}, original group: ${item.groupId}, new group: ${newGroupId}`);
+      log.info(`[UnifiedClipboard] Node ${item.id} -> ${newNodeName}, original group: ${item.groupId}, new group: ${newGroupId}`);
       if (newGroupId) {
-        onAddNodeToGroup(newNodeId, newGroupId);
-        log.info(`[UnifiedClipboard] Added node ${newNodeId} to group ${newGroupId}`);
+        onAddNodeToGroup(newNodeName, newGroupId);
+        log.info(`[UnifiedClipboard] Added node ${newNodeName} to group ${newGroupId}`);
       } else {
         log.warn(`[UnifiedClipboard] Could not find new group ID for original group ${item.groupId}`);
       }
     } else {
-      log.info(`[UnifiedClipboard] Node ${item.id} -> ${newNodeId}, no group membership`);
+      log.info(`[UnifiedClipboard] Node ${item.id} -> ${newNodeName}, no group membership`);
     }
   }
 
@@ -482,14 +508,15 @@ function pasteNodes(
 function pasteEdges(
   clipboardEdges: ClipboardEdge[],
   idMapping: Map<string, string>,
-  cyInstance: CyCore
+  cyInstance: CyCore,
+  onCreateEdge?: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void
 ): void {
   for (const item of clipboardEdges) {
     const newSourceId = idMapping.get(item.source);
     const newTargetId = idMapping.get(item.target);
 
     if (newSourceId && newTargetId) {
-      const newEdgeId = generateId('edge');
+      const newEdgeId = `${newSourceId}:${(item.data.sourceEndpoint as string) || 'eth1'}--${newTargetId}:${(item.data.targetEndpoint as string) || 'eth1'}`;
       idMapping.set(item.id, newEdgeId);
 
       const edgeData = {
@@ -499,10 +526,22 @@ function pasteEdges(
         target: newTargetId
       };
 
-      cyInstance.add({
-        group: 'edges',
-        data: edgeData
-      });
+      if (onCreateEdge) {
+        // Use the callback to create edge with persistence
+        onCreateEdge(newSourceId, newTargetId, {
+          id: newEdgeId,
+          source: newSourceId,
+          target: newTargetId,
+          sourceEndpoint: (item.data.sourceEndpoint as string) || 'eth1',
+          targetEndpoint: (item.data.targetEndpoint as string) || 'eth1'
+        });
+      } else {
+        // Fallback to direct cytoscape add (no persistence)
+        cyInstance.add({
+          group: 'edges',
+          data: edgeData
+        });
+      }
     }
   }
 }
@@ -599,7 +638,9 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     onAddTextAnnotation,
     onAddShapeAnnotation,
     onAddNodeToGroup,
-    generateGroupId
+    generateGroupId,
+    onCreateNode,
+    onCreateEdge
   } = options;
 
   const clipboardRef = useRef<UnifiedClipboardData | null>(null);
@@ -709,10 +750,24 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     const newGroupIds = pasteGroups(
       clipboardData.groups, position, offset, idMapping, generateGroupId, onAddGroup
     );
+
+    // Begin batch to prevent race conditions when creating multiple nodes/edges
+    const hasNodesToCreate = clipboardData.nodes.length > 0 && onCreateNode;
+    const hasEdgesToCreate = clipboardData.edges.length > 0 && onCreateEdge;
+    if (hasNodesToCreate || hasEdgesToCreate) {
+      sendCommandToExtension('begin-graph-batch');
+    }
+
     const newNodeIds = pasteNodes(
-      clipboardData.nodes, position, offset, idMapping, cyInstance, onAddNodeToGroup
+      clipboardData.nodes, position, offset, idMapping, cyInstance, onAddNodeToGroup, onCreateNode
     );
-    pasteEdges(clipboardData.edges, idMapping, cyInstance);
+    pasteEdges(clipboardData.edges, idMapping, cyInstance, onCreateEdge);
+
+    // End batch to flush all changes at once
+    if (hasNodesToCreate || hasEdgesToCreate) {
+      sendCommandToExtension('end-graph-batch');
+    }
+
     const newTextAnnotationIds = pasteTextAnnotations(
       clipboardData.textAnnotations, position, offset, idMapping, onAddTextAnnotation
     );
@@ -734,7 +789,7 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
       newTextAnnotationIds,
       newShapeAnnotationIds
     };
-  }, [cyInstance, onAddGroup, onAddTextAnnotation, onAddShapeAnnotation, onAddNodeToGroup, generateGroupId]);
+  }, [cyInstance, onAddGroup, onAddTextAnnotation, onAddShapeAnnotation, onAddNodeToGroup, generateGroupId, onCreateNode, onCreateEdge]);
 
   const hasClipboardData = useCallback((): boolean => {
     return clipboardRef.current !== null;
