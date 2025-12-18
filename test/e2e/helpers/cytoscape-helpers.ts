@@ -156,9 +156,12 @@ export async function drag(
 
 /**
  * Perform a Shift+Click at the specified position.
+ * Uses a small delay to ensure Shift key is registered before click.
  */
 export async function shiftClick(page: Page, x: number, y: number): Promise<void> {
   await page.keyboard.down('Shift');
+  // Small delay to ensure Shift key state is registered
+  await page.waitForTimeout(50);
   await page.mouse.click(x, y);
   await page.keyboard.up('Shift');
 }

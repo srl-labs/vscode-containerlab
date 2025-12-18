@@ -22,7 +22,7 @@ const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
 test.describe('Context Menu Actions', () => {
   test.describe('Node Context Menu - Edit Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.goto('sampleWithAnnotations');
+      await topoViewerPage.gotoFile('simple.clab.yml');
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
@@ -204,7 +204,7 @@ test.describe('Context Menu Actions', () => {
 
   test.describe('Node Context Menu - View Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.goto('sampleWithAnnotations');
+      await topoViewerPage.gotoFile('simple.clab.yml');
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setViewMode();
     });
@@ -305,7 +305,7 @@ test.describe('Context Menu Actions', () => {
 
   test.describe('Edge Context Menu - Edit Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.goto('sampleWithAnnotations');
+      await topoViewerPage.gotoFile('simple.clab.yml');
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
@@ -457,7 +457,7 @@ test.describe('Context Menu Actions', () => {
 
   test.describe('Edge Context Menu - View Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.goto('sampleWithAnnotations');
+      await topoViewerPage.gotoFile('simple.clab.yml');
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setViewMode();
     });

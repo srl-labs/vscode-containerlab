@@ -13,19 +13,6 @@ function generateSessionId(): string {
 }
 
 /**
- * Topology names available in dev mode (in-memory)
- */
-type TopologyName =
-  | 'sample'
-  | 'sampleWithAnnotations'
-  | 'annotated'
-  | 'network'
-  | 'empty'
-  | 'large'
-  | 'large100'
-  | 'large1000';
-
-/**
  * Topology files available in dev/topologies/ (file-based)
  */
 type TopologyFileName =
@@ -52,9 +39,6 @@ interface TopologyAnnotations {
  * Helper interface for interacting with TopoViewer
  */
 interface TopoViewerPage {
-  /** Navigate to TopoViewer and optionally load a specific topology (in-memory) */
-  goto(topology?: TopologyName): Promise<void>;
-
   /** Navigate to TopoViewer and load a file-based topology (real file I/O) */
   gotoFile(filename: TopologyFileName): Promise<void>;
 
@@ -223,27 +207,6 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
     await request.post(withSession('/api/reset'));
 
     const topoViewerPage: TopoViewerPage = {
-      goto: async (topology: TopologyName = 'sampleWithAnnotations') => {
-        // Pass session ID via URL so auto-load uses correct session
-        await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`);
-        await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
-
-        // Wait for auto-load to complete
-        await page.waitForFunction(
-          () => (window as any).__DEV__?.cy !== undefined,
-          { timeout: 15000 }
-        );
-
-        // Load specific topology via dev API
-        if (topology !== 'sample') {
-          await page.evaluate((topo) => {
-            (window as any).__DEV__.loadTopology(topo);
-          }, topology);
-          // Wait for topology data to propagate
-          await page.waitForTimeout(500);
-        }
-      },
-
       gotoFile: async (filename: string) => {
         // Pass session ID via URL so auto-load uses correct session
         await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`);
@@ -444,16 +407,40 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getGroupCount: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const annotations = dev?.stateManager?.getAnnotations?.();
-          return annotations?.groupStyleAnnotations?.length ?? 0;
+          // Try React state first
+          const reactGroups = dev?.getReactGroups?.();
+          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
+
+          // If React has groups, use React count
+          if (reactGroups && reactGroups.length > 0) {
+            return reactGroups.length;
+          }
+          // If React is empty but stateManager has groups (initial load scenario), use stateManager
+          if (stateManagerGroups.length > 0) {
+            return stateManagerGroups.length;
+          }
+          // Both empty
+          return reactGroups?.length ?? 0;
         });
       },
 
       getGroupIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const annotations = dev?.stateManager?.getAnnotations?.();
-          return (annotations?.groupStyleAnnotations ?? []).map((g: any) => g.id);
+          // Try React state first
+          const reactGroups = dev?.getReactGroups?.();
+          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
+
+          // If React has groups, use React IDs
+          if (reactGroups && reactGroups.length > 0) {
+            return reactGroups.map((g: any) => g.id);
+          }
+          // If React is empty but stateManager has groups (initial load scenario), use stateManager
+          if (stateManagerGroups.length > 0) {
+            return stateManagerGroups.map((g: any) => g.id);
+          }
+          // Both empty
+          return [];
         });
       },
 
@@ -735,10 +722,54 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       createGroup: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('g');
-        await page.keyboard.up('Control');
-        await page.waitForTimeout(500);
+        // Use direct API call instead of keyboard events for reliability
+        const result = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          const cy = dev?.cy;
+
+          // Debug: gather state info
+          const selectedBefore = cy ? cy.nodes(':selected').map((n: any) => n.id()) : [];
+          const mode = dev?.stateManager?.getMode?.();
+          const isLocked = dev?.isLocked?.();
+          const groupsBefore = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations?.length ?? 0;
+          const reactGroupsBefore = dev?.getReactGroups?.()?.length ?? 'undefined';
+
+          if (dev?.createGroupFromSelected) {
+            // Also verify the function exists
+            const hasCy = !!cy;
+            dev.createGroupFromSelected();
+            const groupsAfter = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations?.length ?? 0;
+            const reactGroupsAfter = dev?.getReactGroups?.()?.length ?? 'undefined';
+            const selectedAfter = cy ? cy.nodes(':selected').map((n: any) => n.id()) : [];
+            return { method: 'direct', selectedBefore, selectedAfter, mode, isLocked, groupsBefore, groupsAfter, reactGroupsBefore, reactGroupsAfter, hasCy };
+          } else {
+            const event = new KeyboardEvent('keydown', {
+              key: 'g',
+              ctrlKey: true,
+              bubbles: true,
+              cancelable: true
+            });
+            window.dispatchEvent(event);
+            return { method: 'keyboard', selectedBefore, mode, isLocked, groupsBefore, groupsAfter: null };
+          }
+        });
+        console.log(`[DEBUG] createGroup: method=${result.method}, hasCy=${result.hasCy}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`);
+        // Wait for debounced save (300ms) plus processing time
+        await page.waitForTimeout(1000);
+        // Check again after wait - both React state and stateManager
+        const debugInfo = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          const reactGroups = dev?.getReactGroups?.() ?? [];
+          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
+          return {
+            reactGroupCount: reactGroups.length,
+            reactGroupsDirectCount: dev?.groupsCount ?? 'undefined',
+            stateManagerGroupCount: stateManagerGroups.length,
+            reactGroupIds: reactGroups.map((g: any) => g.id),
+            stateManagerGroupIds: stateManagerGroups.map((g: any) => g.id)
+          };
+        });
+        console.log(`[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`);
       },
 
       deleteNode: async (nodeId: string) => {

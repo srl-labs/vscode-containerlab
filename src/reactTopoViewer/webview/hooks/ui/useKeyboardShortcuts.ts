@@ -260,7 +260,7 @@ function handleCreateGroup(
 ): boolean {
   if (mode !== 'edit') return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
-  if (event.key !== 'g') return false;
+  if (event.key.toLowerCase() !== 'g') return false;
   if (!onCreateGroup) return false;
 
   // Only create group if groupable nodes are selected

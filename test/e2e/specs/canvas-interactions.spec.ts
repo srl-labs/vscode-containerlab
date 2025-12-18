@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures/topoviewer';
 
 test.describe('Canvas Interactions', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
   });
 

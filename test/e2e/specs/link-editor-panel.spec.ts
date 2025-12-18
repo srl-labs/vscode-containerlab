@@ -20,7 +20,8 @@ const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
  */
 test.describe('Link Editor Panel', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();

@@ -1,6 +1,9 @@
 import { test, expect } from '../fixtures/topoviewer';
 import { ctrlClick } from '../helpers/cytoscape-helpers';
 
+// Test file names for file-based tests
+const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
+
 /**
  * Edge Deletion E2E Tests
  *
@@ -13,7 +16,8 @@ import { ctrlClick } from '../helpers/cytoscape-helpers';
  */
 test.describe('Edge Deletion', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -257,4 +261,110 @@ test.describe('Edge Deletion', () => {
     expect(finalEdgeCount).toBe(initialEdgeCount);
   });
 
+});
+
+/**
+ * File Persistence Tests for Edge Deletion
+ *
+ * These tests verify that edge deletion properly updates the .clab.yml file
+ */
+test.describe('Edge Deletion - File Persistence', () => {
+  test.beforeEach(async ({ topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+  });
+
+  test('deleted edge is removed from YAML file', async ({ page, topoViewerPage }) => {
+    // Get initial YAML to find an edge to delete
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    const initialEndpointsCount = (initialYaml.match(/endpoints:/g) || []).length;
+    expect(initialEndpointsCount).toBeGreaterThan(0);
+
+    // Get edge IDs and select first edge
+    const edgeIds = await topoViewerPage.getEdgeIds();
+    expect(edgeIds.length).toBeGreaterThan(0);
+
+    // Get the edge data to know which endpoints will be removed
+    const edgeData = await page.evaluate((id) => {
+      const dev = (window as any).__DEV__;
+      const cy = dev?.cy;
+      const edge = cy?.getElementById(id);
+      if (!edge || edge.empty()) return null;
+      return {
+        source: edge.source().id(),
+        target: edge.target().id()
+      };
+    }, edgeIds[0]);
+    expect(edgeData).not.toBeNull();
+
+    // Select and delete the edge
+    await topoViewerPage.selectEdge(edgeIds[0]);
+    await page.waitForTimeout(200);
+    await page.keyboard.press('Delete');
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read updated YAML
+    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    const updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
+
+    // Should have one fewer link in the YAML file
+    expect(updatedEndpointsCount).toBe(initialEndpointsCount - 1);
+  });
+
+  test('deletes multiple selected edges and removes them from YAML file', async ({ page, topoViewerPage }) => {
+    // Get initial YAML
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    const initialEndpointsCount = (initialYaml.match(/endpoints:/g) || []).length;
+    expect(initialEndpointsCount).toBeGreaterThanOrEqual(2);
+
+    const edgeIds = await topoViewerPage.getEdgeIds();
+    expect(edgeIds.length).toBeGreaterThanOrEqual(2);
+
+    // Select first edge
+    await topoViewerPage.selectEdge(edgeIds[0]);
+    await page.waitForTimeout(100);
+
+    // Ctrl+click to select second edge
+    const midpoint = await page.evaluate((id) => {
+      const dev = (window as any).__DEV__;
+      const cy = dev?.cy;
+      const edge = cy?.getElementById(id);
+      if (!edge || edge.empty()) return null;
+
+      const bb = edge.renderedBoundingBox();
+      const container = cy.container();
+      const rect = container.getBoundingClientRect();
+
+      return {
+        x: rect.left + bb.x1 + bb.w / 2,
+        y: rect.top + bb.y1 + bb.h / 2
+      };
+    }, edgeIds[1]);
+
+    expect(midpoint).not.toBeNull();
+    await ctrlClick(page, midpoint!.x, midpoint!.y);
+    await page.waitForTimeout(200);
+
+    // Verify both are selected
+    const selectedIds = await topoViewerPage.getSelectedEdgeIds();
+    expect(selectedIds.length).toBe(2);
+
+    // Delete both edges
+    await page.keyboard.press('Delete');
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read updated YAML
+    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    const updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
+
+    // Should have two fewer links in the YAML file
+    expect(updatedEndpointsCount).toBe(initialEndpointsCount - 2);
+  });
 });

@@ -1,9 +1,14 @@
 import { test, expect } from '../fixtures/topoviewer';
 import { shiftClick } from '../helpers/cytoscape-helpers';
 
+// Test file names for file-based tests
+const EMPTY_FILE = 'empty.clab.yml';
+const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
+
 test.describe('Node Creation', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -28,9 +33,10 @@ test.describe('Node Creation', () => {
   test('creates node at clicked position', async ({ page, topoViewerPage }) => {
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
-    // Click offset from center
-    const clickX = canvasCenter.x + 50;
-    const clickY = canvasCenter.y + 50;
+    // Click far from center to avoid hitting existing nodes
+    // The simple.clab.yml topology has nodes near the center after fit
+    const clickX = canvasCenter.x + 200;
+    const clickY = canvasCenter.y + 150;
 
     // Get node IDs before creation
     const nodeIdsBefore = await topoViewerPage.getNodeIds();
@@ -104,17 +110,120 @@ test.describe('Node Creation', () => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
-    // Create 3 nodes at different positions
-    await shiftClick(page, canvasCenter.x - 100, canvasCenter.y);
+    // Create 3 nodes at positions far from center to avoid hitting existing nodes
+    await shiftClick(page, canvasCenter.x - 200, canvasCenter.y - 150);
     await page.waitForTimeout(300);
 
-    await shiftClick(page, canvasCenter.x + 100, canvasCenter.y);
+    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y - 150);
     await page.waitForTimeout(300);
 
-    await shiftClick(page, canvasCenter.x, canvasCenter.y + 100);
+    await shiftClick(page, canvasCenter.x, canvasCenter.y + 200);
     await page.waitForTimeout(300);
 
     const finalNodeCount = await topoViewerPage.getNodeCount();
     expect(finalNodeCount).toBe(initialNodeCount + 3);
+  });
+});
+
+/**
+ * File Persistence Tests for Node Creation
+ *
+ * These tests verify that node creation properly updates:
+ * - .clab.yml file (adds node with kind and image)
+ * - .clab.yml.annotations.json file (saves node position)
+ */
+test.describe('Node Creation - File Persistence', () => {
+  test.beforeEach(async ({ topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile(EMPTY_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+  });
+
+  test('created node appears in YAML file', async ({ page, topoViewerPage }) => {
+    // Get initial YAML
+    const initialYaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+    expect(initialYaml).not.toContain('test-node1:');
+
+    // Create a node via API
+    await topoViewerPage.createNode('test-node1', { x: 200, y: 200 }, KIND_NOKIA_SRLINUX);
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read updated YAML
+    const updatedYaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+
+    // Node should be in the YAML with proper structure
+    expect(updatedYaml).toContain('test-node1:');
+    expect(updatedYaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
+    expect(updatedYaml).toContain('image:');
+  });
+
+  test('created node has position in annotations file', async ({ page, topoViewerPage }) => {
+    // Create a node at a specific position
+    const targetPosition = { x: 300, y: 250 };
+    await topoViewerPage.createNode('test-node2', targetPosition, KIND_NOKIA_SRLINUX);
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read annotations
+    const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+
+    // Find the node annotation
+    const nodeAnnotation = annotations.nodeAnnotations?.find(n => n.id === 'test-node2');
+    expect(nodeAnnotation).toBeDefined();
+    expect(nodeAnnotation?.position).toBeDefined();
+
+    // Position should be close to target (within 20px tolerance)
+    expect(Math.abs(nodeAnnotation!.position!.x - targetPosition.x)).toBeLessThan(20);
+    expect(Math.abs(nodeAnnotation!.position!.y - targetPosition.y)).toBeLessThan(20);
+  });
+
+  test('multiple created nodes appear in YAML and annotations', async ({ page, topoViewerPage }) => {
+    // Create 3 nodes
+    await topoViewerPage.createNode('router1', { x: 200, y: 100 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode('router2', { x: 100, y: 300 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode('router3', { x: 300, y: 300 }, KIND_NOKIA_SRLINUX);
+
+    // Wait for saves to complete
+    await page.waitForTimeout(1000);
+
+    // Verify YAML
+    const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+    expect(yaml).toContain('router1:');
+    expect(yaml).toContain('router2:');
+    expect(yaml).toContain('router3:');
+
+    // Verify annotations
+    const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+    expect(annotations.nodeAnnotations?.length).toBe(3);
+
+    const nodeIds = annotations.nodeAnnotations?.map(n => n.id).sort();
+    expect(nodeIds).toEqual(['router1', 'router2', 'router3']);
+  });
+
+  test('created node persists after reload', async ({ page, topoViewerPage }) => {
+    // Create a node
+    const targetPosition = { x: 400, y: 200 };
+    await topoViewerPage.createNode('persistent-node', targetPosition, KIND_NOKIA_SRLINUX);
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Reload the file
+    await topoViewerPage.gotoFile(EMPTY_FILE);
+    await topoViewerPage.waitForCanvasReady();
+
+    // Verify node is still there
+    const nodeIds = await topoViewerPage.getNodeIds();
+    expect(nodeIds).toContain('persistent-node');
+
+    // Verify position is close to where we created it
+    const nodePos = await topoViewerPage.getNodePosition('persistent-node');
+    expect(Math.abs(nodePos.x - targetPosition.x)).toBeLessThan(20);
+    expect(Math.abs(nodePos.y - targetPosition.y)).toBeLessThan(20);
   });
 });

@@ -1,8 +1,12 @@
 import { test, expect } from '../fixtures/topoviewer';
 
+// Test file names for file-based tests
+const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
+
 test.describe('Node Deletion', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -147,5 +151,125 @@ test.describe('Node Deletion', () => {
 
     const newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount - 1);
+  });
+});
+
+/**
+ * File Persistence Tests for Node Deletion
+ *
+ * These tests verify that node deletion properly updates:
+ * - .clab.yml file (removes node and connected links)
+ * - .clab.yml.annotations.json file (removes node annotation)
+ */
+test.describe('Node Deletion - File Persistence', () => {
+  test.beforeEach(async ({ topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+  });
+
+  test('deleting node removes it from YAML file', async ({ page, topoViewerPage }) => {
+    // Get initial YAML
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(initialYaml).toContain('client1:');
+    expect(initialYaml).toContain('client2:');
+
+    // Delete client2
+    await topoViewerPage.selectNode('client2');
+    await page.keyboard.press('Delete');
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read updated YAML
+    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+
+    // client2 should be removed, client1 should remain
+    expect(updatedYaml).toContain('client1:');
+    expect(updatedYaml).not.toContain('client2:');
+  });
+
+  test('deleting node removes connected links from YAML', async ({ page, topoViewerPage }) => {
+    // Get initial YAML
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+
+    // Count links referencing leaf1
+    const leaf1LinksInitial = (initialYaml.match(/"leaf1:/g) || []).length;
+    expect(leaf1LinksInitial).toBeGreaterThan(0);
+
+    // Delete leaf1
+    await topoViewerPage.selectNode('leaf1');
+    await page.keyboard.press('Delete');
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read updated YAML
+    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+
+    // leaf1 node should be gone
+    expect(updatedYaml).not.toContain('leaf1:');
+
+    // Links referencing leaf1 should also be gone
+    const leaf1LinksUpdated = (updatedYaml.match(/"leaf1:/g) || []).length;
+    expect(leaf1LinksUpdated).toBe(0);
+  });
+
+  test('deleting node removes its annotation from JSON file', async ({ page, topoViewerPage }) => {
+    // Get initial annotations
+    const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+    const spine1Exists = initialAnnotations.nodeAnnotations?.some(n => n.id === 'spine1');
+    expect(spine1Exists).toBe(true);
+
+    // Delete spine1
+    await topoViewerPage.selectNode('spine1');
+    await page.keyboard.press('Delete');
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read updated annotations
+    const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+    const spine1StillExists = updatedAnnotations.nodeAnnotations?.some(n => n.id === 'spine1');
+
+    // spine1 should be removed from annotations
+    expect(spine1StillExists).toBe(false);
+  });
+
+  test('deleting multiple nodes removes all from YAML and annotations', async ({ page, topoViewerPage }) => {
+    // Get initial state
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+
+    expect(initialYaml).toContain('client1:');
+    expect(initialYaml).toContain('client2:');
+    expect(initialAnnotations.nodeAnnotations?.some(n => n.id === 'client1')).toBe(true);
+    expect(initialAnnotations.nodeAnnotations?.some(n => n.id === 'client2')).toBe(true);
+
+    // Delete client1
+    await topoViewerPage.selectNode('client1');
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(500);
+
+    // Delete client2
+    await topoViewerPage.selectNode('client2');
+    await page.keyboard.press('Delete');
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Read updated state
+    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+
+    // Both should be removed from YAML
+    expect(updatedYaml).not.toContain('client1:');
+    expect(updatedYaml).not.toContain('client2:');
+
+    // Both should be removed from annotations
+    expect(updatedAnnotations.nodeAnnotations?.some(n => n.id === 'client1')).toBe(false);
+    expect(updatedAnnotations.nodeAnnotations?.some(n => n.id === 'client2')).toBe(false);
   });
 });

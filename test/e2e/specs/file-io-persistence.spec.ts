@@ -287,7 +287,7 @@ test.describe.serial('File I/O Persistence', () => {
 
   test.describe('File Loading', () => {
     test('lists available topology files', async ({ topoViewerPage }) => {
-      await topoViewerPage.goto();
+      await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
 
       const files = await topoViewerPage.listTopologyFiles();
@@ -301,7 +301,7 @@ test.describe.serial('File I/O Persistence', () => {
     });
 
     test('tracks which files have annotations', async ({ topoViewerPage }) => {
-      await topoViewerPage.goto();
+      await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
 
       const files = await topoViewerPage.listTopologyFiles();

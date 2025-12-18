@@ -566,8 +566,18 @@ export const App: React.FC = () => {
       };
       // Expose handleEdgeCreated for E2E tests to push undo actions when creating links
       (window as any).__DEV__.handleEdgeCreated = handleEdgeCreated;
+      // Expose handleAddGroupWithUndo for E2E tests to create groups from selected nodes
+      (window as any).__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
     }
-  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated]);
+  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleAddGroupWithUndo]);
+
+  // Separate effect for groups (always update when groups change)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).__DEV__) {
+      (window as any).__DEV__.getReactGroups = () => groups.groups;
+      (window as any).__DEV__.groupsCount = groups.groups.length;
+    }
+  }, [groups.groups]);
 
   // Group drag undo tracking - handles group + member node moves as single undo step
   // Also moves annotations that belong to groups

@@ -23,7 +23,7 @@ const SEL_NAVBAR_GRID = '[data-testid="navbar-grid"]';
  */
 test.describe('Navbar Interactions', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
   });
 

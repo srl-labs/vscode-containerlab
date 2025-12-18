@@ -1,7 +1,30 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect, Page } from '../fixtures/topoviewer';
 
 // Test selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
+
+/**
+ * Helper to reliably open node editor via double-click
+ * Handles timing issues by selecting node first then double-clicking
+ */
+async function openNodeEditor(
+  page: Page,
+  nodeBox: { x: number; y: number; width: number; height: number }
+): Promise<void> {
+  const centerX = nodeBox.x + nodeBox.width / 2;
+  const centerY = nodeBox.y + nodeBox.height / 2;
+
+  // Click to select first
+  await page.mouse.click(centerX, centerY);
+  await page.waitForTimeout(100);
+
+  // Double-click to open editor
+  await page.mouse.dblclick(centerX, centerY);
+
+  // Wait for editor panel to be visible with extended timeout
+  const editorPanel = page.locator(SEL_NODE_EDITOR);
+  await expect(editorPanel).toBeVisible({ timeout: 5000 });
+}
 
 /**
  * Node Editor Panel E2E Tests
@@ -20,7 +43,8 @@ const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
  */
 test.describe('Node Editor Panel', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -33,14 +57,10 @@ test.describe('Node Editor Panel', () => {
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
     expect(nodeBox).not.toBeNull();
 
-    // Double-click on the node
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    // Open editor using helper
+    await openNodeEditor(page, nodeBox!);
 
-    // Editor panel should appear with correct test id
+    // Editor panel should be visible
     const editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
   });
@@ -49,11 +69,7 @@ test.describe('Node Editor Panel', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox!);
 
     const title = page.locator('[data-testid="node-editor"] [data-testid="panel-title"]');
     await expect(title).toBeVisible();
@@ -64,11 +80,7 @@ test.describe('Node Editor Panel', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox!);
 
     // Basic tab should be active
     const basicTab = page.locator('[data-testid="panel-tab-basic"]');
@@ -80,11 +92,7 @@ test.describe('Node Editor Panel', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox!);
 
     // Click on Configuration tab
     const configTab = page.locator('[data-testid="panel-tab-config"]');
@@ -104,11 +112,7 @@ test.describe('Node Editor Panel', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox!);
 
     // Check all expected tabs exist
     const tabs = ['basic', 'config', 'runtime', 'network', 'advanced'];
@@ -122,15 +126,9 @@ test.describe('Node Editor Panel', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox!);
 
     const editorPanel = page.locator(SEL_NODE_EDITOR);
-    await expect(editorPanel).toBeVisible();
-
     // Click close button
     const closeBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-close-btn"]');
     await closeBtn.click();
@@ -144,15 +142,9 @@ test.describe('Node Editor Panel', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox!);
 
     const editorPanel = page.locator(SEL_NODE_EDITOR);
-    await expect(editorPanel).toBeVisible();
-
     // Click OK button
     const okBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-ok-btn"]');
     await okBtn.click();
@@ -166,11 +158,7 @@ test.describe('Node Editor Panel', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox!);
 
     // Apply button should exist
     const applyBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-apply-btn"]');
@@ -220,11 +208,7 @@ test.describe('Node Editor Panel', () => {
 
     // Open editor for first node
     const nodeBox1 = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    await page.mouse.dblclick(
-      nodeBox1!.x + nodeBox1!.width / 2,
-      nodeBox1!.y + nodeBox1!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox1!);
 
     let editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
@@ -236,11 +220,7 @@ test.describe('Node Editor Panel', () => {
 
     // Open editor for second node
     const nodeBox2 = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    await page.mouse.dblclick(
-      nodeBox2!.x + nodeBox2!.width / 2,
-      nodeBox2!.y + nodeBox2!.height / 2
-    );
-    await page.waitForTimeout(500);
+    await openNodeEditor(page, nodeBox2!);
 
     // Editor should open again
     editorPanel = page.locator(SEL_NODE_EDITOR);

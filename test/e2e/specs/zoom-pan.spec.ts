@@ -3,7 +3,7 @@ import { drag, mouseWheelZoom } from '../helpers/cytoscape-helpers';
 
 test.describe('Zoom and Pan', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
   });
 

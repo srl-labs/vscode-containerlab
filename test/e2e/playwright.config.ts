@@ -5,6 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Tests run against the Vite dev server on port 5173.
  */
 export default defineConfig({
+  globalSetup: require.resolve('./global-setup'),
   testDir: './specs',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

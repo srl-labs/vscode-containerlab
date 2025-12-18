@@ -1,9 +1,14 @@
 import { test, expect } from '../fixtures/topoviewer';
 import { shiftClick, drag } from '../helpers/cytoscape-helpers';
 
+// Test file names for file-based tests
+const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
+const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
+
 test.describe('Undo and Redo', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -13,8 +18,8 @@ test.describe('Undo and Redo', () => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
-    // Create a node
-    await shiftClick(page, canvasCenter.x, canvasCenter.y);
+    // Create a node at offset position (avoid hitting existing nodes)
+    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
     await page.waitForTimeout(500);
 
     const afterCreateCount = await topoViewerPage.getNodeCount();
@@ -31,9 +36,12 @@ test.describe('Undo and Redo', () => {
   test('redoes undone node creation', async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
+    // Use offset position to avoid hitting existing nodes
+    const clickX = canvasCenter.x + 200;
+    const clickY = canvasCenter.y + 150;
 
-    // Create a node
-    await shiftClick(page, canvasCenter.x, canvasCenter.y);
+    // Create a node at offset position
+    await shiftClick(page, clickX, clickY);
     await page.waitForTimeout(500);
 
     const afterCreateCount = await topoViewerPage.getNodeCount();
@@ -183,5 +191,150 @@ test.describe('Undo and Redo', () => {
     currentCount = await topoViewerPage.getNodeCount();
     // Should still be initialNodeCount + 1 (redo did nothing)
     expect(currentCount).toBe(initialNodeCount + 1);
+  });
+});
+
+/**
+ * File Persistence Tests for Undo/Redo
+ *
+ * These tests verify that undo/redo operations properly update:
+ * - .clab.yml file (nodes/links)
+ * - .clab.yml.annotations.json file (positions)
+ */
+test.describe('Undo and Redo - File Persistence', () => {
+  test.beforeEach(async ({ topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+  });
+
+  test('undo node deletion restores node to YAML file', async ({ page, topoViewerPage }) => {
+    // Get initial YAML
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(initialYaml).toContain('client1:');
+
+    // Delete client1
+    await topoViewerPage.selectNode('client1');
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(500);
+
+    // Verify node is removed from UI
+    let nodeIds = await topoViewerPage.getNodeIds();
+    expect(nodeIds).not.toContain('client1');
+
+    // Verify node is removed from YAML
+    let yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(yaml).not.toContain('client1:');
+
+    // Undo the deletion
+    await topoViewerPage.undo();
+    await page.waitForTimeout(500);
+
+    // Verify node is restored in UI
+    nodeIds = await topoViewerPage.getNodeIds();
+    expect(nodeIds).toContain('client1');
+
+    // Verify node is restored in YAML file
+    yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(yaml).toContain('client1:');
+  });
+
+  test('redo node deletion removes node from YAML file again', async ({ page, topoViewerPage }) => {
+    // Delete client2
+    await topoViewerPage.selectNode('client2');
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(500);
+
+    // Verify deleted from YAML
+    let yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(yaml).not.toContain('client2:');
+
+    // Undo
+    await topoViewerPage.undo();
+    await page.waitForTimeout(500);
+
+    // Verify restored in YAML
+    yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(yaml).toContain('client2:');
+
+    // Redo
+    await topoViewerPage.redo();
+    await page.waitForTimeout(500);
+
+    // Verify deleted again from YAML
+    yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(yaml).not.toContain('client2:');
+  });
+
+  test('undo node position change reverts position in annotations', async ({ page, topoViewerPage }) => {
+    // Get initial position from annotations
+    const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+    const spine1Initial = initialAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
+    expect(spine1Initial?.position).toBeDefined();
+    const initialX = spine1Initial!.position!.x;
+    const initialY = spine1Initial!.position!.y;
+
+    // Drag the node
+    const box = await topoViewerPage.getNodeBoundingBox('spine1');
+    expect(box).not.toBeNull();
+    await drag(
+      page,
+      { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 },
+      { x: box!.x + box!.width / 2 + 100, y: box!.y + box!.height / 2 + 100 },
+      { steps: 15 }
+    );
+    await page.waitForTimeout(500);
+
+    // Verify position changed in annotations
+    let annotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+    let spine1After = annotations.nodeAnnotations?.find(n => n.id === 'spine1');
+    const afterX = spine1After!.position!.x;
+    const afterY = spine1After!.position!.y;
+    expect(Math.abs(afterX - initialX) + Math.abs(afterY - initialY)).toBeGreaterThan(30);
+
+    // Undo the drag
+    await topoViewerPage.undo();
+    await page.waitForTimeout(500);
+
+    // Verify position is reverted in annotations
+    annotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
+    spine1After = annotations.nodeAnnotations?.find(n => n.id === 'spine1');
+    const revertedX = spine1After!.position!.x;
+    const revertedY = spine1After!.position!.y;
+
+    // Position should be close to initial (within 20px tolerance)
+    expect(Math.abs(revertedX - initialX)).toBeLessThan(20);
+    expect(Math.abs(revertedY - initialY)).toBeLessThan(20);
+  });
+
+  test('undo edge deletion restores link to YAML file', async ({ page, topoViewerPage }) => {
+    // Get initial YAML
+    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    const initialLinkCount = (initialYaml.match(/endpoints:/g) || []).length;
+    expect(initialLinkCount).toBeGreaterThan(0);
+
+    // Get first edge and delete it
+    const edgeIds = await topoViewerPage.getEdgeIds();
+    expect(edgeIds.length).toBeGreaterThan(0);
+
+    await topoViewerPage.selectEdge(edgeIds[0]);
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(500);
+
+    // Verify link count decreased in YAML
+    let yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    let linkCount = (yaml.match(/endpoints:/g) || []).length;
+    expect(linkCount).toBe(initialLinkCount - 1);
+
+    // Undo
+    await topoViewerPage.undo();
+    await page.waitForTimeout(500);
+
+    // Verify link is restored in YAML
+    yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    linkCount = (yaml.match(/endpoints:/g) || []).length;
+    expect(linkCount).toBe(initialLinkCount);
   });
 });

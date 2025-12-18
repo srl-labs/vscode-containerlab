@@ -24,7 +24,7 @@ const SEL_FIND_NODE_RESULT = '[data-testid="find-node-result"]';
  */
 test.describe('Find Node Panel', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.goto('sampleWithAnnotations');
+    await topoViewerPage.gotoFile('simple.clab.yml');
     await topoViewerPage.waitForCanvasReady();
   });
 
