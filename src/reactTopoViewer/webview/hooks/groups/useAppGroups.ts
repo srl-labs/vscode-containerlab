@@ -114,7 +114,7 @@ function useGroupDataLoader(
     // Migrate legacy groups and load
     const rawGroups = initialData?.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
     const migratedGroups = migrateLegacyGroups(rawGroups, nodeAnnotations);
-    if (migratedGroups.length) loadGroups(migratedGroups);
+    if (migratedGroups.length) loadGroups(migratedGroups, false);
 
     const handleMessage = (event: MessageEvent<TopologyDataMessage>) => {
       const data = event.data?.data;
@@ -126,7 +126,7 @@ function useGroupDataLoader(
 
       // Migrate legacy groups and load (always call to clear old groups if empty)
       const msgGroups = migrateLegacyGroups(data.groupStyleAnnotations, msgNodeAnnotations);
-      loadGroups(msgGroups);
+      loadGroups(msgGroups, false);
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
@@ -153,8 +153,8 @@ export function useAppGroups(options: UseAppGroupsOptions) {
       .filter(n => canBeGrouped(n as NodeSingular))
       .map(n => n.id());
 
-    const groupId = groupsHook.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);
-    if (groupId) groupsHook.editGroup(groupId);
+    const result = groupsHook.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);
+    if (result) groupsHook.editGroup(result.groupId);
   }, [cyInstance, groupsHook]);
 
   return { groups: groupsHook, handleAddGroup };

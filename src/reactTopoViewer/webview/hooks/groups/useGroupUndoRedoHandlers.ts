@@ -118,14 +118,13 @@ export function useGroupUndoRedoHandlers(
 
   const createGroupWithUndo = React.useCallback(
     (selectedNodeIds?: string[]): string | null => {
-      const groupId = groupsApi.createGroup(selectedNodeIds);
-      if (groupId) {
-        const newGroup = groupsApi.groups.find(g => g.id === groupId);
-        if (newGroup) {
-          pushUndo(undoRedo, groupsApi, isApplyingGroupUndoRedo, null, cloneGroup(newGroup));
-        }
+      const result = groupsApi.createGroup(selectedNodeIds);
+      if (result) {
+        // Use the group object returned by createGroup (not from state which is async)
+        pushUndo(undoRedo, groupsApi, isApplyingGroupUndoRedo, null, cloneGroup(result.group));
+        return result.groupId;
       }
-      return groupId;
+      return null;
     },
     [groupsApi, undoRedo]
   );

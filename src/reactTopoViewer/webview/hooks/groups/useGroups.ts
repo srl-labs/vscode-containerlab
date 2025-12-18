@@ -80,7 +80,7 @@ function useCreateGroup(
   lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>
 ) {
   return useCallback(
-    (selectedNodeIds?: string[], parentId?: string): string | null => {
+    (selectedNodeIds?: string[], parentId?: string): { groupId: string; group: GroupStyleAnnotation } | null => {
       if (mode === 'view' || isLocked || !cy) {
         if (isLocked) onLockedAction?.();
         return null;
@@ -132,7 +132,7 @@ function useCreateGroup(
 
       const parentInfo = parentId ? ' (parent: ' + parentId + ')' : '';
       log.info('[Groups] Created overlay group: ' + groupId + parentInfo);
-      return groupId;
+      return { groupId, group: newGroup };
     },
     [cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef]
   );
@@ -568,11 +568,15 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   const updateGroupGeoPosition = useUpdateGroupGeoPosition(setGroups, saveGroupsToExtension);
 
   const loadGroups = useCallback(
-    (loadedGroups: GroupStyleAnnotation[]): void => {
+    (loadedGroups: GroupStyleAnnotation[], persistToExtension = true): void => {
       setGroups(loadedGroups);
+      // Persist to extension unless this is initial data loading
+      if (persistToExtension) {
+        saveGroupsToExtension(loadedGroups);
+      }
       log.info(`[Groups] Loaded ${loadedGroups.length} overlay groups`);
     },
-    [setGroups]
+    [setGroups, saveGroupsToExtension]
   );
 
   /** Add a single group (used by clipboard paste) */

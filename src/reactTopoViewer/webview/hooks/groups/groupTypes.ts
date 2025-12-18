@@ -210,7 +210,7 @@ export interface UseGroupsOptions {
 export interface UseGroupsReturn {
   groups: GroupStyleAnnotation[];
   editingGroup: GroupEditorData | null;
-  createGroup: (selectedNodeIds?: string[], parentId?: string) => string | null;
+  createGroup: (selectedNodeIds?: string[], parentId?: string) => { groupId: string; group: GroupStyleAnnotation } | null;
   deleteGroup: (groupId: string) => void;
   editGroup: (groupId: string) => void;
   closeEditor: () => void;
@@ -219,7 +219,7 @@ export interface UseGroupsReturn {
   updateGroupPosition: (groupId: string, position: { x: number; y: number }) => void;
   updateGroupSize: (groupId: string, width: number, height: number) => void;
   updateGroupGeoPosition: (groupId: string, geoCoordinates: { lat: number; lng: number }) => void;
-  loadGroups: (groups: GroupStyleAnnotation[]) => void;
+  loadGroups: (groups: GroupStyleAnnotation[], persistToExtension?: boolean) => void;
   addGroup: (group: GroupStyleAnnotation) => void;
   getUndoRedoAction: (
     before: GroupStyleAnnotation | null,
