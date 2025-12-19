@@ -3,14 +3,22 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Playwright configuration for React TopoViewer E2E tests.
  * Tests run against the Vite dev server on port 5173.
+ *
+ * Note: Worker count is limited to prevent overwhelming the single dev server.
+ * Retries are enabled to handle flaky network/timing issues.
  */
 export default defineConfig({
   globalSetup: require.resolve('./global-setup'),
   testDir: './specs',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 4 : undefined,
+  // Retry flaky tests - helps with timing issues and connection resets
+  retries: process.env.CI ? 2 : 1,
+  // Limit workers to prevent overwhelming the dev server
+  // Too many parallel requests cause ECONNRESET errors
+  workers: process.env.CI ? 4 : 6,
+  // Increase timeout for slower CI environments
+  timeout: 30000,
   reporter: [
     ['list'],
     ['html', { open: 'never', outputFolder: '../../playwright-report' }]
@@ -19,7 +27,10 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    video: 'retain-on-failure',
+    // Timeouts for individual actions
+    actionTimeout: 10000,
+    navigationTimeout: 15000
   },
   projects: [
     {

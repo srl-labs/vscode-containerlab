@@ -34,41 +34,43 @@ interface GroupDebugInfo {
   stateManagerGroupIds: string[];
 }
 
-// Helper to get selected node IDs from cytoscape
-function getSelectedNodeIds(cy: any): string[] {
-  if (!cy) return [];
-  return cy.nodes(':selected').map((n: any) => n.id());
-}
-
-// Helper to get group count from state manager
-function getStateManagerGroupCount(dev: any): number {
-  const annotations = dev?.stateManager?.getAnnotations?.();
-  return annotations?.groupStyleAnnotations?.length ?? 0;
-}
-
-// Helper to get react group count
-function getReactGroupCount(dev: any): number | string {
-  const groups = dev?.getReactGroups?.();
-  return groups?.length ?? 'undefined';
-}
-
-// Helper to create keyboard event for group creation
-function dispatchGroupKeyboardEvent(): void {
-  const event = new KeyboardEvent('keydown', {
-    key: 'g',
-    ctrlKey: true,
-    bubbles: true,
-    cancelable: true
-  });
-  window.dispatchEvent(event);
-}
-
 /**
- * Browser-side function to create a group from selected nodes
+ * Browser-side function to create a group from selected nodes.
+ * Note: All helper logic is inlined because page.evaluate() only serializes this function,
+ * not any external references from the module scope.
  */
 function browserCreateGroup(): CreateGroupResult {
   const dev = (window as any).__DEV__;
   const cy = dev?.cy;
+
+  // Inline helper: get selected node IDs
+  const getSelectedNodeIds = (c: any): string[] => {
+    if (!c) return [];
+    return c.nodes(':selected').map((n: any) => n.id());
+  };
+
+  // Inline helper: get state manager group count
+  const getStateManagerGroupCount = (d: any): number => {
+    const annotations = d?.stateManager?.getAnnotations?.();
+    return annotations?.groupStyleAnnotations?.length ?? 0;
+  };
+
+  // Inline helper: get react group count
+  const getReactGroupCount = (d: any): number | string => {
+    const groups = d?.getReactGroups?.();
+    return groups?.length ?? 'undefined';
+  };
+
+  // Inline helper: dispatch keyboard event
+  const dispatchGroupKeyboardEvent = (): void => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'g',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    window.dispatchEvent(event);
+  };
 
   const selectedBefore = getSelectedNodeIds(cy);
   const mode = dev?.stateManager?.getMode?.();
@@ -96,18 +98,18 @@ function browserCreateGroup(): CreateGroupResult {
   };
 }
 
-// Helper to get group IDs from array
-function getGroupIds(groups: any[]): string[] {
-  return groups.map((g: any) => g.id);
-}
-
 /**
- * Browser-side function to get group debug info
+ * Browser-side function to get group debug info.
+ * Note: Helper logic is inlined for page.evaluate() compatibility.
  */
 function browserGetGroupDebugInfo(): GroupDebugInfo {
   const dev = (window as any).__DEV__;
   const reactGroups = dev?.getReactGroups?.() ?? [];
   const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
+
+  // Inline helper: get group IDs
+  const getGroupIds = (groups: any[]): string[] => groups.map((g: any) => g.id);
+
   return {
     reactGroupCount: reactGroups.length,
     reactGroupsDirectCount: dev?.groupsCount ?? 'undefined',
