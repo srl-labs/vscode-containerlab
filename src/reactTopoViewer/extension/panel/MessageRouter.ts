@@ -8,6 +8,7 @@
 import * as vscode from 'vscode';
 import { log } from '../services/logger';
 import { CyElement } from '../../shared/types/topology';
+import { TopologyIO } from '../../shared/io';
 import {
   MessageHandlerBase,
   WebviewMessage as SharedWebviewMessage,
@@ -52,6 +53,7 @@ export interface MessageRouterContext {
   updateCachedElements: (elements: CyElement[]) => void;
   loadTopologyData: () => Promise<unknown>;
   extensionContext?: vscode.ExtensionContext;
+  topologyIO: TopologyIO;
 }
 
 /**
@@ -105,6 +107,7 @@ export class MessageRouter {
         isViewMode: this.context.isViewMode,
         lastTopologyElements: this.context.lastTopologyElements,
         loadTopologyData: () => this.context.loadTopologyData(),
+        topologyIO: this.context.topologyIO,
       });
 
       this.contextAdapter = services.context;

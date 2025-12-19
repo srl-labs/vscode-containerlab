@@ -7,7 +7,7 @@
 
 import * as vscode from 'vscode';
 import * as YAML from 'yaml';
-import { nodeFsAdapter } from '../../../shared/io';
+import { nodeFsAdapter, AnnotationsIO, TopologyIO } from '../../../shared/io';
 import {
   IMessagingService,
   IPersistenceService,
@@ -26,8 +26,6 @@ import {
   IOLogger,
 } from '../../../shared/messaging';
 import { TopologyAnnotations, CyElement } from '../../../shared/types/topology';
-import { saveTopologyService, SaveTopologyService } from '../SaveTopologyService';
-import { annotationsManager, AnnotationsManager } from '../AnnotationsManager';
 import { nodeCommandService } from '../NodeCommandService';
 import { labLifecycleService } from '../LabLifecycleService';
 import { splitViewManager } from '../SplitViewManager';
@@ -63,11 +61,11 @@ export class MessagingServiceAdapter implements IMessagingService {
 // ============================================================================
 
 /**
- * Adapter for SaveTopologyService
- * Can be instantiated with a custom service instance or defaults to the singleton
+ * Adapter for TopologyIO
+ * Requires a TopologyIO instance (no default singleton since TopologyIO needs per-file initialization)
  */
 export class PersistenceServiceAdapter implements IPersistenceService {
-  constructor(private service: SaveTopologyService = saveTopologyService) {}
+  constructor(private service: TopologyIO) {}
 
   isInitialized(): boolean {
     return this.service.isInitialized();
@@ -115,25 +113,25 @@ export class PersistenceServiceAdapter implements IPersistenceService {
 // ============================================================================
 
 /**
- * Adapter for AnnotationsManager
- * Can be instantiated with a custom manager instance or defaults to the singleton
+ * Adapter for AnnotationsIO
+ * Can be instantiated with a custom instance or defaults to the extension singleton
  */
 export class AnnotationsServiceAdapter implements IAnnotationsService {
-  constructor(private manager: AnnotationsManager = annotationsManager) {}
+  constructor(private io: AnnotationsIO = annotationsIO) {}
 
   async loadAnnotations(yamlFilePath: string): Promise<TopologyAnnotations> {
-    return this.manager.loadAnnotations(yamlFilePath);
+    return this.io.loadAnnotations(yamlFilePath);
   }
 
   async saveAnnotations(yamlFilePath: string, annotations: TopologyAnnotations): Promise<void> {
-    await this.manager.saveAnnotations(yamlFilePath, annotations);
+    await this.io.saveAnnotations(yamlFilePath, annotations);
   }
 
   async modifyAnnotations(
     yamlFilePath: string,
     modifier: (annotations: TopologyAnnotations) => TopologyAnnotations
   ): Promise<void> {
-    await this.manager.modifyAnnotations(yamlFilePath, modifier);
+    await this.io.modifyAnnotations(yamlFilePath, modifier);
   }
 }
 
@@ -364,12 +362,25 @@ export const extensionLogger: IOLogger = {
 };
 
 // ============================================================================
+// Extension Singletons
+// ============================================================================
+
+/**
+ * Singleton AnnotationsIO instance for the VS Code extension.
+ * Uses NodeFsAdapter for direct file system access.
+ */
+export const annotationsIO = new AnnotationsIO({
+  fs: nodeFsAdapter,
+  logger: extensionLogger,
+});
+
+// ============================================================================
 // Factory Function
 // ============================================================================
 
 /**
  * Create all production service adapters
- * @param options Configuration including optional custom service instances
+ * @param options Configuration including custom service instances
  */
 export function createProductionServices(options: {
   panel: vscode.WebviewPanel;
@@ -378,9 +389,10 @@ export function createProductionServices(options: {
   isViewMode: boolean;
   lastTopologyElements: CyElement[];
   loadTopologyData: () => Promise<unknown>;
-  // Optional custom service instances (for dev/testing with custom adapters)
-  persistenceService?: SaveTopologyService;
-  annotationsManager?: AnnotationsManager;
+  // Required TopologyIO instance (needs per-file initialization)
+  topologyIO: TopologyIO;
+  // Optional custom AnnotationsIO instance (defaults to extension singleton)
+  annotationsIO?: AnnotationsIO;
 }) {
   const context = new MessageRouterContextAdapter({
     yamlFilePath: options.yamlFilePath,
@@ -391,8 +403,8 @@ export function createProductionServices(options: {
 
   return {
     messaging: new MessagingServiceAdapter(options.panel),
-    persistence: new PersistenceServiceAdapter(options.persistenceService),
-    annotations: new AnnotationsServiceAdapter(options.annotationsManager),
+    persistence: new PersistenceServiceAdapter(options.topologyIO),
+    annotations: new AnnotationsServiceAdapter(options.annotationsIO),
     nodeCommands: new NodeCommandServiceAdapter(options.yamlFilePath),
     lifecycle: new LifecycleServiceAdapter(),
     customNodes: new CustomNodeServiceAdapter(),

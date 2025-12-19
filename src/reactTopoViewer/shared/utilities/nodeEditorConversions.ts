@@ -173,7 +173,7 @@ export function convertToEditorData(rawData: Record<string, unknown> | null): No
 // NodeEditorData -> YAML extraData (for saving to YAML)
 // ============================================================================
 
-/** YAML extraData type matching SaveTopologyService */
+/** YAML extraData type matching TopologyIO */
 export interface YamlExtraData {
   kind?: string;
   type?: string;

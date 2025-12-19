@@ -7,8 +7,8 @@
  * - Other services: Simple implementations using DevStateManager
  *
  * Architecture Note:
- * The production services (SaveTopologyService, AnnotationsManager) now accept
- * pluggable FileSystemAdapter via factory functions. This enables:
+ * The production I/O classes (TopologyIO, AnnotationsIO) from shared/io accept
+ * pluggable FileSystemAdapter. This enables:
  * - Server-side code to use them directly with SessionFsAdapter
  * - Unit tests to inject mock adapters
  * - Same business logic shared between production and dev
@@ -17,14 +17,14 @@
  * cannot directly access the filesystem. The server (fileApi.ts) handles
  * the actual file operations using TopologyIO with SessionFsAdapter.
  *
- * To use production services with custom adapters:
+ * To use the I/O classes with custom adapters:
  * @example
- * import { createSaveTopologyService, createAnnotationsManager } from '../../../src/reactTopoViewer/extension/services';
+ * import { TopologyIO, AnnotationsIO } from '../../../src/reactTopoViewer/shared/io';
  * import { SessionFsAdapter } from '../../server/SessionFsAdapter';
  *
  * const fs = new SessionFsAdapter(sessionId, sessionMaps, basePath);
- * const annotationsMgr = createAnnotationsManager({ fs });
- * const persistenceSvc = createSaveTopologyService({ fs });
+ * const annotationsIO = new AnnotationsIO({ fs });
+ * const topologyIO = new TopologyIO({ fs, annotationsIO });
  */
 
 import type { DevStateManager } from '../DevState';

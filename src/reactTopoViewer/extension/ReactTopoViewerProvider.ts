@@ -11,14 +11,13 @@
 import * as vscode from 'vscode';
 
 import { log } from './services/logger';
-import { nodeFsAdapter } from '../shared/io';
+import { nodeFsAdapter, TopologyIO } from '../shared/io';
 import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { CyElement, ClabTopology } from '../shared/types/topology';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../extension';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
-import { annotationsManager } from './services/AnnotationsManager';
-import { saveTopologyService } from './services/SaveTopologyService';
+import { annotationsIO, extensionLogger } from './services/adapters';
 
 import {
   createPanel,
@@ -54,11 +53,18 @@ export class ReactTopoViewer {
   private lastTopologyElements: CyElement[] = [];
   private watcherManager: WatcherManager;
   private messageRouter: MessageRouter | undefined;
+  private topologyIO: TopologyIO;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
     this.watcherManager = new WatcherManager();
+    this.topologyIO = new TopologyIO({
+      fs: nodeFsAdapter,
+      annotationsIO: annotationsIO,
+      setInternalUpdate: (updating: boolean) => { this.isInternalUpdate = updating; },
+      logger: extensionLogger,
+    });
   }
 
   /**
@@ -79,7 +85,7 @@ export class ReactTopoViewer {
 
     const yamlNodeIds = new Set(Object.keys(parsedTopo.topology.nodes));
     try {
-      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const annotations = await annotationsIO.loadAnnotations(this.lastYamlFilePath);
       const nodeAnnotations = annotations.nodeAnnotations ?? [];
       const missingIds = [...yamlNodeIds].filter(id => !nodeAnnotations.some(n => n.id === id));
       const orphanAnnotations = nodeAnnotations.filter(n => !yamlNodeIds.has(n.id));
@@ -92,7 +98,7 @@ export class ReactTopoViewer {
         if (candidate) {
           const oldId = candidate.id;
           candidate.id = newId;
-          await annotationsManager.saveAnnotations(this.lastYamlFilePath, annotations);
+          await annotationsIO.saveAnnotations(this.lastYamlFilePath, annotations);
           log.info(`[ReactTopoViewer] Migrated annotation id from ${oldId} to ${newId} after YAML rename`);
           return true;
         }
@@ -206,7 +212,8 @@ export class ReactTopoViewer {
       lastTopologyElements: this.lastTopologyElements,
       updateCachedElements: (elements) => { this.lastTopologyElements = elements; },
       loadTopologyData: () => this.loadTopologyData(),
-      extensionContext: context
+      extensionContext: context,
+      topologyIO: this.topologyIO,
     });
 
     this.initializeWatchers(panel);
@@ -260,18 +267,16 @@ export class ReactTopoViewer {
         this.messageRouter.updateContext({ lastTopologyElements: elements });
       }
 
-      // Initialize SaveTopologyService with the parsed document
+      // Initialize TopologyIO with the parsed document
       if (this.adaptor.currentClabDoc && !this.isViewMode) {
-        saveTopologyService.initialize(
+        this.topologyIO.initialize(
           this.adaptor.currentClabDoc,
-          this.lastYamlFilePath,
-          annotationsManager.getAnnotationsIO(),
-          (updating: boolean) => { this.isInternalUpdate = updating; }
+          this.lastYamlFilePath
         );
       }
 
       // Load annotations (free text + free shapes + groups + nodes)
-      const annotations = await annotationsManager.loadAnnotations(this.lastYamlFilePath);
+      const annotations = await annotationsIO.loadAnnotations(this.lastYamlFilePath);
       const freeTextAnnotations = annotations.freeTextAnnotations || [];
       const freeShapeAnnotations = annotations.freeShapeAnnotations || [];
       const groupStyleAnnotations = annotations.groupStyleAnnotations || [];

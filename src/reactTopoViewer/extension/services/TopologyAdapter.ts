@@ -7,7 +7,7 @@ import * as YAML from 'yaml';
 import { log } from './logger';
 import { ClabTopology, CyElement, TopologyAnnotations } from '../../shared/types/topology';
 import { ClabLabTreeNode } from '../../../treeView/common';
-import { annotationsManager } from './AnnotationsManager';
+import { annotationsIO } from './adapters';
 import { ContainerDataAdapter } from './ContainerDataAdapter';
 import {
   TopologyParser,
@@ -52,7 +52,7 @@ export class TopoViewerAdaptorClab {
     this.currentClabTopo = parsed;
 
     // Load and migrate annotations
-    let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
+    let annotations = yamlFilePath ? await annotationsIO.loadAnnotations(yamlFilePath) : undefined;
 
     // Create container data adapter for enrichment
     const containerDataProvider = new ContainerDataAdapter(clabTreeDataToTopoviewer);
@@ -97,7 +97,7 @@ export class TopoViewerAdaptorClab {
     this.currentClabTopo = parsed;
 
     // Load and migrate annotations
-    let annotations = yamlFilePath ? await annotationsManager.loadAnnotations(yamlFilePath) : undefined;
+    let annotations = yamlFilePath ? await annotationsIO.loadAnnotations(yamlFilePath) : undefined;
 
     // Parse without container data (editor mode)
     const result = TopologyParser.parseForEditor(yamlContent, annotations as TopologyAnnotations | undefined);
@@ -137,7 +137,7 @@ export class TopoViewerAdaptorClab {
 
   /**
    * Migrates interface patterns to annotations for nodes that don't have them.
-   * Uses annotationsManager.modifyAnnotations() for atomic read-modify-write.
+   * Uses annotationsIO.modifyAnnotations() for atomic read-modify-write.
    */
   private async migrateInterfacePatterns(
     yamlFilePath: string,
@@ -145,7 +145,7 @@ export class TopoViewerAdaptorClab {
   ): Promise<void> {
     if (migrations.length === 0) return;
 
-    await annotationsManager.modifyAnnotations(yamlFilePath, (annotations) => {
+    await annotationsIO.modifyAnnotations(yamlFilePath, (annotations) => {
       if (!annotations.nodeAnnotations) {
         annotations.nodeAnnotations = [];
       }
@@ -198,7 +198,7 @@ export class TopoViewerAdaptorClab {
       log.info(`Migrated graph-* labels for node ${migration.nodeId} to annotations.json`);
     }
 
-    await annotationsManager.saveAnnotations(yamlFilePath, localAnnotations as Record<string, unknown>);
+    await annotationsIO.saveAnnotations(yamlFilePath, localAnnotations as Record<string, unknown>);
     log.info('Saved migrated graph-* labels to annotations.json');
   }
 }
