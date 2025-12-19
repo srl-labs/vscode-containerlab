@@ -1,5 +1,6 @@
-import { test as base, Locator } from '@playwright/test';
+import { test as base, Locator, TestInfo } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { writeFileSync } from 'fs';
 
 // Test selectors
 const CANVAS_SELECTOR = '[data-testid="cytoscape-canvas"]';
@@ -300,9 +301,17 @@ interface TopoViewerPage {
 const API_BASE_URL = 'http://localhost:5173';
 
 export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
-  topoViewerPage: async ({ page, request }, use) => {
+  topoViewerPage: async ({ page, request }, use, testInfo: TestInfo) => {
     // Generate unique session ID for test isolation
     const sessionId = generateSessionId();
+
+    // Capture browser console logs for debugging on failure
+    const consoleLogs: string[] = [];
+    page.on('console', (msg) => {
+      const timestamp = new Date().toISOString();
+      const type = msg.type().toUpperCase().padEnd(7);
+      consoleLogs.push(`[${timestamp}] [${type}] ${msg.text()}`);
+    });
 
     // Helper to add session ID to API URLs (uses absolute URL for API calls)
     const withSession = (url: string) => {
@@ -925,6 +934,21 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
     };
 
     await use(topoViewerPage);
+
+    // Save browser console logs on test failure for debugging
+    if (testInfo.status !== testInfo.expectedStatus && consoleLogs.length > 0) {
+      const logsContent = consoleLogs.join('\n');
+
+      // Write to file in test-results folder
+      const logFilePath = testInfo.outputPath('browser-console-logs.txt');
+      writeFileSync(logFilePath, logsContent);
+
+      // Also attach to HTML report
+      await testInfo.attach('browser-console-logs', {
+        body: logsContent,
+        contentType: 'text/plain',
+      });
+    }
   }
 });
 
