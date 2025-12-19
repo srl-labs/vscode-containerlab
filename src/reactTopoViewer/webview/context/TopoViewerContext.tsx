@@ -441,8 +441,10 @@ function handleExtensionMessage(
 
   const handlers: Record<string, () => void> = {
     'topology-data': () => {
-      if (message.data?.elements) {
-        const elements = message.data.elements as CyElement[];
+      // Elements can be at top level (message.elements) or in data (message.data.elements)
+      const msg = message as unknown as { elements?: CyElement[]; data?: { elements?: CyElement[] } };
+      const elements = msg.elements || msg.data?.elements;
+      if (elements) {
         dispatch({ type: 'SET_ELEMENTS', payload: elements });
       }
     },

@@ -40,6 +40,18 @@ function useCytoscapeDataUpdateListener(cyRef: React.RefObject<Core | null>): vo
       // Update the node's extraData directly in Cytoscape
       const currentExtraData = (node.data('extraData') || {}) as Record<string, unknown>;
       node.data('extraData', { ...currentExtraData, ...data.extraData });
+
+      // Also update top-level data properties that Cytoscape uses for styling
+      // These are stored in extraData but need to be at the top level for styling
+      if (data.extraData.topoViewerRole !== undefined) {
+        node.data('topoViewerRole', data.extraData.topoViewerRole);
+      }
+      if (data.extraData.iconColor !== undefined) {
+        node.data('iconColor', data.extraData.iconColor);
+      }
+      if (data.extraData.iconCornerRadius !== undefined) {
+        node.data('iconCornerRadius', data.extraData.iconCornerRadius);
+      }
     };
 
     window.addEventListener('message', handleMessage);
