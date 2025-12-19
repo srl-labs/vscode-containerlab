@@ -219,22 +219,64 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         );
 
         // Wait a bit for any auto-load to settle
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(300);
 
         // Load file-based topology via dev API with session ID
-        await page.evaluate(async ({ file, sid }) => {
-          await (window as any).__DEV__.loadTopologyFile(file, sid);
-        }, { file: filename, sid: sessionId });
+        // Retry up to 3 times if loading fails
+        const maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            // Load the file
+            const loadResult = await page.evaluate(async ({ file, sid }) => {
+              try {
+                await (window as any).__DEV__.loadTopologyFile(file, sid);
+                return { success: true };
+              } catch (e: any) {
+                return { success: false, error: e?.message || String(e) };
+              }
+            }, { file: filename, sid: sessionId });
 
-        // Wait for the topology data to propagate and confirm the file is loaded
-        await page.waitForFunction(
-          (expectedFile) => {
-            const currentFile = (window as any).__DEV__?.getCurrentFile?.();
-            return currentFile === expectedFile;
-          },
-          filename,
-          { timeout: 10000 }
-        );
+            if (!loadResult.success) {
+              throw new Error(`loadTopologyFile failed: ${loadResult.error}`);
+            }
+
+            // Wait for the topology data to propagate and confirm the file is loaded
+            await page.waitForFunction(
+              (expectedFile) => {
+                const currentFile = (window as any).__DEV__?.getCurrentFile?.();
+                return currentFile === expectedFile;
+              },
+              filename,
+              { timeout: 5000 }
+            );
+
+            // Verify nodes are actually loaded if this is not empty.clab.yml
+            if (filename === 'simple.clab.yml') {
+              await page.waitForFunction(
+                () => {
+                  const dev = (window as any).__DEV__;
+                  const cy = dev?.cy;
+                  if (!cy) return false;
+                  const nodes = cy.nodes().filter((n: any) => {
+                    const role = n.data('topoViewerRole');
+                    return role && role !== 'freeText' && role !== 'freeShape';
+                  });
+                  return nodes.length >= 2;
+                },
+                { timeout: 5000 }
+              );
+            }
+
+            // Success - break out of retry loop
+            break;
+          } catch (error) {
+            if (attempt === maxRetries) {
+              throw new Error(`Failed to load ${filename} after ${maxRetries} attempts: ${error}`);
+            }
+            // Wait before retrying
+            await page.waitForTimeout(500);
+          }
+        }
 
         // Additional wait for graph to stabilize
         await page.waitForTimeout(300);

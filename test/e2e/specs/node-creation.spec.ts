@@ -15,13 +15,20 @@ test.describe('Node Creation', () => {
   });
 
   test('creates node via Shift+Click on canvas', async ({ page, topoViewerPage }) => {
+    // Verify initial state - simple.clab.yml should have 2 nodes
     const initialNodeCount = await topoViewerPage.getNodeCount();
+    expect(initialNodeCount).toBe(2);
+
+    // Fit viewport to ensure consistent positioning
+    await topoViewerPage.fit();
+    await page.waitForTimeout(300);
 
     // Get canvas center position
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
-    // Shift+Click to create node
-    await shiftClick(page, canvasCenter.x, canvasCenter.y);
+    // Shift+Click AWAY from center to avoid hitting existing nodes
+    // simple.clab.yml topology has nodes near the center after fit
+    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
 
     // Wait for node to be created
     await page.waitForTimeout(500);
