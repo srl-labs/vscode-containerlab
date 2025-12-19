@@ -8,32 +8,54 @@ import type { CyElement } from '../../../shared/types/messages';
 import { updateCytoscapeElements } from '../../components/canvas/init';
 
 /**
+ * Check if any element's visual data has changed (icon, color, etc.)
+ */
+function hasVisualDataChanged(cy: Core, elements: CyElement[]): boolean {
+  for (const reactEl of elements) {
+    const id = reactEl.data?.id as string;
+    if (!id) continue;
+    const cyEl = cy.getElementById(id);
+    if (cyEl.empty()) continue;
+
+    const reactData = reactEl.data as Record<string, unknown>;
+    const cyData = cyEl.data();
+    if (reactData.topoViewerRole !== cyData.topoViewerRole ||
+        reactData.iconColor !== cyData.iconColor ||
+        reactData.iconCornerRadius !== cyData.iconCornerRadius) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check if all IDs match between Cytoscape and React state
+ */
+function idsMatch(cyIds: Set<string>, reactIds: Set<string>): boolean {
+  for (const id of reactIds) {
+    if (!cyIds.has(id)) return false;
+  }
+  for (const id of cyIds) {
+    if (!reactIds.has(id)) return false;
+  }
+  return true;
+}
+
+/**
  * Check if the React state update is just an addition of elements already in Cytoscape
- * In this case, we can skip the full reset since Cytoscape already has the correct state
+ * In this case, we can skip the full reset since Cytoscape already has the correct state.
+ * Also checks if any element data has changed (e.g., icon/topoViewerRole updates).
  */
 function canSkipUpdate(cy: Core, elements: CyElement[]): boolean {
   const cyIds = new Set(cy.elements().map(el => el.id()));
   const reactIds = new Set(elements.map(el => el.data?.id).filter(Boolean) as string[]);
 
   // Check if Cytoscape has exactly the same or more elements than React state
-  // This happens when we add a node directly to Cytoscape and then dispatch to React
-  if (cyIds.size >= reactIds.size) {
-    // All React element IDs must exist in Cytoscape
-    for (const id of reactIds) {
-      if (!cyIds.has(id)) {
-        return false; // React has an element that Cytoscape doesn't - need to add it
-      }
-    }
-    // All Cytoscape elements must exist in React (or be about to be removed)
-    for (const id of cyIds) {
-      if (!reactIds.has(id)) {
-        return false; // Cytoscape has extra element that React doesn't - need to sync
-      }
-    }
-    // IDs match - Cytoscape is already in sync, skip update to preserve positions
-    return true;
-  }
-  return false;
+  if (cyIds.size < reactIds.size) return false;
+  if (!idsMatch(cyIds, reactIds)) return false;
+  if (hasVisualDataChanged(cy, elements)) return false;
+
+  return true;
 }
 
 /**

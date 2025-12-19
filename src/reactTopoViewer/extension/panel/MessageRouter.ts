@@ -391,6 +391,17 @@ export class MessageRouter {
 
     const extraData = convertEditorDataToYaml(msg.nodeData);
 
+    // Include icon data for annotation persistence (not saved to YAML, but to annotations file)
+    if (msg.nodeData.icon) {
+      extraData.topoViewerRole = String(msg.nodeData.icon);
+    }
+    if (msg.nodeData.iconColor) {
+      extraData.iconColor = String(msg.nodeData.iconColor);
+    }
+    if (msg.nodeData.iconCornerRadius !== undefined) {
+      extraData.iconCornerRadius = Number(msg.nodeData.iconCornerRadius);
+    }
+
     const nodeData: NodeSaveData = {
       id: String(msg.nodeData.id || ''),
       name: String(msg.nodeData.name || msg.nodeData.id || ''),

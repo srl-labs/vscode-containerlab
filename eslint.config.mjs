@@ -29,7 +29,7 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: ['./tsconfig.json', './test/tsconfig.json'],
+        project: ['./tsconfig.json', './test/tsconfig.json', './test/e2e/tsconfig.json'],
         ecmaVersion: 'latest',
         sourceType: 'module'
       },

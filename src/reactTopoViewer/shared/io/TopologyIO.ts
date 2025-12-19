@@ -176,8 +176,44 @@ export class TopologyIO {
       if (result.renamed) {
         await this.renameNodeAnnotations(result.renamed.oldId, result.renamed.newId);
       }
+
+      // Save icon/annotation data if provided
+      const nodeId = result.renamed?.newId || nodeData.name || nodeData.id;
+      if (nodeData.extraData && nodeId) {
+        const annotationData: NodeAnnotationData = {
+          icon: nodeData.extraData.topoViewerRole as string | undefined,
+          iconColor: nodeData.extraData.iconColor as string | undefined,
+          iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
+          interfacePattern: nodeData.extraData.interfacePattern as string | undefined
+        };
+        // Only save if there's actual annotation data to save
+        if (annotationData.icon || annotationData.iconColor || annotationData.iconCornerRadius !== undefined || annotationData.interfacePattern) {
+          await this.saveNodeAnnotations(nodeId, annotationData);
+        }
+      }
     }
     return result;
+  }
+
+  /**
+   * Saves annotation data for a node (icon, color, etc.) without changing position
+   */
+  private async saveNodeAnnotations(nodeId: string, annotationData: NodeAnnotationData): Promise<void> {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+      if (!annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = [];
+      }
+
+      const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+      if (existing) {
+        applyAnnotationData(existing, annotationData);
+      } else {
+        // Create new annotation entry with just the annotation data (no position)
+        annotations.nodeAnnotations.push({ id: nodeId, ...buildAnnotationProps(annotationData) });
+      }
+
+      return annotations;
+    });
   }
 
   /**

@@ -393,11 +393,16 @@ export class MessageHandler {
       console.log('%c[Mock]', 'color: #4CAF50;', `Renaming node: ${oldName} -> ${newName}`);
       // This is a rename - need to update the node ID in local state
       const elements = this.stateManager.getElements();
+      // Map icon field to topoViewerRole for canvas element
+      const mappedNodeData = {
+        ...nodeData,
+        ...(nodeData.icon && { topoViewerRole: nodeData.icon }),
+      };
       const updated = elements.map(el => {
         if (el.group === 'nodes' && el.data.id === oldName) {
           return {
             ...el,
-            data: { ...el.data, ...nodeData, id: newName, name: newName }
+            data: { ...el.data, ...mappedNodeData, id: newName, name: newName }
           };
         }
         // Update edges that reference the old name
@@ -426,18 +431,54 @@ export class MessageHandler {
     } else {
       // Just update the node data in local state (no rename)
       const existingId = (nodeData.id as string) || newName;
-      this.stateManager.updateNodeData(existingId, nodeData);
+      // Map icon field to topoViewerRole for canvas element
+      const mappedData = {
+        ...nodeData,
+        ...(nodeData.icon && { topoViewerRole: nodeData.icon }),
+      };
+      this.stateManager.updateNodeData(existingId, mappedData);
+    }
+
+    // Update icon annotations in local state
+    if (nodeData.icon || nodeData.iconColor || nodeData.iconCornerRadius !== undefined) {
+      const annotations = this.stateManager.getAnnotations();
+      const nodeAnnotations = [...(annotations.nodeAnnotations || [])];
+      const existingIdx = nodeAnnotations.findIndex(a => a.id === (isRename ? newName : (nodeData.id as string) || newName));
+      if (existingIdx >= 0) {
+        // Update existing annotation
+        if (nodeData.icon) nodeAnnotations[existingIdx].icon = nodeData.icon as string;
+        if (nodeData.iconColor) nodeAnnotations[existingIdx].iconColor = nodeData.iconColor as string;
+        if (nodeData.iconCornerRadius !== undefined) nodeAnnotations[existingIdx].iconCornerRadius = nodeData.iconCornerRadius as number;
+      } else {
+        // Create new annotation with icon data
+        nodeAnnotations.push({
+          id: newName,
+          ...(nodeData.icon && { icon: nodeData.icon as string }),
+          ...(nodeData.iconColor && { iconColor: nodeData.iconColor as string }),
+          ...(nodeData.iconCornerRadius !== undefined && { iconCornerRadius: nodeData.iconCornerRadius as number })
+        });
+      }
+      this.stateManager.updateAnnotations({ nodeAnnotations });
     }
 
     // Persist via TopologyIO endpoint (handles both YAML and annotation rename)
     const filename = this.stateManager.getCurrentFilePath();
     if (filename) {
+      // Build extraData with icon properties (TopologyIO.editNode expects icon data in extraData)
+      const extraData: Record<string, unknown> = {
+        ...(nodeData.kind && { kind: nodeData.kind }),
+        ...(nodeData.type && { type: nodeData.type }),
+        ...(nodeData.image && { image: nodeData.image }),
+        // Icon data for annotation persistence
+        ...(nodeData.icon && { topoViewerRole: nodeData.icon }),
+        ...(nodeData.iconColor && { iconColor: nodeData.iconColor }),
+        ...(nodeData.iconCornerRadius !== undefined && { iconCornerRadius: nodeData.iconCornerRadius }),
+      };
+
       this.callTopologyIOEndpoint('PUT', `/api/topology/${encodeURIComponent(filename)}/node`, {
         id: oldName || newName, // Original ID for matching
         name: newName,
-        kind: nodeData.kind,
-        type: nodeData.type,
-        image: nodeData.image,
+        extraData,
       });
     }
 
