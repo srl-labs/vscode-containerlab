@@ -1,5 +1,5 @@
 /* eslint-env mocha, node */
-/* global __dirname, global */
+/* global global */
 import { expect } from 'chai';
 import sinon from 'sinon';
 import path from 'path';

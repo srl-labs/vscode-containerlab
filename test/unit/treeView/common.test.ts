@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-/* global describe, it, after, __dirname */
+/* global describe, it, after */
 /**
  * Unit tests for helper classes used by the tree view.
  *

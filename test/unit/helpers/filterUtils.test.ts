@@ -1,5 +1,5 @@
 /* eslint-env node, mocha */
-/* global describe, it, after, __dirname */
+/* global describe, it, after */
 import { expect } from 'chai';
 import Module from 'module';
 import path from 'path';

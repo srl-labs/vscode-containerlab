@@ -44,7 +44,9 @@ export default [
         clearInterval: 'readonly',
         window: 'readonly',
         document: 'readonly',
-        fetch: 'readonly'
+        fetch: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly'
       }
     },
     plugins: { '@typescript-eslint': tseslint.plugin, sonarjs },

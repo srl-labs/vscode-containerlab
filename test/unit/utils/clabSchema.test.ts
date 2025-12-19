@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-/* global describe, it, __dirname */
+/* global describe, it */
 import { expect } from 'chai';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';

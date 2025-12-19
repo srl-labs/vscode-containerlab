@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-/* global describe, it, after, __dirname */
+/* global describe, it, after */
 import { expect } from 'chai';
 import fs from 'fs';
 import os from 'os';

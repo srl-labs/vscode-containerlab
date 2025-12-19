@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-/* global describe, it, before, after, beforeEach, afterEach, __dirname */
+/* global describe, it, before, after, beforeEach, afterEach */
 import { expect } from 'chai';
 import sinon from 'sinon';
 import Module from 'module';
