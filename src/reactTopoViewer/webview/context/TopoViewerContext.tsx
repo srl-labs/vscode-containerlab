@@ -120,6 +120,12 @@ interface EdgeStatsUpdate {
   classes?: string;
 }
 
+/** Payload for updating node data after save */
+interface UpdateNodeDataPayload {
+  nodeId: string;
+  extraData: Record<string, unknown>;
+}
+
 type TopoViewerAction =
   | { type: 'SET_ELEMENTS'; payload: CyElement[] }
   | { type: 'SET_MODE'; payload: 'edit' | 'view' }
@@ -142,7 +148,8 @@ type TopoViewerAction =
   | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null }
   | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } }
   | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] }
-  | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string } };
+  | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string } }
+  | { type: 'UPDATE_NODE_DATA'; payload: UpdateNodeDataPayload };
 
 /**
  * Reducer function
@@ -291,6 +298,25 @@ const reducerHandlers: ReducerHandlers = {
       return el;
     });
     return { ...state, elements };
+  },
+  UPDATE_NODE_DATA: (state, action) => {
+    const { nodeId, extraData } = action.payload;
+    // Update the node's extraData with the new values
+    const elements = state.elements.map(el => {
+      if (el.group === 'nodes' && (el.data as Record<string, unknown>)?.id === nodeId) {
+        const currentData = el.data as Record<string, unknown>;
+        const currentExtraData = (currentData.extraData ?? {}) as Record<string, unknown>;
+        return {
+          ...el,
+          data: {
+            ...currentData,
+            extraData: { ...currentExtraData, ...extraData }
+          }
+        };
+      }
+      return el;
+    });
+    return { ...state, elements };
   }
 };
 
@@ -424,6 +450,12 @@ function handleExtensionMessage(
       const data = message.data as { oldId?: string; newId?: string } | undefined;
       if (data?.oldId && data?.newId) {
         dispatch({ type: 'RENAME_NODE', payload: { oldId: data.oldId, newId: data.newId } });
+      }
+    },
+    'node-data-updated': () => {
+      const data = message.data as { nodeId?: string; extraData?: Record<string, unknown> } | undefined;
+      if (data?.nodeId && data?.extraData) {
+        dispatch({ type: 'UPDATE_NODE_DATA', payload: { nodeId: data.nodeId, extraData: data.extraData } });
       }
     },
     'edge-stats-update': () => {

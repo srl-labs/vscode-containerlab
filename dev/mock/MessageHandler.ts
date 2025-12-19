@@ -386,18 +386,55 @@ export class MessageHandler {
 
     if (isRename) {
       console.log('%c[Mock]', 'color: #4CAF50;', `Renaming node: ${oldName} -> ${newName}`);
+
+      // Build extraData with kebab-case properties matching YAML format
+      const updatedExtraData: Record<string, unknown> = {
+        ...(nodeData.kind && { kind: nodeData.kind }),
+        ...(nodeData.type && { type: nodeData.type }),
+        ...(nodeData.image && { image: nodeData.image }),
+        ...(nodeData.group && { group: nodeData.group }),
+        ...(nodeData.startupConfig && { 'startup-config': nodeData.startupConfig }),
+        ...(nodeData.enforceStartupConfig !== undefined && { 'enforce-startup-config': nodeData.enforceStartupConfig }),
+        ...(nodeData.suppressStartupConfig !== undefined && { 'suppress-startup-config': nodeData.suppressStartupConfig }),
+        ...(nodeData.license && { license: nodeData.license }),
+        ...(nodeData.user && { user: nodeData.user }),
+        ...(nodeData.entrypoint && { entrypoint: nodeData.entrypoint }),
+        ...(nodeData.cmd && { cmd: nodeData.cmd }),
+        ...(nodeData.restartPolicy && { 'restart-policy': nodeData.restartPolicy }),
+        ...(nodeData.autoRemove !== undefined && { 'auto-remove': nodeData.autoRemove }),
+        ...(nodeData.startupDelay !== undefined && { 'startup-delay': nodeData.startupDelay }),
+        ...(nodeData.mgmtIpv4 && { 'mgmt-ipv4': nodeData.mgmtIpv4 }),
+        ...(nodeData.mgmtIpv6 && { 'mgmt-ipv6': nodeData.mgmtIpv6 }),
+        ...(nodeData.networkMode && { 'network-mode': nodeData.networkMode }),
+        ...(nodeData.cpu !== undefined && { cpu: nodeData.cpu }),
+        ...(nodeData.cpuSet && { 'cpu-set': nodeData.cpuSet }),
+        ...(nodeData.memory && { memory: nodeData.memory }),
+        ...(nodeData.shmSize && { 'shm-size': nodeData.shmSize }),
+        ...(nodeData.imagePullPolicy && { 'image-pull-policy': nodeData.imagePullPolicy }),
+        ...(nodeData.runtime && { runtime: nodeData.runtime }),
+      };
+
       // This is a rename - need to update the node ID in local state
       const elements = this.stateManager.getElements();
-      // Map icon field to topoViewerRole for canvas element
-      const mappedNodeData = {
-        ...nodeData,
-        ...(nodeData.icon && { topoViewerRole: nodeData.icon }),
-      };
+
+      // Build top-level icon properties
+      const iconProps: Record<string, unknown> = {};
+      if (nodeData.icon) iconProps.topoViewerRole = nodeData.icon;
+      if (nodeData.iconColor !== undefined) iconProps.iconColor = nodeData.iconColor;
+      if (nodeData.iconCornerRadius !== undefined) iconProps.iconCornerRadius = nodeData.iconCornerRadius;
+
       const updated = elements.map(el => {
         if (el.group === 'nodes' && el.data.id === oldName) {
+          const currentExtraData = (el.data.extraData ?? {}) as Record<string, unknown>;
           return {
             ...el,
-            data: { ...el.data, ...mappedNodeData, id: newName, name: newName }
+            data: {
+              ...el.data,
+              ...iconProps,
+              id: newName,
+              name: newName,
+              extraData: { ...currentExtraData, ...updatedExtraData }
+            }
           };
         }
         // Update edges that reference the old name
@@ -423,15 +460,62 @@ export class MessageHandler {
         { type: 'node-renamed', data: { oldId: oldName, newId: newName } },
         'node-renamed'
       );
+
+      // Also send node-data-updated for the renamed node
+      sendMessageToWebviewWithLog(
+        { type: 'node-data-updated', data: { nodeId: newName, extraData: updatedExtraData } },
+        'node-data-updated'
+      );
     } else {
       // Just update the node data in local state (no rename)
       const existingId = (nodeData.id as string) || newName;
-      // Map icon field to topoViewerRole for canvas element
-      const mappedData = {
-        ...nodeData,
-        ...(nodeData.icon && { topoViewerRole: nodeData.icon }),
+
+      // Build extraData with kebab-case properties matching YAML format
+      // This is used both for local state update AND for the node-data-updated message
+      const updatedExtraData: Record<string, unknown> = {
+        ...(nodeData.kind && { kind: nodeData.kind }),
+        ...(nodeData.type && { type: nodeData.type }),
+        ...(nodeData.image && { image: nodeData.image }),
+        ...(nodeData.group && { group: nodeData.group }),
+        ...(nodeData.startupConfig && { 'startup-config': nodeData.startupConfig }),
+        ...(nodeData.enforceStartupConfig !== undefined && { 'enforce-startup-config': nodeData.enforceStartupConfig }),
+        ...(nodeData.suppressStartupConfig !== undefined && { 'suppress-startup-config': nodeData.suppressStartupConfig }),
+        ...(nodeData.license && { license: nodeData.license }),
+        ...(nodeData.user && { user: nodeData.user }),
+        ...(nodeData.entrypoint && { entrypoint: nodeData.entrypoint }),
+        ...(nodeData.cmd && { cmd: nodeData.cmd }),
+        ...(nodeData.restartPolicy && { 'restart-policy': nodeData.restartPolicy }),
+        ...(nodeData.autoRemove !== undefined && { 'auto-remove': nodeData.autoRemove }),
+        ...(nodeData.startupDelay !== undefined && { 'startup-delay': nodeData.startupDelay }),
+        ...(nodeData.mgmtIpv4 && { 'mgmt-ipv4': nodeData.mgmtIpv4 }),
+        ...(nodeData.mgmtIpv6 && { 'mgmt-ipv6': nodeData.mgmtIpv6 }),
+        ...(nodeData.networkMode && { 'network-mode': nodeData.networkMode }),
+        ...(nodeData.cpu !== undefined && { cpu: nodeData.cpu }),
+        ...(nodeData.cpuSet && { 'cpu-set': nodeData.cpuSet }),
+        ...(nodeData.memory && { memory: nodeData.memory }),
+        ...(nodeData.shmSize && { 'shm-size': nodeData.shmSize }),
+        ...(nodeData.imagePullPolicy && { 'image-pull-policy': nodeData.imagePullPolicy }),
+        ...(nodeData.runtime && { runtime: nodeData.runtime }),
       };
-      this.stateManager.updateNodeData(existingId, mappedData);
+
+      // Update local state with extraData merged correctly
+      // Use updateNodeExtraData instead of updateNodeData to properly update the nested extraData property
+      this.stateManager.updateNodeExtraData(existingId, updatedExtraData);
+
+      // Also update top-level icon properties
+      if (nodeData.icon || nodeData.iconColor !== undefined || nodeData.iconCornerRadius !== undefined) {
+        const iconData: Record<string, unknown> = {};
+        if (nodeData.icon) iconData.topoViewerRole = nodeData.icon;
+        if (nodeData.iconColor !== undefined) iconData.iconColor = nodeData.iconColor;
+        if (nodeData.iconCornerRadius !== undefined) iconData.iconCornerRadius = nodeData.iconCornerRadius;
+        this.stateManager.updateNodeData(existingId, iconData);
+      }
+
+      // Send node-data-updated message so webview can update React state
+      sendMessageToWebviewWithLog(
+        { type: 'node-data-updated', data: { nodeId: existingId, extraData: updatedExtraData } },
+        'node-data-updated'
+      );
     }
 
     // Update icon annotations in local state
@@ -459,11 +543,37 @@ export class MessageHandler {
     // Persist via TopologyIO endpoint (handles both YAML and annotation rename)
     const filename = this.stateManager.getCurrentFilePath();
     if (filename) {
-      // Build extraData with icon properties (TopologyIO.editNode expects icon data in extraData)
+      // Build extraData with all node properties in kebab-case format for YAML
+      // This mirrors what convertEditorDataToYaml does in the real extension
       const extraData: Record<string, unknown> = {
+        // Basic properties
         ...(nodeData.kind && { kind: nodeData.kind }),
         ...(nodeData.type && { type: nodeData.type }),
         ...(nodeData.image && { image: nodeData.image }),
+        ...(nodeData.group && { group: nodeData.group }),
+        // Config properties
+        ...(nodeData.startupConfig && { 'startup-config': nodeData.startupConfig }),
+        ...(nodeData.enforceStartupConfig !== undefined && { 'enforce-startup-config': nodeData.enforceStartupConfig }),
+        ...(nodeData.suppressStartupConfig !== undefined && { 'suppress-startup-config': nodeData.suppressStartupConfig }),
+        ...(nodeData.license && { license: nodeData.license }),
+        // Runtime properties
+        ...(nodeData.user && { user: nodeData.user }),
+        ...(nodeData.entrypoint && { entrypoint: nodeData.entrypoint }),
+        ...(nodeData.cmd && { cmd: nodeData.cmd }),
+        ...(nodeData.restartPolicy && { 'restart-policy': nodeData.restartPolicy }),
+        ...(nodeData.autoRemove !== undefined && { 'auto-remove': nodeData.autoRemove }),
+        ...(nodeData.startupDelay !== undefined && { 'startup-delay': nodeData.startupDelay }),
+        // Network properties
+        ...(nodeData.mgmtIpv4 && { 'mgmt-ipv4': nodeData.mgmtIpv4 }),
+        ...(nodeData.mgmtIpv6 && { 'mgmt-ipv6': nodeData.mgmtIpv6 }),
+        ...(nodeData.networkMode && { 'network-mode': nodeData.networkMode }),
+        // Resource properties
+        ...(nodeData.cpu !== undefined && { cpu: nodeData.cpu }),
+        ...(nodeData.cpuSet && { 'cpu-set': nodeData.cpuSet }),
+        ...(nodeData.memory && { memory: nodeData.memory }),
+        ...(nodeData.shmSize && { 'shm-size': nodeData.shmSize }),
+        ...(nodeData.imagePullPolicy && { 'image-pull-policy': nodeData.imagePullPolicy }),
+        ...(nodeData.runtime && { runtime: nodeData.runtime }),
         // Icon data for annotation persistence
         ...(nodeData.icon && { topoViewerRole: nodeData.icon }),
         ...(nodeData.iconColor && { iconColor: nodeData.iconColor }),

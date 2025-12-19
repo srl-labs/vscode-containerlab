@@ -125,7 +125,12 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const { isShaking, trigger: triggerLockShake } = useShakeAnimation();
-    const { panelRef, position, handleMouseDown } = usePanelDrag({ isLocked, storageKey: PANEL_STORAGE_KEY });
+    // Use default position on left side when no cached position exists
+    const { panelRef, position, handleMouseDown } = usePanelDrag({
+      isLocked,
+      storageKey: PANEL_STORAGE_KEY,
+      initialPosition: { x: 20, y: 80 }
+    });
     const drawerSide = useDrawerSide(panelRef, position);
 
     useImperativeHandle(ref, () => ({

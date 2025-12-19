@@ -41,7 +41,7 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
   children,
   width = 400,
   height,
-  initialPosition = { x: 20, y: 80 },
+  initialPosition, // undefined = center the panel
   tabs,
   activeTab,
   onTabChange,

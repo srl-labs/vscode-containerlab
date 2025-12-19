@@ -384,6 +384,26 @@ export class DevStateManager {
     this.notify();
   }
 
+  /** Update a node's extraData (merges with existing extraData) */
+  updateNodeExtraData(nodeId: string, extraData: Record<string, unknown>): void {
+    const elements = this.state.currentElements.map(el => {
+      if (el.group === 'nodes' && el.data.id === nodeId) {
+        const currentExtraData = (el.data.extraData ?? {}) as Record<string, unknown>;
+        return {
+          ...el,
+          data: {
+            ...el.data,
+            extraData: { ...currentExtraData, ...extraData }
+          }
+        };
+      }
+      return el;
+    });
+
+    this.state = { ...this.state, currentElements: elements };
+    this.notify();
+  }
+
   /** Update an edge's data */
   updateEdgeData(edgeId: string, data: Partial<CyElement['data']>): void {
     const elements = this.state.currentElements.map(el => {

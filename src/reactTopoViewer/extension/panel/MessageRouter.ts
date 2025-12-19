@@ -423,6 +423,14 @@ export class MessageRouter {
           data: { oldId: result.renamed.oldId, newId: result.renamed.newId }
         });
       }
+
+      // Send node-data-updated message so webview can update cached elements
+      // Use the new node ID (after rename) if applicable
+      const finalNodeId = result.renamed?.newId || nodeData.id;
+      panel.webview.postMessage({
+        type: 'node-data-updated',
+        data: { nodeId: finalNodeId, extraData }
+      });
     } else {
       log.error(`[ReactTopoViewer] Failed to save node: ${result.error}`);
     }
@@ -472,6 +480,13 @@ export class MessageRouter {
           data: { oldId: result.renamed.oldId, newId: result.renamed.newId }
         });
       }
+
+      // Send node-data-updated message so webview can update cached elements
+      const finalNodeId = result.renamed?.newId || targetName;
+      panel.webview.postMessage({
+        type: 'node-data-updated',
+        data: { nodeId: finalNodeId, extraData }
+      });
     } else {
       log.error(`[ReactTopoViewer] Failed to undo rename: ${result.error}`);
     }

@@ -6,7 +6,6 @@ import { usePanelDrag } from '../../../hooks/ui/usePanelDrag';
 import { usePanelResize } from '../../../hooks/panels/usePanelResize';
 import { PanelHeader, PanelFooter, ResizeHandle, Backdrop } from './BasePanelComponents';
 
-const DEFAULT_POSITION = { x: 20, y: 80 };
 const DEFAULT_WIDTH = 400;
 const MIN_WIDTH = 200;
 const MIN_HEIGHT = 150;
@@ -50,7 +49,7 @@ function getButtonDefaults(p: BasePanelProps) {
 function getSizeDefaults(p: BasePanelProps) {
   return {
     width: p.width ?? DEFAULT_WIDTH,
-    initialPosition: p.initialPosition ?? DEFAULT_POSITION,
+    initialPosition: p.initialPosition, // undefined = center the panel
     backdrop: p.backdrop ?? false,
     zIndex: p.zIndex ?? 21,
     resizable: p.resizable ?? true,

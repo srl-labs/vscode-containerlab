@@ -2,7 +2,7 @@
  * Cytoscape Canvas Component
  * Renders the topology graph using Cytoscape.js
  */
-import React, { useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { Core } from 'cytoscape';
 import { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
@@ -17,6 +17,35 @@ import {
   useCytoscapeInitializer,
   useDelayedCytoscapeInit
 } from '../../hooks/canvas';
+
+/**
+ * Hook to listen for node-data-updated messages and update Cytoscape directly.
+ * This provides immediate feedback when node properties are saved.
+ */
+function useCytoscapeDataUpdateListener(cyRef: React.RefObject<Core | null>): void {
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const message = event.data;
+      if (message?.type !== 'node-data-updated') return;
+
+      const data = message.data as { nodeId?: string; extraData?: Record<string, unknown> } | undefined;
+      if (!data?.nodeId || !data?.extraData) return;
+
+      const cy = cyRef.current;
+      if (!cy) return;
+
+      const node = cy.getElementById(data.nodeId);
+      if (node.empty()) return;
+
+      // Update the node's extraData directly in Cytoscape
+      const currentExtraData = (node.data('extraData') || {}) as Record<string, unknown>;
+      node.data('extraData', { ...currentExtraData, ...data.extraData });
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [cyRef]);
+}
 
 interface CytoscapeCanvasProps {
   elements: CyElement[];
@@ -91,6 +120,9 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
 
     // Update elements when they change
     useElementsUpdate(cyRef, elements);
+
+    // Listen for node-data-updated messages and update Cytoscape directly
+    useCytoscapeDataUpdateListener(cyRef);
 
     return (
       <div

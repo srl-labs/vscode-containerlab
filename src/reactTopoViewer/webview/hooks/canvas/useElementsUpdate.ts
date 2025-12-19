@@ -29,6 +29,84 @@ function hasVisualDataChanged(cy: Core, elements: CyElement[]): boolean {
 }
 
 /**
+ * Compare two extraData objects for equality
+ */
+function extraDataEqual(
+  reactExtraData: Record<string, unknown> | undefined,
+  cyExtraData: Record<string, unknown> | undefined
+): boolean {
+  // If one has extraData and the other doesn't, they're different
+  if ((!reactExtraData && cyExtraData) || (reactExtraData && !cyExtraData)) {
+    return false;
+  }
+  // Both undefined means equal
+  if (!reactExtraData && !cyExtraData) {
+    return true;
+  }
+  // Both exist - compare keys
+  const reactKeys = Object.keys(reactExtraData!);
+  const cyKeys = Object.keys(cyExtraData!);
+  const allKeys = new Set([...reactKeys, ...cyKeys]);
+
+  for (const key of allKeys) {
+    if (JSON.stringify(reactExtraData![key]) !== JSON.stringify(cyExtraData![key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Check if any element's extraData has changed (kind, user, startup-config, etc.)
+ * Returns the IDs of elements with changed extraData
+ */
+function getNodesWithChangedExtraData(cy: Core, elements: CyElement[]): string[] {
+  const changedIds: string[] = [];
+  for (const reactEl of elements) {
+    if (reactEl.group !== 'nodes') continue;
+    const id = reactEl.data?.id as string;
+    if (!id) continue;
+    const cyEl = cy.getElementById(id);
+    if (cyEl.empty()) continue;
+
+    const reactData = reactEl.data as Record<string, unknown>;
+    const cyData = cyEl.data();
+    const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
+    const cyExtraData = cyData.extraData as Record<string, unknown> | undefined;
+
+    if (!extraDataEqual(reactExtraData, cyExtraData)) {
+      changedIds.push(id);
+    }
+  }
+  return changedIds;
+}
+
+/**
+ * Update extraData for specific nodes in Cytoscape without full reload
+ */
+function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[]): void {
+  if (nodeIds.length === 0) return;
+
+  cy.batch(() => {
+    for (const nodeId of nodeIds) {
+      const cyEl = cy.getElementById(nodeId);
+      if (cyEl.empty()) continue;
+
+      const reactEl = elements.find(e =>
+        e.group === 'nodes' && (e.data as Record<string, unknown>)?.id === nodeId
+      );
+      if (!reactEl) continue;
+
+      const reactData = reactEl.data as Record<string, unknown>;
+      const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
+
+      // Update extraData on the Cytoscape element
+      cyEl.data('extraData', reactExtraData || {});
+    }
+  });
+}
+
+/**
  * Check if all IDs match between Cytoscape and React state
  */
 function idsMatch(cyIds: Set<string>, reactIds: Set<string>): boolean {
@@ -162,6 +240,12 @@ export function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements:
     // Skip update if Cytoscape already has all the elements (e.g., after direct cy.add())
     // This preserves positions when adding nodes via UI
     if (isInitializedRef.current && canSkipUpdate(cy, elements)) {
+      // Even if we can skip the full update, check for extraData changes
+      // and update Cytoscape surgically
+      const nodesWithChangedExtraData = getNodesWithChangedExtraData(cy, elements);
+      if (nodesWithChangedExtraData.length > 0) {
+        updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
+      }
       return;
     }
 

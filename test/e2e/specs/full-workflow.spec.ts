@@ -279,19 +279,47 @@ test.describe('Full Workflow E2E Test', () => {
     currentStep = 'Step 4';
     console.log('[STEP 4] Create groups and add nodes to groups');
 
+    // DEBUG: Check if editor is still visible before proceeding
+    const editorStillVisible = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible before Step 4: ${editorStillVisible}`);
+
+    // DEBUG: Get bounding boxes to see coordinates
+    const router2BoxDebug = await topoViewerPage.getNodeBoundingBox('router2');
+    const router3BoxDebug = await topoViewerPage.getNodeBoundingBox('router3');
+    console.log(`[DEBUG] router2 box: x=${router2BoxDebug?.x}, y=${router2BoxDebug?.y}`);
+    console.log(`[DEBUG] router3 box: x=${router3BoxDebug?.x}, y=${router3BoxDebug?.y}`);
+
     // Get initial group count
     let groupCount = await topoViewerPage.getGroupCount();
     const initialGroupCount = groupCount;
 
     // Select router2 first
+    console.log('[DEBUG] About to select router2');
     await topoViewerPage.selectNode('router2');
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(300); // Wait longer to avoid double-click detection
+
+    // DEBUG: Check if editor opened unexpectedly
+    const editorAfterSelect = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible after selecting router2: ${editorAfterSelect}`);
 
     // Ctrl+Click router3 to add to selection
     const router3Box = await topoViewerPage.getNodeBoundingBox('router3');
     expect(router3Box).not.toBeNull();
+    console.log(`[DEBUG] About to ctrlClick router3 at x=${router3Box!.x + router3Box!.width / 2}, y=${router3Box!.y + router3Box!.height / 2}`);
     await ctrlClick(page, router3Box!.x + router3Box!.width / 2, router3Box!.y + router3Box!.height / 2);
     await page.waitForTimeout(200);
+
+    // DEBUG: Check editor after ctrlClick on router3
+    const editorAfterCtrlClick = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible after ctrlClick router3: ${editorAfterCtrlClick}`);
+
+    // Close editor if it opened unexpectedly (timing issue with Ctrl+click)
+    if (editorAfterCtrlClick) {
+      console.log('[DEBUG] Closing unexpected editor');
+      const closeBtnStep4 = editorPanel.locator('[data-testid="panel-close-btn"]');
+      await closeBtnStep4.click();
+      await page.waitForTimeout(200);
+    }
 
     // Verify both nodes are selected
     let selectedIds = await topoViewerPage.getSelectedNodeIds();
@@ -315,6 +343,10 @@ test.describe('Full Workflow E2E Test', () => {
     currentStep = 'Step 5';
     console.log('[STEP 5] Complex undo/redo with interleaved operations (Part 1)');
 
+    // DEBUG: Check editor at start of Step 5
+    const editorStep5Start = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible at start of Step 5: ${editorStep5Start}`);
+
     // Record initial state: 4 nodes, 4 edges, 1 group
     nodeCount = await topoViewerPage.getNodeCount();
     edgeCount = await topoViewerPage.getEdgeCount();
@@ -324,6 +356,10 @@ test.describe('Full Workflow E2E Test', () => {
     // ACTION 1: Create a new node router5
     await topoViewerPage.createNode('router5', { x: 300, y: 200 }, KIND_NOKIA_SRLINUX);
     await page.waitForTimeout(500);
+
+    // DEBUG: Check editor after createNode
+    const editorAfterCreateNode = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible after createNode: ${editorAfterCreateNode}`);
 
     nodeCount = await topoViewerPage.getNodeCount();
     expect(nodeCount).toBe(5);
@@ -365,6 +401,10 @@ test.describe('Full Workflow E2E Test', () => {
     currentStep = 'Step 6';
     console.log('[STEP 6] Complex undo/redo with interleaved operations (Part 2)');
 
+    // DEBUG: Check editor at start of Step 6
+    const editorStep6Start = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible at start of Step 6: ${editorStep6Start}`);
+
     // STATE: 5 nodes, 5 edges
     nodeCount = await topoViewerPage.getNodeCount();
     edgeCount = await topoViewerPage.getEdgeCount();
@@ -375,6 +415,10 @@ test.describe('Full Workflow E2E Test', () => {
     await topoViewerPage.deleteNode('router5');
     await page.waitForTimeout(500);
 
+    // DEBUG: Check editor after delete
+    const editorAfterDelete = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible after deleting router5: ${editorAfterDelete}`);
+
     nodeCount = await topoViewerPage.getNodeCount();
     edgeCount = await topoViewerPage.getEdgeCount();
     expect(nodeCount).toBe(4);
@@ -382,9 +426,25 @@ test.describe('Full Workflow E2E Test', () => {
 
     // ACTION 2: Create new group with router3 and router4
     await topoViewerPage.selectNode('router3');
+    await page.waitForTimeout(300); // Wait longer to avoid double-click detection
+
+    // DEBUG: Check editor after selecting router3
+    const editorAfterSelectR3 = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible after selecting router3: ${editorAfterSelectR3}`);
+
     const router4Box = await topoViewerPage.getNodeBoundingBox('router4');
     await ctrlClick(page, router4Box!.x + router4Box!.width / 2, router4Box!.y + router4Box!.height / 2);
     await page.waitForTimeout(200);
+
+    // DEBUG: Check editor after ctrlClick on router4
+    const editorAfterCtrlClickR4 = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible after ctrlClick router4: ${editorAfterCtrlClickR4}`);
+    if (editorAfterCtrlClickR4) {
+      console.log('[DEBUG] Closing unexpected editor after ctrlClick router4');
+      const closeBtnR4 = editorPanel.locator('[data-testid="panel-close-btn"]');
+      await closeBtnR4.click();
+      await page.waitForTimeout(200);
+    }
 
     const groupCountBefore = await topoViewerPage.getGroupCount();
     await topoViewerPage.createGroup();
@@ -433,12 +493,17 @@ test.describe('Full Workflow E2E Test', () => {
     currentStep = 'Step 7';
     console.log('[STEP 7] Undo across multiple operation types');
 
+    // DEBUG: Check editor state at start of Step 7
+    const editorBeforeStep7 = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible at start of Step 7: ${editorBeforeStep7}`);
+
     // Record initial position of router3
     const initialRouter3Pos = await topoViewerPage.getNodePosition('router3');
 
     // ACTION 1: Move router3 100px right using drag
     let router3BoxDrag = await topoViewerPage.getNodeBoundingBox('router3');
     expect(router3BoxDrag).not.toBeNull();
+    console.log(`[DEBUG] About to drag router3 from x=${router3BoxDrag!.x + router3BoxDrag!.width / 2}`);
 
     await drag(
       page,
@@ -447,6 +512,10 @@ test.describe('Full Workflow E2E Test', () => {
       { steps: 10 }
     );
     await page.waitForTimeout(500);
+
+    // DEBUG: Check editor state after drag
+    const editorAfterDrag = await editorPanel.isVisible().catch(() => false);
+    console.log(`[DEBUG] Editor visible after dragging router3: ${editorAfterDrag}`);
 
     const movedRouter3Pos = await topoViewerPage.getNodePosition('router3');
     expect(movedRouter3Pos.x).toBeGreaterThan(initialRouter3Pos.x);

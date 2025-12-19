@@ -882,12 +882,42 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       deleteNode: async (nodeId: string) => {
+        // Close any open editor panel first to ensure Delete key goes to the canvas
+        const nodeEditor = page.locator('[data-testid="node-editor"]');
+        if (await nodeEditor.isVisible()) {
+          const closeBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-close-btn"]');
+          await closeBtn.click();
+          await page.waitForTimeout(200);
+        }
+
+        // Click on canvas background to clear any focus/selection state
+        await page.mouse.click(50, 50);
+        await page.waitForTimeout(100);
+
         await topoViewerPage.selectNode(nodeId);
         await page.keyboard.press('Delete');
         await page.waitForTimeout(300);
       },
 
       deleteEdge: async (edgeId: string) => {
+        // Close any open editor panel first to ensure Delete key goes to the canvas
+        const nodeEditor = page.locator('[data-testid="node-editor"]');
+        if (await nodeEditor.isVisible()) {
+          const closeBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-close-btn"]');
+          await closeBtn.click();
+          await page.waitForTimeout(200);
+        }
+        const edgeEditor = page.locator('[data-testid="edge-editor"]');
+        if (await edgeEditor.isVisible()) {
+          const closeBtn = page.locator('[data-testid="edge-editor"] [data-testid="panel-close-btn"]');
+          await closeBtn.click();
+          await page.waitForTimeout(200);
+        }
+
+        // Click on canvas background to clear any focus/selection state
+        await page.mouse.click(50, 50);
+        await page.waitForTimeout(100);
+
         await topoViewerPage.selectEdge(edgeId);
         await page.keyboard.press('Delete');
         await page.waitForTimeout(300);

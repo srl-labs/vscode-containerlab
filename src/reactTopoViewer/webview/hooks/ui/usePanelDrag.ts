@@ -9,10 +9,19 @@ export interface Position {
   y: number;
 }
 
-const DEFAULT_POSITION: Position = { x: 20, y: 80 };
 const MIN_VISIBLE_HEIGHT = 50;
 const MIN_VISIBLE_WIDTH = 100;
 const DEFAULT_TOP_MARGIN = 72; // Navbar height
+const DEFAULT_PANEL_HEIGHT = 400; // Estimated panel height for centering
+
+/**
+ * Calculate centered position for a panel
+ */
+function getCenteredPosition(panelWidth: number): Position {
+  const x = Math.max(20, (window.innerWidth - panelWidth) / 2);
+  const y = Math.max(DEFAULT_TOP_MARGIN, (window.innerHeight - DEFAULT_PANEL_HEIGHT) / 2);
+  return { x, y };
+}
 
 export interface UsePanelDragOptions {
   storageKey?: string;
@@ -61,17 +70,21 @@ function parseSavedPosition(saved: string, defaultPos: Position): Position {
 }
 
 /**
- * Load position from localStorage
+ * Load position from localStorage, or calculate centered position if not cached
  */
-function loadPosition(storageKey: string | undefined, defaultPos: Position, opts: ConstraintOptions): Position {
-  if (!storageKey) return constrainPosition(defaultPos, opts);
+function loadPosition(storageKey: string | undefined, defaultPos: Position | undefined, opts: ConstraintOptions): Position {
+  // If a specific initial position was provided, use it
+  const fallbackPos = defaultPos ?? getCenteredPosition(opts.panelWidth);
+
+  if (!storageKey) return constrainPosition(fallbackPos, opts);
   try {
     const saved = window.localStorage.getItem(`panel-pos-${storageKey}`);
     if (saved) {
-      return constrainPosition(parseSavedPosition(saved, defaultPos), opts);
+      return constrainPosition(parseSavedPosition(saved, fallbackPos), opts);
     }
   } catch { /* ignore */ }
-  return constrainPosition(defaultPos, opts);
+  // No cached position - use fallback (provided initialPosition or centered)
+  return constrainPosition(fallbackPos, opts);
 }
 
 /**
@@ -157,7 +170,7 @@ function useResizeHandler(
 export function usePanelDrag(options: UsePanelDragOptions = {}): UsePanelDragReturn {
   const {
     storageKey,
-    initialPosition = DEFAULT_POSITION,
+    initialPosition, // undefined means center the panel
     panelWidth = 400,
     isLocked = false,
     topMargin = DEFAULT_TOP_MARGIN,
@@ -234,6 +247,7 @@ export function buildLockButtonClass(isLocked: boolean, isShaking: boolean): str
 
 // Legacy exports for backwards compatibility
 export const PANEL_STORAGE_KEY = 'unifiedPanelState';
+const LEGACY_DEFAULT_POSITION: Position = { x: 20, y: 80 };
 
 /**
  * Load initial panel position from localStorage (legacy format)
@@ -242,9 +256,9 @@ export const PANEL_STORAGE_KEY = 'unifiedPanelState';
 export function loadInitialPosition(): Position {
   try {
     const saved = window.localStorage.getItem(PANEL_STORAGE_KEY);
-    if (saved) return parseSavedPosition(saved, DEFAULT_POSITION);
+    if (saved) return parseSavedPosition(saved, LEGACY_DEFAULT_POSITION);
   } catch { /* ignore */ }
-  return DEFAULT_POSITION;
+  return LEGACY_DEFAULT_POSITION;
 }
 
 /**
