@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import { log } from '../services/logger';
+import { nodeFsAdapter } from '../../shared/io';
 
 /**
  * Custom node template from configuration
@@ -111,9 +112,9 @@ export function extractTypesByKindFromSchema(schema: Record<string, unknown>): R
  */
 export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaData> {
   try {
-    const schemaPath = vscode.Uri.joinPath(extensionUri, 'schema', 'clab.schema.json');
-    const schemaContent = await vscode.workspace.fs.readFile(schemaPath);
-    const schema = JSON.parse(Buffer.from(schemaContent).toString('utf8')) as Record<string, unknown>;
+    const schemaUri = vscode.Uri.joinPath(extensionUri, 'schema', 'clab.schema.json');
+    const schemaContent = await nodeFsAdapter.readFile(schemaUri.fsPath);
+    const schema = JSON.parse(schemaContent) as Record<string, unknown>;
     return {
       kinds: extractKindsFromSchema(schema),
       typesByKind: extractTypesByKindFromSchema(schema)

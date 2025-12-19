@@ -9,9 +9,9 @@
  */
 
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 
 import { log } from './services/logger';
+import { nodeFsAdapter } from '../shared/io';
 import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { CyElement, ClabTopology } from '../shared/types/topology';
 import { ClabLabTreeNode } from '../../treeView/common';
@@ -238,7 +238,7 @@ export class ReactTopoViewer {
     }
 
     try {
-      const yamlContent = await fs.promises.readFile(this.lastYamlFilePath, 'utf8');
+      const yamlContent = await nodeFsAdapter.readFile(this.lastYamlFilePath);
       let elements = await this.adaptor.clabYamlToCytoscapeElements(
         yamlContent,
         this.cacheClabTreeDataToTopoviewer,
@@ -265,6 +265,7 @@ export class ReactTopoViewer {
         saveTopologyService.initialize(
           this.adaptor.currentClabDoc,
           this.lastYamlFilePath,
+          annotationsManager.getAnnotationsIO(),
           (updating: boolean) => { this.isInternalUpdate = updating; }
         );
       }

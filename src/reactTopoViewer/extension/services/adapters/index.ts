@@ -7,7 +7,7 @@
 
 import * as vscode from 'vscode';
 import * as YAML from 'yaml';
-import * as fsPromises from 'fs/promises';
+import { nodeFsAdapter } from '../../../shared/io';
 import {
   IMessagingService,
   IPersistenceService,
@@ -26,8 +26,8 @@ import {
   IOLogger,
 } from '../../../shared/messaging';
 import { TopologyAnnotations, CyElement } from '../../../shared/types/topology';
-import { saveTopologyService } from '../SaveTopologyService';
-import { annotationsManager } from '../AnnotationsManager';
+import { saveTopologyService, SaveTopologyService } from '../SaveTopologyService';
+import { annotationsManager, AnnotationsManager } from '../AnnotationsManager';
 import { nodeCommandService } from '../NodeCommandService';
 import { labLifecycleService } from '../LabLifecycleService';
 import { splitViewManager } from '../SplitViewManager';
@@ -64,46 +64,49 @@ export class MessagingServiceAdapter implements IMessagingService {
 
 /**
  * Adapter for SaveTopologyService
+ * Can be instantiated with a custom service instance or defaults to the singleton
  */
 export class PersistenceServiceAdapter implements IPersistenceService {
+  constructor(private service: SaveTopologyService = saveTopologyService) {}
+
   isInitialized(): boolean {
-    return saveTopologyService.isInitialized();
+    return this.service.isInitialized();
   }
 
   beginBatch(): void {
-    saveTopologyService.beginBatch();
+    this.service.beginBatch();
   }
 
   async endBatch(): Promise<SaveResult> {
-    return saveTopologyService.endBatch();
+    return this.service.endBatch();
   }
 
   async addNode(nodeData: NodeSaveData): Promise<SaveResult> {
-    return saveTopologyService.addNode(nodeData);
+    return this.service.addNode(nodeData);
   }
 
   async editNode(nodeData: NodeSaveData): Promise<SaveResult> {
-    return saveTopologyService.editNode(nodeData);
+    return this.service.editNode(nodeData);
   }
 
   async deleteNode(nodeId: string): Promise<SaveResult> {
-    return saveTopologyService.deleteNode(nodeId);
+    return this.service.deleteNode(nodeId);
   }
 
   async addLink(linkData: LinkSaveData): Promise<SaveResult> {
-    return saveTopologyService.addLink(linkData);
+    return this.service.addLink(linkData);
   }
 
   async editLink(linkData: LinkSaveData): Promise<SaveResult> {
-    return saveTopologyService.editLink(linkData);
+    return this.service.editLink(linkData);
   }
 
   async deleteLink(linkData: LinkSaveData): Promise<SaveResult> {
-    return saveTopologyService.deleteLink(linkData);
+    return this.service.deleteLink(linkData);
   }
 
   async savePositions(positions: NodePositionData[]): Promise<SaveResult> {
-    return saveTopologyService.savePositions(positions);
+    return this.service.savePositions(positions);
   }
 }
 
@@ -113,21 +116,24 @@ export class PersistenceServiceAdapter implements IPersistenceService {
 
 /**
  * Adapter for AnnotationsManager
+ * Can be instantiated with a custom manager instance or defaults to the singleton
  */
 export class AnnotationsServiceAdapter implements IAnnotationsService {
+  constructor(private manager: AnnotationsManager = annotationsManager) {}
+
   async loadAnnotations(yamlFilePath: string): Promise<TopologyAnnotations> {
-    return annotationsManager.loadAnnotations(yamlFilePath);
+    return this.manager.loadAnnotations(yamlFilePath);
   }
 
   async saveAnnotations(yamlFilePath: string, annotations: TopologyAnnotations): Promise<void> {
-    await annotationsManager.saveAnnotations(yamlFilePath, annotations);
+    await this.manager.saveAnnotations(yamlFilePath, annotations);
   }
 
   async modifyAnnotations(
     yamlFilePath: string,
     modifier: (annotations: TopologyAnnotations) => TopologyAnnotations
   ): Promise<void> {
-    await annotationsManager.modifyAnnotations(yamlFilePath, modifier);
+    await this.manager.modifyAnnotations(yamlFilePath, modifier);
   }
 }
 
@@ -260,14 +266,14 @@ export class LabSettingsServiceAdapter implements ILabSettingsService {
     yamlFilePath: string,
     settings: { name?: string; prefix?: string | null; mgmt?: Record<string, unknown> | null }
   ): Promise<void> {
-    const yamlContent = await fsPromises.readFile(yamlFilePath, 'utf8');
+    const yamlContent = await nodeFsAdapter.readFile(yamlFilePath);
     const doc = YAML.parseDocument(yamlContent);
 
     const { hadPrefix, hadMgmt } = yamlSettingsManager.applyExistingSettings(doc, settings);
     let updatedYaml = doc.toString();
     updatedYaml = yamlSettingsManager.insertMissingSettings(updatedYaml, settings, hadPrefix, hadMgmt);
 
-    await fsPromises.writeFile(yamlFilePath, updatedYaml, 'utf8');
+    await nodeFsAdapter.writeFile(yamlFilePath, updatedYaml);
     void vscode.window.showInformationMessage('Lab settings saved successfully');
   }
 }
@@ -363,6 +369,7 @@ export const extensionLogger: IOLogger = {
 
 /**
  * Create all production service adapters
+ * @param options Configuration including optional custom service instances
  */
 export function createProductionServices(options: {
   panel: vscode.WebviewPanel;
@@ -371,6 +378,9 @@ export function createProductionServices(options: {
   isViewMode: boolean;
   lastTopologyElements: CyElement[];
   loadTopologyData: () => Promise<unknown>;
+  // Optional custom service instances (for dev/testing with custom adapters)
+  persistenceService?: SaveTopologyService;
+  annotationsManager?: AnnotationsManager;
 }) {
   const context = new MessageRouterContextAdapter({
     yamlFilePath: options.yamlFilePath,
@@ -381,8 +391,8 @@ export function createProductionServices(options: {
 
   return {
     messaging: new MessagingServiceAdapter(options.panel),
-    persistence: new PersistenceServiceAdapter(),
-    annotations: new AnnotationsServiceAdapter(),
+    persistence: new PersistenceServiceAdapter(options.persistenceService),
+    annotations: new AnnotationsServiceAdapter(options.annotationsManager),
     nodeCommands: new NodeCommandServiceAdapter(options.yamlFilePath),
     lifecycle: new LifecycleServiceAdapter(),
     customNodes: new CustomNodeServiceAdapter(),

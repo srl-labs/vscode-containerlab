@@ -3,8 +3,8 @@
  */
 
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import { log } from '../services/logger';
+import { nodeFsAdapter } from '../../shared/io';
 import { onDockerImagesUpdated } from '../../../utils/docker/images';
 
 /**
@@ -147,7 +147,7 @@ export class WatcherManager {
 
     this.isRefreshingFromFile = true;
     try {
-      const currentContent = await fs.promises.readFile(yamlFilePath, 'utf8');
+      const currentContent = await nodeFsAdapter.readFile(yamlFilePath);
       if (this.lastYamlContent === currentContent) {
         log.debug(`[ReactTopoViewer] YAML ${trigger} detected but content unchanged, skipping refresh`);
         return;

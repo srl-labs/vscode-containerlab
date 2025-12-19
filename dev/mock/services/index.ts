@@ -5,6 +5,26 @@
  * - MockPersistenceService/MockAnnotationsService: HTTP wrappers to server
  * - MockLifecycleService/MockNodeCommandService: Dev-specific behavior
  * - Other services: Simple implementations using DevStateManager
+ *
+ * Architecture Note:
+ * The production services (SaveTopologyService, AnnotationsManager) now accept
+ * pluggable FileSystemAdapter via factory functions. This enables:
+ * - Server-side code to use them directly with SessionFsAdapter
+ * - Unit tests to inject mock adapters
+ * - Same business logic shared between production and dev
+ *
+ * The browser-side mock services here still use HTTP because the browser
+ * cannot directly access the filesystem. The server (fileApi.ts) handles
+ * the actual file operations using TopologyIO with SessionFsAdapter.
+ *
+ * To use production services with custom adapters:
+ * @example
+ * import { createSaveTopologyService, createAnnotationsManager } from '../../../src/reactTopoViewer/extension/services';
+ * import { SessionFsAdapter } from '../../server/SessionFsAdapter';
+ *
+ * const fs = new SessionFsAdapter(sessionId, sessionMaps, basePath);
+ * const annotationsMgr = createAnnotationsManager({ fs });
+ * const persistenceSvc = createSaveTopologyService({ fs });
  */
 
 import type { DevStateManager } from '../DevState';

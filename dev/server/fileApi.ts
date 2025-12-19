@@ -11,14 +11,21 @@ import * as path from 'path';
 import * as YAML from 'yaml';
 import { TopologyParser } from '../../src/reactTopoViewer/shared/parsing';
 import {
-  AnnotationsIO,
   NodeFsAdapter,
   TopologyAnnotations,
-  TopologyIO,
   NodeSaveData,
   LinkSaveData,
   SaveResult,
+  IOLogger,
 } from '../../src/reactTopoViewer/shared/io';
+import {
+  createSaveTopologyService,
+  SaveTopologyService,
+} from '../../src/reactTopoViewer/extension/services/SaveTopologyService';
+import {
+  createAnnotationsManager,
+  AnnotationsManager,
+} from '../../src/reactTopoViewer/extension/services/AnnotationsManager';
 import {
   SessionFsAdapter,
   SessionMaps,
@@ -36,28 +43,10 @@ const TOPOLOGIES_ORIGINAL_DIR = path.join(__dirname, '../topologies-original');
 // Shared session maps for all sessions
 const sessionMaps: SessionMaps = createSessionMaps();
 
-// Per-session AnnotationsIO instances (with caching, queuing, locks)
-const sessionAnnotationsIO = new Map<string, AnnotationsIO>();
-
-// Default AnnotationsIO for non-session requests (uses disk directly)
-const defaultAnnotationsIO = new AnnotationsIO({
-  fs: new NodeFsAdapter(),
-  logger: {
-    debug: (msg) => console.log('[FileAPI:Debug]', msg),
-    info: (msg) => console.log('[FileAPI:Info]', msg),
-    warn: (msg) => console.warn('[FileAPI:Warn]', msg),
-    error: (msg) => console.error('[FileAPI:Error]', msg),
-  },
-});
-
-// Per-session+file TopologyIO instances (with save queue, batch deferral, etc.)
-// Key format: `${sessionId}:${filename}` or `default:${filename}`
-const topologyIOInstances = new Map<string, TopologyIO>();
-
 /**
- * Create logger for TopologyIO
+ * Create logger for services
  */
-function createTopologyLogger(prefix: string) {
+function createServiceLogger(prefix: string): IOLogger {
   return {
     debug: (msg: string) => console.log(`[${prefix}:Debug]`, msg),
     info: (msg: string) => console.log(`[${prefix}:Info]`, msg),
@@ -66,72 +55,87 @@ function createTopologyLogger(prefix: string) {
   };
 }
 
+// Per-session AnnotationsManager instances
+const sessionAnnotationsManagers = new Map<string, AnnotationsManager>();
+
+// Default AnnotationsManager for non-session requests (uses disk directly)
+const defaultAnnotationsManager = createAnnotationsManager({
+  fs: new NodeFsAdapter(),
+  logger: createServiceLogger('FileAPI'),
+});
+
+// Per-session+file SaveTopologyService instances
+// Key format: `${sessionId}:${filename}` or `default:${filename}`
+const saveTopologyServiceInstances = new Map<string, SaveTopologyService>();
+
 /**
- * Get or create TopologyIO for a session+file
+ * Get or create AnnotationsManager for a session
+ */
+function getAnnotationsManager(sessionId?: string): AnnotationsManager {
+  if (!sessionId) {
+    return defaultAnnotationsManager;
+  }
+
+  if (!sessionAnnotationsManagers.has(sessionId)) {
+    const fsAdapter = new SessionFsAdapter(sessionId, sessionMaps, TOPOLOGIES_DIR);
+    sessionAnnotationsManagers.set(sessionId, createAnnotationsManager({
+      fs: fsAdapter,
+      logger: createServiceLogger(`FileAPI:${sessionId}`),
+    }));
+  }
+
+  return sessionAnnotationsManagers.get(sessionId)!;
+}
+
+/**
+ * Get or create SaveTopologyService for a session+file
  * Initializes from the YAML file if needed
  */
-async function getTopologyIO(filename: string, sessionId?: string): Promise<TopologyIO | null> {
+async function getSaveTopologyService(filename: string, sessionId?: string): Promise<SaveTopologyService | null> {
   const key = `${sessionId || 'default'}:${filename}`;
 
-  if (!topologyIOInstances.has(key)) {
+  if (!saveTopologyServiceInstances.has(key)) {
     const fsAdapter = getFsAdapter(sessionId);
-    const annotationsIO = getAnnotationsIO(sessionId);
-    const prefix = sessionId ? `TopologyIO:${sessionId}` : 'TopologyIO';
+    const annotationsMgr = getAnnotationsManager(sessionId);
+    const prefix = sessionId ? `STS:${sessionId}` : 'STS';
 
-    const io = new TopologyIO({
+    const service = createSaveTopologyService({
       fs: fsAdapter,
-      annotationsIO,
-      logger: createTopologyLogger(prefix),
+      logger: createServiceLogger(prefix),
     });
 
     // Initialize from file
     const filePath = path.join(TOPOLOGIES_DIR, filename);
-    const result = await io.initializeFromFile(filePath);
-    if (!result.success) {
-      console.error(`[FileAPI] Failed to initialize TopologyIO for ${filename}:`, result.error);
+    try {
+      const yamlContent = await fsAdapter.readFile(filePath);
+      const doc = YAML.parseDocument(yamlContent);
+      service.initialize(doc, filePath, annotationsMgr.getAnnotationsIO());
+      saveTopologyServiceInstances.set(key, service);
+    } catch (err) {
+      console.error(`[FileAPI] Failed to initialize SaveTopologyService for ${filename}:`, err);
       return null;
     }
-
-    topologyIOInstances.set(key, io);
   }
 
-  return topologyIOInstances.get(key)!;
+  return saveTopologyServiceInstances.get(key)!;
 }
 
 /**
- * Clear TopologyIO instances for a session (call after reset)
+ * Clear service instances for a session (call after reset)
  */
-function clearTopologyIOForSession(sessionId?: string): void {
+function clearServicesForSession(sessionId?: string): void {
   const prefix = `${sessionId || 'default'}:`;
-  for (const key of topologyIOInstances.keys()) {
+  for (const key of saveTopologyServiceInstances.keys()) {
     if (key.startsWith(prefix)) {
-      topologyIOInstances.delete(key);
+      saveTopologyServiceInstances.delete(key);
     }
   }
-}
-
-/**
- * Get or create AnnotationsIO for a session
- */
-function getAnnotationsIO(sessionId?: string): AnnotationsIO {
-  if (!sessionId) {
-    return defaultAnnotationsIO;
+  if (sessionId) {
+    const mgr = sessionAnnotationsManagers.get(sessionId);
+    if (mgr) mgr.clearCache();
+  } else {
+    defaultAnnotationsManager.clearCache();
   }
-
-  if (!sessionAnnotationsIO.has(sessionId)) {
-    const fsAdapter = new SessionFsAdapter(sessionId, sessionMaps, TOPOLOGIES_DIR);
-    sessionAnnotationsIO.set(sessionId, new AnnotationsIO({
-      fs: fsAdapter,
-      logger: {
-        debug: (msg) => console.log(`[FileAPI:${sessionId}:Debug]`, msg),
-        info: (msg) => console.log(`[FileAPI:${sessionId}:Info]`, msg),
-        warn: (msg) => console.warn(`[FileAPI:${sessionId}:Warn]`, msg),
-        error: (msg) => console.error(`[FileAPI:${sessionId}:Error]`, msg),
-      },
-    }));
-  }
-
-  return sessionAnnotationsIO.get(sessionId)!;
 }
 
 /**
@@ -308,16 +312,16 @@ async function writeYamlFile(
 }
 
 /**
- * Read annotations using the shared AnnotationsIO
+ * Read annotations using the shared AnnotationsManager
  */
 async function readAnnotations(
   yamlFilename: string,
   sessionId?: string
 ): Promise<ApiResponse<Record<string, unknown>>> {
   try {
-    const annotationsIO = getAnnotationsIO(sessionId);
+    const manager = getAnnotationsManager(sessionId);
     const yamlFilePath = path.join(TOPOLOGIES_DIR, yamlFilename);
-    const annotations = await annotationsIO.loadAnnotations(yamlFilePath);
+    const annotations = await manager.loadAnnotations(yamlFilePath);
     return { success: true, data: annotations as Record<string, unknown> };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -338,10 +342,10 @@ async function getTopologyElements(
     return { success: false, error: yamlResult.error || 'Failed to read YAML' };
   }
 
-  // Read annotations using shared AnnotationsIO
-  const annotationsIO = getAnnotationsIO(sessionId);
+  // Read annotations using shared AnnotationsManager
+  const manager = getAnnotationsManager(sessionId);
   const yamlFilePath = path.join(TOPOLOGIES_DIR, yamlFilename);
-  const annotations = await annotationsIO.loadAnnotations(yamlFilePath);
+  const annotations = await manager.loadAnnotations(yamlFilePath);
 
   try {
     // Parse and return elements using the shared parser
@@ -363,7 +367,7 @@ async function getTopologyElements(
 }
 
 /**
- * Write annotations using the shared AnnotationsIO
+ * Write annotations using the shared AnnotationsManager
  */
 async function writeAnnotations(
   yamlFilename: string,
@@ -371,9 +375,9 @@ async function writeAnnotations(
   sessionId?: string
 ): Promise<ApiResponse> {
   try {
-    const annotationsIO = getAnnotationsIO(sessionId);
+    const manager = getAnnotationsManager(sessionId);
     const yamlFilePath = path.join(TOPOLOGIES_DIR, yamlFilename);
-    await annotationsIO.saveAnnotations(yamlFilePath, annotations as TopologyAnnotations);
+    await manager.saveAnnotations(yamlFilePath, annotations as TopologyAnnotations);
     console.log('[FileAPI] Saved annotations:', yamlFilename);
     return { success: true };
   } catch (err) {
@@ -424,148 +428,148 @@ async function annotationsExists(
 }
 
 // ============================================================================
-// TopologyIO Operations (unified with VS Code extension)
+// SaveTopologyService Operations (unified with VS Code extension)
 // ============================================================================
 
 /**
- * Add a node via TopologyIO
+ * Add a node via SaveTopologyService
  */
 async function addNode(
   yamlFilename: string,
   nodeData: NodeSaveData,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.addNode(nodeData);
+  const result = await service.addNode(nodeData);
   return { success: result.success, data: result, error: result.error };
 }
 
 /**
- * Edit a node via TopologyIO
+ * Edit a node via SaveTopologyService
  */
 async function editNode(
   yamlFilename: string,
   nodeData: NodeSaveData,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.editNode(nodeData);
+  const result = await service.editNode(nodeData);
   return { success: result.success, data: result, error: result.error };
 }
 
 /**
- * Delete a node via TopologyIO
+ * Delete a node via SaveTopologyService
  */
 async function deleteNode(
   yamlFilename: string,
   nodeId: string,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.deleteNode(nodeId);
+  const result = await service.deleteNode(nodeId);
   return { success: result.success, data: result, error: result.error };
 }
 
 /**
- * Add a link via TopologyIO
+ * Add a link via SaveTopologyService
  */
 async function addLink(
   yamlFilename: string,
   linkData: LinkSaveData,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.addLink(linkData);
+  const result = await service.addLink(linkData);
   return { success: result.success, data: result, error: result.error };
 }
 
 /**
- * Edit a link via TopologyIO
+ * Edit a link via SaveTopologyService
  */
 async function editLink(
   yamlFilename: string,
   linkData: LinkSaveData,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.editLink(linkData);
+  const result = await service.editLink(linkData);
   return { success: result.success, data: result, error: result.error };
 }
 
 /**
- * Delete a link via TopologyIO
+ * Delete a link via SaveTopologyService
  */
 async function deleteLink(
   yamlFilename: string,
   linkData: LinkSaveData,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.deleteLink(linkData);
+  const result = await service.deleteLink(linkData);
   return { success: result.success, data: result, error: result.error };
 }
 
 /**
- * Begin batch operation via TopologyIO
+ * Begin batch operation via SaveTopologyService
  */
 async function beginBatch(
   yamlFilename: string,
   sessionId?: string
 ): Promise<ApiResponse> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  io.beginBatch();
+  service.beginBatch();
   return { success: true };
 }
 
 /**
- * End batch operation via TopologyIO
+ * End batch operation via SaveTopologyService
  */
 async function endBatch(
   yamlFilename: string,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.endBatch();
+  const result = await service.endBatch();
   return { success: result.success, data: result, error: result.error };
 }
 
 /**
- * Save node positions via TopologyIO
+ * Save node positions via SaveTopologyService
  */
 async function savePositions(
   yamlFilename: string,
   positions: Array<{ id: string; position: { x: number; y: number } }>,
   sessionId?: string
 ): Promise<ApiResponse<SaveResult>> {
-  const io = await getTopologyIO(yamlFilename, sessionId);
-  if (!io) {
-    return { success: false, error: 'Failed to initialize TopologyIO' };
+  const service = await getSaveTopologyService(yamlFilename, sessionId);
+  if (!service) {
+    return { success: false, error: 'Failed to initialize SaveTopologyService' };
   }
-  const result = await io.savePositions(positions);
+  const result = await service.savePositions(positions);
   return { success: result.success, data: result, error: result.error };
 }
 
@@ -674,21 +678,14 @@ export function fileApiPlugin(): Plugin {
             if (sessionId) {
               // Reset session to use current disk files
               await resetSession(sessionId, sessionMaps, TOPOLOGIES_DIR);
-              // Clear cached AnnotationsIO for this session
-              const annotIO = sessionAnnotationsIO.get(sessionId);
-              if (annotIO) {
-                annotIO.clearCache();
-              }
-              // Clear TopologyIO instances for this session
-              clearTopologyIOForSession(sessionId);
+              // Clear service instances for this session
+              clearServicesForSession(sessionId);
               res.end(JSON.stringify({ success: true, sessionId }));
             } else {
               // Reset disk files to original state (from server startup)
               await resetDiskFiles();
-              // Clear default AnnotationsIO cache
-              defaultAnnotationsIO.clearCache();
-              // Clear default TopologyIO instances
-              clearTopologyIOForSession(undefined);
+              // Clear default service instances
+              clearServicesForSession(undefined);
               res.end(JSON.stringify({ success: true, message: 'Disk files reset to original state' }));
             }
             return;
@@ -771,10 +768,10 @@ export function fileApiPlugin(): Plugin {
           }
 
           // ============================================================================
-          // TopologyIO Operations (unified with VS Code extension)
+          // SaveTopologyService Operations (unified with VS Code extension)
           // ============================================================================
 
-          // POST /api/topology/:filename/node - Add node via TopologyIO
+          // POST /api/topology/:filename/node - Add node via SaveTopologyService
           const nodeMatch = urlWithoutQuery.match(/^\/api\/topology\/([^/]+)\/node$/);
           if (nodeMatch && req.method === 'POST') {
             const filename = decodeURIComponent(nodeMatch[1]);
@@ -785,7 +782,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // PUT /api/topology/:filename/node - Edit node via TopologyIO
+          // PUT /api/topology/:filename/node - Edit node via SaveTopologyService
           if (nodeMatch && req.method === 'PUT') {
             const filename = decodeURIComponent(nodeMatch[1]);
             const body = await parseJsonBody(req);
@@ -795,7 +792,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // DELETE /api/topology/:filename/node/:nodeId - Delete node via TopologyIO
+          // DELETE /api/topology/:filename/node/:nodeId - Delete node via SaveTopologyService
           const deleteNodeMatch = urlWithoutQuery.match(/^\/api\/topology\/([^/]+)\/node\/([^/]+)$/);
           if (deleteNodeMatch && req.method === 'DELETE') {
             const filename = decodeURIComponent(deleteNodeMatch[1]);
@@ -806,7 +803,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // POST /api/topology/:filename/link - Add link via TopologyIO
+          // POST /api/topology/:filename/link - Add link via SaveTopologyService
           const linkMatch = urlWithoutQuery.match(/^\/api\/topology\/([^/]+)\/link$/);
           if (linkMatch && req.method === 'POST') {
             const filename = decodeURIComponent(linkMatch[1]);
@@ -817,7 +814,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // PUT /api/topology/:filename/link - Edit link via TopologyIO
+          // PUT /api/topology/:filename/link - Edit link via SaveTopologyService
           if (linkMatch && req.method === 'PUT') {
             const filename = decodeURIComponent(linkMatch[1]);
             const body = await parseJsonBody(req);
@@ -827,7 +824,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // DELETE /api/topology/:filename/link - Delete link via TopologyIO
+          // DELETE /api/topology/:filename/link - Delete link via SaveTopologyService
           if (linkMatch && req.method === 'DELETE') {
             const filename = decodeURIComponent(linkMatch[1]);
             const body = await parseJsonBody(req);
@@ -837,7 +834,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // POST /api/topology/:filename/batch/begin - Begin batch via TopologyIO
+          // POST /api/topology/:filename/batch/begin - Begin batch via SaveTopologyService
           const batchBeginMatch = urlWithoutQuery.match(/^\/api\/topology\/([^/]+)\/batch\/begin$/);
           if (batchBeginMatch && req.method === 'POST') {
             const filename = decodeURIComponent(batchBeginMatch[1]);
@@ -847,7 +844,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // POST /api/topology/:filename/batch/end - End batch via TopologyIO
+          // POST /api/topology/:filename/batch/end - End batch via SaveTopologyService
           const batchEndMatch = urlWithoutQuery.match(/^\/api\/topology\/([^/]+)\/batch\/end$/);
           if (batchEndMatch && req.method === 'POST') {
             const filename = decodeURIComponent(batchEndMatch[1]);
@@ -857,7 +854,7 @@ export function fileApiPlugin(): Plugin {
             return;
           }
 
-          // POST /api/topology/:filename/positions - Save positions via TopologyIO
+          // POST /api/topology/:filename/positions - Save positions via SaveTopologyService
           const positionsMatch = urlWithoutQuery.match(/^\/api\/topology\/([^/]+)\/positions$/);
           if (positionsMatch && req.method === 'POST') {
             const filename = decodeURIComponent(positionsMatch[1]);

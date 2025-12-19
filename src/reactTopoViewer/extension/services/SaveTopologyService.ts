@@ -6,8 +6,7 @@
  */
 
 import * as YAML from 'yaml';
-import { TopologyIO, NodeSaveData, LinkSaveData, SaveResult, NodeFsAdapter } from '../../shared/io';
-import { annotationsManager } from './AnnotationsManager';
+import { TopologyIO, NodeSaveData, LinkSaveData, SaveResult, NodeFsAdapter, AnnotationsIO, FileSystemAdapter, IOLogger } from '../../shared/io';
 import { log } from './logger';
 
 // Re-export types for external use
@@ -15,16 +14,21 @@ export type { NodeSaveData } from '../../shared/io';
 export type { LinkSaveData } from '../../shared/io';
 export type { SaveResult } from '../../shared/io';
 
-// Create a shared fs adapter for the extension
-const nodeFsAdapter = new NodeFsAdapter();
-
 // Create logger adapter for extension
-const extensionLogger = {
+const extensionLogger: IOLogger = {
   debug: log.debug.bind(log),
   info: log.info.bind(log),
   warn: log.warn.bind(log),
   error: log.error.bind(log),
 };
+
+/**
+ * Options for creating a SaveTopologyService instance
+ */
+export interface SaveTopologyServiceOptions {
+  fs: FileSystemAdapter;
+  logger?: IOLogger;
+}
 
 // Error messages
 const ERROR_NOT_INITIALIZED = 'Service not initialized';
@@ -40,20 +44,36 @@ const ERROR_NOT_INITIALIZED = 'Service not initialized';
  */
 export class SaveTopologyService {
   private topologyIO: TopologyIO | null = null;
+  private fs: FileSystemAdapter;
+  private logger: IOLogger;
+
+  /**
+   * Creates a new SaveTopologyService instance
+   * @param options Configuration options including filesystem adapter
+   */
+  constructor(options: SaveTopologyServiceOptions) {
+    this.fs = options.fs;
+    this.logger = options.logger ?? extensionLogger;
+  }
 
   /**
    * Initializes the service with a YAML document
+   * @param doc Parsed YAML document
+   * @param yamlFilePath Path to the YAML file
+   * @param annotationsIO AnnotationsIO instance for managing annotations
+   * @param setInternalUpdate Optional callback for internal update state
    */
   initialize(
     doc: YAML.Document.Parsed,
     yamlFilePath: string,
+    annotationsIO: AnnotationsIO,
     setInternalUpdate?: (updating: boolean) => void
   ): void {
     this.topologyIO = new TopologyIO({
-      fs: nodeFsAdapter,
-      annotationsIO: annotationsManager.getAnnotationsIO(),
+      fs: this.fs,
+      annotationsIO,
       setInternalUpdate,
-      logger: extensionLogger,
+      logger: this.logger,
     });
     this.topologyIO.initialize(doc, yamlFilePath);
   }
@@ -205,5 +225,15 @@ export class SaveTopologyService {
   }
 }
 
-// Singleton instance
-export const saveTopologyService = new SaveTopologyService();
+/**
+ * Factory function to create a new SaveTopologyService instance
+ * Use this when you need a custom filesystem adapter (e.g., for testing or dev server)
+ */
+export function createSaveTopologyService(options: SaveTopologyServiceOptions): SaveTopologyService {
+  return new SaveTopologyService(options);
+}
+
+// Singleton instance for production use with NodeFsAdapter
+export const saveTopologyService = createSaveTopologyService({
+  fs: new NodeFsAdapter(),
+});

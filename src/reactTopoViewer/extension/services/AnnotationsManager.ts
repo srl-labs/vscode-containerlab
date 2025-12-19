@@ -5,19 +5,24 @@
  * providing a singleton instance for the VS Code extension.
  */
 
-import { AnnotationsIO, NodeFsAdapter, TopologyAnnotations } from '../../shared/io';
+import { AnnotationsIO, NodeFsAdapter, TopologyAnnotations, FileSystemAdapter, IOLogger } from '../../shared/io';
 import { log } from './logger';
 
-// Create shared AnnotationsIO with NodeFsAdapter
-const sharedAnnotationsIO = new AnnotationsIO({
-  fs: new NodeFsAdapter(),
-  logger: {
-    debug: log.debug.bind(log),
-    info: log.info.bind(log),
-    warn: log.warn.bind(log),
-    error: log.error.bind(log),
-  },
-});
+// Create logger adapter for extension
+const extensionLogger: IOLogger = {
+  debug: log.debug.bind(log),
+  info: log.info.bind(log),
+  warn: log.warn.bind(log),
+  error: log.error.bind(log),
+};
+
+/**
+ * Options for creating an AnnotationsManager instance
+ */
+export interface AnnotationsManagerOptions {
+  fs: FileSystemAdapter;
+  logger?: IOLogger;
+}
 
 /**
  * Manages topology annotations (positions, styles, text, shapes).
@@ -29,7 +34,18 @@ const sharedAnnotationsIO = new AnnotationsIO({
  * - Content deduplication before writes
  */
 export class AnnotationsManager {
-  private io = sharedAnnotationsIO;
+  private io: AnnotationsIO;
+
+  /**
+   * Creates a new AnnotationsManager instance
+   * @param options Configuration options including filesystem adapter
+   */
+  constructor(options: AnnotationsManagerOptions) {
+    this.io = new AnnotationsIO({
+      fs: options.fs,
+      logger: options.logger ?? extensionLogger,
+    });
+  }
 
   /**
    * Get the annotations file path for a given YAML file.
@@ -78,8 +94,18 @@ export class AnnotationsManager {
   }
 }
 
-// Export a singleton instance
-export const annotationsManager = new AnnotationsManager();
+/**
+ * Factory function to create a new AnnotationsManager instance
+ * Use this when you need a custom filesystem adapter (e.g., for testing or dev server)
+ */
+export function createAnnotationsManager(options: AnnotationsManagerOptions): AnnotationsManager {
+  return new AnnotationsManager(options);
+}
+
+// Singleton instance for production use with NodeFsAdapter
+export const annotationsManager = createAnnotationsManager({
+  fs: new NodeFsAdapter(),
+});
 
 // Re-export TopologyAnnotations for convenience
 export type { TopologyAnnotations } from '../../shared/io';
