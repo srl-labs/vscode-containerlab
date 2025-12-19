@@ -8,6 +8,7 @@
 import type { Plugin } from 'vite';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as YAML from 'yaml';
 import { TopologyParser } from '../../src/reactTopoViewer/shared/parsing';
 import {
   AnnotationsIO,
@@ -527,6 +528,63 @@ async function savePositions(
   return { success: result.success, data: result, error: result.error };
 }
 
+/**
+ * Save lab settings (name, prefix, mgmt) to YAML file
+ * Mirrors the extension's yamlSettingsManager behavior
+ */
+async function saveLabSettings(
+  yamlFilename: string,
+  settings: { name?: string; prefix?: string | null; mgmt?: Record<string, unknown> | null },
+  sessionId?: string
+): Promise<ApiResponse<void>> {
+  try {
+    const fsAdapter = getFsAdapter(sessionId);
+    const filePath = path.join(TOPOLOGIES_DIR, yamlFilename);
+
+    // Read current YAML content
+    const yamlContent = await fsAdapter.readFile(filePath);
+    const doc = YAML.parseDocument(yamlContent);
+
+    // Update name if provided
+    if (settings.name !== undefined) {
+      doc.set('name', settings.name);
+    }
+
+    // Handle prefix setting
+    if (settings.prefix !== undefined) {
+      if (settings.prefix === null || settings.prefix === '') {
+        // Remove prefix if null/empty
+        doc.delete('prefix');
+      } else {
+        doc.set('prefix', settings.prefix);
+      }
+    }
+
+    // Handle mgmt setting
+    if (settings.mgmt !== undefined) {
+      const topoNode = doc.get('topology');
+      if (YAML.isMap(topoNode)) {
+        if (settings.mgmt === null) {
+          // Remove mgmt if null
+          topoNode.delete('mgmt');
+        } else {
+          topoNode.set('mgmt', settings.mgmt);
+        }
+      }
+    }
+
+    // Write back to file
+    await fsAdapter.writeFile(filePath, doc.toString());
+    console.log('[FileAPI] Lab settings saved to', yamlFilename);
+
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[FileAPI] Failed to save lab settings:', message);
+    return { success: false, error: message };
+  }
+}
+
 // ============================================================================
 // Vite Plugin
 // ============================================================================
@@ -746,6 +804,18 @@ export function fileApiPlugin(): Plugin {
             const body = await parseJsonBody(req);
             const positions = body.positions as Array<{ id: string; position: { x: number; y: number } }>;
             const result = await savePositions(filename, positions, sessionId);
+            res.statusCode = result.success ? 200 : 500;
+            res.end(JSON.stringify(result));
+            return;
+          }
+
+          // POST /api/topology/:filename/settings - Save lab settings to YAML
+          const settingsMatch = urlWithoutQuery.match(/^\/api\/topology\/([^/]+)\/settings$/);
+          if (settingsMatch && req.method === 'POST') {
+            const filename = decodeURIComponent(settingsMatch[1]);
+            const body = await parseJsonBody(req);
+            const settings = body as { name?: string; prefix?: string | null; mgmt?: Record<string, unknown> | null };
+            const result = await saveLabSettings(filename, settings, sessionId);
             res.statusCode = result.success ? 200 : 500;
             res.end(JSON.stringify(result));
             return;

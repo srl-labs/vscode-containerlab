@@ -42,6 +42,8 @@ export interface DevState {
   currentFilePath: string | null;
   /** Whether there are unsaved changes */
   isDirty: boolean;
+  /** Whether the graph is locked (prevents dragging nodes) */
+  isLocked: boolean;
 }
 
 export type StateListener = (state: Readonly<DevState>) => void;
@@ -75,7 +77,8 @@ export function createDefaultState(): DevState {
     splitViewOpen: false,
     labName: 'dev-topology',
     currentFilePath: null,
-    isDirty: false
+    isDirty: false,
+    isLocked: false
   };
 }
 
@@ -151,6 +154,11 @@ export class DevStateManager {
   /** Check if there are unsaved changes */
   getIsDirty(): boolean {
     return this.state.isDirty;
+  }
+
+  /** Check if the graph is locked */
+  isLocked(): boolean {
+    return this.state.isLocked;
   }
 
   // --------------------------------------------------------------------------
@@ -249,6 +257,12 @@ export class DevStateManager {
       this.state = { ...this.state, isDirty: false };
       this.notify();
     }
+  }
+
+  /** Set lock state */
+  setLocked(locked: boolean): void {
+    this.state = { ...this.state, isLocked: locked };
+    this.notify();
   }
 
   // --------------------------------------------------------------------------

@@ -39,7 +39,8 @@ export interface WebviewMessage {
 const NODE_COMMANDS = new Set([
   'clab-node-connect-ssh',
   'clab-node-attach-shell',
-  'clab-node-view-logs'
+  'clab-node-view-logs',
+  'clab-interface-capture'
 ]);
 
 const LIFECYCLE_COMMANDS = new Set([
@@ -165,6 +166,8 @@ export class MessageHandler {
       this.handleClipboardCommand(messageType, msg);
     } else if (messageType === 'topo-toggle-split-view') {
       this.handleToggleSplitView();
+    } else if (messageType === 'toggle-lock-state') {
+      this.handleToggleLockState();
     } else {
       // Unknown command - just log it
       console.log(
@@ -281,6 +284,9 @@ export class MessageHandler {
       console.log(`%c[Mock] Would attach shell to: ${nodeName}`, 'color: #4CAF50;');
     } else if (type === 'clab-node-view-logs') {
       console.log(`%c[Mock] Would view logs for: ${nodeName}`, 'color: #4CAF50;');
+    } else if (type === 'clab-interface-capture') {
+      const interfaceName = (msg as any).interfaceName || 'unknown';
+      console.log(`%c[Mock] Interface capture not available in dev mode (${nodeName}:${interfaceName})`, 'color: #FF9800;');
     }
   }
 
@@ -507,6 +513,8 @@ export class MessageHandler {
     });
 
     // Persist via TopologyIO endpoint
+    // Transform fields to ext* prefix format to match extension behavior
+    // (see MessageRouter.ts:502-548 for the real extension implementation)
     const filename = this.stateManager.getCurrentFilePath();
     if (filename) {
       this.callTopologyIOEndpoint('PUT', `/api/topology/${encodeURIComponent(filename)}/link`, {
@@ -517,6 +525,15 @@ export class MessageHandler {
         // Original values for matching the link in YAML
         originalSourceEndpoint,
         originalTargetEndpoint,
+        // Extra data with ext* prefix (matching extension's LinkSaveData.extraData)
+        extraData: {
+          extType: linkData.type,
+          extMtu: linkData.mtu,
+          extSourceMac: linkData.sourceMac,
+          extTargetMac: linkData.targetMac,
+          extVars: linkData.vars,
+          extLabels: linkData.labels,
+        },
       });
     }
 
@@ -528,10 +545,38 @@ export class MessageHandler {
   // Panel Commands (info, edit, delete)
   // --------------------------------------------------------------------------
 
+  /**
+   * Send panel action message to webview (matches extension's postPanelAction)
+   */
+  private postPanelAction(action: string, data: Record<string, unknown>): void {
+    sendMessageToWebviewWithLog(
+      {
+        type: 'panel-action',
+        action,
+        ...data
+      },
+      `panel-action:${action}`
+    );
+  }
+
   private handlePanelCommand(type: string, msg: WebviewMessage): void {
     console.log('%c[Mock Extension]', 'color: #FF9800;', `Panel: ${type}`, msg);
 
-    if (type === 'panel-delete-node') {
+    if (type === 'panel-node-info') {
+      const nodeId = msg.nodeId as string;
+      if (nodeId) {
+        const elements = this.stateManager.getElements();
+        const node = elements.find(el => el.group === 'nodes' && el.data.id === nodeId);
+        this.postPanelAction('node-info', { nodeId, nodeData: node?.data });
+      }
+    } else if (type === 'panel-edit-node') {
+      const nodeId = msg.nodeId as string;
+      if (nodeId) {
+        const elements = this.stateManager.getElements();
+        const node = elements.find(el => el.group === 'nodes' && el.data.id === nodeId);
+        this.postPanelAction('edit-node', { nodeId, nodeData: node?.data });
+      }
+    } else if (type === 'panel-delete-node') {
       const nodeId = msg.nodeId as string;
       if (nodeId) {
         // Update local state
@@ -543,8 +588,25 @@ export class MessageHandler {
           this.callTopologyIOEndpoint('DELETE', `/api/topology/${encodeURIComponent(filename)}/node/${encodeURIComponent(nodeId)}`);
         }
 
+        // Broadcast panel action
+        this.postPanelAction('delete-node', { nodeId });
+
         this.updateSplitView();
         this.maybeBroadcastTopology();
+      }
+    } else if (type === 'panel-link-info') {
+      const edgeId = msg.edgeId as string;
+      if (edgeId) {
+        const elements = this.stateManager.getElements();
+        const edge = elements.find(el => el.group === 'edges' && el.data.id === edgeId);
+        this.postPanelAction('link-info', { edgeId, edgeData: edge?.data });
+      }
+    } else if (type === 'panel-edit-link') {
+      const edgeId = msg.edgeId as string;
+      if (edgeId) {
+        const elements = this.stateManager.getElements();
+        const edge = elements.find(el => el.group === 'edges' && el.data.id === edgeId);
+        this.postPanelAction('edit-link', { edgeId, edgeData: edge?.data });
       }
     } else if (type === 'panel-delete-link') {
       const edgeId = msg.edgeId as string;
@@ -567,12 +629,13 @@ export class MessageHandler {
           });
         }
 
+        // Broadcast panel action
+        this.postPanelAction('delete-link', { edgeId });
+
         this.updateSplitView();
         this.maybeBroadcastTopology();
       }
     }
-    // Info and edit commands just need to trigger the panel UI
-    // which is handled by the webview itself
   }
 
   // --------------------------------------------------------------------------
@@ -786,6 +849,12 @@ export class MessageHandler {
     if (this.splitViewPanel) {
       this.splitViewPanel.toggle();
     }
+  }
+
+  private handleToggleLockState(): void {
+    const newState = !this.stateManager.isLocked();
+    this.stateManager.setLocked(newState);
+    console.log('%c[Mock Extension]', 'color: #FF9800;', `Lock state: ${newState ? 'locked' : 'unlocked'}`);
   }
 
   private updateSplitView(): void {

@@ -204,9 +204,9 @@ export class RequestHandler {
     };
   }
 
-  private handleLabSettingsUpdate(
+  private async handleLabSettingsUpdate(
     settings: Record<string, unknown>
-  ): unknown {
+  ): Promise<unknown> {
     this.labSettings = { ...this.labSettings, ...settings };
     console.log(
       '%c[Mock Extension]',
@@ -214,6 +214,33 @@ export class RequestHandler {
       'Lab settings updated:',
       this.labSettings
     );
+
+    // Persist to YAML file if we have a file path
+    const filename = this.stateManager.getCurrentFilePath();
+    if (filename) {
+      try {
+        const sessionId = (window as any).__TEST_SESSION_ID__;
+        const url = sessionId
+          ? `/api/topology/${encodeURIComponent(filename)}/settings?sessionId=${sessionId}`
+          : `/api/topology/${encodeURIComponent(filename)}/settings`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          console.log('%c[File API]', 'color: #4CAF50;', `Lab settings saved to ${filename}`);
+        } else {
+          console.warn('%c[File API]', 'color: #FF9800;', `Failed to save lab settings: ${result.error}`);
+        }
+      } catch (error) {
+        console.warn('%c[File API]', 'color: #FF9800;', 'Failed to save lab settings to file:', error);
+      }
+    }
+
     return { success: true };
   }
 
