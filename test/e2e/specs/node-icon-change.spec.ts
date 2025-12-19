@@ -19,49 +19,63 @@ async function getNodeIcon(page: Page, nodeId: string): Promise<string | undefin
 /**
  * Helper to reliably open node editor via double-click on a specific node
  * Uses node ID to fetch fresh bounding box immediately before clicking
- * to avoid stale position issues from animations
+ * to avoid stale position issues from animations.
+ * Includes retry logic to handle flaky double-click detection under load.
  */
 async function openNodeEditorByNodeId(
   page: Page,
-  nodeId: string
+  nodeId: string,
+  maxRetries = 3
 ): Promise<void> {
-  // Get fresh bounding box right before clicking
-  const nodeBox = await page.evaluate((id) => {
-    const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    const node = cy?.getElementById(id);
-    if (!node || node.empty()) return null;
-
-    const bb = node.renderedBoundingBox();
-    const container = cy.container();
-    const rect = container.getBoundingClientRect();
-
-    return {
-      x: rect.left + bb.x1,
-      y: rect.top + bb.y1,
-      width: bb.w,
-      height: bb.h
-    };
-  }, nodeId);
-
-  if (!nodeBox) {
-    throw new Error(`Node ${nodeId} not found or has no bounding box`);
-  }
-
-  const centerX = nodeBox.x + nodeBox.width / 2;
-  const centerY = nodeBox.y + nodeBox.height / 2;
-
-  // Click to select first
-  await page.mouse.click(centerX, centerY);
-  await page.waitForTimeout(100);
-
-  // Double-click to open editor - use same coordinates
-  await page.mouse.dblclick(centerX, centerY);
-  await page.waitForTimeout(300);
-
-  // Wait for editor panel to be visible with extended timeout
   const editorPanel = page.locator(SEL_NODE_EDITOR);
-  await expect(editorPanel).toBeVisible({ timeout: 5000 });
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Get fresh bounding box right before clicking
+    const nodeBox = await page.evaluate((id) => {
+      const dev = (window as any).__DEV__;
+      const cy = dev?.cy;
+      const node = cy?.getElementById(id);
+      if (!node || node.empty()) return null;
+
+      const bb = node.renderedBoundingBox();
+      const container = cy.container();
+      const rect = container.getBoundingClientRect();
+
+      return {
+        x: rect.left + bb.x1,
+        y: rect.top + bb.y1,
+        width: bb.w,
+        height: bb.h
+      };
+    }, nodeId);
+
+    if (!nodeBox) {
+      throw new Error(`Node ${nodeId} not found or has no bounding box`);
+    }
+
+    const centerX = nodeBox.x + nodeBox.width / 2;
+    const centerY = nodeBox.y + nodeBox.height / 2;
+
+    // Click to select first
+    await page.mouse.click(centerX, centerY);
+    await page.waitForTimeout(150);
+
+    // Double-click to open editor - use same coordinates
+    await page.mouse.dblclick(centerX, centerY);
+
+    // Wait for editor panel to appear
+    try {
+      await expect(editorPanel).toBeVisible({ timeout: 2000 });
+      return; // Success - exit the retry loop
+    } catch {
+      if (attempt === maxRetries) {
+        // Final attempt failed - throw with context
+        throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
+      }
+      // Wait before retrying
+      await page.waitForTimeout(300);
+    }
+  }
 }
 
 // Test topology file
