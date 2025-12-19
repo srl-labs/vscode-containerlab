@@ -2,13 +2,15 @@ import { test, expect } from '../fixtures/topoviewer';
 import { shiftClick } from '../helpers/cytoscape-helpers';
 
 // Test file names for file-based tests
+const SIMPLE_FILE = 'simple.clab.yml';
 const EMPTY_FILE = 'empty.clab.yml';
 const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
+const PERSISTENT_NODE_ID = PERSISTENT_NODE_ID;
 
 test.describe('Node Creation', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile(SIMPLE_FILE);
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -215,7 +217,7 @@ test.describe('Node Creation - File Persistence', () => {
   test('created node persists after reload', async ({ page, topoViewerPage }) => {
     // Create a node
     const targetPosition = { x: 400, y: 200 };
-    await topoViewerPage.createNode('persistent-node', targetPosition, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode(PERSISTENT_NODE_ID, targetPosition, KIND_NOKIA_SRLINUX);
 
     // Wait for save to complete
     await page.waitForTimeout(1000);
@@ -226,10 +228,10 @@ test.describe('Node Creation - File Persistence', () => {
 
     // Verify node is still there
     const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds).toContain('persistent-node');
+    expect(nodeIds).toContain(PERSISTENT_NODE_ID);
 
     // Verify position is close to where we created it
-    const nodePos = await topoViewerPage.getNodePosition('persistent-node');
+    const nodePos = await topoViewerPage.getNodePosition(PERSISTENT_NODE_ID);
     expect(Math.abs(nodePos.x - targetPosition.x)).toBeLessThan(20);
     expect(Math.abs(nodePos.y - targetPosition.y)).toBeLessThan(20);
   });

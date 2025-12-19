@@ -185,10 +185,6 @@ test.describe('Node Dragging - File Persistence', () => {
   });
 
   test('dragging multiple nodes persists all positions to annotations file', async ({ page, topoViewerPage }) => {
-    // Get initial positions from Cytoscape
-    const spine1InitialCy = await topoViewerPage.getNodePosition('spine1');
-    const spine2InitialCy = await topoViewerPage.getNodePosition('spine2');
-
     // Drag spine1
     const box1 = await topoViewerPage.getNodeBoundingBox('spine1');
     expect(box1).not.toBeNull();

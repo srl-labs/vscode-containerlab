@@ -1,6 +1,9 @@
 import { test, expect } from '../fixtures/topoviewer';
 import { rightClick } from '../helpers/cytoscape-helpers';
 
+// Test file name
+const SIMPLE_FILE = 'simple.clab.yml';
+
 // Test selectors
 const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
 const SEL_EDIT_NODE_ITEM = '[data-testid="context-menu-item-edit-node"]';
@@ -22,7 +25,7 @@ const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
 test.describe('Context Menu Actions', () => {
   test.describe('Node Context Menu - Edit Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.gotoFile('simple.clab.yml');
+      await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
@@ -204,7 +207,7 @@ test.describe('Context Menu Actions', () => {
 
   test.describe('Node Context Menu - View Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.gotoFile('simple.clab.yml');
+      await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setViewMode();
     });
@@ -305,7 +308,7 @@ test.describe('Context Menu Actions', () => {
 
   test.describe('Edge Context Menu - Edit Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.gotoFile('simple.clab.yml');
+      await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
@@ -457,7 +460,7 @@ test.describe('Context Menu Actions', () => {
 
   test.describe('Edge Context Menu - View Mode', () => {
     test.beforeEach(async ({ topoViewerPage }) => {
-      await topoViewerPage.gotoFile('simple.clab.yml');
+      await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setViewMode();
     });

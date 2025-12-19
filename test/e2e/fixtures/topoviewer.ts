@@ -12,6 +12,111 @@ function generateSessionId(): string {
   return `test-${randomUUID()}`;
 }
 
+// Type definitions for browser-side evaluation results
+interface CreateGroupResult {
+  method: string;
+  selectedBefore: string[];
+  selectedAfter?: string[];
+  mode?: string;
+  isLocked?: boolean;
+  groupsBefore: number;
+  groupsAfter: number | null;
+  reactGroupsBefore: number | string;
+  reactGroupsAfter?: number | string;
+  hasCy?: boolean;
+}
+
+interface GroupDebugInfo {
+  reactGroupCount: number;
+  reactGroupsDirectCount: number | string;
+  stateManagerGroupCount: number;
+  reactGroupIds: string[];
+  stateManagerGroupIds: string[];
+}
+
+// Helper to get selected node IDs from cytoscape
+function getSelectedNodeIds(cy: any): string[] {
+  if (!cy) return [];
+  return cy.nodes(':selected').map((n: any) => n.id());
+}
+
+// Helper to get group count from state manager
+function getStateManagerGroupCount(dev: any): number {
+  const annotations = dev?.stateManager?.getAnnotations?.();
+  return annotations?.groupStyleAnnotations?.length ?? 0;
+}
+
+// Helper to get react group count
+function getReactGroupCount(dev: any): number | string {
+  const groups = dev?.getReactGroups?.();
+  return groups?.length ?? 'undefined';
+}
+
+// Helper to create keyboard event for group creation
+function dispatchGroupKeyboardEvent(): void {
+  const event = new KeyboardEvent('keydown', {
+    key: 'g',
+    ctrlKey: true,
+    bubbles: true,
+    cancelable: true
+  });
+  window.dispatchEvent(event);
+}
+
+/**
+ * Browser-side function to create a group from selected nodes
+ */
+function browserCreateGroup(): CreateGroupResult {
+  const dev = (window as any).__DEV__;
+  const cy = dev?.cy;
+
+  const selectedBefore = getSelectedNodeIds(cy);
+  const mode = dev?.stateManager?.getMode?.();
+  const isLocked = dev?.isLocked?.();
+  const groupsBefore = getStateManagerGroupCount(dev);
+  const reactGroupsBefore = getReactGroupCount(dev);
+
+  if (!dev?.createGroupFromSelected) {
+    dispatchGroupKeyboardEvent();
+    return { method: 'keyboard', selectedBefore, mode, isLocked, groupsBefore, groupsAfter: null, reactGroupsBefore };
+  }
+
+  dev.createGroupFromSelected();
+  return {
+    method: 'direct',
+    selectedBefore,
+    selectedAfter: getSelectedNodeIds(cy),
+    mode,
+    isLocked,
+    groupsBefore,
+    groupsAfter: getStateManagerGroupCount(dev),
+    reactGroupsBefore,
+    reactGroupsAfter: getReactGroupCount(dev),
+    hasCy: !!cy
+  };
+}
+
+// Helper to get group IDs from array
+function getGroupIds(groups: any[]): string[] {
+  return groups.map((g: any) => g.id);
+}
+
+/**
+ * Browser-side function to get group debug info
+ */
+function browserGetGroupDebugInfo(): GroupDebugInfo {
+  const dev = (window as any).__DEV__;
+  const reactGroups = dev?.getReactGroups?.() ?? [];
+  const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
+  return {
+    reactGroupCount: reactGroups.length,
+    reactGroupsDirectCount: dev?.groupsCount ?? 'undefined',
+    stateManagerGroupCount: stateManagerGroups.length,
+    reactGroupIds: getGroupIds(reactGroups),
+    stateManagerGroupIds: getGroupIds(stateManagerGroups)
+  };
+}
+
 /**
  * Topology files available in dev/topologies/ (file-based)
  */
@@ -765,52 +870,12 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       createGroup: async () => {
         // Use direct API call instead of keyboard events for reliability
-        const result = await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-
-          // Debug: gather state info
-          const selectedBefore = cy ? cy.nodes(':selected').map((n: any) => n.id()) : [];
-          const mode = dev?.stateManager?.getMode?.();
-          const isLocked = dev?.isLocked?.();
-          const groupsBefore = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations?.length ?? 0;
-          const reactGroupsBefore = dev?.getReactGroups?.()?.length ?? 'undefined';
-
-          if (dev?.createGroupFromSelected) {
-            // Also verify the function exists
-            const hasCy = !!cy;
-            dev.createGroupFromSelected();
-            const groupsAfter = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations?.length ?? 0;
-            const reactGroupsAfter = dev?.getReactGroups?.()?.length ?? 'undefined';
-            const selectedAfter = cy ? cy.nodes(':selected').map((n: any) => n.id()) : [];
-            return { method: 'direct', selectedBefore, selectedAfter, mode, isLocked, groupsBefore, groupsAfter, reactGroupsBefore, reactGroupsAfter, hasCy };
-          } else {
-            const event = new KeyboardEvent('keydown', {
-              key: 'g',
-              ctrlKey: true,
-              bubbles: true,
-              cancelable: true
-            });
-            window.dispatchEvent(event);
-            return { method: 'keyboard', selectedBefore, mode, isLocked, groupsBefore, groupsAfter: null };
-          }
-        });
+        const result = await page.evaluate(browserCreateGroup);
         console.log(`[DEBUG] createGroup: method=${result.method}, hasCy=${result.hasCy}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`);
         // Wait for debounced save (300ms) plus processing time
         await page.waitForTimeout(1000);
         // Check again after wait - both React state and stateManager
-        const debugInfo = await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          const reactGroups = dev?.getReactGroups?.() ?? [];
-          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
-          return {
-            reactGroupCount: reactGroups.length,
-            reactGroupsDirectCount: dev?.groupsCount ?? 'undefined',
-            stateManagerGroupCount: stateManagerGroups.length,
-            reactGroupIds: reactGroups.map((g: any) => g.id),
-            stateManagerGroupIds: stateManagerGroups.map((g: any) => g.id)
-          };
-        });
+        const debugInfo = await page.evaluate(browserGetGroupDebugInfo);
         console.log(`[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`);
       },
 
