@@ -19,10 +19,12 @@ test.describe('Undo and Redo', () => {
 
     // Create a node at offset position (avoid hitting existing nodes)
     await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
-    await page.waitForTimeout(500);
 
-    const afterCreateCount = await topoViewerPage.getNodeCount();
-    expect(afterCreateCount).toBe(initialNodeCount + 1);
+    // Wait for node to be created using polling assertion (more reliable than fixed timeout)
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 3000, message: 'Node should be created after shift-click' }
+    ).toBe(initialNodeCount + 1);
 
     // Undo
     await topoViewerPage.undo();
@@ -41,10 +43,12 @@ test.describe('Undo and Redo', () => {
 
     // Create a node at offset position
     await shiftClick(page, clickX, clickY);
-    await page.waitForTimeout(500);
 
-    const afterCreateCount = await topoViewerPage.getNodeCount();
-    expect(afterCreateCount).toBe(initialNodeCount + 1);
+    // Wait for node to be created using polling assertion (more reliable than fixed timeout)
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 3000, message: 'Node should be created after shift-click' }
+    ).toBe(initialNodeCount + 1);
 
     // Undo
     await topoViewerPage.undo();

@@ -37,6 +37,9 @@ export function createVscodeApiMock(
 ): VSCodeAPIMock {
   const { verbose = true, storageKey = 'topoviewer-dev-state' } = config;
 
+  // Queue to ensure messages are processed sequentially (since handleMessage is async)
+  let messageQueue: Promise<void> = Promise.resolve();
+
   return {
     postMessage: (message: unknown) => {
       if (verbose) {
@@ -47,8 +50,13 @@ export function createVscodeApiMock(
         );
       }
 
-      // Route to message handler
-      messageHandler.handleMessage(message);
+      // Queue the message to ensure sequential processing
+      // Use catch to ensure queue continues even if a handler fails
+      messageQueue = messageQueue
+        .then(() => messageHandler.handleMessage(message))
+        .catch((err) => {
+          console.error('%c[postMessage Error]', 'color: #f44336;', 'Handler failed:', err);
+        });
     },
 
     getState: () => {

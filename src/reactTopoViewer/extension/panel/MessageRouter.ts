@@ -11,7 +11,7 @@ import { splitViewManager } from '../services/SplitViewManager';
 import { saveTopologyService, NodeSaveData, LinkSaveData } from '../services/SaveTopologyService';
 import { annotationsManager } from '../services/AnnotationsManager';
 import { convertEditorDataToYaml } from '../../shared/utilities/nodeEditorConversions';
-import { CyElement, TopologyAnnotations, NetworkNodeAnnotation } from '../../shared/types/topology';
+import { CyElement, NetworkNodeAnnotation } from '../../shared/types/topology';
 import { customNodeConfigManager } from '../../../topoViewer/extension/services/CustomNodeConfigManager';
 import { yamlSettingsManager } from '../../../topoViewer/extension/services/YamlSettingsManager';
 import * as YAML from 'yaml';
@@ -1023,50 +1023,10 @@ export class MessageRouter {
   }
 
   /**
-   * Save a network node position to networkNodeAnnotations
-   */
-  private saveNetworkNodePosition(
-    annotations: TopologyAnnotations,
-    posData: NodePositionData
-  ): void {
-    if (!annotations.networkNodeAnnotations) {
-      annotations.networkNodeAnnotations = [];
-    }
-    const existing = annotations.networkNodeAnnotations.find(n => n.id === posData.id);
-    if (existing) {
-      existing.position = posData.position;
-    } else {
-      annotations.networkNodeAnnotations.push({
-        id: posData.id,
-        type: this.getNetworkType(posData.id),
-        position: posData.position
-      });
-    }
-  }
-
-  /**
-   * Save a regular node position to nodeAnnotations
-   */
-  private saveRegularNodePosition(
-    annotations: TopologyAnnotations,
-    posData: NodePositionData
-  ): void {
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
-    const existing = annotations.nodeAnnotations.find(n => n.id === posData.id);
-    if (existing) {
-      existing.position = posData.position;
-    } else {
-      annotations.nodeAnnotations.push({
-        id: posData.id,
-        position: posData.position
-      });
-    }
-  }
-
-  /**
    * Save node positions to annotations file
+   *
+   * Routes regular nodes through TopologyIO (uses atomic modifyAnnotations),
+   * and network nodes through a separate atomic operation.
    */
   private async handleSaveNodePositions(positions: NodePositionData[]): Promise<void> {
     if (!this.context.yamlFilePath) {
@@ -1075,18 +1035,49 @@ export class MessageRouter {
     }
 
     try {
-      const annotations = await annotationsManager.loadAnnotations(this.context.yamlFilePath);
+      // Separate network nodes from regular nodes
+      const networkPositions = positions.filter(p => this.isNetworkNode(p.id));
+      const regularPositions = positions.filter(p => !this.isNetworkNode(p.id));
 
-      for (const posData of positions) {
-        if (this.isNetworkNode(posData.id)) {
-          this.saveNetworkNodePosition(annotations, posData);
-        } else {
-          this.saveRegularNodePosition(annotations, posData);
+      // Regular nodes go through TopologyIO (uses atomic modifyAnnotations)
+      if (regularPositions.length > 0 && saveTopologyService.isInitialized()) {
+        const result = await saveTopologyService.savePositions(
+          regularPositions.map(p => ({ id: p.id, position: p.position }))
+        );
+        if (!result.success) {
+          log.error(`[ReactTopoViewer] Failed to save regular node positions: ${result.error}`);
         }
       }
 
-      await annotationsManager.saveAnnotations(this.context.yamlFilePath, annotations);
-      log.info(`[ReactTopoViewer] Saved ${positions.length} node positions`);
+      // Network nodes handled with a single atomic modifyAnnotations call
+      if (networkPositions.length > 0) {
+        await annotationsManager.modifyAnnotations(this.context.yamlFilePath, (annotations) => {
+          if (!annotations.networkNodeAnnotations) {
+            annotations.networkNodeAnnotations = [];
+          }
+
+          for (const posData of networkPositions) {
+            const existing = annotations.networkNodeAnnotations.find(n => n.id === posData.id);
+            if (existing) {
+              existing.position = posData.position;
+            } else {
+              const cachedNode = this.findCachedNode(posData.id);
+              const networkType = this.getNetworkType(posData.id);
+              const label = typeof cachedNode?.data?.name === 'string' ? cachedNode.data.name : undefined;
+              annotations.networkNodeAnnotations.push({
+                id: posData.id,
+                type: networkType,
+                label,
+                position: posData.position
+              });
+            }
+          }
+
+          return annotations;
+        });
+      }
+
+      log.info(`[ReactTopoViewer] Saved ${positions.length} node positions (${regularPositions.length} regular, ${networkPositions.length} network)`);
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to save node positions: ${err}`);
     }

@@ -722,6 +722,9 @@ test.describe('Full Workflow E2E Test', () => {
       positionsBeforeReload[nodeId] = await topoViewerPage.getNodePosition(nodeId);
     }
 
+    // Wait for any pending file operations to complete before reload
+    await page.waitForTimeout(500);
+
     // Reload the topology file
     await topoViewerPage.gotoFile(TOPOLOGY_FILE);
     await topoViewerPage.waitForCanvasReady();

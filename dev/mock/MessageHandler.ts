@@ -9,7 +9,7 @@ import type { DevStateManager } from './DevState';
 import type { RequestHandler } from './RequestHandler';
 import type { LatencySimulator } from './LatencySimulator';
 import type { SplitViewPanel } from './SplitViewPanel';
-import type { CyElement, TopologyAnnotations } from '../../src/reactTopoViewer/shared/types/topology';
+import type { CyElement, TopologyAnnotations, NetworkNodeAnnotation } from '../../src/reactTopoViewer/shared/types/topology';
 import { sendMessageToWebviewWithLog } from './VscodeApiMock';
 
 // ============================================================================
@@ -130,7 +130,7 @@ export class MessageHandler {
   /**
    * Handle a message from the webview
    */
-  handleMessage(message: unknown): void {
+  async handleMessage(message: unknown): Promise<void> {
     const msg = message as WebviewMessage;
 
     // Skip log messages
@@ -155,11 +155,11 @@ export class MessageHandler {
     } else if (NODE_COMMANDS.has(messageType)) {
       this.handleNodeCommand(messageType, msg);
     } else if (EDITOR_COMMANDS.has(messageType)) {
-      this.handleEditorCommand(messageType, msg);
+      await this.handleEditorCommand(messageType, msg);
     } else if (PANEL_COMMANDS.has(messageType)) {
       this.handlePanelCommand(messageType, msg);
     } else if (ANNOTATION_COMMANDS.has(messageType)) {
-      this.handleAnnotationCommand(messageType, msg);
+      await this.handleAnnotationCommand(messageType, msg);
     } else if (CUSTOM_NODE_COMMANDS.has(messageType)) {
       this.handleCustomNodeCommand(messageType, msg);
     } else if (CLIPBOARD_COMMANDS.has(messageType)) {
@@ -294,20 +294,20 @@ export class MessageHandler {
   // Editor Commands (create/save nodes and links)
   // --------------------------------------------------------------------------
 
-  private handleEditorCommand(type: string, msg: WebviewMessage): void {
+  private async handleEditorCommand(type: string, msg: WebviewMessage): Promise<void> {
     console.log('%c[Mock Extension]', 'color: #FF9800;', `Editor: ${type}`, msg);
 
     let wasRename = false;
     switch (type) {
       case 'create-node':
-        this.handleCreateNode(msg);
+        await this.handleCreateNode(msg);
         break;
       case 'save-node-editor':
       case 'apply-node-editor':
         wasRename = this.handleSaveNodeEditor(msg);
         break;
       case 'create-link':
-        this.handleCreateLink(msg);
+        await this.handleCreateLink(msg);
         break;
       case 'save-link-editor':
       case 'apply-link-editor':
@@ -325,7 +325,7 @@ export class MessageHandler {
     }
   }
 
-  private handleCreateNode(msg: WebviewMessage): void {
+  private async handleCreateNode(msg: WebviewMessage): Promise<void> {
     const { nodeId, nodeData, position } = msg as {
       nodeId: string;
       nodeData: Record<string, unknown>;
@@ -344,19 +344,14 @@ export class MessageHandler {
     // Update local state for UI
     this.stateManager.addNode(node);
 
-    // Add to node annotations (local state)
-    const annotations = this.stateManager.getAnnotations();
-    const nodeAnnotations = [...(annotations.nodeAnnotations || [])];
-    if (!nodeAnnotations.find(a => a.id === nodeId)) {
-      nodeAnnotations.push({ id: nodeId, position: nodePosition });
-      this.stateManager.updateAnnotations({ nodeAnnotations });
-    }
+    // Keep mock annotations in sync so subsequent annotation saves don't drop positions.
+    this.stateManager.updateNodePositions([{ id: nodeId, position: nodePosition }]);
 
     // Persist via TopologyIO endpoint (handles both YAML and annotations)
     const filename = this.stateManager.getCurrentFilePath();
     if (filename) {
       const extraData = nodeData.extraData as Record<string, unknown> | undefined;
-      this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/node`, {
+      await this.callTopologyIOEndpoint('POST', `/api/topology/${encodeURIComponent(filename)}/node`, {
         name: nodeId,
         position: nodePosition,
         extraData: {
@@ -686,10 +681,14 @@ export class MessageHandler {
   private async handleAnnotationCommand(type: string, msg: WebviewMessage): Promise<void> {
     console.log('%c[Mock Extension]', 'color: #FF9800;', `Annotation: ${type}`);
 
+    // Special handling for save-node-positions - uses TopologyIO directly to avoid race conditions
+    if (type === 'save-node-positions') {
+      await this.handleSaveNodePositions(msg);
+      this.updateSplitView();
+      return;
+    }
+
     switch (type) {
-      case 'save-node-positions':
-        this.handleSaveNodePositions(msg);
-        break;
       case 'save-network-position':
         this.handleSaveNetworkPosition(msg);
         break;
@@ -713,25 +712,61 @@ export class MessageHandler {
     this.updateSplitView();
   }
 
-  private handleSaveNodePositions(msg: WebviewMessage): void {
+  private async handleSaveNodePositions(msg: WebviewMessage): Promise<void> {
     const positions = msg.positions as Array<{
       id: string;
       position: { x: number; y: number };
     }>;
-    if (positions && Array.isArray(positions)) {
-      // Update local state - saveAnnotationsToFile() is called by the parent handler
-      // to persist changes to file (no separate TopologyIO call needed to avoid race)
-      this.stateManager.updateNodePositions(positions);
+    if (!positions || !Array.isArray(positions)) return;
+
+    // Separate network nodes (cloud nodes) from regular nodes
+    const elements = this.stateManager.getElements();
+    const networkPositions = positions.filter(p => {
+      const el = elements.find(e => e.group === 'nodes' && e.data.id === p.id);
+      return el?.data.topoViewerRole === 'cloud';
+    });
+    const regularPositions = positions.filter(p => {
+      const el = elements.find(e => e.group === 'nodes' && e.data.id === p.id);
+      return el?.data.topoViewerRole !== 'cloud';
+    });
+
+    // Regular nodes go through TopologyIO (atomic, avoids race conditions)
+    if (regularPositions.length > 0) {
+      const filename = this.stateManager.getCurrentFilePath();
+      if (filename) {
+        await this.callTopologyIOEndpoint(
+          'POST',
+          `/api/topology/${encodeURIComponent(filename)}/positions`,
+          { positions: regularPositions }
+        );
+      }
     }
+
+    // Network nodes update local state (then saved via saveAnnotationsToFile)
+    if (networkPositions.length > 0) {
+      this.stateManager.updateNodePositions(networkPositions);
+      await this.saveAnnotationsToFile();
+    }
+
+    // Update local state for UI (doesn't affect file for regular nodes)
+    this.stateManager.updateNodePositions(regularPositions);
   }
 
   private handleSaveNetworkPosition(msg: WebviewMessage): void {
-    const { nodeId, position, type: nodeType, label } = msg as {
-      nodeId: string;
-      position: { x: number; y: number };
+    const payload = msg as {
+      networkId?: string;
+      networkType?: string;
+      networkLabel?: string;
+      nodeId?: string;
       type?: string;
       label?: string;
+      position?: { x: number; y: number };
     };
+
+    const nodeId = payload.networkId ?? payload.nodeId;
+    const position = payload.position;
+    const nodeType = payload.networkType ?? payload.type;
+    const label = payload.networkLabel ?? payload.label;
 
     if (!nodeId || !position) return;
 
@@ -986,13 +1021,44 @@ export class MessageHandler {
     if (!filename) return;
 
     const annotations = this.stateManager.getAnnotations();
+    const elements = this.stateManager.getElements();
+    const nodeIds = new Set(
+      elements.filter(el => el.group === 'nodes').map(el => el.data.id as string)
+    );
+    const mergedNodeAnnotations = new Map<string, (typeof annotations.nodeAnnotations)[number]>();
+    for (const annotation of annotations.nodeAnnotations || []) {
+      const existing = mergedNodeAnnotations.get(annotation.id);
+      if (!existing) {
+        mergedNodeAnnotations.set(annotation.id, { ...annotation });
+        continue;
+      }
+      mergedNodeAnnotations.set(annotation.id, {
+        ...existing,
+        ...annotation,
+        position: annotation.position ?? existing.position,
+        group: annotation.group ?? existing.group,
+        level: annotation.level ?? existing.level,
+        icon: annotation.icon ?? existing.icon,
+        iconColor: annotation.iconColor ?? existing.iconColor,
+        iconCornerRadius: annotation.iconCornerRadius ?? existing.iconCornerRadius,
+        interfacePattern: annotation.interfacePattern ?? existing.interfacePattern
+      });
+    }
+    const nodeAnnotations = [...mergedNodeAnnotations.values()].filter(a => nodeIds.has(a.id));
+    const networkNodeAnnotations = ((annotations as any).networkNodeAnnotations || [])
+      .filter((a: NetworkNodeAnnotation) => nodeIds.has(a.id));
+    const sanitizedAnnotations = {
+      ...annotations,
+      nodeAnnotations,
+      networkNodeAnnotations
+    } as TopologyAnnotations;
     const url = this.buildApiUrl(`/api/annotations/${encodeURIComponent(filename)}`);
 
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(annotations)
+        body: JSON.stringify(sanitizedAnnotations)
       });
       const result = await res.json();
       if (result.success) {

@@ -58,6 +58,7 @@ export function createDefaultAnnotations(): TopologyAnnotations {
     freeShapeAnnotations: [],
     groupStyleAnnotations: [],
     cloudNodeAnnotations: [],
+    networkNodeAnnotations: [],
     nodeAnnotations: [],
     aliasEndpointAnnotations: []
   };
@@ -339,17 +340,20 @@ export class DevStateManager {
       return true;
     });
 
-    const nodeAnnotations = this.state.currentAnnotations.nodeAnnotations?.filter(
+    const nodeAnnotations = (this.state.currentAnnotations.nodeAnnotations || []).filter(
       a => a.id !== nodeId
     );
+    const networkNodeAnnotations = ((this.state.currentAnnotations as any).networkNodeAnnotations || [])
+      .filter((a: NetworkNodeAnnotation) => a.id !== nodeId);
 
     this.state = {
       ...this.state,
       currentElements: elements,
       currentAnnotations: {
         ...this.state.currentAnnotations,
-        nodeAnnotations
-      }
+        nodeAnnotations,
+        networkNodeAnnotations
+      } as TopologyAnnotations
     };
     this.notify();
   }
@@ -465,8 +469,13 @@ export class DevStateManager {
   ): void {
     const nodeAnnotations = [...(this.state.currentAnnotations.nodeAnnotations || [])];
     const existing = nodeAnnotations.find(a => a.id === nodeId);
+    const nodeElement = this.state.currentElements.find(el => el.group === 'nodes' && el.data.id === nodeId);
+    const nodePosition = nodeElement?.position;
 
     if (existing) {
+      if (!existing.position && nodePosition) {
+        existing.position = nodePosition;
+      }
       if (group) {
         existing.group = group;
         existing.level = level || '1';
@@ -478,7 +487,8 @@ export class DevStateManager {
       nodeAnnotations.push({
         id: nodeId,
         group,
-        level: level || '1'
+        level: level || '1',
+        ...(nodePosition ? { position: nodePosition } : {})
       } as NodeAnnotation);
     }
 
