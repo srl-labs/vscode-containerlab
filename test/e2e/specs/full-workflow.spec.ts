@@ -34,6 +34,7 @@ const SEL_FREE_SHAPE_EDITOR = '[data-testid="free-shape-editor"]';
 const SEL_ADD_TEXT_BTN = '[data-testid="floating-panel-add-text-btn"]';
 const SEL_ADD_SHAPES_BTN = '[data-testid="floating-panel-add-shapes-btn"]';
 const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
+const SEL_PANEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
 
 // Current test step for bug logging
 let currentStep = 'Setup';
@@ -316,7 +317,7 @@ test.describe('Full Workflow E2E Test', () => {
     // Close editor if it opened unexpectedly (timing issue with Ctrl+click)
     if (editorAfterCtrlClick) {
       console.log('[DEBUG] Closing unexpected editor');
-      const closeBtnStep4 = editorPanel.locator('[data-testid="panel-close-btn"]');
+      const closeBtnStep4 = editorPanel.locator(SEL_PANEL_CLOSE_BTN);
       await closeBtnStep4.click();
       await page.waitForTimeout(200);
     }
@@ -441,7 +442,7 @@ test.describe('Full Workflow E2E Test', () => {
     console.log(`[DEBUG] Editor visible after ctrlClick router4: ${editorAfterCtrlClickR4}`);
     if (editorAfterCtrlClickR4) {
       console.log('[DEBUG] Closing unexpected editor after ctrlClick router4');
-      const closeBtnR4 = editorPanel.locator('[data-testid="panel-close-btn"]');
+      const closeBtnR4 = editorPanel.locator(SEL_PANEL_CLOSE_BTN);
       await closeBtnR4.click();
       await page.waitForTimeout(200);
     }
@@ -544,7 +545,7 @@ test.describe('Full Workflow E2E Test', () => {
     const nodeEditorPanel = page.locator('[data-testid="node-editor"]');
     if (await nodeEditorPanel.isVisible({ timeout: 500 }).catch(() => false)) {
       console.log('[DEBUG] Node editor is open, closing it');
-      const closeBtn = nodeEditorPanel.locator('[data-testid="panel-close-btn"]');
+      const closeBtn = nodeEditorPanel.locator(SEL_PANEL_CLOSE_BTN);
       await closeBtn.click();
       await page.waitForTimeout(300);
       await expect(nodeEditorPanel).toBeHidden({ timeout: 2000 });
