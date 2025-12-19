@@ -135,7 +135,7 @@ interface TopologyAnnotations {
   nodeAnnotations?: Array<{ id: string; position?: { x: number; y: number }; group?: string; level?: string }>;
   freeTextAnnotations?: Array<{ id: string; text: string; position: { x: number; y: number } }>;
   freeShapeAnnotations?: Array<{ id: string; shapeType: string; position: { x: number; y: number } }>;
-  groupStyleAnnotations?: Array<{ id: string; name: string }>;
+  groupStyleAnnotations?: Array<{ id: string; name: string; parentId?: string }>;
   networkNodeAnnotations?: Array<{ id: string; type: string; label: string; position: { x: number; y: number } }>;
   aliasEndpointAnnotations?: Array<{ id: string }>;
 }

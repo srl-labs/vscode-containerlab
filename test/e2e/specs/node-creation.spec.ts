@@ -5,7 +5,7 @@ import { shiftClick } from '../helpers/cytoscape-helpers';
 const SIMPLE_FILE = 'simple.clab.yml';
 const EMPTY_FILE = 'empty.clab.yml';
 const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
-const PERSISTENT_NODE_ID = PERSISTENT_NODE_ID;
+const PERSISTENT_NODE_ID = 'persistent-test-node';
 
 test.describe('Node Creation', () => {
   test.beforeEach(async ({ topoViewerPage }) => {

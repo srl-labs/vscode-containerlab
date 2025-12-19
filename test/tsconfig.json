@@ -7,5 +7,5 @@
     "typeRoots": ["../src/topoViewer/webview/types", "../node_modules/@types"]
   },
   "include": ["**/*.ts", "../src/topoViewer/webview/types/**/*.d.ts"],
-  "exclude": []
+  "exclude": ["e2e/**/*"]
 }

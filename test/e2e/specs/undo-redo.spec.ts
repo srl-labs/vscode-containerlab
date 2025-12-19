@@ -3,7 +3,6 @@ import { shiftClick, drag } from '../helpers/cytoscape-helpers';
 
 // Test file names for file-based tests
 const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
-const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
 
 test.describe('Undo and Redo', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
