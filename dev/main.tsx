@@ -8,10 +8,9 @@ import { createRoot } from 'react-dom/client';
 import { App } from '@webview/App';
 import { TopoViewerProvider } from '@webview/context/TopoViewerContext';
 import '@webview/styles/tailwind.css';
-import type { TopologyAnnotations, CyElement } from '@shared/types/topology';
 
 // Mock system modules
-import { DevStateManager, createDefaultAnnotations } from './mock/DevState';
+import { DevStateManager } from './mock/DevState';
 import { LatencySimulator } from './mock/LatencySimulator';
 import { RequestHandler } from './mock/RequestHandler';
 import { MessageHandler } from './mock/MessageHandler';
@@ -30,30 +29,12 @@ import {
 // Initialize Mock System
 // ============================================================================
 
-/**
- * Create node annotations from elements with positions
- */
-function createNodeAnnotations(elements: CyElement[]): TopologyAnnotations['nodeAnnotations'] {
-  return elements
-    .filter(el => el.group === 'nodes' && el.position && el.data.topoViewerRole !== 'cloud')
-    .map(el => ({ id: el.data.id as string, position: el.position! }));
-}
-
-// Create default annotations for initial load (just node positions)
-const defaultAnnotations: TopologyAnnotations = {
-  ...createDefaultAnnotations(),
-  nodeAnnotations: createNodeAnnotations(sampleElements)
-};
-
-// Initialize state manager
+// Initialize state manager (elements/annotations come from server, not local state)
 const stateManager = new DevStateManager({
-  currentElements: sampleElements,
-  currentAnnotations: defaultAnnotations,
   mode: 'edit',
   deploymentState: 'undeployed',
   customNodes: sampleCustomNodes,
   defaultCustomNode: 'SRLinux Latest',
-  labName: 'dev-topology'
 });
 
 // Initialize latency simulator
@@ -137,8 +118,8 @@ async function loadTopologyFile(filename: string, sessionId?: string): Promise<v
 
     const { elements, annotations, labName } = result.data;
 
-    // Update state manager with file info
-    stateManager.loadTopologyFromFile(filename, elements, annotations, labName);
+    // Record which file is loaded
+    stateManager.setCurrentFilePath(filename);
 
     // Broadcast to webview (same message format as real extension)
     window.postMessage({
@@ -204,8 +185,6 @@ declare global {
       setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => void;
       // UI
       toggleSplitView: () => void;
-      getYaml: () => string;
-      getAnnotationsJson: () => string;
       // Managers
       stateManager: DevStateManager;
       latencySimulator: LatencySimulator;
@@ -218,7 +197,7 @@ declare global {
   }
 }
 
-// Build initial data for TopoViewerProvider
+// Build initial data for TopoViewerProvider (data will come from server after mount)
 const initialData = buildInitialData({
   mode: 'edit',
   deploymentState: 'undeployed',
@@ -226,17 +205,7 @@ const initialData = buildInitialData({
   includeAnnotations: false
 });
 
-// Flatten annotations to top level
-const flattenedInitialData = {
-  ...initialData,
-  freeTextAnnotations: defaultAnnotations.freeTextAnnotations,
-  freeShapeAnnotations: defaultAnnotations.freeShapeAnnotations,
-  groupStyleAnnotations: defaultAnnotations.groupStyleAnnotations,
-  nodeAnnotations: defaultAnnotations.nodeAnnotations,
-  cloudNodeAnnotations: defaultAnnotations.cloudNodeAnnotations
-};
-
-(window as any).__INITIAL_DATA__ = flattenedInitialData;
+(window as any).__INITIAL_DATA__ = initialData;
 (window as any).__SCHEMA_DATA__ = initialData.schemaData;
 (window as any).__DOCKER_IMAGES__ = initialData.dockerImages || [];
 
@@ -318,16 +287,6 @@ window.__DEV__ = {
   },
 
   toggleSplitView: () => splitViewPanel.toggle(),
-  getYaml: () => {
-    const yaml = splitViewPanel.getYaml();
-    console.log(yaml);
-    return yaml;
-  },
-  getAnnotationsJson: () => {
-    const json = splitViewPanel.getAnnotationsJson();
-    console.log(json);
-    return json;
-  },
 
   // Expose managers for advanced debugging
   stateManager,
@@ -355,8 +314,6 @@ console.log('  __DEV__.setLatencyProfile("instant" | "fast" | "normal" | "slow")
 console.log('');
 console.log('%cUI utilities:', 'color: #9C27B0; font-weight: bold;');
 console.log('  __DEV__.toggleSplitView()');
-console.log('  __DEV__.getYaml() / __DEV__.getAnnotationsJson()');
-console.log('');
 console.log('%cUse the gear icon (top-right) for visual controls', 'color: #9C27B0;');
 
 // ============================================================================

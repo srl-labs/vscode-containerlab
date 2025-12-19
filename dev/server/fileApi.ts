@@ -382,6 +382,47 @@ async function writeAnnotations(
   }
 }
 
+/**
+ * Delete annotations file
+ */
+async function deleteAnnotations(
+  yamlFilename: string,
+  sessionId?: string
+): Promise<ApiResponse> {
+  try {
+    const fsAdapter = getFsAdapter(sessionId);
+    const annotationsPath = path.join(TOPOLOGIES_DIR, `${yamlFilename}.annotations.json`);
+    await fsAdapter.unlink(annotationsPath);
+    console.log('[FileAPI] Deleted annotations:', yamlFilename);
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Don't treat "file doesn't exist" as an error
+    if (message.includes('ENOENT')) {
+      return { success: true };
+    }
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Check if annotations file exists
+ */
+async function annotationsExists(
+  yamlFilename: string,
+  sessionId?: string
+): Promise<ApiResponse<{ exists: boolean }>> {
+  try {
+    const fsAdapter = getFsAdapter(sessionId);
+    const annotationsPath = path.join(TOPOLOGIES_DIR, `${yamlFilename}.annotations.json`);
+    const exists = await fsAdapter.exists(annotationsPath);
+    return { success: true, data: { exists } };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
+  }
+}
+
 // ============================================================================
 // TopologyIO Operations (unified with VS Code extension)
 // ============================================================================
@@ -696,6 +737,25 @@ export function fileApiPlugin(): Plugin {
             const body = await parseJsonBody(req);
             const result = await writeAnnotations(filename, body, sessionId);
             res.statusCode = result.success ? 200 : 500;
+            res.end(JSON.stringify(result));
+            return;
+          }
+
+          // DELETE /api/annotations/:filename - Delete annotations file
+          if (readAnnotMatch && req.method === 'DELETE') {
+            const filename = decodeURIComponent(readAnnotMatch[1]);
+            const result = await deleteAnnotations(filename, sessionId);
+            res.statusCode = result.success ? 200 : 500;
+            res.end(JSON.stringify(result));
+            return;
+          }
+
+          // GET /api/annotations/:filename/exists - Check if annotations file exists
+          const annotExistsMatch = urlWithoutQuery.match(/^\/api\/annotations\/([^/]+)\/exists$/);
+          if (annotExistsMatch && req.method === 'GET') {
+            const filename = decodeURIComponent(annotExistsMatch[1]);
+            const result = await annotationsExists(filename, sessionId);
+            res.statusCode = 200;
             res.end(JSON.stringify(result));
             return;
           }

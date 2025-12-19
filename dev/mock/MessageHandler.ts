@@ -3,22 +3,32 @@
  *
  * This class delegates to MessageHandlerBase for shared routing logic,
  * using mock service implementations for dev environment functionality.
+ *
+ * Simulates file watcher behavior: after mutation commands, fetches fresh
+ * data from server and broadcasts to webview (like production file watcher).
  */
 
 import type { DevStateManager } from './DevState';
 import type { RequestHandler } from './RequestHandler';
 import type { LatencySimulator } from './LatencySimulator';
 import type { SplitViewPanel } from './SplitViewPanel';
-import { sendMessageToWebviewWithLog } from './VscodeApiMock';
 import {
   MessageHandlerBase,
   WebviewMessage,
-  isLogCommand,
 } from '../../src/reactTopoViewer/shared/messaging';
-import {
-  createMockServices,
-  MockSplitViewService,
-} from './services';
+
+/** Commands that mutate topology and should trigger file watcher refresh */
+const MUTATION_COMMANDS = new Set([
+  'topo-editor-add-node',
+  'topo-editor-edit-node',
+  'topo-editor-delete-node',
+  'topo-editor-add-link',
+  'topo-editor-edit-link',
+  'topo-editor-delete-link',
+  'topo-editor-save-positions',
+]);
+import { createMockServices } from './services';
+import { sendMessageToWebviewWithLog } from './VscodeApiMock';
 
 // Re-export WebviewMessage for backward compatibility
 export type { WebviewMessage } from '../../src/reactTopoViewer/shared/messaging';
@@ -36,7 +46,6 @@ export class MessageHandler {
   private latencySimulator: LatencySimulator;
   private splitViewPanel: SplitViewPanel | null = null;
   private handler: MessageHandlerBase | null = null;
-  private splitViewService: MockSplitViewService | null = null;
 
   constructor(
     stateManager: DevStateManager,
@@ -51,9 +60,6 @@ export class MessageHandler {
   /** Set the split view panel reference */
   setSplitViewPanel(panel: SplitViewPanel): void {
     this.splitViewPanel = panel;
-    if (this.splitViewService) {
-      this.splitViewService.setSplitViewPanel(panel);
-    }
   }
 
   /** Build API URL with optional session ID */
@@ -76,7 +82,6 @@ export class MessageHandler {
         splitViewPanel: this.splitViewPanel || undefined,
       });
 
-      this.splitViewService = services.splitView as MockSplitViewService;
       this.handler = new MessageHandlerBase(services);
     }
     return this.handler;
@@ -113,8 +118,12 @@ export class MessageHandler {
     if (handled) {
       // Update split view after handled commands
       this.updateSplitView();
-      // Maybe broadcast topology for non-rename operations
-      this.maybeBroadcastTopology();
+
+      // Simulate file watcher: after mutation commands, fetch fresh data and broadcast
+      // This matches production behavior where file watcher detects change and triggers refresh
+      if (MUTATION_COMMANDS.has(msg.command || '')) {
+        await this.simulateFileWatcher();
+      }
       return;
     }
 
@@ -126,6 +135,53 @@ export class MessageHandler {
       `Unhandled command: ${command}`,
       msg
     );
+  }
+
+  // --------------------------------------------------------------------------
+  // File Watcher Simulation
+  // --------------------------------------------------------------------------
+
+  /**
+   * Simulate file watcher behavior: fetch fresh data from server and broadcast.
+   * In production, file watchers detect YAML changes and trigger loadTopologyData(),
+   * then broadcast to webview. This simulates that behavior in dev mode.
+   */
+  private async simulateFileWatcher(): Promise<void> {
+    const filename = this.stateManager.getCurrentFilePath();
+    if (!filename) return;
+
+    try {
+      const url = this.buildApiUrl(`/api/topology/${encodeURIComponent(filename)}/elements`);
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const { elements, annotations, labName } = result.data;
+        const state = this.stateManager.getState();
+
+        // Broadcast to webview (like production file watcher does)
+        sendMessageToWebviewWithLog(
+          {
+            type: 'topology-data',
+            data: {
+              elements,
+              labName,
+              mode: state.mode === 'view' ? 'viewer' : 'editor',
+              deploymentState: state.deploymentState,
+              freeTextAnnotations: annotations?.freeTextAnnotations || [],
+              freeShapeAnnotations: annotations?.freeShapeAnnotations || [],
+              groupStyleAnnotations: annotations?.groupStyleAnnotations || [],
+              nodeAnnotations: annotations?.nodeAnnotations || {},
+              cloudNodeAnnotations: annotations?.cloudNodeAnnotations || {},
+              networkNodeAnnotations: annotations?.networkNodeAnnotations || {},
+            }
+          },
+          'file-watcher-refresh'
+        );
+      }
+    } catch (err) {
+      console.error('%c[File Watcher]', 'color: #f44336;', 'Failed to refresh after mutation:', err);
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -163,40 +219,5 @@ export class MessageHandler {
     if (this.splitViewPanel) {
       this.splitViewPanel.updateContent();
     }
-  }
-
-  private maybeBroadcastTopology(): void {
-    // Only broadcast if not in batch mode
-    if (!this.stateManager.isInBatch()) {
-      this.broadcastTopologyData();
-    }
-  }
-
-  /**
-   * Broadcast current topology data to webview
-   */
-  broadcastTopologyData(): void {
-    const elements = this.stateManager.getElements();
-    const annotations = this.stateManager.getAnnotations();
-    const mode = this.stateManager.getMode();
-    const deploymentState = this.stateManager.getDeploymentState();
-    const customNodes = this.stateManager.getCustomNodes();
-    const defaultCustomNode = this.stateManager.getState().defaultCustomNode;
-
-    sendMessageToWebviewWithLog(
-      {
-        type: 'topology-data',
-        elements,
-        annotations,
-        mode,
-        deploymentState,
-        customNodes,
-        defaultCustomNode,
-        labName: this.stateManager.getState().labName,
-        labPrefix: undefined,
-        mgmtSettings: undefined,
-      },
-      'topology-data'
-    );
   }
 }

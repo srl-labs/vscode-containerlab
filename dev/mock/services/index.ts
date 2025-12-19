@@ -1,8 +1,10 @@
 /**
  * Mock Service Implementations
  *
- * These implement the shared service interfaces for the dev environment,
- * using DevStateManager for state and HTTP calls for TopologyIO persistence.
+ * Simple mock services for dev environment:
+ * - MockPersistenceService/MockAnnotationsService: HTTP wrappers to server
+ * - MockLifecycleService/MockNodeCommandService: Dev-specific behavior
+ * - Other services: Simple implementations using DevStateManager
  */
 
 import type { DevStateManager } from '../DevState';
@@ -38,11 +40,7 @@ export class MockMessagingService implements IMessagingService {
   }
 
   postPanelAction(action: string, data: Record<string, unknown>): void {
-    sendMessageToWebviewWithLog({
-      type: 'panel-action',
-      action,
-      ...data
-    }, `panel-${action}`);
+    sendMessageToWebviewWithLog({ type: 'panel-action', action, ...data }, 'panel-action');
   }
 }
 
@@ -50,6 +48,10 @@ export class MockMessagingService implements IMessagingService {
 // Mock Persistence Service
 // ============================================================================
 
+/**
+ * Pure HTTP wrapper for persistence operations.
+ * Server-side TopologyIO handles all business logic.
+ */
 export class MockPersistenceService implements IPersistenceService {
   private stateManager: DevStateManager;
   private buildApiUrl: (path: string) => string;
@@ -64,7 +66,6 @@ export class MockPersistenceService implements IPersistenceService {
   }
 
   beginBatch(): void {
-    this.stateManager.beginBatch();
     const filename = this.stateManager.getCurrentFilePath();
     if (filename) {
       this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/batch/begin`);
@@ -72,10 +73,9 @@ export class MockPersistenceService implements IPersistenceService {
   }
 
   async endBatch(): Promise<SaveResult> {
-    this.stateManager.endBatch();
     const filename = this.stateManager.getCurrentFilePath();
     if (filename) {
-      await this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/batch/end`);
+      return this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/batch/end`);
     }
     return { success: true };
   }
@@ -84,176 +84,44 @@ export class MockPersistenceService implements IPersistenceService {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return { success: false, error: 'No file path' };
 
-    const position = nodeData.position || { x: 100, y: 100 };
-
-    // Update local state - keep extraData nested, promote style fields to top level
-    const nodeDataObj: Record<string, unknown> = {
-      id: nodeData.id,
-      name: nodeData.name,
-      extraData: nodeData.extraData
-    };
-    // Promote style-related fields to top level for Cytoscape styling
-    if (nodeData.extraData?.topoViewerRole) {
-      nodeDataObj.topoViewerRole = nodeData.extraData.topoViewerRole;
-    }
-    if (nodeData.extraData?.iconColor) {
-      nodeDataObj.iconColor = nodeData.extraData.iconColor;
-    }
-    if (nodeData.extraData?.iconCornerRadius !== undefined) {
-      nodeDataObj.iconCornerRadius = nodeData.extraData.iconCornerRadius;
-    }
-    const node: CyElement = {
-      group: 'nodes',
-      data: nodeDataObj,
-      position
-    };
-    this.stateManager.addNode(node);
-
-    // Also update annotations with position (so topology-data broadcast includes it)
-    const annotations = this.stateManager.getAnnotations();
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
-    const existingAnn = annotations.nodeAnnotations.find(a => a.id === nodeData.id);
-    if (!existingAnn) {
-      annotations.nodeAnnotations.push({
-        id: nodeData.id,
-        position,
-        icon: (nodeData.extraData?.topoViewerRole as string) || 'router'
-      });
-    } else {
-      existingAnn.position = position;
-    }
-    this.stateManager.setAnnotations(annotations);
-
-    // Call TopologyIO
-    await this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/node`, {
+    return this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/node`, {
       id: nodeData.id,
       name: nodeData.name,
       extraData: nodeData.extraData,
       position: nodeData.position
     });
-
-    return { success: true };
   }
 
   async editNode(nodeData: NodeSaveData): Promise<SaveResult> {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return { success: false, error: 'No file path' };
 
-    const elements = this.stateManager.getElements();
-    const existingNode = elements.find(
-      el => el.group === 'nodes' && el.data.id === nodeData.id
-    );
-
-    const isRename = existingNode && nodeData.name !== nodeData.id;
-
-    // Call TopologyIO
-    await this.callTopologyIO('PUT', `/api/topology/${encodeURIComponent(filename)}/node`, {
+    return this.callTopologyIO('PUT', `/api/topology/${encodeURIComponent(filename)}/node`, {
       id: nodeData.id,
       name: nodeData.name,
       extraData: nodeData.extraData
     });
-
-    // Always update local state with extraData (for icon changes, etc.)
-    // For renames, also update ID and edge references
-    const updated = elements.map(el => {
-      if (el.group === 'nodes' && el.data.id === nodeData.id) {
-        const newId = isRename ? nodeData.name : nodeData.id;
-        const newName = isRename ? nodeData.name : el.data.name;
-        // Keep extraData nested, merge with existing extraData
-        const existingExtraData = (el.data.extraData || {}) as Record<string, unknown>;
-        const mergedExtraData = { ...existingExtraData, ...nodeData.extraData };
-        const mergedData: Record<string, unknown> = {
-          ...el.data,
-          id: newId,
-          name: newName,
-          extraData: mergedExtraData
-        };
-        // Promote style-related fields to top level for Cytoscape styling
-        if (nodeData.extraData?.topoViewerRole) {
-          mergedData.topoViewerRole = nodeData.extraData.topoViewerRole;
-        }
-        if (nodeData.extraData?.iconColor) {
-          mergedData.iconColor = nodeData.extraData.iconColor;
-        }
-        if (nodeData.extraData?.iconCornerRadius !== undefined) {
-          mergedData.iconCornerRadius = nodeData.extraData.iconCornerRadius;
-        }
-        return { ...el, data: mergedData };
-      }
-      // Update edges that reference old name (only for renames)
-      if (isRename && el.group === 'edges') {
-        const data = { ...el.data };
-        if (data.source === nodeData.id) data.source = nodeData.name;
-        if (data.target === nodeData.id) data.target = nodeData.name;
-        return { ...el, data };
-      }
-      return el;
-    });
-    this.stateManager.updateElements(updated);
-
-    if (isRename) {
-      // Also update nodeAnnotations with the new ID
-      const annotations = this.stateManager.getAnnotations();
-      if (annotations.nodeAnnotations) {
-        const annIdx = annotations.nodeAnnotations.findIndex(a => a.id === nodeData.id);
-        if (annIdx !== -1) {
-          annotations.nodeAnnotations[annIdx].id = nodeData.name;
-          this.stateManager.setAnnotations(annotations);
-        }
-      }
-
-      return {
-        success: true,
-        renamed: { oldId: nodeData.id, newId: nodeData.name }
-      };
-    }
-
-    return { success: true };
   }
 
   async deleteNode(nodeId: string): Promise<SaveResult> {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return { success: false, error: 'No file path' };
 
-    // Update local state
-    this.stateManager.removeNode(nodeId);
-
-    await this.callTopologyIO('DELETE', `/api/topology/${encodeURIComponent(filename)}/node/${encodeURIComponent(nodeId)}`);
-    return { success: true };
+    return this.callTopologyIO('DELETE', `/api/topology/${encodeURIComponent(filename)}/node/${encodeURIComponent(nodeId)}`);
   }
 
   async addLink(linkData: LinkSaveData): Promise<SaveResult> {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return { success: false, error: 'No file path' };
 
-    // Create edge element for local state
-    // Use provided ID if available, otherwise generate one
-    const edgeId = (linkData as { id?: string }).id ||
-      `${linkData.source}:${linkData.sourceEndpoint || 'eth1'}--${linkData.target}:${linkData.targetEndpoint || 'eth1'}`;
-    const edge: CyElement = {
-      group: 'edges',
-      data: {
-        id: edgeId,
-        source: linkData.source,
-        target: linkData.target,
-        sourceEndpoint: linkData.sourceEndpoint || 'eth1',
-        targetEndpoint: linkData.targetEndpoint || 'eth1',
-        ...linkData.extraData
-      }
-    };
-    this.stateManager.addEdge(edge);
-
-    await this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/link`, linkData);
-    return { success: true };
+    return this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/link`, linkData);
   }
 
   async editLink(linkData: LinkSaveData): Promise<SaveResult> {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return { success: false, error: 'No file path' };
 
-    await this.callTopologyIO('PUT', `/api/topology/${encodeURIComponent(filename)}/link`, {
+    return this.callTopologyIO('PUT', `/api/topology/${encodeURIComponent(filename)}/link`, {
       source: linkData.source,
       target: linkData.target,
       sourceEndpoint: linkData.sourceEndpoint,
@@ -264,52 +132,32 @@ export class MockPersistenceService implements IPersistenceService {
       originalSourceEndpoint: linkData.originalSourceEndpoint,
       originalTargetEndpoint: linkData.originalTargetEndpoint,
     });
-    return { success: true };
   }
 
   async deleteLink(linkData: LinkSaveData): Promise<SaveResult> {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return { success: false, error: 'No file path' };
 
-    // Update local state - find the edge by source/target/endpoints
-    const elements = this.stateManager.getElements();
-    const edgeToRemove = elements.find(el =>
-      el.group === 'edges' &&
-      el.data.source === linkData.source &&
-      el.data.target === linkData.target &&
-      (el.data.sourceEndpoint || 'eth1') === (linkData.sourceEndpoint || 'eth1') &&
-      (el.data.targetEndpoint || 'eth1') === (linkData.targetEndpoint || 'eth1')
-    );
-    if (edgeToRemove) {
-      this.stateManager.removeEdge(edgeToRemove.data.id as string);
-    }
-
-    await this.callTopologyIO('DELETE', `/api/topology/${encodeURIComponent(filename)}/link`, {
+    return this.callTopologyIO('DELETE', `/api/topology/${encodeURIComponent(filename)}/link`, {
       source: linkData.source,
       target: linkData.target,
       sourceEndpoint: linkData.sourceEndpoint,
       targetEndpoint: linkData.targetEndpoint
     });
-    return { success: true };
   }
 
   async savePositions(positions: NodePositionData[]): Promise<SaveResult> {
     const filename = this.stateManager.getCurrentFilePath();
     if (!filename) return { success: false, error: 'No file path' };
 
-    // Update local state
-    this.stateManager.updateNodePositions(positions);
-
-    // Call TopologyIO using correct endpoint
-    await this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/positions`, { positions });
-    return { success: true };
+    return this.callTopologyIO('POST', `/api/topology/${encodeURIComponent(filename)}/positions`, { positions });
   }
 
   private async callTopologyIO(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,
     body?: unknown
-  ): Promise<void> {
+  ): Promise<SaveResult> {
     try {
       const url = this.buildApiUrl(path);
       const opts: RequestInit = {
@@ -317,9 +165,17 @@ export class MockPersistenceService implements IPersistenceService {
         headers: { 'Content-Type': 'application/json' }
       };
       if (body) opts.body = JSON.stringify(body);
-      await fetch(url, opts);
+      const response = await fetch(url, opts);
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error || 'Server error' };
+      }
+      return result.data || { success: true };
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       console.error('%c[TopologyIO Error]', 'color: #f44336;', err);
+      return { success: false, error: errorMsg };
     }
   }
 }
@@ -337,26 +193,24 @@ export class MockAnnotationsService implements IAnnotationsService {
     this.buildApiUrl = buildApiUrl;
   }
 
-  async loadAnnotations(_yamlFilePath: string): Promise<TopologyAnnotations> {
-    return this.stateManager.getAnnotations();
+  async loadAnnotations(yamlFilePath: string): Promise<TopologyAnnotations> {
+    const filename = this.stateManager.getCurrentFilePath() || yamlFilePath;
+    try {
+      const url = this.buildApiUrl(`/api/annotations/${encodeURIComponent(filename)}`);
+      const response = await fetch(url);
+      const result = await response.json();
+      if (result.success && result.data) {
+        return result.data as TopologyAnnotations;
+      }
+      return {};
+    } catch (err) {
+      console.error('%c[AnnotationsIO Error]', 'color: #f44336;', err);
+      return {};
+    }
   }
 
   async saveAnnotations(yamlFilePath: string, annotations: TopologyAnnotations): Promise<void> {
-    this.stateManager.setAnnotations(annotations);
     const filename = this.stateManager.getCurrentFilePath() || yamlFilePath;
-    await this.callAnnotationsIO(filename, annotations);
-  }
-
-  async modifyAnnotations(
-    yamlFilePath: string,
-    modifier: (annotations: TopologyAnnotations) => TopologyAnnotations
-  ): Promise<void> {
-    const current = this.stateManager.getAnnotations();
-    const modified = modifier(current);
-    await this.saveAnnotations(yamlFilePath, modified);
-  }
-
-  private async callAnnotationsIO(filename: string, annotations: TopologyAnnotations): Promise<void> {
     try {
       const url = this.buildApiUrl(`/api/annotations/${encodeURIComponent(filename)}`);
       await fetch(url, {
@@ -367,6 +221,15 @@ export class MockAnnotationsService implements IAnnotationsService {
     } catch (err) {
       console.error('%c[AnnotationsIO Error]', 'color: #f44336;', err);
     }
+  }
+
+  async modifyAnnotations(
+    yamlFilePath: string,
+    modifier: (annotations: TopologyAnnotations) => TopologyAnnotations
+  ): Promise<void> {
+    const current = await this.loadAnnotations(yamlFilePath);
+    const modified = modifier(current);
+    await this.saveAnnotations(yamlFilePath, modified);
   }
 }
 
@@ -445,10 +308,17 @@ export class MockCustomNodeService implements ICustomNodeService {
     error?: string;
   }> {
     console.log(`%c[Mock] Saving custom node: ${nodeData.name}`, 'color: #4CAF50;');
-    this.stateManager.updateCustomNode(nodeData.name, nodeData);
+    const customNodes = this.stateManager.getCustomNodes();
+    const existingIndex = customNodes.findIndex((n) => n.name === nodeData.name);
+    if (existingIndex >= 0) {
+      customNodes[existingIndex] = nodeData as Record<string, unknown>;
+    } else {
+      customNodes.push(nodeData as Record<string, unknown>);
+    }
+    this.stateManager.setCustomNodes(customNodes);
     return {
       result: {
-        customNodes: this.stateManager.getCustomNodes(),
+        customNodes,
         defaultNode: this.stateManager.getState().defaultCustomNode || ''
       }
     };
@@ -459,11 +329,14 @@ export class MockCustomNodeService implements ICustomNodeService {
     error?: string;
   }> {
     console.log(`%c[Mock] Deleting custom node: ${name}`, 'color: #4CAF50;');
-    this.stateManager.deleteCustomNode(name);
+    const customNodes = this.stateManager.getCustomNodes();
+    const filtered = customNodes.filter((n) => n.name !== name);
+    this.stateManager.setCustomNodes(filtered);
+    const defaultNode = this.stateManager.getState().defaultCustomNode || '';
     return {
       result: {
-        customNodes: this.stateManager.getCustomNodes(),
-        defaultNode: this.stateManager.getState().defaultCustomNode || ''
+        customNodes: filtered,
+        defaultNode: defaultNode === name ? '' : defaultNode
       }
     };
   }
@@ -477,7 +350,7 @@ export class MockCustomNodeService implements ICustomNodeService {
     return {
       result: {
         customNodes: this.stateManager.getCustomNodes(),
-        defaultNode: this.stateManager.getState().defaultCustomNode || ''
+        defaultNode: name
       }
     };
   }
@@ -516,13 +389,16 @@ export class MockSplitViewService implements ISplitViewService {
 
   async toggle(_yamlFilePath: string): Promise<boolean> {
     if (this.splitViewPanel) {
-      return this.splitViewPanel.toggle();
+      this.splitViewPanel.toggle();
+      return this.splitViewPanel.getIsOpen();
     }
     return false;
   }
 
   updateContent(): void {
-    // No-op for mock
+    if (this.splitViewPanel) {
+      this.splitViewPanel.updateContent();
+    }
   }
 }
 
@@ -531,11 +407,31 @@ export class MockSplitViewService implements ISplitViewService {
 // ============================================================================
 
 export class MockLabSettingsService implements ILabSettingsService {
+  private buildApiUrl: (path: string) => string;
+
+  constructor(buildApiUrl: (path: string) => string) {
+    this.buildApiUrl = buildApiUrl;
+  }
+
   async saveLabSettings(
     yamlFilePath: string,
     settings: { name?: string; prefix?: string | null; mgmt?: Record<string, unknown> | null }
   ): Promise<void> {
     console.log(`%c[Mock] Saving lab settings for ${yamlFilePath}:`, 'color: #4CAF50;', settings);
+    try {
+      const url = this.buildApiUrl(`/api/topology/${encodeURIComponent(yamlFilePath)}/settings`);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      const result = await response.json();
+      if (!result.success) {
+        console.error('%c[Mock] Failed to save lab settings:', 'color: #f44336;', result.error);
+      }
+    } catch (err) {
+      console.error('%c[Mock] Failed to save lab settings:', 'color: #f44336;', err);
+    }
   }
 }
 
@@ -543,11 +439,18 @@ export class MockLabSettingsService implements ILabSettingsService {
 // Mock Context
 // ============================================================================
 
+/**
+ * Mock context that fetches from server. No local cache - server is source of truth.
+ */
 export class MockMessageRouterContext implements IMessageRouterContext {
   private stateManager: DevStateManager;
+  private buildApiUrl: (path: string) => string;
+  // Temporary cache populated by loadTopologyData - only used within a request
+  private lastElements: CyElement[] = [];
 
-  constructor(stateManager: DevStateManager) {
+  constructor(stateManager: DevStateManager, buildApiUrl: (path: string) => string) {
     this.stateManager = stateManager;
+    this.buildApiUrl = buildApiUrl;
   }
 
   get yamlFilePath(): string {
@@ -558,31 +461,48 @@ export class MockMessageRouterContext implements IMessageRouterContext {
     return this.stateManager.getMode() === 'view';
   }
 
+  // Cache methods - use temporary cache populated by loadTopologyData
   getCachedElements(): CyElement[] {
-    return this.stateManager.getElements();
+    return this.lastElements;
   }
 
   updateCachedElements(elements: CyElement[]): void {
-    this.stateManager.updateElements(elements);
+    this.lastElements = elements;
   }
 
   findCachedNode(nodeId: string): CyElement | undefined {
-    return this.stateManager.getElements().find(
+    return this.lastElements.find(
       el => el.group === 'nodes' && el.data.id === nodeId
     );
   }
 
   findCachedEdge(edgeId: string): CyElement | undefined {
-    return this.stateManager.getElements().find(
+    return this.lastElements.find(
       el => el.group === 'edges' && el.data.id === edgeId
     );
   }
 
   async loadTopologyData(): Promise<unknown> {
-    return {
-      elements: this.stateManager.getElements(),
-      annotations: this.stateManager.getAnnotations()
-    };
+    const filename = this.stateManager.getCurrentFilePath();
+    if (!filename) {
+      return { elements: [], annotations: {} };
+    }
+
+    try {
+      const url = this.buildApiUrl(`/api/topology/${encodeURIComponent(filename)}/elements`);
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const { elements, annotations } = result.data;
+        this.lastElements = elements; // Update temporary cache
+        return { elements, annotations };
+      }
+    } catch (err) {
+      console.error('%c[MockContext]', 'color: #f44336;', 'Failed to fetch topology:', err);
+    }
+
+    return { elements: [], annotations: {} };
   }
 }
 
@@ -621,8 +541,8 @@ export function createMockServices(options: {
     customNodes: new MockCustomNodeService(options.stateManager),
     clipboard: new MockClipboardService(options.stateManager),
     splitView: splitViewService,
-    labSettings: new MockLabSettingsService(),
-    context: new MockMessageRouterContext(options.stateManager),
+    labSettings: new MockLabSettingsService(options.buildApiUrl),
+    context: new MockMessageRouterContext(options.stateManager, options.buildApiUrl),
     logger: mockLogger,
   };
 }
