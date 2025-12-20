@@ -194,12 +194,6 @@
         "category": "Containerlab"
       },
       {
-        "command": "containerlab.lab.graph.reactTopoViewer",
-        "title": "Graph (TopoViewer React)",
-        "icon": "$(graph-line)",
-        "category": "Containerlab"
-      },
-      {
         "command": "containerlab.editor.topoViewerEditor",
         "title": "New topology file",
         "icon": "$(new-file)",
@@ -645,11 +639,6 @@
           "command": "containerlab.lab.graph.topoViewer",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "group": "graph@1"
-        },
-        {
-          "command": "containerlab.lab.graph.reactTopoViewer",
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@2"
         }
       ],
       "explorer/context": [
@@ -692,11 +681,6 @@
           "command": "containerlab.lab.graph.topoViewer",
           "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
           "group": "graph@1"
-        },
-        {
-          "command": "containerlab.lab.graph.reactTopoViewer",
-          "when": "resourceFilename =~ /\\.clab\\.(yml|yaml)$/",
-          "group": "graph@2"
         }
       ],
       "view/item/context": [
@@ -843,11 +827,6 @@
           "command": "containerlab.lab.graph.topoViewer",
           "when": "viewItem =~ /containerlabLab/",
           "group": "graph@1"
-        },
-        {
-          "command": "containerlab.lab.graph.reactTopoViewer",
-          "when": "viewItem =~ /containerlabLab/",
-          "group": "graph@2"
         },
         {
           "command": "containerlab.node.start",
@@ -1422,13 +1401,10 @@
     "package": "rm -rf dist && npm run typecheck && npm run lint && vsce package --allow-package-secrets npm",
     "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
-    "lint": "npm-run-all lint:ts lint:html",
+    "lint": "npm run lint:ts",
     "lint:ts": "eslint --cache --cache-location node_modules/.cache/eslint --ext .ts,.tsx .",
     "lint:ts:fix": "eslint --ext .ts,.tsx . --fix",
-    "lint:html": "prettier --check \"src/topoViewer/webview/assets/templates/**/*.html\"",
-    "lint:fix": "npm-run-all lint:ts:fix format:html",
-    "format": "npm run format:html",
-    "format:html": "prettier --write \"src/topoViewer/webview/assets/templates/**/*.html\"",
+    "lint:fix": "npm run lint:ts:fix",
     "test": "npm run test:compile && mocha --extension js --reporter mochawesome \"out/test/**/*.test.js\"",
     "test:compile": "tsc -p test/tsconfig.json",
     "test:e2e": "playwright test --config test/e2e/playwright.config.ts",

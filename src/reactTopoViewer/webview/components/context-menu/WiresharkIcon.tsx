@@ -4,8 +4,8 @@
  */
 import React from 'react';
 
-// Import wireshark SVG from legacy assets
-import wiresharkSvg from '../../../../topoViewer/webview/assets/images/wireshark_bold.svg';
+// Import wireshark SVG
+import wiresharkSvg from '../../assets/images/wireshark_bold.svg';
 
 interface WiresharkIconProps {
   className?: string;

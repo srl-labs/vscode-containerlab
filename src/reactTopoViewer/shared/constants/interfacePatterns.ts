@@ -1,7 +1,3 @@
-/**
- * Default interface patterns for various network device kinds.
- * Used to generate interface names when creating new links.
- */
 export const DEFAULT_INTERFACE_PATTERNS: Record<string, string> = {
   nokia_srlinux: 'e1-{n}',
   nokia_srsim: '1/1/c{n}/1',

@@ -8,7 +8,7 @@ import { resolveNodeConfig } from './NodeConfig';
 import { findContainerNode } from './TreeUtils';
 import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from './LinkParser';
 import { findDistributedSrosContainer, isDistributedSrosNode } from './DistributedSrosHandler';
-import { DEFAULT_INTERFACE_PATTERNS } from '../../../topoViewer/shared/constants/interfacePatterns';
+import { DEFAULT_INTERFACE_PATTERNS } from '../../shared/constants/interfacePatterns';
 
 export interface NodeBuildOptions {
   includeContainerData: boolean;

@@ -8,8 +8,6 @@ import * as fs from 'fs';
 import { execSync } from 'child_process';
 import Docker from 'dockerode';
 
-import { TopoViewerEditor } from './topoViewer/extension/services/EditorProvider';
-import { setCurrentTopoViewer } from './commands/graph';
 
 
 import { WelcomePage } from './welcomePage';
@@ -190,42 +188,9 @@ function graphTopoViewer(node: c.ClabLabTreeNode) {
   return cmd.graphTopoviewer(node, extensionContext);
 }
 
-function graphReactTopoViewer(node: c.ClabLabTreeNode) {
-  return cmd.graphReactTopoviewer(node, extensionContext);
-}
-
 async function openTopoViewerEditorCommand(node?: c.ClabLabTreeNode) {
-  const ctx = extensionContext;
-  if (!ctx) {
-    return;
-  }
-  if (!node) {
-    node = runningTreeView?.selection[0] || localTreeView?.selection[0];
-  }
-  let yamlUri: vscode.Uri | undefined;
-  if (node && node.labPath) {
-    yamlUri = vscode.Uri.file(node.labPath.absolute);
-  } else if (vscode.window.activeTextEditor) {
-    yamlUri = vscode.window.activeTextEditor.document.uri;
-  }
-  if (!yamlUri) {
-    vscode.window.showErrorMessage('No lab node or topology file selected');
-    return;
-  }
-  const baseName = path.basename(yamlUri.fsPath);
-  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-  const editor = new TopoViewerEditor(ctx);
-  setCurrentTopoViewer(editor);
-  editor.lastYamlFilePath = yamlUri.fsPath;
-  await editor.createWebviewPanel(ctx, yamlUri, labName);
-  // Ensure the global TopoViewer state tracks the created panel so command callbacks can update it
-  setCurrentTopoViewer(editor);
-  if (editor.currentPanel) {
-    editor.currentPanel.onDidDispose(() => {
-      setCurrentTopoViewer(undefined);
-    });
-  }
-  await editor.openTemplateFile(yamlUri.fsPath);
+  // Just delegate to graphTopoViewer which handles everything
+  return graphTopoViewer(node as c.ClabLabTreeNode);
 }
 
 async function createTopoViewerTemplateFileCommand() {
@@ -243,24 +208,27 @@ async function createTopoViewerTemplateFileCommand() {
     vscode.window.showWarningMessage('No file path selected. Operation canceled.');
     return;
   }
+
+  // Create a minimal template file
   const baseName = path.basename(uri.fsPath);
   const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-  const editor = new TopoViewerEditor(ctx);
-  setCurrentTopoViewer(editor);
-  try {
-    await editor.createTemplateFile(uri);
-    await editor.createWebviewPanel(ctx, uri, labName);
-    // Update the global viewer reference now that the panel is available
-    setCurrentTopoViewer(editor);
-    if (editor.currentPanel) {
-      editor.currentPanel.onDidDispose(() => {
-        setCurrentTopoViewer(undefined);
-      });
-    }
-    await editor.openTemplateFile(editor.lastYamlFilePath);
-  } catch {
-    return;
-  }
+  const template = `name: ${labName}
+
+topology:
+  nodes:
+`;
+  fs.writeFileSync(uri.fsPath, template);
+
+  // Open the file in the editor
+  const doc = await vscode.workspace.openTextDocument(uri);
+  await vscode.window.showTextDocument(doc);
+
+  // Open the TopoViewer
+  const node = {
+    labPath: { absolute: uri.fsPath, relative: path.basename(uri.fsPath) },
+    name: labName
+  } as c.ClabLabTreeNode;
+  return graphTopoViewer(node);
 }
 
 function updateHideNonOwnedLabs(hide: boolean) {
@@ -343,7 +311,6 @@ function registerCommands(context: vscode.ExtensionContext) {
     ['containerlab.lab.graph.drawio.horizontal', cmd.graphDrawIOHorizontal],
     ['containerlab.lab.graph.drawio.vertical', cmd.graphDrawIOVertical],
     ['containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive],
-    ['containerlab.lab.graph.topoViewerReload', cmd.graphTopoviewerReload],
     ['containerlab.node.start', cmd.startNode],
     ['containerlab.node.stop', cmd.stopNode],
     ['containerlab.node.pause', cmd.pauseNode],
@@ -391,7 +358,6 @@ function registerCommands(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.viewLogs', showOutputChannel));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.manageImpairments', manageImpairments));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', graphTopoViewer));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.reactTopoViewer', graphReactTopoViewer));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor.open', openTopoViewerEditorCommand));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', createTopoViewerTemplateFileCommand));
   context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectAll', () => cmd.inspectAllLabs(extensionContext)));

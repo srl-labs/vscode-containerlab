@@ -31,8 +31,8 @@ import { TopologyAnnotations, CyElement } from '../../../shared/types/topology';
 import { nodeCommandService } from '../NodeCommandService';
 import { labLifecycleService } from '../LabLifecycleService';
 import { splitViewManager } from '../SplitViewManager';
-import { customNodeConfigManager } from '../../../../topoViewer/extension/services/CustomNodeConfigManager';
-import { yamlSettingsManager } from '../../../../topoViewer/extension/services/YamlSettingsManager';
+import { customNodeConfigManager } from '../CustomNodeConfigManager';
+import { yamlSettingsManager } from '../YamlSettingsManager';
 import { log } from '../logger';
 
 // ============================================================================

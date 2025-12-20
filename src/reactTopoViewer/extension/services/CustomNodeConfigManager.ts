@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { log } from '../../webview/platform/logging/logger';
+import { log } from './logger';
 import { DEFAULT_INTERFACE_PATTERNS } from '../../shared/constants/interfacePatterns';
 
 const CONFIG_SECTION = 'containerlab.editor';
