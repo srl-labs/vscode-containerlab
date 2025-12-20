@@ -762,7 +762,7 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
 
     // End batch to flush all changes at once
     if (hasNodesToCreate || hasEdgesToCreate) {
-      endBatch();
+      void endBatch();
     }
 
     const newTextAnnotationIds = pasteTextAnnotations(

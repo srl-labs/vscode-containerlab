@@ -469,7 +469,7 @@ export function useContextMenuHandlers(
   const handleCloseLinkPanel = useCallback(() => selectEdge(null), [selectEdge]);
 
   const handleDeleteNode = useCallback((nodeId: string) => {
-    deleteNode(nodeId);  // Persist to YAML and annotations
+    void deleteNode(nodeId);  // Persist to YAML and annotations
     removeNodeAndEdges(nodeId);
     const cy = cytoscapeRef.current?.getCy();
     if (cy) {
@@ -484,7 +484,7 @@ export function useContextMenuHandlers(
       const edge = cy.getElementById(edgeId);
       if (edge.length > 0) {
         const edgeData = edge.data();
-        deleteLink({  // Persist to YAML
+        void deleteLink({  // Persist to YAML
           id: edgeId,
           source: edgeData.source,
           target: edgeData.target,

@@ -2,9 +2,8 @@
  * Context Menu Hook for Cytoscape Elements
  * Manages context menu state for nodes and edges using React-based menu
  */
-import { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import type { Core, EventObject } from 'cytoscape';
-import React from 'react';
 
 import { log } from '../../utils/logger';
 import { ContextMenuItem } from '../../components/context-menu/ContextMenu';

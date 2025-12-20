@@ -475,7 +475,7 @@ export async function activate(context: vscode.ExtensionContext) {
    *  - Initially load docker images cache
    *  - Start the docker images listener
    */
-  utils.refreshDockerImages();
+  void utils.refreshDockerImages();
   utils.startDockerImageEventMonitor(context);
 
   // Show welcome page
@@ -483,7 +483,7 @@ export async function activate(context: vscode.ExtensionContext) {
   await welcomePage.show();
 
   // Initial pull of inspect data
-  ins.update();
+  void ins.update();
 
   // Tree data provider
   setExtensionContext(context);

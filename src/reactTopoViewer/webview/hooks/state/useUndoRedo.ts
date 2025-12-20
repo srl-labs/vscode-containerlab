@@ -399,7 +399,7 @@ function applyPositionsToGraph(cy: Core, positions: NodePositionEntry[]): void {
  * Save positions via TopologyIO service
  */
 function sendPositionsToExtension(positions: NodePositionEntry[]): void {
-  saveNodePositions(positions);
+  void saveNodePositions(positions);
   log.info(`[UndoRedo] Saved ${positions.length} node positions`);
 }
 

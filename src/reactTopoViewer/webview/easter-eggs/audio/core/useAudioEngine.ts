@@ -160,7 +160,7 @@ export function useAudioEngine(
     }
 
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      void audioContextRef.current.close();
       audioContextRef.current = null;
     }
 

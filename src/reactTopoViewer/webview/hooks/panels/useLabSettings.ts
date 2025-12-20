@@ -40,7 +40,7 @@ export interface UseLabSettingsStateResult {
     remove: (index: number) => void;
     update: (index: number, field: 'key' | 'value', value: string) => void;
   };
-  handleSave: () => void;
+  handleSave: () => Promise<void>;
 }
 
 /** Parses prefix settings from lab settings */

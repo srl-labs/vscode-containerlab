@@ -28,7 +28,7 @@ async function setImpairment(node: ClabInterfaceTreeNode, impairment?: string, v
   const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`;
   const msg = `set ${impairment} to ${value} for ${node.name} on ${node.parentName}.`;
   vscode.window.showInformationMessage(`Attempting to ${msg}`);
-  execCommandInOutput(cmd, false,
+  void execCommandInOutput(cmd, false,
     () => { vscode.window.showInformationMessage(`Successfully ${msg}`); },
     (_proc: unknown, stderr: string): void => {
       vscode.window.showErrorMessage(`Failed to ${msg}\n\n${stderr}.`);
@@ -50,7 +50,7 @@ async function promptImpairment(
     return;
   }
   const val = await vscode.window.showInputBox({ title, placeHolder, validateInput: validator });
-  setImpairment(node, impairment, val);
+  void setImpairment(node, impairment, val);
 }
 
 export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {

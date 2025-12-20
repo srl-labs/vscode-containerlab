@@ -230,7 +230,7 @@ function createGroupMoveAction(
 /** Save node positions via TopologyIO service */
 function sendNodePositionsToExtension(positions: NodePositionEntry[]): void {
   if (positions.length === 0) return;
-  saveNodePositions(positions);
+  void saveNodePositions(positions);
   log.info(`[GroupDragUndo] Saved ${positions.length} member node positions`);
 }
 

@@ -638,6 +638,8 @@ export async function initializeMapLibre(
 
     // Wait for map to load (avoid hanging forever if CSP/network blocks resources)
     const mapLoaded = new Promise<void>((resolve) => {
+      // MapLibre's once() returns `this` when callback is provided, not a Promise
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       map.once('load', () => {
         log.info('[MapLibre] Map loaded');
         resolve();

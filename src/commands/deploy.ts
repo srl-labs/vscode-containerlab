@@ -58,5 +58,5 @@ export async function deploySpecificFile() {
     vscode.TreeItemCollapsibleState.None,
     { absolute: labRef, relative: "" }
   );
-  deploy(tempNode);
+  void deploy(tempNode);
 }

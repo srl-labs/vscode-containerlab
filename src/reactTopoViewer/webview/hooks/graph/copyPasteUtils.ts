@@ -344,7 +344,7 @@ function persistPastedNodes(nodes: CyElementJson[]): void {
         interfacePattern: node.data.interfacePattern
       }
     };
-    createNode(nodeData);
+    void createNode(nodeData);
   }
 }
 
@@ -361,7 +361,7 @@ function persistPastedEdges(edges: CyElementJson[]): void {
       sourceEndpoint: (edge.data.sourceEndpoint as string) || '',
       targetEndpoint: (edge.data.targetEndpoint as string) || ''
     };
-    createLink(linkData);
+    void createLink(linkData);
   }
 }
 
@@ -375,7 +375,7 @@ export function persistPastedElements(elements: CyElementJson[]): void {
   persistPastedEdges(edges);
 
   // Note: positions are saved as part of createNode, no separate call needed
-  endBatch();
+  void endBatch();
 }
 
 function applyPastePositionDelta(

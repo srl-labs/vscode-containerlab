@@ -44,7 +44,7 @@ const CopyableCode: React.FC<{ text: string; className?: string }> = ({ text, cl
   return (
     <button
       type="button"
-      onClick={handleCopy}
+      onClick={() => void handleCopy()}
       className={`inline-flex items-center gap-1.5 font-mono text-xs px-1.5 py-0.5 rounded
         bg-[var(--vscode-textCodeBlock-background)]
         hover:bg-[var(--vscode-list-hoverBackground)]

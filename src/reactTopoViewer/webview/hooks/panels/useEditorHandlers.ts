@@ -12,6 +12,9 @@ import type { CustomNodeTemplate } from '../../context/TopoViewerContext';
 import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel';
 import type { MembershipEntry } from '../state/useUndoRedo';
 import type { CytoscapeCanvasRef } from '../../components/canvas';
+import { convertEditorDataToNodeSaveData, convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
+import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversions';
+import { editNode as editNodeService, editLink as editLinkService, isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
 
 /** Pending membership change during node drag */
 export interface PendingMembershipChange {
@@ -19,9 +22,6 @@ export interface PendingMembershipChange {
   oldGroupId: string | null;
   newGroupId: string | null;
 }
-import { convertEditorDataToNodeSaveData, convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
-import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversions';
-import { editNode as editNodeService, editLink as editLinkService, isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
 
 // ============================================================================
 // Types
@@ -118,7 +118,7 @@ export function useNodeEditorHandlers(
     }
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
-    editNodeService(saveData);
+    void editNodeService(saveData);
 
     // Handle rename: update graph state via dispatch
     if (oldName && renameNode) {
@@ -151,7 +151,7 @@ export function useNodeEditorHandlers(
       }
     }
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
-    editNodeService(saveData);
+    void editNodeService(saveData);
 
     // Handle rename: update graph state via dispatch
     if (oldName && renameNode) {
@@ -205,7 +205,7 @@ export function useLinkEditorHandlers(
       });
     }
     const saveData = convertEditorDataToLinkSaveData(data);
-    editLinkService(saveData);
+    void editLinkService(saveData);
     initialDataRef.current = null;
     editEdge(null);
   }, [editEdge, recordPropertyEdit]);
@@ -224,7 +224,7 @@ export function useLinkEditorHandlers(
       }
     }
     const saveData = convertEditorDataToLinkSaveData(data);
-    editLinkService(saveData);
+    void editLinkService(saveData);
   }, [recordPropertyEdit]);
 
   return { handleClose, handleSave, handleApply };
@@ -251,7 +251,7 @@ export function useNetworkEditorHandlers(
       const topologyIO = getTopologyIO();
       const yamlPath = topologyIO.getYamlFilePath();
       if (yamlPath) {
-        annotationsIO.modifyAnnotations(yamlPath, annotations => {
+        void annotationsIO.modifyAnnotations(yamlPath, annotations => {
           if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
           const existing = annotations.nodeAnnotations.find(n => n.id === data.id);
           if (existing) {
@@ -272,7 +272,7 @@ export function useNetworkEditorHandlers(
       const topologyIO = getTopologyIO();
       const yamlPath = topologyIO.getYamlFilePath();
       if (yamlPath) {
-        annotationsIO.modifyAnnotations(yamlPath, annotations => {
+        void annotationsIO.modifyAnnotations(yamlPath, annotations => {
           if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
           const existing = annotations.nodeAnnotations.find(n => n.id === data.id);
           if (existing) {

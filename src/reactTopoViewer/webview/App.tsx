@@ -463,7 +463,7 @@ export const App: React.FC = () => {
       const topologyIO = getTopologyIO();
       const yamlPath = topologyIO.getYamlFilePath();
       if (yamlPath) {
-        annotationsIO.modifyAnnotations(yamlPath, annotations => {
+        void annotationsIO.modifyAnnotations(yamlPath, annotations => {
           if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
           annotations.nodeAnnotations.push({
             id: networkId,

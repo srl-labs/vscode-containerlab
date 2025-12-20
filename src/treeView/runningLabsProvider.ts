@@ -147,7 +147,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         if (runningTreeView) {
             runningTreeView.message = `Filter: ${filterText}`;
         }
-        this.refreshWithoutDiscovery();
+        void this.refreshWithoutDiscovery();
     }
 
     clearTreeFilter() {
@@ -155,7 +155,7 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
         if (runningTreeView) {
             runningTreeView.message = undefined;
         }
-        this.refreshWithoutDiscovery();
+        void this.refreshWithoutDiscovery();
     }
 
     /**

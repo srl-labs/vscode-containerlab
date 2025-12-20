@@ -60,7 +60,7 @@ export class WelcomePage {
           this.saveWelcomePageSetting(!message.value);
           break;
         case 'getRepos':
-          this.fetchGitHubRepos();
+          void this.fetchGitHubRepos();
           break;
       }
     });

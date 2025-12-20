@@ -116,7 +116,7 @@ export async function runContainerAction(containerId: string, action: ContainerA
     return;
   }
 
-  const container = await dockerClient.getContainer(containerId);
+  const container = dockerClient.getContainer(containerId);
   if (!container) {
     vscode.window.showErrorMessage(`Unable to ${action} container: Failed to get '${containerId}'`);
     return;

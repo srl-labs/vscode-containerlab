@@ -124,10 +124,10 @@ function addNodeWithPersistence(cy: CyCore | null, addNode: (n: CyElement) => vo
         interfacePattern: data.interfacePattern
       }
     };
-    createNode(nodeData);
+    void createNode(nodeData);
   } else {
     // Only save position if node already exists (undo/redo case)
-    saveNodePositions([{ id, position: pos }]);
+    void saveNodePositions([{ id, position: pos }]);
   }
 }
 
@@ -145,7 +145,7 @@ function addEdgeWithPersistence(cy: CyCore | null, addEdge: (e: CyElement) => vo
     sourceEndpoint: data.sourceEndpoint as string | undefined,
     targetEndpoint: data.targetEndpoint as string | undefined
   };
-  createLink(linkData);
+  void createLink(linkData);
 }
 
 function deleteEdgeWithPersistence(
@@ -305,7 +305,7 @@ function createEdgeCreatedHandler(
       sourceEndpoint: edgeData.sourceEndpoint,
       targetEndpoint: edgeData.targetEndpoint
     };
-    createLink(linkData);
+    void createLink(linkData);
 
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
@@ -341,7 +341,7 @@ function createNodeCreatedHandler(
         interfacePattern: extraData?.interfacePattern ?? data.interfacePattern
       }
     };
-    createNode(nodeData);
+    void createNode(nodeData);
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
         type: 'graph',
@@ -426,7 +426,7 @@ function applyNodePropertyEdit(
       interfacePattern: dataToApply.interfacePattern
     }
   };
-  editNode(nodeData);
+  void editNode(nodeData);
 }
 
 /**
@@ -455,7 +455,7 @@ function applyLinkPropertyEdit(
     originalSourceEndpoint: currentState.sourceEndpoint as string | undefined,
     originalTargetEndpoint: currentState.targetEndpoint as string | undefined,
   };
-  editLink(linkData);
+  void editLink(linkData);
 }
 
 function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
@@ -469,7 +469,7 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     try {
       replayGraphChanges(changes, { cy: cyInstance, addNode, addEdge, menuHandlers });
     } finally {
-      endBatch();
+      void endBatch();
       isApplyingUndoRedo.current = false;
     }
   }, [cyInstance, addNode, addEdge, menuHandlers]);

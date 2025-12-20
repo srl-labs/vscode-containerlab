@@ -74,7 +74,7 @@ export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
   dockerClient.getEvents({ filters:{ type: ["image"] }}).then(stream => {
       const onData = () => {
         // upon any event, the cache should be updated.
-        refreshDockerImages();
+        void refreshDockerImages();
       };
 
       const onError = (err: Error) => {

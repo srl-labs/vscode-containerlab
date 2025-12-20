@@ -120,7 +120,7 @@ function createFlushHandler(
 
     if (mode === 'edit') {
       // Save positions asynchronously via TopologyIO
-      savePositions(afterPositions);
+      void savePositions(afterPositions);
     }
 
     if (onMoveComplete) {

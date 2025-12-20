@@ -70,7 +70,7 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 
   const graphCmd = new ClabCommand("graph", node, undefined, true, "Containerlab Graph");
 
-  graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
+  void graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
 }
 
 

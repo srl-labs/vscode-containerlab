@@ -25,7 +25,7 @@ export async function saveLab(node: ClabLabTreeNode) {
   // Create a ClabCommand for "save" using the lab node.
   const saveCmd = new ClabCommand("save", node);
   // ClabCommand automatically appends "-t <labPath>".
-  saveCmd.run();
+  void saveCmd.run();
 }
 
 /**
@@ -58,5 +58,5 @@ export async function saveNode(node: ClabContainerTreeNode) {
 
   const saveCmd = new ClabCommand("save", tempLabNode);
   // Use --node-filter instead of -n and use the short name
-  saveCmd.run(["--node-filter", shortNodeName]);
+  void saveCmd.run(["--node-filter", shortNodeName]);
 }

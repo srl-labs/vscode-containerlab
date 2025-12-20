@@ -158,7 +158,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
         sourcePattern={sourcePattern.trim()}
         targetPattern={targetPattern.trim()}
         onCancel={handleDismissConfirm}
-        onConfirm={handleConfirmCreate}
+        onConfirm={() => void handleConfirmCreate()}
       />
     </>
   );

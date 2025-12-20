@@ -4,6 +4,7 @@
  */
 
 import { NodeEditorData, HealthCheckConfig, SrosComponent } from '../types/editors';
+import type { NodeSaveData } from '../../shared/io/NodePersistenceIO';
 
 import { getString, getNumber, getBoolean, getStringArray, getRecord } from './typeHelpers';
 
@@ -439,8 +440,6 @@ export function convertEditorDataToYaml(data: Record<string, unknown>): YamlExtr
 // ============================================================================
 // NodeEditorData -> NodeSaveData (for TopologyIO service)
 // ============================================================================
-
-import type { NodeSaveData } from '../../shared/io/NodePersistenceIO';
 
 /**
  * Convert NodeEditorData to NodeSaveData format for TopologyIO.

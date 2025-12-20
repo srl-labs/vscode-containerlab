@@ -7,7 +7,7 @@
  * Each hook extends this with track-specific methods
  */
 export interface AudioEngineReturn {
-  play: () => void;
+  play: () => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;

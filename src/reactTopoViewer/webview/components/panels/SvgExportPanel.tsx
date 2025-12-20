@@ -198,7 +198,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({ isVisible, onClo
           <button
             type="button"
             className="btn btn-primary btn-small"
-            onClick={handleExport}
+            onClick={() => void handleExport()}
             disabled={isExporting || !cy}
           >
             {isExporting ? (

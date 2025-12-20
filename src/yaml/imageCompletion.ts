@@ -179,7 +179,7 @@ async function provideImageCompletions(
     return undefined;
   }
 
-  const images = await utils.getDockerImages();
+  const images = utils.getDockerImages();
   if (images.length === 0) {
     return undefined;
   }

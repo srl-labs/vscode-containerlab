@@ -10,6 +10,8 @@
  */
 
 import { FileSystemAdapter, TopologyIO, AnnotationsIO, IOLogger, noopLogger } from '../../shared/io/browser';
+import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../shared/types/topology';
+import type { NodeSaveData, LinkSaveData } from '../../shared/io/TopologyIO';
 
 // Global service instances
 let annotationsIO: AnnotationsIO | null = null;
@@ -110,9 +112,6 @@ export function resetServices(): void {
 // ============================================================================
 // Annotation Saving Helpers
 // ============================================================================
-
-import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../shared/types/topology';
-import type { NodeSaveData, LinkSaveData } from '../../shared/io/TopologyIO';
 
 // Warning messages
 const WARN_SERVICES_NOT_INIT = '[Services] Cannot save annotations: services not initialized';
