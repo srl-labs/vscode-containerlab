@@ -5,6 +5,7 @@
 import React, { useMemo } from 'react';
 import { FreeTextAnnotation } from '../../../../shared/types/topology';
 import { renderMarkdown, MARKDOWN_EMPTY_MESSAGE } from '../../../utils/markdownRenderer';
+import { Toggle, ColorSwatch, PREVIEW_GRID_BG } from '../../shared/form';
 
 const FONTS = ['monospace', 'sans-serif', 'serif', 'Arial', 'Helvetica', 'Courier New', 'Times New Roman', 'Georgia'];
 
@@ -32,36 +33,6 @@ const IconBtn: React.FC<{ active: boolean; onClick: () => void; children: React.
   >
     {children}
   </button>
-);
-
-// Toggle pill button
-const Toggle: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-150 ${
-      active
-        ? 'bg-[var(--accent)] text-white shadow-sm'
-        : 'bg-white/5 text-[var(--vscode-foreground)] hover:bg-white/10 border border-white/10'
-    }`}
-  >
-    {children}
-  </button>
-);
-
-// Color swatch with label
-const ColorSwatch: React.FC<{ label: string; value: string; onChange: (v: string) => void; disabled?: boolean }> = ({ label, value, onChange, disabled }) => (
-  <div className="flex flex-col items-center gap-1">
-    <div className={`relative w-10 h-10 rounded-xl overflow-hidden shadow-sm border-2 border-white/20 ${disabled ? 'opacity-40' : ''}`}>
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer border-0"
-      />
-    </div>
-    <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">{label}</span>
-  </div>
 );
 
 // Formatting toolbar
@@ -147,9 +118,6 @@ const StyleOptions: React.FC<{ formData: FreeTextAnnotation; updateField: Props[
     </div>
   );
 };
-
-// Grid pattern background for preview
-const PREVIEW_GRID_BG = "bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grid%22%20width%3D%2220%22%20height%3D%2220%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M%200%200%20L%2020%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.03)%22%20stroke-width%3D%221%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23grid)%22%2F%3E%3C%2Fsvg%3E')]";
 
 // Compute preview content style
 function computePreviewStyle(formData: FreeTextAnnotation): React.CSSProperties {

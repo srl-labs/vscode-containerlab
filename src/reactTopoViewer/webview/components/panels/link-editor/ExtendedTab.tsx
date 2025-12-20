@@ -2,27 +2,9 @@
  * ExtendedTab - Extended link configuration (MAC, MTU, vars, labels)
  */
 import React from 'react';
-import { FormField, InputField, KeyValueList } from '../../shared/form';
+import { FormField, InputField, KeyValueList, ReadOnlyBadge } from '../../shared/form';
 import { LinkTabProps, LinkEditorData } from './types';
-
-// CSS variable constants
-const CSS_BG_QUOTE = 'var(--vscode-textBlockQuote-background)';
-const CSS_BORDER_QUOTE = 'var(--vscode-textBlockQuote-border)';
-
-// Style objects
-const quoteBlockStyle: React.CSSProperties = {
-  backgroundColor: CSS_BG_QUOTE,
-  border: `1px solid ${CSS_BORDER_QUOTE}`
-};
-
-/**
- * Read-only display badge
- */
-const ReadOnlyBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="text-base px-2 py-1 inline-block rounded" style={quoteBlockStyle}>
-    {children}
-  </span>
-);
+import { quoteBlockStyle } from '../../../styles/cssVariables';
 
 /**
  * Header section with link name and type

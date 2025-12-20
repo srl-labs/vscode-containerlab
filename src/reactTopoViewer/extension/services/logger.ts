@@ -99,3 +99,18 @@ export const log = {
     logMessage('error', msg);
   }
 };
+
+/**
+ * Log with explicit file:line location (for webview messages).
+ * Used by MessageRouter to handle log messages from the webview.
+ */
+export function logWithLocation(level: string, message: string, fileLine?: string): void {
+  const channel = getLogChannel();
+  const text = fileLine ? `${fileLine} - ${message}` : message;
+  switch (level) {
+    case 'error': channel.error(text); break;
+    case 'warn': channel.warn(text); break;
+    case 'debug': channel.debug(text); break;
+    default: channel.info(text);
+  }
+}

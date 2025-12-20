@@ -7,6 +7,7 @@
 import React, { useState, useCallback } from 'react';
 import { TabProps } from './types';
 import { FormField, InputField, CheckboxField, Section } from '../../shared/form';
+import { copyToClipboard } from '../../../utils/clipboard';
 
 /**
  * Interface pattern example with description
@@ -23,39 +24,6 @@ const PATTERN_EXAMPLES: PatternExample[] = [
   { pattern: 'Gi0/0/{n:1-4}', description: 'Range 1-4 only', result: 'Gi0/0/1, Gi0/0/2, Gi0/0/3, Gi0/0/4' },
   { pattern: 'xe-0/0/{n:0}', description: 'Juniper style', result: 'xe-0/0/0, xe-0/0/1...' },
 ];
-
-/**
- * Copy text to clipboard with fallback
- */
-async function copyToClipboard(text: string): Promise<boolean> {
-  // Try modern clipboard API first
-  if (typeof window !== 'undefined' && window.navigator?.clipboard) {
-    try {
-      await window.navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Fall through to fallback
-    }
-  }
-
-  // Fallback using selection
-  if (typeof document !== 'undefined') {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand('copy'); // eslint-disable-line sonarjs/deprecation
-      return true;
-    } finally {
-      document.body.removeChild(textarea);
-    }
-  }
-
-  return false;
-}
 
 /**
  * Copyable code snippet with copy button

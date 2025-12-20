@@ -2,15 +2,7 @@
  * Section - Bordered section with title and optional inheritance badge
  */
 import React from 'react';
-
-/**
- * Inheritance badge - shown when a section's values come from defaults, kinds, or groups
- */
-const InheritanceBadge: React.FC = () => (
-  <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] rounded">
-    inherited
-  </span>
-);
+import { InheritanceBadge } from './Badge';
 
 interface SectionProps {
   title: string;

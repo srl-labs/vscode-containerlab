@@ -34,7 +34,7 @@ function saveSize(key: string | undefined, size: { width: number; height: number
   if (key) try { window.localStorage.setItem(`panel-size-${key}`, JSON.stringify(size)); } catch { /* ignore */ }
 }
 
-export function useResizeEvents(isResizing: boolean, onMove: (e: MouseEvent) => void, onEnd: () => void) {
+function useResizeEvents(isResizing: boolean, onMove: (e: MouseEvent) => void, onEnd: () => void) {
   useEffect(() => {
     if (!isResizing) return;
     document.addEventListener('mousemove', onMove);
@@ -43,7 +43,7 @@ export function useResizeEvents(isResizing: boolean, onMove: (e: MouseEvent) => 
   }, [isResizing, onMove, onEnd]);
 }
 
-export function useWindowResize(minW: number, minH: number, posRef: React.RefObject<Pos>, setSize: React.Dispatch<React.SetStateAction<Size>>) {
+function useWindowResize(minW: number, minH: number, posRef: React.RefObject<Pos>, setSize: React.Dispatch<React.SetStateAction<Size>>) {
   useEffect(() => {
     const fn = () => setSize(prev => prev.height === undefined ? prev : constrainSize(prev.width, prev.height, posRef.current!, minW, minH));
     window.addEventListener('resize', fn);

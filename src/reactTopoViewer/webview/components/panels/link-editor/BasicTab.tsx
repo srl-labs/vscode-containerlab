@@ -2,26 +2,8 @@
  * BasicTab - Basic link configuration (endpoints)
  */
 import React from 'react';
-import { FormField, InputField } from '../../shared/form';
+import { FormField, InputField, ReadOnlyBadge } from '../../shared/form';
 import { LinkTabProps } from './types';
-
-// CSS variable constants
-const CSS_BG_QUOTE = 'var(--vscode-textBlockQuote-background)';
-const CSS_BORDER_QUOTE = 'var(--vscode-textBlockQuote-border)';
-
-const readOnlyStyle: React.CSSProperties = {
-  backgroundColor: CSS_BG_QUOTE,
-  border: `1px solid ${CSS_BORDER_QUOTE}`
-};
-
-/**
- * Read-only badge for displaying non-editable values
- */
-const ReadOnlyBadge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="text-base px-2 py-1 inline-block rounded" style={readOnlyStyle}>
-    {children}
-  </span>
-);
 
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
   return (

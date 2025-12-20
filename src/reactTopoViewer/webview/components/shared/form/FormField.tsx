@@ -2,6 +2,7 @@
  * FormField - Label wrapper with optional tooltip and inheritance badge
  */
 import React from 'react';
+import { InheritanceBadge } from './Badge';
 
 interface FormFieldProps {
   label: string;
@@ -12,15 +13,6 @@ interface FormFieldProps {
   /** When true, shows an "inherited" badge indicating the value comes from defaults/kinds/groups */
   inherited?: boolean;
 }
-
-/**
- * Inheritance badge - shown when a field value comes from defaults, kinds, or groups
- */
-const InheritanceBadge: React.FC = () => (
-  <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] rounded">
-    inherited
-  </span>
-);
 
 export const FormField: React.FC<FormFieldProps> = ({
   label,

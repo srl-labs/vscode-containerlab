@@ -2,19 +2,11 @@
  * CopyableCode - Inline code with click-to-copy functionality
  */
 import React from 'react';
+import { copyToClipboard } from '../../../utils/clipboard';
 
 interface CopyableCodeProps {
   children: string;
   className?: string;
-}
-
-async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    await window.navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export const CopyableCode: React.FC<CopyableCodeProps> = ({ children, className = '' }) => {

@@ -2,7 +2,7 @@
  * Panel-related hooks
  */
 
-export { usePanelResize, useResizeEvents, useWindowResize } from './usePanelResize';
+export { usePanelResize } from './usePanelResize';
 export { useBulkLinkPanel } from './useBulkLinkPanel';
 export { useLabSettingsState } from './useLabSettings';
 export type { UseLabSettingsStateResult } from './useLabSettings';

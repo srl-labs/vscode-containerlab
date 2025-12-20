@@ -8,7 +8,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { log } from '../services/logger';
+import { log, logWithLocation } from '../services/logger';
 import { CyElement } from '../../shared/types/topology';
 import { TopologyIO } from '../../shared/io';
 import {
@@ -23,27 +23,6 @@ import {
 
 // Re-export types for backward compatibility
 export type { NodePositionData, WebviewMessage } from '../../shared/messaging';
-
-// Create output channel for React TopoViewer logs
-let reactTopoViewerLogChannel: vscode.LogOutputChannel | undefined;
-
-function getLogChannel(): vscode.LogOutputChannel {
-  if (!reactTopoViewerLogChannel) {
-    reactTopoViewerLogChannel = vscode.window.createOutputChannel('TopoViewer React', { log: true });
-  }
-  return reactTopoViewerLogChannel;
-}
-
-function logToChannel(level: string, message: string, fileLine?: string): void {
-  const channel = getLogChannel();
-  const text = fileLine ? `${fileLine} - ${message}` : message;
-  switch (level) {
-    case 'error': channel.error(text); break;
-    case 'warn': channel.warn(text); break;
-    case 'debug': channel.debug(text); break;
-    default: channel.info(text);
-  }
-}
 
 /**
  * Context required by the message router
@@ -125,7 +104,7 @@ export class MessageRouter {
   private handleLogCommand(message: SharedWebviewMessage): boolean {
     if (message.command === 'reactTopoViewerLog') {
       const { level, message: logMsg, fileLine } = message as SharedWebviewMessage & { fileLine?: string };
-      logToChannel(level || 'info', logMsg || '', fileLine);
+      logWithLocation(level || 'info', logMsg || '', fileLine);
       return true;
     }
     if (message.command === 'topoViewerLog') {
