@@ -6,20 +6,38 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { log } from '../../utils/logger';
 
+/**
+ * SROS component types for nokia_srsim nodes
+ */
+export interface SrosComponentTypes {
+  sfm: string[];
+  cpm: string[];
+  card: string[];
+  mda: string[];
+  xiom: string[];
+  xiomMda: string[];
+}
+
 // Extend Window to include schema data
 declare global {
   interface Window {
     __SCHEMA_DATA__?: {
       kinds: string[];
       typesByKind: Record<string, string[]>;
+      srosComponentTypes?: SrosComponentTypes;
     };
   }
 }
+
+const EMPTY_SROS_TYPES: SrosComponentTypes = {
+  sfm: [], cpm: [], card: [], mda: [], xiom: [], xiomMda: []
+};
 
 interface SchemaData {
   kinds: string[];
   typesByKind: Map<string, string[]>;
   kindsWithTypeSupport: Set<string>;
+  srosComponentTypes: SrosComponentTypes;
   isLoaded: boolean;
   error: string | null;
 }
@@ -37,6 +55,7 @@ export function useSchema(): UseSchemaResult {
     kinds: [],
     typesByKind: new Map(),
     kindsWithTypeSupport: new Set(),
+    srosComponentTypes: EMPTY_SROS_TYPES,
     isLoaded: false,
     error: null
   });
@@ -63,12 +82,16 @@ export function useSchema(): UseSchemaResult {
       }
     }
 
-    log.info(`Schema loaded: ${kinds.length} kinds, ${typesByKind.size} kinds with type options`);
+    // Get SROS component types
+    const srosComponentTypes = data.srosComponentTypes || EMPTY_SROS_TYPES;
+
+    log.info(`Schema loaded: ${kinds.length} kinds, ${typesByKind.size} kinds with type options, SROS types: sfm=${srosComponentTypes.sfm.length}, cpm=${srosComponentTypes.cpm.length}, card=${srosComponentTypes.card.length}, mda=${srosComponentTypes.mda.length}`);
 
     setSchemaData({
       kinds,
       typesByKind,
       kindsWithTypeSupport,
+      srosComponentTypes,
       isLoaded: true,
       error: null
     });

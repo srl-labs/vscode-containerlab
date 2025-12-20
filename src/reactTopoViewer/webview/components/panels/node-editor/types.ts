@@ -5,6 +5,52 @@
 export type NodeEditorTabId = 'basic' | 'components' | 'config' | 'runtime' | 'network' | 'advanced';
 
 /**
+ * Integrated SROS types (simpler chassis with just MDA slots)
+ */
+export const INTEGRATED_SROS_TYPES = new Set([
+  'sr-1', 'sr-1s', 'ixr-r6', 'ixr-ec', 'ixr-e2', 'ixr-e2c'
+]);
+
+/**
+ * Health check configuration
+ */
+export interface HealthCheckConfig {
+  test?: string;
+  startPeriod?: number;
+  interval?: number;
+  timeout?: number;
+  retries?: number;
+}
+
+/**
+ * SROS MDA (Media Dependent Adapter) configuration
+ */
+export interface SrosMda {
+  slot?: number;
+  type?: string;
+}
+
+/**
+ * SROS XIOM (Extension I/O Module) configuration
+ */
+export interface SrosXiom {
+  slot?: number;
+  type?: string;
+  mda?: SrosMda[];
+}
+
+/**
+ * SROS Component configuration (CPM, Card)
+ */
+export interface SrosComponent {
+  slot?: string | number;
+  type?: string;
+  sfm?: string;
+  mda?: SrosMda[];
+  xiom?: SrosXiom[];
+}
+
+/**
  * Node editor data structure
  */
 export interface NodeEditorData {
@@ -65,14 +111,7 @@ export interface NodeEditorData {
   runtime?: string;
   // Components (SROS)
   isDistributed?: boolean;
-}
-
-export interface HealthCheckConfig {
-  test?: string;
-  startPeriod?: number;
-  interval?: number;
-  timeout?: number;
-  retries?: number;
+  components?: SrosComponent[];
 }
 
 /**
@@ -81,4 +120,6 @@ export interface HealthCheckConfig {
 export interface TabProps {
   data: NodeEditorData;
   onChange: (updates: Partial<NodeEditorData>) => void;
+  /** Array of property names that are inherited from defaults/kinds/groups */
+  inheritedProps?: string[];
 }

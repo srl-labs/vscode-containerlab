@@ -1,10 +1,11 @@
 /**
  * Node Editor Panel - Multi-tab editor for node configuration
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { EditorPanel, TabDefinition } from '../../shared/editor';
 import { NodeEditorData, NodeEditorTabId } from './types';
 import { BasicTab } from './BasicTab';
+import { ComponentsTab } from './ComponentsTab';
 import { ConfigTab } from './ConfigTab';
 import { RuntimeTab } from './RuntimeTab';
 import { NetworkTab } from './NetworkTab';
@@ -16,15 +17,30 @@ interface NodeEditorPanelProps {
   onClose: () => void;
   onSave: (data: NodeEditorData) => void;
   onApply: (data: NodeEditorData) => void;
+  /** Array of property names that are inherited from defaults/kinds/groups */
+  inheritedProps?: string[];
 }
 
-const TABS: TabDefinition[] = [
+/** Base tabs available for all nodes */
+const BASE_TABS: TabDefinition[] = [
   { id: 'basic', label: 'Basic' },
   { id: 'config', label: 'Configuration' },
   { id: 'runtime', label: 'Runtime' },
   { id: 'network', label: 'Network' },
   { id: 'advanced', label: 'Advanced' }
 ];
+
+/** Components tab for SROS nodes */
+const COMPONENTS_TAB: TabDefinition = { id: 'components', label: 'Components' };
+
+/** Get tabs based on node kind */
+function getTabsForNode(kind: string | undefined): TabDefinition[] {
+  if (kind === 'nokia_srsim') {
+    // Insert Components tab after Basic tab
+    return [BASE_TABS[0], COMPONENTS_TAB, ...BASE_TABS.slice(1)];
+  }
+  return BASE_TABS;
+}
 
 /**
  * Custom hook to manage node editor form state with change tracking
@@ -68,13 +84,15 @@ const TabContent: React.FC<{
   activeTab: NodeEditorTabId;
   formData: NodeEditorData;
   onChange: (updates: Partial<NodeEditorData>) => void;
-}> = ({ activeTab, formData, onChange }) => {
+  inheritedProps?: string[];
+}> = ({ activeTab, formData, onChange, inheritedProps = [] }) => {
   switch (activeTab) {
-    case 'basic': return <BasicTab data={formData} onChange={onChange} />;
-    case 'config': return <ConfigTab data={formData} onChange={onChange} />;
-    case 'runtime': return <RuntimeTab data={formData} onChange={onChange} />;
-    case 'network': return <NetworkTab data={formData} onChange={onChange} />;
-    case 'advanced': return <AdvancedTab data={formData} onChange={onChange} />;
+    case 'basic': return <BasicTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
+    case 'components': return <ComponentsTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
+    case 'config': return <ConfigTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
+    case 'runtime': return <RuntimeTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
+    case 'network': return <NetworkTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
+    case 'advanced': return <AdvancedTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
     default: return null;
   }
 };
@@ -99,9 +117,13 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
   nodeData,
   onClose,
   onSave,
-  onApply
+  onApply,
+  inheritedProps = []
 }) => {
   const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData } = useNodeEditorForm(nodeData);
+
+  // Get dynamic tabs based on node kind
+  const tabs = useMemo(() => getTabsForNode(formData?.kind), [formData?.kind]);
 
   const handleApply = useCallback(() => {
     if (formData) {
@@ -125,7 +147,7 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
       onClose={onClose}
       onApply={handleApply}
       onSave={handleSave}
-      tabs={TABS}
+      tabs={tabs}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
       storageKey="node-editor"
@@ -133,7 +155,7 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
       hasChanges={hasChanges}
       testId="node-editor"
     >
-      <TabContent activeTab={activeTab} formData={formData} onChange={handleChange} />
+      <TabContent activeTab={activeTab} formData={formData} onChange={handleChange} inheritedProps={inheritedProps} />
     </EditorPanel>
   );
 };

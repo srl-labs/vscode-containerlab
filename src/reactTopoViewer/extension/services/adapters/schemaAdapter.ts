@@ -30,6 +30,10 @@ export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaDa
     return parseSchemaData(schema);
   } catch (err) {
     log.error(`Error loading schema data: ${err}`);
-    return { kinds: [], typesByKind: {} };
+    return {
+      kinds: [],
+      typesByKind: {},
+      srosComponentTypes: { sfm: [], cpm: [], card: [], mda: [], xiom: [], xiomMda: [] }
+    };
   }
 }

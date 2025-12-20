@@ -5,9 +5,12 @@ import React from 'react';
 import { TabProps } from './types';
 import { FormField, InputField, CheckboxField, DynamicList, KeyValueList } from '../../shared/form';
 
-const StartupConfigSection: React.FC<TabProps> = ({ data, onChange }) => (
+/** Helper to check if a property is inherited */
+const isInherited = (prop: string, inheritedProps: string[] = []) => inheritedProps.includes(prop);
+
+const StartupConfigSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
   <>
-    <FormField label="Startup Config">
+    <FormField label="Startup Config" inherited={isInherited('startup-config', inheritedProps)}>
       <InputField
         id="node-startup-config"
         value={data.startupConfig || ''}
@@ -27,7 +30,7 @@ const StartupConfigSection: React.FC<TabProps> = ({ data, onChange }) => (
       checked={data.suppressStartupConfig || false}
       onChange={(checked) => onChange({ suppressStartupConfig: checked })}
     />
-    <FormField label="License File">
+    <FormField label="License File" inherited={isInherited('license', inheritedProps)}>
       <InputField
         id="node-license"
         value={data.license || ''}
@@ -38,9 +41,9 @@ const StartupConfigSection: React.FC<TabProps> = ({ data, onChange }) => (
   </>
 );
 
-const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange }) => (
+const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
   <>
-    <FormField label="Bind Mounts">
+    <FormField label="Bind Mounts" inherited={isInherited('binds', inheritedProps)}>
       <DynamicList
         items={data.binds || []}
         onChange={(items) => onChange({ binds: items })}
@@ -48,7 +51,7 @@ const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange }) => (
         addLabel="Add Bind"
       />
     </FormField>
-    <FormField label="Environment Variables">
+    <FormField label="Environment Variables" inherited={isInherited('env', inheritedProps)}>
       <KeyValueList
         items={data.env || {}}
         onChange={(items) => onChange({ env: items })}
@@ -57,7 +60,7 @@ const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange }) => (
         addLabel="Add Variable"
       />
     </FormField>
-    <FormField label="Environment Files">
+    <FormField label="Environment Files" inherited={isInherited('env-files', inheritedProps)}>
       <DynamicList
         items={data.envFiles || []}
         onChange={(items) => onChange({ envFiles: items })}
@@ -65,7 +68,7 @@ const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange }) => (
         addLabel="Add Env File"
       />
     </FormField>
-    <FormField label="Labels">
+    <FormField label="Labels" inherited={isInherited('labels', inheritedProps)}>
       <KeyValueList
         items={data.labels || {}}
         onChange={(items) => onChange({ labels: items })}
@@ -77,9 +80,9 @@ const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange }) => (
   </>
 );
 
-export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => (
+export const ConfigTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
   <div className="space-y-3">
-    <StartupConfigSection data={data} onChange={onChange} />
-    <BindsAndEnvSection data={data} onChange={onChange} />
+    <StartupConfigSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
+    <BindsAndEnvSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
   </div>
 );

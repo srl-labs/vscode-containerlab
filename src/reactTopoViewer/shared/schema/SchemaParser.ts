@@ -22,11 +22,24 @@ export interface CustomNodeTemplate {
 }
 
 /**
+ * SROS component types for nokia_srsim nodes
+ */
+export interface SrosComponentTypes {
+  sfm: string[];
+  cpm: string[];
+  card: string[];
+  mda: string[];
+  xiom: string[];
+  xiomMda: string[];
+}
+
+/**
  * Schema data interface for kind/type options
  */
 export interface SchemaData {
   kinds: string[];
   typesByKind: Record<string, string[]>;
+  srosComponentTypes: SrosComponentTypes;
 }
 
 /**
@@ -99,11 +112,33 @@ export function extractTypesByKindFromSchema(schema: Record<string, unknown>): R
 }
 
 /**
+ * Extract SROS component types from schema definitions
+ */
+export function extractSrosComponentTypes(schema: Record<string, unknown>): SrosComponentTypes {
+  const defs = (schema.definitions as Record<string, unknown>) || {};
+
+  const getEnumFromDef = (defName: string): string[] => {
+    const def = defs[defName] as Record<string, unknown> | undefined;
+    return (def?.enum as string[]) || [];
+  };
+
+  return {
+    sfm: getEnumFromDef('sros-sfm-types'),
+    cpm: getEnumFromDef('sros-cpm-types'),
+    card: getEnumFromDef('sros-card-types'),
+    mda: getEnumFromDef('sros-mda-types'),
+    xiom: getEnumFromDef('sros-xiom-types'),
+    xiomMda: getEnumFromDef('sros-xiom-mda-types'),
+  };
+}
+
+/**
  * Parse schema and return SchemaData
  */
 export function parseSchemaData(schema: Record<string, unknown>): SchemaData {
   return {
     kinds: extractKindsFromSchema(schema),
-    typesByKind: extractTypesByKindFromSchema(schema)
+    typesByKind: extractTypesByKindFromSchema(schema),
+    srosComponentTypes: extractSrosComponentTypes(schema),
   };
 }

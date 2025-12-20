@@ -105,14 +105,14 @@ interface TypeFieldProps extends TabProps {
   availableTypes: string[];
 }
 
-const TypeField: React.FC<TypeFieldProps> = ({ data, onChange, availableTypes }) => {
+const TypeField: React.FC<TypeFieldProps> = ({ data, onChange, availableTypes, inheritedProps = [] }) => {
   const typeOptions = useMemo(() =>
     availableTypes.map(type => ({ value: type, label: type })),
     [availableTypes]
   );
 
   return (
-    <FormField label="Type">
+    <FormField label="Type" inherited={inheritedProps.includes('type')}>
       <FilterableDropdown
         id="node-type"
         options={typeOptions}
@@ -145,7 +145,8 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
   hasImages,
   getVersionsForImage,
   parseImageString,
-  combineImageVersion
+  combineImageVersion,
+  inheritedProps = []
 }) => {
   // Parse the current image into base and version
   const { base: currentBase, version: currentVersion } = useMemo(() => {
@@ -192,11 +193,13 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
     onChange({ image: combineImageVersion(currentBase, newVersion) });
   }, [currentBase, onChange, combineImageVersion]);
 
+  const isImageInherited = inheritedProps.includes('image');
+
   // If we have docker images, show dropdowns
   if (hasImages) {
     return (
       <>
-        <FormField label="Image">
+        <FormField label="Image" inherited={isImageInherited}>
           <FilterableDropdown
             id="node-image"
             options={imageOptions}
@@ -223,7 +226,7 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
   // Fallback to simple text inputs
   return (
     <>
-      <FormField label="Image">
+      <FormField label="Image" inherited={isImageInherited}>
         <InputField
           id="node-image"
           value={currentBase}
@@ -335,7 +338,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   );
 };
 
-export const BasicTab: React.FC<TabProps> = ({ data, onChange }) => {
+export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => {
   // Get schema data (kinds and types)
   const { kinds, getTypesForKind, kindSupportsType, isLoaded } = useSchema();
 
@@ -358,13 +361,13 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange }) => {
     return kindSupportsType(data.kind || '');
   }, [data.kind, kindSupportsType]);
 
-  // Handler for kind changes - clear type if new kind doesn't support it
-  const handleKindChange = useCallback((newKind: string) => {
-    if (!kindSupportsType(newKind) && data.type) {
-      // Clear type when switching to a kind that doesn't support types
+  // Handler for kind changes - always clear type since different kinds have different type options
+  const handleKindChange = useCallback((_newKind: string) => {
+    // Always clear type when kind changes - types are kind-specific
+    if (data.type) {
       onChange({ type: undefined });
     }
-  }, [kindSupportsType, data.type, onChange]);
+  }, [data.type, onChange]);
 
   return (
     <div className="space-y-3">
@@ -385,7 +388,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Only show Type field for kinds that support it */}
       {showTypeField && (
-        <TypeField data={data} onChange={onChange} availableTypes={availableTypes} />
+        <TypeField data={data} onChange={onChange} availableTypes={availableTypes} inheritedProps={inheritedProps} />
       )}
 
       {/* Image and Version in 2-column grid */}
@@ -398,6 +401,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange }) => {
           getVersionsForImage={getVersionsForImage}
           parseImageString={parseImageString}
           combineImageVersion={combineImageVersion}
+          inheritedProps={inheritedProps}
         />
       </div>
 

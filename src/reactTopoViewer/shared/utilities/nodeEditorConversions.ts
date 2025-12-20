@@ -3,7 +3,7 @@
  * YAML extraData format (kebab-case)
  */
 
-import { NodeEditorData, HealthCheckConfig } from '../../webview/components/panels/node-editor/types';
+import { NodeEditorData, HealthCheckConfig, SrosComponent } from '../../webview/components/panels/node-editor/types';
 
 // ============================================================================
 // Type Helpers
@@ -40,7 +40,7 @@ function getRecord(val: unknown): Record<string, string> | undefined {
 // YAML -> NodeEditorData (for loading into editor)
 // ============================================================================
 
-/** Parse basic properties from extraData */
+/** Parse basic properties from extraData (with fallback to top-level data) */
 function parseBasicProps(
   rawData: Record<string, unknown>,
   extra: Record<string, unknown>
@@ -48,9 +48,10 @@ function parseBasicProps(
   return {
     id: rawData.id as string || '',
     name: rawData.name as string || rawData.id as string || '',
-    kind: getString(extra.kind),
-    type: getString(extra.type),
-    image: getString(extra.image),
+    // Check extraData first, then fall back to top-level data (for mock/dev mode)
+    kind: getString(extra.kind) || getString(rawData.kind),
+    type: getString(extra.type) || getString(rawData.type),
+    image: getString(extra.image) || getString(rawData.image),
     icon: rawData.topoViewerRole as string || '',
     iconColor: rawData.iconColor as string | undefined,
     iconCornerRadius: rawData.iconCornerRadius as number | undefined
@@ -150,6 +151,34 @@ function parseHealthCheckProps(extra: Record<string, unknown>): { healthCheck?: 
   };
 }
 
+/** Parse SROS components from extraData */
+function parseComponentsProps(extra: Record<string, unknown>): { components?: SrosComponent[] } {
+  const componentsRaw = extra.components;
+  if (!Array.isArray(componentsRaw)) return {};
+
+  const components: SrosComponent[] = componentsRaw
+    .filter((c): c is Record<string, unknown> => c && typeof c === 'object')
+    .map(c => ({
+      slot: c.slot as string | number | undefined,
+      type: getString(c.type),
+      sfm: getString(c.sfm),
+      mda: Array.isArray(c.mda) ? c.mda.map((m: Record<string, unknown>) => ({
+        slot: getNumber(m.slot),
+        type: getString(m.type)
+      })) : undefined,
+      xiom: Array.isArray(c.xiom) ? c.xiom.map((x: Record<string, unknown>) => ({
+        slot: getNumber(x.slot),
+        type: getString(x.type),
+        mda: Array.isArray(x.mda) ? x.mda.map((m: Record<string, unknown>) => ({
+          slot: getNumber(m.slot),
+          type: getString(m.type)
+        })) : undefined
+      })) : undefined
+    }));
+
+  return components.length > 0 ? { components } : {};
+}
+
 /**
  * Converts raw node data (from Cytoscape/YAML) to NodeEditorData format
  * Maps from YAML kebab-case properties (in extraData) to camelCase NodeEditorData
@@ -165,7 +194,8 @@ export function convertToEditorData(rawData: Record<string, unknown> | null): No
     ...parseNetworkProps(extra),
     ...parseAdvancedProps(extra),
     ...parseCertProps(extra),
-    ...parseHealthCheckProps(extra)
+    ...parseHealthCheckProps(extra),
+    ...parseComponentsProps(extra)
   };
 }
 
@@ -211,6 +241,7 @@ export interface YamlExtraData {
   healthcheck?: Record<string, unknown>;
   'image-pull-policy'?: string;
   runtime?: string;
+  components?: unknown[];
   [key: string]: unknown;
 }
 
@@ -332,6 +363,90 @@ function convertHealthcheckToYaml(data: Record<string, unknown>, extraData: Yaml
   if (Object.keys(healthcheck).length > 0) extraData.healthcheck = healthcheck;
 }
 
+/** Check if a component object has any meaningful properties */
+function isNonEmptyComponent(comp: Record<string, unknown>): boolean {
+  return Object.keys(comp).length > 0;
+}
+
+/** Convert a single SROS component to YAML format, returns null if empty */
+function convertSingleComponent(c: SrosComponent): Record<string, unknown> | null {
+  const comp: Record<string, unknown> = {};
+
+  if (c.slot !== undefined && c.slot !== '') comp.slot = c.slot;
+  if (c.type) comp.type = c.type;
+  if (c.sfm) comp.sfm = c.sfm;
+
+  if (c.mda && c.mda.length > 0) {
+    const mdaList = c.mda
+      .map(m => {
+        const mda: Record<string, unknown> = {};
+        if (m.slot !== undefined) mda.slot = m.slot;
+        if (m.type) mda.type = m.type;
+        return mda;
+      })
+      .filter(isNonEmptyComponent);
+    if (mdaList.length > 0) comp.mda = mdaList;
+  }
+
+  if (c.xiom && c.xiom.length > 0) {
+    const xiomList = c.xiom
+      .map(x => {
+        const xiom: Record<string, unknown> = {};
+        if (x.slot !== undefined) xiom.slot = x.slot;
+        if (x.type) xiom.type = x.type;
+        if (x.mda && x.mda.length > 0) {
+          const xMdaList = x.mda
+            .map(m => {
+              const mda: Record<string, unknown> = {};
+              if (m.slot !== undefined) mda.slot = m.slot;
+              if (m.type) mda.type = m.type;
+              return mda;
+            })
+            .filter(isNonEmptyComponent);
+          if (xMdaList.length > 0) xiom.mda = xMdaList;
+        }
+        return xiom;
+      })
+      .filter(isNonEmptyComponent);
+    if (xiomList.length > 0) comp.xiom = xiomList;
+  }
+
+  return isNonEmptyComponent(comp) ? comp : null;
+}
+
+/** Convert SROS components to YAML format */
+function convertComponentsToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
+  const kind = data.kind as string | undefined;
+  const components = data.components as SrosComponent[] | undefined;
+
+  // If kind is not nokia_srsim, delete any existing components
+  if (kind && kind !== 'nokia_srsim') {
+    extraData.components = null as unknown as undefined[];
+    return;
+  }
+
+  // If components is explicitly set to empty array, signal deletion
+  if (Array.isArray(components) && components.length === 0) {
+    extraData.components = null as unknown as undefined[];
+    return;
+  }
+
+  if (!components || !Array.isArray(components)) return;
+
+  // Convert components, filtering out empty ones
+  const converted = components
+    .map(convertSingleComponent)
+    .filter((c): c is Record<string, unknown> => c !== null);
+
+  // If all components were empty, signal deletion
+  if (converted.length === 0) {
+    extraData.components = null as unknown as undefined[];
+    return;
+  }
+
+  extraData.components = converted;
+}
+
 /**
  * Convert NodeEditorData (camelCase) to extraData format (kebab-case) for YAML
  */
@@ -345,6 +460,7 @@ export function convertEditorDataToYaml(data: Record<string, unknown>): YamlExtr
   convertAdvancedToYaml(data, extraData);
   convertCertToYaml(data, extraData);
   convertHealthcheckToYaml(data, extraData);
+  convertComponentsToYaml(data, extraData);
 
   return extraData;
 }

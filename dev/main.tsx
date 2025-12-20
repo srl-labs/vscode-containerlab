@@ -25,7 +25,7 @@ import { DevStateManager } from './mock/DevState';
 import { LatencySimulator } from './mock/LatencySimulator';
 
 // Mock data for initial state
-import { sampleElements, sampleCustomNodes } from './mockData';
+import { sampleCustomNodes } from './mockData';
 
 // Schema parsing - import JSON directly and use shared parser
 import clabSchema from '../schema/clab.schema.json';
@@ -383,7 +383,7 @@ const schemaData = parseSchemaData(clabSchema as Record<string, unknown>);
 
 // Build minimal initial data (topology loads async after mount)
 const initialData = {
-  elements: sampleElements,
+  elements: [],
   labName: 'dev-topology',
   mode: 'edit' as const,
   deploymentState: 'undeployed',

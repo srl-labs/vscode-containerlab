@@ -27,13 +27,20 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, o
     setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
   }, []);
 
+  // Update scroll buttons on mount, when tabs change, and on scroll
   useEffect(() => {
     updateScrollButtons();
     const viewport = viewportRef.current;
     if (!viewport) return;
     viewport.addEventListener('scroll', updateScrollButtons);
-    return () => viewport.removeEventListener('scroll', updateScrollButtons);
-  }, [updateScrollButtons]);
+    // Also listen for resize events
+    const resizeObserver = new ResizeObserver(updateScrollButtons);
+    resizeObserver.observe(viewport);
+    return () => {
+      viewport.removeEventListener('scroll', updateScrollButtons);
+      resizeObserver.disconnect();
+    };
+  }, [updateScrollButtons, tabs]); // Re-run when tabs change
 
   const scroll = (direction: 'left' | 'right') => {
     if (!viewportRef.current) return;
