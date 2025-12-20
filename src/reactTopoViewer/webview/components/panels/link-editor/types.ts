@@ -2,18 +2,19 @@
  * Type definitions for link editor
  *
  * NOTE: Core types are now defined in shared/types/editors.ts
- * This file re-exports them for backward compatibility with webview imports.
+ * Types are exported via the index.ts file for backward compatibility.
  */
 
-// Re-export core types from shared
-export {
-  type LinkEditorTabId,
-  type LinkEndpoint,
-  type LinkEditorData
+import type {
+  LinkEditorTabId as _LinkEditorTabId,
+  LinkEndpoint as _LinkEndpoint,
+  LinkEditorData as _LinkEditorData
 } from '../../../../shared/types/editors';
 
-// Webview-specific types (React props)
-import type { LinkEditorData } from '../../../../shared/types/editors';
+// Re-export types (import then export pattern for non-index files)
+export type LinkEditorTabId = _LinkEditorTabId;
+export type LinkEndpoint = _LinkEndpoint;
+export type LinkEditorData = _LinkEditorData;
 
 /**
  * Props for link editor tab components

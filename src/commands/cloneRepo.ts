@@ -2,9 +2,6 @@ import * as vscode from "vscode";
 
 import { cloneRepoFromUrl } from "./cloneRepoCore";
 
-// Re-export for backward compatibility
-export { cloneRepoFromUrl } from "./cloneRepoCore";
-
 export async function cloneRepo() {
   const choice = await vscode.window.showQuickPick(
     [

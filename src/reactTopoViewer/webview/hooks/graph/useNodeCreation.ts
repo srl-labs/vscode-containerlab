@@ -6,7 +6,7 @@ import type { Core, EventObject } from 'cytoscape';
 
 import { log } from '../../utils/logger';
 import type { CyElement } from '../../../shared/types/messages';
-import type { CustomNodeTemplate } from '../../context/TopoViewerContext';
+import type { CustomNodeTemplate } from '../../../shared/types/editors';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
 
 interface NodeCreationOptions {

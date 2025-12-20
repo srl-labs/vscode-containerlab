@@ -2,11 +2,34 @@
  * Panel module exports
  */
 
-export * from './PanelManager';
-export * from './MessageRouter';
-export * from './Watchers';
-export * from './BootstrapDataBuilder';
+// Panel management
+export {
+  createPanel,
+  generateNonce,
+  generateWebviewHtml
+} from './PanelManager';
+export type { PanelConfig, WebviewPanelOptions, WebviewHtmlData } from './PanelManager';
 
-// Re-export schema types and functions from their new locations
-export * from '../../shared/schema';
+// Message routing
+export { MessageRouter } from './MessageRouter';
+export type { MessageRouterContext } from './MessageRouter';
+
+// File watchers
+export { WatcherManager } from './Watchers';
+export type { TopologyDataLoader, TopologyDataPoster, InternalUpdateController } from './Watchers';
+
+// Bootstrap data
+export { buildBootstrapData } from './BootstrapDataBuilder';
+export type { BootstrapData, BootstrapDataInput } from './BootstrapDataBuilder';
+
+// Schema types and functions
+export type { CustomNodeTemplate, SchemaData } from '../../shared/schema';
+export {
+  extractKindsFromSchema,
+  extractTypesByKindFromSchema,
+  extractSrosComponentTypes,
+  parseSchemaData
+} from '../../shared/schema';
+
+// Service adapters
 export { getCustomNodesFromConfig, loadSchemaData } from '../services/adapters';

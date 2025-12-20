@@ -19,9 +19,7 @@ import { addNodeToDoc, editNodeInDoc, deleteNodeFromDoc, buildAnnotationProps, a
 import type { LinkSaveData} from './LinkPersistenceIO';
 import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenceIO';
 
-// Re-export types for convenience
-export type { NodeSaveData, NodeAnnotationData } from './NodePersistenceIO';
-export type { LinkSaveData } from './LinkPersistenceIO';
+// Types are available from ./NodePersistenceIO and ./LinkPersistenceIO directly
 
 /**
  * Options for creating a TopologyIO instance

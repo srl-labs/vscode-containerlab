@@ -8,8 +8,7 @@ import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/
 import type { CyElement } from '../../shared/types/messages';
 import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
 
-// Re-export custom node types from shared for backward compatibility
-export type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
+// CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
 
 /**
  * Deployment state type alias

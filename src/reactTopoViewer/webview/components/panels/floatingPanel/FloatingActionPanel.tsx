@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
 
-import type { CustomNodeTemplate } from '../../../context/TopoViewerContext';
+import type { CustomNodeTemplate } from '../../../../shared/types/editors';
 import { useTopoViewer } from '../../../context/TopoViewerContext';
 import {
   usePanelDrag,

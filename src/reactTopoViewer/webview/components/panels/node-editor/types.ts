@@ -2,22 +2,30 @@
  * Type definitions for node editor
  *
  * NOTE: Core types are now defined in shared/types/editors.ts
- * This file re-exports them for backward compatibility with webview imports.
+ * Types are exported via the index.ts file for backward compatibility.
  */
 
-// Re-export core types from shared
-export {
-  type NodeEditorTabId,
-  INTEGRATED_SROS_TYPES,
-  type HealthCheckConfig,
-  type SrosMda,
-  type SrosXiom,
-  type SrosComponent,
-  type NodeEditorData
+import type {
+  NodeEditorTabId as _NodeEditorTabId,
+  HealthCheckConfig as _HealthCheckConfig,
+  SrosMda as _SrosMda,
+  SrosXiom as _SrosXiom,
+  SrosComponent as _SrosComponent,
+  NodeEditorData as _NodeEditorData
 } from '../../../../shared/types/editors';
 
-// Webview-specific types (React props)
-import type { NodeEditorData } from '../../../../shared/types/editors';
+import { INTEGRATED_SROS_TYPES as _INTEGRATED_SROS_TYPES } from '../../../../shared/types/editors';
+
+// Re-export types
+export type NodeEditorTabId = _NodeEditorTabId;
+export type HealthCheckConfig = _HealthCheckConfig;
+export type SrosMda = _SrosMda;
+export type SrosXiom = _SrosXiom;
+export type SrosComponent = _SrosComponent;
+export type NodeEditorData = _NodeEditorData;
+
+// Re-export values
+export const INTEGRATED_SROS_TYPES = _INTEGRATED_SROS_TYPES;
 
 /**
  * Props for tab components

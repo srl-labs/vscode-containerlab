@@ -9,10 +9,13 @@
  * - Dev/standalone: Uses HttpFsAdapter
  */
 
-import type { FileSystemAdapter, IOLogger} from '../../shared/io/browser';
-import { TopologyIO, AnnotationsIO, noopLogger } from '../../shared/io/browser';
+import type { FileSystemAdapter, IOLogger } from '../../shared/io/types';
+import { noopLogger } from '../../shared/io/types';
+import { TopologyIO } from '../../shared/io/TopologyIO';
+import { AnnotationsIO } from '../../shared/io/AnnotationsIO';
 import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../shared/types/topology';
-import type { NodeSaveData, LinkSaveData } from '../../shared/io/TopologyIO';
+import type { NodeSaveData } from '../../shared/io/NodePersistenceIO';
+import type { LinkSaveData } from '../../shared/io/LinkPersistenceIO';
 
 // Global service instances
 let annotationsIO: AnnotationsIO | null = null;

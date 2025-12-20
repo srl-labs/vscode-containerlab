@@ -134,7 +134,35 @@ export default [
           },
         ],
       }],
+
+      // ─── Ban wildcard re-exports ───
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportAllDeclaration',
+          message: 'Use named re-exports instead of "export * from"'
+        }
+      ],
     },
+  },
+
+  /* ---------- Ban re-exports outside index.ts ---------- */
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['**/index.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportNamedDeclaration[source]',
+          message: 'Re-exports only allowed in index.ts files'
+        },
+        {
+          selector: 'ExportAllDeclaration',
+          message: 'Use named re-exports instead of "export * from"'
+        }
+      ]
+    }
   },
 
   /* ---------- topoViewer: max-lines limit ---------- */

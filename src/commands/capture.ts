@@ -3,11 +3,11 @@ import * as vscode from "vscode"
 import { outputChannel, dockerClient, username } from "../globals";
 import * as utils from "../utils";
 import type { ClabInterfaceTreeNode } from "../treeView/common";
-import { genPacketflixURI } from "../utils/packetflix";
+import { genPacketflixURI, getHostname, setSessionHostname } from "../utils/packetflix";
 import type { ImagePullPolicy} from "../utils/consts";
 import { DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE, DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY, WIRESHARK_VNC_CTR_NAME_PREFIX } from "../utils/consts";
 
-export { getHostname, setSessionHostname } from "../utils/packetflix";
+export { getHostname, setSessionHostname };
 
 /**
  * Begin packet capture on an interface.

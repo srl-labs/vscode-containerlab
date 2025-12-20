@@ -87,8 +87,7 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
   });
 }
 
-// Re-export session refresh functions for backward compatibility
-export { refreshSshxSessions, refreshGottySessions } from './services/sessionRefresh';
+// Session refresh functions are available from ./services/sessionRefresh directly
 
 
 

@@ -3,7 +3,7 @@
  */
 import { useCallback } from 'react';
 
-import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../context/TopoViewerContext';
+import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../../shared/types/editors';
 import {
   createNewTemplateEditorData,
   convertTemplateToEditorData

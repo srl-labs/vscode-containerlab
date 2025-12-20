@@ -8,7 +8,7 @@ import type { Core as CyCore, Core as CytoscapeCore } from 'cytoscape';
 import type { NodeEditorData } from '../../components/panels/node-editor/types';
 import type { LinkEditorData } from '../../components/panels/link-editor/types';
 import type { NetworkEditorData } from '../../components/panels/network-editor';
-import type { CustomNodeTemplate } from '../../context/TopoViewerContext';
+import type { CustomNodeTemplate } from '../../../shared/types/editors';
 import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel';
 import type { MembershipEntry } from '../state/useUndoRedo';
 import type { CytoscapeCanvasRef } from '../../components/canvas';

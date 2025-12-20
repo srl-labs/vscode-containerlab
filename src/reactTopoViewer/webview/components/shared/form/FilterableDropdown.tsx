@@ -3,10 +3,11 @@
  */
 import React from 'react';
 
-import type { FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
+import type { FilterableDropdownOption as _FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
 import { useFilterableDropdown } from '../../../hooks/ui/useFilterableDropdown';
 
-export type { FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
+// Re-export type (import then export pattern for non-index files)
+export type FilterableDropdownOption = _FilterableDropdownOption;
 
 interface FilterableDropdownProps {
   id: string;

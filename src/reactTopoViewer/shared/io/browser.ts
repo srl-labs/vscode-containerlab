@@ -8,22 +8,55 @@
  * - NodeFsAdapter (requires Node.js fs/path)
  */
 
-// Types (browser-safe) - use 'export type' for interfaces
-export type { FileSystemAdapter, SaveResult, IOLogger } from './types';
-export { noopLogger, ERROR_NODES_NOT_MAP, ERROR_LINKS_NOT_SEQ, ERROR_SERVICE_NOT_INIT, ERROR_NO_YAML_PATH } from './types';
+import type {
+  FileSystemAdapter as _FileSystemAdapter,
+  SaveResult as _SaveResult,
+  IOLogger as _IOLogger
+} from './types';
+import {
+  noopLogger as _noopLogger,
+  ERROR_NODES_NOT_MAP as _ERROR_NODES_NOT_MAP,
+  ERROR_LINKS_NOT_SEQ as _ERROR_LINKS_NOT_SEQ,
+  ERROR_SERVICE_NOT_INIT as _ERROR_SERVICE_NOT_INIT,
+  ERROR_NO_YAML_PATH as _ERROR_NO_YAML_PATH
+} from './types';
 
-// Re-export TopologyAnnotations from types module
-export type { TopologyAnnotations } from '../types/topology';
+import type { TopologyAnnotations as _TopologyAnnotations } from '../types/topology';
+
+import type { AnnotationsIOOptions as _AnnotationsIOOptions } from './AnnotationsIO';
+import { AnnotationsIO as _AnnotationsIO, migrateAnnotations as _migrateAnnotations } from './AnnotationsIO';
+import { createEmptyAnnotations as _createEmptyAnnotations } from '../annotations/types';
+
+import type { TopologyIOOptions as _TopologyIOOptions } from './TopologyIO';
+import { TopologyIO as _TopologyIO } from './TopologyIO';
+
+import type { NodeSaveData as _NodeSaveData, NodeAnnotationData as _NodeAnnotationData } from './NodePersistenceIO';
+import type { LinkSaveData as _LinkSaveData } from './LinkPersistenceIO';
+
+// Types (browser-safe)
+export type FileSystemAdapter = _FileSystemAdapter;
+export type SaveResult = _SaveResult;
+export type IOLogger = _IOLogger;
+export const noopLogger = _noopLogger;
+export const ERROR_NODES_NOT_MAP = _ERROR_NODES_NOT_MAP;
+export const ERROR_LINKS_NOT_SEQ = _ERROR_LINKS_NOT_SEQ;
+export const ERROR_SERVICE_NOT_INIT = _ERROR_SERVICE_NOT_INIT;
+export const ERROR_NO_YAML_PATH = _ERROR_NO_YAML_PATH;
+
+// TopologyAnnotations
+export type TopologyAnnotations = _TopologyAnnotations;
 
 // Annotations I/O (browser-safe - uses FileSystemAdapter abstraction)
-export type { AnnotationsIOOptions } from './AnnotationsIO';
-export { AnnotationsIO, migrateAnnotations } from './AnnotationsIO';
-export { createEmptyAnnotations } from '../annotations/types';
+export type AnnotationsIOOptions = _AnnotationsIOOptions;
+export const AnnotationsIO = _AnnotationsIO;
+export const migrateAnnotations = _migrateAnnotations;
+export const createEmptyAnnotations = _createEmptyAnnotations;
 
 // Topology I/O orchestration (browser-safe - uses FileSystemAdapter abstraction)
-export type { TopologyIOOptions } from './TopologyIO';
-export { TopologyIO } from './TopologyIO';
+export type TopologyIOOptions = _TopologyIOOptions;
+export const TopologyIO = _TopologyIO;
 
-// Re-export node/link types for convenience
-export type { NodeSaveData, NodeAnnotationData } from './NodePersistenceIO';
-export type { LinkSaveData } from './LinkPersistenceIO';
+// Node/link types
+export type NodeSaveData = _NodeSaveData;
+export type NodeAnnotationData = _NodeAnnotationData;
+export type LinkSaveData = _LinkSaveData;

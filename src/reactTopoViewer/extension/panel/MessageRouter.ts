@@ -25,8 +25,7 @@ import {
   createProductionServices
 } from '../services/adapters';
 
-// Re-export types for backward compatibility
-export type { NodePositionData, WebviewMessage } from '../../shared/messaging';
+// Types are available from shared/messaging directly
 
 /**
  * Context required by the message router

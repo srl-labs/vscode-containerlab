@@ -27,7 +27,7 @@ import {
   createPanel,
   generateWebviewHtml
 } from './panel/PanelManager';
-import type { WebviewMessage } from './panel/MessageRouter';
+import type { WebviewMessage } from '../shared/messaging';
 import { MessageRouter } from './panel/MessageRouter';
 import { WatcherManager } from './panel/Watchers';
 import { buildBootstrapData } from './panel/BootstrapDataBuilder';

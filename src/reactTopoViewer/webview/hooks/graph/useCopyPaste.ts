@@ -16,9 +16,7 @@ import {
   createDuplicateHandler
 } from './copyHandlers';
 
-// Re-export types for consumers
-export type { CopyData, GraphChangeEntry };
-export type { CyElementJson } from './copyPasteUtils';
+// Types are exported from the index.ts file
 
 /**
  * Options for the useCopyPaste hook

@@ -1,20 +1,28 @@
 /**
  * Annotation type definitions for the shared annotations module.
- * Re-exports annotation types from the main topology types file.
+ * Types are available from shared/types/topology directly.
  */
 
-export type {
-  FreeTextAnnotation,
-  FreeShapeAnnotation,
-  GroupStyleAnnotation,
-  CloudNodeAnnotation,
-  NetworkNodeAnnotation,
-  NodeAnnotation,
-  AliasEndpointAnnotation,
-  TopologyAnnotations,
+import type {
+  FreeTextAnnotation as _FreeTextAnnotation,
+  FreeShapeAnnotation as _FreeShapeAnnotation,
+  GroupStyleAnnotation as _GroupStyleAnnotation,
+  CloudNodeAnnotation as _CloudNodeAnnotation,
+  NetworkNodeAnnotation as _NetworkNodeAnnotation,
+  NodeAnnotation as _NodeAnnotation,
+  AliasEndpointAnnotation as _AliasEndpointAnnotation,
+  TopologyAnnotations as _TopologyAnnotations,
 } from '../types/topology';
 
-import type { TopologyAnnotations } from '../types/topology';
+// Re-export types
+export type FreeTextAnnotation = _FreeTextAnnotation;
+export type FreeShapeAnnotation = _FreeShapeAnnotation;
+export type GroupStyleAnnotation = _GroupStyleAnnotation;
+export type CloudNodeAnnotation = _CloudNodeAnnotation;
+export type NetworkNodeAnnotation = _NetworkNodeAnnotation;
+export type NodeAnnotation = _NodeAnnotation;
+export type AliasEndpointAnnotation = _AliasEndpointAnnotation;
+export type TopologyAnnotations = _TopologyAnnotations;
 
 /**
  * Default empty annotations object.
