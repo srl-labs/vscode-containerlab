@@ -87,12 +87,16 @@ async function navigateToTab(page: Page, tabName: TabName): Promise<void> {
 }
 
 /**
- * Helper to fill an input field
+ * Helper to fill an input field and commit the value.
+ * For FilterableDropdown inputs, we need to blur after filling to trigger the commit.
  */
 async function fillField(page: Page, fieldId: string, value: string): Promise<void> {
   const field = page.locator(`#${fieldId}`);
   await field.clear();
   await field.fill(value);
+  // Blur the field to trigger value commit (FilterableDropdown has 150ms blur timeout)
+  await field.blur();
+  await page.waitForTimeout(200);
 }
 
 /**
