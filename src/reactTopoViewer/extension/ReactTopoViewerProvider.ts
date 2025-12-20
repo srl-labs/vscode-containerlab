@@ -28,7 +28,7 @@ import { MessageRouter, WebviewMessage } from './panel/MessageRouter';
 import { WatcherManager } from './panel/Watchers';
 import { buildBootstrapData } from './panel/BootstrapDataBuilder';
 import { findInterfaceNode } from './services/TreeUtils';
-import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from './services/EdgeElementBuilder';
+import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../shared/parsing';
 
 /** Message type for topology data updates sent to webview */
 const MSG_TOPOLOGY_DATA = 'topology-data';
