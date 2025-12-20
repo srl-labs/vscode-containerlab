@@ -397,7 +397,7 @@ const initialData = {
     'ubuntu:latest'
   ],
   customNodes: sampleCustomNodes,
-  defaultCustomNode: stateManager.getDefaultCustomNode(),
+  defaultNode: stateManager.getDefaultCustomNode(),
   freeTextAnnotations: [],
   freeShapeAnnotations: [],
   groupStyleAnnotations: [],

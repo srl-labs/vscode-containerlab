@@ -603,22 +603,23 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
  * TopoViewer Context Provider
  */
 export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children, initialData }) => {
-  const [state, dispatch] = useReducer(topoViewerReducer, initialState);
-  const [initLoading, setInitLoading] = React.useState(true);
+  // Initialize reducer with parsed initial data to avoid race conditions
+  // where state.defaultNode would be empty on first render
+  const [state, dispatch] = useReducer(
+    topoViewerReducer,
+    initialData,
+    (initial) => {
+      try {
+        const parsed = parseInitialData(initial);
+        return { ...initialState, ...parsed };
+      } catch {
+        return initialState;
+      }
+    }
+  );
+  const [initLoading, setInitLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const actions = useActions(dispatch);
-
-  // Initialize with data from extension
-  useEffect(() => {
-    try {
-      const parsed = parseInitialData(initialData);
-      dispatch({ type: 'SET_INITIAL_DATA', payload: parsed });
-      setInitLoading(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize');
-      setInitLoading(false);
-    }
-  }, [initialData]);
 
   // Listen for messages from extension
   useEffect(() => {
