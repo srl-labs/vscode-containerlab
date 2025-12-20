@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import type { Core } from 'cytoscape';
 import { log } from '../../utils/logger';
 import type { CopyData } from './copyPasteUtils';
+import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 
 /**
  * Hook that listens for clipboard data messages from the extension
@@ -32,7 +33,6 @@ export function useClipboardListener(
       onPaste?.(copyData);
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === 'copiedElements');
   }, [cy, mode, isLocked, onPaste]);
 }

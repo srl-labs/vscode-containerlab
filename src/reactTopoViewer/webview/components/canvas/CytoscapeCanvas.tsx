@@ -6,6 +6,7 @@ import React, { useRef, useCallback, useImperativeHandle, forwardRef, useEffect 
 import { Core } from 'cytoscape';
 import { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
+import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 
 import {
   ensureColaRegistered,
@@ -45,8 +46,7 @@ function useCytoscapeDataUpdateListener(cyRef: React.RefObject<Core | null>): vo
       dispatch({ type: 'UPDATE_NODE_DATA', payload: { nodeId: data.nodeId, extraData: data.extraData } });
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === 'node-data-updated');
   }, [cyRef, dispatch]);
 }
 

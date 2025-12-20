@@ -11,6 +11,7 @@ import './styles/tailwind.css';
 // Initialize file system services for VS Code webview
 import { PostMessageFsAdapter } from './adapters';
 import { initializeServices } from './services';
+import { subscribeToWebviewMessages } from './utils/webviewMessageBus';
 
 const fsAdapter = new PostMessageFsAdapter();
 initializeServices(fsAdapter, { verbose: false });
@@ -30,16 +31,17 @@ if (initialData.dockerImages) {
 
 // Listen for docker images updates from extension
 // Note: In VS Code webviews, messages always come from the extension (trusted source)
-// eslint-disable-next-line sonarjs/post-message
-window.addEventListener('message', (event) => {
+subscribeToWebviewMessages((event) => {
   // VS Code webviews are sandboxed - messages come from the extension host
   const message = event.data;
   if (message?.type === 'docker-images-updated' && message.dockerImages) {
     (window as any).__DOCKER_IMAGES__ = message.dockerImages;
     // Dispatch a custom event so hooks can react to the update
-    window.dispatchEvent(new CustomEvent('docker-images-updated', {
-      detail: message.dockerImages
-    }));
+    window.dispatchEvent(
+      new CustomEvent('docker-images-updated', {
+        detail: message.dockerImages
+      })
+    );
   }
 });
 

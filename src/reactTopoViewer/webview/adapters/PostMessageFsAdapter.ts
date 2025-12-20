@@ -5,6 +5,7 @@
  * The extension handles the actual filesystem access.
  */
 import { FileSystemAdapter } from '../../shared/io/types';
+import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
 
 declare global {
   interface Window {
@@ -23,20 +24,22 @@ interface PendingRequest {
  */
 export class PostMessageFsAdapter implements FileSystemAdapter {
   private pending = new Map<string, PendingRequest>();
-  private messageListener: ((e: MessageEvent) => void) | null = null;
+  private unsubscribe: (() => void) | null = null;
 
   constructor() {
-    this.messageListener = this.handleResponse.bind(this);
-    window.addEventListener('message', this.messageListener);
+    this.unsubscribe = subscribeToWebviewMessages(
+      this.handleResponse.bind(this),
+      (e) => e.data?.type === 'fs:response'
+    );
   }
 
   /**
    * Clean up message listener when adapter is no longer needed
    */
   dispose(): void {
-    if (this.messageListener) {
-      window.removeEventListener('message', this.messageListener);
-      this.messageListener = null;
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
     }
     // Reject any pending requests
     for (const [, pending] of this.pending) {

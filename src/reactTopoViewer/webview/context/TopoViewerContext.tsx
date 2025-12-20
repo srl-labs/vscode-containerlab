@@ -3,6 +3,7 @@
  */
 import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode, useMemo } from 'react';
 import { CyElement } from '../../shared/types/messages';
+import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
 
 /**
  * Deployment state type alias
@@ -629,10 +630,7 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
         handleExtensionMessage(message, dispatch);
       }
     };
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
+    return subscribeToWebviewMessages(handleMessage);
   }, []);
 
   const value = useMemo<TopoViewerContextValue>(() => ({

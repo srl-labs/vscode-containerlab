@@ -5,6 +5,7 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
+import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 
 interface InitialData {
   freeShapeAnnotations?: unknown[];
@@ -52,10 +53,8 @@ export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOp
         loadAnnotations(message.data?.freeShapeAnnotations || []);
       }
     };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === 'topology-data');
   }, [loadAnnotations]);
 
   return freeShapeAnnotations;
 }
-

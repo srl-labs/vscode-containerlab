@@ -7,6 +7,7 @@ import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';
 import { useGroups } from './useGroups';
 import { buildGroupId, parseGroupId, calculateBoundingBox } from './groupHelpers';
+import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 
 interface InitialData {
   groupStyleAnnotations?: unknown[];
@@ -143,8 +144,7 @@ function useGroupDataLoader(
         }
       }
     };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === 'topology-data');
   }, [loadGroups, initializeMembership, currentGroupsRef]);
 }
 

@@ -1,7 +1,7 @@
 /**
  * State management hook for free shape annotations
  */
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { saveFreeShapeAnnotations as saveFreeShapeToIO } from '../../services';
 import { log } from '../../utils/logger';
@@ -15,6 +15,9 @@ import {
   updateAnnotationEndPosition,
   duplicateAnnotations
 } from './freeShapeHelpers';
+import { useDebouncedSave } from './useDebouncedSave';
+import { useAnnotationListSelection } from './useAnnotationListSelection';
+import { useAnnotationListCopyPaste } from './useAnnotationListCopyPaste';
 
 export interface UseFreeShapeStateReturn {
   annotations: FreeShapeAnnotation[];
@@ -42,31 +45,11 @@ export function useFreeShapeState(): UseFreeShapeStateReturn {
   const [selectedAnnotationIds, setSelectedAnnotationIds] = useState<Set<string>>(new Set());
 
   const lastStyleRef = useRef<Partial<FreeShapeAnnotation>>({});
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clipboardRef = useRef<FreeShapeAnnotation[]>([]);
   const pasteCounterRef = useRef<number>(0);
 
-  const saveAnnotationsToExtension = useCallback((updatedAnnotations: FreeShapeAnnotation[]) => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      saveFreeShapeToIO(updatedAnnotations).catch(err => {
-        log.error(`[FreeShape] Failed to save annotations: ${err}`);
-      });
-      log.info(`[FreeShape] Saved ${updatedAnnotations.length} annotations`);
-    }, SAVE_DEBOUNCE_MS);
-  }, []);
-
-  const saveAnnotationsImmediate = useCallback((updatedAnnotations: FreeShapeAnnotation[]) => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveFreeShapeToIO(updatedAnnotations).catch(err => {
-      log.error(`[FreeShape] Failed to save annotations: ${err}`);
-    });
-    log.info(`[FreeShape] Saved ${updatedAnnotations.length} annotations (immediate)`);
-  }, []);
-
-  useEffect(() => () => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-  }, []);
+  const { saveDebounced: saveAnnotationsToExtension, saveImmediate: saveAnnotationsImmediate } =
+    useDebouncedSave(saveFreeShapeToIO, 'FreeShape', SAVE_DEBOUNCE_MS);
 
   return {
     annotations,
@@ -268,183 +251,6 @@ function useGeoUpdates(
   return { updateGeoPosition, updateEndGeoPosition };
 }
 
-function useBasicSelection(
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>
-) {
-  const selectAnnotation = useCallback((id: string) => {
-    setSelectedAnnotationIds(new Set([id]));
-    log.info(`[FreeShape] Selected annotation: ${id}`);
-  }, [setSelectedAnnotationIds]);
-
-  const toggleAnnotationSelection = useCallback((id: string) => {
-    setSelectedAnnotationIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        log.info(`[FreeShape] Deselected annotation: ${id}`);
-      } else {
-        next.add(id);
-        log.info(`[FreeShape] Added annotation to selection: ${id}`);
-      }
-      return next;
-    });
-  }, [setSelectedAnnotationIds]);
-
-  const clearAnnotationSelection = useCallback(() => {
-    setSelectedAnnotationIds(new Set());
-    log.info('[FreeShape] Cleared annotation selection');
-  }, [setSelectedAnnotationIds]);
-
-  return { selectAnnotation, toggleAnnotationSelection, clearAnnotationSelection };
-}
-
-function useBoxSelection(
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>
-) {
-  return useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    setSelectedAnnotationIds(prev => {
-      const next = new Set(prev);
-      ids.forEach(id => next.add(id));
-      return next;
-    });
-    log.info(`[FreeShape] Box selected ${ids.length} annotations`);
-  }, [setSelectedAnnotationIds]);
-}
-
-function useDeleteSelected(
-  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
-  selectedAnnotationIds: Set<string>,
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
-  saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
-) {
-  return useCallback(() => {
-    if (selectedAnnotationIds.size === 0) return;
-    setAnnotations(prev => {
-      const updated = prev.filter(a => !selectedAnnotationIds.has(a.id));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[FreeShape] Deleted ${selectedAnnotationIds.size} selected annotations`);
-    setSelectedAnnotationIds(new Set());
-  }, [selectedAnnotationIds, setAnnotations, saveAnnotationsToExtension, setSelectedAnnotationIds]);
-}
-
-function useGetSelected(
-  annotations: FreeShapeAnnotation[],
-  selectedAnnotationIds: Set<string>
-) {
-  return useCallback(() => annotations.filter(a => selectedAnnotationIds.has(a.id)), [annotations, selectedAnnotationIds]);
-}
-
-function useAnnotationSelection(
-  annotations: FreeShapeAnnotation[],
-  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
-  selectedAnnotationIds: Set<string>,
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
-  saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
-) {
-  const basicSelection = useBasicSelection(setSelectedAnnotationIds);
-  const boxSelectAnnotations = useBoxSelection(setSelectedAnnotationIds);
-  const deleteSelectedAnnotations = useDeleteSelected(setAnnotations, selectedAnnotationIds, setSelectedAnnotationIds, saveAnnotationsToExtension);
-  const getSelectedAnnotations = useGetSelected(annotations, selectedAnnotationIds);
-
-  return {
-    ...basicSelection,
-    boxSelectAnnotations,
-    deleteSelectedAnnotations,
-    getSelectedAnnotations
-  };
-}
-
-function getSelected(annotations: FreeShapeAnnotation[], ids: Set<string>): FreeShapeAnnotation[] {
-  return annotations.filter(a => ids.has(a.id));
-}
-
-function useCopyAnnotations(
-  annotations: FreeShapeAnnotation[],
-  selectedAnnotationIds: Set<string>,
-  clipboardRef: React.RefObject<FreeShapeAnnotation[]>,
-  pasteCounterRef: React.RefObject<number>
-) {
-  return useCallback(() => {
-    const selected = getSelected(annotations, selectedAnnotationIds);
-    if (selected.length === 0) return;
-    clipboardRef.current = selected;
-    pasteCounterRef.current = 0;
-    log.info(`[FreeShape] Copied ${selected.length} annotations to clipboard`);
-  }, [annotations, selectedAnnotationIds, clipboardRef, pasteCounterRef]);
-}
-
-function usePasteAnnotations(
-  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
-  clipboardRef: React.RefObject<FreeShapeAnnotation[]>,
-  pasteCounterRef: React.RefObject<number>,
-  saveAnnotationsImmediate: (annotations: FreeShapeAnnotation[]) => void
-) {
-  return useCallback(() => {
-    if (!clipboardRef.current || clipboardRef.current.length === 0) return;
-    const duplicated = duplicateAnnotations(clipboardRef.current, pasteCounterRef.current);
-    pasteCounterRef.current++;
-    setAnnotations(prev => {
-      const updated = [...prev, ...duplicated];
-      saveAnnotationsImmediate(updated);
-      return updated;
-    });
-    setSelectedAnnotationIds(new Set(duplicated.map(a => a.id)));
-    log.info(`[FreeShape] Pasted ${duplicated.length} annotations`);
-  }, [clipboardRef, pasteCounterRef, setAnnotations, saveAnnotationsImmediate, setSelectedAnnotationIds]);
-}
-
-function useDuplicateAnnotations(
-  annotations: FreeShapeAnnotation[],
-  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
-  selectedAnnotationIds: Set<string>,
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
-  saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
-) {
-  return useCallback(() => {
-    const selected = getSelected(annotations, selectedAnnotationIds);
-    if (selected.length === 0) return;
-    const duplicated = duplicateAnnotations(selected, 0);
-    setAnnotations(prev => {
-      const updated = [...prev, ...duplicated];
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    setSelectedAnnotationIds(new Set(duplicated.map(a => a.id)));
-    log.info(`[FreeShape] Duplicated ${duplicated.length} annotations`);
-  }, [annotations, selectedAnnotationIds, setAnnotations, saveAnnotationsToExtension, setSelectedAnnotationIds]);
-}
-
-function useHasClipboardContent(clipboardRef: React.RefObject<FreeShapeAnnotation[]>) {
-  return useCallback(() => clipboardRef.current && clipboardRef.current.length > 0, [clipboardRef]);
-}
-
-function useAnnotationCopyPaste(
-  annotations: FreeShapeAnnotation[],
-  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
-  selectedAnnotationIds: Set<string>,
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
-  clipboardRef: React.RefObject<FreeShapeAnnotation[]>,
-  pasteCounterRef: React.RefObject<number>,
-  saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void,
-  saveAnnotationsImmediate: (annotations: FreeShapeAnnotation[]) => void
-) {
-  const copySelectedAnnotations = useCopyAnnotations(annotations, selectedAnnotationIds, clipboardRef, pasteCounterRef);
-  const pasteAnnotations = usePasteAnnotations(setAnnotations, setSelectedAnnotationIds, clipboardRef, pasteCounterRef, saveAnnotationsImmediate);
-  const duplicateSelectedAnnotations = useDuplicateAnnotations(annotations, setAnnotations, selectedAnnotationIds, setSelectedAnnotationIds, saveAnnotationsToExtension);
-  const hasClipboardContent = useHasClipboardContent(clipboardRef);
-
-  return {
-    copySelectedAnnotations,
-    pasteAnnotations,
-    duplicateSelectedAnnotations,
-    hasClipboardContent
-  };
-}
-
 export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFreeShapeActionsReturn {
   const { state, mode, isLocked, onLockedAction } = options;
   const {
@@ -465,23 +271,26 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
   const crudActions = useAnnotationCrud(setAnnotations, lastStyleRef, saveAnnotationsToExtension);
   const updateActions = useAnnotationUpdates(setAnnotations, saveAnnotationsToExtension);
   const geoActions = useGeoUpdates(setAnnotations, saveAnnotationsToExtension);
-  const selectionActions = useAnnotationSelection(
+  const selectionActions = useAnnotationListSelection({
+    logPrefix: 'FreeShape',
     annotations,
     setAnnotations,
     selectedAnnotationIds,
     setSelectedAnnotationIds,
-    saveAnnotationsToExtension
-  );
-  const copyPasteActions = useAnnotationCopyPaste(
+    saveAnnotationsToExtension,
+  });
+  const copyPasteActions = useAnnotationListCopyPaste({
+    logPrefix: 'FreeShape',
     annotations,
     setAnnotations,
     selectedAnnotationIds,
     setSelectedAnnotationIds,
     clipboardRef,
     pasteCounterRef,
+    duplicateAnnotations,
     saveAnnotationsToExtension,
-    saveAnnotationsImmediate
-  );
+    saveAnnotationsImmediate,
+  });
 
   return {
     ...modeActions,
@@ -492,4 +301,3 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
     ...copyPasteActions
   };
 }
-
