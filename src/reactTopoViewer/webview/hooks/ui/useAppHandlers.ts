@@ -5,7 +5,6 @@
 import React from 'react';
 import type { FloatingActionPanelHandle } from '../../components/panels/FloatingActionPanel';
 import type { NodePositionEntry, MembershipEntry } from '../state';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 interface SelectionCallbacks {
   selectNode: (id: string | null) => void;
@@ -38,7 +37,7 @@ export function useAppHandlers({
   selectionCallbacks,
   undoRedo,
   floatingPanelRef,
-  isLocked,
+  isLocked: _isLocked,
   pendingMembershipChangesRef
 }: UseAppHandlersOptions) {
   const { selectNode, selectEdge, editNode, editEdge } = selectionCallbacks;
@@ -83,11 +82,6 @@ export function useAppHandlers({
     editNode(null);
     editEdge(null);
   }, [selectNode, selectEdge, editNode, editEdge]);
-
-  // Sync lock state with extension
-  React.useEffect(() => {
-    sendCommandToExtension('toggle-lock-state', { isLocked });
-  }, [isLocked]);
 
   return {
     handleLockedDrag,

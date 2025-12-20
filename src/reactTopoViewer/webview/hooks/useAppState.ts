@@ -5,8 +5,8 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { Core } from 'cytoscape';
 import { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
-import { sendCommandToExtension } from '../utils/extensionMessaging';
 import { log } from '../utils/logger';
+import { deleteNode, deleteLink } from '../services';
 
 export type LayoutOption = 'preset' | 'cola' | 'radial' | 'hierarchical' | 'cose' | 'geo';
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
@@ -378,7 +378,6 @@ export function useLayoutControls(
     if (!cy) return;
     cy.autoungrabify(mode === 'pan');
     cy.boxSelectionEnabled(mode === 'edit');
-    sendCommandToExtension('nav-geo-controls', { geoMode: mode });
   }, [cytoscapeRef, layout]);
 
   const setLayout = useCallback((nextLayout: LayoutOption) => {
@@ -391,7 +390,6 @@ export function useLayoutControls(
       cy.fit(undefined, 50);
       cy.autoungrabify(geoMode === 'pan');
       cy.boxSelectionEnabled(geoMode === 'edit');
-      sendCommandToExtension('nav-geo-controls', { geoMode });
       return;
     }
     const normalized = normalizeLayoutName(nextLayout);
@@ -444,38 +442,33 @@ export function useContextMenuHandlers(
   const { selectNode, selectEdge, editNode, editEdge, editNetwork, removeNodeAndEdges, removeEdge } = callbacks;
 
   const handleEditNode = useCallback((nodeId: string) => {
-    sendCommandToExtension('panel-edit-node', { nodeId });
     editNode(nodeId);
   }, [editNode]);
 
   const handleEditNetwork = useCallback((nodeId: string) => {
-    sendCommandToExtension('panel-edit-network', { nodeId });
     editNetwork(nodeId);
   }, [editNetwork]);
 
-  const handleCreateLinkFromNode = useCallback((nodeId: string) => {
-    sendCommandToExtension('panel-start-link', { nodeId });
+  const handleCreateLinkFromNode = useCallback((_nodeId: string) => {
+    // Link creation is handled by edge handles in cytoscape
   }, []);
 
   const handleShowNodeProperties = useCallback((nodeId: string) => {
-    sendCommandToExtension('panel-node-info', { nodeId });
     selectNode(nodeId);
   }, [selectNode]);
 
   const handleShowLinkProperties = useCallback((edgeId: string) => {
-    sendCommandToExtension('panel-link-info', { edgeId });
     selectEdge(edgeId);
   }, [selectEdge]);
 
   const handleEditLink = useCallback((edgeId: string) => {
-    sendCommandToExtension('panel-edit-link', { edgeId });
     editEdge(edgeId);
   }, [editEdge]);
   const handleCloseNodePanel = useCallback(() => selectNode(null), [selectNode]);
   const handleCloseLinkPanel = useCallback(() => selectEdge(null), [selectEdge]);
 
   const handleDeleteNode = useCallback((nodeId: string) => {
-    sendCommandToExtension('panel-delete-node', { nodeId });
+    deleteNode(nodeId);  // Persist to YAML and annotations
     removeNodeAndEdges(nodeId);
     const cy = cytoscapeRef.current?.getCy();
     if (cy) {
@@ -487,18 +480,15 @@ export function useContextMenuHandlers(
   const handleDeleteLink = useCallback((edgeId: string) => {
     const cy = cytoscapeRef.current?.getCy();
     if (cy) {
-      // Get edge data before removing so we can send it to the extension for YAML deletion
       const edge = cy.getElementById(edgeId);
       if (edge.length > 0) {
         const edgeData = edge.data();
-        sendCommandToExtension('panel-delete-link', {
-          edgeId,
-          linkData: {
-            source: edgeData.source,
-            target: edgeData.target,
-            sourceEndpoint: edgeData.sourceEndpoint || '',
-            targetEndpoint: edgeData.targetEndpoint || ''
-          }
+        deleteLink({  // Persist to YAML
+          id: edgeId,
+          source: edgeData.source,
+          target: edgeData.target,
+          sourceEndpoint: edgeData.sourceEndpoint || '',
+          targetEndpoint: edgeData.targetEndpoint || ''
         });
         edge.remove();
       }

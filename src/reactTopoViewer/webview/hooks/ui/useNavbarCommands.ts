@@ -13,26 +13,28 @@ export interface NavbarCommands {
 }
 
 export function useNavbarCommands(): NavbarCommands {
-  const onLabSettings = useCallback(
-    () => sendCommandToExtension('nav-open-lab-settings'),
-    []
-  );
+  // These are now no-ops as they're handled in the webview
+  const onLabSettings = useCallback(() => {
+    // Lab settings can be a webview modal
+  }, []);
+
+  // Keep this one - needs extension to open VS Code editor panel
   const onToggleSplit = useCallback(
     () => sendCommandToExtension('topo-toggle-split-view'),
     []
   );
-  const onFindNode = useCallback(
-    () => sendCommandToExtension('nav-find-node'),
-    []
-  );
-  const onCaptureSvg = useCallback(
-    () => sendCommandToExtension('nav-capture-svg'),
-    []
-  );
-  const onLayoutToggle = useCallback(
-    () => sendCommandToExtension('nav-layout-toggle'),
-    []
-  );
+
+  const onFindNode = useCallback(() => {
+    // Find node is handled by webview search UI
+  }, []);
+
+  const onCaptureSvg = useCallback(() => {
+    // SVG capture can use browser download API
+  }, []);
+
+  const onLayoutToggle = useCallback(() => {
+    // Layout toggle is webview state
+  }, []);
 
   return {
     onLabSettings,
@@ -42,4 +44,3 @@ export function useNavbarCommands(): NavbarCommands {
     onLayoutToggle
   };
 }
-

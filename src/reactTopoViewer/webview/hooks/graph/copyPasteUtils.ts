@@ -7,9 +7,14 @@ import { log } from '../../utils/logger';
 import { CyElement } from '../../../shared/types/messages';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
 import { isSpecialEndpoint } from '../../../shared/utilities/LinkTypes';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
-
-declare const vscode: { postMessage: (msg: unknown) => void };
+import {
+  createNode,
+  createLink,
+  beginBatch,
+  endBatch,
+  type NodeSaveData,
+  type LinkSaveData
+} from '../../services';
 
 const PASTE_OFFSET = { X: 20, Y: 20 } as const;
 
@@ -324,11 +329,21 @@ export function recordPasteAction(
 
 function persistPastedNodes(nodes: CyElementJson[]): void {
   for (const node of nodes) {
-    sendCommandToExtension('create-node', {
-      nodeId: node.data.id,
-      nodeData: node.data,
-      position: node.position
-    });
+    const nodeData: NodeSaveData = {
+      id: node.data.id as string,
+      name: (node.data.name as string) || (node.data.id as string),
+      position: node.position,
+      extraData: {
+        kind: node.data.kind as string | undefined,
+        image: node.data.image as string | undefined,
+        group: node.data.group as string | undefined,
+        topoViewerRole: node.data.topoViewerRole,
+        iconColor: node.data.iconColor,
+        iconCornerRadius: node.data.iconCornerRadius,
+        interfacePattern: node.data.interfacePattern
+      }
+    };
+    createNode(nodeData);
   }
 }
 
@@ -338,20 +353,19 @@ function persistPastedEdges(edges: CyElementJson[]): void {
     const tgt = edge.data.target as string;
     if (isSpecialEndpoint(src) || isSpecialEndpoint(tgt)) continue;
 
-    sendCommandToExtension('create-link', {
-      linkData: {
-        id: edge.data.id,
-        source: src,
-        target: tgt,
-        sourceEndpoint: edge.data.sourceEndpoint || '',
-        targetEndpoint: edge.data.targetEndpoint || ''
-      }
-    });
+    const linkData: LinkSaveData = {
+      id: edge.data.id as string,
+      source: src,
+      target: tgt,
+      sourceEndpoint: (edge.data.sourceEndpoint as string) || '',
+      targetEndpoint: (edge.data.targetEndpoint as string) || ''
+    };
+    createLink(linkData);
   }
 }
 
 export function persistPastedElements(elements: CyElementJson[]): void {
-  sendCommandToExtension('begin-graph-batch');
+  beginBatch();
 
   const nodes = elements.filter(el => el.group === 'nodes' && !isSpecialEndpoint(el.data.id as string));
   persistPastedNodes(nodes);
@@ -359,14 +373,8 @@ export function persistPastedElements(elements: CyElementJson[]): void {
   const edges = elements.filter(el => el.group === 'edges');
   persistPastedEdges(edges);
 
-  const positions = nodes
-    .filter(node => node.position)
-    .map(node => ({ id: node.data.id as string, position: node.position! }));
-  if (positions.length > 0) {
-    vscode.postMessage({ command: 'save-node-positions', positions });
-  }
-
-  sendCommandToExtension('end-graph-batch');
+  // Note: positions are saved as part of createNode, no separate call needed
+  endBatch();
 }
 
 function applyPastePositionDelta(
@@ -436,7 +444,7 @@ export function executeCopy(cy: Core): CopyData | null {
     return null;
   }
 
-  sendCommandToExtension('copyElements', { payload: copyData });
+  // Copy data is returned and stored locally by the caller
   log.info(`[CopyPaste] Copied ${copyData.elements.length} elements`);
   return copyData;
 }

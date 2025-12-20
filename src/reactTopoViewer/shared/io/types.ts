@@ -2,9 +2,6 @@
  * Shared I/O types for both VS Code extension and dev server
  */
 
-// Re-export topology annotations type
-export { TopologyAnnotations } from '../types/topology';
-
 /**
  * Result of a save operation
  */

@@ -6,9 +6,9 @@ import { useEffect, useCallback, useRef } from 'react';
 import type { Core, NodeSingular, EventObject } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { parseGroupId, CMD_SAVE_NODE_GROUP_MEMBERSHIP } from './groupHelpers';
+import { parseGroupId } from './groupHelpers';
 import { findDeepestGroupAtPosition } from './hierarchyUtils';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
 
 export interface UseNodeReparentOptions {
   mode: 'edit' | 'view';
@@ -40,9 +40,43 @@ function findGroupForNode(node: NodeSingular, groups: GroupStyleAnnotation[]): G
 }
 
 function saveNodeMembership(nodeId: string, groupId: string | null): void {
+  if (!isServicesInitialized()) {
+    log.warn('[Reparent] Services not initialized for membership save');
+    return;
+  }
+
+  const annotationsIO = getAnnotationsIO();
+  const topologyIO = getTopologyIO();
+
+  const yamlPath = topologyIO.getYamlFilePath();
+  if (!yamlPath) {
+    log.warn('[Reparent] No YAML path for membership save');
+    return;
+  }
+
   const { name, level } = groupId ? parseGroupId(groupId) : { name: null, level: null };
-  const data = { nodeId, group: name, level };
-  sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, data);
+
+  annotationsIO.modifyAnnotations(yamlPath, annotations => {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+
+    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+    if (existing) {
+      existing.group = name ?? undefined;
+      existing.level = level ?? undefined;
+    } else {
+      annotations.nodeAnnotations.push({
+        id: nodeId,
+        group: name ?? undefined,
+        level: level ?? undefined
+      });
+    }
+
+    return annotations;
+  }).catch(err => {
+    log.error(`[Reparent] Failed to save membership: ${err}`);
+  });
 }
 
 function handleMembershipChange(

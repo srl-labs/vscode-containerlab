@@ -480,7 +480,10 @@ function handleExtensionMessage(
     },
     'topo-mode-changed': () => {
       if (message.data?.mode) {
-        dispatch({ type: 'SET_MODE', payload: message.data.mode === 'viewer' ? 'view' : 'edit' });
+        // Support both old format ('viewer'/'editor') and new format ('view'/'edit')
+        const modeValue = message.data.mode;
+        const normalizedMode = (modeValue === 'viewer' || modeValue === 'view') ? 'view' : 'edit';
+        dispatch({ type: 'SET_MODE', payload: normalizedMode });
       }
       if (message.data?.deploymentState) {
         dispatch({ type: 'SET_DEPLOYMENT_STATE', payload: message.data.deploymentState as DeploymentState });

@@ -4,7 +4,7 @@
  * the production extension and the dev server.
  */
 
-import {
+import type {
   ClabTopology,
   CyElement,
   TopologyAnnotations,
@@ -13,7 +13,7 @@ import {
 } from '../types/topology';
 
 // Re-export commonly used types for convenience
-export { ClabTopology, CyElement, TopologyAnnotations, NodeAnnotation };
+export type { ClabTopology, CyElement, TopologyAnnotations, NodeAnnotation };
 
 // ============================================================================
 // Parser Options and Results

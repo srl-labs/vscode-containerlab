@@ -16,12 +16,14 @@ export {
   SaveResult,
   IOLogger,
   noopLogger,
-  TopologyAnnotations,
   ERROR_NODES_NOT_MAP,
   ERROR_LINKS_NOT_SEQ,
   ERROR_SERVICE_NOT_INIT,
   ERROR_NO_YAML_PATH,
 } from './types';
+
+// Re-export TopologyAnnotations from types module
+export type { TopologyAnnotations } from '../types/topology';
 
 // File system adapters
 export { NodeFsAdapter, nodeFsAdapter } from './NodeFsAdapter';

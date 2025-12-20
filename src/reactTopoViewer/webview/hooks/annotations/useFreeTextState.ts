@@ -3,7 +3,7 @@
  */
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { FreeTextAnnotation } from '../../../shared/types/topology';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { saveFreeTextAnnotations as saveFreeTextToIO } from '../../services';
 import { log } from '../../utils/logger';
 import {
   SAVE_DEBOUNCE_MS,
@@ -52,7 +52,9 @@ export function useFreeTextState(): UseFreeTextStateReturn {
   const saveAnnotationsToExtension = useCallback((updatedAnnotations: FreeTextAnnotation[]) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      sendCommandToExtension('save-free-text-annotations', { annotations: updatedAnnotations });
+      saveFreeTextToIO(updatedAnnotations).catch(err => {
+        log.error(`[FreeText] Failed to save annotations: ${err}`);
+      });
       log.info(`[FreeText] Saved ${updatedAnnotations.length} annotations`);
     }, SAVE_DEBOUNCE_MS);
   }, []);
@@ -60,7 +62,9 @@ export function useFreeTextState(): UseFreeTextStateReturn {
   // Immediate save without debounce - used for paste to avoid race with topology refresh
   const saveAnnotationsImmediate = useCallback((updatedAnnotations: FreeTextAnnotation[]) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    sendCommandToExtension('save-free-text-annotations', { annotations: updatedAnnotations });
+    saveFreeTextToIO(updatedAnnotations).catch(err => {
+      log.error(`[FreeText] Failed to save annotations: ${err}`);
+    });
     log.info(`[FreeText] Saved ${updatedAnnotations.length} annotations (immediate)`);
   }, []);
 

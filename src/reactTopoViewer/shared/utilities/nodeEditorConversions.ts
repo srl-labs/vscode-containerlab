@@ -348,3 +348,44 @@ export function convertEditorDataToYaml(data: Record<string, unknown>): YamlExtr
 
   return extraData;
 }
+
+// ============================================================================
+// NodeEditorData -> NodeSaveData (for TopologyIO service)
+// ============================================================================
+
+import type { NodeSaveData } from '../../shared/io/NodePersistenceIO';
+
+/**
+ * Convert NodeEditorData to NodeSaveData format for TopologyIO.
+ * This is used when saving node editor changes via the services.
+ *
+ * @param data - NodeEditorData from the editor panel
+ * @param oldName - Optional original name if node is being renamed
+ * @returns NodeSaveData for TopologyIO.editNode()
+ */
+export function convertEditorDataToNodeSaveData(data: NodeEditorData, oldName?: string): NodeSaveData {
+  const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
+
+  // Build the extraData with annotation props (icon, iconColor, iconCornerRadius, interfacePattern)
+  const extraData: NodeSaveData['extraData'] = {
+    ...yamlExtraData,
+    // Annotation properties (saved to annotations.json, not YAML)
+    topoViewerRole: data.icon,
+    iconColor: data.iconColor,
+    iconCornerRadius: data.iconCornerRadius,
+    interfacePattern: data.interfacePattern,
+  };
+
+  const saveData: NodeSaveData = {
+    id: data.id,
+    name: data.name,
+    extraData,
+  };
+
+  // If renaming, include the old name so TopologyIO can find and rename the node
+  if (oldName && oldName !== data.name) {
+    (saveData as NodeSaveData & { oldName?: string }).oldName = oldName;
+  }
+
+  return saveData;
+}

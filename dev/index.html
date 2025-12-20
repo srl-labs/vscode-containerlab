@@ -426,7 +426,7 @@
       updateFileStatus('Resetting files...');
 
       try {
-        const response = await fetch('/api/reset', { method: 'POST' });
+        const response = await fetch('/reset', { method: 'POST' });
         const result = await response.json();
 
         if (!result.success) {
@@ -448,22 +448,22 @@
       updateFileStatus('Refreshing file list...');
 
       try {
-        const response = await fetch('/api/topologies');
-        const result = await response.json();
+        const response = await fetch('/files');
+        const files = await response.json();
 
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to list files');
+        if (!Array.isArray(files)) {
+          throw new Error('Invalid response from /files endpoint');
         }
 
         select.innerHTML = '<option value="">-- Select a file --</option>';
-        for (const file of result.data) {
+        for (const file of files) {
           const option = document.createElement('option');
-          option.value = file.filename;
+          option.value = file.path;
           option.textContent = file.filename + (file.hasAnnotations ? ' (+ annotations)' : '');
           select.appendChild(option);
         }
 
-        updateFileStatus('Found ' + result.data.length + ' topology files');
+        updateFileStatus('Found ' + files.length + ' topology files');
 
         // Select current file if one is loaded
         if (window.__DEV__) {

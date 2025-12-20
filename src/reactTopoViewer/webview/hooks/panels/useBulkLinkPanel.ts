@@ -50,8 +50,8 @@ export function useBulkLinkPanel({
     computeAndValidateCandidates(cy, sourcePattern, targetPattern, setStatus, setPendingCandidates);
   }, [cy, sourcePattern, targetPattern]);
 
-  const handleConfirmCreate = React.useCallback(() => {
-    confirmAndCreateLinks({
+  const handleConfirmCreate = React.useCallback(async () => {
+    await confirmAndCreateLinks({
       cy,
       pendingCandidates,
       canApply,

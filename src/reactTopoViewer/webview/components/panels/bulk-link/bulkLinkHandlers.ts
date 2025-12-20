@@ -2,31 +2,30 @@
  * Handler functions for bulk link operations
  */
 import type { Core as CyCore } from 'cytoscape';
-import { sendCommandToExtension } from '../../../utils/extensionMessaging';
 import type { GraphChangeEntry } from '../../../hooks';
 import { computeCandidates, buildBulkEdges, buildUndoRedoEntries, type LinkCandidate } from './bulkLinkUtils';
 import type { CyElement } from '../../../../shared/types/messages';
+import { createLink, beginBatch, endBatch, type LinkSaveData } from '../../../services';
 
 type SetStatus = (status: string | null) => void;
 type SetCandidates = (candidates: LinkCandidate[] | null) => void;
 
-export function sendBulkEdgesToExtension(edges: CyElement[]): void {
-  sendCommandToExtension('begin-graph-batch', {});
+export async function sendBulkEdgesToExtension(edges: CyElement[]): Promise<void> {
+  beginBatch();
   try {
     for (const edge of edges) {
       const data = edge.data as Record<string, unknown>;
-      sendCommandToExtension('create-link', {
-        linkData: {
-          id: String(data.id || ''),
-          source: String(data.source || ''),
-          target: String(data.target || ''),
-          sourceEndpoint: String(data.sourceEndpoint || ''),
-          targetEndpoint: String(data.targetEndpoint || '')
-        }
-      });
+      const linkData: LinkSaveData = {
+        id: String(data.id || ''),
+        source: String(data.source || ''),
+        target: String(data.target || ''),
+        sourceEndpoint: String(data.sourceEndpoint || ''),
+        targetEndpoint: String(data.targetEndpoint || '')
+      };
+      await createLink(linkData);
     }
   } finally {
-    sendCommandToExtension('end-graph-batch', {});
+    await endBatch();
   }
 }
 
@@ -66,7 +65,7 @@ interface ConfirmCreateParams {
   onClose: () => void;
 }
 
-export function confirmAndCreateLinks({
+export async function confirmAndCreateLinks({
   cy,
   pendingCandidates,
   canApply,
@@ -74,7 +73,7 @@ export function confirmAndCreateLinks({
   setStatus,
   setPendingCandidates,
   onClose
-}: ConfirmCreateParams): void {
+}: ConfirmCreateParams): Promise<void> {
   if (!cy || !pendingCandidates) return;
   if (!canApply) {
     setStatus('Unlock the lab to create links.');
@@ -90,7 +89,7 @@ export function confirmAndCreateLinks({
   }
 
   const { before, after } = buildUndoRedoEntries(edges);
-  sendBulkEdgesToExtension(edges);
+  await sendBulkEdgesToExtension(edges);
   recordGraphChanges?.(before, after);
 
   setPendingCandidates(null);

@@ -3,7 +3,6 @@
  * Split from createCopyPasteHandlers to reduce aggregate complexity
  */
 import type { Core } from 'cytoscape';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
 import {
   CopyData,
   collectCopyData,
@@ -36,15 +35,16 @@ export function createCopyHandler(
 
 /**
  * Creates the paste handler
+ * Note: Paste is now handled by the unified clipboard system (useUnifiedClipboard)
  */
 export function createPasteHandler(
-  cy: Core | null,
-  mode: 'edit' | 'view',
-  isLocked: boolean
+  _cy: Core | null,
+  _mode: 'edit' | 'view',
+  _isLocked: boolean
 ): () => void {
   return () => {
-    if (!cy || mode !== 'edit' || isLocked) return;
-    sendCommandToExtension('getCopiedElements');
+    // Paste is handled by the unified clipboard system
+    // This handler is kept for API compatibility
   };
 }
 

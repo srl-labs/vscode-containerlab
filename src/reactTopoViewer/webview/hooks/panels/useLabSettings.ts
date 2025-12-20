@@ -2,6 +2,7 @@
  * Hook for managing Lab Settings state
  */
 import { useState, useCallback, useEffect } from 'react';
+import * as YAML from 'yaml';
 import type {
   LabSettings,
   PrefixType,
@@ -10,7 +11,7 @@ import type {
   BasicSettingsState,
   MgmtSettingsState
 } from '../../components/panels/lab-settings/types';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { isServicesInitialized, getTopologyIO } from '../../services';
 
 export interface UseLabSettingsStateResult {
   basic: BasicSettingsState;
@@ -267,14 +268,65 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
   const ip = useIpSettings(labSettings);
   const other = useOtherMgmtSettings(labSettings);
 
-  const handleSave = useCallback(() => {
-    const settings = gatherBasicSettings(basic.state);
-    const mgmtState: MgmtSettingsState = {
-      ...other.state,
-      ...ip.state
-    };
-    settings.mgmt = gatherMgmtSettings(mgmtState);
-    sendCommandToExtension('save-lab-settings', { settings });
+  const handleSave = useCallback(async () => {
+    if (!isServicesInitialized()) {
+      console.warn('[useLabSettings] Services not initialized, cannot save settings');
+      return;
+    }
+
+    const topologyIO = getTopologyIO();
+    const doc = topologyIO.getDocument();
+    if (!doc) {
+      console.warn('[useLabSettings] No YAML document available, cannot save settings');
+      return;
+    }
+
+    try {
+      // Get or create the topology map
+      let topoMap = doc.getIn(['topology'], true) as YAML.YAMLMap | undefined;
+      if (!topoMap || !YAML.isMap(topoMap)) {
+        console.error('[useLabSettings] Topology map not found or invalid');
+        return;
+      }
+
+      // Gather all settings
+      const settings = gatherBasicSettings(basic.state);
+      const mgmtState: MgmtSettingsState = {
+        ...other.state,
+        ...ip.state
+      };
+      const mgmtSettings = gatherMgmtSettings(mgmtState);
+
+      // Update lab name (topology.name)
+      if (settings.name !== undefined) {
+        topoMap.set('name', doc.createNode(settings.name));
+      }
+
+      // Update prefix (topology.prefix)
+      if (settings.prefix !== undefined) {
+        if (settings.prefix === null) {
+          // Remove prefix key to use default
+          topoMap.delete('prefix');
+        } else {
+          topoMap.set('prefix', doc.createNode(settings.prefix));
+        }
+      }
+
+      // Update mgmt settings (topology.mgmt)
+      if (mgmtSettings === null) {
+        // Remove mgmt section if no settings
+        topoMap.delete('mgmt');
+      } else {
+        // Create a new mgmt map with all settings
+        const mgmtMap = doc.createNode(mgmtSettings) as YAML.YAMLMap;
+        topoMap.set('mgmt', mgmtMap);
+      }
+
+      // Save the document
+      await topologyIO.save();
+    } catch (err) {
+      console.error('[useLabSettings] Failed to save lab settings:', err);
+    }
   }, [basic.state, ip.state, other.state]);
 
   return {

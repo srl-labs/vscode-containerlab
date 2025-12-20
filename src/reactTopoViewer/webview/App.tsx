@@ -2,15 +2,14 @@
  * React TopoViewer Main Application Component
  */
 import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
-import { useTopoViewer, CustomNodeTemplate } from './context/TopoViewerContext';
+import { useTopoViewer } from './context/TopoViewerContext';
 import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
 import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
 import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel } from './components/panels/node-editor';
-import { NetworkEditorPanel, NetworkEditorData } from './components/panels/network-editor';
-import { LinkEditorPanel, LinkEditorData } from './components/panels/link-editor';
+import { NetworkEditorPanel } from './components/panels/network-editor';
+import { LinkEditorPanel } from './components/panels/link-editor';
 import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
@@ -85,12 +84,18 @@ import {
 } from './hooks';
 import { useUnifiedClipboard } from './hooks/clipboard';
 import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './hooks';
-import type { MembershipEntry } from './hooks/state';
-import { sendCommandToExtension } from './utils/extensionMessaging';
 import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
 import { convertToNetworkEditorData } from '../shared/utilities/networkEditorConversions';
-import type { NodeEditorData } from './components/panels/node-editor/types';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
+import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from './services';
+import {
+  useNodeEditorHandlers,
+  useLinkEditorHandlers,
+  useNetworkEditorHandlers,
+  useNodeCreationHandlers,
+  useMembershipCallbacks,
+  type NodeCreationState
+} from './hooks/panels/useEditorHandlers';
 
 /**
  * Loading state component
@@ -115,234 +120,6 @@ function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Eleme
       <p className="text-secondary">{message}</p>
     </div>
   );
-}
-
-/**
- * Hook for node editor handlers with undo/redo support
- */
-function useNodeEditorHandlers(
-  editNode: (id: string | null) => void,
-  editingNodeData: NodeEditorData | null,
-  recordPropertyEdit?: (action: { entityType: 'node' | 'link'; entityId: string; before: Record<string, unknown>; after: Record<string, unknown> }) => void
-) {
-  // Store the initial data when editor opens for undo/redo
-  const initialDataRef = React.useRef<NodeEditorData | null>(null);
-
-  // Update initial data ref when editing node changes
-  React.useEffect(() => {
-    if (editingNodeData) {
-      initialDataRef.current = { ...editingNodeData };
-    } else {
-      initialDataRef.current = null;
-    }
-  }, [editingNodeData?.id]); // Only reset when editing a different node
-
-  const handleClose = React.useCallback(() => {
-    initialDataRef.current = null;
-    editNode(null);
-  }, [editNode]);
-
-  const handleSave = React.useCallback((data: NodeEditorData) => {
-    // Record for undo/redo if we have initial data
-    if (recordPropertyEdit && initialDataRef.current) {
-      recordPropertyEdit({
-        entityType: 'node',
-        entityId: initialDataRef.current.id,
-        before: initialDataRef.current as unknown as Record<string, unknown>,
-        after: data as unknown as Record<string, unknown>
-      });
-    }
-    // Include oldName if renaming (name changed from initial)
-    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-    sendCommandToExtension('save-node-editor', { nodeData: data, oldName });
-    initialDataRef.current = null;
-    editNode(null);
-  }, [editNode, recordPropertyEdit]);
-
-  const handleApply = React.useCallback((data: NodeEditorData) => {
-    // Capture oldName BEFORE updating initialDataRef for rename detection
-    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-
-    // Record for undo/redo if we have initial data and data changed
-    if (recordPropertyEdit && initialDataRef.current) {
-      const hasChanges = JSON.stringify(initialDataRef.current) !== JSON.stringify(data);
-      if (hasChanges) {
-        recordPropertyEdit({
-          entityType: 'node',
-          entityId: initialDataRef.current.id,
-          before: initialDataRef.current as unknown as Record<string, unknown>,
-          after: data as unknown as Record<string, unknown>
-        });
-        // Update initial data to the new state for subsequent applies
-        initialDataRef.current = { ...data };
-      }
-    }
-    sendCommandToExtension('apply-node-editor', { nodeData: data, oldName });
-  }, [recordPropertyEdit]);
-
-  return { handleClose, handleSave, handleApply };
-}
-
-/**
- * Hook for link editor handlers with undo/redo support
- */
-function useLinkEditorHandlers(
-  editEdge: (id: string | null) => void,
-  editingLinkData: LinkEditorData | null,
-  recordPropertyEdit?: (action: { entityType: 'node' | 'link'; entityId: string; before: Record<string, unknown>; after: Record<string, unknown> }) => void
-) {
-  // Store the initial data when editor opens for undo/redo
-  const initialDataRef = React.useRef<LinkEditorData | null>(null);
-
-  // Update initial data ref when editing link changes
-  React.useEffect(() => {
-    if (editingLinkData) {
-      initialDataRef.current = { ...editingLinkData };
-    } else {
-      initialDataRef.current = null;
-    }
-  }, [editingLinkData?.id]); // Only reset when editing a different link
-
-  const handleClose = React.useCallback(() => {
-    initialDataRef.current = null;
-    editEdge(null);
-  }, [editEdge]);
-
-  const handleSave = React.useCallback((data: LinkEditorData) => {
-    // Record for undo/redo if we have initial data
-    if (recordPropertyEdit && initialDataRef.current) {
-      recordPropertyEdit({
-        entityType: 'link',
-        entityId: initialDataRef.current.id,
-        before: initialDataRef.current as unknown as Record<string, unknown>,
-        after: data as unknown as Record<string, unknown>
-      });
-    }
-    sendCommandToExtension('save-link-editor', { linkData: data });
-    initialDataRef.current = null;
-    editEdge(null);
-  }, [editEdge, recordPropertyEdit]);
-
-  const handleApply = React.useCallback((data: LinkEditorData) => {
-    // Record for undo/redo if we have initial data and data changed
-    if (recordPropertyEdit && initialDataRef.current) {
-      const hasChanges = JSON.stringify(initialDataRef.current) !== JSON.stringify(data);
-      if (hasChanges) {
-        recordPropertyEdit({
-          entityType: 'link',
-          entityId: initialDataRef.current.id,
-          before: initialDataRef.current as unknown as Record<string, unknown>,
-          after: data as unknown as Record<string, unknown>
-        });
-        // Update initial data to the new state for subsequent applies
-        initialDataRef.current = { ...data };
-      }
-    }
-    sendCommandToExtension('apply-link-editor', { linkData: data });
-  }, [recordPropertyEdit]);
-
-  return { handleClose, handleSave, handleApply };
-}
-
-/**
- * Hook for network editor handlers
- */
-function useNetworkEditorHandlers(
-  editNetwork: (id: string | null) => void,
-  _editingNetworkData: NetworkEditorData | null
-) {
-  const handleClose = React.useCallback(() => {
-    editNetwork(null);
-  }, [editNetwork]);
-
-  const handleSave = React.useCallback((data: NetworkEditorData) => {
-    sendCommandToExtension('save-network-editor', { networkData: data });
-    editNetwork(null);
-  }, [editNetwork]);
-
-  const handleApply = React.useCallback((data: NetworkEditorData) => {
-    sendCommandToExtension('apply-network-editor', { networkData: data });
-  }, []);
-
-  return { handleClose, handleSave, handleApply };
-}
-
-/** State shape for node creation handlers */
-interface NodeCreationState {
-  isLocked: boolean;
-  customNodes: CustomNodeTemplate[];
-  defaultNode: string;
-}
-
-/** Position type */
-type Position = { x: number; y: number };
-
-/**
- * Hook for node creation handlers
- */
-function useNodeCreationHandlers(
-  floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>,
-  state: NodeCreationState,
-  cyInstance: CyCore | null,
-  createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void,
-  onNewCustomNode: () => void
-) {
-  // Handler for Add Node button from FloatingActionPanel
-  const handleAddNodeFromPanel = React.useCallback((templateName?: string) => {
-    // Handle "New Custom Node" action
-    if (templateName === '__new__') {
-      onNewCustomNode();
-      return;
-    }
-
-    if (!cyInstance) return;
-
-    if (state.isLocked) {
-      floatingPanelRef.current?.triggerShake();
-      return;
-    }
-
-    let template: CustomNodeTemplate | undefined;
-    if (templateName) {
-      template = state.customNodes.find(n => n.name === templateName);
-    } else if (state.defaultNode) {
-      template = state.customNodes.find(n => n.name === state.defaultNode);
-    }
-
-    const extent = cyInstance.extent();
-    const position: Position = {
-      x: (extent.x1 + extent.x2) / 2,
-      y: (extent.y1 + extent.y2) / 2
-    };
-
-    createNodeAtPosition(position, template);
-  }, [cyInstance, state.isLocked, state.customNodes, state.defaultNode, createNodeAtPosition, floatingPanelRef, onNewCustomNode]);
-
-  return { handleAddNodeFromPanel };
-}
-
-/**
- * Hook for membership change callbacks (reduces App complexity)
- */
-function useMembershipCallbacks(
-  groups: { addNodeToGroup: (nodeId: string, groupId: string) => void; removeNodeFromGroup: (nodeId: string) => void },
-  pendingMembershipChangesRef: React.RefObject<Map<string, PendingMembershipChange>>
-) {
-  const applyMembershipChange = React.useCallback((memberships: MembershipEntry[]) => {
-    for (const entry of memberships) {
-      if (entry.groupId) {
-        groups.addNodeToGroup(entry.nodeId, entry.groupId);
-      } else {
-        groups.removeNodeFromGroup(entry.nodeId);
-      }
-    }
-  }, [groups]);
-
-  const onMembershipWillChange = React.useCallback((nodeId: string, oldGroupId: string | null, newGroupId: string | null) => {
-    pendingMembershipChangesRef.current.set(nodeId, { nodeId, oldGroupId, newGroupId });
-  }, [pendingMembershipChangesRef]);
-
-  return { applyMembershipChange, onMembershipWillChange };
 }
 
 /**
@@ -636,7 +413,6 @@ export const App: React.FC = () => {
   // Override the context menu handler to use the edgehandles start function
   const handleCreateLinkFromNode = React.useCallback((nodeId: string) => {
     startEdgeCreation(nodeId);
-    sendCommandToExtension('panel-start-link', { nodeId });
   }, [startEdgeCreation]);
 
   // Get node creation callbacks using the extracted hook
@@ -669,13 +445,23 @@ export const App: React.FC = () => {
     // Add network to state for tracking
     addNode(networkElement);
 
-    // Save network position to annotations via extension
-    sendCommandToExtension('save-network-position', {
-      networkId,
-      position,
-      networkType: networkElement.data.type,
-      networkLabel: networkElement.data.name
-    });
+    // Save network position to annotations
+    if (isServicesInitialized()) {
+      const annotationsIO = getAnnotationsIO();
+      const topologyIO = getTopologyIO();
+      const yamlPath = topologyIO.getYamlFilePath();
+      if (yamlPath) {
+        annotationsIO.modifyAnnotations(yamlPath, annotations => {
+          if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
+          annotations.nodeAnnotations.push({
+            id: networkId,
+            label: networkElement.data.name as string,
+            position: { x: position.x, y: position.y }
+          });
+          return annotations;
+        });
+      }
+    }
   }, [addNode]);
 
   // Set up network creation hook

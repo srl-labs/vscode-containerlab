@@ -6,13 +6,7 @@ import React, { useReducer, useCallback, useMemo } from 'react';
 import { Core } from 'cytoscape';
 import { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
-
-/**
- * VS Code API interface for posting messages
- */
-declare const vscode: {
-  postMessage: (msg: unknown) => void;
-};
+import { saveNodePositions, getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
 
 /**
  * Represents a node position entry
@@ -401,49 +395,66 @@ function applyPositionsToGraph(cy: Core, positions: NodePositionEntry[]): void {
 }
 
 /**
- * Send positions to extension for persistence
+ * Save positions via TopologyIO service
  */
 function sendPositionsToExtension(positions: NodePositionEntry[]): void {
-  if (typeof vscode === 'undefined') {
-    log.warn('[UndoRedo] VS Code API not available');
-    return;
-  }
-
-  vscode.postMessage({
-    command: 'save-node-positions',
-    positions: positions
-  });
-
-  log.info(`[UndoRedo] Sent ${positions.length} node positions to extension`);
+  saveNodePositions(positions);
+  log.info(`[UndoRedo] Saved ${positions.length} node positions`);
 }
 
 /**
- * Send membership changes to extension for persistence
+ * Save membership changes via AnnotationsIO service
  */
 function sendMembershipToExtension(memberships: MembershipEntry[]): void {
-  if (typeof vscode === 'undefined') {
-    log.warn('[UndoRedo] VS Code API not available');
+  if (!isServicesInitialized()) {
+    log.warn('[UndoRedo] Services not initialized for membership save');
     return;
   }
 
-  for (const entry of memberships) {
-    // Parse groupId to get name and level (groupId format: "name:level")
-    let group: string | null = null;
-    let level: string | null = null;
-    if (entry.groupId) {
-      const parts = entry.groupId.split(':');
-      group = parts[0];
-      level = parts[1] ?? '1';
-    }
-    vscode.postMessage({
-      command: 'save-node-group-membership',
-      nodeId: entry.nodeId,
-      group,
-      level
-    });
+  const annotationsIO = getAnnotationsIO();
+  const topologyIO = getTopologyIO();
+
+  const yamlPath = topologyIO.getYamlFilePath();
+  if (!yamlPath) {
+    log.warn('[UndoRedo] No YAML path for membership save');
+    return;
   }
 
-  log.info(`[UndoRedo] Sent ${memberships.length} membership changes to extension`);
+  // Batch all membership updates in a single annotations modification
+  annotationsIO.modifyAnnotations(yamlPath, annotations => {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+
+    for (const entry of memberships) {
+      // Parse groupId to get name and level (groupId format: "name:level")
+      let group: string | null = null;
+      let level: string | null = null;
+      if (entry.groupId) {
+        const parts = entry.groupId.split(':');
+        group = parts[0];
+        level = parts[1] ?? '1';
+      }
+
+      const existing = annotations.nodeAnnotations.find(n => n.id === entry.nodeId);
+      if (existing) {
+        existing.group = group ?? undefined;
+        existing.level = level ?? undefined;
+      } else {
+        annotations.nodeAnnotations.push({
+          id: entry.nodeId,
+          group: group ?? undefined,
+          level: level ?? undefined
+        });
+      }
+    }
+
+    return annotations;
+  }).catch(err => {
+    log.error(`[UndoRedo] Failed to save membership: ${err}`);
+  });
+
+  log.info(`[UndoRedo] Saved ${memberships.length} membership changes`);
 }
 
 /**

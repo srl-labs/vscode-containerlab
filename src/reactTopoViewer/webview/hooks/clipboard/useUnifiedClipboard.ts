@@ -12,7 +12,7 @@ import type {
 } from '../../../shared/types/topology';
 import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { beginBatch, endBatch } from '../../services';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
 
 /** Node data stored in clipboard */
@@ -744,9 +744,9 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
       beginUndoBatch();
     }
 
-    // Begin extension batch to prevent race conditions when creating multiple nodes/edges
+    // Begin batch to prevent race conditions when creating multiple nodes/edges
     if (hasNodesToCreate || hasEdgesToCreate) {
-      sendCommandToExtension('begin-graph-batch');
+      beginBatch();
     }
 
     // Paste all elements using helper functions
@@ -759,9 +759,9 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     );
     pasteEdges(clipboardData.edges, idMapping, cyInstance, onCreateEdge);
 
-    // End extension batch to flush all changes at once
+    // End batch to flush all changes at once
     if (hasNodesToCreate || hasEdgesToCreate) {
-      sendCommandToExtension('end-graph-batch');
+      endBatch();
     }
 
     const newTextAnnotationIds = pasteTextAnnotations(

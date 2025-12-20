@@ -4,9 +4,6 @@
 import { useCallback } from 'react';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
-/** Command constants to avoid duplicate strings */
-const CMD_PANEL_ADD_NODE = 'panel-add-node';
-
 export interface DeploymentCommands {
   onDeploy: () => void;
   onDeployCleanup: () => void;
@@ -16,6 +13,7 @@ export interface DeploymentCommands {
   onRedeployCleanup: () => void;
 }
 
+// Keep deployment commands - they need extension to run containerlab CLI
 export function useDeploymentCommands(): DeploymentCommands {
   return {
     onDeploy: useCallback(() => sendCommandToExtension('deployLab'), []),
@@ -45,33 +43,27 @@ export interface EditorPanelCommands {
   onAddBulkLink: () => void;
 }
 
+// These are now no-ops - panels are handled in webview
 export function useEditorPanelCommands(): EditorPanelCommands {
   return {
-    onAddNode: useCallback((kind?: string) => {
-      sendCommandToExtension(CMD_PANEL_ADD_NODE, { kind });
+    onAddNode: useCallback((_kind?: string) => {
+      // Node creation is handled via shift+click or context menu
     }, []),
-    onAddNetwork: useCallback((networkType?: string) => {
-      sendCommandToExtension('panel-add-network', {
-        networkType: networkType || 'host'
-      });
+    onAddNetwork: useCallback((_networkType?: string) => {
+      // Network creation handled in webview
     }, []),
-    onAddGroup: useCallback(
-      () => sendCommandToExtension('panel-add-group'),
-      []
-    ),
-    onAddText: useCallback(
-      () => sendCommandToExtension('panel-add-text'),
-      []
-    ),
-    onAddShapes: useCallback((shapeType?: string) => {
-      sendCommandToExtension('panel-add-shapes', {
-        shapeType: shapeType || 'rectangle'
-      });
+    onAddGroup: useCallback(() => {
+      // Group creation handled in webview
     }, []),
-    onAddBulkLink: useCallback(
-      () => sendCommandToExtension('panel-add-bulk-link'),
-      []
-    )
+    onAddText: useCallback(() => {
+      // Text annotation handled in webview
+    }, []),
+    onAddShapes: useCallback((_shapeType?: string) => {
+      // Shape annotation handled in webview
+    }, []),
+    onAddBulkLink: useCallback(() => {
+      // Bulk link panel handled in webview
+    }, [])
   };
 }
 
@@ -85,4 +77,3 @@ export function useFloatingPanelCommands(): FloatingPanelCommands {
     ...editorCommands
   };
 }
-

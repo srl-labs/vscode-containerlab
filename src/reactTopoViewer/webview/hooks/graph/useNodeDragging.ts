@@ -6,14 +6,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { Core, NodeSingular, EventObject } from 'cytoscape';
 import { log } from '../../utils/logger';
 import type { NodePositionEntry } from '../state/useUndoRedo';
-
-/**
- * VS Code API interface for posting messages
- */
-declare const vscode: {
-  postMessage: (msg: unknown) => void;
-};
-
+import { getTopologyIO } from '../../services';
 
 /**
  * Options for the node dragging hook
@@ -28,20 +21,21 @@ export interface NodeDraggingOptions {
 }
 
 /**
- * Send node positions to the extension for saving
+ * Save node positions via TopologyIO service
  */
-function sendPositionsToExtension(positions: NodePositionEntry[]): void {
-  if (typeof vscode === 'undefined') {
-    log.warn('[NodeDragging] VS Code API not available');
+async function savePositions(positions: NodePositionEntry[]): Promise<void> {
+  const topologyIO = getTopologyIO();
+  if (!topologyIO) {
+    log.warn('[NodeDragging] TopologyIO not initialized');
     return;
   }
 
-  vscode.postMessage({
-    command: 'save-node-positions',
-    positions: positions
-  });
-
-  log.info(`[NodeDragging] Sent ${positions.length} node positions to extension`);
+  try {
+    await topologyIO.savePositions(positions);
+    log.info(`[NodeDragging] Saved ${positions.length} node positions`);
+  } catch (error) {
+    log.error(`[NodeDragging] Failed to save positions: ${error}`);
+  }
 }
 
 /**
@@ -124,7 +118,8 @@ function createFlushHandler(
     log.info(`[NodeDragging] Flushing batch of ${pending.length} node drag(s)`);
 
     if (mode === 'edit') {
-      sendPositionsToExtension(afterPositions);
+      // Save positions asynchronously via TopologyIO
+      savePositions(afterPositions);
     }
 
     if (onMoveComplete) {

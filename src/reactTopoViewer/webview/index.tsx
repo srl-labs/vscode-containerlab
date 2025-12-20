@@ -8,6 +8,13 @@ import { TopoViewerProvider } from './context/TopoViewerContext';
 import { log } from './utils/logger';
 import './styles/tailwind.css';
 
+// Initialize file system services for VS Code webview
+import { PostMessageFsAdapter } from './adapters';
+import { initializeServices } from './services';
+
+const fsAdapter = new PostMessageFsAdapter();
+initializeServices(fsAdapter, { verbose: false });
+
 // Get the initial data from the window object (injected by extension)
 const initialData = (window as any).__INITIAL_DATA__ || {};
 

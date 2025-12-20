@@ -7,7 +7,7 @@ import React, { useCallback, useMemo, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
 import { useGroupState } from './useGroupState';
 import {
   generateGroupId,
@@ -17,8 +17,7 @@ import {
   findGroupAtPosition as findGroupAtPositionHelper,
   updateGroupInList,
   removeGroupFromList,
-  calculateBoundingBox,
-  CMD_SAVE_NODE_GROUP_MEMBERSHIP
+  calculateBoundingBox
 } from './groupHelpers';
 import {
   getDescendantGroups,
@@ -38,6 +37,86 @@ import {
 
 export interface UseGroupsHookOptions extends UseGroupsOptions {
   cy: CyCore | null;
+}
+
+/**
+ * Save node membership via AnnotationsIO service
+ */
+function saveNodeMembership(nodeId: string, group: string | null, level: string | null): void {
+  if (!isServicesInitialized()) {
+    log.warn('[Groups] Services not initialized for membership save');
+    return;
+  }
+
+  const annotationsIO = getAnnotationsIO();
+  const topologyIO = getTopologyIO();
+
+  const yamlPath = topologyIO.getYamlFilePath();
+  if (!yamlPath) {
+    log.warn('[Groups] No YAML path for membership save');
+    return;
+  }
+
+  annotationsIO.modifyAnnotations(yamlPath, annotations => {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+
+    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+    if (existing) {
+      existing.group = group ?? undefined;
+      existing.level = level ?? undefined;
+    } else {
+      annotations.nodeAnnotations.push({
+        id: nodeId,
+        group: group ?? undefined,
+        level: level ?? undefined
+      });
+    }
+
+    return annotations;
+  }).catch(err => {
+    log.error(`[Groups] Failed to save membership: ${err}`);
+  });
+}
+
+/**
+ * Save multiple node memberships in a single batch operation
+ */
+function saveBatchMemberships(memberships: Array<{ nodeId: string; group: string; level: string }>): void {
+  if (!isServicesInitialized()) {
+    log.warn('[Groups] Services not initialized for batch membership save');
+    return;
+  }
+
+  const annotationsIO = getAnnotationsIO();
+  const topologyIO = getTopologyIO();
+
+  const yamlPath = topologyIO.getYamlFilePath();
+  if (!yamlPath) {
+    log.warn('[Groups] No YAML path for batch membership save');
+    return;
+  }
+
+  annotationsIO.modifyAnnotations(yamlPath, annotations => {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+
+    for (const { nodeId, group, level } of memberships) {
+      const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+      if (existing) {
+        existing.group = group;
+        existing.level = level;
+      } else {
+        annotations.nodeAnnotations.push({ id: nodeId, group, level });
+      }
+    }
+
+    return annotations;
+  }).catch(err => {
+    log.error(`[Groups] Failed to save batch memberships: ${err}`);
+  });
 }
 
 /**
@@ -102,11 +181,7 @@ function useCreateGroup(
         // Save node membership
         const { name, level } = parseGroupId(groupId);
         selectedNodeIds.forEach(nodeId => {
-          sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, {
-            nodeId,
-            group: name,
-            level
-          });
+          saveNodeMembership(nodeId, name, level);
         });
       } else {
         // Create empty group at viewport center
@@ -310,7 +385,7 @@ function useSaveGroup(
             });
             // Persist node membership changes
             if (migratedNodes.length > 0) {
-              sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, { memberships: migratedNodes });
+              saveBatchMemberships(migratedNodes);
               log.info(`[Groups] Migrated ${migratedNodes.length} node memberships to new group ID`);
             }
           }
@@ -445,7 +520,7 @@ function addNodeToGroupHelper(
   // the UI needs to display it.
   membershipRef.current.set(nodeId, groupId);
   const { name, level } = parseGroupId(groupId);
-  sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, { nodeId, group: name, level });
+  saveNodeMembership(nodeId, name, level);
   log.info(`[Groups] Added node ${nodeId} to group ${groupId}`);
 }
 
@@ -455,7 +530,7 @@ function removeNodeFromGroupHelper(
   nodeId: string
 ): void {
   membershipRef.current.delete(nodeId);
-  sendCommandToExtension(CMD_SAVE_NODE_GROUP_MEMBERSHIP, { nodeId, group: null, level: null });
+  saveNodeMembership(nodeId, null, null);
   log.info(`[Groups] Removed node ${nodeId} from group`);
 }
 
@@ -571,7 +646,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
         // Update in-memory membership map (the extension is already notified by createGroup)
         selectedNodeIds.forEach(nodeId => {
           // Directly set the membership ref without re-notifying extension
-          // Note: createGroup already called sendCommandToExtension for each node
+          // Note: createGroup already saved membership for each node
           membership.addNodeToGroupLocal?.(nodeId, result.groupId);
         });
       }

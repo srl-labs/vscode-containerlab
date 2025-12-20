@@ -1,35 +1,64 @@
 /**
  * Dev Mode Entry Point for React TopoViewer
  *
- * This file bootstraps the React TopoViewer in standalone mode (outside VS Code)
- * with mock data and a modular mock system for rapid UI development.
+ * This file bootstraps the React TopoViewer in standalone mode (outside VS Code).
+ *
+ * Architecture:
+ * - HttpFsAdapter: Provides file I/O via HTTP to the dev server
+ * - TopologyIO/AnnotationsIO: Run in browser for YAML manipulation
+ * - TopologyParser: Runs in browser for YAML → Cytoscape conversion
+ * - Dev server: Thin file I/O layer only (/file/:path, /files, /reset)
  */
 import { createRoot } from 'react-dom/client';
 import { App } from '@webview/App';
 import { TopoViewerProvider } from '@webview/context/TopoViewerContext';
 import '@webview/styles/tailwind.css';
 
-// Mock system modules
+// File system adapter for dev server
+import { HttpFsAdapter } from '../src/reactTopoViewer/webview/adapters/HttpFsAdapter';
+import { initializeServices, getTopologyIO, getAnnotationsIO } from '../src/reactTopoViewer/webview/services';
+import { TopologyParser } from '../src/reactTopoViewer/shared/parsing';
+import type { TopologyAnnotations } from '../src/reactTopoViewer/shared/types/topology';
+
+// Mock state for mode/deployment (not file-based)
 import { DevStateManager } from './mock/DevState';
 import { LatencySimulator } from './mock/LatencySimulator';
-import { RequestHandler } from './mock/RequestHandler';
-import { MessageHandler } from './mock/MessageHandler';
-import { SplitViewPanel } from './mock/SplitViewPanel';
-import { createVscodeApiMock, installVscodeApiMock } from './mock/VscodeApiMock';
 
-// Mock data
-import {
-  buildInitialData,
-  sampleElements,
-  sampleCustomNodes
-} from './mockData';
-
+// Mock data for initial state
+import { sampleElements, sampleCustomNodes } from './mockData';
 
 // ============================================================================
-// Initialize Mock System
+// Session Management
 // ============================================================================
 
-// Initialize state manager (elements/annotations come from server, not local state)
+/**
+ * Get session ID from URL parameter (for test isolation)
+ */
+function getSessionId(): string | null {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('sessionId');
+}
+
+// Initialize session ID early
+const sessionId = getSessionId();
+if (sessionId) {
+  console.log(`%c[Dev] Session ID: ${sessionId}`, 'color: #9C27B0;');
+}
+
+// ============================================================================
+// Initialize Services
+// ============================================================================
+
+// Create file system adapter for dev server
+const fsAdapter = new HttpFsAdapter('', sessionId);
+
+// Initialize the I/O services (TopologyIO, AnnotationsIO)
+initializeServices(fsAdapter, { verbose: true });
+
+// ============================================================================
+// Dev State Manager (for mode/deployment state, not file-based)
+// ============================================================================
+
 const stateManager = new DevStateManager({
   mode: 'edit',
   deploymentState: 'undeployed',
@@ -37,96 +66,52 @@ const stateManager = new DevStateManager({
   defaultCustomNode: 'SRLinux Latest',
 });
 
-// Initialize latency simulator
 const latencySimulator = new LatencySimulator({
   profile: 'fast',
   jitter: 0.2,
   verbose: false
 });
 
-// Initialize handlers
-const requestHandler = new RequestHandler(stateManager, latencySimulator);
-const messageHandler = new MessageHandler(stateManager, requestHandler, latencySimulator);
-
-// Initialize split view panel
-const splitViewPanel = new SplitViewPanel(stateManager);
-messageHandler.setSplitViewPanel(splitViewPanel);
-
-// Create and install mock VS Code API
-const vscodeMock = createVscodeApiMock(messageHandler, { verbose: true });
-installVscodeApiMock(vscodeMock);
+// Track current file path
+let currentFilePath: string | null = null;
 
 // ============================================================================
-// Load Topology Functions
+// Topology Loading (uses browser-side TopologyIO)
 // ============================================================================
 
 /**
- * Initialize session ID from URL parameter (for test isolation).
- * This must be called early, before any API calls.
+ * Load a topology file and broadcast to webview
  */
-function initSessionIdFromUrl(): void {
-  const urlParams = new URLSearchParams(window.location.search);
-  const sessionId = urlParams.get('sessionId');
-  if (sessionId) {
-    (window as any).__TEST_SESSION_ID__ = sessionId;
-    console.log(`%c[Dev] Session ID from URL: ${sessionId}`, 'color: #9C27B0;');
-  }
-}
-
-// Initialize session ID from URL before anything else
-initSessionIdFromUrl();
-
-/**
- * Get the current session ID (for test isolation)
- */
-function getSessionId(): string | undefined {
-  return (window as any).__TEST_SESSION_ID__;
-}
-
-/**
- * Build API URL with optional session ID
- */
-function buildApiUrl(path: string): string {
-  const sessionId = getSessionId();
-  if (sessionId) {
-    const separator = path.includes('?') ? '&' : '?';
-    return `${path}${separator}sessionId=${sessionId}`;
-  }
-  return path;
-}
-
-/**
- * Load a topology from a file (real file I/O via API)
- */
-async function loadTopologyFile(filename: string, sessionId?: string): Promise<void> {
-  // Allow passing session ID directly (for tests)
-  if (sessionId) {
-    (window as any).__TEST_SESSION_ID__ = sessionId;
-  }
-
-  console.log(`%c[Dev] Loading topology file: ${filename}`, 'color: #2196F3;');
+async function loadTopologyFile(filePath: string): Promise<void> {
+  console.log(`%c[Dev] Loading topology: ${filePath}`, 'color: #2196F3;');
 
   try {
-    // Fetch parsed elements from API
-    const url = buildApiUrl(`/api/topology/${encodeURIComponent(filename)}/elements`);
-    const response = await fetch(url);
-    const result = await response.json();
+    // Read YAML content
+    const yamlContent = await fsAdapter.readFile(filePath);
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to load topology');
-    }
+    // Load annotations
+    const annotationsIO = getAnnotationsIO();
+    const annotations = await annotationsIO.loadAnnotations(filePath);
 
-    const { elements, annotations, labName } = result.data;
+    // Parse YAML → Cytoscape elements (runs in browser!)
+    const parseResult = TopologyParser.parse(yamlContent, {
+      annotations: annotations as TopologyAnnotations
+    });
 
-    // Record which file is loaded
-    stateManager.setCurrentFilePath(filename);
+    // Record current file
+    currentFilePath = filePath;
+    stateManager.setCurrentFilePath(filePath);
 
-    // Broadcast to webview (same message format as real extension)
+    // Initialize TopologyIO with the parsed document for future mutations
+    const topologyIO = getTopologyIO();
+    await topologyIO.initializeFromFile(filePath);
+
+    // Broadcast topology data to webview
     window.postMessage({
       type: 'topology-data',
       data: {
-        elements,
-        labName,
+        elements: parseResult.elements,
+        labName: parseResult.labName,
         freeTextAnnotations: annotations.freeTextAnnotations || [],
         freeShapeAnnotations: annotations.freeShapeAnnotations || [],
         groupStyleAnnotations: annotations.groupStyleAnnotations || [],
@@ -137,58 +122,140 @@ async function loadTopologyFile(filename: string, sessionId?: string): Promise<v
     }, '*');
 
     console.log(
-      `%c[Dev] Loaded ${filename}: ${elements.length} elements`,
+      `%c[Dev] Loaded ${filePath}: ${parseResult.elements.length} elements`,
       'color: #4CAF50;'
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`%c[Dev] Failed to load topology file: ${message}`, 'color: #f44336;');
+    console.error(`%c[Dev] Failed to load topology: ${message}`, 'color: #f44336;');
+    throw error;
   }
 }
 
 /**
  * List available topology files
  */
-async function listTopologyFiles(): Promise<Array<{ filename: string; hasAnnotations: boolean }>> {
+async function listTopologyFiles(): Promise<Array<{ filename: string; path: string; hasAnnotations: boolean }>> {
   try {
-    const url = buildApiUrl('/api/topologies');
-    const response = await fetch(url);
-    const result = await response.json();
-    if (result.success && result.data) {
-      return result.data;
-    }
+    const response = await fetch(sessionId ? `/files?sessionId=${sessionId}` : '/files');
+    return await response.json();
   } catch (error) {
     console.error('[Dev] Failed to list topology files:', error);
+    return [];
   }
-  return [];
+}
+
+/**
+ * Reset files to original state
+ */
+async function resetFiles(): Promise<void> {
+  console.log('%c[Dev] Resetting files...', 'color: #f44336;');
+
+  const url = sessionId ? `/reset?sessionId=${sessionId}` : '/reset';
+  const response = await fetch(url, { method: 'POST' });
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to reset files');
+  }
+
+  console.log('%c[Dev] Files reset successfully', 'color: #4CAF50;');
+
+  // Reload current file if one is loaded
+  if (currentFilePath) {
+    await loadTopologyFile(currentFilePath);
+  }
 }
 
 // ============================================================================
-// Window Globals
+// VS Code API Mock (minimal - just for mode changes)
 // ============================================================================
 
-// Extend window with dev mode utilities
-// Note: __SCHEMA_DATA__, __DOCKER_IMAGES__, __INITIAL_DATA__ are declared in webview code
+declare global {
+  interface Window {
+    vscode?: { postMessage(data: unknown): void };
+  }
+}
+
+// Minimal VS Code API mock for mode switching
+window.vscode = {
+  postMessage: (data: unknown) => {
+    const msg = data as Record<string, unknown>;
+    console.log('%c[vscode.postMessage]', 'color: #9C27B0;', msg.type, msg);
+
+    // Handle mode changes
+    if (msg.type === 'topo-switch-mode') {
+      const payload = msg.payload as { mode?: string; deploymentState?: string } | undefined;
+      if (payload?.mode) {
+        stateManager.setMode(payload.mode as 'edit' | 'view');
+      }
+      if (payload?.deploymentState) {
+        stateManager.setDeploymentState(payload.deploymentState as 'deployed' | 'undeployed' | 'unknown');
+      }
+
+      // Broadcast mode change
+      window.postMessage({
+        type: 'topo-mode-changed',
+        data: {
+          mode: stateManager.getMode(),
+          deploymentState: stateManager.getDeploymentState()
+        }
+      }, '*');
+    }
+
+    // Handle lifecycle commands (mock)
+    if (msg.type === 'POST') {
+      const endpointName = msg.endpointName as string;
+      if (endpointName?.includes('deploy') || endpointName?.includes('destroy')) {
+        console.log(`%c[Mock] Lifecycle: ${endpointName}`, 'color: #FF9800;');
+
+        // Simulate deployment state change
+        latencySimulator.simulateCallback('lifecycle', () => {
+          const newState = endpointName.includes('destroy') ? 'undeployed' : 'deployed';
+          const newMode = newState === 'deployed' ? 'view' : 'edit';
+
+          stateManager.setDeploymentState(newState);
+          stateManager.setMode(newMode);
+
+          window.postMessage({
+            type: 'topo-mode-changed',
+            data: {
+              mode: newMode,
+              deploymentState: newState
+            }
+          }, '*');
+        });
+      }
+    }
+  }
+};
+
+// ============================================================================
+// Window Globals for Dev Console
+// ============================================================================
+
 declare global {
   interface Window {
     __DEV__: {
-      // File-based operations (real file I/O)
-      loadTopologyFile: (filename: string, sessionId?: string) => Promise<void>;
-      listTopologyFiles: () => Promise<Array<{ filename: string; hasAnnotations: boolean }>>;
+      // File operations
+      loadTopologyFile: (filePath: string) => Promise<void>;
+      listTopologyFiles: () => Promise<Array<{ filename: string; path: string; hasAnnotations: boolean }>>;
       resetFiles: () => Promise<void>;
       getCurrentFile: () => string | null;
-      // Legacy: in-memory topology loading (maps to file-based)
-      loadTopology: (name: string) => Promise<void>;
+
       // Mode and state
       setMode: (mode: 'edit' | 'view') => void;
       setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
       setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => void;
-      // UI
-      toggleSplitView: () => void;
-      // Managers
+
+      // Services (for debugging)
+      getTopologyIO: typeof getTopologyIO;
+      getAnnotationsIO: typeof getAnnotationsIO;
+      fsAdapter: HttpFsAdapter;
       stateManager: DevStateManager;
       latencySimulator: LatencySimulator;
-      // Set by App.tsx at runtime
+
+      // Runtime (set by App.tsx)
       cy?: unknown;
       isLocked?: () => boolean;
       setLocked?: (locked: boolean) => void;
@@ -197,72 +264,20 @@ declare global {
   }
 }
 
-// Build initial data for TopoViewerProvider (data will come from server after mount)
-const initialData = buildInitialData({
-  mode: 'edit',
-  deploymentState: 'undeployed',
-  elements: sampleElements,
-  includeAnnotations: false
-});
-
-(window as any).__INITIAL_DATA__ = initialData;
-(window as any).__SCHEMA_DATA__ = initialData.schemaData;
-(window as any).__DOCKER_IMAGES__ = initialData.dockerImages || [];
-
-// Topology name to file mapping for backward compatibility with tests
-const topologyNameToFile: Record<string, string> = {
-  sample: 'simple.clab.yml',
-  sampleWithAnnotations: 'simple.clab.yml',
-  annotated: 'simple.clab.yml',
-  network: 'network.clab.yml',
-  empty: 'empty.clab.yml',
-  large: 'datacenter.clab.yml',
-  large100: 'datacenter.clab.yml',
-  large1000: 'datacenter.clab.yml'
-};
-
-// Dev utilities (console API)
 window.__DEV__ = {
-  // File-based operations (real file I/O)
+  // File operations
   loadTopologyFile,
   listTopologyFiles,
-  getCurrentFile: () => stateManager.getCurrentFilePath(),
+  resetFiles,
+  getCurrentFile: () => currentFilePath,
 
-  // Legacy: load topology by name (maps to file-based loading)
-  loadTopology: async (name: string) => {
-    const filename = topologyNameToFile[name] || 'simple.clab.yml';
-    console.log(`%c[Dev] loadTopology('${name}') -> ${filename}`, 'color: #9C27B0;');
-    await loadTopologyFile(filename);
-  },
-
-  resetFiles: async () => {
-    console.log('%c[Dev] Resetting files to original state...', 'color: #f44336;');
-    try {
-      const response = await fetch('/api/reset', { method: 'POST' });
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to reset files');
-      }
-      console.log('%c[Dev] Files reset successfully', 'color: #4CAF50;');
-
-      // Reload current file if one is loaded
-      const currentFile = stateManager.getCurrentFilePath();
-      if (currentFile) {
-        await loadTopologyFile(currentFile);
-        console.log('%c[Dev] Reloaded: ' + currentFile, 'color: #4CAF50;');
-      }
-    } catch (error) {
-      console.error('%c[Dev] Reset failed:', 'color: #f44336;', error);
-      throw error;
-    }
-  },
-
+  // Mode and state
   setMode: (mode: 'edit' | 'view') => {
     stateManager.setMode(mode);
     window.postMessage({
       type: 'topo-mode-changed',
       data: {
-        mode: mode === 'view' ? 'viewer' : 'editor',
+        mode: mode,
         deploymentState: stateManager.getDeploymentState()
       }
     }, '*');
@@ -274,7 +289,7 @@ window.__DEV__ = {
     window.postMessage({
       type: 'topo-mode-changed',
       data: {
-        mode: stateManager.getMode() === 'view' ? 'viewer' : 'editor',
+        mode: stateManager.getMode(),
         deploymentState: state
       }
     }, '*');
@@ -286,9 +301,10 @@ window.__DEV__ = {
     console.log(`%c[Dev] Set latency profile to ${profile}`, 'color: #9C27B0;');
   },
 
-  toggleSplitView: () => splitViewPanel.toggle(),
-
-  // Expose managers for advanced debugging
+  // Services for debugging
+  getTopologyIO,
+  getAnnotationsIO,
+  fsAdapter,
   stateManager,
   latencySimulator
 };
@@ -302,19 +318,60 @@ console.log(
   'color: #E91E63; font-weight: bold; font-size: 14px;'
 );
 console.log('%cFile operations:', 'color: #4CAF50; font-weight: bold;');
-console.log('  __DEV__.loadTopologyFile("simple.clab.yml")  - Load a YAML file');
-console.log('  __DEV__.listTopologyFiles()                  - List available topology files');
-console.log('  __DEV__.getCurrentFile()                     - Get currently loaded file path');
-console.log('  __DEV__.resetFiles()                         - Reset all files to original state');
+console.log('  __DEV__.loadTopologyFile("/path/to/file.clab.yml")');
+console.log('  __DEV__.listTopologyFiles()');
+console.log('  __DEV__.resetFiles()');
+console.log('  __DEV__.getCurrentFile()');
 console.log('');
 console.log('%cMode and state:', 'color: #2196F3; font-weight: bold;');
 console.log('  __DEV__.setMode("edit" | "view")');
-console.log('  __DEV__.setDeploymentState("deployed" | "undeployed" | "unknown")');
+console.log('  __DEV__.setDeploymentState("deployed" | "undeployed")');
 console.log('  __DEV__.setLatencyProfile("instant" | "fast" | "normal" | "slow")');
 console.log('');
-console.log('%cUI utilities:', 'color: #9C27B0; font-weight: bold;');
-console.log('  __DEV__.toggleSplitView()');
-console.log('%cUse the gear icon (top-right) for visual controls', 'color: #9C27B0;');
+console.log('%cServices (for debugging):', 'color: #9C27B0; font-weight: bold;');
+console.log('  __DEV__.getTopologyIO() - TopologyIO instance');
+console.log('  __DEV__.getAnnotationsIO() - AnnotationsIO instance');
+console.log('  __DEV__.fsAdapter - HttpFsAdapter instance');
+
+// ============================================================================
+// Initial Data for Provider
+// ============================================================================
+
+// Build minimal initial data (topology loads async after mount)
+const initialData = {
+  elements: sampleElements,
+  labName: 'dev-topology',
+  mode: 'edit' as const,
+  deploymentState: 'undeployed',
+  isLocked: false,  // Dev mode starts unlocked for testing
+  yamlFilePath: '',
+  schemaData: {
+    nodeKinds: [
+      { kind: 'nokia_srlinux', defaultImage: 'ghcr.io/nokia/srlinux:latest' },
+      { kind: 'linux', defaultImage: 'alpine:latest' },
+      { kind: 'nokia_sros', defaultImage: '' },
+      { kind: 'arista_ceos', defaultImage: '' }
+    ]
+  },
+  dockerImages: [
+    'ghcr.io/nokia/srlinux:latest',
+    'ghcr.io/nokia/srlinux:24.10.1',
+    'alpine:latest',
+    'ubuntu:latest'
+  ],
+  customNodes: sampleCustomNodes,
+  defaultCustomNode: 'SRLinux Latest',
+  freeTextAnnotations: [],
+  freeShapeAnnotations: [],
+  groupStyleAnnotations: [],
+  nodeAnnotations: [],
+  cloudNodeAnnotations: [],
+  networkNodeAnnotations: []
+};
+
+(window as any).__INITIAL_DATA__ = initialData;
+(window as any).__SCHEMA_DATA__ = initialData.schemaData;
+(window as any).__DOCKER_IMAGES__ = initialData.dockerImages || [];
 
 // ============================================================================
 // Render App
@@ -336,10 +393,12 @@ root.render(
 // Auto-load Default Topology
 // ============================================================================
 
-// Load the default topology file after app mounts (simulates real extension behavior)
-// Use setTimeout to ensure React has mounted before we send messages
+// Determine default topology path
+const TOPOLOGIES_DIR = '/home/clab/projects/flosch/vscode-containerlab/dev/topologies';
+const defaultTopology = `${TOPOLOGIES_DIR}/simple.clab.yml`;
+
+// Load the default topology file after app mounts
 setTimeout(async () => {
-  const defaultTopology = 'simple.clab.yml';
-  console.log(`%c[Dev] Auto-loading default topology: ${defaultTopology}`, 'color: #9C27B0;');
+  console.log(`%c[Dev] Auto-loading: ${defaultTopology}`, 'color: #9C27B0;');
   await loadTopologyFile(defaultTopology);
 }, 100);

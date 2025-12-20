@@ -2,6 +2,7 @@
  * Conversions for link editor data.
  */
 import type { LinkEditorData } from '../components/panels/link-editor/types';
+import type { LinkSaveData } from '../../shared/io/LinkPersistenceIO';
 import { isSpecialEndpointId } from '../../shared/utilities/LinkTypes';
 
 /**
@@ -33,5 +34,52 @@ export function convertToLinkEditorData(rawData: Record<string, unknown> | null)
     sourceIsNetwork: isSpecialEndpointId(source),
     targetIsNetwork: isSpecialEndpointId(target)
   };
+}
+
+/**
+ * Converts LinkEditorData to LinkSaveData for TopologyIO.
+ * This is used when saving link editor changes via the services.
+ *
+ * @param data - LinkEditorData from the editor panel
+ * @returns LinkSaveData for TopologyIO.editLink()
+ */
+export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveData {
+  // Build extraData with extended properties
+  const extraData: LinkSaveData['extraData'] = {};
+
+  if (data.type && data.type !== 'veth') {
+    extraData.extType = data.type;
+  }
+  if (data.mtu !== undefined && data.mtu !== '') {
+    extraData.extMtu = data.mtu;
+  }
+  if (data.sourceMac) {
+    extraData.extSourceMac = data.sourceMac;
+  }
+  if (data.targetMac) {
+    extraData.extTargetMac = data.targetMac;
+  }
+  if (data.vars && Object.keys(data.vars).length > 0) {
+    extraData.extVars = data.vars;
+  }
+  if (data.labels && Object.keys(data.labels).length > 0) {
+    extraData.extLabels = data.labels;
+  }
+
+  const saveData: LinkSaveData = {
+    id: data.id,
+    source: data.source,
+    target: data.target,
+    sourceEndpoint: data.sourceEndpoint,
+    targetEndpoint: data.targetEndpoint,
+    extraData: Object.keys(extraData).length > 0 ? extraData : undefined,
+    // Include original values if endpoints changed
+    originalSource: data.originalSource,
+    originalTarget: data.originalTarget,
+    originalSourceEndpoint: data.originalSourceEndpoint,
+    originalTargetEndpoint: data.originalTargetEndpoint,
+  };
+
+  return saveData;
 }
 

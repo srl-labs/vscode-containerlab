@@ -6,6 +6,8 @@
  */
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { log } from '../services/logger';
 import { CyElement } from '../../shared/types/topology';
 import { TopologyIO } from '../../shared/io';
@@ -138,6 +140,111 @@ export class MessageRouter {
   }
 
   /**
+   * Handle file system messages from webview (fs:read, fs:write, fs:unlink, fs:exists)
+   */
+  private async handleFsMessage(message: SharedWebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
+    const msgType = message.type as string;
+    if (!msgType?.startsWith('fs:')) {
+      return false;
+    }
+
+    const requestId = (message as unknown as { requestId?: string }).requestId;
+    const filePath = (message as unknown as { path?: string }).path;
+
+    if (!requestId) {
+      log.warn('[MessageRouter] fs: message missing requestId');
+      return true;
+    }
+
+    if (!filePath && msgType !== 'fs:exists') {
+      this.respondFs(panel, requestId, null, 'Missing path parameter');
+      return true;
+    }
+
+    try {
+      switch (msgType) {
+        case 'fs:read':
+          await this.handleFsRead(filePath!, requestId, panel);
+          break;
+        case 'fs:write': {
+          const content = (message as unknown as { content?: string }).content;
+          await this.handleFsWrite(filePath!, content, requestId, panel);
+          break;
+        }
+        case 'fs:unlink':
+          await this.handleFsUnlink(filePath!, requestId, panel);
+          break;
+        case 'fs:exists':
+          await this.handleFsExists(filePath!, requestId, panel);
+          break;
+        default:
+          this.respondFs(panel, requestId, null, `Unknown fs message type: ${msgType}`);
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      this.respondFs(panel, requestId, null, error);
+    }
+
+    return true;
+  }
+
+  private async handleFsRead(filePath: string, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf-8');
+      this.respondFs(panel, requestId, content);
+    } catch (err) {
+      this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  private async handleFsWrite(filePath: string, content: string | undefined, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+    if (content === undefined) {
+      this.respondFs(panel, requestId, null, 'Missing content parameter');
+      return;
+    }
+    try {
+      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.promises.writeFile(filePath, content, 'utf-8');
+      this.respondFs(panel, requestId, null);
+    } catch (err) {
+      this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  private async handleFsUnlink(filePath: string, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+    try {
+      await fs.promises.unlink(filePath);
+      this.respondFs(panel, requestId, null);
+    } catch (err) {
+      // Don't throw if file doesn't exist
+      const code = (err as { code?: string }).code;
+      if (code === 'ENOENT') {
+        this.respondFs(panel, requestId, null);
+      } else {
+        this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
+      }
+    }
+  }
+
+  private async handleFsExists(filePath: string, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+    try {
+      await fs.promises.access(filePath);
+      this.respondFs(panel, requestId, true);
+    } catch {
+      this.respondFs(panel, requestId, false);
+    }
+  }
+
+  private respondFs(panel: vscode.WebviewPanel, requestId: string, result: unknown, error?: string): void {
+    panel.webview.postMessage({
+      type: 'fs:response',
+      requestId,
+      result,
+      error: error ?? null,
+    });
+  }
+
+  /**
    * Handle POST request messages
    */
   private async handlePostMessage(message: SharedWebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
@@ -173,6 +280,11 @@ export class MessageRouter {
 
     // Handle log commands locally (production-specific logging)
     if (this.handleLogCommand(message)) {
+      return;
+    }
+
+    // Handle file system messages (fs:read, fs:write, fs:unlink, fs:exists)
+    if (await this.handleFsMessage(message, panel)) {
       return;
     }
 

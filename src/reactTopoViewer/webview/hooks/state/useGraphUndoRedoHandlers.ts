@@ -1,8 +1,18 @@
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import { CyElement } from '../../../shared/types/messages';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
 import { GraphChange, useUndoRedo, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove, MembershipEntry } from './useUndoRedo';
+import {
+  createNode,
+  createLink,
+  editNode,
+  editLink,
+  saveNodePositions,
+  beginBatch,
+  endBatch,
+  type NodeSaveData,
+  type LinkSaveData
+} from '../../services';
 
 interface MenuHandlers {
   handleDeleteNode: (id: string) => void;
@@ -96,11 +106,26 @@ function addNodeWithPersistence(cy: CyCore | null, addNode: (n: CyElement) => vo
   const exists = cy?.getElementById(id)?.nonempty();
   if (!exists) {
     addNode(element);
-    // create-node already saves position via addNode -> saveNodePosition
-    sendCommandToExtension('create-node', { nodeId: id, nodeData: element.data, position: pos });
+    // Create node via TopologyIO service
+    const data = element.data as Record<string, unknown>;
+    const nodeData: NodeSaveData = {
+      id,
+      name: (data.name as string) || id,
+      position: pos,
+      extraData: {
+        kind: data.kind as string | undefined,
+        image: data.image as string | undefined,
+        group: data.group as string | undefined,
+        topoViewerRole: data.topoViewerRole,
+        iconColor: data.iconColor,
+        iconCornerRadius: data.iconCornerRadius,
+        interfacePattern: data.interfacePattern
+      }
+    };
+    createNode(nodeData);
   } else {
     // Only save position if node already exists (undo/redo case)
-    sendCommandToExtension('save-node-positions', { positions: [{ id, position: pos }] });
+    saveNodePositions([{ id, position: pos }]);
   }
 }
 
@@ -109,15 +134,16 @@ function addEdgeWithPersistence(cy: CyCore | null, addEdge: (e: CyElement) => vo
   const hasExisting = targetKey && cy?.edges().some(e => getEdgeKeyFromData(e.data()) === targetKey);
   if (hasExisting) return;
   addEdge(element);
-  sendCommandToExtension('create-link', {
-    linkData: {
-      id: (element.data as any)?.id,
-      source: (element.data as any)?.source,
-      target: (element.data as any)?.target,
-      sourceEndpoint: (element.data as any)?.sourceEndpoint,
-      targetEndpoint: (element.data as any)?.targetEndpoint
-    }
-  });
+  // Create link via TopologyIO service
+  const data = element.data as Record<string, unknown>;
+  const linkData: LinkSaveData = {
+    id: data.id as string,
+    source: data.source as string,
+    target: data.target as string,
+    sourceEndpoint: data.sourceEndpoint as string | undefined,
+    targetEndpoint: data.targetEndpoint as string | undefined
+  };
+  createLink(linkData);
 }
 
 function deleteEdgeWithPersistence(
@@ -269,7 +295,15 @@ function createEdgeCreatedHandler(
       }
     };
     addEdge(edgeEl);
-    sendCommandToExtension('create-link', { linkData: edgeData });
+    // Create link via TopologyIO service
+    const linkData: LinkSaveData = {
+      id: edgeData.id,
+      source: edgeData.source,
+      target: edgeData.target,
+      sourceEndpoint: edgeData.sourceEndpoint,
+      targetEndpoint: edgeData.targetEndpoint
+    };
+    createLink(linkData);
 
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
@@ -288,9 +322,23 @@ function createNodeCreatedHandler(
 ) {
   return (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => {
     addNode(nodeElement);
-    // Note: create-node already saves position via addNode -> saveNodePosition
-    // Don't send save-node-positions here to avoid race condition / file corruption
-    sendCommandToExtension('create-node', { nodeId, nodeData: nodeElement.data, position });
+    // Create node via TopologyIO service
+    const data = nodeElement.data as Record<string, unknown>;
+    const nodeData: NodeSaveData = {
+      id: nodeId,
+      name: (data.name as string) || nodeId,
+      position,
+      extraData: {
+        kind: data.kind as string | undefined,
+        image: data.image as string | undefined,
+        group: data.group as string | undefined,
+        topoViewerRole: data.topoViewerRole,
+        iconColor: data.iconColor,
+        iconCornerRadius: data.iconCornerRadius,
+        interfacePattern: data.interfacePattern
+      }
+    };
+    createNode(nodeData);
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
         type: 'graph',
@@ -345,7 +393,7 @@ function createDeleteLinkHandler(
 
 /**
  * Apply node property edit for undo/redo.
- * For renames, uses explicit rename command that handles finding the node robustly.
+ * For renames, uses editNode with the current name as id.
  */
 function applyNodePropertyEdit(
   before: Record<string, unknown>,
@@ -357,20 +405,25 @@ function applyNodePropertyEdit(
   const afterName = after.name as string;
   const isRename = beforeName !== afterName;
 
-  if (isRename) {
-    // For renames, we need to handle the case where YAML doc may be reloaded.
-    // Send both current and target names so extension can find the right node.
-    const currentNodeName = isUndo ? afterName : beforeName;
-    const targetNodeName = isUndo ? beforeName : afterName;
+  // For renames, current name is the one in the file (before if redo, after if undo)
+  const currentNodeName = isUndo ? afterName : beforeName;
+  const targetNodeName = isUndo ? beforeName : afterName;
 
-    sendCommandToExtension('undo-rename-node', {
-      currentName: currentNodeName,
-      targetName: targetNodeName,
-      nodeData: dataToApply
-    });
-  } else {
-    sendCommandToExtension('apply-node-editor', { nodeData: dataToApply });
-  }
+  // Build NodeSaveData for editNode
+  const nodeData: NodeSaveData = {
+    id: currentNodeName,
+    name: isRename ? targetNodeName : currentNodeName,
+    extraData: {
+      kind: dataToApply.kind as string | undefined,
+      image: dataToApply.image as string | undefined,
+      group: dataToApply.group as string | undefined,
+      topoViewerRole: dataToApply.topoViewerRole,
+      iconColor: dataToApply.iconColor,
+      iconCornerRadius: dataToApply.iconCornerRadius,
+      interfacePattern: dataToApply.interfacePattern
+    }
+  };
+  editNode(nodeData);
 }
 
 /**
@@ -386,14 +439,20 @@ function applyLinkPropertyEdit(
   // Current link endpoints are from the "other" state (the one we're NOT applying)
   const currentState = isUndo ? after : before;
 
-  const linkData = {
-    ...dataToApply,
-    originalSource: currentState.source,
-    originalTarget: currentState.target,
-    originalSourceEndpoint: currentState.sourceEndpoint,
-    originalTargetEndpoint: currentState.targetEndpoint,
+  // Build LinkSaveData for editLink
+  const linkData: LinkSaveData = {
+    id: dataToApply.id as string,
+    source: dataToApply.source as string,
+    target: dataToApply.target as string,
+    sourceEndpoint: dataToApply.sourceEndpoint as string | undefined,
+    targetEndpoint: dataToApply.targetEndpoint as string | undefined,
+    // Original values to find the link in YAML
+    originalSource: currentState.source as string,
+    originalTarget: currentState.target as string,
+    originalSourceEndpoint: currentState.sourceEndpoint as string | undefined,
+    originalTargetEndpoint: currentState.targetEndpoint as string | undefined,
   };
-  sendCommandToExtension('apply-link-editor', { linkData });
+  editLink(linkData);
 }
 
 function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
@@ -403,11 +462,11 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
   const applyGraphChanges = React.useCallback((changes: GraphChange[]) => {
     if (!cyInstance) return;
     isApplyingUndoRedo.current = true;
-    sendCommandToExtension('begin-graph-batch', {});
+    beginBatch();
     try {
       replayGraphChanges(changes, { cy: cyInstance, addNode, addEdge, menuHandlers });
     } finally {
-      sendCommandToExtension('end-graph-batch', {});
+      endBatch();
       isApplyingUndoRedo.current = false;
     }
   }, [cyInstance, addNode, addEdge, menuHandlers]);

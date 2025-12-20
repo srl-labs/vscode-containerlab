@@ -9,7 +9,7 @@ import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } fr
 import type { UndoRedoAction, UndoRedoActionGroupMove, NodePositionEntry } from '../state/useUndoRedo';
 import type { UseGroupsReturn } from './groupTypes';
 import { log } from '../../utils/logger';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { saveNodePositions } from '../../services';
 import { getDescendantGroups, getAllAnnotationsInHierarchy } from './hierarchyUtils';
 
 interface UndoRedoApi {
@@ -225,11 +225,11 @@ function createGroupMoveAction(
   };
 }
 
-/** Send node positions to extension for persistence */
+/** Save node positions via TopologyIO service */
 function sendNodePositionsToExtension(positions: NodePositionEntry[]): void {
   if (positions.length === 0) return;
-  sendCommandToExtension('save-node-positions', { positions });
-  log.info(`[GroupDragUndo] Sent ${positions.length} member node positions to extension`);
+  saveNodePositions(positions);
+  log.info(`[GroupDragUndo] Saved ${positions.length} member node positions`);
 }
 
 /** Handle fallback drag end when start state is missing */
