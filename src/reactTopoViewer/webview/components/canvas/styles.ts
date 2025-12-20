@@ -2,6 +2,7 @@
  * Cytoscape stylesheet definitions and style builders
  */
 import cytoscape from 'cytoscape';
+
 import { generateEncodedSVG, NodeType } from '../../utils/SvgGenerator';
 
 // Style constants to avoid duplication

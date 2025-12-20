@@ -1,7 +1,9 @@
-import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
+
+import * as vscode from 'vscode';
+
 import { extensionVersion } from './globals';
 
 /**
@@ -226,7 +228,7 @@ topology:
 
     const cssURI = this.panel?.webview.asWebviewUri(vscode.Uri.file(path.join(this.context.extensionPath, 'resources', 'tailwind.js'))).toString();
 
-    const html = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -373,7 +375,5 @@ topology:
     </script>
 </body>
 </html>`;
-
-    return html;
   }
 }

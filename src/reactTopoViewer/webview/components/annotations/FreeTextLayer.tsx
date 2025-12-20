@@ -4,6 +4,7 @@
  */
 import React, { useRef, useState, useMemo, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import {
   computeAnnotationStyle,
@@ -15,6 +16,7 @@ import {
 import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationReparent';
 import { renderMarkdown } from '../../utils/markdownRenderer';
 import { MapLibreState } from '../../hooks/canvas/maplibreUtils';
+
 import {
   HANDLE_SIZE,
   ROTATION_HANDLE_OFFSET,

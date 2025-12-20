@@ -4,17 +4,20 @@
  */
 
 import * as YAML from 'yaml';
-import { log } from './logger';
+
 import { ClabTopology, CyElement, TopologyAnnotations } from '../../shared/types/topology';
 import { ClabLabTreeNode } from '../../../treeView/common';
-import { annotationsIO } from './adapters';
-import { ContainerDataAdapter } from './ContainerDataAdapter';
 import {
   TopologyParser,
   computeEdgeClassFromStates as computeEdgeClassFromStatesImpl,
   type ParserLogger,
   type GraphLabelMigration,
 } from '../../shared/parsing';
+
+import { log } from './logger';
+import { annotationsIO } from './adapters';
+import { ContainerDataAdapter } from './ContainerDataAdapter';
+
 
 /**
  * Adapter that wraps log to implement ParserLogger.

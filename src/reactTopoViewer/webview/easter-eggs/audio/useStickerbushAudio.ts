@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useRef } from 'react';
+
 import { useAudioEngine, type MelodyNote } from './core';
 
 const NOTES = {

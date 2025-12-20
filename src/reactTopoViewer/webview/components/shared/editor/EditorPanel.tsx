@@ -3,6 +3,7 @@
  * Built on top of BasePanel
  */
 import React, { ReactNode } from 'react';
+
 import { BasePanel } from './BasePanel';
 import { TabNavigation, TabDefinition } from './TabNavigation';
 

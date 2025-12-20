@@ -3,6 +3,7 @@
  * Allows editing group name, level, and visual styles
  */
 import React from 'react';
+
 import type { GroupStyleAnnotation } from '../../../../shared/types/topology';
 import type { GroupEditorData } from '../../../hooks/groups/groupTypes';
 import { GROUP_LABEL_POSITIONS } from '../../../hooks/groups/groupTypes';

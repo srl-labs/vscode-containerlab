@@ -2,6 +2,7 @@
  * Shared rotation handle for annotations
  */
 import React from 'react';
+
 import {
   HANDLE_SIZE,
   ROTATION_HANDLE_OFFSET,

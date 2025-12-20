@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type { Core } from 'cytoscape';
+
 import {
   MapLibreState,
   createInitialMapLibreState,

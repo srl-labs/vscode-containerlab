@@ -6,11 +6,13 @@
  * - A custom node template: Custom Node Name, Base Name, Interface Pattern, Set as default + Kind/Type/Image/Version/Icon fields
  */
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { TabProps } from './types';
+
 import { FormField, InputField, FilterableDropdown } from '../../shared/form';
 import { IconSelectorModal } from '../../shared/IconSelectorModal';
 import { generateEncodedSVG, NodeType } from '../../../utils/SvgGenerator';
 import { useSchema, useDockerImages } from '../../../hooks';
+
+import { TabProps } from './types';
 import { CustomNodeTemplateFields } from './CustomNodeTemplateFields';
 
 const DEFAULT_ICON_COLOR = '#1a73e8';

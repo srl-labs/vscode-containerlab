@@ -2,6 +2,7 @@
  * usePanelCommands - Hooks providing FloatingActionPanel callbacks.
  */
 import { useCallback } from 'react';
+
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 export interface DeploymentCommands {

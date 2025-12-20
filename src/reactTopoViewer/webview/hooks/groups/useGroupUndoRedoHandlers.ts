@@ -3,8 +3,10 @@
  * Similar pattern to useFreeShapeUndoRedoHandlers.
  */
 import React from 'react';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoAction, UndoRedoActionAnnotation } from '../state/useUndoRedo';
+
 import type { UseGroupsReturn } from './groupTypes';
 
 interface UndoRedoApi {

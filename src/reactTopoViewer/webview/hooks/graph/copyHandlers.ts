@@ -3,6 +3,7 @@
  * Split from createCopyPasteHandlers to reduce aggregate complexity
  */
 import type { Core } from 'cytoscape';
+
 import {
   CopyData,
   collectCopyData,

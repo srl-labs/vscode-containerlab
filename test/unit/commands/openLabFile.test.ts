@@ -8,10 +8,11 @@
  * required arguments are missing.
  */
 // These tests run against a stubbed version of the VS Code API
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 // Replace the vscode module with our stub before importing the command
 const originalResolve = (Module as any)._resolveFilename;
@@ -23,6 +24,7 @@ const originalResolve = (Module as any)._resolveFilename;
 };
 
 import { openLabFile } from '../../../src/commands/openLabFile';
+
 const vscodeStub = require('../../helpers/vscode-stub');
 
 describe('openLabFile command', () => {

@@ -7,6 +7,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { useVaporwaveAudio } from '../audio';
 import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, applyNodeGlow, restoreNodeStyles, MuteButton } from '../shared';
 import type { RGBColor } from '../shared';

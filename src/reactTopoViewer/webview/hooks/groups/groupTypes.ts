@@ -4,6 +4,7 @@
  * Groups support hierarchical nesting via parentId.
  */
 import React from 'react';
+
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,

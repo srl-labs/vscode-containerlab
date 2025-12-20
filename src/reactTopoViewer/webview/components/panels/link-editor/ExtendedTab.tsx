@@ -2,9 +2,11 @@
  * ExtendedTab - Extended link configuration (MAC, MTU, vars, labels)
  */
 import React from 'react';
+
 import { FormField, InputField, KeyValueList, ReadOnlyBadge } from '../../shared/form';
-import { LinkTabProps, LinkEditorData } from './types';
 import { quoteBlockStyle } from '../../../styles/cssVariables';
+
+import { LinkTabProps, LinkEditorData } from './types';
 
 /**
  * Header section with link name and type

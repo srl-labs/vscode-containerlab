@@ -3,6 +3,7 @@
  * Combines common handlers to reduce App.tsx complexity
  */
 import React from 'react';
+
 import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel';
 import type { NodePositionEntry, MembershipEntry } from '../state';
 

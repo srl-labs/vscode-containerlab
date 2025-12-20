@@ -4,10 +4,12 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { FreeTextAnnotation } from '../../../shared/types/topology';
+import { MapLibreState } from '../canvas/maplibreUtils';
+
 import { useAnnotationDrag } from './useAnnotationDrag';
 import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
-import { MapLibreState } from '../canvas/maplibreUtils';
 
 interface UseAnnotationInteractionsOptions {
   cy: CyCore;

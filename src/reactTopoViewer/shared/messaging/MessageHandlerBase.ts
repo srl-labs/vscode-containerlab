@@ -6,6 +6,9 @@
  * are injected via the MessageHandlerServices interface.
  */
 
+import { NetworkNodeAnnotation } from '../types/topology';
+import { convertEditorDataToYaml } from '../utilities/nodeEditorConversions';
+
 import { getCommandCategory, isLogCommand } from './CommandRegistry';
 import {
   MessageHandlerServices,
@@ -14,8 +17,6 @@ import {
   NodeSaveData,
   LinkSaveData,
 } from './MessageServiceInterfaces';
-import { NetworkNodeAnnotation } from '../types/topology';
-import { convertEditorDataToYaml } from '../utilities/nodeEditorConversions';
 
 // ============================================================================
 // MessageHandlerBase Class

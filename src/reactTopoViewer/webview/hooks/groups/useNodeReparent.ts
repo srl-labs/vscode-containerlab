@@ -4,11 +4,13 @@
  */
 import { useEffect, useCallback, useRef } from 'react';
 import type { Core, NodeSingular, EventObject } from 'cytoscape';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
+import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
+
 import { parseGroupId } from './groupHelpers';
 import { findDeepestGroupAtPosition } from './hierarchyUtils';
-import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
 
 export interface UseNodeReparentOptions {
   mode: 'edit' | 'view';

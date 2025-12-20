@@ -5,6 +5,7 @@
 
 import { useCallback, useRef } from 'react';
 import type { Core as CyCore, NodeSingular, NodeCollection, EdgeCollection } from 'cytoscape';
+
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,

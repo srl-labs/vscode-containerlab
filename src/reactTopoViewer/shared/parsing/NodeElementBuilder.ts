@@ -4,10 +4,11 @@
  */
 
 import { ClabNode, CyElement, ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
+import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
+
 import { resolveNodeConfig } from './NodeConfigResolver';
 import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from './LinkNormalizer';
 import { isDistributedSrosNode, findDistributedSrosContainer } from './DistributedSrosMapper';
-import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
 import {
   extractIconVisuals,
   sanitizeLabels,

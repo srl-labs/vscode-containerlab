@@ -5,6 +5,7 @@
 
 import { NodeAnnotation } from '../types/topology';
 import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
+
 import type { InterfacePatternMigration } from './types';
 
 // ============================================================================

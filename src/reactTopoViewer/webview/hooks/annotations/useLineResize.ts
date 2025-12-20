@@ -3,7 +3,9 @@
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+
 import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShapeHelpers';
 
 interface UseLineResizeDragOptions {

@@ -2,9 +2,11 @@
  * State management hook for overlay groups.
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { saveGroupStyleAnnotations as saveGroupsToIO } from '../../services';
 import { log } from '../../utils/logger';
+
 import { GROUP_SAVE_DEBOUNCE_MS } from './groupHelpers';
 import type { UseGroupStateReturn, GroupEditorData } from './groupTypes';
 

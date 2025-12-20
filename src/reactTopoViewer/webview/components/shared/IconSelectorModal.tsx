@@ -3,10 +3,12 @@
  * Built on top of BasePanel
  */
 import React, { useCallback } from 'react';
-import { BasePanel } from './editor/BasePanel';
+
 import { generateEncodedSVG, NodeType } from '../../utils/SvgGenerator';
 import { useEscapeKey } from '../../hooks/ui/useEscapeKey';
 import { useIconSelectorState } from '../../hooks/panels/useIconSelector';
+
+import { BasePanel } from './editor/BasePanel';
 
 const AVAILABLE_ICONS: NodeType[] = [
   'pe', 'dcgw', 'leaf', 'switch', 'bridge', 'spine',

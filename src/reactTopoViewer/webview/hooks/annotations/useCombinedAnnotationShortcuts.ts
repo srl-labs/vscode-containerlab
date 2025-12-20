@@ -3,11 +3,13 @@
  * Extracted from App.tsx to keep App complexity low.
  */
 import React from 'react';
+
+import type { UseGroupClipboardReturn } from '../groups/useGroupClipboard';
+import { log } from '../../utils/logger';
+
 import type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
 import type { UseFreeShapeAnnotationsReturn } from './freeShapeTypes';
 import type { UseFreeShapeUndoRedoHandlersReturn } from './useFreeShapeUndoRedoHandlers';
-import type { UseGroupClipboardReturn } from '../groups/useGroupClipboard';
-import { log } from '../../utils/logger';
 
 export interface UseCombinedAnnotationShortcutsReturn {
   selectedAnnotationIds: Set<string>;

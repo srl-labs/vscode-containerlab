@@ -2,6 +2,7 @@
  * Utility functions for bulk link creation
  */
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
+
 import { FilterUtils } from '../../../../../helpers/filterUtils';
 import { isSpecialEndpointId } from '../../../../shared/utilities/LinkTypes';
 import type { CyElement } from '../../../../shared/types/messages';

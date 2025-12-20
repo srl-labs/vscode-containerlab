@@ -1,9 +1,11 @@
 import * as vscode from "vscode";
+
 import { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, gottySessions, runningLabsProvider, containerlabBinaryPath } from "../globals";
 import { refreshGottySessions } from "../services/sessionRefresh";
-import { getHostname } from "./capture";
 import { runCommand } from "../utils/utils";
+
+import { getHostname } from "./capture";
 
 async function parseGottyLink(output: string): Promise<string | undefined> {
   try {

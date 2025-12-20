@@ -5,9 +5,11 @@
  * - Template Name, Base Name, Interface Pattern, Set as default
  */
 import React, { useState, useCallback } from 'react';
-import { TabProps } from './types';
+
 import { FormField, InputField, CheckboxField, Section } from '../../shared/form';
 import { copyToClipboard } from '../../../utils/clipboard';
+
+import { TabProps } from './types';
 
 /**
  * Interface pattern example with description

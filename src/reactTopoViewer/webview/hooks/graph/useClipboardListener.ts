@@ -4,9 +4,11 @@
  */
 import { useEffect } from 'react';
 import type { Core } from 'cytoscape';
+
 import { log } from '../../utils/logger';
-import type { CopyData } from './copyPasteUtils';
 import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+
+import type { CopyData } from './copyPasteUtils';
 
 /**
  * Hook that listens for clipboard data messages from the extension

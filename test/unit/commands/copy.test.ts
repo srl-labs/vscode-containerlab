@@ -8,10 +8,11 @@
  * API and verifies that helpful error messages are shown when required
  * values are missing.
  */
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 // Replace the vscode module with our stub before importing the command
 const originalResolve = (Module as any)._resolveFilename;
@@ -32,6 +33,7 @@ import {
   copyContainerImage,
   copyMACAddress,
 } from '../../../src/commands/copy';
+
 const vscodeStub = require('../../helpers/vscode-stub');
 
 describe('copyLabPath command', () => {

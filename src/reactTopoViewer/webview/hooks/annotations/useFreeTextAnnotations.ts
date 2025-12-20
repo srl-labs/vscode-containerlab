@@ -3,11 +3,13 @@
  * Handles state, persistence, and undo/redo for text annotations.
  */
 import { useCallback, useMemo } from 'react';
+
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
+import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
+
 import { createDefaultAnnotation } from './freeTextHelpers';
 import { useFreeTextState, useFreeTextActions } from './useFreeTextState';
-import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
 import type {
   UseFreeTextAnnotationsOptions,
   UseFreeTextAnnotationsReturn,

@@ -1,11 +1,14 @@
-import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import { ClabCommand } from "./clabCommand";
-import { ClabLabTreeNode } from "../treeView/common";
 
+import * as vscode from "vscode";
+
+
+import { ClabLabTreeNode } from "../treeView/common";
 import { ReactTopoViewer, ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
+
+import { ClabCommand } from "./clabCommand";
 
 
 /**

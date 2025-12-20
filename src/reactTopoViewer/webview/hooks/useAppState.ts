@@ -4,6 +4,7 @@
  */
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { Core } from 'cytoscape';
+
 import { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
 import { log } from '../utils/logger';
 import { deleteNode, deleteLink } from '../services';

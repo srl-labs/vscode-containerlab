@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+
 import * as utils from '../utils/index';
 
 function lineContainsInlineImage(line: string, cursor: number): boolean {

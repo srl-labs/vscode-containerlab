@@ -3,8 +3,10 @@
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { modelToRendered, modelToRenderedGeo, RenderedPosition } from './freeTextLayerHelpers';
+
 import { MapLibreState, unprojectToGeoCoords, calculateScale } from '../canvas/maplibreUtils';
+
+import { modelToRendered, modelToRenderedGeo, RenderedPosition } from './freeTextLayerHelpers';
 
 interface DragStart {
   mouseX: number;

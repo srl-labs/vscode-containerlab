@@ -5,9 +5,11 @@
  * using production service adapters for VS Code-specific functionality.
  */
 
-import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+
+import * as vscode from 'vscode';
+
 import { log, logWithLocation } from '../services/logger';
 import { CyElement } from '../../shared/types/topology';
 import { TopologyIO } from '../../shared/io';

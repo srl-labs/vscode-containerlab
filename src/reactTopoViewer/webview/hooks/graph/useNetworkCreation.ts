@@ -6,6 +6,7 @@
  */
 import { useCallback, useRef } from 'react';
 import type { Core } from 'cytoscape';
+
 import { log } from '../../utils/logger';
 import { CyElement } from '../../../shared/types/messages';
 

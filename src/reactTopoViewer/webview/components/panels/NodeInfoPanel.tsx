@@ -3,8 +3,10 @@
  * Shows properties of a selected node
  */
 import React from 'react';
-import { FloatingPanel, PropertyRow } from './FloatingPanel';
+
 import type { NodeData } from '../../hooks';
+
+import { FloatingPanel, PropertyRow } from './FloatingPanel';
 
 interface NodeInfoPanelProps {
   isVisible: boolean;

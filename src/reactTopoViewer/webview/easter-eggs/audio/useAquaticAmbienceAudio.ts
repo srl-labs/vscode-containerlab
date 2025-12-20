@@ -11,6 +11,7 @@
  */
 
 import { useCallback } from 'react';
+
 import { getCMinorFrequency, useAudioEngine, type MelodyNote } from './core';
 
 const NOTES = {

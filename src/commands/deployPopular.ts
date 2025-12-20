@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
+
 import { pickPopularRepo } from '../helpers/popularLabs';
 import { ClabLabTreeNode } from '../treeView/common';
+
 import { runClabAction } from './runClabAction';
 
 export async function deployPopularLab() {

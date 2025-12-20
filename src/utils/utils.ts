@@ -1,10 +1,12 @@
-import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
 import { exec, execSync } from "child_process";
 import * as net from "net";
 import { promisify } from "util";
+
+import * as vscode from "vscode";
+
 import { ClabLabTreeNode } from "../treeView/common";
 import { containerlabBinaryPath, outputChannel } from "../globals";
 

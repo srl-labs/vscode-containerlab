@@ -4,9 +4,11 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
-import { useFreeTextAnnotations } from './useFreeTextAnnotations';
 import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+
+import { useFreeTextAnnotations } from './useFreeTextAnnotations';
 
 interface InitialData {
   freeTextAnnotations?: unknown[];

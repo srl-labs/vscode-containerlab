@@ -4,6 +4,7 @@
  */
 import React, { useRef, useEffect, useCallback } from 'react';
 import uPlot from 'uplot';
+
 import 'uplot/dist/uPlot.min.css';
 import type { InterfaceStatsPayload, EndpointStatsHistory } from '../../../shared/types/topology';
 

@@ -11,6 +11,7 @@
  */
 
 import { useCallback } from 'react';
+
 import { getBMinorFrequency, useAudioEngine, type MelodyNote } from './core';
 
 /** ~70 BPM for that slowed down vaporwave feel */

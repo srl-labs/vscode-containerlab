@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import type { NodeEditorData } from '../../components/panels/node-editor/types';
 import type { LinkEditorData } from '../../components/panels/link-editor/types';
 import type { NetworkEditorData } from '../../components/panels/network-editor';

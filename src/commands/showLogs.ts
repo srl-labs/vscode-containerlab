@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
-import { execCommandInTerminal } from "./command";
+
 import { ClabContainerTreeNode } from "../treeView/common";
+
+import { execCommandInTerminal } from "./command";
 
 export function showLogs(node: ClabContainerTreeNode) {
     if (!node) {

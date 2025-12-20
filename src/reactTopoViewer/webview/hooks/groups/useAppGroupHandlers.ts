@@ -5,9 +5,11 @@
  */
 import { useCallback } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
+
+import type { UndoRedoAction } from '../state/useUndoRedo';
+
 import type { UseGroupsReturn } from './groupTypes';
 import { useGroupUndoRedoHandlers } from './useGroupUndoRedoHandlers';
-import type { UndoRedoAction } from '../state/useUndoRedo';
 
 interface UndoRedoApi {
   pushAction: (action: UndoRedoAction) => void;

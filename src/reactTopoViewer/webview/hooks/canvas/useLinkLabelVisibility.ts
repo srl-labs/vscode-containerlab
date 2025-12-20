@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef, useCallback } from 'react';
 import type { Core as CyCore, EventObject, NodeSingular, EdgeSingular, EdgeCollection, NodeCollection } from 'cytoscape';
+
 import type { LinkLabelMode } from '../../context/TopoViewerContext';
 
 // CSS class names for visual highlighting

@@ -2,6 +2,7 @@
  * Helper utilities for FreeShapeLayer rendering (JSX helpers)
  */
 import type { ReactElement } from 'react';
+
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import {
   DEFAULT_LINE_LENGTH,
@@ -13,6 +14,7 @@ import {
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY
 } from '../../hooks/annotations/freeShapeHelpers';
+
 import { applyAlphaToColor } from './shared';
 
 export interface LineGeometry {

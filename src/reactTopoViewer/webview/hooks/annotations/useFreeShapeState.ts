@@ -2,9 +2,11 @@
  * State management hook for free shape annotations
  */
 import React, { useState, useCallback, useRef } from 'react';
+
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { saveFreeShapeAnnotations as saveFreeShapeToIO } from '../../services';
 import { log } from '../../utils/logger';
+
 import {
   SAVE_DEBOUNCE_MS,
   extractStyleFromAnnotation,

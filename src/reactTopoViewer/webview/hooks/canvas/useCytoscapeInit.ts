@@ -3,6 +3,7 @@
  * Waits for container to have non-zero dimensions before initializing
  */
 import React, { useEffect } from 'react';
+
 import type { CyElement } from '../../../shared/types/messages';
 
 /**

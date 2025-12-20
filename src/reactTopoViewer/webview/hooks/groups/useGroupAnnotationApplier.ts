@@ -3,10 +3,12 @@
  * Similar pattern to useFreeShapeAnnotationApplier.
  */
 import React from 'react';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoActionAnnotation } from '../state/useUndoRedo';
-import type { UseGroupsReturn } from './groupTypes';
 import { log } from '../../utils/logger';
+
+import type { UseGroupsReturn } from './groupTypes';
 
 export interface UseGroupAnnotationApplierReturn {
   isApplyingGroupUndoRedo: React.RefObject<boolean>;

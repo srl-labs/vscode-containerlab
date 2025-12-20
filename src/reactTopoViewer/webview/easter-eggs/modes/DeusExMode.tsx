@@ -8,6 +8,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { lerpColor, applyNodeGlow, restoreNodeStyles } from '../shared';
 import type { RGBColor } from '../shared';
 

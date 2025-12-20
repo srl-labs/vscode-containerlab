@@ -2,6 +2,7 @@
  * Badge components for form fields
  */
 import React from 'react';
+
 import { quoteBlockStyle } from '../../../styles/cssVariables';
 
 /**

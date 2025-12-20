@@ -3,8 +3,10 @@
  * Uses BasePanel directly (no tabs needed)
  */
 import React, { useState, useEffect, useCallback } from 'react';
+
 import { BasePanel } from '../../shared/editor/BasePanel';
 import { FreeShapeAnnotation } from '../../../../shared/types/topology';
+
 import { FreeShapeFormContent } from './FreeShapeFormContent';
 
 interface FreeShapeEditorPanelProps {

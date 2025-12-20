@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+
 import type { ClabInterfaceStats } from "../types/containerlab";
 
 // LabPath interface

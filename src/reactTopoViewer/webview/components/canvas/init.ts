@@ -4,8 +4,10 @@
 import cytoscape, { Core, CytoscapeOptions, LayoutOptions } from 'cytoscape';
 import cola from 'cytoscape-cola';
 import gridGuide from 'cytoscape-grid-guide';
+
 import { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
+
 import { cytoscapeStyles } from './styles';
 
 let colaRegistered = false;

@@ -5,6 +5,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import type { Core as CyCore, NodeSingular, EdgeSingular } from 'cytoscape';
 import cytoscape from 'cytoscape';
 import edgehandles from 'cytoscape-edgehandles';
+
 import { log } from '../../utils/logger';
 
 // Register extension once

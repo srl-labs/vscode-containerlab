@@ -3,9 +3,11 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { BasePanel } from '../../shared/editor/BasePanel';
 import type { GraphChangeEntry } from '../../../hooks';
 import { useBulkLinkPanel } from '../../../hooks/panels/useBulkLinkPanel';
+
 import { CopyableCode } from './CopyableCode';
 import { ConfirmBulkLinksModal } from './ConfirmBulkLinksModal';
 

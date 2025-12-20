@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
 import type { Dispatch, SetStateAction, RefObject } from 'react';
+
 import { log } from '../../utils/logger';
+
 import { AnnotationWithId, getSelectedByIds } from './useAnnotationListSelection';
 
 export interface UseAnnotationListCopyPasteReturn {

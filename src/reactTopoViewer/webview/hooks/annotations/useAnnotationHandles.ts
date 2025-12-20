@@ -3,8 +3,10 @@
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import { RenderedPosition } from './freeTextLayerHelpers';
+
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+
+import { RenderedPosition } from './freeTextLayerHelpers';
 
 // ============================================================================
 // Rotation Hook

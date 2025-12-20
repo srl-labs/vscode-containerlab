@@ -10,15 +10,16 @@
 
 import * as vscode from 'vscode';
 
-import { log } from './services/logger';
 import { nodeFsAdapter, TopologyIO } from '../shared/io';
-import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { CyElement, ClabTopology } from '../shared/types/topology';
 import { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../globals';
+import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../shared/parsing';
+
+import { log } from './services/logger';
+import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
 import { annotationsIO, extensionLogger } from './services/adapters';
-
 import {
   createPanel,
   generateWebviewHtml,
@@ -28,7 +29,7 @@ import { MessageRouter, WebviewMessage } from './panel/MessageRouter';
 import { WatcherManager } from './panel/Watchers';
 import { buildBootstrapData } from './panel/BootstrapDataBuilder';
 import { findInterfaceNode } from './services/TreeUtils';
-import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../shared/parsing';
+
 
 /** Message type for topology data updates sent to webview */
 const MSG_TOPOLOGY_DATA = 'topology-data';

@@ -2,6 +2,7 @@
  * FormField - Label wrapper with optional tooltip and inheritance badge
  */
 import React from 'react';
+
 import { InheritanceBadge } from './Badge';
 
 interface FormFieldProps {

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+
 import { cloneRepoFromUrl } from "./cloneRepoCore";
 
 // Re-export for backward compatibility

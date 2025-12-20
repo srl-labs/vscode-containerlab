@@ -4,8 +4,10 @@
  */
 
 import * as vscode from 'vscode';
-import { log } from './logger';
+
 import type { EndpointResult } from '../../shared/types/endpoint';
+
+import { log } from './logger';
 
 /**
  * Action configuration for lab lifecycle commands.

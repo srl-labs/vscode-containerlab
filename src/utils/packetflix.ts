@@ -1,8 +1,12 @@
-import * as vscode from "vscode";
 import * as os from "os";
-import * as utils from "./utils";
+
+import * as vscode from "vscode";
+
+
 import * as c from "../treeView/common";
 import { outputChannel } from "../globals";
+
+import * as utils from "./utils";
 
 let sessionHostname = "";
 

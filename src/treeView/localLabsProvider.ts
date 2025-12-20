@@ -1,10 +1,13 @@
+import path = require("path");
+
 import * as vscode from "vscode"
+
 import * as utils from "../utils/utils"
-import * as c from "./common";
-import * as ins from "./inspector";
 import { localTreeView, favoriteLabs } from "../globals";
 import { FilterUtils } from "../helpers/filterUtils";
-import path = require("path");
+
+import * as c from "./common";
+import * as ins from "./inspector";
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";

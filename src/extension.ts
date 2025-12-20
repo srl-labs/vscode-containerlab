@@ -1,13 +1,14 @@
+import * as path from 'path';
+import * as fs from 'fs';
+import { execSync } from 'child_process';
+
 import * as vscode from 'vscode';
+import Docker from 'dockerode';
+
 import * as cmd from './commands/index';
 import * as utils from './utils/index';
 import * as ins from "./treeView/inspector"
 import * as c from './treeView/common';
-import * as path from 'path';
-import * as fs from 'fs';
-import { execSync } from 'child_process';
-import Docker from 'dockerode';
-
 import {
   outputChannel,
   containerlabBinaryPath,

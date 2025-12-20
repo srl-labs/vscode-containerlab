@@ -3,6 +3,7 @@
  * Extracted from useCopyPaste to reduce aggregate complexity
  */
 import type { Core, NodeSingular, EdgeSingular } from 'cytoscape';
+
 import { log } from '../../utils/logger';
 import { CyElement } from '../../../shared/types/messages';
 import { getUniqueId } from '../../../shared/utilities/idUtils';

@@ -1,10 +1,12 @@
-import * as vscode from 'vscode';
-import * as utils from '../utils/index';
 import { spawn } from 'child_process';
-import { outputChannel } from '../globals';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+
+import * as vscode from 'vscode';
+
+import { outputChannel } from '../globals';
+import * as utils from '../utils/index';
 
 /**
  * Run a shell command in a named VS Code terminal.

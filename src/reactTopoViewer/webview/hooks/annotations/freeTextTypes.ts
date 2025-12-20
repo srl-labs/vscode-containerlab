@@ -2,6 +2,7 @@
  * Types for free text annotations
  */
 import type { Core as CyCore } from 'cytoscape';
+
 import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
 // Re-export FreeTextAnnotation for consumers

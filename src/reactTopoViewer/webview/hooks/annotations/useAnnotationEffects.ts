@@ -2,6 +2,7 @@
  * Combined hook for annotation effects (background clear, group move)
  */
 import type { Core as CyCore } from 'cytoscape';
+
 import type { FreeTextAnnotation } from './freeTextTypes';
 import { useAnnotationGroupMove } from './useAnnotationGroupMove';
 import { useAnnotationBackgroundClear } from './useAnnotationBackgroundClear';

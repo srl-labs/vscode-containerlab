@@ -8,10 +8,11 @@
  * `vscode` module and the internal `Command` implementation are replaced
  * so the tests can run outside of the editor environment.
  */
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 const originalResolve = (Module as any)._resolveFilename;
 (Module as any)._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
@@ -26,6 +27,7 @@ const commandPath = require.resolve('../../../src/commands/command');
 (require.cache as any)[commandPath] = { exports: require("../../helpers/command-class-stub.js") } as any;
 import { ClabCommand } from '../../../src/commands/clabCommand';
 import { ClabLabTreeNode } from '../../../src/treeView/common';
+
 const vscodeStub = require('../../helpers/vscode-stub');
 const cmdStub = require('../../helpers/command-class-stub');
 

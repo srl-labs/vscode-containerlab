@@ -2,6 +2,7 @@
  * Section - Bordered section with title and optional inheritance badge
  */
 import React from 'react';
+
 import { InheritanceBadge } from './Badge';
 
 interface SectionProps {

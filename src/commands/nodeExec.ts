@@ -1,8 +1,10 @@
 import * as vscode from "vscode";
-import { execCommandInTerminal } from "./command";
+
 import { execCmdMapping } from "../globals";
 import { ClabContainerTreeNode } from "../treeView/common";
 import { DEFAULT_ATTACH_SHELL_CMD, DEFAULT_ATTACH_TELNET_PORT } from "../utils";
+
+import { execCommandInTerminal } from "./command";
 
 interface NodeContext {
   containerId: string;

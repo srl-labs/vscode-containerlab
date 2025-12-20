@@ -4,10 +4,12 @@
  */
 import React, { useCallback, useEffect, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
+
 import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';
+import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+
 import { useGroups } from './useGroups';
 import { buildGroupId, parseGroupId, calculateBoundingBox } from './groupHelpers';
-import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 
 interface InitialData {
   groupStyleAnnotations?: unknown[];

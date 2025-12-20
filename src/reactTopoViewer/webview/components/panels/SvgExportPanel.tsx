@@ -4,6 +4,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { BasePanel } from '../shared/editor/BasePanel';
 import { log } from '../../utils/logger';
 import { generateEncodedSVG, NodeType } from '../../utils/SvgGenerator';

@@ -2,6 +2,7 @@
  * FilterableDropdown - A searchable dropdown component with keyboard navigation
  */
 import React from 'react';
+
 import { useFilterableDropdown, FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
 
 export type { FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';

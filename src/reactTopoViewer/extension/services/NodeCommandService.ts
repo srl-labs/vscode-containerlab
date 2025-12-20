@@ -4,10 +4,12 @@
  */
 
 import * as vscode from 'vscode';
-import { log } from './logger';
+
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { runningLabsProvider } from '../../../globals';
 import type { EndpointResult } from '../../shared/types/endpoint';
+
+import { log } from './logger';
 
 /**
  * Creates a default container node object when no matching container is found.

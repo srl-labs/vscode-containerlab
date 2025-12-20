@@ -3,9 +3,11 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
-import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
 import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+
+import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
 
 interface InitialData {
   freeShapeAnnotations?: unknown[];

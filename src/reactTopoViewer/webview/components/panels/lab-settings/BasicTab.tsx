@@ -2,6 +2,7 @@
  * BasicTab - Basic settings tab for Lab Settings panel
  */
 import React from 'react';
+
 import type { PrefixType } from './types';
 
 interface BasicTabProps {

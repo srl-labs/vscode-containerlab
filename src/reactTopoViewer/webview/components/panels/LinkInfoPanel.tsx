@@ -3,10 +3,12 @@
  * Shows properties of a selected link/edge with endpoint tabs and traffic charts
  */
 import React, { useState } from 'react';
-import { FloatingPanel, PropertyRow } from './FloatingPanel';
-import { TrafficChart } from './TrafficChart';
+
 import type { LinkData } from '../../hooks';
 import type { InterfaceStatsPayload } from '../../../shared/types/topology';
+
+import { FloatingPanel, PropertyRow } from './FloatingPanel';
+import { TrafficChart } from './TrafficChart';
 
 interface EndpointData {
   node?: string;

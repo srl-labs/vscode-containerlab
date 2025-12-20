@@ -3,6 +3,7 @@
  */
 import { useEffect, useCallback } from 'react';
 import type { Core } from 'cytoscape';
+
 import { log } from '../../utils/logger';
 
 interface KeyboardShortcutsOptions {

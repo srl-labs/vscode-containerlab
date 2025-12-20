@@ -8,10 +8,11 @@
  * module and the command implementation we can exercise the logic in a
  * plain Node environment without invoking containerlab.
  */
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 const originalResolve = (Module as any)._resolveFilename;
 

@@ -11,10 +11,11 @@
  *   2. Running labs are filtered from the results and the remaining labs are
  *      returned alphabetically.
  */
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 // Stub the vscode module before importing the provider
 const originalResolve = (Module as any)._resolveFilename;
@@ -30,6 +31,7 @@ const originalResolve = (Module as any)._resolveFilename;
 
 import { LocalLabTreeDataProvider } from '../../../src/treeView/localLabsProvider';
 import * as ins from '../../../src/treeView/inspector';
+
 const vscodeStub = require('../../helpers/vscode-stub');
 const extension = require('../../../src/extension');
 

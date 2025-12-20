@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { BasePanel } from '../shared/editor/BasePanel';
 
 interface FindNodePanelProps {

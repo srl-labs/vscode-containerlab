@@ -6,6 +6,7 @@
  */
 
 import sinon from 'sinon';
+
 import * as services from '../../../../src/reactTopoViewer/webview/services';
 import { FileSystemAdapter } from '../../../../src/reactTopoViewer/shared/io/types';
 import type { NodeSaveData, LinkSaveData } from '../../../../src/reactTopoViewer/shared/io/TopologyIO';

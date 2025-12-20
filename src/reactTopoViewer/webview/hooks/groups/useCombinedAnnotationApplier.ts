@@ -3,11 +3,13 @@
  * Extracted from App.tsx to reduce complexity.
  */
 import { useCallback } from 'react';
+
 import type { UndoRedoActionAnnotation, UndoRedoActionGroupMove } from '../state/useUndoRedo';
 import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
+import { log } from '../../utils/logger';
+
 import type { UseGroupsReturn } from './groupTypes';
 import { useGroupAnnotationApplier } from './useGroupAnnotationApplier';
-import { log } from '../../utils/logger';
 
 interface UseCombinedAnnotationApplierOptions {
   groups: UseGroupsReturn;

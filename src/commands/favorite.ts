@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+
 import { ClabLabTreeNode } from '../treeView/common';
 import { favoriteLabs, extensionContext } from '../globals';
 

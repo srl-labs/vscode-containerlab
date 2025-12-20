@@ -2,6 +2,7 @@
  * Hook for managing custom node template editor state and handlers
  */
 import { useMemo } from 'react';
+
 import { NodeEditorData } from '../../components/panels/node-editor/types';
 import { CustomTemplateEditorData } from '../../context/TopoViewerContext';
 import {

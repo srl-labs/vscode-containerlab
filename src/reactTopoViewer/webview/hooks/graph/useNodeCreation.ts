@@ -3,6 +3,7 @@
  */
 import { useEffect, useCallback, useRef } from 'react';
 import type { Core, EventObject } from 'cytoscape';
+
 import { log } from '../../utils/logger';
 import { CyElement } from '../../../shared/types/messages';
 import { CustomNodeTemplate } from '../../context/TopoViewerContext';

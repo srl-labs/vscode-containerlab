@@ -5,11 +5,13 @@
  */
 
 import { useCallback } from 'react';
+
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from '../../../shared/types/topology';
+
 import type { GroupDragOffset } from './groupTypes';
 import {
   getDescendantGroups as getDescendantsUtil,

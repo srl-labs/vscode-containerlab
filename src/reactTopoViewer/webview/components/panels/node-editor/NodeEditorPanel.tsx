@@ -2,7 +2,9 @@
  * Node Editor Panel - Multi-tab editor for node configuration
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
 import { EditorPanel, TabDefinition } from '../../shared/editor';
+
 import { NodeEditorData, NodeEditorTabId } from './types';
 import { BasicTab } from './BasicTab';
 import { ComponentsTab } from './ComponentsTab';

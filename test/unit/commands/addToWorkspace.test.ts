@@ -9,10 +9,11 @@
  * missing or invalid.
  */
 // These tests simulate adding a folder to the workspace without launching VS Code
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 // Replace the vscode module with our stub before importing the command
 const originalResolve = (Module as any)._resolveFilename;
@@ -24,6 +25,7 @@ const originalResolve = (Module as any)._resolveFilename;
 };
 
 import { addLabFolderToWorkspace } from '../../../src/commands/addToWorkspace';
+
 const vscodeStub = require('../../helpers/vscode-stub');
 
 describe('addLabFolderToWorkspace command', () => {

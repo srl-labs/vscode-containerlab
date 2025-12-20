@@ -2,7 +2,9 @@
  * Link Editor Panel - Multi-tab editor for link configuration
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
 import { EditorPanel, TabDefinition } from '../../shared/editor';
+
 import { LinkEditorData, LinkEditorTabId } from './types';
 import { BasicTab } from './BasicTab';
 import { ExtendedTab, validateLinkEditorData } from './ExtendedTab';

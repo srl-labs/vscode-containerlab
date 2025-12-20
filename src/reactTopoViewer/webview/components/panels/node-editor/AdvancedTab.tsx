@@ -2,8 +2,10 @@
  * Advanced Tab for Node Editor
  */
 import React from 'react';
-import { TabProps, HealthCheckConfig } from './types';
+
 import { FormField, InputField, SelectField, CheckboxField, DynamicList, KeyValueList, Section } from '../../shared/form';
+
+import { TabProps, HealthCheckConfig } from './types';
 
 /** Helper to check if a property is inherited */
 const isInherited = (prop: string, inheritedProps: string[] = []) => inheritedProps.includes(prop);

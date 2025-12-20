@@ -2,6 +2,7 @@
  * Dropdown menu components for FloatingActionPanel
  */
 import React, { useRef, useCallback } from 'react';
+
 import { useDropdownState, useFloatingDropdownKeyboard, useFocusOnOpen } from '../../../hooks/ui/useDropdownState';
 
 /**

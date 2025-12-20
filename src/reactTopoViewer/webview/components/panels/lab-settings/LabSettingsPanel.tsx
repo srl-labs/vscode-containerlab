@@ -3,10 +3,12 @@
  * Migrated from legacy TopoViewer panel-lab-settings.html
  */
 import React, { useState } from 'react';
+
 import { BasePanel } from '../../shared/editor/BasePanel';
+import { useLabSettingsState } from '../../../hooks/panels/useLabSettings';
+
 import { BasicTab } from './BasicTab';
 import { MgmtTab } from './MgmtTab';
-import { useLabSettingsState } from '../../../hooks/panels/useLabSettings';
 import type { LabSettings, TabId } from './types';
 
 interface LabSettingsPanelProps {

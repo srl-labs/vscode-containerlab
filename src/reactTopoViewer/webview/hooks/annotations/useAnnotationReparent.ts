@@ -4,6 +4,7 @@
  * When dragged outside all groups, it's removed from its group.
  */
 import { useCallback, useRef } from 'react';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';

@@ -1,15 +1,17 @@
-import * as vscode from "vscode"
-import * as utils from "../utils/utils"
-import * as c from "./common";
-import * as ins from "./inspector"
-import { FilterUtils } from "../helpers/filterUtils";
 
 import path = require("path");
+
+import * as vscode from "vscode"
+
+import { FilterUtils } from "../helpers/filterUtils";
+import * as utils from "../utils/utils"
 import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, gottySessions, outputChannel } from "../globals";
 import { refreshSshxSessions, refreshGottySessions } from "../services/sessionRefresh";
 import { getCurrentTopoViewer } from "../commands/graph";
-
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry, ClabInterfaceStats } from "../types/containerlab";
+
+import * as ins from "./inspector"
+import * as c from "./common";
 
 type RunningTreeNode = c.ClabLabTreeNode | c.ClabContainerTreeNode | c.ClabInterfaceTreeNode;
 

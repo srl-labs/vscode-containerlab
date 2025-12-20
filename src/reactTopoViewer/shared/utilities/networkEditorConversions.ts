@@ -4,6 +4,7 @@
  */
 
 import { NetworkEditorData, NetworkType } from '../types/editors';
+
 import { getStringOrEmpty, getRecord } from './typeHelpers';
 
 /**

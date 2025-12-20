@@ -5,6 +5,7 @@
 
 // eslint-disable-next-line sonarjs/deprecation
 import { ClabNode, CyElement, ClabTopology, NetworkNodeAnnotation, CloudNodeAnnotation, TopologyAnnotations } from '../types/topology';
+
 import {
   TYPES,
   SpecialNodeType,

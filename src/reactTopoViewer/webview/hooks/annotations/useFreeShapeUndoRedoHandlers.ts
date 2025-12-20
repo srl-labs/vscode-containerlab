@@ -3,8 +3,10 @@
  * Extracted from App.tsx to keep App complexity low.
  */
 import React from 'react';
+
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoAction, UndoRedoActionAnnotation } from '../state/useUndoRedo';
+
 import type { UseFreeShapeAnnotationsReturn } from './freeShapeTypes';
 import {
   updateAnnotationPosition,

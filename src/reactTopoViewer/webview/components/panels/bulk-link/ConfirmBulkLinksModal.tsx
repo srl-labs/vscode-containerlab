@@ -2,6 +2,7 @@
  * ConfirmBulkLinksModal - Confirmation dialog for bulk link creation
  */
 import React from 'react';
+
 import { BasePanel } from '../../shared/editor/BasePanel';
 
 interface ConfirmBulkLinksModalProps {

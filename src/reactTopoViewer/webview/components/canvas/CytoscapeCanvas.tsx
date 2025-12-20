@@ -4,20 +4,21 @@
  */
 import React, { useRef, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { Core } from 'cytoscape';
+
 import { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+import {
+  useElementsUpdate,
+  useCytoscapeInitializer,
+  useDelayedCytoscapeInit
+} from '../../hooks/canvas';
 
 import {
   ensureColaRegistered,
   getLayoutOptions
 } from './init';
 
-import {
-  useElementsUpdate,
-  useCytoscapeInitializer,
-  useDelayedCytoscapeInit
-} from '../../hooks/canvas';
 
 /**
  * Hook to listen for node-data-updated messages and dispatch to React state.

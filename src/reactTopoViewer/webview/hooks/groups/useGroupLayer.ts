@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 import Layers from 'cytoscape-layers';
 import cytoscape from 'cytoscape';
+
 import { log } from '../../utils/logger';
 
 // Register the plugin once

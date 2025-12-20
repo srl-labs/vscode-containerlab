@@ -5,10 +5,11 @@
  * Environment-agnostic: works in both VS Code extension and dev server.
  */
 
-import { FileSystemAdapter, IOLogger, noopLogger } from './types';
 // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
 import { CloudNodeAnnotation, NetworkNodeAnnotation, TopologyAnnotations } from '../types/topology';
 import { createEmptyAnnotations } from '../annotations/types';
+
+import { FileSystemAdapter, IOLogger, noopLogger } from './types';
 
 /**
  * Options for creating an AnnotationsIO instance

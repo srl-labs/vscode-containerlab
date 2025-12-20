@@ -6,6 +6,7 @@
  */
 import { FileSystemAdapter } from '../../shared/io/types';
 import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
+
 import * as pathUtils from './pathUtils';
 
 declare global {

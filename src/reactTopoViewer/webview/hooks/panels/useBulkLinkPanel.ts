@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import type { GraphChangeEntry } from '../graph/copyPasteUtils';
 import type { LinkCandidate } from '../../components/panels/bulk-link/bulkLinkUtils';
 import { computeAndValidateCandidates, confirmAndCreateLinks } from '../../components/panels/bulk-link/bulkLinkHandlers';

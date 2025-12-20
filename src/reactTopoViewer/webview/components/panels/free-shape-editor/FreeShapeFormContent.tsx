@@ -3,6 +3,7 @@
  * Matches the style of FreeTextFormContent
  */
 import React, { useMemo } from 'react';
+
 import { FreeShapeAnnotation } from '../../../../shared/types/topology';
 import {
   DEFAULT_SHAPE_WIDTH,

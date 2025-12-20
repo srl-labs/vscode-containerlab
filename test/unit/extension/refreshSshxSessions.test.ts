@@ -1,9 +1,10 @@
 /* eslint-env mocha */
 /* global describe, it, before, after, beforeEach, afterEach */
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 describe('refreshSshxSessions', () => {
   const originalResolve = (Module as any)._resolveFilename;

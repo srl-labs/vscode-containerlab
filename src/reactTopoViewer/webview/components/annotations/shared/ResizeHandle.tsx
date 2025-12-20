@@ -2,6 +2,7 @@
  * Shared resize handle for annotations
  */
 import React from 'react';
+
 import {
   HANDLE_SIZE,
   HANDLE_BOX_SHADOW,

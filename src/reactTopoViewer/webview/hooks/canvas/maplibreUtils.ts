@@ -3,8 +3,9 @@
  * Replaces Leaflet with MapLibre GL for smoother, WebGL-powered map rendering
  */
 import type { Core } from 'cytoscape';
-import { log } from '../../utils/logger';
 import maplibregl from 'maplibre-gl';
+
+import { log } from '../../utils/logger';
 
 // Constants
 export const CLASS_MAPLIBRE_ACTIVE = 'maplibre-active';

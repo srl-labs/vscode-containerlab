@@ -4,6 +4,7 @@
  */
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import type { Core } from 'cytoscape';
+
 import { CopyData, GraphChangeEntry, executePaste } from './copyPasteUtils';
 import { useClipboardListener } from './useClipboardListener';
 import {
@@ -78,11 +79,9 @@ export function useCopyPaste(
   useClipboardListener(cy, mode, isLocked, onClipboardPaste);
 
   // Create handlers using individual factories
-  const handlers = useMemo<CopyPasteReturn>(() => ({
+  return useMemo<CopyPasteReturn>(() => ({
     handleCopy: createCopyHandler(cy, resetPasteState),
     handlePaste: createPasteHandler(cy, mode, isLocked),
     handleDuplicate: createDuplicateHandler(cy, mode, isLocked, performPaste)
   }), [cy, mode, isLocked, resetPasteState, performPaste]);
-
-  return handlers;
 }

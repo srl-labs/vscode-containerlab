@@ -30,6 +30,7 @@ Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement
 Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
 
 import { renderHook, act } from '@testing-library/react';
+
 import { useUndoRedo } from '../../../../../src/reactTopoViewer/webview/hooks/state/useUndoRedo';
 import { createMockCytoscape, createTestNode } from '../../helpers/cytoscape-stub';
 import {

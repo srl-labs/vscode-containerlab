@@ -3,9 +3,10 @@
  * Queries containerlab inspect data to determine if a lab is deployed.
  */
 
-import { log } from './logger';
 import * as inspector from '../../../treeView/inspector';
 import { DeploymentState } from '../../shared/types/topology';
+
+import { log } from './logger';
 
 /**
  * Checks deployment state of containerlab labs by querying inspect data.

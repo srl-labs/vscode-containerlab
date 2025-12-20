@@ -3,8 +3,10 @@
  * Editor for network node configuration (host, mgmt-net, vxlan, bridge, etc.)
  */
 import React, { useState, useEffect, useCallback } from 'react';
+
 import { EditorPanel } from '../../shared/editor';
 import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from '../../shared/form';
+
 import {
   NetworkEditorData,
   NetworkType,

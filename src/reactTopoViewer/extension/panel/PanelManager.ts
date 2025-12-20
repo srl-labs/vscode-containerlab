@@ -2,8 +2,9 @@
  * PanelManager - Handles webview panel lifecycle and HTML generation
  */
 
-import * as vscode from 'vscode';
 import * as crypto from 'crypto';
+
+import * as vscode from 'vscode';
 
 /**
  * Configuration for creating a webview panel

@@ -3,6 +3,7 @@
  * Groups are rendered as HTML/SVG overlays, not Cytoscape nodes.
  */
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
+
 import {
   DEFAULT_GROUP_STYLE,
   DEFAULT_GROUP_WIDTH,

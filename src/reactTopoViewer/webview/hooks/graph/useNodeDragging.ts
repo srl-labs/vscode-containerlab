@@ -4,6 +4,7 @@
  */
 import { useEffect, useCallback, useRef } from 'react';
 import { Core, NodeSingular, EventObject } from 'cytoscape';
+
 import { log } from '../../utils/logger';
 import type { NodePositionEntry } from '../state/useUndoRedo';
 import { getTopologyIO } from '../../services';

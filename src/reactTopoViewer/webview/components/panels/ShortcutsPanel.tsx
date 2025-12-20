@@ -3,6 +3,7 @@
  * Migrated from legacy TopoViewer shortcuts-modal.html
  */
 import React from 'react';
+
 import { BasePanel } from '../shared/editor/BasePanel';
 
 interface ShortcutsPanelProps {

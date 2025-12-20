@@ -4,6 +4,7 @@
  */
 import React, { useLayoutEffect, useRef } from 'react';
 import type { Core } from 'cytoscape';
+
 import type { CyElement } from '../../../shared/types/messages';
 import { updateCytoscapeElements } from '../../components/canvas/init';
 

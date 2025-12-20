@@ -2,7 +2,9 @@
  * BasicTab - Basic link configuration (endpoints)
  */
 import React from 'react';
+
 import { FormField, InputField, ReadOnlyBadge } from '../../shared/form';
+
 import { LinkTabProps } from './types';
 
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {

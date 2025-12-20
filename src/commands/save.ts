@@ -1,8 +1,11 @@
 // src/commands/save.ts
-import * as vscode from "vscode";
-import { ClabCommand } from "./clabCommand";
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../treeView/common";
 import * as path from "path";
+
+import * as vscode from "vscode";
+
+import { ClabLabTreeNode, ClabContainerTreeNode } from "../treeView/common";
+
+import { ClabCommand } from "./clabCommand";
 
 /**
  * Save the entire lab configuration.

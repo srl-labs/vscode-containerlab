@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useRef, useCallback } from 'react';
 import type { Core as CyCore, EventObject, NodeSingular } from 'cytoscape';
+
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 

@@ -4,6 +4,7 @@
  */
 
 import { ClabNode, CyElement, ClabTopology, TopologyAnnotations } from '../types/topology';
+
 import { resolveNodeConfig } from './NodeConfigResolver';
 import {
   TYPES,

@@ -2,6 +2,7 @@
  * Types for free shape annotations
  */
 import type { Core as CyCore } from 'cytoscape';
+
 import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
 export interface UseFreeShapeAnnotationsOptions {

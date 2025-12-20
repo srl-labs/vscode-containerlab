@@ -3,12 +3,14 @@
  * Complete implementation matching legacy features
  */
 import React from 'react';
+
 import { useTopoViewer, LinkLabelMode } from '../../context/TopoViewerContext';
 import { DEFAULT_GRID_LINE_WIDTH } from '../../hooks';
 import type { LayoutOption } from '../../hooks';
+import { useDropdown } from '../../hooks/ui/useDropdown';
+
 import { ContainerlabLogo } from './ContainerlabLogo';
 import { NavbarLoadingIndicator } from './NavbarLoadingIndicator';
-import { useDropdown } from '../../hooks/ui/useDropdown';
 
 interface NavbarProps {
   onZoomToFit?: () => void;

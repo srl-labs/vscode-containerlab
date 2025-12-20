@@ -1,7 +1,8 @@
-import { test as base, Locator, TestInfo } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { writeFileSync } from 'fs';
 import * as path from 'path';
+
+import { test as base, Locator, TestInfo } from '@playwright/test';
 
 // Test selectors
 const CANVAS_SELECTOR = '[data-testid="cytoscape-canvas"]';

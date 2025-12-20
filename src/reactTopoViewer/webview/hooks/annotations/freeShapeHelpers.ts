@@ -2,6 +2,7 @@
  * Helper functions for free shape annotations
  */
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
+
 import { generateAnnotationId as generateId } from './annotationIdUtils';
 
 // ============================================================================

@@ -2,11 +2,13 @@
  * Hook for managing free shape annotations in React TopoViewer.
  */
 import { useCallback, useMemo } from 'react';
+
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
+import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
+
 import { createDefaultAnnotation } from './freeShapeHelpers';
 import { useFreeShapeState, useFreeShapeActions } from './useFreeShapeState';
-import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
 import type { UseFreeShapeAnnotationsOptions, UseFreeShapeAnnotationsReturn, AnnotationUndoAction } from './freeShapeTypes';
 
 export type { UseFreeShapeAnnotationsOptions, UseFreeShapeAnnotationsReturn, AnnotationUndoAction };

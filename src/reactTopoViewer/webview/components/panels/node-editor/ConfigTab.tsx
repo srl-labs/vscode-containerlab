@@ -2,8 +2,10 @@
  * Configuration Tab for Node Editor
  */
 import React from 'react';
-import { TabProps } from './types';
+
 import { FormField, InputField, CheckboxField, DynamicList, KeyValueList } from '../../shared/form';
+
+import { TabProps } from './types';
 
 /** Helper to check if a property is inherited */
 const isInherited = (prop: string, inheritedProps: string[] = []) => inheritedProps.includes(prop);

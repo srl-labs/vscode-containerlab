@@ -2,6 +2,7 @@
  * useNavbarCommands - Hook providing navbar command callbacks.
  */
 import { useCallback } from 'react';
+
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 
 export interface NavbarCommands {

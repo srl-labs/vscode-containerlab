@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
-import { log } from './logger';
+
 import type { EndpointResult } from '../../shared/types/endpoint';
+
+import { log } from './logger';
 
 const CONFIG_SECTION = 'containerlab.editor';
 

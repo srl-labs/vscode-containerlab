@@ -1,5 +1,6 @@
-import { test, expect } from '../fixtures/topoviewer';
 import { Page } from '@playwright/test';
+
+import { test, expect } from '../fixtures/topoviewer';
 
 // Test selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';

@@ -3,6 +3,7 @@
  */
 
 import * as vscode from 'vscode';
+
 import { log } from '../services/logger';
 import { nodeFsAdapter } from '../../shared/io';
 import { onDockerImagesUpdated } from '../../../utils/docker/images';

@@ -11,9 +11,10 @@
  * The suite stubs the `vscode` module so it can run in a plain Node
  * environment without the VS Code API available.
  */
-import { expect } from 'chai';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
 
 // The source files depend on the VS Code API.  To run the tests without the
 // actual editor environment we replace Node's module resolution logic and point

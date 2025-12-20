@@ -6,6 +6,7 @@
  */
 
 import * as vscode from 'vscode';
+
 import { nodeFsAdapter } from '../../../shared/io';
 import type { CustomNodeTemplate, SchemaData } from '../../../shared/schema';
 import { parseSchemaData } from '../../../shared/schema';

@@ -2,6 +2,7 @@
  * AboutPanel - Displays information about TopoViewer
  */
 import React from 'react';
+
 import { BasePanel } from '../shared/editor/BasePanel';
 
 interface AboutPanelProps {

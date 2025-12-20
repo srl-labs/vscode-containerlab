@@ -11,6 +11,7 @@
  */
 
 import { useCallback } from 'react';
+
 import { getAMinorFrequency, useAudioEngine, type MelodyNote } from './core';
 
 const BEAT = 0.659;

@@ -4,6 +4,7 @@
  * Uses BasePanel for shared drag/persistence behavior.
  */
 import React, { ReactNode } from 'react';
+
 import { BasePanel } from '../shared/editor/BasePanel';
 
 interface FloatingPanelProps {

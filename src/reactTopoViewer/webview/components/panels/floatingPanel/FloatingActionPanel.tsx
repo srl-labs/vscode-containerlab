@@ -3,6 +3,7 @@
  * A draggable panel with deployment controls and editor tools
  */
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
+
 import { useTopoViewer, CustomNodeTemplate } from '../../../context/TopoViewerContext';
 import {
   usePanelDrag,
@@ -12,6 +13,7 @@ import {
   buildLockButtonClass,
   PANEL_STORAGE_KEY
 } from '../../../hooks/ui/usePanelDrag';
+
 import { PanelButton, DeployButtonGroup } from './DeployControls';
 import { PanelButtonWithDropdown, DropdownMenuItem, CustomNodeActions } from './DropdownMenu';
 

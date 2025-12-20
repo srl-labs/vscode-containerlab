@@ -3,8 +3,10 @@
  * Provides annotation applier for undo/redo and wrapper methods for create/delete.
  */
 import React from 'react';
+
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoAction, UndoRedoActionAnnotation } from '../state/useUndoRedo';
+
 import type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
 
 interface UndoRedoApi {

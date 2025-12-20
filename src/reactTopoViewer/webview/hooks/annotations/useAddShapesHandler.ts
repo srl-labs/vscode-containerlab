@@ -2,6 +2,7 @@
  * Hook for handling add shapes action with lock checking
  */
 import React from 'react';
+
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 
 interface UseAddShapesHandlerParams {

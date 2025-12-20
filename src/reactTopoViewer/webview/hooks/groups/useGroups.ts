@@ -5,9 +5,11 @@
  */
 import React, { useCallback, useMemo, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
+
 import { useGroupState } from './useGroupState';
 import {
   generateGroupId,

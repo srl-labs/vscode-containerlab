@@ -1,5 +1,7 @@
-import { ClabLabTreeNode } from "../treeView/common";
 import * as vscode from "vscode";
+
+import { ClabLabTreeNode } from "../treeView/common";
+
 import { runClabAction } from "./runClabAction";
 
 export async function deploy(node?: ClabLabTreeNode) {

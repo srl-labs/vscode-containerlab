@@ -2,10 +2,12 @@
  * Handler functions for bulk link operations
  */
 import type { Core as CyCore } from 'cytoscape';
+
 import type { GraphChangeEntry } from '../../../hooks/graph/copyPasteUtils';
-import { computeCandidates, buildBulkEdges, buildUndoRedoEntries, type LinkCandidate } from './bulkLinkUtils';
 import type { CyElement } from '../../../../shared/types/messages';
 import { createLink, beginBatch, endBatch, type LinkSaveData } from '../../../services';
+
+import { computeCandidates, buildBulkEdges, buildUndoRedoEntries, type LinkCandidate } from './bulkLinkUtils';
 
 type SetStatus = (status: string | null) => void;
 type SetCandidates = (candidates: LinkCandidate[] | null) => void;

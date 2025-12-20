@@ -6,6 +6,7 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { getLabelPositionStyles } from '../../hooks/groups/groupHelpers';
 import { useDelayedHover } from '../../hooks/ui/useDelayedHover';
@@ -21,6 +22,7 @@ import {
 } from '../../hooks/groups';
 import { useAnnotationBoxSelection } from '../../hooks/annotations/useAnnotationSelection';
 import { MapLibreState, projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
+
 import { HANDLE_SIZE, CENTER_TRANSLATE, CORNER_STYLES, applyAlphaToColor } from './shared';
 
 // ============================================================================

@@ -2,6 +2,10 @@
  * React TopoViewer Main Application Component
  */
 import React from 'react';
+
+import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
+import { convertToNetworkEditorData } from '../shared/utilities/networkEditorConversions';
+
 import { useTopoViewer } from './context/TopoViewerContext';
 import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
@@ -84,8 +88,6 @@ import {
 } from './hooks';
 import { useUnifiedClipboard } from './hooks/clipboard';
 import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './hooks';
-import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
-import { convertToNetworkEditorData } from '../shared/utilities/networkEditorConversions';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from './services';
 import {

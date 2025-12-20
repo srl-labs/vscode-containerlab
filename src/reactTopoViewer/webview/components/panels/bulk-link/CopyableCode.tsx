@@ -2,6 +2,7 @@
  * CopyableCode - Inline code with click-to-copy functionality
  */
 import React from 'react';
+
 import { copyToClipboard } from '../../../utils/clipboard';
 
 interface CopyableCodeProps {

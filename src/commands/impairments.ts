@@ -1,8 +1,10 @@
 // ./src/commands/impairments.ts
 import * as vscode from "vscode";
+
 import { ClabInterfaceTreeNode } from "../treeView/common";
-import { execCommandInOutput } from "./command";
 import { containerlabBinaryPath } from "../globals";
+
+import { execCommandInOutput } from "./command";
 
 // Common validation messages and patterns
 const ERR_EMPTY = 'Input should not be empty';

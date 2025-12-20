@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import { CyElement } from '../../../shared/types/messages';
-import { GraphChange, useUndoRedo, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove, MembershipEntry } from './useUndoRedo';
 import {
   createNode,
   createLink,
@@ -13,6 +13,8 @@ import {
   type NodeSaveData,
   type LinkSaveData
 } from '../../services';
+
+import { GraphChange, useUndoRedo, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove, MembershipEntry } from './useUndoRedo';
 
 interface MenuHandlers {
   handleDeleteNode: (id: string) => void;

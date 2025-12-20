@@ -3,9 +3,11 @@
  * Uses BasePanel for consistent look and feel
  */
 import React, { useState, useEffect, useCallback } from 'react';
+
 import { BasePanel } from '../../shared/editor/BasePanel';
 import type { GroupStyleAnnotation } from '../../../../shared/types/topology';
 import type { GroupEditorData } from '../../../hooks/groups/groupTypes';
+
 import { GroupFormContent } from './GroupFormContent';
 
 interface GroupEditorPanelProps {

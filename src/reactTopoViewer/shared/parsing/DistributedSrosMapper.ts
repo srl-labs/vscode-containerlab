@@ -4,6 +4,7 @@
  */
 
 import { ClabNode } from '../types/topology';
+
 import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from './types';
 
 /**

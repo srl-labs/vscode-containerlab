@@ -3,6 +3,7 @@
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
+
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 
 /** Corner type alias for resize handles */

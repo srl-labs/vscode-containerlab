@@ -2,6 +2,7 @@
  * MgmtTab - Management network settings tab for Lab Settings panel
  */
 import React from 'react';
+
 import type { IpType, DriverOption } from './types';
 
 interface MgmtTabProps {

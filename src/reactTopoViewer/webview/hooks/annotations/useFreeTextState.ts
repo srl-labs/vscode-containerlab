@@ -2,9 +2,11 @@
  * State management hook for free text annotations
  */
 import React, { useState, useCallback, useRef } from 'react';
+
 import { FreeTextAnnotation } from '../../../shared/types/topology';
 import { saveFreeTextAnnotations as saveFreeTextToIO } from '../../services';
 import { log } from '../../utils/logger';
+
 import {
   SAVE_DEBOUNCE_MS,
   extractStyleFromAnnotation,

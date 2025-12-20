@@ -4,6 +4,7 @@
  */
 import React, { useReducer, useCallback, useMemo } from 'react';
 import { Core } from 'cytoscape';
+
 import { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
 import { saveNodePositions, getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';

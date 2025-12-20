@@ -3,6 +3,7 @@
  */
 import React, { useCallback } from 'react';
 import cytoscape, { Core } from 'cytoscape';
+
 import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
 import {

@@ -7,12 +7,14 @@
  */
 
 import * as YAML from 'yaml';
+
+import { ClabTopology } from '../types/topology';
+
 import { FileSystemAdapter, SaveResult, IOLogger, noopLogger, ERROR_SERVICE_NOT_INIT, ERROR_NO_YAML_PATH } from './types';
 import { AnnotationsIO } from './AnnotationsIO';
 import { writeYamlFile, parseYamlDocument } from './YamlDocumentIO';
 import { NodeSaveData, addNodeToDoc, editNodeInDoc, deleteNodeFromDoc, NodeAnnotationData, buildAnnotationProps, applyAnnotationData } from './NodePersistenceIO';
 import { LinkSaveData, addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenceIO';
-import { ClabTopology } from '../types/topology';
 
 // Re-export types for convenience
 export type { NodeSaveData, NodeAnnotationData } from './NodePersistenceIO';

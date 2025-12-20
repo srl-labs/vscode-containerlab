@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+
 import { App } from './App';
 import { TopoViewerProvider } from './context/TopoViewerContext';
 import { log } from './utils/logger';

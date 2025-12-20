@@ -6,6 +6,7 @@
  */
 
 import * as YAML from 'yaml';
+
 import { FileSystemAdapter, SaveResult, IOLogger, noopLogger } from './types';
 
 /**

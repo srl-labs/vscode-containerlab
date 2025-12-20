@@ -5,11 +5,13 @@
  */
 import React, { useCallback, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
+
 import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoAction, UndoRedoActionGroupMove, NodePositionEntry } from '../state/useUndoRedo';
-import type { UseGroupsReturn } from './groupTypes';
 import { log } from '../../utils/logger';
 import { saveNodePositions } from '../../services';
+
+import type { UseGroupsReturn } from './groupTypes';
 import { getDescendantGroups, getAllAnnotationsInHierarchy } from './hierarchyUtils';
 
 interface UndoRedoApi {

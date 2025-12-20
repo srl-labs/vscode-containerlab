@@ -4,6 +4,7 @@
  */
 
 import { ClabTopology, TopologyAnnotations, NodeAnnotation } from '../types/topology';
+
 import type { GraphLabelMigration } from './types';
 
 // ============================================================================

@@ -4,6 +4,7 @@
  */
 
 import { CyElement, ClabTopology, TopologyAnnotations, NodeAnnotation } from '../types/topology';
+
 import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from './LinkNormalizer';
 import type { ParserLogger } from './types';
 import { nullLogger } from './types';

@@ -3,9 +3,11 @@
  * Handles CPM, Card, SFM, MDA, XIOM configuration for nokia_srsim nodes
  */
 import React, { useCallback, useState } from 'react';
-import { TabProps, SrosComponent, SrosMda, SrosXiom, INTEGRATED_SROS_TYPES } from './types';
+
 import { FormField, InputField, SelectField, Section } from '../../shared/form';
 import { useSchema, type SrosComponentTypes } from '../../../hooks/data/useSchema';
+
+import { TabProps, SrosComponent, SrosMda, SrosXiom, INTEGRATED_SROS_TYPES } from './types';
 
 /** Check if type is integrated mode (simpler chassis) */
 const isIntegratedType = (type: string | undefined): boolean => {

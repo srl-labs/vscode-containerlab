@@ -4,11 +4,14 @@
  */
 
 import { useCallback, useRef } from 'react';
+
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from '../../../shared/types/topology';
+import { log } from '../../utils/logger';
+
 import type { GroupClipboardData, PastedGroupResult } from './groupTypes';
 import {
   getDescendantGroups,
@@ -16,7 +19,6 @@ import {
   getRelativePosition
 } from './hierarchyUtils';
 import { generateGroupId } from './groupHelpers';
-import { log } from '../../utils/logger';
 
 /** Counter for generating unique annotation IDs */
 let annotationIdCounter = 0;
