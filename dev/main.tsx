@@ -11,7 +11,7 @@
  */
 import { createRoot } from 'react-dom/client';
 import { App } from '@webview/App';
-import { TopoViewerProvider } from '@webview/context/TopoViewerContext';
+import { TopoViewerProvider, type CustomNodeTemplate } from '@webview/context/TopoViewerContext';
 import '@webview/styles/tailwind.css';
 
 // File system adapter for dev server
@@ -63,7 +63,6 @@ const stateManager = new DevStateManager({
   mode: 'edit',
   deploymentState: 'undeployed',
   customNodes: sampleCustomNodes,
-  defaultCustomNode: 'SRLinux Latest',
 });
 
 const latencySimulator = new LatencySimulator({
@@ -177,11 +176,22 @@ declare global {
   }
 }
 
-// Minimal VS Code API mock for mode switching
+/**
+ * Broadcast custom nodes update to webview (matches production message format)
+ */
+function broadcastCustomNodesUpdate(): void {
+  window.postMessage({
+    type: 'custom-nodes-updated',
+    customNodes: stateManager.getCustomNodes(),
+    defaultNode: stateManager.getDefaultCustomNode()
+  }, '*');
+}
+
+// Minimal VS Code API mock for mode switching and custom nodes
 window.vscode = {
   postMessage: (data: unknown) => {
     const msg = data as Record<string, unknown>;
-    console.log('%c[vscode.postMessage]', 'color: #9C27B0;', msg.type, msg);
+    console.log('%c[vscode.postMessage]', 'color: #9C27B0;', msg.type || msg.command, msg);
 
     // Handle mode changes
     if (msg.type === 'topo-switch-mode') {
@@ -225,6 +235,33 @@ window.vscode = {
             }
           }, '*');
         });
+      }
+    }
+
+    // Handle custom node commands (matches production behavior)
+    if (msg.command === 'save-custom-node') {
+      if (msg.name) {
+        stateManager.saveCustomNode(msg as CustomNodeTemplate & { oldName?: string });
+        broadcastCustomNodesUpdate();
+        console.log(`%c[Mock] Custom node saved: ${msg.name}`, 'color: #4CAF50;');
+      }
+    }
+
+    if (msg.command === 'delete-custom-node') {
+      const name = msg.name as string;
+      if (name) {
+        stateManager.deleteCustomNode(name);
+        broadcastCustomNodesUpdate();
+        console.log(`%c[Mock] Custom node deleted: ${name}`, 'color: #f44336;');
+      }
+    }
+
+    if (msg.command === 'set-default-custom-node') {
+      const name = msg.name as string;
+      if (name) {
+        stateManager.setDefaultCustomNodeByName(name);
+        broadcastCustomNodesUpdate();
+        console.log(`%c[Mock] Custom node set as default: ${name}`, 'color: #2196F3;');
       }
     }
   }
@@ -360,7 +397,7 @@ const initialData = {
     'ubuntu:latest'
   ],
   customNodes: sampleCustomNodes,
-  defaultCustomNode: 'SRLinux Latest',
+  defaultCustomNode: stateManager.getDefaultCustomNode(),
   freeTextAnnotations: [],
   freeShapeAnnotations: [],
   groupStyleAnnotations: [],

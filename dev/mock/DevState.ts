@@ -3,14 +3,13 @@
  *
  * Only holds state that doesn't exist on the server:
  * - currentFilePath: which file is loaded
- * - clipboard: copy/paste storage
- * - customNodes: node template config
+ * - customNodes: node template config (with setDefault flag on nodes)
  * - mode/deploymentState: for lifecycle simulation
  *
  * Elements and annotations are fetched from server - no local cache.
+ * Clipboard is handled locally by useUnifiedClipboard (React refs).
  */
 
-import type { CyElement, TopologyAnnotations } from '../../src/reactTopoViewer/shared/types/topology';
 import type { CustomNodeTemplate } from '../../src/reactTopoViewer/webview/context/TopoViewerContext';
 
 // ============================================================================
@@ -23,12 +22,8 @@ export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
 export interface DevState {
   /** Currently loaded topology file path */
   currentFilePath: string | null;
-  /** Clipboard data for copy/paste */
-  clipboard: unknown | null;
-  /** Custom node templates */
+  /** Custom node templates (default is marked with setDefault: true) */
   customNodes: CustomNodeTemplate[];
-  /** Default custom node name */
-  defaultCustomNode: string | null;
   /** Editor mode (for lifecycle simulation) */
   mode: TopoMode;
   /** Lab deployment state (for lifecycle simulation) */
@@ -61,9 +56,7 @@ export class DevStateManager {
   constructor(initialState?: Partial<DevState>) {
     this.state = {
       currentFilePath: null,
-      clipboard: null,
       customNodes: [],
-      defaultCustomNode: null,
       mode: 'edit',
       deploymentState: 'undeployed',
       ...initialState
@@ -82,12 +75,14 @@ export class DevStateManager {
     return this.state.currentFilePath;
   }
 
-  getClipboard(): unknown | null {
-    return this.state.clipboard;
-  }
-
   getCustomNodes(): CustomNodeTemplate[] {
     return this.state.customNodes;
+  }
+
+  /** Get default custom node name (from node with setDefault: true) */
+  getDefaultCustomNode(): string {
+    const defaultNode = this.state.customNodes.find(n => n.setDefault === true);
+    return defaultNode?.name || '';
   }
 
   getMode(): TopoMode {
@@ -107,18 +102,8 @@ export class DevStateManager {
     this.notify();
   }
 
-  setClipboard(data: unknown | null): void {
-    this.state = { ...this.state, clipboard: data };
-    // Don't notify for clipboard changes
-  }
-
   setCustomNodes(customNodes: CustomNodeTemplate[]): void {
     this.state = { ...this.state, customNodes };
-    this.notify();
-  }
-
-  setDefaultCustomNode(name: string | null): void {
-    this.state = { ...this.state, defaultCustomNode: name };
     this.notify();
   }
 
@@ -129,6 +114,61 @@ export class DevStateManager {
 
   setDeploymentState(deploymentState: DeploymentState): void {
     this.state = { ...this.state, deploymentState };
+    this.notify();
+  }
+
+  // --------------------------------------------------------------------------
+  // Custom Node CRUD (matches production CustomNodeConfigManager behavior)
+  // --------------------------------------------------------------------------
+
+  /** Save or update a custom node template */
+  saveCustomNode(data: CustomNodeTemplate & { oldName?: string }): void {
+    let nodes = [...this.state.customNodes];
+
+    // If setDefault is true, clear setDefault on all other nodes first
+    if (data.setDefault) {
+      nodes = nodes.map(n => ({ ...n, setDefault: false }));
+    }
+
+    // Remove oldName from data before storing
+    const { oldName, ...nodeData } = data;
+
+    if (oldName) {
+      // Update existing node (find by oldName)
+      const idx = nodes.findIndex(n => n.name === oldName);
+      if (idx >= 0) {
+        nodes[idx] = nodeData;
+      } else {
+        nodes.push(nodeData);
+      }
+    } else {
+      // Add new or update existing (find by name)
+      const idx = nodes.findIndex(n => n.name === data.name);
+      if (idx >= 0) {
+        nodes[idx] = nodeData;
+      } else {
+        nodes.push(nodeData);
+      }
+    }
+
+    this.state = { ...this.state, customNodes: nodes };
+    this.notify();
+  }
+
+  /** Set a node as default (updates setDefault flag on all nodes) */
+  setDefaultCustomNodeByName(name: string): void {
+    const nodes = this.state.customNodes.map(n => ({
+      ...n,
+      setDefault: n.name === name
+    }));
+    this.state = { ...this.state, customNodes: nodes };
+    this.notify();
+  }
+
+  /** Delete a custom node template by name */
+  deleteCustomNode(name: string): void {
+    const nodes = this.state.customNodes.filter(n => n.name !== name);
+    this.state = { ...this.state, customNodes: nodes };
     this.notify();
   }
 
@@ -165,9 +205,7 @@ export class DevStateManager {
   reset(): void {
     this.state = {
       currentFilePath: null,
-      clipboard: null,
       customNodes: [],
-      defaultCustomNode: null,
       mode: 'edit',
       deploymentState: 'undeployed'
     };

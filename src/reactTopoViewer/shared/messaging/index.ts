@@ -67,7 +67,6 @@ export {
   type INodeCommandService,
   type ILifecycleService,
   type ICustomNodeService,
-  type IClipboardService,
   type ISplitViewService,
   type ILabSettingsService,
   type IMessageRouterContext,

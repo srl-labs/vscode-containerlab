@@ -82,8 +82,6 @@ export class MessageHandlerBase {
         return this.handleAnnotationCommand(command, message);
       case 'customNode':
         return this.handleCustomNodeCommand(command, message);
-      case 'clipboard':
-        return this.handleClipboardCommand(command, message);
       case 'misc':
         return this.handleMiscCommand(command, message);
       default:
@@ -1028,35 +1026,6 @@ export class MessageHandlerBase {
     }
 
     return sanitized;
-  }
-
-  // --------------------------------------------------------------------------
-  // Clipboard Commands
-  // --------------------------------------------------------------------------
-
-  protected async handleClipboardCommand(command: string, message: WebviewMessage): Promise<boolean> {
-    const { clipboard, messaging, logger } = this.services;
-
-    if (command === 'copyElements') {
-      const payload = (message as Record<string, unknown>).payload;
-      if (!payload) {
-        logger.warn('[MessageHandler] copyElements: no payload provided');
-        return true;
-      }
-      await clipboard.copy(payload);
-      logger.info(`[MessageHandler] Elements copied to clipboard: ${JSON.stringify(payload).slice(0, 100)}...`);
-      return true;
-    }
-
-    if (command === 'getCopiedElements') {
-      const data = await clipboard.paste();
-      logger.info(`[MessageHandler] getCopiedElements: clipboard has data=${!!data}`);
-      messaging.postMessage({ type: 'copiedElements', data });
-      logger.info('[MessageHandler] Clipboard sent to webview');
-      return true;
-    }
-
-    return false;
   }
 
   // --------------------------------------------------------------------------

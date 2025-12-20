@@ -15,7 +15,6 @@ import {
   INodeCommandService,
   ILifecycleService,
   ICustomNodeService,
-  IClipboardService,
   ISplitViewService,
   ILabSettingsService,
   IMessageRouterContext,
@@ -215,25 +214,6 @@ export class CustomNodeServiceAdapter implements ICustomNodeService {
 }
 
 // ============================================================================
-// Clipboard Service Adapter
-// ============================================================================
-
-/**
- * Adapter for VS Code globalState clipboard
- */
-export class ClipboardServiceAdapter implements IClipboardService {
-  constructor(private extensionContext: vscode.ExtensionContext) {}
-
-  async copy(data: unknown): Promise<void> {
-    await this.extensionContext.globalState.update('topoClipboard', data);
-  }
-
-  async paste(): Promise<unknown | null> {
-    return this.extensionContext.globalState.get('topoClipboard') || null;
-  }
-}
-
-// ============================================================================
 // Split View Service Adapter
 // ============================================================================
 
@@ -408,7 +388,6 @@ export function createProductionServices(options: {
     nodeCommands: new NodeCommandServiceAdapter(options.yamlFilePath),
     lifecycle: new LifecycleServiceAdapter(),
     customNodes: new CustomNodeServiceAdapter(),
-    clipboard: new ClipboardServiceAdapter(options.extensionContext),
     splitView: new SplitViewServiceAdapter(options.panel),
     labSettings: new LabSettingsServiceAdapter(),
     context,

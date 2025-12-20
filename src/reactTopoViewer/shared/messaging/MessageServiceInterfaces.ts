@@ -202,21 +202,6 @@ export interface ICustomNodeService {
 }
 
 /**
- * Clipboard service - copy/paste operations
- */
-export interface IClipboardService {
-  /**
-   * Copy elements to clipboard
-   */
-  copy(data: unknown): Promise<void>;
-
-  /**
-   * Get copied elements from clipboard
-   */
-  paste(): Promise<unknown | null>;
-}
-
-/**
  * Split view service - toggle split view
  */
 export interface ISplitViewService {
@@ -302,7 +287,6 @@ export interface MessageHandlerServices {
   nodeCommands: INodeCommandService;
   lifecycle: ILifecycleService;
   customNodes: ICustomNodeService;
-  clipboard: IClipboardService;
   splitView: ISplitViewService;
   labSettings: ILabSettingsService;
   context: IMessageRouterContext;
