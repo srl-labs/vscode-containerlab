@@ -617,8 +617,8 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
       }
     }
   );
-  const [initLoading, setInitLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const initLoading = false;
+  const error: string | null = null;
   const actions = useActions(dispatch);
 
   // Listen for messages from extension

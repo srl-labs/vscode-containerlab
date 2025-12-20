@@ -27,6 +27,10 @@ import { LatencySimulator } from './mock/LatencySimulator';
 // Mock data for initial state
 import { sampleElements, sampleCustomNodes } from './mockData';
 
+// Schema parsing - import JSON directly and use shared parser
+import clabSchema from '../schema/clab.schema.json';
+import { parseSchemaData } from '@shared/schema';
+
 // ============================================================================
 // Session Management
 // ============================================================================
@@ -374,6 +378,9 @@ console.log('  __DEV__.fsAdapter - HttpFsAdapter instance');
 // Initial Data for Provider
 // ============================================================================
 
+// Parse schema data dynamically from the schema file (same as production)
+const schemaData = parseSchemaData(clabSchema as Record<string, unknown>);
+
 // Build minimal initial data (topology loads async after mount)
 const initialData = {
   elements: sampleElements,
@@ -382,14 +389,7 @@ const initialData = {
   deploymentState: 'undeployed',
   isLocked: false,  // Dev mode starts unlocked for testing
   yamlFilePath: '',
-  schemaData: {
-    nodeKinds: [
-      { kind: 'nokia_srlinux', defaultImage: 'ghcr.io/nokia/srlinux:latest' },
-      { kind: 'linux', defaultImage: 'alpine:latest' },
-      { kind: 'nokia_sros', defaultImage: '' },
-      { kind: 'arista_ceos', defaultImage: '' }
-    ]
-  },
+  schemaData,
   dockerImages: [
     'ghcr.io/nokia/srlinux:latest',
     'ghcr.io/nokia/srlinux:24.10.1',

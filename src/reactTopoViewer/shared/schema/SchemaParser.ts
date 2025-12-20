@@ -1,10 +1,9 @@
 /**
  * SchemaParser - Utilities for parsing containerlab JSON schema
+ *
+ * Shared between VS Code extension and dev server (browser environment).
+ * Contains only pure parsing functions with no environment-specific dependencies.
  */
-
-import * as vscode from 'vscode';
-import { log } from '../services/logger';
-import { nodeFsAdapter } from '../../shared/io';
 
 /**
  * Custom node template from configuration
@@ -28,14 +27,6 @@ export interface CustomNodeTemplate {
 export interface SchemaData {
   kinds: string[];
   typesByKind: Record<string, string[]>;
-}
-
-/**
- * Get custom nodes from VS Code configuration
- */
-export function getCustomNodesFromConfig(): CustomNodeTemplate[] {
-  const config = vscode.workspace.getConfiguration('containerlab.editor');
-  return config.get<CustomNodeTemplate[]>('customNodes', []);
 }
 
 /**
@@ -108,19 +99,11 @@ export function extractTypesByKindFromSchema(schema: Record<string, unknown>): R
 }
 
 /**
- * Load schema data from the extension's schema file
+ * Parse schema and return SchemaData
  */
-export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaData> {
-  try {
-    const schemaUri = vscode.Uri.joinPath(extensionUri, 'schema', 'clab.schema.json');
-    const schemaContent = await nodeFsAdapter.readFile(schemaUri.fsPath);
-    const schema = JSON.parse(schemaContent) as Record<string, unknown>;
-    return {
-      kinds: extractKindsFromSchema(schema),
-      typesByKind: extractTypesByKindFromSchema(schema)
-    };
-  } catch (err) {
-    log.error(`Error loading schema data: ${err}`);
-    return { kinds: [], typesByKind: {} };
-  }
+export function parseSchemaData(schema: Record<string, unknown>): SchemaData {
+  return {
+    kinds: extractKindsFromSchema(schema),
+    typesByKind: extractTypesByKindFromSchema(schema)
+  };
 }

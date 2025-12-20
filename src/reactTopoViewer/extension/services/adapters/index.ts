@@ -5,6 +5,9 @@
  * the shared service interfaces from MessageServiceInterfaces.
  */
 
+// Re-export schema adapter functions
+export { getCustomNodesFromConfig, loadSchemaData } from './schemaAdapter';
+
 import * as vscode from 'vscode';
 import * as YAML from 'yaml';
 import { nodeFsAdapter, AnnotationsIO, TopologyIO } from '../../../shared/io';
