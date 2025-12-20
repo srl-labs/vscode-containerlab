@@ -247,19 +247,6 @@ export function buildLockButtonClass(isLocked: boolean, isShaking: boolean): str
 
 // Legacy exports for backwards compatibility
 export const PANEL_STORAGE_KEY = 'unifiedPanelState';
-const LEGACY_DEFAULT_POSITION: Position = { x: 20, y: 80 };
-
-/**
- * Load initial panel position from localStorage (legacy format)
- * @deprecated Use usePanelDrag with storageKey option instead
- */
-export function loadInitialPosition(): Position {
-  try {
-    const saved = window.localStorage.getItem(PANEL_STORAGE_KEY);
-    if (saved) return parseSavedPosition(saved, LEGACY_DEFAULT_POSITION);
-  } catch { /* ignore */ }
-  return LEGACY_DEFAULT_POSITION;
-}
 
 /**
  * Save panel state to localStorage including collapsed state

@@ -1,15 +1,8 @@
 import * as vscode from 'vscode';
 import { log } from './logger';
+import type { EndpointResult } from '../../shared/types/endpoint';
 
 const CONFIG_SECTION = 'containerlab.editor';
-
-/**
- * Result type for endpoint handlers
- */
-export interface EndpointResult {
-  result: unknown;
-  error: string | null;
-}
 
 /**
  * Custom node data structure

@@ -7,14 +7,7 @@ import * as vscode from 'vscode';
 import { log } from './logger';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { runningLabsProvider } from '../../../extension';
-
-/**
- * Result type for endpoint handlers.
- */
-export interface EndpointResult {
-  result: unknown;
-  error: string | null;
-}
+import type { EndpointResult } from '../../shared/types/endpoint';
 
 /**
  * Creates a default container node object when no matching container is found.

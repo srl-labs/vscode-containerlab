@@ -5,6 +5,7 @@
  * Supports session isolation for parallel test execution.
  */
 import { FileSystemAdapter } from '../../shared/io/types';
+import * as pathUtils from './pathUtils';
 
 /**
  * FileSystemAdapter that uses HTTP to read/write files via the dev server.
@@ -67,20 +68,15 @@ export class HttpFsAdapter implements FileSystemAdapter {
   }
 
   dirname(filePath: string): string {
-    // Handle both Windows and Unix paths
-    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-    if (lastSlash === -1) return '.';
-    if (lastSlash === 0) return '/';
-    return filePath.substring(0, lastSlash);
+    return pathUtils.dirname(filePath);
   }
 
   basename(filePath: string): string {
-    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-    return filePath.substring(lastSlash + 1);
+    return pathUtils.basename(filePath);
   }
 
   join(...segments: string[]): string {
-    return segments.join('/').replace(/\/+/g, '/');
+    return pathUtils.join(...segments);
   }
 
   private buildUrl(filePath: string): string {

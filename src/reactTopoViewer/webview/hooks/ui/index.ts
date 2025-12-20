@@ -46,7 +46,6 @@ export {
   useDrawerSide,
   useShakeAnimation,
   buildLockButtonClass,
-  loadInitialPosition,
   savePanelState,
   PANEL_STORAGE_KEY
 } from './usePanelDrag';

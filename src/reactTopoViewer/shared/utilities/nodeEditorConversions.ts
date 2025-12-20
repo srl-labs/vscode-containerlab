@@ -4,37 +4,7 @@
  */
 
 import { NodeEditorData, HealthCheckConfig, SrosComponent } from '../../webview/components/panels/node-editor/types';
-
-// ============================================================================
-// Type Helpers
-// ============================================================================
-
-/** Helper to safely get string values */
-function getString(val: unknown): string | undefined {
-  return typeof val === 'string' ? val : undefined;
-}
-
-/** Helper to safely get number values */
-function getNumber(val: unknown): number | undefined {
-  return typeof val === 'number' ? val : undefined;
-}
-
-/** Helper to safely get boolean values */
-function getBoolean(val: unknown): boolean | undefined {
-  return typeof val === 'boolean' ? val : undefined;
-}
-
-/** Helper to safely get string array */
-function getStringArray(val: unknown): string[] | undefined {
-  return Array.isArray(val) ? val.filter((v): v is string => typeof v === 'string') : undefined;
-}
-
-/** Helper to safely get record */
-function getRecord(val: unknown): Record<string, string> | undefined {
-  return val && typeof val === 'object' && !Array.isArray(val)
-    ? val as Record<string, string>
-    : undefined;
-}
+import { getString, getNumber, getBoolean, getStringArray, getRecord } from './typeHelpers';
 
 // ============================================================================
 // YAML -> NodeEditorData (for loading into editor)

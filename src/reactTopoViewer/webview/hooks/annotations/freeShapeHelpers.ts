@@ -2,6 +2,7 @@
  * Helper functions for free shape annotations
  */
 import { FreeShapeAnnotation } from '../../../shared/types/topology';
+import { generateAnnotationId as generateId } from './annotationIdUtils';
 
 // ============================================================================
 // Constants
@@ -25,9 +26,7 @@ export const SAVE_DEBOUNCE_MS = 300;
 // ============================================================================
 
 export function generateAnnotationId(): string {
-  const timestamp = Date.now();
-  const uuid = globalThis.crypto.randomUUID();
-  return `freeShape_${timestamp}_${uuid.slice(0, 8)}`;
+  return generateId('freeShape');
 }
 
 // ============================================================================

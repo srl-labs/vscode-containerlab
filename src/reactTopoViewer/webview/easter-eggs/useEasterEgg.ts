@@ -29,8 +29,6 @@ export interface EasterEggState {
   easterEggMode: EasterEggMode;
   /** Progress through clicks (0-10) */
   progress: number;
-  /** Time remaining (unused, kept for compatibility) */
-  timeRemaining: number;
 }
 
 export interface UseEasterEggOptions {
@@ -173,8 +171,7 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
     state: {
       isPartyMode,
       easterEggMode,
-      progress,
-      timeRemaining: 0
+      progress
     },
     handleLogoClick,
     triggerPartyMode,

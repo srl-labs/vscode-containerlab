@@ -2,6 +2,7 @@
  * Helper functions for free text annotations
  */
 import { FreeTextAnnotation } from '../../../shared/types/topology';
+import { generateAnnotationId as generateId } from './annotationIdUtils';
 
 // ============================================================================
 // Constants
@@ -17,13 +18,10 @@ export const SAVE_DEBOUNCE_MS = 300;
 // ============================================================================
 
 /**
- * Generates a unique annotation ID using crypto API for security
+ * Generates a unique annotation ID for free text annotations
  */
 export function generateAnnotationId(): string {
-  const timestamp = Date.now();
-  // Use globalThis.crypto.randomUUID for secure random generation
-  const uuid = globalThis.crypto.randomUUID();
-  return `freeText_${timestamp}_${uuid.slice(0, 8)}`;
+  return generateId('freeText');
 }
 
 // ============================================================================

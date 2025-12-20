@@ -6,7 +6,7 @@ import type { Core, NodeSingular, EdgeSingular } from 'cytoscape';
 import { log } from '../../utils/logger';
 import { CyElement } from '../../../shared/types/messages';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
-import { isSpecialEndpoint } from '../../../shared/utilities/LinkTypes';
+import { isSpecialEndpointId } from '../../../shared/utilities/LinkTypes';
 import {
   createNode,
   createLink,
@@ -63,7 +63,7 @@ export function collectCopyData(cy: Core): CopyData | null {
 
   let nodes = selected.nodes().union(selected.nodes().descendants());
   const specialEndpointNodes = nodes.connectedNodes().filter((n: NodeSingular) =>
-    isSpecialEndpoint(n.id()) && n.edgesWith(nodes).length > 0
+    isSpecialEndpointId(n.id()) && n.edgesWith(nodes).length > 0
   );
   nodes = nodes.union(specialEndpointNodes);
 
@@ -121,7 +121,7 @@ function generateRegularNodeIds(
 
 function applySpecialNameOverrides(newId: string, nodeName: string): string {
   if (newId.startsWith('dummy')) return 'dummy';
-  if (isSpecialEndpoint(newId) && newId.includes(':')) return newId;
+  if (isSpecialEndpointId(newId) && newId.includes(':')) return newId;
   return nodeName;
 }
 
@@ -293,16 +293,16 @@ export function postProcessEdges(cy: Core, elements: CyElementJson[]): void {
     const src = el.data.source as string;
     const tgt = el.data.target as string;
 
-    if (!el.data.sourceEndpoint && !isSpecialEndpoint(src)) {
+    if (!el.data.sourceEndpoint && !isSpecialEndpointId(src)) {
       edge.data('sourceEndpoint', getNextEndpoint(cy, src));
     }
-    if (!el.data.targetEndpoint && !isSpecialEndpoint(tgt)) {
+    if (!el.data.targetEndpoint && !isSpecialEndpointId(tgt)) {
       edge.data('targetEndpoint', getNextEndpoint(cy, tgt));
     }
 
     edge.data('editor', 'true');
 
-    if (isSpecialEndpoint(src) || isSpecialEndpoint(tgt)) {
+    if (isSpecialEndpointId(src) || isSpecialEndpointId(tgt)) {
       edge.addClass('stub-link');
     }
   }
@@ -351,7 +351,7 @@ function persistPastedEdges(edges: CyElementJson[]): void {
   for (const edge of edges) {
     const src = edge.data.source as string;
     const tgt = edge.data.target as string;
-    if (isSpecialEndpoint(src) || isSpecialEndpoint(tgt)) continue;
+    if (isSpecialEndpointId(src) || isSpecialEndpointId(tgt)) continue;
 
     const linkData: LinkSaveData = {
       id: edge.data.id as string,
@@ -367,7 +367,7 @@ function persistPastedEdges(edges: CyElementJson[]): void {
 export function persistPastedElements(elements: CyElementJson[]): void {
   beginBatch();
 
-  const nodes = elements.filter(el => el.group === 'nodes' && !isSpecialEndpoint(el.data.id as string));
+  const nodes = elements.filter(el => el.group === 'nodes' && !isSpecialEndpointId(el.data.id as string));
   persistPastedNodes(nodes);
 
   const edges = elements.filter(el => el.group === 'edges');

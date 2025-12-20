@@ -8,6 +8,7 @@
 import { FileSystemAdapter, IOLogger, noopLogger } from './types';
 // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
 import { CloudNodeAnnotation, NetworkNodeAnnotation, TopologyAnnotations } from '../types/topology';
+import { createEmptyAnnotations } from '../annotations/types';
 
 /**
  * Options for creating an AnnotationsIO instance
@@ -16,20 +17,6 @@ export interface AnnotationsIOOptions {
   fs: FileSystemAdapter;
   cacheTtlMs?: number;
   logger?: IOLogger;
-}
-
-/**
- * Creates an empty annotations object
- */
-export function createEmptyAnnotations(): TopologyAnnotations {
-  return {
-    freeTextAnnotations: [],
-    freeShapeAnnotations: [],
-    groupStyleAnnotations: [],
-    networkNodeAnnotations: [],
-    nodeAnnotations: [],
-    aliasEndpointAnnotations: []
-  };
 }
 
 /**

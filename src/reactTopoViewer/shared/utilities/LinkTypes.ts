@@ -41,8 +41,6 @@ export function isSpecialEndpointId(nodeId: string): boolean {
   );
 }
 
-export const isSpecialEndpoint = isSpecialEndpointId;
-
 /**
  * Determines if a node ID represents a special endpoint or bridge node.
  */

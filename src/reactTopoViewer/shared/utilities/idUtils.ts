@@ -3,7 +3,7 @@
  * Mirrors the logic from legacy topoViewer IdUtils.ts
  */
 
-import { isSpecialEndpoint } from './LinkTypes';
+import { isSpecialEndpointId } from './LinkTypes';
 
 /**
  * Generate unique ID for dummy nodes (dummy1, dummy2, etc.)
@@ -86,7 +86,7 @@ export function generateRegularNodeId(baseName: string, usedIds: Set<string>): s
  * Handles special endpoints (dummy, host:eth, macvlan:eth, etc.) and regular nodes
  */
 export function getUniqueId(baseName: string, usedIds: Set<string>): string {
-  if (isSpecialEndpoint(baseName)) {
+  if (isSpecialEndpointId(baseName)) {
     if (baseName.startsWith('dummy')) {
       return generateDummyId(baseName, usedIds);
     }

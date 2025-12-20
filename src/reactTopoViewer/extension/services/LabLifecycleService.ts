@@ -5,14 +5,7 @@
 
 import * as vscode from 'vscode';
 import { log } from './logger';
-
-/**
- * Result type for endpoint handlers.
- */
-export interface EndpointResult {
-  result: unknown;
-  error: string | null;
-}
+import type { EndpointResult } from '../../shared/types/endpoint';
 
 /**
  * Action configuration for lab lifecycle commands.

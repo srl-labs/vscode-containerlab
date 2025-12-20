@@ -3,7 +3,7 @@
  */
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import { FilterUtils } from '../../../../../helpers/filterUtils';
-import { isSpecialEndpoint } from '../../../../shared/utilities/LinkTypes';
+import { isSpecialEndpointId } from '../../../../shared/utilities/LinkTypes';
 import type { CyElement } from '../../../../shared/types/messages';
 import type { GraphChangeEntry } from '../../../hooks';
 
@@ -114,7 +114,7 @@ function allocateEndpoint(
   cy: CyCore,
   node: NodeSingular
 ): string {
-  if (isSpecialEndpoint(node.id())) return '';
+  if (isSpecialEndpointId(node.id())) return '';
 
   const allocator = getOrCreateAllocator(allocators, cy, node);
   let nextIndex = 0;
@@ -220,7 +220,7 @@ export function buildBulkEdges(cy: CyCore, candidates: LinkCandidate[]): CyEleme
         targetEndpoint,
         editor: 'true'
       },
-      classes: isSpecialEndpoint(sourceId) || isSpecialEndpoint(targetId) ? 'stub-link' : ''
+      classes: isSpecialEndpointId(sourceId) || isSpecialEndpointId(targetId) ? 'stub-link' : ''
     });
   }
 

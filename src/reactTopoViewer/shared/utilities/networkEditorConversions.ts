@@ -4,18 +4,7 @@
  */
 
 import { NetworkEditorData, NetworkType } from '../../webview/components/panels/network-editor/types';
-
-/** Helper to safely get string values */
-function getString(val: unknown): string {
-  return typeof val === 'string' ? val : '';
-}
-
-/** Helper to safely get record */
-function getRecord(val: unknown): Record<string, string> | undefined {
-  return val && typeof val === 'object' && !Array.isArray(val)
-    ? val as Record<string, string>
-    : undefined;
-}
+import { getStringOrEmpty, getRecord } from './typeHelpers';
 
 /**
  * Parse network type from node data
@@ -24,19 +13,19 @@ function getRecord(val: unknown): Record<string, string> | undefined {
  */
 function parseNetworkType(nodeId: string, rawData: Record<string, unknown>, extraData: Record<string, unknown>): NetworkType {
   // Check extraData.kind first (new network creation format)
-  const extraKind = getString(extraData.kind);
+  const extraKind = getStringOrEmpty(extraData.kind);
   if (extraKind && isValidNetworkType(extraKind)) {
     return extraKind as NetworkType;
   }
 
   // Check top-level kind field
-  const topKind = getString(rawData.kind);
+  const topKind = getStringOrEmpty(rawData.kind);
   if (topKind && isValidNetworkType(topKind)) {
     return topKind as NetworkType;
   }
 
   // Check top-level type field (mock data format)
-  const topType = getString(rawData.type);
+  const topType = getStringOrEmpty(rawData.type);
   if (topType && isValidNetworkType(topType)) {
     return topType as NetworkType;
   }
@@ -70,7 +59,7 @@ function isValidNetworkType(type: string): boolean {
 function parseInterfaceName(nodeId: string, networkType: NetworkType, extraData: Record<string, unknown>): string {
   // For bridges, prefer extYamlNodeId if available
   if (networkType === 'bridge' || networkType === 'ovs-bridge') {
-    const yamlId = getString(extraData.extYamlNodeId);
+    const yamlId = getStringOrEmpty(extraData.extYamlNodeId);
     if (yamlId) return yamlId;
     return nodeId;
   }
@@ -91,7 +80,7 @@ function parseInterfaceName(nodeId: string, networkType: NetworkType, extraData:
 export function convertToNetworkEditorData(rawData: Record<string, unknown> | null): NetworkEditorData | null {
   if (!rawData) return null;
 
-  const nodeId = getString(rawData.id);
+  const nodeId = getStringOrEmpty(rawData.id);
   const extra = (rawData.extraData as Record<string, unknown>) || {};
   const networkType = parseNetworkType(nodeId, rawData, extra);
 
@@ -99,18 +88,18 @@ export function convertToNetworkEditorData(rawData: Record<string, unknown> | nu
     id: nodeId,
     networkType,
     interfaceName: parseInterfaceName(nodeId, networkType, extra),
-    label: getString(rawData.name) || nodeId,
+    label: getStringOrEmpty(rawData.name) || nodeId,
     // VXLAN fields
-    vxlanRemote: getString(extra.extRemote),
-    vxlanVni: getString(extra.extVni),
-    vxlanDstPort: getString(extra.extDstPort),
-    vxlanSrcPort: getString(extra.extSrcPort),
+    vxlanRemote: getStringOrEmpty(extra.extRemote),
+    vxlanVni: getStringOrEmpty(extra.extVni),
+    vxlanDstPort: getStringOrEmpty(extra.extDstPort),
+    vxlanSrcPort: getStringOrEmpty(extra.extSrcPort),
     // MACVLAN mode
-    macvlanMode: getString(extra.extMode),
+    macvlanMode: getStringOrEmpty(extra.extMode),
     // MAC address
-    mac: getString(extra.extMac),
+    mac: getStringOrEmpty(extra.extMac),
     // MTU
-    mtu: getString(extra.extMtu),
+    mtu: getStringOrEmpty(extra.extMtu),
     // Optional metadata
     vars: getRecord(extra.vars),
     labels: getRecord(extra.labels)

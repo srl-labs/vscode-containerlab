@@ -17,7 +17,8 @@ export type { TopologyAnnotations } from '../types/topology';
 
 // Annotations I/O (browser-safe - uses FileSystemAdapter abstraction)
 export type { AnnotationsIOOptions } from './AnnotationsIO';
-export { AnnotationsIO, createEmptyAnnotations, migrateAnnotations } from './AnnotationsIO';
+export { AnnotationsIO, migrateAnnotations } from './AnnotationsIO';
+export { createEmptyAnnotations } from '../annotations/types';
 
 // Topology I/O orchestration (browser-safe - uses FileSystemAdapter abstraction)
 export type { TopologyIOOptions } from './TopologyIO';

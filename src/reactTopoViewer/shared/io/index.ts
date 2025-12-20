@@ -44,9 +44,9 @@ export {
 export {
   AnnotationsIO,
   AnnotationsIOOptions,
-  createEmptyAnnotations,
   migrateAnnotations,
 } from './AnnotationsIO';
+export { createEmptyAnnotations } from '../annotations/types';
 
 // Node persistence
 export {
