@@ -5,6 +5,10 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback, R
 import { CyElement } from '../../shared/types/messages';
 import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
 
+// Re-export custom node types from shared for backward compatibility
+export type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
+import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
+
 /**
  * Deployment state type alias
  */
@@ -19,44 +23,6 @@ export type LinkLabelMode = 'show-all' | 'on-select' | 'hide';
  * Processing mode for lifecycle operations
  */
 export type ProcessingMode = 'deploy' | 'destroy' | null;
-
-/**
- * Custom node template from configuration
- */
-export interface CustomNodeTemplate {
-  name: string;
-  kind: string;
-  type?: string;
-  image?: string;
-  icon?: string;
-  iconColor?: string;
-  iconCornerRadius?: number;
-  baseName?: string;
-  interfacePattern?: string;
-  setDefault?: boolean;
-  [key: string]: unknown;
-}
-
-/**
- * Custom template editor data - used when editing custom node templates
- * (not a node in the graph)
- */
-export interface CustomTemplateEditorData {
-  id: string;  // 'temp-custom-node' for new, 'edit-custom-node' for editing
-  isCustomTemplate: true;
-  customName: string;
-  kind: string;
-  type?: string;
-  image?: string;
-  icon?: string;
-  iconColor?: string;
-  iconCornerRadius?: number;
-  baseName?: string;
-  interfacePattern?: string;
-  isDefaultCustomNode?: boolean;
-  /** When editing, track the original name to find and update it */
-  originalName?: string;
-}
 
 /**
  * TopoViewer State Interface

@@ -3,7 +3,7 @@
  * YAML extraData format (kebab-case)
  */
 
-import { NodeEditorData, HealthCheckConfig, SrosComponent } from '../../webview/components/panels/node-editor/types';
+import { NodeEditorData, HealthCheckConfig, SrosComponent } from '../types/editors';
 import { getString, getNumber, getBoolean, getStringArray, getRecord } from './typeHelpers';
 
 // ============================================================================

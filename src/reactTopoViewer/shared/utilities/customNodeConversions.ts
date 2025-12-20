@@ -2,8 +2,7 @@
  * Utility functions for converting between CustomTemplateEditorData and NodeEditorData/SaveCustomNodeData
  */
 
-import { NodeEditorData } from '../../webview/components/panels/node-editor/types';
-import { CustomTemplateEditorData, CustomNodeTemplate } from '../../webview/context/TopoViewerContext';
+import { NodeEditorData, CustomTemplateEditorData, CustomNodeTemplate } from '../types/editors';
 
 /**
  * Data format for saving custom node to extension

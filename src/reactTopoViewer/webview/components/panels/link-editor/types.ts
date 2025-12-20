@@ -1,43 +1,19 @@
 /**
  * Type definitions for link editor
+ *
+ * NOTE: Core types are now defined in shared/types/editors.ts
+ * This file re-exports them for backward compatibility with webview imports.
  */
 
-export type LinkEditorTabId = 'basic' | 'extended';
+// Re-export core types from shared
+export {
+  type LinkEditorTabId,
+  type LinkEndpoint,
+  type LinkEditorData
+} from '../../../../shared/types/editors';
 
-/**
- * Link endpoint data structure
- */
-export interface LinkEndpoint {
-  node: string;
-  interface: string;
-  mac?: string;
-}
-
-/**
- * Link editor data structure
- */
-export interface LinkEditorData {
-  id: string;
-  source: string;
-  target: string;
-  sourceEndpoint: string;
-  targetEndpoint: string;
-  type?: 'veth' | 'host' | 'mgmt-net' | 'macvlan' | 'dummy' | 'vxlan' | 'vxlan-stitch' | string;
-  // Extended properties
-  sourceMac?: string;
-  targetMac?: string;
-  mtu?: number | string;
-  vars?: Record<string, string>;
-  labels?: Record<string, string>;
-  // Original values for finding the link when endpoints change
-  originalSource?: string;
-  originalTarget?: string;
-  originalSourceEndpoint?: string;
-  originalTargetEndpoint?: string;
-  // Network endpoint flags (for read-only handling)
-  sourceIsNetwork?: boolean;
-  targetIsNetwork?: boolean;
-}
+// Webview-specific types (React props)
+import type { LinkEditorData } from '../../../../shared/types/editors';
 
 /**
  * Props for link editor tab components
