@@ -83,6 +83,7 @@ function getNodesWithChangedExtraData(cy: Core, elements: CyElement[]): string[]
 
 /**
  * Update extraData for specific nodes in Cytoscape without full reload
+ * Also updates top-level visual properties that Cytoscape uses for styling
  */
 function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[]): void {
   if (nodeIds.length === 0) return;
@@ -102,6 +103,18 @@ function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[])
 
       // Update extraData on the Cytoscape element
       cyEl.data('extraData', reactExtraData || {});
+
+      // Also update top-level visual properties that Cytoscape uses for styling
+      // These need to be at the data root level for Cytoscape style selectors
+      if (reactExtraData?.topoViewerRole !== undefined) {
+        cyEl.data('topoViewerRole', reactExtraData.topoViewerRole);
+      }
+      if (reactExtraData?.iconColor !== undefined) {
+        cyEl.data('iconColor', reactExtraData.iconColor);
+      }
+      if (reactExtraData?.iconCornerRadius !== undefined) {
+        cyEl.data('iconCornerRadius', reactExtraData.iconCornerRadius);
+      }
     }
   });
 }

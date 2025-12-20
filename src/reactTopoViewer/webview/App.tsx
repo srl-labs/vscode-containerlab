@@ -580,10 +580,12 @@ export const App: React.FC = () => {
       };
       // Expose handleEdgeCreated for E2E tests to push undo actions when creating links
       (window as any).__DEV__.handleEdgeCreated = handleEdgeCreated;
+      // Expose handleNodeCreatedCallback for E2E tests to create nodes with undo support
+      (window as any).__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
       // Expose handleAddGroupWithUndo for E2E tests to create groups from selected nodes
       (window as any).__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
     }
-  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleAddGroupWithUndo]);
+  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo]);
 
   // Separate effect for groups (always update when groups change)
   React.useEffect(() => {

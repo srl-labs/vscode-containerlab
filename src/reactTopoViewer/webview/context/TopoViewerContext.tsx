@@ -301,18 +301,30 @@ const reducerHandlers: ReducerHandlers = {
   },
   UPDATE_NODE_DATA: (state, action) => {
     const { nodeId, extraData } = action.payload;
-    // Update the node's extraData with the new values
+    // Update the node's extraData AND top-level visual properties
     const elements = state.elements.map(el => {
       if (el.group === 'nodes' && (el.data as Record<string, unknown>)?.id === nodeId) {
         const currentData = el.data as Record<string, unknown>;
         const currentExtraData = (currentData.extraData ?? {}) as Record<string, unknown>;
-        return {
-          ...el,
-          data: {
-            ...currentData,
-            extraData: { ...currentExtraData, ...extraData }
-          }
+
+        // Build updated data with top-level visual properties
+        const updatedData: Record<string, unknown> = {
+          ...currentData,
+          extraData: { ...currentExtraData, ...extraData }
         };
+
+        // Also update top-level visual properties that Cytoscape uses for styling
+        if (extraData.topoViewerRole !== undefined) {
+          updatedData.topoViewerRole = extraData.topoViewerRole;
+        }
+        if (extraData.iconColor !== undefined) {
+          updatedData.iconColor = extraData.iconColor;
+        }
+        if (extraData.iconCornerRadius !== undefined) {
+          updatedData.iconCornerRadius = extraData.iconCornerRadius;
+        }
+
+        return { ...el, data: updatedData };
       }
       return el;
     });
@@ -609,12 +621,14 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
-      if (message && typeof message === 'object') {
+      if (message && typeof message === 'object' && message.type) {
         handleExtensionMessage(message, dispatch);
       }
     };
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   const value = useMemo<TopoViewerContextValue>(() => ({

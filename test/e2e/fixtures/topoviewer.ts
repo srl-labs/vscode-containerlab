@@ -742,15 +742,20 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       createNode: async (nodeId: string, position: { x: number; y: number }, kind = 'nokia_srlinux') => {
-        // Wait for vscode API to be available
-        await page.waitForFunction(() => (window as any).vscode !== undefined, { timeout: 10000 });
+        // Wait for handleNodeCreatedCallback to be available (exposed via __DEV__)
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.handleNodeCreatedCallback !== undefined,
+          { timeout: 10000 }
+        );
 
         await page.evaluate(
           ({ nodeId, position, kind }) => {
-            const vscode = (window as any).vscode;
-            if (!vscode) throw new Error('vscode API not available');
+            const dev = (window as any).__DEV__;
+            if (!dev?.handleNodeCreatedCallback) {
+              throw new Error('handleNodeCreatedCallback not available');
+            }
 
-            // Create node data matching the structure expected by MessageHandler
+            // Create node data matching the structure expected by the handler
             const nodeData = {
               id: nodeId,
               name: nodeId,
@@ -763,23 +768,24 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               }
             };
 
-            // Also add to cytoscape directly for UI update
-            const dev = (window as any).__DEV__;
-            if (dev?.cy) {
-              dev.cy.add({
-                group: 'nodes',
-                data: nodeData,
-                position
-              });
+            // Create the node element
+            const nodeElement = {
+              group: 'nodes' as const,
+              data: nodeData,
+              position
+            };
+
+            // Add to Cytoscape directly first for immediate UI update
+            // This ensures canSkipUpdate returns true and avoids full graph reset
+            if (dev.cy) {
+              dev.cy.add(nodeElement);
             }
 
-            // Send create-node command to backend
-            vscode.postMessage({
-              command: 'create-node',
-              nodeId,
-              nodeData,
-              position
-            });
+            // Call handleNodeCreatedCallback which:
+            // 1. Adds the node to React state
+            // 2. Sends create-node to extension
+            // 3. Pushes undo action
+            dev.handleNodeCreatedCallback(nodeId, nodeElement, position);
           },
           { nodeId, position, kind }
         );
@@ -814,8 +820,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               targetEndpoint
             };
 
+            // Add to Cytoscape directly first for immediate UI update
+            // This ensures canSkipUpdate returns true and avoids full graph reset
+            if (dev.cy) {
+              dev.cy.add({
+                group: 'edges',
+                data: linkData
+              });
+            }
+
             // Call handleEdgeCreated which:
-            // 1. Adds the edge to Cytoscape
+            // 1. Adds the edge to React state
             // 2. Sends create-link to extension
             // 3. Pushes undo action
             dev.handleEdgeCreated(sourceId, targetId, linkData);

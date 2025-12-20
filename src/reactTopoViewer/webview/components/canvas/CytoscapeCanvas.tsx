@@ -19,44 +19,35 @@ import {
 } from '../../hooks/canvas';
 
 /**
- * Hook to listen for node-data-updated messages and update Cytoscape directly.
- * This provides immediate feedback when node properties are saved.
+ * Hook to listen for node-data-updated messages and dispatch to React state.
+ * When the extension saves node data, it sends back a node-data-updated message.
+ * We dispatch UPDATE_NODE_DATA to update React state, which then triggers
+ * useElementsUpdate to update Cytoscape via the normal React flow.
  */
 function useCytoscapeDataUpdateListener(cyRef: React.RefObject<Core | null>): void {
+  const { dispatch } = useTopoViewer();
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
       if (message?.type !== 'node-data-updated') return;
 
       const data = message.data as { nodeId?: string; extraData?: Record<string, unknown> } | undefined;
-      if (!data?.nodeId || !data?.extraData) return;
-
-      const cy = cyRef.current;
-      if (!cy) return;
-
-      const node = cy.getElementById(data.nodeId);
-      if (node.empty()) return;
-
-      // Update the node's extraData directly in Cytoscape
-      const currentExtraData = (node.data('extraData') || {}) as Record<string, unknown>;
-      node.data('extraData', { ...currentExtraData, ...data.extraData });
-
-      // Also update top-level data properties that Cytoscape uses for styling
-      // These are stored in extraData but need to be at the top level for styling
-      if (data.extraData.topoViewerRole !== undefined) {
-        node.data('topoViewerRole', data.extraData.topoViewerRole);
+      if (!data?.nodeId || !data?.extraData) {
+        return;
       }
-      if (data.extraData.iconColor !== undefined) {
-        node.data('iconColor', data.extraData.iconColor);
-      }
-      if (data.extraData.iconCornerRadius !== undefined) {
-        node.data('iconCornerRadius', data.extraData.iconCornerRadius);
-      }
+
+      // Dispatch to React state - this is the source of truth.
+      // Cytoscape will be updated by useElementsUpdate when React re-renders.
+      // We do NOT update Cytoscape directly here to avoid race conditions
+      // with other state updates (like undo push) that might trigger re-renders
+      // with stale state before our dispatch is processed.
+      dispatch({ type: 'UPDATE_NODE_DATA', payload: { nodeId: data.nodeId, extraData: data.extraData } });
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [cyRef]);
+  }, [cyRef, dispatch]);
 }
 
 interface CytoscapeCanvasProps {
