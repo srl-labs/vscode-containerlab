@@ -4,7 +4,7 @@
  */
 import { useCallback, useMemo } from 'react';
 
-import { FreeTextAnnotation } from '../../../shared/types/topology';
+import type { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
 

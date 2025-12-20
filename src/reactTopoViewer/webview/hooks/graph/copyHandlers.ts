@@ -4,8 +4,9 @@
  */
 import type { Core } from 'cytoscape';
 
+import type {
+  CopyData} from './copyPasteUtils';
 import {
-  CopyData,
   collectCopyData,
   executeCopy
 } from './copyPasteUtils';

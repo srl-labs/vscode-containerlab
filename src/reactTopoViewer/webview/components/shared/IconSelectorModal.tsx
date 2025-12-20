@@ -4,7 +4,8 @@
  */
 import React, { useCallback } from 'react';
 
-import { generateEncodedSVG, NodeType } from '../../utils/SvgGenerator';
+import type { NodeType } from '../../utils/SvgGenerator';
+import { generateEncodedSVG } from '../../utils/SvgGenerator';
 import { useEscapeKey } from '../../hooks/ui/useEscapeKey';
 import { useIconSelectorState } from '../../hooks/panels/useIconSelector';
 

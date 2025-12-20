@@ -8,19 +8,21 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 
 import { log, logWithLocation } from '../services/logger';
-import { CyElement } from '../../shared/types/topology';
-import { TopologyIO } from '../../shared/io';
+import type { CyElement } from '../../shared/types/topology';
+import type { TopologyIO } from '../../shared/io';
+import type {
+  WebviewMessage as SharedWebviewMessage} from '../../shared/messaging';
 import {
-  MessageHandlerBase,
-  WebviewMessage as SharedWebviewMessage,
+  MessageHandlerBase
 } from '../../shared/messaging';
-import {
-  createProductionServices,
+import type {
   MessageRouterContextAdapter,
-  NodeCommandServiceAdapter,
+  NodeCommandServiceAdapter} from '../services/adapters';
+import {
+  createProductionServices
 } from '../services/adapters';
 
 // Re-export types for backward compatibility

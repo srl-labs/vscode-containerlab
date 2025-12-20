@@ -5,7 +5,7 @@
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 
 import { useFreeTextAnnotations } from './useFreeTextAnnotations';

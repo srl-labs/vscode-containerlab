@@ -2,9 +2,9 @@
  * BootstrapDataBuilder - Assembles initial data for React TopoViewer webview
  */
 
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 
-import { CyElement, FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation, NodeAnnotation } from '../../shared/types/topology';
+import type { CyElement, FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation, NodeAnnotation } from '../../shared/types/topology';
 import { getDockerImages } from '../../../utils/docker/images';
 import type { CustomNodeTemplate, SchemaData } from '../../shared/schema';
 import { getCustomNodesFromConfig, loadSchemaData } from '../services/adapters';

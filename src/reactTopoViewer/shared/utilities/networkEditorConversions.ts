@@ -3,7 +3,7 @@
  * Cytoscape node data format for network nodes
  */
 
-import { NetworkEditorData, NetworkType } from '../types/editors';
+import type { NetworkEditorData, NetworkType } from '../types/editors';
 
 import { getStringOrEmpty, getRecord } from './typeHelpers';
 

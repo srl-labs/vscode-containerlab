@@ -1,7 +1,7 @@
 /**
  * Helper functions for free text annotations
  */
-import { FreeTextAnnotation } from '../../../shared/types/topology';
+import type { FreeTextAnnotation } from '../../../shared/types/topology';
 
 import { generateAnnotationId as generateId } from './annotationIdUtils';
 

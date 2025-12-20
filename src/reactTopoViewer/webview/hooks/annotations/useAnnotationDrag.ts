@@ -1,12 +1,15 @@
 /**
  * Hook for annotation drag functionality
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import { MapLibreState, unprojectToGeoCoords, calculateScale } from '../canvas/maplibreUtils';
+import type { MapLibreState} from '../canvas/maplibreUtils';
+import { unprojectToGeoCoords, calculateScale } from '../canvas/maplibreUtils';
 
-import { modelToRendered, modelToRenderedGeo, RenderedPosition } from './freeTextLayerHelpers';
+import type { RenderedPosition } from './freeTextLayerHelpers';
+import { modelToRendered, modelToRenderedGeo } from './freeTextLayerHelpers';
 
 interface DragStart {
   mouseX: number;

@@ -1,7 +1,8 @@
 /**
  * useClickOutside - Hook to detect clicks outside an element
  */
-import { useEffect, RefObject } from 'react';
+import type { RefObject } from 'react';
+import { useEffect } from 'react';
 
 /**
  * Hook that calls a callback when clicking outside the referenced element

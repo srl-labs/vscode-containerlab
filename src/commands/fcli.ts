@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as vscode from "vscode";
 import * as YAML from "yaml";
 
-import { ClabLabTreeNode } from "../treeView/common";
+import type { ClabLabTreeNode } from "../treeView/common";
 
 import { execCommandInTerminal } from "./command";
 

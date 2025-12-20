@@ -4,8 +4,9 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 
-import { ClabLabTreeNode } from "../treeView/common";
-import { ReactTopoViewer, ReactTopoViewerProvider } from "../reactTopoViewer";
+import type { ClabLabTreeNode } from "../treeView/common";
+import type { ReactTopoViewer} from "../reactTopoViewer";
+import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
 
 import { ClabCommand } from "./clabCommand";

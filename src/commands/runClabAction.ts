@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { ClabLabTreeNode } from "../treeView/common";
+import type { ClabLabTreeNode } from "../treeView/common";
 import { getSelectedLabNode } from "../utils/utils";
 
 import { ClabCommand } from "./clabCommand";

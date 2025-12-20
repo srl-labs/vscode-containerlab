@@ -2,10 +2,11 @@
  * Hook for moving selected annotations together with selected Cytoscape nodes
  * When dragging nodes, any selected annotations move by the same delta
  */
-import React, { useEffect, useRef, useCallback } from 'react';
+import type React from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import type { Core as CyCore, EventObject, NodeSingular } from 'cytoscape';
 
-import { FreeTextAnnotation } from '../../../shared/types/topology';
+import type { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 
 interface UseAnnotationGroupMoveOptions {

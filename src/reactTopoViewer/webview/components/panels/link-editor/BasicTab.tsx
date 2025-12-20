@@ -5,7 +5,7 @@ import React from 'react';
 
 import { FormField, InputField, ReadOnlyBadge } from '../../shared/form';
 
-import { LinkTabProps } from './types';
+import type { LinkTabProps } from './types';
 
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
   return (

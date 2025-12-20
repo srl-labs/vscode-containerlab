@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { outputChannel } from '../globals';
-import * as utils from '../utils/index';
+import * as utils from "../utils";
 
 /**
  * Run a shell command in a named VS Code terminal.

@@ -4,7 +4,7 @@
  * Uses HTTP fetch to communicate with the dev server for file operations.
  * Supports session isolation for parallel test execution.
  */
-import { FileSystemAdapter } from '../../shared/io/types';
+import type { FileSystemAdapter } from '../../shared/io/types';
 
 import * as pathUtils from './pathUtils';
 

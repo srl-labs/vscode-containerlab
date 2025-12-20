@@ -3,7 +3,8 @@
  */
 import React from 'react';
 
-import { useFilterableDropdown, FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
+import type { FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
+import { useFilterableDropdown } from '../../../hooks/ui/useFilterableDropdown';
 
 export type { FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
 

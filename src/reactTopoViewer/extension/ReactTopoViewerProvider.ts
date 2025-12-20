@@ -11,8 +11,8 @@
 import * as vscode from 'vscode';
 
 import { nodeFsAdapter, TopologyIO } from '../shared/io';
-import { CyElement, ClabTopology } from '../shared/types/topology';
-import { ClabLabTreeNode } from '../../treeView/common';
+import type { CyElement, ClabTopology } from '../shared/types/topology';
+import type { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../globals';
 import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../shared/parsing';
 
@@ -20,12 +20,15 @@ import { log } from './services/logger';
 import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
 import { annotationsIO, extensionLogger } from './services/adapters';
-import {
-  createPanel,
-  generateWebviewHtml,
+import type {
   PanelConfig
 } from './panel/PanelManager';
-import { MessageRouter, WebviewMessage } from './panel/MessageRouter';
+import {
+  createPanel,
+  generateWebviewHtml
+} from './panel/PanelManager';
+import type { WebviewMessage } from './panel/MessageRouter';
+import { MessageRouter } from './panel/MessageRouter';
 import { WatcherManager } from './panel/Watchers';
 import { buildBootstrapData } from './panel/BootstrapDataBuilder';
 import { findInterfaceNode } from './services/TreeUtils';

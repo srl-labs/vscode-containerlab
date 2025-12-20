@@ -9,7 +9,8 @@
  * - Dev/standalone: Uses HttpFsAdapter
  */
 
-import { FileSystemAdapter, TopologyIO, AnnotationsIO, IOLogger, noopLogger } from '../../shared/io/browser';
+import type { FileSystemAdapter, IOLogger} from '../../shared/io/browser';
+import { TopologyIO, AnnotationsIO, noopLogger } from '../../shared/io/browser';
 import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../shared/types/topology';
 import type { NodeSaveData, LinkSaveData } from '../../shared/io/TopologyIO';
 

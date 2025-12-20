@@ -3,9 +3,10 @@
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
-import { EditorPanel, TabDefinition } from '../../shared/editor';
+import type { TabDefinition } from '../../shared/editor';
+import { EditorPanel } from '../../shared/editor';
 
-import { LinkEditorData, LinkEditorTabId } from './types';
+import type { LinkEditorData, LinkEditorTabId } from './types';
 import { BasicTab } from './BasicTab';
 import { ExtendedTab, validateLinkEditorData } from './ExtendedTab';
 

@@ -4,7 +4,8 @@
  */
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
 
-import { useTopoViewer, CustomNodeTemplate } from '../../../context/TopoViewerContext';
+import type { CustomNodeTemplate } from '../../../context/TopoViewerContext';
+import { useTopoViewer } from '../../../context/TopoViewerContext';
 import {
   usePanelDrag,
   useDrawerSide,
@@ -15,7 +16,8 @@ import {
 } from '../../../hooks/ui/usePanelDrag';
 
 import { PanelButton, DeployButtonGroup } from './DeployControls';
-import { PanelButtonWithDropdown, DropdownMenuItem, CustomNodeActions } from './DropdownMenu';
+import type { DropdownMenuItem, CustomNodeActions } from './DropdownMenu';
+import { PanelButtonWithDropdown } from './DropdownMenu';
 
 /** Network type definitions matching legacy topoViewer */
 interface NetworkTypeDefinition {

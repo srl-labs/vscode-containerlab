@@ -1,8 +1,8 @@
 /**
  * Cytoscape event handlers and interaction utilities
  */
-import { Core, EventObject } from 'cytoscape';
-import React from 'react';
+import type { Core, EventObject } from 'cytoscape';
+import type React from 'react';
 
 // Scratch key for edge creation state (must match useEdgeCreation.ts)
 const EDGE_CREATION_SCRATCH_KEY = '_isCreatingEdge';

@@ -6,10 +6,11 @@
  */
 
 // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
-import { CloudNodeAnnotation, NetworkNodeAnnotation, TopologyAnnotations } from '../types/topology';
+import type { CloudNodeAnnotation, NetworkNodeAnnotation, TopologyAnnotations } from '../types/topology';
 import { createEmptyAnnotations } from '../annotations/types';
 
-import { FileSystemAdapter, IOLogger, noopLogger } from './types';
+import type { FileSystemAdapter, IOLogger} from './types';
+import { noopLogger } from './types';
 
 /**
  * Options for creating an AnnotationsIO instance

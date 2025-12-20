@@ -3,7 +3,8 @@ import type { Dispatch, SetStateAction, RefObject } from 'react';
 
 import { log } from '../../utils/logger';
 
-import { AnnotationWithId, getSelectedByIds } from './useAnnotationListSelection';
+import type { AnnotationWithId} from './useAnnotationListSelection';
+import { getSelectedByIds } from './useAnnotationListSelection';
 
 export interface UseAnnotationListCopyPasteReturn {
   copySelectedAnnotations: () => void;

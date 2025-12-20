@@ -3,12 +3,14 @@
  */
 import React from 'react';
 
+import type {
+  ResizeCorner
+} from './handleConstants';
 import {
   HANDLE_SIZE,
   HANDLE_BOX_SHADOW,
   HANDLE_BORDER,
-  CORNER_STYLES,
-  ResizeCorner
+  CORNER_STYLES
 } from './handleConstants';
 
 interface ResizeHandleProps {

@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { FileSystemAdapter } from './types';
+import type { FileSystemAdapter } from './types';
 
 /**
  * File system adapter using Node.js fs.promises

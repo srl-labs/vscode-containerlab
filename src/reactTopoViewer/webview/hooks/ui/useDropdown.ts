@@ -2,7 +2,8 @@
  * Hook for simple dropdown toggle with click-outside detection
  * Used by navbar dropdowns and similar components
  */
-import React, { useState, useRef, useEffect } from 'react';
+import type React from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export interface UseDropdownReturn {
   isOpen: boolean;

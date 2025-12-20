@@ -5,7 +5,7 @@
  * Provider types are intentionally typed as 'any' to avoid importing from treeView modules.
  */
 import * as vscode from 'vscode';
-import Docker from 'dockerode';
+import type Docker from 'dockerode';
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;

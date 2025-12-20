@@ -1,9 +1,10 @@
 /**
  * State management hook for free shape annotations
  */
-import React, { useState, useCallback, useRef } from 'react';
+import type React from 'react';
+import { useState, useCallback, useRef } from 'react';
 
-import { FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { saveFreeShapeAnnotations as saveFreeShapeToIO } from '../../services';
 import { log } from '../../utils/logger';
 

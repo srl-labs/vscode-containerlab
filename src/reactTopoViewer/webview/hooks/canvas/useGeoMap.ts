@@ -8,8 +8,9 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type { Core } from 'cytoscape';
 
+import type {
+  MapLibreState} from './maplibreUtils';
 import {
-  MapLibreState,
   createInitialMapLibreState,
   initializeMapLibre,
   cleanupMapLibreState,

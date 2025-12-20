@@ -3,7 +3,7 @@
  * Manages node drag-and-drop functionality based on lock state
  */
 import { useEffect, useCallback, useRef } from 'react';
-import { Core, NodeSingular, EventObject } from 'cytoscape';
+import type { Core, NodeSingular, EventObject } from 'cytoscape';
 
 import { log } from '../../utils/logger';
 import type { NodePositionEntry } from '../state/useUndoRedo';

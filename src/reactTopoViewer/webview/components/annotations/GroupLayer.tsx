@@ -10,18 +10,20 @@ import type { Core as CyCore } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { getLabelPositionStyles } from '../../hooks/groups/groupHelpers';
 import { useDelayedHover } from '../../hooks/ui/useDelayedHover';
+import type {
+  ResizeCorner} from '../../hooks/groups';
 import {
   useGroupDragInteraction,
   useGroupResize,
   useGroupItemHandlers,
   useDragPositionOverrides,
-  ResizeCorner,
   getGroupDepth,
   findDeepestGroupAtPosition,
   validateNoCircularReference
 } from '../../hooks/groups';
 import { useAnnotationBoxSelection } from '../../hooks/annotations/useAnnotationSelection';
-import { MapLibreState, projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
+import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
+import { projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
 
 import { HANDLE_SIZE, CENTER_TRANSLATE, CORNER_STYLES, applyAlphaToColor } from './shared';
 

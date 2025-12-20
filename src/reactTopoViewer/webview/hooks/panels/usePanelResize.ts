@@ -1,7 +1,8 @@
 /**
  * Hook for resizable panel behavior
  */
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import type React from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 const DEFAULT_POSITION = { x: 20, y: 80 };
 const DEFAULT_WIDTH = 400;

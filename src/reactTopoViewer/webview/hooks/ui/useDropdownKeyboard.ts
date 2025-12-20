@@ -1,7 +1,8 @@
 /**
  * useDropdownKeyboard - Hook to handle keyboard navigation in dropdowns
  */
-import React, { useCallback } from 'react';
+import type React from 'react';
+import { useCallback } from 'react';
 
 export interface DropdownKeyboardActions {
   setIsOpen: (open: boolean) => void;

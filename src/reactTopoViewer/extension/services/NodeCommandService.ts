@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 
-import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
+import type { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 import { runningLabsProvider } from '../../../globals';
 import type { EndpointResult } from '../../shared/types/endpoint';
 

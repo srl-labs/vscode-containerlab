@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import { ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
+import type { ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
 
 /**
  * Computes the full prefix for container names.

@@ -5,7 +5,7 @@
 import type { Core, NodeSingular, EdgeSingular } from 'cytoscape';
 
 import { log } from '../../utils/logger';
-import { CyElement } from '../../../shared/types/messages';
+import type { CyElement } from '../../../shared/types/messages';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
 import { isSpecialEndpointId } from '../../../shared/utilities/LinkTypes';
 import {

@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import { ClabNode } from '../types/topology';
+import type { ClabNode } from '../types/topology';
 
 import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from './types';
 

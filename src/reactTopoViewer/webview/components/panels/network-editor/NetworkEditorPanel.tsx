@@ -7,9 +7,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { EditorPanel } from '../../shared/editor';
 import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from '../../shared/form';
 
-import {
+import type {
   NetworkEditorData,
-  NetworkType,
+  NetworkType} from './types';
+import {
   NETWORK_TYPES,
   VXLAN_TYPES,
   BRIDGE_TYPES,

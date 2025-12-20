@@ -1,4 +1,5 @@
-import { spawn, ChildProcess } from "child_process";
+import type { ChildProcess } from "child_process";
+import { spawn } from "child_process";
 import * as readline from "readline";
 
 import * as vscode from "vscode";

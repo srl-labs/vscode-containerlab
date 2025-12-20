@@ -9,10 +9,11 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 
 import { FormField, InputField, FilterableDropdown } from '../../shared/form';
 import { IconSelectorModal } from '../../shared/IconSelectorModal';
-import { generateEncodedSVG, NodeType } from '../../../utils/SvgGenerator';
+import type { NodeType } from '../../../utils/SvgGenerator';
+import { generateEncodedSVG } from '../../../utils/SvgGenerator';
 import { useSchema, useDockerImages } from '../../../hooks';
 
-import { TabProps } from './types';
+import type { TabProps } from './types';
 import { CustomNodeTemplateFields } from './CustomNodeTemplateFields';
 
 const DEFAULT_ICON_COLOR = '#1a73e8';

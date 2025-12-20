@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { ClabContainerTreeNode } from "../treeView/common";
+import type { ClabContainerTreeNode } from "../treeView/common";
 
 import { execCommandInTerminal } from "./command";
 

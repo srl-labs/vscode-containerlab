@@ -1,7 +1,8 @@
 /**
  * Dropdown state management hooks for floating panel dropdowns
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 /**
  * Hook for dropdown state management with hover behavior

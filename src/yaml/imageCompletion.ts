@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import * as utils from '../utils/index';
+import * as utils from "../utils";
 
 function lineContainsInlineImage(line: string, cursor: number): boolean {
   const beforeCursor = line.slice(0, cursor);

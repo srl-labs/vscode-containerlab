@@ -3,9 +3,9 @@
  * Manages undo/redo stack for node drag operations
  */
 import React, { useReducer, useCallback, useMemo } from 'react';
-import { Core } from 'cytoscape';
+import type { Core } from 'cytoscape';
 
-import { CyElement } from '../../../shared/types/messages';
+import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
 import { saveNodePositions, getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
 

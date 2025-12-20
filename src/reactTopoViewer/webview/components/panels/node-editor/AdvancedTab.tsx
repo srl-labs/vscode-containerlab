@@ -5,7 +5,7 @@ import React from 'react';
 
 import { FormField, InputField, SelectField, CheckboxField, DynamicList, KeyValueList, Section } from '../../shared/form';
 
-import { TabProps, HealthCheckConfig } from './types';
+import type { TabProps, HealthCheckConfig } from './types';
 
 /** Helper to check if a property is inherited */
 const isInherited = (prop: string, inheritedProps: string[] = []) => inheritedProps.includes(prop);

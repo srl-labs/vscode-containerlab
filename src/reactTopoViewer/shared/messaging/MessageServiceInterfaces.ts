@@ -5,8 +5,8 @@
  * the production VS Code extension and the dev mock environment.
  */
 
-import { TopologyAnnotations, CyElement } from '../types/topology';
-import { SaveResult, NodeSaveData, LinkSaveData, IOLogger } from '../io';
+import type { TopologyAnnotations, CyElement } from '../types/topology';
+import type { SaveResult, NodeSaveData, LinkSaveData, IOLogger } from '../io';
 
 // Re-export commonly used types
 export type { SaveResult, NodeSaveData, LinkSaveData, IOLogger };

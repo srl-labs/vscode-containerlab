@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import { ClabTopology, ClabNode } from '../types/topology';
+import type { ClabTopology, ClabNode } from '../types/topology';
 
 /**
  * Gets a section from the topology configuration.

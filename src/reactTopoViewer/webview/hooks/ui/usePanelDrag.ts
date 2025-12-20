@@ -2,7 +2,8 @@
  * Consolidated hook for panel position and dragging
  * Combines features from both floating panel and editor panel drag implementations
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export interface Position {
   x: number;

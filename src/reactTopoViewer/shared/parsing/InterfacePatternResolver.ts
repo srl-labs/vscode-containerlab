@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies, no I/O.
  */
 
-import { NodeAnnotation } from '../types/topology';
+import type { NodeAnnotation } from '../types/topology';
 import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
 
 import type { InterfacePatternMigration } from './types';

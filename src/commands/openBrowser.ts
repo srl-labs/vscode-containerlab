@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import { outputChannel, dockerClient } from "../globals";
-import { ClabContainerTreeNode } from "../treeView/common";
+import type { ClabContainerTreeNode } from "../treeView/common";
 
 interface PortMapping {
   containerPort: string;

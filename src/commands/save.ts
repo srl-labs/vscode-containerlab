@@ -3,7 +3,8 @@ import * as path from "path";
 
 import * as vscode from "vscode";
 
-import { ClabLabTreeNode, ClabContainerTreeNode } from "../treeView/common";
+import type { ClabContainerTreeNode } from "../treeView/common";
+import { ClabLabTreeNode } from "../treeView/common";
 
 import { ClabCommand } from "./clabCommand";
 

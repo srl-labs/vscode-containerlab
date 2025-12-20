@@ -3,7 +3,8 @@
  * Captures group + member node positions on drag start/end to create compound undo actions.
  * Supports hierarchical group movement - dragging a parent moves all descendants.
  */
-import React, { useCallback, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 
 import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';

@@ -1,9 +1,10 @@
 /**
  * Cytoscape stylesheet definitions and style builders
  */
-import cytoscape from 'cytoscape';
+import type cytoscape from 'cytoscape';
 
-import { generateEncodedSVG, NodeType } from '../../utils/SvgGenerator';
+import type { NodeType } from '../../utils/SvgGenerator';
+import { generateEncodedSVG } from '../../utils/SvgGenerator';
 
 // Style constants to avoid duplication
 const DATA_NAME = 'data(name)';

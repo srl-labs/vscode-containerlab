@@ -2,7 +2,8 @@
  * Hook for updating Cytoscape elements when they change
  * Uses useLayoutEffect to ensure Cytoscape is updated before other effects read from it
  */
-import React, { useLayoutEffect, useRef } from 'react';
+import type React from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { Core } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';

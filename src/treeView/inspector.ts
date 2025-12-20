@@ -4,7 +4,7 @@ import * as events from "../services/containerlabEvents";
 import * as fallback from "../services/containerlabInspectFallback";
 import type { ClabInterfaceSnapshot } from "../types/containerlab";
 
-import * as c from "./common";
+import type * as c from "./common";
 
 export let rawInspectData: Record<string, c.ClabDetailedJSON[]> | undefined;
 

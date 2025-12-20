@@ -1,12 +1,13 @@
 /**
  * Hooks for annotation rotation and resize handles
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 
-import { RenderedPosition } from './freeTextLayerHelpers';
+import type { RenderedPosition } from './freeTextLayerHelpers';
 
 // ============================================================================
 // Rotation Hook

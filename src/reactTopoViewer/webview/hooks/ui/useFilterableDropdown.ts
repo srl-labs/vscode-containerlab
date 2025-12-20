@@ -1,7 +1,8 @@
 /**
  * useFilterableDropdown - Hook to manage filterable dropdown state and behavior
  */
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
 import { useClickOutside } from './useClickOutside';
 import { useDropdownKeyboard } from './useDropdownKeyboard';

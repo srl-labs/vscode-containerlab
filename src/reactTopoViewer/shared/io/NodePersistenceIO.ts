@@ -7,9 +7,10 @@
 
 import * as YAML from 'yaml';
 
-import { ClabTopology } from '../types/topology';
+import type { ClabTopology } from '../types/topology';
 
-import { SaveResult, ERROR_NODES_NOT_MAP, IOLogger, noopLogger } from './types';
+import type { SaveResult, IOLogger} from './types';
+import { ERROR_NODES_NOT_MAP, noopLogger } from './types';
 import { deepEqual, setOrDelete } from './YamlDocumentIO';
 
 /** Node data for save operations */

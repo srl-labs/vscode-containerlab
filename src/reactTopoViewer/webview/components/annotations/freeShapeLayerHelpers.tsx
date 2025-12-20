@@ -3,7 +3,7 @@
  */
 import type { ReactElement } from 'react';
 
-import { FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import {
   DEFAULT_LINE_LENGTH,
   DEFAULT_BORDER_WIDTH,

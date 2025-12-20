@@ -7,7 +7,8 @@ import React, { useCallback, useState } from 'react';
 import { FormField, InputField, SelectField, Section } from '../../shared/form';
 import { useSchema, type SrosComponentTypes } from '../../../hooks/data/useSchema';
 
-import { TabProps, SrosComponent, SrosMda, SrosXiom, INTEGRATED_SROS_TYPES } from './types';
+import type { TabProps, SrosComponent, SrosMda, SrosXiom} from './types';
+import { INTEGRATED_SROS_TYPES } from './types';
 
 /** Check if type is integrated mode (simpler chassis) */
 const isIntegratedType = (type: string | undefined): boolean => {

@@ -1,7 +1,8 @@
 /**
  * BasePanel - Core draggable and resizable panel component
  */
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import React from 'react';
 
 import { usePanelDrag } from '../../../hooks/ui/usePanelDrag';
 import { usePanelResize } from '../../../hooks/panels/usePanelResize';

@@ -1,4 +1,4 @@
-import * as vscode from "vscode"
+import type * as vscode from "vscode"
 
 export async function tryPostMessage(panel: vscode.WebviewPanel, message: unknown): Promise<void> {
   try {

@@ -4,11 +4,12 @@
  */
 
 // eslint-disable-next-line sonarjs/deprecation
-import { ClabNode, CyElement, ClabTopology, NetworkNodeAnnotation, CloudNodeAnnotation, TopologyAnnotations } from '../types/topology';
+import type { ClabNode, CyElement, ClabTopology, NetworkNodeAnnotation, CloudNodeAnnotation, TopologyAnnotations } from '../types/topology';
 
+import type {
+  SpecialNodeType} from './LinkNormalizer';
 import {
   TYPES,
-  SpecialNodeType,
   PREFIX_MACVLAN,
   PREFIX_VXLAN_STITCH,
   NODE_KIND_BRIDGE,

@@ -7,7 +7,8 @@
 
 import * as YAML from 'yaml';
 
-import { FileSystemAdapter, SaveResult, IOLogger, noopLogger } from './types';
+import type { FileSystemAdapter, SaveResult, IOLogger} from './types';
+import { noopLogger } from './types';
 
 /**
  * Creates a YAML scalar with double quotes for endpoint values

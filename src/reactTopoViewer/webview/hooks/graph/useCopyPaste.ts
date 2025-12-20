@@ -5,10 +5,12 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import type { Core } from 'cytoscape';
 
-import { CopyData, GraphChangeEntry, executePaste } from './copyPasteUtils';
+import type { CopyData, GraphChangeEntry} from './copyPasteUtils';
+import { executePaste } from './copyPasteUtils';
 import { useClipboardListener } from './useClipboardListener';
+import type {
+  CopyPasteHandlers} from './copyHandlers';
 import {
-  CopyPasteHandlers,
   createCopyHandler,
   createPasteHandler,
   createDuplicateHandler

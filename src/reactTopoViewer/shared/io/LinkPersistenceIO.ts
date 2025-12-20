@@ -7,7 +7,8 @@
 
 import * as YAML from 'yaml';
 
-import { SaveResult, ERROR_LINKS_NOT_SEQ, IOLogger, noopLogger } from './types';
+import type { SaveResult, IOLogger} from './types';
+import { ERROR_LINKS_NOT_SEQ, noopLogger } from './types';
 import { createQuotedScalar, setOrDelete } from './YamlDocumentIO';
 
 /** Link data for save operations */

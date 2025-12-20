@@ -11,8 +11,9 @@ export { getCustomNodesFromConfig, loadSchemaData } from './schemaAdapter';
 import * as vscode from 'vscode';
 import * as YAML from 'yaml';
 
-import { nodeFsAdapter, AnnotationsIO, TopologyIO } from '../../../shared/io';
-import {
+import type { TopologyIO } from '../../../shared/io';
+import { nodeFsAdapter, AnnotationsIO } from '../../../shared/io';
+import type {
   IMessagingService,
   IPersistenceService,
   IAnnotationsService,
@@ -28,7 +29,7 @@ import {
   NodePositionData,
   IOLogger,
 } from '../../../shared/messaging';
-import { TopologyAnnotations, CyElement } from '../../../shared/types/topology';
+import type { TopologyAnnotations, CyElement } from '../../../shared/types/topology';
 import { nodeCommandService } from '../NodeCommandService';
 import { labLifecycleService } from '../LabLifecycleService';
 import { splitViewManager } from '../SplitViewManager';

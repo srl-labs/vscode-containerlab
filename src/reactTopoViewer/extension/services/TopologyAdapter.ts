@@ -5,8 +5,8 @@
 
 import * as YAML from 'yaml';
 
-import { ClabTopology, CyElement, TopologyAnnotations } from '../../shared/types/topology';
-import { ClabLabTreeNode } from '../../../treeView/common';
+import type { ClabTopology, CyElement, TopologyAnnotations } from '../../shared/types/topology';
+import type { ClabLabTreeNode } from '../../../treeView/common';
 import {
   TopologyParser,
   computeEdgeClassFromStates as computeEdgeClassFromStatesImpl,

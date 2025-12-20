@@ -2,7 +2,8 @@
  * Hook for delayed Cytoscape initialization
  * Waits for container to have non-zero dimensions before initializing
  */
-import React, { useEffect } from 'react';
+import type React from 'react';
+import { useEffect } from 'react';
 
 import type { CyElement } from '../../../shared/types/messages';
 

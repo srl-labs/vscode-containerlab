@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies, no I/O.
  */
 
-import { ClabTopology, TopologyAnnotations, NodeAnnotation } from '../types/topology';
+import type { ClabTopology, TopologyAnnotations, NodeAnnotation } from '../types/topology';
 
 import type { GraphLabelMigration } from './types';
 

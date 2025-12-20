@@ -9,7 +9,7 @@ import React, { useState, useCallback } from 'react';
 import { FormField, InputField, CheckboxField, Section } from '../../shared/form';
 import { copyToClipboard } from '../../../utils/clipboard';
 
-import { TabProps } from './types';
+import type { TabProps } from './types';
 
 /**
  * Interface pattern example with description

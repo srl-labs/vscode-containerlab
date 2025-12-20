@@ -4,7 +4,7 @@
  */
 import React, { useMemo } from 'react';
 
-import { FreeTextAnnotation } from '../../../../shared/types/topology';
+import type { FreeTextAnnotation } from '../../../../shared/types/topology';
 import { renderMarkdown, MARKDOWN_EMPTY_MESSAGE } from '../../../utils/markdownRenderer';
 import { Toggle, ColorSwatch, PREVIEW_GRID_BG } from '../../shared/form';
 

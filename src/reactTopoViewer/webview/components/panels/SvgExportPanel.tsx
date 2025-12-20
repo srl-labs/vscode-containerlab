@@ -7,7 +7,8 @@ import type { Core as CyCore } from 'cytoscape';
 
 import { BasePanel } from '../shared/editor/BasePanel';
 import { log } from '../../utils/logger';
-import { generateEncodedSVG, NodeType } from '../../utils/SvgGenerator';
+import type { NodeType } from '../../utils/SvgGenerator';
+import { generateEncodedSVG } from '../../utils/SvgGenerator';
 
 interface SvgExportPanelProps {
   isVisible: boolean;

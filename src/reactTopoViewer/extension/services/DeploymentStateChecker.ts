@@ -4,7 +4,7 @@
  */
 
 import * as inspector from '../../../treeView/inspector';
-import { DeploymentState } from '../../shared/types/topology';
+import type { DeploymentState } from '../../shared/types/topology';
 
 import { log } from './logger';
 

@@ -1,7 +1,8 @@
 /**
  * useAnnotationSelection - Consolidated hooks for annotation click handling and box selection
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import { log } from '../../utils/logger';

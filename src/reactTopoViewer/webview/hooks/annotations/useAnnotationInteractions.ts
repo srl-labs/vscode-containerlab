@@ -2,11 +2,11 @@
  * useAnnotationInteractions - Combined hook for annotation interaction state
  * Wraps drag, rotation, and resize hooks for cleaner component code
  */
-import React from 'react';
+import type React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import { FreeTextAnnotation } from '../../../shared/types/topology';
-import { MapLibreState } from '../canvas/maplibreUtils';
+import type { FreeTextAnnotation } from '../../../shared/types/topology';
+import type { MapLibreState } from '../canvas/maplibreUtils';
 
 import { useAnnotationDrag } from './useAnnotationDrag';
 import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';

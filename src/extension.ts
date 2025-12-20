@@ -5,10 +5,10 @@ import { execSync } from 'child_process';
 import * as vscode from 'vscode';
 import Docker from 'dockerode';
 
-import * as cmd from './commands/index';
-import * as utils from './utils/index';
+import * as cmd from "./commands";
+import * as utils from "./utils";
 import * as ins from "./treeView/inspector"
-import * as c from './treeView/common';
+import type * as c from './treeView/common';
 import {
   outputChannel,
   containerlabBinaryPath,

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import * as utils from '../utils/index';
-import { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
+import * as utils from "../utils";
+import type { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
 
 const ERR_NO_LAB_NODE = 'No lab node selected.';
 const ERR_NO_IFACE_NODE = 'No interface node selected.';

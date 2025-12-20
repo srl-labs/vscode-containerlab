@@ -2,7 +2,7 @@
  * Utility functions for converting between CustomTemplateEditorData and NodeEditorData/SaveCustomNodeData
  */
 
-import { NodeEditorData, CustomTemplateEditorData, CustomNodeTemplate } from '../types/editors';
+import type { NodeEditorData, CustomTemplateEditorData, CustomNodeTemplate } from '../types/editors';
 
 /**
  * Data format for saving custom node to extension

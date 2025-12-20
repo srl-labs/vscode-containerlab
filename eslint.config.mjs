@@ -5,6 +5,8 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import importPlugin from 'eslint-plugin-import';
+import boundaries from 'eslint-plugin-boundaries';
+import unicorn from 'eslint-plugin-unicorn';
 
 export default [
   /* ─── files & globs ESLint must ignore ─────────────────────────── */
@@ -52,7 +54,15 @@ export default [
         __filename: 'readonly'
       }
     },
-    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, import: importPlugin },
+    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, import: importPlugin, boundaries },
+    settings: {
+      'boundaries/elements': [
+        { type: 'extension', pattern: 'src/reactTopoViewer/extension/**' },
+        { type: 'webview', pattern: 'src/reactTopoViewer/webview/**' },
+        { type: 'shared', pattern: 'src/reactTopoViewer/shared/**' },
+      ],
+      'boundaries/ignore': ['**/*.test.ts', '**/*.test.tsx'],
+    },
     // merge the two rule-sets
     rules: {
       ...tseslint.configs.recommended.rules,
@@ -90,6 +100,40 @@ export default [
         'groups': ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
         'newlines-between': 'always'
       }],
+      'import/no-useless-path-segments': ['error', { noUselessIndex: true }],
+      'import/max-dependencies': ['warn', { max: 15 }],
+
+      // ─── Consistent type imports ───
+      '@typescript-eslint/consistent-type-imports': ['error', {
+        prefer: 'type-imports',
+        fixStyle: 'separate-type-imports',
+      }],
+
+      // ─── Module boundary rules (reactTopoViewer) ───
+      'boundaries/element-types': ['error', {
+        default: 'disallow',
+        rules: [
+          { from: 'extension', allow: ['extension', 'shared'] },
+          { from: 'webview', allow: ['webview', 'shared'] },
+          { from: 'shared', allow: ['shared'] },
+        ],
+      }],
+
+      // ─── Cross-layer import restrictions ───
+      'import/no-restricted-paths': ['error', {
+        zones: [
+          {
+            target: './src/reactTopoViewer/webview/**/*',
+            from: './src/reactTopoViewer/extension/**/*',
+            message: 'Webview cannot import from extension layer',
+          },
+          {
+            target: './src/reactTopoViewer/extension/**/*',
+            from: './src/reactTopoViewer/webview/**/*',
+            message: 'Extension cannot import from webview layer',
+          },
+        ],
+      }],
     },
   },
 
@@ -120,6 +164,27 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
       'react/react-in-jsx-scope': 'off',  // Not needed in React 17+
       'react/prop-types': 'off',          // Using TypeScript
+    }
+  },
+
+  /* ---------- Filename conventions: React components (PascalCase) ---------- */
+  {
+    files: ['src/reactTopoViewer/webview/components/**/*.tsx'],
+    plugins: { unicorn },
+    rules: {
+      'unicorn/filename-case': ['error', { case: 'pascalCase' }],
+    }
+  },
+
+  /* ---------- Filename conventions: Hooks (camelCase) ---------- */
+  {
+    files: ['src/reactTopoViewer/webview/hooks/**/*.ts'],
+    plugins: { unicorn },
+    rules: {
+      'unicorn/filename-case': ['error', {
+        case: 'camelCase',
+        ignore: ['^index\\.ts$'],
+      }],
     }
   }
 ];

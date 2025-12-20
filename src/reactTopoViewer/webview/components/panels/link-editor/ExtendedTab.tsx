@@ -6,7 +6,7 @@ import React from 'react';
 import { FormField, InputField, KeyValueList, ReadOnlyBadge } from '../../shared/form';
 import { quoteBlockStyle } from '../../../styles/cssVariables';
 
-import { LinkTabProps, LinkEditorData } from './types';
+import type { LinkTabProps, LinkEditorData } from './types';
 
 /**
  * Header section with link name and type

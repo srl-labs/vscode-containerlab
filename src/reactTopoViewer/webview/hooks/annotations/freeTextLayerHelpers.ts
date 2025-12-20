@@ -4,8 +4,9 @@
 import type { Core as CyCore } from 'cytoscape';
 import type React from 'react';
 
-import { FreeTextAnnotation } from '../../../shared/types/topology';
-import { MapLibreState, projectAnnotationGeoCoords, calculateScale } from '../canvas/maplibreUtils';
+import type { FreeTextAnnotation } from '../../../shared/types/topology';
+import type { MapLibreState} from '../canvas/maplibreUtils';
+import { projectAnnotationGeoCoords, calculateScale } from '../canvas/maplibreUtils';
 
 // ============================================================================
 // Coordinate Conversion

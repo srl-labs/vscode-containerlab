@@ -3,8 +3,8 @@
  */
 import { useMemo } from 'react';
 
-import { NodeEditorData } from '../../components/panels/node-editor/types';
-import { CustomTemplateEditorData } from '../../context/TopoViewerContext';
+import type { NodeEditorData } from '../../components/panels/node-editor/types';
+import type { CustomTemplateEditorData } from '../../context/TopoViewerContext';
 import {
   convertCustomTemplateToEditorData,
   convertEditorDataToSaveData

@@ -3,9 +3,9 @@
  * Renders the topology graph using Cytoscape.js
  */
 import React, { useRef, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
-import { Core } from 'cytoscape';
+import type { Core } from 'cytoscape';
 
-import { CyElement } from '../../../shared/types/messages';
+import type { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 import {

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
 import { getInspectHtml } from "../webview/inspectHtml";
-import { ClabLabTreeNode } from "../treeView/common";
+import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel } from "../globals";
 import * as inspector from "../treeView/inspector";
 

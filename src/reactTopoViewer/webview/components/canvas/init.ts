@@ -1,11 +1,12 @@
 /**
  * Cytoscape initialization, layouts, and configuration utilities
  */
-import cytoscape, { Core, CytoscapeOptions, LayoutOptions } from 'cytoscape';
+import type { Core, CytoscapeOptions, LayoutOptions } from 'cytoscape';
+import cytoscape from 'cytoscape';
 import cola from 'cytoscape-cola';
 import gridGuide from 'cytoscape-grid-guide';
 
-import { CyElement } from '../../../shared/types/messages';
+import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
 
 import { cytoscapeStyles } from './styles';

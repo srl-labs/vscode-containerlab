@@ -1,7 +1,8 @@
 /**
  * Cytoscape stub/mock utilities for testing React TopoViewer hooks
  */
-import cytoscape, { Core, ElementDefinition } from 'cytoscape';
+import type { Core, ElementDefinition } from 'cytoscape';
+import cytoscape from 'cytoscape';
 
 /**
  * Creates a headless Cytoscape instance for integration testing.

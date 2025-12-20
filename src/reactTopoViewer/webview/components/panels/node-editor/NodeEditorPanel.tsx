@@ -3,9 +3,10 @@
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
-import { EditorPanel, TabDefinition } from '../../shared/editor';
+import type { TabDefinition } from '../../shared/editor';
+import { EditorPanel } from '../../shared/editor';
 
-import { NodeEditorData, NodeEditorTabId } from './types';
+import type { NodeEditorData, NodeEditorTabId } from './types';
 import { BasicTab } from './BasicTab';
 import { ComponentsTab } from './ComponentsTab';
 import { ConfigTab } from './ConfigTab';

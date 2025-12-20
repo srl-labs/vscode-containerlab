@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { ClabContainerTreeNode, ClabLabTreeNode } from "../treeView/common";
+import type { ClabContainerTreeNode, ClabLabTreeNode } from "../treeView/common";
 import { sshUserMapping } from "../globals";
 
 import { execCommandInTerminal } from "./command";

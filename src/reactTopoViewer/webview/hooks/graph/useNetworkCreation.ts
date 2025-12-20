@@ -8,7 +8,7 @@ import { useCallback, useRef } from 'react';
 import type { Core } from 'cytoscape';
 
 import { log } from '../../utils/logger';
-import { CyElement } from '../../../shared/types/messages';
+import type { CyElement } from '../../../shared/types/messages';
 
 /** Network type definitions */
 export type NetworkType = 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy' | 'bridge' | 'ovs-bridge';

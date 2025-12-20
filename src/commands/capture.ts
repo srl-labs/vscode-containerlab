@@ -1,10 +1,11 @@
 import * as vscode from "vscode"
 
 import { outputChannel, dockerClient, username } from "../globals";
-import * as utils from "../utils/index";
-import { ClabInterfaceTreeNode } from "../treeView/common";
+import * as utils from "../utils";
+import type { ClabInterfaceTreeNode } from "../treeView/common";
 import { genPacketflixURI } from "../utils/packetflix";
-import { DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE, DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY, ImagePullPolicy, WIRESHARK_VNC_CTR_NAME_PREFIX } from "../utils/consts";
+import type { ImagePullPolicy} from "../utils/consts";
+import { DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE, DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY, WIRESHARK_VNC_CTR_NAME_PREFIX } from "../utils/consts";
 
 export { getHostname, setSessionHostname } from "../utils/packetflix";
 

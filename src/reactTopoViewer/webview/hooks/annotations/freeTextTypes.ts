@@ -3,7 +3,7 @@
  */
 import type { Core as CyCore } from 'cytoscape';
 
-import { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
 // Re-export FreeTextAnnotation for consumers
 export type { FreeTextAnnotation };

@@ -6,11 +6,11 @@
  * are injected via the MessageHandlerServices interface.
  */
 
-import { NetworkNodeAnnotation } from '../types/topology';
+import type { NetworkNodeAnnotation } from '../types/topology';
 import { convertEditorDataToYaml } from '../utilities/nodeEditorConversions';
 
 import { getCommandCategory, isLogCommand } from './CommandRegistry';
-import {
+import type {
   MessageHandlerServices,
   WebviewMessage,
   NodePositionData,

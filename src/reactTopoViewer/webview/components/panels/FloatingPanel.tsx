@@ -3,7 +3,8 @@
  * A draggable, closeable panel that floats over the canvas.
  * Uses BasePanel for shared drag/persistence behavior.
  */
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import React from 'react';
 
 import { BasePanel } from '../shared/editor/BasePanel';
 

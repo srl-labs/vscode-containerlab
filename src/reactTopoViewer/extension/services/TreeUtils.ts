@@ -2,7 +2,7 @@
  * Tree utilities for finding containers and interfaces.
  */
 
-import { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
+import type { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
 
 /**
  * Finds a container node by name in the labs data.

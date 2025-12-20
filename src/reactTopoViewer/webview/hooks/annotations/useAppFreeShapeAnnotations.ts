@@ -4,7 +4,7 @@
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
 
 import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';

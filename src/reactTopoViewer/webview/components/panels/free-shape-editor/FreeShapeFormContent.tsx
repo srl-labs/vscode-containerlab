@@ -4,7 +4,7 @@
  */
 import React, { useMemo } from 'react';
 
-import { FreeShapeAnnotation } from '../../../../shared/types/topology';
+import type { FreeShapeAnnotation } from '../../../../shared/types/topology';
 import {
   DEFAULT_SHAPE_WIDTH,
   DEFAULT_SHAPE_HEIGHT,

@@ -4,7 +4,7 @@
  * Uses postMessage to communicate with the extension for file operations.
  * The extension handles the actual filesystem access.
  */
-import { FileSystemAdapter } from '../../shared/io/types';
+import type { FileSystemAdapter } from '../../shared/io/types';
 import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
 
 import * as pathUtils from './pathUtils';

@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
-import { FreeShapeAnnotation } from '../../../../shared/types/topology';
+import type { FreeShapeAnnotation } from '../../../../shared/types/topology';
 
 import { FreeShapeFormContent } from './FreeShapeFormContent';
 

@@ -3,7 +3,7 @@
  * YAML extraData format (kebab-case)
  */
 
-import { NodeEditorData, HealthCheckConfig, SrosComponent } from '../types/editors';
+import type { NodeEditorData, HealthCheckConfig, SrosComponent } from '../types/editors';
 import type { NodeSaveData } from '../../shared/io/NodePersistenceIO';
 
 import { getString, getNumber, getBoolean, getStringArray, getRecord } from './typeHelpers';

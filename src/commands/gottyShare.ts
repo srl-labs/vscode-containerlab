@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { ClabLabTreeNode } from "../treeView/common";
+import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, gottySessions, runningLabsProvider, containerlabBinaryPath } from "../globals";
 import { refreshGottySessions } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";

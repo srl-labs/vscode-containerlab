@@ -6,7 +6,7 @@ import React, { useEffect, useCallback, useState } from 'react';
 import type { Core, EventObject } from 'cytoscape';
 
 import { log } from '../../utils/logger';
-import { ContextMenuItem } from '../../components/context-menu/ContextMenu';
+import type { ContextMenuItem } from '../../components/context-menu/ContextMenu';
 import { WiresharkIcon } from '../../components/context-menu/WiresharkIcon';
 
 /**

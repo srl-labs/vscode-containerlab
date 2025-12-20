@@ -1,10 +1,11 @@
 /**
  * TopoViewer Context - Global state management for React TopoViewer
  */
-import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode, useMemo } from 'react';
+import type { ReactNode} from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
-import { CyElement } from '../../shared/types/messages';
+import type { CyElement } from '../../shared/types/messages';
 import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
 
 // Re-export custom node types from shared for backward compatibility

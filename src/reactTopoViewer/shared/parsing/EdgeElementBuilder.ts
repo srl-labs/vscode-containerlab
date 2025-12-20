@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import { ClabNode, CyElement, ClabTopology, TopologyAnnotations } from '../types/topology';
+import type { ClabNode, CyElement, ClabTopology, TopologyAnnotations } from '../types/topology';
 
 import { resolveNodeConfig } from './NodeConfigResolver';
 import {

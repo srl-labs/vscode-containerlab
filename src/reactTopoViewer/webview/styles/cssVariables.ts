@@ -1,7 +1,7 @@
 /**
  * Shared CSS variable constants and style objects for consistent theming.
  */
-import React from 'react';
+import type React from 'react';
 
 // CSS Variable Constants
 export const CSS_BG_QUOTE = 'var(--vscode-textBlockQuote-background)';

@@ -3,7 +3,7 @@
  */
 import { useCallback, useMemo } from 'react';
 
-import { FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
 

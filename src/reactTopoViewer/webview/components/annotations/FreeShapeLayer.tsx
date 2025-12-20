@@ -6,7 +6,7 @@ import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 
-import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import {
   useAnnotationDrag,
   useRotationDrag,
@@ -18,7 +18,8 @@ import {
 } from '../../hooks/annotations';
 import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationReparent';
 import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
-import { MapLibreState, projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
+import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
+import { projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
 
 import { buildShapeSvg } from './freeShapeLayerHelpers';
 import {

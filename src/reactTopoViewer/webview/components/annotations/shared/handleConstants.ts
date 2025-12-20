@@ -1,7 +1,7 @@
 /**
  * Shared constants for annotation handles
  */
-import React from 'react';
+import type React from 'react';
 
 export const HANDLE_SIZE = 6;
 export const ROTATION_HANDLE_OFFSET = 18;

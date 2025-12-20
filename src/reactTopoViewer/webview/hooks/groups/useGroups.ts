@@ -3,7 +3,8 @@
  * Groups are rendered as HTML overlays, not Cytoscape nodes.
  * Supports hierarchical nesting via parentId.
  */
-import React, { useCallback, useMemo, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';

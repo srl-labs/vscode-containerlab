@@ -6,15 +6,18 @@
  * Used by both VS Code extension and dev server.
  */
 
-import * as YAML from 'yaml';
+import type * as YAML from 'yaml';
 
-import { ClabTopology } from '../types/topology';
+import type { ClabTopology } from '../types/topology';
 
-import { FileSystemAdapter, SaveResult, IOLogger, noopLogger, ERROR_SERVICE_NOT_INIT, ERROR_NO_YAML_PATH } from './types';
-import { AnnotationsIO } from './AnnotationsIO';
+import type { FileSystemAdapter, SaveResult, IOLogger} from './types';
+import { noopLogger, ERROR_SERVICE_NOT_INIT, ERROR_NO_YAML_PATH } from './types';
+import type { AnnotationsIO } from './AnnotationsIO';
 import { writeYamlFile, parseYamlDocument } from './YamlDocumentIO';
-import { NodeSaveData, addNodeToDoc, editNodeInDoc, deleteNodeFromDoc, NodeAnnotationData, buildAnnotationProps, applyAnnotationData } from './NodePersistenceIO';
-import { LinkSaveData, addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenceIO';
+import type { NodeSaveData, NodeAnnotationData} from './NodePersistenceIO';
+import { addNodeToDoc, editNodeInDoc, deleteNodeFromDoc, buildAnnotationProps, applyAnnotationData } from './NodePersistenceIO';
+import type { LinkSaveData} from './LinkPersistenceIO';
+import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenceIO';
 
 // Re-export types for convenience
 export type { NodeSaveData, NodeAnnotationData } from './NodePersistenceIO';

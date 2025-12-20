@@ -5,7 +5,7 @@
 
 import * as YAML from 'yaml';
 
-import { ClabTopology, CyElement, TopologyAnnotations } from '../types/topology';
+import type { ClabTopology, CyElement, TopologyAnnotations } from '../types/topology';
 
 import type {
   ParseOptions,

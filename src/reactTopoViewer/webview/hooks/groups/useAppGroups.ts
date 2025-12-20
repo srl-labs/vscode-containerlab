@@ -2,7 +2,8 @@
  * App-level hook for group management.
  * Provides handlers for group operations with UI integration.
  */
-import React, { useCallback, useEffect, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 
 import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';

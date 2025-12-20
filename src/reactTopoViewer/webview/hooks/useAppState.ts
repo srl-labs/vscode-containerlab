@@ -2,10 +2,11 @@
  * App State Hook
  * Manages cytoscape instance and selection data
  */
-import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { Core } from 'cytoscape';
+import type React from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
+import type { Core } from 'cytoscape';
 
-import { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
+import type { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
 import { log } from '../utils/logger';
 import { deleteNode, deleteLink } from '../services';
 
