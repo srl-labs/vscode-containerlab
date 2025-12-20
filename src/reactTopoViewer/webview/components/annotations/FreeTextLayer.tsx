@@ -15,6 +15,16 @@ import {
 import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationReparent';
 import { renderMarkdown } from '../../utils/markdownRenderer';
 import { MapLibreState } from '../../hooks/canvas/maplibreUtils';
+import {
+  HANDLE_SIZE,
+  ROTATION_HANDLE_OFFSET,
+  CENTER_TRANSLATE,
+  RotationHandle,
+  ResizeHandle,
+  SelectionOutline,
+  AnnotationContextMenu,
+  type ResizeCorner
+} from './shared';
 
 // ============================================================================
 // Types
@@ -52,110 +62,6 @@ interface FreeTextLayerProps {
   /** Callback to update annotation's groupId */
   onUpdateGroupId?: (annotationId: string, groupId: string | undefined) => void;
 }
-
-// ============================================================================
-// Handle Components
-// ============================================================================
-
-const HANDLE_SIZE = 6;
-const ROTATION_HANDLE_OFFSET = 18;
-const CENTER_TRANSLATE = 'translate(-50%, -50%)';
-
-interface RotationHandleProps {
-  onMouseDown: (e: React.MouseEvent) => void;
-}
-
-const RotationHandle: React.FC<RotationHandleProps> = ({ onMouseDown }) => (
-  <>
-    {/* Wider invisible hit area for easier access to rotation handle */}
-    <div
-      style={{
-        position: 'absolute',
-        top: `-${ROTATION_HANDLE_OFFSET}px`,
-        left: '50%',
-        width: '16px',
-        height: `${ROTATION_HANDLE_OFFSET + 4}px`,
-        transform: 'translateX(-50%)',
-        pointerEvents: 'auto'
-      }}
-    />
-    {/* Line connecting to rotation handle */}
-    <div
-      style={{
-        position: 'absolute',
-        top: `-${ROTATION_HANDLE_OFFSET}px`,
-        left: '50%',
-        width: '2px',
-        height: `${ROTATION_HANDLE_OFFSET - HANDLE_SIZE/2}px`,
-        backgroundColor: 'rgba(100, 180, 255, 0.8)',
-        transform: 'translateX(-50%)',
-        pointerEvents: 'none'
-      }}
-    />
-    {/* Rotation handle circle */}
-    <div
-      onMouseDown={onMouseDown}
-      style={{
-        position: 'absolute',
-        top: `-${ROTATION_HANDLE_OFFSET}px`,
-        left: '50%',
-        width: `${HANDLE_SIZE}px`,
-        height: `${HANDLE_SIZE}px`,
-        backgroundColor: '#64b4ff',
-        border: '2px solid white',
-        borderRadius: '50%',
-        transform: CENTER_TRANSLATE,
-        cursor: 'grab',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-      }}
-      title="Drag to rotate (Shift for 15° snap)"
-    />
-  </>
-);
-
-type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
-
-interface ResizeHandleProps {
-  position: ResizeCorner;
-  onMouseDown: (e: React.MouseEvent) => void;
-}
-
-const CORNER_STYLES: Record<ResizeCorner, React.CSSProperties> = {
-  nw: { top: 0, left: 0, cursor: 'nw-resize', transform: CENTER_TRANSLATE },
-  ne: { top: 0, right: 0, cursor: 'ne-resize', transform: 'translate(50%, -50%)' },
-  sw: { bottom: 0, left: 0, cursor: 'sw-resize', transform: 'translate(-50%, 50%)' },
-  se: { bottom: 0, right: 0, cursor: 'se-resize', transform: 'translate(50%, 50%)' }
-};
-
-const ResizeHandle: React.FC<ResizeHandleProps> = ({ position, onMouseDown }) => (
-  <div
-    onMouseDown={onMouseDown}
-    style={{
-      position: 'absolute',
-      width: `${HANDLE_SIZE}px`,
-      height: `${HANDLE_SIZE}px`,
-      backgroundColor: 'white',
-      border: '2px solid #64b4ff',
-      borderRadius: '2px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-      ...CORNER_STYLES[position]
-    }}
-    title="Drag to resize (Shift for aspect ratio)"
-  />
-);
-
-/** Selection outline shown when handles are visible */
-const SelectionOutline: React.FC = () => (
-  <div
-    style={{
-      position: 'absolute',
-      inset: '-2px',
-      border: '2px solid #64b4ff',
-      borderRadius: '4px',
-      pointerEvents: 'none'
-    }}
-  />
-);
 
 // ============================================================================
 // Individual Text Annotation Component
@@ -246,84 +152,6 @@ function computeContentStyle(
     cursor: getAnnotationCursor(isLocked, isDragging)
   };
 }
-
-/** Simple context menu for annotations */
-const AnnotationContextMenu: React.FC<{
-  position: { x: number; y: number };
-  onEdit: () => void;
-  onDelete: () => void;
-  onClose: () => void;
-}> = ({ position, onEdit, onDelete, onClose }) => {
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('click', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [onClose]);
-
-  const menuStyle: React.CSSProperties = {
-    position: 'fixed',
-    left: position.x,
-    top: position.y,
-    zIndex: 10000,
-    backgroundColor: 'rgba(30, 30, 30, 0.95)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '6px',
-    padding: '4px 0',
-    minWidth: '120px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-    pointerEvents: 'auto'
-  };
-
-  const itemStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    width: '100%',
-    padding: '8px 12px',
-    border: 'none',
-    background: 'none',
-    color: 'white',
-    fontSize: '13px',
-    cursor: 'pointer',
-    textAlign: 'left'
-  };
-
-  return (
-    <div ref={menuRef} style={menuStyle}>
-      <button
-        style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        onClick={() => { onEdit(); onClose(); }}
-      >
-        <i className="fas fa-pen" style={{ width: 16 }} />
-        Edit
-      </button>
-      <button
-        style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        onClick={() => { onDelete(); onClose(); }}
-      >
-        <i className="fas fa-trash" style={{ width: 16 }} />
-        Delete
-      </button>
-    </div>
-  );
-};
 
 /** Handles container component - positioned relative to annotation */
 const AnnotationHandles: React.FC<{

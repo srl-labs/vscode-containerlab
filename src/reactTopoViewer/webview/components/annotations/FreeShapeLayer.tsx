@@ -2,7 +2,7 @@
  * FreeShapeLayer - SVG overlay layer for rendering free shape annotations
  * Renders shape visuals below nodes (via cytoscape-layers) and interaction handles above nodes.
  */
-import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 import { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
@@ -19,6 +19,17 @@ import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationRepa
 import { buildShapeSvg } from './freeShapeLayerHelpers';
 import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
 import { MapLibreState, projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
+import {
+  HANDLE_SIZE,
+  HANDLE_BORDER,
+  HANDLE_BOX_SHADOW,
+  CENTER_TRANSLATE,
+  RotationHandle,
+  ResizeHandle,
+  SelectionOutline,
+  AnnotationContextMenu,
+  type ResizeCorner
+} from './shared';
 
 // ============================================================================
 // Types
@@ -63,95 +74,6 @@ interface FreeShapeLayerProps {
 // ============================================================================
 // Handle Components
 // ============================================================================
-
-const HANDLE_SIZE = 6;
-const ROTATION_HANDLE_OFFSET = 18;
-const HANDLE_BOX_SHADOW = '0 2px 4px rgba(0,0,0,0.3)';
-const HANDLE_BORDER = '2px solid #64b4ff';
-const CENTER_TRANSLATE = 'translate(-50%, -50%)';
-
-const RotationHandle: React.FC<{ onMouseDown: (e: React.MouseEvent) => void }> = ({ onMouseDown }) => (
-  <>
-    <div
-      style={{
-        position: 'absolute',
-        top: `-${ROTATION_HANDLE_OFFSET}px`,
-        left: '50%',
-        width: '16px',
-        height: `${ROTATION_HANDLE_OFFSET + 4}px`,
-        transform: 'translateX(-50%)',
-        pointerEvents: 'auto'
-      }}
-    />
-    <div
-      style={{
-        position: 'absolute',
-        top: `-${ROTATION_HANDLE_OFFSET}px`,
-        left: '50%',
-        width: '2px',
-        height: `${ROTATION_HANDLE_OFFSET - HANDLE_SIZE / 2}px`,
-        backgroundColor: 'rgba(100, 180, 255, 0.8)',
-        transform: 'translateX(-50%)',
-        pointerEvents: 'none'
-      }}
-    />
-    <div
-      onMouseDown={onMouseDown}
-      style={{
-        position: 'absolute',
-        top: `-${ROTATION_HANDLE_OFFSET}px`,
-        left: '50%',
-        width: `${HANDLE_SIZE}px`,
-        height: `${HANDLE_SIZE}px`,
-        backgroundColor: '#64b4ff',
-        border: '2px solid white',
-        borderRadius: '50%',
-        transform: CENTER_TRANSLATE,
-        cursor: 'grab',
-        boxShadow: HANDLE_BOX_SHADOW
-      }}
-      title="Drag to rotate (Shift for 15° snap)"
-    />
-  </>
-);
-
-type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
-
-const CORNER_STYLES: Record<ResizeCorner, React.CSSProperties> = {
-  nw: { top: 0, left: 0, cursor: 'nw-resize', transform: CENTER_TRANSLATE },
-  ne: { top: 0, right: 0, cursor: 'ne-resize', transform: 'translate(50%, -50%)' },
-  sw: { bottom: 0, left: 0, cursor: 'sw-resize', transform: 'translate(-50%, 50%)' },
-  se: { bottom: 0, right: 0, cursor: 'se-resize', transform: 'translate(50%, 50%)' }
-};
-
-const ResizeHandle: React.FC<{ position: ResizeCorner; onMouseDown: (e: React.MouseEvent) => void }> = ({ position, onMouseDown }) => (
-  <div
-    onMouseDown={onMouseDown}
-    style={{
-      position: 'absolute',
-      width: `${HANDLE_SIZE}px`,
-      height: `${HANDLE_SIZE}px`,
-      backgroundColor: 'white',
-      border: HANDLE_BORDER,
-      borderRadius: '2px',
-      boxShadow: HANDLE_BOX_SHADOW,
-      ...CORNER_STYLES[position]
-    }}
-    title="Drag to resize (Shift for aspect ratio)"
-  />
-);
-
-const SelectionOutline: React.FC = () => (
-  <div
-    style={{
-      position: 'absolute',
-      inset: '-2px',
-      border: '2px solid #64b4ff',
-      borderRadius: '4px',
-      pointerEvents: 'none'
-    }}
-  />
-);
 
 const AnnotationHandles: React.FC<{
   onRotation: (e: React.MouseEvent) => void;
@@ -228,87 +150,6 @@ function computeShapeRenderedPosition(
 }
 
 const UNLOCKED_ANNOTATION_TOOLTIP = 'Click to select, drag to move, right-click for menu';
-
-// ============================================================================
-// Context Menu
-// ============================================================================
-
-const AnnotationContextMenu: React.FC<{
-  position: { x: number; y: number };
-  onEdit: () => void;
-  onDelete: () => void;
-  onClose: () => void;
-}> = ({ position, onEdit, onDelete, onClose }) => {
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [onClose]);
-
-  const menuStyle: React.CSSProperties = {
-    position: 'fixed',
-    left: position.x,
-    top: position.y,
-    zIndex: 10000,
-    backgroundColor: 'rgba(30, 30, 30, 0.95)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '6px',
-    padding: '4px 0',
-    minWidth: '120px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-    pointerEvents: 'auto'
-  };
-
-  const itemStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    width: '100%',
-    padding: '8px 12px',
-    border: 'none',
-    background: 'none',
-    color: 'white',
-    fontSize: '13px',
-    cursor: 'pointer',
-    textAlign: 'left'
-  };
-
-  return (
-    <div ref={menuRef} style={menuStyle}>
-      <button
-        style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        onClick={() => { onEdit(); onClose(); }}
-      >
-        <i className="fas fa-pen" style={{ width: 16 }} />
-        Edit
-      </button>
-      <button
-        style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        onClick={() => { onDelete(); onClose(); }}
-      >
-        <i className="fas fa-trash" style={{ width: 16 }} />
-        Delete
-      </button>
-    </div>
-  );
-};
 
 // ============================================================================
 // Background Item (rendered in cytoscape-layer, below nodes)

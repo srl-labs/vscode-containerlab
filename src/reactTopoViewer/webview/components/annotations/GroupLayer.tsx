@@ -21,6 +21,7 @@ import {
 } from '../../hooks/groups';
 import { useAnnotationBoxSelection } from '../../hooks/annotations/useAnnotationSelection';
 import { MapLibreState, projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
+import { HANDLE_SIZE, CENTER_TRANSLATE, CORNER_STYLES, applyAlphaToColor } from './shared';
 
 // ============================================================================
 // Types
@@ -78,16 +79,6 @@ interface GroupInteractionItemProps {
 // Constants
 // ============================================================================
 
-const CENTER_TRANSLATE = 'translate(-50%, -50%)';
-const HANDLE_SIZE = 6;
-
-const CORNER_STYLES: Record<ResizeCorner, React.CSSProperties> = {
-  nw: { top: 0, left: 0, cursor: 'nw-resize', transform: CENTER_TRANSLATE },
-  ne: { top: 0, right: 0, cursor: 'ne-resize', transform: 'translate(50%, -50%)' },
-  sw: { bottom: 0, left: 0, cursor: 'sw-resize', transform: 'translate(-50%, 50%)' },
-  se: { bottom: 0, right: 0, cursor: 'se-resize', transform: 'translate(50%, 50%)' }
-};
-
 // Layer content styles (the layer container is managed by cytoscape-layers)
 const LAYER_CONTENT_STYLE: React.CSSProperties = {
   position: 'absolute',
@@ -128,24 +119,13 @@ function buildWrapperStyle(
   };
 }
 
-/**
- * Convert hex color to rgba with alpha.
- */
-function hexToRgba(hex: string, alpha: number): string {
-  const cleanHex = hex.replace('#', '');
-  const r = parseInt(cleanHex.substring(0, 2), 16);
-  const g = parseInt(cleanHex.substring(2, 4), 16);
-  const b = parseInt(cleanHex.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 function buildContentStyle(
   group: GroupStyleAnnotation
 ): React.CSSProperties {
   const bgColor = group.backgroundColor ?? '#d9d9d9';
   const bgOpacity = (group.backgroundOpacity ?? 20) / 100;
   // Use rgba for background to properly cover grid, keep border fully opaque
-  const bgColorWithAlpha = hexToRgba(bgColor, bgOpacity);
+  const bgColorWithAlpha = applyAlphaToColor(bgColor, bgOpacity);
 
   return {
     position: 'relative',

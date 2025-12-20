@@ -1,0 +1,18 @@
+/**
+ * Shared annotation components
+ */
+export {
+  HANDLE_SIZE,
+  ROTATION_HANDLE_OFFSET,
+  HANDLE_BOX_SHADOW,
+  HANDLE_BORDER,
+  CENTER_TRANSLATE,
+  CORNER_STYLES
+} from './handleConstants';
+export type { ResizeCorner } from './handleConstants';
+
+export { RotationHandle } from './RotationHandle';
+export { ResizeHandle } from './ResizeHandle';
+export { SelectionOutline } from './SelectionOutline';
+export { AnnotationContextMenu } from './AnnotationContextMenu';
+export { applyAlphaToColor } from './colorUtils';

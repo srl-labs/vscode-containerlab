@@ -19,25 +19,3 @@ export type {
 
 // Utilities
 export { createEmptyAnnotations } from './types';
-
-// Parser functions
-export {
-  parseAnnotationsJson,
-  parseAnnotationsObject,
-  serializeAnnotations,
-  isAnnotationsEmpty,
-  migrateCloudToNetworkAnnotations,
-  migrateAnnotations,
-  validateAnnotations,
-} from './AnnotationsParser';
-
-// Merger functions
-export {
-  applyNodePositions,
-  applyNetworkNodePositions,
-  applyGroupMemberships,
-  applyIconOverrides,
-  applyGeoCoordinates,
-  extractNodeAnnotations,
-  mergeAnnotationsWithElements,
-} from './AnnotationsMerger';

@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { log } from './logger';
-import { DEFAULT_INTERFACE_PATTERNS } from '../../shared/constants/interfacePatterns';
 
 const CONFIG_SECTION = 'containerlab.editor';
 
@@ -158,98 +157,6 @@ export class CustomNodeConfigManager {
     return imageMapping;
   }
 
-  /**
-   * Gets legacy interface pattern mapping from configuration
-   */
-  getLegacyInterfacePatternMapping(
-    config: vscode.WorkspaceConfiguration
-  ): Record<string, string> {
-    const legacy = config.get<Record<string, string> | undefined>('interfacePatternMapping');
-    if (!legacy || typeof legacy !== 'object') {
-      return {};
-    }
-    return Object.fromEntries(
-      Object.entries(legacy)
-        .filter(([key, value]) => typeof key === 'string' && typeof value === 'string')
-        .map(([key, value]) => [key, value.trim()])
-        .filter(([, value]) => value.length > 0)
-    );
-  }
-
-  /**
-   * Ensures custom nodes have interface patterns, migrating from legacy config if needed
-   */
-  async ensureCustomNodeInterfacePatterns(
-    config: vscode.WorkspaceConfiguration,
-    customNodes: any[],
-    legacyIfacePatternMapping: Record<string, string>
-  ): Promise<any[]> {
-    let didUpdate = false;
-
-    const normalized = customNodes.map(node => {
-      if (!node || typeof node !== 'object') {
-        return node;
-      }
-
-      const kind = typeof node.kind === 'string' ? node.kind : '';
-      const rawPattern = typeof node.interfacePattern === 'string' ? node.interfacePattern : '';
-      const trimmedPattern = rawPattern.trim();
-
-      if (trimmedPattern.length > 0) {
-        if (trimmedPattern !== rawPattern) {
-          didUpdate = true;
-          return { ...node, interfacePattern: trimmedPattern };
-        }
-        return node;
-      }
-
-      if (!kind) {
-        return node;
-      }
-
-      const fallback =
-        legacyIfacePatternMapping[kind] || DEFAULT_INTERFACE_PATTERNS[kind];
-      if (!fallback) {
-        return node;
-      }
-
-      didUpdate = true;
-      return { ...node, interfacePattern: fallback };
-    });
-
-    if (didUpdate) {
-      await config.update('customNodes', normalized, vscode.ConfigurationTarget.Global);
-    }
-
-    return normalized;
-  }
-
-  /**
-   * Builds the complete interface pattern mapping
-   */
-  buildInterfacePatternMapping(
-    customNodes: any[],
-    legacyIfacePatternMapping: Record<string, string>
-  ): Record<string, string> {
-    const mapping: Record<string, string> = {
-      ...DEFAULT_INTERFACE_PATTERNS,
-      ...legacyIfacePatternMapping,
-    };
-
-    customNodes.forEach(node => {
-      if (!node || typeof node !== 'object') {
-        return;
-      }
-      const kind = typeof node.kind === 'string' ? node.kind : '';
-      const pattern = typeof node.interfacePattern === 'string' ? node.interfacePattern.trim() : '';
-      if (!kind || !pattern) {
-        return;
-      }
-      mapping[kind] = pattern;
-    });
-
-    return mapping;
-  }
 }
 
 // Export a singleton instance

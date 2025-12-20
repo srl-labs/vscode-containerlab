@@ -10,7 +10,7 @@ import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
 import { NodeEditorPanel } from './components/panels/node-editor';
 import { NetworkEditorPanel } from './components/panels/network-editor';
 import { LinkEditorPanel } from './components/panels/link-editor';
-import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/FloatingActionPanel';
+import { FloatingActionPanel, FloatingActionPanelHandle } from './components/panels/floatingPanel';
 import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
 import { AboutPanel } from './components/panels/AboutPanel';
 import { BulkLinkPanel } from './components/panels/bulk-link';

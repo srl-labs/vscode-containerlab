@@ -113,13 +113,6 @@ export class SplitViewManager {
       panel.reveal();
     }
   }
-
-  /**
-   * Reset the split view state.
-   */
-  reset(): void {
-    this.isSplitViewOpen = false;
-  }
 }
 
 export const splitViewManager = new SplitViewManager();

@@ -116,14 +116,3 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
 </body>
 </html>`;
 }
-
-/**
- * Reveals an existing panel or returns false if it doesn't exist
- */
-export function revealPanel(panel: vscode.WebviewPanel | undefined, column?: vscode.ViewColumn): boolean {
-  if (panel) {
-    panel.reveal(column);
-    return true;
-  }
-  return false;
-}
