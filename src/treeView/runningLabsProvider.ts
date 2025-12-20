@@ -5,7 +5,8 @@ import * as ins from "./inspector"
 import { FilterUtils } from "../helpers/filterUtils";
 
 import path = require("path");
-import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, refreshSshxSessions, gottySessions, refreshGottySessions, outputChannel } from "../extension";
+import { hideNonOwnedLabsState, runningTreeView, username, favoriteLabs, sshxSessions, gottySessions, outputChannel } from "../globals";
+import { refreshSshxSessions, refreshGottySessions } from "../services/sessionRefresh";
 import { getCurrentTopoViewer } from "../commands/graph";
 
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry, ClabInterfaceStats } from "../types/containerlab";

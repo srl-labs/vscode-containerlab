@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { dockerClient, outputChannel } from "../../extension";
+import { dockerClient, outputChannel } from "../../globals";
 
 let dockerImagesCache: string[] = [];
 

@@ -6,7 +6,7 @@ import { exec, execSync } from "child_process";
 import * as net from "net";
 import { promisify } from "util";
 import { ClabLabTreeNode } from "../treeView/common";
-import { containerlabBinaryPath, outputChannel } from "../extension";
+import { containerlabBinaryPath, outputChannel } from "../globals";
 
 const execAsync = promisify(exec);
 
@@ -317,8 +317,8 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
     return node;
   }
 
-  // Try to get from tree selection
-  const { localTreeView, runningTreeView } = await import("../extension");
+  // Try to get from tree selection - import from globals to avoid circular dependency
+  const { localTreeView, runningTreeView } = await import("../globals");
 
   // Try running tree first
   if (runningTreeView && runningTreeView.selection.length > 0) {

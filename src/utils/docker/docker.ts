@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { dockerClient, outputChannel } from "../../extension";
+import { dockerClient, outputChannel } from "../../globals";
 import { ContainerAction, ImagePullPolicy } from "../consts";
 import Dockerode from "dockerode";
 

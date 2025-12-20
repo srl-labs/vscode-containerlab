@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
-import { extensionVersion } from './extension';
+import { extensionVersion } from './globals';
 
 /**
  * Manages the welcome page webview for the Containerlab extension.

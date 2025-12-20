@@ -15,7 +15,7 @@ import { nodeFsAdapter, TopologyIO } from '../shared/io';
 import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { CyElement, ClabTopology } from '../shared/types/topology';
 import { ClabLabTreeNode } from '../../treeView/common';
-import { runningLabsProvider } from '../../extension';
+import { runningLabsProvider } from '../../globals';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
 import { annotationsIO, extensionLogger } from './services/adapters';
 

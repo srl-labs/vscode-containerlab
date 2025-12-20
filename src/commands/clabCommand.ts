@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as cmd from './command';
 import { ClabLabTreeNode } from "../treeView/common";
-import { containerlabBinaryPath } from "../extension";
+import { containerlabBinaryPath } from "../globals";
 /**
  * A helper class to build a 'containerlab' command (with optional sudo, etc.)
  * and run it either in the Output channel or in a Terminal.

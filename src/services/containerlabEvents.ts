@@ -3,7 +3,7 @@ import * as readline from "readline";
 import * as vscode from "vscode";
 import type { ClabDetailedJSON } from "../treeView/common";
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry } from "../types/containerlab";
-import { containerlabBinaryPath } from "../extension";
+import { containerlabBinaryPath } from "../globals";
 
 interface ContainerlabEvent {
     timestamp?: string;

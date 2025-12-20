@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { getInspectHtml } from "../webview/inspectHtml";
 import { ClabLabTreeNode } from "../treeView/common";
-import { outputChannel } from "../extension"; // Import outputChannel for logging
+import { outputChannel } from "../globals";
 import * as inspector from "../treeView/inspector";
 
 // Store the current panel and context for refresh functionality

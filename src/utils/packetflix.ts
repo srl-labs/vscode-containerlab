@@ -2,8 +2,7 @@ import * as vscode from "vscode";
 import * as os from "os";
 import * as utils from "./utils";
 import * as c from "../treeView/common";
-import { outputChannel } from "../extension";
-import { installEdgeshark } from "../commands/edgeshark";
+import { outputChannel } from "../globals";
 
 let sessionHostname = "";
 
@@ -77,6 +76,8 @@ async function ensureEdgesharkAvailable(): Promise<boolean> {
     "Yes"
   );
   if (selectedOpt === "Yes") {
+    // Dynamic import to avoid circular dependency
+    const { installEdgeshark } = await import("../commands/edgeshark");
     await installEdgeshark();
 
     const maxRetries = 30;

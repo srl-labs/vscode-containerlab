@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { ClabLabTreeNode } from "../treeView/common";
-import { outputChannel, sshxSessions, runningLabsProvider, refreshSshxSessions, containerlabBinaryPath } from "../extension";
+import { outputChannel, sshxSessions, runningLabsProvider, containerlabBinaryPath } from "../globals";
+import { refreshSshxSessions } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";
 
 function parseLink(output: string): string | undefined {

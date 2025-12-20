@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { deploy } from './deploy';
 import { pickPopularRepo } from '../helpers/popularLabs';
 import { ClabLabTreeNode } from '../treeView/common';
+import { runClabAction } from './runClabAction';
 
 export async function deployPopularLab() {
   const pick = await pickPopularRepo('Deploy popular lab', 'Select a repository to deploy');
@@ -12,5 +12,6 @@ export async function deployPopularLab() {
     absolute: (pick as any).repo,
     relative: '',
   });
-  deploy(node);
+  // Call runClabAction directly to avoid circular dependency with deploy.ts
+  await runClabAction("deploy", node);
 }

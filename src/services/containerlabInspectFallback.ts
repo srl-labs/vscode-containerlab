@@ -12,7 +12,7 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import { execFileSync } from "child_process";
 import * as vscode from "vscode";
-import { containerlabBinaryPath } from "../extension";
+import { containerlabBinaryPath } from "../globals";
 import type { ClabDetailedJSON } from "../treeView/common";
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry } from "../types/containerlab";
 

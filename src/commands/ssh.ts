@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { execCommandInTerminal } from "./command";
 import { ClabContainerTreeNode, ClabLabTreeNode } from "../treeView/common";
-import { sshUserMapping } from "../extension";
+import { sshUserMapping } from "../globals";
 
 export function sshToNode(node: ClabContainerTreeNode | undefined): void {
   if (!node) {

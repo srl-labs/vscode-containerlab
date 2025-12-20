@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import { log } from './logger';
 import { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
-import { runningLabsProvider } from '../../../extension';
+import { runningLabsProvider } from '../../../globals';
 import type { EndpointResult } from '../../shared/types/endpoint';
 
 /**
@@ -68,7 +68,7 @@ export class NodeCommandService {
    * Gets a container node by name from the running labs.
    */
   async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
-    const labs = await runningLabsProvider?.discoverInspectLabs();
+    const labs = await runningLabsProvider?.discoverInspectLabs() as Record<string, { labPath: { absolute: string }, containers?: ClabContainerTreeNode[] }> | undefined;
     if (!labs || !this.yamlFilePath) {
       return undefined;
     }
@@ -79,9 +79,9 @@ export class NodeCommandService {
       return undefined;
     }
 
-    const containers = currentLab.containers ?? [];
+    const containers: ClabContainerTreeNode[] = currentLab.containers ?? [];
     const directMatch = containers.find(
-      (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+      (c: ClabContainerTreeNode) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
     );
     if (directMatch) {
       return directMatch;

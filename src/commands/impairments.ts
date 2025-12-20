@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { ClabInterfaceTreeNode } from "../treeView/common";
 import { execCommandInOutput } from "./command";
-import { containerlabBinaryPath } from "../extension";
+import { containerlabBinaryPath } from "../globals";
 
 // Common validation messages and patterns
 const ERR_EMPTY = 'Input should not be empty';
