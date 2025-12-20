@@ -5,7 +5,7 @@ import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import { FilterUtils } from '../../../../../helpers/filterUtils';
 import { isSpecialEndpointId } from '../../../../shared/utilities/LinkTypes';
 import type { CyElement } from '../../../../shared/types/messages';
-import type { GraphChangeEntry } from '../../../hooks';
+import type { GraphChangeEntry } from '../../../hooks/graph/copyPasteUtils';
 
 export type LinkCandidate = { sourceId: string; targetId: string };
 

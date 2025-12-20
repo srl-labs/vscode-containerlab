@@ -2,7 +2,7 @@
  * Handler functions for bulk link operations
  */
 import type { Core as CyCore } from 'cytoscape';
-import type { GraphChangeEntry } from '../../../hooks';
+import type { GraphChangeEntry } from '../../../hooks/graph/copyPasteUtils';
 import { computeCandidates, buildBulkEdges, buildUndoRedoEntries, type LinkCandidate } from './bulkLinkUtils';
 import type { CyElement } from '../../../../shared/types/messages';
 import { createLink, beginBatch, endBatch, type LinkSaveData } from '../../../services';
