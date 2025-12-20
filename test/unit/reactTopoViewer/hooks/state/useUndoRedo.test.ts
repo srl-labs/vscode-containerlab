@@ -34,9 +34,14 @@ import { useUndoRedo } from '../../../../../src/reactTopoViewer/webview/hooks/st
 import { createMockCytoscape, createTestNode } from '../../helpers/cytoscape-stub';
 import {
   setupGlobalVscodeMock,
-  teardownGlobalVscodeMock,
-  VscodeApiMock
+  teardownGlobalVscodeMock
 } from '../../helpers/vscode-webview-stub';
+import {
+  setupServiceStubs,
+  teardownServiceStubs,
+  getServiceCallsByMethod,
+  clearServiceCalls
+} from '../../helpers/services-stub';
 import {
   createMoveAction,
   createMultipleMoveActions,
@@ -48,17 +53,16 @@ import {
 } from '../../helpers/undoRedo-fixtures';
 
 // Constants to avoid duplicate strings
-const SAVE_NODE_POSITIONS_CMD = 'save-node-positions';
 const GROUP_MOVE_TYPE = 'group-move';
 
 describe('useUndoRedo', () => {
-  let vscodeMock: VscodeApiMock;
-
   beforeEach(() => {
-    vscodeMock = setupGlobalVscodeMock();
+    setupGlobalVscodeMock();
+    setupServiceStubs();
   });
 
   afterEach(() => {
+    teardownServiceStubs();
     teardownGlobalVscodeMock();
     sinon.restore();
   });
@@ -794,7 +798,7 @@ describe('useUndoRedo', () => {
       expect(Math.round(pos.y)).to.equal(200);
     });
 
-    it('M-006: undo move sends positions to extension', () => {
+    it('M-006: undo move calls saveNodePositions', () => {
       const cy = createMockCytoscape([
         createTestNode('node1', { x: 100, y: 100 })
       ]);
@@ -807,20 +811,20 @@ describe('useUndoRedo', () => {
         ));
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand(SAVE_NODE_POSITIONS_CMD);
-      expect(messages.length).to.be.greaterThan(0);
-      expect(messages[0].positions).to.deep.equal([
+      const calls = getServiceCallsByMethod('saveNodePositions');
+      expect(calls.length).to.be.greaterThan(0);
+      expect(calls[0].args[0]).to.deep.equal([
         { id: 'node1', position: { x: 100, y: 100 } }
       ]);
     });
 
-    it('M-007: redo move sends positions to extension', () => {
+    it('M-007: redo move calls saveNodePositions', () => {
       const cy = createMockCytoscape([
         createTestNode('node1', { x: 100, y: 100 })
       ]);
@@ -836,15 +840,15 @@ describe('useUndoRedo', () => {
         result.current.undo();
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.redo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand(SAVE_NODE_POSITIONS_CMD);
-      expect(messages.length).to.be.greaterThan(0);
-      expect(messages[0].positions).to.deep.equal([
+      const calls = getServiceCallsByMethod('saveNodePositions');
+      expect(calls.length).to.be.greaterThan(0);
+      expect(calls[0].args[0]).to.deep.equal([
         { id: 'node1', position: { x: 200, y: 200 } }
       ]);
     });
@@ -1234,7 +1238,7 @@ describe('useUndoRedo', () => {
       expect(Math.round(pos.y)).to.equal(100);
     });
 
-    it('Group move sends positions to extension on undo', () => {
+    it('Group move calls saveNodePositions on undo', () => {
       const cy = createMockCytoscape([
         createTestNode('node1', { x: 200, y: 200 })
       ]);
@@ -1256,14 +1260,14 @@ describe('useUndoRedo', () => {
         });
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand(SAVE_NODE_POSITIONS_CMD);
-      expect(messages.length).to.be.greaterThan(0);
+      const calls = getServiceCallsByMethod('saveNodePositions');
+      expect(calls.length).to.be.greaterThan(0);
     });
   });
 });

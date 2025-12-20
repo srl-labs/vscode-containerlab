@@ -32,9 +32,14 @@ import { useGraphUndoRedoHandlers } from '../../../../../src/reactTopoViewer/web
 import { createMockCytoscape, createTestNode, createTestEdge } from '../../helpers/cytoscape-stub';
 import {
   setupGlobalVscodeMock,
-  teardownGlobalVscodeMock,
-  VscodeApiMock
+  teardownGlobalVscodeMock
 } from '../../helpers/vscode-webview-stub';
+import {
+  setupServiceStubs,
+  teardownServiceStubs,
+  getServiceCallsByMethod,
+  clearServiceCalls
+} from '../../helpers/services-stub';
 import {
   sampleNodes,
   clone
@@ -42,13 +47,13 @@ import {
 import type { CyElement } from '../../../../../src/reactTopoViewer/shared/types/topology';
 
 describe('useGraphUndoRedoHandlers', () => {
-  let vscodeMock: VscodeApiMock;
   let mockMenuHandlers: { handleDeleteNode: sinon.SinonStub; handleDeleteLink: sinon.SinonStub };
   let mockAddNode: sinon.SinonStub;
   let mockAddEdge: sinon.SinonStub;
 
   beforeEach(() => {
-    vscodeMock = setupGlobalVscodeMock();
+    setupGlobalVscodeMock();
+    setupServiceStubs();
     mockMenuHandlers = {
       handleDeleteNode: sinon.stub(),
       handleDeleteLink: sinon.stub()
@@ -58,6 +63,7 @@ describe('useGraphUndoRedoHandlers', () => {
   });
 
   afterEach(() => {
+    teardownServiceStubs();
     teardownGlobalVscodeMock();
     sinon.restore();
   });
@@ -418,7 +424,7 @@ describe('useGraphUndoRedoHandlers', () => {
       expect(result.current.undoRedo.undoCount).to.equal(1);
     });
 
-    it('P-004: Undo property edit sends apply-node-editor for non-rename', () => {
+    it('P-004: Undo property edit calls editNode for non-rename', () => {
       const cy = createMockCytoscape([createTestNode('node1', { x: 100, y: 100 })]);
 
       const { result } = renderHook(() => useGraphUndoRedoHandlers({
@@ -438,17 +444,17 @@ describe('useGraphUndoRedoHandlers', () => {
         });
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand('apply-node-editor');
-      expect(messages.length).to.be.greaterThan(0);
+      const calls = getServiceCallsByMethod('editNode');
+      expect(calls.length).to.be.greaterThan(0);
     });
 
-    it('P-006: Node rename undo uses undo-rename-node command', () => {
+    it('P-006: Node rename undo calls editNode with rename info', () => {
       const cy = createMockCytoscape([createTestNode('node1', { x: 100, y: 100 })]);
 
       const { result } = renderHook(() => useGraphUndoRedoHandlers({
@@ -468,17 +474,20 @@ describe('useGraphUndoRedoHandlers', () => {
         });
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand('undo-rename-node');
-      expect(messages.length).to.be.greaterThan(0);
+      const calls = getServiceCallsByMethod('editNode');
+      expect(calls.length).to.be.greaterThan(0);
+      // Verify it's a rename (name should change from NewName back to OldName)
+      const nodeData = calls[0].args[0] as { id: string; name: string };
+      expect(nodeData.name).to.equal('OldName');
     });
 
-    it('P-007: Link edit undo preserves original endpoints', () => {
+    it('P-007: Link edit undo calls editLink with original endpoints', () => {
       const cy = createMockCytoscape([
         createTestNode('node1', { x: 100, y: 100 }),
         createTestNode('node2', { x: 200, y: 200 }),
@@ -502,16 +511,17 @@ describe('useGraphUndoRedoHandlers', () => {
         });
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand('apply-link-editor');
-      expect(messages.length).to.be.greaterThan(0);
-      // The message should contain original endpoints for lookup
-      expect(messages[0].linkData).to.have.property('originalSourceEndpoint');
+      const calls = getServiceCallsByMethod('editLink');
+      expect(calls.length).to.be.greaterThan(0);
+      // The call should contain original endpoints for lookup
+      const linkData = calls[0].args[0] as { originalSourceEndpoint?: string };
+      expect(linkData).to.have.property('originalSourceEndpoint');
     });
   });
 
@@ -638,7 +648,7 @@ describe('useGraphUndoRedoHandlers', () => {
   // Persistence Call Tests
   // ==========================================================================
   describe('Persistence Calls', () => {
-    it('PC-004: create-node sent on node creation', () => {
+    it('PC-004: createNode called on node creation', () => {
       const cy = createMockCytoscape();
 
       const { result } = renderHook(() => useGraphUndoRedoHandlers({
@@ -649,7 +659,7 @@ describe('useGraphUndoRedoHandlers', () => {
         menuHandlers: mockMenuHandlers
       }));
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       const node = clone(sampleNodes[0]);
       act(() => {
@@ -660,12 +670,13 @@ describe('useGraphUndoRedoHandlers', () => {
         );
       });
 
-      const messages = vscodeMock._getMessagesByCommand('create-node');
-      expect(messages.length).to.be.greaterThan(0);
-      expect(messages[0].nodeId).to.equal('node1');
+      const calls = getServiceCallsByMethod('createNode');
+      expect(calls.length).to.be.greaterThan(0);
+      const nodeData = calls[0].args[0] as { id: string };
+      expect(nodeData.id).to.equal('node1');
     });
 
-    it('PC-005: create-link sent on edge creation', () => {
+    it('PC-005: createLink called on edge creation', () => {
       const cy = createMockCytoscape([
         createTestNode('node1', { x: 100, y: 100 }),
         createTestNode('node2', { x: 200, y: 200 })
@@ -679,7 +690,7 @@ describe('useGraphUndoRedoHandlers', () => {
         menuHandlers: mockMenuHandlers
       }));
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.handleEdgeCreated('node1', 'node2', {
@@ -691,13 +702,14 @@ describe('useGraphUndoRedoHandlers', () => {
         });
       });
 
-      const messages = vscodeMock._getMessagesByCommand('create-link');
-      expect(messages.length).to.be.greaterThan(0);
-      expect(messages[0].linkData).to.have.property('source', 'node1');
-      expect(messages[0].linkData).to.have.property('target', 'node2');
+      const calls = getServiceCallsByMethod('createLink');
+      expect(calls.length).to.be.greaterThan(0);
+      const linkData = calls[0].args[0] as { source: string; target: string };
+      expect(linkData).to.have.property('source', 'node1');
+      expect(linkData).to.have.property('target', 'node2');
     });
 
-    it('PC-006: begin-graph-batch sent before graph replay', () => {
+    it('PC-006: beginBatch called before graph replay', () => {
       const cy = createMockCytoscape();
 
       const trackingAddNode = sinon.stub().callsFake((element: CyElement) => {
@@ -721,17 +733,17 @@ describe('useGraphUndoRedoHandlers', () => {
         );
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const beginMessages = vscodeMock._getMessagesByCommand('begin-graph-batch');
-      expect(beginMessages.length).to.be.greaterThan(0);
+      const beginCalls = getServiceCallsByMethod('beginBatch');
+      expect(beginCalls.length).to.be.greaterThan(0);
     });
 
-    it('PC-007: end-graph-batch sent after graph replay', () => {
+    it('PC-007: endBatch called after graph replay', () => {
       const cy = createMockCytoscape();
 
       const trackingAddNode = sinon.stub().callsFake((element: CyElement) => {
@@ -755,17 +767,17 @@ describe('useGraphUndoRedoHandlers', () => {
         );
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const endMessages = vscodeMock._getMessagesByCommand('end-graph-batch');
-      expect(endMessages.length).to.be.greaterThan(0);
+      const endCalls = getServiceCallsByMethod('endBatch');
+      expect(endCalls.length).to.be.greaterThan(0);
     });
 
-    it('PC-008: apply-node-editor sent on property undo', () => {
+    it('PC-008: editNode called on property undo', () => {
       const cy = createMockCytoscape([createTestNode('node1', { x: 100, y: 100 })]);
 
       const { result } = renderHook(() => useGraphUndoRedoHandlers({
@@ -785,17 +797,17 @@ describe('useGraphUndoRedoHandlers', () => {
         });
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand('apply-node-editor');
-      expect(messages.length).to.be.greaterThan(0);
+      const calls = getServiceCallsByMethod('editNode');
+      expect(calls.length).to.be.greaterThan(0);
     });
 
-    it('PC-009: apply-link-editor sent on link property undo', () => {
+    it('PC-009: editLink called on link property undo', () => {
       const cy = createMockCytoscape([
         createTestNode('node1', { x: 100, y: 100 }),
         createTestNode('node2', { x: 200, y: 200 }),
@@ -819,17 +831,17 @@ describe('useGraphUndoRedoHandlers', () => {
         });
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand('apply-link-editor');
-      expect(messages.length).to.be.greaterThan(0);
+      const calls = getServiceCallsByMethod('editLink');
+      expect(calls.length).to.be.greaterThan(0);
     });
 
-    it('PC-010: undo-rename-node sent for node rename undo', () => {
+    it('PC-010: editNode called for node rename undo with correct names', () => {
       const cy = createMockCytoscape([createTestNode('node1', { x: 100, y: 100 })]);
 
       const { result } = renderHook(() => useGraphUndoRedoHandlers({
@@ -849,16 +861,19 @@ describe('useGraphUndoRedoHandlers', () => {
         });
       });
 
-      vscodeMock._clearMessages();
+      clearServiceCalls();
 
       act(() => {
         result.current.undoRedo.undo();
       });
 
-      const messages = vscodeMock._getMessagesByCommand('undo-rename-node');
-      expect(messages.length).to.be.greaterThan(0);
-      expect(messages[0]).to.have.property('currentName', 'NewRouter');
-      expect(messages[0]).to.have.property('targetName', 'OldRouter');
+      const calls = getServiceCallsByMethod('editNode');
+      expect(calls.length).to.be.greaterThan(0);
+      const nodeData = calls[0].args[0] as { id: string; name: string };
+      // When undoing rename, current name (NewRouter) is used as id to find node,
+      // and target name (OldRouter) is the new name
+      expect(nodeData.id).to.equal('NewRouter');
+      expect(nodeData.name).to.equal('OldRouter');
     });
   });
 
