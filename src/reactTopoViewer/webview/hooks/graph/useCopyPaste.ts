@@ -1,5 +1,5 @@
 /**
- * useCopyPaste - Hook for copy, paste, cut, and duplicate operations
+ * useCopyPaste - Hook for copy, paste, and duplicate operations
  * Migrated from legacy topoViewer CopyPasteManager with React hooks pattern
  */
 import { useRef, useEffect, useMemo, useCallback } from 'react';
@@ -10,7 +10,6 @@ import {
   CopyPasteHandlers,
   createCopyHandler,
   createPasteHandler,
-  createCutHandler,
   createDuplicateHandler
 } from './copyHandlers';
 
@@ -82,9 +81,8 @@ export function useCopyPaste(
   const handlers = useMemo<CopyPasteReturn>(() => ({
     handleCopy: createCopyHandler(cy, resetPasteState),
     handlePaste: createPasteHandler(cy, mode, isLocked),
-    handleCut: createCutHandler(cy, mode, isLocked, recordGraphChanges, resetPasteState),
     handleDuplicate: createDuplicateHandler(cy, mode, isLocked, performPaste)
-  }), [cy, mode, isLocked, recordGraphChanges, resetPasteState, performPaste]);
+  }), [cy, mode, isLocked, resetPasteState, performPaste]);
 
   return handlers;
 }

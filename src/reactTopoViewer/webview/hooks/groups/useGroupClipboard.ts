@@ -1,5 +1,5 @@
 /**
- * Hook for group clipboard operations (copy, cut, paste).
+ * Hook for group clipboard operations (copy, paste).
  * Supports copying entire group hierarchies including annotations.
  */
 
@@ -134,14 +134,11 @@ export interface UseGroupClipboardOptions {
   onAddGroup?: (group: GroupStyleAnnotation) => void;
   onAddTextAnnotation?: (annotation: FreeTextAnnotation) => void;
   onAddShapeAnnotation?: (annotation: FreeShapeAnnotation) => void;
-  onDeleteGroup?: (groupId: string) => void;
 }
 
 export interface UseGroupClipboardReturn {
   /** Copy a group and all its contents to clipboard */
   copyGroup: (groupId: string) => boolean;
-  /** Cut a group (copy + delete) */
-  cutGroup: (groupId: string) => boolean;
   /** Paste the clipboard contents at a position */
   pasteGroup: (position: { x: number; y: number }) => PastedGroupResult | null;
   /** Check if clipboard has data */
@@ -160,8 +157,7 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
     getGroupMembers,
     onAddGroup,
     onAddTextAnnotation,
-    onAddShapeAnnotation,
-    onDeleteGroup
+    onAddShapeAnnotation
   } = options;
 
   const clipboardRef = useRef<GroupClipboardData | null>(null);
@@ -243,18 +239,6 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
     [groups, textAnnotations, shapeAnnotations, getGroupMembers]
   );
 
-  const cutGroup = useCallback(
-    (groupId: string): boolean => {
-      const success = copyGroup(groupId);
-      if (success && onDeleteGroup) {
-        onDeleteGroup(groupId);
-        log.info(`[GroupClipboard] Cut group ${groupId}`);
-      }
-      return success;
-    },
-    [copyGroup, onDeleteGroup]
-  );
-
   const pasteGroup = useCallback(
     (position: { x: number; y: number }): PastedGroupResult | null => {
       const clipboardData = clipboardRef.current;
@@ -316,7 +300,6 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
 
   return {
     copyGroup,
-    cutGroup,
     pasteGroup,
     hasClipboardData,
     clearClipboard,

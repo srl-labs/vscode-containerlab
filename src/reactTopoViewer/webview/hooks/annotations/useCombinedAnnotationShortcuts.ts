@@ -13,7 +13,6 @@ export interface UseCombinedAnnotationShortcutsReturn {
   selectedAnnotationIds: Set<string>;
   copySelectedAnnotations: () => void;
   pasteAnnotations: () => void;
-  cutSelectedAnnotations: () => void;
   duplicateSelectedAnnotations: () => void;
   deleteSelectedAnnotations: () => void;
   clearAnnotationSelection: () => void;
@@ -46,7 +45,7 @@ function hasClipboardBoth(
 export function useCombinedAnnotationShortcuts(
   freeTextAnnotations: UseAppFreeTextAnnotationsReturn,
   freeShapeAnnotations: UseFreeShapeAnnotationsReturn,
-  freeShapeUndoHandlers: Pick<UseFreeShapeUndoRedoHandlersReturn, 'cutSelectedWithUndo' | 'deleteSelectedWithUndo'>,
+  freeShapeUndoHandlers: Pick<UseFreeShapeUndoRedoHandlersReturn, 'deleteSelectedWithUndo'>,
   groupOptions?: GroupClipboardOptions
 ): UseCombinedAnnotationShortcutsReturn {
   // Use refs to ensure we always have the latest values in callbacks
@@ -102,22 +101,6 @@ export function useCombinedAnnotationShortcuts(
     pasteBoth(freeTextAnnotations, freeShapeAnnotations);
   }, [freeTextAnnotations, freeShapeAnnotations]);
 
-  const cutSelectedAnnotations = React.useCallback(() => {
-    const opts = groupOptionsRef.current;
-    // Cut groups if any are selected
-    if (opts && opts.selectedGroupIds.size > 0) {
-      const groupIds = Array.from(opts.selectedGroupIds);
-      if (groupIds.length > 0) {
-        opts.groupClipboard.cutGroup(groupIds[0]);
-      }
-      // Clear group selection after cut
-      opts.clearGroupSelection();
-    }
-    // Also cut annotations
-    freeTextAnnotations.cutSelectedAnnotations();
-    freeShapeUndoHandlers.cutSelectedWithUndo();
-  }, [freeTextAnnotations, freeShapeUndoHandlers]);
-
   const duplicateSelectedAnnotations = React.useCallback(() => {
     const opts = groupOptionsRef.current;
     // Duplicate groups: copy then paste
@@ -167,7 +150,6 @@ export function useCombinedAnnotationShortcuts(
     selectedAnnotationIds,
     copySelectedAnnotations,
     pasteAnnotations,
-    cutSelectedAnnotations,
     duplicateSelectedAnnotations,
     deleteSelectedAnnotations,
     clearAnnotationSelection,

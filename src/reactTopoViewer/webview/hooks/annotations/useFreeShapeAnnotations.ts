@@ -107,7 +107,6 @@ export function useFreeShapeAnnotations(options: UseFreeShapeAnnotationsOptions)
     boxSelectAnnotations: actions.boxSelectAnnotations,
     copySelectedAnnotations: actions.copySelectedAnnotations,
     pasteAnnotations: actions.pasteAnnotations,
-    cutSelectedAnnotations: actions.cutSelectedAnnotations,
     duplicateSelectedAnnotations: actions.duplicateSelectedAnnotations,
     hasClipboardContent: actions.hasClipboardContent
   }), [

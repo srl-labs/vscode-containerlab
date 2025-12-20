@@ -62,8 +62,6 @@ export interface UseAppFreeTextAnnotationsReturn {
   copySelectedAnnotations: () => void;
   /** Paste annotations from clipboard */
   pasteAnnotations: () => void;
-  /** Cut selected annotations */
-  cutSelectedAnnotations: () => void;
   /** Duplicate selected annotations */
   duplicateSelectedAnnotations: () => void;
   /** Check if clipboard has annotations */
@@ -143,7 +141,6 @@ export function useAppFreeTextAnnotations(options: UseAppFreeTextAnnotationsOpti
     boxSelectAnnotations: freeTextAnnotations.boxSelectAnnotations,
     copySelectedAnnotations: freeTextAnnotations.copySelectedAnnotations,
     pasteAnnotations: freeTextAnnotations.pasteAnnotations,
-    cutSelectedAnnotations: freeTextAnnotations.cutSelectedAnnotations,
     duplicateSelectedAnnotations: freeTextAnnotations.duplicateSelectedAnnotations,
     hasClipboardContent: freeTextAnnotations.hasClipboardContent,
     migrateGroupId: freeTextAnnotations.migrateGroupId

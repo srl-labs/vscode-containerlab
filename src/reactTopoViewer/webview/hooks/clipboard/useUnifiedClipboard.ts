@@ -125,8 +125,6 @@ export interface UseUnifiedClipboardOptions {
 export interface UseUnifiedClipboardReturn {
   /** Copy all selected elements to clipboard */
   copy: () => boolean;
-  /** Cut all selected elements (copy + delete) */
-  cut: () => boolean;
   /** Paste clipboard contents at position */
   paste: (position: { x: number; y: number }) => PasteResult | null;
   /** Check if clipboard has data */
@@ -719,23 +717,6 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     getNodeMembership, getGroupMembers
   ]);
 
-  const cut = useCallback((): boolean => {
-    const success = copy();
-    if (success && cyInstance) {
-      // Delete selected elements
-      const selectedNodes = cyInstance.nodes(':selected');
-      const selectedEdges = cyInstance.edges(':selected');
-
-      // Note: Deletion of groups/annotations should be handled by the caller
-      // through the onDelete callbacks. Here we only delete cytoscape elements.
-      selectedEdges.remove();
-      selectedNodes.remove();
-
-      log.info('[UnifiedClipboard] Cut completed');
-    }
-    return success;
-  }, [copy, cyInstance]);
-
   const paste = useCallback((position: { x: number; y: number }): PasteResult | null => {
     const clipboardData = clipboardRef.current;
     if (!clipboardData) {
@@ -827,7 +808,6 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
 
   return {
     copy,
-    cut,
     paste,
     hasClipboardData,
     clearClipboard,

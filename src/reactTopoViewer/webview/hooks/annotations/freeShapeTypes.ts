@@ -54,7 +54,6 @@ export interface UseFreeShapeAnnotationsReturn {
   boxSelectAnnotations: (ids: string[]) => void;
   copySelectedAnnotations: () => void;
   pasteAnnotations: () => void;
-  cutSelectedAnnotations: () => void;
   duplicateSelectedAnnotations: () => void;
   hasClipboardContent: () => boolean;
 }

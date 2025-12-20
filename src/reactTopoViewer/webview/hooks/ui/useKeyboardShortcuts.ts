@@ -26,8 +26,6 @@ interface KeyboardShortcutsOptions {
   onCopy?: () => void;
   /** Paste handler (Ctrl+V) */
   onPaste?: () => void;
-  /** Cut handler (Ctrl+X) */
-  onCut?: () => void;
   /** Duplicate handler (Ctrl+D) */
   onDuplicate?: () => void;
   /** Selected annotation IDs */
@@ -36,8 +34,6 @@ interface KeyboardShortcutsOptions {
   onCopyAnnotations?: () => void;
   /** Paste annotations handler */
   onPasteAnnotations?: () => void;
-  /** Cut annotations handler */
-  onCutAnnotations?: () => void;
   /** Duplicate annotations handler */
   onDuplicateAnnotations?: () => void;
   /** Delete selected annotations handler */
@@ -166,43 +162,6 @@ function handlePaste(
   if (onPaste && (!hasGraphClipboard || hasGraphClipboard())) {
     log.info('[Keyboard] Paste graph elements');
     onPaste();
-    handled = true;
-  }
-
-  if (handled) {
-    event.preventDefault();
-  }
-  return handled;
-}
-
-/**
- * Handle Ctrl+X: Cut (nodes/edges and/or annotations)
- */
-function handleCut(
-  event: KeyboardEvent,
-  mode: 'edit' | 'view',
-  cyInstance: Core | null,
-  onCut?: () => void,
-  selectedAnnotationIds?: Set<string>,
-  onCutAnnotations?: () => void
-): boolean {
-  if (mode !== 'edit') return false;
-  if (!(event.ctrlKey || event.metaKey)) return false;
-  if (event.key !== 'x') return false;
-
-  let handled = false;
-
-  // Cut annotations if any are selected
-  if (selectedAnnotationIds && selectedAnnotationIds.size > 0 && onCutAnnotations) {
-    log.info('[Keyboard] Cut annotations');
-    onCutAnnotations();
-    handled = true;
-  }
-
-  // Also cut graph elements if any are selected
-  if (onCut && cyInstance && !cyInstance.$(':selected').empty()) {
-    log.info('[Keyboard] Cut graph elements');
-    onCut();
     handled = true;
   }
 
@@ -428,12 +387,10 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     canRedo = false,
     onCopy,
     onPaste,
-    onCut,
     onDuplicate,
     selectedAnnotationIds,
     onCopyAnnotations,
     onPasteAnnotations,
-    onCutAnnotations,
     onDuplicateAnnotations,
     onDeleteAnnotations,
     onClearAnnotationSelection,
@@ -447,10 +404,9 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     // Undo/Redo must be checked before other shortcuts
     if (handleUndo(event, mode, canUndo, onUndo)) return;
     if (handleRedo(event, mode, canRedo, onRedo)) return;
-    // Copy/Paste/Cut/Duplicate (with annotation support)
+    // Copy/Paste/Duplicate (with annotation support)
     if (handleCopy(event, cyInstance, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
     if (handlePaste(event, mode, onPaste, onPasteAnnotations, hasAnnotationClipboard)) return;
-    if (handleCut(event, mode, cyInstance, onCut, selectedAnnotationIds, onCutAnnotations)) return;
     if (handleDuplicate(event, mode, cyInstance, onDuplicate, selectedAnnotationIds, onDuplicateAnnotations)) return;
     // Group shortcut (Ctrl+G)
     if (handleCreateGroup(event, mode, cyInstance, onCreateGroup)) return;
@@ -460,8 +416,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     handleEscape(event, cyInstance, selectedNode, selectedEdge, onDeselectAll, selectedAnnotationIds, onClearAnnotationSelection);
   }, [
     mode, isLocked, selectedNode, selectedEdge, cyInstance, onDeleteNode, onDeleteEdge, onDeselectAll,
-    onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onCut, onDuplicate,
-    selectedAnnotationIds, onCopyAnnotations, onPasteAnnotations, onCutAnnotations,
+    onUndo, onRedo, canUndo, canRedo, onCopy, onPaste, onDuplicate,
+    selectedAnnotationIds, onCopyAnnotations, onPasteAnnotations,
     onDuplicateAnnotations, onDeleteAnnotations, onClearAnnotationSelection, hasAnnotationClipboard,
     onCreateGroup
   ]);

@@ -56,8 +56,6 @@ export interface UseFreeTextAnnotationsReturn {
   copySelectedAnnotations: () => void;
   /** Paste annotations from clipboard */
   pasteAnnotations: () => void;
-  /** Cut selected annotations (copy and delete) */
-  cutSelectedAnnotations: () => void;
   /** Duplicate selected annotations */
   duplicateSelectedAnnotations: () => void;
   /** Check if clipboard has annotations */

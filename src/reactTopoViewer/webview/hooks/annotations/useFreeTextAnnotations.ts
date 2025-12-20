@@ -112,7 +112,6 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
     boxSelectAnnotations: actions.boxSelectAnnotations,
     copySelectedAnnotations: actions.copySelectedAnnotations,
     pasteAnnotations: actions.pasteAnnotations,
-    cutSelectedAnnotations: actions.cutSelectedAnnotations,
     duplicateSelectedAnnotations: actions.duplicateSelectedAnnotations,
     hasClipboardContent: actions.hasClipboardContent
   }), [

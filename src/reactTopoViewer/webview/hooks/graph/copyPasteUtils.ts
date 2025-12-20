@@ -322,25 +322,6 @@ export function recordPasteAction(
   recordGraphChanges(beforeChanges, afterChanges);
 }
 
-export function recordCutAction(
-  elements: CyElementJson[],
-  recordGraphChanges?: (before: GraphChangeEntry[], after: GraphChangeEntry[]) => void
-): void {
-  if (!recordGraphChanges) return;
-
-  const beforeChanges: GraphChangeEntry[] = [];
-  const afterChanges: GraphChangeEntry[] = [];
-
-  for (const el of elements) {
-    const cyEl = toCyElement(el);
-    const entity = el.group === 'nodes' ? 'node' : 'edge';
-    beforeChanges.push({ entity, kind: 'add', after: cyEl });
-    afterChanges.push({ entity, kind: 'delete', before: cyEl });
-  }
-
-  recordGraphChanges(beforeChanges, afterChanges);
-}
-
 function persistPastedNodes(nodes: CyElementJson[]): void {
   for (const node of nodes) {
     sendCommandToExtension('create-node', {
@@ -383,21 +364,6 @@ export function persistPastedElements(elements: CyElementJson[]): void {
     .map(node => ({ id: node.data.id as string, position: node.position! }));
   if (positions.length > 0) {
     vscode.postMessage({ command: 'save-node-positions', positions });
-  }
-
-  sendCommandToExtension('end-graph-batch');
-}
-
-function deleteNodesForCut(elements: CyElementJson[]): void {
-  sendCommandToExtension('begin-graph-batch');
-
-  for (const el of elements) {
-    if (el.group === 'nodes') {
-      const nodeId = el.data.id as string;
-      if (!isSpecialEndpoint(nodeId)) {
-        sendCommandToExtension('panel-delete-node', { nodeId });
-      }
-    }
   }
 
   sendCommandToExtension('end-graph-batch');
@@ -472,27 +438,5 @@ export function executeCopy(cy: Core): CopyData | null {
 
   sendCommandToExtension('copyElements', { payload: copyData });
   log.info(`[CopyPaste] Copied ${copyData.elements.length} elements`);
-  return copyData;
-}
-
-export function executeCut(
-  cy: Core,
-  recordGraphChanges?: (before: GraphChangeEntry[], after: GraphChangeEntry[]) => void
-): CopyData | null {
-  const copyData = collectCopyData(cy);
-  if (!copyData) {
-    log.info('[CopyPaste] Nothing selected to cut');
-    return null;
-  }
-
-  sendCommandToExtension('copyElements', { payload: copyData });
-
-  const selected = cy.$(':selected');
-  deleteNodesForCut(copyData.elements);
-  selected.remove();
-
-  log.info(`[CopyPaste] Cut ${copyData.elements.length} elements`);
-  recordCutAction(copyData.elements, recordGraphChanges);
-
   return copyData;
 }

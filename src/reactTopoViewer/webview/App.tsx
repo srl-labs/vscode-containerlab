@@ -843,7 +843,6 @@ export const App: React.FC = () => {
   // Refs to prevent double-calling handlers in same event (keyboard handler may call both graph and annotation handlers)
   const lastCopyTimeRef = React.useRef(0);
   const lastPasteTimeRef = React.useRef(0);
-  const lastCutTimeRef = React.useRef(0);
   const lastDuplicateTimeRef = React.useRef(0);
   const DEBOUNCE_MS = 50; // Prevent calls within 50ms of each other
 
@@ -863,25 +862,6 @@ export const App: React.FC = () => {
     const center = getViewportCenter();
     unifiedClipboard.paste(center);
   }, [unifiedClipboard, getViewportCenter]);
-
-  // Unified cut handler
-  const handleUnifiedCut = React.useCallback(() => {
-    const now = Date.now();
-    if (now - lastCutTimeRef.current < DEBOUNCE_MS) return;
-    lastCutTimeRef.current = now;
-    // First copy
-    const success = unifiedClipboard.copy();
-    if (success && cyInstance) {
-      // Delete selected graph elements
-      cyInstance.elements(':selected').remove();
-      // Delete selected groups
-      groups.selectedGroupIds.forEach(id => deleteGroupWithUndo(id));
-      groups.clearGroupSelection();
-      // Delete selected annotations
-      freeTextAnnotations.deleteSelectedAnnotations();
-      freeShapeAnnotations.deleteSelectedAnnotations();
-    }
-  }, [unifiedClipboard, cyInstance, groups, deleteGroupWithUndo, freeTextAnnotations, freeShapeAnnotations]);
 
   // Unified duplicate handler
   const handleUnifiedDuplicate = React.useCallback(() => {
@@ -955,14 +935,12 @@ export const App: React.FC = () => {
     // Graph clipboard handlers - unified (handles everything, debounced)
     onCopy: handleUnifiedCopy,
     onPaste: handleUnifiedPaste,
-    onCut: handleUnifiedCut,
     onDuplicate: handleUnifiedDuplicate,
     // Selected annotation IDs includes groups and annotations
     selectedAnnotationIds: combinedSelectedAnnotationIds,
     // Annotation clipboard handlers - same unified handlers (debounced)
     onCopyAnnotations: handleUnifiedCopy,
     onPasteAnnotations: handleUnifiedPaste,
-    onCutAnnotations: handleUnifiedCut,
     onDuplicateAnnotations: handleUnifiedDuplicate,
     onDeleteAnnotations: handleUnifiedDelete,
     onClearAnnotationSelection: handleClearAllSelection,

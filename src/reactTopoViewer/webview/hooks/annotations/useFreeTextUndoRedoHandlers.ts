@@ -20,7 +20,6 @@ export interface UseFreeTextUndoRedoHandlersReturn {
   saveAnnotationWithUndo: (annotation: FreeTextAnnotation, isNew: boolean) => void;
   deleteAnnotationWithUndo: (id: string) => void;
   deleteSelectedWithUndo: () => void;
-  cutSelectedWithUndo: () => void;
 }
 
 /** Type for the subset of annotation API needed by undo handlers */
@@ -30,7 +29,6 @@ interface FreeTextAnnotationApi {
   deleteAnnotation: (id: string) => void;
   getSelectedAnnotations: () => FreeTextAnnotation[];
   deleteSelectedAnnotations: () => void;
-  cutSelectedAnnotations: () => void;
 }
 
 function cloneAnnotation(annotation: FreeTextAnnotation | undefined): FreeTextAnnotation | null {
@@ -138,15 +136,9 @@ export function useFreeTextUndoRedoHandlers(
     freeTextAnnotations.deleteSelectedAnnotations();
   }, [freeTextAnnotations, undoRedo, isApplyingAnnotationUndoRedo]);
 
-  const cutSelectedWithUndo = React.useCallback(() => {
-    recordDeleteSelected(undoRedo, freeTextAnnotations, isApplyingAnnotationUndoRedo);
-    freeTextAnnotations.cutSelectedAnnotations();
-  }, [freeTextAnnotations, undoRedo, isApplyingAnnotationUndoRedo]);
-
   return {
     saveAnnotationWithUndo,
     deleteAnnotationWithUndo,
-    deleteSelectedWithUndo,
-    cutSelectedWithUndo
+    deleteSelectedWithUndo
   };
 }

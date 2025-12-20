@@ -84,7 +84,6 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
           <ShortcutRow label="Select all" shortcut="Ctrl + A" />
           <ShortcutRow label="Copy selected" shortcut="Ctrl + C" />
           <ShortcutRow label="Paste" shortcut="Ctrl + V" />
-          <ShortcutRow label="Cut selected" shortcut="Ctrl + X" />
           <ShortcutRow label="Duplicate selected" shortcut="Ctrl + D" />
           <ShortcutRow label="Undo" shortcut="Ctrl + Z" />
           <ShortcutRow label="Redo" shortcut="Ctrl + Y" />

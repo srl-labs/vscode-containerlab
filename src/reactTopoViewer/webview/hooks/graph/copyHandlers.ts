@@ -6,10 +6,8 @@ import type { Core } from 'cytoscape';
 import { sendCommandToExtension } from '../../utils/extensionMessaging';
 import {
   CopyData,
-  GraphChangeEntry,
   collectCopyData,
-  executeCopy,
-  executeCut
+  executeCopy
 } from './copyPasteUtils';
 
 /**
@@ -18,7 +16,6 @@ import {
 export interface CopyPasteHandlers {
   handleCopy: () => void;
   handlePaste: () => void;
-  handleCut: () => void;
   handleDuplicate: () => void;
 }
 
@@ -48,24 +45,6 @@ export function createPasteHandler(
   return () => {
     if (!cy || mode !== 'edit' || isLocked) return;
     sendCommandToExtension('getCopiedElements');
-  };
-}
-
-/**
- * Creates the cut handler
- */
-export function createCutHandler(
-  cy: Core | null,
-  mode: 'edit' | 'view',
-  isLocked: boolean,
-  recordGraphChanges: ((before: GraphChangeEntry[], after: GraphChangeEntry[]) => void) | undefined,
-  resetPasteState: () => void
-): () => void {
-  return () => {
-    if (!cy || mode !== 'edit' || isLocked) return;
-    if (executeCut(cy, recordGraphChanges)) {
-      resetPasteState();
-    }
   };
 }
 

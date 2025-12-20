@@ -114,7 +114,6 @@ export interface UseFreeShapeActionsReturn {
   boxSelectAnnotations: (ids: string[]) => void;
   copySelectedAnnotations: () => void;
   pasteAnnotations: () => void;
-  cutSelectedAnnotations: () => void;
   duplicateSelectedAnnotations: () => void;
   hasClipboardContent: () => boolean;
 }
@@ -394,30 +393,6 @@ function usePasteAnnotations(
   }, [clipboardRef, pasteCounterRef, setAnnotations, saveAnnotationsImmediate, setSelectedAnnotationIds]);
 }
 
-function useCutAnnotations(
-  annotations: FreeShapeAnnotation[],
-  setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
-  selectedAnnotationIds: Set<string>,
-  setSelectedAnnotationIds: React.Dispatch<React.SetStateAction<Set<string>>>,
-  clipboardRef: React.RefObject<FreeShapeAnnotation[]>,
-  pasteCounterRef: React.RefObject<number>,
-  saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
-) {
-  return useCallback(() => {
-    const selected = getSelected(annotations, selectedAnnotationIds);
-    if (selected.length === 0) return;
-    clipboardRef.current = selected;
-    pasteCounterRef.current = 0;
-    setAnnotations(prev => {
-      const updated = prev.filter(a => !selectedAnnotationIds.has(a.id));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    setSelectedAnnotationIds(new Set());
-    log.info(`[FreeShape] Cut ${selected.length} annotations`);
-  }, [annotations, selectedAnnotationIds, clipboardRef, pasteCounterRef, setAnnotations, saveAnnotationsToExtension, setSelectedAnnotationIds]);
-}
-
 function useDuplicateAnnotations(
   annotations: FreeShapeAnnotation[],
   setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
@@ -455,14 +430,12 @@ function useAnnotationCopyPaste(
 ) {
   const copySelectedAnnotations = useCopyAnnotations(annotations, selectedAnnotationIds, clipboardRef, pasteCounterRef);
   const pasteAnnotations = usePasteAnnotations(setAnnotations, setSelectedAnnotationIds, clipboardRef, pasteCounterRef, saveAnnotationsImmediate);
-  const cutSelectedAnnotations = useCutAnnotations(annotations, setAnnotations, selectedAnnotationIds, setSelectedAnnotationIds, clipboardRef, pasteCounterRef, saveAnnotationsToExtension);
   const duplicateSelectedAnnotations = useDuplicateAnnotations(annotations, setAnnotations, selectedAnnotationIds, setSelectedAnnotationIds, saveAnnotationsToExtension);
   const hasClipboardContent = useHasClipboardContent(clipboardRef);
 
   return {
     copySelectedAnnotations,
     pasteAnnotations,
-    cutSelectedAnnotations,
     duplicateSelectedAnnotations,
     hasClipboardContent
   };
