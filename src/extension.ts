@@ -30,9 +30,6 @@ import {
   setHideNonOwnedLabsState,
 } from './globals';
 import { refreshSshxSessions, refreshGottySessions } from './services/sessionRefresh';
-
-// Note: Most globals are now in ./globals.ts - import from there instead of extension.ts
-
 import { WelcomePage } from './welcomePage';
 import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
 import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';

@@ -13,20 +13,6 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { JSDOM } from 'jsdom';
-
-// Setup jsdom for React Testing Library
-const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-  url: 'http://localhost',
-  pretendToBeVisual: true
-});
-
-// Use Object.defineProperty for properties that may have getters
-Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
-Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
-Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true, configurable: true });
-Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
-Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
-
 import { renderHook, act } from '@testing-library/react';
 
 import { useGraphUndoRedoHandlers } from '../../../../../src/reactTopoViewer/webview/hooks/state/useGraphUndoRedoHandlers';
@@ -46,6 +32,19 @@ import {
   clone
 } from '../../helpers/undoRedo-fixtures';
 import type { CyElement } from '../../../../../src/reactTopoViewer/shared/types/topology';
+
+// Setup jsdom for React Testing Library
+const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+  url: 'http://localhost',
+  pretendToBeVisual: true
+});
+
+// Use Object.defineProperty for properties that may have getters
+Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
+Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
+Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true, configurable: true });
+Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
 
 describe('useGraphUndoRedoHandlers', () => {
   let mockMenuHandlers: { handleDeleteNode: sinon.SinonStub; handleDeleteLink: sinon.SinonStub };

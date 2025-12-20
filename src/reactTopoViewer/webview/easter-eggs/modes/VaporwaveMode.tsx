@@ -452,12 +452,14 @@ function useVaporwaveNodeGlow(
   useEffect(() => {
     if (!isActive || !cyInstance) return undefined;
 
+    // Capture ref value at effect run time for cleanup
+    const styles = originalStylesRef.current;
     const nodes = cyInstance.nodes();
 
     // Store original styles
     nodes.forEach(node => {
       const id = node.id();
-      originalStylesRef.current.set(id, {
+      styles.set(id, {
         'background-color': node.style('background-color'),
         'border-color': node.style('border-color'),
         'border-width': node.style('border-width'),
@@ -482,8 +484,8 @@ function useVaporwaveNodeGlow(
 
     return () => {
       window.cancelAnimationFrame(animationRef.current);
-      cy.batch(() => restoreNodeStyles(cy, originalStylesRef.current));
-      originalStylesRef.current.clear();
+      cy.batch(() => restoreNodeStyles(cy, styles));
+      styles.clear();
     };
   }, [isActive, cyInstance, getCurrentSection]);
 }

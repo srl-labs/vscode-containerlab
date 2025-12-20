@@ -3,12 +3,12 @@
  */
 import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode, useMemo } from 'react';
 
+import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
 import { CyElement } from '../../shared/types/messages';
 import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
 
 // Re-export custom node types from shared for backward compatibility
 export type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
-import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
 
 /**
  * Deployment state type alias

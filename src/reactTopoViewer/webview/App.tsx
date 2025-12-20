@@ -302,13 +302,9 @@ export const App: React.FC = () => {
   }, [
     mapLibreState?.isInitialized,
     layoutControls.isGeoLayout,
-    freeTextAnnotations.annotations,
-    freeTextAnnotations.updateGeoPosition,
-    freeShapeAnnotations.annotations,
-    freeShapeAnnotations.updateGeoPosition,
-    freeShapeAnnotations.updateEndGeoPosition,
-    groups.groups,
-    groups.updateGroupGeoPosition,
+    freeTextAnnotations,
+    freeShapeAnnotations,
+    groups,
     mapLibreState
   ]);
 
@@ -709,7 +705,7 @@ export const App: React.FC = () => {
     // Check if this is a new annotation (editingAnnotation had empty text)
     const isNew = freeTextAnnotations.editingAnnotation?.text === '';
     freeTextUndoHandlers.saveAnnotationWithUndo(annotation, isNew);
-  }, [freeTextAnnotations.editingAnnotation, freeTextUndoHandlers]);
+  }, [freeTextAnnotations, freeTextUndoHandlers]);
 
   // Set up keyboard shortcuts with unified clipboard
   // The unified clipboard handles everything (nodes, groups, annotations) together

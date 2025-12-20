@@ -15,20 +15,6 @@ import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { JSDOM } from 'jsdom';
-
-// Setup jsdom for React Testing Library
-const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-  url: 'http://localhost',
-  pretendToBeVisual: true
-});
-
-// Use Object.defineProperty for properties that may have getters
-Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
-Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
-Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true, configurable: true });
-Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
-Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
-
 import { renderHook, act } from '@testing-library/react';
 
 import { useUndoRedo } from '../../../../../src/reactTopoViewer/webview/hooks/state/useUndoRedo';
@@ -52,6 +38,19 @@ import {
   sampleMembershipAfter,
   clone
 } from '../../helpers/undoRedo-fixtures';
+
+// Setup jsdom for React Testing Library
+const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+  url: 'http://localhost',
+  pretendToBeVisual: true
+});
+
+// Use Object.defineProperty for properties that may have getters
+Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
+Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
+Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true, configurable: true });
+Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
 
 // Constants to avoid duplicate strings
 const GROUP_MOVE_TYPE = 'group-move';
