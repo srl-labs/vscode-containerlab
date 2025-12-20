@@ -1,10 +1,14 @@
 import { test as base, Locator, TestInfo } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { writeFileSync } from 'fs';
+import * as path from 'path';
 
 // Test selectors
 const CANVAS_SELECTOR = '[data-testid="cytoscape-canvas"]';
 const APP_SELECTOR = '[data-testid="topoviewer-app"]';
+
+// Topologies directory path (must match dev server config)
+const TOPOLOGIES_DIR = path.resolve(__dirname, '../../../dev/topologies');
 
 /**
  * Generate a unique session ID for test isolation
@@ -405,30 +409,36 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getAnnotationsFromFile: async (filename: string) => {
-        const response = await page.request.get(withSession(`/api/annotations/${encodeURIComponent(filename)}`));
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to read annotations');
+        // Build full path to annotations file
+        const annotationsPath = path.join(TOPOLOGIES_DIR, `${filename}.annotations.json`);
+        const response = await page.request.get(withSession(`/file/${encodeURIComponent(annotationsPath)}`));
+        if (!response.ok()) {
+          if (response.status() === 404) {
+            // Return empty annotations if file doesn't exist
+            return { nodeAnnotations: [], freeTextAnnotations: [], freeShapeAnnotations: [], groupStyleAnnotations: [] };
+          }
+          throw new Error(`Failed to read annotations: ${response.statusText()}`);
         }
-        return result.data;
+        const text = await response.text();
+        return JSON.parse(text);
       },
 
       getYamlFromFile: async (filename: string) => {
-        const response = await page.request.get(withSession(`/api/topology/${encodeURIComponent(filename)}`));
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to read YAML');
+        // Build full path to YAML file
+        const yamlPath = path.join(TOPOLOGIES_DIR, filename);
+        const response = await page.request.get(withSession(`/file/${encodeURIComponent(yamlPath)}`));
+        if (!response.ok()) {
+          throw new Error(`Failed to read YAML: ${response.statusText()}`);
         }
-        return result.data.content;
+        return response.text();
       },
 
       listTopologyFiles: async () => {
-        const response = await page.request.get(withSession('/api/topologies'));
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to list files');
+        const response = await page.request.get(withSession('/files'));
+        if (!response.ok()) {
+          throw new Error(`Failed to list files: ${response.statusText()}`);
         }
-        return result.data;
+        return response.json();
       },
 
       waitForCanvasReady: async () => {

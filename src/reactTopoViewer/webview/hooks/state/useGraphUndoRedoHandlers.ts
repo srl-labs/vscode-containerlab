@@ -324,18 +324,19 @@ function createNodeCreatedHandler(
     addNode(nodeElement);
     // Create node via TopologyIO service
     const data = nodeElement.data as Record<string, unknown>;
+    const extraData = data.extraData as Record<string, unknown> | undefined;
     const nodeData: NodeSaveData = {
       id: nodeId,
       name: (data.name as string) || nodeId,
       position,
       extraData: {
-        kind: data.kind as string | undefined,
-        image: data.image as string | undefined,
-        group: data.group as string | undefined,
-        topoViewerRole: data.topoViewerRole,
-        iconColor: data.iconColor,
-        iconCornerRadius: data.iconCornerRadius,
-        interfacePattern: data.interfacePattern
+        kind: extraData?.kind as string | undefined,
+        image: extraData?.image as string | undefined,
+        group: extraData?.group as string | undefined,
+        topoViewerRole: extraData?.topoViewerRole ?? data.topoViewerRole,
+        iconColor: extraData?.iconColor ?? data.iconColor,
+        iconCornerRadius: extraData?.iconCornerRadius ?? data.iconCornerRadius,
+        interfacePattern: extraData?.interfacePattern ?? data.interfacePattern
       }
     };
     createNode(nodeData);

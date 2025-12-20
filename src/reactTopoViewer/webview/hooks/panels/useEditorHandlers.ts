@@ -10,6 +10,7 @@ import type { NetworkEditorData } from '../../components/panels/network-editor';
 import type { CustomNodeTemplate } from '../../context/TopoViewerContext';
 import type { FloatingActionPanelHandle } from '../../components/panels/FloatingActionPanel';
 import type { MembershipEntry } from '../state/useUndoRedo';
+import type { CytoscapeCanvasRef } from '../../components/canvas';
 
 /** Pending membership change during node drag */
 export interface PendingMembershipChange {
@@ -17,7 +18,7 @@ export interface PendingMembershipChange {
   oldGroupId: string | null;
   newGroupId: string | null;
 }
-import { convertEditorDataToNodeSaveData } from '../../../shared/utilities/nodeEditorConversions';
+import { convertEditorDataToNodeSaveData, convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
 import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversions';
 import { editNode as editNodeService, editLink as editLinkService, isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
 
@@ -49,12 +50,46 @@ type Position = { x: number; y: number };
 // ============================================================================
 
 /**
+ * Update Cytoscape node data after editor changes
+ */
+function updateCytoscapeNodeData(
+  cy: import('cytoscape').Core | null,
+  nodeId: string,
+  data: NodeEditorData
+): void {
+  if (!cy) return;
+
+  const node = cy.getElementById(nodeId);
+  if (!node || node.empty()) return;
+
+  // Convert editor data to YAML format (kebab-case keys) and merge with existing
+  const existingExtraData = node.data('extraData') || {};
+  const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
+  const newExtraData = {
+    ...existingExtraData,
+    ...yamlExtraData,
+  };
+
+  // Update the node data
+  node.data('name', data.name);
+  node.data('topoViewerRole', data.icon);
+  node.data('iconColor', data.iconColor);
+  node.data('iconCornerRadius', data.iconCornerRadius);
+  node.data('extraData', newExtraData);
+}
+
+/** Callback to rename a node in the graph state */
+type RenameNodeCallback = (oldId: string, newId: string) => void;
+
+/**
  * Hook for node editor handlers with undo/redo support
  */
 export function useNodeEditorHandlers(
   editNode: (id: string | null) => void,
   editingNodeData: NodeEditorData | null,
-  recordPropertyEdit?: (action: PropertyEditAction) => void
+  recordPropertyEdit?: (action: PropertyEditAction) => void,
+  cyRef?: React.RefObject<CytoscapeCanvasRef | null>,
+  renameNode?: RenameNodeCallback
 ) {
   const initialDataRef = React.useRef<NodeEditorData | null>(null);
 
@@ -83,9 +118,21 @@ export function useNodeEditorHandlers(
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
     editNodeService(saveData);
+
+    // Handle rename: update graph state via dispatch
+    if (oldName && renameNode) {
+      renameNode(oldName, data.name);
+    } else {
+      // Just update Cytoscape node data (no ID change)
+      const cy = cyRef?.current?.getCy();
+      if (cy) {
+        updateCytoscapeNodeData(cy, data.id, data);
+      }
+    }
+
     initialDataRef.current = null;
     editNode(null);
-  }, [editNode, recordPropertyEdit]);
+  }, [editNode, recordPropertyEdit, cyRef, renameNode]);
 
   const handleApply = React.useCallback((data: NodeEditorData) => {
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
@@ -104,7 +151,18 @@ export function useNodeEditorHandlers(
     }
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
     editNodeService(saveData);
-  }, [recordPropertyEdit]);
+
+    // Handle rename: update graph state via dispatch
+    if (oldName && renameNode) {
+      renameNode(oldName, data.name);
+    } else {
+      // Just update Cytoscape node data (no ID change)
+      const cy = cyRef?.current?.getCy();
+      if (cy) {
+        updateCytoscapeNodeData(cy, data.id, data);
+      }
+    }
+  }, [recordPropertyEdit, cyRef, renameNode]);
 
   return { handleClose, handleSave, handleApply };
 }

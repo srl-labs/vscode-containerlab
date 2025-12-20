@@ -130,7 +130,12 @@ function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view')
 }
 
 export const App: React.FC = () => {
-  const { state, initLoading, error, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate, toggleLock } = useTopoViewer();
+  const { state, dispatch, initLoading, error, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate, toggleLock } = useTopoViewer();
+
+  // Callback to rename a node in the graph (for node editor)
+  const renameNodeInGraph = React.useCallback((oldId: string, newId: string) => {
+    dispatch({ type: 'RENAME_NODE', payload: { oldId, newId } });
+  }, [dispatch]);
 
   // Cytoscape instance management
   const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
@@ -386,7 +391,7 @@ export const App: React.FC = () => {
   });
 
   // Editor handlers with undo/redo support
-  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit);
+  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph);
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
   const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData);
 
