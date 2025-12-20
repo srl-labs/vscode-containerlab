@@ -1,29 +1,24 @@
+/**
+ * Commands barrel file - groups related commands into sub-modules
+ */
+
+// Base command class
 export * from "./command";
-export * from "./deploy";
-export * from "./destroy";
-export * from "./redeploy";
-export * from "./save";
-export * from "./openLabFile";
-export * from "./nodeActions";
-export * from "./nodeExec";
-export * from "./ssh";
-export * from "./nodeImpairments";
-export * from "./showLogs";
-export * from "./graph";
-export * from "./copy";
-export * from "./addToWorkspace";
-export * from "./openFolderInNewWindow";
-export * from "./inspect";
-export * from "./capture";
-export * from "./impairments";
-export * from "./edgeshark";
-export * from "./openBrowser";
-export * from "./favorite";
-export * from "./deleteLab";
-export * from "./cloneRepo";
-export * from "./deployPopular";
-export * from "./clonePopularRepo";
-export * from "./openLink";
-export * from "./sshxShare";
-export * from "./gottyShare";
-export * from "./fcli";
+
+// Lifecycle commands (deploy, destroy, redeploy, save)
+export * from "./lifecycle";
+
+// Node-related commands
+export * from "./node";
+
+// Session sharing commands (sshx, gotty)
+export * from "./sharing";
+
+// Network and interface commands
+export * from "./network";
+
+// Workspace and file management commands
+export * from "./workspace";
+
+// External tool and repo commands
+export * from "./external";

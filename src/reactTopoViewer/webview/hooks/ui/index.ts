@@ -1,66 +1,19 @@
 /**
  * UI interaction hooks
+ * Grouped into sub-modules to reduce dependencies
  */
 
-export { useContextMenu } from './useContextMenu';
-export type { ContextMenuOptions, ContextMenuState, UseContextMenuReturn } from './useContextMenu';
+// Menu and context menu hooks
+export * from './menus';
 
-export { useKeyboardShortcuts } from './useKeyboardShortcuts';
+// Command hooks
+export * from './commands';
 
-export { useShortcutDisplay } from './useShortcutDisplay';
+// Panel hooks
+export * from './panels';
 
-export { useCustomNodeCommands } from './useCustomNodeCommands';
-export type { CustomNodeCommands } from './useCustomNodeCommands';
+// Dropdown hooks
+export * from './dropdowns';
 
-export { useNavbarCommands } from './useNavbarCommands';
-export type { NavbarCommands } from './useNavbarCommands';
-
-export { usePanelVisibility } from './usePanelVisibility';
-export type { PanelVisibility } from './usePanelVisibility';
-
-export {
-  useDeploymentCommands,
-  useEditorPanelCommands,
-  useFloatingPanelCommands
-} from './usePanelCommands';
-export type {
-  DeploymentCommands,
-  EditorPanelCommands,
-  FloatingPanelCommands
-} from './usePanelCommands';
-
-export { useAppHandlers } from './useAppHandlers';
-export type { PendingMembershipChange } from './useAppHandlers';
-
-export { useClickOutside } from './useClickOutside';
-
-export { useDropdownKeyboard } from './useDropdownKeyboard';
-export type { DropdownKeyboardActions, DropdownKeyboardState } from './useDropdownKeyboard';
-
-export { useFilterableDropdown } from './useFilterableDropdown';
-export type { FilterableDropdownOption, UseFilterableDropdownReturn } from './useFilterableDropdown';
-
-// Panel drag hooks (consolidated)
-export {
-  usePanelDrag,
-  useDrawerSide,
-  useShakeAnimation,
-  buildLockButtonClass,
-  savePanelState,
-  PANEL_STORAGE_KEY
-} from './usePanelDrag';
-export type { Position, UsePanelDragOptions, UsePanelDragReturn } from './usePanelDrag';
-
-// Dropdown state hooks
-export { useDropdownState, useFloatingDropdownKeyboard, useFocusOnOpen } from './useDropdownState';
-
-// Simple dropdown hook
-export { useDropdown } from './useDropdown';
-export type { UseDropdownReturn } from './useDropdown';
-
-// Escape key hook
-export { useEscapeKey } from './useEscapeKey';
-
-// Delayed hover hook
-export { useDelayedHover } from './useDelayedHover';
-export type { UseDelayedHoverReturn } from './useDelayedHover';
+// General interaction hooks
+export * from './interaction';

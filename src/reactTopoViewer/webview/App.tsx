@@ -3,102 +3,42 @@
  */
 import React from 'react';
 
-import { convertToEditorData } from '../shared/utilities/nodeEditorConversions';
-import { convertToNetworkEditorData } from '../shared/utilities/networkEditorConversions';
+import { convertToEditorData, convertToNetworkEditorData } from '../shared/utilities';
 
 import { useTopoViewer } from './context/TopoViewerContext';
 import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
-import { NodeInfoPanel } from './components/panels/NodeInfoPanel';
-import { LinkInfoPanel } from './components/panels/LinkInfoPanel';
-import { NodeEditorPanel } from './components/panels/node-editor';
-import { NetworkEditorPanel } from './components/panels/network-editor';
-import { LinkEditorPanel } from './components/panels/link-editor';
-import type { FloatingActionPanelHandle } from './components/panels/floatingPanel';
-import { FloatingActionPanel } from './components/panels/floatingPanel';
-import { ShortcutsPanel } from './components/panels/ShortcutsPanel';
-import { AboutPanel } from './components/panels/AboutPanel';
-import { BulkLinkPanel } from './components/panels/bulk-link';
-import { FindNodePanel } from './components/panels/FindNodePanel';
-import { SvgExportPanel } from './components/panels/SvgExportPanel';
-import { LabSettingsPanel } from './components/panels/lab-settings';
 import { ShortcutDisplay } from './components/ShortcutDisplay';
 import { FreeTextLayer, FreeShapeLayer, GroupLayer } from './components/annotations';
+import { ContextMenu } from './components/context-menu/ContextMenu';
 import {
-  NightcallMode,
-  StickerbushMode,
-  AquaticAmbienceMode,
-  VaporwaveMode,
-  DeusExMode,
-  useEasterEgg
+  NodeInfoPanel, LinkInfoPanel, NodeEditorPanel, NetworkEditorPanel, LinkEditorPanel,
+  FloatingActionPanel, ShortcutsPanel, AboutPanel, BulkLinkPanel, FindNodePanel,
+  SvgExportPanel, LabSettingsPanel, FreeTextEditorPanel, FreeShapeEditorPanel,
+  GroupEditorPanel, type FloatingActionPanelHandle
+} from './components/panels';
+import {
+  NightcallMode, StickerbushMode, AquaticAmbienceMode, VaporwaveMode, DeusExMode, useEasterEgg
 } from './easter-eggs';
 import {
-  assignMissingGeoCoordinatesToAnnotations,
-  assignMissingGeoCoordinatesToShapeAnnotations
-} from './hooks/canvas/maplibreUtils';
-import { ContextMenu } from './components/context-menu/ContextMenu';
-import { FreeTextEditorPanel } from './components/panels/free-text-editor';
-import { FreeShapeEditorPanel } from './components/panels/free-shape-editor';
-import { GroupEditorPanel } from './components/panels/group-editor';
-import {
-  // Graph hooks
-  useContextMenu,
-  useNodeDragging,
-  useEdgeCreation,
-  useNodeCreation,
-  useNetworkCreation,
-  // State hooks
-  useGraphUndoRedoHandlers,
-  useCustomTemplateEditor,
-  // Annotation hooks
-  useAppFreeTextAnnotations,
-  useAppFreeShapeAnnotations,
-  useFreeShapeAnnotationApplier,
-  useFreeShapeUndoRedoHandlers,
-  useFreeTextAnnotationApplier,
-  useFreeTextUndoRedoHandlers,
-  useAnnotationEffects,
-  useAddShapesHandler,
-  // Group hooks
-  useAppGroups,
-  useCombinedAnnotationApplier,
-  useAppGroupUndoHandlers,
-  useGroupDragUndo,
-  useGroupLayer,
-  useShapeLayer,
-  useNodeReparent,
-  useGroupUndoRedoHandlers,
-  generateGroupId,
-  // UI hooks
-  useKeyboardShortcuts,
-  useShortcutDisplay,
-  useCustomNodeCommands,
-  useAppHandlers,
-  // App state hooks
-  useCytoscapeInstance,
-  useSelectionData,
-  useNavbarActions,
-  useContextMenuHandlers,
-  useLayoutControls,
-  useNavbarCommands,
-  usePanelVisibility,
-  useFloatingPanelCommands,
-  // Canvas hooks
-  useLinkLabelVisibility,
-  useGeoMap
+  useContextMenu, useNodeDragging, useEdgeCreation, useNodeCreation, useNetworkCreation,
+  useGraphUndoRedoHandlers, useCustomTemplateEditor,
+  useAppFreeTextAnnotations, useAppFreeShapeAnnotations, useFreeShapeAnnotationApplier,
+  useFreeShapeUndoRedoHandlers, useFreeTextAnnotationApplier, useFreeTextUndoRedoHandlers,
+  useAnnotationEffects, useAddShapesHandler,
+  useAppGroups, useCombinedAnnotationApplier, useAppGroupUndoHandlers, useGroupDragUndo,
+  useGroupLayer, useShapeLayer, useNodeReparent, useGroupUndoRedoHandlers, generateGroupId,
+  useKeyboardShortcuts, useShortcutDisplay, useCustomNodeCommands, useAppHandlers,
+  useCytoscapeInstance, useSelectionData, useNavbarActions, useContextMenuHandlers,
+  useLayoutControls, useNavbarCommands, usePanelVisibility, useFloatingPanelCommands,
+  useLinkLabelVisibility, useGeoMap, useUnifiedClipboard,
+  assignMissingGeoCoordinatesToAnnotations, assignMissingGeoCoordinatesToShapeAnnotations,
+  useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers,
+  useNodeCreationHandlers, useMembershipCallbacks,
+  type GraphChangeEntry, type PendingMembershipChange, type NetworkType, type NodeCreationState
 } from './hooks';
-import { useUnifiedClipboard } from './hooks/clipboard';
-import type { GraphChangeEntry, PendingMembershipChange, NetworkType } from './hooks';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from './services';
-import {
-  useNodeEditorHandlers,
-  useLinkEditorHandlers,
-  useNetworkEditorHandlers,
-  useNodeCreationHandlers,
-  useMembershipCallbacks,
-  type NodeCreationState
-} from './hooks/panels/useEditorHandlers';
 
 /**
  * Loading state component

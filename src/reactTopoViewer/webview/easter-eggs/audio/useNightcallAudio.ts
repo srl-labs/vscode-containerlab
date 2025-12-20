@@ -389,7 +389,7 @@ async function renderLoop(): Promise<AudioBuffer> {
 }
 
 export interface UseNightcallAudioReturn {
-  play: () => void;
+  play: () => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;

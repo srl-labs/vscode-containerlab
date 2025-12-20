@@ -16,7 +16,7 @@ import {
   DEFAULT_ARROW_SIZE,
   DEFAULT_CORNER_RADIUS
 } from '../../../hooks/annotations/freeShapeHelpers';
-import { buildShapeSvg } from '../../annotations/freeShapeLayerHelpers';
+import { buildShapeSvg } from '../../annotations/FreeShapeLayerHelpers';
 import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from '../../shared/form';
 
 interface Props {

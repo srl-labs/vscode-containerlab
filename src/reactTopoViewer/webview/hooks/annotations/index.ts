@@ -1,24 +1,16 @@
 /**
  * Annotation hooks for React TopoViewer
+ * Grouped into sub-modules to reduce dependencies
  */
-export * from './useFreeTextAnnotations';
-export * from './freeTextTypes';
-export * from './freeTextHelpers';
-export * from './useFreeTextState';
-export * from './useAppFreeTextAnnotations';
-export { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
-export { useAppFreeShapeAnnotations } from './useAppFreeShapeAnnotations';
-export { useFreeShapeUndoRedoHandlers, useFreeShapeAnnotationApplier } from './useFreeShapeUndoRedoHandlers';
-export { useFreeTextUndoRedoHandlers, useFreeTextAnnotationApplier } from './useFreeTextUndoRedoHandlers';
-export { useCombinedAnnotationShortcuts } from './useCombinedAnnotationShortcuts';
-export * from './useAnnotationGroupMove';
-export * from './useAnnotationBackgroundClear';
-export * from './useAddShapesHandler';
-export * from './useAnnotationEffects';
-export * from './freeTextLayerHelpers';
-export * from './useAnnotationDrag';
-export * from './useAnnotationHandles';
-export * from './useLineResize';
-export * from './useAnnotationSelection';
-export * from './useAnnotationInteractions';
-export * from './useShapeLayer';
+
+// Free text annotation hooks and utilities
+export * from './freeText';
+
+// Free shape annotation hooks and utilities
+export * from './freeShape';
+
+// Annotation interaction hooks
+export * from './interaction';
+
+// Common annotation hooks and utilities
+export * from './common';

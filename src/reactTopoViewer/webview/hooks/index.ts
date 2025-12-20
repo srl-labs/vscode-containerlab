@@ -26,6 +26,9 @@ export * from './panels';
 // Canvas (Cytoscape)
 export * from './canvas';
 
+// Clipboard
+export * from './clipboard';
+
 // Root-level hooks
 export {
   useCytoscapeInstance,

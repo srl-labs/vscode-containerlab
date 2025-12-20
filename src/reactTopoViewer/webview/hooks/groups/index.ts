@@ -1,23 +1,16 @@
 /**
- * Group management hooks for React TopoViewer.
+ * Group management hooks for React TopoViewer
+ * Grouped into sub-modules to reduce dependencies
  */
 
-export * from './groupTypes';
-export * from './groupHelpers';
-export * from './hierarchyUtils';
-export * from './useGroupState';
-export * from './useGroups';
-export * from './useGroupHierarchy';
-export * from './useGroupClipboard';
-export * from './useAppGroups';
-export * from './useGroupUndoRedoHandlers';
-export * from './useGroupAnnotationApplier';
-export * from './useAppGroupHandlers';
-export * from './useCombinedAnnotationApplier';
-export * from './useNodeReparent';
-export * from './useGroupLayer';
-export * from './useGroupDragUndo';
-export * from './useGroupDrag';
-export * from './useGroupResize';
-export * from './useGroupHandlers';
-export * from './useDragPositionOverrides';
+// Core group hooks and types
+export * from './core';
+
+// Group undo/redo hooks
+export * from './undoRedo';
+
+// Group interaction hooks
+export * from './interaction';
+
+// App-level group hooks
+export * from './app';

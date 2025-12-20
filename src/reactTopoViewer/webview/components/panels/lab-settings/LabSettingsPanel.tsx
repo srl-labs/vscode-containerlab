@@ -44,7 +44,7 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
       storageKey="labSettings"
       zIndex={21}
       footer={!isViewMode}
-      onPrimaryClick={state.handleSave}
+      onPrimaryClick={() => void state.handleSave()}
       primaryLabel="Save"
       onSecondaryClick={onClose}
       secondaryLabel="Close"

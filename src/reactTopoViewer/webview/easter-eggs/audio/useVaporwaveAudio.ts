@@ -276,7 +276,7 @@ async function renderLoop(): Promise<AudioBuffer> {
 }
 
 export interface UseVaporwaveAudioReturn {
-  play: () => void;
+  play: () => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;

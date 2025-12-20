@@ -21,7 +21,7 @@ import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
 import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
 import { projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
 
-import { buildShapeSvg } from './freeShapeLayerHelpers';
+import { buildShapeSvg } from './FreeShapeLayerHelpers';
 import {
   HANDLE_SIZE,
   HANDLE_BORDER,

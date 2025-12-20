@@ -3,7 +3,7 @@
  * Extracted from App.tsx to reduce file size.
  */
 import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import type { Core as CyCore, Core as CytoscapeCore } from 'cytoscape';
 
 import type { NodeEditorData } from '../../components/panels/node-editor/types';
 import type { LinkEditorData } from '../../components/panels/link-editor/types';
@@ -54,7 +54,7 @@ type Position = { x: number; y: number };
  * Update Cytoscape node data after editor changes
  */
 function updateCytoscapeNodeData(
-  cy: import('cytoscape').Core | null,
+  cy: CytoscapeCore | null,
   nodeId: string,
   data: NodeEditorData
 ): void {

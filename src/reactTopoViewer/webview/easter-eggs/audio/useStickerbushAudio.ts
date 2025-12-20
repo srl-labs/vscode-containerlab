@@ -386,7 +386,7 @@ async function renderAudio(): Promise<AudioBuffer> {
 }
 
 export interface UseStickerbushAudioReturn {
-  play: () => void;
+  play: () => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;

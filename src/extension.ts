@@ -7,8 +7,6 @@ import Docker from 'dockerode';
 
 import * as cmd from "./commands";
 import * as utils from "./utils";
-import * as ins from "./treeView/inspector"
-import type * as c from './treeView/common';
 import {
   outputChannel,
   containerlabBinaryPath,
@@ -29,15 +27,19 @@ import {
   setHelpTreeView,
   setHideNonOwnedLabsState,
 } from './globals';
-import { refreshSshxSessions, refreshGottySessions } from './services/sessionRefresh';
 import { WelcomePage } from './welcomePage';
-import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
-import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
-import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 import { registerClabImageCompletion } from './yaml/imageCompletion';
-import { onDataChanged as onEventsDataChanged, onContainerStateChanged } from "./services/containerlabEvents";
-import { onDataChanged as onFallbackDataChanged, stopPolling as stopFallbackPolling } from "./services/containerlabInspectFallback";
-import { isPollingMode } from "./treeView/inspector";
+import * as ins from "./treeView/inspector";
+import type * as c from './treeView/common';
+import { LocalLabTreeDataProvider, RunningLabTreeDataProvider, HelpFeedbackProvider, isPollingMode } from './treeView';
+import {
+  refreshSshxSessions,
+  refreshGottySessions,
+  onEventsDataChanged,
+  onContainerStateChanged,
+  onFallbackDataChanged,
+  stopFallbackPolling
+} from "./services";
 
 function registerUnsupportedViews(context: vscode.ExtensionContext) {
   let warningShown = false;

@@ -363,7 +363,7 @@ async function renderAudio(): Promise<AudioBuffer> {
 }
 
 export interface UseAquaticAmbienceAudioReturn {
-  play: () => void;
+  play: () => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
   isLoading: boolean;

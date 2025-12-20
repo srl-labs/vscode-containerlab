@@ -14,10 +14,12 @@ export type {
   TopologyAnnotations,
 } from '../types/topology';
 
+import type { TopologyAnnotations } from '../types/topology';
+
 /**
  * Default empty annotations object.
  */
-export function createEmptyAnnotations(): import('../types/topology').TopologyAnnotations {
+export function createEmptyAnnotations(): TopologyAnnotations {
   return {
     freeTextAnnotations: [],
     freeShapeAnnotations: [],
