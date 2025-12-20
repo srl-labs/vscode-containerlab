@@ -199,7 +199,7 @@ export class ReactTopoViewer {
 
     const config: PanelConfig = {
       viewType: this.viewType,
-      title: `TopoViewer (React): ${labName}`,
+      title: labName,
       column: column || vscode.ViewColumn.One,
       extensionUri: context.extensionUri
     };

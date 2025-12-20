@@ -48,33 +48,43 @@ function getTabsForNode(kind: string | undefined): TabDefinition[] {
 function useNodeEditorForm(nodeData: NodeEditorData | null) {
   const [activeTab, setActiveTab] = useState<NodeEditorTabId>('basic');
   const [formData, setFormData] = useState<NodeEditorData | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
+  // For tracking unsaved changes (reset after Apply)
+  const [lastAppliedData, setLastAppliedData] = useState<NodeEditorData | null>(null);
+  // For tracking inheritance - original values when node was first loaded (never reset during session)
+  const [originalData, setOriginalData] = useState<NodeEditorData | null>(null);
+  const [loadedNodeId, setLoadedNodeId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (nodeData) {
+    // Only reset form when loading a different node (by id)
+    if (nodeData && nodeData.id !== loadedNodeId) {
       setFormData({ ...nodeData });
-      setInitialData(JSON.stringify(nodeData));
+      setLastAppliedData({ ...nodeData });
+      setOriginalData({ ...nodeData });
+      setLoadedNodeId(nodeData.id);
       setActiveTab('basic');
+    } else if (!nodeData && loadedNodeId) {
+      // Panel closed - reset loadedNodeId so reopening same node reloads data
+      setLoadedNodeId(null);
     }
-  }, [nodeData]);
+  }, [nodeData, loadedNodeId]);
 
   const handleChange = useCallback((updates: Partial<NodeEditorData>) => {
     setFormData(prev => prev ? { ...prev, ...updates } : null);
   }, []);
 
-  // Reset initial data after apply (to track further changes from the applied state)
-  const resetInitialData = useCallback(() => {
+  // Reset last applied data after apply (to track further changes)
+  const resetAfterApply = useCallback(() => {
     if (formData) {
-      setInitialData(JSON.stringify(formData));
+      setLastAppliedData({ ...formData });
     }
   }, [formData]);
 
-  // Check if form has changes compared to initial state
-  const hasChanges = formData && initialData
-    ? JSON.stringify(formData) !== initialData
+  // Check if form has changes compared to last applied state
+  const hasChanges = formData && lastAppliedData
+    ? JSON.stringify(formData) !== JSON.stringify(lastAppliedData)
     : false;
 
-  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData };
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, originalData };
 }
 
 /**
@@ -112,6 +122,40 @@ function getPanelTitle(formData: NodeEditorData | null): string {
   return 'Create Custom Node Template';
 }
 
+/**
+ * Maps YAML property names to editor field names for value comparison.
+ */
+const YAML_TO_EDITOR_MAP: Record<string, keyof NodeEditorData> = {
+  'startup-config': 'startupConfig',
+  'enforce-startup-config': 'enforceStartupConfig',
+  'suppress-startup-config': 'suppressStartupConfig',
+  'env-files': 'envFiles',
+  'restart-policy': 'restartPolicy',
+  'auto-remove': 'autoRemove',
+  'startup-delay': 'startupDelay',
+  'mgmt-ipv4': 'mgmtIpv4',
+  'mgmt-ipv6': 'mgmtIpv6',
+  'network-mode': 'networkMode',
+  'cpu-set': 'cpuSet',
+  'shm-size': 'shmSize',
+  'cap-add': 'capAdd',
+  'image-pull-policy': 'imagePullPolicy',
+};
+
+/**
+ * Check if a field value has changed from initial
+ */
+function hasFieldChanged(
+  yamlKey: string,
+  formData: NodeEditorData,
+  initialData: NodeEditorData
+): boolean {
+  const editorKey = YAML_TO_EDITOR_MAP[yamlKey] || yamlKey;
+  const currentVal = formData[editorKey as keyof NodeEditorData];
+  const initialVal = initialData[editorKey as keyof NodeEditorData];
+  return JSON.stringify(currentVal) !== JSON.stringify(initialVal);
+}
+
 export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
   isVisible,
   nodeData,
@@ -120,17 +164,24 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
   onApply,
   inheritedProps = []
 }) => {
-  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetInitialData } = useNodeEditorForm(nodeData);
+  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, originalData } = useNodeEditorForm(nodeData);
 
   // Get dynamic tabs based on node kind
   const tabs = useMemo(() => getTabsForNode(formData?.kind), [formData?.kind]);
 
+  // Filter inherited props - only show as inherited if value hasn't changed from ORIGINAL
+  // This ensures badge stays gone after Apply if user changed from inherited value
+  const effectiveInheritedProps = useMemo(() => {
+    if (!formData || !originalData) return inheritedProps;
+    return inheritedProps.filter(prop => !hasFieldChanged(prop, formData, originalData));
+  }, [inheritedProps, formData, originalData]);
+
   const handleApply = useCallback(() => {
     if (formData) {
       onApply(formData);
-      resetInitialData(); // Reset tracking after apply
+      resetAfterApply(); // Reset change tracking after apply (but NOT originalData)
     }
-  }, [formData, onApply, resetInitialData]);
+  }, [formData, onApply, resetAfterApply]);
 
   const handleSave = useCallback(() => {
     if (formData) onSave(formData);
@@ -155,7 +206,7 @@ export const NodeEditorPanel: React.FC<NodeEditorPanelProps> = ({
       hasChanges={hasChanges}
       testId="node-editor"
     >
-      <TabContent activeTab={activeTab} formData={formData} onChange={handleChange} inheritedProps={inheritedProps} />
+      <TabContent activeTab={activeTab} formData={formData} onChange={handleChange} inheritedProps={effectiveInheritedProps} />
     </EditorPanel>
   );
 };

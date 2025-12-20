@@ -154,7 +154,7 @@ async function listTopologyFiles(): Promise<Array<{ filename: string; path: stri
 async function resetFiles(): Promise<void> {
   console.log('%c[Dev] Resetting files...', 'color: #f44336;');
 
-  const url = sessionId ? `/reset?sessionId=${sessionId}` : '/reset';
+  const url = sessionId ? `/api/reset?sessionId=${sessionId}` : '/api/reset';
   const response = await fetch(url, { method: 'POST' });
   const result = await response.json();
 

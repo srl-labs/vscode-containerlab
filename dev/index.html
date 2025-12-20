@@ -426,7 +426,7 @@
       updateFileStatus('Resetting files...');
 
       try {
-        const response = await fetch('/reset', { method: 'POST' });
+        const response = await fetch('/api/reset', { method: 'POST' });
         const result = await response.json();
 
         if (!result.success) {

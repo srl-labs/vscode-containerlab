@@ -179,6 +179,11 @@ export const App: React.FC = () => {
   const { selectedNodeData: editingNetworkRawData } = useSelectionData(cytoscapeRef, state.editingNetwork, null);
   const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge);
   const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
+  const editingNodeInheritedProps = React.useMemo(() => {
+    const extra = editingNodeRawData?.extraData as Record<string, unknown> | undefined;
+    const inherited = extra?.inherited;
+    return Array.isArray(inherited) ? inherited.filter((p): p is string => typeof p === 'string') : [];
+  }, [editingNodeRawData]);
   const editingNetworkData = React.useMemo(() => convertToNetworkEditorData(editingNetworkRawData), [editingNetworkRawData]);
   const editingLinkData = React.useMemo(() => convertToLinkEditorData(editingLinkRawData), [editingLinkRawData]);
 
@@ -864,6 +869,7 @@ export const App: React.FC = () => {
           onClose={nodeEditorHandlers.handleClose}
           onSave={nodeEditorHandlers.handleSave}
           onApply={nodeEditorHandlers.handleApply}
+          inheritedProps={editingNodeInheritedProps}
         />
         <NetworkEditorPanel
           isVisible={!!state.editingNetwork}

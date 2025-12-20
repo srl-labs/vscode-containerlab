@@ -37,12 +37,21 @@ export function createPanel(config: PanelConfig): vscode.WebviewPanel {
     ]
   };
 
-  return vscode.window.createWebviewPanel(
+  const panel = vscode.window.createWebviewPanel(
     config.viewType,
     config.title,
     config.column || vscode.ViewColumn.One,
     options
   );
+
+  // Set icon (same as legacy TopoViewer)
+  panel.iconPath = vscode.Uri.joinPath(
+    config.extensionUri,
+    'resources',
+    'containerlab.png'
+  );
+
+  return panel;
 }
 
 /**
