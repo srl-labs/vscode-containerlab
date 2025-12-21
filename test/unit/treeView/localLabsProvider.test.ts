@@ -31,9 +31,9 @@ const originalResolve = (Module as any)._resolveFilename;
 
 import { LocalLabTreeDataProvider } from '../../../src/treeView/localLabsProvider';
 import * as ins from '../../../src/treeView/inspector';
+import * as globals from '../../../src/globals';
 
 const vscodeStub = require('../../helpers/vscode-stub');
-const extension = require('../../../src/extension');
 
 const LAB_B = '/workspace/b/lab2.clab.yaml';
 const LAB_A = '/workspace/a/lab1.clab.yml';
@@ -76,8 +76,8 @@ describe('LocalLabTreeDataProvider', () => {
     } catch {
       /* ignore cleanup errors */
     }
-    extension.favoriteLabs = new Set();
-    extension.extensionContext = { globalState: { update: sinon.stub().resolves() } } as any;
+    globals.setFavoriteLabs(new Set());
+    globals.setExtensionContext({ globalState: { update: sinon.stub().resolves() } } as any);
     (ins as any).rawInspectData = [];
   });
 
@@ -147,7 +147,7 @@ describe('LocalLabTreeDataProvider', () => {
       vscodeStub.Uri.file(LAB_A),
     ]);
 
-    extension.favoriteLabs.add(LAB_B);
+    globals.favoriteLabs.add(LAB_B);
 
     const provider = new LocalLabTreeDataProvider();
     const nodes = await provider.getChildren(undefined);
@@ -166,7 +166,7 @@ describe('LocalLabTreeDataProvider', () => {
     sinon.stub(vscodeStub.workspace, 'findFiles').resolves([]);
     sinon.stub(require('fs'), 'existsSync').returns(false);
 
-    extension.favoriteLabs.add('/outside/lab.clab.yml');
+    globals.favoriteLabs.add('/outside/lab.clab.yml');
 
     const provider = new LocalLabTreeDataProvider();
     const nodes = await provider.getChildren(undefined);
@@ -175,7 +175,7 @@ describe('LocalLabTreeDataProvider', () => {
     const favNode = nodes![0];
     expect(favNode.label).to.equal('lab.clab.yml');
     expect(favNode.favorite).to.be.true;
-    expect(extension.favoriteLabs.size).to.equal(1);
+    expect(globals.favoriteLabs.size).to.equal(1);
     expect(vscodeStub.commands.executed).to.deep.include({
       command: 'setContext',
       args: ['localLabsEmpty', false],

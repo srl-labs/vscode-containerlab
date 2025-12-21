@@ -35,6 +35,9 @@ describe('refreshSshxSessions', () => {
       if (request.includes('utils') && !request.includes('stub')) {
         return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
       }
+      if (request === 'dockerode') {
+        return path.join(__dirname, '..', '..', 'helpers', 'dockerode-stub.js');
+      }
       return originalResolve.call(this, request, parent, isMain, options);
     };
 

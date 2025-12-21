@@ -1,16 +1,17 @@
 /**
  * Services Module Stub for Testing
  *
- * This stub replaces the services module functions (createNode, editNode, etc.)
- * with stubs that capture calls for test assertions.
+ * This stub initializes the services with a mock adapter and stubs the
+ * underlying TopologyIO methods to track calls for test assertions.
+ *
+ * Note: We stub TopologyIO methods rather than the service wrapper functions
+ * because ES module re-exports don't work well with sinon.stub().
  */
 
 import sinon from 'sinon';
 
 import * as services from '../../../../src/reactTopoViewer/webview/services';
 import type { FileSystemAdapter } from '../../../../src/reactTopoViewer/shared/io/types';
-import type { NodeSaveData } from '../../../../src/reactTopoViewer/shared/io/NodePersistenceIO';
-import type { LinkSaveData } from '../../../../src/reactTopoViewer/shared/io/LinkPersistenceIO';
 
 // Track all service calls for assertions
 export interface ServiceCall {
@@ -74,7 +75,7 @@ let mockAdapter: MockFileSystemAdapter | null = null;
 
 /**
  * Sets up service stubs for testing.
- * Initializes services with a mock adapter and stubs the service functions
+ * Initializes services with a mock adapter and stubs the TopologyIO methods
  * to track calls.
  */
 export function setupServiceStubs(): void {
@@ -100,54 +101,63 @@ topology:
   services.resetServices();
   services.initializeServices(mockAdapter);
 
-  // Stub the service functions to track calls
-  // We still let them execute but also track the call
-  const originalCreateNode = services.createNode;
-  const createNodeStub = sinon.stub(services, 'createNode').callsFake(async (data: NodeSaveData) => {
-    serviceCalls.push({ method: 'createNode', args: [data] });
-    return originalCreateNode.call(services, data);
-  });
-  stubs.push(createNodeStub);
+  // Get the TopologyIO instance and stub its methods
+  // This works because the service wrapper functions call these methods
+  const topologyIO = services.getTopologyIO();
 
-  const originalEditNode = services.editNode;
-  const editNodeStub = sinon.stub(services, 'editNode').callsFake(async (data: NodeSaveData) => {
+  // Stub addNode (called by createNode)
+  const originalAddNode = topologyIO.addNode.bind(topologyIO);
+  const addNodeStub = sinon.stub(topologyIO, 'addNode').callsFake(async (data) => {
+    serviceCalls.push({ method: 'createNode', args: [data] });
+    return originalAddNode(data);
+  });
+  stubs.push(addNodeStub);
+
+  // Stub editNode
+  const originalEditNode = topologyIO.editNode.bind(topologyIO);
+  const editNodeStub = sinon.stub(topologyIO, 'editNode').callsFake(async (data) => {
     serviceCalls.push({ method: 'editNode', args: [data] });
-    return originalEditNode.call(services, data);
+    return originalEditNode(data);
   });
   stubs.push(editNodeStub);
 
-  const originalCreateLink = services.createLink;
-  const createLinkStub = sinon.stub(services, 'createLink').callsFake(async (data: LinkSaveData) => {
+  // Stub addLink (called by createLink)
+  const originalAddLink = topologyIO.addLink.bind(topologyIO);
+  const addLinkStub = sinon.stub(topologyIO, 'addLink').callsFake(async (data) => {
     serviceCalls.push({ method: 'createLink', args: [data] });
-    return originalCreateLink.call(services, data);
+    return originalAddLink(data);
   });
-  stubs.push(createLinkStub);
+  stubs.push(addLinkStub);
 
-  const originalEditLink = services.editLink;
-  const editLinkStub = sinon.stub(services, 'editLink').callsFake(async (data: LinkSaveData) => {
+  // Stub editLink
+  const originalEditLink = topologyIO.editLink.bind(topologyIO);
+  const editLinkStub = sinon.stub(topologyIO, 'editLink').callsFake(async (data) => {
     serviceCalls.push({ method: 'editLink', args: [data] });
-    return originalEditLink.call(services, data);
+    return originalEditLink(data);
   });
   stubs.push(editLinkStub);
 
-  const originalSaveNodePositions = services.saveNodePositions;
-  const saveNodePositionsStub = sinon.stub(services, 'saveNodePositions').callsFake(async (positions) => {
+  // Stub savePositions
+  const originalSavePositions = topologyIO.savePositions.bind(topologyIO);
+  const savePositionsStub = sinon.stub(topologyIO, 'savePositions').callsFake(async (positions) => {
     serviceCalls.push({ method: 'saveNodePositions', args: [positions] });
-    return originalSaveNodePositions.call(services, positions);
+    return originalSavePositions(positions);
   });
-  stubs.push(saveNodePositionsStub);
+  stubs.push(savePositionsStub);
 
-  const originalBeginBatch = services.beginBatch;
-  const beginBatchStub = sinon.stub(services, 'beginBatch').callsFake(() => {
+  // Stub beginBatch
+  const originalBeginBatch = topologyIO.beginBatch.bind(topologyIO);
+  const beginBatchStub = sinon.stub(topologyIO, 'beginBatch').callsFake(() => {
     serviceCalls.push({ method: 'beginBatch', args: [] });
-    return originalBeginBatch.call(services);
+    return originalBeginBatch();
   });
   stubs.push(beginBatchStub);
 
-  const originalEndBatch = services.endBatch;
-  const endBatchStub = sinon.stub(services, 'endBatch').callsFake(async () => {
+  // Stub endBatch
+  const originalEndBatch = topologyIO.endBatch.bind(topologyIO);
+  const endBatchStub = sinon.stub(topologyIO, 'endBatch').callsFake(async () => {
     serviceCalls.push({ method: 'endBatch', args: [] });
-    return originalEndBatch.call(services);
+    return originalEndBatch();
   });
   stubs.push(endBatchStub);
 }
