@@ -2,8 +2,8 @@
  * EdgeStatsBuilder - Builds edge statistics updates from lab inspection data
  */
 
-import type { CyElement, ClabTopology } from '../../shared/types/topology';
 import type { ClabLabTreeNode } from '../../../treeView/common';
+import type { CyElement, ClabTopology } from '../../shared/types/topology';
 import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../../shared/parsing';
 import { findInterfaceNode } from './TreeUtils';
 

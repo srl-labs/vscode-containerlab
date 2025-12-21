@@ -5,8 +5,22 @@
  * across hooks and services. This module centralizes the listener and allows scoped subscriptions.
  */
 
-export type WebviewMessagePredicate = (event: MessageEvent) => boolean;
-export type WebviewMessageHandler = (event: MessageEvent) => void;
+/**
+ * Base webview message structure from the extension.
+ * All messages have a type field, and may have additional data.
+ */
+export interface WebviewMessageBase {
+  type: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Typed MessageEvent with known data structure
+ */
+export type TypedMessageEvent = MessageEvent<WebviewMessageBase | undefined>;
+
+export type WebviewMessagePredicate = (event: TypedMessageEvent) => boolean;
+export type WebviewMessageHandler = (event: TypedMessageEvent) => void;
 
 interface Subscriber {
   handler: WebviewMessageHandler;
@@ -14,12 +28,12 @@ interface Subscriber {
 }
 
 let started = false;
-let windowListener: ((event: MessageEvent) => void) | null = null;
+let windowListener: ((event: TypedMessageEvent) => void) | null = null;
 const subscribers = new Set<Subscriber>();
 
 function ensureStarted(): void {
   if (started) return;
-  windowListener = (event: MessageEvent) => {
+  windowListener = (event: TypedMessageEvent) => {
     for (const sub of Array.from(subscribers)) {
       if (!sub.predicate || sub.predicate(event)) {
         sub.handler(event);

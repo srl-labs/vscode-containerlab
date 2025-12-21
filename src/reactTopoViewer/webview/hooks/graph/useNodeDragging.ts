@@ -73,7 +73,7 @@ function unlockNodes(cy: Core): void {
  * Check if a node is a regular draggable node (not an annotation)
  */
 function isDraggableNode(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole');
+  const role = node.data('topoViewerRole') as string | undefined;
   return role !== 'freeText' && role !== 'freeShape';
 }
 

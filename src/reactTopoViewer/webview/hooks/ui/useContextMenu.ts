@@ -3,7 +3,7 @@
  * Manages context menu state for nodes and edges using React-based menu
  */
 import React, { useEffect, useCallback, useState } from 'react';
-import type { Core, EventObject } from 'cytoscape';
+import type { Core, EventObject, NodeSingular } from 'cytoscape';
 
 import { log } from '../../utils/logger';
 import type { ContextMenuItem } from '../../components/context-menu/ContextMenu';
@@ -373,8 +373,8 @@ function useMenuEvents(
     log.info(`[ContextMenu] Setting up context menu listeners (mode: ${options.mode}, locked: ${options.isLocked})`);
 
     const handleNodeContextMenu = (evt: EventObject) => {
-      const node = evt.target;
-      const role = node.data('topoViewerRole');
+      const node = evt.target as NodeSingular;
+      const role = node.data('topoViewerRole') as string | undefined;
       if (role === 'freeText' || role === 'freeShape') return;
 
       // Network nodes have no context menu in view mode
@@ -383,7 +383,7 @@ function useMenuEvents(
       }
 
       evt.originalEvent?.preventDefault();
-      openNodeMenu(node.id(), node.data(), getEventPosition(evt));
+      openNodeMenu(node.id(), node.data() as Record<string, unknown>, getEventPosition(evt));
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
       log.info(`[ContextMenu] Node context menu opened for: ${node.id()}`);
     };

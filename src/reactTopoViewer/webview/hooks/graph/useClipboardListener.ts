@@ -6,9 +6,14 @@ import { useEffect } from 'react';
 import type { Core } from 'cytoscape';
 
 import { log } from '../../utils/logger';
-import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
 
 import type { CopyData } from './copyPasteUtils';
+
+interface CopiedElementsMessage {
+  type: 'copiedElements';
+  data: CopyData;
+}
 
 /**
  * Hook that listens for clipboard data messages from the extension
@@ -21,12 +26,12 @@ export function useClipboardListener(
   onPaste: ((copyData: CopyData) => void) | null
 ): void {
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
+    const handleMessage = (event: TypedMessageEvent) => {
+      const message = event.data as CopiedElementsMessage | undefined;
       if (!message || message.type !== 'copiedElements') return;
       if (!cy || mode !== 'edit' || isLocked) return;
 
-      const copyData = message.data as CopyData;
+      const copyData = message.data;
       if (!copyData?.elements?.length) {
         log.info('[CopyPaste] No elements in clipboard');
         return;

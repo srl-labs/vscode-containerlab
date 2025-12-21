@@ -20,13 +20,17 @@ async function parseGottyLink(output: string): Promise<string | undefined> {
   return undefined;
 }
 
+interface GottySession {
+  port?: number;
+}
+
 function tryParseLinkFromJson(output: string, bracketedHost?: string): string | undefined {
   const start = output.indexOf('[');
   const end = output.lastIndexOf(']');
   if (start === -1 || end === -1 || end <= start) return undefined;
   try {
     const payload = output.slice(start, end + 1);
-    const sessions = JSON.parse(payload);
+    const sessions = JSON.parse(payload) as GottySession[];
     if (!Array.isArray(sessions) || sessions.length === 0) return undefined;
     const port = sessions[0]?.port;
     if (!port || !bracketedHost) return undefined;
@@ -79,14 +83,15 @@ async function gottyStart(action: "attach" | "reattach", node: ClabLabTreeNode) 
       const msg = action === 'attach' ? 'GoTTY session started but no link found.' : 'GoTTY session reattached';
       vscode.window.showInformationMessage(msg);
     }
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Failed to ${action} GoTTY: ${err.message || err}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Failed to ${action} GoTTY: ${message}`);
   }
   await refreshGottySessions();
   if (action === 'attach') {
-    runningLabsProvider.softRefresh();
+    Promise.resolve(runningLabsProvider.softRefresh()).catch(() => { /* ignore */ });
   } else {
-    runningLabsProvider.refresh();
+    Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
   }
 }
 
@@ -110,11 +115,12 @@ export async function gottyDetach(node: ClabLabTreeNode) {
     );
     gottySessions.delete(node.name);
     vscode.window.showInformationMessage('GoTTY session detached');
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Failed to detach GoTTY: ${err.message || err}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Failed to detach GoTTY: ${message}`);
   }
   await refreshGottySessions();
-  runningLabsProvider.refresh();
+  Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
 }
 
 export async function gottyReattach(node: ClabLabTreeNode) {

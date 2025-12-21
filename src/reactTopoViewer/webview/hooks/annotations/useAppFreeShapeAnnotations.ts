@@ -5,7 +5,7 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
-import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
 
 import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
 
@@ -14,8 +14,8 @@ interface InitialData {
 }
 
 interface TopologyDataMessage {
-  type: string;
-  data?: {
+  type: 'topology-data';
+  data: {
     freeShapeAnnotations?: FreeShapeAnnotation[];
   };
 }
@@ -48,8 +48,8 @@ export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOp
       loadAnnotations(initialData.freeShapeAnnotations as FreeShapeAnnotation[]);
     }
 
-    const handleMessage = (event: MessageEvent<TopologyDataMessage>) => {
-      const message = event.data;
+    const handleMessage = (event: TypedMessageEvent) => {
+      const message = event.data as TopologyDataMessage | undefined;
       if (message?.type === 'topology-data') {
         // Always load to clear old annotations if empty
         loadAnnotations(message.data?.freeShapeAnnotations || []);

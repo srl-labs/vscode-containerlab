@@ -35,12 +35,13 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
   const ctx = getNodeContext(node);
   if (!ctx) return;
 
-  let execCmd = (execCmdMapping as any)[ctx.containerKind] || DEFAULT_ATTACH_SHELL_CMD;
+  const defaultMapping = execCmdMapping as Record<string, string>;
+  let execCmd = defaultMapping[ctx.containerKind] ?? DEFAULT_ATTACH_SHELL_CMD;
   const config = vscode.workspace.getConfiguration("containerlab");
-  const userExecMapping = config.get("node.execCommandMapping") as { [key: string]: string };
+  const userExecMapping = config.get("node.execCommandMapping") as Record<string, string> | undefined;
   const runtime = config.get<string>("runtime", "docker");
 
-  execCmd = userExecMapping[ctx.containerKind] || execCmd;
+  execCmd = userExecMapping?.[ctx.containerKind] ?? execCmd;
 
   execCommandInTerminal(
     `${runtime} exec -it ${ctx.containerId} ${execCmd}`,

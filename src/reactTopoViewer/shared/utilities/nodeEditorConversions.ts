@@ -123,6 +123,16 @@ function parseHealthCheckProps(extra: Record<string, unknown>): { healthCheck?: 
   };
 }
 
+/** Parse MDA items from an array */
+function parseMdaItems(arr: unknown[]): { slot?: number; type?: string }[] {
+  return arr
+    .filter((m): m is Record<string, unknown> => m !== null && typeof m === 'object')
+    .map(m => ({
+      slot: getNumber(m.slot),
+      type: getString(m.type)
+    }));
+}
+
 /** Parse SROS components from extraData */
 function parseComponentsProps(extra: Record<string, unknown>): { components?: SrosComponent[] } {
   const componentsRaw = extra.components;
@@ -134,18 +144,16 @@ function parseComponentsProps(extra: Record<string, unknown>): { components?: Sr
       slot: c.slot as string | number | undefined,
       type: getString(c.type),
       sfm: getString(c.sfm),
-      mda: Array.isArray(c.mda) ? c.mda.map((m: Record<string, unknown>) => ({
-        slot: getNumber(m.slot),
-        type: getString(m.type)
-      })) : undefined,
-      xiom: Array.isArray(c.xiom) ? c.xiom.map((x: Record<string, unknown>) => ({
-        slot: getNumber(x.slot),
-        type: getString(x.type),
-        mda: Array.isArray(x.mda) ? x.mda.map((m: Record<string, unknown>) => ({
-          slot: getNumber(m.slot),
-          type: getString(m.type)
-        })) : undefined
-      })) : undefined
+      mda: Array.isArray(c.mda) ? parseMdaItems(c.mda) : undefined,
+      xiom: Array.isArray(c.xiom)
+        ? (c.xiom as unknown[])
+            .filter((x): x is Record<string, unknown> => x !== null && typeof x === 'object')
+            .map(x => ({
+              slot: getNumber(x.slot),
+              type: getString(x.type),
+              mda: Array.isArray(x.mda) ? parseMdaItems(x.mda) : undefined
+            }))
+        : undefined
     }));
 
   return components.length > 0 ? { components } : {};

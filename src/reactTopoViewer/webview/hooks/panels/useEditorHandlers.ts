@@ -67,9 +67,9 @@ function updateCytoscapeNodeData(
   if (!node || node.empty()) return;
 
   // Convert editor data to YAML format (kebab-case keys) and merge with existing
-  const existingExtraData = node.data('extraData') || {};
+  const existingExtraData = (node.data('extraData') as Record<string, unknown> | undefined) ?? {};
   const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
-  const newExtraData = {
+  const newExtraData: Record<string, unknown> = {
     ...existingExtraData,
     ...yamlExtraData,
   };

@@ -23,7 +23,7 @@ function getElementDataPair(
   if (cyEl.empty()) return null;
   return {
     reactData: reactEl.data as Record<string, unknown>,
-    cyData: cyEl.data()
+    cyData: cyEl.data() as Record<string, unknown>
   };
 }
 
@@ -224,7 +224,7 @@ function handleRenameInPlace(cy: Core, oldId: string, newId: string, elements: C
   // Update source/target references to point to the new node ID
   const edgesToRestore: Array<{ group: 'edges'; data: Record<string, unknown> }> = [];
   oldNode.connectedEdges().forEach(edge => {
-    const edgeData = { ...edge.data() };
+    const edgeData = { ...(edge.data() as Record<string, unknown>) } as { source?: string; target?: string; [key: string]: unknown };
     // Update source/target to new node ID
     if (edgeData.source === oldId) edgeData.source = newId;
     if (edgeData.target === oldId) edgeData.target = newId;

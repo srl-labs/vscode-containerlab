@@ -55,8 +55,30 @@ export interface DevModeInterface {
   groupsCount?: number;
 }
 
+/**
+ * Initial data passed from extension to webview.
+ */
+export interface WebviewInitialData {
+  elements?: Array<{
+    group: 'nodes' | 'edges';
+    data: Record<string, unknown>;
+    position?: { x: number; y: number };
+    classes?: string;
+  }>;
+  schemaData?: Record<string, unknown>;
+  dockerImages?: string[];
+  annotations?: Record<string, unknown>;
+  isViewMode?: boolean;
+  labName?: string;
+  yamlFilePath?: string;
+  [key: string]: unknown;
+}
+
 declare global {
   interface Window {
     __DEV__?: DevModeInterface;
+    __INITIAL_DATA__?: WebviewInitialData;
+    // Note: __SCHEMA_DATA__ is typed in hooks/data/useSchema.ts
+    __DOCKER_IMAGES__?: string[];
   }
 }

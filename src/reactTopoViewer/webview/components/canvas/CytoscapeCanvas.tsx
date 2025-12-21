@@ -7,7 +7,15 @@ import type { Core } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
-import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
+
+interface NodeDataUpdatedMessage {
+  type: 'node-data-updated';
+  data: {
+    nodeId: string;
+    extraData: Record<string, unknown>;
+  };
+}
 import {
   useElementsUpdate,
   useCytoscapeInitializer,
@@ -30,11 +38,11 @@ function useCytoscapeDataUpdateListener(cyRef: React.RefObject<Core | null>): vo
   const { dispatch } = useTopoViewer();
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
-      if (message?.type !== 'node-data-updated') return;
+    const handleMessage = (event: TypedMessageEvent) => {
+      const message = event.data as NodeDataUpdatedMessage | undefined;
+      if (!message || message.type !== 'node-data-updated') return;
 
-      const data = message.data as { nodeId?: string; extraData?: Record<string, unknown> } | undefined;
+      const data = message.data;
       if (!data?.nodeId || !data?.extraData) {
         return;
       }

@@ -2,10 +2,32 @@
  * Global state module - contains shared state variables used across the extension.
  * This module is intentionally kept free of internal imports to avoid circular dependencies.
  *
- * Provider types are intentionally typed as 'any' to avoid importing from treeView modules.
+ * Provider types use a minimal interface to avoid importing from treeView modules.
  */
 import * as vscode from 'vscode';
 import type Docker from 'dockerode';
+
+/**
+ * Minimal interfaces for providers to avoid circular imports.
+ * Consumers should use these interfaces or cast to the actual type when needed.
+ */
+export interface LocalLabsProviderInterface {
+  forceRefresh(): void;
+  setTreeFilter(filter: string): void;
+  clearTreeFilter(): void;
+}
+
+export interface RunningLabsProviderInterface {
+  refresh(): Promise<void>;
+  softRefresh(): Promise<void>;
+  refreshContainer(containerShortId: string, newState: string): Promise<void>;
+  refreshWithoutDiscovery(): void;
+  setTreeFilter(filter: string): void;
+  clearTreeFilter(): void;
+  discoverInspectLabs(): Promise<Record<string, unknown> | undefined>;
+}
+
+// HelpFeedbackProvider doesn't need specific methods exposed in globals
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
@@ -17,14 +39,14 @@ export let username: string;
 export let hideNonOwnedLabsState: boolean = false;
 export let favoriteLabs: Set<string> = new Set();
 export let extensionContext: vscode.ExtensionContext;
-// Provider types are 'any' to avoid circular imports - consumers should cast as needed
-export let localLabsProvider: any;
-export let runningLabsProvider: any;
-export let helpFeedbackProvider: any;
+// Provider types use minimal interfaces to avoid circular imports
+export let localLabsProvider: LocalLabsProviderInterface;
+export let runningLabsProvider: RunningLabsProviderInterface;
+export let helpFeedbackProvider: unknown;
 export let sshxSessions: Map<string, string> = new Map();
 export let gottySessions: Map<string, string> = new Map();
 
-export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
+export const extensionVersion = (vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON as { version?: string } | undefined)?.version;
 
 export let containerlabBinaryPath: string = 'containerlab';
 export let dockerClient: Docker;
@@ -60,15 +82,15 @@ export function setFavoriteLabs(labs: Set<string>) {
     favoriteLabs = labs;
 }
 
-export function setLocalLabsProvider(provider: any) {
+export function setLocalLabsProvider(provider: LocalLabsProviderInterface) {
     localLabsProvider = provider;
 }
 
-export function setRunningLabsProvider(provider: any) {
+export function setRunningLabsProvider(provider: RunningLabsProviderInterface) {
     runningLabsProvider = provider;
 }
 
-export function setHelpFeedbackProvider(provider: any) {
+export function setHelpFeedbackProvider(provider: unknown) {
     helpFeedbackProvider = provider;
 }
 

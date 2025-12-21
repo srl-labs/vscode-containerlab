@@ -375,9 +375,9 @@ function useStickerbushNodeGlow(
     nodes.forEach(node => {
       const id = node.id();
       styles.set(id, {
-        'background-color': node.style('background-color'),
-        'border-color': node.style('border-color'),
-        'border-width': node.style('border-width'),
+        'background-color': node.style('background-color') as string,
+        'border-color': node.style('border-color') as string,
+        'border-width': node.style('border-width') as string,
       });
     });
 

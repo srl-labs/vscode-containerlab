@@ -7,6 +7,23 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import type { Core } from 'cytoscape';
 
 import type { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
+
+/**
+ * Grid overlay handle interface for managing custom grid canvas
+ */
+interface GridOverlayHandleType {
+  cleanup: () => void;
+  setLineWidth: (width: number) => void;
+}
+
+/**
+ * Extend Cytoscape Core interface to include custom properties
+ */
+declare module 'cytoscape' {
+  interface Core {
+    __reactGridOverlay?: GridOverlayHandleType;
+  }
+}
 import { log } from '../utils/logger';
 import { deleteNode, deleteLink } from '../services';
 
@@ -249,8 +266,7 @@ function createGridRedraw(drawFn: () => void): () => void {
 
 function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandle | null {
   if (!cy) return null;
-  const cyAny = cy as any;
-  const existing = cyAny.__reactGridOverlay as GridOverlayHandle | undefined;
+  const existing = cy.__reactGridOverlay;
   if (existing) {
     existing.setLineWidth(lineWidth);
     return existing;
@@ -290,7 +306,7 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
     if (canvas.parentElement) {
       canvas.parentElement.removeChild(canvas);
     }
-    cyAny.__reactGridOverlay = undefined;
+    cy.__reactGridOverlay = undefined;
   };
 
   cy.one('destroy', cleanup);
@@ -301,7 +317,7 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
       requestRedraw();
     }
   };
-  cyAny.__reactGridOverlay = handle;
+  cy.__reactGridOverlay = handle;
   return handle;
 }
 

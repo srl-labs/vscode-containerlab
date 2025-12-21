@@ -42,8 +42,9 @@ export async function cloneRepoFromUrl(repoUrl?: string) {
     );
     vscode.window.showInformationMessage(`Repository cloned to ${dest}`);
     vscode.commands.executeCommand('containerlab.refresh');
-  } catch (error: any) {
-    vscode.window.showErrorMessage(`Git clone failed: ${error.message || String(error)}`);
-    outputChannel.error(`git clone failed: ${error.message || String(error)}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    vscode.window.showErrorMessage(`Git clone failed: ${message}`);
+    outputChannel.error(`git clone failed: ${message}`);
   }
 }

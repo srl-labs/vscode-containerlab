@@ -7,10 +7,16 @@ import type { ClabLabTreeNode } from "../treeView/common";
 
 import { execCommandInTerminal } from "./command";
 
+interface ClabTopologyYaml {
+    mgmt?: {
+        network?: string;
+    };
+}
+
 function buildNetworkFromYaml(topoPath: string): string {
     try {
         const content = fs.readFileSync(topoPath, "utf8");
-        const doc = YAML.parse(content);
+        const doc = YAML.parse(content) as ClabTopologyYaml | null;
         const net = doc?.mgmt?.network;
         if (typeof net === 'string' && net.trim().length > 0) {
             return net.trim();

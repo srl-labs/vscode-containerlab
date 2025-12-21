@@ -6,7 +6,8 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback, u
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
 import type { CyElement } from '../../shared/types/messages';
-import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
+import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
+import { getElementId, getEdgeSource, getEdgeTarget } from '../utils/cytoscapeHelpers';
 
 // CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
 
@@ -150,8 +151,8 @@ const reducerHandlers: ReducerHandlers = {
   ADD_EDGE: (state, action) => {
     const edge = action.payload;
     if (edge.group !== 'edges') return state;
-    const edgeId = (edge.data as any)?.id;
-    const exists = state.elements.some(el => el.group === 'edges' && (el.data as any)?.id === edgeId);
+    const edgeId = getElementId(edge);
+    const exists = state.elements.some(el => el.group === 'edges' && getElementId(el) === edgeId);
     if (exists) return state;
     return {
       ...state,
@@ -161,19 +162,21 @@ const reducerHandlers: ReducerHandlers = {
   REMOVE_NODE_AND_EDGES: (state, action) => {
     const nodeId = action.payload;
     const filteredElements = state.elements.filter(el => {
-      const data = el.data || {};
       if (el.group === 'nodes') {
-        return (data as any).id !== nodeId;
+        return getElementId(el) !== nodeId;
       }
       if (el.group === 'edges') {
-        const source = (data as any).source;
-        const target = (data as any).target;
+        const source = getEdgeSource(el);
+        const target = getEdgeTarget(el);
         return source !== nodeId && target !== nodeId;
       }
       return true;
     });
-    const selectedEdgeStillExists = state.selectedEdge
-      ? filteredElements.some(el => el.group === 'edges' && (el.data as any)?.id === state.selectedEdge)
+    const selectedEdgeStillExists = state.selectedEdge !== null
+      ? filteredElements.some(el => {
+          const elId = getElementId(el);
+          return el.group === 'edges' && elId !== undefined && elId === state.selectedEdge;
+        })
       : false;
     return {
       ...state,
@@ -184,7 +187,7 @@ const reducerHandlers: ReducerHandlers = {
   },
   REMOVE_EDGE: (state, action) => {
     const edgeId = action.payload;
-    const filteredElements = state.elements.filter(el => !(el.group === 'edges' && (el.data as any)?.id === edgeId));
+    const filteredElements = state.elements.filter(el => !(el.group === 'edges' && getElementId(el) === edgeId));
     return {
       ...state,
       elements: filteredElements,
@@ -591,8 +594,8 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
 
   // Listen for messages from extension
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
+    const handleMessage = (event: TypedMessageEvent) => {
+      const message = event.data as ExtensionMessage | undefined;
       if (message && typeof message === 'object' && message.type) {
         handleExtensionMessage(message, dispatch);
       }

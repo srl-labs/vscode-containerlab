@@ -5,9 +5,16 @@
  * The extension handles the actual filesystem access.
  */
 import type { FileSystemAdapter } from '../../shared/io/types';
-import { subscribeToWebviewMessages } from '../utils/webviewMessageBus';
+import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
 
 import * as pathUtils from './pathUtils';
+
+interface FsResponseMessage {
+  type: 'fs:response';
+  requestId: string;
+  result?: unknown;
+  error?: string;
+}
 
 declare global {
   interface Window {
@@ -103,20 +110,20 @@ export class PostMessageFsAdapter implements FileSystemAdapter {
     });
   }
 
-  private handleResponse(e: MessageEvent): void {
-    const { type, requestId, result, error } = e.data || {};
-    if (type !== 'fs:response') return;
-    if (!requestId) return;
+  private handleResponse(e: TypedMessageEvent): void {
+    const data = e.data as FsResponseMessage | undefined;
+    if (!data || data.type !== 'fs:response') return;
+    if (!data.requestId) return;
 
-    const pending = this.pending.get(requestId);
+    const pending = this.pending.get(data.requestId);
     if (!pending) return;
 
-    this.pending.delete(requestId);
+    this.pending.delete(data.requestId);
 
-    if (error) {
-      pending.reject(new Error(error));
+    if (data.error) {
+      pending.reject(new Error(data.error));
     } else {
-      pending.resolve(result);
+      pending.resolve(data.result);
     }
   }
 }

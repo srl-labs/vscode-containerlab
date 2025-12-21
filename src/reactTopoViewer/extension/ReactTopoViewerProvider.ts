@@ -168,7 +168,7 @@ export class ReactTopoViewer {
 
     if (this.isViewMode) {
       try {
-        this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
+        this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs() as Record<string, ClabLabTreeNode> | undefined;
       } catch (err) {
         log.warn(`Failed to load running lab data: ${err}`);
       }
@@ -362,7 +362,7 @@ export class ReactTopoViewer {
       // Reload running lab data if switching to view mode
       if (this.isViewMode) {
         try {
-          this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs();
+          this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs() as Record<string, ClabLabTreeNode> | undefined;
         } catch (err) {
           log.warn(`Failed to load running lab data: ${err}`);
         }

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 
 import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';
-import { subscribeToWebviewMessages } from '../../utils/webviewMessageBus';
+import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
 
 import { useGroups } from './useGroups';
 import { buildGroupId, parseGroupId, calculateBoundingBox } from './groupHelpers';
@@ -18,8 +18,8 @@ interface InitialData {
 }
 
 interface TopologyDataMessage {
-  type: string;
-  data?: {
+  type: 'topology-data';
+  data: {
     groupStyleAnnotations?: GroupStyleAnnotation[];
     nodeAnnotations?: NodeAnnotation[];
   };
@@ -121,9 +121,10 @@ function useGroupDataLoader(
     const migratedGroups = migrateLegacyGroups(rawGroups, nodeAnnotations);
     if (migratedGroups.length) loadGroups(migratedGroups, false);
 
-    const handleMessage = (event: MessageEvent<TopologyDataMessage>) => {
-      const data = event.data?.data;
-      if (event.data?.type !== 'topology-data' || !data) return;
+    const handleMessage = (event: TypedMessageEvent) => {
+      const message = event.data as TopologyDataMessage | undefined;
+      if (!message || message.type !== 'topology-data' || !message.data) return;
+      const data = message.data;
 
       // Extract memberships for migration - always update from topology refresh
       // as this syncs with the YAML file

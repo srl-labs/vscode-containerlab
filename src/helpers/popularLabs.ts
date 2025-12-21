@@ -9,6 +9,17 @@ export interface PopularRepo {
   stargazers_count: number;
 }
 
+export interface PopularRepoPickItem {
+  label: string;
+  description: string;
+  detail: string;
+  repo: string;
+}
+
+interface GitHubSearchResponse {
+  items?: PopularRepo[];
+}
+
 export const fallbackRepos: PopularRepo[] = [
   {
     name: 'srl-telemetry-lab',
@@ -62,8 +73,8 @@ export function fetchPopularRepos(): Promise<PopularRepo[]> {
         });
         res.on('end', () => {
           try {
-            const parsed = JSON.parse(data);
-            resolve(parsed.items || []);
+            const parsed = JSON.parse(data) as GitHubSearchResponse;
+            resolve(parsed.items ?? []);
           } catch (e) {
             reject(e);
           }
@@ -87,9 +98,9 @@ async function getRepos(): Promise<PopularRepo[]> {
   }
 }
 
-export async function pickPopularRepo(title: string, placeHolder: string) {
+export async function pickPopularRepo(title: string, placeHolder: string): Promise<PopularRepoPickItem | undefined> {
   const repos = await getRepos();
-  const items = repos.map((r) => ({
+  const items: PopularRepoPickItem[] = repos.map((r) => ({
     label: r.name,
     description: r.description,
     detail: `⭐ ${r.stargazers_count}`,

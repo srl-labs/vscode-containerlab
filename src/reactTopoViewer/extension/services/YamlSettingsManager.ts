@@ -6,7 +6,7 @@ import * as YAML from 'yaml';
 export interface LabSettings {
   name?: string;
   prefix?: string | null;
-  mgmt?: Record<string, any> | null;
+  mgmt?: Record<string, unknown> | null;
 }
 
 /**

@@ -7,5 +7,5 @@ export async function clonePopularRepo() {
   if (!pick) {
     return;
   }
-  await cloneRepoFromUrl((pick as any).repo);
+  await cloneRepoFromUrl(pick.repo);
 }

@@ -1,7 +1,7 @@
 /**
  * Cytoscape event handlers and interaction utilities
  */
-import type { Core, EventObject } from 'cytoscape';
+import type { Core, EventObject, NodeSingular, EdgeSingular } from 'cytoscape';
 import type React from 'react';
 
 // Scratch key for edge creation state (must match useEdgeCreation.ts)
@@ -50,9 +50,9 @@ function shouldSkipSelection(cy: Core, evt: EventObject): boolean {
 /**
  * Check if node role allows selection
  */
-function isSelectableNode(evt: EventObject): boolean {
-  const role = evt.target.data('topoViewerRole');
-  return !NON_SELECTABLE_ROLES.has(role);
+function isSelectableNode(target: NodeSingular): boolean {
+  const role = target.data('topoViewerRole') as string | undefined;
+  return !role || !NON_SELECTABLE_ROLES.has(role);
 }
 
 /** Event handler options for double-tap editing */
@@ -81,21 +81,23 @@ function setupTapHandlers(
 ): void {
   cy.on('tap', 'node', (evt) => {
     if (shouldSkipSelection(cy, evt)) return;
-    if (!isSelectableNode(evt)) return;
+    const target = evt.target as NodeSingular;
+    if (!isSelectableNode(target)) return;
     // If Ctrl/Cmd is NOT pressed, clear existing selection first (replace behavior)
     if (!isCtrlPressed(evt)) {
       cy.elements().unselect();
     }
-    selectNode(evt.target.id());
+    selectNode(target.id());
   });
 
   cy.on('tap', 'edge', (evt) => {
     if (shouldSkipSelection(cy, evt)) return;
+    const target = evt.target as EdgeSingular;
     // If Ctrl/Cmd is NOT pressed, clear existing selection first (replace behavior)
     if (!isCtrlPressed(evt)) {
       cy.elements().unselect();
     }
-    selectEdge(evt.target.id());
+    selectEdge(target.id());
   });
 
   cy.on('tap', (evt) => {
@@ -114,11 +116,12 @@ function setupDoubleTapHandlers(cy: Core, options: EditEventOptions): void {
     const editNode = options.editNode;
     cy.on('dbltap', 'node', (evt) => {
       if (shouldSkipSelection(cy, evt)) return;
-      if (!isSelectableNode(evt)) return;
+      const target = evt.target as NodeSingular;
+      if (!isSelectableNode(target)) return;
       const mode = options.getMode?.() ?? 'view';
       const isLocked = options.getIsLocked?.() ?? true;
       if (mode === 'edit' && !isLocked) {
-        editNode(evt.target.id());
+        editNode(target.id());
       }
     });
   }
@@ -127,10 +130,11 @@ function setupDoubleTapHandlers(cy: Core, options: EditEventOptions): void {
     const editEdge = options.editEdge;
     cy.on('dbltap', 'edge', (evt) => {
       if (shouldSkipSelection(cy, evt)) return;
+      const target = evt.target as EdgeSingular;
       const mode = options.getMode?.() ?? 'view';
       const isLocked = options.getIsLocked?.() ?? true;
       if (mode === 'edit' && !isLocked) {
-        editEdge(evt.target.id());
+        editEdge(target.id());
       }
     });
   }

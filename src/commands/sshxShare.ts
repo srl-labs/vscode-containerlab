@@ -36,14 +36,15 @@ async function sshxStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
       const msg = action === 'attach' ? 'SSHX session started but no link found.' : 'SSHX session reattached';
       vscode.window.showInformationMessage(msg);
     }
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Failed to ${action} SSHX: ${err.message || err}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Failed to ${action} SSHX: ${message}`);
   }
   await refreshSshxSessions();
   if (action === 'attach') {
-    runningLabsProvider.softRefresh();
+    Promise.resolve(runningLabsProvider.softRefresh()).catch(() => { /* ignore */ });
   } else {
-    runningLabsProvider.refresh();
+    Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
   }
 }
 
@@ -66,11 +67,12 @@ export async function sshxDetach(node: ClabLabTreeNode) {
     );
     sshxSessions.delete(node.name);
     vscode.window.showInformationMessage('SSHX session detached');
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Failed to detach SSHX: ${err.message || err}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Failed to detach SSHX: ${message}`);
   }
   await refreshSshxSessions();
-  runningLabsProvider.refresh();
+  Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
 }
 
 export async function sshxReattach(node: ClabLabTreeNode) {

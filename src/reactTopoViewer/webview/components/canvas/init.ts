@@ -20,8 +20,8 @@ let gridGuideRegistered = false;
  */
 export function applyStubLinkClasses(cy: Core): void {
   cy.edges().forEach(edge => {
-    const sourceRole = edge.source().data('topoViewerRole');
-    const targetRole = edge.target().data('topoViewerRole');
+    const sourceRole = edge.source().data('topoViewerRole') as string | undefined;
+    const targetRole = edge.target().data('topoViewerRole') as string | undefined;
     if (sourceRole === 'cloud' || targetRole === 'cloud') {
       edge.addClass('stub-link');
     }

@@ -30,10 +30,11 @@ function transformSvgContent(svgContent: string, width: string, height: string, 
   result = result.replace(/<svg([^>]*?)height="[^"]*"([^>]*?)>/i, '<svg$1$2>');
   result = result.replace('<svg', `<svg width="${width}" height="${height}"`);
 
-  result = result.replace(/<rect([^>]*?)class="st0"([^>]*?)\/>/g, (_m, before, after) => {
-    const widthMatch = (before + after).match(/width="([^"]*)"/);
-    const heightMatch = (before + after).match(/height="([^"]*)"/);
-    return `<rect width="${widthMatch?.[1] || '120'}" height="${heightMatch?.[1] || '120'}" fill="${fillColor}" />`;
+  result = result.replace(/<rect([^>]*?)class="st0"([^>]*?)\/>/g, (_m: string, before: string, after: string) => {
+    const combined = before + after;
+    const widthMatch = /width="([^"]*)"/.exec(combined);
+    const heightMatch = /height="([^"]*)"/.exec(combined);
+    return `<rect width="${widthMatch?.[1] ?? '120'}" height="${heightMatch?.[1] ?? '120'}" fill="${fillColor}" />`;
   });
 
   result = result.replace(/class="st1"/g, 'fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10"');
@@ -100,8 +101,8 @@ async function ensureSvgExtension(cy: CyCore): Promise<boolean> {
   if (typeof cyWithSvg.svg === 'function') return true;
 
   try {
-    const cytoscapeSvg = await import('cytoscape-svg');
-    const cytoscape = await import('cytoscape');
+    const cytoscapeSvg = await import('cytoscape-svg') as { default: (cytoscape: unknown) => void };
+    const cytoscape = await import('cytoscape') as { default: { use: (ext: (cy: unknown) => void) => void } };
     cytoscape.default.use(cytoscapeSvg.default);
     return true;
   } catch {

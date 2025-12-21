@@ -6,7 +6,7 @@
  * for smoother WebGL-powered animations that match Google Maps quality.
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { Core } from 'cytoscape';
+import type { Core, EventObject } from 'cytoscape';
 
 import type {
   MapLibreState} from './maplibreUtils';
@@ -62,7 +62,7 @@ export function useGeoMap({ cyInstance, isGeoLayout, geoMode, onGeoMapReady }: U
 
   // Node drag handler - updates geo coordinates after dragging
   const handleDragFree = useCallback(
-    (event: any) => {
+    (event: EventObject) => {
       if (event.target.isNode()) {
         handleNodeDragFree(event.target, stateRef.current);
       }

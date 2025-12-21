@@ -24,8 +24,10 @@ function loadSize(key: string | undefined, defaultSize: Size, pos: Pos, minW: nu
   try {
     const saved = window.localStorage.getItem(`panel-size-${key}`);
     if (saved) {
-      const p = JSON.parse(saved);
-      return constrainSize(p.width, p.height, pos, minW, minH);
+      const p = JSON.parse(saved) as { width?: number; height?: number };
+      if (typeof p.width === 'number' && typeof p.height === 'number') {
+        return constrainSize(p.width, p.height, pos, minW, minH);
+      }
     }
   } catch { /* ignore */ }
   return defaultSize;

@@ -32,7 +32,8 @@ function resolveKindName(
 function mergeNodeLabels(
   ...labels: (Record<string, unknown> | undefined)[]
 ): Record<string, unknown> {
-  return Object.assign({}, ...labels.filter(Boolean));
+  const filtered = labels.filter((l): l is Record<string, unknown> => Boolean(l));
+  return Object.assign({}, ...filtered) as Record<string, unknown>;
 }
 
 /**

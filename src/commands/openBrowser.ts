@@ -88,8 +88,9 @@ async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
     }
 
     return mappings;
-  } catch (error: any) {
-    outputChannel.error(`Error getting port mappings: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    outputChannel.error(`Error getting port mappings: ${message}`);
     return [];
   }
 }

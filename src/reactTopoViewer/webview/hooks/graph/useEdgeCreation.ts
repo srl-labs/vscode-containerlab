@@ -70,8 +70,8 @@ function isNetworkNode(node: NodeSingular): boolean {
  * Network-to-node and node-to-network connections are allowed
  */
 function canConnect(sourceNode: NodeSingular, targetNode: NodeSingular): boolean {
-  const sourceRole = sourceNode.data('topoViewerRole');
-  const targetRole = targetNode.data('topoViewerRole');
+  const sourceRole = sourceNode.data('topoViewerRole') as string | undefined;
+  const targetRole = targetNode.data('topoViewerRole') as string | undefined;
   const invalidRoles = ['freeText', 'group'];
 
   log.info(`[EdgeCreation] canConnect check: ${sourceNode.id()} (${sourceRole}) -> ${targetNode.id()} (${targetRole})`);
@@ -83,8 +83,8 @@ function canConnect(sourceNode: NodeSingular, targetNode: NodeSingular): boolean
   }
 
   const result = (
-    !invalidRoles.includes(sourceRole) &&
-    !invalidRoles.includes(targetRole) &&
+    (!sourceRole || !invalidRoles.includes(sourceRole)) &&
+    (!targetRole || !invalidRoles.includes(targetRole)) &&
     !sourceNode.same(targetNode) &&
     !sourceNode.isParent() &&
     !targetNode.isParent()

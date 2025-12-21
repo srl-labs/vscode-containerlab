@@ -98,10 +98,10 @@ function showOutputChannel() {
 async function refreshLabViews() {
   await ins.update();
   localLabsProvider.forceRefresh();
-  runningLabsProvider.refresh();
+  Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
 }
 
-function manageImpairments(node: any) {
+function manageImpairments(node: c.ClabContainerTreeNode) {
   return cmd.manageNodeImpairments(node, extensionContext);
 }
 
@@ -202,7 +202,8 @@ function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 }
 
 function registerCommands(context: vscode.ExtensionContext) {
-  const commands: Array<[string, any]> = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const commands: Array<[string, (...args: any[]) => unknown]> = [
     ['containerlab.lab.openFile', cmd.openLabFile],
     ['containerlab.lab.addToWorkspace', cmd.addLabFolderToWorkspace],
     ['containerlab.lab.openFolderInNewWindow', cmd.openFolderInNewWindow],
@@ -445,8 +446,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // 2) Check for updates
   const skipUpdateCheck = config.get<boolean>('skipUpdateCheck', false);
   if (!skipUpdateCheck) {
-    utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
-      outputChannel.error(`Update check error: ${err.message}`);
+    utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      outputChannel.error(`Update check error: ${message}`);
     });
   }
 
@@ -459,8 +461,9 @@ export async function activate(context: vscode.ExtensionContext) {
     // verify we are connected
     await docker.ping();
     outputChannel.info('Successfully connected to Docker socket');
-  } catch (err: any) {
-    outputChannel.error(`Failed to connect to Docker socket: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.error(`Failed to connect to Docker socket: ${message}`);
     vscode.window.showErrorMessage(
       `Failed to connect to Docker. Ensure Docker is running and you have proper permissions.`
     );

@@ -62,13 +62,19 @@ const SearchResultStatus: React.FC<{ count: number }> = ({ count }) => {
   );
 };
 
+interface NodeDataForSearch {
+  id?: string;
+  name?: string;
+  extraData?: { longname?: string };
+}
+
 /** Search nodes in cytoscape and return count */
 function searchNodes(cy: CyCore, searchTerm: string): number {
   const filter = createFilter(searchTerm);
   const matchingNodes = cy.nodes().filter((node) => {
-    const data = node.data();
-    const shortName = data.name || data.id || '';
-    const longName = data.extraData?.longname || '';
+    const data = node.data() as NodeDataForSearch;
+    const shortName = data.name ?? data.id ?? '';
+    const longName = data.extraData?.longname ?? '';
     return filter(`${shortName} ${longName}`);
   });
 

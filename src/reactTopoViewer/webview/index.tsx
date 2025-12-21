@@ -16,25 +16,26 @@ const fsAdapter = new PostMessageFsAdapter();
 initializeServices(fsAdapter, { verbose: false });
 
 // Get the initial data from the window object (injected by extension)
-const initialData = (window as any).__INITIAL_DATA__ || {};
+const initialData = window.__INITIAL_DATA__ ?? {};
 
 // Extract and store schema data on window for useSchema hook
 if (initialData.schemaData) {
-  (window as any).__SCHEMA_DATA__ = initialData.schemaData;
+  // Schema data is validated at runtime by useSchema hook
+  window.__SCHEMA_DATA__ = initialData.schemaData as typeof window.__SCHEMA_DATA__;
 }
 
 // Extract and store docker images on window for useDockerImages hook
 if (initialData.dockerImages) {
-  (window as any).__DOCKER_IMAGES__ = initialData.dockerImages;
+  window.__DOCKER_IMAGES__ = initialData.dockerImages;
 }
 
 // Listen for docker images updates from extension
 // Note: In VS Code webviews, messages always come from the extension (trusted source)
 subscribeToWebviewMessages((event) => {
   // VS Code webviews are sandboxed - messages come from the extension host
-  const message = event.data;
+  const message = event.data as { type?: string; dockerImages?: string[] } | undefined;
   if (message?.type === 'docker-images-updated' && message.dockerImages) {
-    (window as any).__DOCKER_IMAGES__ = message.dockerImages;
+    window.__DOCKER_IMAGES__ = message.dockerImages;
     // Dispatch a custom event so hooks can react to the update
     window.dispatchEvent(
       new CustomEvent('docker-images-updated', {

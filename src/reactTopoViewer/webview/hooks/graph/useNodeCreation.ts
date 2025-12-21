@@ -78,7 +78,7 @@ function generateNodeName(cy: Core, defaultName: string, template?: CustomNodeTe
     return defaultName;
   }
 
-  const usedNames = new Set<string>(cy.nodes().map(node => node.data('name')));
+  const usedNames = new Set<string>(cy.nodes().map(node => node.data('name') as string).filter(Boolean));
   return getUniqueId(template.baseName, usedNames);
 }
 
