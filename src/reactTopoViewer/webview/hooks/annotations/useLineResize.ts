@@ -9,7 +9,7 @@ import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { addMouseMoveUpListeners } from '../shared/mouseEvents';
 import { handleDragStart } from '../shared/dragHelpers';
 
-import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShapeHelpers';
+import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShape';
 
 interface UseLineResizeDragOptions {
   cy: CyCore;

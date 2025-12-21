@@ -8,12 +8,12 @@ import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoActionAnnotation } from '../state/useUndoRedo';
 import { type UndoRedoApi, updateWithUndo, createPushUndoFn } from '../shared/undoHelpers';
 
-import type { UseFreeShapeAnnotationsReturn } from './freeShapeTypes';
+import type { UseFreeShapeAnnotationsReturn } from './freeShape';
 import {
   updateAnnotationPosition,
   updateAnnotationRotation,
   updateAnnotationEndPosition
-} from './freeShapeHelpers';
+} from './freeShape';
 
 export interface UseFreeShapeUndoRedoHandlersReturn {
   handleCanvasClickWithUndo: (position: { x: number; y: number }) => void;

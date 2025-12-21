@@ -17,16 +17,15 @@ import {
   updateAnnotationRotation,
   updateAnnotationEndPosition,
   duplicateAnnotations
-} from './freeShapeHelpers';
-import type { AnnotationSelectionActions } from './freeShapeTypes';
-import { useDebouncedSave } from './useDebouncedSave';
-import { useAnnotationListSelection } from './useAnnotationListSelection';
-import { useAnnotationListCopyPaste } from './useAnnotationListCopyPaste';
+} from './freeShape';
+import type { AnnotationSelectionActions } from './freeShape';
 import {
+  useDebouncedSave,
   useDeleteAnnotation,
   useStandardUpdates,
   useGenericAnnotationUpdates
-} from './annotationStateUtils';
+} from './sharedAnnotationHelpers';
+import { useAnnotationListSelection, useAnnotationListCopyPaste } from './useAnnotationListOperations';
 
 export interface UseFreeShapeStateReturn {
   annotations: FreeShapeAnnotation[];

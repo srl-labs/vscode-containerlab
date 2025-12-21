@@ -15,7 +15,7 @@ import {
   DEFAULT_BORDER_STYLE,
   DEFAULT_ARROW_SIZE,
   DEFAULT_CORNER_RADIUS
-} from '../../../hooks/annotations/freeShapeHelpers';
+} from '../../../hooks/annotations/freeShape';
 import { buildShapeSvg } from '../../annotations/FreeShapeLayerHelpers';
 import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from '../../shared/form';
 

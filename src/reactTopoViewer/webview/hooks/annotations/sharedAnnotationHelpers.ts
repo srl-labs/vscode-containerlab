@@ -1,6 +1,9 @@
 /**
- * Shared helper functions for annotations (both FreeShape and FreeText)
+ * Shared helper functions and hooks for annotations (both FreeShape and FreeText)
+ * Consolidates: pure helper functions + React hook factories for annotation state management
  */
+import type React from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { log } from '../../utils/logger';
 
@@ -13,6 +16,20 @@ export const SAVE_DEBOUNCE_MS = 300;
 
 /** Offset for pasted annotations */
 export const PASTE_OFFSET = 20;
+
+// ============================================================================
+// ID Generation
+// ============================================================================
+
+/**
+ * Generates a unique annotation ID using crypto API
+ * @param prefix - The prefix for the annotation type (e.g., 'freeText', 'freeShape', 'group')
+ */
+export function generateAnnotationId(prefix: string): string {
+  const timestamp = Date.now();
+  const uuid = globalThis.crypto.randomUUID();
+  return `${prefix}_${timestamp}_${uuid.slice(0, 8)}`;
+}
 
 // ============================================================================
 // Types
@@ -157,4 +174,160 @@ export function createCommonSelectionReturn<T>(
     selectedAnnotationIds,
     ...actions
   };
+}
+
+// ============================================================================
+// React Hook Factories for State Management
+// ============================================================================
+
+/** Minimal annotation interface for hook utilities */
+interface BaseAnnotationWithGroupId {
+  id: string;
+  groupId?: string;
+}
+
+/**
+ * Creates a delete annotation callback
+ */
+export function useDeleteAnnotation<T extends BaseAnnotationWithGroupId>(
+  logPrefix: string,
+  setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
+  saveAnnotationsToExtension: (annotations: T[]) => void
+) {
+  return useCallback((id: string) => {
+    setAnnotations(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+    log.info(`[${logPrefix}] Deleted annotation: ${id}`);
+  }, [setAnnotations, saveAnnotationsToExtension]);
+}
+
+/**
+ * Creates standard position/size/rotation update callbacks
+ */
+export function useStandardUpdates<T extends BaseAnnotationWithGroupId>(
+  setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
+  saveAnnotationsToExtension: (annotations: T[]) => void,
+  updateInList: (
+    annotations: T[],
+    id: string,
+    updater: (annotation: T) => T
+  ) => T[],
+  updatePosition: (annotation: T, position: { x: number; y: number }) => T,
+  updateRotation: (annotation: T, rotation: number) => T
+) {
+  const updatePositionFn = useCallback((id: string, position: { x: number; y: number }) => {
+    setAnnotations(prev => {
+      const updated = updateInList(prev, id, a => updatePosition(a, position));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension, updateInList, updatePosition]);
+
+  const updateSize = useCallback((id: string, width: number, height: number) => {
+    setAnnotations(prev => {
+      const updated = updateInList(prev, id, a => ({ ...a, width, height } as T));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension, updateInList]);
+
+  const updateRotationFn = useCallback((id: string, rotation: number) => {
+    setAnnotations(prev => {
+      const updated = updateInList(prev, id, a => updateRotation(a, rotation));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension, updateInList, updateRotation]);
+
+  return { updatePosition: updatePositionFn, updateSize, updateRotation: updateRotationFn };
+}
+
+/**
+ * Creates generic annotation update and group migration callbacks
+ */
+export function useGenericAnnotationUpdates<T extends BaseAnnotationWithGroupId>(
+  logPrefix: string,
+  setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
+  saveAnnotationsToExtension: (annotations: T[]) => void,
+  updateInList: (
+    annotations: T[],
+    id: string,
+    updater: (annotation: T) => T
+  ) => T[]
+) {
+  const updateAnnotation = useCallback((id: string, updates: Partial<T>) => {
+    setAnnotations(prev => {
+      const updated = updateInList(prev, id, a => ({ ...a, ...updates }));
+      saveAnnotationsToExtension(updated);
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension, updateInList]);
+
+  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string) => {
+    setAnnotations(prev => {
+      const updated = prev.map(a =>
+        a.groupId === oldGroupId ? { ...a, groupId: newGroupId } : a
+      );
+      // Only save if something actually changed
+      const hasChanges = updated.some((a, i) => a !== prev[i]);
+      if (hasChanges) {
+        saveAnnotationsToExtension(updated);
+        log.info(`[${logPrefix}] Migrated annotations from group ${oldGroupId} to ${newGroupId}`);
+      }
+      return updated;
+    });
+  }, [setAnnotations, saveAnnotationsToExtension]);
+
+  return { updateAnnotation, migrateGroupId };
+}
+
+// ============================================================================
+// Debounced Save Hook
+// ============================================================================
+
+export interface UseDebouncedSaveReturn<T> {
+  saveDebounced: (items: T[]) => void;
+  saveImmediate: (items: T[]) => void;
+}
+
+/**
+ * Hook for debounced saving of annotations to extension
+ */
+export function useDebouncedSave<T>(
+  save: (items: T[]) => Promise<void>,
+  logPrefix: string,
+  debounceMs: number
+): UseDebouncedSaveReturn<T> {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clear = useCallback(() => {
+    if (!timeoutRef.current) return;
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+  }, []);
+
+  const saveDebounced = useCallback((items: T[]) => {
+    clear();
+    timeoutRef.current = setTimeout(() => {
+      save(items).catch((err) => {
+        log.error(`[${logPrefix}] Failed to save annotations: ${err}`);
+      });
+      log.info(`[${logPrefix}] Saved ${items.length} annotations`);
+    }, debounceMs);
+  }, [clear, debounceMs, logPrefix, save]);
+
+  const saveImmediate = useCallback((items: T[]) => {
+    clear();
+    save(items).catch((err) => {
+      log.error(`[${logPrefix}] Failed to save annotations: ${err}`);
+    });
+    log.info(`[${logPrefix}] Saved ${items.length} annotations (immediate)`);
+  }, [clear, logPrefix, save]);
+
+  useEffect(() => clear, [clear]);
+
+  return { saveDebounced, saveImmediate };
 }

@@ -9,7 +9,7 @@ import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/t
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
 
 import { useFreeTextAnnotations } from './useFreeTextAnnotations';
-import type { AnnotationActionMethods, AnnotationSelectionMethods } from './freeTextTypes';
+import type { AnnotationActionMethods, AnnotationSelectionMethods } from './freeText';
 
 interface InitialData {
   freeTextAnnotations?: unknown[];

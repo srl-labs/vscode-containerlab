@@ -14,10 +14,10 @@ import {
   useLineResizeDrag,
   useAnnotationClickHandlers,
   useLayerClickHandler,
-  useAnnotationBoxSelection
-} from '../../hooks/annotations/interactions';
-import { useAnnotationReparent } from '../../hooks/annotations/management';
-import { getLineCenter } from '../../hooks/annotations/shapes';
+  useAnnotationBoxSelection,
+  useAnnotationReparent,
+  getLineCenter
+} from '../../hooks/annotations';
 import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
 import { projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
 

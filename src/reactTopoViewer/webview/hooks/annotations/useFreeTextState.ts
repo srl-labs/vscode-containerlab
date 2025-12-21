@@ -16,16 +16,15 @@ import {
   updateAnnotationPosition,
   updateAnnotationRotation,
   duplicateAnnotations
-} from './freeTextHelpers';
-import { useDebouncedSave } from './useDebouncedSave';
-import { useAnnotationListSelection } from './useAnnotationListSelection';
-import { useAnnotationListCopyPaste } from './useAnnotationListCopyPaste';
+} from './freeText';
+import type { AnnotationActionMethods, AnnotationSelectionMethods } from './freeText';
 import {
+  useDebouncedSave,
   useDeleteAnnotation,
   useStandardUpdates,
   useGenericAnnotationUpdates
-} from './annotationStateUtils';
-import type { AnnotationActionMethods, AnnotationSelectionMethods } from './freeTextTypes';
+} from './sharedAnnotationHelpers';
+import { useAnnotationListSelection, useAnnotationListCopyPaste } from './useAnnotationListOperations';
 
 export interface UseFreeTextStateReturn {
   annotations: FreeTextAnnotation[];

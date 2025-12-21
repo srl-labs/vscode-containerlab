@@ -7,7 +7,7 @@ import { useCallback, useRef } from 'react';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { findDeepestGroupAtPosition } from '../groups/utils';
+import { findDeepestGroupAtPosition } from '../groups';
 
 export interface UseAnnotationReparentOptions {
   mode: 'edit' | 'view';

@@ -3,7 +3,7 @@
  */
 import type { Core as CyCore } from 'cytoscape';
 
-import type { FreeTextAnnotation } from './freeTextTypes';
+import type { FreeTextAnnotation } from './freeText';
 import { useAnnotationGroupMove } from './useAnnotationGroupMove';
 import { useAnnotationBackgroundClear } from './useAnnotationBackgroundClear';
 

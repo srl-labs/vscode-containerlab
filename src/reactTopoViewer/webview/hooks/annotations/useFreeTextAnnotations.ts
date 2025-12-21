@@ -6,16 +6,16 @@ import { useCallback, useMemo } from 'react';
 
 import type { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { findDeepestGroupAtPosition } from '../groups/utils';
+import { findDeepestGroupAtPosition } from '../groups';
 
-import { createDefaultAnnotation } from './freeTextHelpers';
+import { createDefaultAnnotation } from './freeText';
 import { createEditAnnotationCallback, createCommonSelectionReturn } from './sharedAnnotationHelpers';
 import { useFreeTextState, useFreeTextActions } from './useFreeTextState';
 import type {
   UseFreeTextAnnotationsOptions,
   UseFreeTextAnnotationsReturn,
   AnnotationUndoAction
-} from './freeTextTypes';
+} from './freeText';
 
 // Re-export types for consumers
 export type { UseFreeTextAnnotationsOptions, UseFreeTextAnnotationsReturn, AnnotationUndoAction };

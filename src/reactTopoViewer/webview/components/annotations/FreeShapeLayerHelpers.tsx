@@ -13,7 +13,7 @@ import {
   MIN_SHAPE_SIZE,
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY
-} from '../../hooks/annotations/freeShapeHelpers';
+} from '../../hooks/annotations/freeShape';
 
 import { applyAlphaToColor } from './shared';
 

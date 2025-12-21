@@ -1,19 +1,23 @@
 /**
- * Helper functions for free shape annotations
+ * Free shape annotation types and helpers
+ * Consolidated from: freeShapeTypes.ts + freeShapeHelpers.ts
  */
-import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { Core as CyCore } from 'cytoscape';
+
+import type { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
 import {
-  generateId,
+  generateAnnotationId as generateId,
   SAVE_DEBOUNCE_MS,
   PASTE_OFFSET,
-  genericUpdateInList,
-  genericUpdateRotation,
-  genericSaveToList,
-  genericDuplicateAnnotations,
-} from './commonAnnotationImports';
+  updateAnnotationInList as genericUpdateInList,
+  updateAnnotationRotation as genericUpdateRotation,
+  saveAnnotationToList as genericSaveToList,
+  duplicateAnnotations as genericDuplicateAnnotations,
+} from './sharedAnnotationHelpers';
 
-// Re-export shared constants
+// Re-export for consumers
+export type { FreeShapeAnnotation };
 export { SAVE_DEBOUNCE_MS, PASTE_OFFSET };
 
 // ============================================================================
@@ -31,6 +35,64 @@ export const DEFAULT_BORDER_STYLE: NonNullable<FreeShapeAnnotation['borderStyle'
 export const DEFAULT_ARROW_SIZE = 10;
 export const DEFAULT_CORNER_RADIUS = 0;
 export const MIN_SHAPE_SIZE = 5;
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface UseFreeShapeAnnotationsOptions {
+  cy: CyCore | null;
+  mode: 'edit' | 'view';
+  isLocked: boolean;
+  onLockedAction?: () => void;
+  groups?: GroupStyleAnnotation[];
+}
+
+export interface AnnotationSelectionActions {
+  selectAnnotation: (id: string) => void;
+  toggleAnnotationSelection: (id: string) => void;
+  clearAnnotationSelection: () => void;
+  deleteSelectedAnnotations: () => void;
+  getSelectedAnnotations: () => FreeShapeAnnotation[];
+  boxSelectAnnotations: (ids: string[]) => void;
+  copySelectedAnnotations: () => void;
+  pasteAnnotations: () => void;
+  duplicateSelectedAnnotations: () => void;
+  hasClipboardContent: () => boolean;
+}
+
+export interface UseFreeShapeAnnotationsReturn extends AnnotationSelectionActions {
+  annotations: FreeShapeAnnotation[];
+  isAddShapeMode: boolean;
+  pendingShapeType: FreeShapeAnnotation['shapeType'];
+  editingAnnotation: FreeShapeAnnotation | null;
+  enableAddShapeMode: (shapeType?: FreeShapeAnnotation['shapeType']) => void;
+  disableAddShapeMode: () => void;
+  handleCanvasClick: (position: { x: number; y: number }) => FreeShapeAnnotation | null;
+  editAnnotation: (id: string) => void;
+  closeEditor: () => void;
+  deleteAnnotation: (id: string) => void;
+  saveAnnotation: (annotation: FreeShapeAnnotation) => void;
+  updatePosition: (id: string, position: { x: number; y: number }) => void;
+  updateSize: (id: string, width: number, height: number) => void;
+  updateRotation: (id: string, rotation: number) => void;
+  updateEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
+  updateAnnotation: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
+  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  updateEndGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
+  loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
+  getUndoRedoAction: (before: FreeShapeAnnotation | null, after: FreeShapeAnnotation | null) => AnnotationUndoAction;
+  selectedAnnotationIds: Set<string>;
+}
+
+export interface AnnotationUndoAction {
+  type: 'annotation';
+  annotationType: 'freeShape';
+  before: FreeShapeAnnotation | null;
+  after: FreeShapeAnnotation | null;
+  [key: string]: unknown;
+}
 
 // ============================================================================
 // ID Generation
@@ -231,4 +293,3 @@ export function duplicateAnnotations(
 ): FreeShapeAnnotation[] {
   return genericDuplicateAnnotations(annotations, duplicateAnnotation, pasteCount);
 }
-

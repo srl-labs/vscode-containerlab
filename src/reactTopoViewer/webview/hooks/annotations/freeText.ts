@@ -1,19 +1,23 @@
 /**
- * Helper functions for free text annotations
+ * Free text annotation types and helpers
+ * Consolidated from: freeTextTypes.ts + freeTextHelpers.ts
  */
-import type { FreeTextAnnotation } from '../../../shared/types/topology';
+import type { Core as CyCore } from 'cytoscape';
+
+import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
 import {
-  generateId,
+  generateAnnotationId as generateId,
   SAVE_DEBOUNCE_MS,
   PASTE_OFFSET,
-  genericUpdateInList,
-  genericUpdateRotation,
-  genericSaveToList,
-  genericDuplicateAnnotations,
-} from './commonAnnotationImports';
+  updateAnnotationInList as genericUpdateInList,
+  updateAnnotationRotation as genericUpdateRotation,
+  saveAnnotationToList as genericSaveToList,
+  duplicateAnnotations as genericDuplicateAnnotations,
+} from './sharedAnnotationHelpers';
 
-// Re-export shared constants
+// Re-export for consumers
+export type { FreeTextAnnotation };
 export { SAVE_DEBOUNCE_MS, PASTE_OFFSET };
 
 // ============================================================================
@@ -25,12 +29,67 @@ export const DEFAULT_FONT_COLOR = '#FFFFFF';
 export const DEFAULT_BACKGROUND_COLOR = 'transparent';
 
 // ============================================================================
+// Types
+// ============================================================================
+
+export interface UseFreeTextAnnotationsOptions {
+  cy: CyCore | null;
+  mode: 'edit' | 'view';
+  isLocked: boolean;
+  onLockedAction?: () => void;
+  groups?: GroupStyleAnnotation[];
+}
+
+export interface AnnotationActionMethods {
+  closeEditor: () => void;
+  saveAnnotation: (annotation: FreeTextAnnotation) => void;
+  deleteAnnotation: (id: string) => void;
+  updatePosition: (id: string, position: { x: number; y: number }) => void;
+  updateSize: (id: string, width: number, height: number) => void;
+  updateRotation: (id: string, rotation: number) => void;
+  updateAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
+  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
+  loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
+}
+
+export interface AnnotationSelectionMethods {
+  selectedAnnotationIds: Set<string>;
+  selectAnnotation: (id: string) => void;
+  toggleAnnotationSelection: (id: string) => void;
+  clearAnnotationSelection: () => void;
+  deleteSelectedAnnotations: () => void;
+  getSelectedAnnotations: () => FreeTextAnnotation[];
+  boxSelectAnnotations: (ids: string[]) => void;
+  copySelectedAnnotations: () => void;
+  pasteAnnotations: () => void;
+  duplicateSelectedAnnotations: () => void;
+  hasClipboardContent: () => boolean;
+}
+
+export interface UseFreeTextAnnotationsReturn extends AnnotationActionMethods, AnnotationSelectionMethods {
+  annotations: FreeTextAnnotation[];
+  editingAnnotation: FreeTextAnnotation | null;
+  isAddTextMode: boolean;
+  enableAddTextMode: () => void;
+  disableAddTextMode: () => void;
+  handleCanvasClick: (position: { x: number; y: number }) => void;
+  editAnnotation: (id: string) => void;
+  getUndoRedoAction: (before: FreeTextAnnotation | null, after: FreeTextAnnotation | null) => AnnotationUndoAction;
+}
+
+export interface AnnotationUndoAction {
+  type: 'annotation';
+  annotationType: 'freeText';
+  before: FreeTextAnnotation | null;
+  after: FreeTextAnnotation | null;
+  [key: string]: unknown;
+}
+
+// ============================================================================
 // ID Generation
 // ============================================================================
 
-/**
- * Generates a unique annotation ID for free text annotations
- */
 export function generateAnnotationId(): string {
   return generateId('freeText');
 }
@@ -39,9 +98,6 @@ export function generateAnnotationId(): string {
 // Annotation Factory
 // ============================================================================
 
-/**
- * Creates a default annotation at the given position
- */
 export function createDefaultAnnotation(position: { x: number; y: number }): FreeTextAnnotation {
   return {
     id: generateAnnotationId(),
@@ -64,9 +120,6 @@ export function createDefaultAnnotation(position: { x: number; y: number }): Fre
 // Style Extraction
 // ============================================================================
 
-/**
- * Extracts style properties from an annotation for reuse
- */
 export function extractStyleFromAnnotation(annotation: FreeTextAnnotation): Partial<FreeTextAnnotation> {
   return {
     fontSize: annotation.fontSize,
@@ -85,9 +138,6 @@ export function extractStyleFromAnnotation(annotation: FreeTextAnnotation): Part
 // Annotation Updates
 // ============================================================================
 
-/**
- * Updates an annotation in the list by ID
- */
 export function updateAnnotationInList(
   annotations: FreeTextAnnotation[],
   id: string,
@@ -96,9 +146,6 @@ export function updateAnnotationInList(
   return genericUpdateInList(annotations, id, updater);
 }
 
-/**
- * Updates position of an annotation
- */
 export function updateAnnotationPosition(
   annotation: FreeTextAnnotation,
   position: { x: number; y: number }
@@ -109,9 +156,6 @@ export function updateAnnotationPosition(
   };
 }
 
-/**
- * Updates rotation of an annotation (normalized to 0-359)
- */
 export function updateAnnotationRotation(
   annotation: FreeTextAnnotation,
   rotation: number
@@ -119,10 +163,6 @@ export function updateAnnotationRotation(
   return genericUpdateRotation(annotation, rotation);
 }
 
-/**
- * Saves or updates an annotation in the list
- * Uses updateAnnotationInList for existing annotations, appends for new ones
- */
 export function saveAnnotationToList(
   annotations: FreeTextAnnotation[],
   annotation: FreeTextAnnotation
@@ -134,9 +174,6 @@ export function saveAnnotationToList(
 // Copy/Paste Operations
 // ============================================================================
 
-/**
- * Creates a duplicate of an annotation with a new ID and offset position
- */
 export function duplicateAnnotation(
   annotation: FreeTextAnnotation,
   offset: number = PASTE_OFFSET
@@ -151,9 +188,6 @@ export function duplicateAnnotation(
   };
 }
 
-/**
- * Creates duplicates of multiple annotations with new IDs and offset positions
- */
 export function duplicateAnnotations(
   annotations: FreeTextAnnotation[],
   pasteCount: number = 0

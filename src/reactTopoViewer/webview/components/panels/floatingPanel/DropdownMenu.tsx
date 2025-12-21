@@ -3,7 +3,7 @@
  */
 import React, { useRef, useCallback } from 'react';
 
-import { useDropdownState, useFloatingDropdownKeyboard, useFocusOnOpen } from '../../../hooks/ui/useDropdownState';
+import { useDropdownState, useFloatingDropdownKeyboard, useFocusOnOpen } from '../../../hooks/ui/useDropdown';
 
 /**
  * Dropdown menu item interface

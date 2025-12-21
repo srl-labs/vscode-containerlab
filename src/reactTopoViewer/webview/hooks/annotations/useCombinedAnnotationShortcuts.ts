@@ -4,11 +4,11 @@
  */
 import React from 'react';
 
-import type { UseGroupClipboardReturn } from '../groups/interactions';
+import type { UseGroupClipboardReturn } from '../groups';
 import { log } from '../../utils/logger';
 
 import type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
-import type { UseFreeShapeAnnotationsReturn } from './freeShapeTypes';
+import type { UseFreeShapeAnnotationsReturn } from './freeShape';
 import type { UseFreeShapeUndoRedoHandlersReturn } from './useFreeShapeUndoRedoHandlers';
 
 export interface UseCombinedAnnotationShortcutsReturn {

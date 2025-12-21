@@ -5,12 +5,12 @@ import { useCallback, useMemo } from 'react';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { findDeepestGroupAtPosition } from '../groups/utils';
+import { findDeepestGroupAtPosition } from '../groups';
 
-import { createDefaultAnnotation } from './freeShapeHelpers';
+import { createDefaultAnnotation } from './freeShape';
 import { createEditAnnotationCallback, createCommonSelectionReturn } from './sharedAnnotationHelpers';
 import { useFreeShapeState, useFreeShapeActions } from './useFreeShapeState';
-import type { UseFreeShapeAnnotationsOptions, UseFreeShapeAnnotationsReturn, AnnotationUndoAction } from './freeShapeTypes';
+import type { UseFreeShapeAnnotationsOptions, UseFreeShapeAnnotationsReturn, AnnotationUndoAction } from './freeShape';
 
 export type { UseFreeShapeAnnotationsOptions, UseFreeShapeAnnotationsReturn, AnnotationUndoAction };
 

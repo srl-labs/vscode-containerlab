@@ -12,6 +12,7 @@ import type {
 } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { createHasClipboardData, createClearClipboard } from '../clipboard/clipboardHelpers';
+import { generateAnnotationId } from '../annotations/sharedAnnotationHelpers';
 
 import type { GroupClipboardData, PastedGroupResult } from './groupTypes';
 import {
@@ -20,15 +21,6 @@ import {
   getRelativePosition
 } from './hierarchyUtils';
 import { generateGroupId } from './groupHelpers';
-
-/** Counter for generating unique annotation IDs */
-let annotationIdCounter = 0;
-
-/** Generate a unique ID for pasted annotations using timestamp + counter */
-function generateAnnotationId(prefix: string): string {
-  annotationIdCounter++;
-  return `${prefix}_${Date.now()}_${annotationIdCounter}`;
-}
 
 /** Create descendant groups with new IDs */
 function createDescendantGroups(

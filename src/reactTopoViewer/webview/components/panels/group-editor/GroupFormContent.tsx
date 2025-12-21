@@ -5,8 +5,8 @@
 import React from 'react';
 
 import type { GroupStyleAnnotation } from '../../../../shared/types/topology';
-import type { GroupEditorData } from '../../../hooks/groups/core';
-import { GROUP_LABEL_POSITIONS } from '../../../hooks/groups/core';
+import type { GroupEditorData } from '../../../hooks/groups';
+import { GROUP_LABEL_POSITIONS } from '../../../hooks/groups';
 import { ColorSwatch, TextInput, NumberInput, SelectInput, RangeSlider } from '../../shared/form';
 
 interface Props {

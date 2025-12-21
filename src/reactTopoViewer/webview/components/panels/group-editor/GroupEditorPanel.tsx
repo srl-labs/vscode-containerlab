@@ -6,7 +6,7 @@ import React, { useCallback } from 'react';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
 import type { GroupStyleAnnotation } from '../../../../shared/types/topology';
-import type { GroupEditorData } from '../../../hooks/groups/core';
+import type { GroupEditorData } from '../../../hooks/groups';
 import { useGenericFormState, useEditorHandlers } from '../../../hooks/panels/useGenericFormState';
 
 import { GroupFormContent } from './GroupFormContent';
