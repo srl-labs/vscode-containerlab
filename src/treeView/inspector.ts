@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 import * as events from "../services/containerlabEvents";
 import * as fallback from "../services/containerlabInspectFallback";
+import { outputChannel } from "../globals";
 import type { ClabInterfaceSnapshot } from "../types/containerlab";
 
 import type * as c from "./common";
@@ -50,7 +51,7 @@ export async function update(): Promise<void> {
 
     // Try events first, fall back to polling if it fails
     try {
-        console.log("[inspector]:\tUpdating inspect data via events stream");
+        outputChannel.debug("[inspector] Updating inspect data via events stream");
         const start = Date.now();
 
         await events.ensureEventStream(runtime);
@@ -58,12 +59,11 @@ export async function update(): Promise<void> {
 
         const duration = (Date.now() - start) / 1000;
         const labsCount = rawInspectData ? Object.keys(rawInspectData).length : 0;
-        console.log(`[inspector]:\tUpdated inspect data for ${labsCount} labs in ${duration.toFixed(3)} seconds.`);
+        outputChannel.debug(`[inspector] Updated inspect data for ${labsCount} labs in ${duration.toFixed(3)}s`);
     } catch (err) {
         // Events failed - likely "Unknown command" error
         const errorMsg = err instanceof Error ? err.message : String(err);
-        console.warn(`[inspector]:\tEvents stream failed: ${errorMsg}`);
-        console.log("[inspector]:\tFalling back to polling mode");
+        outputChannel.warn(`[inspector] Events stream failed: ${errorMsg}, falling back to polling`);
 
         // Mark that we've been forced into polling mode
         forcedPollingMode = true;
@@ -74,7 +74,7 @@ export async function update(): Promise<void> {
 }
 
 async function updateWithPolling(runtime: string): Promise<void> {
-    console.log("[inspector]:\tUpdating inspect data via polling fallback");
+    outputChannel.debug("[inspector] Updating inspect data via polling fallback");
     const start = Date.now();
 
     await fallback.ensureFallback(runtime);
@@ -82,7 +82,7 @@ async function updateWithPolling(runtime: string): Promise<void> {
 
     const duration = (Date.now() - start) / 1000;
     const labsCount = rawInspectData ? Object.keys(rawInspectData).length : 0;
-    console.log(`[inspector]:\tUpdated inspect data for ${labsCount} labs in ${duration.toFixed(3)} seconds (polling).`);
+    outputChannel.debug(`[inspector] Updated inspect data for ${labsCount} labs in ${duration.toFixed(3)}s (polling)`);
 }
 
 export function getInterfacesSnapshot(containerShortId: string, containerName: string): ClabInterfaceSnapshot[] {

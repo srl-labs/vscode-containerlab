@@ -110,7 +110,9 @@ async function captureMultipleEdgeshark(nodes: c.ClabInterfaceTreeNode[]): Promi
   const ifNames = nodes.map(n => n.name);
   outputChannel.debug(`multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
 
-  const netnsVal = (base as any).netns || 4026532270;
+  // Type guard: netns property may exist on runtime objects but isn't in the type definition
+  const baseWithNetns = base as c.ClabInterfaceTreeNode & { netns?: number };
+  const netnsVal = baseWithNetns.netns ?? 4026532270;
   const containerObj = {
     netns: netnsVal,
     "network-interfaces": ifNames,
@@ -167,12 +169,16 @@ function resolveOrbstackIPv4(): string | undefined {
   try {
     const nets = os.networkInterfaces();
     const eth0 = nets["eth0"] ?? [];
-    const v4 = (eth0 as any[]).find(
-      (n: any) => (n.family === "IPv4" || n.family === 4) && !n.internal
+    // Type guard: find IPv4 network interface that is not internal
+    const v4 = eth0.find(
+      (n): n is os.NetworkInterfaceInfo =>
+        n.family === "IPv4" &&
+        !n.internal
     );
-    return v4?.address as string | undefined;
-  } catch (e: any) {
-    outputChannel.debug(`(Orbstack) Error retrieving IPv4: ${e.message || e.toString()}`);
+    return v4?.address;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    outputChannel.debug(`(Orbstack) Error retrieving IPv4: ${message}`);
     return undefined;
   }
 }

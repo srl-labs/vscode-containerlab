@@ -13,7 +13,7 @@ import { exec , execFileSync } from "child_process";
 
 import * as vscode from "vscode";
 
-import { containerlabBinaryPath } from "../globals";
+import { containerlabBinaryPath, outputChannel } from "../globals";
 import type { ClabDetailedJSON } from "../treeView/common";
 import type { ClabInterfaceSnapshot, ClabInterfaceSnapshotEntry } from "../types/containerlab";
 
@@ -146,7 +146,7 @@ export function startPolling(runtime: string, intervalMs: number = DEFAULT_POLL_
     }
 
     isPolling = true;
-    console.log(`[containerlabInspectFallback]: Starting polling with ${intervalMs}ms interval`);
+    outputChannel.debug(`[containerlabInspectFallback] Starting polling with ${intervalMs}ms interval`);
 
     // Initial fetch
     void pollOnce(runtime);
@@ -166,7 +166,7 @@ export function stopPolling(): void {
         pollingInterval = null;
     }
     isPolling = false;
-    console.log("[containerlabInspectFallback]: Stopped polling");
+    outputChannel.debug("[containerlabInspectFallback] Stopped polling");
 }
 
 /**

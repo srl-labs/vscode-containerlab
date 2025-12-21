@@ -5,11 +5,27 @@
 
 import * as vscode from 'vscode';
 
-import type { ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
+import type { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from '../../../treeView/common';
 import { runningLabsProvider } from '../../../globals';
 import type { EndpointResult } from '../../shared/types/endpoint';
 
 import { log } from './logger';
+
+/**
+ * Type guard to check if a value is a valid ClabLabTreeNode.
+ */
+function isClabLabTreeNode(value: unknown): value is ClabLabTreeNode {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const obj = value as Record<string, unknown>;
+  return (
+    'labPath' in obj &&
+    typeof obj.labPath === 'object' &&
+    obj.labPath !== null &&
+    'absolute' in obj.labPath
+  );
+}
 
 /**
  * Creates a default container node object when no matching container is found.
@@ -70,14 +86,20 @@ export class NodeCommandService {
    * Gets a container node by name from the running labs.
    */
   async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
-    const labs = await runningLabsProvider?.discoverInspectLabs() as Record<string, { labPath: { absolute: string }, containers?: ClabContainerTreeNode[] }> | undefined;
-    if (!labs || !this.yamlFilePath) {
+    const labsData = await runningLabsProvider?.discoverInspectLabs();
+    if (!labsData || !this.yamlFilePath) {
       return undefined;
     }
 
     // Only search in the current lab
-    const currentLab = Object.values(labs).find(lab => lab.labPath.absolute === this.yamlFilePath);
-    if (!currentLab) {
+    const currentLab = Object.values(labsData).find(lab => {
+      if (!isClabLabTreeNode(lab)) {
+        return false;
+      }
+      return lab.labPath.absolute === this.yamlFilePath;
+    });
+
+    if (!currentLab || !isClabLabTreeNode(currentLab)) {
       return undefined;
     }
 
@@ -227,8 +249,10 @@ export class NodeCommandService {
     if (!treeData) return interfaceName;
 
     for (const lab of Object.values(treeData)) {
-      const labAny = lab as { containers?: ClabContainerTreeNode[] };
-      const container = labAny.containers?.find(
+      if (!isClabLabTreeNode(lab)) {
+        continue;
+      }
+      const container = lab.containers?.find(
         (c) => c.name === nodeName || c.name_short === nodeName
       );
       const intf = container?.interfaces?.find(

@@ -8,6 +8,13 @@ import type { Core } from 'cytoscape';
 import type { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
+import {
+  useElementsUpdate,
+  useCytoscapeInitializer,
+  useDelayedCytoscapeInit
+} from '../../hooks/canvas';
+
+import { ensureColaRegistered, getLayoutOptions } from './init';
 
 interface NodeDataUpdatedMessage {
   type: 'node-data-updated';
@@ -16,16 +23,6 @@ interface NodeDataUpdatedMessage {
     extraData: Record<string, unknown>;
   };
 }
-import {
-  useElementsUpdate,
-  useCytoscapeInitializer,
-  useDelayedCytoscapeInit
-} from '../../hooks/canvas';
-
-import {
-  ensureColaRegistered,
-  getLayoutOptions
-} from './init';
 
 
 /**

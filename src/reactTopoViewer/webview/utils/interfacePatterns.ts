@@ -113,8 +113,8 @@ export function collectUsedIndices(cy: CyCore, nodeId: string, parsed: ParsedInt
   const edges = cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
 
   edges.forEach((edge) => {
-    const src = edge.data('source');
-    const tgt = edge.data('target');
+    const src = edge.data('source') as string;
+    const tgt = edge.data('target') as string;
     const epSrc = edge.data('sourceEndpoint') as string | undefined;
     const epTgt = edge.data('targetEndpoint') as string | undefined;
 

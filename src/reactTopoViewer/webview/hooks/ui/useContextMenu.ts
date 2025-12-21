@@ -3,7 +3,7 @@
  * Manages context menu state for nodes and edges using React-based menu
  */
 import React, { useEffect, useCallback, useState } from 'react';
-import type { Core, EventObject, NodeSingular } from 'cytoscape';
+import type { Core, EventObject, NodeSingular, EdgeSingular } from 'cytoscape';
 
 import { log } from '../../utils/logger';
 import type { ContextMenuItem } from '../../components/context-menu/ContextMenu';
@@ -390,9 +390,9 @@ function useMenuEvents(
 
     const handleEdgeContextMenu = (evt: EventObject) => {
       evt.originalEvent?.preventDefault();
-      const edge = evt.target;
+      const edge = evt.target as EdgeSingular;
       const edgeId = edge.id();
-      openEdgeMenu(edgeId, edge.data(), getEventPosition(evt));
+      openEdgeMenu(edgeId, edge.data() as Record<string, unknown>, getEventPosition(evt));
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
       log.info(`[ContextMenu] Edge context menu opened for: ${edgeId}`);
     };

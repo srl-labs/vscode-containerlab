@@ -233,7 +233,7 @@ function collectClipboardNodes(
       log.info(`[UnifiedClipboard] Copying node ${node.id()}, group membership: ${membership ?? 'none'}`);
       clipboardNodes.push({
         id: node.id(),
-        data: { ...node.data() },
+        data: { ...(node.data() as Record<string, unknown>) },
         position: { ...pos },
         relativePosition: { x: 0, y: 0 },
         groupId: membership
@@ -259,7 +259,7 @@ function collectClipboardEdges(
         id: edge.id(),
         source: sourceId,
         target: targetId,
-        data: { ...edge.data() }
+        data: { ...(edge.data() as Record<string, unknown>) }
       });
     }
   });
@@ -453,7 +453,7 @@ function pasteNodes(
   const newNodeIds: string[] = [];
 
   // Get existing node names to avoid duplicates
-  const usedNames = new Set<string>(cyInstance.nodes().map(node => node.data('name') || node.id()));
+  const usedNames = new Set<string>(cyInstance.nodes().map(node => (node.data('name') as string | undefined) || node.id()));
 
   for (const item of clipboardNodes) {
     // Generate unique name based on original node name

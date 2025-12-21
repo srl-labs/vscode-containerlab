@@ -138,8 +138,9 @@ export function getUserInfo(): {
         uid
       };
     }
-  } catch (err: any) {
-    outputChannel.error(`User info check failed: ${err}`)
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    outputChannel.error(`User info check failed: ${errorMessage}`)
     return {
       hasPermission: false,
       isRoot: false,
@@ -182,7 +183,7 @@ export async function getFreePort(): Promise<number> {
 }
 
 // Get the config, set the default to undefined as all defaults **SHOULD** be set in package.json
-export function getConfig(relCfgPath: string): any {
+export function getConfig(relCfgPath: string): unknown {
   return vscode.workspace.getConfiguration("containerlab").get(relCfgPath, undefined);
 }
 
@@ -302,8 +303,9 @@ export async function checkAndUpdateClabIfNeeded(
     } else {
       log("Containerlab is up to date.", outputChannel);
     }
-  } catch (err: any) {
-    log(`containerlab version check failed: ${err.message}`, outputChannel);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    log(`containerlab version check failed: ${errorMessage}`, outputChannel);
     vscode.window.showErrorMessage(
       'Unable to detect containerlab version. Please check your installation.'
     );
@@ -324,7 +326,7 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
 
   // Try running tree first
   if (runningTreeView && runningTreeView.selection.length > 0) {
-    const selected = runningTreeView.selection[0];
+    const selected: unknown = runningTreeView.selection[0];
     if (selected instanceof ClabLabTreeNode) {
       return selected;
     }
@@ -332,7 +334,7 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
 
   // Then try local tree
   if (localTreeView && localTreeView.selection.length > 0) {
-    const selected = localTreeView.selection[0];
+    const selected: unknown = localTreeView.selection[0];
     if (selected instanceof ClabLabTreeNode) {
       return selected;
     }

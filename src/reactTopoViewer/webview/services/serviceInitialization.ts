@@ -26,8 +26,8 @@ const ERROR_NOT_INITIALIZED = 'Services not initialized. Call initializeServices
  * Browser console logger adapter
  */
 const browserLogger: IOLogger = {
-  debug: (msg: string) => console.debug(`[Services] ${msg}`),
-  info: (msg: string) => console.info(`[Services] ${msg}`),
+  debug: () => { /* debug logging disabled in production */ },
+  info: () => { /* info logging disabled in production */ },
   warn: (msg: string) => console.warn(`[Services] ${msg}`),
   error: (msg: string) => console.error(`[Services] ${msg}`),
 };

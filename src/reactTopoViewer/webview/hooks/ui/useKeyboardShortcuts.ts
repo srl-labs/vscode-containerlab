@@ -226,7 +226,7 @@ function handleCreateGroup(
   // Only create group if groupable nodes are selected
   if (!cyInstance) return false;
   const selectedNodes = cyInstance.nodes(':selected').filter(n => {
-    const role = n.data('topoViewerRole');
+    const role = n.data('topoViewerRole') as string | undefined;
     // Exclude annotations
     return role !== 'freeText' && role !== 'freeShape';
   });

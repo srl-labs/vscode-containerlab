@@ -27,7 +27,7 @@ export interface UseNodeReparentDeps {
 type MembershipActions = Pick<UseNodeReparentDeps, 'addNodeToGroup' | 'removeNodeFromGroup'>;
 
 function canHaveGroupMembership(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole');
+  const role = node.data('topoViewerRole') as string | undefined;
   return role !== 'freeText' && role !== 'freeShape';
 }
 

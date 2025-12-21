@@ -74,7 +74,7 @@ export function collectCopyData(cy: Core): CopyData | null {
   nodes.forEach((node: NodeSingular) => {
     elements.push({
       group: 'nodes',
-      data: { ...node.data() },
+      data: { ...(node.data() as Record<string, unknown>) },
       position: { ...node.position() }
     });
   });
@@ -82,7 +82,7 @@ export function collectCopyData(cy: Core): CopyData | null {
   edges.forEach((edge: EdgeSingular) => {
     elements.push({
       group: 'edges',
-      data: { ...edge.data() }
+      data: { ...(edge.data() as Record<string, unknown>) }
     });
   });
 

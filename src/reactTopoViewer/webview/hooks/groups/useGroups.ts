@@ -337,7 +337,7 @@ function useSaveGroup(
           if (cy) {
             const migratedNodes: Array<{ nodeId: string; group: string; level: string }> = [];
             cy.nodes().forEach(node => {
-              const annotation = node.data('clabAnnotation');
+              const annotation = node.data('clabAnnotation') as { group?: string; level?: string } | undefined;
               if (annotation?.group === oldName && annotation?.level === oldLevel) {
                 node.data('clabAnnotation', {
                   ...annotation,

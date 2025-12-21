@@ -7,6 +7,31 @@ import * as vscode from 'vscode';
 import { extensionVersion } from './globals';
 
 /**
+ * Message types sent from the webview to the extension
+ */
+interface WebviewMessage {
+  command: 'createExample' | 'dontShowAgain' | 'getRepos';
+  value?: boolean;
+}
+
+/**
+ * GitHub repository data structure
+ */
+interface GitHubRepo {
+  name: string;
+  html_url: string;
+  description: string | null;
+  stargazers_count: number;
+}
+
+/**
+ * GitHub API search response
+ */
+interface GitHubSearchResponse {
+  items: GitHubRepo[];
+}
+
+/**
  * Manages the welcome page webview for the Containerlab extension.
  */
 export class WelcomePage {
@@ -51,7 +76,7 @@ export class WelcomePage {
     this.panel.webview.html = await this.getWebviewContent();
 
     // Handle webview messages
-    this.panel.webview.onDidReceiveMessage(async (message) => {
+    this.panel.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       switch (message.command) {
         case 'createExample':
           this.createExampleTopology();
@@ -67,7 +92,7 @@ export class WelcomePage {
   }
 
   // Fallback repository list in case GitHub API is rate-limited
-  private readonly fallbackRepos = [
+  private readonly fallbackRepos: GitHubRepo[] = [
     {
       name: "srl-telemetry-lab",
       html_url: "https://github.com/srl-labs/srl-telemetry-lab",
@@ -131,7 +156,7 @@ export class WelcomePage {
   /**
    * Helper to fetch JSON data from a URL.
    */
-  private fetchJson(url: string): Promise<any> {
+  private fetchJson(url: string): Promise<GitHubSearchResponse> {
     return new Promise((resolve, reject) => {
       const req = https.get(url, {
         headers: {
@@ -147,7 +172,7 @@ export class WelcomePage {
 
         res.on('end', () => {
           try {
-            const parsedData = JSON.parse(data);
+            const parsedData = JSON.parse(data) as GitHubSearchResponse;
             resolve(parsedData);
           } catch (e) {
             reject(e);

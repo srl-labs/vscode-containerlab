@@ -31,7 +31,7 @@ export interface UseAppGroupUndoHandlersReturn {
  * Returns false for annotations.
  */
 function canBeGrouped(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole');
+  const role = node.data('topoViewerRole') as string | undefined;
   return role !== 'freeText' && role !== 'freeShape';
 }
 

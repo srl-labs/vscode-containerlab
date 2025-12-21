@@ -5,7 +5,39 @@
 import { runCommand } from '../utils/utils';
 import { containerlabBinaryPath, outputChannel, sshxSessions, gottySessions } from '../globals';
 
-function extractLabName(session: any, prefix: string): string | undefined {
+/**
+ * Interface for SSHX session data returned by containerlab tools sshx list -f json
+ */
+interface SshxSession {
+  name?: string;
+  network?: string;
+  link?: string;
+}
+
+/**
+ * Interface for GoTTY session data returned by containerlab tools gotty list -f json
+ */
+interface GottySession {
+  name?: string;
+  network?: string;
+  port?: number | string;
+}
+
+/**
+ * Type guard to check if a value is an array of session objects
+ */
+function isSessionArray(value: unknown): value is Array<Record<string, unknown>> {
+  return Array.isArray(value);
+}
+
+/**
+ * Type guard to check if a session has the expected structure
+ */
+function hasSessionProperties(session: unknown): session is { name?: unknown; network?: unknown } {
+  return typeof session === 'object' && session !== null;
+}
+
+function extractLabName(session: SshxSession | GottySession, prefix: string): string | undefined {
   if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
     return session.network.slice(5);
   }
@@ -30,22 +62,30 @@ export async function refreshSshxSessions() {
       outputChannel,
       true,
       false
-    ) as string;
+    );
     sshxSessions.clear();
-    if (out) {
-      const parsed = JSON.parse(out);
-      parsed.forEach((s: any) => {
-        if (!s.link || s.link === 'N/A') {
+    if (out && typeof out === 'string') {
+      const parsed: unknown = JSON.parse(out);
+      if (!isSessionArray(parsed)) {
+        return;
+      }
+      parsed.forEach((sessionData) => {
+        if (!hasSessionProperties(sessionData)) {
           return;
         }
-        const lab = extractLabName(s, 'sshx');
+        const session = sessionData as SshxSession;
+        if (!session.link || session.link === 'N/A') {
+          return;
+        }
+        const lab = extractLabName(session, 'sshx');
         if (lab) {
-          sshxSessions.set(lab, s.link);
+          sshxSessions.set(lab, session.link);
         }
       });
     }
-  } catch (err: any) {
-    outputChannel.error(`Failed to refresh SSHX sessions: ${err.message || err}`);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    outputChannel.error(`Failed to refresh SSHX sessions: ${errorMessage}`);
   }
 }
 
@@ -57,28 +97,36 @@ export async function refreshGottySessions() {
       outputChannel,
       true,
       false
-    ) as string;
+    );
     gottySessions.clear();
-    if (out) {
-      const parsed = JSON.parse(out);
+    if (out && typeof out === 'string') {
+      const parsed: unknown = JSON.parse(out);
+      if (!isSessionArray(parsed)) {
+        return;
+      }
       // Dynamic import to avoid circular dependency
       const { getHostname } = await import('../commands/capture');
       const hostname = await getHostname();
 
-      parsed.forEach((s: any) => {
-        if (!s.port || !hostname) {
+      parsed.forEach((sessionData) => {
+        if (!hasSessionProperties(sessionData)) {
           return;
         }
-        const lab = extractLabName(s, 'gotty');
+        const session = sessionData as GottySession;
+        if (!session.port || !hostname) {
+          return;
+        }
+        const lab = extractLabName(session, 'gotty');
         if (lab) {
           // Construct the URL using hostname and port
           const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
-          const url = `http://${bracketed}:${s.port}`;
+          const url = `http://${bracketed}:${session.port}`;
           gottySessions.set(lab, url);
         }
       });
     }
-  } catch (err: any) {
-    outputChannel.error(`Failed to refresh GoTTY sessions: ${err.message || err}`);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    outputChannel.error(`Failed to refresh GoTTY sessions: ${errorMessage}`);
   }
 }

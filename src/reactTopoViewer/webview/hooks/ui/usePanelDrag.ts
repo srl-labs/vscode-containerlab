@@ -62,10 +62,20 @@ function constrainPosition(pos: Position, opts: ConstraintOptions): Position {
 }
 
 /**
+ * Saved position format - supports both { x, y } and legacy { left, top } formats
+ */
+interface SavedPosition {
+  x?: number;
+  y?: number;
+  left?: number;
+  top?: number;
+}
+
+/**
  * Parse saved position supporting both { x, y } and { left, top } formats
  */
 function parseSavedPosition(saved: string, defaultPos: Position): Position {
-  const parsed = JSON.parse(saved);
+  const parsed = JSON.parse(saved) as SavedPosition;
   return {
     x: parsed.x ?? parsed.left ?? defaultPos.x,
     y: parsed.y ?? parsed.top ?? defaultPos.y

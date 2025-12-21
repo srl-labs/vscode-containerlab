@@ -15,7 +15,7 @@ interface ContainerlabEvent {
     actor_id: string;
     actor_name?: string;
     actor_full_id?: string;
-    attributes?: Record<string, any>;
+    attributes?: Record<string, unknown>;
 }
 
 interface ContainerRecord {
@@ -338,6 +338,10 @@ function stopProcess(): void {
     }
 }
 
+function isString(value: unknown): value is string {
+    return typeof value === "string";
+}
+
 function parseCidr(value?: string): { address?: string; prefixLength?: number } {
     if (!value || typeof value !== "string") {
         return {};
@@ -353,57 +357,65 @@ function parseCidr(value?: string): { address?: string; prefixLength?: number } 
     return { address: value };
 }
 
-function resolveLabName(attributes: Record<string, any>): string {
-    return attributes.containerlab || attributes.lab || "unknown";
+function resolveLabName(attributes: Record<string, unknown>): string {
+    const containerlab = isString(attributes.containerlab) ? attributes.containerlab : "";
+    const lab = isString(attributes.lab) ? attributes.lab : "";
+    return containerlab || lab || "unknown";
 }
 
-function resolveContainerIds(event: ContainerlabEvent, attributes: Record<string, any>): { id: string; shortId: string } {
-    const fullId = attributes.id || event.actor_full_id || "";
+function resolveContainerIds(event: ContainerlabEvent, attributes: Record<string, unknown>): { id: string; shortId: string } {
+    const fullId = isString(attributes.id) ? attributes.id : (event.actor_full_id || "");
     const shortFromEvent = event.actor_id || "";
     const shortId = shortFromEvent || (fullId ? fullId.slice(0, 12) : "");
     const id = fullId || shortId;
     return { id, shortId };
 }
 
-function resolveNames(event: ContainerlabEvent, attributes: Record<string, any>): { name: string; nodeName: string } {
-    const name = attributes.name || attributes["clab-node-longname"] || event.actor_name || "";
-    const nodeName = attributes["clab-node-name"] || name;
+function resolveNames(event: ContainerlabEvent, attributes: Record<string, unknown>): { name: string; nodeName: string } {
+    const nameAttr = isString(attributes.name) ? attributes.name : "";
+    const longName = isString(attributes["clab-node-longname"]) ? attributes["clab-node-longname"] : "";
+    const name = nameAttr || longName || event.actor_name || "";
+    const nodeName = isString(attributes["clab-node-name"]) ? attributes["clab-node-name"] : name;
     return { name, nodeName };
 }
 
-function resolveImage(attributes: Record<string, any>): string {
-    return attributes.image || attributes["org.opencontainers.image.ref.name"] || "";
+function resolveImage(attributes: Record<string, unknown>): string {
+    const image = isString(attributes.image) ? attributes.image : "";
+    const imageRef = isString(attributes["org.opencontainers.image.ref.name"]) ? attributes["org.opencontainers.image.ref.name"] : "";
+    return image || imageRef || "";
 }
 
 function buildLabels(
-    attributes: Record<string, any>,
+    attributes: Record<string, unknown>,
     labName: string,
     name: string,
     nodeName: string,
     topoFile?: string,
 ): ClabDetailedJSON["Labels"] {
     const labels: ClabDetailedJSON["Labels"] = {
-        "clab-node-kind": attributes["clab-node-kind"] || "",
-        "clab-node-lab-dir": attributes["clab-node-lab-dir"] || "",
-        "clab-node-longname": attributes["clab-node-longname"] || name,
+        "clab-node-kind": isString(attributes["clab-node-kind"]) ? attributes["clab-node-kind"] : "",
+        "clab-node-lab-dir": isString(attributes["clab-node-lab-dir"]) ? attributes["clab-node-lab-dir"] : "",
+        "clab-node-longname": isString(attributes["clab-node-longname"]) ? attributes["clab-node-longname"] : name,
         "clab-node-name": nodeName,
-        "clab-owner": attributes["clab-owner"] || "",
+        "clab-owner": isString(attributes["clab-owner"]) ? attributes["clab-owner"] : "",
         "clab-topo-file": topoFile || "",
         containerlab: labName,
     };
 
-    if (attributes["clab-node-type"]) {
+    if (isString(attributes["clab-node-type"])) {
         labels["clab-node-type"] = attributes["clab-node-type"];
     }
-    if (attributes["clab-node-group"]) {
+    if (isString(attributes["clab-node-group"])) {
         labels["clab-node-group"] = attributes["clab-node-group"];
     }
     return labels;
 }
 
-function buildNetworkSettings(attributes: Record<string, any>): ClabDetailedJSON["NetworkSettings"] {
-    const ipv4 = parseCidr(attributes.mgmt_ipv4);
-    const ipv6 = parseCidr(attributes.mgmt_ipv6);
+function buildNetworkSettings(attributes: Record<string, unknown>): ClabDetailedJSON["NetworkSettings"] {
+    const mgmtIpv4 = isString(attributes.mgmt_ipv4) ? attributes.mgmt_ipv4 : undefined;
+    const mgmtIpv6 = isString(attributes.mgmt_ipv6) ? attributes.mgmt_ipv6 : undefined;
+    const ipv4 = parseCidr(mgmtIpv4);
+    const ipv6 = parseCidr(mgmtIpv6);
     return {
         IPv4addr: ipv4.address,
         IPv4pLen: ipv4.prefixLength,
@@ -412,8 +424,10 @@ function buildNetworkSettings(attributes: Record<string, any>): ClabDetailedJSON
     };
 }
 
-function resolveNetworkName(attributes: Record<string, any>): string | undefined {
-    return attributes.network || attributes["clab-mgmt-net-bridge"];
+function resolveNetworkName(attributes: Record<string, unknown>): string | undefined {
+    const network = isString(attributes.network) ? attributes.network : undefined;
+    const bridge = isString(attributes["clab-mgmt-net-bridge"]) ? attributes["clab-mgmt-net-bridge"] : undefined;
+    return network || bridge;
 }
 
 function toOptionalNumber(value: unknown): number | undefined {
@@ -428,12 +442,13 @@ function toClabDetailed(event: ContainerlabEvent): ContainerRecord | undefined {
     const attributes = event.attributes ?? {};
 
     const labName = resolveLabName(attributes);
-    const topoFile: string | undefined = attributes["clab-topo-file"];
+    const topoFile: string | undefined = isString(attributes["clab-topo-file"]) ? attributes["clab-topo-file"] : undefined;
     const { id, shortId } = resolveContainerIds(event, attributes);
     const { name, nodeName } = resolveNames(event, attributes);
     const image = resolveImage(attributes);
-    const state = attributes.state || deriveStateFromAction(event.action);
-    const status = attributes.status ?? "";
+    const stateAttr = isString(attributes.state) ? attributes.state : "";
+    const state = stateAttr || deriveStateFromAction(event.action);
+    const status = isString(attributes.status) ? attributes.status : "";
     const labels = buildLabels(attributes, labName, name, nodeName, topoFile);
     const networkSettings = buildNetworkSettings(attributes);
     const networkName = resolveNetworkName(attributes);

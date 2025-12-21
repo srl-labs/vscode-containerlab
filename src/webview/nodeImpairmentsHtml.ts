@@ -1,9 +1,17 @@
 import * as vscode from "vscode";
 
+interface NetemState {
+  delay?: string;
+  jitter?: string;
+  loss?: string;
+  rate?: string;
+  corruption?: string;
+}
+
 export function getNodeImpairmentsHtml(
   webview: vscode.Webview,
   nodeName: string,
-  interfacesData: Record<string, any>,
+  interfacesData: Record<string, NetemState>,
   extensionUri: vscode.Uri
 ): string {
   // Sort interface names alphabetically

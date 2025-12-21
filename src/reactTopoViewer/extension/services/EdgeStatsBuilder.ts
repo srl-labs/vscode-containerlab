@@ -5,6 +5,7 @@
 import type { ClabLabTreeNode } from '../../../treeView/common';
 import type { CyElement, ClabTopology } from '../../shared/types/topology';
 import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../../shared/parsing';
+
 import { findInterfaceNode } from './TreeUtils';
 
 export interface EdgeStatsUpdate {

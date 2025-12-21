@@ -17,6 +17,38 @@ import {
 import type { GraphChange, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove, MembershipEntry } from './useUndoRedo';
 import { useUndoRedo } from './useUndoRedo';
 
+// Type guards and helper interfaces for CyElement data
+interface NodeElementData {
+  id: string;
+  name?: string;
+  kind?: string;
+  image?: string;
+  group?: string;
+  topoViewerRole?: unknown;
+  iconColor?: unknown;
+  iconCornerRadius?: unknown;
+  interfacePattern?: unknown;
+  extraData?: {
+    kind?: string;
+    image?: string;
+    group?: string;
+    topoViewerRole?: unknown;
+    iconColor?: unknown;
+    iconCornerRadius?: unknown;
+    interfacePattern?: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface EdgeElementData {
+  id: string;
+  source: string;
+  target: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  [key: string]: unknown;
+}
+
 interface MenuHandlers {
   handleDeleteNode: (id: string) => void;
   handleDeleteLink: (id: string) => void;
@@ -50,7 +82,7 @@ function buildNodeElement(cy: CyCore | null, nodeId: string): CyElement | null {
   const pos = node.position();
   return {
     group: 'nodes',
-    data: node.data(),
+    data: node.data() as Record<string, unknown>,
     position: { x: Math.round(pos.x), y: Math.round(pos.y) }
   };
 }
@@ -61,20 +93,20 @@ function buildEdgeElement(cy: CyCore | null, edgeId: string): CyElement | null {
   if (!edge || edge.empty() || !edge.isEdge()) return null;
   return {
     group: 'edges',
-    data: edge.data()
+    data: edge.data() as Record<string, unknown>
   };
 }
 
 function buildConnectedEdges(cy: CyCore | null, nodeId: string): CyElement[] {
   if (!cy) return [];
   const edges = cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-  return edges.map(e => ({ group: 'edges' as const, data: e.data() }));
+  return edges.map(e => ({ group: 'edges' as const, data: e.data() as Record<string, unknown> }));
 }
 
 function cloneElement(el: CyElement): CyElement {
   return {
     group: el.group,
-    data: { ...(el.data as Record<string, unknown>) },
+    data: { ...el.data },
     position: el.position ? { ...el.position } : undefined
   };
 }
@@ -92,7 +124,7 @@ function getEdgeKeyFromData(data: Record<string, unknown>): string | null {
 
 function getEdgeKeyFromElement(element: CyElement | null | undefined): string | null {
   if (!element?.data) return null;
-  return getEdgeKeyFromData(element.data as Record<string, unknown>);
+  return getEdgeKeyFromData(element.data);
 }
 
 function findEdgeByData(cy: CyCore, data: Record<string, unknown>) {
@@ -110,15 +142,15 @@ function addNodeWithPersistence(cy: CyCore | null, addNode: (n: CyElement) => vo
   if (!exists) {
     addNode(element);
     // Create node via TopologyIO service
-    const data = element.data as Record<string, unknown>;
+    const data = element.data as NodeElementData;
     const nodeData: NodeSaveData = {
       id,
       name: (data.name as string) || id,
       position: pos,
       extraData: {
-        kind: data.kind as string | undefined,
-        image: data.image as string | undefined,
-        group: data.group as string | undefined,
+        kind: data.kind,
+        image: data.image,
+        group: data.group,
         topoViewerRole: data.topoViewerRole,
         iconColor: data.iconColor,
         iconCornerRadius: data.iconCornerRadius,
@@ -138,13 +170,13 @@ function addEdgeWithPersistence(cy: CyCore | null, addEdge: (e: CyElement) => vo
   if (hasExisting) return;
   addEdge(element);
   // Create link via TopologyIO service
-  const data = element.data as Record<string, unknown>;
+  const data = element.data as EdgeElementData;
   const linkData: LinkSaveData = {
-    id: data.id as string,
-    source: data.source as string,
-    target: data.target as string,
-    sourceEndpoint: data.sourceEndpoint as string | undefined,
-    targetEndpoint: data.targetEndpoint as string | undefined
+    id: data.id,
+    source: data.source,
+    target: data.target,
+    sourceEndpoint: data.sourceEndpoint,
+    targetEndpoint: data.targetEndpoint
   };
   void createLink(linkData);
 }
@@ -179,18 +211,19 @@ function processGraphChange(
 ): void {
   const element = change.after || change.before;
   if (!element) return;
-  const id = (element.data as any)?.id as string | undefined;
+  const data = element.data as { id?: string };
+  const id = data.id;
   if (!id) return;
 
   const handlers: Record<string, () => void> = {
     'add:node': () => addNodeWithPersistence(ctx.cy, ctx.addNode, element, id),
     'add:edge': () => {
-      const existing = ctx.cy ? findEdgeByData(ctx.cy, element.data as Record<string, unknown>) : null;
+      const existing = ctx.cy ? findEdgeByData(ctx.cy, element.data) : null;
       if (existing && existing.nonempty()) return;
       addEdgeWithPersistence(ctx.cy, ctx.addEdge, element);
     },
     'delete:node': () => ctx.menuHandlers.handleDeleteNode(id),
-    'delete:edge': () => deleteEdgeWithPersistence(ctx.cy, ctx.menuHandlers, element.data as Record<string, unknown>)
+    'delete:edge': () => deleteEdgeWithPersistence(ctx.cy, ctx.menuHandlers, element.data)
   };
 
   handlers[`${change.kind}:${change.entity}`]?.();
@@ -210,7 +243,8 @@ function addNodeChangeToBucket(
   seenDeletes: Set<string>
 ): void {
   const element = change.after || change.before;
-  const id = (element?.data as any)?.id as string | undefined;
+  const data = element?.data as { id?: string } | undefined;
+  const id = data?.id;
   if (!id) return;
   if (change.kind === 'add') {
     if (seenAdds.has(id)) return;
@@ -318,6 +352,29 @@ function createEdgeCreatedHandler(
   };
 }
 
+function mergeNodeExtraData(data: NodeElementData): NodeSaveData['extraData'] {
+  const extraData = data.extraData;
+  return {
+    kind: extraData?.kind ?? data.kind,
+    image: extraData?.image ?? data.image,
+    group: extraData?.group ?? data.group,
+    topoViewerRole: extraData?.topoViewerRole ?? data.topoViewerRole,
+    iconColor: extraData?.iconColor ?? data.iconColor,
+    iconCornerRadius: extraData?.iconCornerRadius ?? data.iconCornerRadius,
+    interfacePattern: extraData?.interfacePattern ?? data.interfacePattern
+  };
+}
+
+function buildNodeSaveDataFromElement(nodeId: string, nodeElement: CyElement, position: { x: number; y: number }): NodeSaveData {
+  const data = nodeElement.data as NodeElementData;
+  return {
+    id: nodeId,
+    name: (data.name as string) || nodeId,
+    position,
+    extraData: mergeNodeExtraData(data)
+  };
+}
+
 function createNodeCreatedHandler(
   addNode: (n: CyElement) => void,
   undoRedo: ReturnType<typeof useUndoRedo>,
@@ -326,22 +383,7 @@ function createNodeCreatedHandler(
   return (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => {
     addNode(nodeElement);
     // Create node via TopologyIO service
-    const data = nodeElement.data as Record<string, unknown>;
-    const extraData = data.extraData as Record<string, unknown> | undefined;
-    const nodeData: NodeSaveData = {
-      id: nodeId,
-      name: (data.name as string) || nodeId,
-      position,
-      extraData: {
-        kind: extraData?.kind as string | undefined,
-        image: extraData?.image as string | undefined,
-        group: extraData?.group as string | undefined,
-        topoViewerRole: extraData?.topoViewerRole ?? data.topoViewerRole,
-        iconColor: extraData?.iconColor ?? data.iconColor,
-        iconCornerRadius: extraData?.iconCornerRadius ?? data.iconCornerRadius,
-        interfacePattern: extraData?.interfacePattern ?? data.interfacePattern
-      }
-    };
+    const nodeData = buildNodeSaveDataFromElement(nodeId, nodeElement, position);
     void createNode(nodeData);
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({

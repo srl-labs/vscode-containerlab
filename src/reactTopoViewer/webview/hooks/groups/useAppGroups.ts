@@ -84,7 +84,7 @@ function migrateLegacyGroups(
  * Check if a node can be added to a group.
  */
 function canBeGrouped(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole');
+  const role = node.data('topoViewerRole') as string | undefined;
   return role !== 'freeText' && role !== 'freeShape';
 }
 

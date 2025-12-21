@@ -7,6 +7,9 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import type { Core } from 'cytoscape';
 
 import type { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
+import { log } from '../utils/logger';
+import { deleteNode, deleteLink } from '../services';
+import type { CyEdgeData } from '../utils/cytoscapeHelpers';
 
 /**
  * Grid overlay handle interface for managing custom grid canvas
@@ -17,15 +20,32 @@ interface GridOverlayHandleType {
 }
 
 /**
+ * Grid guide configuration options
+ */
+interface GridGuideOptions {
+  drawGrid?: boolean;
+  gridSpacing?: number;
+  gridColor?: string;
+  lineWidth?: number;
+  snapToGridOnRelease?: boolean;
+  snapToGridDuringDrag?: boolean;
+  snapToAlignmentLocationOnRelease?: boolean;
+  snapToAlignmentLocationDuringDrag?: boolean;
+  snapToGridCenter?: boolean;
+  panGrid?: boolean;
+  zoomDash?: boolean;
+  guidelinesStackOrder?: number;
+}
+
+/**
  * Extend Cytoscape Core interface to include custom properties
  */
 declare module 'cytoscape' {
   interface Core {
     __reactGridOverlay?: GridOverlayHandleType;
+    gridGuide?: (options: GridGuideOptions) => void;
   }
 }
-import { log } from '../utils/logger';
-import { deleteNode, deleteLink } from '../services';
 
 export type LayoutOption = 'preset' | 'cola' | 'radial' | 'hierarchical' | 'cose' | 'geo';
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
@@ -69,14 +89,14 @@ function getLinkDataFromCy(cy: Core | null, edgeId: string | null): LinkData | n
   const edge = cy.getElementById(edgeId);
   if (edge.length === 0) return null;
 
-  const data = edge.data();
+  const data = edge.data() as CyEdgeData;
   return {
+    ...data,
     id: data.id,
     source: data.source,
     target: data.target,
-    sourceEndpoint: data.sourceEndpoint || data.sourceInterface,
-    targetEndpoint: data.targetEndpoint || data.targetInterface,
-    ...data
+    sourceEndpoint: data.sourceEndpoint || (data as Record<string, unknown>).sourceInterface as string | undefined,
+    targetEndpoint: data.targetEndpoint || (data as Record<string, unknown>).targetInterface as string | undefined
   } as LinkData;
 }
 
@@ -324,13 +344,12 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
 function applyGridSettings(cy: Core | null, lineWidth: number, enableSnapping = true): void {
   if (!cy) return;
   const overlayHandle = ensureGridOverlay(cy, lineWidth);
-  const cyAny = cy as any;
-  if (typeof cyAny.gridGuide !== 'function') {
+  if (typeof cy.gridGuide !== 'function') {
     log.warn('[GridGuide] gridGuide extension unavailable on Cytoscape instance');
     return;
   }
   try {
-    cyAny.gridGuide({
+    cy.gridGuide({
       drawGrid: false,
       gridSpacing: GRID_SPACING,
       gridColor: GRID_COLOR,
@@ -500,7 +519,7 @@ export function useContextMenuHandlers(
     if (cy) {
       const edge = cy.getElementById(edgeId);
       if (edge.length > 0) {
-        const edgeData = edge.data();
+        const edgeData = edge.data() as CyEdgeData;
         void deleteLink({  // Persist to YAML
           id: edgeId,
           source: edgeData.source,

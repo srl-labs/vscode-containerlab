@@ -30,6 +30,7 @@ const originalResolve = (Module as any)._resolveFilename;
 };
 
 import { LocalLabTreeDataProvider } from '../../../src/treeView/localLabsProvider';
+import type { ClabLabTreeNode } from '../../../src/treeView/common';
 import * as ins from '../../../src/treeView/inspector';
 import * as globals from '../../../src/globals';
 
@@ -78,6 +79,8 @@ describe('LocalLabTreeDataProvider', () => {
     }
     globals.setFavoriteLabs(new Set());
     globals.setExtensionContext({ globalState: { update: sinon.stub().resolves() } } as any);
+    // Stub outputChannel with log methods
+    globals.setOutputChannel({ debug: noop, info: noop, warn: noop, error: noop } as any);
     (ins as any).rawInspectData = [];
   });
 
@@ -117,7 +120,7 @@ describe('LocalLabTreeDataProvider', () => {
     expect(folder.label).to.equal('a');
     const children = await provider.getChildren(folder as any);
     expect(children).to.have.lengthOf(1);
-    const node = children![0];
+    const node = children![0] as ClabLabTreeNode;
     expect(node.label).to.equal('lab1.clab.yml');
     expect(node.labPath.absolute).to.equal(LAB_A);
     expect(node.description).to.equal('a');
@@ -158,8 +161,9 @@ describe('LocalLabTreeDataProvider', () => {
     const secondFolder = nodes![1];
     expect(secondFolder.label).to.equal('b');
     const children = await provider.getChildren(secondFolder as any);
-    expect(children![0].contextValue).to.equal('containerlabLabUndeployedFavorite');
-    expect(children![0].favorite).to.be.true;
+    const favChild = children![0] as ClabLabTreeNode;
+    expect(favChild.contextValue).to.equal('containerlabLabUndeployedFavorite');
+    expect(favChild.favorite).to.be.true;
   });
 
   it('keeps favorites that no longer exist and displays them', async () => {
@@ -172,7 +176,7 @@ describe('LocalLabTreeDataProvider', () => {
     const nodes = await provider.getChildren(undefined);
 
     expect(nodes).to.have.lengthOf(1);
-    const favNode = nodes![0];
+    const favNode = nodes![0] as ClabLabTreeNode;
     expect(favNode.label).to.equal('lab.clab.yml');
     expect(favNode.favorite).to.be.true;
     expect(globals.favoriteLabs.size).to.equal(1);

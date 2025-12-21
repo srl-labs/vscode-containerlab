@@ -139,8 +139,8 @@ function parseComponentsProps(extra: Record<string, unknown>): { components?: Sr
   if (!Array.isArray(componentsRaw)) return {};
 
   const components: SrosComponent[] = componentsRaw
-    .filter((c): c is Record<string, unknown> => c && typeof c === 'object')
-    .map(c => ({
+    .filter((c): c is Record<string, unknown> => c !== null && typeof c === 'object')
+    .map((c: Record<string, unknown>) => ({
       slot: c.slot as string | number | undefined,
       type: getString(c.type),
       sfm: getString(c.sfm),

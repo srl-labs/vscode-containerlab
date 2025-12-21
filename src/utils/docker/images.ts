@@ -96,7 +96,8 @@ export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
       context.subscriptions.push(monitorHandle);
 
     })
-    .catch((err: any) => {
-      outputChannel.warn(`Unable to subscribe to Docker image events: ${err?.message || err}`);
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      outputChannel.warn(`Unable to subscribe to Docker image events: ${message}`);
     });
 }

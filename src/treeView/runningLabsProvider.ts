@@ -296,8 +296,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     private async discoverLabs(): Promise<LabDiscoveryResult> {
-        outputChannel.info("[RunningLabTreeDataProvider] Discovering labs");
-
         const previousCache = this.labNodeCache;
         const labsToRefresh: Set<c.ClabLabTreeNode> = new Set();
         const containersToRefresh: Set<c.ClabContainerTreeNode> = new Set();
@@ -310,7 +308,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         const sortedLabs = this.sortLabsForDisplay(labs);
 
-        outputChannel.info(`[RunningLabTreeDataProvider] Discovered ${sortedLabs.length} labs.`);
         const { cache: newCache, rootChanged } = this.mergeLabsIntoCache(
             sortedLabs,
             previousCache,
@@ -832,8 +829,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
     }
 
     public async discoverInspectLabs(): Promise<Record<string, c.ClabLabTreeNode> | undefined> {
-        outputChannel.info("[RunningLabTreeDataProvider] Discovering labs via inspect...");
-
         const inspectData = await this.getInspectData(); // This now properly handles both formats
 
         // --- Normalize inspectData into a flat list of containers ---
@@ -871,15 +866,12 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         const allContainers: c.ClabJSON[] = [];
         if (Array.isArray(inspectData)) {
-            outputChannel.info("[RunningLabTreeDataProvider] Detected old inspect format (flat container list).");
             return inspectData;
         }
         if ('containers' in inspectData && Array.isArray(inspectData.containers)) {
-            outputChannel.info("[RunningLabTreeDataProvider] Detected old inspect format (flat container list with 'containers' key).");
             return inspectData.containers;
         }
         if (typeof inspectData === 'object' && Object.keys(inspectData).length > 0) {
-            outputChannel.info("[RunningLabTreeDataProvider] Detected new inspect format (grouped by lab).");
             for (const labName in inspectData) {
                 const labContainers = (inspectData as Record<string, c.ClabJSON[]>)[labName];
                 if (Array.isArray(labContainers)) allContainers.push(...labContainers);
@@ -1038,8 +1030,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
 
         // If we have detailed format, convert it to the standard format
         if (hasDetailedFormat) {
-            outputChannel.info("[RunningLabTreeDataProvider] Converting detailed format to standard format");
-
             if (isOldFlatFormat) {
                 // Convert flat array to lab-grouped format first
                 const grouped = this.convertFlatToGroupedFormat(parsedData as c.ClabDetailedJSON[]);
@@ -1122,8 +1112,6 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<c.Cla
      * Discover containers that belong to a specific lab path.
      */
     private discoverContainers(containersForThisLab: c.ClabJSON[], absLabPath: string): c.ClabContainerTreeNode[] {
-        outputChannel.info(`[RunningLabTreeDataProvider] Processing ${containersForThisLab.length} containers for ${absLabPath}...`);
-
         let containerNodes: c.ClabContainerTreeNode[] = [];
 
         containersForThisLab.forEach((container: c.ClabJSON) => {
