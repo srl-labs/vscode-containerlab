@@ -23,17 +23,16 @@ export type { UseFreeShapeUndoRedoHandlersReturn, UseFreeShapeAnnotationApplierR
 // ============================================================================
 export type {
   FreeTextAnnotation,
-  UseFreeTextAnnotationsOptions,
-  UseFreeTextAnnotationsReturn,
   AnnotationUndoAction
 } from './freeText';
 
 export type {
-  FreeShapeAnnotation,
   UseFreeShapeAnnotationsOptions,
   UseFreeShapeAnnotationsReturn,
   AnnotationUndoAction as FreeShapeUndoAction
-} from './freeShape';
+} from './useAppFreeShapeAnnotations';
+
+export type { FreeShapeAnnotation } from './freeShape';
 
 // ============================================================================
 // Layer Helpers (for FreeTextLayer)
@@ -62,7 +61,6 @@ export {
   useAnnotationBoxSelection
 } from './useAnnotationSelection';
 export { useAnnotationInteractions } from './useAnnotationInteractions';
-export { useShapeLayer } from './useShapeLayer';
 
 // ============================================================================
 // Management Hooks (list operations, shortcuts, effects)

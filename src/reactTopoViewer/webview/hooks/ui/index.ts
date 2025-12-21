@@ -8,10 +8,6 @@
 // ============================================================================
 export { useContextMenu } from './useContextMenu';
 export type { ContextMenuOptions, ContextMenuState, UseContextMenuReturn } from './useContextMenu';
-export { useCustomNodeCommands } from './useCustomNodeCommands';
-export type { CustomNodeCommands } from './useCustomNodeCommands';
-export { useNavbarCommands } from './useNavbarCommands';
-export type { NavbarCommands } from './useNavbarCommands';
 export {
   useDeploymentCommands,
   useEditorPanelCommands,

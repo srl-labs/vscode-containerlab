@@ -2,9 +2,22 @@
  * React TopoViewer Main Application Component
  */
 import React from 'react';
+import type { Core as CyCore } from 'cytoscape';
 
 import { convertToEditorData, convertToNetworkEditorData } from '../shared/utilities';
+import type { CustomNodeTemplate, CustomTemplateEditorData } from '../shared/types/editors';
+import {
+  createNewTemplateEditorData,
+  convertTemplateToEditorData
+} from '../shared/utilities/customNodeConversions';
 
+import { log } from './utils/logger';
+import {
+  ensureCytoscapeLayersRegistered,
+  getCytoscapeLayers,
+  configureLayerNode,
+  type IHTMLLayer
+} from './hooks/shared/cytoscapeLayers';
 import { useTopoViewer } from './context/TopoViewerContext';
 import { Navbar } from './components/navbar/Navbar';
 import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
@@ -31,14 +44,14 @@ import {
   useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers,
   useNodeCreationHandlers, useMembershipCallbacks,
   // UI hooks
-  useContextMenu, useCustomNodeCommands, useNavbarCommands, useFloatingPanelCommands,
+  useContextMenu, useFloatingPanelCommands,
   usePanelVisibility, useKeyboardShortcuts, useShortcutDisplay, useAppHandlers,
   // Group hooks
   useAppGroups,
   // Annotation hooks
   useAppFreeTextAnnotations, useFreeTextAnnotationApplier, useFreeTextUndoRedoHandlers,
   useAppFreeShapeAnnotations, useFreeShapeAnnotationApplier, useFreeShapeUndoRedoHandlers,
-  useShapeLayer, useAnnotationEffects, useAddShapesHandler,
+  useAnnotationEffects, useAddShapesHandler,
   // Types
   type GraphChangeEntry
 } from './hooks';
@@ -51,6 +64,90 @@ import {
 } from './hooks/groups';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from './services';
+import { sendDeleteCustomNode, sendSetDefaultCustomNode, sendCommandToExtension } from './utils/extensionMessaging';
+
+/**
+ * Custom node template UI commands interface
+ */
+interface CustomNodeCommands {
+  /** Open editor to create a new custom node template */
+  onNewCustomNode: () => void;
+  /** Open editor to edit an existing custom node template */
+  onEditCustomNode: (nodeName: string) => void;
+  /** Delete a custom node template */
+  onDeleteCustomNode: (nodeName: string) => void;
+  /** Set a custom node template as the default */
+  onSetDefaultCustomNode: (nodeName: string) => void;
+}
+
+/**
+ * Hook for custom node template UI commands
+ *
+ * @param customNodes - Array of custom node templates from context state
+ * @param editCustomTemplate - Action to open the custom template editor (from context)
+ * @returns Object with callbacks for new, edit, delete, and set-default actions
+ */
+function useCustomNodeCommands(
+  customNodes: CustomNodeTemplate[],
+  editCustomTemplate: (data: CustomTemplateEditorData | null) => void
+): CustomNodeCommands {
+  const onNewCustomNode = React.useCallback(() => {
+    const templateData = createNewTemplateEditorData();
+    editCustomTemplate(templateData);
+  }, [editCustomTemplate]);
+
+  const onEditCustomNode = React.useCallback((nodeName: string) => {
+    const template = customNodes.find(n => n.name === nodeName);
+    if (!template) return;
+    const templateData = convertTemplateToEditorData(template);
+    editCustomTemplate(templateData);
+  }, [customNodes, editCustomTemplate]);
+
+  const onDeleteCustomNode = React.useCallback((nodeName: string) => {
+    sendDeleteCustomNode(nodeName);
+  }, []);
+
+  const onSetDefaultCustomNode = React.useCallback((nodeName: string) => {
+    sendSetDefaultCustomNode(nodeName);
+  }, []);
+
+  return {
+    onNewCustomNode,
+    onEditCustomNode,
+    onDeleteCustomNode,
+    onSetDefaultCustomNode
+  };
+}
+
+/**
+ * Navbar commands interface
+ */
+interface NavbarCommands {
+  /** Toggle layout between cola and preset */
+  onLayoutToggle: () => void;
+  /** Toggle split view for YAML editor */
+  onToggleSplit: () => void;
+}
+
+/**
+ * Hook for navbar UI commands
+ *
+ * @returns Object with callbacks for navbar button actions
+ */
+function useNavbarCommands(): NavbarCommands {
+  const onLayoutToggle = React.useCallback(() => {
+    sendCommandToExtension('nav-layout-toggle');
+  }, []);
+
+  const onToggleSplit = React.useCallback(() => {
+    sendCommandToExtension('topo-toggle-split-view');
+  }, []);
+
+  return {
+    onLayoutToggle,
+    onToggleSplit
+  };
+}
 
 /**
  * Loading state component
@@ -82,6 +179,58 @@ function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Eleme
  */
 function shouldShowInfoPanel(selectedItem: string | null, mode: 'edit' | 'view'): boolean {
   return !!selectedItem && mode === 'view';
+}
+
+interface UseShapeLayerReturn {
+  /** Layer node transformed with pan/zoom, rendered BELOW nodes */
+  shapeLayerNode: HTMLElement | null;
+  updateLayer: () => void;
+}
+
+/**
+ * Hook to create and manage a Cytoscape layer for shape annotations.
+ * Uses cytoscape-layers to render shapes BELOW the node layer but above the grid.
+ * Creates an HTML layer below nodes for rendering shape annotations.
+ * Shapes will appear above the grid but below nodes and edges.
+ */
+function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
+  const layerRef = React.useRef<IHTMLLayer | null>(null);
+  const [shapeLayerNode, setShapeLayerNode] = React.useState<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (!cy) return;
+
+    ensureCytoscapeLayersRegistered();
+
+    try {
+      const layers = getCytoscapeLayers(cy);
+      log.info('[ShapeLayer] Creating shape layer below nodes');
+
+      // Create layer BELOW the node layer
+      const shapeLayer = layers.nodeLayer.insertBefore('html');
+      layerRef.current = shapeLayer;
+
+      // Configure the layer node
+      configureLayerNode(shapeLayer.node, 'auto', 'shape-layer-container');
+
+      log.info('[ShapeLayer] Shape layer created');
+      setShapeLayerNode(shapeLayer.node);
+    } catch (err) {
+      log.error(`[ShapeLayer] Failed to create layer: ${err}`);
+    }
+
+    return () => {
+      layerRef.current?.remove();
+      layerRef.current = null;
+      setShapeLayerNode(null);
+    };
+  }, [cy]);
+
+  const updateLayer = () => {
+    layerRef.current?.update();
+  };
+
+  return { shapeLayerNode, updateLayer };
 }
 
 export const App: React.FC = () => {

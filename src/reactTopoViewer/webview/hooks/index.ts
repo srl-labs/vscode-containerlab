@@ -19,8 +19,6 @@ export { useUndoRedo, useGraphUndoRedoHandlers, useCustomTemplateEditor } from '
 // UI interactions (for types, import from './ui')
 export {
   useContextMenu,
-  useCustomNodeCommands,
-  useNavbarCommands,
   useFloatingPanelCommands,
   usePanelVisibility,
   useKeyboardShortcuts,
@@ -39,7 +37,6 @@ export {
   useAppFreeShapeAnnotations,
   useFreeShapeAnnotationApplier,
   useFreeShapeUndoRedoHandlers,
-  useShapeLayer,
   useAnnotationEffects,
   useAddShapesHandler,
   generateAnnotationId
