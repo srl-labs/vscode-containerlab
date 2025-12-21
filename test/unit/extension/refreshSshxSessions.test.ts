@@ -12,7 +12,7 @@ describe('refreshSshxSessions', () => {
   let sshxSessions: Map<string, string>;
   let utilsStub: any;
   let vscodeStub: any;
-  let extension: any;
+  let globals: any;
 
   // Helper to clear module cache for all vscode-containerlab modules
   function clearModuleCache() {
@@ -44,9 +44,10 @@ describe('refreshSshxSessions', () => {
     // Now require the modules fresh
     vscodeStub = require('../../helpers/vscode-stub');
     utilsStub = require('../../helpers/utils-stub');
-    extension = require('../../../src/extension');
-    refreshSshxSessions = extension.refreshSshxSessions;
-    sshxSessions = extension.sshxSessions;
+    globals = require('../../../src/globals');
+    const sessionRefresh = require('../../../src/services/sessionRefresh');
+    refreshSshxSessions = sessionRefresh.refreshSshxSessions;
+    sshxSessions = globals.sshxSessions;
   });
 
   after(() => {
@@ -58,7 +59,7 @@ describe('refreshSshxSessions', () => {
     utilsStub.calls.length = 0;
     utilsStub.setOutput('');
     sshxSessions.clear();
-    (extension as any).outputChannel = vscodeStub.window.createOutputChannel('test', { log: true });
+    globals.outputChannel = vscodeStub.window.createOutputChannel('test', { log: true });
   });
 
   afterEach(() => {
