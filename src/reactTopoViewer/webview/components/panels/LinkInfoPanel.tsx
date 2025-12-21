@@ -4,7 +4,7 @@
  */
 import React, { useState } from 'react';
 
-import type { LinkData } from '../../hooks';
+import type { LinkData } from '../../hooks/useAppState';
 import type { InterfaceStatsPayload } from '../../../shared/types/topology';
 
 import { FloatingPanel, PropertyRow } from './FloatingPanel';

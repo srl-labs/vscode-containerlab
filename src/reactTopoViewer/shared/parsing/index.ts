@@ -23,9 +23,22 @@
  *   logger: vscodeLogger
  * });
  * ```
+ *
+ * For internal utilities, import directly from sub-modules:
+ * - `./NodeElementBuilder` - node element building
+ * - `./EdgeElementBuilder` - edge element building
+ * - `./SpecialNodeHandler` - special node handling (host, mgmt, vxlan)
+ * - `./AliasNodeHandler` - bridge alias handling
+ * - `./LinkNormalizer` - link endpoint normalization
+ * - `./DistributedSrosMapper` - SR OS distributed interface mapping
+ * - `./GraphLabelMigrator` - graph label migration
+ * - `./InterfacePatternResolver` - interface pattern resolution
  */
 
-// Types
+// Main parser API
+export { TopologyParser, parseTopology, parseTopologyForEditor } from './TopologyParser';
+
+// Core types
 export type {
   ParseOptions,
   ParseResult,
@@ -37,8 +50,6 @@ export type {
   GraphLabelMigration,
   NodeBuildContext,
   EdgeBuildContext,
-  DummyContext,
-  SpecialNodeInfo,
   NodeRole,
 } from './types';
 
@@ -51,163 +62,21 @@ export type {
 } from './types';
 
 // Constants and utilities from types
-export {
-  nullLogger,
-  ROUTER_KINDS,
-  CLIENT_KINDS,
-  detectRole,
-} from './types';
+export { nullLogger, ROUTER_KINDS, CLIENT_KINDS, detectRole } from './types';
 
-// Node config resolver
+// Node config resolver (commonly used)
 export { resolveNodeConfig } from './NodeConfigResolver';
 
-// Link normalizer
-export {
-  TYPES,
-  NODE_KIND_BRIDGE,
-  NODE_KIND_OVS_BRIDGE,
-  SINGLE_ENDPOINT_TYPE_LIST,
-  splitEndpoint,
-  normalizeSingleTypeToSpecialId,
-  normalizeLinkToTwoEndpoints,
-  resolveActualNode,
-  buildContainerName,
-  shouldOmitEndpoint,
-  extractEndpointMac,
-  createDummyContext,
-  STR_HOST,
-  STR_MGMT_NET,
-  PREFIX_MACVLAN,
-  PREFIX_VXLAN,
-  PREFIX_VXLAN_STITCH,
-  splitEndpointLike,
-  isSpecialEndpointId,
-} from './LinkNormalizer';
-export type { SpecialNodeType, EndpointParts, NormalizedLink } from './LinkNormalizer';
-
-// Special node handler
-export {
-  initSpecialNodes,
-  determineSpecialNode,
-  registerEndpoint,
-  getSpecialId,
-  collectSpecialNodes,
-  addCloudNodes,
-  isSpecialNode,
-  assignCommonLinkProps,
-  assignHostMgmtProps,
-  assignVxlanProps,
-  buildBaseProps,
-  mergeSpecialNodeProps,
-} from './SpecialNodeHandler';
-
-// Utility functions
+// Commonly used utilities
 export {
   computeFullPrefix,
-  extractIconVisuals,
-  sanitizeLabels,
-  getNodeLatLng,
-  computeLongname,
-  createNodeAnnotationsMap,
   getLabName,
   getTopologyNodeIds,
   isPresetLayout,
 } from './utils';
 
+// Edge stats (used by EdgeStatsBuilder)
+export { extractEdgeInterfaceStats, computeEdgeClassFromStates } from './EdgeElementBuilder';
+
 // Interface patterns
 export { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
-
-// Distributed SROS mapper
-export {
-  isDistributedSrosNode,
-  mapSrosInterfaceName,
-  getCandidateInterfaceNames,
-  matchInterfaceInContainer,
-  containerBelongsToDistributedNode,
-  buildDistributedCandidateNames,
-  extractSrosComponentInfo,
-  srosSlotPriority,
-  findInterfaceByCandidateNames,
-  findDistributedSrosInterface,
-  findDistributedSrosContainer,
-} from './DistributedSrosMapper';
-
-// Node element builder
-export {
-  getContainerData,
-  createNodeExtraData,
-  buildNodeElement,
-  addNodeElements,
-} from './NodeElementBuilder';
-export type { NodeBuildOptions } from './NodeElementBuilder';
-
-// Edge element builder
-export {
-  isSpecialNode as isSpecialNodeForEdge,
-  classFromState,
-  edgeClassForSpecial,
-  computeEdgeClass,
-  computeEdgeClassFromStates,
-  validateVethLink,
-  validateSpecialLink,
-  validateExtendedLink,
-  resolveContainerAndInterface,
-  extractEdgeInterfaceStats,
-  createClabInfo,
-  extractExtLinkProps,
-  extractExtMacs,
-  createExtInfo,
-  buildEdgeClasses,
-  buildEdgeExtraData,
-  buildEdgeElement,
-  addEdgeElements,
-} from './EdgeElementBuilder';
-export type { EdgeBuildOptions } from './EdgeElementBuilder';
-
-// Alias node handler
-export {
-  CLASS_ALIASED_BASE_BRIDGE,
-  isBridgeKind,
-  buildNodeAnnotationIndex,
-  asTrimmedString,
-  toPosition,
-  collectAliasEntriesNew,
-  listAliasEntriesFromNodeAnnotations,
-  normalizeAliasList,
-  buildAliasMap,
-  deriveAliasPlacement,
-  buildBridgeAliasElement,
-  createAliasElement,
-  addAliasNodesFromAnnotations,
-  rewireEdges,
-  applyAliasMappingsToEdges,
-  collectAliasGroups,
-  collectStillReferencedBaseBridges,
-  addClass,
-  hideBaseBridgeNodesWithAliases,
-} from './AliasNodeHandler';
-export type { AliasEntry } from './AliasNodeHandler';
-
-// Graph label migrator
-export {
-  nodeHasGraphLabels,
-  topologyHasGraphLabels,
-  buildAnnotationFromLabels,
-  migrationToNodeAnnotation,
-  detectGraphLabelMigrations,
-  applyGraphLabelMigrations,
-  processGraphLabelMigrations,
-} from './GraphLabelMigrator';
-
-// Interface pattern resolver
-export {
-  resolveInterfacePattern,
-  getDefaultInterfacePatterns,
-  needsInterfacePatternMigration,
-  createInterfacePatternMigration,
-  collectInterfacePatternMigrations,
-} from './InterfacePatternResolver';
-export type { InterfacePatternResult } from './InterfacePatternResolver';
-
-// Main parser
-export { TopologyParser, parseTopology, parseTopologyForEditor } from './TopologyParser';

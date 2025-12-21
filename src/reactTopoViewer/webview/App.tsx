@@ -34,16 +34,21 @@ import {
   useContextMenu, useCustomNodeCommands, useNavbarCommands, useFloatingPanelCommands,
   usePanelVisibility, useKeyboardShortcuts, useShortcutDisplay, useAppHandlers,
   // Group hooks
-  useAppGroups, useAppGroupUndoHandlers, useNodeReparent, useGroupLayer,
-  useCombinedAnnotationApplier, useGroupDragUndo, useGroupUndoRedoHandlers,
-  generateGroupId,
+  useAppGroups, useGroupLayer,
   // Annotation hooks
   useAppFreeTextAnnotations, useFreeTextAnnotationApplier, useFreeTextUndoRedoHandlers,
   useAppFreeShapeAnnotations, useFreeShapeAnnotationApplier, useFreeShapeUndoRedoHandlers,
   useShapeLayer, useAnnotationEffects, useAddShapesHandler,
   // Types
-  type GraphChangeEntry, type NetworkType, type NodeCreationState, type PendingMembershipChange
+  type GraphChangeEntry
 } from './hooks';
+import type { NetworkType } from './hooks/graph';
+import type { NodeCreationState, PendingMembershipChange } from './hooks/panels';
+import {
+  useAppGroupUndoHandlers, useNodeReparent,
+  useCombinedAnnotationApplier, useGroupDragUndo, useGroupUndoRedoHandlers,
+  generateGroupId
+} from './hooks/groups';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from './services';
 

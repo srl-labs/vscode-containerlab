@@ -2,7 +2,7 @@
  * React TopoViewer hooks
  */
 
-// Graph manipulation
+// Graph manipulation (for internal types, import from './graph')
 export {
   useEdgeCreation,
   EDGE_CREATION_SCRATCH_KEY,
@@ -11,33 +11,12 @@ export {
   useNodeDragging,
   useCopyPaste
 } from './graph';
-export type {
-  NodeDraggingOptions,
-  CopyPasteOptions,
-  CopyPasteReturn,
-  CopyData,
-  GraphChangeEntry,
-  CyElementJson,
-  NetworkType
-} from './graph';
+export type { GraphChangeEntry } from './graph';
 
-// State management
+// State management (for internal types, import from './state')
 export { useUndoRedo, useGraphUndoRedoHandlers, useCustomTemplateEditor } from './state';
-export type {
-  NodePositionEntry,
-  MembershipEntry,
-  GraphChange,
-  UndoRedoActionMove,
-  UndoRedoActionGraph,
-  UndoRedoActionAnnotation,
-  UndoRedoAction,
-  UseUndoRedoOptions,
-  UseUndoRedoReturn,
-  CustomTemplateEditorHandlers,
-  CustomTemplateEditorResult
-} from './state';
 
-// UI interactions
+// UI interactions (for types, import from './ui')
 export {
   useContextMenu,
   useCustomNodeCommands,
@@ -48,12 +27,11 @@ export {
   useShortcutDisplay,
   useAppHandlers
 } from './ui';
-export type { PendingMembershipChange } from './ui';
 
 // Data fetching
 export { useDockerImages, useSchema } from './data';
 
-// Annotations
+// Annotations (for types, import from './annotations')
 export {
   useAppFreeTextAnnotations,
   useFreeTextAnnotationApplier,
@@ -66,49 +44,11 @@ export {
   useAddShapesHandler,
   generateAnnotationId
 } from './annotations';
-export type {
-  FreeTextAnnotation,
-  UseFreeTextAnnotationsReturn,
-  FreeShapeAnnotation,
-  UseFreeShapeAnnotationsReturn
-} from './annotations';
 
-// Groups
-export {
-  GROUP_LABEL_POSITIONS,
-  DEFAULT_GROUP_STYLE,
-  DEFAULT_GROUP_WIDTH,
-  DEFAULT_GROUP_HEIGHT,
-  MIN_GROUP_SIZE,
-  useGroupState,
-  useGroups,
-  useGroupHierarchy,
-  useAppGroups,
-  useAppGroupUndoHandlers,
-  useNodeReparent,
-  useGroupLayer,
-  useCombinedAnnotationApplier,
-  useGroupDragUndo,
-  useGroupUndoRedoHandlers,
-  generateGroupId,
-  buildGroupTree,
-  findGroupAtPosition,
-  getDescendantGroups,
-  getChildGroups,
-  getParentGroup,
-  getGroupDepth
-} from './groups';
-export type {
-  GroupLabelPosition,
-  GroupEditorData,
-  UseGroupStateOptions,
-  UseGroupStateReturn,
-  GroupUndoAction,
-  UseGroupsOptions,
-  UseGroupsReturn
-} from './groups';
+// Groups (core hooks only - for utilities/types import from './groups')
+export { useGroupState, useGroups, useAppGroups, useGroupLayer } from './groups';
 
-// Panels
+// Panels (for types, import from './panels')
 export {
   usePanelResize,
   useBulkLinkPanel,
@@ -120,35 +60,19 @@ export {
   useNodeCreationHandlers,
   useMembershipCallbacks
 } from './panels';
-export type {
-  UseLabSettingsStateResult,
-  UseIconSelectorStateReturn,
-  NodeCreationState,
-  PendingMembershipChange as PanelPendingMembershipChange
-} from './panels';
 
-// Canvas (Cytoscape)
+// Canvas (for internal hooks, import from './canvas')
 export {
-  useElementsUpdate,
-  useCytoscapeInitializer,
-  useDelayedCytoscapeInit,
   useLinkLabelVisibility,
   useGeoMap,
   assignMissingGeoCoordinatesToAnnotations,
   assignMissingGeoCoordinatesToShapeAnnotations
 } from './canvas';
-export type { CytoscapeInitOptions } from './canvas';
 
-// Clipboard
+// Clipboard (for types, import from './clipboard')
 export { useUnifiedClipboard } from './clipboard';
-export type {
-  UnifiedClipboardData,
-  PasteResult,
-  UseUnifiedClipboardOptions,
-  UseUnifiedClipboardReturn
-} from './clipboard';
 
-// Root-level hooks
+// Root-level hooks (for types, import from './useAppState')
 export {
   useCytoscapeInstance,
   useSelectionData,
@@ -157,4 +81,3 @@ export {
   useContextMenuHandlers,
   DEFAULT_GRID_LINE_WIDTH
 } from './useAppState';
-export type { LayoutOption, NodeData, LinkData } from './useAppState';

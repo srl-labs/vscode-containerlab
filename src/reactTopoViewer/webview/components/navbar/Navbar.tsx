@@ -7,7 +7,7 @@ import React from 'react';
 import type { LinkLabelMode } from '../../context/TopoViewerContext';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { DEFAULT_GRID_LINE_WIDTH } from '../../hooks';
-import type { LayoutOption } from '../../hooks';
+import type { LayoutOption } from '../../hooks/useAppState';
 import { useDropdown } from '../../hooks/ui/useDropdown';
 
 import { ContainerlabLogo } from './ContainerlabLogo';

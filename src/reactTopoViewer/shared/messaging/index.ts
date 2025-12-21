@@ -3,34 +3,12 @@
  *
  * Provides command registry, service interfaces, and message handling base class
  * for both VS Code extension and dev mock environments.
+ *
+ * For full command registry (arrays, sets), import from './CommandRegistry'.
  */
 
-// Command registry - all command constants and utilities
+// Command registry - commonly used types and utilities
 export {
-  // Command arrays
-  NODE_COMMANDS,
-  INTERFACE_COMMANDS,
-  LIFECYCLE_COMMANDS,
-  EDITOR_COMMANDS,
-  PANEL_COMMANDS,
-  ANNOTATION_COMMANDS,
-  CUSTOM_NODE_COMMANDS,
-  CLIPBOARD_COMMANDS,
-  BATCH_COMMANDS,
-  MISC_COMMANDS,
-  LOG_COMMANDS,
-  // Command sets
-  NODE_COMMAND_SET,
-  INTERFACE_COMMAND_SET,
-  LIFECYCLE_COMMAND_SET,
-  EDITOR_COMMAND_SET,
-  PANEL_COMMAND_SET,
-  ANNOTATION_COMMAND_SET,
-  CUSTOM_NODE_COMMAND_SET,
-  CLIPBOARD_COMMAND_SET,
-  BATCH_COMMAND_SET,
-  MISC_COMMAND_SET,
-  LOG_COMMAND_SET,
   // Command types
   type NodeCommand,
   type InterfaceCommand,

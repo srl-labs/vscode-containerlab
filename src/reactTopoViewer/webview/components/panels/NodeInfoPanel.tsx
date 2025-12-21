@@ -4,7 +4,7 @@
  */
 import React from 'react';
 
-import type { NodeData } from '../../hooks';
+import type { NodeData } from '../../hooks/useAppState';
 
 import { FloatingPanel, PropertyRow } from './FloatingPanel';
 

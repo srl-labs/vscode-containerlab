@@ -49,40 +49,16 @@ export {
   useGroupUndoRedoHandlers
 } from './undo';
 
-// Utils
+// Utils (common utilities - for full set import from './utils')
 export {
-  CMD_SAVE_NODE_GROUP_MEMBERSHIP,
-  CMD_SAVE_GROUP_ANNOTATIONS,
-  GROUP_SAVE_DEBOUNCE_MS,
   generateGroupId,
-  parseGroupId,
-  buildGroupId,
   createDefaultGroup,
-  isPointInsideGroup,
   findGroupAtPosition,
-  getGroupBoundingBox,
-  calculateBoundingBox,
-  updateGroupInList,
-  removeGroupFromList,
-  isGroupInSelectionBox,
-  getLabelPositionStyles,
   buildGroupTree,
   getDescendantGroups,
-  getDescendantGroupIds,
   getChildGroups,
-  getChildGroupIds,
-  getAncestorGroups,
   getParentGroup,
   getGroupDepth,
-  findRootGroups,
-  validateNoCircularReference,
-  getAnnotationsInGroup,
-  getAllAnnotationsInHierarchy,
-  sortGroupsByDepthThenZIndex,
-  getGroupCenter,
-  getRelativePosition,
-  getAbsolutePosition,
-  isPositionInGroup,
-  findDeepestGroupAtPosition,
-  cloneGroup
+  isPointInsideGroup,
+  findDeepestGroupAtPosition
 } from './utils';
