@@ -16,7 +16,6 @@ import type {
   ISplitViewService,
 } from '../../../shared/messaging';
 import type { CyElement } from '../../../shared/types/topology';
-
 import { labLifecycleService } from '../LabLifecycleService';
 import { customNodeConfigManager } from '../CustomNodeConfigManager';
 import { splitViewManager } from '../SplitViewManager';

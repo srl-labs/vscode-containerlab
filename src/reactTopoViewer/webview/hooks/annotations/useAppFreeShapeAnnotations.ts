@@ -9,6 +9,16 @@ import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/
 
 import { useFreeShapeAnnotations } from './useFreeShapeAnnotations';
 
+/**
+ * Helper function to normalize shape type strings to valid FreeShapeAnnotation shape types
+ */
+function normalizeShapeType(shapeType: string | undefined): FreeShapeAnnotation['shapeType'] {
+  if (shapeType === 'circle' || shapeType === 'line' || shapeType === 'rectangle') {
+    return shapeType;
+  }
+  return 'rectangle';
+}
+
 interface InitialData {
   freeShapeAnnotations?: unknown[];
 }
@@ -59,4 +69,28 @@ export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOp
   }, [loadAnnotations]);
 
   return freeShapeAnnotations;
+}
+
+interface UseAddShapesHandlerParams {
+  isLocked: boolean;
+  onLockedAction: () => void;
+  enableAddShapeMode: (shapeType: FreeShapeAnnotation['shapeType']) => void;
+}
+
+/**
+ * Hook for handling add shapes action with lock checking
+ */
+export function useAddShapesHandler({
+  isLocked,
+  onLockedAction,
+  enableAddShapeMode
+}: UseAddShapesHandlerParams): (shapeType?: string) => void {
+  return React.useCallback((shapeType?: string) => {
+    if (isLocked) {
+      onLockedAction();
+      return;
+    }
+    const normalized = normalizeShapeType(shapeType);
+    enableAddShapeMode(normalized);
+  }, [isLocked, onLockedAction, enableAddShapeMode]);
 }

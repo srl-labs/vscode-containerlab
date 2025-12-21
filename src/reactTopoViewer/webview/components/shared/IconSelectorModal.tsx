@@ -6,7 +6,7 @@ import React, { useCallback } from 'react';
 
 import type { NodeType } from '../../utils/SvgGenerator';
 import { generateEncodedSVG } from '../../utils/SvgGenerator';
-import { useEscapeKey } from '../../hooks/ui/useEscapeKey';
+import { useEscapeKey } from '../../hooks/ui/useDomInteractions';
 import { useIconSelectorState } from '../../hooks/panels/useIconSelector';
 
 import { BasePanel } from './editor/BasePanel';

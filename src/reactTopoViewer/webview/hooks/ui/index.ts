@@ -15,19 +15,19 @@ export type { NavbarCommands } from './useNavbarCommands';
 export {
   useDeploymentCommands,
   useEditorPanelCommands,
-  useFloatingPanelCommands
+  useFloatingPanelCommands,
+  usePanelVisibility
 } from './usePanelCommands';
 export type {
   DeploymentCommands,
   EditorPanelCommands,
-  FloatingPanelCommands
+  FloatingPanelCommands,
+  PanelVisibility
 } from './usePanelCommands';
 
 // ============================================================================
 // Panel Visibility & Drag
 // ============================================================================
-export { usePanelVisibility } from './usePanelVisibility';
-export type { PanelVisibility } from './usePanelVisibility';
 export {
   usePanelDrag,
   useDrawerSide,
@@ -53,10 +53,8 @@ export type { PendingMembershipChange } from './useAppHandlers';
 // ============================================================================
 // Click, Escape, Hover
 // ============================================================================
-export { useClickOutside } from './useClickOutside';
-export { useEscapeKey } from './useEscapeKey';
-export { useDelayedHover } from './useDelayedHover';
-export type { UseDelayedHoverReturn } from './useDelayedHover';
+export { useClickOutside, useEscapeKey, useDelayedHover } from './useDomInteractions';
+export type { UseDelayedHoverReturn } from './useDomInteractions';
 
 // ============================================================================
 // Dropdown Hooks

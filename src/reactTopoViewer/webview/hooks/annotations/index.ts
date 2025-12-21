@@ -8,7 +8,7 @@
 // ============================================================================
 export { useAppFreeTextAnnotations } from './useAppFreeTextAnnotations';
 export type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
-export { useAppFreeShapeAnnotations } from './useAppFreeShapeAnnotations';
+export { useAppFreeShapeAnnotations, useAddShapesHandler } from './useAppFreeShapeAnnotations';
 
 // ============================================================================
 // Undo/Redo Handlers
@@ -55,8 +55,7 @@ export { getLineCenter } from './freeShape';
 // Interaction Hooks (drag, resize, rotation, selection)
 // ============================================================================
 export { useAnnotationDrag } from './useAnnotationDrag';
-export { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
-export { useLineResizeDrag } from './useLineResize';
+export { useRotationDrag, useResizeDrag, useLineResizeDrag } from './useAnnotationHandles';
 export {
   useAnnotationClickHandlers,
   useLayerClickHandler,
@@ -73,8 +72,6 @@ export type { AnnotationWithId, UseAnnotationListSelectionReturn, UseAnnotationL
 export { useCombinedAnnotationShortcuts } from './useCombinedAnnotationShortcuts';
 export type { UseCombinedAnnotationShortcutsReturn, GroupClipboardOptions } from './useCombinedAnnotationShortcuts';
 export { useAnnotationGroupMove } from './useAnnotationGroupMove';
-export { useAnnotationBackgroundClear } from './useAnnotationBackgroundClear';
-export { useAddShapesHandler } from './useAddShapesHandler';
 export { useAnnotationEffects } from './useAnnotationEffects';
 export { useAnnotationReparent } from './useAnnotationReparent';
 export type { UseAnnotationReparentOptions, UseAnnotationReparentReturn } from './useAnnotationReparent';

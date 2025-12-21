@@ -4,7 +4,7 @@
 import type React from 'react';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
-import { useClickOutside } from './useClickOutside';
+import { useClickOutside } from './useDomInteractions';
 import { useDropdownKeyboard } from './useDropdown';
 
 export interface FilterableDropdownOption {

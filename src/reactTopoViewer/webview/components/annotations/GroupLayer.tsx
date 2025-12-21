@@ -15,7 +15,6 @@ import {
   validateNoCircularReference,
   useGroupDragInteraction,
   useGroupResize,
-  useGroupItemHandlers,
   useDragPositionOverrides
 } from '../../hooks/groups';
 import type { ResizeCorner } from '../../hooks/groups';
@@ -325,14 +324,27 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onPositionChange
   );
 
-  const { handleClick, handleContextMenu, handleDoubleClick } = useGroupItemHandlers(
-    group.id,
-    isLocked,
-    onGroupEdit,
-    onSelect,
-    onToggleSelect,
-    onShowContextMenu
-  );
+  // Group item event handlers
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (e.button === 2) return;
+    e.stopPropagation();
+    if (e.ctrlKey || e.metaKey) {
+      onToggleSelect?.(group.id);
+      return;
+    }
+    onSelect?.(group.id);
+  }, [group.id, onSelect, onToggleSelect]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLocked) onShowContextMenu(group.id, { x: e.clientX, y: e.clientY });
+  }, [isLocked, group.id, onShowContextMenu]);
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isLocked) onGroupEdit(group.id);
+  }, [group.id, isLocked, onGroupEdit]);
 
   // Force re-render on map move for geo mode
   const [, setMapMoveCounter] = useState(0);

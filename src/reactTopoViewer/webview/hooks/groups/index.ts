@@ -48,14 +48,10 @@ export type { UseGroupClipboardOptions, UseGroupClipboardReturn } from './useGro
 export { useNodeReparent } from './useNodeReparent';
 export type { UseNodeReparentOptions, UseNodeReparentDeps } from './useNodeReparent';
 export { useGroupLayer } from './useGroupLayer';
-export { useGroupDragInteraction } from './useGroupDrag';
-export type { UseGroupDragInteractionOptions, UseGroupDragInteractionReturn } from './useGroupDrag';
+export { useGroupDragInteraction, useDragPositionOverrides } from './useGroupDrag';
+export type { UseGroupDragInteractionOptions, UseGroupDragInteractionReturn, UseDragPositionOverridesReturn } from './useGroupDrag';
 export { useGroupResize } from './useGroupResize';
 export type { ResizeCorner, UseGroupResizeReturn } from './useGroupResize';
-export { useGroupItemHandlers } from './useGroupHandlers';
-export type { UseGroupItemHandlersReturn } from './useGroupHandlers';
-export { useDragPositionOverrides } from './useDragPositionOverrides';
-export type { UseDragPositionOverridesReturn } from './useDragPositionOverrides';
 
 // ============================================================================
 // App-level Hooks
