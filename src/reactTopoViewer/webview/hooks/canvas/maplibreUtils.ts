@@ -2,10 +2,15 @@
  * MapLibre GL Integration for React TopoViewer
  * Replaces Leaflet with MapLibre GL for smoother, WebGL-powered map rendering
  */
-import type { Core } from 'cytoscape';
+import type { Core, NodeSingular, EdgeSingular, EventObject, NodeCollection } from 'cytoscape';
 import maplibregl from 'maplibre-gl';
 
 import { log } from '../../utils/logger';
+
+/**
+ * Cytoscape element with data accessor for geo map functionality
+ */
+type CytoscapeElement = NodeSingular | EdgeSingular;
 
 // Constants
 export const CLASS_MAPLIBRE_ACTIVE = 'maplibre-active';
@@ -80,7 +85,7 @@ export function createInitialMapLibreState(): MapLibreState {
  */
 export function assignMissingLatLng(cy: Core): void {
   const stats = computeLatLngStats(cy);
-  cy.nodes().forEach((node: any) => applyLatLngToNode(node, stats));
+  cy.nodes().forEach((node) => applyLatLngToNode(node, stats));
 }
 
 interface LatLngStats {
@@ -109,15 +114,15 @@ function computeLatLngStats(cy: Core): LatLngStats {
   };
 }
 
-function applyLatLngToNode(node: any, stats: LatLngStats): void {
-  let lat = parseFloat(node.data('lat'));
+function applyLatLngToNode(node: NodeSingular, stats: LatLngStats): void {
+  let lat = parseFloat(node.data('lat') as string);
   if (!node.data('lat') || isNaN(lat)) {
     const idx = node.id().length % 5;
     const offset = (idx - 2) * 0.05;
     lat = (stats.useDefaultLat ? DEFAULT_LAT : stats.avgLat) + offset;
   }
 
-  let lng = parseFloat(node.data('lng'));
+  let lng = parseFloat(node.data('lng') as string);
   if (!node.data('lng') || isNaN(lng)) {
     const idx = (node.id().charCodeAt(0) || 0) % 7;
     const offset = (idx - 3) * 0.05;
@@ -153,9 +158,9 @@ export function showGridOverlay(container: Element | null): void {
 /**
  * Get node's LngLat position
  */
-function getNodeLngLat(node: any): maplibregl.LngLat | null {
-  const lat = parseFloat(node.data('lat'));
-  const lng = parseFloat(node.data('lng'));
+function getNodeLngLat(node: NodeSingular): maplibregl.LngLat | null {
+  const lat = parseFloat(node.data('lat') as string);
+  const lng = parseFloat(node.data('lng') as string);
   if (isNaN(lat) || isNaN(lng)) return null;
   return new maplibregl.LngLat(lng, lat);
 }
@@ -300,7 +305,7 @@ function getNodeBounds(cy: Core): maplibregl.LngLatBounds | null {
   const bounds = new maplibregl.LngLatBounds();
   let hasNodes = false;
 
-  cy.nodes().forEach((node: any) => {
+  cy.nodes().forEach((node) => {
     const lngLat = getNodeLngLat(node);
     if (lngLat) {
       bounds.extend(lngLat);
@@ -320,7 +325,7 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
   if (!state.map) return;
 
   // Collect locked nodes so we can re-lock them after update
-  const lockedNodes = cy.nodes().filter((node: any) => node.locked());
+  const lockedNodes: NodeCollection = cy.nodes().filter((node) => node.locked());
 
   // Temporarily unlock all nodes to allow position updates
   if (lockedNodes.length > 0) {
@@ -328,7 +333,7 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
   }
 
   cy.batch(() => {
-    cy.nodes().forEach((node: any) => {
+    cy.nodes().forEach((node) => {
       const lngLat = getNodeLngLat(node);
       if (lngLat) {
         const point = state.map!.project(lngLat);
@@ -348,7 +353,7 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
  * For font-size, always use the fallback since the stylesheet uses relative units (em)
  * that don't work well with the geo map scaling system.
  */
-function setDefaultNumericData(target: any, dataKey: string, styleKey: string, fallback: number): void {
+function setDefaultNumericData(target: CytoscapeElement, dataKey: string, styleKey: string, fallback: number): void {
   if (target.data(dataKey) !== undefined) return;
 
   // For font-size, always use fallback since stylesheet uses em units
@@ -358,12 +363,12 @@ function setDefaultNumericData(target: any, dataKey: string, styleKey: string, f
     return;
   }
 
-  const styleValue = target.style(styleKey);
+  const styleValue = target.style(styleKey) as string;
   const parsed = parseFloat(styleValue);
   target.data(dataKey, Number.isFinite(parsed) ? parsed : fallback);
 }
 
-function cacheNodeOriginalStyles(node: any): void {
+function cacheNodeOriginalStyles(node: NodeSingular): void {
   setDefaultNumericData(node, '_origWidth', STYLE_WIDTH, 50);
   setDefaultNumericData(node, '_origHeight', STYLE_HEIGHT, 50);
   // Use small value similar to what 0.58em would parse to, since labelFactor multiplies by 8*scaleFactor
@@ -374,7 +379,7 @@ function cacheNodeOriginalStyles(node: any): void {
   }
 }
 
-function cacheEdgeOriginalStyles(edge: any): void {
+function cacheEdgeOriginalStyles(edge: EdgeSingular): void {
   setDefaultNumericData(edge, '_origWidth', STYLE_WIDTH, 2);
   // Use small value similar to what 0.42em would parse to, since labelFactor multiplies by 8*scaleFactor
   setDefaultNumericData(edge, '_origFont', STYLE_FONT_SIZE, 0.4);
@@ -382,11 +387,11 @@ function cacheEdgeOriginalStyles(edge: any): void {
 }
 
 function ensureOriginalSizes(cy: Core): void {
-  cy.nodes().forEach((n: any) => {
+  cy.nodes().forEach((n) => {
     cacheNodeOriginalStyles(n);
   });
 
-  cy.edges().forEach((e: any) => {
+  cy.edges().forEach((e) => {
     cacheEdgeOriginalStyles(e);
   });
 }
@@ -412,10 +417,10 @@ export function applyScale(cy: Core, state: MapLibreState, factor: number): void
   const labelFactor = factor * 8;
 
   cy.batch(() => {
-    cy.nodes().forEach((n: any) => {
-      const origW = n.data('_origWidth');
-      const origH = n.data('_origHeight');
-      const origFont = n.data('_origFont');
+    cy.nodes().forEach((n) => {
+      const origW = n.data('_origWidth') as number | undefined;
+      const origH = n.data('_origHeight') as number | undefined;
+      const origFont = n.data('_origFont') as number | undefined;
 
       if (origW !== undefined && origH !== undefined) {
         n.style({
@@ -426,17 +431,17 @@ export function applyScale(cy: Core, state: MapLibreState, factor: number): void
       }
 
       if (n.data('topoViewerRole') === 'group') {
-        const origBorder = n.data('_origBorderWidth');
+        const origBorder = n.data('_origBorderWidth') as number | undefined;
         if (origBorder !== undefined) {
           n.style(STYLE_BORDER_WIDTH, Math.max(origBorder * factor, MIN_BORDER_WIDTH));
         }
       }
     });
 
-    cy.edges().forEach((e: any) => {
-      const origWidth = e.data('_origWidth');
-      const origFont = e.data('_origFont');
-      const origArrow = e.data('_origArrow');
+    cy.edges().forEach((e) => {
+      const origWidth = e.data('_origWidth') as number | undefined;
+      const origFont = e.data('_origFont') as number | undefined;
+      const origArrow = e.data('_origArrow') as number | undefined;
 
       if (origWidth !== undefined) e.style(STYLE_WIDTH, Math.max(origWidth * factor, MIN_EDGE_WIDTH));
       if (origFont !== undefined) e.style(STYLE_FONT_SIZE, `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px`);
@@ -455,7 +460,7 @@ export function applyScale(cy: Core, state: MapLibreState, factor: number): void
  */
 function resetStyles(cy: Core): void {
   cy.batch(() => {
-    cy.nodes().forEach((n: any) => {
+    cy.nodes().forEach((n) => {
       // Remove inline styles - let stylesheet take over
       n.removeStyle(STYLE_WIDTH);
       n.removeStyle(STYLE_HEIGHT);
@@ -471,7 +476,7 @@ function resetStyles(cy: Core): void {
       n.removeData('_origBorderWidth');
     });
 
-    cy.edges().forEach((e: any) => {
+    cy.edges().forEach((e) => {
       // Remove inline styles - let stylesheet take over
       e.removeStyle(STYLE_WIDTH);
       e.removeStyle(STYLE_FONT_SIZE);
@@ -488,7 +493,7 @@ function resetStyles(cy: Core): void {
 /**
  * Update node's geo data after dragging
  */
-function updateNodeGeoData(node: any, state: MapLibreState): void {
+function updateNodeGeoData(node: NodeSingular, state: MapLibreState): void {
   if (!state.map) return;
   const pos = node.position();
   const lngLat = state.map.unproject([pos.x, pos.y]);
@@ -501,7 +506,7 @@ function cleanupMapInitializationFailure(
   state: MapLibreState,
   container: HTMLElement,
   onMove: () => void,
-  onDragFree: (event: any) => void
+  onDragFree: (event: EventObject) => void
 ): void {
   try {
     cy.off('dragfree', onDragFree);
@@ -551,7 +556,7 @@ export async function initializeMapLibre(
   cy: Core,
   state: MapLibreState,
   onMove: () => void,
-  onDragFree: (event: any) => void
+  onDragFree: (event: EventObject) => void
 ): Promise<void> {
   log.info('[MapLibre] Initializing geo map');
 
@@ -707,7 +712,7 @@ export function handleMapMove(cy: Core, state: MapLibreState): void {
 /**
  * Handle node drag - update geo coordinates
  */
-export function handleNodeDragFree(node: any, state: MapLibreState): void {
+export function handleNodeDragFree(node: NodeSingular, state: MapLibreState): void {
   updateNodeGeoData(node, state);
 }
 
@@ -831,7 +836,7 @@ export function cleanupMapLibreState(
   cy: Core | null,
   state: MapLibreState,
   onMove: () => void,
-  onDragFree: (event: any) => void
+  onDragFree: (event: EventObject) => void
 ): void {
   if (!state.isInitialized || !cy) return;
 

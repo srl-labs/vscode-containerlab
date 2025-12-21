@@ -1,6 +1,71 @@
 import * as vscode from "vscode";
 
 /**
+ * Port information for container
+ */
+interface ContainerPort {
+  port: string | number;
+  protocol: string;
+}
+
+/**
+ * Labels attached to a container
+ */
+interface ContainerLabels {
+  containerlab?: string;
+  'clab-topo-file'?: string;
+  'clab-node-longname'?: string;
+  'clab-node-kind'?: string;
+  'clab-node-type'?: string;
+  'clab-owner'?: string;
+  [key: string]: string | undefined;
+}
+
+/**
+ * Network settings for a container
+ */
+interface ContainerNetworkSettings {
+  IPv4addr?: string;
+  IPv6addr?: string;
+  ipv4_address?: string;
+  ipv6_address?: string;
+}
+
+/**
+ * Container data from various sources (clab CLI, Docker API)
+ * Properties vary based on source, so many are optional
+ */
+interface ContainerData {
+  // clab CLI format
+  name?: string;
+  lab_name?: string;
+  labPath?: string;
+  state?: string;
+  kind?: string;
+  node_type?: string;
+  image?: string;
+  network_name?: string;
+  status?: string;
+  ipv4_address?: string;
+  ipv6_address?: string;
+  id?: string;
+  container_id?: string;
+  Ports?: ContainerPort[];
+
+  // Docker API format
+  Names?: string[];
+  State?: string;
+  Image?: string;
+  NetworkName?: string;
+  Status?: string;
+  ID?: string;
+  ShortID?: string;
+  Pid?: number;
+  Labels?: ContainerLabels;
+  NetworkSettings?: ContainerNetworkSettings;
+}
+
+/**
  * Build the HTML string for the webview, grouping containers by lab_name or labPath.
  */
 function stateToClass(state: string): string {
@@ -18,20 +83,20 @@ function stateToClass(state: string): string {
 function firstTruthyString(...values: Array<string | undefined | null>): string {
   for (const v of values) {
     if (v) {
-      return v as string;
+      return v;
     }
   }
   return "";
 }
 
 function buildPortsHtml(
-  ports: any[],
+  ports: ContainerPort[] | undefined,
   containerName: string,
   containerId: string
 ): string {
   if (Array.isArray(ports) && ports.length > 0) {
     return ports
-      .map((p: any) => {
+      .map((p) => {
         const portId = `port-${containerId}-${p.port}-${p.protocol}`;
         return `<a href="#" class="port-link" data-container-name="${containerName}" data-container-id="${containerId}" data-port="${p.port}" data-protocol="${p.protocol}" id="${portId}">${p.port}/${p.protocol}</a>`;
       })
@@ -42,7 +107,7 @@ function buildPortsHtml(
 
 export function getInspectHtml(
   webview: vscode.Webview,
-  containers: any[],
+  containers: ContainerData[],
   extensionUri: vscode.Uri
 ): string {
   const styleUri = webview.asWebviewUri(
@@ -50,7 +115,7 @@ export function getInspectHtml(
   );
 
   // Group containers by lab name - check multiple possible locations
-  const grouped: Record<string, any[]> = {};
+  const grouped: Record<string, ContainerData[]> = {};
   containers.forEach((c) => {
     const key = c.lab_name ||
                 c.labPath ||

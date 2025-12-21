@@ -9,10 +9,10 @@ import type Docker from 'dockerode';
 
 /** Our global output channel */
 export let outputChannel: vscode.LogOutputChannel;
-export let treeView: any;
-export let localTreeView: any;
-export let runningTreeView: any;
-export let helpTreeView: any;
+export let treeView: vscode.TreeView<unknown> | undefined;
+export let localTreeView: vscode.TreeView<unknown> | undefined;
+export let runningTreeView: vscode.TreeView<unknown> | undefined;
+export let helpTreeView: vscode.TreeView<unknown> | undefined;
 export let username: string;
 export let hideNonOwnedLabsState: boolean = false;
 export let favoriteLabs: Set<string> = new Set();
@@ -72,15 +72,15 @@ export function setHelpFeedbackProvider(provider: any) {
     helpFeedbackProvider = provider;
 }
 
-export function setLocalTreeView(view: any) {
+export function setLocalTreeView(view: vscode.TreeView<unknown>) {
     localTreeView = view;
 }
 
-export function setRunningTreeView(view: any) {
+export function setRunningTreeView(view: vscode.TreeView<unknown>) {
     runningTreeView = view;
 }
 
-export function setHelpTreeView(view: any) {
+export function setHelpTreeView(view: vscode.TreeView<unknown>) {
     helpTreeView = view;
 }
 

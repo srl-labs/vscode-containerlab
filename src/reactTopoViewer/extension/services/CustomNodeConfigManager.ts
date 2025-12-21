@@ -7,13 +7,21 @@ import { log } from './logger';
 const CONFIG_SECTION = 'containerlab.editor';
 
 /**
- * Custom node data structure
+ * Custom node configuration stored in VS Code settings
  */
-export interface CustomNodeData {
+export interface CustomNodeConfig {
   name: string;
-  oldName?: string;
+  kind?: string;
+  type?: string;
+  image?: string;
   setDefault?: boolean;
-  [key: string]: any;
+}
+
+/**
+ * Custom node data structure for save operations
+ */
+export interface CustomNodeData extends CustomNodeConfig {
+  oldName?: string;
 }
 
 /**
@@ -28,23 +36,28 @@ export class CustomNodeConfigManager {
   async saveCustomNode(data: CustomNodeData): Promise<EndpointResult> {
     try {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      let customNodes = config.get<any[]>('customNodes', []);
+      let customNodes = config.get<CustomNodeConfig[]>('customNodes', []);
 
       if (data.setDefault) {
-        customNodes = customNodes.map((n: any) => ({ ...n, setDefault: false }));
+        customNodes = customNodes.map((n) => ({ ...n, setDefault: false }));
       }
 
       if (data.oldName) {
-        const oldIndex = customNodes.findIndex((n: any) => n.name === data.oldName);
-        const nodeData = { ...data };
-        delete nodeData.oldName;
+        const oldIndex = customNodes.findIndex((n) => n.name === data.oldName);
+        const nodeData: CustomNodeConfig = {
+          name: data.name,
+          kind: data.kind,
+          type: data.type,
+          image: data.image,
+          setDefault: data.setDefault,
+        };
         if (oldIndex >= 0) {
           customNodes[oldIndex] = nodeData;
         } else {
           customNodes.push(nodeData);
         }
       } else {
-        const existingIndex = customNodes.findIndex((n: any) => n.name === data.name);
+        const existingIndex = customNodes.findIndex((n) => n.name === data.name);
         if (existingIndex >= 0) {
           customNodes[existingIndex] = data;
         } else {
@@ -53,7 +66,7 @@ export class CustomNodeConfigManager {
       }
 
       await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
-      const defaultCustomNode = customNodes.find((n: any) => n.setDefault === true);
+      const defaultCustomNode = customNodes.find((n) => n.setDefault === true);
       log.info(`Saved custom node ${data.name}`);
       return { result: { customNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
     } catch (err) {
@@ -73,10 +86,10 @@ export class CustomNodeConfigManager {
       }
 
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<any[]>('customNodes', []);
+      const customNodes = config.get<CustomNodeConfig[]>('customNodes', []);
 
       let found = false;
-      const updatedNodes = customNodes.map((node: any) => {
+      const updatedNodes = customNodes.map((node) => {
         const updated = { ...node, setDefault: false };
         if (node.name === name) {
           found = true;
@@ -90,7 +103,7 @@ export class CustomNodeConfigManager {
       }
 
       await config.update('customNodes', updatedNodes, vscode.ConfigurationTarget.Global);
-      const defaultCustomNode = updatedNodes.find((n: any) => n.setDefault === true);
+      const defaultCustomNode = updatedNodes.find((n) => n.setDefault === true);
       log.info(`Set default custom node ${name}`);
 
       return {
@@ -110,10 +123,10 @@ export class CustomNodeConfigManager {
   async deleteCustomNode(name: string): Promise<EndpointResult> {
     try {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<any[]>('customNodes', []);
-      const filteredNodes = customNodes.filter((n: any) => n.name !== name);
+      const customNodes = config.get<CustomNodeConfig[]>('customNodes', []);
+      const filteredNodes = customNodes.filter((n) => n.name !== name);
       await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
-      const defaultCustomNode = filteredNodes.find((n: any) => n.setDefault === true);
+      const defaultCustomNode = filteredNodes.find((n) => n.setDefault === true);
       log.info(`Deleted custom node ${name}`);
       return { result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
     } catch (err) {
@@ -126,12 +139,12 @@ export class CustomNodeConfigManager {
   /**
    * Gets the default custom node info from the list
    */
-  getDefaultCustomNode(customNodes: any[]): {
+  getDefaultCustomNode(customNodes: CustomNodeConfig[]): {
     defaultNode: string;
     defaultKind: string;
     defaultType: string;
   } {
-    const defaultCustomNode = customNodes.find((node: any) => node.setDefault === true);
+    const defaultCustomNode = customNodes.find((node) => node.setDefault === true);
     return {
       defaultNode: defaultCustomNode?.name || '',
       defaultKind: defaultCustomNode?.kind || 'nokia_srlinux',
@@ -142,13 +155,13 @@ export class CustomNodeConfigManager {
   /**
    * Builds a mapping from node kind to image
    */
-  buildImageMapping(customNodes: any[]): Record<string, string> {
+  buildImageMapping(customNodes: CustomNodeConfig[]): Record<string, string> {
     const imageMapping: Record<string, string> = {};
-    customNodes.forEach((node: any) => {
+    for (const node of customNodes) {
       if (node.image && node.kind) {
         imageMapping[node.kind] = node.image;
       }
-    });
+    }
     return imageMapping;
   }
 
