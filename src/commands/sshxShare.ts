@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, sshxSessions, runningLabsProvider, containerlabBinaryPath } from "../globals";
-import { refreshSshxSessions } from "../services/sessionRefresh";
+import { refreshSshxSessions, refreshRunningLabsProvider } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";
 
 function parseLink(output: string): string | undefined {
@@ -41,11 +41,7 @@ async function sshxStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to ${action} SSHX: ${message}`);
   }
   await refreshSshxSessions();
-  if (action === 'attach') {
-    Promise.resolve(runningLabsProvider.softRefresh()).catch(() => { /* ignore */ });
-  } else {
-    Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
-  }
+  await refreshRunningLabsProvider(action);
 }
 
 export async function sshxAttach(node: ClabLabTreeNode) {
@@ -72,7 +68,12 @@ export async function sshxDetach(node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to detach SSHX: ${message}`);
   }
   await refreshSshxSessions();
-  Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
+  try {
+    await runningLabsProvider.refresh();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.warn(`Failed to refresh running labs after SSHX detach: ${message}`);
+  }
 }
 
 export async function sshxReattach(node: ClabLabTreeNode) {

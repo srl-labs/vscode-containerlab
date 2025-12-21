@@ -95,6 +95,76 @@ const MdaEntry: React.FC<MdaEntryProps> = ({ mda, index, mdaTypes, onUpdate, onR
 );
 
 // ============================================================================
+// MDA List Section - Shared component for rendering MDA lists
+// ============================================================================
+
+interface MdaListSectionProps {
+  mdas: SrosMda[];
+  mdaTypes: string[];
+  slotPrefix?: string;
+  onUpdate: (index: number, updates: Partial<SrosMda>) => void;
+  onRemove: (index: number) => void;
+  onAdd: () => void;
+}
+
+const MdaListSection: React.FC<MdaListSectionProps> = ({
+  mdas, mdaTypes, slotPrefix, onUpdate, onRemove, onAdd
+}) => (
+  <>
+    <div className="space-y-2">
+      {mdas.map((mda, mdaIdx) => (
+        <MdaEntry
+          key={mdaIdx}
+          mda={mda}
+          index={mdaIdx}
+          mdaTypes={mdaTypes}
+          slotPrefix={slotPrefix}
+          onUpdate={onUpdate}
+          onRemove={onRemove}
+        />
+      ))}
+    </div>
+    <button
+      type="button"
+      onClick={onAdd}
+      className={`${cardStyles.addBtn} mt-2`}
+    >
+      <i className="fas fa-plus" />
+      Add MDA
+    </button>
+  </>
+);
+
+// ============================================================================
+// MDA Section Wrapper - Generic MDA list wrapper with subsection
+// ============================================================================
+
+interface MdaSectionWrapperProps {
+  mdas: SrosMda[];
+  mdaTypes: string[];
+  slotPrefix: string;
+  parentIndex: number;
+  onAddMda: (parentIndex: number) => void;
+  onUpdateMda: (parentIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
+  onRemoveMda: (parentIndex: number, mdaIndex: number) => void;
+}
+
+const MdaSectionWrapper: React.FC<MdaSectionWrapperProps> = ({
+  mdas, mdaTypes, slotPrefix, parentIndex, onAddMda, onUpdateMda, onRemoveMda
+}) => (
+  <ComponentSubSection title="MDA Modules">
+    <MdaListSection
+      mdas={mdas}
+      mdaTypes={mdaTypes}
+      slotPrefix={slotPrefix}
+      onUpdate={(idx, updates) => onUpdateMda(parentIndex, idx, updates)}
+      onRemove={(idx) => onRemoveMda(parentIndex, idx)}
+      onAdd={() => onAddMda(parentIndex)}
+    />
+  </ComponentSubSection>
+);
+
+// ============================================================================
 // XIOM Entry Component
 // ============================================================================
 
@@ -164,30 +234,15 @@ const XiomEntry: React.FC<XiomEntryProps> = ({
             </FormField>
           </div>
 
-          <div className={cardStyles.subSection}>
-            <div className={cardStyles.subSectionTitle}>MDA Modules</div>
-            <div className="space-y-2">
-              {(xiom.mda || []).map((mda, mdaIdx) => (
-                <MdaEntry
-                  key={mdaIdx}
-                  mda={mda}
-                  index={mdaIdx}
-                  mdaTypes={srosTypes.xiomMda}
-                  slotPrefix={`${slotLabel}/`}
-                  onUpdate={(idx, updates) => onUpdateMda(index, idx, updates)}
-                  onRemove={(idx) => onRemoveMda(index, idx)}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => onAddMda(index)}
-              className={`${cardStyles.addBtn} mt-2`}
-            >
-              <i className="fas fa-plus" />
-              Add MDA
-            </button>
-          </div>
+          <MdaSectionWrapper
+            mdas={xiom.mda || []}
+            mdaTypes={srosTypes.xiomMda}
+            slotPrefix={`${slotLabel}/`}
+            parentIndex={index}
+            onAddMda={onAddMda}
+            onUpdateMda={onUpdateMda}
+            onRemoveMda={onRemoveMda}
+          />
         </div>
       )}
     </div>
@@ -198,12 +253,8 @@ const XiomEntry: React.FC<XiomEntryProps> = ({
 // Component Entry (CPM or Card)
 // ============================================================================
 
-interface ComponentEntryProps {
-  component: SrosComponent;
-  index: number;
-  srosTypes: SrosComponentTypes;
-  onUpdate: (index: number, updates: Partial<SrosComponent>) => void;
-  onRemove: (index: number) => void;
+// Shared callback types for component operations
+interface ComponentCallbacks {
   onAddMda: (compIndex: number) => void;
   onUpdateMda: (compIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
   onRemoveMda: (compIndex: number, mdaIndex: number) => void;
@@ -213,6 +264,14 @@ interface ComponentEntryProps {
   onAddXiomMda: (compIndex: number, xiomIndex: number) => void;
   onUpdateXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
   onRemoveXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number) => void;
+}
+
+interface ComponentEntryProps extends ComponentCallbacks {
+  component: SrosComponent;
+  index: number;
+  srosTypes: SrosComponentTypes;
+  onUpdate: (index: number, updates: Partial<SrosComponent>) => void;
+  onRemove: (index: number) => void;
 }
 
 /** Component header with expand/collapse toggle */
@@ -247,35 +306,34 @@ const ComponentHeader: React.FC<{
   </div>
 );
 
+/** Generic subsection wrapper with title */
+const ComponentSubSection: React.FC<{
+  title: string;
+  children: React.ReactNode;
+}> = ({ title, children }) => (
+  <div className={cardStyles.subSection}>
+    <div className={cardStyles.subSectionTitle}>{title}</div>
+    {children}
+  </div>
+);
+
 /** MDA section for a component */
 const ComponentMdaSection: React.FC<{
   component: SrosComponent;
   index: number;
   srosTypes: SrosComponentTypes;
-  onAddMda: (compIndex: number) => void;
-  onUpdateMda: (compIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
-  onRemoveMda: (compIndex: number, mdaIndex: number) => void;
-}> = ({ component, index, srosTypes, onAddMda, onUpdateMda, onRemoveMda }) => (
-  <div className={cardStyles.subSection}>
-    <div className={cardStyles.subSectionTitle}>MDA Modules</div>
-    <div className="space-y-2">
-      {(component.mda || []).map((mda, mdaIdx) => (
-        <MdaEntry
-          key={mdaIdx}
-          mda={mda}
-          index={mdaIdx}
-          mdaTypes={srosTypes.mda}
-          slotPrefix={`${component.slot}/`}
-          onUpdate={(idx, updates) => onUpdateMda(index, idx, updates)}
-          onRemove={(idx) => onRemoveMda(index, idx)}
-        />
-      ))}
-    </div>
-    <button type="button" onClick={() => onAddMda(index)} className={`${cardStyles.addBtn} mt-2`}>
-      <i className="fas fa-plus" />
-      Add MDA
-    </button>
-  </div>
+} & Pick<ComponentCallbacks, 'onAddMda' | 'onUpdateMda' | 'onRemoveMda'>> = ({
+  component, index, srosTypes, onAddMda, onUpdateMda, onRemoveMda
+}) => (
+  <MdaSectionWrapper
+    mdas={component.mda || []}
+    mdaTypes={srosTypes.mda}
+    slotPrefix={`${component.slot}/`}
+    parentIndex={index}
+    onAddMda={onAddMda}
+    onUpdateMda={onUpdateMda}
+    onRemoveMda={onRemoveMda}
+  />
 );
 
 /** XIOM section for a component */
@@ -283,15 +341,10 @@ const ComponentXiomSection: React.FC<{
   component: SrosComponent;
   index: number;
   srosTypes: SrosComponentTypes;
-  onAddXiom: (compIndex: number) => void;
-  onUpdateXiom: (compIndex: number, xiomIndex: number, updates: Partial<SrosXiom>) => void;
-  onRemoveXiom: (compIndex: number, xiomIndex: number) => void;
-  onAddXiomMda: (compIndex: number, xiomIndex: number) => void;
-  onUpdateXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
-  onRemoveXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number) => void;
-}> = ({ component, index, srosTypes, onAddXiom, onUpdateXiom, onRemoveXiom, onAddXiomMda, onUpdateXiomMda, onRemoveXiomMda }) => (
-  <div className={cardStyles.subSection}>
-    <div className={cardStyles.subSectionTitle}>XIOM Extension Modules</div>
+} & Pick<ComponentCallbacks, 'onAddXiom' | 'onUpdateXiom' | 'onRemoveXiom' | 'onAddXiomMda' | 'onUpdateXiomMda' | 'onRemoveXiomMda'>> = ({
+  component, index, srosTypes, onAddXiom, onUpdateXiom, onRemoveXiom, onAddXiomMda, onUpdateXiomMda, onRemoveXiomMda
+}) => (
+  <ComponentSubSection title="XIOM Extension Modules">
     <div className="space-y-2">
       {(component.xiom || []).map((xiom, xiomIdx) => (
         <XiomEntry
@@ -314,7 +367,99 @@ const ComponentXiomSection: React.FC<{
         Add XIOM
       </button>
     )}
-  </div>
+  </ComponentSubSection>
+);
+
+// ============================================================================
+// Component Section - Shared component for CPM and Card sections
+// ============================================================================
+
+interface ComponentSectionProps {
+  title: string;
+  description: string;
+  filteredComponents: SrosComponent[];
+  allComponents: SrosComponent[];
+  srosTypes: SrosComponentTypes;
+  updateComponent: (index: number, updates: Partial<SrosComponent>) => void;
+  removeComponent: (index: number) => void;
+  addMda: (compIndex: number) => void;
+  updateMda: (compIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
+  removeMda: (compIndex: number, mdaIndex: number) => void;
+  addXiom: (compIndex: number) => void;
+  updateXiom: (compIndex: number, xiomIndex: number, updates: Partial<SrosXiom>) => void;
+  removeXiom: (compIndex: number, xiomIndex: number) => void;
+  addXiomMda: (compIndex: number, xiomIndex: number) => void;
+  updateXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
+  removeXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number) => void;
+  addButtonLabel: string;
+  onAdd: () => void;
+  addDisabled?: boolean;
+  addDisabledTitle?: string;
+  hasBorder?: boolean;
+}
+
+const ComponentSection: React.FC<ComponentSectionProps> = ({
+  title,
+  description,
+  filteredComponents,
+  allComponents,
+  srosTypes,
+  updateComponent,
+  removeComponent,
+  addMda,
+  updateMda,
+  removeMda,
+  addXiom,
+  updateXiom,
+  removeXiom,
+  addXiomMda,
+  updateXiomMda,
+  removeXiomMda,
+  addButtonLabel,
+  onAdd,
+  addDisabled,
+  addDisabledTitle,
+  hasBorder = true,
+}) => (
+  <Section title={title} hasBorder={hasBorder}>
+    <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-3">
+      {description}
+    </p>
+    <div className="space-y-2">
+      {filteredComponents.map((comp) => {
+        const realIndex = allComponents.indexOf(comp);
+        return (
+          <ComponentEntry
+            key={realIndex}
+            component={comp}
+            index={realIndex}
+            srosTypes={srosTypes}
+            onUpdate={updateComponent}
+            onRemove={removeComponent}
+            onAddMda={addMda}
+            onUpdateMda={updateMda}
+            onRemoveMda={removeMda}
+            onAddXiom={addXiom}
+            onUpdateXiom={updateXiom}
+            onRemoveXiom={removeXiom}
+            onAddXiomMda={addXiomMda}
+            onUpdateXiomMda={updateXiomMda}
+            onRemoveXiomMda={removeXiomMda}
+          />
+        );
+      })}
+    </div>
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={addDisabled}
+      className={`${cardStyles.addBtn} mt-3`}
+      title={addDisabled ? addDisabledTitle : undefined}
+    >
+      <i className="fas fa-plus" />
+      {addButtonLabel}
+    </button>
+  </Section>
 );
 
 const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
@@ -403,26 +548,13 @@ const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({ component
       <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-3">
         Configure MDA modules directly for integrated chassis
       </p>
-      <div className="space-y-2">
-        {mdas.map((mda, idx) => (
-          <MdaEntry
-            key={idx}
-            mda={mda}
-            index={idx}
-            mdaTypes={srosTypes.mda}
-            onUpdate={updateMda}
-            onRemove={removeMda}
-          />
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={addMda}
-        className={`${cardStyles.addBtn} mt-3`}
-      >
-        <i className="fas fa-plus" />
-        Add MDA
-      </button>
+      <MdaListSection
+        mdas={mdas}
+        mdaTypes={srosTypes.mda}
+        onUpdate={updateMda}
+        onRemove={removeMda}
+        onAdd={addMda}
+      />
     </Section>
   );
 };
@@ -547,6 +679,23 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
     updateComponent(compIndex, { xiom: newXioms });
   };
 
+  // Common props for both CPM and Card sections
+  const commonSectionProps = {
+    allComponents: components,
+    srosTypes,
+    updateComponent,
+    removeComponent,
+    addMda,
+    updateMda,
+    removeMda,
+    addXiom,
+    updateXiom,
+    removeXiom,
+    addXiomMda,
+    updateXiomMda,
+    removeXiomMda,
+  };
+
   return (
     <>
       {/* SFM Configuration */}
@@ -565,84 +714,27 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
       </Section>
 
       {/* CPM Components */}
-      <Section title="Control Processing Modules (CPM)">
-        <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-3">
-          Slots A and B represent the chassis control processors
-        </p>
-        <div className="space-y-2">
-          {cpmComponents.map((comp) => {
-            const realIndex = components.indexOf(comp);
-            return (
-              <ComponentEntry
-                key={realIndex}
-                component={comp}
-                index={realIndex}
-                srosTypes={srosTypes}
-                onUpdate={updateComponent}
-                onRemove={removeComponent}
-                onAddMda={addMda}
-                onUpdateMda={updateMda}
-                onRemoveMda={removeMda}
-                onAddXiom={addXiom}
-                onUpdateXiom={updateXiom}
-                onRemoveXiom={removeXiom}
-                onAddXiomMda={addXiomMda}
-                onUpdateXiomMda={updateXiomMda}
-                onRemoveXiomMda={removeXiomMda}
-              />
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          onClick={addCpm}
-          disabled={cpmComponents.length >= 2}
-          className={`${cardStyles.addBtn} mt-3`}
-          title={cpmComponents.length >= 2 ? 'CPM slots A and B are already defined' : 'Add CPM slot'}
-        >
-          <i className="fas fa-plus" />
-          Add CPM
-        </button>
-      </Section>
+      <ComponentSection
+        {...commonSectionProps}
+        title="Control Processing Modules (CPM)"
+        description="Slots A and B represent the chassis control processors"
+        filteredComponents={cpmComponents}
+        addButtonLabel="Add CPM"
+        onAdd={addCpm}
+        addDisabled={cpmComponents.length >= 2}
+        addDisabledTitle="CPM slots A and B are already defined"
+      />
 
       {/* Card Components */}
-      <Section title="Line Cards" hasBorder={false}>
-        <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-3">
-          Define card slots and attach IOM/XCM, MDA, and XIOM components
-        </p>
-        <div className="space-y-2">
-          {cardComponents.map((comp) => {
-            const realIndex = components.indexOf(comp);
-            return (
-              <ComponentEntry
-                key={realIndex}
-                component={comp}
-                index={realIndex}
-                srosTypes={srosTypes}
-                onUpdate={updateComponent}
-                onRemove={removeComponent}
-                onAddMda={addMda}
-                onUpdateMda={updateMda}
-                onRemoveMda={removeMda}
-                onAddXiom={addXiom}
-                onUpdateXiom={updateXiom}
-                onRemoveXiom={removeXiom}
-                onAddXiomMda={addXiomMda}
-                onUpdateXiomMda={updateXiomMda}
-                onRemoveXiomMda={removeXiomMda}
-              />
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          onClick={addCard}
-          className={`${cardStyles.addBtn} mt-3`}
-        >
-          <i className="fas fa-plus" />
-          Add Card
-        </button>
-      </Section>
+      <ComponentSection
+        {...commonSectionProps}
+        title="Line Cards"
+        description="Define card slots and attach IOM/XCM, MDA, and XIOM components"
+        filteredComponents={cardComponents}
+        addButtonLabel="Add Card"
+        onAdd={addCard}
+        hasBorder={false}
+      />
     </>
   );
 };

@@ -111,6 +111,7 @@ export {
   createNodeAnnotationsMap,
   getLabName,
   getTopologyNodeIds,
+  isPresetLayout,
 } from './utils';
 
 // Interface patterns
@@ -137,7 +138,6 @@ export {
   createNodeExtraData,
   buildNodeElement,
   addNodeElements,
-  isPresetLayout,
 } from './NodeElementBuilder';
 export type { NodeBuildOptions } from './NodeElementBuilder';
 

@@ -8,9 +8,9 @@ import type { Core as CyCore } from 'cytoscape';
 import { log } from '../../utils/logger';
 import {
   ensureCytoscapeLayersRegistered,
+  getCytoscapeLayers,
   configureLayerNode,
-  type IHTMLLayer,
-  type ILayers
+  type IHTMLLayer
 } from '../shared/cytoscapeLayers';
 
 interface UseShapeLayerReturn {
@@ -33,8 +33,7 @@ export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
     ensureCytoscapeLayersRegistered();
 
     try {
-      // Get the layers API
-      const layers = (cy as CyCore & { layers: () => ILayers }).layers();
+      const layers = getCytoscapeLayers(cy);
       log.info('[ShapeLayer] Creating shape layer below nodes');
 
       // Create layer BELOW the node layer

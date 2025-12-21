@@ -7,7 +7,7 @@
 import type { FileSystemAdapter } from '../../shared/io/types';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
 
-import * as pathUtils from './pathUtils';
+import { createPathMethods } from './pathMethods';
 
 interface FsResponseMessage {
   type: 'fs:response';
@@ -35,7 +35,17 @@ export class PostMessageFsAdapter implements FileSystemAdapter {
   private pending = new Map<string, PendingRequest>();
   private unsubscribe: (() => void) | null = null;
 
+  // Path utility methods
+  dirname: (filePath: string) => string;
+  basename: (filePath: string) => string;
+  join: (...segments: string[]) => string;
+
   constructor() {
+    // Initialize path utility methods
+    const pathMethods = createPathMethods();
+    this.dirname = pathMethods.dirname;
+    this.basename = pathMethods.basename;
+    this.join = pathMethods.join;
     this.unsubscribe = subscribeToWebviewMessages(
       this.handleResponse.bind(this),
       (e) => e.data?.type === 'fs:response'
@@ -73,18 +83,6 @@ export class PostMessageFsAdapter implements FileSystemAdapter {
   async exists(filePath: string): Promise<boolean> {
     const result = await this.request('fs:exists', { path: filePath });
     return result as boolean;
-  }
-
-  dirname(filePath: string): string {
-    return pathUtils.dirname(filePath);
-  }
-
-  basename(filePath: string): string {
-    return pathUtils.basename(filePath);
-  }
-
-  join(...segments: string[]): string {
-    return pathUtils.join(...segments);
   }
 
   private request(type: string, payload: Record<string, unknown>): Promise<unknown> {

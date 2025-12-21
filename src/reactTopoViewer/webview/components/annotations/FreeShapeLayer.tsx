@@ -6,7 +6,7 @@ import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 
-import type { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import {
   useAnnotationDrag,
   useRotationDrag,
@@ -28,17 +28,20 @@ import {
   HANDLE_BOX_SHADOW,
   CENTER_TRANSLATE,
   RotationHandle,
-  ResizeHandle,
   SelectionOutline,
   AnnotationContextMenu,
-  type ResizeCorner
+  AnnotationHandles,
+  createClickCaptureStyle,
+  createBoundAnnotationCallbacks,
+  type BaseAnnotationHandlers,
+  type GroupRelatedProps
 } from './shared';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface FreeShapeLayerProps {
+interface FreeShapeLayerProps extends GroupRelatedProps {
   cy: CyCore | null;
   annotations: FreeShapeAnnotation[];
   isLocked: boolean;
@@ -66,31 +69,11 @@ interface FreeShapeLayerProps {
   // Deferred undo callbacks for drag operations
   onCaptureAnnotationBefore?: (id: string) => FreeShapeAnnotation | null;
   onFinalizeWithUndo?: (before: FreeShapeAnnotation | null, id: string) => void;
-  /** Offsets to apply during group drag operations */
-  groupDragOffsets?: Map<string, { dx: number; dy: number }>;
-  /** Groups for drag-to-reparent functionality */
-  groups?: GroupStyleAnnotation[];
-  /** Callback to update annotation's groupId */
-  onUpdateGroupId?: (annotationId: string, groupId: string | undefined) => void;
 }
 
 // ============================================================================
 // Handle Components
 // ============================================================================
-
-const AnnotationHandles: React.FC<{
-  onRotation: (e: React.MouseEvent) => void;
-  onResize: (e: React.MouseEvent, corner: ResizeCorner) => void;
-}> = ({ onRotation, onResize }) => (
-  <>
-    <SelectionOutline />
-    <RotationHandle onMouseDown={onRotation} />
-    <ResizeHandle position="nw" onMouseDown={(e) => onResize(e, 'nw')} />
-    <ResizeHandle position="ne" onMouseDown={(e) => onResize(e, 'ne')} />
-    <ResizeHandle position="sw" onMouseDown={(e) => onResize(e, 'sw')} />
-    <ResizeHandle position="se" onMouseDown={(e) => onResize(e, 'se')} />
-  </>
-);
 
 const LineEndHandle: React.FC<{ position: { x: number; y: number }; onMouseDown: (e: React.MouseEvent) => void }> = ({ position, onMouseDown }) => (
   <div
@@ -390,48 +373,29 @@ const INTERACTION_LAYER_STYLE: React.CSSProperties = {
   overflow: 'hidden'
 };
 
-const CLICK_CAPTURE_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  pointerEvents: 'auto',
-  cursor: 'crosshair',
-  zIndex: 8
-};
+const CLICK_CAPTURE_STYLE = createClickCaptureStyle('crosshair');
 
 function getShapeCenter(annotation: FreeShapeAnnotation): { x: number; y: number } {
   return annotation.shapeType === 'line' ? getLineCenter(annotation) : annotation.position;
 }
 
+interface ShapeAnnotationHandlers extends BaseAnnotationHandlers {
+  onAnnotationEdit: (id: string) => void;
+  onEndPositionChange: (id: string, endPosition: { x: number; y: number }) => void;
+  onCaptureAnnotationBefore?: (id: string) => FreeShapeAnnotation | null;
+  onFinalizeWithUndo?: (before: FreeShapeAnnotation | null, id: string) => void;
+}
+
 function createAnnotationCallbacks(
   annotation: FreeShapeAnnotation,
-  handlers: {
-    onAnnotationEdit: (id: string) => void;
-    onAnnotationDelete: (id: string) => void;
-    onPositionChange: (id: string, position: { x: number; y: number }) => void;
-    onRotationChange: (id: string, rotation: number) => void;
-    onSizeChange: (id: string, width: number, height: number) => void;
-    onEndPositionChange: (id: string, endPosition: { x: number; y: number }) => void;
-    onAnnotationSelect?: (id: string) => void;
-    onAnnotationToggleSelect?: (id: string) => void;
-    onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
-    onCaptureAnnotationBefore?: (id: string) => FreeShapeAnnotation | null;
-    onFinalizeWithUndo?: (before: FreeShapeAnnotation | null, id: string) => void;
-  }
+  handlers: ShapeAnnotationHandlers
 ) {
   const id = annotation.id;
+  const baseCallbacks = createBoundAnnotationCallbacks(id, handlers);
   return {
+    ...baseCallbacks,
     onEdit: () => handlers.onAnnotationEdit(id),
-    onDelete: () => handlers.onAnnotationDelete(id),
-    onPositionChange: (pos: { x: number; y: number }) => handlers.onPositionChange(id, pos),
-    onRotationChange: (rotation: number) => handlers.onRotationChange(id, rotation),
-    onSizeChange: (width: number, height: number) => handlers.onSizeChange(id, width, height),
     onEndPositionChange: (endPos: { x: number; y: number }) => handlers.onEndPositionChange(id, endPos),
-    onSelect: () => handlers.onAnnotationSelect?.(id),
-    onToggleSelect: () => handlers.onAnnotationToggleSelect?.(id),
-    onGeoPositionChange: handlers.onGeoPositionChange ? (geoCoords: { lat: number; lng: number }) => handlers.onGeoPositionChange!(id, geoCoords) : undefined,
     onDragStart: handlers.onCaptureAnnotationBefore ? () => handlers.onCaptureAnnotationBefore!(id) : undefined,
     onDragEnd: handlers.onFinalizeWithUndo ? (before: FreeShapeAnnotation | null) => handlers.onFinalizeWithUndo!(before, id) : undefined
   };

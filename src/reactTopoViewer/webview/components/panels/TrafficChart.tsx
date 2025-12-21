@@ -48,6 +48,16 @@ function createEmptyHistory(): EndpointStatsHistory {
 }
 
 /**
+ * Calculate scale range with padding
+ */
+function calculateScaleRange(_self: uPlot, dataMin: number | undefined, dataMax: number | undefined): [number, number] {
+  const min = Math.min(0, dataMin ?? 0);
+  const max = Math.max(1, dataMax ?? 1);
+  const padding = (max - min) * 0.1;
+  return [min, max + padding];
+}
+
+/**
  * Create uPlot series configuration
  */
 function createGraphSeries(unitLabel: string): uPlot.Series[] {
@@ -149,21 +159,11 @@ function createGraphOptions(width: number, height: number, unitLabel: string): u
       x: {},
       bps: {
         auto: true,
-        range: (_self, dataMin, dataMax) => {
-          const min = Math.min(0, dataMin ?? 0);
-          const max = Math.max(1, dataMax ?? 1);
-          const padding = (max - min) * 0.1;
-          return [min, max + padding];
-        }
+        range: calculateScaleRange
       },
       pps: {
         auto: true,
-        range: (_self, dataMin, dataMax) => {
-          const min = Math.min(0, dataMin ?? 0);
-          const max = Math.max(1, dataMax ?? 1);
-          const padding = (max - min) * 0.1;
-          return [min, max + padding];
-        }
+        range: calculateScaleRange
       }
     },
     legend: {

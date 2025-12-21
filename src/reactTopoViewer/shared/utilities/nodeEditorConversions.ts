@@ -348,6 +348,18 @@ function isNonEmptyComponent(comp: Record<string, unknown>): boolean {
   return Object.keys(comp).length > 0;
 }
 
+/** Convert MDA array to YAML format */
+function convertMdaArray(mdaList: Array<{ slot?: string | number; type?: string }>): Array<Record<string, unknown>> {
+  return mdaList
+    .map(m => {
+      const mda: Record<string, unknown> = {};
+      if (m.slot !== undefined) mda.slot = m.slot;
+      if (m.type) mda.type = m.type;
+      return mda;
+    })
+    .filter(isNonEmptyComponent);
+}
+
 /** Convert a single SROS component to YAML format, returns null if empty */
 function convertSingleComponent(c: SrosComponent): Record<string, unknown> | null {
   const comp: Record<string, unknown> = {};
@@ -357,14 +369,7 @@ function convertSingleComponent(c: SrosComponent): Record<string, unknown> | nul
   if (c.sfm) comp.sfm = c.sfm;
 
   if (c.mda && c.mda.length > 0) {
-    const mdaList = c.mda
-      .map(m => {
-        const mda: Record<string, unknown> = {};
-        if (m.slot !== undefined) mda.slot = m.slot;
-        if (m.type) mda.type = m.type;
-        return mda;
-      })
-      .filter(isNonEmptyComponent);
+    const mdaList = convertMdaArray(c.mda);
     if (mdaList.length > 0) comp.mda = mdaList;
   }
 
@@ -375,14 +380,7 @@ function convertSingleComponent(c: SrosComponent): Record<string, unknown> | nul
         if (x.slot !== undefined) xiom.slot = x.slot;
         if (x.type) xiom.type = x.type;
         if (x.mda && x.mda.length > 0) {
-          const xMdaList = x.mda
-            .map(m => {
-              const mda: Record<string, unknown> = {};
-              if (m.slot !== undefined) mda.slot = m.slot;
-              if (m.type) mda.type = m.type;
-              return mda;
-            })
-            .filter(isNonEmptyComponent);
+          const xMdaList = convertMdaArray(x.mda);
           if (xMdaList.length > 0) xiom.mda = xMdaList;
         }
         return xiom;

@@ -347,19 +347,3 @@ export function addNodeElements(
   }
   return migrations;
 }
-
-/**
- * Checks if the topology has preset layout (all nodes have positions).
- */
-export function isPresetLayout(
-  parsed: ClabTopology,
-  annotations?: TopologyAnnotations
-): boolean {
-  const topology = parsed.topology;
-  if (!topology || !topology.nodes) return false;
-  const nodeAnnotations = annotations?.nodeAnnotations;
-  return Object.keys(topology.nodes).every((nodeName) => {
-    const ann = nodeAnnotations?.find((na) => na.id === nodeName);
-    return ann?.position !== undefined;
-  });
-}

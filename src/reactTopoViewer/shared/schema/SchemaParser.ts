@@ -6,22 +6,6 @@
  */
 
 /**
- * Custom node template from configuration
- */
-export interface CustomNodeTemplate {
-  name: string;
-  kind: string;
-  type?: string;
-  image?: string;
-  icon?: string;
-  iconColor?: string;
-  iconCornerRadius?: number;
-  baseName?: string;
-  interfacePattern?: string;
-  setDefault?: boolean;
-}
-
-/**
  * SROS component types for nokia_srsim nodes
  */
 export interface SrosComponentTypes {

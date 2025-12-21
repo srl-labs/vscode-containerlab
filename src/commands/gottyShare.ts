@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
 import { outputChannel, gottySessions, runningLabsProvider, containerlabBinaryPath } from "../globals";
-import { refreshGottySessions } from "../services/sessionRefresh";
+import { refreshGottySessions, refreshRunningLabsProvider } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";
 
 import { getHostname } from "./capture";
@@ -88,11 +88,7 @@ async function gottyStart(action: "attach" | "reattach", node: ClabLabTreeNode) 
     vscode.window.showErrorMessage(`Failed to ${action} GoTTY: ${message}`);
   }
   await refreshGottySessions();
-  if (action === 'attach') {
-    Promise.resolve(runningLabsProvider.softRefresh()).catch(() => { /* ignore */ });
-  } else {
-    Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
-  }
+  await refreshRunningLabsProvider(action);
 }
 
 export async function gottyAttach(node: ClabLabTreeNode) {
@@ -120,7 +116,12 @@ export async function gottyDetach(node: ClabLabTreeNode) {
     vscode.window.showErrorMessage(`Failed to detach GoTTY: ${message}`);
   }
   await refreshGottySessions();
-  Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
+  try {
+    await runningLabsProvider.refresh();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.warn(`Failed to refresh running labs after GoTTY detach: ${message}`);
+  }
 }
 
 export async function gottyReattach(node: ClabLabTreeNode) {

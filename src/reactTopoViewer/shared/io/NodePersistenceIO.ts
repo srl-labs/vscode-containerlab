@@ -13,6 +13,17 @@ import type { SaveResult, IOLogger} from './types';
 import { ERROR_NODES_NOT_MAP, noopLogger } from './types';
 import { deepEqual, setOrDelete } from './YamlDocumentIO';
 
+/**
+ * Gets the nodes map from a YAML document, returning an error result if not found.
+ */
+function getNodesMapOrError(doc: YAML.Document.Parsed): { nodesMap: YAML.YAMLMap } | { error: SaveResult } {
+  const nodesMap = doc.getIn(['topology', 'nodes'], true) as YAML.YAMLMap | undefined;
+  if (!nodesMap || !YAML.isMap(nodesMap)) {
+    return { error: { success: false, error: ERROR_NODES_NOT_MAP } };
+  }
+  return { nodesMap };
+}
+
 /** Node data for save operations */
 export interface NodeSaveData {
   id: string;
@@ -314,10 +325,9 @@ export function addNodeToDoc(
   logger: IOLogger = noopLogger
 ): SaveResult {
   try {
-    const nodesMap = doc.getIn(['topology', 'nodes'], true) as YAML.YAMLMap | undefined;
-    if (!nodesMap || !YAML.isMap(nodesMap)) {
-      return { success: false, error: ERROR_NODES_NOT_MAP };
-    }
+    const result = getNodesMapOrError(doc);
+    if ('error' in result) return result.error;
+    const { nodesMap } = result;
 
     const nodeId = nodeData.name || nodeData.id;
     if (!nodeId) {
@@ -351,10 +361,9 @@ export function editNodeInDoc(
   logger: IOLogger = noopLogger
 ): SaveResult {
   try {
-    const nodesMap = doc.getIn(['topology', 'nodes'], true) as YAML.YAMLMap | undefined;
-    if (!nodesMap || !YAML.isMap(nodesMap)) {
-      return { success: false, error: ERROR_NODES_NOT_MAP };
-    }
+    const result = getNodesMapOrError(doc);
+    if ('error' in result) return result.error;
+    const { nodesMap } = result;
 
     const originalId = nodeData.id;
     const newName = nodeData.name || nodeData.id;
@@ -407,10 +416,9 @@ export function deleteNodeFromDoc(
   logger: IOLogger = noopLogger
 ): SaveResult {
   try {
-    const nodesMap = doc.getIn(['topology', 'nodes'], true) as YAML.YAMLMap | undefined;
-    if (!nodesMap || !YAML.isMap(nodesMap)) {
-      return { success: false, error: ERROR_NODES_NOT_MAP };
-    }
+    const result = getNodesMapOrError(doc);
+    if ('error' in result) return result.error;
+    const { nodesMap } = result;
 
     if (!nodesMap.has(nodeId)) {
       return { success: false, error: `Node "${nodeId}" not found` };

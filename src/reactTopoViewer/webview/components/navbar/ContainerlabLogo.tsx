@@ -15,6 +15,14 @@ interface ContainerlabLogoProps {
   isExploded?: boolean;
 }
 
+/** Shared style for bubble circles */
+const bubbleStyle: React.CSSProperties = {
+  fill: 'none',
+  stroke: '#3CBEEF',
+  strokeMiterlimit: 10,
+  strokeWidth: '0.8px'
+};
+
 export const ContainerlabLogo: React.FC<ContainerlabLogoProps> = ({
   className,
   clickProgress = 0,
@@ -74,27 +82,9 @@ export const ContainerlabLogo: React.FC<ContainerlabLogoProps> = ({
       />
 
       {/* Bubbles - animate on hover */}
-      <circle
-        className="logo-bubble logo-bubble-1"
-        cx="283.442"
-        cy="23.429"
-        r="1.7"
-        style={{ fill: 'none', stroke: '#3CBEEF', strokeMiterlimit: 10, strokeWidth: '0.8px' }}
-      />
-      <circle
-        className="logo-bubble logo-bubble-2"
-        cx="275.842"
-        cy="19.529"
-        r="2.4"
-        style={{ fill: 'none', stroke: '#3CBEEF', strokeMiterlimit: 10, strokeWidth: '0.8px' }}
-      />
-      <circle
-        className="logo-bubble logo-bubble-3"
-        cx="280.642"
-        cy="11.229"
-        r="3.4"
-        style={{ fill: 'none', stroke: '#3CBEEF', strokeMiterlimit: 10, strokeWidth: '0.8px' }}
-      />
+      <circle className="logo-bubble logo-bubble-1" cx="283.442" cy="23.429" r="1.7" style={bubbleStyle} />
+      <circle className="logo-bubble logo-bubble-2" cx="275.842" cy="19.529" r="2.4" style={bubbleStyle} />
+      <circle className="logo-bubble logo-bubble-3" cx="280.642" cy="11.229" r="3.4" style={bubbleStyle} />
     </svg>
   );
 };

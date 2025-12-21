@@ -8,6 +8,7 @@ import { log } from '../../utils/logger';
 import { findDeepestGroupAtPosition } from '../groups/utils';
 
 import { createDefaultAnnotation } from './freeShapeHelpers';
+import { createEditAnnotationCallback, createCommonSelectionReturn } from './sharedAnnotationHelpers';
 import { useFreeShapeState, useFreeShapeActions } from './useFreeShapeState';
 import type { UseFreeShapeAnnotationsOptions, UseFreeShapeAnnotationsReturn, AnnotationUndoAction } from './freeShapeTypes';
 
@@ -50,17 +51,10 @@ export function useFreeShapeAnnotations(options: UseFreeShapeAnnotationsOptions)
   }, [isAddShapeMode, pendingShapeType, lastStyleRef, actions, setIsAddShapeMode, groups]);
 
   // Edit existing annotation
-  const editAnnotation = useCallback((id: string) => {
-    if (mode === 'view' || isLocked) {
-      if (isLocked) onLockedAction?.();
-      return;
-    }
-    const annotation = annotations.find(a => a.id === id);
-    if (annotation) {
-      setEditingAnnotation({ ...annotation });
-      log.info(`[FreeShape] Editing annotation: ${id}`);
-    }
-  }, [mode, isLocked, onLockedAction, annotations, setEditingAnnotation]);
+  const editAnnotation = useCallback(
+    createEditAnnotationCallback(mode, isLocked, onLockedAction, annotations, setEditingAnnotation, 'FreeShape'),
+    [mode, isLocked, onLockedAction, annotations, setEditingAnnotation]
+  );
 
   // Close the editor
   const closeEditor = useCallback(() => {
@@ -100,17 +94,7 @@ export function useFreeShapeAnnotations(options: UseFreeShapeAnnotationsOptions)
     migrateGroupId: actions.migrateGroupId,
     loadAnnotations: actions.loadAnnotations,
     getUndoRedoAction,
-    selectedAnnotationIds,
-    selectAnnotation: actions.selectAnnotation,
-    toggleAnnotationSelection: actions.toggleAnnotationSelection,
-    clearAnnotationSelection: actions.clearAnnotationSelection,
-    deleteSelectedAnnotations: actions.deleteSelectedAnnotations,
-    getSelectedAnnotations: actions.getSelectedAnnotations,
-    boxSelectAnnotations: actions.boxSelectAnnotations,
-    copySelectedAnnotations: actions.copySelectedAnnotations,
-    pasteAnnotations: actions.pasteAnnotations,
-    duplicateSelectedAnnotations: actions.duplicateSelectedAnnotations,
-    hasClipboardContent: actions.hasClipboardContent
+    ...createCommonSelectionReturn(selectedAnnotationIds, actions)
   }), [
     annotations, isAddShapeMode, pendingShapeType, editingAnnotation, actions,
     handleCanvasClick, editAnnotation, closeEditor, getUndoRedoAction, selectedAnnotationIds

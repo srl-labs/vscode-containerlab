@@ -5,21 +5,12 @@
 import type { NodeEditorData, CustomTemplateEditorData, CustomNodeTemplate } from '../types/editors';
 
 /**
- * Data format for saving custom node to extension
+ * Data format for saving custom node to extension.
+ * Extends CustomNodeTemplate with oldName for update operations.
  */
-export interface SaveCustomNodeData {
+export interface SaveCustomNodeData extends Omit<CustomNodeTemplate, 'name'> {
   name: string;
   oldName?: string;
-  kind: string;
-  type?: string;
-  image?: string;
-  icon?: string;
-  iconColor?: string;
-  iconCornerRadius?: number;
-  baseName?: string;
-  interfacePattern?: string;
-  setDefault?: boolean;
-  [key: string]: unknown;
 }
 
 /**

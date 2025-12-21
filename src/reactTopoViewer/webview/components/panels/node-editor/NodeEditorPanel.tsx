@@ -90,6 +90,20 @@ function useNodeEditorForm(nodeData: NodeEditorData | null) {
   return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, originalData };
 }
 
+/** Tab component registry */
+const TAB_COMPONENTS: Record<NodeEditorTabId, React.FC<{
+  data: NodeEditorData;
+  onChange: (updates: Partial<NodeEditorData>) => void;
+  inheritedProps: string[];
+}>> = {
+  basic: BasicTab,
+  components: ComponentsTab,
+  config: ConfigTab,
+  runtime: RuntimeTab,
+  network: NetworkTab,
+  advanced: AdvancedTab,
+};
+
 /**
  * Renders the active tab content
  */
@@ -99,15 +113,8 @@ const TabContent: React.FC<{
   onChange: (updates: Partial<NodeEditorData>) => void;
   inheritedProps?: string[];
 }> = ({ activeTab, formData, onChange, inheritedProps = [] }) => {
-  switch (activeTab) {
-    case 'basic': return <BasicTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
-    case 'components': return <ComponentsTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
-    case 'config': return <ConfigTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
-    case 'runtime': return <RuntimeTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
-    case 'network': return <NetworkTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
-    case 'advanced': return <AdvancedTab data={formData} onChange={onChange} inheritedProps={inheritedProps} />;
-    default: return null;
-  }
+  const Component = TAB_COMPONENTS[activeTab];
+  return Component ? <Component data={formData} onChange={onChange} inheritedProps={inheritedProps} /> : null;
 };
 
 /**

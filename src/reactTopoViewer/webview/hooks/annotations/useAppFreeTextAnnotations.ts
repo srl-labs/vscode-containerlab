@@ -9,6 +9,7 @@ import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/t
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
 
 import { useFreeTextAnnotations } from './useFreeTextAnnotations';
+import type { AnnotationActionMethods, AnnotationSelectionMethods } from './freeTextTypes';
 
 interface InitialData {
   freeTextAnnotations?: unknown[];
@@ -30,47 +31,13 @@ interface UseAppFreeTextAnnotationsOptions {
   groups?: GroupStyleAnnotation[];
 }
 
-export interface UseAppFreeTextAnnotationsReturn {
+export interface UseAppFreeTextAnnotationsReturn extends Omit<AnnotationActionMethods, 'loadAnnotations'>, AnnotationSelectionMethods {
   annotations: FreeTextAnnotation[];
   editingAnnotation: FreeTextAnnotation | null;
   isAddTextMode: boolean;
   handleAddText: () => void;
   handleCanvasClick: (position: { x: number; y: number }) => void;
   editAnnotation: (id: string) => void;
-  closeEditor: () => void;
-  saveAnnotation: (annotation: FreeTextAnnotation) => void;
-  deleteAnnotation: (id: string) => void;
-  updatePosition: (id: string, position: { x: number; y: number }) => void;
-  updateSize: (id: string, width: number, height: number) => void;
-  updateRotation: (id: string, rotation: number) => void;
-  /** Generic update for any annotation fields (used by group drag) */
-  updateAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
-  /** Update geo coordinates for an annotation */
-  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
-  /** IDs of currently selected annotations */
-  selectedAnnotationIds: Set<string>;
-  /** Select a single annotation (clears existing selection) */
-  selectAnnotation: (id: string) => void;
-  /** Toggle annotation selection (Ctrl+click behavior) */
-  toggleAnnotationSelection: (id: string) => void;
-  /** Clear all annotation selection */
-  clearAnnotationSelection: () => void;
-  /** Delete all selected annotations */
-  deleteSelectedAnnotations: () => void;
-  /** Get selected annotations */
-  getSelectedAnnotations: () => FreeTextAnnotation[];
-  /** Box select multiple annotations (adds to existing selection) */
-  boxSelectAnnotations: (ids: string[]) => void;
-  /** Copy selected annotations to clipboard */
-  copySelectedAnnotations: () => void;
-  /** Paste annotations from clipboard */
-  pasteAnnotations: () => void;
-  /** Duplicate selected annotations */
-  duplicateSelectedAnnotations: () => void;
-  /** Check if clipboard has annotations */
-  hasClipboardContent: () => boolean;
-  /** Migrate all annotations from one groupId to another (used when group is renamed) */
-  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
 }
 
 /**

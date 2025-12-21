@@ -31,6 +31,13 @@ export interface ILayers {
 }
 
 /**
+ * Get the layers API from a Cytoscape instance
+ */
+export function getCytoscapeLayers(cy: cytoscape.Core): ILayers {
+  return (cy as cytoscape.Core & { layers: () => ILayers }).layers();
+}
+
+/**
  * Configure common layer node styles
  */
 export function configureLayerNode(

@@ -1,7 +1,8 @@
 /**
  * Shared schema module
  */
-export type { CustomNodeTemplate, SchemaData, SrosComponentTypes } from './SchemaParser';
+export type { CustomNodeTemplate } from '../types/editors.js';
+export type { SchemaData, SrosComponentTypes } from './SchemaParser';
 export {
   extractKindsFromSchema,
   extractTypesByKindFromSchema,

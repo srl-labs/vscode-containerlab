@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+import { handleDragStart } from '../shared/dragHelpers';
 
 import type { RenderedPosition } from './freeTextLayerHelpers';
 
@@ -89,14 +90,7 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
   }, [isRotating, onRotationChange, onDragEnd]);
 
   const handleRotationMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Capture before state for deferred undo
-    if (onDragStart) {
-      beforeStateRef.current = onDragStart();
-    }
+    if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
 
     // Get the center of the annotation in screen coordinates
     const container = cy.container();
@@ -240,14 +234,7 @@ export function useResizeDrag(options: UseResizeDragOptions): UseResizeDragRetur
   useResizeDragHandlers(isResizing, dragStartRef, beforeStateRef, renderedPos.zoom, setIsResizing, onSizeChange, onDragEnd);
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent, corner: ResizeCorner) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Capture before state for deferred undo
-    if (onDragStart) {
-      beforeStateRef.current = onDragStart();
-    }
+    if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
 
     let startWidth = currentWidth || 100;
     let startHeight = currentHeight || 50;

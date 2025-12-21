@@ -34,6 +34,8 @@
  *    - Editor state: save-network-editor, apply-network-editor
  *    - Misc: toggle-lock-state
  */
+import type { SaveCustomNodeData } from '../../shared/utilities/customNodeConversions';
+
 import { log } from './logger';
 
 declare global {
@@ -100,30 +102,12 @@ export function sendSetDefaultCustomNode(nodeName: string): void {
 }
 
 /**
- * Custom node template data structure.
- *
- * Templates define reusable node configurations (kind, image, icon, etc.)
- * and are stored in VS Code workspace settings, NOT in topology files.
- */
-export interface SaveCustomNodeData {
-  name: string;
-  oldName?: string;  // If editing, the original name
-  kind: string;
-  type?: string;
-  image?: string;
-  icon?: string;
-  iconColor?: string;
-  iconCornerRadius?: number;
-  baseName?: string;
-  interfacePattern?: string;
-  setDefault?: boolean;
-  [key: string]: unknown;
-}
-
-/**
  * Save a custom node template to VS Code settings.
  *
  * This creates or updates a user-defined node template in workspace configuration.
+ * Templates define reusable node configurations (kind, image, icon, etc.)
+ * and are stored in VS Code workspace settings, NOT in topology files.
+ *
  * Handled by: MessageRouter → MessageHandlerBase → CustomNodeService
  */
 export function sendSaveCustomNode(data: SaveCustomNodeData): void {

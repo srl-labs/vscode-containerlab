@@ -237,33 +237,41 @@ const HealthCheckSection: React.FC<TabProps> = ({ data, onChange, inheritedProps
   );
 };
 
-export const AdvancedTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <div className="space-y-3">
-    <ResourceLimitsSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
-    <CapabilitiesSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
-    <SysctlsSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
-    <DevicesSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
-    <TlsCertSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
-    <HealthCheckSection data={data} onChange={onChange} inheritedProps={inheritedProps} />
+export const AdvancedTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => {
+  const sections = [
+    ResourceLimitsSection,
+    CapabilitiesSection,
+    SysctlsSection,
+    DevicesSection,
+    TlsCertSection,
+    HealthCheckSection
+  ];
 
-    {/* Image Pull Policy */}
-    <FormField label="Image Pull Policy" inherited={isInherited('image-pull-policy', inheritedProps)}>
-      <SelectField
-        id="node-image-pull-policy"
-        value={data.imagePullPolicy || ''}
-        onChange={(v) => onChange({ imagePullPolicy: v })}
-        options={PULL_POLICY_OPTIONS}
-      />
-    </FormField>
+  return (
+    <div className="space-y-3">
+      {sections.map((SectionComponent, index) => (
+        <SectionComponent key={index} data={data} onChange={onChange} inheritedProps={inheritedProps} />
+      ))}
 
-    {/* Container Runtime */}
-    <FormField label="Container Runtime" inherited={isInherited('runtime', inheritedProps)}>
-      <SelectField
-        id="node-runtime"
-        value={data.runtime || ''}
-        onChange={(v) => onChange({ runtime: v })}
-        options={RUNTIME_OPTIONS}
-      />
-    </FormField>
-  </div>
-);
+      {/* Image Pull Policy */}
+      <FormField label="Image Pull Policy" inherited={isInherited('image-pull-policy', inheritedProps)}>
+        <SelectField
+          id="node-image-pull-policy"
+          value={data.imagePullPolicy || ''}
+          onChange={(v) => onChange({ imagePullPolicy: v })}
+          options={PULL_POLICY_OPTIONS}
+        />
+      </FormField>
+
+      {/* Container Runtime */}
+      <FormField label="Container Runtime" inherited={isInherited('runtime', inheritedProps)}>
+        <SelectField
+          id="node-runtime"
+          value={data.runtime || ''}
+          onChange={(v) => onChange({ runtime: v })}
+          options={RUNTIME_OPTIONS}
+        />
+      </FormField>
+    </div>
+  );
+};

@@ -11,6 +11,7 @@ import type {
   FreeShapeAnnotation
 } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
+import { createHasClipboardData, createClearClipboard } from '../clipboard/clipboardHelpers';
 
 import type { GroupClipboardData, PastedGroupResult } from './groupTypes';
 import {
@@ -286,15 +287,9 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
     [groups, onAddGroup, onAddTextAnnotation, onAddShapeAnnotation]
   );
 
-  const hasClipboardData = useCallback((): boolean => {
-    return clipboardRef.current !== null;
-  }, []);
+  const hasClipboardData = createHasClipboardData(clipboardRef);
 
-  const clearClipboard = useCallback((): void => {
-    clipboardRef.current = null;
-    pasteCounterRef.current = 0;
-    log.info('[GroupClipboard] Clipboard cleared');
-  }, []);
+  const clearClipboard = createClearClipboard(clipboardRef, pasteCounterRef, 'GroupClipboard');
 
   const getClipboardData = useCallback((): GroupClipboardData | null => {
     return clipboardRef.current;

@@ -562,46 +562,104 @@ function usePushAction(
   }, [enabled, dispatch, batchActionsRef, isBatchingRef]);
 }
 
+/** Helper to apply an action (shared by undo and redo) */
+function applyAction(
+  action: UndoRedoAction,
+  cy: Core,
+  isUndo: boolean,
+  applyGraphChanges?: (changes: GraphChange[]) => void,
+  applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
+  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
+  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void,
+  applyMembershipChange?: (memberships: MembershipEntry[]) => void
+): void {
+  const operation = isUndo ? 'Undoing' : 'Redoing';
+  switch (action.type) {
+    case 'move':
+      if (isUndo) {
+        applyMoveUndo(action, cy, applyMembershipChange);
+      } else {
+        applyMoveRedo(action, cy, applyMembershipChange);
+      }
+      break;
+    case 'graph': {
+      const changes = isUndo ? action.before : action.after;
+      log.info(`[UndoRedo] ${operation} graph action with ${changes.length} change(s)`);
+      applyGraphChanges?.(changes);
+      break;
+    }
+    case 'property-edit':
+      log.info(`[UndoRedo] ${operation} property edit for ${action.entityType} ${action.entityId}`);
+      applyPropertyEdit?.(action, isUndo);
+      break;
+    case 'annotation':
+      log.info(`[UndoRedo] ${operation} ${action.annotationType} annotation change`);
+      applyAnnotationChange?.(action, isUndo);
+      break;
+    case ACTION_TYPE_GROUP_MOVE:
+      if (isUndo) {
+        applyGroupMoveUndo(action, cy, applyGroupMoveChange);
+      } else {
+        applyGroupMoveRedo(action, cy, applyGroupMoveChange);
+      }
+      break;
+    case 'compound':
+      if (isUndo) {
+        applyCompoundUndo(action, applyGraphChanges, applyAnnotationChange);
+      } else {
+        applyCompoundRedo(action, applyGraphChanges, applyAnnotationChange);
+      }
+      break;
+  }
+}
+
+/** Options for undo/redo action application */
+interface UndoRedoActionOptions {
+  applyGraphChanges?: (changes: GraphChange[]) => void;
+  applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void;
+  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
+  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
+  applyMembershipChange?: (memberships: MembershipEntry[]) => void;
+}
+
+/** Helper hook for undo/redo operations */
+function useUndoRedoAction(
+  canExecute: boolean,
+  cy: Core | null,
+  stack: UndoRedoAction[],
+  getAction: (stack: UndoRedoAction[]) => UndoRedoAction,
+  isUndo: boolean,
+  dispatchType: 'UNDO' | 'REDO',
+  dispatch: React.Dispatch<UndoRedoReducerAction>,
+  options: UndoRedoActionOptions
+) {
+  const { applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange } = options;
+  return useCallback(() => {
+    if (!canExecute || !cy) return;
+    const action = getAction(stack);
+    applyAction(action, cy, isUndo, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange);
+    dispatch({ type: dispatchType });
+  }, [canExecute, cy, stack, getAction, isUndo, dispatchType, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange]);
+}
+
 /** Helper hook for undo operation */
 function useUndoAction(
   canUndo: boolean,
   cy: Core | null,
   past: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
-  applyGraphChanges?: (changes: GraphChange[]) => void,
-  applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
-  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
-  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void,
-  applyMembershipChange?: (memberships: MembershipEntry[]) => void
+  options: UndoRedoActionOptions
 ) {
-  return useCallback(() => {
-    if (!canUndo || !cy) return;
-    const action = past[past.length - 1];
-    switch (action.type) {
-      case 'move':
-        applyMoveUndo(action, cy, applyMembershipChange);
-        break;
-      case 'graph':
-        log.info(`[UndoRedo] Undoing graph action with ${action.before.length} change(s)`);
-        applyGraphChanges?.(action.before);
-        break;
-      case 'property-edit':
-        log.info(`[UndoRedo] Undoing property edit for ${action.entityType} ${action.entityId}`);
-        applyPropertyEdit?.(action, true);
-        break;
-      case 'annotation':
-        log.info(`[UndoRedo] Undoing ${action.annotationType} annotation change`);
-        applyAnnotationChange?.(action, true);
-        break;
-      case ACTION_TYPE_GROUP_MOVE:
-        applyGroupMoveUndo(action, cy, applyGroupMoveChange);
-        break;
-      case 'compound':
-        applyCompoundUndo(action, applyGraphChanges, applyAnnotationChange);
-        break;
-    }
-    dispatch({ type: 'UNDO' });
-  }, [canUndo, cy, past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange]);
+  return useUndoRedoAction(
+    canUndo,
+    cy,
+    past,
+    (stack) => stack[stack.length - 1],
+    true,
+    'UNDO',
+    dispatch,
+    options
+  );
 }
 
 /** Helper hook for redo operation */
@@ -610,40 +668,18 @@ function useRedoAction(
   cy: Core | null,
   future: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
-  applyGraphChanges?: (changes: GraphChange[]) => void,
-  applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
-  applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
-  applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void,
-  applyMembershipChange?: (memberships: MembershipEntry[]) => void
+  options: UndoRedoActionOptions
 ) {
-  return useCallback(() => {
-    if (!canRedo || !cy) return;
-    const action = future[0];
-    switch (action.type) {
-      case 'move':
-        applyMoveRedo(action, cy, applyMembershipChange);
-        break;
-      case 'graph':
-        log.info(`[UndoRedo] Redoing graph action with ${action.after.length} change(s)`);
-        applyGraphChanges?.(action.after);
-        break;
-      case 'property-edit':
-        log.info(`[UndoRedo] Redoing property edit for ${action.entityType} ${action.entityId}`);
-        applyPropertyEdit?.(action, false);
-        break;
-      case 'annotation':
-        log.info(`[UndoRedo] Redoing ${action.annotationType} annotation change`);
-        applyAnnotationChange?.(action, false);
-        break;
-      case ACTION_TYPE_GROUP_MOVE:
-        applyGroupMoveRedo(action, cy, applyGroupMoveChange);
-        break;
-      case 'compound':
-        applyCompoundRedo(action, applyGraphChanges, applyAnnotationChange);
-        break;
-    }
-    dispatch({ type: 'REDO' });
-  }, [canRedo, cy, future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange]);
+  return useUndoRedoAction(
+    canRedo,
+    cy,
+    future,
+    (stack) => stack[0],
+    false,
+    'REDO',
+    dispatch,
+    options
+  );
 }
 
 /**
@@ -661,8 +697,17 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
 
   const capturePositions = useCapturePositions(cy);
   const pushAction = usePushAction(enabled, dispatch, batchActionsRef, isBatchingRef);
-  const undo = useUndoAction(canUndo, cy, state.past, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange);
-  const redo = useRedoAction(canRedo, cy, state.future, dispatch, applyGraphChanges, applyPropertyEdit, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange);
+
+  const actionOptions: UndoRedoActionOptions = {
+    applyGraphChanges,
+    applyPropertyEdit,
+    applyAnnotationChange,
+    applyGroupMoveChange,
+    applyMembershipChange
+  };
+
+  const undo = useUndoAction(canUndo, cy, state.past, dispatch, actionOptions);
+  const redo = useRedoAction(canRedo, cy, state.future, dispatch, actionOptions);
 
   const recordMove = useCallback((nodeIds: string[], beforePositions: NodePositionEntry[], membershipBefore?: MembershipEntry[], membershipAfter?: MembershipEntry[]) => {
     if (!enabled || !cy) return;

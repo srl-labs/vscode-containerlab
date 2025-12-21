@@ -5,7 +5,7 @@
 import React, { useRef, useState, useMemo, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { FreeTextAnnotation } from '../../../shared/types/topology';
 import { computeAnnotationStyle } from '../../hooks/annotations/text';
 import {
   useAnnotationInteractions,
@@ -21,18 +21,19 @@ import {
   HANDLE_SIZE,
   ROTATION_HANDLE_OFFSET,
   CENTER_TRANSLATE,
-  RotationHandle,
-  ResizeHandle,
-  SelectionOutline,
   AnnotationContextMenu,
-  type ResizeCorner
+  AnnotationHandles,
+  createClickCaptureStyle,
+  createBoundAnnotationCallbacks,
+  type BaseAnnotationHandlers,
+  type GroupRelatedProps
 } from './shared';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface FreeTextLayerProps {
+interface FreeTextLayerProps extends GroupRelatedProps {
   cy: CyCore | null;
   annotations: FreeTextAnnotation[];
   isLocked: boolean;
@@ -57,12 +58,6 @@ interface FreeTextLayerProps {
   geoMode?: 'pan' | 'edit';
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
-  /** Offsets to apply during group drag operations */
-  groupDragOffsets?: Map<string, { dx: number; dy: number }>;
-  /** Groups for drag-to-reparent functionality */
-  groups?: GroupStyleAnnotation[];
-  /** Callback to update annotation's groupId */
-  onUpdateGroupId?: (annotationId: string, groupId: string | undefined) => void;
 }
 
 // ============================================================================
@@ -154,21 +149,6 @@ function computeContentStyle(
     cursor: getAnnotationCursor(isLocked, isDragging)
   };
 }
-
-/** Handles container component - positioned relative to annotation */
-const AnnotationHandles: React.FC<{
-  onRotation: (e: React.MouseEvent) => void;
-  onResize: (e: React.MouseEvent, corner: ResizeCorner) => void;
-}> = ({ onRotation, onResize }) => (
-  <>
-    <SelectionOutline />
-    <RotationHandle onMouseDown={onRotation} />
-    <ResizeHandle position="nw" onMouseDown={(e) => onResize(e, 'nw')} />
-    <ResizeHandle position="ne" onMouseDown={(e) => onResize(e, 'ne')} />
-    <ResizeHandle position="sw" onMouseDown={(e) => onResize(e, 'sw')} />
-    <ResizeHandle position="se" onMouseDown={(e) => onResize(e, 'se')} />
-  </>
-);
 
 /** Hook to compute all styles for a text annotation to reduce component complexity */
 function useTextAnnotationStyles(
@@ -282,45 +262,26 @@ const LAYER_STYLE: React.CSSProperties = {
 };
 
 /** Click capture overlay style - only active in add-text mode */
-const CLICK_CAPTURE_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  pointerEvents: 'auto',
-  cursor: 'text',
-  zIndex: 9
-};
+const CLICK_CAPTURE_STYLE = createClickCaptureStyle('text');
 
 // ============================================================================
 // Helper for callback binding
 // ============================================================================
 
+interface TextAnnotationHandlers extends BaseAnnotationHandlers {
+  onAnnotationDoubleClick: (id: string) => void;
+}
+
 /** Create bound callback props for TextAnnotationItem to reduce main component complexity */
 function createTextAnnotationCallbacks(
   annotation: FreeTextAnnotation,
-  handlers: {
-    onAnnotationDoubleClick: (id: string) => void;
-    onAnnotationDelete: (id: string) => void;
-    onPositionChange: (id: string, position: { x: number; y: number }) => void;
-    onRotationChange: (id: string, rotation: number) => void;
-    onSizeChange: (id: string, width: number, height: number) => void;
-    onAnnotationSelect?: (id: string) => void;
-    onAnnotationToggleSelect?: (id: string) => void;
-    onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
-  }
+  handlers: TextAnnotationHandlers
 ) {
   const id = annotation.id;
+  const baseCallbacks = createBoundAnnotationCallbacks(id, handlers);
   return {
-    onDoubleClick: () => handlers.onAnnotationDoubleClick(id),
-    onDelete: () => handlers.onAnnotationDelete(id),
-    onPositionChange: (pos: { x: number; y: number }) => handlers.onPositionChange(id, pos),
-    onRotationChange: (rotation: number) => handlers.onRotationChange(id, rotation),
-    onSizeChange: (width: number, height: number) => handlers.onSizeChange(id, width, height),
-    onSelect: () => handlers.onAnnotationSelect?.(id),
-    onToggleSelect: () => handlers.onAnnotationToggleSelect?.(id),
-    onGeoPositionChange: handlers.onGeoPositionChange ? (geoCoords: { lat: number; lng: number }) => handlers.onGeoPositionChange!(id, geoCoords) : undefined
+    ...baseCallbacks,
+    onDoubleClick: () => handlers.onAnnotationDoubleClick(id)
   };
 }
 

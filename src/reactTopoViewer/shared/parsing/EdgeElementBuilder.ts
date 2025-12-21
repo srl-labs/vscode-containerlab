@@ -95,6 +95,26 @@ export function edgeClassForSpecial(
 }
 
 /**
+ * Checks if nodes are special and computes edge class for special nodes.
+ */
+function computeSpecialNodeEdgeClass(
+  topology: NonNullable<ClabTopology['topology']>,
+  sourceNode: string,
+  targetNode: string,
+  sourceIfaceData: { state?: string } | undefined,
+  targetIfaceData: { state?: string } | undefined
+): string | null {
+  const sourceNodeData = topology.nodes?.[sourceNode];
+  const targetNodeData = topology.nodes?.[targetNode];
+  const sourceIsSpecial = isSpecialNode(sourceNodeData, sourceNode);
+  const targetIsSpecial = isSpecialNode(targetNodeData, targetNode);
+  if (sourceIsSpecial || targetIsSpecial) {
+    return edgeClassForSpecial(sourceIsSpecial, targetIsSpecial, sourceIfaceData, targetIfaceData);
+  }
+  return null;
+}
+
+/**
  * Computes edge class based on interface states.
  */
 export function computeEdgeClass(
@@ -104,12 +124,9 @@ export function computeEdgeClass(
   targetIfaceData: { state?: string } | undefined,
   topology: NonNullable<ClabTopology['topology']>
 ): string {
-  const sourceNodeData = topology.nodes?.[sourceNode];
-  const targetNodeData = topology.nodes?.[targetNode];
-  const sourceIsSpecial = isSpecialNode(sourceNodeData, sourceNode);
-  const targetIsSpecial = isSpecialNode(targetNodeData, targetNode);
-  if (sourceIsSpecial || targetIsSpecial) {
-    return edgeClassForSpecial(sourceIsSpecial, targetIsSpecial, sourceIfaceData, targetIfaceData);
+  const specialClass = computeSpecialNodeEdgeClass(topology, sourceNode, targetNode, sourceIfaceData, targetIfaceData);
+  if (specialClass !== null) {
+    return specialClass;
   }
   if (sourceIfaceData?.state && targetIfaceData?.state) {
     return sourceIfaceData.state === 'up' && targetIfaceData.state === 'up'
@@ -129,17 +146,15 @@ export function computeEdgeClassFromStates(
   sourceState?: string,
   targetState?: string
 ): string {
-  const sourceNodeData = topology.nodes?.[sourceNode];
-  const targetNodeData = topology.nodes?.[targetNode];
-  const sourceIsSpecial = isSpecialNode(sourceNodeData, sourceNode);
-  const targetIsSpecial = isSpecialNode(targetNodeData, targetNode);
-  if (sourceIsSpecial || targetIsSpecial) {
-    return edgeClassForSpecial(
-      sourceIsSpecial,
-      targetIsSpecial,
-      { state: sourceState },
-      { state: targetState }
-    );
+  const specialClass = computeSpecialNodeEdgeClass(
+    topology,
+    sourceNode,
+    targetNode,
+    { state: sourceState },
+    { state: targetState }
+  );
+  if (specialClass !== null) {
+    return specialClass;
   }
   if (sourceState && targetState) {
     return sourceState === 'up' && targetState === 'up' ? 'link-up' : 'link-down';

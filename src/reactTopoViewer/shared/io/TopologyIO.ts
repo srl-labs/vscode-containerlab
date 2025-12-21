@@ -8,14 +8,15 @@
 
 import type * as YAML from 'yaml';
 
-import type { ClabTopology } from '../types/topology';
+import type { ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
+import { applyInterfacePatternMigrations } from '../utilities';
 
 import type { FileSystemAdapter, SaveResult, IOLogger} from './types';
 import { noopLogger, ERROR_SERVICE_NOT_INIT, ERROR_NO_YAML_PATH } from './types';
 import type { AnnotationsIO } from './AnnotationsIO';
 import { writeYamlFile, parseYamlDocument } from './YamlDocumentIO';
 import type { NodeSaveData, NodeAnnotationData} from './NodePersistenceIO';
-import { addNodeToDoc, editNodeInDoc, deleteNodeFromDoc, buildAnnotationProps, applyAnnotationData } from './NodePersistenceIO';
+import { addNodeToDoc, editNodeInDoc, deleteNodeFromDoc, applyAnnotationData } from './NodePersistenceIO';
 import type { LinkSaveData} from './LinkPersistenceIO';
 import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenceIO';
 
@@ -199,22 +200,31 @@ export class TopologyIO {
   }
 
   /**
+   * Helper to find or create a node annotation entry
+   */
+  private ensureNodeAnnotation(
+    annotations: TopologyAnnotations,
+    nodeId: string
+  ): NodeAnnotation {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+
+    let existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+    if (!existing) {
+      existing = { id: nodeId };
+      annotations.nodeAnnotations.push(existing);
+    }
+    return existing;
+  }
+
+  /**
    * Saves annotation data for a node (icon, color, etc.) without changing position
    */
   private async saveNodeAnnotations(nodeId: string, annotationData: NodeAnnotationData): Promise<void> {
     await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
-      if (!annotations.nodeAnnotations) {
-        annotations.nodeAnnotations = [];
-      }
-
-      const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-      if (existing) {
-        applyAnnotationData(existing, annotationData);
-      } else {
-        // Create new annotation entry with just the annotation data (no position)
-        annotations.nodeAnnotations.push({ id: nodeId, ...buildAnnotationProps(annotationData) });
-      }
-
+      const node = this.ensureNodeAnnotation(annotations, nodeId);
+      applyAnnotationData(node, annotationData);
       return annotations;
     });
   }
@@ -339,18 +349,9 @@ export class TopologyIO {
     annotationData?: NodeAnnotationData
   ): Promise<void> {
     await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
-      if (!annotations.nodeAnnotations) {
-        annotations.nodeAnnotations = [];
-      }
-
-      const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-      if (existing) {
-        existing.position = position;
-        applyAnnotationData(existing, annotationData);
-      } else {
-        annotations.nodeAnnotations.push({ id: nodeId, position, ...buildAnnotationProps(annotationData) });
-      }
-
+      const node = this.ensureNodeAnnotation(annotations, nodeId);
+      node.position = position;
+      applyAnnotationData(node, annotationData);
       return annotations;
     });
   }
@@ -396,31 +397,13 @@ export class TopologyIO {
     if (migrations.length === 0) return;
 
     await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
-      if (!annotations.nodeAnnotations) {
-        annotations.nodeAnnotations = [];
-      }
+      const result = applyInterfacePatternMigrations(annotations, migrations);
 
-      let modified = false;
-      for (const { nodeId, interfacePattern } of migrations) {
-        const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-        if (existing) {
-          // Only update if not already set
-          if (!existing.interfacePattern) {
-            existing.interfacePattern = interfacePattern;
-            modified = true;
-          }
-        } else {
-          // Create new annotation with just the interface pattern
-          annotations.nodeAnnotations.push({ id: nodeId, interfacePattern });
-          modified = true;
-        }
-      }
-
-      if (modified) {
+      if (result.modified) {
         this.logger.info(`[TopologyIO] Migrated interface patterns for ${migrations.length} nodes`);
       }
 
-      return annotations;
+      return result.annotations;
     });
   }
 }

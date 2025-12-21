@@ -62,3 +62,9 @@ export {
   getStringArray,
   getRecord
 } from './typeHelpers';
+
+// Annotation migrations
+export {
+  applyInterfacePatternMigrations
+} from './annotationMigrations';
+export type { InterfacePatternMigration } from './annotationMigrations';

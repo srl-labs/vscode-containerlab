@@ -3,7 +3,7 @@
  * - Filled background below Cytoscape nodes
  * - Interaction overlay above Cytoscape nodes
  */
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 
@@ -22,6 +22,7 @@ import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
 import { projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
 
 import { HANDLE_SIZE, CENTER_TRANSLATE, CORNER_STYLES, applyAlphaToColor } from './shared';
+import { AnnotationContextMenu } from './shared/AnnotationContextMenu';
 
 // ============================================================================
 // Types
@@ -89,6 +90,21 @@ const LAYER_CONTENT_STYLE: React.CSSProperties = {
   pointerEvents: 'none',
   overflow: 'visible'
 };
+
+/** Configuration for the four draggable border edges */
+type BorderEdge = 'top' | 'bottom' | 'left' | 'right';
+
+interface BorderEdgeConfig {
+  edge: BorderEdge;
+  getStyle: (borderWidth: number) => React.CSSProperties;
+}
+
+const BORDER_EDGE_CONFIGS: BorderEdgeConfig[] = [
+  { edge: 'top', getStyle: (bw) => ({ top: 0, left: 0, right: 0, height: bw }) },
+  { edge: 'bottom', getStyle: (bw) => ({ bottom: 0, left: 0, right: 0, height: bw }) },
+  { edge: 'left', getStyle: (bw) => ({ top: bw, bottom: bw, left: 0, width: bw }) },
+  { edge: 'right', getStyle: (bw) => ({ top: bw, bottom: bw, right: 0, width: bw }) }
+];
 
 // ============================================================================
 // Style Builders
@@ -237,86 +253,6 @@ const GroupHandles: React.FC<{
 );
 
 // ============================================================================
-// Context Menu
-// ============================================================================
-
-const GroupContextMenu: React.FC<{
-  groupId: string;
-  position: { x: number; y: number };
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-  onClose: () => void;
-}> = ({ groupId, position, onEdit, onDelete, onClose }) => {
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [onClose]);
-
-  const itemStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    width: '100%',
-    padding: '8px 12px',
-    border: 'none',
-    background: 'none',
-    color: 'white',
-    fontSize: '13px',
-    cursor: 'pointer',
-    textAlign: 'left'
-  };
-
-  return (
-    <div ref={menuRef} style={{
-      position: 'fixed',
-      left: position.x,
-      top: position.y,
-      zIndex: 10000,
-      backgroundColor: 'rgba(30, 30, 30, 0.95)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '6px',
-      padding: '4px 0',
-      minWidth: '120px',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      pointerEvents: 'auto'
-    }}>
-      <button
-        style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        onClick={() => { onEdit(groupId); onClose(); }}
-      >
-        <i className="fas fa-pen" style={{ width: 16 }} />
-        Edit Group
-      </button>
-      <button
-        style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        onClick={() => { onDelete(groupId); onClose(); }}
-      >
-        <i className="fas fa-trash" style={{ width: 16 }} />
-        Delete Group
-      </button>
-    </div>
-  );
-};
-
-// ============================================================================
 // Group Item Components
 // ============================================================================
 
@@ -427,82 +363,25 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
         pointerEvents: 'none'
       }}
     >
-      {/* Draggable border frame - top */}
-      <div
-        data-testid={`group-drag-top-${group.id}`}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: borderDragWidth,
-          pointerEvents: isLocked ? 'none' : 'auto',
-          cursor
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        onDoubleClick={handleDoubleClick}
-      />
-      {/* Draggable border frame - bottom */}
-      <div
-        data-testid={`group-drag-bottom-${group.id}`}
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: borderDragWidth,
-          pointerEvents: isLocked ? 'none' : 'auto',
-          cursor
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        onDoubleClick={handleDoubleClick}
-      />
-      {/* Draggable border frame - left */}
-      <div
-        data-testid={`group-drag-left-${group.id}`}
-        style={{
-          position: 'absolute',
-          top: borderDragWidth,
-          bottom: borderDragWidth,
-          left: 0,
-          width: borderDragWidth,
-          pointerEvents: isLocked ? 'none' : 'auto',
-          cursor
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        onDoubleClick={handleDoubleClick}
-      />
-      {/* Draggable border frame - right */}
-      <div
-        data-testid={`group-drag-right-${group.id}`}
-        style={{
-          position: 'absolute',
-          top: borderDragWidth,
-          bottom: borderDragWidth,
-          right: 0,
-          width: borderDragWidth,
-          pointerEvents: isLocked ? 'none' : 'auto',
-          cursor
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        onDoubleClick={handleDoubleClick}
-      />
+      {/* Draggable border frame edges */}
+      {BORDER_EDGE_CONFIGS.map(({ edge, getStyle }) => (
+        <div
+          key={edge}
+          data-testid={`group-drag-${edge}-${group.id}`}
+          style={{
+            position: 'absolute',
+            ...getStyle(borderDragWidth),
+            pointerEvents: isLocked ? 'none' : 'auto',
+            cursor
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+          onContextMenu={handleContextMenu}
+          onDoubleClick={handleDoubleClick}
+        />
+      ))}
       {/* Label is outside the border */}
       <div
         data-testid={`group-label-${group.id}`}
@@ -802,11 +681,10 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
       )}
       {/* Context menu rendered outside portals to avoid transform issues */}
       {contextMenu && (
-        <GroupContextMenu
-          groupId={contextMenu.groupId}
+        <AnnotationContextMenu
           position={{ x: contextMenu.x, y: contextMenu.y }}
-          onEdit={onGroupEdit}
-          onDelete={onGroupDelete}
+          onEdit={() => onGroupEdit(contextMenu.groupId)}
+          onDelete={() => onGroupDelete(contextMenu.groupId)}
           onClose={handleCloseContextMenu}
         />
       )}

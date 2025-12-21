@@ -11,6 +11,27 @@ import type { SaveResult, IOLogger} from './types';
 import { ERROR_LINKS_NOT_SEQ, noopLogger } from './types';
 import { createQuotedScalar, setOrDelete } from './YamlDocumentIO';
 
+/**
+ * Gets the links sequence from a YAML document, returning an error result if not found.
+ */
+function getLinksSeqOrError(doc: YAML.Document.Parsed): { linksSeq: YAML.YAMLSeq } | { error: SaveResult } {
+  const linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+  if (!linksSeq || !YAML.isSeq(linksSeq)) {
+    return { error: { success: false, error: ERROR_LINKS_NOT_SEQ } };
+  }
+  return { linksSeq };
+}
+
+/**
+ * Gets the links sequence, returning it directly or the error SaveResult if not found.
+ * Helper to reduce code duplication for the common pattern of error checking.
+ */
+function getValidatedLinksSeq(doc: YAML.Document.Parsed): YAML.YAMLSeq | SaveResult {
+  const result = getLinksSeqOrError(doc);
+  if ('error' in result) return result.error;
+  return result.linksSeq;
+}
+
 /** Link data for save operations */
 export interface LinkSaveData {
   id: string;
@@ -326,10 +347,8 @@ export function editLinkInDoc(
   logger: IOLogger = noopLogger
 ): SaveResult {
   try {
-    const linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
-    if (!linksSeq || !YAML.isSeq(linksSeq)) {
-      return { success: false, error: ERROR_LINKS_NOT_SEQ };
-    }
+    const linksSeq = getValidatedLinksSeq(doc);
+    if (!YAML.isSeq(linksSeq)) return linksSeq;
 
     // Use original values to find the existing link (if endpoints were changed)
     const lookupKey = getLookupKey(linkData);
@@ -375,10 +394,8 @@ export function deleteLinkFromDoc(
   logger: IOLogger = noopLogger
 ): SaveResult {
   try {
-    const linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
-    if (!linksSeq || !YAML.isSeq(linksSeq)) {
-      return { success: false, error: ERROR_LINKS_NOT_SEQ };
-    }
+    const linksSeq = getValidatedLinksSeq(doc);
+    if (!YAML.isSeq(linksSeq)) return linksSeq;
 
     const targetKey = getLinkKey(linkData);
     const initialLength = linksSeq.items.length;

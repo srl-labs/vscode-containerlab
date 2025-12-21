@@ -16,6 +16,8 @@ import { log } from '../../utils/logger';
 import { beginBatch, endBatch } from '../../services';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
 
+import { createHasClipboardData, createClearClipboard } from './clipboardHelpers';
+
 /** Node data stored in clipboard */
 interface ClipboardNode {
   id: string;
@@ -793,15 +795,9 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     };
   }, [cyInstance, onAddGroup, onAddTextAnnotation, onAddShapeAnnotation, onAddNodeToGroup, generateGroupId, onCreateNode, onCreateEdge, beginUndoBatch, endUndoBatch]);
 
-  const hasClipboardData = useCallback((): boolean => {
-    return clipboardRef.current !== null;
-  }, []);
+  const hasClipboardData = createHasClipboardData(clipboardRef);
 
-  const clearClipboard = useCallback((): void => {
-    clipboardRef.current = null;
-    pasteCounterRef.current = 0;
-    log.info('[UnifiedClipboard] Clipboard cleared');
-  }, []);
+  const clearClipboard = createClearClipboard(clipboardRef, pasteCounterRef, 'UnifiedClipboard');
 
   const getClipboardData = useCallback((): UnifiedClipboardData | null => {
     return clipboardRef.current;

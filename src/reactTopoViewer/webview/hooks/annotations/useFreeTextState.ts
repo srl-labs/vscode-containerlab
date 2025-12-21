@@ -20,6 +20,12 @@ import {
 import { useDebouncedSave } from './useDebouncedSave';
 import { useAnnotationListSelection } from './useAnnotationListSelection';
 import { useAnnotationListCopyPaste } from './useAnnotationListCopyPaste';
+import {
+  useDeleteAnnotation,
+  useStandardUpdates,
+  useGenericAnnotationUpdates
+} from './annotationStateUtils';
+import type { AnnotationActionMethods, AnnotationSelectionMethods } from './freeTextTypes';
 
 export interface UseFreeTextStateReturn {
   annotations: FreeTextAnnotation[];
@@ -81,42 +87,9 @@ export interface UseFreeTextActionsOptions {
   onLockedAction?: () => void;
 }
 
-export interface UseFreeTextActionsReturn {
+export interface UseFreeTextActionsReturn extends AnnotationActionMethods, AnnotationSelectionMethods {
   enableAddTextMode: () => void;
   disableAddTextMode: () => void;
-  closeEditor: () => void;
-  saveAnnotation: (annotation: FreeTextAnnotation) => void;
-  deleteAnnotation: (id: string) => void;
-  updatePosition: (id: string, position: { x: number; y: number }) => void;
-  updateSize: (id: string, width: number, height: number) => void;
-  updateRotation: (id: string, rotation: number) => void;
-  /** Generic update for any annotation fields (used by group drag) */
-  updateAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
-  /** Migrate all annotations from one groupId to another (used when group is renamed) */
-  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
-  loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
-  /** Select a single annotation (clears existing selection) */
-  selectAnnotation: (id: string) => void;
-  /** Toggle annotation selection (Ctrl+click behavior) */
-  toggleAnnotationSelection: (id: string) => void;
-  /** Clear all annotation selection */
-  clearAnnotationSelection: () => void;
-  /** Delete all selected annotations */
-  deleteSelectedAnnotations: () => void;
-  /** Get selected annotations */
-  getSelectedAnnotations: () => FreeTextAnnotation[];
-  /** Box select multiple annotations (adds to existing selection) */
-  boxSelectAnnotations: (ids: string[]) => void;
-  /** Copy selected annotations to clipboard */
-  copySelectedAnnotations: () => void;
-  /** Paste annotations from clipboard */
-  pasteAnnotations: () => void;
-  /** Duplicate selected annotations */
-  duplicateSelectedAnnotations: () => void;
-  /** Check if clipboard has annotations */
-  hasClipboardContent: () => boolean;
-  /** Update geo coordinates for an annotation */
-  updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
 
 // Hook for mode toggle actions
@@ -167,14 +140,7 @@ function useAnnotationCrud(
     log.info(`[FreeText] Saved annotation: ${annotation.id}`);
   }, [closeEditor, lastStyleRef, setAnnotations, saveAnnotationsToExtension]);
 
-  const deleteAnnotation = useCallback((id: string) => {
-    setAnnotations(prev => {
-      const updated = prev.filter(a => a.id !== id);
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[FreeText] Deleted annotation: ${id}`);
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const deleteAnnotation = useDeleteAnnotation('FreeText', setAnnotations, saveAnnotationsToExtension);
 
   const loadAnnotations = useCallback((loadedAnnotations: FreeTextAnnotation[]) => {
     setAnnotations(loadedAnnotations);
@@ -189,29 +155,13 @@ function useAnnotationUpdates(
   setAnnotations: React.Dispatch<React.SetStateAction<FreeTextAnnotation[]>>,
   saveAnnotationsToExtension: (annotations: FreeTextAnnotation[]) => void
 ) {
-  const updatePosition = useCallback((id: string, position: { x: number; y: number }) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => updateAnnotationPosition(a, position));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
-
-  const updateSize = useCallback((id: string, width: number, height: number) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => ({ ...a, width, height }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
-
-  const updateRotation = useCallback((id: string, rotation: number) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => updateAnnotationRotation(a, rotation));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const { updatePosition, updateSize, updateRotation } = useStandardUpdates(
+    setAnnotations,
+    saveAnnotationsToExtension,
+    updateAnnotationInList,
+    updateAnnotationPosition,
+    updateAnnotationRotation
+  );
 
   const updateGeoPosition = useCallback((id: string, geoCoords: { lat: number; lng: number }) => {
     setAnnotations(prev => {
@@ -222,30 +172,12 @@ function useAnnotationUpdates(
     log.info(`[FreeText] Updated geo position for annotation ${id}: ${geoCoords.lat}, ${geoCoords.lng}`);
   }, [setAnnotations, saveAnnotationsToExtension]);
 
-  /** Generic update for any annotation fields (used by group drag) */
-  const updateAnnotation = useCallback((id: string, updates: Partial<FreeTextAnnotation>) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => ({ ...a, ...updates }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
-
-  /** Migrate all annotations from one groupId to another (used when group is renamed) */
-  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string) => {
-    setAnnotations(prev => {
-      const updated = prev.map(a =>
-        a.groupId === oldGroupId ? { ...a, groupId: newGroupId } : a
-      );
-      // Only save if something actually changed
-      const hasChanges = updated.some((a, i) => a !== prev[i]);
-      if (hasChanges) {
-        saveAnnotationsToExtension(updated);
-        log.info(`[FreeText] Migrated annotations from group ${oldGroupId} to ${newGroupId}`);
-      }
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const { updateAnnotation, migrateGroupId } = useGenericAnnotationUpdates(
+    'FreeText',
+    setAnnotations,
+    saveAnnotationsToExtension,
+    updateAnnotationInList
+  );
 
   return { updatePosition, updateSize, updateRotation, updateGeoPosition, updateAnnotation, migrateGroupId };
 }
@@ -298,6 +230,7 @@ export function useFreeTextActions(options: UseFreeTextActionsOptions): UseFreeT
     ...modeActions,
     ...crudActions,
     ...updateActions,
+    selectedAnnotationIds,
     ...selectionActions,
     ...copyPasteActions
   };

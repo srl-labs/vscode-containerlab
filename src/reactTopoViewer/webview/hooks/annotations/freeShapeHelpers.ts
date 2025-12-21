@@ -3,15 +3,15 @@
  */
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 
-import { generateAnnotationId as generateId } from './annotationIdUtils';
 import {
+  generateId,
   SAVE_DEBOUNCE_MS,
   PASTE_OFFSET,
-  updateAnnotationInList as genericUpdateInList,
-  updateAnnotationRotation as genericUpdateRotation,
-  saveAnnotationToList as genericSaveToList,
-  duplicateAnnotations as genericDuplicateAnnotations,
-} from './sharedAnnotationHelpers';
+  genericUpdateInList,
+  genericUpdateRotation,
+  genericSaveToList,
+  genericDuplicateAnnotations,
+} from './commonAnnotationImports';
 
 // Re-export shared constants
 export { SAVE_DEBOUNCE_MS, PASTE_OFFSET };

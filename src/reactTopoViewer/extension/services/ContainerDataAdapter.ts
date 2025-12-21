@@ -22,41 +22,37 @@ export class ContainerDataAdapter implements ContainerDataProvider {
   }
 
   /**
-   * Finds a container by name within a lab.
+   * Finds a container tree node by name within a lab.
    */
-  findContainer(containerName: string, labName: string): ContainerInfo | undefined {
+  private findContainerNode(containerName: string, labName: string): ClabContainerTreeNode | undefined {
     const labNode = this.labMap.get(labName);
     if (!labNode?.containers) return undefined;
 
-    const container = labNode.containers.find(
+    return labNode.containers.find(
       (c) => c.name === containerName || c.name_short === containerName
     );
+  }
 
-    if (!container) return undefined;
-
-    return this.toContainerInfo(container);
+  /**
+   * Finds a container by name within a lab.
+   */
+  findContainer(containerName: string, labName: string): ContainerInfo | undefined {
+    const container = this.findContainerNode(containerName, labName);
+    return container ? this.toContainerInfo(container) : undefined;
   }
 
   /**
    * Finds an interface by name within a container.
    */
   findInterface(containerName: string, ifaceName: string, labName: string): InterfaceInfo | undefined {
-    const labNode = this.labMap.get(labName);
-    if (!labNode?.containers) return undefined;
-
-    const container = labNode.containers.find(
-      (c) => c.name === containerName || c.name_short === containerName
-    );
-
+    const container = this.findContainerNode(containerName, labName);
     if (!container?.interfaces) return undefined;
 
     const iface = container.interfaces.find(
       (i) => i.name === ifaceName || i.alias === ifaceName
     );
 
-    if (!iface) return undefined;
-
-    return this.toInterfaceInfo(iface);
+    return iface ? this.toInterfaceInfo(iface) : undefined;
   }
 
   /**
@@ -73,13 +69,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
    * Gets all interfaces for a container.
    */
   getInterfacesForContainer(containerName: string, labName: string): InterfaceInfo[] {
-    const labNode = this.labMap.get(labName);
-    if (!labNode?.containers) return [];
-
-    const container = labNode.containers.find(
-      (c) => c.name === containerName || c.name_short === containerName
-    );
-
+    const container = this.findContainerNode(containerName, labName);
     if (!container?.interfaces) return [];
 
     return container.interfaces.map((i) => this.toInterfaceInfo(i));

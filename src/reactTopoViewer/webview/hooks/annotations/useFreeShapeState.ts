@@ -18,9 +18,15 @@ import {
   updateAnnotationEndPosition,
   duplicateAnnotations
 } from './freeShapeHelpers';
+import type { AnnotationSelectionActions } from './freeShapeTypes';
 import { useDebouncedSave } from './useDebouncedSave';
 import { useAnnotationListSelection } from './useAnnotationListSelection';
 import { useAnnotationListCopyPaste } from './useAnnotationListCopyPaste';
+import {
+  useDeleteAnnotation,
+  useStandardUpdates,
+  useGenericAnnotationUpdates
+} from './annotationStateUtils';
 
 export interface UseFreeShapeStateReturn {
   annotations: FreeShapeAnnotation[];
@@ -80,7 +86,7 @@ export interface UseFreeShapeActionsOptions {
   onLockedAction?: () => void;
 }
 
-export interface UseFreeShapeActionsReturn {
+export interface UseFreeShapeActionsReturn extends AnnotationSelectionActions {
   enableAddShapeMode: (shapeType?: FreeShapeAnnotation['shapeType']) => void;
   disableAddShapeMode: () => void;
   saveAnnotation: (annotation: FreeShapeAnnotation) => void;
@@ -96,16 +102,6 @@ export interface UseFreeShapeActionsReturn {
   /** Migrate all annotations from one groupId to another (used when group is renamed) */
   migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
   loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
-  selectAnnotation: (id: string) => void;
-  toggleAnnotationSelection: (id: string) => void;
-  clearAnnotationSelection: () => void;
-  deleteSelectedAnnotations: () => void;
-  getSelectedAnnotations: () => FreeShapeAnnotation[];
-  boxSelectAnnotations: (ids: string[]) => void;
-  copySelectedAnnotations: () => void;
-  pasteAnnotations: () => void;
-  duplicateSelectedAnnotations: () => void;
-  hasClipboardContent: () => boolean;
 }
 
 function useModeActions(
@@ -148,14 +144,7 @@ function useAnnotationCrud(
     log.info(`[FreeShape] Saved annotation: ${annotation.id}`);
   }, [lastStyleRef, setAnnotations, saveAnnotationsToExtension]);
 
-  const deleteAnnotation = useCallback((id: string) => {
-    setAnnotations(prev => {
-      const updated = prev.filter(a => a.id !== id);
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[FreeShape] Deleted annotation: ${id}`);
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const deleteAnnotation = useDeleteAnnotation('FreeShape', setAnnotations, saveAnnotationsToExtension);
 
   const loadAnnotations = useCallback((loaded: FreeShapeAnnotation[]) => {
     setAnnotations(loaded);
@@ -169,29 +158,13 @@ function useAnnotationUpdates(
   setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
   saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
 ) {
-  const updatePosition = useCallback((id: string, position: { x: number; y: number }) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => updateAnnotationPosition(a, position));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
-
-  const updateSize = useCallback((id: string, width: number, height: number) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => ({ ...a, width, height }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
-
-  const updateRotation = useCallback((id: string, rotation: number) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => updateAnnotationRotation(a, rotation));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const { updatePosition, updateSize, updateRotation } = useStandardUpdates(
+    setAnnotations,
+    saveAnnotationsToExtension,
+    updateAnnotationInList,
+    updateAnnotationPosition,
+    updateAnnotationRotation
+  );
 
   const updateEndPosition = useCallback((id: string, endPosition: { x: number; y: number }) => {
     setAnnotations(prev => {
@@ -201,30 +174,12 @@ function useAnnotationUpdates(
     });
   }, [setAnnotations, saveAnnotationsToExtension]);
 
-  /** Generic update for any annotation fields (used by group drag) */
-  const updateAnnotation = useCallback((id: string, updates: Partial<FreeShapeAnnotation>) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => ({ ...a, ...updates }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
-
-  /** Migrate all annotations from one groupId to another (used when group is renamed) */
-  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string) => {
-    setAnnotations(prev => {
-      const updated = prev.map(a =>
-        a.groupId === oldGroupId ? { ...a, groupId: newGroupId } : a
-      );
-      // Only save if something actually changed
-      const hasChanges = updated.some((a, i) => a !== prev[i]);
-      if (hasChanges) {
-        saveAnnotationsToExtension(updated);
-        log.info(`[FreeShape] Migrated annotations from group ${oldGroupId} to ${newGroupId}`);
-      }
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const { updateAnnotation, migrateGroupId } = useGenericAnnotationUpdates(
+    'FreeShape',
+    setAnnotations,
+    saveAnnotationsToExtension,
+    updateAnnotationInList
+  );
 
   return { updatePosition, updateSize, updateRotation, updateEndPosition, updateAnnotation, migrateGroupId };
 }

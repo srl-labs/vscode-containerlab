@@ -9,6 +9,7 @@ import { log } from '../../utils/logger';
 import { findDeepestGroupAtPosition } from '../groups/utils';
 
 import { createDefaultAnnotation } from './freeTextHelpers';
+import { createEditAnnotationCallback, createCommonSelectionReturn } from './sharedAnnotationHelpers';
 import { useFreeTextState, useFreeTextActions } from './useFreeTextState';
 import type {
   UseFreeTextAnnotationsOptions,
@@ -63,17 +64,10 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
   }, [isAddTextMode, lastStyleRef, setEditingAnnotation, setIsAddTextMode, groups]);
 
   // Edit existing annotation
-  const editAnnotation = useCallback((id: string) => {
-    if (mode === 'view' || isLocked) {
-      if (isLocked) onLockedAction?.();
-      return;
-    }
-    const annotation = annotations.find(a => a.id === id);
-    if (annotation) {
-      setEditingAnnotation({ ...annotation });
-      log.info(`[FreeText] Editing annotation: ${id}`);
-    }
-  }, [mode, isLocked, onLockedAction, annotations, setEditingAnnotation]);
+  const editAnnotation = useCallback(
+    createEditAnnotationCallback(mode, isLocked, onLockedAction, annotations, setEditingAnnotation, 'FreeText'),
+    [mode, isLocked, onLockedAction, annotations, setEditingAnnotation]
+  );
 
   // Undo/redo action creator
   const getUndoRedoAction = useCallback((
@@ -105,17 +99,7 @@ export function useFreeTextAnnotations(options: UseFreeTextAnnotationsOptions): 
     migrateGroupId: actions.migrateGroupId,
     loadAnnotations: actions.loadAnnotations,
     getUndoRedoAction,
-    selectedAnnotationIds,
-    selectAnnotation: actions.selectAnnotation,
-    toggleAnnotationSelection: actions.toggleAnnotationSelection,
-    clearAnnotationSelection: actions.clearAnnotationSelection,
-    deleteSelectedAnnotations: actions.deleteSelectedAnnotations,
-    getSelectedAnnotations: actions.getSelectedAnnotations,
-    boxSelectAnnotations: actions.boxSelectAnnotations,
-    copySelectedAnnotations: actions.copySelectedAnnotations,
-    pasteAnnotations: actions.pasteAnnotations,
-    duplicateSelectedAnnotations: actions.duplicateSelectedAnnotations,
-    hasClipboardContent: actions.hasClipboardContent
+    ...createCommonSelectionReturn(selectedAnnotationIds, actions)
   }), [
     annotations, editingAnnotation, isAddTextMode, actions,
     handleCanvasClick, editAnnotation, getUndoRedoAction, selectedAnnotationIds

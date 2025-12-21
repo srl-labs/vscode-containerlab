@@ -17,7 +17,20 @@ export interface UseFreeShapeAnnotationsOptions {
   groups?: GroupStyleAnnotation[];
 }
 
-export interface UseFreeShapeAnnotationsReturn {
+export interface AnnotationSelectionActions {
+  selectAnnotation: (id: string) => void;
+  toggleAnnotationSelection: (id: string) => void;
+  clearAnnotationSelection: () => void;
+  deleteSelectedAnnotations: () => void;
+  getSelectedAnnotations: () => FreeShapeAnnotation[];
+  boxSelectAnnotations: (ids: string[]) => void;
+  copySelectedAnnotations: () => void;
+  pasteAnnotations: () => void;
+  duplicateSelectedAnnotations: () => void;
+  hasClipboardContent: () => boolean;
+}
+
+export interface UseFreeShapeAnnotationsReturn extends AnnotationSelectionActions {
   annotations: FreeShapeAnnotation[];
   isAddShapeMode: boolean;
   pendingShapeType: FreeShapeAnnotation['shapeType'];
@@ -50,16 +63,6 @@ export interface UseFreeShapeAnnotationsReturn {
   getUndoRedoAction: (before: FreeShapeAnnotation | null, after: FreeShapeAnnotation | null) => AnnotationUndoAction;
   /** IDs of currently selected annotations */
   selectedAnnotationIds: Set<string>;
-  selectAnnotation: (id: string) => void;
-  toggleAnnotationSelection: (id: string) => void;
-  clearAnnotationSelection: () => void;
-  deleteSelectedAnnotations: () => void;
-  getSelectedAnnotations: () => FreeShapeAnnotation[];
-  boxSelectAnnotations: (ids: string[]) => void;
-  copySelectedAnnotations: () => void;
-  pasteAnnotations: () => void;
-  duplicateSelectedAnnotations: () => void;
-  hasClipboardContent: () => boolean;
 }
 
 export interface AnnotationUndoAction {

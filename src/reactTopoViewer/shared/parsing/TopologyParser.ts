@@ -17,8 +17,8 @@ import type {
   ParserLogger,
 } from './types';
 import { nullLogger } from './types';
-import { computeFullPrefix, getLabName, getTopologyNodeIds } from './utils';
-import { isPresetLayout, addNodeElements } from './NodeElementBuilder';
+import { computeFullPrefix, getLabName, getTopologyNodeIds, isPresetLayout } from './utils';
+import { addNodeElements } from './NodeElementBuilder';
 import { addEdgeElements } from './EdgeElementBuilder';
 import { collectSpecialNodes, addCloudNodes } from './SpecialNodeHandler';
 import {

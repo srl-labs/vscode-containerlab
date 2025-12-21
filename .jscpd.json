@@ -11,7 +11,8 @@
     "**/dist/**",
     "**/dist-dev/**",
     "**/node_modules/**",
-    "**/legacy-backup/**"
+    "**/legacy-backup/**",
+    "**/easter-eggs/**"
   ],
   "absolute": true,
   "gitignore": true,

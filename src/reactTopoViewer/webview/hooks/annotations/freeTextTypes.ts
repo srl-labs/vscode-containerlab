@@ -17,14 +17,8 @@ export interface UseFreeTextAnnotationsOptions {
   groups?: GroupStyleAnnotation[];
 }
 
-export interface UseFreeTextAnnotationsReturn {
-  annotations: FreeTextAnnotation[];
-  editingAnnotation: FreeTextAnnotation | null;
-  isAddTextMode: boolean;
-  enableAddTextMode: () => void;
-  disableAddTextMode: () => void;
-  handleCanvasClick: (position: { x: number; y: number }) => void;
-  editAnnotation: (id: string) => void;
+/** Shared interface for action methods on annotations */
+export interface AnnotationActionMethods {
   closeEditor: () => void;
   saveAnnotation: (annotation: FreeTextAnnotation) => void;
   deleteAnnotation: (id: string) => void;
@@ -38,7 +32,10 @@ export interface UseFreeTextAnnotationsReturn {
   /** Migrate all annotations from one groupId to another (used when group is renamed) */
   migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
   loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
-  getUndoRedoAction: (before: FreeTextAnnotation | null, after: FreeTextAnnotation | null) => AnnotationUndoAction;
+}
+
+/** Shared interface for selection and clipboard methods */
+export interface AnnotationSelectionMethods {
   /** IDs of currently selected annotations */
   selectedAnnotationIds: Set<string>;
   /** Select a single annotation (clears existing selection) */
@@ -61,6 +58,17 @@ export interface UseFreeTextAnnotationsReturn {
   duplicateSelectedAnnotations: () => void;
   /** Check if clipboard has annotations */
   hasClipboardContent: () => boolean;
+}
+
+export interface UseFreeTextAnnotationsReturn extends AnnotationActionMethods, AnnotationSelectionMethods {
+  annotations: FreeTextAnnotation[];
+  editingAnnotation: FreeTextAnnotation | null;
+  isAddTextMode: boolean;
+  enableAddTextMode: () => void;
+  disableAddTextMode: () => void;
+  handleCanvasClick: (position: { x: number; y: number }) => void;
+  editAnnotation: (id: string) => void;
+  getUndoRedoAction: (before: FreeTextAnnotation | null, after: FreeTextAnnotation | null) => AnnotationUndoAction;
 }
 
 export interface AnnotationUndoAction {

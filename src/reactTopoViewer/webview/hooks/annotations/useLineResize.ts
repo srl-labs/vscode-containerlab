@@ -7,6 +7,7 @@ import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { addMouseMoveUpListeners } from '../shared/mouseEvents';
+import { handleDragStart } from '../shared/dragHelpers';
 
 import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShapeHelpers';
 
@@ -77,14 +78,7 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
   }, [isResizing, cy, annotation.position.x, annotation.position.y, onEndPositionChange, onDragEnd]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Capture before state for deferred undo
-    if (onDragStart) {
-      beforeStateRef.current = onDragStart();
-    }
+    if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
 
     const end = annotation.endPosition ?? {
       x: annotation.position.x + DEFAULT_LINE_LENGTH,

@@ -3,7 +3,7 @@
  * Separated to avoid circular dependencies with extension.ts
  */
 import { runCommand } from '../utils/utils';
-import { containerlabBinaryPath, outputChannel, sshxSessions, gottySessions } from '../globals';
+import { containerlabBinaryPath, outputChannel, sshxSessions, gottySessions, runningLabsProvider } from '../globals';
 
 /**
  * Interface for SSHX session data returned by containerlab tools sshx list -f json
@@ -128,5 +128,18 @@ export async function refreshGottySessions() {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     outputChannel.error(`Failed to refresh GoTTY sessions: ${errorMessage}`);
+  }
+}
+
+export async function refreshRunningLabsProvider(action: "attach" | "reattach"): Promise<void> {
+  try {
+    if (action === 'attach') {
+      await runningLabsProvider.softRefresh();
+    } else {
+      await runningLabsProvider.refresh();
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    outputChannel.warn(`Failed to refresh running labs provider after ${action}: ${errorMessage}`);
   }
 }

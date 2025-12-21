@@ -2,6 +2,8 @@
  * Shared helper functions for annotations (both FreeShape and FreeText)
  */
 
+import { log } from '../../utils/logger';
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -88,4 +90,71 @@ export function duplicateAnnotations<T extends BaseAnnotation>(
 ): T[] {
   const offset = PASTE_OFFSET * (pasteCount + 1);
   return annotations.map(a => duplicateFn(a, offset));
+}
+
+// ============================================================================
+// Hook Helpers
+// ============================================================================
+
+/**
+ * Creates an editAnnotation callback that handles mode/locked checks
+ * @param mode Current mode (view or edit)
+ * @param isLocked Whether the topology is locked
+ * @param onLockedAction Callback to trigger when locked action is attempted
+ * @param annotations List of annotations to search
+ * @param setEditingAnnotation Function to set the annotation being edited
+ * @param logPrefix Prefix for log messages
+ * @returns The edit annotation callback
+ */
+export function createEditAnnotationCallback<T extends BaseAnnotation>(
+  mode: 'view' | 'edit',
+  isLocked: boolean,
+  onLockedAction: (() => void) | undefined,
+  annotations: T[],
+  setEditingAnnotation: (annotation: T | null) => void,
+  logPrefix: string
+): (id: string) => void {
+  return (id: string) => {
+    if (mode === 'view' || isLocked) {
+      if (isLocked) onLockedAction?.();
+      return;
+    }
+    const annotation = annotations.find(a => a.id === id);
+    if (annotation) {
+      setEditingAnnotation({ ...annotation });
+      log.info(`[${logPrefix}] Editing annotation: ${id}`);
+    }
+  };
+}
+
+/**
+ * Common selection and clipboard actions interface
+ * Used by both FreeShape and FreeText annotations
+ */
+export interface CommonSelectionActions<T> {
+  selectedAnnotationIds: Set<string>;
+  selectAnnotation: (id: string) => void;
+  toggleAnnotationSelection: (id: string) => void;
+  clearAnnotationSelection: () => void;
+  deleteSelectedAnnotations: () => void;
+  getSelectedAnnotations: () => T[];
+  boxSelectAnnotations: (ids: string[]) => void;
+  copySelectedAnnotations: () => void;
+  pasteAnnotations: () => void;
+  duplicateSelectedAnnotations: () => void;
+  hasClipboardContent: () => boolean;
+}
+
+/**
+ * Creates the common selection/clipboard return object
+ * Extracts the shared selection and clipboard operations
+ */
+export function createCommonSelectionReturn<T>(
+  selectedAnnotationIds: Set<string>,
+  actions: Omit<CommonSelectionActions<T>, 'selectedAnnotationIds'>
+): CommonSelectionActions<T> {
+  return {
+    selectedAnnotationIds,
+    ...actions
+  };
 }

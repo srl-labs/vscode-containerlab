@@ -13,6 +13,7 @@ import {
   type ParserLogger,
   type GraphLabelMigration,
 } from '../../shared/parsing';
+import { applyInterfacePatternMigrations } from '../../shared/utilities';
 
 import { log } from './logger';
 import { annotationsIO } from './adapters';
@@ -49,42 +50,8 @@ export class TopoViewerAdaptorClab {
     clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined,
     yamlFilePath?: string
   ): Promise<CyElement[]> {
-    // Parse as document to preserve structure for editing
-    this.currentClabDoc = YAML.parseDocument(yamlContent);
-    const parsed = this.currentClabDoc.toJS() as ClabTopology;
-    this.currentClabTopo = parsed;
-
-    // Load and migrate annotations
-    let annotations = yamlFilePath ? await annotationsIO.loadAnnotations(yamlFilePath) : undefined;
-
-    // Create container data adapter for enrichment
     const containerDataProvider = new ContainerDataAdapter(clabTreeDataToTopoviewer);
-
-    // Parse with the shared parser
-    const result = TopologyParser.parse(yamlContent, {
-      annotations: annotations as TopologyAnnotations | undefined,
-      containerDataProvider,
-      logger: parserLogger,
-    });
-
-    // Store state for external access
-    this.currentIsPresetLayout = result.isPresetLayout;
-    this.currentClabName = result.labName;
-    this.currentClabPrefix = result.prefix;
-
-    // Handle graph label migrations (persist to annotations file)
-    if (yamlFilePath && result.graphLabelMigrations.length > 0) {
-      await this.persistGraphLabelMigrations(yamlFilePath, annotations, result.graphLabelMigrations);
-    }
-
-    // Migrate interface patterns to annotations for nodes that don't have them
-    if (yamlFilePath && result.pendingMigrations.length > 0) {
-      this.migrateInterfacePatterns(yamlFilePath, result.pendingMigrations).catch(err => {
-        log.warn(`[TopologyAdapter] Failed to migrate interface patterns: ${err}`);
-      });
-    }
-
-    return result.elements;
+    return this.parseYamlToElements(yamlContent, yamlFilePath, containerDataProvider);
   }
 
   /**
@@ -94,16 +61,33 @@ export class TopoViewerAdaptorClab {
     yamlContent: string,
     yamlFilePath?: string
   ): Promise<CyElement[]> {
+    return this.parseYamlToElements(yamlContent, yamlFilePath, undefined);
+  }
+
+  /**
+   * Shared implementation for parsing YAML to Cytoscape elements.
+   */
+  private async parseYamlToElements(
+    yamlContent: string,
+    yamlFilePath: string | undefined,
+    containerDataProvider: ContainerDataAdapter | undefined
+  ): Promise<CyElement[]> {
     // Parse as document to preserve structure for editing
     this.currentClabDoc = YAML.parseDocument(yamlContent);
     const parsed = this.currentClabDoc.toJS() as ClabTopology;
     this.currentClabTopo = parsed;
 
-    // Load and migrate annotations
-    let annotations = yamlFilePath ? await annotationsIO.loadAnnotations(yamlFilePath) : undefined;
+    // Load annotations
+    const annotations = yamlFilePath ? await annotationsIO.loadAnnotations(yamlFilePath) : undefined;
 
-    // Parse without container data (editor mode)
-    const result = TopologyParser.parseForEditor(yamlContent, annotations as TopologyAnnotations | undefined);
+    // Parse with the shared parser (with or without container data)
+    const result = containerDataProvider
+      ? TopologyParser.parse(yamlContent, {
+          annotations: annotations as TopologyAnnotations | undefined,
+          containerDataProvider,
+          logger: parserLogger,
+        })
+      : TopologyParser.parseForEditor(yamlContent, annotations as TopologyAnnotations | undefined);
 
     // Store state for external access
     this.currentIsPresetLayout = result.isPresetLayout;
@@ -149,29 +133,13 @@ export class TopoViewerAdaptorClab {
     if (migrations.length === 0) return;
 
     await annotationsIO.modifyAnnotations(yamlFilePath, (annotations) => {
-      if (!annotations.nodeAnnotations) {
-        annotations.nodeAnnotations = [];
-      }
+      const result = applyInterfacePatternMigrations(annotations, migrations);
 
-      let modified = false;
-      for (const { nodeId, interfacePattern } of migrations) {
-        const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-        if (existing) {
-          if (!existing.interfacePattern) {
-            existing.interfacePattern = interfacePattern;
-            modified = true;
-          }
-        } else {
-          annotations.nodeAnnotations.push({ id: nodeId, interfacePattern });
-          modified = true;
-        }
-      }
-
-      if (modified) {
+      if (result.modified) {
         log.info(`[TopologyAdapter] Migrated interface patterns for ${migrations.length} nodes`);
       }
 
-      return annotations;
+      return result.annotations;
     });
   }
 
