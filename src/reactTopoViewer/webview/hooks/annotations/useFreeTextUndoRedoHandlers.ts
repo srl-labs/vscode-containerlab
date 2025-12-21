@@ -6,12 +6,9 @@ import React from 'react';
 
 import type { FreeTextAnnotation } from '../../../shared/types/topology';
 import type { UndoRedoAction, UndoRedoActionAnnotation } from '../state/useUndoRedo';
+import type { UndoRedoApi } from '../shared/undoHelpers';
 
 import type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
-
-interface UndoRedoApi {
-  pushAction: (action: UndoRedoAction) => void;
-}
 
 export interface UseFreeTextAnnotationApplierReturn {
   isApplyingAnnotationUndoRedo: React.RefObject<boolean>;

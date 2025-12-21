@@ -3,19 +3,17 @@
  *
  * These adapters wrap the VS Code extension services to implement
  * the shared service interfaces from MessageServiceInterfaces.
+ *
+ * Most simple adapters are now inlined in createProductionServices.ts.
+ * Only adapters with state or complex logic remain as separate classes.
  */
 
 // Re-export schema adapter functions
 export { getCustomNodesFromConfig, loadSchemaData } from './schemaAdapter';
 
-// Re-export all adapter classes
-export { MessagingServiceAdapter } from './MessagingServiceAdapter';
-export { PersistenceServiceAdapter } from './PersistenceServiceAdapter';
+// Re-export class-based adapters (have state or complex logic)
 export { AnnotationsServiceAdapter, annotationsIO } from './AnnotationsServiceAdapter';
 export { NodeCommandServiceAdapter } from './NodeCommandServiceAdapter';
-export { LifecycleServiceAdapter } from './LifecycleServiceAdapter';
-export { CustomNodeServiceAdapter } from './CustomNodeServiceAdapter';
-export { SplitViewServiceAdapter } from './SplitViewServiceAdapter';
 export { LabSettingsServiceAdapter } from './LabSettingsServiceAdapter';
 export { MessageRouterContextAdapter } from './MessageRouterContextAdapter';
 
