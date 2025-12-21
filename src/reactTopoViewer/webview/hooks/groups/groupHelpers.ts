@@ -3,6 +3,8 @@
  * Groups are rendered as HTML/SVG overlays, not Cytoscape nodes.
  */
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
+import { log } from '../../utils/logger';
+import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
 
 import {
   DEFAULT_GROUP_STYLE,
@@ -39,6 +41,70 @@ export function generateGroupId(existingGroups: GroupStyleAnnotation[]): string 
 export function parseGroupId(groupId: string): { name: string; level: string } {
   const [name, level] = groupId.split(':');
   return { name: name || '', level: level || '1' };
+}
+
+/**
+ * Save node membership to annotations file.
+ * Can be called with a groupId (which gets parsed) or with explicit group/level values.
+ */
+export function saveNodeMembership(
+  nodeId: string,
+  groupOrGroupId: string | null,
+  level?: string | null
+): void {
+  if (!isServicesInitialized()) {
+    log.warn('[Groups] Services not initialized for membership save');
+    return;
+  }
+
+  const annotationsIO = getAnnotationsIO();
+  const topologyIO = getTopologyIO();
+
+  const yamlPath = topologyIO.getYamlFilePath();
+  if (!yamlPath) {
+    log.warn('[Groups] No YAML path for membership save');
+    return;
+  }
+
+  // Determine group name and level - either from parsing groupId or from explicit params
+  let groupName: string | null;
+  let groupLevel: string | null;
+  if (level !== undefined) {
+    // Called with explicit group/level (useGroups style)
+    groupName = groupOrGroupId;
+    groupLevel = level;
+  } else if (groupOrGroupId) {
+    // Called with groupId (useNodeReparent style)
+    const parsed = parseGroupId(groupOrGroupId);
+    groupName = parsed.name;
+    groupLevel = parsed.level;
+  } else {
+    // Clearing membership
+    groupName = null;
+    groupLevel = null;
+  }
+
+  annotationsIO.modifyAnnotations(yamlPath, annotations => {
+    if (!annotations.nodeAnnotations) {
+      annotations.nodeAnnotations = [];
+    }
+
+    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+    if (existing) {
+      existing.group = groupName ?? undefined;
+      existing.level = groupLevel ?? undefined;
+    } else {
+      annotations.nodeAnnotations.push({
+        id: nodeId,
+        group: groupName ?? undefined,
+        level: groupLevel ?? undefined
+      });
+    }
+
+    return annotations;
+  }).catch(err => {
+    log.error(`[Groups] Failed to save membership: ${err}`);
+  });
 }
 
 /**

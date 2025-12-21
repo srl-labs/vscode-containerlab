@@ -216,6 +216,25 @@ function combineActions(actions: UndoRedoAction[]): UndoRedoAction {
   return { type: 'compound', graphBefore, graphAfter, annotationsBefore, annotationsAfter };
 }
 
+/** Helper to apply annotation changes in a compound action */
+function applyCompoundAnnotations(
+  action: UndoRedoActionCompound,
+  applyAnnotationChange: ((action: UndoRedoActionAnnotation, isUndo: boolean) => void) | undefined,
+  isUndo: boolean
+): void {
+  for (let i = 0; i < action.annotationsAfter.length; i++) {
+    const afterAnn = action.annotationsAfter[i];
+    const beforeAnn = action.annotationsBefore[i];
+    const syntheticAction: UndoRedoActionAnnotation = {
+      type: 'annotation',
+      annotationType: afterAnn.annotationType as AnnotationType,
+      before: beforeAnn?.state ?? null,
+      after: afterAnn.state
+    };
+    applyAnnotationChange?.(syntheticAction, isUndo);
+  }
+}
+
 /** Helper to apply compound action undo */
 function applyCompoundUndo(
   action: UndoRedoActionCompound,
@@ -228,24 +247,10 @@ function applyCompoundUndo(
 
   // For paste operations: groups are created FIRST, then nodes with group membership.
   // For undo: delete nodes FIRST, then delete groups.
-  // This ensures nodes are removed before their parent groups.
   if (graphCount > 0) {
     applyGraphChanges?.(action.graphBefore);
   }
-
-  // Then undo annotations (groups)
-  // Iterate over annotationsAfter because that contains the created items we need to delete
-  for (let i = 0; i < action.annotationsAfter.length; i++) {
-    const afterAnn = action.annotationsAfter[i];
-    const beforeAnn = action.annotationsBefore[i];
-    const syntheticAction: UndoRedoActionAnnotation = {
-      type: 'annotation',
-      annotationType: afterAnn.annotationType as AnnotationType,
-      before: beforeAnn?.state ?? null,
-      after: afterAnn.state
-    };
-    applyAnnotationChange?.(syntheticAction, true);
-  }
+  applyCompoundAnnotations(action, applyAnnotationChange, true);
 }
 
 /** Helper to apply compound action redo */
@@ -259,20 +264,7 @@ function applyCompoundRedo(
   log.info(`[UndoRedo] Redoing compound action with ${graphCount} graph change(s) and ${annotationCount} annotation(s)`);
 
   // For paste operations: groups should be created FIRST, then nodes with group membership.
-  // Redo annotations (groups) first
-  for (let i = 0; i < action.annotationsAfter.length; i++) {
-    const afterAnn = action.annotationsAfter[i];
-    const beforeAnn = action.annotationsBefore[i];
-    const syntheticAction: UndoRedoActionAnnotation = {
-      type: 'annotation',
-      annotationType: afterAnn.annotationType as AnnotationType,
-      before: beforeAnn?.state ?? null,
-      after: afterAnn.state
-    };
-    applyAnnotationChange?.(syntheticAction, false);
-  }
-
-  // Then redo graph changes (nodes/edges with group membership)
+  applyCompoundAnnotations(action, applyAnnotationChange, false);
   if (graphCount > 0) {
     applyGraphChanges?.(action.graphAfter);
   }

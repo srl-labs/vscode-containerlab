@@ -44,7 +44,10 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
-  .panel-header {
+  /* Unified title bar styles for all panel types */
+  .panel-header,
+  .panel-heading,
+  .panel-title-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -61,7 +64,8 @@
     border-top-right-radius: 0.5rem;
   }
 
-  .panel-header:active {
+  .panel-header:active,
+  .panel-title-bar:active {
     cursor: grabbing;
   }
 
@@ -86,29 +90,6 @@
 
   .panel-close-btn:hover {
     background-color: var(--vscode-toolbar-hoverBackground);
-  }
-
-  /* Window-style title bar for editor panels */
-  .panel-heading,
-  .panel-title-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: var(--vscode-titleBar-activeBackground);
-    color: var(--vscode-titleBar-activeForeground);
-    border-bottom: 1px solid var(--vscode-panel-border);
-    padding: 0.5rem 1rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    cursor: grab;
-    user-select: none;
-    min-height: 2.5rem;
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
-  }
-
-  .panel-title-bar:active {
-    cursor: grabbing;
   }
 
   .panel-title {

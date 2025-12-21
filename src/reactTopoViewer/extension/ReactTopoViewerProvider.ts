@@ -15,6 +15,7 @@ import type { CyElement, ClabTopology } from '../shared/types/topology';
 import type { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../globals';
 import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../shared/parsing';
+import type { WebviewMessage } from '../shared/messaging';
 
 import { log } from './services/logger';
 import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
@@ -27,7 +28,6 @@ import {
   createPanel,
   generateWebviewHtml
 } from './panel/PanelManager';
-import type { WebviewMessage } from '../shared/messaging';
 import { MessageRouter } from './panel/MessageRouter';
 import { WatcherManager } from './panel/Watchers';
 import { buildBootstrapData } from './panel/BootstrapDataBuilder';

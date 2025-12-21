@@ -5,6 +5,8 @@
 import type React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+import { addMouseMoveUpListeners } from '../shared/mouseEvents';
+
 export interface Position {
   x: number;
   y: number;
@@ -137,12 +139,7 @@ function useDragEvents(
       setPosition(prev => { savePosition(storageKey, prev); return prev; });
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+    return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
   }, [isDragging, startRef, panelRef, widthRef, storageKey, opts, setPosition, setIsDragging]);
 }
 

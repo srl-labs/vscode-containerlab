@@ -3,6 +3,8 @@
  */
 import React from 'react';
 
+import { AddItemButton, DeleteItemButton } from './ListButtons';
+
 interface KeyValueListProps {
   items: Record<string, string>;
   onChange: (items: Record<string, string>) => void;
@@ -61,15 +63,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
           disabled={disabled}
         />
       ))}
-      <button
-        type="button"
-        className="btn btn-small"
-        onClick={handleAdd}
-        disabled={disabled}
-      >
-        <i className="fas fa-plus mr-1"></i>
-        {addLabel}
-      </button>
+      <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
     </div>
   );
 };
@@ -115,14 +109,6 @@ const KeyValueItem: React.FC<KeyValueItemProps> = ({
       placeholder={valuePlaceholder}
       disabled={disabled}
     />
-    <button
-      type="button"
-      className="dynamic-delete-btn"
-      onClick={onRemove}
-      aria-label="Remove"
-      disabled={disabled}
-    >
-      <i className="fas fa-trash"></i>
-    </button>
+    <DeleteItemButton onRemove={onRemove} disabled={disabled} />
   </div>
 );

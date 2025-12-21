@@ -4,6 +4,17 @@
 import type { FreeTextAnnotation } from '../../../shared/types/topology';
 
 import { generateAnnotationId as generateId } from './annotationIdUtils';
+import {
+  SAVE_DEBOUNCE_MS,
+  PASTE_OFFSET,
+  updateAnnotationInList as genericUpdateInList,
+  updateAnnotationRotation as genericUpdateRotation,
+  saveAnnotationToList as genericSaveToList,
+  duplicateAnnotations as genericDuplicateAnnotations,
+} from './sharedAnnotationHelpers';
+
+// Re-export shared constants
+export { SAVE_DEBOUNCE_MS, PASTE_OFFSET };
 
 // ============================================================================
 // Constants
@@ -12,7 +23,6 @@ import { generateAnnotationId as generateId } from './annotationIdUtils';
 export const DEFAULT_FONT_SIZE = 14;
 export const DEFAULT_FONT_COLOR = '#FFFFFF';
 export const DEFAULT_BACKGROUND_COLOR = 'transparent';
-export const SAVE_DEBOUNCE_MS = 300;
 
 // ============================================================================
 // ID Generation
@@ -83,7 +93,7 @@ export function updateAnnotationInList(
   id: string,
   updater: (annotation: FreeTextAnnotation) => FreeTextAnnotation
 ): FreeTextAnnotation[] {
-  return annotations.map(a => a.id === id ? updater(a) : a);
+  return genericUpdateInList(annotations, id, updater);
 }
 
 /**
@@ -106,10 +116,7 @@ export function updateAnnotationRotation(
   annotation: FreeTextAnnotation,
   rotation: number
 ): FreeTextAnnotation {
-  return {
-    ...annotation,
-    rotation: ((rotation % 360) + 360) % 360
-  };
+  return genericUpdateRotation(annotation, rotation);
 }
 
 /**
@@ -120,19 +127,12 @@ export function saveAnnotationToList(
   annotations: FreeTextAnnotation[],
   annotation: FreeTextAnnotation
 ): FreeTextAnnotation[] {
-  const exists = annotations.some(a => a.id === annotation.id);
-  if (exists) {
-    return updateAnnotationInList(annotations, annotation.id, () => annotation);
-  }
-  return [...annotations, annotation];
+  return genericSaveToList(annotations, annotation);
 }
 
 // ============================================================================
 // Copy/Paste Operations
 // ============================================================================
-
-/** Offset for pasted annotations */
-const PASTE_OFFSET = 20;
 
 /**
  * Creates a duplicate of an annotation with a new ID and offset position
@@ -158,6 +158,5 @@ export function duplicateAnnotations(
   annotations: FreeTextAnnotation[],
   pasteCount: number = 0
 ): FreeTextAnnotation[] {
-  const offset = PASTE_OFFSET * (pasteCount + 1);
-  return annotations.map(a => duplicateAnnotation(a, offset));
+  return genericDuplicateAnnotations(annotations, duplicateAnnotation, pasteCount);
 }

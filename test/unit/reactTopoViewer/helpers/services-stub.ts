@@ -9,7 +9,8 @@ import sinon from 'sinon';
 
 import * as services from '../../../../src/reactTopoViewer/webview/services';
 import type { FileSystemAdapter } from '../../../../src/reactTopoViewer/shared/io/types';
-import type { NodeSaveData, LinkSaveData } from '../../../../src/reactTopoViewer/shared/io/TopologyIO';
+import type { NodeSaveData } from '../../../../src/reactTopoViewer/shared/io/NodePersistenceIO';
+import type { LinkSaveData } from '../../../../src/reactTopoViewer/shared/io/LinkPersistenceIO';
 
 // Track all service calls for assertions
 export interface ServiceCall {

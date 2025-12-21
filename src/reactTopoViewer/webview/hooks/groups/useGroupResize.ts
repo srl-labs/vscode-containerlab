@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
+import { addMouseMoveUpListeners } from '../shared/mouseEvents';
 
 /** Corner type alias for resize handles */
 export type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
@@ -73,12 +74,7 @@ function useGroupResizeEvents(
       setIsResizing(false);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+    return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
   }, [isResizing, cy, groupId, dragRef, setIsResizing, onSizeChange, onPositionChange]);
 }
 

@@ -46,8 +46,11 @@ export interface NodeCreationState {
 /** Position type */
 type Position = { x: number; y: number };
 
+/** Callback to rename a node in the graph state */
+type RenameNodeCallback = (oldId: string, newId: string) => void;
+
 // ============================================================================
-// useNodeEditorHandlers
+// Shared Helper Functions
 // ============================================================================
 
 /**
@@ -79,8 +82,54 @@ function updateCytoscapeNodeData(
   node.data('extraData', newExtraData);
 }
 
-/** Callback to rename a node in the graph state */
-type RenameNodeCallback = (oldId: string, newId: string) => void;
+/**
+ * Handle node update after edit (rename or data update)
+ */
+function handleNodeUpdate(
+  data: NodeEditorData,
+  oldName: string | undefined,
+  renameNode: RenameNodeCallback | undefined,
+  cyRef: React.RefObject<CytoscapeCanvasRef | null> | undefined
+): void {
+  if (oldName && renameNode) {
+    renameNode(oldName, data.name);
+  } else {
+    const cy = cyRef?.current?.getCy();
+    if (cy) {
+      updateCytoscapeNodeData(cy, data.id, data);
+    }
+  }
+}
+
+/**
+ * Record property edit for undo/redo if needed
+ */
+function recordEdit<T extends { id: string }>(
+  entityType: 'node' | 'link',
+  current: T | null,
+  newData: T,
+  recordPropertyEdit: ((action: PropertyEditAction) => void) | undefined,
+  checkChanges = false
+): boolean {
+  if (!recordPropertyEdit || !current) return true;
+
+  if (checkChanges) {
+    const hasChanges = JSON.stringify(current) !== JSON.stringify(newData);
+    if (!hasChanges) return false;
+  }
+
+  recordPropertyEdit({
+    entityType,
+    entityId: current.id,
+    before: current as unknown as Record<string, unknown>,
+    after: newData as unknown as Record<string, unknown>
+  });
+  return true;
+}
+
+// ============================================================================
+// useNodeEditorHandlers
+// ============================================================================
 
 /**
  * Hook for node editor handlers with undo/redo support
@@ -108,61 +157,24 @@ export function useNodeEditorHandlers(
   }, [editNode]);
 
   const handleSave = React.useCallback((data: NodeEditorData) => {
-    if (recordPropertyEdit && initialDataRef.current) {
-      recordPropertyEdit({
-        entityType: 'node',
-        entityId: initialDataRef.current.id,
-        before: initialDataRef.current as unknown as Record<string, unknown>,
-        after: data as unknown as Record<string, unknown>
-      });
-    }
+    recordEdit('node', initialDataRef.current, data, recordPropertyEdit);
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
     void editNodeService(saveData);
-
-    // Handle rename: update graph state via dispatch
-    if (oldName && renameNode) {
-      renameNode(oldName, data.name);
-    } else {
-      // Just update Cytoscape node data (no ID change)
-      const cy = cyRef?.current?.getCy();
-      if (cy) {
-        updateCytoscapeNodeData(cy, data.id, data);
-      }
-    }
-
+    handleNodeUpdate(data, oldName, renameNode, cyRef);
     initialDataRef.current = null;
     editNode(null);
   }, [editNode, recordPropertyEdit, cyRef, renameNode]);
 
   const handleApply = React.useCallback((data: NodeEditorData) => {
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-
-    if (recordPropertyEdit && initialDataRef.current) {
-      const hasChanges = JSON.stringify(initialDataRef.current) !== JSON.stringify(data);
-      if (hasChanges) {
-        recordPropertyEdit({
-          entityType: 'node',
-          entityId: initialDataRef.current.id,
-          before: initialDataRef.current as unknown as Record<string, unknown>,
-          after: data as unknown as Record<string, unknown>
-        });
-        initialDataRef.current = { ...data };
-      }
+    const changed = recordEdit('node', initialDataRef.current, data, recordPropertyEdit, true);
+    if (changed) {
+      initialDataRef.current = { ...data };
     }
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
     void editNodeService(saveData);
-
-    // Handle rename: update graph state via dispatch
-    if (oldName && renameNode) {
-      renameNode(oldName, data.name);
-    } else {
-      // Just update Cytoscape node data (no ID change)
-      const cy = cyRef?.current?.getCy();
-      if (cy) {
-        updateCytoscapeNodeData(cy, data.id, data);
-      }
-    }
+    handleNodeUpdate(data, oldName, renameNode, cyRef);
   }, [recordPropertyEdit, cyRef, renameNode]);
 
   return { handleClose, handleSave, handleApply };
@@ -196,14 +208,7 @@ export function useLinkEditorHandlers(
   }, [editEdge]);
 
   const handleSave = React.useCallback((data: LinkEditorData) => {
-    if (recordPropertyEdit && initialDataRef.current) {
-      recordPropertyEdit({
-        entityType: 'link',
-        entityId: initialDataRef.current.id,
-        before: initialDataRef.current as unknown as Record<string, unknown>,
-        after: data as unknown as Record<string, unknown>
-      });
-    }
+    recordEdit('link', initialDataRef.current, data, recordPropertyEdit);
     const saveData = convertEditorDataToLinkSaveData(data);
     void editLinkService(saveData);
     initialDataRef.current = null;
@@ -211,17 +216,9 @@ export function useLinkEditorHandlers(
   }, [editEdge, recordPropertyEdit]);
 
   const handleApply = React.useCallback((data: LinkEditorData) => {
-    if (recordPropertyEdit && initialDataRef.current) {
-      const hasChanges = JSON.stringify(initialDataRef.current) !== JSON.stringify(data);
-      if (hasChanges) {
-        recordPropertyEdit({
-          entityType: 'link',
-          entityId: initialDataRef.current.id,
-          before: initialDataRef.current as unknown as Record<string, unknown>,
-          after: data as unknown as Record<string, unknown>
-        });
-        initialDataRef.current = { ...data };
-      }
+    const changed = recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
+    if (changed) {
+      initialDataRef.current = { ...data };
     }
     const saveData = convertEditorDataToLinkSaveData(data);
     void editLinkService(saveData);
@@ -235,6 +232,29 @@ export function useLinkEditorHandlers(
 // ============================================================================
 
 /**
+ * Save network annotation label to the annotations file
+ */
+function saveNetworkAnnotation(data: NetworkEditorData): void {
+  if (!isServicesInitialized()) return;
+
+  const annotationsIO = getAnnotationsIO();
+  const topologyIO = getTopologyIO();
+  const yamlPath = topologyIO.getYamlFilePath();
+  if (!yamlPath) return;
+
+  void annotationsIO.modifyAnnotations(yamlPath, annotations => {
+    if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
+    const existing = annotations.nodeAnnotations.find(n => n.id === data.id);
+    if (existing) {
+      existing.label = data.label;
+    } else {
+      annotations.nodeAnnotations.push({ id: data.id, label: data.label });
+    }
+    return annotations;
+  });
+}
+
+/**
  * Hook for network editor handlers
  */
 export function useNetworkEditorHandlers(
@@ -246,44 +266,12 @@ export function useNetworkEditorHandlers(
   }, [editNetwork]);
 
   const handleSave = React.useCallback((data: NetworkEditorData) => {
-    if (isServicesInitialized()) {
-      const annotationsIO = getAnnotationsIO();
-      const topologyIO = getTopologyIO();
-      const yamlPath = topologyIO.getYamlFilePath();
-      if (yamlPath) {
-        void annotationsIO.modifyAnnotations(yamlPath, annotations => {
-          if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
-          const existing = annotations.nodeAnnotations.find(n => n.id === data.id);
-          if (existing) {
-            existing.label = data.label;
-          } else {
-            annotations.nodeAnnotations.push({ id: data.id, label: data.label });
-          }
-          return annotations;
-        });
-      }
-    }
+    saveNetworkAnnotation(data);
     editNetwork(null);
   }, [editNetwork]);
 
   const handleApply = React.useCallback((data: NetworkEditorData) => {
-    if (isServicesInitialized()) {
-      const annotationsIO = getAnnotationsIO();
-      const topologyIO = getTopologyIO();
-      const yamlPath = topologyIO.getYamlFilePath();
-      if (yamlPath) {
-        void annotationsIO.modifyAnnotations(yamlPath, annotations => {
-          if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
-          const existing = annotations.nodeAnnotations.find(n => n.id === data.id);
-          if (existing) {
-            existing.label = data.label;
-          } else {
-            annotations.nodeAnnotations.push({ id: data.id, label: data.label });
-          }
-          return annotations;
-        });
-      }
-    }
+    saveNetworkAnnotation(data);
   }, []);
 
   return { handleClose, handleSave, handleApply };

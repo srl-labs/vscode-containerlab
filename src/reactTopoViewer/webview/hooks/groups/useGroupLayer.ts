@@ -5,34 +5,14 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { Core as CyCore } from 'cytoscape';
-import Layers from 'cytoscape-layers';
-import cytoscape from 'cytoscape';
 
 import { log } from '../../utils/logger';
-
-// Register the plugin once
-let pluginRegistered = false;
-function ensurePluginRegistered(): void {
-  if (!pluginRegistered) {
-    cytoscape.use(Layers);
-    pluginRegistered = true;
-  }
-}
-
-interface IHTMLLayer {
-  readonly type: 'html';
-  readonly node: HTMLElement;
-  remove(): void;
-  update(): void;
-}
-
-interface ILayers {
-  nodeLayer: {
-    insertBefore: (type: 'html') => IHTMLLayer;
-  };
-  /** Append a layer at the very end - on top of ALL other layers including selectBoxLayer */
-  append: (type: 'html') => IHTMLLayer;
-}
+import {
+  ensureCytoscapeLayersRegistered,
+  configureLayerNode,
+  type IHTMLLayer,
+  type ILayers
+} from '../shared/cytoscapeLayers';
 
 interface UseGroupLayerReturn {
   /** Layer node transformed with pan/zoom, rendered BELOW nodes */
@@ -56,7 +36,7 @@ export function useGroupLayer(cy: CyCore | null): UseGroupLayerReturn {
   useEffect(() => {
     if (!cy) return;
 
-    ensurePluginRegistered();
+    ensureCytoscapeLayersRegistered();
 
     try {
       // Get the layers API
@@ -72,22 +52,13 @@ export function useGroupLayer(cy: CyCore | null): UseGroupLayerReturn {
       const interactionLayer = layers.append('html');
       interactionLayerRef.current = interactionLayer;
 
-      // The layer node is a div that gets transformed with pan/zoom
-      const backgroundNode = backgroundLayer.node;
-      backgroundNode.style.pointerEvents = 'none';
-      backgroundNode.style.overflow = 'visible';
-      backgroundNode.style.transformOrigin = '0 0';
-      backgroundNode.classList.add('group-background-layer-container');
-
-      const interactionNode = interactionLayer.node;
-      interactionNode.style.pointerEvents = 'auto';
-      interactionNode.style.overflow = 'visible';
-      interactionNode.style.transformOrigin = '0 0';
-      interactionNode.classList.add('group-interaction-layer-container');
+      // Configure layer nodes
+      configureLayerNode(backgroundLayer.node, 'none', 'group-background-layer-container');
+      configureLayerNode(interactionLayer.node, 'auto', 'group-interaction-layer-container');
 
       log.info('[GroupLayer] Layers created');
-      setBackgroundLayerNode(backgroundNode);
-      setInteractionLayerNode(interactionNode);
+      setBackgroundLayerNode(backgroundLayer.node);
+      setInteractionLayerNode(interactionLayer.node);
     } catch (err) {
       log.error(`[GroupLayer] Failed to create layer: ${err}`);
     }

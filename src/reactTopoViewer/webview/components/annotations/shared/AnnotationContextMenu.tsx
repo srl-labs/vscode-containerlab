@@ -36,6 +36,14 @@ const itemStyle: React.CSSProperties = {
   textAlign: 'left'
 };
 
+// Shared hover handlers for menu items
+const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+};
+const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+  e.currentTarget.style.backgroundColor = 'transparent';
+};
+
 export const AnnotationContextMenu: React.FC<AnnotationContextMenuProps> = ({
   position,
   onEdit,
@@ -65,8 +73,8 @@ export const AnnotationContextMenu: React.FC<AnnotationContextMenuProps> = ({
     <div ref={menuRef} style={{ ...menuStyle, left: position.x, top: position.y }}>
       <button
         style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onClick={() => { onEdit(); onClose(); }}
       >
         <i className="fas fa-pen" style={{ width: 16 }} />
@@ -74,8 +82,8 @@ export const AnnotationContextMenu: React.FC<AnnotationContextMenuProps> = ({
       </button>
       <button
         style={itemStyle}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onClick={() => { onDelete(); onClose(); }}
       >
         <i className="fas fa-trash" style={{ width: 16 }} />

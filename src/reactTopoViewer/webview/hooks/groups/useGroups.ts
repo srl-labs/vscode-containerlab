@@ -10,6 +10,7 @@ import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
+// Note: saveNodeMembership is imported from groupHelpers for single node membership updates
 
 import { useGroupState } from './useGroupState';
 import {
@@ -20,7 +21,8 @@ import {
   findGroupAtPosition as findGroupAtPositionHelper,
   updateGroupInList,
   removeGroupFromList,
-  calculateBoundingBox
+  calculateBoundingBox,
+  saveNodeMembership
 } from './groupHelpers';
 import {
   getDescendantGroups,
@@ -40,47 +42,6 @@ import {
 
 export interface UseGroupsHookOptions extends UseGroupsOptions {
   cy: CyCore | null;
-}
-
-/**
- * Save node membership via AnnotationsIO service
- */
-function saveNodeMembership(nodeId: string, group: string | null, level: string | null): void {
-  if (!isServicesInitialized()) {
-    log.warn('[Groups] Services not initialized for membership save');
-    return;
-  }
-
-  const annotationsIO = getAnnotationsIO();
-  const topologyIO = getTopologyIO();
-
-  const yamlPath = topologyIO.getYamlFilePath();
-  if (!yamlPath) {
-    log.warn('[Groups] No YAML path for membership save');
-    return;
-  }
-
-  annotationsIO.modifyAnnotations(yamlPath, annotations => {
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
-
-    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-    if (existing) {
-      existing.group = group ?? undefined;
-      existing.level = level ?? undefined;
-    } else {
-      annotations.nodeAnnotations.push({
-        id: nodeId,
-        group: group ?? undefined,
-        level: level ?? undefined
-      });
-    }
-
-    return annotations;
-  }).catch(err => {
-    log.error(`[Groups] Failed to save membership: ${err}`);
-  });
 }
 
 /**

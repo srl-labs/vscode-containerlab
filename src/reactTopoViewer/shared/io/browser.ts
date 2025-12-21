@@ -8,6 +8,9 @@
  * - NodeFsAdapter (requires Node.js fs/path)
  */
 
+import type { TopologyAnnotations as _TopologyAnnotations } from '../types/topology';
+import { createEmptyAnnotations as _createEmptyAnnotations } from '../annotations/types';
+
 import type {
   FileSystemAdapter as _FileSystemAdapter,
   SaveResult as _SaveResult,
@@ -20,16 +23,10 @@ import {
   ERROR_SERVICE_NOT_INIT as _ERROR_SERVICE_NOT_INIT,
   ERROR_NO_YAML_PATH as _ERROR_NO_YAML_PATH
 } from './types';
-
-import type { TopologyAnnotations as _TopologyAnnotations } from '../types/topology';
-
 import type { AnnotationsIOOptions as _AnnotationsIOOptions } from './AnnotationsIO';
 import { AnnotationsIO as _AnnotationsIO, migrateAnnotations as _migrateAnnotations } from './AnnotationsIO';
-import { createEmptyAnnotations as _createEmptyAnnotations } from '../annotations/types';
-
 import type { TopologyIOOptions as _TopologyIOOptions } from './TopologyIO';
 import { TopologyIO as _TopologyIO } from './TopologyIO';
-
 import type { NodeSaveData as _NodeSaveData, NodeAnnotationData as _NodeAnnotationData } from './NodePersistenceIO';
 import type { LinkSaveData as _LinkSaveData } from './LinkPersistenceIO';
 

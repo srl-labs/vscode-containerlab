@@ -10,17 +10,31 @@ import type { CyElement } from '../../../shared/types/messages';
 import { updateCytoscapeElements } from '../../components/canvas/init';
 
 /**
+ * Get element data pair (React element data and Cytoscape element data)
+ * Returns null if element doesn't exist or has no id
+ */
+function getElementDataPair(
+  cy: Core,
+  reactEl: CyElement
+): { reactData: Record<string, unknown>; cyData: Record<string, unknown> } | null {
+  const id = reactEl.data?.id as string;
+  if (!id) return null;
+  const cyEl = cy.getElementById(id);
+  if (cyEl.empty()) return null;
+  return {
+    reactData: reactEl.data as Record<string, unknown>,
+    cyData: cyEl.data()
+  };
+}
+
+/**
  * Check if any element's visual data has changed (icon, color, etc.)
  */
 function hasVisualDataChanged(cy: Core, elements: CyElement[]): boolean {
   for (const reactEl of elements) {
-    const id = reactEl.data?.id as string;
-    if (!id) continue;
-    const cyEl = cy.getElementById(id);
-    if (cyEl.empty()) continue;
-
-    const reactData = reactEl.data as Record<string, unknown>;
-    const cyData = cyEl.data();
+    const pair = getElementDataPair(cy, reactEl);
+    if (!pair) continue;
+    const { reactData, cyData } = pair;
     if (reactData.topoViewerRole !== cyData.topoViewerRole ||
         reactData.iconColor !== cyData.iconColor ||
         reactData.iconCornerRadius !== cyData.iconCornerRadius) {
@@ -66,18 +80,14 @@ function getNodesWithChangedExtraData(cy: Core, elements: CyElement[]): string[]
   const changedIds: string[] = [];
   for (const reactEl of elements) {
     if (reactEl.group !== 'nodes') continue;
-    const id = reactEl.data?.id as string;
-    if (!id) continue;
-    const cyEl = cy.getElementById(id);
-    if (cyEl.empty()) continue;
+    const pair = getElementDataPair(cy, reactEl);
+    if (!pair) continue;
 
-    const reactData = reactEl.data as Record<string, unknown>;
-    const cyData = cyEl.data();
-    const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
-    const cyExtraData = cyData.extraData as Record<string, unknown> | undefined;
+    const reactExtraData = pair.reactData.extraData as Record<string, unknown> | undefined;
+    const cyExtraData = pair.cyData.extraData as Record<string, unknown> | undefined;
 
     if (!extraDataEqual(reactExtraData, cyExtraData)) {
-      changedIds.push(id);
+      changedIds.push(reactEl.data?.id as string);
     }
   }
   return changedIds;

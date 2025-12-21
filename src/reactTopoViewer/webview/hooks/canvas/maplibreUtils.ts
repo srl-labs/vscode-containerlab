@@ -213,6 +213,27 @@ interface GeoCapableShapeAnnotation extends GeoCapableAnnotation {
 }
 
 /**
+ * Helper to process annotations and assign missing geo coordinates.
+ * Returns early if state is not initialized.
+ */
+function processAnnotationsForGeoAssignment<T>(
+  state: MapLibreState,
+  annotations: T[],
+  processItem: (item: T) => { modified: T; changed: boolean }
+): AssignGeoResult<T> {
+  if (!state.map || !state.isInitialized) return { updated: annotations, hasChanges: false };
+
+  let hasChanges = false;
+  const updated = annotations.map(ann => {
+    const result = processItem(ann);
+    if (result.changed) hasChanges = true;
+    return result.modified;
+  });
+
+  return { updated, hasChanges };
+}
+
+/**
  * Assign missing geo coordinates to annotations based on their model position.
  * This is called when geomap is initialized to ensure all annotations have geo coords.
  *
@@ -224,21 +245,15 @@ export function assignMissingGeoCoordinatesToAnnotations<T extends GeoCapableAnn
   state: MapLibreState,
   annotations: T[]
 ): AssignGeoResult<T> {
-  if (!state.map || !state.isInitialized) return { updated: annotations, hasChanges: false };
-
-  let hasChanges = false;
-  const updated = annotations.map(ann => {
+  return processAnnotationsForGeoAssignment(state, annotations, ann => {
     if (!ann.geoCoordinates) {
       const geoCoords = unprojectToGeoCoords(state, ann.position);
       if (geoCoords) {
-        hasChanges = true;
-        return { ...ann, geoCoordinates: geoCoords };
+        return { modified: { ...ann, geoCoordinates: geoCoords }, changed: true };
       }
     }
-    return ann;
+    return { modified: ann, changed: false };
   });
-
-  return { updated: updated as T[], hasChanges };
 }
 
 /**
@@ -252,17 +267,15 @@ export function assignMissingGeoCoordinatesToShapeAnnotations<T extends GeoCapab
   state: MapLibreState,
   annotations: T[]
 ): AssignGeoResult<T> {
-  if (!state.map || !state.isInitialized) return { updated: annotations, hasChanges: false };
-
-  let hasChanges = false;
-  const updated = annotations.map(ann => {
+  return processAnnotationsForGeoAssignment(state, annotations, ann => {
     let modified = { ...ann };
+    let changed = false;
 
     // Assign geo coords for main position if missing
     if (!modified.geoCoordinates) {
       const geoCoords = unprojectToGeoCoords(state, modified.position);
       if (geoCoords) {
-        hasChanges = true;
+        changed = true;
         modified = { ...modified, geoCoordinates: geoCoords };
       }
     }
@@ -271,15 +284,13 @@ export function assignMissingGeoCoordinatesToShapeAnnotations<T extends GeoCapab
     if (modified.endPosition && !modified.endGeoCoordinates) {
       const endGeoCoords = unprojectToGeoCoords(state, modified.endPosition);
       if (endGeoCoords) {
-        hasChanges = true;
+        changed = true;
         modified = { ...modified, endGeoCoordinates: endGeoCoords };
       }
     }
 
-    return modified;
+    return { modified, changed };
   });
-
-  return { updated: updated as T[], hasChanges };
 }
 
 /**

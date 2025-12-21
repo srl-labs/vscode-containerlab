@@ -509,7 +509,7 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
   // Start audio when activated
   useEffect(() => {
     if (isActive && !audio.isPlaying && !audio.isLoading) {
-      audio.play();
+      void audio.play();
       setVisible(true);
     } else if (!isActive && audio.isPlaying) {
       audio.stop();

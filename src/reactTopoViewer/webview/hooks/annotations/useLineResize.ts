@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+import { addMouseMoveUpListeners } from '../shared/mouseEvents';
 
 import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShapeHelpers';
 
@@ -72,12 +73,7 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
       beforeStateRef.current = null;
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+    return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
   }, [isResizing, cy, annotation.position.x, annotation.position.y, onEndPositionChange, onDragEnd]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

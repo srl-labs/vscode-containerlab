@@ -2,10 +2,11 @@
  * Free Text Editor Panel - Draggable editor panel for text annotations
  * Uses BasePanel directly (no tabs needed)
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
 import type { FreeTextAnnotation } from '../../../../shared/types/topology';
+import { useGenericFormState, useEditorHandlers } from '../../../hooks/panels/useGenericFormState';
 
 import { FreeTextFormContent } from './FreeTextFormContent';
 
@@ -17,36 +18,8 @@ interface FreeTextEditorPanelProps {
   onDelete?: (id: string) => void;
 }
 
-/**
- * Hook to manage form state with change tracking
- */
-function useFreeTextForm(annotation: FreeTextAnnotation | null) {
-  const [formData, setFormData] = useState<FreeTextAnnotation | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (annotation) {
-      setFormData({ ...annotation });
-      setInitialData(JSON.stringify(annotation));
-    }
-  }, [annotation]);
-
-  const updateField = useCallback(<K extends keyof FreeTextAnnotation>(
-    field: K,
-    value: FreeTextAnnotation[K]
-  ) => {
-    setFormData(prev => prev ? { ...prev, [field]: value } : null);
-  }, []);
-
-  const resetInitialData = useCallback(() => {
-    if (formData) setInitialData(JSON.stringify(formData));
-  }, [formData]);
-
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
-  const isNew = annotation?.text === '';
-
-  return { formData, updateField, hasChanges, resetInitialData, isNew };
-}
+const getIsNew = (annotation: FreeTextAnnotation | null) => annotation?.text === '';
+const canSave = (data: FreeTextAnnotation) => data.text.trim().length > 0;
 
 export const FreeTextEditorPanel: React.FC<FreeTextEditorPanelProps> = ({
   isVisible,
@@ -55,32 +28,26 @@ export const FreeTextEditorPanel: React.FC<FreeTextEditorPanelProps> = ({
   onSave,
   onDelete
 }) => {
-  const { formData, updateField, hasChanges, resetInitialData, isNew } = useFreeTextForm(annotation);
+  const { formData, updateField, hasChanges, resetInitialData, isNew } = useGenericFormState(
+    annotation,
+    { getIsNew }
+  );
 
-  const handleApply = useCallback(() => {
-    if (formData?.text.trim()) {
-      onSave(formData);
-      resetInitialData();
-    }
-  }, [formData, onSave, resetInitialData]);
+  // Memoize canSave to avoid recreating on every render
+  const validateSave = useCallback((data: FreeTextAnnotation) => canSave(data), []);
 
-  const handleSaveAndClose = useCallback(() => {
-    if (formData?.text.trim()) {
-      onSave(formData);
-      onClose();
-    }
-  }, [formData, onSave, onClose]);
-
-  const handleDelete = useCallback(() => {
-    if (formData && onDelete) {
-      onDelete(formData.id);
-      onClose();
-    }
-  }, [formData, onDelete, onClose]);
+  const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
+    formData,
+    onSave,
+    onClose,
+    onDelete,
+    resetInitialData,
+    canSave: validateSave
+  });
 
   if (!formData) return null;
 
-  const canSave = formData.text.trim().length > 0;
+  const canSaveNow = canSave(formData);
 
   return (
     <BasePanel
@@ -91,7 +58,7 @@ export const FreeTextEditorPanel: React.FC<FreeTextEditorPanelProps> = ({
       onSecondaryClick={handleApply}
       primaryLabel="OK"
       secondaryLabel="Apply"
-      hasChanges={hasChanges && canSave}
+      hasChanges={hasChanges && canSaveNow}
       storageKey="free-text-editor"
       width={400}
       testId="free-text-editor"

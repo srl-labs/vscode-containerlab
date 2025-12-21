@@ -4,6 +4,17 @@
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 
 import { generateAnnotationId as generateId } from './annotationIdUtils';
+import {
+  SAVE_DEBOUNCE_MS,
+  PASTE_OFFSET,
+  updateAnnotationInList as genericUpdateInList,
+  updateAnnotationRotation as genericUpdateRotation,
+  saveAnnotationToList as genericSaveToList,
+  duplicateAnnotations as genericDuplicateAnnotations,
+} from './sharedAnnotationHelpers';
+
+// Re-export shared constants
+export { SAVE_DEBOUNCE_MS, PASTE_OFFSET };
 
 // ============================================================================
 // Constants
@@ -20,7 +31,6 @@ export const DEFAULT_BORDER_STYLE: NonNullable<FreeShapeAnnotation['borderStyle'
 export const DEFAULT_ARROW_SIZE = 10;
 export const DEFAULT_CORNER_RADIUS = 0;
 export const MIN_SHAPE_SIZE = 5;
-export const SAVE_DEBOUNCE_MS = 300;
 
 // ============================================================================
 // ID Generation
@@ -116,11 +126,11 @@ export function updateAnnotationInList(
   id: string,
   updater: (annotation: FreeShapeAnnotation) => FreeShapeAnnotation
 ): FreeShapeAnnotation[] {
-  return annotations.map(a => (a.id === id ? updater(a) : a));
+  return genericUpdateInList(annotations, id, updater);
 }
 
 export function updateAnnotationRotation(annotation: FreeShapeAnnotation, rotation: number): FreeShapeAnnotation {
-  return { ...annotation, rotation: ((rotation % 360) + 360) % 360 };
+  return genericUpdateRotation(annotation, rotation);
 }
 
 export function updateAnnotationPosition(
@@ -182,18 +192,12 @@ export function saveAnnotationToList(
   annotations: FreeShapeAnnotation[],
   annotation: FreeShapeAnnotation
 ): FreeShapeAnnotation[] {
-  const exists = annotations.some(a => a.id === annotation.id);
-  if (exists) {
-    return updateAnnotationInList(annotations, annotation.id, () => annotation);
-  }
-  return [...annotations, annotation];
+  return genericSaveToList(annotations, annotation);
 }
 
 // ============================================================================
 // Copy/Paste Operations
 // ============================================================================
-
-const PASTE_OFFSET = 20;
 
 export function duplicateAnnotation(annotation: FreeShapeAnnotation, offset = PASTE_OFFSET): FreeShapeAnnotation {
   if (annotation.shapeType === 'line') {
@@ -225,7 +229,6 @@ export function duplicateAnnotations(
   annotations: FreeShapeAnnotation[],
   pasteCount = 0
 ): FreeShapeAnnotation[] {
-  const offset = PASTE_OFFSET * (pasteCount + 1);
-  return annotations.map(a => duplicateAnnotation(a, offset));
+  return genericDuplicateAnnotations(annotations, duplicateAnnotation, pasteCount);
 }
 

@@ -2,11 +2,12 @@
  * GroupEditorPanel - Draggable editor panel for group properties
  * Uses BasePanel for consistent look and feel
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
 import type { GroupStyleAnnotation } from '../../../../shared/types/topology';
 import type { GroupEditorData } from '../../../hooks/groups/groupTypes';
+import { useGenericFormState, useEditorHandlers } from '../../../hooks/panels/useGenericFormState';
 
 import { GroupFormContent } from './GroupFormContent';
 
@@ -19,30 +20,26 @@ interface GroupEditorPanelProps {
   onStyleChange?: (groupId: string, style: Partial<GroupStyleAnnotation>) => void;
 }
 
-/**
- * Hook to manage form state with change tracking
- */
-function useGroupForm(
-  groupData: GroupEditorData | null,
-  onStyleChange?: (groupId: string, style: Partial<GroupStyleAnnotation>) => void
-) {
-  const [formData, setFormData] = useState<GroupEditorData | null>(null);
-  const [initialData, setInitialData] = useState<string | null>(null);
+export const GroupEditorPanel: React.FC<GroupEditorPanelProps> = ({
+  isVisible,
+  groupData,
+  onClose,
+  onSave,
+  onDelete,
+  onStyleChange
+}) => {
+  // Transform data to deep clone the style object
+  const transformData = useCallback((data: GroupEditorData) => ({
+    ...data,
+    style: { ...data.style }
+  }), []);
 
-  useEffect(() => {
-    if (groupData) {
-      setFormData({ ...groupData, style: { ...groupData.style } });
-      setInitialData(JSON.stringify(groupData));
-    }
-  }, [groupData]);
+  const { formData, updateField, hasChanges, resetInitialData, setFormData } = useGenericFormState(
+    groupData,
+    { transformData }
+  );
 
-  const updateField = useCallback(<K extends keyof GroupEditorData>(
-    field: K,
-    value: GroupEditorData[K]
-  ) => {
-    setFormData(prev => prev ? { ...prev, [field]: value } : null);
-  }, []);
-
+  // Custom updateStyle that also triggers live preview
   const updateStyle = useCallback(<K extends keyof GroupStyleAnnotation>(
     field: K,
     value: GroupStyleAnnotation[K]
@@ -58,47 +55,15 @@ function useGroupForm(
         style: { ...prev.style, [field]: value }
       };
     });
-  }, [onStyleChange]);
+  }, [setFormData, onStyleChange]);
 
-  const resetInitialData = useCallback(() => {
-    if (formData) setInitialData(JSON.stringify(formData));
-  }, [formData]);
-
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
-
-  return { formData, updateField, updateStyle, hasChanges, resetInitialData };
-}
-
-export const GroupEditorPanel: React.FC<GroupEditorPanelProps> = ({
-  isVisible,
-  groupData,
-  onClose,
-  onSave,
-  onDelete,
-  onStyleChange
-}) => {
-  const { formData, updateField, updateStyle, hasChanges, resetInitialData } = useGroupForm(groupData, onStyleChange);
-
-  const handleApply = useCallback(() => {
-    if (formData) {
-      onSave(formData);
-      resetInitialData();
-    }
-  }, [formData, onSave, resetInitialData]);
-
-  const handleSaveAndClose = useCallback(() => {
-    if (formData) {
-      onSave(formData);
-      onClose();
-    }
-  }, [formData, onSave, onClose]);
-
-  const handleDelete = useCallback(() => {
-    if (formData && onDelete) {
-      onDelete(formData.id);
-      onClose();
-    }
-  }, [formData, onDelete, onClose]);
+  const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
+    formData,
+    onSave,
+    onClose,
+    onDelete,
+    resetInitialData
+  });
 
   if (!formData) return null;
 

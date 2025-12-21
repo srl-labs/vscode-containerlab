@@ -9,7 +9,6 @@ import type {
   NetworkType as _NetworkType,
   NetworkEditorData as _NetworkEditorData
 } from '../../../../shared/types/editors';
-
 import {
   NETWORK_TYPES as _NETWORK_TYPES,
   VXLAN_TYPES as _VXLAN_TYPES,

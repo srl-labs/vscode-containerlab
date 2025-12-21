@@ -7,91 +7,20 @@ import { FilterUtils } from '../../../../../helpers/filterUtils';
 import { isSpecialEndpointId } from '../../../../shared/utilities/LinkTypes';
 import type { CyElement } from '../../../../shared/types/messages';
 import type { GraphChangeEntry } from '../../../hooks/graph/copyPasteUtils';
+import {
+  type ParsedInterfacePattern,
+  parseInterfacePattern,
+  generateInterfaceName,
+  getNodeInterfacePattern,
+  collectUsedIndices
+} from '../../../utils/interfacePatterns';
 
 export type LinkCandidate = { sourceId: string; targetId: string };
-
-interface ParsedInterfacePattern {
-  prefix: string;
-  suffix: string;
-  startIndex: number;
-}
 
 type EndpointAllocator = {
   parsed: ParsedInterfacePattern;
   usedIndices: Set<number>;
 };
-
-const DEFAULT_INTERFACE_PATTERN = 'eth{n}' as const;
-
-const DEFAULT_INTERFACE_PATTERNS: Record<string, string> = {
-  nokia_srlinux: 'e1-{n}',
-  nokia_srsim: '1/1/c{n}/1',
-  nokia_sros: '1/1/{n}',
-  cisco_xrd: 'Gi0-0-0-{n}',
-  cisco_xrv: 'Gi0/0/0/{n}',
-  cisco_xrv9k: 'Gi0/0/0/{n}',
-  cisco_csr1000v: 'Gi{n}',
-  cisco_c8000v: 'Gi{n}',
-  cisco_cat9kv: 'Gi1/0/{n}',
-  cisco_iol: 'e0/{n}'
-};
-
-const INTERFACE_PATTERN_REGEX = /^(.+)?\{n(?::(\d+))?\}(.+)?$/;
-
-function parseInterfacePattern(pattern: string): ParsedInterfacePattern {
-  const match = INTERFACE_PATTERN_REGEX.exec(pattern);
-  if (!match) {
-    return { prefix: pattern || 'eth', suffix: '', startIndex: 0 };
-  }
-  const [, prefix = '', startStr, suffix = ''] = match;
-  const startIndex = startStr ? parseInt(startStr, 10) : 0;
-  return { prefix, suffix, startIndex };
-}
-
-function generateInterfaceName(parsed: ParsedInterfacePattern, index: number): string {
-  const num = parsed.startIndex + index;
-  return `${parsed.prefix}${num}${parsed.suffix}`;
-}
-
-function getNodeInterfacePattern(node: NodeSingular): string {
-  const extraData = node.data('extraData') as { interfacePattern?: string; kind?: string } | undefined;
-  if (extraData?.interfacePattern) return extraData.interfacePattern;
-  const kind = extraData?.kind;
-  if (kind && DEFAULT_INTERFACE_PATTERNS[kind]) return DEFAULT_INTERFACE_PATTERNS[kind];
-  return DEFAULT_INTERFACE_PATTERN;
-}
-
-function extractInterfaceIndex(endpoint: string, parsed: ParsedInterfacePattern): number {
-  const escapedPrefix = parsed.prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const escapedSuffix = parsed.suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`^${escapedPrefix}(\\d+)${escapedSuffix}$`);
-  const match = regex.exec(endpoint);
-  if (match) {
-    return parseInt(match[1], 10) - parsed.startIndex;
-  }
-  return -1;
-}
-
-function collectUsedIndices(cy: CyCore, nodeId: string, parsed: ParsedInterfacePattern): Set<number> {
-  const usedIndices = new Set<number>();
-  const edges = cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-  edges.forEach((edge) => {
-    const src = edge.data('source');
-    const tgt = edge.data('target');
-    const epSrc = edge.data('sourceEndpoint') as string | undefined;
-    const epTgt = edge.data('targetEndpoint') as string | undefined;
-
-    if (src === nodeId && epSrc) {
-      const idx = extractInterfaceIndex(epSrc, parsed);
-      if (idx >= 0) usedIndices.add(idx);
-    }
-    if (tgt === nodeId && epTgt) {
-      const idx = extractInterfaceIndex(epTgt, parsed);
-      if (idx >= 0) usedIndices.add(idx);
-    }
-  });
-  return usedIndices;
-}
 
 function getOrCreateAllocator(
   allocators: Map<string, EndpointAllocator>,

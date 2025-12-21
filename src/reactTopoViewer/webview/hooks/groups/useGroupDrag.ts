@@ -5,6 +5,8 @@ import type React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
+import { addMouseMoveUpListeners } from '../shared/mouseEvents';
+
 interface DragState {
   startX: number;
   startY: number;
@@ -86,12 +88,7 @@ function useGroupDragEvents(
       onDragEnd?.(groupId, finalPosition);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+    return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
   }, [isDragging, cy, groupId, dragRef, setIsDragging, setDragPos, onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear, onDragEnd]);
 }
 

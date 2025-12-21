@@ -5,7 +5,8 @@
 import React from 'react';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
-import type { UndoRedoAction, UndoRedoActionAnnotation } from '../state/useUndoRedo';
+import type { UndoRedoActionAnnotation } from '../state/useUndoRedo';
+import { type UndoRedoApi, updateWithUndo, createPushUndoFn } from '../shared/undoHelpers';
 
 import type { UseFreeShapeAnnotationsReturn } from './freeShapeTypes';
 import {
@@ -13,10 +14,6 @@ import {
   updateAnnotationRotation,
   updateAnnotationEndPosition
 } from './freeShapeHelpers';
-
-interface UndoRedoApi {
-  pushAction: (action: UndoRedoAction) => void;
-}
 
 export interface UseFreeShapeUndoRedoHandlersReturn {
   handleCanvasClickWithUndo: (position: { x: number; y: number }) => void;
@@ -45,15 +42,9 @@ function cloneAnnotation(annotation: FreeShapeAnnotation | undefined): FreeShape
   };
 }
 
-function pushUndo(
-  undoRedo: UndoRedoApi,
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'getUndoRedoAction'>,
-  isApplyingRef: React.RefObject<boolean>,
-  before: FreeShapeAnnotation | null,
-  after: FreeShapeAnnotation | null
-): void {
-  if (isApplyingRef.current) return;
-  undoRedo.pushAction(freeShapeAnnotations.getUndoRedoAction(before, after));
+/** Transform annotation size */
+function transformSize(annotation: FreeShapeAnnotation, size: { width: number; height: number }): FreeShapeAnnotation {
+  return { ...annotation, ...size };
 }
 
 function applyAnnotationChangeInternal(
@@ -78,104 +69,6 @@ function applyAnnotationChangeInternal(
   }
 }
 
-function recordDeleteSelected(
-  undoRedo: UndoRedoApi,
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'getSelectedAnnotations' | 'getUndoRedoAction'>,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  if (isApplyingRef.current) return;
-  freeShapeAnnotations.getSelectedAnnotations().forEach(a => {
-    const beforeCopy = cloneAnnotation(a) as FreeShapeAnnotation;
-    pushUndo(undoRedo, freeShapeAnnotations, isApplyingRef, beforeCopy, null);
-  });
-}
-
-function handleCanvasClickWithUndoInternal(
-  position: { x: number; y: number },
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'handleCanvasClick' | 'getUndoRedoAction'>,
-  undoRedo: UndoRedoApi,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  const created = freeShapeAnnotations.handleCanvasClick(position);
-  if (created) {
-    pushUndo(undoRedo, freeShapeAnnotations, isApplyingRef, null, created);
-  }
-}
-
-function deleteAnnotationWithUndoInternal(
-  id: string,
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'annotations' | 'deleteAnnotation' | 'getUndoRedoAction'>,
-  undoRedo: UndoRedoApi,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  const beforeCopy = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
-  if (beforeCopy) {
-    pushUndo(undoRedo, freeShapeAnnotations, isApplyingRef, beforeCopy, null);
-  }
-  freeShapeAnnotations.deleteAnnotation(id);
-}
-
-function updatePositionWithUndoInternal(
-  id: string,
-  position: { x: number; y: number },
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'annotations' | 'updatePosition' | 'getUndoRedoAction'>,
-  undoRedo: UndoRedoApi,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  const beforeCopy = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
-  if (beforeCopy) {
-    const after = updateAnnotationPosition(beforeCopy, position);
-    pushUndo(undoRedo, freeShapeAnnotations, isApplyingRef, beforeCopy, after);
-  }
-  freeShapeAnnotations.updatePosition(id, position);
-}
-
-function updateSizeWithUndoInternal(
-  id: string,
-  width: number,
-  height: number,
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'annotations' | 'updateSize' | 'getUndoRedoAction'>,
-  undoRedo: UndoRedoApi,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  const beforeCopy = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
-  if (beforeCopy) {
-    const after = { ...beforeCopy, width, height };
-    pushUndo(undoRedo, freeShapeAnnotations, isApplyingRef, beforeCopy, after);
-  }
-  freeShapeAnnotations.updateSize(id, width, height);
-}
-
-function updateRotationWithUndoInternal(
-  id: string,
-  rotation: number,
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'annotations' | 'updateRotation' | 'getUndoRedoAction'>,
-  undoRedo: UndoRedoApi,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  const beforeCopy = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
-  if (beforeCopy) {
-    const after = updateAnnotationRotation(beforeCopy, rotation);
-    pushUndo(undoRedo, freeShapeAnnotations, isApplyingRef, beforeCopy, after);
-  }
-  freeShapeAnnotations.updateRotation(id, rotation);
-}
-
-function updateEndPositionWithUndoInternal(
-  id: string,
-  endPosition: { x: number; y: number },
-  freeShapeAnnotations: Pick<UseFreeShapeAnnotationsReturn, 'annotations' | 'updateEndPosition' | 'getUndoRedoAction'>,
-  undoRedo: UndoRedoApi,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  const beforeCopy = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
-  if (beforeCopy) {
-    const after = updateAnnotationEndPosition(beforeCopy, endPosition);
-    pushUndo(undoRedo, freeShapeAnnotations, isApplyingRef, beforeCopy, after);
-  }
-  freeShapeAnnotations.updateEndPosition(id, endPosition);
-}
-
 export function useFreeShapeAnnotationApplier(
   freeShapeAnnotations: UseFreeShapeAnnotationsReturn
 ): UseFreeShapeAnnotationApplierReturn {
@@ -192,44 +85,77 @@ export function useFreeShapeUndoRedoHandlers(
   isApplyingAnnotationUndoRedo: React.RefObject<boolean>
 ): UseFreeShapeUndoRedoHandlersReturn {
 
+  // Create shared push undo function
+  const pushUndoFn = React.useMemo(
+    () => createPushUndoFn(undoRedo, freeShapeAnnotations.getUndoRedoAction, isApplyingAnnotationUndoRedo),
+    [undoRedo, freeShapeAnnotations.getUndoRedoAction, isApplyingAnnotationUndoRedo]
+  );
+
   const handleCanvasClickWithUndo = React.useCallback((position: { x: number; y: number }) => {
-    handleCanvasClickWithUndoInternal(position, freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo);
-  }, [freeShapeAnnotations, undoRedo]);
+    const created = freeShapeAnnotations.handleCanvasClick(position);
+    if (created && !isApplyingAnnotationUndoRedo.current) {
+      undoRedo.pushAction(freeShapeAnnotations.getUndoRedoAction(null, created));
+    }
+  }, [freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo]);
 
   const deleteAnnotationWithUndo = React.useCallback((id: string) => {
-    deleteAnnotationWithUndoInternal(id, freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo);
-  }, [freeShapeAnnotations, undoRedo]);
+    const beforeCopy = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id));
+    if (beforeCopy && !isApplyingAnnotationUndoRedo.current) {
+      undoRedo.pushAction(freeShapeAnnotations.getUndoRedoAction(beforeCopy, null));
+    }
+    freeShapeAnnotations.deleteAnnotation(id);
+  }, [freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo]);
 
   const updatePositionWithUndo = React.useCallback((id: string, position: { x: number; y: number }) => {
-    updatePositionWithUndoInternal(id, position, freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo);
-  }, [freeShapeAnnotations, undoRedo]);
+    updateWithUndo(
+      id, freeShapeAnnotations.annotations, cloneAnnotation, updateAnnotationPosition,
+      pushUndoFn, freeShapeAnnotations.updatePosition, position
+    );
+  }, [freeShapeAnnotations.annotations, freeShapeAnnotations.updatePosition, pushUndoFn]);
 
   const updateSizeWithUndo = React.useCallback((id: string, width: number, height: number) => {
-    updateSizeWithUndoInternal(id, width, height, freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo);
-  }, [freeShapeAnnotations, undoRedo]);
+    updateWithUndo(
+      id, freeShapeAnnotations.annotations, cloneAnnotation, transformSize,
+      pushUndoFn, (itemId, size) => freeShapeAnnotations.updateSize(itemId, size.width, size.height),
+      { width, height }
+    );
+  }, [freeShapeAnnotations.annotations, freeShapeAnnotations.updateSize, pushUndoFn]);
 
   const updateRotationWithUndo = React.useCallback((id: string, rotation: number) => {
-    updateRotationWithUndoInternal(id, rotation, freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo);
-  }, [freeShapeAnnotations, undoRedo]);
+    updateWithUndo(
+      id, freeShapeAnnotations.annotations, cloneAnnotation, updateAnnotationRotation,
+      pushUndoFn, freeShapeAnnotations.updateRotation, rotation
+    );
+  }, [freeShapeAnnotations.annotations, freeShapeAnnotations.updateRotation, pushUndoFn]);
 
   const updateEndPositionWithUndo = React.useCallback((id: string, endPosition: { x: number; y: number }) => {
-    updateEndPositionWithUndoInternal(id, endPosition, freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo);
-  }, [freeShapeAnnotations, undoRedo]);
+    updateWithUndo(
+      id, freeShapeAnnotations.annotations, cloneAnnotation, updateAnnotationEndPosition,
+      pushUndoFn, freeShapeAnnotations.updateEndPosition, endPosition
+    );
+  }, [freeShapeAnnotations.annotations, freeShapeAnnotations.updateEndPosition, pushUndoFn]);
 
   const deleteSelectedWithUndo = React.useCallback(() => {
-    recordDeleteSelected(undoRedo, freeShapeAnnotations, isApplyingAnnotationUndoRedo);
+    if (!isApplyingAnnotationUndoRedo.current) {
+      freeShapeAnnotations.getSelectedAnnotations().forEach(a => {
+        const beforeCopy = cloneAnnotation(a);
+        if (beforeCopy) {
+          undoRedo.pushAction(freeShapeAnnotations.getUndoRedoAction(beforeCopy, null));
+        }
+      });
+    }
     freeShapeAnnotations.deleteSelectedAnnotations();
-  }, [freeShapeAnnotations, undoRedo]);
+  }, [freeShapeAnnotations, undoRedo, isApplyingAnnotationUndoRedo]);
 
   // Capture annotation state before a drag operation (for deferred undo)
   const captureAnnotationBefore = React.useCallback((id: string): FreeShapeAnnotation | null => {
-    return cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
+    return cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id));
   }, [freeShapeAnnotations.annotations]);
 
   // Record undo at drag end with before state captured at drag start
   const finalizeWithUndo = React.useCallback((before: FreeShapeAnnotation | null, id: string) => {
     if (!before || isApplyingAnnotationUndoRedo.current) return;
-    const after = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id) || undefined);
+    const after = cloneAnnotation(freeShapeAnnotations.annotations.find(a => a.id === id));
     if (!after) return;
     // Only record if something actually changed
     const hasChanged = JSON.stringify(before) !== JSON.stringify(after);

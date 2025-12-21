@@ -7,9 +7,8 @@ import type { Core, NodeSingular, EventObject } from 'cytoscape';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
 
-import { parseGroupId } from './groupHelpers';
+import { saveNodeMembership } from './groupHelpers';
 import { findDeepestGroupAtPosition } from './hierarchyUtils';
 
 export interface UseNodeReparentOptions {
@@ -39,46 +38,6 @@ function canHaveGroupMembership(node: NodeSingular): boolean {
 function findGroupForNode(node: NodeSingular, groups: GroupStyleAnnotation[]): GroupStyleAnnotation | null {
   const nodePos = node.position();
   return findDeepestGroupAtPosition(nodePos, groups);
-}
-
-function saveNodeMembership(nodeId: string, groupId: string | null): void {
-  if (!isServicesInitialized()) {
-    log.warn('[Reparent] Services not initialized for membership save');
-    return;
-  }
-
-  const annotationsIO = getAnnotationsIO();
-  const topologyIO = getTopologyIO();
-
-  const yamlPath = topologyIO.getYamlFilePath();
-  if (!yamlPath) {
-    log.warn('[Reparent] No YAML path for membership save');
-    return;
-  }
-
-  const { name, level } = groupId ? parseGroupId(groupId) : { name: null, level: null };
-
-  annotationsIO.modifyAnnotations(yamlPath, annotations => {
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
-
-    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-    if (existing) {
-      existing.group = name ?? undefined;
-      existing.level = level ?? undefined;
-    } else {
-      annotations.nodeAnnotations.push({
-        id: nodeId,
-        group: name ?? undefined,
-        level: level ?? undefined
-      });
-    }
-
-    return annotations;
-  }).catch(err => {
-    log.error(`[Reparent] Failed to save membership: ${err}`);
-  });
 }
 
 function handleMembershipChange(
