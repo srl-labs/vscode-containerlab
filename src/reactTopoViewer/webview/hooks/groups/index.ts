@@ -4,18 +4,34 @@
 
 // Core types and state
 export {
-  GROUP_MIN_SIZE,
-  GROUP_RESIZE_HANDLE_SIZE,
-  GROUP_SELECTION_PADDING
+  GROUP_LABEL_POSITIONS,
+  DEFAULT_GROUP_STYLE,
+  DEFAULT_GROUP_WIDTH,
+  DEFAULT_GROUP_HEIGHT,
+  MIN_GROUP_SIZE,
+  useGroupState,
+  useGroups,
+  useGroupHierarchy
 } from './core';
 export type {
-  GroupStyleAnnotation,
-  GroupStyle,
-  GroupHierarchyNode,
+  GroupLabelPosition,
+  GroupEditorData,
+  UseGroupStateOptions,
+  UseGroupStateReturn,
+  GroupUndoAction,
+  AnnotationMembership,
+  GroupHierarchySnapshot,
+  GroupClipboardData,
+  PastedGroupResult,
+  HierarchicalMoveUndoAction,
+  GroupDeleteUndoAction,
+  GroupPasteUndoAction,
+  GroupDragOffset,
+  UseGroupsOptions,
   UseGroupsReturn,
-  GroupsState,
-  GroupData,
-  UndoRedoActionGroup
+  UseGroupsHookOptions,
+  UseGroupHierarchyOptions,
+  UseGroupHierarchyReturn
 } from './core';
 
 // Interactions
@@ -35,11 +51,38 @@ export {
 
 // Utils
 export {
+  CMD_SAVE_NODE_GROUP_MEMBERSHIP,
+  CMD_SAVE_GROUP_ANNOTATIONS,
+  GROUP_SAVE_DEBOUNCE_MS,
   generateGroupId,
-  isDescendant,
-  buildGroupTree,
-  flattenGroupTree,
+  parseGroupId,
+  buildGroupId,
+  createDefaultGroup,
+  isPointInsideGroup,
   findGroupAtPosition,
-  getGroupLevel,
-  getGroupAtPosition
+  getGroupBoundingBox,
+  calculateBoundingBox,
+  updateGroupInList,
+  removeGroupFromList,
+  isGroupInSelectionBox,
+  getLabelPositionStyles,
+  buildGroupTree,
+  getDescendantGroups,
+  getDescendantGroupIds,
+  getChildGroups,
+  getChildGroupIds,
+  getAncestorGroups,
+  getParentGroup,
+  getGroupDepth,
+  findRootGroups,
+  validateNoCircularReference,
+  getAnnotationsInGroup,
+  getAllAnnotationsInHierarchy,
+  sortGroupsByDepthThenZIndex,
+  getGroupCenter,
+  getRelativePosition,
+  getAbsolutePosition,
+  isPositionInGroup,
+  findDeepestGroupAtPosition,
+  cloneGroup
 } from './utils';

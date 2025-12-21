@@ -1401,7 +1401,7 @@
     "package": "rm -rf dist && npm run typecheck && npm run lint && vsce package --allow-package-secrets npm",
     "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
-    "lint": "npm run lint:ts && npm run lint:circular && npm run lint:cpd && npm run lint:barrels && npm run lint:similar",
+    "lint": "npm run typecheck && npm run lint:ts && npm run lint:circular && npm run lint:cpd && npm run lint:barrels && npm run lint:similar",
     "lint:ts": "eslint --cache --cache-location node_modules/.cache/eslint --ext .ts,.tsx .",
     "lint:ts:fix": "eslint --ext .ts,.tsx . --fix",
     "lint:fix": "npm run lint:ts:fix",

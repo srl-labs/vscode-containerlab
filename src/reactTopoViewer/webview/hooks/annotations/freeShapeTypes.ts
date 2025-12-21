@@ -5,6 +5,9 @@ import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 
+// Re-export FreeShapeAnnotation for consumers
+export type { FreeShapeAnnotation };
+
 export interface UseFreeShapeAnnotationsOptions {
   cy: CyCore | null;
   mode: 'edit' | 'view';

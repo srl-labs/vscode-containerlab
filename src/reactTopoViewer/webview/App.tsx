@@ -17,9 +17,7 @@ import {
   SvgExportPanel, LabSettingsPanel, FreeTextEditorPanel, FreeShapeEditorPanel,
   GroupEditorPanel, type FloatingActionPanelHandle
 } from './components/panels';
-import {
-  NightcallMode, StickerbushMode, AquaticAmbienceMode, VaporwaveMode, DeusExMode, useEasterEgg
-} from './easter-eggs';
+import { useEasterEgg, EasterEggRenderer } from './easter-eggs';
 import {
   // Graph manipulation
   useNodeDragging, useEdgeCreation, useNodeCreation, useNetworkCreation,
@@ -105,12 +103,12 @@ export const App: React.FC = () => {
 
   // Expose cy instance and lock control for E2E testing (dev mode only)
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).__DEV__) {
+    if (typeof window !== 'undefined' && window.__DEV__) {
       if (cyInstance) {
-        (window as any).__DEV__.cy = cyInstance;
+        window.__DEV__.cy = cyInstance;
       }
-      (window as any).__DEV__.isLocked = () => state.isLocked;
-      (window as any).__DEV__.setLocked = (locked: boolean) => {
+      window.__DEV__.isLocked = () => state.isLocked;
+      window.__DEV__.setLocked = (locked: boolean) => {
         if (state.isLocked !== locked) {
           toggleLock();
         }
@@ -308,25 +306,25 @@ export const App: React.FC = () => {
 
   // Expose undoRedo and handlers for E2E testing (dev mode only)
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).__DEV__) {
-      (window as any).__DEV__.undoRedo = {
+    if (typeof window !== 'undefined' && window.__DEV__) {
+      window.__DEV__.undoRedo = {
         canUndo: undoRedo.canUndo,
         canRedo: undoRedo.canRedo
       };
       // Expose handleEdgeCreated for E2E tests to push undo actions when creating links
-      (window as any).__DEV__.handleEdgeCreated = handleEdgeCreated;
+      window.__DEV__.handleEdgeCreated = handleEdgeCreated;
       // Expose handleNodeCreatedCallback for E2E tests to create nodes with undo support
-      (window as any).__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
+      window.__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
       // Expose handleAddGroupWithUndo for E2E tests to create groups from selected nodes
-      (window as any).__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
+      window.__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
     }
   }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo]);
 
   // Separate effect for groups (always update when groups change)
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).__DEV__) {
-      (window as any).__DEV__.getReactGroups = () => groups.groups;
-      (window as any).__DEV__.groupsCount = groups.groups.length;
+    if (typeof window !== 'undefined' && window.__DEV__) {
+      window.__DEV__.getReactGroups = () => groups.groups;
+      window.__DEV__.groupsCount = groups.groups.length;
     }
   }, [groups.groups]);
 
@@ -920,52 +918,8 @@ export const App: React.FC = () => {
           items={menuItems}
           onClose={closeMenu}
         />
-        {/* Easter egg: Logo click - Nightcall, Stickerbrush, Aquatic, or Vaporwave (25% each) */}
-        {easterEgg.state.easterEggMode === 'nightcall' && (
-          <NightcallMode
-            isActive={easterEgg.state.isPartyMode}
-            onClose={easterEgg.endPartyMode}
-            onSwitchMode={easterEgg.nextMode}
-            modeName={easterEgg.getModeName()}
-            cyInstance={cyInstance}
-          />
-        )}
-        {easterEgg.state.easterEggMode === 'stickerbrush' && (
-          <StickerbushMode
-            isActive={easterEgg.state.isPartyMode}
-            onClose={easterEgg.endPartyMode}
-            onSwitchMode={easterEgg.nextMode}
-            modeName={easterEgg.getModeName()}
-            cyInstance={cyInstance}
-          />
-        )}
-        {easterEgg.state.easterEggMode === 'aquatic' && (
-          <AquaticAmbienceMode
-            isActive={easterEgg.state.isPartyMode}
-            onClose={easterEgg.endPartyMode}
-            onSwitchMode={easterEgg.nextMode}
-            modeName={easterEgg.getModeName()}
-            cyInstance={cyInstance}
-          />
-        )}
-        {easterEgg.state.easterEggMode === 'vaporwave' && (
-          <VaporwaveMode
-            isActive={easterEgg.state.isPartyMode}
-            onClose={easterEgg.endPartyMode}
-            onSwitchMode={easterEgg.nextMode}
-            modeName={easterEgg.getModeName()}
-            cyInstance={cyInstance}
-          />
-        )}
-        {easterEgg.state.easterEggMode === 'deusex' && (
-          <DeusExMode
-            isActive={easterEgg.state.isPartyMode}
-            onClose={easterEgg.endPartyMode}
-            onSwitchMode={easterEgg.nextMode}
-            modeName={easterEgg.getModeName()}
-            cyInstance={cyInstance}
-          />
-        )}
+        {/* Easter egg: Logo click - Nightcall, Stickerbrush, Aquatic, Vaporwave, or DeusEx */}
+        <EasterEggRenderer easterEgg={easterEgg} cyInstance={cyInstance} />
       </main>
     </div>
   );

@@ -27,6 +27,9 @@ export {
   DeusExMode,
 } from './modes';
 
+// Renderer component
+export { EasterEggRenderer } from './EasterEggRenderer';
+
 // Audio hooks
 export {
   useAquaticAmbienceAudio,

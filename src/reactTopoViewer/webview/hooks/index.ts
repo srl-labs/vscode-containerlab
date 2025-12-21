@@ -75,9 +75,14 @@ export type {
 
 // Groups
 export {
-  GROUP_MIN_SIZE,
-  GROUP_RESIZE_HANDLE_SIZE,
-  GROUP_SELECTION_PADDING,
+  GROUP_LABEL_POSITIONS,
+  DEFAULT_GROUP_STYLE,
+  DEFAULT_GROUP_WIDTH,
+  DEFAULT_GROUP_HEIGHT,
+  MIN_GROUP_SIZE,
+  useGroupState,
+  useGroups,
+  useGroupHierarchy,
   useAppGroups,
   useAppGroupUndoHandlers,
   useNodeReparent,
@@ -86,21 +91,21 @@ export {
   useGroupDragUndo,
   useGroupUndoRedoHandlers,
   generateGroupId,
-  isDescendant,
   buildGroupTree,
-  flattenGroupTree,
   findGroupAtPosition,
-  getGroupLevel,
-  getGroupAtPosition
+  getDescendantGroups,
+  getChildGroups,
+  getParentGroup,
+  getGroupDepth
 } from './groups';
 export type {
-  GroupStyleAnnotation,
-  GroupStyle,
-  GroupHierarchyNode,
-  UseGroupsReturn,
-  GroupsState,
-  GroupData,
-  UndoRedoActionGroup
+  GroupLabelPosition,
+  GroupEditorData,
+  UseGroupStateOptions,
+  UseGroupStateReturn,
+  GroupUndoAction,
+  UseGroupsOptions,
+  UseGroupsReturn
 } from './groups';
 
 // Panels

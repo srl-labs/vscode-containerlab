@@ -13,6 +13,7 @@ export type {
 
 // Types
 export type {
+  FreeShapeAnnotation,
   UseFreeShapeAnnotationsOptions,
   UseFreeShapeAnnotationsReturn,
   AnnotationUndoAction as FreeShapeUndoAction
