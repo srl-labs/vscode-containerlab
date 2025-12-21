@@ -15,7 +15,7 @@ export type {
   UseUndoRedoReturn
 } from './useUndoRedo';
 
-export { useGraphUndoRedoHandlers } from './useGraphUndoRedoHandlers';
+export { useGraphUndoRedoHandlers, useGraphHandlersWithContext } from './useGraphUndoRedoHandlers';
 
 export { useCustomTemplateEditor } from './useCustomTemplateEditor';
 export type { CustomTemplateEditorHandlers, CustomTemplateEditorResult } from './useCustomTemplateEditor';

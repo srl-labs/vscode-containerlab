@@ -14,7 +14,7 @@ export {
 export type { GraphChangeEntry } from './graph';
 
 // State management (for internal types, import from './state')
-export { useUndoRedo, useGraphUndoRedoHandlers, useCustomTemplateEditor } from './state';
+export { useUndoRedo, useGraphUndoRedoHandlers, useGraphHandlersWithContext, useCustomTemplateEditor } from './state';
 
 // UI interactions (for types, import from './ui')
 export {
@@ -75,3 +75,11 @@ export {
   useContextMenuHandlers,
   DEFAULT_GRID_LINE_WIDTH
 } from './useAppState';
+
+// App helper hooks (extracted from App.tsx)
+export {
+  useCustomNodeCommands,
+  useNavbarCommands,
+  useShapeLayer
+} from './app/useAppHelpers';
+export type { CustomNodeCommands, NavbarCommands, UseShapeLayerReturn } from './app/useAppHelpers';
