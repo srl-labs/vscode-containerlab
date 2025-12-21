@@ -71,7 +71,6 @@ export { useAnnotationListSelection, useAnnotationListCopyPaste, getSelectedById
 export type { AnnotationWithId, UseAnnotationListSelectionReturn, UseAnnotationListCopyPasteReturn } from './useAnnotationListOperations';
 export { useCombinedAnnotationShortcuts } from './useCombinedAnnotationShortcuts';
 export type { UseCombinedAnnotationShortcutsReturn, GroupClipboardOptions } from './useCombinedAnnotationShortcuts';
-export { useAnnotationGroupMove } from './useAnnotationGroupMove';
 export { useAnnotationEffects } from './useAnnotationEffects';
 export { useAnnotationReparent } from './useAnnotationReparent';
 export type { UseAnnotationReparentOptions, UseAnnotationReparentReturn } from './useAnnotationReparent';

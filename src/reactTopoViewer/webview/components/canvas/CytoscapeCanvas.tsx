@@ -4,17 +4,23 @@
  */
 import React, { useRef, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
 import type { Core } from 'cytoscape';
+import cytoscape from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
 import { useTopoViewer } from '../../context/TopoViewerContext';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
-import {
-  useElementsUpdate,
-  useCytoscapeInitializer,
-  useDelayedCytoscapeInit
-} from '../../hooks/canvas';
+import { useElementsUpdate } from '../../hooks/canvas';
+import { log } from '../../utils/logger';
 
-import { ensureColaRegistered, getLayoutOptions } from './init';
+import {
+  ensureColaRegistered,
+  getLayoutOptions,
+  ensureGridGuideRegistered,
+  hasPresetPositions,
+  createCytoscapeConfig,
+  handleCytoscapeReady
+} from './init';
+import { setupEventHandlers, attachCustomWheelZoom } from './events';
 
 interface NodeDataUpdatedMessage {
   type: 'node-data-updated';
@@ -22,6 +28,129 @@ interface NodeDataUpdatedMessage {
     nodeId: string;
     extraData: Record<string, unknown>;
   };
+}
+
+type SelectCallback = (id: string | null) => void;
+
+interface CytoscapeInitOptions {
+  editNode?: SelectCallback;
+  editEdge?: SelectCallback;
+  getMode?: () => 'edit' | 'view';
+  getIsLocked?: () => boolean;
+}
+
+/**
+ * Setup delayed initialization with ResizeObserver fallback
+ */
+function setupDelayedInit(
+  container: HTMLDivElement,
+  initialElementsRef: React.RefObject<CyElement[] | null>,
+  initCytoscape: (initialElements: CyElement[]) => (() => void) | null,
+  cleanupRef: React.RefObject<(() => void) | null>
+): () => void {
+  let initialized = false;
+  let resizeObserver: ResizeObserver | null = null;
+  let intervalId: number | null = null;
+
+  const tryInit = () => {
+    if (initialized) return;
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    initialized = true;
+    cleanupRef.current = initCytoscape(initialElementsRef.current ?? []) ?? null;
+    resizeObserver?.disconnect();
+    if (intervalId !== null) {
+      window.clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
+
+  tryInit();
+
+  if (!initialized) {
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => tryInit());
+      resizeObserver.observe(container);
+    } else {
+      intervalId = window.setInterval(() => tryInit(), 100);
+    }
+  }
+
+  return () => {
+    resizeObserver?.disconnect();
+    if (intervalId !== null) {
+      window.clearInterval(intervalId);
+    }
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+  };
+}
+
+/**
+ * Hook for delayed Cytoscape initialization
+ * Waits for container to have non-zero dimensions before initializing
+ */
+function useDelayedCytoscapeInit(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  initialElementsRef: React.RefObject<CyElement[] | null>,
+  initCytoscape: (initialElements: CyElement[]) => (() => void) | null,
+  cleanupRef: React.RefObject<(() => void) | null>
+): void {
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    return setupDelayedInit(container, initialElementsRef, initCytoscape, cleanupRef);
+  }, [containerRef, initialElementsRef, initCytoscape, cleanupRef]);
+}
+
+/**
+ * Hook that returns a function to initialize Cytoscape
+ */
+function useCytoscapeInitializer(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  cyRef: React.RefObject<Core | null>,
+  selectNode: SelectCallback,
+  selectEdge: SelectCallback,
+  options?: CytoscapeInitOptions
+) {
+  return useCallback((initialElements: CyElement[]) => {
+    const container = containerRef.current;
+    if (!container) return null;
+    ensureGridGuideRegistered();
+
+    const rect = container.getBoundingClientRect();
+    log.info(`[CytoscapeCanvas] Container size: ${rect.width}x${rect.height}`);
+    log.info(`[CytoscapeCanvas] Initializing with ${initialElements.length} elements`);
+
+    if (rect.width === 0 || rect.height === 0) {
+      log.warn('[CytoscapeCanvas] Container has zero dimensions, skipping init');
+      return null;
+    }
+
+    const usePresetLayout = hasPresetPositions(initialElements);
+    log.info(`[CytoscapeCanvas] Preset positions detected: ${usePresetLayout}`);
+
+    const cy = cytoscape(createCytoscapeConfig(container, initialElements));
+
+    cyRef.current = cy;
+    cy.userZoomingEnabled(false);
+    const detachWheel = attachCustomWheelZoom(cyRef, container);
+
+    setupEventHandlers(cy, selectNode, selectEdge, {
+      editNode: options?.editNode,
+      editEdge: options?.editEdge,
+      getMode: options?.getMode,
+      getIsLocked: options?.getIsLocked
+    });
+
+    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
+
+    return () => {
+      detachWheel();
+      cy.destroy();
+      cyRef.current = null;
+    };
+  }, [selectNode, selectEdge, containerRef, cyRef, options?.editNode, options?.editEdge, options?.getMode, options?.getIsLocked]);
 }
 
 
