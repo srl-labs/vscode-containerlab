@@ -21,21 +21,30 @@ import {
   NightcallMode, StickerbushMode, AquaticAmbienceMode, VaporwaveMode, DeusExMode, useEasterEgg
 } from './easter-eggs';
 import {
-  useContextMenu, useNodeDragging, useEdgeCreation, useNodeCreation, useNetworkCreation,
+  // Graph manipulation
+  useNodeDragging, useEdgeCreation, useNodeCreation, useNetworkCreation,
+  // State management
   useGraphUndoRedoHandlers, useCustomTemplateEditor,
-  useAppFreeTextAnnotations, useAppFreeShapeAnnotations, useFreeShapeAnnotationApplier,
-  useFreeShapeUndoRedoHandlers, useFreeTextAnnotationApplier, useFreeTextUndoRedoHandlers,
-  useAnnotationEffects, useAddShapesHandler,
-  useAppGroups, useCombinedAnnotationApplier, useAppGroupUndoHandlers, useGroupDragUndo,
-  useGroupLayer, useShapeLayer, useNodeReparent, useGroupUndoRedoHandlers, generateGroupId,
-  useKeyboardShortcuts, useShortcutDisplay, useCustomNodeCommands, useAppHandlers,
+  // Canvas/App state
   useCytoscapeInstance, useSelectionData, useNavbarActions, useContextMenuHandlers,
-  useLayoutControls, useNavbarCommands, usePanelVisibility, useFloatingPanelCommands,
-  useLinkLabelVisibility, useGeoMap, useUnifiedClipboard,
+  useLayoutControls, useLinkLabelVisibility, useGeoMap, useUnifiedClipboard,
   assignMissingGeoCoordinatesToAnnotations, assignMissingGeoCoordinatesToShapeAnnotations,
+  // Panel handlers
   useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers,
   useNodeCreationHandlers, useMembershipCallbacks,
-  type GraphChangeEntry, type PendingMembershipChange, type NetworkType, type NodeCreationState
+  // UI hooks
+  useContextMenu, useCustomNodeCommands, useNavbarCommands, useFloatingPanelCommands,
+  usePanelVisibility, useKeyboardShortcuts, useShortcutDisplay, useAppHandlers,
+  // Group hooks
+  useAppGroups, useAppGroupUndoHandlers, useNodeReparent, useGroupLayer,
+  useCombinedAnnotationApplier, useGroupDragUndo, useGroupUndoRedoHandlers,
+  generateGroupId,
+  // Annotation hooks
+  useAppFreeTextAnnotations, useFreeTextAnnotationApplier, useFreeTextUndoRedoHandlers,
+  useAppFreeShapeAnnotations, useFreeShapeAnnotationApplier, useFreeShapeUndoRedoHandlers,
+  useShapeLayer, useAnnotationEffects, useAddShapesHandler,
+  // Types
+  type GraphChangeEntry, type NetworkType, type NodeCreationState, type PendingMembershipChange
 } from './hooks';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from './services';

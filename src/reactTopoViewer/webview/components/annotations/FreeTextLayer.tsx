@@ -6,14 +6,14 @@ import React, { useRef, useState, useMemo, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import { computeAnnotationStyle } from '../../hooks/annotations/text';
 import {
-  computeAnnotationStyle,
   useAnnotationInteractions,
   useAnnotationClickHandlers,
   useLayerClickHandler,
   useAnnotationBoxSelection
-} from '../../hooks/annotations';
-import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationReparent';
+} from '../../hooks/annotations/interactions';
+import { useAnnotationReparent } from '../../hooks/annotations/management';
 import { renderMarkdown } from '../../utils/markdownRenderer';
 import type { MapLibreState } from '../../hooks/canvas/maplibreUtils';
 

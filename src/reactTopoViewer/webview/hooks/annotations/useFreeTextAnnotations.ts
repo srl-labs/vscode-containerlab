@@ -6,7 +6,7 @@ import { useCallback, useMemo } from 'react';
 
 import type { FreeTextAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
+import { findDeepestGroupAtPosition } from '../groups/utils';
 
 import { createDefaultAnnotation } from './freeTextHelpers';
 import { useFreeTextState, useFreeTextActions } from './useFreeTextState';

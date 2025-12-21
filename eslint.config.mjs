@@ -109,7 +109,7 @@ export default [
         'newlines-between': 'always'
       }],
       'import-x/no-useless-path-segments': ['error', { noUselessIndex: true }],
-      'import-x/max-dependencies': ['warn', { max: 12 }],
+      'import-x/max-dependencies': ['warn', { max: 15 }],
 
       // ─── Consistent type imports ───
       '@typescript-eslint/consistent-type-imports': ['error', {

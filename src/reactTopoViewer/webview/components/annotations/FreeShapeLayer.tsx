@@ -15,9 +15,9 @@ import {
   useAnnotationClickHandlers,
   useLayerClickHandler,
   useAnnotationBoxSelection
-} from '../../hooks/annotations';
-import { useAnnotationReparent } from '../../hooks/annotations/useAnnotationReparent';
-import { getLineCenter } from '../../hooks/annotations/freeShapeHelpers';
+} from '../../hooks/annotations/interactions';
+import { useAnnotationReparent } from '../../hooks/annotations/management';
+import { getLineCenter } from '../../hooks/annotations/shapes';
 import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
 import { projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
 

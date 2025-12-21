@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { findDeepestGroupAtPosition } from '../groups/hierarchyUtils';
+import { findDeepestGroupAtPosition } from '../groups/utils';
 
 import { createDefaultAnnotation } from './freeShapeHelpers';
 import { useFreeShapeState, useFreeShapeActions } from './useFreeShapeState';

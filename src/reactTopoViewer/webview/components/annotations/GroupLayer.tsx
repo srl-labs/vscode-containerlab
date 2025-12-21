@@ -8,20 +8,16 @@ import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { getLabelPositionStyles } from '../../hooks/groups/groupHelpers';
-import { useDelayedHover } from '../../hooks/ui/useDelayedHover';
-import type {
-  ResizeCorner} from '../../hooks/groups';
+import { getLabelPositionStyles, getGroupDepth, findDeepestGroupAtPosition, validateNoCircularReference } from '../../hooks/groups/utils';
+import { useDelayedHover } from '../../hooks/ui/interactions';
+import type { ResizeCorner } from '../../hooks/groups/interactions';
 import {
   useGroupDragInteraction,
   useGroupResize,
   useGroupItemHandlers,
-  useDragPositionOverrides,
-  getGroupDepth,
-  findDeepestGroupAtPosition,
-  validateNoCircularReference
-} from '../../hooks/groups';
-import { useAnnotationBoxSelection } from '../../hooks/annotations/useAnnotationSelection';
+  useDragPositionOverrides
+} from '../../hooks/groups/interactions';
+import { useAnnotationBoxSelection } from '../../hooks/annotations/interactions';
 import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
 import { projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
 

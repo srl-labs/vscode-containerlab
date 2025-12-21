@@ -4,7 +4,7 @@
  */
 import React from 'react';
 
-import type { UseGroupClipboardReturn } from '../groups/useGroupClipboard';
+import type { UseGroupClipboardReturn } from '../groups/interactions';
 import { log } from '../../utils/logger';
 
 import type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
