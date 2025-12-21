@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 import sonarjs from 'eslint-plugin-sonarjs';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 import boundaries from 'eslint-plugin-boundaries';
 import unicorn from 'eslint-plugin-unicorn';
 
@@ -54,14 +54,22 @@ export default [
         __filename: 'readonly'
       }
     },
-    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, import: importPlugin, boundaries },
+    plugins: { '@typescript-eslint': tseslint.plugin, sonarjs, 'import-x': importPlugin, boundaries },
     settings: {
       'boundaries/elements': [
-        { type: 'extension', pattern: 'src/reactTopoViewer/extension/**' },
-        { type: 'webview', pattern: 'src/reactTopoViewer/webview/**' },
-        { type: 'shared', pattern: 'src/reactTopoViewer/shared/**' },
+        // ReactTopoViewer layers
+        { type: 'rtv-extension', pattern: 'src/reactTopoViewer/extension/**', mode: 'file' },
+        { type: 'rtv-webview', pattern: 'src/reactTopoViewer/webview/**', mode: 'file' },
+        { type: 'rtv-shared', pattern: 'src/reactTopoViewer/shared/**', mode: 'file' },
+        // Main extension layers
+        { type: 'commands', pattern: 'src/commands/**', mode: 'file' },
+        { type: 'treeView', pattern: 'src/treeView/**', mode: 'file' },
+        { type: 'services', pattern: 'src/services/**', mode: 'file' },
+        { type: 'utils', pattern: 'src/utils/**', mode: 'file' },
+        { type: 'helpers', pattern: 'src/helpers/**', mode: 'file' },
+        { type: 'types', pattern: 'src/types/**', mode: 'file' },
       ],
-      'boundaries/ignore': ['**/*.test.ts', '**/*.test.tsx'],
+      'boundaries/ignore': ['**/*.test.ts', '**/*.test.tsx', 'src/extension.ts', 'src/globals.ts'],
     },
     // merge the two rule-sets
     rules: {
@@ -95,13 +103,13 @@ export default [
       '@typescript-eslint/await-thenable': 'error',
 
       // ─── Import rules ───
-      'import/no-duplicates': 'error',
-      'import/order': ['warn', {
+      'import-x/no-duplicates': 'error',
+      'import-x/order': ['warn', {
         'groups': ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
         'newlines-between': 'always'
       }],
-      'import/no-useless-path-segments': ['error', { noUselessIndex: true }],
-      'import/max-dependencies': ['warn', { max: 15 }],
+      'import-x/no-useless-path-segments': ['error', { noUselessIndex: true }],
+      'import-x/max-dependencies': ['warn', { max: 12 }],
 
       // ─── Consistent type imports ───
       '@typescript-eslint/consistent-type-imports': ['error', {
@@ -109,18 +117,26 @@ export default [
         fixStyle: 'separate-type-imports',
       }],
 
-      // ─── Module boundary rules (reactTopoViewer) ───
+      // ─── Module boundary rules ───
       'boundaries/element-types': ['error', {
         default: 'disallow',
         rules: [
-          { from: 'extension', allow: ['extension', 'shared'] },
-          { from: 'webview', allow: ['webview', 'shared'] },
-          { from: 'shared', allow: ['shared'] },
+          // ReactTopoViewer layer boundaries
+          { from: 'rtv-extension', allow: ['rtv-extension', 'rtv-shared'] },
+          { from: 'rtv-webview', allow: ['rtv-webview', 'rtv-shared'] },
+          { from: 'rtv-shared', allow: ['rtv-shared'] },
+          // Main extension layer boundaries
+          { from: 'commands', allow: ['commands', 'services', 'utils', 'helpers', 'types', 'treeView'] },
+          { from: 'treeView', allow: ['treeView', 'services', 'utils', 'helpers', 'types'] },
+          { from: 'services', allow: ['services', 'utils', 'helpers', 'types'] },
+          { from: 'utils', allow: ['utils', 'types'] },
+          { from: 'helpers', allow: ['helpers', 'types'] },
+          { from: 'types', allow: ['types'] },
         ],
       }],
 
       // ─── Cross-layer import restrictions ───
-      'import/no-restricted-paths': ['error', {
+      'import-x/no-restricted-paths': ['error', {
         zones: [
           {
             target: './src/reactTopoViewer/webview/**/*',
@@ -132,8 +148,32 @@ export default [
             from: './src/reactTopoViewer/webview/**/*',
             message: 'Extension cannot import from webview layer',
           },
+          // TreeView cannot import from commands
+          {
+            target: './src/treeView/**/*',
+            from: './src/commands/**/*',
+            message: 'TreeView cannot import from Commands. Use Services layer.',
+          },
+          // Commands should only import from treeView barrel
+          {
+            target: './src/commands/**/*',
+            from: './src/treeView/**/!(index).ts',
+            message: 'Commands should import from treeView/index.ts only.',
+          },
         ],
       }],
+
+      // ─── Type safety rules (warnings for gradual adoption) ───
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+
+      // ─── Complexity and readability rules ───
+      'no-nested-ternary': 'error',
+      'max-params': ['warn', { max: 10 }],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
 
       // ─── Ban wildcard re-exports ───
       'no-restricted-syntax': [
@@ -213,6 +253,19 @@ export default [
         case: 'camelCase',
         ignore: ['^index\\.ts$'],
       }],
+    }
+  },
+
+  /* ---------- Test files: relax type safety rules ---------- */
+  {
+    files: ['test/**/*.ts', 'test/**/*.tsx', '**/*.test.ts', '**/*.test.tsx'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      'no-console': 'off',
     }
   }
 ];
