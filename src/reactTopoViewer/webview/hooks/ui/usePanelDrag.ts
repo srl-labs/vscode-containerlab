@@ -5,7 +5,7 @@
 import type React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-import { addMouseMoveUpListeners } from '../shared/mouseEvents';
+import { addMouseMoveUpListeners } from '../shared/dragHelpers';
 
 export interface Position {
   x: number;

@@ -6,10 +6,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeShapeAnnotation } from '../../../shared/types/topology';
-import { handleDragStart } from '../shared/dragHelpers';
-import { addMouseMoveUpListeners } from '../shared/mouseEvents';
+import { handleDragStart, addMouseMoveUpListeners } from '../shared/dragHelpers';
 
-import type { RenderedPosition } from './freeTextLayerHelpers';
+import type { RenderedPosition } from './freeText';
 import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShape';
 
 // ============================================================================

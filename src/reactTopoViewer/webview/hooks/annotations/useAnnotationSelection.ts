@@ -7,7 +7,7 @@ import type { Core as CyCore } from 'cytoscape';
 
 import { log } from '../../utils/logger';
 
-import { renderedToModel } from './freeTextLayerHelpers';
+import { renderedToModel } from './freeText';
 
 /**
  * Hook for annotation click handlers including selection and context menu

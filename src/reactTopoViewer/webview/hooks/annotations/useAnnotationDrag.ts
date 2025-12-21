@@ -8,8 +8,8 @@ import type { Core as CyCore } from 'cytoscape';
 import type { MapLibreState} from '../canvas/maplibreUtils';
 import { unprojectToGeoCoords, calculateScale } from '../canvas/maplibreUtils';
 
-import type { RenderedPosition } from './freeTextLayerHelpers';
-import { modelToRendered, modelToRenderedGeo } from './freeTextLayerHelpers';
+import type { RenderedPosition } from './freeText';
+import { modelToRendered, modelToRenderedGeo } from './freeText';
 
 interface DragStart {
   mouseX: number;

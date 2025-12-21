@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { addMouseMoveUpListeners } from '../shared/mouseEvents';
+import { addMouseMoveUpListeners } from '../shared/dragHelpers';
 
 /** Corner type alias for resize handles */
 export type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';

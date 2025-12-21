@@ -11,7 +11,7 @@ import type {
   FreeShapeAnnotation
 } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
-import { createHasClipboardData, createClearClipboard } from '../clipboard/clipboardHelpers';
+import { createHasClipboardData, createClearClipboard } from '../clipboard/useUnifiedClipboard';
 import { generateAnnotationId } from '../annotations/sharedAnnotationHelpers';
 
 import type { GroupClipboardData, PastedGroupResult } from './groupTypes';

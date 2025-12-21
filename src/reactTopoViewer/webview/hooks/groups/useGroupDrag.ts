@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import { addMouseMoveUpListeners } from '../shared/mouseEvents';
+import { addMouseMoveUpListeners } from '../shared/dragHelpers';
 
 // ============================================================================
 // useDragPositionOverrides - Manage drag position overrides during group dragging

@@ -2,12 +2,11 @@
  * IconSelectorModal - Modal for selecting and customizing node icons
  * Built on top of BasePanel
  */
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 
 import type { NodeType } from '../../utils/SvgGenerator';
 import { generateEncodedSVG } from '../../utils/SvgGenerator';
 import { useEscapeKey } from '../../hooks/ui/useDomInteractions';
-import { useIconSelectorState } from '../../hooks/panels/useIconSelector';
 
 import { BasePanel } from './editor/BasePanel';
 
@@ -29,6 +28,48 @@ const MAX_RADIUS = 40;
 function getIconSrc(icon: string, color: string): string {
   try { return generateEncodedSVG(icon as NodeType, color); }
   catch { return generateEncodedSVG('pe', color); }
+}
+
+interface UseIconSelectorStateReturn {
+  icon: string;
+  setIcon: (icon: string) => void;
+  color: string;
+  setColor: (color: string) => void;
+  radius: number;
+  setRadius: (radius: number) => void;
+  useColor: boolean;
+  setUseColor: (useColor: boolean) => void;
+  displayColor: string;
+  resultColor: string | null;
+}
+
+/**
+ * Hook to manage icon selector form state
+ */
+function useIconSelectorState(
+  isOpen: boolean,
+  initialIcon: string,
+  initialColor: string | null,
+  initialCornerRadius: number
+): UseIconSelectorStateReturn {
+  const [icon, setIcon] = useState(initialIcon);
+  const [color, setColor] = useState(initialColor || DEFAULT_COLOR);
+  const [radius, setRadius] = useState(initialCornerRadius);
+  const [useColor, setUseColor] = useState(!!initialColor);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIcon(initialIcon);
+      setColor(initialColor || DEFAULT_COLOR);
+      setRadius(initialCornerRadius);
+      setUseColor(!!initialColor);
+    }
+  }, [isOpen, initialIcon, initialColor, initialCornerRadius]);
+
+  const displayColor = useColor ? color : DEFAULT_COLOR;
+  const resultColor = useColor && color !== DEFAULT_COLOR ? color : null;
+
+  return { icon, setIcon, color, setColor, radius, setRadius, useColor, setUseColor, displayColor, resultColor };
 }
 
 interface IconSelectorModalProps {

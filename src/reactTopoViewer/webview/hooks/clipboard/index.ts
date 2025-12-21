@@ -2,7 +2,11 @@
  * Clipboard hooks for React TopoViewer.
  */
 
-export { useUnifiedClipboard } from './useUnifiedClipboard';
+export {
+  useUnifiedClipboard,
+  createHasClipboardData,
+  createClearClipboard
+} from './useUnifiedClipboard';
 export type {
   UnifiedClipboardData,
   PasteResult,

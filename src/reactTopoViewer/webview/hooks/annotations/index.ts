@@ -45,8 +45,8 @@ export {
   getCursorStyle,
   getBorderRadius,
   computeAnnotationStyle
-} from './freeTextLayerHelpers';
-export type { RenderedPosition } from './freeTextLayerHelpers';
+} from './freeText';
+export type { RenderedPosition } from './freeText';
 
 // Shape Helpers (for FreeShapeLayer)
 export { getLineCenter } from './freeShape';

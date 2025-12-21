@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useRef } from 'react';
+import type { RefObject } from 'react';
 import type { Core as CyCore, NodeSingular, NodeCollection, EdgeCollection } from 'cytoscape';
 
 import type {
@@ -15,8 +16,6 @@ import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
 import { beginBatch, endBatch } from '../../services';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
-
-import { createHasClipboardData, createClearClipboard } from './clipboardHelpers';
 
 /** Node data stored in clipboard */
 interface ClipboardNode {
@@ -398,6 +397,36 @@ function updateRelativePositions(
       };
     }
   });
+}
+
+/**
+ * Creates a hasClipboardData callback for clipboard hooks.
+ * @param clipboardRef - Reference to the clipboard data
+ * @returns Callback that checks if clipboard has data
+ */
+export function createHasClipboardData<T>(clipboardRef: RefObject<T | null>) {
+  return useCallback((): boolean => {
+    return clipboardRef.current !== null;
+  }, [clipboardRef]);
+}
+
+/**
+ * Creates a clearClipboard callback for clipboard hooks.
+ * @param clipboardRef - Reference to the clipboard data
+ * @param pasteCounterRef - Reference to the paste counter
+ * @param logPrefix - Prefix for log messages (e.g., 'UnifiedClipboard', 'GroupClipboard')
+ * @returns Callback that clears clipboard data
+ */
+export function createClearClipboard<T>(
+  clipboardRef: RefObject<T | null>,
+  pasteCounterRef: RefObject<number>,
+  logPrefix: string
+) {
+  return useCallback((): void => {
+    clipboardRef.current = null;
+    pasteCounterRef.current = 0;
+    log.info(`[${logPrefix}] Clipboard cleared`);
+  }, [clipboardRef, pasteCounterRef, logPrefix]);
 }
 
 /** Paste groups into the topology */

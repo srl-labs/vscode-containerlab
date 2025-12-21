@@ -50,10 +50,7 @@ export { useGroupState, useGroups, useAppGroups } from './groups';
 
 // Panels (for types, import from './panels')
 export {
-  usePanelResize,
-  useBulkLinkPanel,
   useLabSettingsState,
-  useIconSelectorState,
   useNodeEditorHandlers,
   useLinkEditorHandlers,
   useNetworkEditorHandlers,
