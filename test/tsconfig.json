@@ -6,6 +6,6 @@
     "resolveJsonModule": true,
     "typeRoots": ["../src/topoViewer/webview/types", "../node_modules/@types"]
   },
-  "include": ["**/*.ts", "../src/topoViewer/webview/types/**/*.d.ts"],
+  "include": ["**/*.ts", "../src/**/*.ts"],
   "exclude": ["e2e/**/*"]
 }

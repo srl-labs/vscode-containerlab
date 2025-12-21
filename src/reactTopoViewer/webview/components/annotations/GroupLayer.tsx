@@ -3,7 +3,7 @@
  * - Filled background below Cytoscape nodes
  * - Interaction overlay above Cytoscape nodes
  */
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Core as CyCore } from 'cytoscape';
 
@@ -22,6 +22,13 @@ import { useDelayedHover } from '../../hooks/ui';
 import { useAnnotationBoxSelection } from '../../hooks/annotations';
 import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
 import { projectAnnotationGeoCoords, calculateScale, unprojectToGeoCoords } from '../../hooks/canvas/maplibreUtils';
+import {
+  ensureCytoscapeLayersRegistered,
+  getCytoscapeLayers,
+  configureLayerNode,
+  type IHTMLLayer
+} from '../../hooks/shared/cytoscapeLayers';
+import { log } from '../../utils/logger';
 
 import { HANDLE_SIZE, CENTER_TRANSLATE, CORNER_STYLES, applyAlphaToColor } from './shared';
 import { AnnotationContextMenu } from './shared/AnnotationContextMenu';
@@ -33,8 +40,6 @@ import { AnnotationContextMenu } from './shared/AnnotationContextMenu';
 interface GroupLayerProps {
   cy: CyCore | null;
   groups: GroupStyleAnnotation[];
-  backgroundLayerNode: HTMLElement | null; // From useGroupLayer - below Cytoscape nodes
-  interactionLayerNode: HTMLElement | null; // From useGroupLayer - above Cytoscape nodes
   isLocked: boolean;
   onGroupEdit: (id: string) => void;
   onGroupDelete: (id: string) => void;
@@ -107,6 +112,76 @@ const BORDER_EDGE_CONFIGS: BorderEdgeConfig[] = [
   { edge: 'left', getStyle: (bw) => ({ top: bw, bottom: bw, left: 0, width: bw }) },
   { edge: 'right', getStyle: (bw) => ({ top: bw, bottom: bw, right: 0, width: bw }) }
 ];
+
+// ============================================================================
+// Group Layer Hook
+// ============================================================================
+
+interface UseGroupLayerReturn {
+  /** Layer node transformed with pan/zoom, rendered BELOW nodes */
+  backgroundLayerNode: HTMLElement | null;
+  /** Layer node transformed with pan/zoom, rendered ABOVE nodes */
+  interactionLayerNode: HTMLElement | null;
+  updateLayers: () => void;
+}
+
+/**
+ * Creates two HTML layers:
+ * - Background layer below nodes (visual fill)
+ * - Interaction layer above nodes (drag/resize handles)
+ */
+function useGroupLayer(cy: CyCore | null): UseGroupLayerReturn {
+  const backgroundLayerRef = useRef<IHTMLLayer | null>(null);
+  const interactionLayerRef = useRef<IHTMLLayer | null>(null);
+  const [backgroundLayerNode, setBackgroundLayerNode] = useState<HTMLElement | null>(null);
+  const [interactionLayerNode, setInteractionLayerNode] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!cy) return;
+
+    ensureCytoscapeLayersRegistered();
+
+    try {
+      const layers = getCytoscapeLayers(cy);
+      log.info('[GroupLayer] Creating background + interaction layers');
+
+      // Visual fill layer BELOW the node layer
+      const backgroundLayer = layers.nodeLayer.insertBefore('html');
+      backgroundLayerRef.current = backgroundLayer;
+
+      // Interactive handles layer at the TOP of all layers (above selectBoxLayer)
+      // Using append() ensures it's on top of all Cytoscape canvas layers
+      const interactionLayer = layers.append('html');
+      interactionLayerRef.current = interactionLayer;
+
+      // Configure layer nodes
+      configureLayerNode(backgroundLayer.node, 'none', 'group-background-layer-container');
+      configureLayerNode(interactionLayer.node, 'auto', 'group-interaction-layer-container');
+
+      log.info('[GroupLayer] Layers created');
+      setBackgroundLayerNode(backgroundLayer.node);
+      setInteractionLayerNode(interactionLayer.node);
+    } catch (err) {
+      log.error(`[GroupLayer] Failed to create layer: ${err}`);
+    }
+
+    return () => {
+      backgroundLayerRef.current?.remove();
+      interactionLayerRef.current?.remove();
+      backgroundLayerRef.current = null;
+      interactionLayerRef.current = null;
+      setBackgroundLayerNode(null);
+      setInteractionLayerNode(null);
+    };
+  }, [cy]);
+
+  const updateLayers = () => {
+    backgroundLayerRef.current?.update();
+    interactionLayerRef.current?.update();
+  };
+
+  return { backgroundLayerNode, interactionLayerNode, updateLayers };
+}
 
 // ============================================================================
 // Style Builders
@@ -549,8 +624,6 @@ const GroupInteractionPortal: React.FC<{
 export const GroupLayer: React.FC<GroupLayerProps> = ({
   cy,
   groups,
-  backgroundLayerNode,
-  interactionLayerNode,
   isLocked,
   onGroupEdit,
   onGroupDelete,
@@ -568,6 +641,9 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   mapLibreState,
   onGeoPositionChange
 }) => {
+  // Create group background + interaction layers using cytoscape-layers
+  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cy);
+
   // In geo pan mode, groups should not be interactive
   const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === 'pan');
   const dragOverrides = useDragPositionOverrides();

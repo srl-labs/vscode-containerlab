@@ -47,7 +47,6 @@ export { useGroupClipboard } from './useGroupClipboard';
 export type { UseGroupClipboardOptions, UseGroupClipboardReturn } from './useGroupClipboard';
 export { useNodeReparent } from './useNodeReparent';
 export type { UseNodeReparentOptions, UseNodeReparentDeps } from './useNodeReparent';
-export { useGroupLayer } from './useGroupLayer';
 export { useGroupDragInteraction, useDragPositionOverrides } from './useGroupDrag';
 export type { UseGroupDragInteractionOptions, UseGroupDragInteractionReturn, UseDragPositionOverridesReturn } from './useGroupDrag';
 export { useGroupResize } from './useGroupResize';
@@ -73,10 +72,8 @@ export type {
 // ============================================================================
 export { useGroupUndoRedoHandlers } from './useGroupUndoRedoHandlers';
 export type { UseGroupUndoRedoHandlersReturn } from './useGroupUndoRedoHandlers';
-export { useGroupAnnotationApplier } from './useGroupAnnotationApplier';
-export type { UseGroupAnnotationApplierReturn } from './useGroupAnnotationApplier';
-export { useCombinedAnnotationApplier } from './useCombinedAnnotationApplier';
-export type { UseCombinedAnnotationApplierReturn } from './useCombinedAnnotationApplier';
+export { useGroupAnnotationApplier, useCombinedAnnotationApplier } from './useCombinedAnnotationApplier';
+export type { UseGroupAnnotationApplierReturn, UseCombinedAnnotationApplierReturn } from './useCombinedAnnotationApplier';
 export { useGroupDragUndo } from './useGroupDragUndo';
 export type { UseGroupDragUndoOptions, UseGroupDragUndoReturn } from './useGroupDragUndo';
 

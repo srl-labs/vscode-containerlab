@@ -46,7 +46,7 @@ export {
 } from './annotations';
 
 // Groups (core hooks only - for utilities/types import from './groups')
-export { useGroupState, useGroups, useAppGroups, useGroupLayer } from './groups';
+export { useGroupState, useGroups, useAppGroups } from './groups';
 
 // Panels (for types, import from './panels')
 export {

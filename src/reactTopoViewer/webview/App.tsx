@@ -34,7 +34,7 @@ import {
   useContextMenu, useCustomNodeCommands, useNavbarCommands, useFloatingPanelCommands,
   usePanelVisibility, useKeyboardShortcuts, useShortcutDisplay, useAppHandlers,
   // Group hooks
-  useAppGroups, useGroupLayer,
+  useAppGroups,
   // Annotation hooks
   useAppFreeTextAnnotations, useFreeTextAnnotationApplier, useFreeTextUndoRedoHandlers,
   useAppFreeShapeAnnotations, useFreeShapeAnnotationApplier, useFreeShapeUndoRedoHandlers,
@@ -498,9 +498,6 @@ export const App: React.FC = () => {
   // onDragStart captures initial state, onDragEnd records compound undo action
   // onDragMove moves member nodes in real-time during drag
 
-  // Create group background + interaction layers using cytoscape-layers
-  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cyInstance);
-
   // Create shape layer below nodes using cytoscape-layers
   const { shapeLayerNode } = useShapeLayer(cyInstance);
 
@@ -734,8 +731,6 @@ export const App: React.FC = () => {
         <GroupLayer
           cy={cyInstance}
           groups={groups.groups}
-          backgroundLayerNode={backgroundLayerNode}
-          interactionLayerNode={interactionLayerNode}
           isLocked={state.isLocked}
           onGroupEdit={groups.editGroup}
           onGroupDelete={deleteGroupWithUndo}
