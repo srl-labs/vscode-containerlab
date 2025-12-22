@@ -8,10 +8,15 @@
  * - TopologyIO/AnnotationsIO: Run in browser for YAML manipulation
  * - TopologyParser: Runs in browser for YAML → Cytoscape conversion
  * - Dev server: Thin file I/O layer only (/file/:path, /files, /reset)
+ *
+ * Key behavior:
+ * - Loads default topology BEFORE React renders (no placeholder state)
+ * - Switching topologies triggers a FULL re-render for clean state reset
  */
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root as ReactRoot } from 'react-dom/client';
 import { App } from '@webview/App';
-import { TopoViewerProvider, type CustomNodeTemplate } from '@webview/context/TopoViewerContext';
+import { TopoViewerProvider } from '@webview/context/TopoViewerContext';
+import type { CustomNodeTemplate } from '@shared/types/editors';
 import '@webview/styles/tailwind.css';
 
 // File system adapter for dev server
@@ -30,6 +35,9 @@ import { sampleCustomNodes } from './mockData';
 // Schema parsing - import JSON directly and use shared parser
 import clabSchema from '../schema/clab.schema.json';
 import { parseSchemaData } from '@shared/schema';
+
+// Types
+import type { SchemaData } from '@shared/schema';
 
 // ============================================================================
 // Session Management
@@ -78,54 +86,149 @@ const latencySimulator = new LatencySimulator({
 // Track current file path
 let currentFilePath: string | null = null;
 
+// React root (created once, reused for re-renders)
+let reactRoot: ReactRoot | null = null;
+
+// Parse schema data once (static)
+const schemaData = parseSchemaData(clabSchema as Record<string, unknown>);
+
+// Docker images for dropdowns
+const dockerImages = [
+  'ghcr.io/nokia/srlinux:latest',
+  'ghcr.io/nokia/srlinux:24.10.1',
+  'alpine:latest',
+  'ubuntu:latest'
+];
+
+// Default topology path
+const TOPOLOGIES_DIR = '/home/clab/projects/flosch/vscode-containerlab/dev/topologies';
+const DEFAULT_TOPOLOGY = `${TOPOLOGIES_DIR}/simple.clab.yml`;
+
 // ============================================================================
-// Topology Loading (uses browser-side TopologyIO)
+// Initial Data Type
+// ============================================================================
+
+interface InitialData {
+  elements: unknown[];
+  labName: string;
+  mode: 'edit' | 'view';
+  deploymentState: string;
+  isLocked: boolean;
+  yamlFilePath: string;
+  schemaData: SchemaData;
+  dockerImages: string[];
+  customNodes: CustomNodeTemplate[];
+  defaultNode: string;
+  freeTextAnnotations: unknown[];
+  freeShapeAnnotations: unknown[];
+  groupStyleAnnotations: unknown[];
+  nodeAnnotations: unknown[];
+  cloudNodeAnnotations: unknown[];
+  networkNodeAnnotations: unknown[];
+}
+
+// ============================================================================
+// Build Initial Data from Topology File
 // ============================================================================
 
 /**
- * Load a topology file and broadcast to webview
+ * Build initial data from a topology file (for React provider)
+ */
+async function buildInitialData(filePath: string): Promise<InitialData> {
+  // Read YAML content
+  const yamlContent = await fsAdapter.readFile(filePath);
+
+  // Load annotations
+  const annotationsIO = getAnnotationsIO();
+  const annotations = await annotationsIO.loadAnnotations(filePath);
+
+  // Parse YAML → Cytoscape elements
+  const parseResult = TopologyParser.parse(yamlContent, {
+    annotations: annotations as TopologyAnnotations
+  });
+
+  // Initialize TopologyIO for future mutations
+  const topologyIO = getTopologyIO();
+  await topologyIO.initializeFromFile(filePath);
+
+  // Record current file
+  currentFilePath = filePath;
+  stateManager.setCurrentFilePath(filePath);
+
+  return {
+    elements: parseResult.elements,
+    labName: parseResult.labName,
+    mode: 'edit',
+    deploymentState: 'undeployed',
+    isLocked: false,
+    yamlFilePath: filePath,
+    schemaData,
+    dockerImages,
+    customNodes: sampleCustomNodes,
+    defaultNode: stateManager.getDefaultCustomNode(),
+    freeTextAnnotations: annotations.freeTextAnnotations || [],
+    freeShapeAnnotations: annotations.freeShapeAnnotations || [],
+    groupStyleAnnotations: annotations.groupStyleAnnotations || [],
+    nodeAnnotations: annotations.nodeAnnotations || [],
+    cloudNodeAnnotations: annotations.cloudNodeAnnotations || [],
+    networkNodeAnnotations: annotations.networkNodeAnnotations || []
+  };
+}
+
+// ============================================================================
+// Render App (can be called multiple times for full re-init)
+// ============================================================================
+
+// Counter to generate unique keys for forcing React re-mounts
+let renderKey = 0;
+
+/**
+ * Render or re-render the React app with given initial data.
+ * Uses a unique key to force React to unmount/remount with fresh state.
+ */
+function renderApp(initialData: InitialData): void {
+  // Update window globals
+  (window as unknown as Record<string, unknown>).__INITIAL_DATA__ = initialData;
+  (window as unknown as Record<string, unknown>).__SCHEMA_DATA__ = initialData.schemaData;
+  (window as unknown as Record<string, unknown>).__DOCKER_IMAGES__ = initialData.dockerImages;
+
+  const container = document.getElementById('root');
+  if (!container) {
+    throw new Error('Root element not found');
+  }
+
+  // Create root only once
+  if (!reactRoot) {
+    reactRoot = createRoot(container);
+  }
+
+  // Increment key to force React to unmount old tree and mount fresh
+  renderKey++;
+
+  // Re-render with new key - this forces a full remount with fresh state
+  reactRoot.render(
+    <TopoViewerProvider key={renderKey} initialData={initialData}>
+      <App />
+    </TopoViewerProvider>
+  );
+}
+
+// ============================================================================
+// Topology Loading (full re-init via React re-render)
+// ============================================================================
+
+/**
+ * Load a topology file and fully re-initialize React (clean state)
  */
 async function loadTopologyFile(filePath: string): Promise<void> {
   console.log(`%c[Dev] Loading topology: ${filePath}`, 'color: #2196F3;');
 
   try {
-    // Read YAML content
-    const yamlContent = await fsAdapter.readFile(filePath);
-
-    // Load annotations
-    const annotationsIO = getAnnotationsIO();
-    const annotations = await annotationsIO.loadAnnotations(filePath);
-
-    // Parse YAML → Cytoscape elements (runs in browser!)
-    const parseResult = TopologyParser.parse(yamlContent, {
-      annotations: annotations as TopologyAnnotations
-    });
-
-    // Record current file
-    currentFilePath = filePath;
-    stateManager.setCurrentFilePath(filePath);
-
-    // Initialize TopologyIO with the parsed document for future mutations
-    const topologyIO = getTopologyIO();
-    await topologyIO.initializeFromFile(filePath);
-
-    // Broadcast topology data to webview
-    window.postMessage({
-      type: 'topology-data',
-      data: {
-        elements: parseResult.elements,
-        labName: parseResult.labName,
-        freeTextAnnotations: annotations.freeTextAnnotations || [],
-        freeShapeAnnotations: annotations.freeShapeAnnotations || [],
-        groupStyleAnnotations: annotations.groupStyleAnnotations || [],
-        nodeAnnotations: annotations.nodeAnnotations || [],
-        cloudNodeAnnotations: annotations.cloudNodeAnnotations || [],
-        networkNodeAnnotations: annotations.networkNodeAnnotations || []
-      }
-    }, '*');
+    const initialData = await buildInitialData(filePath);
+    renderApp(initialData);
 
     console.log(
-      `%c[Dev] Loaded ${filePath}: ${parseResult.elements.length} elements`,
+      `%c[Dev] Loaded ${initialData.labName}: ${initialData.elements.length} elements`,
       'color: #4CAF50;'
     );
   } catch (error) {
@@ -173,12 +276,6 @@ async function resetFiles(): Promise<void> {
 // ============================================================================
 // VS Code API Mock (minimal - just for mode changes)
 // ============================================================================
-
-declare global {
-  interface Window {
-    vscode?: { postMessage(data: unknown): void };
-  }
-}
 
 /**
  * Broadcast custom nodes update to webview (matches production message format)
@@ -275,37 +372,43 @@ window.vscode = {
 // Window Globals for Dev Console
 // ============================================================================
 
+// Extended __DEV__ interface for dev server functions
+// (extends DevModeInterface from devMode.d.ts which has runtime stuff)
+interface DevServerInterface {
+  // File operations
+  loadTopologyFile: (filePath: string) => Promise<void>;
+  listTopologyFiles: () => Promise<Array<{ filename: string; path: string; hasAnnotations: boolean }>>;
+  resetFiles: () => Promise<void>;
+  getCurrentFile: () => string | null;
+
+  // Mode and state
+  setMode: (mode: 'edit' | 'view') => void;
+  setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
+  setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => void;
+
+  // Services (for debugging)
+  getTopologyIO: typeof getTopologyIO;
+  getAnnotationsIO: typeof getAnnotationsIO;
+  fsAdapter: HttpFsAdapter;
+  stateManager: DevStateManager;
+  latencySimulator: LatencySimulator;
+
+  // Runtime (set by App.tsx via DevModeInterface)
+  cy?: unknown;
+  isLocked?: () => boolean;
+  setLocked?: (locked: boolean) => void;
+  undoRedo?: { canUndo: () => boolean; canRedo: () => boolean };
+}
+
 declare global {
   interface Window {
-    __DEV__: {
-      // File operations
-      loadTopologyFile: (filePath: string) => Promise<void>;
-      listTopologyFiles: () => Promise<Array<{ filename: string; path: string; hasAnnotations: boolean }>>;
-      resetFiles: () => Promise<void>;
-      getCurrentFile: () => string | null;
-
-      // Mode and state
-      setMode: (mode: 'edit' | 'view') => void;
-      setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
-      setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => void;
-
-      // Services (for debugging)
-      getTopologyIO: typeof getTopologyIO;
-      getAnnotationsIO: typeof getAnnotationsIO;
-      fsAdapter: HttpFsAdapter;
-      stateManager: DevStateManager;
-      latencySimulator: LatencySimulator;
-
-      // Runtime (set by App.tsx)
-      cy?: unknown;
-      isLocked?: () => boolean;
-      setLocked?: (locked: boolean) => void;
-      undoRedo?: { canUndo: () => boolean; canRedo: () => boolean };
-    };
+    vscode?: { postMessage(data: unknown): void };
   }
 }
 
-window.__DEV__ = {
+// Assign dev server functions to window.__DEV__
+// This extends the DevModeInterface from devMode.d.ts with dev server-specific functions
+(window as unknown as { __DEV__: DevServerInterface }).__DEV__ = {
   // File operations
   loadTopologyFile,
   listTopologyFiles,
@@ -375,67 +478,36 @@ console.log('  __DEV__.getAnnotationsIO() - AnnotationsIO instance');
 console.log('  __DEV__.fsAdapter - HttpFsAdapter instance');
 
 // ============================================================================
-// Initial Data for Provider
+// Bootstrap: Load default topology and render
 // ============================================================================
 
-// Parse schema data dynamically from the schema file (same as production)
-const schemaData = parseSchemaData(clabSchema as Record<string, unknown>);
+/**
+ * Bootstrap the application:
+ * 1. Load the default topology file
+ * 2. Render React with the loaded data
+ *
+ * This ensures the app starts with real data (not placeholders)
+ */
+async function bootstrap(): Promise<void> {
+  console.log(`%c[Dev] Bootstrapping with: ${DEFAULT_TOPOLOGY}`, 'color: #9C27B0;');
 
-// Build minimal initial data (topology loads async after mount)
-const initialData = {
-  elements: [],
-  labName: 'dev-topology',
-  mode: 'edit' as const,
-  deploymentState: 'undeployed',
-  isLocked: false,  // Dev mode starts unlocked for testing
-  yamlFilePath: '',
-  schemaData,
-  dockerImages: [
-    'ghcr.io/nokia/srlinux:latest',
-    'ghcr.io/nokia/srlinux:24.10.1',
-    'alpine:latest',
-    'ubuntu:latest'
-  ],
-  customNodes: sampleCustomNodes,
-  defaultNode: stateManager.getDefaultCustomNode(),
-  freeTextAnnotations: [],
-  freeShapeAnnotations: [],
-  groupStyleAnnotations: [],
-  nodeAnnotations: [],
-  cloudNodeAnnotations: [],
-  networkNodeAnnotations: []
-};
-
-(window as any).__INITIAL_DATA__ = initialData;
-(window as any).__SCHEMA_DATA__ = initialData.schemaData;
-(window as any).__DOCKER_IMAGES__ = initialData.dockerImages || [];
-
-// ============================================================================
-// Render App
-// ============================================================================
-
-const container = document.getElementById('root');
-if (!container) {
-  throw new Error('Root element not found');
+  try {
+    const initialData = await buildInitialData(DEFAULT_TOPOLOGY);
+    renderApp(initialData);
+    console.log(`%c[Dev] Ready: ${initialData.labName}`, 'color: #4CAF50;');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`%c[Dev] Bootstrap failed: ${message}`, 'color: #f44336;');
+    // Show error in UI
+    const container = document.getElementById('root');
+    if (container) {
+      container.innerHTML = `<div style="color: red; padding: 20px;">
+        <h2>Failed to load topology</h2>
+        <pre>${message}</pre>
+      </div>`;
+    }
+  }
 }
 
-const root = createRoot(container);
-root.render(
-  <TopoViewerProvider initialData={initialData}>
-    <App />
-  </TopoViewerProvider>
-);
-
-// ============================================================================
-// Auto-load Default Topology
-// ============================================================================
-
-// Determine default topology path
-const TOPOLOGIES_DIR = '/home/clab/projects/flosch/vscode-containerlab/dev/topologies';
-const defaultTopology = `${TOPOLOGIES_DIR}/simple.clab.yml`;
-
-// Load the default topology file after app mounts
-setTimeout(async () => {
-  console.log(`%c[Dev] Auto-loading: ${defaultTopology}`, 'color: #9C27B0;');
-  await loadTopologyFile(defaultTopology);
-}, 100);
+// Start the app
+bootstrap();

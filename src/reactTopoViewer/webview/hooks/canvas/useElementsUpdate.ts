@@ -8,6 +8,7 @@ import type { Core } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
 import { applyStubLinkClasses, updateCytoscapeElements, hasPresetPositions } from '../../components/canvas/init';
+import { log } from '../../utils/logger';
 
 type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
 
@@ -472,11 +473,25 @@ export function useElementsUpdate(
     }
 
     if (!isInitializedRef.current) {
+      // Check if Cytoscape was already initialized with elements (by initCytoscape).
+      // If so, skip redundant updateCytoscapeElements which would remove and re-add all elements.
+      const cyHasElements = cy.nodes().length > 0;
+      if (cyHasElements) {
+        // Cytoscape already has elements from initCytoscape - just mark as initialized
+        const usePresetLayout = hasPresetPositions(elements);
+        log.info(`[useElementsUpdate] Cytoscape already initialized with ${cy.nodes().length} nodes, skipping updateCytoscapeElements`);
+        cy.scratch('initialLayoutDone', usePresetLayout);
+        isInitializedRef.current = true;
+        return;
+      }
+
       const usePresetLayout = hasPresetPositions(elements);
+      log.info(`[useElementsUpdate] First init: hasPresetPositions=${usePresetLayout}, elements=${elements.length}`);
       cy.scratch('initialLayoutDone', usePresetLayout);
       if (!usePresetLayout && onInitialLayoutPositions) {
         // `updateCytoscapeElements` will run COSE when there are no preset positions.
         // COSE changes positions inside Cytoscape; sync them back into React state once.
+        log.info('[useElementsUpdate] Will run COSE and sync positions back to React');
         cy.one('layoutstop', () => {
           cy.scratch('initialLayoutDone', true);
           onInitialLayoutPositions(collectNodePositions(cy));
