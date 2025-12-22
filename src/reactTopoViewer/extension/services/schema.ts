@@ -1,27 +1,30 @@
 /**
- * Schema Adapter - VS Code-specific schema loading functions
+ * Schema utilities (VS Code extension host)
  *
- * Contains only the VS Code-specific functions that require vscode APIs.
- * Pure parsing functions are in shared/schema/SchemaParser.ts.
+ * VS Code-specific schema loading and configuration helpers.
+ * Pure schema parsing is implemented in `src/reactTopoViewer/shared/schema`.
  */
 
 import * as vscode from 'vscode';
 
-import { nodeFsAdapter } from '../../../shared/io';
-import type { CustomNodeTemplate, SchemaData } from '../../../shared/schema';
-import { parseSchemaData } from '../../../shared/schema';
-import { log } from '../logger';
+import { nodeFsAdapter } from '../../shared/io';
+import type { CustomNodeTemplate, SchemaData } from '../../shared/schema';
+import { parseSchemaData } from '../../shared/schema';
+
+import { log } from './logger';
+
+const CONFIG_SECTION = 'containerlab.editor';
 
 /**
- * Get custom nodes from VS Code configuration
+ * Get custom nodes from VS Code configuration.
  */
 export function getCustomNodesFromConfig(): CustomNodeTemplate[] {
-  const config = vscode.workspace.getConfiguration('containerlab.editor');
+  const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
   return config.get<CustomNodeTemplate[]>('customNodes', []);
 }
 
 /**
- * Load schema data from the extension's schema file
+ * Load schema data from the extension's schema file.
  */
 export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaData> {
   try {
@@ -38,3 +41,4 @@ export async function loadSchemaData(extensionUri: vscode.Uri): Promise<SchemaDa
     };
   }
 }
+

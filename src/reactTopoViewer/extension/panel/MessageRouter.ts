@@ -1,8 +1,5 @@
 /**
  * MessageRouter - Handles webview message routing for ReactTopoViewer
- *
- * This class delegates to MessageHandlerBase for shared routing logic,
- * using production service adapters for VS Code-specific functionality.
  */
 
 import * as fs from 'fs';
@@ -11,21 +8,42 @@ import * as path from 'path';
 import type * as vscode from 'vscode';
 
 import { log, logWithLocation } from '../services/logger';
-import type { CyElement } from '../../shared/types/topology';
-import type { TopologyIO } from '../../shared/io';
-import type {
-  WebviewMessage as SharedWebviewMessage} from '../../shared/messaging';
-import {
-  MessageHandlerBase
-} from '../../shared/messaging';
-import type {
-  MessageRouterContextAdapter,
-  NodeCommandServiceAdapter} from '../services/adapters';
-import {
-  createProductionServices
-} from '../services/adapters';
+import { labLifecycleService } from '../services/LabLifecycleService';
+import { nodeCommandService } from '../services/NodeCommandService';
+import { splitViewManager } from '../services/SplitViewManager';
+import { customNodeConfigManager } from '../services/CustomNodeConfigManager';
 
-// Types are available from shared/messaging directly
+type WebviewMessage = Record<string, unknown> & {
+  type?: string;
+  command?: string;
+  requestId?: string;
+  endpointName?: string;
+};
+
+const LIFECYCLE_COMMANDS = new Set([
+  'deployLab',
+  'destroyLab',
+  'redeployLab',
+  'deployLabCleanup',
+  'destroyLabCleanup',
+  'redeployLabCleanup',
+]);
+
+const NODE_COMMANDS = new Set([
+  'clab-node-connect-ssh',
+  'clab-node-attach-shell',
+  'clab-node-view-logs',
+]);
+
+const INTERFACE_COMMANDS = new Set([
+  'clab-interface-capture',
+]);
+
+const CUSTOM_NODE_COMMANDS = new Set([
+  'save-custom-node',
+  'delete-custom-node',
+  'set-default-custom-node',
+]);
 
 /**
  * Context required by the message router
@@ -33,11 +51,7 @@ import {
 export interface MessageRouterContext {
   yamlFilePath: string;
   isViewMode: boolean;
-  lastTopologyElements: CyElement[];
-  updateCachedElements: (elements: CyElement[]) => void;
   loadTopologyData: () => Promise<unknown>;
-  extensionContext?: vscode.ExtensionContext;
-  topologyIO: TopologyIO;
 }
 
 /**
@@ -45,12 +59,12 @@ export interface MessageRouterContext {
  */
 export class MessageRouter {
   private context: MessageRouterContext;
-  private handler: MessageHandlerBase | null = null;
-  private contextAdapter: MessageRouterContextAdapter | null = null;
-  private nodeCommandAdapter: NodeCommandServiceAdapter | null = null;
 
   constructor(context: MessageRouterContext) {
     this.context = context;
+    if (context.yamlFilePath) {
+      nodeCommandService.setYamlFilePath(context.yamlFilePath);
+    }
   }
 
   /**
@@ -59,109 +73,105 @@ export class MessageRouter {
   updateContext(context: Partial<MessageRouterContext>): void {
     Object.assign(this.context, context);
 
-    // Update the context adapter if it exists
-    if (this.contextAdapter) {
-      if (context.yamlFilePath !== undefined) {
-        this.contextAdapter.setYamlFilePath(context.yamlFilePath);
-      }
-      if (context.isViewMode !== undefined) {
-        this.contextAdapter.setViewMode(context.isViewMode);
-      }
-      if (context.lastTopologyElements !== undefined) {
-        this.contextAdapter.setElements(context.lastTopologyElements);
-      }
-    }
-
-    // Update node command adapter yaml path
-    if (this.nodeCommandAdapter && context.yamlFilePath !== undefined) {
-      this.nodeCommandAdapter.setYamlFilePath(context.yamlFilePath);
+    if (context.yamlFilePath !== undefined) {
+      nodeCommandService.setYamlFilePath(context.yamlFilePath);
     }
   }
 
   /**
-   * Initialize the handler with a panel
-   * Must be called before handleMessage
+   * Resolve and validate an fs request path.
+   * Webviews are not a trust boundary; only allow access to the active lab YAML
+   * and its adjacent annotations file.
    */
-  private ensureHandler(panel: vscode.WebviewPanel): MessageHandlerBase {
-    if (!this.handler) {
-      const services = createProductionServices({
-        panel,
-        extensionContext: this.context.extensionContext!,
-        yamlFilePath: this.context.yamlFilePath,
-        isViewMode: this.context.isViewMode,
-        lastTopologyElements: this.context.lastTopologyElements,
-        loadTopologyData: () => this.context.loadTopologyData(),
-        topologyIO: this.context.topologyIO,
-      });
-
-      this.contextAdapter = services.context;
-      this.nodeCommandAdapter = services.nodeCommands as NodeCommandServiceAdapter;
-      this.handler = new MessageHandlerBase(services);
+  private validateFsPath(filePath: string): { ok: true; normalizedPath: string } | { ok: false; error: string } {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      return { ok: false, error: 'No YAML file path available' };
     }
-    return this.handler;
+
+    const normalizedRequested = path.resolve(filePath);
+    const normalizedYaml = path.resolve(yamlFilePath);
+    const normalizedAnnotations = path.resolve(`${yamlFilePath}.annotations.json`);
+
+    if (normalizedRequested === normalizedYaml || normalizedRequested === normalizedAnnotations) {
+      return { ok: true, normalizedPath: normalizedRequested };
+    }
+
+    return { ok: false, error: 'File access denied' };
   }
 
   /**
    * Handle log command messages
    */
-  private handleLogCommand(message: SharedWebviewMessage): boolean {
-    if (message.command === 'reactTopoViewerLog') {
-      const { level, message: logMsg, fileLine } = message as SharedWebviewMessage & { fileLine?: string };
+  private handleLogCommand(message: WebviewMessage): boolean {
+    const command = typeof message.command === 'string' ? message.command : '';
+    if (command === 'reactTopoViewerLog') {
+      const level = typeof message.level === 'string' ? message.level : 'info';
+      const logMsg = typeof message.message === 'string' ? message.message : '';
+      const fileLine = typeof message.fileLine === 'string' ? message.fileLine : undefined;
       logWithLocation(level || 'info', logMsg || '', fileLine);
       return true;
     }
-    if (message.command === 'topoViewerLog') {
-      const { level, message: logMessage } = message;
-      if (level === 'error') { log.error(logMessage); }
-      else if (level === 'warn') { log.warn(logMessage); }
-      else if (level === 'debug') { log.debug(logMessage); }
-      else { log.info(logMessage); }
+
+    if (command === 'topoViewerLog') {
+      const level = typeof message.level === 'string' ? message.level : 'info';
+      const logMessage = typeof message.message === 'string' ? message.message : '';
+      const logger = ({ error: log.error, warn: log.warn, debug: log.debug } as Record<string, (m: string) => void>)[level] ?? log.info;
+      logger(logMessage);
       return true;
     }
+
     return false;
   }
 
   /**
    * Handle file system messages from webview (fs:read, fs:write, fs:unlink, fs:exists)
    */
-  private async handleFsMessage(message: SharedWebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
-    const msgType = message.type as string;
+  private async handleFsMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
+    const msgType = typeof message.type === 'string' ? message.type : '';
     if (!msgType?.startsWith('fs:')) {
       return false;
     }
 
-    const requestId = (message as unknown as { requestId?: string }).requestId;
-    const filePath = (message as unknown as { path?: string }).path;
+    const requestId = typeof message.requestId === 'string' ? message.requestId : undefined;
+    const filePath = typeof message.path === 'string' ? message.path : undefined;
 
     if (!requestId) {
       log.warn('[MessageRouter] fs: message missing requestId');
       return true;
     }
 
-    if (!filePath && msgType !== 'fs:exists') {
+    if (!filePath) {
       this.respondFs(panel, requestId, null, 'Missing path parameter');
       return true;
     }
 
+    const validation = this.validateFsPath(filePath);
+    if (!validation.ok) {
+      this.respondFs(panel, requestId, null, validation.error);
+      return true;
+    }
+
     try {
-      switch (msgType) {
-        case 'fs:read':
-          await this.handleFsRead(filePath!, requestId, panel);
-          break;
-        case 'fs:write': {
-          const content = (message as unknown as { content?: string }).content;
-          await this.handleFsWrite(filePath!, content, requestId, panel);
-          break;
-        }
-        case 'fs:unlink':
-          await this.handleFsUnlink(filePath!, requestId, panel);
-          break;
-        case 'fs:exists':
-          await this.handleFsExists(filePath!, requestId, panel);
-          break;
-        default:
-          this.respondFs(panel, requestId, null, `Unknown fs message type: ${msgType}`);
+      const handlers: Record<string, () => Promise<void>> = {
+        'fs:read': () => this.handleFsRead(validation.normalizedPath, requestId, panel),
+        'fs:write': () => this.handleFsWrite(
+          validation.normalizedPath,
+          typeof message.content === 'string' ? message.content : undefined,
+          requestId,
+          panel
+        ),
+        'fs:unlink': () => this.handleFsUnlink(validation.normalizedPath, requestId, panel),
+        'fs:exists': () => this.handleFsExists(validation.normalizedPath, requestId, panel),
+      };
+
+      const handler = handlers[msgType];
+      if (!handler) {
+        this.respondFs(panel, requestId, null, `Unknown fs message type: ${msgType}`);
+        return true;
       }
+
+      await handler();
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       this.respondFs(panel, requestId, null, error);
@@ -229,8 +239,9 @@ export class MessageRouter {
   /**
    * Handle POST request messages
    */
-  private async handlePostMessage(message: SharedWebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
-    const { requestId, endpointName } = message;
+  private async handlePostMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    const requestId = message.requestId;
+    const endpointName = message.endpointName;
     let result: unknown = null;
     let error: string | null = null;
 
@@ -252,10 +263,122 @@ export class MessageRouter {
     });
   }
 
+  private async handleLifecycleCommand(command: string): Promise<void> {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
+      return;
+    }
+    const res = await labLifecycleService.handleLabLifecycleEndpoint(command, yamlFilePath);
+    if (res.error) {
+      log.error(`[MessageRouter] ${res.error}`);
+    } else if (res.result) {
+      log.info(`[MessageRouter] ${String(res.result)}`);
+    }
+  }
+
+  private async handleSplitViewToggle(panel: vscode.WebviewPanel): Promise<void> {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      log.warn('[MessageRouter] Cannot toggle split view: no YAML path available');
+      return;
+    }
+    try {
+      const isOpen = await splitViewManager.toggleSplitView(yamlFilePath, panel);
+      log.info(`[MessageRouter] Split view toggled: ${isOpen ? 'opened' : 'closed'}`);
+    } catch (err) {
+      log.error(`[MessageRouter] Failed to toggle split view: ${err}`);
+    }
+  }
+
+  private async handleCustomNodeCommand(command: string, message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    let res: { result?: unknown; error?: string | null } | undefined;
+    if (command === 'save-custom-node') {
+      res = await customNodeConfigManager.saveCustomNode(message as unknown as { name: string } & Record<string, unknown>);
+    } else if (command === 'delete-custom-node') {
+      const name = typeof message.name === 'string' ? message.name : '';
+      res = await customNodeConfigManager.deleteCustomNode(name);
+    } else if (command === 'set-default-custom-node') {
+      const name = typeof message.name === 'string' ? message.name : '';
+      res = await customNodeConfigManager.setDefaultCustomNode(name);
+    }
+
+    if (!res) return;
+
+    if (res.error) {
+      log.error(`[MessageRouter] ${res.error}`);
+      return;
+    }
+
+    const payload = res.result as { customNodes?: unknown[]; defaultNode?: string } | null | undefined;
+    if (payload?.customNodes) {
+      panel.webview.postMessage({
+        type: 'custom-nodes-updated',
+        customNodes: payload.customNodes,
+        defaultNode: payload.defaultNode ?? ''
+      });
+    }
+  }
+
+  private async handleNodeCommand(command: string, message: WebviewMessage): Promise<void> {
+    const nodeName = typeof message.nodeName === 'string' ? message.nodeName : '';
+    if (!nodeName) {
+      log.warn(`[MessageRouter] Invalid node command payload: ${JSON.stringify(message)}`);
+      return;
+    }
+    const res = await nodeCommandService.handleNodeEndpoint(command, nodeName);
+    if (res.error) log.error(`[MessageRouter] ${res.error}`);
+    else if (res.result) log.info(`[MessageRouter] ${res.result}`);
+  }
+
+  private async handleInterfaceCommand(command: string, message: WebviewMessage): Promise<void> {
+    const nodeName = typeof message.nodeName === 'string' ? message.nodeName : '';
+    const interfaceName = typeof message.interfaceName === 'string' ? message.interfaceName : '';
+    if (!nodeName || !interfaceName) {
+      log.warn(`[MessageRouter] Invalid interface command payload: ${JSON.stringify(message)}`);
+      return;
+    }
+    const res = await nodeCommandService.handleInterfaceEndpoint(command, { nodeName, interfaceName });
+    if (res.error) log.error(`[MessageRouter] ${res.error}`);
+    else if (res.result) log.info(`[MessageRouter] ${res.result}`);
+  }
+
+  private async handleCommandMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
+    const command = typeof message.command === 'string' ? message.command : '';
+    if (!command) return false;
+
+    if (LIFECYCLE_COMMANDS.has(command)) {
+      await this.handleLifecycleCommand(command);
+      return true;
+    }
+
+    if (NODE_COMMANDS.has(command)) {
+      await this.handleNodeCommand(command, message);
+      return true;
+    }
+
+    if (INTERFACE_COMMANDS.has(command)) {
+      await this.handleInterfaceCommand(command, message);
+      return true;
+    }
+
+    if (command === 'topo-toggle-split-view') {
+      await this.handleSplitViewToggle(panel);
+      return true;
+    }
+
+    if (CUSTOM_NODE_COMMANDS.has(command)) {
+      await this.handleCustomNodeCommand(command, message, panel);
+      return true;
+    }
+
+    return false;
+  }
+
   /**
    * Handle messages from the webview
    */
-  async handleMessage(message: SharedWebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+  async handleMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
     if (!message || typeof message !== 'object') {
       return;
     }
@@ -270,21 +393,8 @@ export class MessageRouter {
       return;
     }
 
-    // Ensure handler is initialized
-    const handler = this.ensureHandler(panel);
-
-    // Sync context state to adapter before handling
-    if (this.contextAdapter) {
-      this.contextAdapter.setElements(this.context.lastTopologyElements);
-    }
-
-    // Delegate to shared handler
-    const handled = await handler.handleMessage(message);
-    if (handled) {
-      // Sync any element updates back to context
-      if (this.contextAdapter) {
-        this.context.updateCachedElements(this.contextAdapter.getCachedElements());
-      }
+    // Handle command messages (lifecycle, node/interface commands, split view, custom nodes)
+    if (await this.handleCommandMessage(message, panel)) {
       return;
     }
 

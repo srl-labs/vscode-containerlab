@@ -16,7 +16,7 @@ import {
 import { applyInterfacePatternMigrations } from '../../shared/utilities';
 
 import { log } from './logger';
-import { annotationsIO } from './adapters';
+import { annotationsIO } from './annotations';
 import { ContainerDataAdapter } from './ContainerDataAdapter';
 
 

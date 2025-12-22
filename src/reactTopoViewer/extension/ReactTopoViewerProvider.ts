@@ -10,16 +10,15 @@
 
 import * as vscode from 'vscode';
 
-import { nodeFsAdapter, TopologyIO } from '../shared/io';
+import { nodeFsAdapter } from '../shared/io';
 import type { CyElement, ClabTopology } from '../shared/types/topology';
 import type { ClabLabTreeNode } from '../../treeView/common';
 import { runningLabsProvider } from '../../globals';
-import type { WebviewMessage } from '../shared/messaging';
 
 import { log } from './services/logger';
 import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
-import { annotationsIO, extensionLogger } from './services/adapters';
+import { annotationsIO } from './services/annotations';
 import { buildEdgeStatsUpdates } from './services/EdgeStatsBuilder';
 import {
   createPanel,
@@ -50,22 +49,14 @@ export class ReactTopoViewer {
   public isViewMode: boolean = false;
   public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
-  private isInternalUpdate = false;
   private lastTopologyElements: CyElement[] = [];
   private watcherManager: WatcherManager;
   private messageRouter: MessageRouter | undefined;
-  private topologyIO: TopologyIO;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
     this.watcherManager = new WatcherManager();
-    this.topologyIO = new TopologyIO({
-      fs: nodeFsAdapter,
-      annotationsIO: annotationsIO,
-      setInternalUpdate: (updating: boolean) => { this.isInternalUpdate = updating; },
-      logger: extensionLogger,
-    });
   }
 
   /**
@@ -115,7 +106,7 @@ export class ReactTopoViewer {
    * Initialize watchers for file changes and docker images
    */
   private initializeWatchers(panel: vscode.WebviewPanel): void {
-    const updateController = { isInternalUpdate: () => this.isInternalUpdate };
+    const updateController = { isInternalUpdate: () => false };
     const postTopologyData = (data: unknown) => {
       panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data });
     };
@@ -145,9 +136,9 @@ export class ReactTopoViewer {
     }, null, context.subscriptions);
 
     panel.webview.onDidReceiveMessage(
-      async (message: WebviewMessage) => {
+      async (message: unknown) => {
         if (this.messageRouter) {
-          await this.messageRouter.handleMessage(message, panel);
+          await this.messageRouter.handleMessage(message as Record<string, unknown>, panel);
         }
       },
       undefined,
@@ -210,11 +201,7 @@ export class ReactTopoViewer {
     this.messageRouter = new MessageRouter({
       yamlFilePath: this.lastYamlFilePath,
       isViewMode: this.isViewMode,
-      lastTopologyElements: this.lastTopologyElements,
-      updateCachedElements: (elements) => { this.lastTopologyElements = elements; },
       loadTopologyData: () => this.loadTopologyData(),
-      extensionContext: context,
-      topologyIO: this.topologyIO,
     });
 
     this.initializeWatchers(panel);
@@ -262,19 +249,6 @@ export class ReactTopoViewer {
       }
       this.lastTopologyElements = elements;
       this.watcherManager.setLastYamlContent(yamlContent);
-
-      // Update message router context
-      if (this.messageRouter) {
-        this.messageRouter.updateContext({ lastTopologyElements: elements });
-      }
-
-      // Initialize TopologyIO with the parsed document
-      if (this.adaptor.currentClabDoc && !this.isViewMode) {
-        this.topologyIO.initialize(
-          this.adaptor.currentClabDoc,
-          this.lastYamlFilePath
-        );
-      }
 
       // Load annotations (free text + free shapes + groups + nodes)
       const annotations = await annotationsIO.loadAnnotations(this.lastYamlFilePath);

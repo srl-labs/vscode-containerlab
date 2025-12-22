@@ -80,7 +80,7 @@ export interface NavbarCommands {
  */
 export function useNavbarCommands(): NavbarCommands {
   const onLayoutToggle = React.useCallback(() => {
-    sendCommandToExtension('nav-layout-toggle');
+    // Layout selection is handled entirely in the webview.
   }, []);
 
   const onToggleSplit = React.useCallback(() => {

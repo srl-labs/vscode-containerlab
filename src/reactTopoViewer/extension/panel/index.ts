@@ -32,4 +32,4 @@ export {
 } from '../../shared/schema';
 
 // Service adapters
-export { getCustomNodesFromConfig, loadSchemaData } from '../services/adapters';
+export { getCustomNodesFromConfig, loadSchemaData } from '../services/schema';

@@ -7,7 +7,7 @@ import type * as vscode from 'vscode';
 import type { CyElement, FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation, NodeAnnotation } from '../../shared/types/topology';
 import { getDockerImages } from '../../../utils/docker/images';
 import type { CustomNodeTemplate, SchemaData } from '../../shared/schema';
-import { getCustomNodesFromConfig, loadSchemaData } from '../services/adapters';
+import { getCustomNodesFromConfig, loadSchemaData } from '../services/schema';
 
 /**
  * Bootstrap data sent to the webview on initialization
