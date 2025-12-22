@@ -73,13 +73,13 @@ function extraDataEqual(
 }
 
 /**
- * Check if any node's extraData has changed (kind, user, startup-config, etc.)
- * Returns the IDs of nodes with changed extraData
+ * Check if any element's extraData has changed for a specific group
+ * Returns the IDs of elements with changed extraData
  */
-function getNodesWithChangedExtraData(cy: Core, elements: CyElement[]): string[] {
+function getElementsWithChangedExtraData(cy: Core, elements: CyElement[], group: 'nodes' | 'edges'): string[] {
   const changedIds: string[] = [];
   for (const reactEl of elements) {
-    if (reactEl.group !== 'nodes') continue;
+    if (reactEl.group !== group) continue;
     const pair = getElementDataPair(cy, reactEl);
     if (!pair) continue;
 
@@ -94,24 +94,18 @@ function getNodesWithChangedExtraData(cy: Core, elements: CyElement[]): string[]
 }
 
 /**
- * Check if any edge's extraData has changed (traffic stats, etc.)
- * Returns the IDs of edges with changed extraData
+ * Find a React element by group and ID and return its extraData
  */
-function getEdgesWithChangedExtraData(cy: Core, elements: CyElement[]): string[] {
-  const changedIds: string[] = [];
-  for (const reactEl of elements) {
-    if (reactEl.group !== 'edges') continue;
-    const pair = getElementDataPair(cy, reactEl);
-    if (!pair) continue;
-
-    const reactExtraData = pair.reactData.extraData as Record<string, unknown> | undefined;
-    const cyExtraData = pair.cyData.extraData as Record<string, unknown> | undefined;
-
-    if (!extraDataEqual(reactExtraData, cyExtraData)) {
-      changedIds.push(reactEl.data?.id as string);
-    }
-  }
-  return changedIds;
+function findReactExtraData(
+  elements: CyElement[],
+  group: 'nodes' | 'edges',
+  id: string
+): Record<string, unknown> | undefined {
+  const reactEl = elements.find(e =>
+    e.group === group && (e.data as Record<string, unknown>)?.id === id
+  );
+  if (!reactEl) return undefined;
+  return (reactEl.data as Record<string, unknown>).extraData as Record<string, unknown> | undefined;
 }
 
 /**
@@ -126,26 +120,21 @@ function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[])
       const cyEl = cy.getElementById(nodeId);
       if (cyEl.empty()) continue;
 
-      const reactEl = elements.find(e =>
-        e.group === 'nodes' && (e.data as Record<string, unknown>)?.id === nodeId
-      );
-      if (!reactEl) continue;
-
-      const reactData = reactEl.data as Record<string, unknown>;
-      const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
+      const reactExtraData = findReactExtraData(elements, 'nodes', nodeId);
+      if (reactExtraData === undefined) continue;
 
       // Update extraData on the Cytoscape element
       cyEl.data('extraData', reactExtraData || {});
 
       // Also update top-level visual properties that Cytoscape uses for styling
       // These need to be at the data root level for Cytoscape style selectors
-      if (reactExtraData?.topoViewerRole !== undefined) {
+      if (reactExtraData.topoViewerRole !== undefined) {
         cyEl.data('topoViewerRole', reactExtraData.topoViewerRole);
       }
-      if (reactExtraData?.iconColor !== undefined) {
+      if (reactExtraData.iconColor !== undefined) {
         cyEl.data('iconColor', reactExtraData.iconColor);
       }
-      if (reactExtraData?.iconCornerRadius !== undefined) {
+      if (reactExtraData.iconCornerRadius !== undefined) {
         cyEl.data('iconCornerRadius', reactExtraData.iconCornerRadius);
       }
     }
@@ -164,13 +153,8 @@ function updateEdgeExtraData(cy: Core, elements: CyElement[], edgeIds: string[])
       const cyEl = cy.getElementById(edgeId);
       if (cyEl.empty()) continue;
 
-      const reactEl = elements.find(e =>
-        e.group === 'edges' && (e.data as Record<string, unknown>)?.id === edgeId
-      );
-      if (!reactEl) continue;
-
-      const reactData = reactEl.data as Record<string, unknown>;
-      const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
+      const reactExtraData = findReactExtraData(elements, 'edges', edgeId);
+      if (reactExtraData === undefined) continue;
 
       // Update extraData on the Cytoscape element
       cyEl.data('extraData', reactExtraData || {});
@@ -314,12 +298,12 @@ export function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements:
     if (isInitializedRef.current && canSkipUpdate(cy, elements)) {
       // Even if we can skip the full update, check for extraData changes
       // and update Cytoscape surgically for both nodes and edges
-      const nodesWithChangedExtraData = getNodesWithChangedExtraData(cy, elements);
+      const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
       if (nodesWithChangedExtraData.length > 0) {
         updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
       }
       // Also check for edge extraData changes (critical for real-time traffic stats)
-      const edgesWithChangedExtraData = getEdgesWithChangedExtraData(cy, elements);
+      const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
       if (edgesWithChangedExtraData.length > 0) {
         updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
       }

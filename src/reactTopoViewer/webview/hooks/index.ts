@@ -78,16 +78,31 @@ export {
 
 // App helper hooks (extracted from App.tsx)
 export {
+  // Original hooks
   useCustomNodeCommands,
   useNavbarCommands,
   useShapeLayer,
   useE2ETestingExposure,
-  useGeoCoordinateSync
-} from './app/useAppHelpers';
+  useGeoCoordinateSync,
+  // Composed hooks for App.tsx complexity reduction
+  useAnnotationLayerProps,
+  useClipboardHandlers,
+  useAppKeyboardShortcuts,
+  useGraphCreation
+} from './app';
 export type {
+  // Original types
   CustomNodeCommands,
   NavbarCommands,
   UseShapeLayerReturn,
   E2ETestingConfig,
-  GeoCoordinateSyncConfig
-} from './app/useAppHelpers';
+  GeoCoordinateSyncConfig,
+  // Config types for composed hooks
+  AnnotationLayerPropsConfig,
+  AnnotationLayerPropsReturn,
+  ClipboardHandlersConfig,
+  ClipboardHandlersReturn,
+  AppKeyboardShortcutsConfig,
+  GraphCreationConfig,
+  GraphCreationReturn
+} from './app';

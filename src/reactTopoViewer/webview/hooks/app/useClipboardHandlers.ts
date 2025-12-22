@@ -1,0 +1,151 @@
+/**
+ * useClipboardHandlers - Unified clipboard operations with debouncing
+ *
+ * Extracts clipboard handling from App.tsx:
+ * - useUnifiedClipboard call
+ * - Debounced copy/paste/duplicate/delete handlers
+ * - Viewport center calculation
+ */
+import React from 'react';
+import type { Core as CyCore } from 'cytoscape';
+
+import { useUnifiedClipboard, type UseUnifiedClipboardOptions } from '../clipboard/useUnifiedClipboard';
+import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
+
+/**
+ * Annotations interface subset for clipboard operations
+ * Avoids circular dependency with AnnotationContext.tsx
+ */
+interface AnnotationsClipboardSubset {
+  groups: GroupStyleAnnotation[];
+  textAnnotations: FreeTextAnnotation[];
+  shapeAnnotations: FreeShapeAnnotation[];
+  getNodeMembership: (nodeId: string) => string | null;
+  getGroupMembers: (groupId: string) => string[];
+  selectedGroupIds: Set<string>;
+  selectedTextIds: Set<string>;
+  selectedShapeIds: Set<string>;
+  addGroupWithUndo: (group: GroupStyleAnnotation) => void;
+  saveTextAnnotation: (annotation: FreeTextAnnotation) => void;
+  saveShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
+  addNodeToGroup: (nodeId: string, groupId: string) => void;
+  generateGroupId: () => string;
+  deleteAllSelected: () => void;
+}
+
+/** Debounce interval in milliseconds */
+const DEBOUNCE_MS = 50;
+
+/**
+ * Configuration for useClipboardHandlers hook
+ */
+export interface ClipboardHandlersConfig {
+  cyInstance: CyCore | null;
+  annotations: AnnotationsClipboardSubset;
+  undoRedo: {
+    beginBatch: () => void;
+    endBatch: () => void;
+  };
+  handleNodeCreatedCallback: UseUnifiedClipboardOptions['onCreateNode'];
+  handleEdgeCreated: UseUnifiedClipboardOptions['onCreateEdge'];
+}
+
+/**
+ * Return type for useClipboardHandlers hook
+ */
+export interface ClipboardHandlersReturn {
+  /** Debounced copy handler */
+  handleUnifiedCopy: () => void;
+  /** Debounced paste handler */
+  handleUnifiedPaste: () => void;
+  /** Debounced duplicate handler (copy + paste) */
+  handleUnifiedDuplicate: () => void;
+  /** Delete selected elements (graph + annotations) */
+  handleUnifiedDelete: () => void;
+  /** Check if clipboard has data */
+  hasClipboardData: () => boolean;
+}
+
+/**
+ * Hook that provides debounced clipboard operations.
+ *
+ * Consolidates ~70 lines of clipboard code from App.tsx into a single hook.
+ */
+export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
+  const { cyInstance, annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } = config;
+
+  // Viewport center for paste operations
+  const getViewportCenter = React.useCallback(() => {
+    if (!cyInstance) return { x: 0, y: 0 };
+    const extent = cyInstance.extent();
+    return { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
+  }, [cyInstance]);
+
+  // Unified clipboard hook
+  const unifiedClipboard = useUnifiedClipboard({
+    cyInstance,
+    groups: annotations.groups,
+    textAnnotations: annotations.textAnnotations,
+    shapeAnnotations: annotations.shapeAnnotations,
+    getNodeMembership: annotations.getNodeMembership,
+    getGroupMembers: annotations.getGroupMembers,
+    selectedGroupIds: annotations.selectedGroupIds,
+    selectedTextAnnotationIds: annotations.selectedTextIds,
+    selectedShapeAnnotationIds: annotations.selectedShapeIds,
+    onAddGroup: annotations.addGroupWithUndo,
+    onAddTextAnnotation: annotations.saveTextAnnotation,
+    onAddShapeAnnotation: annotations.saveShapeAnnotation,
+    onAddNodeToGroup: annotations.addNodeToGroup,
+    generateGroupId: annotations.generateGroupId,
+    onCreateNode: handleNodeCreatedCallback,
+    onCreateEdge: handleEdgeCreated,
+    beginUndoBatch: undoRedo.beginBatch,
+    endUndoBatch: undoRedo.endBatch
+  });
+
+  // Debounce refs
+  const lastCopyTimeRef = React.useRef(0);
+  const lastPasteTimeRef = React.useRef(0);
+  const lastDuplicateTimeRef = React.useRef(0);
+
+  // Debounced copy
+  const handleUnifiedCopy = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastCopyTimeRef.current < DEBOUNCE_MS) return;
+    lastCopyTimeRef.current = now;
+    unifiedClipboard.copy();
+  }, [unifiedClipboard]);
+
+  // Debounced paste
+  const handleUnifiedPaste = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastPasteTimeRef.current < DEBOUNCE_MS) return;
+    lastPasteTimeRef.current = now;
+    unifiedClipboard.paste(getViewportCenter());
+  }, [unifiedClipboard, getViewportCenter]);
+
+  // Debounced duplicate
+  const handleUnifiedDuplicate = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastDuplicateTimeRef.current < DEBOUNCE_MS) return;
+    lastDuplicateTimeRef.current = now;
+    if (unifiedClipboard.copy()) unifiedClipboard.paste(getViewportCenter());
+  }, [unifiedClipboard, getViewportCenter]);
+
+  // Delete handler (graph elements + annotations)
+  const handleUnifiedDelete = React.useCallback(() => {
+    if (cyInstance) {
+      cyInstance.edges(':selected').remove();
+      cyInstance.nodes(':selected').remove();
+    }
+    annotations.deleteAllSelected();
+  }, [cyInstance, annotations]);
+
+  return {
+    handleUnifiedCopy,
+    handleUnifiedPaste,
+    handleUnifiedDuplicate,
+    handleUnifiedDelete,
+    hasClipboardData: unifiedClipboard.hasClipboardData
+  };
+}

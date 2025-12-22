@@ -23,27 +23,25 @@ import { ViewPanels } from './components/ViewPanels';
 import { useEasterEgg, EasterEggRenderer } from './easter-eggs';
 import {
   // Graph manipulation
-  useNodeDragging, useEdgeCreation, useNodeCreation, useNetworkCreation,
+  useNodeDragging,
   // State management
   useGraphHandlersWithContext, useCustomTemplateEditor,
   // Canvas/App state
   useCytoscapeInstance, useSelectionData, useNavbarActions, useContextMenuHandlers,
-  useLayoutControls, useLinkLabelVisibility, useGeoMap, useUnifiedClipboard,
+  useLayoutControls, useLinkLabelVisibility, useGeoMap,
   // Panel handlers
   useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers,
-  useNodeCreationHandlers,
   // UI hooks
   useContextMenu, useFloatingPanelCommands,
-  usePanelVisibility, useKeyboardShortcuts, useShortcutDisplay, useAppHandlers,
+  usePanelVisibility, useShortcutDisplay, useAppHandlers,
   // App helper hooks
   useCustomNodeCommands, useNavbarCommands, useShapeLayer, useE2ETestingExposure, useGeoCoordinateSync,
+  // NEW: Composed hooks
+  useAnnotationLayerProps, useClipboardHandlers, useAppKeyboardShortcuts, useGraphCreation,
   // Types
   type GraphChangeEntry
 } from './hooks';
-import type { NetworkType } from './hooks/graph';
-import type { NodeCreationState } from './hooks/panels';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
-import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from './services';
 
 function LoadingState(): React.JSX.Element {
   return (
@@ -159,73 +157,21 @@ const AppContent: React.FC<{
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
 
-  // Edge and node creation
-  const { startEdgeCreation } = useEdgeCreation(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onEdgeCreated: handleEdgeCreated
-  });
-
-  const handleCreateLinkFromNode = React.useCallback((nodeId: string) => {
-    startEdgeCreation(nodeId);
-  }, [startEdgeCreation]);
-
-  const nodeCreationState: NodeCreationState = {
-    isLocked: state.isLocked,
-    customNodes: state.customNodes,
-    defaultNode: state.defaultNode
-  };
-
-  const { createNodeAtPosition } = useNodeCreation(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    customNodes: state.customNodes,
-    defaultNode: state.defaultNode,
+  // Graph creation (edge, node, network) - composed hook
+  const graphCreation = useGraphCreation({
+    cyInstance,
+    floatingPanelRef,
+    state: {
+      mode: state.mode,
+      isLocked: state.isLocked,
+      customNodes: state.customNodes,
+      defaultNode: state.defaultNode
+    },
+    onEdgeCreated: handleEdgeCreated,
     onNodeCreated: handleNodeCreatedCallback,
-    onLockedClick: () => floatingPanelRef.current?.triggerShake()
+    addNode,
+    onNewCustomNode: customNodeCommands.onNewCustomNode
   });
-
-  const { handleAddNodeFromPanel } = useNodeCreationHandlers(
-    floatingPanelRef, nodeCreationState, cyInstance, createNodeAtPosition, customNodeCommands.onNewCustomNode
-  );
-
-  // Network creation
-  const handleNetworkCreatedCallback = React.useCallback((
-    networkId: string,
-    networkElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: { x: number; y: number }; classes?: string },
-    position: { x: number; y: number }
-  ) => {
-    addNode(networkElement);
-    if (isServicesInitialized()) {
-      const annotationsIO = getAnnotationsIO();
-      const topologyIO = getTopologyIO();
-      const yamlPath = topologyIO.getYamlFilePath();
-      if (yamlPath) {
-        void annotationsIO.modifyAnnotations(yamlPath, ann => {
-          if (!ann.nodeAnnotations) ann.nodeAnnotations = [];
-          ann.nodeAnnotations.push({ id: networkId, label: networkElement.data.name as string, position });
-          return ann;
-        });
-      }
-    }
-  }, [addNode]);
-
-  const { createNetworkAtPosition } = useNetworkCreation(cyInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onNetworkCreated: handleNetworkCreatedCallback,
-    onLockedClick: () => floatingPanelRef.current?.triggerShake()
-  });
-
-  const handleAddNetworkFromPanel = React.useCallback((networkType?: string) => {
-    if (!cyInstance || state.isLocked) {
-      floatingPanelRef.current?.triggerShake();
-      return;
-    }
-    const extent = cyInstance.extent();
-    const position = { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
-    createNetworkAtPosition(position, (networkType || 'host') as NetworkType);
-  }, [cyInstance, state.isLocked, createNetworkAtPosition, floatingPanelRef]);
 
   // App-level handlers
   const { handleLockedDrag, handleMoveComplete, handleDeselectAll } = useAppHandlers({
@@ -243,7 +189,7 @@ const AppContent: React.FC<{
     onEditNode: menuHandlers.handleEditNode,
     onEditNetwork: menuHandlers.handleEditNetwork,
     onDeleteNode: handleDeleteNodeWithUndo,
-    onCreateLinkFromNode: handleCreateLinkFromNode,
+    onCreateLinkFromNode: graphCreation.handleCreateLinkFromNode,
     onEditLink: menuHandlers.handleEditLink,
     onDeleteLink: handleDeleteLinkWithUndo,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
@@ -263,219 +209,70 @@ const AppContent: React.FC<{
   const panelVisibility = usePanelVisibility();
   const [showBulkLinkPanel, setShowBulkLinkPanel] = React.useState(false);
 
-  // Viewport center for paste
-  const getViewportCenter = React.useCallback(() => {
-    if (!cyInstance) return { x: 0, y: 0 };
-    const extent = cyInstance.extent();
-    return { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
-  }, [cyInstance]);
-
-  // Unified clipboard
-  const unifiedClipboard = useUnifiedClipboard({
+  // Clipboard handlers - composed hook
+  const clipboardHandlers = useClipboardHandlers({
     cyInstance,
-    groups: annotations.groups,
-    textAnnotations: annotations.textAnnotations,
-    shapeAnnotations: annotations.shapeAnnotations,
-    getNodeMembership: annotations.getNodeMembership,
-    getGroupMembers: annotations.getGroupMembers,
-    selectedGroupIds: annotations.selectedGroupIds,
-    selectedTextAnnotationIds: annotations.selectedTextIds,
-    selectedShapeAnnotationIds: annotations.selectedShapeIds,
-    onAddGroup: annotations.addGroupWithUndo,
-    onAddTextAnnotation: annotations.saveTextAnnotation,
-    onAddShapeAnnotation: annotations.saveShapeAnnotation,
-    onAddNodeToGroup: annotations.addNodeToGroup,
-    generateGroupId: annotations.generateGroupId,
-    onCreateNode: handleNodeCreatedCallback,
-    onCreateEdge: handleEdgeCreated,
-    beginUndoBatch: undoRedo.beginBatch,
-    endUndoBatch: undoRedo.endBatch
+    annotations,
+    undoRedo: {
+      beginBatch: undoRedo.beginBatch,
+      endBatch: undoRedo.endBatch
+    },
+    handleNodeCreatedCallback,
+    handleEdgeCreated
   });
-
-  // Combined selection IDs
-  const combinedSelectedAnnotationIds = React.useMemo(() => {
-    const combined = new Set<string>([...annotations.selectedTextIds, ...annotations.selectedShapeIds]);
-    annotations.selectedGroupIds.forEach(id => combined.add(id));
-    return combined;
-  }, [annotations.selectedTextIds, annotations.selectedShapeIds, annotations.selectedGroupIds]);
-
-  // Debounced handlers
-  const lastCopyTimeRef = React.useRef(0);
-  const lastPasteTimeRef = React.useRef(0);
-  const lastDuplicateTimeRef = React.useRef(0);
-  const DEBOUNCE_MS = 50;
-
-  const handleUnifiedCopy = React.useCallback(() => {
-    const now = Date.now();
-    if (now - lastCopyTimeRef.current < DEBOUNCE_MS) return;
-    lastCopyTimeRef.current = now;
-    unifiedClipboard.copy();
-  }, [unifiedClipboard]);
-
-  const handleUnifiedPaste = React.useCallback(() => {
-    const now = Date.now();
-    if (now - lastPasteTimeRef.current < DEBOUNCE_MS) return;
-    lastPasteTimeRef.current = now;
-    unifiedClipboard.paste(getViewportCenter());
-  }, [unifiedClipboard, getViewportCenter]);
-
-  const handleUnifiedDuplicate = React.useCallback(() => {
-    const now = Date.now();
-    if (now - lastDuplicateTimeRef.current < DEBOUNCE_MS) return;
-    lastDuplicateTimeRef.current = now;
-    if (unifiedClipboard.copy()) unifiedClipboard.paste(getViewportCenter());
-  }, [unifiedClipboard, getViewportCenter]);
-
-  const handleUnifiedDelete = React.useCallback(() => {
-    if (cyInstance) {
-      cyInstance.edges(':selected').remove();
-      cyInstance.nodes(':selected').remove();
-    }
-    annotations.deleteAllSelected();
-  }, [cyInstance, annotations]);
 
   const handleSaveTextAnnotationWithUndo = React.useCallback((annotation: Parameters<typeof annotations.saveTextAnnotation>[0]) => {
     const isNew = annotations.editingTextAnnotation?.text === '';
     annotations.saveTextAnnotationWithUndo(annotation, isNew);
   }, [annotations]);
 
-  // Keyboard shortcuts
-  useKeyboardShortcuts({
-    mode: state.mode,
-    isLocked: state.isLocked,
-    selectedNode: state.selectedNode,
-    selectedEdge: state.selectedEdge,
+  // Keyboard shortcuts - composed hook
+  useAppKeyboardShortcuts({
+    state: {
+      mode: state.mode,
+      isLocked: state.isLocked,
+      selectedNode: state.selectedNode,
+      selectedEdge: state.selectedEdge
+    },
     cyInstance,
-    onDeleteNode: handleDeleteNodeWithUndo,
-    onDeleteEdge: handleDeleteLinkWithUndo,
-    onDeselectAll: handleDeselectAll,
-    onUndo: undoRedo.undo,
-    onRedo: undoRedo.redo,
-    canUndo: undoRedo.canUndo,
-    canRedo: undoRedo.canRedo,
-    onCopy: handleUnifiedCopy,
-    onPaste: handleUnifiedPaste,
-    onDuplicate: handleUnifiedDuplicate,
-    selectedAnnotationIds: combinedSelectedAnnotationIds,
-    onCopyAnnotations: handleUnifiedCopy,
-    onPasteAnnotations: handleUnifiedPaste,
-    onDuplicateAnnotations: handleUnifiedDuplicate,
-    onDeleteAnnotations: handleUnifiedDelete,
-    onClearAnnotationSelection: annotations.clearAllSelections,
-    hasAnnotationClipboard: unifiedClipboard.hasClipboardData,
-    onCreateGroup: annotations.handleAddGroupWithUndo
+    undoRedo: {
+      undo: undoRedo.undo,
+      redo: undoRedo.redo,
+      canUndo: undoRedo.canUndo,
+      canRedo: undoRedo.canRedo
+    },
+    annotations: {
+      selectedTextIds: annotations.selectedTextIds,
+      selectedShapeIds: annotations.selectedShapeIds,
+      selectedGroupIds: annotations.selectedGroupIds,
+      clearAllSelections: annotations.clearAllSelections,
+      handleAddGroupWithUndo: annotations.handleAddGroupWithUndo
+    },
+    clipboardHandlers,
+    deleteHandlers: {
+      handleDeleteNodeWithUndo,
+      handleDeleteLinkWithUndo
+    },
+    handleDeselectAll
   });
 
   const easterEgg = useEasterEgg({ cyInstance });
 
-  // Memoized AnnotationLayers props
-  const updateTextGroupId = React.useCallback(
-    (id: string, groupId: string | undefined) => annotations.updateTextAnnotation(id, { groupId }),
-    [annotations.updateTextAnnotation]
-  );
-  const updateShapeGroupId = React.useCallback(
-    (id: string, groupId: string | undefined) => annotations.updateShapeAnnotation(id, { groupId }),
-    [annotations.updateShapeAnnotation]
-  );
-
-  const groupLayerProps = React.useMemo(() => ({
-    cy: cyInstance,
-    groups: annotations.groups,
-    isLocked: state.isLocked,
-    onGroupEdit: annotations.editGroup,
-    onGroupDelete: annotations.deleteGroupWithUndo,
-    onDragStart: annotations.onGroupDragStart,
-    onPositionChange: annotations.onGroupDragEnd,
-    onDragMove: annotations.onGroupDragMove,
-    onSizeChange: annotations.updateGroupSizeWithUndo,
-    selectedGroupIds: annotations.selectedGroupIds,
-    onGroupSelect: annotations.selectGroup,
-    onGroupToggleSelect: annotations.toggleGroupSelection,
-    onGroupBoxSelect: annotations.boxSelectGroups,
-    onGroupReparent: annotations.updateGroupParent,
-    isGeoMode: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode,
+  // Annotation layer props - composed hook
+  const { groupLayerProps, freeTextLayerProps, freeShapeLayerProps } = useAnnotationLayerProps({
+    cyInstance,
+    annotations,
+    state: {
+      isLocked: state.isLocked,
+      mode: state.mode
+    },
+    layoutControls: {
+      isGeoLayout: layoutControls.isGeoLayout,
+      geoMode: layoutControls.geoMode
+    },
     mapLibreState,
-    onGeoPositionChange: annotations.updateGroupGeoPosition
-  }), [
-    cyInstance, annotations.groups, state.isLocked, annotations.editGroup,
-    annotations.deleteGroupWithUndo, annotations.onGroupDragStart, annotations.onGroupDragEnd,
-    annotations.onGroupDragMove, annotations.updateGroupSizeWithUndo, annotations.selectedGroupIds,
-    annotations.selectGroup, annotations.toggleGroupSelection, annotations.boxSelectGroups,
-    annotations.updateGroupParent, layoutControls.isGeoLayout, layoutControls.geoMode,
-    mapLibreState, annotations.updateGroupGeoPosition
-  ]);
-
-  const freeTextLayerProps = React.useMemo(() => ({
-    cy: cyInstance,
-    annotations: annotations.textAnnotations,
-    isLocked: state.isLocked,
-    isAddTextMode: annotations.isAddTextMode,
-    mode: state.mode,
-    onAnnotationDoubleClick: annotations.editTextAnnotation,
-    onAnnotationDelete: annotations.deleteTextAnnotation,
-    onPositionChange: annotations.updateTextPosition,
-    onRotationChange: annotations.updateTextRotation,
-    onSizeChange: annotations.updateTextSize,
-    onCanvasClick: annotations.handleTextCanvasClick,
-    selectedAnnotationIds: annotations.selectedTextIds,
-    onAnnotationSelect: annotations.selectTextAnnotation,
-    onAnnotationToggleSelect: annotations.toggleTextAnnotationSelection,
-    onAnnotationBoxSelect: annotations.boxSelectTextAnnotations,
-    isGeoMode: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode,
-    mapLibreState,
-    onGeoPositionChange: annotations.updateTextGeoPosition,
-    groups: annotations.groups,
-    onUpdateGroupId: updateTextGroupId
-  }), [
-    cyInstance, annotations.textAnnotations, state.isLocked, annotations.isAddTextMode,
-    state.mode, annotations.editTextAnnotation, annotations.deleteTextAnnotation,
-    annotations.updateTextPosition, annotations.updateTextRotation, annotations.updateTextSize,
-    annotations.handleTextCanvasClick, annotations.selectedTextIds, annotations.selectTextAnnotation,
-    annotations.toggleTextAnnotationSelection, annotations.boxSelectTextAnnotations,
-    layoutControls.isGeoLayout, layoutControls.geoMode, mapLibreState,
-    annotations.updateTextGeoPosition, annotations.groups, updateTextGroupId
-  ]);
-
-  const freeShapeLayerProps = React.useMemo(() => ({
-    cy: cyInstance,
-    annotations: annotations.shapeAnnotations,
-    isLocked: state.isLocked,
-    isAddShapeMode: annotations.isAddShapeMode,
-    mode: state.mode,
-    shapeLayerNode,
-    onAnnotationEdit: annotations.editShapeAnnotation,
-    onAnnotationDelete: annotations.deleteShapeAnnotationWithUndo,
-    onPositionChange: annotations.updateShapePositionWithUndo,
-    onRotationChange: annotations.updateShapeRotation,
-    onSizeChange: annotations.updateShapeSize,
-    onEndPositionChange: annotations.updateShapeEndPosition,
-    onCanvasClick: annotations.handleShapeCanvasClickWithUndo,
-    selectedAnnotationIds: annotations.selectedShapeIds,
-    onAnnotationSelect: annotations.selectShapeAnnotation,
-    onAnnotationToggleSelect: annotations.toggleShapeAnnotationSelection,
-    onAnnotationBoxSelect: annotations.boxSelectShapeAnnotations,
-    isGeoMode: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode,
-    mapLibreState,
-    onGeoPositionChange: annotations.updateShapeGeoPosition,
-    onEndGeoPositionChange: annotations.updateShapeEndGeoPosition,
-    onCaptureAnnotationBefore: annotations.captureShapeAnnotationBefore,
-    onFinalizeWithUndo: annotations.finalizeShapeWithUndo,
-    groups: annotations.groups,
-    onUpdateGroupId: updateShapeGroupId
-  }), [
-    cyInstance, annotations.shapeAnnotations, state.isLocked, annotations.isAddShapeMode,
-    state.mode, shapeLayerNode, annotations.editShapeAnnotation, annotations.deleteShapeAnnotationWithUndo,
-    annotations.updateShapePositionWithUndo, annotations.updateShapeRotation, annotations.updateShapeSize,
-    annotations.updateShapeEndPosition, annotations.handleShapeCanvasClickWithUndo,
-    annotations.selectedShapeIds, annotations.selectShapeAnnotation, annotations.toggleShapeAnnotationSelection,
-    annotations.boxSelectShapeAnnotations, layoutControls.isGeoLayout, layoutControls.geoMode,
-    mapLibreState, annotations.updateShapeGeoPosition, annotations.updateShapeEndGeoPosition,
-    annotations.captureShapeAnnotationBefore, annotations.finalizeShapeWithUndo,
-    annotations.groups, updateShapeGroupId
-  ]);
+    shapeLayerNode
+  });
 
   return (
     <div className="topoviewer-app" data-testid="topoviewer-app">
@@ -539,8 +336,8 @@ const AppContent: React.FC<{
           onDestroyCleanup={floatingPanelCommands.onDestroyCleanup}
           onRedeploy={floatingPanelCommands.onRedeploy}
           onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
-          onAddNode={handleAddNodeFromPanel}
-          onAddNetwork={handleAddNetworkFromPanel}
+          onAddNode={graphCreation.handleAddNodeFromPanel}
+          onAddNetwork={graphCreation.handleAddNetworkFromPanel}
           onAddGroup={annotations.handleAddGroupWithUndo}
           onAddText={annotations.handleAddText}
           onAddShapes={annotations.handleAddShapes}
