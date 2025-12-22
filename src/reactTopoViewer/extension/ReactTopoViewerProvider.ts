@@ -278,13 +278,26 @@ export class ReactTopoViewer {
       const groupStyleAnnotations = annotations.groupStyleAnnotations || [];
       const nodeAnnotations = annotations.nodeAnnotations || [];
 
+      // Use lab name from parsed YAML (source of truth), fallback to stored name
+      const parsedLabName = this.adaptor.currentClabName || this.currentLabName;
+
+      // Update stored name if it changed in the YAML
+      if (parsedLabName && parsedLabName !== this.currentLabName) {
+        this.currentLabName = parsedLabName;
+        // Update panel title to reflect the new name
+        if (this.currentPanel) {
+          this.currentPanel.title = parsedLabName;
+        }
+      }
+
       // Build and return bootstrap data for the webview
       return buildBootstrapData({
         elements,
-        labName: this.currentLabName,
+        labName: parsedLabName,
         isViewMode: this.isViewMode,
         deploymentState: this.deploymentState,
         extensionUri: this.context.extensionUri,
+        yamlFilePath: this.lastYamlFilePath,
         freeTextAnnotations,
         freeShapeAnnotations,
         groupStyleAnnotations,

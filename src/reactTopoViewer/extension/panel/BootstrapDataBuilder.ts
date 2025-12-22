@@ -25,6 +25,7 @@ export interface BootstrapData {
   freeShapeAnnotations: FreeShapeAnnotation[];
   groupStyleAnnotations: GroupStyleAnnotation[];
   nodeAnnotations: NodeAnnotation[];
+  yamlFilePath: string;
 }
 
 /**
@@ -36,6 +37,7 @@ export interface BootstrapDataInput {
   isViewMode: boolean;
   deploymentState: 'deployed' | 'undeployed' | 'unknown';
   extensionUri: vscode.Uri;
+  yamlFilePath: string;
   freeTextAnnotations?: FreeTextAnnotation[];
   freeShapeAnnotations?: FreeShapeAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
@@ -46,7 +48,7 @@ export interface BootstrapDataInput {
  * Assembles bootstrap data for the webview from various sources
  */
 export async function buildBootstrapData(input: BootstrapDataInput): Promise<BootstrapData> {
-  const { elements, labName, isViewMode, deploymentState, extensionUri, freeTextAnnotations = [], freeShapeAnnotations = [], groupStyleAnnotations = [], nodeAnnotations = [] } = input;
+  const { elements, labName, isViewMode, deploymentState, extensionUri, yamlFilePath, freeTextAnnotations = [], freeShapeAnnotations = [], groupStyleAnnotations = [], nodeAnnotations = [] } = input;
 
   // Get custom nodes from VS Code configuration
   const customNodes = getCustomNodesFromConfig();
@@ -70,6 +72,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     freeTextAnnotations,
     freeShapeAnnotations,
     groupStyleAnnotations,
-    nodeAnnotations
+    nodeAnnotations,
+    yamlFilePath
   };
 }

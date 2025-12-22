@@ -14,6 +14,102 @@ import type {
 } from '../../components/panels/lab-settings/types';
 import { isServicesInitialized, getTopologyIO } from '../../services';
 
+/**
+ * Helper to set a key in a YAMLMap at a specific position (after another key).
+ * If the key already exists, it updates in place. If not, it inserts after `afterKey`.
+ * If `afterKey` doesn't exist, falls back to appending at end.
+ */
+function setKeyAfter(
+  map: YAML.YAMLMap,
+  key: string,
+  value: YAML.Node,
+  afterKey: string
+): void {
+  // Check if key already exists - if so, just update it in place
+  const existingIndex = map.items.findIndex(
+    pair => YAML.isScalar(pair.key) && pair.key.value === key
+  );
+  if (existingIndex >= 0) {
+    map.items[existingIndex].value = value;
+    return;
+  }
+
+  // Key doesn't exist - find position to insert after afterKey
+  const afterIndex = map.items.findIndex(
+    pair => YAML.isScalar(pair.key) && pair.key.value === afterKey
+  );
+
+  const newPair = new YAML.Pair(new YAML.Scalar(key), value);
+
+  if (afterIndex >= 0) {
+    // Insert after the found key
+    map.items.splice(afterIndex + 1, 0, newPair);
+  } else {
+    // Fallback: append at end
+    map.items.push(newPair);
+  }
+}
+
+/**
+ * Helper to delete a key from a YAMLMap
+ */
+function deleteKey(map: YAML.YAMLMap, key: string): void {
+  const index = map.items.findIndex(
+    pair => YAML.isScalar(pair.key) && pair.key.value === key
+  );
+  if (index >= 0) {
+    map.items.splice(index, 1);
+  }
+}
+
+/**
+ * Helper to set a key in a YAMLMap, updating in place if exists, appending if not
+ */
+function setKey(map: YAML.YAMLMap, key: string, value: YAML.Node): void {
+  const existingIndex = map.items.findIndex(
+    pair => YAML.isScalar(pair.key) && pair.key.value === key
+  );
+  if (existingIndex >= 0) {
+    map.items[existingIndex].value = value;
+  } else {
+    map.items.push(new YAML.Pair(new YAML.Scalar(key), value));
+  }
+}
+
+/**
+ * Read lab settings directly from the YAML document via TopologyIO
+ */
+function readLabSettingsFromDocument(): LabSettings | undefined {
+  if (!isServicesInitialized()) {
+    return undefined;
+  }
+
+  const topologyIO = getTopologyIO();
+  const doc = topologyIO.getDocument();
+  if (!doc) {
+    return undefined;
+  }
+
+  try {
+    // Read name, prefix, and mgmt from root level (per clab schema)
+    const name = doc.get('name') as string | undefined;
+    const prefix = doc.get('prefix') as string | undefined;
+    const mgmt = doc.get('mgmt') as Record<string, unknown> | undefined;
+
+    const settings: LabSettings = {};
+    if (name) settings.name = name;
+    if (prefix !== undefined) settings.prefix = prefix;
+    if (mgmt && typeof mgmt === 'object') {
+      settings.mgmt = mgmt as LabSettings['mgmt'];
+    }
+
+    return settings;
+  } catch (err) {
+    console.error('[useLabSettings] Failed to read settings from document:', err);
+    return undefined;
+  }
+}
+
 export interface UseLabSettingsStateResult {
   basic: BasicSettingsState;
   mgmt: MgmtSettingsState;
@@ -135,9 +231,11 @@ function useBasicSettings(labSettings?: LabSettings) {
   const [customPrefix, setCustomPrefix] = useState('');
 
   useEffect(() => {
-    if (!labSettings) return;
-    setLabName(labSettings.name || '');
-    const prefixParsed = parsePrefixSettings(labSettings);
+    // Try to read from YAML document first (source of truth), fallback to prop
+    const settings = readLabSettingsFromDocument() || labSettings;
+    if (!settings) return;
+    setLabName(settings.name || '');
+    const prefixParsed = parsePrefixSettings(settings);
     setPrefixType(prefixParsed.prefixType);
     setCustomPrefix(prefixParsed.customPrefix);
   }, [labSettings]);
@@ -159,13 +257,15 @@ function useIpSettings(labSettings?: LabSettings) {
   const [ipv6Gateway, setIpv6Gateway] = useState('');
 
   useEffect(() => {
-    if (!labSettings?.mgmt) return;
-    const ipv4 = parseIpv4Settings(labSettings.mgmt);
+    // Try to read from YAML document first (source of truth), fallback to prop
+    const settings = readLabSettingsFromDocument() || labSettings;
+    if (!settings?.mgmt) return;
+    const ipv4 = parseIpv4Settings(settings.mgmt);
     setIpv4Type(ipv4.ipv4Type);
     setIpv4Subnet(ipv4.ipv4Subnet);
     setIpv4Gateway(ipv4.ipv4Gateway);
     setIpv4Range(ipv4.ipv4Range);
-    const ipv6 = parseIpv6Settings(labSettings.mgmt);
+    const ipv6 = parseIpv6Settings(settings.mgmt);
     setIpv6Type(ipv6.ipv6Type);
     setIpv6Subnet(ipv6.ipv6Subnet);
     setIpv6Gateway(ipv6.ipv6Gateway);
@@ -200,7 +300,9 @@ function useNetworkSettings(labSettings?: LabSettings) {
   const [externalAccess, setExternalAccess] = useState(true);
 
   useEffect(() => {
-    const init = initOtherMgmtState(labSettings?.mgmt);
+    // Try to read from YAML document first (source of truth), fallback to prop
+    const settings = readLabSettingsFromDocument() || labSettings;
+    const init = initOtherMgmtState(settings?.mgmt);
     setNetworkName(init.networkName);
     setMtu(init.mtu);
     setBridge(init.bridge);
@@ -215,7 +317,9 @@ function useDriverOptions(labSettings?: LabSettings) {
   const [driverOptions, setDriverOptions] = useState<DriverOption[]>([]);
 
   useEffect(() => {
-    const init = initOtherMgmtState(labSettings?.mgmt);
+    // Try to read from YAML document first (source of truth), fallback to prop
+    const settings = readLabSettingsFromDocument() || labSettings;
+    const init = initOtherMgmtState(settings?.mgmt);
     setDriverOptions(init.driverOptions);
   }, [labSettings]);
 
@@ -283,10 +387,10 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
     }
 
     try {
-      // Get or create the topology map
-      let topoMap = doc.getIn(['topology'], true) as YAML.YAMLMap | undefined;
-      if (!topoMap || !YAML.isMap(topoMap)) {
-        console.error('[useLabSettings] Topology map not found or invalid');
+      // Get the root map (doc.contents) for all settings (name, prefix, mgmt are all root-level per clab schema)
+      const rootMap = doc.contents as YAML.YAMLMap | undefined;
+      if (!rootMap || !YAML.isMap(rootMap)) {
+        console.error('[useLabSettings] Document root is not a map');
         return;
       }
 
@@ -298,29 +402,36 @@ export function useLabSettingsState(labSettings?: LabSettings): UseLabSettingsSt
       };
       const mgmtSettings = gatherMgmtSettings(mgmtState);
 
-      // Update lab name (topology.name)
+      // Update lab name at ROOT level (in place if exists)
       if (settings.name !== undefined) {
-        topoMap.set('name', doc.createNode(settings.name));
+        setKey(rootMap, 'name', doc.createNode(settings.name));
       }
 
-      // Update prefix (topology.prefix)
+      // Update prefix at ROOT level - insert after 'name' for proper ordering
       if (settings.prefix !== undefined) {
         if (settings.prefix === null) {
           // Remove prefix key to use default
-          topoMap.delete('prefix');
+          deleteKey(rootMap, 'prefix');
         } else {
-          topoMap.set('prefix', doc.createNode(settings.prefix));
+          // Insert prefix after 'name' for proper YAML ordering
+          setKeyAfter(rootMap, 'prefix', doc.createNode(settings.prefix), 'name');
         }
       }
 
-      // Update mgmt settings (topology.mgmt)
+      // Update mgmt settings at ROOT level (per clab schema: name, prefix, mgmt, topology)
+      // Insert after 'prefix' if it exists, otherwise after 'name'
       if (mgmtSettings === null) {
         // Remove mgmt section if no settings
-        topoMap.delete('mgmt');
+        deleteKey(rootMap, 'mgmt');
       } else {
         // Create a new mgmt map with all settings
         const mgmtMap = doc.createNode(mgmtSettings) as YAML.YAMLMap;
-        topoMap.set('mgmt', mgmtMap);
+        // Determine where to insert: after 'prefix' if exists, otherwise after 'name'
+        const hasPrefixKey = rootMap.items.some(
+          pair => YAML.isScalar(pair.key) && pair.key.value === 'prefix'
+        );
+        const afterKey = hasPrefixKey ? 'prefix' : 'name';
+        setKeyAfter(rootMap, 'mgmt', mgmtMap, afterKey);
       }
 
       // Save the document
