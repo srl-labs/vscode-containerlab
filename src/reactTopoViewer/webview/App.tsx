@@ -9,7 +9,7 @@ import type { Core as CyCore } from 'cytoscape';
 import { convertToEditorData, convertToNetworkEditorData } from '../shared/utilities';
 import type { CytoscapeCanvasRef } from './components/canvas/CytoscapeCanvas';
 
-import { useTopoViewer } from './context/TopoViewerContext';
+import { useTopoViewerActions, useTopoViewerState } from './context/TopoViewerContext';
 import { UndoRedoProvider, useUndoRedoContext } from './context/UndoRedoContext';
 import { AnnotationProvider, useAnnotations, type PendingMembershipChange } from './context/AnnotationContext';
 import { Navbar } from './components/navbar/Navbar';
@@ -43,36 +43,33 @@ import {
 } from './hooks';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 
-function LoadingState(): React.JSX.Element {
-  return (
-    <div className="loading-container">
-      <div className="loading-spinner"></div>
-      <p>Loading topology...</p>
-    </div>
-  );
-}
-
-function ErrorState({ message }: Readonly<{ message: string }>): React.JSX.Element {
-  return (
-    <div className="error-container">
-      <div className="error-icon">⚠️</div>
-      <h2 className="text-lg font-semibold">Error Loading Topology</h2>
-      <p className="text-secondary">{message}</p>
-    </div>
-  );
-}
-
 /** Inner component that uses contexts */
 const AppContent: React.FC<{
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
   cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>;
   cyInstance: CyCore | null;
+  onCyReady: (cy: CyCore) => void;
+  onCyDestroyed: () => void;
   layoutControls: ReturnType<typeof useLayoutControls>;
   mapLibreState: ReturnType<typeof useGeoMap>['mapLibreState'];
   shapeLayerNode: HTMLElement | null;
-}> = ({ floatingPanelRef, pendingMembershipChangesRef, cytoscapeRef, cyInstance, layoutControls, mapLibreState, shapeLayerNode }) => {
-  const { state, dispatch, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodePositions, editCustomTemplate, toggleLock } = useTopoViewer();
+}> = ({ floatingPanelRef, pendingMembershipChangesRef, cytoscapeRef, cyInstance, onCyReady, onCyDestroyed, layoutControls, mapLibreState, shapeLayerNode }) => {
+  const { state, dispatch } = useTopoViewerState();
+  const {
+    selectNode,
+    selectEdge,
+    editNode,
+    editEdge,
+    editNetwork,
+    addNode,
+    addEdge,
+    removeNodeAndEdges,
+    removeEdge,
+    updateNodePositions,
+    editCustomTemplate,
+    toggleLock
+  } = useTopoViewerActions();
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
 
@@ -305,7 +302,7 @@ const AppContent: React.FC<{
         isPartyMode={easterEgg.state.isPartyMode}
       />
       <main className="topoviewer-main">
-        <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
+        <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} onCyReady={onCyReady} onCyDestroyed={onCyDestroyed} />
         <AnnotationLayers
           groupLayerProps={groupLayerProps}
           freeTextLayerProps={freeTextLayerProps}
@@ -358,8 +355,8 @@ const AppContent: React.FC<{
 
 /** Main App component with providers */
 export const App: React.FC = () => {
-  const { state, initLoading, error } = useTopoViewer();
-  const { cytoscapeRef, cyInstance } = useCytoscapeInstance(state.elements);
+  const { state } = useTopoViewerState();
+  const { cytoscapeRef, cyInstance, onCyReady, onCyDestroyed } = useCytoscapeInstance();
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
   const { shapeLayerNode } = useShapeLayer(cyInstance);
@@ -369,9 +366,6 @@ export const App: React.FC = () => {
     isGeoLayout: layoutControls.isGeoLayout,
     geoMode: layoutControls.geoMode
   });
-
-  if (initLoading) return <LoadingState />;
-  if (error) return <ErrorState message={error} />;
 
   return (
     <UndoRedoProvider cy={cyInstance} enabled={state.mode === 'edit'}>
@@ -391,6 +385,8 @@ export const App: React.FC = () => {
           pendingMembershipChangesRef={pendingMembershipChangesRef}
           cytoscapeRef={cytoscapeRef}
           cyInstance={cyInstance}
+          onCyReady={onCyReady}
+          onCyDestroyed={onCyDestroyed}
           layoutControls={layoutControls}
           mapLibreState={mapLibreState}
           shapeLayerNode={shapeLayerNode}

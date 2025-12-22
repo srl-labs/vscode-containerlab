@@ -5,7 +5,7 @@
 import React from 'react';
 
 import type { LinkLabelMode } from '../../context/TopoViewerContext';
-import { useTopoViewer } from '../../context/TopoViewerContext';
+import { useTopoViewerActions, useTopoViewerState } from '../../context/TopoViewerContext';
 import { DEFAULT_GRID_LINE_WIDTH } from '../../hooks';
 import type { LayoutOption } from '../../hooks/useAppState';
 import { useDropdown } from '../../hooks/ui/useDropdown';
@@ -69,9 +69,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRedo,
   onLogoClick,
   logoClickProgress = 0,
-  isPartyMode = false
+	isPartyMode = false
 }) => {
-  const { state, setLinkLabelMode, toggleDummyLinks } = useTopoViewer();
+  const { state } = useTopoViewerState();
+  const { setLinkLabelMode, toggleDummyLinks } = useTopoViewerActions();
 
   const linkDropdown = useDropdown();
   const layoutDropdown = useDropdown();

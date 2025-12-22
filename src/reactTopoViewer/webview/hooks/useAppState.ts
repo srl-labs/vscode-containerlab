@@ -103,22 +103,24 @@ function getLinkDataFromCy(cy: Core | null, edgeId: string | null): LinkData | n
 /**
  * Hook for managing cytoscape instance
  */
-export function useCytoscapeInstance(elements: unknown[]): {
+export function useCytoscapeInstance(): {
   cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>;
   cyInstance: Core | null;
+  onCyReady: (cy: Core) => void;
+  onCyDestroyed: () => void;
 } {
   const cytoscapeRef = useRef<CytoscapeCanvasRef>(null);
   const [cyInstance, setCyInstance] = useState<Core | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const cy = cytoscapeRef.current?.getCy() || null;
-      if (cy && cy !== cyInstance) setCyInstance(cy);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [elements, cyInstance]);
+  const onCyReady = useCallback((cy: Core) => {
+    setCyInstance(cy);
+  }, []);
 
-  return { cytoscapeRef, cyInstance };
+  const onCyDestroyed = useCallback(() => {
+    setCyInstance(null);
+  }, []);
+
+  return { cytoscapeRef, cyInstance, onCyReady, onCyDestroyed };
 }
 
 /**

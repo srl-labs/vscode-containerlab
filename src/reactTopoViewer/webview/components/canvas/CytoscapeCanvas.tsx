@@ -7,8 +7,7 @@ import type { Core } from 'cytoscape';
 import cytoscape from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
-import { useTopoViewer } from '../../context/TopoViewerContext';
-import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
+import { useTopoViewerActions, useTopoViewerState } from '../../context/TopoViewerContext';
 import { useElementsUpdate } from '../../hooks/canvas';
 import { log } from '../../utils/logger';
 
@@ -21,14 +20,6 @@ import {
   handleCytoscapeReady
 } from './init';
 import { setupEventHandlers, attachCustomWheelZoom } from './events';
-
-interface NodeDataUpdatedMessage {
-  type: 'node-data-updated';
-  data: {
-    nodeId: string;
-    extraData: Record<string, unknown>;
-  };
-}
 
 type SelectCallback = (id: string | null) => void;
 
@@ -111,8 +102,12 @@ function useCytoscapeInitializer(
   cyRef: React.RefObject<Core | null>,
   selectNode: SelectCallback,
   selectEdge: SelectCallback,
-  options?: CytoscapeInitOptions
+  options?: CytoscapeInitOptions,
+  lifecycle?: { onCyReady?: (cy: Core) => void; onCyDestroyed?: () => void }
 ) {
+  const onCyReady = lifecycle?.onCyReady;
+  const onCyDestroyed = lifecycle?.onCyDestroyed;
+
   return useCallback((initialElements: CyElement[]) => {
     const container = containerRef.current;
     if (!container) return null;
@@ -133,6 +128,7 @@ function useCytoscapeInitializer(
     const cy = cytoscape(createCytoscapeConfig(container, initialElements));
 
     cyRef.current = cy;
+    onCyReady?.(cy);
     cy.userZoomingEnabled(false);
     const detachWheel = attachCustomWheelZoom(cyRef, container);
 
@@ -149,44 +145,26 @@ function useCytoscapeInitializer(
       detachWheel();
       cy.destroy();
       cyRef.current = null;
+      onCyDestroyed?.();
     };
-  }, [selectNode, selectEdge, containerRef, cyRef, options?.editNode, options?.editEdge, options?.getMode, options?.getIsLocked]);
-}
-
-
-/**
- * Hook to listen for node-data-updated messages and dispatch to React state.
- * When the extension saves node data, it sends back a node-data-updated message.
- * We dispatch UPDATE_NODE_DATA to update React state, which then triggers
- * useElementsUpdate to update Cytoscape via the normal React flow.
- */
-function useCytoscapeDataUpdateListener(cyRef: React.RefObject<Core | null>): void {
-  const { dispatch } = useTopoViewer();
-
-  useEffect(() => {
-    const handleMessage = (event: TypedMessageEvent) => {
-      const message = event.data as NodeDataUpdatedMessage | undefined;
-      if (!message || message.type !== 'node-data-updated') return;
-
-      const data = message.data;
-      if (!data?.nodeId || !data?.extraData) {
-        return;
-      }
-
-      // Dispatch to React state - this is the source of truth.
-      // Cytoscape will be updated by useElementsUpdate when React re-renders.
-      // We do NOT update Cytoscape directly here to avoid race conditions
-      // with other state updates (like undo push) that might trigger re-renders
-      // with stale state before our dispatch is processed.
-      dispatch({ type: 'UPDATE_NODE_DATA', payload: { nodeId: data.nodeId, extraData: data.extraData } });
-    };
-
-    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === 'node-data-updated');
-  }, [cyRef, dispatch]);
+  }, [
+    selectNode,
+    selectEdge,
+    containerRef,
+    cyRef,
+    options?.editNode,
+    options?.editEdge,
+    options?.getMode,
+    options?.getIsLocked,
+    onCyReady,
+    onCyDestroyed
+  ]);
 }
 
 interface CytoscapeCanvasProps {
   elements: CyElement[];
+  onCyReady?: (cy: Core) => void;
+  onCyDestroyed?: () => void;
 }
 
 /**
@@ -217,11 +195,12 @@ function createRefMethods(cyRef: React.RefObject<Core | null>): CytoscapeCanvasR
 }
 
 export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasProps>(
-  ({ elements }, ref) => {
+  ({ elements, onCyReady, onCyDestroyed }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const cyRef = useRef<Core | null>(null);
     const cleanupRef = useRef<(() => void) | null>(null);
-    const { state, selectNode, selectEdge, editNode, editEdge, updateNodePositions } = useTopoViewer();
+    const { state } = useTopoViewerState();
+    const { selectNode, selectEdge, editNode, editEdge, updateNodePositions } = useTopoViewerActions();
     const initialElementsRef = useRef<CyElement[] | null>(null);
 
     // Store mode in ref to avoid stale closures in event handlers
@@ -241,13 +220,14 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     // Expose methods via ref
     useImperativeHandle(ref, () => createRefMethods(cyRef), []);
 
-    const initCytoscape = useCytoscapeInitializer(
-      containerRef,
-      cyRef,
-      selectNode,
-      selectEdge,
-      { editNode, editEdge, getMode, getIsLocked }
-    );
+	    const initCytoscape = useCytoscapeInitializer(
+	      containerRef,
+	      cyRef,
+	      selectNode,
+	      selectEdge,
+	      { editNode, editEdge, getMode, getIsLocked },
+	      { onCyReady, onCyDestroyed }
+	    );
 
     useDelayedCytoscapeInit(
       containerRef,
@@ -256,14 +236,11 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
       cleanupRef
     );
 
-    // Update elements when they change
-    useElementsUpdate(cyRef, elements, updateNodePositions);
+	    // Update elements when they change
+	    useElementsUpdate(cyRef, elements, updateNodePositions);
 
-    // Listen for node-data-updated messages and update Cytoscape directly
-    useCytoscapeDataUpdateListener(cyRef);
-
-    return (
-      <div
+	    return (
+	      <div
         ref={containerRef}
         data-testid="cytoscape-canvas"
         className="cytoscape-container"

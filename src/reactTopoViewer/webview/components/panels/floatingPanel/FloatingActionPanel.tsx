@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
 
 import type { CustomNodeTemplate } from '../../../../shared/types/editors';
-import { useTopoViewer } from '../../../context/TopoViewerContext';
+import { useTopoViewerActions, useTopoViewerState } from '../../../context/TopoViewerContext';
 import {
   usePanelDrag,
   useDrawerSide,
@@ -123,7 +123,8 @@ function buildNodeMenuItems(customNodes: CustomNodeTemplate[]): DropdownMenuItem
 
 export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, FloatingActionPanelProps>(
   (props, ref) => {
-    const { state, toggleLock } = useTopoViewer();
+    const { state } = useTopoViewerState();
+    const { toggleLock } = useTopoViewerActions();
     const isViewerMode = state.mode === 'view';
     const { isLocked } = state;
 
@@ -242,7 +243,8 @@ const PanelContent: React.FC<PanelContentProps> = ({
   onDeleteCustomNode,
   onSetDefaultCustomNode
 }) => {
-  const { state, setProcessing } = useTopoViewer();
+  const { state } = useTopoViewerState();
+  const { setProcessing } = useTopoViewerActions();
   const { isProcessing, processingMode } = state;
 
   const handleDeployClick = useCallback(() => {

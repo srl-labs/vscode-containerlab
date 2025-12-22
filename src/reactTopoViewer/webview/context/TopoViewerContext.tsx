@@ -1,7 +1,7 @@
 /**
  * TopoViewer Context - Global state management for React TopoViewer
  */
-import type { ReactNode} from 'react';
+import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
@@ -40,7 +40,6 @@ export interface TopoViewerState {
   editingEdge: string | null;
   editingNetwork: string | null;
   isLocked: boolean;
-  isLoading: boolean;
   linkLabelMode: LinkLabelMode;
   showDummyLinks: boolean;
   customNodes: CustomNodeTemplate[];
@@ -67,7 +66,6 @@ const initialState: TopoViewerState = {
   editingEdge: null,
   editingNetwork: null,
   isLocked: true,
-  isLoading: false,
   linkLabelMode: 'show-all',
   showDummyLinks: true,
   customNodes: [],
@@ -109,7 +107,6 @@ type TopoViewerAction =
   | { type: 'EDIT_EDGE'; payload: string | null }
   | { type: 'EDIT_NETWORK'; payload: string | null }
   | { type: 'TOGGLE_LOCK' }
-  | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_LINK_LABEL_MODE'; payload: LinkLabelMode }
   | { type: 'TOGGLE_DUMMY_LINKS' }
   | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> }
@@ -145,7 +142,6 @@ const reducerHandlers: ReducerHandlers = {
   EDIT_EDGE: (state, action) => ({ ...state, editingEdge: action.payload, editingNode: null, editingNetwork: null, selectedNode: null, selectedEdge: null }),
   EDIT_NETWORK: (state, action) => ({ ...state, editingNetwork: action.payload, editingNode: null, editingEdge: null, selectedNode: null, selectedEdge: null }),
   TOGGLE_LOCK: (state) => ({ ...state, isLocked: !state.isLocked }),
-  SET_LOADING: (state, action) => ({ ...state, isLoading: action.payload }),
   SET_LINK_LABEL_MODE: (state, action) => ({ ...state, linkLabelMode: action.payload }),
   TOGGLE_DUMMY_LINKS: (state) => ({ ...state, showDummyLinks: !state.showDummyLinks }),
   SET_INITIAL_DATA: (state, action) => ({ ...state, ...action.payload }),
@@ -340,11 +336,12 @@ function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): To
 /**
  * Context value interface
  */
-interface TopoViewerContextValue {
+interface TopoViewerStateContextValue {
   state: TopoViewerState;
   dispatch: React.Dispatch<TopoViewerAction>;
-  initLoading: boolean;
-  error: string | null;
+}
+
+interface TopoViewerActionsContextValue {
   selectNode: (nodeId: string | null) => void;
   selectEdge: (edgeId: string | null) => void;
   editNode: (nodeId: string | null) => void;
@@ -352,7 +349,6 @@ interface TopoViewerContextValue {
   editNetwork: (nodeId: string | null) => void;
   toggleLock: () => void;
   setMode: (mode: 'edit' | 'view') => void;
-  setLoading: (loading: boolean) => void;
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
   addNode: (node: CyElement) => void;
@@ -368,7 +364,8 @@ interface TopoViewerContextValue {
 /**
  * Create context
  */
-const TopoViewerContext = createContext<TopoViewerContextValue | undefined>(undefined);
+const TopoViewerStateContext = createContext<TopoViewerStateContextValue | undefined>(undefined);
+const TopoViewerActionsContext = createContext<TopoViewerActionsContextValue | undefined>(undefined);
 
 /**
  * Provider props
@@ -511,79 +508,103 @@ function handleExtensionMessage(
  * Custom hook for selection-related action creators
  */
 function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
-  return {
-    selectNode: useCallback((nodeId: string | null) => {
-      dispatch({ type: 'SELECT_NODE', payload: nodeId });
-    }, [dispatch]),
-    selectEdge: useCallback((edgeId: string | null) => {
-      dispatch({ type: 'SELECT_EDGE', payload: edgeId });
-    }, [dispatch]),
-    editNode: useCallback((nodeId: string | null) => {
-      dispatch({ type: 'EDIT_NODE', payload: nodeId });
-    }, [dispatch]),
-    editEdge: useCallback((edgeId: string | null) => {
-      dispatch({ type: 'EDIT_EDGE', payload: edgeId });
-    }, [dispatch]),
-    editNetwork: useCallback((nodeId: string | null) => {
-      dispatch({ type: 'EDIT_NETWORK', payload: nodeId });
-    }, [dispatch])
-  };
+  const selectNode = useCallback((nodeId: string | null) => {
+    dispatch({ type: 'SELECT_NODE', payload: nodeId });
+  }, [dispatch]);
+  const selectEdge = useCallback((edgeId: string | null) => {
+    dispatch({ type: 'SELECT_EDGE', payload: edgeId });
+  }, [dispatch]);
+  const editNode = useCallback((nodeId: string | null) => {
+    dispatch({ type: 'EDIT_NODE', payload: nodeId });
+  }, [dispatch]);
+  const editEdge = useCallback((edgeId: string | null) => {
+    dispatch({ type: 'EDIT_EDGE', payload: edgeId });
+  }, [dispatch]);
+  const editNetwork = useCallback((nodeId: string | null) => {
+    dispatch({ type: 'EDIT_NETWORK', payload: nodeId });
+  }, [dispatch]);
+
+  return useMemo(() => ({
+    selectNode,
+    selectEdge,
+    editNode,
+    editEdge,
+    editNetwork
+  }), [selectNode, selectEdge, editNode, editEdge, editNetwork]);
 }
 
 /**
  * Custom hook for graph element action creators
  */
 function useGraphElementActions(dispatch: React.Dispatch<TopoViewerAction>) {
-  return {
-    addNode: useCallback((node: CyElement) => {
-      dispatch({ type: 'ADD_NODE', payload: node });
-    }, [dispatch]),
-    addEdge: useCallback((edge: CyElement) => {
-      dispatch({ type: 'ADD_EDGE', payload: edge });
-    }, [dispatch]),
-    removeNodeAndEdges: useCallback((nodeId: string) => {
-      dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
-    }, [dispatch]),
-    removeEdge: useCallback((edgeId: string) => {
-      dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
-    }, [dispatch])
-    ,
-    updateNodePositions: useCallback((positions: Array<{ id: string; position: { x: number; y: number } }>) => {
-      dispatch({ type: 'UPDATE_NODE_POSITIONS', payload: { positions } });
-    }, [dispatch])
-  };
+  const addNode = useCallback((node: CyElement) => {
+    dispatch({ type: 'ADD_NODE', payload: node });
+  }, [dispatch]);
+  const addEdge = useCallback((edge: CyElement) => {
+    dispatch({ type: 'ADD_EDGE', payload: edge });
+  }, [dispatch]);
+  const removeNodeAndEdges = useCallback((nodeId: string) => {
+    dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
+  }, [dispatch]);
+  const removeEdge = useCallback((edgeId: string) => {
+    dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
+  }, [dispatch]);
+  const updateNodePositions = useCallback((positions: Array<{ id: string; position: { x: number; y: number } }>) => {
+    dispatch({ type: 'UPDATE_NODE_POSITIONS', payload: { positions } });
+  }, [dispatch]);
+
+  return useMemo(() => ({
+    addNode,
+    addEdge,
+    removeNodeAndEdges,
+    removeEdge,
+    updateNodePositions
+  }), [addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodePositions]);
 }
 
 /**
  * Custom hook for UI state action creators
  */
 function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
-  return {
-    toggleLock: useCallback(() => {
-      dispatch({ type: 'TOGGLE_LOCK' });
-    }, [dispatch]),
-    setMode: useCallback((mode: 'edit' | 'view') => {
-      dispatch({ type: 'SET_MODE', payload: mode });
-    }, [dispatch]),
-    setLoading: useCallback((loading: boolean) => {
-      dispatch({ type: 'SET_LOADING', payload: loading });
-    }, [dispatch]),
-    setLinkLabelMode: useCallback((mode: LinkLabelMode) => {
-      dispatch({ type: 'SET_LINK_LABEL_MODE', payload: mode });
-    }, [dispatch]),
-    toggleDummyLinks: useCallback(() => {
-      dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
-    }, [dispatch]),
-    setCustomNodes: useCallback((customNodes: CustomNodeTemplate[], defaultNode: string) => {
-      dispatch({ type: 'SET_CUSTOM_NODES', payload: { customNodes, defaultNode } });
-    }, [dispatch]),
-    editCustomTemplate: useCallback((data: CustomTemplateEditorData | null) => {
-      dispatch({ type: 'EDIT_CUSTOM_TEMPLATE', payload: data });
-    }, [dispatch]),
-    setProcessing: useCallback((isProcessing: boolean, mode?: 'deploy' | 'destroy') => {
-      dispatch({ type: 'SET_PROCESSING', payload: { isProcessing, mode: mode ?? null } });
-    }, [dispatch])
-  };
+  const toggleLock = useCallback(() => {
+    dispatch({ type: 'TOGGLE_LOCK' });
+  }, [dispatch]);
+  const setMode = useCallback((mode: 'edit' | 'view') => {
+    dispatch({ type: 'SET_MODE', payload: mode });
+  }, [dispatch]);
+  const setLinkLabelMode = useCallback((mode: LinkLabelMode) => {
+    dispatch({ type: 'SET_LINK_LABEL_MODE', payload: mode });
+  }, [dispatch]);
+  const toggleDummyLinks = useCallback(() => {
+    dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
+  }, [dispatch]);
+  const setCustomNodes = useCallback((customNodes: CustomNodeTemplate[], defaultNode: string) => {
+    dispatch({ type: 'SET_CUSTOM_NODES', payload: { customNodes, defaultNode } });
+  }, [dispatch]);
+  const editCustomTemplate = useCallback((data: CustomTemplateEditorData | null) => {
+    dispatch({ type: 'EDIT_CUSTOM_TEMPLATE', payload: data });
+  }, [dispatch]);
+  const setProcessing = useCallback((isProcessing: boolean, mode?: 'deploy' | 'destroy') => {
+    dispatch({ type: 'SET_PROCESSING', payload: { isProcessing, mode: mode ?? null } });
+  }, [dispatch]);
+
+  return useMemo(() => ({
+    toggleLock,
+    setMode,
+    setLinkLabelMode,
+    toggleDummyLinks,
+    setCustomNodes,
+    editCustomTemplate,
+    setProcessing
+  }), [
+    toggleLock,
+    setMode,
+    setLinkLabelMode,
+    toggleDummyLinks,
+    setCustomNodes,
+    editCustomTemplate,
+    setProcessing
+  ]);
 }
 
 /**
@@ -594,11 +615,11 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const graphElementActions = useGraphElementActions(dispatch);
   const uiStateActions = useUIStateActions(dispatch);
 
-  return {
+  return useMemo(() => ({
     ...selectionActions,
     ...graphElementActions,
     ...uiStateActions
-  };
+  }), [selectionActions, graphElementActions, uiStateActions]);
 }
 
 /**
@@ -619,8 +640,6 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
       }
     }
   );
-  const initLoading = false;
-  const error: string | null = null;
   const actions = useActions(dispatch);
 
   // Listen for messages from extension
@@ -632,30 +651,49 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
       }
     };
     return subscribeToWebviewMessages(handleMessage);
-  }, []);
+  }, [dispatch]);
 
-  const value = useMemo<TopoViewerContextValue>(() => ({
+  const stateValue = useMemo<TopoViewerStateContextValue>(() => ({
     state,
-    dispatch,
-    initLoading,
-    error,
-    ...actions
-  }), [state, initLoading, error, actions]);
+    dispatch
+  }), [state, dispatch]);
 
   return (
-    <TopoViewerContext.Provider value={value}>
-      {children}
-    </TopoViewerContext.Provider>
+    <TopoViewerStateContext.Provider value={stateValue}>
+      <TopoViewerActionsContext.Provider value={actions}>
+        {children}
+      </TopoViewerActionsContext.Provider>
+    </TopoViewerStateContext.Provider>
   );
 };
 
 /**
- * Hook to use TopoViewer context
+ * Hook to use TopoViewer state + dispatch
  */
-export const useTopoViewer = (): TopoViewerContextValue => {
-  const context = useContext(TopoViewerContext);
+export const useTopoViewerState = (): TopoViewerStateContextValue => {
+  const context = useContext(TopoViewerStateContext);
   if (context === undefined) {
-    throw new Error('useTopoViewer must be used within a TopoViewerProvider');
+    throw new Error('useTopoViewerState must be used within a TopoViewerProvider');
   }
   return context;
+};
+
+/**
+ * Hook to use TopoViewer actions (stable)
+ */
+export const useTopoViewerActions = (): TopoViewerActionsContextValue => {
+  const context = useContext(TopoViewerActionsContext);
+  if (context === undefined) {
+    throw new Error('useTopoViewerActions must be used within a TopoViewerProvider');
+  }
+  return context;
+};
+
+/**
+ * Legacy combined hook (prefer useTopoViewerState/useTopoViewerActions)
+ */
+export const useTopoViewer = (): TopoViewerStateContextValue & TopoViewerActionsContextValue => {
+  const stateContext = useTopoViewerState();
+  const actionsContext = useTopoViewerActions();
+  return { ...stateContext, ...actionsContext };
 };
