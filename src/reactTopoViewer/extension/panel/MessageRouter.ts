@@ -10,7 +10,7 @@ import type * as vscode from 'vscode';
 import { log, logWithLocation } from '../services/logger';
 import { labLifecycleService } from '../services/LabLifecycleService';
 import { nodeCommandService } from '../services/NodeCommandService';
-import { splitViewManager } from '../services/SplitViewManager';
+import type { SplitViewManager } from '../services/SplitViewManager';
 import { customNodeConfigManager } from '../services/CustomNodeConfigManager';
 
 type WebviewMessage = Record<string, unknown> & {
@@ -52,6 +52,9 @@ export interface MessageRouterContext {
   yamlFilePath: string;
   isViewMode: boolean;
   loadTopologyData: () => Promise<unknown>;
+  splitViewManager: SplitViewManager;
+  setInternalUpdate: (updating: boolean) => void;
+  onInternalFileWritten?: (filePath: string, content: string) => void;
 }
 
 /**
@@ -62,9 +65,6 @@ export class MessageRouter {
 
   constructor(context: MessageRouterContext) {
     this.context = context;
-    if (context.yamlFilePath) {
-      nodeCommandService.setYamlFilePath(context.yamlFilePath);
-    }
   }
 
   /**
@@ -72,10 +72,6 @@ export class MessageRouter {
    */
   updateContext(context: Partial<MessageRouterContext>): void {
     Object.assign(this.context, context);
-
-    if (context.yamlFilePath !== undefined) {
-      nodeCommandService.setYamlFilePath(context.yamlFilePath);
-    }
   }
 
   /**
@@ -194,16 +190,23 @@ export class MessageRouter {
       this.respondFs(panel, requestId, null, 'Missing content parameter');
       return;
     }
+    this.context.setInternalUpdate(true);
     try {
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
       await fs.promises.writeFile(filePath, content, 'utf-8');
+      if (this.context.onInternalFileWritten) {
+        this.context.onInternalFileWritten(filePath, content);
+      }
       this.respondFs(panel, requestId, null);
     } catch (err) {
       this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
+    } finally {
+      this.context.setInternalUpdate(false);
     }
   }
 
   private async handleFsUnlink(filePath: string, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+    this.context.setInternalUpdate(true);
     try {
       await fs.promises.unlink(filePath);
       this.respondFs(panel, requestId, null);
@@ -215,6 +218,8 @@ export class MessageRouter {
       } else {
         this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
       }
+    } finally {
+      this.context.setInternalUpdate(false);
     }
   }
 
@@ -284,7 +289,7 @@ export class MessageRouter {
       return;
     }
     try {
-      const isOpen = await splitViewManager.toggleSplitView(yamlFilePath, panel);
+      const isOpen = await this.context.splitViewManager.toggleSplitView(yamlFilePath, panel);
       log.info(`[MessageRouter] Split view toggled: ${isOpen ? 'opened' : 'closed'}`);
     } catch (err) {
       log.error(`[MessageRouter] Failed to toggle split view: ${err}`);
@@ -321,24 +326,34 @@ export class MessageRouter {
   }
 
   private async handleNodeCommand(command: string, message: WebviewMessage): Promise<void> {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
+      return;
+    }
     const nodeName = typeof message.nodeName === 'string' ? message.nodeName : '';
     if (!nodeName) {
       log.warn(`[MessageRouter] Invalid node command payload: ${JSON.stringify(message)}`);
       return;
     }
-    const res = await nodeCommandService.handleNodeEndpoint(command, nodeName);
+    const res = await nodeCommandService.handleNodeEndpoint(command, nodeName, yamlFilePath);
     if (res.error) log.error(`[MessageRouter] ${res.error}`);
     else if (res.result) log.info(`[MessageRouter] ${res.result}`);
   }
 
   private async handleInterfaceCommand(command: string, message: WebviewMessage): Promise<void> {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
+      return;
+    }
     const nodeName = typeof message.nodeName === 'string' ? message.nodeName : '';
     const interfaceName = typeof message.interfaceName === 'string' ? message.interfaceName : '';
     if (!nodeName || !interfaceName) {
       log.warn(`[MessageRouter] Invalid interface command payload: ${JSON.stringify(message)}`);
       return;
     }
-    const res = await nodeCommandService.handleInterfaceEndpoint(command, { nodeName, interfaceName });
+    const res = await nodeCommandService.handleInterfaceEndpoint(command, { nodeName, interfaceName }, yamlFilePath);
     if (res.error) log.error(`[MessageRouter] ${res.error}`);
     else if (res.result) log.info(`[MessageRouter] ${res.result}`);
   }

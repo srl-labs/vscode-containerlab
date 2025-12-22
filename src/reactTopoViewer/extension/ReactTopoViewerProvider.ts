@@ -8,6 +8,8 @@
  * - Topology data loading (via TopologyAdapter)
  */
 
+import * as path from 'path';
+
 import * as vscode from 'vscode';
 
 import { nodeFsAdapter } from '../shared/io';
@@ -20,6 +22,7 @@ import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
 import { deploymentStateChecker } from './services/DeploymentStateChecker';
 import { annotationsIO } from './services/annotations';
 import { buildEdgeStatsUpdates } from './services/EdgeStatsBuilder';
+import { SplitViewManager } from './services/SplitViewManager';
 import {
   createPanel,
   generateWebviewHtml,
@@ -52,11 +55,21 @@ export class ReactTopoViewer {
   private lastTopologyElements: CyElement[] = [];
   private watcherManager: WatcherManager;
   private messageRouter: MessageRouter | undefined;
+  private splitViewManager: SplitViewManager = new SplitViewManager();
+  private internalUpdateDepth = 0;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.adaptor = new TopoViewerAdaptorClab();
     this.watcherManager = new WatcherManager();
+  }
+
+  private setInternalUpdate(updating: boolean): void {
+    if (updating) {
+      this.internalUpdateDepth += 1;
+      return;
+    }
+    this.internalUpdateDepth = Math.max(0, this.internalUpdateDepth - 1);
   }
 
   /**
@@ -106,7 +119,7 @@ export class ReactTopoViewer {
    * Initialize watchers for file changes and docker images
    */
   private initializeWatchers(panel: vscode.WebviewPanel): void {
-    const updateController = { isInternalUpdate: () => false };
+    const updateController = { isInternalUpdate: () => this.internalUpdateDepth > 0 };
     const postTopologyData = (data: unknown) => {
       panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data });
     };
@@ -132,6 +145,7 @@ export class ReactTopoViewer {
   private setupPanelHandlers(panel: vscode.WebviewPanel, context: vscode.ExtensionContext): void {
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
+      this.internalUpdateDepth = 0;
       this.watcherManager.dispose();
     }, null, context.subscriptions);
 
@@ -202,6 +216,13 @@ export class ReactTopoViewer {
       yamlFilePath: this.lastYamlFilePath,
       isViewMode: this.isViewMode,
       loadTopologyData: () => this.loadTopologyData(),
+      splitViewManager: this.splitViewManager,
+      setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
+      onInternalFileWritten: (filePath: string, content: string) => {
+        if (path.resolve(filePath) === path.resolve(this.lastYamlFilePath)) {
+          this.watcherManager.setLastYamlContent(content);
+        }
+      }
     });
 
     this.initializeWatchers(panel);

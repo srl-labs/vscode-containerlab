@@ -115,5 +115,3 @@ export class SplitViewManager {
     }
   }
 }
-
-export const splitViewManager = new SplitViewManager();

@@ -506,12 +506,8 @@ export function useElementsUpdate(
       const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
       const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
 
-      if (nodesWithChangedExtraData.length > 0) {
-        updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
-      }
-      if (edgesWithChangedExtraData.length > 0) {
-        updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
-      }
+      updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
+      updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
       if (hasVisualDataChanged(cy, elements)) {
         cy.batch(() => updateElementData(cy, elements));
         applyStubLinkClasses(cy);

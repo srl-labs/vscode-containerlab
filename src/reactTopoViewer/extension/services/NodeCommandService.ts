@@ -73,21 +73,12 @@ function createInterfaceObject(
  * Executes VS Code commands for SSH, shell attach, and logs.
  */
 export class NodeCommandService {
-  private yamlFilePath: string = '';
-
-  /**
-   * Sets the current YAML file path for container lookups.
-   */
-  setYamlFilePath(path: string): void {
-    this.yamlFilePath = path;
-  }
-
   /**
    * Gets a container node by name from the running labs.
    */
-  async getContainerNode(nodeName: string): Promise<ClabContainerTreeNode | undefined> {
+  async getContainerNode(nodeName: string, yamlFilePath: string): Promise<ClabContainerTreeNode | undefined> {
     const labsData = await runningLabsProvider?.discoverInspectLabs();
-    if (!labsData || !this.yamlFilePath) {
+    if (!labsData || !yamlFilePath) {
       return undefined;
     }
 
@@ -96,7 +87,7 @@ export class NodeCommandService {
       if (!isClabLabTreeNode(lab)) {
         return false;
       }
-      return lab.labPath.absolute === this.yamlFilePath;
+      return lab.labPath.absolute === yamlFilePath;
     });
 
     if (!currentLab || !isClabLabTreeNode(currentLab)) {
@@ -187,15 +178,14 @@ export class NodeCommandService {
   /**
    * Handles node-related endpoint commands (SSH, shell, logs).
    */
-  async handleNodeEndpoint(endpointName: string, payloadObj: unknown): Promise<EndpointResult> {
+  async handleNodeEndpoint(endpointName: string, nodeName: string, yamlFilePath: string): Promise<EndpointResult> {
     let result: unknown = null;
     let error: string | null = null;
 
     switch (endpointName) {
       case 'clab-node-connect-ssh': {
         try {
-          const nodeName = payloadObj as string;
-          const containerNode = (await this.getContainerNode(nodeName)) ?? createDefaultContainerNode(nodeName);
+          const containerNode = (await this.getContainerNode(nodeName, yamlFilePath)) ?? createDefaultContainerNode(nodeName);
           await vscode.commands.executeCommand('containerlab.node.ssh', containerNode);
           result = `SSH connection executed for ${nodeName}`;
         } catch (innerError) {
@@ -207,8 +197,7 @@ export class NodeCommandService {
 
       case 'clab-node-attach-shell': {
         try {
-          const nodeName = payloadObj as string;
-          const node = (await this.getContainerNode(nodeName)) ?? createDefaultContainerNode(nodeName);
+          const node = (await this.getContainerNode(nodeName, yamlFilePath)) ?? createDefaultContainerNode(nodeName);
           await vscode.commands.executeCommand('containerlab.node.attachShell', node);
           result = `Attach shell executed for ${nodeName}`;
         } catch (innerError) {
@@ -220,7 +209,6 @@ export class NodeCommandService {
 
       case 'clab-node-view-logs': {
         try {
-          const nodeName = payloadObj as string;
           const node = createDefaultContainerNode(nodeName);
           await vscode.commands.executeCommand('containerlab.node.showLogs', node);
           result = `Show logs executed for ${nodeName}`;
@@ -243,23 +231,30 @@ export class NodeCommandService {
   /**
    * Resolves the actual interface name from a logical name using the running labs data.
    */
-  async resolveInterfaceName(nodeName: string, interfaceName: string): Promise<string> {
+  async resolveInterfaceName(nodeName: string, interfaceName: string, yamlFilePath: string): Promise<string> {
     if (!runningLabsProvider) return interfaceName;
     const treeData = await runningLabsProvider.discoverInspectLabs();
     if (!treeData) return interfaceName;
 
-    for (const lab of Object.values(treeData)) {
+    const currentLab = Object.values(treeData).find(lab => {
       if (!isClabLabTreeNode(lab)) {
-        continue;
+        return false;
       }
-      const container = lab.containers?.find(
-        (c) => c.name === nodeName || c.name_short === nodeName
-      );
-      const intf = container?.interfaces?.find(
-        (i) => i.name === interfaceName || i.alias === interfaceName
-      );
-      if (intf) return intf.name;
+      return lab.labPath.absolute === yamlFilePath;
+    });
+
+    if (!currentLab || !isClabLabTreeNode(currentLab)) {
+      return interfaceName;
     }
+
+    const container = currentLab.containers?.find(
+      (c) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+    );
+    const intf = container?.interfaces?.find(
+      (i) => i.name === interfaceName || i.alias === interfaceName
+    );
+    if (intf) return intf.name;
+
     return interfaceName;
   }
 
@@ -268,12 +263,13 @@ export class NodeCommandService {
    */
   async handleInterfaceEndpoint(
     endpointName: string,
-    payloadObj: { nodeName: string; interfaceName: string }
+    payloadObj: { nodeName: string; interfaceName: string },
+    yamlFilePath: string
   ): Promise<EndpointResult> {
     if (endpointName === 'clab-interface-capture') {
       try {
         const { nodeName, interfaceName } = payloadObj;
-        const actualInterfaceName = await this.resolveInterfaceName(nodeName, interfaceName);
+        const actualInterfaceName = await this.resolveInterfaceName(nodeName, interfaceName, yamlFilePath);
         const iface = createInterfaceObject(
           nodeName,
           actualInterfaceName,
