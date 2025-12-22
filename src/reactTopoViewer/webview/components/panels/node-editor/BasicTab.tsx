@@ -76,7 +76,7 @@ interface KindFieldProps extends TabProps {
   onKindChange: (kind: string) => void;
 }
 
-const KindField: React.FC<KindFieldProps> = ({ data, onChange, kinds, onKindChange }) => {
+const KindField: React.FC<KindFieldProps> = ({ data, onChange, kinds, onKindChange, inheritedProps = [] }) => {
   const kindOptions = useMemo(() =>
     kinds.map(kind => ({ value: kind, label: kind })),
     [kinds]
@@ -88,7 +88,7 @@ const KindField: React.FC<KindFieldProps> = ({ data, onChange, kinds, onKindChan
   }, [onChange, onKindChange]);
 
   return (
-    <FormField label="Kind">
+    <FormField label="Kind" inherited={inheritedProps.includes('kind')}>
       <FilterableDropdown
         id="node-kind"
         options={kindOptions}
@@ -387,6 +387,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
         onChange={onChange}
         kinds={kinds}
         onKindChange={handleKindChange}
+        inheritedProps={inheritedProps}
       />
 
       {/* Only show Type field for kinds that support it */}

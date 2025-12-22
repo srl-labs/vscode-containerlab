@@ -33,7 +33,7 @@ export function initSpecialNodes(
   const specialNodes = new Map<string, SpecialNodeInfo>();
   if (!nodes) return specialNodes;
   for (const [nodeName, nodeData] of Object.entries(nodes)) {
-    if (nodeData.kind === NODE_KIND_BRIDGE || nodeData.kind === NODE_KIND_OVS_BRIDGE) {
+    if (nodeData?.kind === NODE_KIND_BRIDGE || nodeData?.kind === NODE_KIND_OVS_BRIDGE) {
       specialNodes.set(nodeName, {
         id: nodeName,
         type: nodeData.kind as SpecialNodeInfo['type'],
