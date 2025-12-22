@@ -15,6 +15,7 @@ interface LabSettingsPanelProps {
   isVisible: boolean;
   onClose: () => void;
   mode: 'view' | 'edit';
+  isLocked?: boolean;
   labSettings?: LabSettings;
 }
 
@@ -27,10 +28,12 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
   isVisible,
   onClose,
   mode,
+  isLocked = true,
   labSettings
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>('basic-lab');
-  const isViewMode = mode === 'view';
+  // Fields are read-only in view mode OR when locked in edit mode
+  const isReadOnly = mode === 'view' || isLocked;
 
   const state = useLabSettingsState(labSettings);
 
@@ -43,7 +46,7 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
       width={400}
       storageKey="labSettings"
       zIndex={21}
-      footer={!isViewMode}
+      footer={!isReadOnly}
       onPrimaryClick={() => void state.handleSave()}
       primaryLabel="Save"
       onSecondaryClick={onClose}
@@ -71,7 +74,7 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
           labName={state.basic.labName}
           prefixType={state.basic.prefixType}
           customPrefix={state.basic.customPrefix}
-          isViewMode={isViewMode}
+          isViewMode={isReadOnly}
           onLabNameChange={state.setBasic.setLabName}
           onPrefixTypeChange={state.setBasic.setPrefixType}
           onCustomPrefixChange={state.setBasic.setCustomPrefix}
@@ -93,7 +96,7 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
           bridge={state.mgmt.bridge}
           externalAccess={state.mgmt.externalAccess}
           driverOptions={state.mgmt.driverOptions}
-          isViewMode={isViewMode}
+          isViewMode={isReadOnly}
           onNetworkNameChange={state.setMgmt.setNetworkName}
           onIpv4TypeChange={state.setMgmt.setIpv4Type}
           onIpv4SubnetChange={state.setMgmt.setIpv4Subnet}

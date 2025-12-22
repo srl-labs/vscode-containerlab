@@ -325,7 +325,7 @@ const AppContent: React.FC<{
           freeTextEditor={{ isVisible: !!annotations.editingTextAnnotation, annotation: annotations.editingTextAnnotation, onSave: handleSaveTextAnnotationWithUndo, onClose: annotations.closeTextEditor, onDelete: annotations.deleteTextAnnotationWithUndo }}
           freeShapeEditor={{ isVisible: !!annotations.editingShapeAnnotation, annotation: annotations.editingShapeAnnotation, onSave: annotations.saveShapeAnnotation, onClose: annotations.closeShapeEditor, onDelete: annotations.deleteShapeAnnotation }}
           groupEditor={{ isVisible: !!annotations.editingGroup, groupData: annotations.editingGroup, onSave: annotations.saveGroup, onClose: annotations.closeGroupEditor, onDelete: annotations.deleteGroup, onStyleChange: annotations.updateGroup }}
-          labSettings={{ isVisible: panelVisibility.showLabSettingsPanel, mode: state.mode, labSettings: { name: state.labName }, onClose: panelVisibility.handleCloseLabSettings }}
+          labSettings={{ isVisible: panelVisibility.showLabSettingsPanel, mode: state.mode, isLocked: state.isLocked, labSettings: { name: state.labName }, onClose: panelVisibility.handleCloseLabSettings }}
         />
         <FloatingActionPanel
           ref={floatingPanelRef}
