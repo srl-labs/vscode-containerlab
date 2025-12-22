@@ -274,6 +274,128 @@ async function resetFiles(): Promise<void> {
 }
 
 // ============================================================================
+// Split View Toggle (used by both navbar and dev settings)
+// ============================================================================
+
+// Polling interval for live updates
+let splitViewPollInterval: ReturnType<typeof setInterval> | null = null;
+
+// Cache for change detection
+let lastYamlContent = '';
+let lastAnnotationsContent = '';
+
+/**
+ * Refresh split view content (called by polling)
+ */
+async function refreshSplitViewContent(): Promise<void> {
+  if (!currentFilePath) return;
+
+  const yamlContentEl = document.getElementById('yamlContent');
+  const annotationsContentEl = document.getElementById('annotationsContent');
+
+  if (!yamlContentEl || !annotationsContentEl) return;
+
+  try {
+    // Load YAML content
+    const yamlContent = await fsAdapter.readFile(currentFilePath);
+
+    // Load annotations content
+    const annotationsPath = `${currentFilePath}.annotations.json`;
+    let annotationsContent = '{}';
+    try {
+      annotationsContent = await fsAdapter.readFile(annotationsPath);
+    } catch {
+      annotationsContent = '// No annotations file found';
+    }
+
+    // Only update DOM if content changed (avoids flickering)
+    if (yamlContent !== lastYamlContent) {
+      yamlContentEl.textContent = yamlContent;
+      lastYamlContent = yamlContent;
+    }
+    if (annotationsContent !== lastAnnotationsContent) {
+      annotationsContentEl.textContent = annotationsContent;
+      lastAnnotationsContent = annotationsContent;
+    }
+  } catch (error) {
+    console.error('%c[Dev] Failed to refresh split view:', 'color: #f44336;', error);
+  }
+}
+
+/**
+ * Toggle the split view panel showing YAML and annotations files
+ */
+async function toggleSplitView(): Promise<void> {
+  const panel = document.getElementById('splitViewPanel');
+  const root = document.getElementById('root');
+  const yamlContentEl = document.getElementById('yamlContent');
+  const annotationsContentEl = document.getElementById('annotationsContent');
+  const yamlLabelEl = document.getElementById('splitViewYamlLabel');
+  const annotLabelEl = document.getElementById('splitViewAnnotLabel');
+  const filePathEl = document.getElementById('splitViewFilePath');
+
+  if (!panel || !root) return;
+
+  const isOpen = panel.classList.contains('open');
+
+  if (isOpen) {
+    // Close split view
+    panel.classList.remove('open');
+    root.classList.remove('split-view-active');
+
+    // Stop polling
+    if (splitViewPollInterval) {
+      clearInterval(splitViewPollInterval);
+      splitViewPollInterval = null;
+    }
+
+    console.log('%c[Dev] Split view closed', 'color: #9C27B0;');
+  } else {
+    // Open split view and load files
+    if (!currentFilePath) {
+      console.warn('%c[Dev] No file loaded, cannot open split view', 'color: #f44336;');
+      return;
+    }
+
+    try {
+      // Load YAML content
+      const yamlContent = await fsAdapter.readFile(currentFilePath);
+
+      // Load annotations content
+      const annotationsPath = `${currentFilePath}.annotations.json`;
+      let annotationsContent = '{}';
+      try {
+        annotationsContent = await fsAdapter.readFile(annotationsPath);
+      } catch {
+        annotationsContent = '// No annotations file found';
+      }
+
+      // Update UI
+      if (yamlContentEl) yamlContentEl.textContent = yamlContent;
+      if (annotationsContentEl) annotationsContentEl.textContent = annotationsContent;
+      if (yamlLabelEl) yamlLabelEl.textContent = currentFilePath.split('/').pop() || 'topology.clab.yml';
+      if (annotLabelEl) annotLabelEl.textContent = (currentFilePath.split('/').pop() || 'topology') + '.annotations.json';
+      if (filePathEl) filePathEl.textContent = currentFilePath;
+
+      // Cache for change detection
+      lastYamlContent = yamlContent;
+      lastAnnotationsContent = annotationsContent;
+
+      // Show split view
+      panel.classList.add('open');
+      root.classList.add('split-view-active');
+
+      // Start polling for live updates (every 500ms)
+      splitViewPollInterval = setInterval(refreshSplitViewContent, 500);
+
+      console.log('%c[Dev] Split view opened (live updating)', 'color: #4CAF50;');
+    } catch (error) {
+      console.error('%c[Dev] Failed to load files for split view:', 'color: #f44336;', error);
+    }
+  }
+}
+
+// ============================================================================
 // VS Code API Mock (minimal - just for mode changes)
 // ============================================================================
 
@@ -365,6 +487,11 @@ window.vscode = {
         console.log(`%c[Mock] Custom node set as default: ${name}`, 'color: #2196F3;');
       }
     }
+
+    // Handle split view toggle from navbar
+    if (msg.command === 'topo-toggle-split-view') {
+      toggleSplitView();
+    }
   }
 };
 
@@ -385,6 +512,9 @@ interface DevServerInterface {
   setMode: (mode: 'edit' | 'view') => void;
   setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
   setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => void;
+
+  // Split view
+  toggleSplitView: () => Promise<void>;
 
   // Services (for debugging)
   getTopologyIO: typeof getTopologyIO;
@@ -444,6 +574,9 @@ declare global {
     latencySimulator.setProfile(profile);
     console.log(`%c[Dev] Set latency profile to ${profile}`, 'color: #9C27B0;');
   },
+
+  // Split view toggle
+  toggleSplitView,
 
   // Services for debugging
   getTopologyIO,
