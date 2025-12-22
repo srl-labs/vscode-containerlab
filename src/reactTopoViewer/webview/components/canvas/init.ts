@@ -157,10 +157,35 @@ export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
   }
 }
 
+type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
+
+/**
+ * Collect node positions from Cytoscape (for syncing to React state after layout)
+ */
+function collectNodePositionsFromCy(cy: Core): NodePositions {
+  const excludedRoles = new Set(['group', 'freeText', 'freeShape']);
+  const positions: NodePositions = [];
+
+  cy.nodes().forEach(node => {
+    const id = node.id();
+    const role = node.data('topoViewerRole') as string | undefined;
+    if (!id) return;
+    if (role && excludedRoles.has(role)) return;
+    const pos = node.position();
+    positions.push({ id, position: { x: Math.round(pos.x), y: Math.round(pos.y) } });
+  });
+
+  return positions;
+}
+
 /**
  * Handle cytoscape ready event
  */
-export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
+export function handleCytoscapeReady(
+  cy: Core,
+  usePresetLayout: boolean,
+  onInitialLayoutPositions?: (positions: NodePositions) => void
+): void {
   log.info(`[CytoscapeCanvas] Cytoscape ready - nodes: ${cy.nodes().length}, edges: ${cy.edges().length}`);
   log.info(`[CytoscapeCanvas] Using preset layout: ${usePresetLayout}`);
 
@@ -186,12 +211,28 @@ export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
   // Apply stub-link class to edges connected to network/cloud nodes
   applyStubLinkClasses(cy);
 
-  // Fit after layout completes
-  setTimeout(() => {
-    cy.resize();
-    cy.fit(undefined, 50);
-    const extent = cy.extent();
-    log.info(`[CytoscapeCanvas] After fit - zoom: ${cy.zoom()}, pan: (${cy.pan().x}, ${cy.pan().y})`);
-    log.info(`[CytoscapeCanvas] Extent: x1=${extent.x1}, y1=${extent.y1}, x2=${extent.x2}, y2=${extent.y2}`);
-  }, usePresetLayout ? 100 : 600);
+  // Run COSE layout if nodes don't have preset positions
+  if (!usePresetLayout) {
+    log.info('[handleCytoscapeReady] Running COSE layout for elements without positions');
+    cy.one('layoutstop', () => {
+      cy.resize();
+      cy.fit(undefined, 50);
+      // Sync positions back to React state
+      if (onInitialLayoutPositions) {
+        const positions = collectNodePositionsFromCy(cy);
+        log.info(`[handleCytoscapeReady] Syncing ${positions.length} node positions to React state`);
+        onInitialLayoutPositions(positions);
+      }
+    });
+    cy.layout(getLayoutOptions('cose')).run();
+  } else {
+    // Fit after a short delay for preset layout
+    setTimeout(() => {
+      cy.resize();
+      cy.fit(undefined, 50);
+      const extent = cy.extent();
+      log.info(`[CytoscapeCanvas] After fit - zoom: ${cy.zoom()}, pan: (${cy.pan().x}, ${cy.pan().y})`);
+      log.info(`[CytoscapeCanvas] Extent: x1=${extent.x1}, y1=${extent.y1}, x2=${extent.x2}, y2=${extent.y2}`);
+    }, 100);
+  }
 }

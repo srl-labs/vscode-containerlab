@@ -7,12 +7,12 @@ import { useLayoutEffect, useRef } from 'react';
 import type { Core } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
-import { applyStubLinkClasses, updateCytoscapeElements, hasPresetPositions } from '../../components/canvas/init';
+import { applyStubLinkClasses, updateCytoscapeElements, hasPresetPositions, getLayoutOptions } from '../../components/canvas/init';
 import { log } from '../../utils/logger';
 
-type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
+export type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
 
-function collectNodePositions(cy: Core): NodePositions {
+export function collectNodePositions(cy: Core): NodePositions {
   const excludedRoles = new Set(['group', 'freeText', 'freeShape']);
   const positions: NodePositions = [];
 
@@ -293,6 +293,33 @@ function idsMatch(cyIds: Set<string>, reactIds: Set<string>): boolean {
   return true;
 }
 
+/**
+ * Set up layoutstop listener to mark layout as done and optionally sync positions
+ */
+function setupLayoutstopListener(
+  cy: Core,
+  onInitialLayoutPositions?: (positions: NodePositions) => void
+): void {
+  cy.one('layoutstop', () => {
+    cy.scratch('initialLayoutDone', true);
+    if (onInitialLayoutPositions) {
+      onInitialLayoutPositions(collectNodePositions(cy));
+    }
+  });
+}
+
+/**
+ * Run COSE layout for elements without preset positions
+ */
+function runInitialCoseLayout(
+  cy: Core,
+  onInitialLayoutPositions?: (positions: NodePositions) => void
+): void {
+  log.info('[useElementsUpdate] Running COSE layout for elements without positions');
+  setupLayoutstopListener(cy, onInitialLayoutPositions);
+  cy.layout(getLayoutOptions('cose')).run();
+}
+
 function structureMatches(cy: Core, elements: CyElement[]): boolean {
   const cyIds = new Set(cy.elements().map(el => el.id()));
   const reactIds = new Set(elements.map(el => el.data?.id).filter(Boolean) as string[]);
@@ -476,30 +503,25 @@ export function useElementsUpdate(
       // Check if Cytoscape was already initialized with elements (by initCytoscape).
       // If so, skip redundant updateCytoscapeElements which would remove and re-add all elements.
       const cyHasElements = cy.nodes().length > 0;
+      const usePresetLayout = hasPresetPositions(elements);
+
       if (cyHasElements) {
-        // Cytoscape already has elements from initCytoscape - just mark as initialized
-        const usePresetLayout = hasPresetPositions(elements);
-        log.info(`[useElementsUpdate] Cytoscape already initialized with ${cy.nodes().length} nodes, skipping updateCytoscapeElements`);
+        // Cytoscape already has elements from initCytoscape
+        log.info(`[useElementsUpdate] Cytoscape already initialized with ${cy.nodes().length} nodes`);
+        if (!usePresetLayout) {
+          runInitialCoseLayout(cy, onInitialLayoutPositions);
+        }
         cy.scratch('initialLayoutDone', usePresetLayout);
         isInitializedRef.current = true;
         return;
       }
 
-      const usePresetLayout = hasPresetPositions(elements);
       log.info(`[useElementsUpdate] First init: hasPresetPositions=${usePresetLayout}, elements=${elements.length}`);
       cy.scratch('initialLayoutDone', usePresetLayout);
-      if (!usePresetLayout && onInitialLayoutPositions) {
+      if (!usePresetLayout) {
         // `updateCytoscapeElements` will run COSE when there are no preset positions.
-        // COSE changes positions inside Cytoscape; sync them back into React state once.
-        log.info('[useElementsUpdate] Will run COSE and sync positions back to React');
-        cy.one('layoutstop', () => {
-          cy.scratch('initialLayoutDone', true);
-          onInitialLayoutPositions(collectNodePositions(cy));
-        });
-      } else if (!usePresetLayout) {
-        cy.one('layoutstop', () => {
-          cy.scratch('initialLayoutDone', true);
-        });
+        // Set up listener to sync positions back into React state.
+        setupLayoutstopListener(cy, onInitialLayoutPositions);
       }
       updateCytoscapeElements(cy, elements);
       isInitializedRef.current = true;

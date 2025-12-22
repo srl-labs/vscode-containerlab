@@ -97,16 +97,25 @@ function useDelayedCytoscapeInit(
 /**
  * Hook that returns a function to initialize Cytoscape
  */
+type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
+
+interface CytoscapeLifecycle {
+  onCyReady?: (cy: Core) => void;
+  onCyDestroyed?: () => void;
+  onInitialLayoutPositions?: (positions: NodePositions) => void;
+}
+
 function useCytoscapeInitializer(
   containerRef: React.RefObject<HTMLDivElement | null>,
   cyRef: React.RefObject<Core | null>,
   selectNode: SelectCallback,
   selectEdge: SelectCallback,
   options?: CytoscapeInitOptions,
-  lifecycle?: { onCyReady?: (cy: Core) => void; onCyDestroyed?: () => void }
+  lifecycle?: CytoscapeLifecycle
 ) {
   const onCyReady = lifecycle?.onCyReady;
   const onCyDestroyed = lifecycle?.onCyDestroyed;
+  const onInitialLayoutPositions = lifecycle?.onInitialLayoutPositions;
 
   return useCallback((initialElements: CyElement[]) => {
     const container = containerRef.current;
@@ -139,7 +148,7 @@ function useCytoscapeInitializer(
       getIsLocked: options?.getIsLocked
     });
 
-    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
+    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout, onInitialLayoutPositions));
 
     return () => {
       detachWheel();
@@ -157,7 +166,8 @@ function useCytoscapeInitializer(
     options?.getMode,
     options?.getIsLocked,
     onCyReady,
-    onCyDestroyed
+    onCyDestroyed,
+    onInitialLayoutPositions
   ]);
 }
 
@@ -226,7 +236,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
 	      selectNode,
 	      selectEdge,
 	      { editNode, editEdge, getMode, getIsLocked },
-	      { onCyReady, onCyDestroyed }
+	      { onCyReady, onCyDestroyed, onInitialLayoutPositions: updateNodePositions }
 	    );
 
     useDelayedCytoscapeInit(
