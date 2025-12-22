@@ -29,7 +29,6 @@ import {
   // Canvas/App state
   useCytoscapeInstance, useSelectionData, useNavbarActions, useContextMenuHandlers,
   useLayoutControls, useLinkLabelVisibility, useGeoMap, useUnifiedClipboard,
-  assignMissingGeoCoordinatesToAnnotations, assignMissingGeoCoordinatesToShapeAnnotations,
   // Panel handlers
   useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers,
   useNodeCreationHandlers,
@@ -37,7 +36,7 @@ import {
   useContextMenu, useFloatingPanelCommands,
   usePanelVisibility, useKeyboardShortcuts, useShortcutDisplay, useAppHandlers,
   // App helper hooks
-  useCustomNodeCommands, useNavbarCommands, useShapeLayer,
+  useCustomNodeCommands, useNavbarCommands, useShapeLayer, useE2ETestingExposure, useGeoCoordinateSync,
   // Types
   type GraphChangeEntry
 } from './hooks';
@@ -85,17 +84,6 @@ const AppContent: React.FC<{
 
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);
 
-  // E2E testing exposure
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
-      if (cyInstance) window.__DEV__.cy = cyInstance;
-      window.__DEV__.isLocked = () => state.isLocked;
-      window.__DEV__.setLocked = (locked: boolean) => {
-        if (state.isLocked !== locked) toggleLock();
-      };
-    }
-  }, [cyInstance, state.isLocked, toggleLock]);
-
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge, state.elements);
   const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null);
@@ -134,57 +122,30 @@ const AppContent: React.FC<{
     registerPropertyEditHandler
   });
 
-  // E2E testing exposure for undo/redo
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
-      window.__DEV__.undoRedo = { canUndo: undoRedo.canUndo, canRedo: undoRedo.canRedo };
-      window.__DEV__.handleEdgeCreated = handleEdgeCreated;
-      window.__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
-      window.__DEV__.createGroupFromSelected = annotations.handleAddGroupWithUndo;
-    }
-  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, annotations.handleAddGroupWithUndo]);
+  // E2E testing exposure (consolidated hook)
+  useE2ETestingExposure({
+    cyInstance,
+    isLocked: state.isLocked,
+    toggleLock,
+    undoRedo,
+    handleEdgeCreated,
+    handleNodeCreatedCallback,
+    handleAddGroupWithUndo: annotations.handleAddGroupWithUndo,
+    groups: annotations.groups
+  });
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
-      window.__DEV__.getReactGroups = () => annotations.groups;
-      window.__DEV__.groupsCount = annotations.groups.length;
-    }
-  }, [annotations.groups]);
-
-  // Geo coordinate assignment
-  const geoAssignedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (!mapLibreState?.isInitialized || !layoutControls.isGeoLayout) {
-      geoAssignedRef.current = false;
-      return;
-    }
-    if (geoAssignedRef.current) return;
-    geoAssignedRef.current = true;
-
-    const textResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, annotations.textAnnotations);
-    if (textResult.hasChanges) {
-      textResult.updated.forEach(ann => {
-        if (ann.geoCoordinates) annotations.updateTextGeoPosition(ann.id, ann.geoCoordinates);
-      });
-    }
-
-    const shapeResult = assignMissingGeoCoordinatesToShapeAnnotations(mapLibreState, annotations.shapeAnnotations);
-    if (shapeResult.hasChanges) {
-      shapeResult.updated.forEach(ann => {
-        if (ann.geoCoordinates) annotations.updateShapeGeoPosition(ann.id, ann.geoCoordinates);
-        if ('endGeoCoordinates' in ann && ann.endGeoCoordinates) {
-          annotations.updateShapeEndGeoPosition(ann.id, ann.endGeoCoordinates);
-        }
-      });
-    }
-
-    const groupResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, annotations.groups);
-    if (groupResult.hasChanges) {
-      groupResult.updated.forEach(grp => {
-        if (grp.geoCoordinates) annotations.updateGroupGeoPosition(grp.id, grp.geoCoordinates);
-      });
-    }
-  }, [mapLibreState?.isInitialized, layoutControls.isGeoLayout, annotations, mapLibreState]);
+  // Geo coordinate sync (consolidated hook)
+  useGeoCoordinateSync({
+    mapLibreState,
+    isGeoLayout: layoutControls.isGeoLayout,
+    textAnnotations: annotations.textAnnotations,
+    shapeAnnotations: annotations.shapeAnnotations,
+    groups: annotations.groups,
+    updateTextGeoPosition: annotations.updateTextGeoPosition,
+    updateShapeGeoPosition: annotations.updateShapeGeoPosition,
+    updateShapeEndGeoPosition: annotations.updateShapeEndGeoPosition,
+    updateGroupGeoPosition: annotations.updateGroupGeoPosition
+  });
 
   // Editor handlers
   const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph);
@@ -407,6 +368,115 @@ const AppContent: React.FC<{
 
   const easterEgg = useEasterEgg({ cyInstance });
 
+  // Memoized AnnotationLayers props
+  const updateTextGroupId = React.useCallback(
+    (id: string, groupId: string | undefined) => annotations.updateTextAnnotation(id, { groupId }),
+    [annotations.updateTextAnnotation]
+  );
+  const updateShapeGroupId = React.useCallback(
+    (id: string, groupId: string | undefined) => annotations.updateShapeAnnotation(id, { groupId }),
+    [annotations.updateShapeAnnotation]
+  );
+
+  const groupLayerProps = React.useMemo(() => ({
+    cy: cyInstance,
+    groups: annotations.groups,
+    isLocked: state.isLocked,
+    onGroupEdit: annotations.editGroup,
+    onGroupDelete: annotations.deleteGroupWithUndo,
+    onDragStart: annotations.onGroupDragStart,
+    onPositionChange: annotations.onGroupDragEnd,
+    onDragMove: annotations.onGroupDragMove,
+    onSizeChange: annotations.updateGroupSizeWithUndo,
+    selectedGroupIds: annotations.selectedGroupIds,
+    onGroupSelect: annotations.selectGroup,
+    onGroupToggleSelect: annotations.toggleGroupSelection,
+    onGroupBoxSelect: annotations.boxSelectGroups,
+    onGroupReparent: annotations.updateGroupParent,
+    isGeoMode: layoutControls.isGeoLayout,
+    geoMode: layoutControls.geoMode,
+    mapLibreState,
+    onGeoPositionChange: annotations.updateGroupGeoPosition
+  }), [
+    cyInstance, annotations.groups, state.isLocked, annotations.editGroup,
+    annotations.deleteGroupWithUndo, annotations.onGroupDragStart, annotations.onGroupDragEnd,
+    annotations.onGroupDragMove, annotations.updateGroupSizeWithUndo, annotations.selectedGroupIds,
+    annotations.selectGroup, annotations.toggleGroupSelection, annotations.boxSelectGroups,
+    annotations.updateGroupParent, layoutControls.isGeoLayout, layoutControls.geoMode,
+    mapLibreState, annotations.updateGroupGeoPosition
+  ]);
+
+  const freeTextLayerProps = React.useMemo(() => ({
+    cy: cyInstance,
+    annotations: annotations.textAnnotations,
+    isLocked: state.isLocked,
+    isAddTextMode: annotations.isAddTextMode,
+    mode: state.mode,
+    onAnnotationDoubleClick: annotations.editTextAnnotation,
+    onAnnotationDelete: annotations.deleteTextAnnotation,
+    onPositionChange: annotations.updateTextPosition,
+    onRotationChange: annotations.updateTextRotation,
+    onSizeChange: annotations.updateTextSize,
+    onCanvasClick: annotations.handleTextCanvasClick,
+    selectedAnnotationIds: annotations.selectedTextIds,
+    onAnnotationSelect: annotations.selectTextAnnotation,
+    onAnnotationToggleSelect: annotations.toggleTextAnnotationSelection,
+    onAnnotationBoxSelect: annotations.boxSelectTextAnnotations,
+    isGeoMode: layoutControls.isGeoLayout,
+    geoMode: layoutControls.geoMode,
+    mapLibreState,
+    onGeoPositionChange: annotations.updateTextGeoPosition,
+    groups: annotations.groups,
+    onUpdateGroupId: updateTextGroupId
+  }), [
+    cyInstance, annotations.textAnnotations, state.isLocked, annotations.isAddTextMode,
+    state.mode, annotations.editTextAnnotation, annotations.deleteTextAnnotation,
+    annotations.updateTextPosition, annotations.updateTextRotation, annotations.updateTextSize,
+    annotations.handleTextCanvasClick, annotations.selectedTextIds, annotations.selectTextAnnotation,
+    annotations.toggleTextAnnotationSelection, annotations.boxSelectTextAnnotations,
+    layoutControls.isGeoLayout, layoutControls.geoMode, mapLibreState,
+    annotations.updateTextGeoPosition, annotations.groups, updateTextGroupId
+  ]);
+
+  const freeShapeLayerProps = React.useMemo(() => ({
+    cy: cyInstance,
+    annotations: annotations.shapeAnnotations,
+    isLocked: state.isLocked,
+    isAddShapeMode: annotations.isAddShapeMode,
+    mode: state.mode,
+    shapeLayerNode,
+    onAnnotationEdit: annotations.editShapeAnnotation,
+    onAnnotationDelete: annotations.deleteShapeAnnotationWithUndo,
+    onPositionChange: annotations.updateShapePositionWithUndo,
+    onRotationChange: annotations.updateShapeRotation,
+    onSizeChange: annotations.updateShapeSize,
+    onEndPositionChange: annotations.updateShapeEndPosition,
+    onCanvasClick: annotations.handleShapeCanvasClickWithUndo,
+    selectedAnnotationIds: annotations.selectedShapeIds,
+    onAnnotationSelect: annotations.selectShapeAnnotation,
+    onAnnotationToggleSelect: annotations.toggleShapeAnnotationSelection,
+    onAnnotationBoxSelect: annotations.boxSelectShapeAnnotations,
+    isGeoMode: layoutControls.isGeoLayout,
+    geoMode: layoutControls.geoMode,
+    mapLibreState,
+    onGeoPositionChange: annotations.updateShapeGeoPosition,
+    onEndGeoPositionChange: annotations.updateShapeEndGeoPosition,
+    onCaptureAnnotationBefore: annotations.captureShapeAnnotationBefore,
+    onFinalizeWithUndo: annotations.finalizeShapeWithUndo,
+    groups: annotations.groups,
+    onUpdateGroupId: updateShapeGroupId
+  }), [
+    cyInstance, annotations.shapeAnnotations, state.isLocked, annotations.isAddShapeMode,
+    state.mode, shapeLayerNode, annotations.editShapeAnnotation, annotations.deleteShapeAnnotationWithUndo,
+    annotations.updateShapePositionWithUndo, annotations.updateShapeRotation, annotations.updateShapeSize,
+    annotations.updateShapeEndPosition, annotations.handleShapeCanvasClickWithUndo,
+    annotations.selectedShapeIds, annotations.selectShapeAnnotation, annotations.toggleShapeAnnotationSelection,
+    annotations.boxSelectShapeAnnotations, layoutControls.isGeoLayout, layoutControls.geoMode,
+    mapLibreState, annotations.updateShapeGeoPosition, annotations.updateShapeEndGeoPosition,
+    annotations.captureShapeAnnotationBefore, annotations.finalizeShapeWithUndo,
+    annotations.groups, updateShapeGroupId
+  ]);
+
   return (
     <div className="topoviewer-app" data-testid="topoviewer-app">
       <Navbar
@@ -438,77 +508,9 @@ const AppContent: React.FC<{
       <main className="topoviewer-main">
         <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} />
         <AnnotationLayers
-          groupLayerProps={{
-            cy: cyInstance,
-            groups: annotations.groups,
-            isLocked: state.isLocked,
-            onGroupEdit: annotations.editGroup,
-            onGroupDelete: annotations.deleteGroupWithUndo,
-            onDragStart: annotations.onGroupDragStart,
-            onPositionChange: annotations.onGroupDragEnd,
-            onDragMove: annotations.onGroupDragMove,
-            onSizeChange: annotations.updateGroupSizeWithUndo,
-            selectedGroupIds: annotations.selectedGroupIds,
-            onGroupSelect: annotations.selectGroup,
-            onGroupToggleSelect: annotations.toggleGroupSelection,
-            onGroupBoxSelect: annotations.boxSelectGroups,
-            onGroupReparent: annotations.updateGroupParent,
-            isGeoMode: layoutControls.isGeoLayout,
-            geoMode: layoutControls.geoMode,
-            mapLibreState,
-            onGeoPositionChange: annotations.updateGroupGeoPosition
-          }}
-          freeTextLayerProps={{
-            cy: cyInstance,
-            annotations: annotations.textAnnotations,
-            isLocked: state.isLocked,
-            isAddTextMode: annotations.isAddTextMode,
-            mode: state.mode,
-            onAnnotationDoubleClick: annotations.editTextAnnotation,
-            onAnnotationDelete: annotations.deleteTextAnnotation,
-            onPositionChange: annotations.updateTextPosition,
-            onRotationChange: annotations.updateTextRotation,
-            onSizeChange: annotations.updateTextSize,
-            onCanvasClick: annotations.handleTextCanvasClick,
-            selectedAnnotationIds: annotations.selectedTextIds,
-            onAnnotationSelect: annotations.selectTextAnnotation,
-            onAnnotationToggleSelect: annotations.toggleTextAnnotationSelection,
-            onAnnotationBoxSelect: annotations.boxSelectTextAnnotations,
-            isGeoMode: layoutControls.isGeoLayout,
-            geoMode: layoutControls.geoMode,
-            mapLibreState,
-            onGeoPositionChange: annotations.updateTextGeoPosition,
-            groups: annotations.groups,
-            onUpdateGroupId: (id, groupId) => annotations.updateTextAnnotation(id, { groupId })
-          }}
-          freeShapeLayerProps={{
-            cy: cyInstance,
-            annotations: annotations.shapeAnnotations,
-            isLocked: state.isLocked,
-            isAddShapeMode: annotations.isAddShapeMode,
-            mode: state.mode,
-            shapeLayerNode,
-            onAnnotationEdit: annotations.editShapeAnnotation,
-            onAnnotationDelete: annotations.deleteShapeAnnotationWithUndo,
-            onPositionChange: annotations.updateShapePositionWithUndo,
-            onRotationChange: annotations.updateShapeRotation,
-            onSizeChange: annotations.updateShapeSize,
-            onEndPositionChange: annotations.updateShapeEndPosition,
-            onCanvasClick: annotations.handleShapeCanvasClickWithUndo,
-            selectedAnnotationIds: annotations.selectedShapeIds,
-            onAnnotationSelect: annotations.selectShapeAnnotation,
-            onAnnotationToggleSelect: annotations.toggleShapeAnnotationSelection,
-            onAnnotationBoxSelect: annotations.boxSelectShapeAnnotations,
-            isGeoMode: layoutControls.isGeoLayout,
-            geoMode: layoutControls.geoMode,
-            mapLibreState,
-            onGeoPositionChange: annotations.updateShapeGeoPosition,
-            onEndGeoPositionChange: annotations.updateShapeEndGeoPosition,
-            onCaptureAnnotationBefore: annotations.captureShapeAnnotationBefore,
-            onFinalizeWithUndo: annotations.finalizeShapeWithUndo,
-            groups: annotations.groups,
-            onUpdateGroupId: (id, groupId) => annotations.updateShapeAnnotation(id, { groupId })
-          }}
+          groupLayerProps={groupLayerProps}
+          freeTextLayerProps={freeTextLayerProps}
+          freeShapeLayerProps={freeShapeLayerProps}
         />
         <ViewPanels
           nodeInfo={{ isVisible: !!state.selectedNode && state.mode === 'view', nodeData: selectedNodeData, onClose: menuHandlers.handleCloseNodePanel }}

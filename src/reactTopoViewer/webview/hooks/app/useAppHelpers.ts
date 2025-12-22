@@ -17,6 +17,10 @@ import {
 } from '../shared/cytoscapeLayers';
 import { log } from '../../utils/logger';
 import { sendDeleteCustomNode, sendSetDefaultCustomNode, sendCommandToExtension } from '../../utils/extensionMessaging';
+import type { UseUndoRedoReturn } from '../state/useUndoRedo';
+import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { MapLibreState } from '../canvas/maplibreUtils';
+import { assignMissingGeoCoordinatesToAnnotations, assignMissingGeoCoordinatesToShapeAnnotations } from '../canvas/maplibreUtils';
 
 /**
  * Custom node template UI commands interface
@@ -139,4 +143,119 @@ export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
   };
 
   return { shapeLayerNode, updateLayer };
+}
+
+/**
+ * E2E testing exposure configuration
+ */
+export interface E2ETestingConfig {
+  cyInstance: CyCore | null;
+  isLocked: boolean;
+  toggleLock: () => void;
+  undoRedo: UseUndoRedoReturn;
+  handleEdgeCreated: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void;
+  handleNodeCreatedCallback: (nodeId: string, nodeElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: { x: number; y: number }; classes?: string }, position: { x: number; y: number }) => void;
+  handleAddGroupWithUndo: () => void;
+  groups: GroupStyleAnnotation[];
+}
+
+/**
+ * Hook to expose testing utilities for E2E tests.
+ * Consolidates all window.__DEV__ assignments into one place.
+ */
+export function useE2ETestingExposure(config: E2ETestingConfig): void {
+  const { cyInstance, isLocked, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, groups } = config;
+
+  // Core E2E exposure (cy, isLocked, setLocked)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.__DEV__) {
+      if (cyInstance) window.__DEV__.cy = cyInstance;
+      window.__DEV__.isLocked = () => isLocked;
+      window.__DEV__.setLocked = (locked: boolean) => {
+        if (isLocked !== locked) toggleLock();
+      };
+    }
+  }, [cyInstance, isLocked, toggleLock]);
+
+  // Undo/redo E2E exposure
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.__DEV__) {
+      window.__DEV__.undoRedo = { canUndo: undoRedo.canUndo, canRedo: undoRedo.canRedo };
+      window.__DEV__.handleEdgeCreated = handleEdgeCreated;
+      window.__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
+      window.__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
+    }
+  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo]);
+
+  // Groups E2E exposure
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.__DEV__) {
+      window.__DEV__.getReactGroups = () => groups;
+      window.__DEV__.groupsCount = groups.length;
+    }
+  }, [groups]);
+}
+
+/**
+ * Geo coordinate sync configuration
+ */
+export interface GeoCoordinateSyncConfig {
+  mapLibreState: MapLibreState | null;
+  isGeoLayout: boolean;
+  textAnnotations: FreeTextAnnotation[];
+  shapeAnnotations: FreeShapeAnnotation[];
+  groups: GroupStyleAnnotation[];
+  updateTextGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
+  updateShapeGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
+  updateShapeEndGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
+  updateGroupGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
+}
+
+/**
+ * Hook to sync missing geo coordinates when switching to geo layout.
+ * Automatically assigns geo coordinates to annotations that don't have them.
+ */
+export function useGeoCoordinateSync(config: GeoCoordinateSyncConfig): void {
+  const {
+    mapLibreState, isGeoLayout, textAnnotations, shapeAnnotations, groups,
+    updateTextGeoPosition, updateShapeGeoPosition, updateShapeEndGeoPosition, updateGroupGeoPosition
+  } = config;
+
+  const geoAssignedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!mapLibreState?.isInitialized || !isGeoLayout) {
+      geoAssignedRef.current = false;
+      return;
+    }
+    if (geoAssignedRef.current) return;
+    geoAssignedRef.current = true;
+
+    const textResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, textAnnotations);
+    if (textResult.hasChanges) {
+      textResult.updated.forEach((ann: FreeTextAnnotation) => {
+        if (ann.geoCoordinates) updateTextGeoPosition(ann.id, ann.geoCoordinates);
+      });
+    }
+
+    const shapeResult = assignMissingGeoCoordinatesToShapeAnnotations(mapLibreState, shapeAnnotations);
+    if (shapeResult.hasChanges) {
+      shapeResult.updated.forEach((ann: FreeShapeAnnotation) => {
+        if (ann.geoCoordinates) updateShapeGeoPosition(ann.id, ann.geoCoordinates);
+        if ('endGeoCoordinates' in ann && ann.endGeoCoordinates) {
+          updateShapeEndGeoPosition(ann.id, ann.endGeoCoordinates);
+        }
+      });
+    }
+
+    const groupResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, groups);
+    if (groupResult.hasChanges) {
+      groupResult.updated.forEach((grp: GroupStyleAnnotation) => {
+        if (grp.geoCoordinates) updateGroupGeoPosition(grp.id, grp.geoCoordinates);
+      });
+    }
+  }, [
+    mapLibreState, isGeoLayout, textAnnotations, shapeAnnotations, groups,
+    updateTextGeoPosition, updateShapeGeoPosition, updateShapeEndGeoPosition, updateGroupGeoPosition
+  ]);
 }

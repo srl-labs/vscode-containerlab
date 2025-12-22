@@ -515,9 +515,18 @@ function applyLinkPropertyEdit(
   void editLink(linkData);
 }
 
-function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
-  const { cyInstance, mode, addNode, addEdge, menuHandlers, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange } = params;
-  const isApplyingUndoRedo = React.useRef(false);
+/**
+ * Shared helper hook to create applyGraphChanges and applyPropertyEdit callbacks.
+ * Used by both useGraphUndoRedoCore and useGraphHandlersWithContext.
+ */
+function useApplyCallbacks(params: {
+  cyInstance: CyCore | null;
+  addNode: (n: CyElement) => void;
+  addEdge: (e: CyElement) => void;
+  menuHandlers: MenuHandlers;
+  isApplyingUndoRedo: React.RefObject<boolean>;
+}) {
+  const { cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo } = params;
 
   const applyGraphChanges = React.useCallback((changes: GraphChange[]) => {
     if (!cyInstance) return;
@@ -529,9 +538,8 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
       void endBatch();
       isApplyingUndoRedo.current = false;
     }
-  }, [cyInstance, addNode, addEdge, menuHandlers]);
+  }, [cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo]);
 
-  // Handler for applying property edits (node/link editor changes) during undo/redo
   const applyPropertyEdit = React.useCallback((
     action: UndoRedoActionPropertyEdit,
     isUndo: boolean
@@ -546,7 +554,65 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     } finally {
       isApplyingUndoRedo.current = false;
     }
-  }, []);
+  }, [isApplyingUndoRedo]);
+
+  return { applyGraphChanges, applyPropertyEdit };
+}
+
+/**
+ * Shared helper hook to create graph mutation handlers with undo/redo support.
+ * Used by both useGraphUndoRedoCore and useGraphHandlersWithContext.
+ */
+function useGraphMutationHandlers(params: {
+  cyInstance: CyCore | null;
+  addNode: (n: CyElement) => void;
+  addEdge: (e: CyElement) => void;
+  menuHandlers: MenuHandlers;
+  undoRedo: ReturnType<typeof useUndoRedo>;
+  isApplyingUndoRedo: React.RefObject<boolean>;
+}) {
+  const { cyInstance, addNode, addEdge, menuHandlers, undoRedo, isApplyingUndoRedo } = params;
+
+  const handleEdgeCreated = React.useMemo(
+    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo),
+    [addEdge, undoRedo, isApplyingUndoRedo]
+  );
+
+  const handleNodeCreatedCallback = React.useMemo(
+    () => createNodeCreatedHandler(addNode, undoRedo, isApplyingUndoRedo),
+    [addNode, undoRedo, isApplyingUndoRedo]
+  );
+
+  const handleDeleteNodeWithUndo = React.useMemo(
+    () => createDeleteNodeHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
+    [cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo]
+  );
+
+  const handleDeleteLinkWithUndo = React.useMemo(
+    () => createDeleteLinkHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
+    [cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo]
+  );
+
+  const recordPropertyEdit = React.useCallback((
+    action: Omit<UndoRedoActionPropertyEdit, 'type'>
+  ) => {
+    if (isApplyingUndoRedo.current) return;
+    undoRedo.pushAction({
+      type: 'property-edit',
+      ...action
+    } as UndoRedoActionPropertyEdit);
+  }, [undoRedo, isApplyingUndoRedo]);
+
+  return { handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo, recordPropertyEdit };
+}
+
+function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
+  const { cyInstance, mode, addNode, addEdge, menuHandlers, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange } = params;
+  const isApplyingUndoRedo = React.useRef(false);
+
+  const { applyGraphChanges, applyPropertyEdit } = useApplyCallbacks({
+    cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo
+  });
 
   const undoRedo = useUndoRedo({
     cy: cyInstance,
@@ -558,39 +624,11 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
     applyMembershipChange
   });
 
-  // Create handlers using useMemo with factory functions
-  const handleEdgeCreated = React.useMemo(
-    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo),
-    [addEdge, undoRedo]
-  );
+  const handlers = useGraphMutationHandlers({
+    cyInstance, addNode, addEdge, menuHandlers, undoRedo, isApplyingUndoRedo
+  });
 
-  const handleNodeCreatedCallback = React.useMemo(
-    () => createNodeCreatedHandler(addNode, undoRedo, isApplyingUndoRedo),
-    [addNode, undoRedo]
-  );
-
-  const handleDeleteNodeWithUndo = React.useMemo(
-    () => createDeleteNodeHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
-    [cyInstance, menuHandlers, undoRedo]
-  );
-
-  const handleDeleteLinkWithUndo = React.useMemo(
-    () => createDeleteLinkHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
-    [cyInstance, menuHandlers, undoRedo]
-  );
-
-  // Function to record a property edit action for undo/redo
-  const recordPropertyEdit = React.useCallback((
-    action: Omit<UndoRedoActionPropertyEdit, 'type'>
-  ) => {
-    if (isApplyingUndoRedo.current) return; // Don't record during undo/redo replay
-    undoRedo.pushAction({
-      type: 'property-edit',
-      ...action
-    } as UndoRedoActionPropertyEdit);
-  }, [undoRedo]);
-
-  return { undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo, recordPropertyEdit };
+  return { undoRedo, ...handlers };
 }
 
 export function useGraphUndoRedoHandlers(args: UseGraphUndoRedoHandlersParams): GraphUndoRedoResult {
@@ -614,35 +652,9 @@ export function useGraphHandlersWithContext(params: UseGraphUndoRedoWithContextP
   const { cyInstance, addNode, addEdge, menuHandlers, undoRedo, registerGraphHandler, registerPropertyEditHandler } = params;
   const isApplyingUndoRedo = React.useRef(false);
 
-  // Graph changes handler for undo/redo
-  const applyGraphChanges = React.useCallback((changes: GraphChange[]) => {
-    if (!cyInstance) return;
-    isApplyingUndoRedo.current = true;
-    beginBatch();
-    try {
-      replayGraphChanges(changes, { cy: cyInstance, addNode, addEdge, menuHandlers });
-    } finally {
-      void endBatch();
-      isApplyingUndoRedo.current = false;
-    }
-  }, [cyInstance, addNode, addEdge, menuHandlers]);
-
-  // Property edit handler for undo/redo
-  const applyPropertyEdit = React.useCallback((
-    action: UndoRedoActionPropertyEdit,
-    isUndo: boolean
-  ) => {
-    isApplyingUndoRedo.current = true;
-    try {
-      if (action.entityType === 'node') {
-        applyNodePropertyEdit(action.before, action.after, isUndo);
-      } else {
-        applyLinkPropertyEdit(action.before, action.after, isUndo);
-      }
-    } finally {
-      isApplyingUndoRedo.current = false;
-    }
-  }, []);
+  const { applyGraphChanges, applyPropertyEdit } = useApplyCallbacks({
+    cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo
+  });
 
   // Register handlers with context on mount
   React.useEffect(() => {
@@ -653,37 +665,7 @@ export function useGraphHandlersWithContext(params: UseGraphUndoRedoWithContextP
     registerPropertyEditHandler(applyPropertyEdit);
   }, [registerPropertyEditHandler, applyPropertyEdit]);
 
-  // Create handlers using useMemo with factory functions
-  const handleEdgeCreated = React.useMemo(
-    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo),
-    [addEdge, undoRedo]
-  );
-
-  const handleNodeCreatedCallback = React.useMemo(
-    () => createNodeCreatedHandler(addNode, undoRedo, isApplyingUndoRedo),
-    [addNode, undoRedo]
-  );
-
-  const handleDeleteNodeWithUndo = React.useMemo(
-    () => createDeleteNodeHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
-    [cyInstance, menuHandlers, undoRedo]
-  );
-
-  const handleDeleteLinkWithUndo = React.useMemo(
-    () => createDeleteLinkHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
-    [cyInstance, menuHandlers, undoRedo]
-  );
-
-  // Function to record a property edit action for undo/redo
-  const recordPropertyEdit = React.useCallback((
-    action: Omit<UndoRedoActionPropertyEdit, 'type'>
-  ) => {
-    if (isApplyingUndoRedo.current) return;
-    undoRedo.pushAction({
-      type: 'property-edit',
-      ...action
-    } as UndoRedoActionPropertyEdit);
-  }, [undoRedo]);
-
-  return { handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo, recordPropertyEdit };
+  return useGraphMutationHandlers({
+    cyInstance, addNode, addEdge, menuHandlers, undoRedo, isApplyingUndoRedo
+  });
 }

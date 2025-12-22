@@ -80,6 +80,14 @@ export {
 export {
   useCustomNodeCommands,
   useNavbarCommands,
-  useShapeLayer
+  useShapeLayer,
+  useE2ETestingExposure,
+  useGeoCoordinateSync
 } from './app/useAppHelpers';
-export type { CustomNodeCommands, NavbarCommands, UseShapeLayerReturn } from './app/useAppHelpers';
+export type {
+  CustomNodeCommands,
+  NavbarCommands,
+  UseShapeLayerReturn,
+  E2ETestingConfig,
+  GeoCoordinateSyncConfig
+} from './app/useAppHelpers';
