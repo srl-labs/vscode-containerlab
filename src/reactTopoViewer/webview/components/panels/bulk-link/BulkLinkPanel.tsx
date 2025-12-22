@@ -5,7 +5,7 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
-import type { GraphChangeEntry } from '../../../hooks';
+import type { GraphChange } from '../../../hooks';
 
 import { CopyableCode } from './CopyableCode';
 import { ConfirmBulkLinksModal } from './ConfirmBulkLinksModal';
@@ -18,7 +18,7 @@ interface BulkLinkPanelProps {
   isLocked: boolean;
   cy: CyCore | null;
   onClose: () => void;
-  recordGraphChanges?: (before: GraphChangeEntry[], after: GraphChangeEntry[]) => void;
+  recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
   storageKey?: string;
 }
 
@@ -69,7 +69,7 @@ interface UseBulkLinkPanelOptions {
   isLocked: boolean;
   cy: CyCore | null;
   onClose: () => void;
-  recordGraphChanges?: (before: GraphChangeEntry[], after: GraphChangeEntry[]) => void;
+  recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
 }
 
 function useBulkLinkPanel({

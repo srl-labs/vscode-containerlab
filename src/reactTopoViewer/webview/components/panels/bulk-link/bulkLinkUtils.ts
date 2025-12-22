@@ -6,7 +6,7 @@ import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import { FilterUtils } from '../../../../../helpers/filterUtils';
 import { isSpecialEndpointId } from '../../../../shared/utilities/LinkTypes';
 import type { CyElement } from '../../../../shared/types/messages';
-import type { GraphChangeEntry } from '../../../hooks/graph/copyPasteUtils';
+import type { GraphChange } from '../../../hooks/state/useUndoRedo';
 import {
   type ParsedInterfacePattern,
   parseInterfacePattern,
@@ -157,9 +157,9 @@ export function buildBulkEdges(cy: CyCore, candidates: LinkCandidate[]): CyEleme
   return edges;
 }
 
-export function buildUndoRedoEntries(edges: CyElement[]): { before: GraphChangeEntry[]; after: GraphChangeEntry[] } {
-  const before: GraphChangeEntry[] = [];
-  const after: GraphChangeEntry[] = [];
+export function buildUndoRedoEntries(edges: CyElement[]): { before: GraphChange[]; after: GraphChange[] } {
+  const before: GraphChange[] = [];
+  const after: GraphChange[] = [];
   for (const edge of edges) {
     before.push({ entity: 'edge', kind: 'delete', before: { ...edge, data: { ...edge.data } } });
     after.push({ entity: 'edge', kind: 'add', after: { ...edge, data: { ...edge.data } } });

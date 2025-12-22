@@ -19,6 +19,8 @@ export interface NodeDraggingOptions {
   onLockedDrag?: () => void;
   /** Callback to record move for undo/redo - receives node IDs and before positions */
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void;
+  /** Callback to sync committed positions into React state */
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void;
 }
 
 /**
@@ -106,7 +108,8 @@ interface DragBatchRefs {
 function createFlushHandler(
   refs: DragBatchRefs,
   mode: 'edit' | 'view',
-  onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void
+  onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void
 ): () => void {
   return () => {
     const pending = refs.pendingDrags.current;
@@ -122,6 +125,8 @@ function createFlushHandler(
       // Save positions asynchronously via TopologyIO
       void savePositions(afterPositions);
     }
+
+    onPositionsCommitted?.(afterPositions);
 
     if (onMoveComplete) {
       onMoveComplete(nodeIds, beforePositions);
@@ -189,7 +194,8 @@ function useDragHandlers(
   cy: Core | null,
   mode: 'edit' | 'view',
   onPositionChange?: () => void,
-  onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void
+  onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void
 ): void {
   const dragStartPositionsRef = useRef<Map<string, NodePositionEntry>>(new Map());
   const pendingDragCompletionsRef = useRef<PendingDrag[]>([]);
@@ -202,8 +208,8 @@ function useDragHandlers(
   };
 
   const flushPendingDrags = useCallback(
-    () => createFlushHandler(refs, mode, onMoveComplete)(),
-    [mode, onMoveComplete]
+    () => createFlushHandler(refs, mode, onMoveComplete, onPositionsCommitted)(),
+    [mode, onMoveComplete, onPositionsCommitted]
   );
 
   const handleDragStart = useCallback(
@@ -248,9 +254,9 @@ function useLockedGrabHandler(cy: Core | null, isLocked: boolean, onLockedDrag?:
  * Hook to manage node dragging based on lock state
  */
 export function useNodeDragging(cy: Core | null, options: NodeDraggingOptions): void {
-  const { isLocked, mode, onPositionChange, onLockedDrag, onMoveComplete } = options;
+  const { isLocked, mode, onPositionChange, onLockedDrag, onMoveComplete, onPositionsCommitted } = options;
 
   useLockState(cy, isLocked);
-  useDragHandlers(cy, mode, onPositionChange, onMoveComplete);
+  useDragHandlers(cy, mode, onPositionChange, onMoveComplete, onPositionsCommitted);
   useLockedGrabHandler(cy, isLocked, onLockedDrag);
 }

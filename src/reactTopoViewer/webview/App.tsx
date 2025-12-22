@@ -39,7 +39,7 @@ import {
   // NEW: Composed hooks
   useAnnotationLayerProps, useClipboardHandlers, useAppKeyboardShortcuts, useGraphCreation,
   // Types
-  type GraphChangeEntry
+  type GraphChange
 } from './hooks';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 
@@ -72,7 +72,7 @@ const AppContent: React.FC<{
   mapLibreState: ReturnType<typeof useGeoMap>['mapLibreState'];
   shapeLayerNode: HTMLElement | null;
 }> = ({ floatingPanelRef, pendingMembershipChangesRef, cytoscapeRef, cyInstance, layoutControls, mapLibreState, shapeLayerNode }) => {
-  const { state, dispatch, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, editCustomTemplate, toggleLock } = useTopoViewer();
+  const { state, dispatch, selectNode, selectEdge, editNode, editEdge, editNetwork, addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodePositions, editCustomTemplate, toggleLock } = useTopoViewer();
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
 
@@ -150,7 +150,7 @@ const AppContent: React.FC<{
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
   const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData);
 
-  const recordGraphChanges = React.useCallback((before: GraphChangeEntry[], after: GraphChangeEntry[]) => {
+  const recordGraphChanges = React.useCallback((before: GraphChange[], after: GraphChange[]) => {
     undoRedo.pushAction({ type: 'graph', before, after });
   }, [undoRedo]);
 
@@ -165,7 +165,8 @@ const AppContent: React.FC<{
       mode: state.mode,
       isLocked: state.isLocked,
       customNodes: state.customNodes,
-      defaultNode: state.defaultNode
+      defaultNode: state.defaultNode,
+      elements: state.elements
     },
     onEdgeCreated: handleEdgeCreated,
     onNodeCreated: handleNodeCreatedCallback,
@@ -201,7 +202,8 @@ const AppContent: React.FC<{
     mode: state.mode,
     isLocked: state.isLocked,
     onLockedDrag: handleLockedDrag,
-    onMoveComplete: handleMoveComplete
+    onMoveComplete: handleMoveComplete,
+    onPositionsCommitted: updateNodePositions
   });
 
   // shapeLayerNode is passed as prop from App wrapper

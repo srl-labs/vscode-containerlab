@@ -221,7 +221,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     const containerRef = useRef<HTMLDivElement>(null);
     const cyRef = useRef<Core | null>(null);
     const cleanupRef = useRef<(() => void) | null>(null);
-    const { state, selectNode, selectEdge, editNode, editEdge } = useTopoViewer();
+    const { state, selectNode, selectEdge, editNode, editEdge, updateNodePositions } = useTopoViewer();
     const initialElementsRef = useRef<CyElement[] | null>(null);
 
     // Store mode in ref to avoid stale closures in event handlers
@@ -257,7 +257,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     );
 
     // Update elements when they change
-    useElementsUpdate(cyRef, elements);
+    useElementsUpdate(cyRef, elements, updateNodePositions);
 
     // Listen for node-data-updated messages and update Cytoscape directly
     useCytoscapeDataUpdateListener(cyRef);

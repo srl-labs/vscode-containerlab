@@ -483,6 +483,13 @@ function pasteNodes(
 ): string[] {
   const newNodeIds: string[] = [];
 
+  if (!onCreateNode) {
+    if (clipboardNodes.length > 0) {
+      log.warn('[UnifiedClipboard] No onCreateNode callback; skipping node paste');
+    }
+    return newNodeIds;
+  }
+
   // Get existing node names to avoid duplicates
   const usedNames = new Set<string>(cyInstance.nodes().map(node => (node.data('name') as string | undefined) || node.id()));
 
@@ -502,22 +509,12 @@ function pasteNodes(
     const nodeData: Record<string, unknown> = { ...item.data, id: newNodeName, name: newNodeName };
     delete nodeData.position;
 
-    if (onCreateNode) {
-      // Use the callback to create node with persistence
-      const nodeElement: CyElement = {
-        group: 'nodes',
-        data: nodeData,
-        position: newPosition
-      };
-      onCreateNode(newNodeName, nodeElement, newPosition);
-    } else {
-      // Fallback to direct cytoscape add (no persistence)
-      cyInstance.add({
-        group: 'nodes',
-        data: nodeData,
-        position: newPosition
-      });
-    }
+    const nodeElement: CyElement = {
+      group: 'nodes',
+      data: nodeData,
+      position: newPosition
+    };
+    onCreateNode(newNodeName, nodeElement, newPosition);
 
     newNodeIds.push(newNodeName);
 
@@ -542,9 +539,15 @@ function pasteNodes(
 function pasteEdges(
   clipboardEdges: ClipboardEdge[],
   idMapping: Map<string, string>,
-  cyInstance: CyCore,
   onCreateEdge?: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void
 ): void {
+  if (!onCreateEdge) {
+    if (clipboardEdges.length > 0) {
+      log.warn('[UnifiedClipboard] No onCreateEdge callback; skipping edge paste');
+    }
+    return;
+  }
+
   for (const item of clipboardEdges) {
     const newSourceId = idMapping.get(item.source);
     const newTargetId = idMapping.get(item.target);
@@ -553,29 +556,13 @@ function pasteEdges(
       const newEdgeId = `${newSourceId}:${(item.data.sourceEndpoint as string) || 'eth1'}--${newTargetId}:${(item.data.targetEndpoint as string) || 'eth1'}`;
       idMapping.set(item.id, newEdgeId);
 
-      const edgeData = {
-        ...item.data,
+      onCreateEdge(newSourceId, newTargetId, {
         id: newEdgeId,
         source: newSourceId,
-        target: newTargetId
-      };
-
-      if (onCreateEdge) {
-        // Use the callback to create edge with persistence
-        onCreateEdge(newSourceId, newTargetId, {
-          id: newEdgeId,
-          source: newSourceId,
-          target: newTargetId,
-          sourceEndpoint: (item.data.sourceEndpoint as string) || 'eth1',
-          targetEndpoint: (item.data.targetEndpoint as string) || 'eth1'
-        });
-      } else {
-        // Fallback to direct cytoscape add (no persistence)
-        cyInstance.add({
-          group: 'edges',
-          data: edgeData
-        });
-      }
+        target: newTargetId,
+        sourceEndpoint: (item.data.sourceEndpoint as string) || 'eth1',
+        targetEndpoint: (item.data.targetEndpoint as string) || 'eth1'
+      });
     }
   }
 }
@@ -789,7 +776,7 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     const newNodeIds = pasteNodes(
       clipboardData.nodes, position, offset, idMapping, cyInstance, onAddNodeToGroup, onCreateNode
     );
-    pasteEdges(clipboardData.edges, idMapping, cyInstance, onCreateEdge);
+    pasteEdges(clipboardData.edges, idMapping, onCreateEdge);
 
     // End batch to flush all changes at once
     if (hasNodesToCreate || hasEdgesToCreate) {

@@ -456,8 +456,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { timeout: 15000 }
         );
 
-        // Wait for layout to settle
-        await page.waitForTimeout(1000);
+        // Wait for the initial layout to complete (or be skipped for preset layouts).
+        // This is set by `useElementsUpdate` via `cy.scratch('initialLayoutDone', true)`.
+        await page.waitForFunction(
+          () => {
+            const dev = (window as any).__DEV__;
+            const cy = dev?.cy;
+            if (!cy) return false;
+            return cy.scratch?.('initialLayoutDone') === true;
+          },
+          { timeout: 15000, polling: 200 }
+        );
       },
 
       getCanvasCenter: async () => {
@@ -787,12 +796,6 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               position
             };
 
-            // Add to Cytoscape directly first for immediate UI update
-            // This ensures canSkipUpdate returns true and avoids full graph reset
-            if (dev.cy) {
-              dev.cy.add(nodeElement);
-            }
-
             // Call handleNodeCreatedCallback which:
             // 1. Adds the node to React state
             // 2. Sends create-node to extension
@@ -801,7 +804,19 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           },
           { nodeId, position, kind }
         );
-        await page.waitForTimeout(300);
+
+        // Wait for the node to appear in Cytoscape (state-driven sync)
+        await page.waitForFunction(
+          (id) => {
+            const dev = (window as any).__DEV__;
+            const cy = dev?.cy;
+            if (!cy) return false;
+            const el = cy.getElementById(id);
+            return el && el.length > 0;
+          },
+          nodeId,
+          { timeout: 5000 }
+        );
       },
 
       createLink: async (
@@ -832,15 +847,6 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               targetEndpoint
             };
 
-            // Add to Cytoscape directly first for immediate UI update
-            // This ensures canSkipUpdate returns true and avoids full graph reset
-            if (dev.cy) {
-              dev.cy.add({
-                group: 'edges',
-                data: linkData
-              });
-            }
-
             // Call handleEdgeCreated which:
             // 1. Adds the edge to React state
             // 2. Sends create-link to extension
@@ -849,7 +855,19 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           },
           { sourceId, targetId, sourceEndpoint, targetEndpoint }
         );
-        await page.waitForTimeout(300);
+
+        const linkId = `${sourceId}-${targetId}`;
+        await page.waitForFunction(
+          (id) => {
+            const dev = (window as any).__DEV__;
+            const cy = dev?.cy;
+            if (!cy) return false;
+            const el = cy.getElementById(id);
+            return el && el.length > 0;
+          },
+          linkId,
+          { timeout: 5000 }
+        );
       },
 
       resetFiles: async () => {

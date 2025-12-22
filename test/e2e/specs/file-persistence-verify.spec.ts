@@ -133,8 +133,11 @@ test.describe.serial('File Persistence Verification', () => {
     // Create a new node
     await topoViewerPage.createNode(NEW_ROUTER, { x: 300, y: 300 }, KIND_NOKIA_SRLINUX);
 
-    // Wait for save
-    await page.waitForTimeout(500);
+    // Wait for node to be created + state to settle
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 5000, message: 'Node count should increase after createNode' }
+    ).toBe(initialNodeCount + 1);
 
     // Verify node was added WITHOUT canvas reload (positions should be unchanged)
     const srl1PosAfterAdd = await topoViewerPage.getNodePosition('srl1');
@@ -148,25 +151,26 @@ test.describe.serial('File Persistence Verification', () => {
     expect(Math.abs(srl2PosAfterAdd.x - srl2PosInitial.x)).toBeLessThan(5);
     expect(Math.abs(srl2PosAfterAdd.y - srl2PosInitial.y)).toBeLessThan(5);
 
-    // Node count should have increased
     const nodeCountAfterAdd = await topoViewerPage.getNodeCount();
-    expect(nodeCountAfterAdd).toBe(initialNodeCount + 1);
 
     // Connect new node to both existing nodes
     await topoViewerPage.createLink(NEW_ROUTER, 'srl1', 'e1-1', 'e1-2');
     await topoViewerPage.createLink(NEW_ROUTER, 'srl2', 'e1-2', 'e1-2');
 
-    // Wait for saves
-    await page.waitForTimeout(500);
-
-    // Edge count should have increased by 2
+    // Wait for edges to appear
+    await expect.poll(
+      () => topoViewerPage.getEdgeCount(),
+      { timeout: 5000, message: 'Edge count should increase after createLink calls' }
+    ).toBe(initialEdgeCount + 2);
     const edgeCountAfterLinks = await topoViewerPage.getEdgeCount();
-    expect(edgeCountAfterLinks).toBe(initialEdgeCount + 2);
 
     // Verify YAML persistence
+    await expect.poll(
+      () => topoViewerPage.getYamlFromFile(SIMPLE_FILE),
+      { timeout: 5000, message: 'YAML should include the created node and links' }
+    ).toContain(`${NEW_ROUTER}:`);
     const yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
     console.log('YAML after changes:', yaml);
-    expect(yaml).toContain(`${NEW_ROUTER}:`);
     expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
     expect(yaml).toContain(`${NEW_ROUTER}:e1-1`);
     expect(yaml).toContain('srl1:e1-2');
@@ -174,10 +178,16 @@ test.describe.serial('File Persistence Verification', () => {
     expect(yaml).toContain('srl2:e1-2');
 
     // Verify annotations persistence
+    await expect.poll(
+      async () => {
+        const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+        return Boolean(annotations.nodeAnnotations?.some(n => n.id === NEW_ROUTER && Boolean(n.position)));
+      },
+      { timeout: 5000, message: 'Annotations JSON should include new node position' }
+    ).toBe(true);
+
     const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
     const newRouterAnnotation = annotations.nodeAnnotations?.find(n => n.id === NEW_ROUTER);
-    expect(newRouterAnnotation).toBeDefined();
-    expect(newRouterAnnotation?.position).toBeDefined();
     console.log('new-router annotation:', newRouterAnnotation);
 
     // Final state check before reload

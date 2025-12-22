@@ -14,6 +14,8 @@ interface NodeCreationOptions {
   isLocked: boolean;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
+  getUsedNodeNames: () => Set<string>;
+  getUsedNodeIds: () => Set<string>;
   onNodeCreated: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void;
   onLockedClick?: () => void;
 }
@@ -49,11 +51,10 @@ let nodeCounter = 0;
 /**
  * Initialize node counter based on existing nodes
  */
-function initializeNodeCounter(cy: Core): void {
+function initializeNodeCounter(nodeIds: Iterable<string>): void {
   if (nodeCounter !== 0) return;
 
-  const existingNodeIds = cy.nodes().map(node => node.id());
-  const maxId = existingNodeIds
+  const maxId = [...nodeIds]
     .filter(id => id.startsWith('nodeId-'))
     .map(id => parseInt(id.replace('nodeId-', ''), 10))
     .filter(num => !isNaN(num))
@@ -73,12 +74,11 @@ function generateNodeId(): string {
  * Generate a unique node name based on template or default
  * Uses getUniqueId to match legacy behavior (srl → srl1, srl2, etc.)
  */
-function generateNodeName(cy: Core, defaultName: string, template?: CustomNodeTemplate): string {
+function generateNodeName(defaultName: string, usedNames: Set<string>, template?: CustomNodeTemplate): string {
   if (!template?.baseName) {
     return defaultName;
   }
 
-  const usedNames = new Set<string>(cy.nodes().map(node => node.data('name') as string).filter(Boolean));
   return getUniqueId(template.baseName, usedNames);
 }
 
@@ -218,6 +218,22 @@ export function useNodeCreation(
   const { onNodeCreated } = options;
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const reservedIdsRef = useRef<Set<string>>(new Set());
+  const reservedNamesRef = useRef<Set<string>>(new Set());
+
+  const getUsedNames = () => {
+    const base = optionsRef.current.getUsedNodeNames();
+    const combined = new Set<string>(base);
+    for (const name of reservedNamesRef.current) combined.add(name);
+    return combined;
+  };
+
+  const getUsedIds = () => {
+    const base = optionsRef.current.getUsedNodeIds();
+    const combined = new Set<string>(base);
+    for (const id of reservedIdsRef.current) combined.add(id);
+    return combined;
+  };
 
   /**
    * Create a node at a specific position
@@ -228,23 +244,23 @@ export function useNodeCreation(
   ) => {
     if (!cy) return;
 
-    initializeNodeCounter(cy);
+    initializeNodeCounter(getUsedIds());
 
     const generatedId = generateNodeId();
-    const nodeName = generateNodeName(cy, generatedId, template);
+    const usedNames = getUsedNames();
+    const nodeName = generateNodeName(generatedId, usedNames, template);
     const nodeId = nodeName || generatedId;
 
     const kind = template?.kind || 'nokia_srlinux';
     const nodeData = createNodeData(nodeId, nodeName, template, kind);
-
-    // Add node to cytoscape
-    cy.add({ group: 'nodes', data: nodeData, position });
 
     // Create CyElement for state update
     const cyElement = nodeDataToCyElement(nodeData, position);
 
     log.info(`[NodeCreation] Created node: ${nodeId} at (${position.x}, ${position.y})`);
 
+    reservedIdsRef.current.add(nodeId);
+    if (nodeName) reservedNamesRef.current.add(nodeName);
     onNodeCreated(nodeId, cyElement, position);
   }, [cy, onNodeCreated]);
 

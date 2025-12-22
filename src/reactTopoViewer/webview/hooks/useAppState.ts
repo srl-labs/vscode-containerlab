@@ -507,12 +507,8 @@ export function useContextMenuHandlers(
   const handleDeleteNode = useCallback((nodeId: string) => {
     void deleteNode(nodeId);  // Persist to YAML and annotations
     removeNodeAndEdges(nodeId);
-    const cy = cytoscapeRef.current?.getCy();
-    if (cy) {
-      cy.getElementById(nodeId).remove();
-    }
     selectNode(null);
-  }, [selectNode, removeNodeAndEdges, cytoscapeRef]);
+  }, [selectNode, removeNodeAndEdges]);
 
   const handleDeleteLink = useCallback((edgeId: string) => {
     const cy = cytoscapeRef.current?.getCy();
@@ -527,7 +523,6 @@ export function useContextMenuHandlers(
           sourceEndpoint: edgeData.sourceEndpoint || '',
           targetEndpoint: edgeData.targetEndpoint || ''
         });
-        edge.remove();
       }
     }
     removeEdge(edgeId);

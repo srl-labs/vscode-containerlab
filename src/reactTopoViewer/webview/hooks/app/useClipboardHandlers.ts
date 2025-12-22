@@ -134,10 +134,8 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
 
   // Delete handler (graph elements + annotations)
   const handleUnifiedDelete = React.useCallback(() => {
-    if (cyInstance) {
-      cyInstance.edges(':selected').remove();
-      cyInstance.nodes(':selected').remove();
-    }
+    // Graph deletion is handled by keyboard/context-menu handlers that go through
+    // state + persistence. This unified delete is for annotations only.
     annotations.deleteAllSelected();
   }, [cyInstance, annotations]);
 

@@ -8,10 +8,9 @@ export {
   EDGE_CREATION_SCRATCH_KEY,
   useNodeCreation,
   useNetworkCreation,
-  useNodeDragging,
-  useCopyPaste
+  useNodeDragging
 } from './graph';
-export type { GraphChangeEntry } from './graph';
+export type { GraphChange } from './state';
 
 // State management (for internal types, import from './state')
 export { useUndoRedo, useGraphUndoRedoHandlers, useGraphHandlersWithContext, useCustomTemplateEditor } from './state';

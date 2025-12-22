@@ -7,7 +7,25 @@ import { useLayoutEffect, useRef } from 'react';
 import type { Core } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
-import { updateCytoscapeElements } from '../../components/canvas/init';
+import { applyStubLinkClasses, updateCytoscapeElements, hasPresetPositions } from '../../components/canvas/init';
+
+type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
+
+function collectNodePositions(cy: Core): NodePositions {
+  const excludedRoles = new Set(['group', 'freeText', 'freeShape']);
+  const positions: NodePositions = [];
+
+  cy.nodes().forEach(node => {
+    const id = node.id();
+    const role = node.data('topoViewerRole') as string | undefined;
+    if (!id) return;
+    if (role && excludedRoles.has(role)) return;
+    const pos = node.position();
+    positions.push({ id, position: { x: Math.round(pos.x), y: Math.round(pos.y) } });
+  });
+
+  return positions;
+}
 
 /**
  * Get element data pair (React element data and Cytoscape element data)
@@ -70,6 +88,105 @@ function extraDataEqual(
     }
   }
   return true;
+}
+
+function isEqualValue(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+  return false;
+}
+
+function reactDataMatchesCy(
+  reactData: Record<string, unknown>,
+  cyData: Record<string, unknown>
+): boolean {
+  for (const [key, value] of Object.entries(reactData)) {
+    if (key === 'extraData') {
+      const reactExtra = value as Record<string, unknown> | undefined;
+      const cyExtra = cyData.extraData as Record<string, unknown> | undefined;
+      if (!extraDataEqual(reactExtra, cyExtra)) return false;
+      continue;
+    }
+    if (!isEqualValue(value, cyData[key])) return false;
+  }
+  return true;
+}
+
+function getElementId(reactEl: CyElement): string | null {
+  const id = reactEl.data?.id;
+  return typeof id === 'string' && id ? id : null;
+}
+
+function syncNodePosition(cy: Core, nodeId: string, position: { x: number; y: number }): void {
+  const cyEl = cy.getElementById(nodeId);
+  if (cyEl.empty()) return;
+  const cyPos = cyEl.position();
+  if (Math.round(cyPos.x) !== Math.round(position.x) || Math.round(cyPos.y) !== Math.round(position.y)) {
+    cyEl.position({ x: position.x, y: position.y });
+  }
+}
+
+function syncNodeData(cy: Core, reactEl: CyElement, nodeId: string): void {
+  const cyEl = cy.getElementById(nodeId);
+  if (cyEl.empty()) return;
+  const reactData = reactEl.data as Record<string, unknown>;
+  const cyData = cyEl.data() as Record<string, unknown>;
+  if (!reactDataMatchesCy(reactData, cyData)) {
+    cyEl.data(reactData);
+  }
+  if (reactEl.position) {
+    syncNodePosition(cy, nodeId, reactEl.position);
+  }
+}
+
+function edgeEndpointsChanged(reactData: Record<string, unknown>, cyData: Record<string, unknown>): boolean {
+  const nextSource = reactData.source as string | undefined;
+  const nextTarget = reactData.target as string | undefined;
+  const curSource = cyData.source as string | undefined;
+  const curTarget = cyData.target as string | undefined;
+  return (nextSource !== undefined && curSource !== undefined && nextSource !== curSource) ||
+    (nextTarget !== undefined && curTarget !== undefined && nextTarget !== curTarget);
+}
+
+function replaceEdgeIfNeeded(cy: Core, reactEl: CyElement, edgeId: string): void {
+  const cyEl = cy.getElementById(edgeId);
+  if (cyEl.empty()) return;
+  const reactData = reactEl.data as Record<string, unknown>;
+  const cyData = cyEl.data() as Record<string, unknown>;
+  if (!edgeEndpointsChanged(reactData, cyData)) return;
+
+  const nextSource = reactData.source as string | undefined;
+  const nextTarget = reactData.target as string | undefined;
+  if (!nextSource || !nextTarget) return;
+  if (cy.getElementById(nextSource).empty() || cy.getElementById(nextTarget).empty()) return;
+
+  cyEl.remove();
+  cy.add({ group: 'edges', data: reactEl.data, classes: reactEl.classes });
+}
+
+function syncEdgeData(cy: Core, reactEl: CyElement, edgeId: string): void {
+  replaceEdgeIfNeeded(cy, reactEl, edgeId);
+  const cyEl = cy.getElementById(edgeId);
+  if (cyEl.empty()) return;
+  const reactData = reactEl.data as Record<string, unknown>;
+  const cyData = cyEl.data() as Record<string, unknown>;
+  if (!reactDataMatchesCy(reactData, cyData)) {
+    cyEl.data(reactData);
+  }
+}
+
+function updateElementData(cy: Core, elements: CyElement[]): void {
+  for (const reactEl of elements) {
+    const id = getElementId(reactEl);
+    if (!id) continue;
+    if (reactEl.group === 'nodes') {
+      syncNodeData(cy, reactEl, id);
+    } else if (reactEl.group === 'edges') {
+      syncEdgeData(cy, reactEl, id);
+    }
+  }
 }
 
 /**
@@ -175,21 +292,77 @@ function idsMatch(cyIds: Set<string>, reactIds: Set<string>): boolean {
   return true;
 }
 
-/**
- * Check if the React state update is just an addition of elements already in Cytoscape
- * In this case, we can skip the full reset since Cytoscape already has the correct state.
- * Also checks if any element data has changed (e.g., icon/topoViewerRole updates).
- */
-function canSkipUpdate(cy: Core, elements: CyElement[]): boolean {
+function structureMatches(cy: Core, elements: CyElement[]): boolean {
   const cyIds = new Set(cy.elements().map(el => el.id()));
   const reactIds = new Set(elements.map(el => el.data?.id).filter(Boolean) as string[]);
+  if (cyIds.size !== reactIds.size) return false;
+  return idsMatch(cyIds, reactIds);
+}
 
-  // Check if Cytoscape has exactly the same or more elements than React state
-  if (cyIds.size < reactIds.size) return false;
-  if (!idsMatch(cyIds, reactIds)) return false;
-  if (hasVisualDataChanged(cy, elements)) return false;
+function getFallbackPosition(cy: Core): { x: number; y: number } {
+  const extent = cy.extent();
+  return { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
+}
 
-  return true;
+function indexElementsById(elements: CyElement[]): Map<string, CyElement> {
+  const map = new Map<string, CyElement>();
+  for (const el of elements) {
+    const id = el.data?.id as string;
+    if (!id) continue;
+    map.set(id, el);
+  }
+  return map;
+}
+
+function removeUnknownElements(cy: Core, allowedIds: Set<string>): void {
+  const toRemove = cy.elements().filter(el => !allowedIds.has(el.id()));
+  if (toRemove.nonempty()) {
+    toRemove.remove();
+  }
+}
+
+function addMissingNodes(cy: Core, elements: CyElement[], fallbackPosition: { x: number; y: number }): void {
+  for (const el of elements) {
+    if (el.group !== 'nodes') continue;
+    const id = getElementId(el);
+    if (!id) continue;
+    if (cy.getElementById(id).nonempty()) continue;
+    const position = el.position ?? fallbackPosition;
+    cy.add({ group: 'nodes', data: el.data, position, classes: el.classes });
+  }
+}
+
+function addMissingEdges(cy: Core, elements: CyElement[]): void {
+  for (const el of elements) {
+    if (el.group !== 'edges') continue;
+    const id = getElementId(el);
+    if (!id) continue;
+    if (cy.getElementById(id).nonempty()) continue;
+
+    const data = el.data as Record<string, unknown>;
+    const source = data.source as string | undefined;
+    const target = data.target as string | undefined;
+    if (source && target) {
+      if (cy.getElementById(source).empty() || cy.getElementById(target).empty()) continue;
+    }
+
+    cy.add({ group: 'edges', data: el.data, classes: el.classes });
+  }
+}
+
+function reconcileStructure(cy: Core, elements: CyElement[]): void {
+  const reactById = indexElementsById(elements);
+  const reactIds = new Set(reactById.keys());
+  const fallbackPosition = getFallbackPosition(cy);
+
+  cy.batch(() => {
+    removeUnknownElements(cy, reactIds);
+    addMissingNodes(cy, elements, fallbackPosition);
+    addMissingEdges(cy, elements);
+    updateElementData(cy, [...reactById.values()]);
+  });
+
+  applyStubLinkClasses(cy);
 }
 
 /**
@@ -276,11 +449,15 @@ function handleRenameInPlace(cy: Core, oldId: string, newId: string, elements: C
  * Hook for updating elements when they change
  * Uses useLayoutEffect to ensure updates complete before other effects (like useSelectionData) read data
  *
- * IMPORTANT: This hook detects when React state changes are already reflected in Cytoscape
- * (e.g., when we add a node via cy.add() and then dispatch ADD_NODE). In such cases,
- * we skip the full reset to preserve node positions and avoid visual jumps.
+ * Design: React state is the source of truth for graph structure and element data.
+ * Cytoscape is treated as a rendering layer that is incrementally reconciled from state
+ * to preserve positions, zoom, and selection whenever possible.
  */
-export function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements: CyElement[]): void {
+export function useElementsUpdate(
+  cyRef: React.RefObject<Core | null>,
+  elements: CyElement[],
+  onInitialLayoutPositions?: (positions: NodePositions) => void
+): void {
   const isInitializedRef = useRef(false);
 
   useLayoutEffect(() => {
@@ -289,38 +466,61 @@ export function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements:
 
     if (!elements.length) {
       cy.elements().remove();
+      cy.scratch('initialLayoutDone', false);
       isInitializedRef.current = false;
       return;
     }
 
-    // Skip update if Cytoscape already has all the elements (e.g., after direct cy.add())
-    // This preserves positions when adding nodes via UI
-    if (isInitializedRef.current && canSkipUpdate(cy, elements)) {
-      // Even if we can skip the full update, check for extraData changes
-      // and update Cytoscape surgically for both nodes and edges
+    if (!isInitializedRef.current) {
+      const usePresetLayout = hasPresetPositions(elements);
+      cy.scratch('initialLayoutDone', usePresetLayout);
+      if (!usePresetLayout && onInitialLayoutPositions) {
+        // `updateCytoscapeElements` will run COSE when there are no preset positions.
+        // COSE changes positions inside Cytoscape; sync them back into React state once.
+        cy.one('layoutstop', () => {
+          cy.scratch('initialLayoutDone', true);
+          onInitialLayoutPositions(collectNodePositions(cy));
+        });
+      } else if (!usePresetLayout) {
+        cy.one('layoutstop', () => {
+          cy.scratch('initialLayoutDone', true);
+        });
+      }
+      updateCytoscapeElements(cy, elements);
+      isInitializedRef.current = true;
+      return;
+    }
+
+    // Keep Cytoscape in sync with React state without full resets:
+    // 1) If structure matches, only update changed data/extraData (fast path).
+    // 2) Otherwise reconcile missing/extra elements incrementally (preserves positions).
+    const isSameStructure = structureMatches(cy, elements);
+
+    // Handle node rename in-place (preserves position + connected edges).
+    const rename = detectRename(cy, elements);
+    if (rename) {
+      handleRenameInPlace(cy, rename.oldId, rename.newId, elements);
+    }
+
+    if (isSameStructure) {
       const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
+      const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
+
       if (nodesWithChangedExtraData.length > 0) {
         updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
       }
-      // Also check for edge extraData changes (critical for real-time traffic stats)
-      const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
       if (edgesWithChangedExtraData.length > 0) {
         updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
+      }
+      if (hasVisualDataChanged(cy, elements)) {
+        cy.batch(() => updateElementData(cy, elements));
+        applyStubLinkClasses(cy);
+      } else {
+        cy.batch(() => updateElementData(cy, elements));
       }
       return;
     }
 
-    // Check if this is a node rename - handle it surgically without full reload
-    if (isInitializedRef.current) {
-      const rename = detectRename(cy, elements);
-      if (rename) {
-        handleRenameInPlace(cy, rename.oldId, rename.newId, elements);
-        return;
-      }
-    }
-
-    // Full update for other cases
-    updateCytoscapeElements(cy, elements);
-    isInitializedRef.current = true;
+    reconcileStructure(cy, elements);
   }, [cyRef, elements]);
 }

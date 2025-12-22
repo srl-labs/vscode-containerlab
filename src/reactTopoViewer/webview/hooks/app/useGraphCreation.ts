@@ -47,6 +47,7 @@ export interface GraphCreationConfig {
     isLocked: boolean;
     customNodes: CustomNodeTemplate[];
     defaultNode: string;
+    elements: CyElement[];
   };
   /** Callback when an edge is created */
   onEdgeCreated: EdgeCreatedCallback;
@@ -92,6 +93,41 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     onNewCustomNode
   } = config;
 
+  const getUsedNodeIds = React.useCallback(() => {
+    const ids = new Set<string>();
+    for (const el of state.elements) {
+      if (el.group !== 'nodes') continue;
+      const id = (el.data as Record<string, unknown>)?.id;
+      if (typeof id === 'string' && id) ids.add(id);
+    }
+    return ids;
+  }, [state.elements]);
+
+  const getUsedNodeNames = React.useCallback(() => {
+    const names = new Set<string>();
+    for (const el of state.elements) {
+      if (el.group !== 'nodes') continue;
+      const name = (el.data as Record<string, unknown>)?.name;
+      if (typeof name === 'string' && name) names.add(name);
+    }
+    return names;
+  }, [state.elements]);
+
+  const getExistingNetworkNodes = React.useCallback(() => {
+    const nodes: Array<{ id: string; kind: NetworkType }> = [];
+    for (const el of state.elements) {
+      if (el.group !== 'nodes') continue;
+      const data = el.data as Record<string, unknown>;
+      if (data.topoViewerRole !== 'cloud') continue;
+      const id = data.id;
+      const kind = data.kind;
+      if (typeof id === 'string' && typeof kind === 'string') {
+        nodes.push({ id, kind: kind as NetworkType });
+      }
+    }
+    return nodes;
+  }, [state.elements]);
+
   // Edge creation
   const { startEdgeCreation } = useEdgeCreation(cyInstance, {
     mode: state.mode,
@@ -116,6 +152,8 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     isLocked: state.isLocked,
     customNodes: state.customNodes,
     defaultNode: state.defaultNode,
+    getUsedNodeNames,
+    getUsedNodeIds,
     onNodeCreated,
     onLockedClick: () => floatingPanelRef.current?.triggerShake()
   });
@@ -154,6 +192,8 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   const { createNetworkAtPosition } = useNetworkCreation(cyInstance, {
     mode: state.mode,
     isLocked: state.isLocked,
+    getExistingNodeIds: getUsedNodeIds,
+    getExistingNetworkNodes,
     onNetworkCreated: handleNetworkCreatedCallback,
     onLockedClick: () => floatingPanelRef.current?.triggerShake()
   });

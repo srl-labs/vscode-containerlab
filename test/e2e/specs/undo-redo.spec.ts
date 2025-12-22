@@ -105,15 +105,18 @@ test.describe('Undo and Redo', () => {
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
     // Create first node
-    await shiftClick(page, canvasCenter.x - 50, canvasCenter.y);
-    await page.waitForTimeout(500);
+    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 3000, message: 'First node should be created after shift-click' }
+    ).toBe(initialNodeCount + 1);
 
     // Create second node
-    await shiftClick(page, canvasCenter.x + 50, canvasCenter.y);
-    await page.waitForTimeout(500);
-
-    const afterTwoNodes = await topoViewerPage.getNodeCount();
-    expect(afterTwoNodes).toBe(initialNodeCount + 2);
+    await shiftClick(page, canvasCenter.x + 300, canvasCenter.y + 150);
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 3000, message: 'Second node should be created after shift-click' }
+    ).toBe(initialNodeCount + 2);
 
     // Undo first
     await topoViewerPage.undo();
@@ -135,11 +138,17 @@ test.describe('Undo and Redo', () => {
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
     // Create two nodes
-    await shiftClick(page, canvasCenter.x - 50, canvasCenter.y);
-    await page.waitForTimeout(500);
+    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 3000, message: 'First node should be created after shift-click' }
+    ).toBe(initialNodeCount + 1);
 
-    await shiftClick(page, canvasCenter.x + 50, canvasCenter.y);
-    await page.waitForTimeout(500);
+    await shiftClick(page, canvasCenter.x + 300, canvasCenter.y + 150);
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 3000, message: 'Second node should be created after shift-click' }
+    ).toBe(initialNodeCount + 2);
 
     // Undo both
     await topoViewerPage.undo();

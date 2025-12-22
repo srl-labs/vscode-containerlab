@@ -186,12 +186,6 @@ export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
   // Apply stub-link class to edges connected to network/cloud nodes
   applyStubLinkClasses(cy);
 
-  // Only run layout if no preset positions
-  if (!usePresetLayout) {
-    log.info('[CytoscapeCanvas] No preset positions, running COSE layout');
-    cy.layout(getLayoutOptions('cose')).run();
-  }
-
   // Fit after layout completes
   setTimeout(() => {
     cy.resize();

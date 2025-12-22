@@ -16,6 +16,8 @@ export type NetworkType = 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-sti
 interface NetworkCreationOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
+  getExistingNodeIds: () => Set<string>;
+  getExistingNetworkNodes: () => Array<{ id: string; kind: NetworkType }>;
   onNetworkCreated: (networkId: string, networkElement: CyElement, position: { x: number; y: number }) => void;
   onLockedClick?: () => void;
 }
@@ -109,12 +111,10 @@ function processVxlanNetwork(nodeId: string, kind: NetworkType): void {
 /**
  * Initialize network counters based on existing network nodes
  */
-function initializeNetworkCounters(cy: Core): void {
-  const networkNodes = cy.nodes('[topoViewerRole="cloud"]');
-
+function initializeNetworkCounters(networkNodes: Array<{ id: string; kind: NetworkType }>): void {
   networkNodes.forEach(node => {
-    const nodeId = node.id();
-    const kind = node.data('kind') as NetworkType;
+    const nodeId = node.id;
+    const kind = node.kind;
 
     // Parse existing ID to extract counter value
     // Format examples: "host:eth0", "host:eth1", "mgmt-net:net0", "bridge1"
@@ -227,13 +227,12 @@ export function useNetworkCreation(
   const optionsRef = useRef(options);
   optionsRef.current = options;
   const countersInitializedRef = useRef(false);
+  const reservedIdsRef = useRef<Set<string>>(new Set());
 
   const createNetworkAtPosition = useCallback((
     position: { x: number; y: number },
     networkType: NetworkType
   ): string | null => {
-    if (!cy) return null;
-
     const { mode, isLocked, onLockedClick } = optionsRef.current;
 
     // Only allow in edit mode
@@ -251,30 +250,24 @@ export function useNetworkCreation(
 
     // Initialize counters on first use
     if (!countersInitializedRef.current) {
-      initializeNetworkCounters(cy);
+      initializeNetworkCounters(optionsRef.current.getExistingNetworkNodes());
       countersInitializedRef.current = true;
     }
 
     // Get existing IDs to avoid duplicates
-    const existingIds = new Set<string>(cy.nodes().map(node => node.id()));
+    const existingIds = optionsRef.current.getExistingNodeIds();
+    for (const id of reservedIdsRef.current) existingIds.add(id);
 
     // Generate unique ID
     const networkId = generateNetworkId(networkType, existingIds);
     const networkData = createNetworkData(networkId, networkType);
-
-    // Add to cytoscape
-    cy.add({
-      group: 'nodes',
-      data: networkData,
-      position,
-      classes: 'special-endpoint'
-    });
 
     // Create CyElement for state update
     const cyElement = networkDataToCyElement(networkData, position);
 
     log.info(`[NetworkCreation] Created network: ${networkId} (${networkType}) at (${position.x}, ${position.y})`);
 
+    reservedIdsRef.current.add(networkId);
     onNetworkCreated(networkId, cyElement, position);
     return networkId;
   }, [cy, onNetworkCreated]);

@@ -3,7 +3,7 @@
  */
 import type { Core as CyCore } from 'cytoscape';
 
-import type { GraphChangeEntry } from '../../../hooks/graph/copyPasteUtils';
+import type { GraphChange } from '../../../hooks/state/useUndoRedo';
 import type { CyElement } from '../../../../shared/types/messages';
 import { createLink, beginBatch, endBatch, type LinkSaveData } from '../../../services';
 
@@ -61,7 +61,7 @@ interface ConfirmCreateParams {
   cy: CyCore | null;
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
-  recordGraphChanges?: (before: GraphChangeEntry[], after: GraphChangeEntry[]) => void;
+  recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
   setStatus: SetStatus;
   setPendingCandidates: SetCandidates;
   onClose: () => void;

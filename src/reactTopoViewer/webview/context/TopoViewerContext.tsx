@@ -95,6 +95,10 @@ interface UpdateNodeDataPayload {
   extraData: Record<string, unknown>;
 }
 
+interface UpdateNodePositionsPayload {
+  positions: Array<{ id: string; position: { x: number; y: number } }>;
+}
+
 type TopoViewerAction =
   | { type: 'SET_ELEMENTS'; payload: CyElement[] }
   | { type: 'SET_MODE'; payload: 'edit' | 'view' }
@@ -118,7 +122,8 @@ type TopoViewerAction =
   | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } }
   | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] }
   | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string } }
-  | { type: 'UPDATE_NODE_DATA'; payload: UpdateNodeDataPayload };
+  | { type: 'UPDATE_NODE_DATA'; payload: UpdateNodeDataPayload }
+  | { type: 'UPDATE_NODE_POSITIONS'; payload: UpdateNodePositionsPayload };
 
 /**
  * Reducer function
@@ -146,7 +151,12 @@ const reducerHandlers: ReducerHandlers = {
   SET_INITIAL_DATA: (state, action) => ({ ...state, ...action.payload }),
   ADD_NODE: (state, action) => ({
     ...state,
-    elements: [...state.elements, action.payload]
+    elements: (() => {
+      const nodeId = getElementId(action.payload);
+      if (!nodeId) return state.elements;
+      const exists = state.elements.some(el => el.group === 'nodes' && getElementId(el) === nodeId);
+      return exists ? state.elements : [...state.elements, action.payload];
+    })()
   }),
   ADD_EDGE: (state, action) => {
     const edge = action.payload;
@@ -301,6 +311,22 @@ const reducerHandlers: ReducerHandlers = {
     });
     return { ...state, elements };
   }
+  ,
+  UPDATE_NODE_POSITIONS: (state, action) => {
+    const updates = new Map(action.payload.positions.map(p => [p.id, p.position]));
+    if (updates.size === 0) return state;
+
+    const nextElements = state.elements.map(el => {
+      if (el.group !== 'nodes') return el;
+      const id = getElementId(el);
+      if (!id) return el;
+      const nextPos = updates.get(id);
+      if (!nextPos) return el;
+      return { ...el, position: { x: nextPos.x, y: nextPos.y } };
+    });
+
+    return { ...state, elements: nextElements };
+  }
 };
 
 function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): TopoViewerState {
@@ -333,6 +359,7 @@ interface TopoViewerContextValue {
   addEdge: (edge: CyElement) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
+  updateNodePositions: (positions: Array<{ id: string; position: { x: number; y: number } }>) => void;
   setCustomNodes: (customNodes: CustomNodeTemplate[], defaultNode: string) => void;
   editCustomTemplate: (data: CustomTemplateEditorData | null) => void;
   setProcessing: (isProcessing: boolean, mode?: 'deploy' | 'destroy') => void;
@@ -519,6 +546,10 @@ function useGraphElementActions(dispatch: React.Dispatch<TopoViewerAction>) {
     }, [dispatch]),
     removeEdge: useCallback((edgeId: string) => {
       dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
+    }, [dispatch])
+    ,
+    updateNodePositions: useCallback((positions: Array<{ id: string; position: { x: number; y: number } }>) => {
+      dispatch({ type: 'UPDATE_NODE_POSITIONS', payload: { positions } });
     }, [dispatch])
   };
 }
