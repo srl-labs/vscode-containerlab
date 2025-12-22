@@ -947,13 +947,27 @@ function applyInterfaceEvent(event: ContainerlabEvent): void {
     const updated = buildUpdatedInterfaceRecord(ifaceName, attributes, existing);
 
     const changed = !interfaceRecordsEqual(existing, updated);
-    if (!changed) {
+
+    // Check if this event contains traffic stats - we always want to notify
+    // for stats updates to ensure real-time traffic monitoring works
+    const hasStats = attributes.rx_bps !== undefined ||
+                     attributes.tx_bps !== undefined;
+
+    // No changes and no stats - nothing to do
+    if (!changed && !hasStats) {
         return;
     }
 
+    // Always update the record if we have new data
     ifaceMap.set(ifaceName, updated);
 
-    bumpInterfaceVersion(containerId);
+    // For structural changes, bump version
+    if (changed) {
+        bumpInterfaceVersion(containerId);
+    }
+
+    // Always notify for stats updates (real-time traffic monitoring)
+    // or when structural data changed
     scheduleInitialResolution();
     scheduleDataChanged();
 }

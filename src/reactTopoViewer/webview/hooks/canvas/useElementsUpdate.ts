@@ -73,13 +73,34 @@ function extraDataEqual(
 }
 
 /**
- * Check if any element's extraData has changed (kind, user, startup-config, etc.)
- * Returns the IDs of elements with changed extraData
+ * Check if any node's extraData has changed (kind, user, startup-config, etc.)
+ * Returns the IDs of nodes with changed extraData
  */
 function getNodesWithChangedExtraData(cy: Core, elements: CyElement[]): string[] {
   const changedIds: string[] = [];
   for (const reactEl of elements) {
     if (reactEl.group !== 'nodes') continue;
+    const pair = getElementDataPair(cy, reactEl);
+    if (!pair) continue;
+
+    const reactExtraData = pair.reactData.extraData as Record<string, unknown> | undefined;
+    const cyExtraData = pair.cyData.extraData as Record<string, unknown> | undefined;
+
+    if (!extraDataEqual(reactExtraData, cyExtraData)) {
+      changedIds.push(reactEl.data?.id as string);
+    }
+  }
+  return changedIds;
+}
+
+/**
+ * Check if any edge's extraData has changed (traffic stats, etc.)
+ * Returns the IDs of edges with changed extraData
+ */
+function getEdgesWithChangedExtraData(cy: Core, elements: CyElement[]): string[] {
+  const changedIds: string[] = [];
+  for (const reactEl of elements) {
+    if (reactEl.group !== 'edges') continue;
     const pair = getElementDataPair(cy, reactEl);
     if (!pair) continue;
 
@@ -127,6 +148,32 @@ function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[])
       if (reactExtraData?.iconCornerRadius !== undefined) {
         cyEl.data('iconCornerRadius', reactExtraData.iconCornerRadius);
       }
+    }
+  });
+}
+
+/**
+ * Update extraData for specific edges in Cytoscape without full reload
+ * This is critical for real-time traffic stats updates
+ */
+function updateEdgeExtraData(cy: Core, elements: CyElement[], edgeIds: string[]): void {
+  if (edgeIds.length === 0) return;
+
+  cy.batch(() => {
+    for (const edgeId of edgeIds) {
+      const cyEl = cy.getElementById(edgeId);
+      if (cyEl.empty()) continue;
+
+      const reactEl = elements.find(e =>
+        e.group === 'edges' && (e.data as Record<string, unknown>)?.id === edgeId
+      );
+      if (!reactEl) continue;
+
+      const reactData = reactEl.data as Record<string, unknown>;
+      const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
+
+      // Update extraData on the Cytoscape element
+      cyEl.data('extraData', reactExtraData || {});
     }
   });
 }
@@ -266,10 +313,15 @@ export function useElementsUpdate(cyRef: React.RefObject<Core | null>, elements:
     // This preserves positions when adding nodes via UI
     if (isInitializedRef.current && canSkipUpdate(cy, elements)) {
       // Even if we can skip the full update, check for extraData changes
-      // and update Cytoscape surgically
+      // and update Cytoscape surgically for both nodes and edges
       const nodesWithChangedExtraData = getNodesWithChangedExtraData(cy, elements);
       if (nodesWithChangedExtraData.length > 0) {
         updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
+      }
+      // Also check for edge extraData changes (critical for real-time traffic stats)
+      const edgesWithChangedExtraData = getEdgesWithChangedExtraData(cy, elements);
+      if (edgesWithChangedExtraData.length > 0) {
+        updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
       }
       return;
     }
