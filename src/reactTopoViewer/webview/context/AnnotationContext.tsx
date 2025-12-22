@@ -9,7 +9,6 @@ import React, { createContext, useContext, useEffect, useCallback, useMemo, useR
 import type { Core as CyCore } from 'cytoscape';
 
 import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../shared/annotations';
-import type { MapLibreState } from '../hooks/canvas/maplibreUtils';
 import type { GroupEditorData } from '../hooks/groups/groupTypes';
 import {
   useAppGroups,
@@ -21,7 +20,7 @@ import {
   useFreeShapeUndoRedoHandlers,
   useAnnotationEffects,
   useAddShapesHandler
-} from '../hooks';
+} from '../hooks/internal';
 import {
   useAppGroupUndoHandlers,
   useCombinedAnnotationApplier,
@@ -46,20 +45,31 @@ interface AnnotationProviderProps {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction: () => void;
-  isGeoLayout: boolean;
-  geoMode: 'pan' | 'edit';
-  mapLibreState: MapLibreState | null;
-  shapeLayerNode: HTMLElement | null;
   pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
   children: React.ReactNode;
 }
 
-/** Annotation context value */
-interface AnnotationContextValue {
+interface AnnotationStateContextValue {
   // Groups
   groups: GroupStyleAnnotation[];
   selectedGroupIds: Set<string>;
   editingGroup: GroupEditorData | null;
+
+  // Text annotations
+  textAnnotations: FreeTextAnnotation[];
+  selectedTextIds: Set<string>;
+  editingTextAnnotation: FreeTextAnnotation | null;
+  isAddTextMode: boolean;
+
+  // Shape annotations
+  shapeAnnotations: FreeShapeAnnotation[];
+  selectedShapeIds: Set<string>;
+  editingShapeAnnotation: FreeShapeAnnotation | null;
+  isAddShapeMode: boolean;
+}
+
+interface AnnotationActionsContextValue {
+  // Groups
   selectGroup: (id: string) => void;
   toggleGroupSelection: (id: string) => void;
   boxSelectGroups: (ids: string[]) => void;
@@ -84,11 +94,6 @@ interface AnnotationContextValue {
   onGroupDragMove: (groupId: string, delta: { dx: number; dy: number }) => void;
   updateGroupSizeWithUndo: (id: string, width: number, height: number) => void;
 
-  // Text annotations
-  textAnnotations: FreeTextAnnotation[];
-  selectedTextIds: Set<string>;
-  editingTextAnnotation: FreeTextAnnotation | null;
-  isAddTextMode: boolean;
   handleAddText: () => void;
   selectTextAnnotation: (id: string) => void;
   toggleTextAnnotationSelection: (id: string) => void;
@@ -109,11 +114,6 @@ interface AnnotationContextValue {
   handleTextCanvasClick: (position: { x: number; y: number }) => void;
   migrateTextAnnotationsGroupId: (oldGroupId: string, newGroupId: string) => void;
 
-  // Shape annotations
-  shapeAnnotations: FreeShapeAnnotation[];
-  selectedShapeIds: Set<string>;
-  editingShapeAnnotation: FreeShapeAnnotation | null;
-  isAddShapeMode: boolean;
   handleAddShapes: (shapeType?: string) => void;
   selectShapeAnnotation: (id: string) => void;
   toggleShapeAnnotationSelection: (id: string) => void;
@@ -146,7 +146,10 @@ interface AnnotationContextValue {
   deleteAllSelected: () => void;
 }
 
-const AnnotationContext = createContext<AnnotationContextValue | null>(null);
+export type AnnotationContextValue = AnnotationStateContextValue & AnnotationActionsContextValue;
+
+const AnnotationStateContext = createContext<AnnotationStateContextValue | undefined>(undefined);
+const AnnotationActionsContext = createContext<AnnotationActionsContextValue | undefined>(undefined);
 
 /** Provider component for annotation context */
 export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
@@ -332,11 +335,36 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     freeShapeAnnotations.deleteSelectedAnnotations();
   }, [groupsHook, deleteGroupWithUndo, freeTextAnnotations, freeShapeAnnotations]);
 
-  const value = useMemo<AnnotationContextValue>(() => ({
-    // Groups
+  const stateValue = useMemo<AnnotationStateContextValue>(() => ({
     groups: groupsHook.groups,
     selectedGroupIds: groupsHook.selectedGroupIds,
     editingGroup: groupsHook.editingGroup,
+
+    textAnnotations: freeTextAnnotations.annotations,
+    selectedTextIds: freeTextAnnotations.selectedAnnotationIds,
+    editingTextAnnotation: freeTextAnnotations.editingAnnotation,
+    isAddTextMode: freeTextAnnotations.isAddTextMode,
+
+    shapeAnnotations: freeShapeAnnotations.annotations,
+    selectedShapeIds: freeShapeAnnotations.selectedAnnotationIds,
+    editingShapeAnnotation: freeShapeAnnotations.editingAnnotation,
+    isAddShapeMode: freeShapeAnnotations.isAddShapeMode
+  }), [
+    groupsHook.groups,
+    groupsHook.selectedGroupIds,
+    groupsHook.editingGroup,
+    freeTextAnnotations.annotations,
+    freeTextAnnotations.selectedAnnotationIds,
+    freeTextAnnotations.editingAnnotation,
+    freeTextAnnotations.isAddTextMode,
+    freeShapeAnnotations.annotations,
+    freeShapeAnnotations.selectedAnnotationIds,
+    freeShapeAnnotations.editingAnnotation,
+    freeShapeAnnotations.isAddShapeMode
+  ]);
+
+  const actionsValue = useMemo<AnnotationActionsContextValue>(() => ({
+    // Groups
     selectGroup: groupsHook.selectGroup,
     toggleGroupSelection: groupsHook.toggleGroupSelection,
     boxSelectGroups: groupsHook.boxSelectGroups,
@@ -361,10 +389,6 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     updateGroupSizeWithUndo: groupUndoHandlers.updateGroupSizeWithUndo,
 
     // Text annotations
-    textAnnotations: freeTextAnnotations.annotations,
-    selectedTextIds: freeTextAnnotations.selectedAnnotationIds,
-    editingTextAnnotation: freeTextAnnotations.editingAnnotation,
-    isAddTextMode: freeTextAnnotations.isAddTextMode,
     handleAddText: freeTextAnnotations.handleAddText,
     selectTextAnnotation: freeTextAnnotations.selectAnnotation,
     toggleTextAnnotationSelection: freeTextAnnotations.toggleAnnotationSelection,
@@ -386,10 +410,6 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     migrateTextAnnotationsGroupId: freeTextAnnotations.migrateGroupId,
 
     // Shape annotations
-    shapeAnnotations: freeShapeAnnotations.annotations,
-    selectedShapeIds: freeShapeAnnotations.selectedAnnotationIds,
-    editingShapeAnnotation: freeShapeAnnotations.editingAnnotation,
-    isAddShapeMode: freeShapeAnnotations.isAddShapeMode,
     handleAddShapes,
     selectShapeAnnotation: freeShapeAnnotations.selectAnnotation,
     toggleShapeAnnotationSelection: freeShapeAnnotations.toggleAnnotationSelection,
@@ -421,26 +441,103 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     clearAllSelections,
     deleteAllSelected
   }), [
-    groupsHook, handleAddGroupWithUndo, deleteGroupWithUndo, generateGroupIdCallback, addGroupWithUndo,
-    groupDragUndo, groupUndoHandlers,
-    freeTextAnnotations, freeTextUndoHandlers,
-    freeShapeAnnotations, freeShapeUndoHandlers, handleAddShapes,
-    applyMembershipChange, onMembershipWillChange,
-    clearAllSelections, deleteAllSelected
+    groupsHook.selectGroup,
+    groupsHook.toggleGroupSelection,
+    groupsHook.boxSelectGroups,
+    groupsHook.clearGroupSelection,
+    groupsHook.editGroup,
+    groupsHook.closeEditor,
+    groupsHook.saveGroup,
+    groupsHook.deleteGroup,
+    groupsHook.updateGroup,
+    groupsHook.updateGroupParent,
+    groupsHook.updateGroupGeoPosition,
+    groupsHook.addNodeToGroup,
+    groupsHook.getNodeMembership,
+    groupsHook.getGroupMembers,
+    handleAddGroupWithUndo,
+    deleteGroupWithUndo,
+    generateGroupIdCallback,
+    addGroupWithUndo,
+    groupDragUndo.onGroupDragStart,
+    groupDragUndo.onGroupDragEnd,
+    groupDragUndo.onGroupDragMove,
+    groupUndoHandlers.updateGroupSizeWithUndo,
+    freeTextAnnotations.handleAddText,
+    freeTextAnnotations.selectAnnotation,
+    freeTextAnnotations.toggleAnnotationSelection,
+    freeTextAnnotations.boxSelectAnnotations,
+    freeTextAnnotations.clearAnnotationSelection,
+    freeTextAnnotations.editAnnotation,
+    freeTextAnnotations.closeEditor,
+    freeTextAnnotations.saveAnnotation,
+    freeTextUndoHandlers.saveAnnotationWithUndo,
+    freeTextAnnotations.deleteAnnotation,
+    freeTextUndoHandlers.deleteAnnotationWithUndo,
+    freeTextAnnotations.deleteSelectedAnnotations,
+    freeTextAnnotations.updatePosition,
+    freeTextAnnotations.updateRotation,
+    freeTextAnnotations.updateSize,
+    freeTextAnnotations.updateGeoPosition,
+    freeTextAnnotations.updateAnnotation,
+    freeTextAnnotations.handleCanvasClick,
+    freeTextAnnotations.migrateGroupId,
+    handleAddShapes,
+    freeShapeAnnotations.selectAnnotation,
+    freeShapeAnnotations.toggleAnnotationSelection,
+    freeShapeAnnotations.boxSelectAnnotations,
+    freeShapeAnnotations.clearAnnotationSelection,
+    freeShapeAnnotations.editAnnotation,
+    freeShapeAnnotations.closeEditor,
+    freeShapeAnnotations.saveAnnotation,
+    freeShapeAnnotations.deleteAnnotation,
+    freeShapeUndoHandlers.deleteAnnotationWithUndo,
+    freeShapeAnnotations.deleteSelectedAnnotations,
+    freeShapeUndoHandlers.updatePositionWithUndo,
+    freeShapeAnnotations.updateRotation,
+    freeShapeAnnotations.updateSize,
+    freeShapeAnnotations.updateEndPosition,
+    freeShapeAnnotations.updateGeoPosition,
+    freeShapeAnnotations.updateEndGeoPosition,
+    freeShapeAnnotations.updateAnnotation,
+    freeShapeUndoHandlers.handleCanvasClickWithUndo,
+    freeShapeUndoHandlers.captureAnnotationBefore,
+    freeShapeUndoHandlers.finalizeWithUndo,
+    freeShapeAnnotations.migrateGroupId,
+    applyMembershipChange,
+    onMembershipWillChange,
+    clearAllSelections,
+    deleteAllSelected
   ]);
 
   return (
-    <AnnotationContext.Provider value={value}>
-      {children}
-    </AnnotationContext.Provider>
+    <AnnotationStateContext.Provider value={stateValue}>
+      <AnnotationActionsContext.Provider value={actionsValue}>
+        {children}
+      </AnnotationActionsContext.Provider>
+    </AnnotationStateContext.Provider>
   );
 };
 
-/** Hook to access annotation context */
-export function useAnnotations(): AnnotationContextValue {
-  const context = useContext(AnnotationContext);
-  if (!context) {
-    throw new Error('useAnnotations must be used within an AnnotationProvider');
+export function useAnnotationsState(): AnnotationStateContextValue {
+  const context = useContext(AnnotationStateContext);
+  if (context === undefined) {
+    throw new Error('useAnnotationsState must be used within an AnnotationProvider');
   }
   return context;
+}
+
+export function useAnnotationsActions(): AnnotationActionsContextValue {
+  const context = useContext(AnnotationActionsContext);
+  if (context === undefined) {
+    throw new Error('useAnnotationsActions must be used within an AnnotationProvider');
+  }
+  return context;
+}
+
+/** Legacy combined hook (prefer useAnnotationsState/useAnnotationsActions) */
+export function useAnnotations(): AnnotationContextValue {
+  const state = useAnnotationsState();
+  const actions = useAnnotationsActions();
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 }

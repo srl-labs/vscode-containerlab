@@ -270,19 +270,34 @@ function useEditGroup(
  * Hook for saving group edits.
  * Handles migration of child groups, node memberships, and annotation groupIds when group is renamed.
  */
-function useSaveGroup(
-  cy: CyCore | null,
-  mode: 'edit' | 'view',
-  isLocked: boolean,
-  onLockedAction: (() => void) | undefined,
-  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
-  setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>,
-  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void,
-  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>,
-  onMigrateNodeMemberships: (oldGroupId: string, newGroupId: string) => void,
-  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string) => void,
-  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string) => void
-) {
+interface SaveGroupOptions {
+  cy: CyCore | null;
+  mode: 'edit' | 'view';
+  isLocked: boolean;
+  onLockedAction: (() => void) | undefined;
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>;
+  setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>;
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void;
+  lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>;
+  onMigrateNodeMemberships: (oldGroupId: string, newGroupId: string) => void;
+  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string) => void;
+  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string) => void;
+}
+
+function useSaveGroup(options: SaveGroupOptions) {
+  const {
+    cy,
+    mode,
+    isLocked,
+    onLockedAction,
+    setGroups,
+    setEditingGroup,
+    saveGroupsToExtension,
+    lastStyleRef,
+    onMigrateNodeMemberships,
+    onMigrateTextAnnotations,
+    onMigrateShapeAnnotations
+  } = options;
   return useCallback(
     (data: GroupEditorData): void => {
       if (mode === 'view' || isLocked) {
@@ -619,10 +634,19 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     [createGroup, membership]
   );
 
-  const saveGroup = useSaveGroup(
-    cy, mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef,
-    membership.migrateMemberships, onMigrateTextAnnotations, onMigrateShapeAnnotations
-  );
+  const saveGroup = useSaveGroup({
+    cy,
+    mode,
+    isLocked,
+    onLockedAction,
+    setGroups,
+    setEditingGroup,
+    saveGroupsToExtension,
+    lastStyleRef,
+    onMigrateNodeMemberships: membership.migrateMemberships,
+    onMigrateTextAnnotations,
+    onMigrateShapeAnnotations
+  });
 
   const updateGroup = useUpdateGroup(mode, isLocked, setGroups, saveGroupsToExtension);
   const updateGroupPosition = useUpdateGroupPosition(mode, isLocked, setGroups, saveGroupsToExtension);

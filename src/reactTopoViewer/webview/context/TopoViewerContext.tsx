@@ -695,5 +695,5 @@ export const useTopoViewerActions = (): TopoViewerActionsContextValue => {
 export const useTopoViewer = (): TopoViewerStateContextValue & TopoViewerActionsContextValue => {
   const stateContext = useTopoViewerState();
   const actionsContext = useTopoViewerActions();
-  return { ...stateContext, ...actionsContext };
+  return useMemo(() => ({ ...stateContext, ...actionsContext }), [stateContext, actionsContext]);
 };

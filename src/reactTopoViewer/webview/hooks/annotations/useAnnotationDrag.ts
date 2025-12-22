@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import type { MapLibreState} from '../canvas/maplibreUtils';
+import type { MapLibreState } from '../canvas/maplibreUtils';
 import { unprojectToGeoCoords, calculateScale } from '../canvas/maplibreUtils';
 
 import type { RenderedPosition } from './freeText';
@@ -159,19 +159,34 @@ function getZoomFactor(cy: CyCore, mapLibreState?: MapLibreState | null): number
 }
 
 // Hook for drag event handlers (geo-aware)
-function useDragHandlers(
-  cy: CyCore,
-  isDragging: boolean,
-  modelPosition: { x: number; y: number },
-  dragStartRef: { current: DragStart | null },
-  setIsDragging: React.Dispatch<React.SetStateAction<boolean>>,
-  setRenderedPos: React.Dispatch<React.SetStateAction<RenderedPosition>>,
-  onPositionChange: (position: { x: number; y: number }) => void,
-  mapLibreState?: MapLibreState | null,
-  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void,
-  onDragMove?: (modelPosition: { x: number; y: number }) => void,
-  onDragEnd?: (finalPosition: { x: number; y: number }) => void
-): void {
+interface DragHandlersOptions {
+  cy: CyCore;
+  isDragging: boolean;
+  modelPosition: { x: number; y: number };
+  dragStartRef: { current: DragStart | null };
+  setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
+  setRenderedPos: React.Dispatch<React.SetStateAction<RenderedPosition>>;
+  onPositionChange: (position: { x: number; y: number }) => void;
+  mapLibreState?: MapLibreState | null;
+  onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
+  onDragMove?: (modelPosition: { x: number; y: number }) => void;
+  onDragEnd?: (finalPosition: { x: number; y: number }) => void;
+}
+
+function useDragHandlers(options: DragHandlersOptions): void {
+  const {
+    cy,
+    isDragging,
+    modelPosition,
+    dragStartRef,
+    setIsDragging,
+    setRenderedPos,
+    onPositionChange,
+    mapLibreState,
+    onGeoPositionChange,
+    onDragMove,
+    onDragEnd
+  } = options;
   useEffect(() => {
     if (!isDragging) return;
 
@@ -219,7 +234,20 @@ function useDragHandlers(
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, cy, modelPosition.x, modelPosition.y, dragStartRef, setIsDragging, setRenderedPos, onPositionChange, mapLibreState, onGeoPositionChange, onDragMove, onDragEnd]);
+  }, [
+    isDragging,
+    cy,
+    modelPosition.x,
+    modelPosition.y,
+    dragStartRef,
+    setIsDragging,
+    setRenderedPos,
+    onPositionChange,
+    mapLibreState,
+    onGeoPositionChange,
+    onDragMove,
+    onDragEnd
+  ]);
 }
 
 export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotationDragReturn {
@@ -246,7 +274,7 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
   const effectivelyLocked = isLocked || (isGeoMode && geoMode === 'pan');
 
   useViewportSync(cy, modelPosition.x, modelPosition.y, setRenderedPos, mapLibreState, geoCoordinates);
-  useDragHandlers(
+  useDragHandlers({
     cy,
     isDragging,
     modelPosition,
@@ -258,7 +286,7 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
     onGeoPositionChange,
     onDragMove,
     onDragEnd
-  );
+  });
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (effectivelyLocked || e.button !== 0) return;

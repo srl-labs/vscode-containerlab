@@ -11,7 +11,7 @@ import { FormField, InputField, FilterableDropdown } from '../../shared/form';
 import { IconSelectorModal } from '../../shared/IconSelectorModal';
 import type { NodeType } from '../../../utils/SvgGenerator';
 import { generateEncodedSVG } from '../../../utils/SvgGenerator';
-import { useSchema, useDockerImages } from '../../../hooks';
+import { useSchema, useDockerImages } from '../../../hooks/data';
 
 import type { TabProps } from './types';
 import { CustomNodeTemplateFields } from './CustomNodeTemplateFields';

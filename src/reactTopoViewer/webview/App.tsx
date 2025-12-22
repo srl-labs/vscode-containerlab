@@ -40,7 +40,7 @@ import {
   useAnnotationLayerProps, useClipboardHandlers, useAppKeyboardShortcuts, useGraphCreation,
   // Types
   type GraphChange
-} from './hooks';
+} from './hooks/internal';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 
 /** Inner component that uses contexts */
@@ -374,10 +374,6 @@ export const App: React.FC = () => {
         mode={state.mode}
         isLocked={state.isLocked}
         onLockedAction={() => floatingPanelRef.current?.triggerShake()}
-        isGeoLayout={layoutControls.isGeoLayout}
-        geoMode={layoutControls.geoMode}
-        mapLibreState={mapLibreState}
-        shapeLayerNode={shapeLayerNode}
         pendingMembershipChangesRef={pendingMembershipChangesRef}
       >
         <AppContent

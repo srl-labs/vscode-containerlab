@@ -1,102 +1,27 @@
 /**
- * React TopoViewer hooks
+ * React TopoViewer hooks (public API)
+ *
+ * Keep this surface small: import leaf hooks from feature folders (e.g. `./graph`) or use `./internal`
+ * when wiring the App/context layers.
  */
 
-// Graph manipulation (for internal types, import from './graph')
 export {
-  useEdgeCreation,
-  EDGE_CREATION_SCRATCH_KEY,
-  useNodeCreation,
-  useNetworkCreation,
-  useNodeDragging
-} from './graph';
-export type { GraphChange } from './state';
-
-// State management (for internal types, import from './state')
-export { useUndoRedo, useGraphUndoRedoHandlers, useGraphHandlersWithContext, useCustomTemplateEditor } from './state';
-
-// UI interactions (for types, import from './ui')
-export {
-  useContextMenu,
-  useFloatingPanelCommands,
-  usePanelVisibility,
-  useKeyboardShortcuts,
-  useShortcutDisplay,
-  useAppHandlers
-} from './ui';
-
-// Data fetching
-export { useDockerImages, useSchema } from './data';
-
-// Annotations (for types, import from './annotations')
-export {
-  useAppFreeTextAnnotations,
-  useFreeTextAnnotationApplier,
-  useFreeTextUndoRedoHandlers,
-  useAppFreeShapeAnnotations,
-  useFreeShapeAnnotationApplier,
-  useFreeShapeUndoRedoHandlers,
-  useAnnotationEffects,
-  useAddShapesHandler,
-  generateAnnotationId
-} from './annotations';
-
-// Groups (core hooks only - for utilities/types import from './groups')
-export { useGroupState, useGroups, useAppGroups } from './groups';
-
-// Panels (for types, import from './panels')
-export {
-  useLabSettingsState,
-  useNodeEditorHandlers,
-  useLinkEditorHandlers,
-  useNetworkEditorHandlers,
-  useNodeCreationHandlers,
-  useMembershipCallbacks
-} from './panels';
-
-// Canvas (for internal hooks, import from './canvas')
-export {
-  useLinkLabelVisibility,
-  useGeoMap,
-  assignMissingGeoCoordinatesToAnnotations,
-  assignMissingGeoCoordinatesToShapeAnnotations
-} from './canvas';
-
-// Clipboard (for types, import from './clipboard')
-export { useUnifiedClipboard } from './clipboard';
-
-// Root-level hooks (for types, import from './useAppState')
-export {
-  useCytoscapeInstance,
-  useSelectionData,
-  useNavbarActions,
-  useLayoutControls,
-  useContextMenuHandlers,
-  DEFAULT_GRID_LINE_WIDTH
-} from './useAppState';
-
-// App helper hooks (extracted from App.tsx)
-export {
-  // Original hooks
   useCustomNodeCommands,
   useNavbarCommands,
   useShapeLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
-  // Composed hooks for App.tsx complexity reduction
   useAnnotationLayerProps,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
   useGraphCreation
 } from './app';
 export type {
-  // Original types
   CustomNodeCommands,
   NavbarCommands,
   UseShapeLayerReturn,
   E2ETestingConfig,
   GeoCoordinateSyncConfig,
-  // Config types for composed hooks
   AnnotationLayerPropsConfig,
   AnnotationLayerPropsReturn,
   ClipboardHandlersConfig,

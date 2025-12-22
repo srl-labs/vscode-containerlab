@@ -5,7 +5,7 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
-import type { GraphChange } from '../../../hooks';
+import type { GraphChange } from '../../../hooks/state';
 
 import { CopyableCode } from './CopyableCode';
 import { ConfirmBulkLinksModal } from './ConfirmBulkLinksModal';

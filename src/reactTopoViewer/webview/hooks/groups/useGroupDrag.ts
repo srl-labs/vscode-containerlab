@@ -76,19 +76,34 @@ export interface UseGroupDragInteractionReturn {
 /**
  * Hook for drag events during group dragging
  */
-function useGroupDragEvents(
-  isDragging: boolean,
-  cy: CyCore,
-  groupId: string,
-  dragRef: React.RefObject<DragState | null>,
-  setIsDragging: React.Dispatch<React.SetStateAction<boolean>>,
-  setDragPos: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>,
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void,
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void,
-  onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void,
-  onVisualPositionClear?: (id: string) => void,
-  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void
-): void {
+interface GroupDragEventsOptions {
+  isDragging: boolean;
+  cy: CyCore;
+  groupId: string;
+  dragRef: React.RefObject<DragState | null>;
+  setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
+  setDragPos: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
+  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
+  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
+  onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
+  onVisualPositionClear?: (id: string) => void;
+  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
+}
+
+function useGroupDragEvents(options: GroupDragEventsOptions): void {
+  const {
+    isDragging,
+    cy,
+    groupId,
+    dragRef,
+    setIsDragging,
+    setDragPos,
+    onPositionChange,
+    onDragMove,
+    onVisualPositionChange,
+    onVisualPositionClear,
+    onDragEnd
+  } = options;
   useEffect(() => {
     if (!isDragging) return;
 
@@ -151,10 +166,19 @@ export function useGroupDragInteraction(options: UseGroupDragInteractionOptions)
     if (!isDragging) setDragPos(position);
   }, [position, isDragging]);
 
-  useGroupDragEvents(
-    isDragging, cy, groupId, dragRef, setIsDragging, setDragPos,
-    onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear, onDragEnd
-  );
+  useGroupDragEvents({
+    isDragging,
+    cy,
+    groupId,
+    dragRef,
+    setIsDragging,
+    setDragPos,
+    onPositionChange,
+    onDragMove,
+    onVisualPositionChange,
+    onVisualPositionClear,
+    onDragEnd
+  });
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isLocked || e.button !== 0) return;
