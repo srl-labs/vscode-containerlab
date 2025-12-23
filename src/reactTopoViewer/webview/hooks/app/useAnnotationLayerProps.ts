@@ -13,6 +13,7 @@ import type { GroupLayer } from '../../components/annotations/GroupLayer';
 import type { FreeTextLayer } from '../../components/annotations/FreeTextLayer';
 import type { FreeShapeLayer } from '../../components/annotations/FreeShapeLayer';
 import type { MapLibreState } from '../canvas/maplibreUtils';
+import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
 
 // Note: We use a subset type here instead of ReturnType<typeof useAnnotations>
 // to avoid circular dependency with AnnotationContext.tsx
@@ -26,8 +27,6 @@ type FreeTextLayerProps = React.ComponentProps<typeof FreeTextLayer>;
 
 /** Props passed directly to FreeShapeLayer */
 type FreeShapeLayerProps = React.ComponentProps<typeof FreeShapeLayer>;
-
-import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
 
 /**
  * Annotations interface subset - the properties we need from useAnnotations()

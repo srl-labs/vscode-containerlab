@@ -7,26 +7,18 @@ import { useLayoutEffect, useRef } from 'react';
 import type { Core } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
-import { applyStubLinkClasses, updateCytoscapeElements, hasPresetPositions, getLayoutOptions } from '../../components/canvas/init';
+import {
+  applyStubLinkClasses,
+  updateCytoscapeElements,
+  hasPresetPositions,
+  getLayoutOptions,
+  collectNodePositions
+} from '../../components/canvas/init';
+import type { NodePositions } from '../../components/canvas/init';
 import { log } from '../../utils/logger';
 
-export type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
-
-export function collectNodePositions(cy: Core): NodePositions {
-  const excludedRoles = new Set(['group', 'freeText', 'freeShape']);
-  const positions: NodePositions = [];
-
-  cy.nodes().forEach(node => {
-    const id = node.id();
-    const role = node.data('topoViewerRole') as string | undefined;
-    if (!id) return;
-    if (role && excludedRoles.has(role)) return;
-    const pos = node.position();
-    positions.push({ id, position: { x: Math.round(pos.x), y: Math.round(pos.y) } });
-  });
-
-  return positions;
-}
+export { collectNodePositions };
+export type { NodePositions };
 
 /**
  * Get element data pair (React element data and Cytoscape element data)

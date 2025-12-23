@@ -157,12 +157,12 @@ export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
   }
 }
 
-type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
+export type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
 
 /**
  * Collect node positions from Cytoscape (for syncing to React state after layout)
  */
-function collectNodePositionsFromCy(cy: Core): NodePositions {
+export function collectNodePositions(cy: Core): NodePositions {
   const excludedRoles = new Set(['group', 'freeText', 'freeShape']);
   const positions: NodePositions = [];
 
@@ -221,7 +221,7 @@ export function handleCytoscapeReady(
       cy.scratch('initialLayoutDone', true);
       // Sync positions back to React state
       if (onInitialLayoutPositions) {
-        const positions = collectNodePositionsFromCy(cy);
+        const positions = collectNodePositions(cy);
         log.info(`[handleCytoscapeReady] Syncing ${positions.length} node positions to React state`);
         onInitialLayoutPositions(positions);
       }
