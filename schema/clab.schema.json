@@ -109,6 +109,7 @@
                         "cumulus_cvx",
                         "huawei_vrp",
                         "openbsd",
+                        "openwrt",
                         "freebsd",
                         "generic_vm",
                         "fortinet_fortigate",
