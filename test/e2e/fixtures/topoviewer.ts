@@ -287,9 +287,6 @@ interface TopoViewerPage {
   /** Perform paste (Ctrl+V) */
   paste(): Promise<void>;
 
-  /** Perform cut (Ctrl+X) */
-  cut(): Promise<void>;
-
   /** Create a group from selected nodes (Ctrl+G) */
   createGroup(): Promise<void>;
 
@@ -831,6 +828,21 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { timeout: 10000 }
         );
 
+        // Check lock state and mode before proceeding (respects UI restrictions)
+        const canCreate = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          // Block if locked (isLocked is a function) or not in edit mode
+          if (typeof dev?.isLocked === 'function' && dev.isLocked() === true) return false;
+          if (typeof dev?.mode === 'function' && dev.mode() !== 'edit') return false;
+          return true;
+        });
+
+        if (!canCreate) {
+          // Silently skip edge creation when locked or in view mode
+          // (matches UI behavior where edge handles are disabled)
+          return;
+        }
+
         await page.evaluate(
           ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
             const dev = (window as any).__DEV__;
@@ -838,7 +850,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               throw new Error('handleEdgeCreated not available');
             }
 
-            const linkId = `${sourceId}-${targetId}`;
+            // Include endpoints in ID to allow multiple edges between same nodes
+            const linkId = `${sourceId}:${sourceEndpoint}-${targetId}:${targetEndpoint}`;
             const linkData = {
               id: linkId,
               source: sourceId,
@@ -856,7 +869,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { sourceId, targetId, sourceEndpoint, targetEndpoint }
         );
 
-        const linkId = `${sourceId}-${targetId}`;
+        // Include endpoints in ID to allow multiple edges between same nodes (including self-loops/hairpins)
+        const linkId = `${sourceId}:${sourceEndpoint}-${targetId}:${targetEndpoint}`;
         await page.waitForFunction(
           (id) => {
             const dev = (window as any).__DEV__;
@@ -915,13 +929,6 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.keyboard.press('v');
         await page.keyboard.up('Control');
         await page.waitForTimeout(300);
-      },
-
-      cut: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('x');
-        await page.keyboard.up('Control');
-        await page.waitForTimeout(200);
       },
 
       createGroup: async () => {

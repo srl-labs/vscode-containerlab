@@ -217,6 +217,8 @@ export function handleCytoscapeReady(
     cy.one('layoutstop', () => {
       cy.resize();
       cy.fit(undefined, 50);
+      // Mark layout as done for tests
+      cy.scratch('initialLayoutDone', true);
       // Sync positions back to React state
       if (onInitialLayoutPositions) {
         const positions = collectNodePositionsFromCy(cy);
@@ -226,6 +228,8 @@ export function handleCytoscapeReady(
     });
     cy.layout(getLayoutOptions('cose')).run();
   } else {
+    // Mark layout as done immediately for preset layouts
+    cy.scratch('initialLayoutDone', true);
     // Fit after a short delay for preset layout
     setTimeout(() => {
       cy.resize();

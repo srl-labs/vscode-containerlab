@@ -151,6 +151,7 @@ export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
 export interface E2ETestingConfig {
   cyInstance: CyCore | null;
   isLocked: boolean;
+  mode: 'edit' | 'view';
   toggleLock: () => void;
   undoRedo: UseUndoRedoReturn;
   handleEdgeCreated: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void;
@@ -164,18 +165,19 @@ export interface E2ETestingConfig {
  * Consolidates all window.__DEV__ assignments into one place.
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
-  const { cyInstance, isLocked, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, groups } = config;
+  const { cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, groups } = config;
 
-  // Core E2E exposure (cy, isLocked, setLocked)
+  // Core E2E exposure (cy, isLocked, mode, setLocked)
   React.useEffect(() => {
     if (typeof window !== 'undefined' && window.__DEV__) {
       if (cyInstance) window.__DEV__.cy = cyInstance;
       window.__DEV__.isLocked = () => isLocked;
+      window.__DEV__.mode = () => mode;
       window.__DEV__.setLocked = (locked: boolean) => {
         if (isLocked !== locked) toggleLock();
       };
     }
-  }, [cyInstance, isLocked, toggleLock]);
+  }, [cyInstance, isLocked, mode, toggleLock]);
 
   // Undo/redo E2E exposure
   React.useEffect(() => {

@@ -121,6 +121,7 @@ const AppContent: React.FC<{
   useE2ETestingExposure({
     cyInstance,
     isLocked: state.isLocked,
+    mode: state.mode,
     toggleLock,
     undoRedo,
     handleEdgeCreated,

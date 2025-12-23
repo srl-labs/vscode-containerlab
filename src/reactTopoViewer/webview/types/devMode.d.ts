@@ -17,6 +17,8 @@ export interface DevModeInterface {
   cy?: CyCore;
   /** Check if topology is locked */
   isLocked?: () => boolean;
+  /** Get current mode */
+  mode?: () => 'edit' | 'view';
   /** Set locked state */
   setLocked?: (locked: boolean) => void;
   /** Undo/redo state */

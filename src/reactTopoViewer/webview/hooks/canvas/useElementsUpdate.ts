@@ -378,6 +378,24 @@ function addMissingEdges(cy: Core, elements: CyElement[]): void {
   }
 }
 
+/**
+ * Update elements when structure is the same (fast path)
+ */
+function updateSameStructure(cy: Core, elements: CyElement[]): void {
+  const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
+  const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
+
+  updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
+  updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
+
+  // Check visual data BEFORE updating - comparison needs pre-update state
+  const needsStubClassUpdate = hasVisualDataChanged(cy, elements);
+  cy.batch(() => updateElementData(cy, elements));
+  if (needsStubClassUpdate) {
+    applyStubLinkClasses(cy);
+  }
+}
+
 function reconcileStructure(cy: Core, elements: CyElement[]): void {
   const reactById = indexElementsById(elements);
   const reactIds = new Set(reactById.keys());
@@ -474,6 +492,51 @@ function handleRenameInPlace(cy: Core, oldId: string, newId: string, elements: C
 }
 
 /**
+ * Handle initialization when Cytoscape already has elements from initCytoscape.
+ * Returns true if initialization is complete and no further processing needed.
+ */
+function handleAlreadyInitialized(
+  cy: Core,
+  elements: CyElement[],
+  usePresetLayout: boolean,
+  onInitialLayoutPositions?: (positions: NodePositions) => void
+): boolean {
+  const alreadySynced = structureMatches(cy, elements);
+
+  if (alreadySynced) {
+    // First initialization after mount - Cytoscape and React state match
+    log.info(`[useElementsUpdate] Cytoscape already initialized with ${cy.nodes().length} nodes`);
+    if (!usePresetLayout) {
+      runInitialCoseLayout(cy, onInitialLayoutPositions);
+    }
+    cy.scratch('initialLayoutDone', usePresetLayout);
+    return true; // Done, no reconcile needed
+  }
+
+  // Cytoscape has elements but they don't match React state.
+  // This happens when elements changed before isInitializedRef was set.
+  log.info(`[useElementsUpdate] Cytoscape needs reconcile: cy=${cy.nodes().length + cy.edges().length}, react=${elements.length}`);
+  return false; // Need to reconcile
+}
+
+/**
+ * Handle first initialization when Cytoscape has no elements yet.
+ */
+function handleFirstInit(
+  cy: Core,
+  elements: CyElement[],
+  usePresetLayout: boolean,
+  onInitialLayoutPositions?: (positions: NodePositions) => void
+): void {
+  log.info(`[useElementsUpdate] First init: hasPresetPositions=${usePresetLayout}, elements=${elements.length}`);
+  cy.scratch('initialLayoutDone', usePresetLayout);
+  if (!usePresetLayout) {
+    setupLayoutstopListener(cy, onInitialLayoutPositions);
+  }
+  updateCytoscapeElements(cy, elements);
+}
+
+/**
  * Hook for updating elements when they change
  * Uses useLayoutEffect to ensure updates complete before other effects (like useSelectionData) read data
  *
@@ -500,32 +563,19 @@ export function useElementsUpdate(
     }
 
     if (!isInitializedRef.current) {
-      // Check if Cytoscape was already initialized with elements (by initCytoscape).
-      // If so, skip redundant updateCytoscapeElements which would remove and re-add all elements.
       const cyHasElements = cy.nodes().length > 0;
       const usePresetLayout = hasPresetPositions(elements);
 
       if (cyHasElements) {
-        // Cytoscape already has elements from initCytoscape
-        log.info(`[useElementsUpdate] Cytoscape already initialized with ${cy.nodes().length} nodes`);
-        if (!usePresetLayout) {
-          runInitialCoseLayout(cy, onInitialLayoutPositions);
-        }
-        cy.scratch('initialLayoutDone', usePresetLayout);
+        const initComplete = handleAlreadyInitialized(cy, elements, usePresetLayout, onInitialLayoutPositions);
+        isInitializedRef.current = true;
+        if (initComplete) return;
+        // Fall through to reconcile logic below
+      } else {
+        handleFirstInit(cy, elements, usePresetLayout, onInitialLayoutPositions);
         isInitializedRef.current = true;
         return;
       }
-
-      log.info(`[useElementsUpdate] First init: hasPresetPositions=${usePresetLayout}, elements=${elements.length}`);
-      cy.scratch('initialLayoutDone', usePresetLayout);
-      if (!usePresetLayout) {
-        // `updateCytoscapeElements` will run COSE when there are no preset positions.
-        // Set up listener to sync positions back into React state.
-        setupLayoutstopListener(cy, onInitialLayoutPositions);
-      }
-      updateCytoscapeElements(cy, elements);
-      isInitializedRef.current = true;
-      return;
     }
 
     // Keep Cytoscape in sync with React state without full resets:
@@ -540,20 +590,15 @@ export function useElementsUpdate(
     }
 
     if (isSameStructure) {
-      const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
-      const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
-
-      updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
-      updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
-      if (hasVisualDataChanged(cy, elements)) {
-        cy.batch(() => updateElementData(cy, elements));
-        applyStubLinkClasses(cy);
-      } else {
-        cy.batch(() => updateElementData(cy, elements));
-      }
+      updateSameStructure(cy, elements);
       return;
     }
 
     reconcileStructure(cy, elements);
+    // After reconciling a significant structure change (e.g., file switch),
+    // update initialLayoutDone based on whether the new elements have preset positions.
+    if (hasPresetPositions(elements)) {
+      cy.scratch('initialLayoutDone', true);
+    }
   }, [cyRef, elements]);
 }

@@ -141,12 +141,14 @@ function handleCopy(
 function handlePaste(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
+  isLocked: boolean,
   onPaste?: () => void,
   onPasteAnnotations?: () => void,
   hasAnnotationClipboard?: () => boolean,
   hasGraphClipboard?: () => boolean
 ): boolean {
   if (mode !== 'edit') return false;
+  if (isLocked) return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key !== 'v') return false;
 
@@ -178,12 +180,14 @@ function handlePaste(
 function handleDuplicate(
   event: KeyboardEvent,
   mode: 'edit' | 'view',
+  isLocked: boolean,
   cyInstance: Core | null,
   onDuplicate?: () => void,
   selectedAnnotationIds?: Set<string>,
   onDuplicateAnnotations?: () => void
 ): boolean {
   if (mode !== 'edit') return false;
+  if (isLocked) return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key !== 'd') return false;
 
@@ -407,8 +411,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     if (handleRedo(event, mode, canRedo, onRedo)) return;
     // Copy/Paste/Duplicate (with annotation support)
     if (handleCopy(event, cyInstance, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
-    if (handlePaste(event, mode, onPaste, onPasteAnnotations, hasAnnotationClipboard)) return;
-    if (handleDuplicate(event, mode, cyInstance, onDuplicate, selectedAnnotationIds, onDuplicateAnnotations)) return;
+    if (handlePaste(event, mode, isLocked, onPaste, onPasteAnnotations, hasAnnotationClipboard)) return;
+    if (handleDuplicate(event, mode, isLocked, cyInstance, onDuplicate, selectedAnnotationIds, onDuplicateAnnotations)) return;
     // Group shortcut (Ctrl+G)
     if (handleCreateGroup(event, mode, cyInstance, onCreateGroup)) return;
     // Other shortcuts

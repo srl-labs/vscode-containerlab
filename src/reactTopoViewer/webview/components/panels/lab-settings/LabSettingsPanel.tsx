@@ -2,7 +2,7 @@
  * LabSettingsPanel - Configure lab settings with tabs for Basic and Management
  * Migrated from legacy TopoViewer panel-lab-settings.html
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
 import { useLabSettingsState } from '../../../hooks/panels/useLabSettings';
@@ -37,6 +37,28 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
 
   const state = useLabSettingsState(labSettings);
 
+  // Handle save and close
+  const handleSaveAndClose = async () => {
+    await state.handleSave();
+    onClose();
+  };
+
+  // Handle Escape key to close panel
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible, onClose]);
+
   return (
     <BasePanel
       title="Lab Settings"
@@ -47,12 +69,13 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
       storageKey="labSettings"
       zIndex={21}
       footer={!isReadOnly}
-      onPrimaryClick={() => void state.handleSave()}
+      onPrimaryClick={() => void handleSaveAndClose()}
       primaryLabel="Save"
       onSecondaryClick={onClose}
       secondaryLabel="Close"
       minWidth={350}
       minHeight={300}
+      testId="lab-settings"
     >
       {/* Tab Navigation */}
       <div className="panel-tabs mb-3" style={{ justifyContent: 'flex-start' }}>
@@ -62,6 +85,7 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
             type="button"
             className={`panel-tab-button ${activeTab === tab.id ? 'tab-active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
+            data-testid={`panel-tab-${tab.id}`}
           >
             {tab.label}
           </button>
