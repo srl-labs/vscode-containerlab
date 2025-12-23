@@ -453,8 +453,8 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
         pointerEvents: 'none'
       }}
     >
-      {/* Draggable border frame edges */}
-      {BORDER_EDGE_CONFIGS.map(({ edge, getStyle }) => (
+      {/* Draggable border frame edges (only when interacting, to avoid blocking node clicks) */}
+      {showHandles && BORDER_EDGE_CONFIGS.map(({ edge, getStyle }) => (
         <div
           key={edge}
           data-testid={`group-drag-${edge}-${group.id}`}

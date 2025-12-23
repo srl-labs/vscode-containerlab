@@ -129,15 +129,21 @@ function useGroupDragEvents(options: GroupDragEventsOptions): void {
     const handleMouseUp = (e: MouseEvent) => {
       const ref = dragRef.current;
       if (!ref) return;
-      const zoom = cy.zoom();
-      const dx = (e.clientX - ref.startX) / zoom;
-      const dy = (e.clientY - ref.startY) / zoom;
-      const finalPosition = { x: ref.modelX + dx, y: ref.modelY + dy };
-      onPositionChange(groupId, finalPosition, { dx, dy });
+      const movedPx = Math.hypot(e.clientX - ref.startX, e.clientY - ref.startY);
+      // Treat a click (no meaningful movement) as NOT a drag.
+      // Without this guard, a click on the draggable border can trigger unintended reparenting.
+      if (movedPx >= 3) {
+        const zoom = cy.zoom();
+        const dx = (e.clientX - ref.startX) / zoom;
+        const dy = (e.clientY - ref.startY) / zoom;
+        const finalPosition = { x: ref.modelX + dx, y: ref.modelY + dy };
+        onPositionChange(groupId, finalPosition, { dx, dy });
+        // Call onDragEnd to allow parent to detect drop target for reparenting
+        onDragEnd?.(groupId, finalPosition);
+      }
       setIsDragging(false);
       onVisualPositionClear?.(groupId);
-      // Call onDragEnd to allow parent to detect drop target for reparenting
-      onDragEnd?.(groupId, finalPosition);
+      dragRef.current = null;
     };
 
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);

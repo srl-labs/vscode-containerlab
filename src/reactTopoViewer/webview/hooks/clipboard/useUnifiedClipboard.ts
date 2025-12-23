@@ -247,12 +247,14 @@ function collectClipboardNodes(
 
 /** Collect clipboard edges from cytoscape */
 function collectClipboardEdges(
-  selectedEdges: EdgeCollection,
+  cyInstance: CyCore,
   nodeIdsToInclude: Set<string>
 ): ClipboardEdge[] {
   const clipboardEdges: ClipboardEdge[] = [];
 
-  selectedEdges.forEach(edge => {
+  // Include all edges between the nodes we're copying, even if the edges themselves
+  // aren't explicitly selected (common UX expectation for copy/paste).
+  cyInstance.edges().forEach(edge => {
     const sourceId = edge.source().id();
     const targetId = edge.target().id();
     if (nodeIdsToInclude.has(sourceId) && nodeIdsToInclude.has(targetId)) {
@@ -676,7 +678,6 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     }
 
     const selectedNodes = cyInstance.nodes(':selected');
-    const selectedEdges = cyInstance.edges(':selected');
 
     // Collect IDs
     const groupIdsToInclude = collectGroupIdsToInclude(
@@ -689,7 +690,7 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     // Collect all elements
     const { nodes: clipboardNodes, positions: nodePositions } =
       collectClipboardNodes(nodeIdsToInclude, cyInstance, getNodeMembership);
-    const clipboardEdges = collectClipboardEdges(selectedEdges, nodeIdsToInclude);
+    const clipboardEdges = collectClipboardEdges(cyInstance, nodeIdsToInclude);
     const { groups: clipboardGroups, positions: groupPositions } =
       collectClipboardGroups(groupIdsToInclude, groups);
     const { annotations: clipboardTextAnnotations, positions: textPositions } =

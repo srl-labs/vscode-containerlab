@@ -18,9 +18,6 @@ const SEL_FIND_NODE_RESULT = '[data-testid="find-node-result"]';
  * - No results handling
  * - Selection behavior
  * - Zoom to fit found nodes
- *
- * KNOWN BUGS:
- * - None discovered yet
  */
 test.describe('Find Node Panel', () => {
   test.beforeEach(async ({ topoViewerPage }) => {

@@ -75,12 +75,6 @@ async function openNodeEditorByNodeId(
  * - Tab navigation
  * - Panel close behavior
  * - Apply/OK button interactions
- *
- * KNOWN BUGS:
- * - BUG-002: Node editor panel opens on double-click even when canvas is locked.
- *   The lock state should prevent editing operations including opening the editor.
- *   Expected: Panel should NOT open when canvas is locked
- *   Actual: Panel opens regardless of lock state
  */
 test.describe('Node Editor Panel', () => {
   test.beforeEach(async ({ topoViewerPage }) => {

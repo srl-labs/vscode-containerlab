@@ -15,8 +15,7 @@ import { drag, ctrlClick } from '../helpers/cytoscape-helpers';
  * - Nested groups (group-in-group)
  * - Final persistence verification after reload
  *
- * Bug reports are documented in: test/e2e/reports/full-workflow-bugs.md
- * Bugs are logged to console and should be manually added to the report file.
+ * This test is intended to be strict: failures should be asserted, not logged as "known bugs".
  */
 
 // Test configuration
@@ -35,18 +34,6 @@ const SEL_ADD_TEXT_BTN = '[data-testid="floating-panel-add-text-btn"]';
 const SEL_ADD_SHAPES_BTN = '[data-testid="floating-panel-add-shapes-btn"]';
 const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 const SEL_PANEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
-
-// Current test step for bug logging
-let currentStep = 'Setup';
-
-/**
- * Helper to log bug findings - logs to console for manual documentation
- * Format: [BUG] {bugId}: {description} (Step: {step}, Time: {timestamp})
- */
-function logBug(bugId: string, description: string) {
-  const timestamp = new Date().toISOString();
-  console.log(`[BUG] ${bugId}: ${description} (Step: ${currentStep}, Time: ${timestamp})`);
-}
 
 // ============================================================================
 // STRICTER VALIDATION HELPERS
@@ -114,7 +101,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 1: Create nodes and verify YAML persistence
     // ============================================================================
-    currentStep = 'Step 1';
     console.log('[STEP 1] Create nodes and verify YAML persistence');
 
     // Create 4 nodes in a square pattern
@@ -143,10 +129,6 @@ test.describe('Full Workflow E2E Test', () => {
     validateNodeInYaml(yaml, 'router3', KIND_NOKIA_SRLINUX);
     validateNodeInYaml(yaml, 'router4', KIND_NOKIA_SRLINUX);
 
-    // Check for image field (potential bug area) - stricter: require for all nodes
-    if (!yaml.includes('image:')) {
-      logBug('BUG-YAML-001', 'image field not written to YAML for created nodes');
-    }
     expect(yaml).toContain('image:');
 
     // Verify annotations with position validation
@@ -165,7 +147,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 2: Interconnect nodes and verify links
     // ============================================================================
-    currentStep = 'Step 2';
     console.log('[STEP 2] Interconnect nodes and verify links');
 
     // Initial edge count should be 0
@@ -199,7 +180,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 3: Change node name via node editor
     // ============================================================================
-    currentStep = 'Step 3';
     console.log('[STEP 3] Change node name via node editor');
 
     // Fit viewport to ensure nodes are visible
@@ -265,11 +245,6 @@ test.describe('Full Workflow E2E Test', () => {
     expect(yaml).toContain(`${RENAMED_NODE}:`);
     expect(yaml).not.toContain('router1:');
 
-    // STRICTER: Assert links were updated to reference new name (fail test if not)
-    // The renamed node was router1 which had eth1 and eth2 connections
-    if (!yaml.includes(`${RENAMED_NODE}:eth`)) {
-      logBug('BUG-RENAME-LINKS', 'Links not updated when node renamed');
-    }
     // Assert both endpoints were updated
     expect(yaml).toContain(`${RENAMED_NODE}:eth1`);
     expect(yaml).toContain(`${RENAMED_NODE}:eth2`);
@@ -277,7 +252,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 4: Create groups and add nodes to groups
     // ============================================================================
-    currentStep = 'Step 4';
     console.log('[STEP 4] Create groups and add nodes to groups');
 
     // DEBUG: Check if editor is still visible before proceeding
@@ -341,7 +315,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 5: Complex undo/redo with interleaved operations (Part 1)
     // ============================================================================
-    currentStep = 'Step 5';
     console.log('[STEP 5] Complex undo/redo with interleaved operations (Part 1)');
 
     // DEBUG: Check editor at start of Step 5
@@ -399,7 +372,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 6: Complex undo/redo with interleaved operations (Part 2)
     // ============================================================================
-    currentStep = 'Step 6';
     console.log('[STEP 6] Complex undo/redo with interleaved operations (Part 2)');
 
     // DEBUG: Check editor at start of Step 6
@@ -491,7 +463,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 7: Undo across multiple operation types
     // ============================================================================
-    currentStep = 'Step 7';
     console.log('[STEP 7] Undo across multiple operation types');
 
     // DEBUG: Check editor state at start of Step 7
@@ -538,7 +509,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 8: Copy and paste MULTIPLE nodes with links, then test batched undo
     // ============================================================================
-    currentStep = 'Step 8';
     console.log('[STEP 8] Copy and paste multiple nodes with links');
 
     // Close any open node editor panel first
@@ -603,11 +573,8 @@ test.describe('Full Workflow E2E Test', () => {
     expect(nodesAdded).toBeGreaterThanOrEqual(2);
     expect(pastedNodeIds.length).toBeGreaterThanOrEqual(2);
 
-    // Note: Links between copied nodes may or may not be pasted - this is a known limitation
-    // The focus of this test is verifying undo batching, not edge copying
-    if (edgesAdded === 0) {
-      console.log('[WARN] No edges were added by paste - links between copied nodes may not be included');
-    }
+    // When copying connected nodes, their connecting edges should be pasted as well.
+    expect(edgesAdded).toBeGreaterThan(0);
 
     // Verify YAML contains BOTH new nodes
     yaml = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
@@ -687,16 +654,13 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 9: Copy and paste group with contents
     // ============================================================================
-    currentStep = 'Step 9';
     console.log('[STEP 9] Copy and paste group with contents');
 
+    {
     // Get group IDs
     const groupIds = await topoViewerPage.getGroupIds();
-
-    if (groupIds.length === 0) {
-      console.log('[SKIP] No groups available for Step 9');
-    } else {
-      const groupId = groupIds[0];
+    expect(groupIds.length).toBeGreaterThan(0);
+    const groupId = groupIds[0];
 
       // Record initial counts and state
       const groupCountBeforeGroupPaste = await topoViewerPage.getGroupCount();
@@ -777,7 +741,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 10: Final persistence verification after reload
     // ============================================================================
-    currentStep = 'Step 10';
     console.log('[STEP 10] Final persistence verification after reload');
 
     // Get current state before reload
@@ -823,9 +786,6 @@ test.describe('Full Workflow E2E Test', () => {
         // STRICTER: Allow only 20px tolerance for position drift during save/reload cycle
         const toleranceX = Math.abs(posAfter.x - posBefore.x);
         const toleranceY = Math.abs(posAfter.y - posBefore.y);
-        if (toleranceX >= 20 || toleranceY >= 20) {
-          logBug('BUG-POSITION-DRIFT', `Node ${nodeId} position drifted by (${toleranceX}, ${toleranceY})px after reload`);
-        }
         expect(toleranceX).toBeLessThan(20);
         expect(toleranceY).toBeLessThan(20);
       }
@@ -844,7 +804,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 11: Free text annotations
     // ============================================================================
-    currentStep = 'Step 11';
     console.log('[STEP 11] Free text annotations');
 
     // Get initial free text annotation count
@@ -880,36 +839,40 @@ test.describe('Full Workflow E2E Test', () => {
 
     // Verify text content was saved
     const createdTextAnn = annotations.freeTextAnnotations?.[freeTextCountAfter - 1];
-    if (createdTextAnn?.text !== 'Test annotation text') {
-      logBug('BUG-FREE-TEXT-001', 'Free text annotation content not saved correctly');
-    }
+    expect(createdTextAnn?.text).toBe('Test annotation text');
     console.log('[DEBUG] Free text annotation created successfully');
 
     // Test undo of text annotation creation
     await topoViewerPage.undo();
     await page.waitForTimeout(300);
 
-    annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
-    const freeTextCountAfterUndo = annotations.freeTextAnnotations?.length || 0;
-    if (freeTextCountAfterUndo !== freeTextCountBefore) {
-      logBug('BUG-FREE-TEXT-UNDO-001', `Text annotation undo failed: expected ${freeTextCountBefore} but got ${freeTextCountAfterUndo}`);
-    }
-    console.log(`[DEBUG] Free text annotation undo: expected ${freeTextCountBefore}, got ${freeTextCountAfterUndo}`);
+    await expect.poll(
+      async () => {
+        const a = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
+        return a.freeTextAnnotations?.length || 0;
+      },
+      { timeout: 5000, message: 'Undo should remove the created free text annotation' }
+    ).toBe(freeTextCountBefore);
+    console.log(`[DEBUG] Free text annotation undo: expected ${freeTextCountBefore}, got ${freeTextCountBefore}`);
 
     // Redo to restore text annotation (if undo worked)
     await topoViewerPage.redo();
     await page.waitForTimeout(300);
 
-    annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
-    const freeTextCountAfterRedo = annotations.freeTextAnnotations?.length || 0;
-    console.log(`[DEBUG] Free text annotation redo: expected ${freeTextCountAfter}, got ${freeTextCountAfterRedo}`);
+    await expect.poll(
+      async () => {
+        const a = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
+        return a.freeTextAnnotations?.length || 0;
+      },
+      { timeout: 5000, message: 'Redo should restore the created free text annotation' }
+    ).toBe(freeTextCountAfter);
+    console.log('[DEBUG] Free text annotation redo completed');
 
     console.log('[DEBUG] Free text annotation undo/redo test completed (bugs logged if any)');
 
     // ============================================================================
     // STEP 12: Free shape annotations
     // ============================================================================
-    currentStep = 'Step 12';
     console.log('[STEP 12] Free shape annotations');
 
     // Get initial free shape annotation count
@@ -980,7 +943,6 @@ test.describe('Full Workflow E2E Test', () => {
     // ============================================================================
     // STEP 13: Nested groups (group in group)
     // ============================================================================
-    currentStep = 'Step 13';
     console.log('[STEP 13] Nested groups (group in group)');
 
     // Clear selection first
@@ -1007,56 +969,49 @@ test.describe('Full Workflow E2E Test', () => {
     await topoViewerPage.createGroup();
     await page.waitForTimeout(500);
 
+    await expect.poll(
+      () => topoViewerPage.getGroupCount(),
+      { timeout: 5000, message: 'Outer group count should increase after createGroup' }
+    ).toBe(groupCountBeforeNested + 1);
     const groupCountAfterOuter = await topoViewerPage.getGroupCount();
-    if (groupCountAfterOuter !== groupCountBeforeNested + 1) {
-      logBug('BUG-NESTED-GROUP-CREATE-001', `Outer group creation failed: expected ${groupCountBeforeNested + 1} groups but got ${groupCountAfterOuter}`);
-      console.log('[DEBUG] Nested group creation FAILED - skipping nested group tests');
-    } else {
-      // Get the outer group ID
-      const groupIdsAfterOuter = await topoViewerPage.getGroupIds();
-      const outerGroupId = groupIdsAfterOuter.find(id => !groupIdsBeforeOuter.includes(id)) ?? groupIdsAfterOuter[groupIdsAfterOuter.length - 1];
-      console.log(`[DEBUG] Created outer group: ${outerGroupId}`);
 
-      // Now select only router3 and create inner group
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(200);
-      await topoViewerPage.selectNode('router3');
-      await page.waitForTimeout(200);
+    // Get the outer group ID
+    const groupIdsAfterOuter = await topoViewerPage.getGroupIds();
+    const outerGroupId = groupIdsAfterOuter.find(id => !groupIdsBeforeOuter.includes(id));
+    expect(outerGroupId).toBeDefined();
+    console.log(`[DEBUG] Created outer group: ${outerGroupId}`);
 
-      // Create inner group
-      await topoViewerPage.createGroup();
-      await page.waitForTimeout(500);
+    // Now select only router3 and create inner group
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    await topoViewerPage.selectNode('router3');
+    await page.waitForTimeout(200);
 
-      const groupCountAfterInner = await topoViewerPage.getGroupCount();
-      if (groupCountAfterInner !== groupCountAfterOuter + 1) {
-        logBug('BUG-NESTED-GROUP-CREATE-002', `Inner group creation failed: expected ${groupCountAfterOuter + 1} groups but got ${groupCountAfterInner}`);
-      } else {
-        const groupIdsAfterInner = await topoViewerPage.getGroupIds();
-        const innerGroupId = groupIdsAfterInner.find(id => !groupIdsAfterOuter.includes(id));
+    // Create inner group
+    await topoViewerPage.createGroup();
+    await page.waitForTimeout(500);
 
-        // Verify hierarchy - inner group should have parentId pointing to outer group
-        annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
-        const groups = annotations.groupStyleAnnotations || [];
-        const innerGroup = groups.find(g => g.id === innerGroupId);
+    await expect.poll(
+      () => topoViewerPage.getGroupCount(),
+      { timeout: 5000, message: 'Inner group count should increase after createGroup' }
+    ).toBe(groupCountAfterOuter + 1);
 
-        if (innerGroup) {
-          if (innerGroup.parentId === outerGroupId) {
-            console.log('[DEBUG] Nested group hierarchy is correct - inner group has parentId');
-          } else {
-            logBug('BUG-NESTED-GROUP-HIERARCHY-001', `Inner group parentId is ${innerGroup.parentId} instead of ${outerGroupId}`);
-          }
-        } else {
-          console.log('[WARN] Could not find inner group to verify hierarchy');
-        }
-      }
-    }
+    const groupIdsAfterInner = await topoViewerPage.getGroupIds();
+    const innerGroupId = groupIdsAfterInner.find(id => !groupIdsAfterOuter.includes(id));
+    expect(innerGroupId).toBeDefined();
+
+    // Verify hierarchy - inner group should have parentId pointing to outer group
+    annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
+    const groups = annotations.groupStyleAnnotations || [];
+    const innerGroup = groups.find(g => g.id === innerGroupId);
+    expect(innerGroup).toBeDefined();
+    expect(innerGroup?.parentId).toBe(outerGroupId);
 
     console.log('[DEBUG] Nested groups test completed');
 
     // ============================================================================
     // STEP 14: Copy-paste with annotations
     // ============================================================================
-    currentStep = 'Step 14';
     console.log('[STEP 14] Copy-paste with annotations');
 
     // Get current state
@@ -1079,33 +1034,39 @@ test.describe('Full Workflow E2E Test', () => {
     await page.waitForTimeout(500);
 
     // Verify node was pasted
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 5000, message: 'Paste should create at least one new node' }
+    ).toBeGreaterThan(nodeCountBeforeAnnCopy);
     const nodeCountAfterAnnCopy = await topoViewerPage.getNodeCount();
-    if (nodeCountAfterAnnCopy <= nodeCountBeforeAnnCopy) {
-      logBug('BUG-COPY-PASTE-001', `Copy-paste did not create new node (before: ${nodeCountBeforeAnnCopy}, after: ${nodeCountAfterAnnCopy})`);
-    } else {
-      console.log(`[DEBUG] Copy-paste created new node (before: ${nodeCountBeforeAnnCopy}, after: ${nodeCountAfterAnnCopy})`);
-    }
+    console.log(`[DEBUG] Copy-paste created new node (before: ${nodeCountBeforeAnnCopy}, after: ${nodeCountAfterAnnCopy})`);
 
     // Verify in YAML
-    yaml = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
+    await expect.poll(
+      async () => {
+        const ids = await topoViewerPage.getNodeIds();
+        return ids.find(id => !nodeIdsBeforeAnnCopy.includes(id)) ?? null;
+      },
+      { timeout: 5000, message: 'Expected a new node ID after paste' }
+    ).not.toBeNull();
+
     const nodeIdsAfterCopy = await topoViewerPage.getNodeIds();
     const newNodeId = nodeIdsAfterCopy.find(id => !nodeIdsBeforeAnnCopy.includes(id));
-    if (newNodeId) {
-      if (!yaml.includes(`${newNodeId}:`)) {
-        logBug('BUG-COPY-PASTE-YAML-001', `Pasted node ${newNodeId} not found in YAML`);
-      } else {
-        console.log(`[DEBUG] Pasted node ${newNodeId} found in YAML`);
-      }
-    }
+    expect(newNodeId).toBeDefined();
+    await expect.poll(
+      () => topoViewerPage.getYamlFromFile(TOPOLOGY_FILE),
+      { timeout: 5000, message: 'Expected pasted node to be persisted to YAML' }
+    ).toContain(`${newNodeId}:`);
+    console.log(`[DEBUG] Pasted node ${newNodeId} found in YAML`);
 
     // Test single undo removes all pasted elements
     await topoViewerPage.undo();
     await page.waitForTimeout(500);
 
-    const nodeCountAfterCopyUndo = await topoViewerPage.getNodeCount();
-    if (nodeCountAfterCopyUndo !== nodeCountBeforeAnnCopy) {
-      logBug('BUG-COPY-PASTE-UNDO-001', `Undo after copy-paste did not restore node count (expected: ${nodeCountBeforeAnnCopy}, got: ${nodeCountAfterCopyUndo})`);
-    }
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 5000, message: 'Undo should restore node count after paste' }
+    ).toBe(nodeCountBeforeAnnCopy);
 
     console.log('[DEBUG] Copy-paste with single undo works correctly');
 

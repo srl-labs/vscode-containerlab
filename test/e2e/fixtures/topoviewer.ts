@@ -290,6 +290,9 @@ interface TopoViewerPage {
   /** Create a group from selected nodes (Ctrl+G) */
   createGroup(): Promise<void>;
 
+  /** Resize a group by dragging a resize handle */
+  resizeGroup(groupId: string, corner: 'nw' | 'ne' | 'sw' | 'se', delta: { x: number; y: number }): Promise<void>;
+
   /** Delete a node by ID */
   deleteNode(nodeId: string): Promise<void>;
 
@@ -940,6 +943,32 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Check again after wait - both React state and stateManager
         const debugInfo = await page.evaluate(browserGetGroupDebugInfo);
         console.log(`[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`);
+      },
+
+      resizeGroup: async (groupId: string, corner: 'nw' | 'ne' | 'sw' | 'se', delta: { x: number; y: number }) => {
+        // Click the group label to ensure resize handles are rendered (selection/hover-driven UI)
+        const label = page.locator(`[data-testid="group-label-${groupId}"]`);
+        await label.waitFor({ state: 'visible', timeout: 5000 });
+        await label.click();
+        await page.waitForTimeout(200);
+
+        const handle = page.locator(`[data-testid="resize-${corner}-${groupId}"]`);
+        await handle.waitFor({ state: 'visible', timeout: 5000 });
+        const box = await handle.boundingBox();
+        if (!box) throw new Error(`Resize handle not found for group ${groupId} (${corner})`);
+
+        const startX = box.x + box.width / 2;
+        const startY = box.y + box.height / 2;
+        const endX = startX + delta.x;
+        const endY = startY + delta.y;
+
+        await page.mouse.move(startX, startY);
+        await page.mouse.down();
+        await page.mouse.move(endX, endY, { steps: 10 });
+        await page.mouse.up();
+
+        // Wait for debounced save (300ms) plus processing time
+        await page.waitForTimeout(800);
       },
 
       deleteNode: async (nodeId: string) => {

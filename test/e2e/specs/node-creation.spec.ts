@@ -92,6 +92,7 @@ test.describe('Node Creation', () => {
   test('creates multiple nodes with sequential Shift+Clicks', async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
+    const nodeIdsBefore = await topoViewerPage.getNodeIds();
 
     // Create 3 nodes at positions far from center to avoid hitting existing nodes
     await shiftClick(page, canvasCenter.x - 200, canvasCenter.y - 150);
@@ -103,8 +104,15 @@ test.describe('Node Creation', () => {
     await shiftClick(page, canvasCenter.x, canvasCenter.y + 200);
     await page.waitForTimeout(300);
 
-    const finalNodeCount = await topoViewerPage.getNodeCount();
-    expect(finalNodeCount).toBe(initialNodeCount + 3);
+    // Wait for all 3 nodes to appear (shift-click can be timing-sensitive under load)
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 5000, message: 'Expected 3 nodes to be created via sequential Shift+Clicks' }
+    ).toBe(initialNodeCount + 3);
+
+    const nodeIdsAfter = await topoViewerPage.getNodeIds();
+    const createdIds = nodeIdsAfter.filter(id => !nodeIdsBefore.includes(id));
+    expect(createdIds.length).toBe(3);
   });
 });
 

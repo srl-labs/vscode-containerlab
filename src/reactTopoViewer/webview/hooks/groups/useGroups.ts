@@ -29,6 +29,7 @@ import {
   getChildGroups as getChildGroupsUtil,
   getParentGroup as getParentGroupUtil,
   getGroupDepth as getGroupDepthUtil,
+  findDeepestGroupAtPosition,
   validateNoCircularReference
 } from './hierarchyUtils';
 import {
@@ -122,8 +123,31 @@ function useCreateGroup(
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void,
   lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>
 ) {
+  const isGroupFullyInside = (
+    child: Pick<GroupStyleAnnotation, 'position' | 'width' | 'height'>,
+    parent: Pick<GroupStyleAnnotation, 'position' | 'width' | 'height'>,
+    margin = 2
+  ): boolean => {
+    const childHalfW = child.width / 2;
+    const childHalfH = child.height / 2;
+    const parentHalfW = parent.width / 2;
+    const parentHalfH = parent.height / 2;
+
+    const childLeft = child.position.x - childHalfW;
+    const childRight = child.position.x + childHalfW;
+    const childTop = child.position.y - childHalfH;
+    const childBottom = child.position.y + childHalfH;
+
+    const parentLeft = parent.position.x - parentHalfW + margin;
+    const parentRight = parent.position.x + parentHalfW - margin;
+    const parentTop = parent.position.y - parentHalfH + margin;
+    const parentBottom = parent.position.y + parentHalfH - margin;
+
+    return childLeft >= parentLeft && childRight <= parentRight && childTop >= parentTop && childBottom <= parentBottom;
+  };
+
   return useCallback(
-    (selectedNodeIds?: string[], parentId?: string): { groupId: string; group: GroupStyleAnnotation } | null => {
+    (selectedNodeIds?: string[], parentId?: string | null): { groupId: string; group: GroupStyleAnnotation } | null => {
       if (mode === 'view' || isLocked || !cy) {
         if (isLocked) onLockedAction?.();
         return null;
@@ -157,10 +181,25 @@ function useCreateGroup(
       const newGroup = createDefaultGroup(groupId, position, lastStyleRef.current);
       newGroup.width = width;
       newGroup.height = height;
+      // Ensure newly created groups are on top by default, regardless of lastStyle zIndex.
+      const maxZIndex = groups.reduce((max, g) => Math.max(max, g.zIndex ?? 0), 0);
+      newGroup.zIndex = maxZIndex + 1;
 
-      // Set parent if provided
-      if (parentId) {
-        newGroup.parentId = parentId;
+      // Set parent if provided, otherwise infer from containment (nested groups).
+      // We only infer a parent when the new group's full bounds are inside the candidate parent.
+      const explicitParentId = parentId;
+      if (explicitParentId === null) {
+        // Explicitly force root group (no parent inference)
+      } else if (explicitParentId) {
+        // Explicit parent assignment (e.g., inferred from membership).
+        // Do not require the parent group to exist in the current render's `groups` array,
+        // since React state updates are async and tests/users can create nested groups quickly.
+        newGroup.parentId = explicitParentId;
+      } else {
+        const candidateParent = findDeepestGroupAtPosition(position, groups);
+        if (candidateParent && isGroupFullyInside(newGroup, candidateParent)) {
+          newGroup.parentId = candidateParent.id;
+        }
       }
 
       setGroups(prev => {
@@ -169,7 +208,7 @@ function useCreateGroup(
         return updated;
       });
 
-      const parentInfo = parentId ? ' (parent: ' + parentId + ')' : '';
+      const parentInfo = newGroup.parentId ? ' (parent: ' + newGroup.parentId + ')' : '';
       log.info('[Groups] Created overlay group: ' + groupId + parentInfo);
       return { groupId, group: newGroup };
     },
@@ -529,9 +568,19 @@ function useNodeGroupMembership(
   );
 
   const membershipRef = useRef<Map<string, string>>(new Map());
+  const membershipDirtyUntilRef = useRef<number>(0);
+  const markMembershipDirty = useCallback((ms = 4000): void => {
+    membershipDirtyUntilRef.current = Date.now() + ms;
+  }, []);
 
   const initializeMembership = useCallback(
     (memberships: Array<{ nodeId: string; groupId: string }>): void => {
+      // Avoid clobbering local membership changes with stale topology refresh messages.
+      // Saves are async/debounced; during that window, incoming nodeAnnotations can lag behind.
+      if (Date.now() < membershipDirtyUntilRef.current) {
+        log.info('[Groups] Skipped membership init (local changes pending)');
+        return;
+      }
       membershipRef.current.clear();
       for (const { nodeId, groupId } of memberships) {
         membershipRef.current.set(nodeId, groupId);
@@ -551,28 +600,32 @@ function useNodeGroupMembership(
 
   const addNodeToGroup = useCallback((nodeId: string, groupId: string): void => {
     if (mode === 'view' || isLocked) return;
+    markMembershipDirty();
     addNodeToGroupHelper(membershipRef, nodeId, groupId);
-  }, [mode, isLocked]);
+  }, [mode, isLocked, markMembershipDirty]);
 
   /** Add node to group locally (in-memory only, no extension notification) */
   const addNodeToGroupLocal = useCallback((nodeId: string, groupId: string): void => {
+    markMembershipDirty();
     membershipRef.current.set(nodeId, groupId);
-  }, []);
+  }, [markMembershipDirty]);
 
   const removeNodeFromGroup = useCallback((nodeId: string): void => {
     if (mode === 'view' || isLocked) return;
+    markMembershipDirty();
     removeNodeFromGroupHelper(membershipRef, nodeId);
-  }, [mode, isLocked]);
+  }, [mode, isLocked, markMembershipDirty]);
 
   /** Migrate all node memberships from one groupId to another (used when group is renamed) */
   const migrateMemberships = useCallback((oldGroupId: string, newGroupId: string): void => {
+    markMembershipDirty();
     membershipRef.current.forEach((gId, nodeId) => {
       if (gId === oldGroupId) {
         membershipRef.current.set(nodeId, newGroupId);
       }
     });
     log.info(`[Groups] Migrated node memberships from ${oldGroupId} to ${newGroupId}`);
-  }, []);
+  }, [markMembershipDirty]);
 
   return { findGroupAtPosition, getGroupMembers, getNodeMembership, addNodeToGroup, addNodeToGroupLocal, removeNodeFromGroup, initializeMembership, migrateMemberships };
 }
@@ -619,8 +672,29 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   // Wrap createGroup to also update in-memory membership when creating with nodes
   // This ensures getNodeMembership() returns correct results immediately after group creation
   const createGroupWithMembership = useCallback(
-    (selectedNodeIds?: string[], parentId?: string): { groupId: string; group: GroupStyleAnnotation } | null => {
-      const result = createGroup(selectedNodeIds, parentId);
+    (selectedNodeIds?: string[], parentId?: string | null): { groupId: string; group: GroupStyleAnnotation } | null => {
+      let effectiveParentId = parentId;
+
+      if (effectiveParentId === undefined && selectedNodeIds && selectedNodeIds.length > 0) {
+        const memberships = selectedNodeIds.map(nodeId => membership.getNodeMembership(nodeId));
+        const nonNullMemberships = memberships.filter((m): m is string => Boolean(m));
+        const uniqueMemberships = new Set(nonNullMemberships);
+
+        // If nodes come from different groups, force the new group to be root.
+        // If all selected nodes are in the same group, create a nested subgroup under that group.
+        if (uniqueMemberships.size > 1) {
+          effectiveParentId = null;
+        } else if (uniqueMemberships.size === 1) {
+          const candidate = [...uniqueMemberships][0];
+          if (nonNullMemberships.length === selectedNodeIds.length) {
+            effectiveParentId = candidate;
+          } else {
+            effectiveParentId = null;
+          }
+        }
+      }
+
+      const result = createGroup(selectedNodeIds, effectiveParentId);
       if (result && selectedNodeIds && selectedNodeIds.length > 0) {
         // Update in-memory membership map (the extension is already notified by createGroup)
         selectedNodeIds.forEach(nodeId => {

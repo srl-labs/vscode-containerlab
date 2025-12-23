@@ -136,8 +136,7 @@ test.describe('Copy, Paste, and Cut Operations', () => {
     console.log(`[DEBUG] Position offset: x=${offsetX}, y=${offsetY}`);
 
     // Expect some offset to avoid a complete overlap.
-    // Paste is anchored to the viewport center, so depending on layout it may not be offset
-    // in both axes relative to the original.
+    // When the copied selection is visible, paste is anchored near it (with a small offset).
     const distance = Math.hypot(offsetX, offsetY);
     expect(distance).toBeGreaterThan(10);
   });
@@ -282,13 +281,8 @@ test.describe('Copy, Paste, and Cut Operations', () => {
     const edgeCountAfterPaste = await topoViewerPage.getEdgeCount();
     console.log(`[DEBUG] Edge count: before=${edgeCountBeforeCopy}, after=${edgeCountAfterPaste}`);
 
-    // Note: Edge copying behavior may vary - log for analysis
-    if (edgeCountAfterPaste > edgeCountBeforeCopy) {
-      console.log('[INFO] Edge was copied with nodes');
-      expect(edgeCountAfterPaste).toBe(edgeCountBeforeCopy + 1);
-    } else {
-      console.log('[WARN] Edge was NOT copied - this may be expected behavior');
-    }
+    // When copying connected nodes, their connecting edge should be duplicated too.
+    expect(edgeCountAfterPaste).toBe(edgeCountBeforeCopy + 1);
 
     // Verify nodes were still copied regardless
     const nodeIds = await topoViewerPage.getNodeIds();

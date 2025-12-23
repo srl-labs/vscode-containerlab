@@ -272,24 +272,37 @@ export function findDeepestGroupAtPosition(
   position: { x: number; y: number },
   groups: GroupStyleAnnotation[]
 ): GroupStyleAnnotation | null {
+  const indexById = new Map<string, number>(groups.map((g, i) => [g.id, i]));
+
   // Get all groups containing the position
   const containingGroups = groups.filter(g => isPositionInGroup(position, g));
 
   if (containingGroups.length === 0) return null;
 
-  // Sort by depth descending (deepest first), then by zIndex descending
-  const sorted = [...containingGroups].sort((a, b) => {
-    const depthA = getGroupDepth(a.id, groups);
-    const depthB = getGroupDepth(b.id, groups);
+  // If there are multiple containing groups, prefer the deepest group *in the hierarchy*.
+  // Depth alone isn't sufficient when groups overlap without being related (no ancestor/descendant
+  // relationship). In that case, prefer the visually topmost group by zIndex, then recency.
+  const ancestorIdsCache = new Map<string, Set<string>>();
+  const getAncestorIds = (groupId: string): Set<string> => {
+    const cached = ancestorIdsCache.get(groupId);
+    if (cached) return cached;
+    const ids = new Set(getAncestorGroups(groupId, groups).map(g => g.id));
+    ancestorIdsCache.set(groupId, ids);
+    return ids;
+  };
 
-    if (depthA !== depthB) {
-      return depthB - depthA; // Higher depth first
-    }
-
-    return (b.zIndex ?? 0) - (a.zIndex ?? 0); // Higher zIndex first
+  const deepestCandidates = containingGroups.filter(candidate => {
+    return !containingGroups.some(other => other.id !== candidate.id && getAncestorIds(other.id).has(candidate.id));
   });
 
-  return sorted[0];
+  const sorted = [...deepestCandidates].sort((a, b) => {
+    const zA = a.zIndex ?? 0;
+    const zB = b.zIndex ?? 0;
+    if (zA !== zB) return zB - zA;
+    return (indexById.get(b.id) ?? 0) - (indexById.get(a.id) ?? 0);
+  });
+
+  return sorted[0] ?? null;
 }
 
 /**

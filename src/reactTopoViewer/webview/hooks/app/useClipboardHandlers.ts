@@ -103,6 +103,23 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     endUndoBatch: undoRedo.endBatch
   });
 
+  const getPasteAnchor = React.useCallback(() => {
+    const viewportCenter = getViewportCenter();
+    if (!cyInstance) return viewportCenter;
+    const clipboardData = unifiedClipboard.getClipboardData();
+    if (!clipboardData) return viewportCenter;
+
+    const extent = cyInstance.extent();
+    const { origin } = clipboardData;
+    const originIsInView = origin.x >= extent.x1 && origin.x <= extent.x2 &&
+      origin.y >= extent.y1 && origin.y <= extent.y2;
+
+    // Prefer pasting relative to the copied selection when it's visible, so a
+    // single copy+paste doesn't unexpectedly land far away (or overlap due to
+    // viewport centering).
+    return originIsInView ? origin : viewportCenter;
+  }, [cyInstance, getViewportCenter, unifiedClipboard]);
+
   // Debounce refs
   const lastCopyTimeRef = React.useRef(0);
   const lastPasteTimeRef = React.useRef(0);
@@ -121,16 +138,16 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     const now = Date.now();
     if (now - lastPasteTimeRef.current < DEBOUNCE_MS) return;
     lastPasteTimeRef.current = now;
-    unifiedClipboard.paste(getViewportCenter());
-  }, [unifiedClipboard, getViewportCenter]);
+    unifiedClipboard.paste(getPasteAnchor());
+  }, [unifiedClipboard, getPasteAnchor]);
 
   // Debounced duplicate
   const handleUnifiedDuplicate = React.useCallback(() => {
     const now = Date.now();
     if (now - lastDuplicateTimeRef.current < DEBOUNCE_MS) return;
     lastDuplicateTimeRef.current = now;
-    if (unifiedClipboard.copy()) unifiedClipboard.paste(getViewportCenter());
-  }, [unifiedClipboard, getViewportCenter]);
+    if (unifiedClipboard.copy()) unifiedClipboard.paste(getPasteAnchor());
+  }, [unifiedClipboard, getPasteAnchor]);
 
   // Delete handler (graph elements + annotations)
   const handleUnifiedDelete = React.useCallback(() => {

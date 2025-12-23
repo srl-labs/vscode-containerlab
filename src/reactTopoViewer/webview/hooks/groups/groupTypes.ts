@@ -211,7 +211,8 @@ export interface UseGroupsOptions {
 export interface UseGroupsReturn {
   groups: GroupStyleAnnotation[];
   editingGroup: GroupEditorData | null;
-  createGroup: (selectedNodeIds?: string[], parentId?: string) => { groupId: string; group: GroupStyleAnnotation } | null;
+  /** Create a group; pass `null` to force root (no parent inference). */
+  createGroup: (selectedNodeIds?: string[], parentId?: string | null) => { groupId: string; group: GroupStyleAnnotation } | null;
   deleteGroup: (groupId: string) => void;
   editGroup: (groupId: string) => void;
   closeEditor: () => void;

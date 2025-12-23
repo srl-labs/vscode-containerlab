@@ -43,9 +43,6 @@ async function closeLabSettingsPanel(page: Page): Promise<void> {
  * - Panel close behavior
  * - Field read-only states based on mode/lock
  * - Save functionality and YAML persistence
- *
- * KNOWN BUGS:
- * - None discovered yet (new feature)
  */
 test.describe('Lab Settings Panel', () => {
   test.beforeEach(async ({ topoViewerPage }) => {

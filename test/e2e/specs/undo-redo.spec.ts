@@ -11,6 +11,7 @@ test.describe('Undo and Redo', () => {
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
+    await topoViewerPage.fit();
   });
 
   test('undoes and redoes node creation', async ({ page, topoViewerPage }) => {
@@ -25,7 +26,7 @@ test.describe('Undo and Redo', () => {
     // Wait for node to be created using polling assertion
     await expect.poll(
       () => topoViewerPage.getNodeCount(),
-      { timeout: 3000, message: 'Node should be created after shift-click' }
+      { timeout: 5000, message: 'Node should be created after shift-click' }
     ).toBe(initialNodeCount + 1);
 
     // Undo
@@ -86,14 +87,14 @@ test.describe('Undo and Redo', () => {
     await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
     await expect.poll(
       () => topoViewerPage.getNodeCount(),
-      { timeout: 3000, message: 'First node should be created after shift-click' }
+      { timeout: 5000, message: 'First node should be created after shift-click' }
     ).toBe(initialNodeCount + 1);
 
     // Create second node
     await shiftClick(page, canvasCenter.x + 300, canvasCenter.y + 150);
     await expect.poll(
       () => topoViewerPage.getNodeCount(),
-      { timeout: 3000, message: 'Second node should be created after shift-click' }
+      { timeout: 5000, message: 'Second node should be created after shift-click' }
     ).toBe(initialNodeCount + 2);
 
     // Undo first

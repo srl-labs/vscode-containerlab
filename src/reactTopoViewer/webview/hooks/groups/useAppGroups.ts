@@ -129,7 +129,11 @@ function useGroupDataLoader(
       // Extract memberships for migration - always update from topology refresh
       // as this syncs with the YAML file
       const msgNodeAnnotations = data.nodeAnnotations;
-      initializeMembership(extractMemberships(msgNodeAnnotations));
+      // Only update membership when nodeAnnotations are present in the message.
+      // Some topology refreshes omit nodeAnnotations; in that case we keep local membership state.
+      if (msgNodeAnnotations) {
+        initializeMembership(extractMemberships(msgNodeAnnotations));
+      }
 
       // Group reload logic:
       // - Normally we DON'T reload groups from topology-refresh to avoid race conditions

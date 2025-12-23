@@ -11,12 +11,6 @@ const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
  * - Tab navigation (Basic/Extended for veth links)
  * - Panel close behavior
  * - Apply/OK button interactions
- *
- * KNOWN BUGS:
- * - BUG-003: Link editor panel opens on double-click even when canvas is locked.
- *   The lock state should prevent editing operations including opening the editor.
- *   Expected: Panel should NOT open when canvas is locked
- *   Actual: Panel opens regardless of lock state
  */
 test.describe('Link Editor Panel', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
