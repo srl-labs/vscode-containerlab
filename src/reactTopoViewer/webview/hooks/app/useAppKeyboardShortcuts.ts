@@ -9,6 +9,7 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import { useKeyboardShortcuts } from '../ui/useKeyboardShortcuts';
+
 import type { ClipboardHandlersReturn } from './useClipboardHandlers';
 
 /**

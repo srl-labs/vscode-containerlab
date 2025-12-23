@@ -13,38 +13,16 @@ test.describe('Undo and Redo', () => {
     await topoViewerPage.unlock();
   });
 
-  test('undoes node creation', async ({ page, topoViewerPage }) => {
+  test('undoes and redoes node creation', async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
     // Create a node at offset position (avoid hitting existing nodes)
-    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
-
-    // Wait for node to be created using polling assertion (more reliable than fixed timeout)
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      { timeout: 3000, message: 'Node should be created after shift-click' }
-    ).toBe(initialNodeCount + 1);
-
-    // Undo
-    await topoViewerPage.undo();
-    await page.waitForTimeout(300);
-
-    const afterUndoCount = await topoViewerPage.getNodeCount();
-    expect(afterUndoCount).toBe(initialNodeCount);
-  });
-
-  test('redoes undone node creation', async ({ page, topoViewerPage }) => {
-    const initialNodeCount = await topoViewerPage.getNodeCount();
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    // Use offset position to avoid hitting existing nodes
     const clickX = canvasCenter.x + 200;
     const clickY = canvasCenter.y + 150;
-
-    // Create a node at offset position
     await shiftClick(page, clickX, clickY);
 
-    // Wait for node to be created using polling assertion (more reliable than fixed timeout)
+    // Wait for node to be created using polling assertion
     await expect.poll(
       () => topoViewerPage.getNodeCount(),
       { timeout: 3000, message: 'Node should be created after shift-click' }
@@ -54,7 +32,7 @@ test.describe('Undo and Redo', () => {
     await topoViewerPage.undo();
     await page.waitForTimeout(300);
 
-    const afterUndoCount = await topoViewerPage.getNodeCount();
+    let afterUndoCount = await topoViewerPage.getNodeCount();
     expect(afterUndoCount).toBe(initialNodeCount);
 
     // Redo
@@ -100,7 +78,7 @@ test.describe('Undo and Redo', () => {
     expect(afterUndoPosition.y).toBeCloseTo(initialPosition.y, 0);
   });
 
-  test('multiple undos work in sequence', async ({ page, topoViewerPage }) => {
+  test('multiple undos and redos work in sequence', async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
@@ -130,33 +108,6 @@ test.describe('Undo and Redo', () => {
     await page.waitForTimeout(300);
 
     currentCount = await topoViewerPage.getNodeCount();
-    expect(currentCount).toBe(initialNodeCount);
-  });
-
-  test('multiple redos work in sequence', async ({ page, topoViewerPage }) => {
-    const initialNodeCount = await topoViewerPage.getNodeCount();
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-
-    // Create two nodes
-    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      { timeout: 3000, message: 'First node should be created after shift-click' }
-    ).toBe(initialNodeCount + 1);
-
-    await shiftClick(page, canvasCenter.x + 300, canvasCenter.y + 150);
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      { timeout: 3000, message: 'Second node should be created after shift-click' }
-    ).toBe(initialNodeCount + 2);
-
-    // Undo both
-    await topoViewerPage.undo();
-    await page.waitForTimeout(300);
-    await topoViewerPage.undo();
-    await page.waitForTimeout(300);
-
-    let currentCount = await topoViewerPage.getNodeCount();
     expect(currentCount).toBe(initialNodeCount);
 
     // Redo first
@@ -222,7 +173,7 @@ test.describe('Undo and Redo - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('undo node deletion restores node to YAML file', async ({ page, topoViewerPage }) => {
+  test('undo and redo node deletion updates YAML file', async ({ page, topoViewerPage }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
     expect(initialYaml).toContain('client1:');
@@ -232,11 +183,10 @@ test.describe('Undo and Redo - File Persistence', () => {
     await page.keyboard.press('Delete');
     await page.waitForTimeout(500);
 
-    // Verify node is removed from UI
+    // Verify node is removed from UI and YAML
     let nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds).not.toContain('client1');
 
-    // Verify node is removed from YAML
     let yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
     expect(yaml).not.toContain('client1:');
 
@@ -244,40 +194,20 @@ test.describe('Undo and Redo - File Persistence', () => {
     await topoViewerPage.undo();
     await page.waitForTimeout(500);
 
-    // Verify node is restored in UI
+    // Verify node is restored in UI and YAML
     nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds).toContain('client1');
 
-    // Verify node is restored in YAML file
     yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
     expect(yaml).toContain('client1:');
-  });
 
-  test('redo node deletion removes node from YAML file again', async ({ page, topoViewerPage }) => {
-    // Delete client2
-    await topoViewerPage.selectNode('client2');
-    await page.keyboard.press('Delete');
-    await page.waitForTimeout(500);
-
-    // Verify deleted from YAML
-    let yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    expect(yaml).not.toContain('client2:');
-
-    // Undo
-    await topoViewerPage.undo();
-    await page.waitForTimeout(500);
-
-    // Verify restored in YAML
-    yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    expect(yaml).toContain('client2:');
-
-    // Redo
+    // Redo the deletion
     await topoViewerPage.redo();
     await page.waitForTimeout(500);
 
-    // Verify deleted again from YAML
+    // Verify deleted again
     yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    expect(yaml).not.toContain('client2:');
+    expect(yaml).not.toContain('client1:');
   });
 
   test('undo node position change reverts position in annotations', async ({ page, topoViewerPage }) => {

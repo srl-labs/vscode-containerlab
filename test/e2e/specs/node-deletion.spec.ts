@@ -12,48 +12,40 @@ test.describe('Node Deletion', () => {
     await topoViewerPage.unlock();
   });
 
-  test('deletes single selected node with Delete key', async ({ page, topoViewerPage }) => {
+  test('deletes single selected node with Delete or Backspace key', async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
-    // Select and delete a node
+    // Test Delete key
     const nodeToDelete = nodeIds[0];
     await topoViewerPage.selectNode(nodeToDelete);
-
     await page.keyboard.press('Delete');
     await page.waitForTimeout(300);
 
-    const newNodeCount = await topoViewerPage.getNodeCount();
+    let newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount - 1);
 
     // Verify the specific node is gone
-    const remainingNodeIds = await topoViewerPage.getNodeIds();
+    let remainingNodeIds = await topoViewerPage.getNodeIds();
     expect(remainingNodeIds).not.toContain(nodeToDelete);
-  });
 
-  test('deletes single selected node with Backspace key', async ({ page, topoViewerPage }) => {
-    const initialNodeCount = await topoViewerPage.getNodeCount();
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThan(0);
+    // Undo to restore for Backspace test
+    await topoViewerPage.undo();
+    await page.waitForTimeout(300);
 
-    // Select and delete a node
-    await topoViewerPage.selectNode(nodeIds[0]);
-
+    // Test Backspace key
+    await topoViewerPage.selectNode(nodeToDelete);
     await page.keyboard.press('Backspace');
     await page.waitForTimeout(300);
 
-    const newNodeCount = await topoViewerPage.getNodeCount();
+    newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount - 1);
   });
 
   test('Ctrl+A selects all nodes for deletion', async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
-
-    if (initialNodeCount < 2) {
-      test.skip();
-      return;
-    }
+    expect(initialNodeCount).toBeGreaterThanOrEqual(2);
 
     // Select all nodes with Ctrl+A
     await page.keyboard.down('Control');
@@ -75,45 +67,33 @@ test.describe('Node Deletion', () => {
     expect(newNodeCount).toBeLessThan(initialNodeCount);
   });
 
-  test('does not delete node when canvas is locked', async ({ page, topoViewerPage }) => {
+  test('does not delete node when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
-    // Lock the canvas
+    // Test locked state
     await topoViewerPage.lock();
     const isLocked = await topoViewerPage.isLocked();
     expect(isLocked).toBe(true);
 
-    // Select a node
     await topoViewerPage.selectNode(nodeIds[0]);
-
-    // Try to delete - should be blocked when locked
     await page.keyboard.press('Delete');
     await page.waitForTimeout(300);
 
-    // Node count should NOT change when locked
-    const newNodeCount = await topoViewerPage.getNodeCount();
+    let newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount);
-  });
 
-  test('does not delete node in view mode', async ({ page, topoViewerPage }) => {
-    const initialNodeCount = await topoViewerPage.getNodeCount();
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThan(0);
+    // Unlock for view mode test
+    await topoViewerPage.unlock();
 
-    // Switch to view mode
+    // Test view mode
     await topoViewerPage.setViewMode();
-
-    // Select a node
     await topoViewerPage.selectNode(nodeIds[0]);
-
-    // Try to delete
     await page.keyboard.press('Delete');
     await page.waitForTimeout(300);
 
-    // Node count should not change
-    const newNodeCount = await topoViewerPage.getNodeCount();
+    newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount);
   });
 
@@ -170,30 +150,10 @@ test.describe('Node Deletion - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('deleting node removes it from YAML file', async ({ page, topoViewerPage }) => {
+  test('deleting node removes it and connected links from YAML file', async ({ page, topoViewerPage }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    expect(initialYaml).toContain('client1:');
-    expect(initialYaml).toContain('client2:');
-
-    // Delete client2
-    await topoViewerPage.selectNode('client2');
-    await page.keyboard.press('Delete');
-
-    // Wait for save to complete
-    await page.waitForTimeout(1000);
-
-    // Read updated YAML
-    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-
-    // client2 should be removed, client1 should remain
-    expect(updatedYaml).toContain('client1:');
-    expect(updatedYaml).not.toContain('client2:');
-  });
-
-  test('deleting node removes connected links from YAML', async ({ page, topoViewerPage }) => {
-    // Get initial YAML
-    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    expect(initialYaml).toContain('leaf1:');
 
     // Count links referencing leaf1
     const leaf1LinksInitial = (initialYaml.match(/"leaf1:/g) || []).length;

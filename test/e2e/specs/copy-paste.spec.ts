@@ -135,9 +135,11 @@ test.describe('Copy, Paste, and Cut Operations', () => {
 
     console.log(`[DEBUG] Position offset: x=${offsetX}, y=${offsetY}`);
 
-    // Expect some offset (typically 20-50px in both directions)
-    expect(offsetX).toBeGreaterThan(10);
-    expect(offsetY).toBeGreaterThan(10);
+    // Expect some offset to avoid a complete overlap.
+    // Paste is anchored to the viewport center, so depending on layout it may not be offset
+    // in both axes relative to the original.
+    const distance = Math.hypot(offsetX, offsetY);
+    expect(distance).toBeGreaterThan(10);
   });
 
   test('paste persists to YAML', async ({ topoViewerPage, page }) => {

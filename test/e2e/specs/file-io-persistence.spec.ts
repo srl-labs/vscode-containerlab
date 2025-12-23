@@ -186,9 +186,10 @@ test.describe.serial('File I/O Persistence', () => {
       // Get initial YAML
       const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
 
-      // Count endpoints referencing leaf1
-      const leaf1LinksInitial = (initialYaml.match(/leaf1:/g) || []).length;
-      expect(leaf1LinksInitial).toBeGreaterThan(0);
+      // Ensure leaf1 has links in the fixture (otherwise this test is meaningless)
+      expect(initialYaml).toContain('leaf1:e1-49');
+      expect(initialYaml).toContain('leaf1:e1-50');
+      expect(initialYaml).toContain('leaf1:e1-1');
 
       // Delete leaf1
       await topoViewerPage.selectNode('leaf1');
@@ -200,10 +201,12 @@ test.describe.serial('File I/O Persistence', () => {
 
       // leaf1 node definition should be gone
       expect(updatedYaml).not.toContain('leaf1:');
+      expect(updatedYaml).not.toContain('leaf1:e1-49');
+      expect(updatedYaml).not.toContain('leaf1:e1-50');
+      expect(updatedYaml).not.toContain('leaf1:e1-1');
 
-      // Links referencing leaf1 should also be reduced/gone
-      const leaf1LinksUpdated = (updatedYaml.match(/"leaf1:/g) || []).length;
-      expect(leaf1LinksUpdated).toBe(0);
+      // Sanity: other parts of the topology should remain
+      expect(updatedYaml).toContain('leaf2:');
     });
   });
 

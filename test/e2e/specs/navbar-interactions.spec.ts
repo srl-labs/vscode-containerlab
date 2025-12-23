@@ -17,9 +17,6 @@ const SEL_NAVBAR_GRID = '[data-testid="navbar-grid"]';
  * - Layout dropdown
  * - Link labels dropdown
  * - Various panel toggles
- *
- * KNOWN BUGS:
- * - None discovered yet
  */
 test.describe('Navbar Interactions', () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -49,45 +46,28 @@ test.describe('Navbar Interactions', () => {
     });
   });
 
-  test.describe('Undo/Redo Buttons - Edit Mode', () => {
-    test.beforeEach(async ({ topoViewerPage }) => {
+  test.describe('Undo/Redo Buttons', () => {
+    test('undo/redo buttons visible and disabled in edit mode, hidden in view mode', async ({ page, topoViewerPage }) => {
+      // Test edit mode
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
-    });
 
-    test('undo button is visible in edit mode', async ({ page }) => {
       const undoBtn = page.locator(SEL_NAVBAR_UNDO);
+      const redoBtn = page.locator(SEL_NAVBAR_REDO);
+
+      // Both should be visible in edit mode
       await expect(undoBtn).toBeVisible();
-    });
-
-    test('redo button is visible in edit mode', async ({ page }) => {
-      const redoBtn = page.locator(SEL_NAVBAR_REDO);
       await expect(redoBtn).toBeVisible();
-    });
 
-    test('undo button is initially disabled (no history)', async ({ page }) => {
-      const undoBtn = page.locator(SEL_NAVBAR_UNDO);
+      // Both should be initially disabled (no history)
       await expect(undoBtn).toBeDisabled();
-    });
-
-    test('redo button is initially disabled (no history)', async ({ page }) => {
-      const redoBtn = page.locator(SEL_NAVBAR_REDO);
       await expect(redoBtn).toBeDisabled();
-    });
-  });
 
-  test.describe('Undo/Redo Buttons - View Mode', () => {
-    test.beforeEach(async ({ topoViewerPage }) => {
+      // Test view mode
       await topoViewerPage.setViewMode();
-    });
 
-    test('undo button is NOT visible in view mode', async ({ page }) => {
-      const undoBtn = page.locator(SEL_NAVBAR_UNDO);
+      // Both should be hidden in view mode
       await expect(undoBtn).not.toBeVisible();
-    });
-
-    test('redo button is NOT visible in view mode', async ({ page }) => {
-      const redoBtn = page.locator(SEL_NAVBAR_REDO);
       await expect(redoBtn).not.toBeVisible();
     });
   });
@@ -111,7 +91,7 @@ test.describe('Navbar Interactions', () => {
   });
 
   test.describe('Layout Dropdown', () => {
-    test('clicking layout button opens dropdown menu', async ({ page }) => {
+    test('layout dropdown opens, has options, and closes on click outside', async ({ page, topoViewerPage }) => {
       const layoutBtn = page.locator(SEL_NAVBAR_LAYOUT);
       await layoutBtn.click();
       await page.waitForTimeout(200);
@@ -119,28 +99,13 @@ test.describe('Navbar Interactions', () => {
       // Menu should appear
       const layoutMenu = page.locator(SEL_NAVBAR_MENU);
       await expect(layoutMenu).toBeVisible();
-    });
-
-    test('layout menu has expected options', async ({ page }) => {
-      const layoutBtn = page.locator(SEL_NAVBAR_LAYOUT);
-      await layoutBtn.click();
-      await page.waitForTimeout(200);
 
       // Check for layout options
       const menuOptions = page.locator('.navbar-menu-option');
       const count = await menuOptions.count();
       expect(count).toBeGreaterThanOrEqual(4); // Preset, COSE, Cola, etc.
-    });
 
-    test('clicking outside layout menu closes it', async ({ page, topoViewerPage }) => {
-      const layoutBtn = page.locator(SEL_NAVBAR_LAYOUT);
-      await layoutBtn.click();
-      await page.waitForTimeout(200);
-
-      const layoutMenu = page.locator(SEL_NAVBAR_MENU);
-      await expect(layoutMenu).toBeVisible();
-
-      // Click elsewhere
+      // Click elsewhere to close
       const canvasCenter = await topoViewerPage.getCanvasCenter();
       await page.mouse.click(canvasCenter.x, canvasCenter.y);
       await page.waitForTimeout(200);
@@ -150,93 +115,58 @@ test.describe('Navbar Interactions', () => {
   });
 
   test.describe('Link Labels Dropdown', () => {
-    test('clicking link labels button opens dropdown menu', async ({ page }) => {
+    test('link labels dropdown has Show Labels, No Labels, and Show Dummy Links options', async ({ page }) => {
       const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
       await linkLabelsBtn.click();
       await page.waitForTimeout(200);
 
       const linkMenu = page.locator(SEL_NAVBAR_MENU);
       await expect(linkMenu).toBeVisible();
-    });
 
-    test('link labels menu has Show Labels option', async ({ page }) => {
-      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-
-      const showLabelsOption = page.locator('.navbar-menu-option:has-text("Show Labels")');
-      await expect(showLabelsOption).toBeVisible();
-    });
-
-    test('link labels menu has No Labels option', async ({ page }) => {
-      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-
-      const noLabelsOption = page.locator('.navbar-menu-option:has-text("No Labels")');
-      await expect(noLabelsOption).toBeVisible();
-    });
-
-    test('link labels menu has Show Dummy Links option', async ({ page }) => {
-      const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
-      await linkLabelsBtn.click();
-      await page.waitForTimeout(200);
-
-      const dummyLinksOption = page.locator('.navbar-menu-option:has-text("Show Dummy Links")');
-      await expect(dummyLinksOption).toBeVisible();
+      // Verify all expected options are present
+      await expect(page.locator('.navbar-menu-option:has-text("Show Labels")')).toBeVisible();
+      await expect(page.locator('.navbar-menu-option:has-text("No Labels")')).toBeVisible();
+      await expect(page.locator('.navbar-menu-option:has-text("Show Dummy Links")')).toBeVisible();
     });
   });
 
   test.describe('Grid Settings Dropdown', () => {
-    test('clicking grid button opens dropdown menu', async ({ page }) => {
+    test('grid dropdown has slider and reset button', async ({ page }) => {
       const gridBtn = page.locator(SEL_NAVBAR_GRID);
       await gridBtn.click();
       await page.waitForTimeout(200);
 
       const gridMenu = page.locator('.navbar-menu.grid-menu');
       await expect(gridMenu).toBeVisible();
-    });
 
-    test('grid menu has slider input', async ({ page }) => {
-      const gridBtn = page.locator(SEL_NAVBAR_GRID);
-      await gridBtn.click();
-      await page.waitForTimeout(200);
-
-      const slider = page.locator('.grid-line-slider');
-      await expect(slider).toBeVisible();
-    });
-
-    test('grid menu has reset button', async ({ page }) => {
-      const gridBtn = page.locator(SEL_NAVBAR_GRID);
-      await gridBtn.click();
-      await page.waitForTimeout(200);
-
-      const resetBtn = page.locator('.grid-reset-button');
-      await expect(resetBtn).toBeVisible();
+      // Verify slider and reset button
+      await expect(page.locator('.grid-line-slider')).toBeVisible();
+      await expect(page.locator('.grid-reset-button')).toBeVisible();
     });
   });
 
   test.describe('Panel Toggles', () => {
-    test('clicking shortcuts button opens shortcuts panel', async ({ page }) => {
+    test('shortcuts and about buttons open their respective panels', async ({ page }) => {
+      // Test shortcuts panel
       const shortcutsBtn = page.locator('[data-testid="navbar-shortcuts"]');
       await shortcutsBtn.click();
       await page.waitForTimeout(300);
 
-      // Shortcuts panel should appear (look for panel with "Shortcuts" in title)
       const shortcutsPanel = page.locator('.panel-title:has-text("Shortcuts")');
       await expect(shortcutsPanel).toBeVisible();
-    });
 
-    test('clicking about button opens about panel', async ({ page }) => {
+      // Close shortcuts (click elsewhere or press Escape)
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(200);
+
+      // Test about panel
       const aboutBtn = page.locator('[data-testid="navbar-about"]');
       await aboutBtn.click();
       await page.waitForTimeout(300);
 
-      // About panel should appear
       const aboutPanel = page.locator('.panel-title:has-text("About")');
       await expect(aboutPanel).toBeVisible();
     });
-
   });
 
   test.describe('Shortcut Display Toggle', () => {
@@ -268,16 +198,16 @@ test.describe('Navbar Interactions', () => {
   });
 
   test.describe('Mode Badge Display', () => {
-    test('navbar shows viewer badge in view mode', async ({ page, topoViewerPage }) => {
+    test('navbar shows correct mode badge for viewer and editor modes', async ({ page, topoViewerPage }) => {
+      // Test view mode
       await topoViewerPage.setViewMode();
       await page.waitForTimeout(200);
 
       const viewerBadge = page.locator('.mode-badge.viewer');
       await expect(viewerBadge).toBeVisible();
       await expect(viewerBadge).toHaveText('viewer');
-    });
 
-    test('navbar shows editor badge in edit mode', async ({ page, topoViewerPage }) => {
+      // Test edit mode
       await topoViewerPage.setEditMode();
       await page.waitForTimeout(200);
 

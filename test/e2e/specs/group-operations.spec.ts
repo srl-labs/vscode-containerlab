@@ -22,11 +22,7 @@ test.describe('Group Operations', () => {
   test('creates group via Ctrl+G with selected nodes', async ({ page, topoViewerPage }) => {
     const initialGroupCount = await topoViewerPage.getGroupCount();
     const nodeIds = await topoViewerPage.getNodeIds();
-
-    if (nodeIds.length < 2) {
-      test.skip();
-      return;
-    }
+    expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
     // Select first node
     await topoViewerPage.selectNode(nodeIds[0]);
@@ -58,10 +54,7 @@ test.describe('Group Operations', () => {
 
   test('group persists after all members are deleted', async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
-    if (nodeIds.length < 2) {
-      test.skip();
-      return;
-    }
+    expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
     const initialGroupCount = await topoViewerPage.getGroupCount();
     const node1 = nodeIds[0];

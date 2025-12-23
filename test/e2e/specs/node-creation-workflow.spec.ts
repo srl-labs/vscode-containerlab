@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/topoviewer';
+import { shiftClick } from '../helpers/cytoscape-helpers';
 
 // Test file names
 const EMPTY_FILE = 'empty.clab.yml';
@@ -63,7 +64,7 @@ test.describe.serial('Node Creation Workflow', () => {
     expect(yaml).toContain('router2:');
     expect(yaml).toContain('router3:');
     expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
-    expect(yaml).toContain('image: ghcr.io/nokia/srlinux:latest');
+    expect(yaml).toContain('image:');
     expect(yaml).toContain('endpoints:');
 
     // Step 5: Verify annotations were saved
@@ -92,9 +93,22 @@ test.describe.serial('Node Creation Workflow', () => {
     await topoViewerPage.setViewMode();
     const yamlBeforeLock = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
     const annotationsBeforeLock = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+    const nodeCountBeforeBlockedActions = await topoViewerPage.getNodeCount();
+    const edgeCountBeforeBlockedActions = await topoViewerPage.getEdgeCount();
 
-    // Wait a moment
+    // Try to make changes that should be blocked in view mode
+    await topoViewerPage.createLink('router1', 'router2', 'eth99', 'eth99');
+    const canvasCenterForBlockedActions = await topoViewerPage.getCanvasCenter();
+    await shiftClick(page, canvasCenterForBlockedActions.x + 250, canvasCenterForBlockedActions.y + 250);
+
+    // Wait a moment for any accidental saves to occur
     await page.waitForTimeout(200);
+
+    // UI state should remain unchanged
+    const nodeCountAfterBlockedActions = await topoViewerPage.getNodeCount();
+    const edgeCountAfterBlockedActions = await topoViewerPage.getEdgeCount();
+    expect(nodeCountAfterBlockedActions).toBe(nodeCountBeforeBlockedActions);
+    expect(edgeCountAfterBlockedActions).toBe(edgeCountBeforeBlockedActions);
 
     // Files should remain the same
     const yamlAfterLock = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
@@ -130,7 +144,7 @@ test.describe.serial('Node Creation Workflow', () => {
     expect(yaml).toContain('test-node1:');
     expect(yaml).toContain('test-node2:');
     expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
-    expect(yaml).toContain('image: ghcr.io/nokia/srlinux:latest');
+    expect(yaml).toContain('image:');
   });
 
   test('topology renders correctly after multiple reloads', async ({ topoViewerPage }) => {

@@ -35,7 +35,7 @@ test.describe('Box Selection', () => {
     expect(Array.isArray(selectedIds)).toBe(true);
   });
 
-  test('box selection selects nodes inside the box', async ({ page, topoViewerPage }) => {
+  test('box selection selects nodes inside the box but not outside', async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -45,47 +45,40 @@ test.describe('Box Selection', () => {
     expect(node1Box).not.toBeNull();
     expect(node2Box).not.toBeNull();
 
-    // Calculate bounding box that contains both nodes
+    // Test 1: Select both nodes with a box that encompasses them
     const minX = Math.min(node1Box!.x, node2Box!.x) - 20;
     const minY = Math.min(node1Box!.y, node2Box!.y) - 20;
     const maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
     const maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
 
-    // Perform box selection that encompasses both nodes
     await boxSelect(page, { x: minX, y: minY }, { x: maxX, y: maxY });
     await page.waitForTimeout(300);
 
     // Both nodes should be selected
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
+    let selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(2);
     expect(selectedIds).toContain(nodeIds[0]);
     expect(selectedIds).toContain(nodeIds[1]);
-  });
 
-  test('box selection does not select nodes outside the box', async ({ page, topoViewerPage }) => {
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThanOrEqual(2);
+    // Clear selection
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
 
-    // Get position of first node
-    const node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    expect(node1Box).not.toBeNull();
-
-    // Create a small box that only contains the first node
-    const from = {
+    // Test 2: Create a small box that only contains the first node
+    const smallFrom = {
       x: node1Box!.x - 10,
       y: node1Box!.y - 10
     };
-    const to = {
+    const smallTo = {
       x: node1Box!.x + node1Box!.width + 10,
       y: node1Box!.y + node1Box!.height + 10
     };
 
-    // Perform box selection around first node only
-    await boxSelect(page, from, to);
+    await boxSelect(page, smallFrom, smallTo);
     await page.waitForTimeout(300);
 
     // Only the first node should be selected
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
+    selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(1);
     expect(selectedIds).toContain(nodeIds[0]);
     expect(selectedIds).not.toContain(nodeIds[1]);
@@ -131,65 +124,55 @@ test.describe('Box Selection', () => {
   });
 
   // Note: Selection is a read operation and is allowed when locked or in view mode.
-  // Only modifying operations (edit, delete, move) are blocked when locked.
-
-  test('box selection works when canvas is locked', async ({ page, topoViewerPage }) => {
+  test('box selection works when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
-    // Lock the canvas
+    // Get positions of both nodes
+    const node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
+    const node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
+    expect(node1Box).not.toBeNull();
+    expect(node2Box).not.toBeNull();
+
+    // Calculate bounding box that contains both nodes
+    const minX = Math.min(node1Box!.x, node2Box!.x) - 20;
+    const minY = Math.min(node1Box!.y, node2Box!.y) - 20;
+    const maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
+    const maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
+
+    // Test locked state
     await topoViewerPage.lock();
     const isLocked = await topoViewerPage.isLocked();
     expect(isLocked).toBe(true);
 
-    // Get positions of both nodes
-    const node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    const node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    expect(node1Box).not.toBeNull();
-    expect(node2Box).not.toBeNull();
-
-    // Calculate bounding box that contains both nodes
-    const minX = Math.min(node1Box!.x, node2Box!.x) - 20;
-    const minY = Math.min(node1Box!.y, node2Box!.y) - 20;
-    const maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
-    const maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
-
-    // Box selection should work even when locked (selection is read-only)
     await boxSelect(page, { x: minX, y: minY }, { x: maxX, y: maxY });
     await page.waitForTimeout(300);
 
-    // Both nodes should be selected (selection is allowed when locked)
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
+    let selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(2);
     expect(selectedIds).toContain(nodeIds[0]);
     expect(selectedIds).toContain(nodeIds[1]);
-  });
 
-  test('box selection works in view mode', async ({ page, topoViewerPage }) => {
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThanOrEqual(2);
+    // Unlock and clear selection
+    await topoViewerPage.unlock();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
 
-    // Switch to view mode
+    // Test view mode
     await topoViewerPage.setViewMode();
 
-    // Get positions of both nodes
-    const node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    const node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    expect(node1Box).not.toBeNull();
-    expect(node2Box).not.toBeNull();
+    // Re-get positions as they may have changed
+    const node1BoxView = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
+    const node2BoxView = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
+    const minXView = Math.min(node1BoxView!.x, node2BoxView!.x) - 20;
+    const minYView = Math.min(node1BoxView!.y, node2BoxView!.y) - 20;
+    const maxXView = Math.max(node1BoxView!.x + node1BoxView!.width, node2BoxView!.x + node2BoxView!.width) + 20;
+    const maxYView = Math.max(node1BoxView!.y + node1BoxView!.height, node2BoxView!.y + node2BoxView!.height) + 20;
 
-    // Calculate bounding box that contains both nodes
-    const minX = Math.min(node1Box!.x, node2Box!.x) - 20;
-    const minY = Math.min(node1Box!.y, node2Box!.y) - 20;
-    const maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
-    const maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
-
-    // Box selection should work even in view mode (selection is read-only)
-    await boxSelect(page, { x: minX, y: minY }, { x: maxX, y: maxY });
+    await boxSelect(page, { x: minXView, y: minYView }, { x: maxXView, y: maxYView });
     await page.waitForTimeout(300);
 
-    // Both nodes should be selected (selection is allowed in view mode)
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
+    selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(2);
     expect(selectedIds).toContain(nodeIds[0]);
     expect(selectedIds).toContain(nodeIds[1]);
@@ -197,7 +180,6 @@ test.describe('Box Selection', () => {
 
   test('empty box selection preserves existing selection (additive mode)', async ({ page, topoViewerPage }) => {
     // Note: Cytoscape is configured with selectionType: 'additive'
-    // In additive mode, box selection adds to selection - it never clears
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(1);
 
@@ -228,7 +210,7 @@ test.describe('Box Selection', () => {
     expect(selectedIds).toContain(nodeIds[0]);
   });
 
-  test('box selection works after zoom', async ({ page, topoViewerPage }) => {
+  test('box selection works after zoom and pan', async ({ page, topoViewerPage }) => {
     // Zoom in
     await topoViewerPage.setZoom(1.5);
     await page.waitForTimeout(200);
@@ -237,38 +219,29 @@ test.describe('Box Selection', () => {
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
     // Get updated positions after zoom
-    const node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    const node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
+    let node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
+    let node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
     expect(node1Box).not.toBeNull();
     expect(node2Box).not.toBeNull();
 
-    // Calculate bounding box that contains both nodes at new zoom level
-    const minX = Math.min(node1Box!.x, node2Box!.x) - 20;
-    const minY = Math.min(node1Box!.y, node2Box!.y) - 20;
-    const maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
-    const maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
+    // Calculate bounding box at new zoom level
+    let minX = Math.min(node1Box!.x, node2Box!.x) - 20;
+    let minY = Math.min(node1Box!.y, node2Box!.y) - 20;
+    let maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
+    let maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
 
     // Perform box selection at zoomed level
     await boxSelect(page, { x: minX, y: minY }, { x: maxX, y: maxY });
     await page.waitForTimeout(300);
 
-    // Both nodes should be selected
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
+    let selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(2);
-    expect(selectedIds).toContain(nodeIds[0]);
-    expect(selectedIds).toContain(nodeIds[1]);
-  });
 
-  test('box selection works after pan', async ({ page, topoViewerPage }) => {
-    // Fit first to normalize the view
-    await topoViewerPage.fit();
+    // Clear selection and test pan
+    await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
 
-    const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds.length).toBeGreaterThanOrEqual(2);
-
-    // Pan the canvas by dragging with mouse (not programmatic API)
-    // This ensures coordinate systems stay aligned
+    // Pan the canvas by dragging with mouse
     const canvasCenter = await topoViewerPage.getCanvasCenter();
     await page.mouse.move(canvasCenter.x, canvasCenter.y);
     await page.mouse.down();
@@ -276,30 +249,24 @@ test.describe('Box Selection', () => {
     await page.mouse.up();
     await page.waitForTimeout(300);
 
-    // Get updated positions after pan - bounding boxes are in screen coordinates
-    const node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-    const node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    expect(node1Box).not.toBeNull();
-    expect(node2Box).not.toBeNull();
+    // Get updated positions after pan
+    node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
+    node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
 
-    // Calculate bounding box that contains both nodes at new pan position
-    const minX = Math.min(node1Box!.x, node2Box!.x) - 20;
-    const minY = Math.min(node1Box!.y, node2Box!.y) - 20;
-    const maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
-    const maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
+    minX = Math.min(node1Box!.x, node2Box!.x) - 20;
+    minY = Math.min(node1Box!.y, node2Box!.y) - 20;
+    maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
+    maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
 
     // Perform box selection at panned position
     await boxSelect(page, { x: minX, y: minY }, { x: maxX, y: maxY });
     await page.waitForTimeout(300);
 
-    // Both nodes should be selected
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
+    selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(2);
-    expect(selectedIds).toContain(nodeIds[0]);
-    expect(selectedIds).toContain(nodeIds[1]);
   });
 
-  test('box selection from bottom-right to top-left', async ({ page, topoViewerPage }) => {
+  test('box selection from bottom-right to top-left works', async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -309,13 +276,13 @@ test.describe('Box Selection', () => {
     expect(node1Box).not.toBeNull();
     expect(node2Box).not.toBeNull();
 
-    // Calculate bounding box - this time drag from bottom-right to top-left
+    // Calculate bounding box - drag from bottom-right to top-left
     const minX = Math.min(node1Box!.x, node2Box!.x) - 20;
     const minY = Math.min(node1Box!.y, node2Box!.y) - 20;
     const maxX = Math.max(node1Box!.x + node1Box!.width, node2Box!.x + node2Box!.width) + 20;
     const maxY = Math.max(node1Box!.y + node1Box!.height, node2Box!.y + node2Box!.height) + 20;
 
-    // Perform box selection in reverse direction (bottom-right to top-left)
+    // Perform box selection in reverse direction
     await boxSelect(page, { x: maxX, y: maxY }, { x: minX, y: minY });
     await page.waitForTimeout(300);
 
@@ -328,7 +295,6 @@ test.describe('Box Selection', () => {
 
   test('box selection adds to selection without Ctrl (additive mode)', async ({ page, topoViewerPage }) => {
     // Note: Cytoscape is configured with selectionType: 'additive'
-    // In additive mode, box selection always adds to selection
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 

@@ -18,9 +18,6 @@ const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
  * - Edge context menu in edit mode (Edit, Delete)
  * - Edge context menu in view mode (Capture, Info)
  * - Menu visibility and dismissal
- *
- * KNOWN BUGS:
- * - None discovered yet
  */
 test.describe('Context Menu Actions', () => {
   test.describe('Node Context Menu - Edit Mode', () => {
@@ -31,7 +28,7 @@ test.describe('Context Menu Actions', () => {
       await topoViewerPage.unlock();
     });
 
-    test('right-click on node shows context menu', async ({ page, topoViewerPage }) => {
+    test('right-click on node shows context menu with Edit, Delete, and Create Link options', async ({ page, topoViewerPage }) => {
       const nodeIds = await topoViewerPage.getNodeIds();
       expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -45,53 +42,14 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
+      // Verify context menu is visible
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
-    });
 
-    test('node context menu has Edit option in edit mode', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
-      await expect(editItem).toBeVisible();
-    });
-
-    test('node context menu has Delete option in edit mode', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const deleteItem = page.locator('[data-testid="context-menu-item-delete-node"]');
-      await expect(deleteItem).toBeVisible();
-    });
-
-    test('node context menu has Create Link option in edit mode', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const linkItem = page.locator('[data-testid="context-menu-item-link-node"]');
-      await expect(linkItem).toBeVisible();
+      // Verify all edit mode options are present
+      await expect(page.locator(SEL_EDIT_NODE_ITEM)).toBeVisible();
+      await expect(page.locator('[data-testid="context-menu-item-delete-node"]')).toBeVisible();
+      await expect(page.locator('[data-testid="context-menu-item-link-node"]')).toBeVisible();
     });
 
     test('clicking Edit opens node editor panel', async ({ page, topoViewerPage }) => {
@@ -138,10 +96,11 @@ test.describe('Context Menu Actions', () => {
       expect(finalNodeCount).toBe(initialNodeCount - 1);
     });
 
-    test('context menu closes when clicking elsewhere', async ({ page, topoViewerPage }) => {
+    test('context menu closes when clicking elsewhere or pressing Escape', async ({ page, topoViewerPage }) => {
       const nodeIds = await topoViewerPage.getNodeIds();
       const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
+      // Open context menu
       await rightClick(
         page,
         nodeBox!.x + nodeBox!.width / 2,
@@ -156,27 +115,19 @@ test.describe('Context Menu Actions', () => {
       const canvasCenter = await topoViewerPage.getCanvasCenter();
       await page.mouse.click(canvasCenter.x + 200, canvasCenter.y + 200);
       await page.waitForTimeout(300);
-
       await expect(contextMenu).not.toBeVisible();
-    });
 
-    test('context menu closes on Escape key', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
+      // Open again and close with Escape
       await rightClick(
         page,
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
       await page.waitForTimeout(300);
-
-      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
 
       await page.keyboard.press('Escape');
       await page.waitForTimeout(300);
-
       await expect(contextMenu).not.toBeVisible();
     });
 
@@ -212,7 +163,7 @@ test.describe('Context Menu Actions', () => {
       await topoViewerPage.setViewMode();
     });
 
-    test('right-click on node shows context menu in view mode', async ({ page, topoViewerPage }) => {
+    test('right-click on node shows context menu with SSH, Shell, Logs, Info options but NOT Edit', async ({ page, topoViewerPage }) => {
       const nodeIds = await topoViewerPage.getNodeIds();
       expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -226,83 +177,18 @@ test.describe('Context Menu Actions', () => {
       );
       await page.waitForTimeout(300);
 
+      // Verify context menu is visible
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
-    });
 
-    test('node context menu has SSH option in view mode', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
+      // Verify all view mode options are present
+      await expect(page.locator('[data-testid="context-menu-item-ssh-node"]')).toBeVisible();
+      await expect(page.locator('[data-testid="context-menu-item-shell-node"]')).toBeVisible();
+      await expect(page.locator('[data-testid="context-menu-item-logs-node"]')).toBeVisible();
+      await expect(page.locator('[data-testid="context-menu-item-info-node"]')).toBeVisible();
 
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const sshItem = page.locator('[data-testid="context-menu-item-ssh-node"]');
-      await expect(sshItem).toBeVisible();
-    });
-
-    test('node context menu has Shell option in view mode', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const shellItem = page.locator('[data-testid="context-menu-item-shell-node"]');
-      await expect(shellItem).toBeVisible();
-    });
-
-    test('node context menu has Logs option in view mode', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const logsItem = page.locator('[data-testid="context-menu-item-logs-node"]');
-      await expect(logsItem).toBeVisible();
-    });
-
-    test('node context menu has Info option in view mode', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const infoItem = page.locator('[data-testid="context-menu-item-info-node"]');
-      await expect(infoItem).toBeVisible();
-    });
-
-    test('view mode context menu does NOT have Edit option', async ({ page, topoViewerPage }) => {
-      const nodeIds = await topoViewerPage.getNodeIds();
-      const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
-
-      await rightClick(
-        page,
-        nodeBox!.x + nodeBox!.width / 2,
-        nodeBox!.y + nodeBox!.height / 2
-      );
-      await page.waitForTimeout(300);
-
-      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
-      await expect(editItem).not.toBeVisible();
+      // Edit option should NOT be visible in view mode
+      await expect(page.locator(SEL_EDIT_NODE_ITEM)).not.toBeVisible();
     });
   });
 
@@ -314,7 +200,7 @@ test.describe('Context Menu Actions', () => {
       await topoViewerPage.unlock();
     });
 
-    test('right-click on edge shows context menu', async ({ page, topoViewerPage }) => {
+    test('right-click on edge shows context menu with Edit and Delete options', async ({ page, topoViewerPage }) => {
       const edgeIds = await topoViewerPage.getEdgeIds();
       expect(edgeIds.length).toBeGreaterThan(0);
 
@@ -339,60 +225,11 @@ test.describe('Context Menu Actions', () => {
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
+      // Verify context menu and options
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
-    });
-
-    test('edge context menu has Edit option in edit mode', async ({ page, topoViewerPage }) => {
-      const edgeIds = await topoViewerPage.getEdgeIds();
-
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
-
-      await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
-
-      const editItem = page.locator(SEL_EDIT_EDGE_ITEM);
-      await expect(editItem).toBeVisible();
-    });
-
-    test('edge context menu has Delete option in edit mode', async ({ page, topoViewerPage }) => {
-      const edgeIds = await topoViewerPage.getEdgeIds();
-
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
-
-      await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
-
-      const deleteItem = page.locator('[data-testid="context-menu-item-delete-edge"]');
-      await expect(deleteItem).toBeVisible();
+      await expect(page.locator(SEL_EDIT_EDGE_ITEM)).toBeVisible();
+      await expect(page.locator('[data-testid="context-menu-item-delete-edge"]')).toBeVisible();
     });
 
     test('clicking Edit opens link editor panel', async ({ page, topoViewerPage }) => {
@@ -465,7 +302,7 @@ test.describe('Context Menu Actions', () => {
       await topoViewerPage.setViewMode();
     });
 
-    test('right-click on edge shows context menu in view mode', async ({ page, topoViewerPage }) => {
+    test('right-click on edge shows context menu with Info option but NOT Edit', async ({ page, topoViewerPage }) => {
       const edgeIds = await topoViewerPage.getEdgeIds();
       expect(edgeIds.length).toBeGreaterThan(0);
 
@@ -488,60 +325,13 @@ test.describe('Context Menu Actions', () => {
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
+      // Verify context menu and options
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
-    });
+      await expect(page.locator('[data-testid="context-menu-item-info-edge"]')).toBeVisible();
 
-    test('edge context menu has Info option in view mode', async ({ page, topoViewerPage }) => {
-      const edgeIds = await topoViewerPage.getEdgeIds();
-
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
-
-      await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
-
-      const infoItem = page.locator('[data-testid="context-menu-item-info-edge"]');
-      await expect(infoItem).toBeVisible();
-    });
-
-    test('view mode edge context menu does NOT have Edit option', async ({ page, topoViewerPage }) => {
-      const edgeIds = await topoViewerPage.getEdgeIds();
-
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
-
-      await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
-
-      const editItem = page.locator(SEL_EDIT_EDGE_ITEM);
-      await expect(editItem).not.toBeVisible();
+      // Edit should NOT be visible in view mode
+      await expect(page.locator(SEL_EDIT_EDGE_ITEM)).not.toBeVisible();
     });
   });
 });

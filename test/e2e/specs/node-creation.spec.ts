@@ -16,7 +16,7 @@ test.describe('Node Creation', () => {
     await topoViewerPage.unlock();
   });
 
-  test('creates node via Shift+Click on canvas', async ({ page, topoViewerPage }) => {
+  test('creates node via Shift+Click at clicked position', async ({ page, topoViewerPage }) => {
     // Verify initial state - simple.clab.yml should have 2 nodes
     const initialNodeCount = await topoViewerPage.getNodeCount();
     expect(initialNodeCount).toBe(2);
@@ -28,36 +28,22 @@ test.describe('Node Creation', () => {
     // Get canvas center position
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
+    // Get node IDs before creation
+    const nodeIdsBefore = await topoViewerPage.getNodeIds();
+
     // Shift+Click AWAY from center to avoid hitting existing nodes
-    // simple.clab.yml topology has nodes near the center after fit
-    await shiftClick(page, canvasCenter.x + 200, canvasCenter.y + 150);
+    const clickX = canvasCenter.x + 200;
+    const clickY = canvasCenter.y + 150;
+    await shiftClick(page, clickX, clickY);
 
     // Wait for node to be created
     await page.waitForTimeout(500);
 
     const newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount + 1);
-  });
 
-  test('creates node at clicked position', async ({ page, topoViewerPage }) => {
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-
-    // Click far from center to avoid hitting existing nodes
-    // The simple.clab.yml topology has nodes near the center after fit
-    const clickX = canvasCenter.x + 200;
-    const clickY = canvasCenter.y + 150;
-
-    // Get node IDs before creation
-    const nodeIdsBefore = await topoViewerPage.getNodeIds();
-
-    // Shift+Click to create node
-    await shiftClick(page, clickX, clickY);
-    await page.waitForTimeout(500);
-
-    // Get node IDs after creation
+    // Get node IDs after creation and find the new node
     const nodeIdsAfter = await topoViewerPage.getNodeIds();
-
-    // Find the new node
     const newNodeId = nodeIdsAfter.find(id => !nodeIdsBefore.includes(id));
     expect(newNodeId).toBeDefined();
 
@@ -79,39 +65,27 @@ test.describe('Node Creation', () => {
     expect(Math.abs(nodeScreenY - clickY)).toBeLessThan(100);
   });
 
-  test('does not create node when canvas is locked', async ({ page, topoViewerPage }) => {
-    // Lock the canvas
+  test('does not create node when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {
+    const initialNodeCount = await topoViewerPage.getNodeCount();
+    const canvasCenter = await topoViewerPage.getCanvasCenter();
+
+    // Test locked state
     await topoViewerPage.lock();
-
-    const initialNodeCount = await topoViewerPage.getNodeCount();
-
-    // Get canvas center position
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-
-    // Try Shift+Click to create node
     await shiftClick(page, canvasCenter.x, canvasCenter.y);
     await page.waitForTimeout(500);
 
-    // Node count should not change
-    const newNodeCount = await topoViewerPage.getNodeCount();
+    let newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount);
-  });
 
-  test('does not create node in view mode', async ({ page, topoViewerPage }) => {
-    // Switch to view mode
+    // Unlock for view mode test
+    await topoViewerPage.unlock();
+
+    // Test view mode
     await topoViewerPage.setViewMode();
-
-    const initialNodeCount = await topoViewerPage.getNodeCount();
-
-    // Get canvas center position
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-
-    // Try Shift+Click to create node
     await shiftClick(page, canvasCenter.x, canvasCenter.y);
     await page.waitForTimeout(500);
 
-    // Node count should not change
-    const newNodeCount = await topoViewerPage.getNodeCount();
+    newNodeCount = await topoViewerPage.getNodeCount();
     expect(newNodeCount).toBe(initialNodeCount);
   });
 
@@ -150,13 +124,14 @@ test.describe('Node Creation - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('created node appears in YAML file', async ({ page, topoViewerPage }) => {
+  test('created node appears in YAML file with position in annotations', async ({ page, topoViewerPage }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
     expect(initialYaml).not.toContain('test-node1:');
 
-    // Create a node via API
-    await topoViewerPage.createNode('test-node1', { x: 200, y: 200 }, KIND_NOKIA_SRLINUX);
+    // Create a node at a specific position
+    const targetPosition = { x: 300, y: 250 };
+    await topoViewerPage.createNode('test-node1', targetPosition, KIND_NOKIA_SRLINUX);
 
     // Wait for save to complete
     await page.waitForTimeout(1000);
@@ -168,21 +143,12 @@ test.describe('Node Creation - File Persistence', () => {
     expect(updatedYaml).toContain('test-node1:');
     expect(updatedYaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
     expect(updatedYaml).toContain('image:');
-  });
-
-  test('created node has position in annotations file', async ({ page, topoViewerPage }) => {
-    // Create a node at a specific position
-    const targetPosition = { x: 300, y: 250 };
-    await topoViewerPage.createNode('test-node2', targetPosition, KIND_NOKIA_SRLINUX);
-
-    // Wait for save to complete
-    await page.waitForTimeout(1000);
 
     // Read annotations
     const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
 
     // Find the node annotation
-    const nodeAnnotation = annotations.nodeAnnotations?.find(n => n.id === 'test-node2');
+    const nodeAnnotation = annotations.nodeAnnotations?.find(n => n.id === 'test-node1');
     expect(nodeAnnotation).toBeDefined();
     expect(nodeAnnotation?.position).toBeDefined();
 

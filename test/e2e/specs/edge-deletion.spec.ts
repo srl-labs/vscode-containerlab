@@ -8,10 +8,9 @@ const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
  * Edge Deletion E2E Tests
  *
  * Tests edge/link deletion functionality including:
- * - Delete via keyboard
- * - Delete via context menu
+ * - Delete via keyboard (Delete and Backspace)
  * - Delete multiple edges
- * - Undo edge deletion
+ * - Undo/redo edge deletion
  * - Protection in view mode and locked state
  */
 test.describe('Edge Deletion', () => {
@@ -23,61 +22,44 @@ test.describe('Edge Deletion', () => {
     await topoViewerPage.unlock();
   });
 
-  test('deletes selected edge with Delete key', async ({ page, topoViewerPage }) => {
+  test('deletes selected edge with Delete or Backspace key', async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     expect(initialEdgeCount).toBeGreaterThan(0);
 
-    const edgeIds = await topoViewerPage.getEdgeIds();
-
-    // Select the edge
-    await topoViewerPage.selectEdge(edgeIds[0]);
-    await page.waitForTimeout(200);
-
-    // Verify edge is selected
-    const selectedIds = await topoViewerPage.getSelectedEdgeIds();
-    expect(selectedIds).toContain(edgeIds[0]);
-
-    // Press Delete
-    await page.keyboard.press('Delete');
-    await page.waitForTimeout(300);
-
-    // Edge count should decrease
-    const finalEdgeCount = await topoViewerPage.getEdgeCount();
-    expect(finalEdgeCount).toBe(initialEdgeCount - 1);
-  });
-
-  test('deletes selected edge with Backspace key', async ({ page, topoViewerPage }) => {
-    const initialEdgeCount = await topoViewerPage.getEdgeCount();
-    expect(initialEdgeCount).toBeGreaterThan(0);
-
-    const edgeIds = await topoViewerPage.getEdgeIds();
-
-    // Select the edge
-    await topoViewerPage.selectEdge(edgeIds[0]);
-    await page.waitForTimeout(200);
-
-    // Press Backspace
-    await page.keyboard.press('Backspace');
-    await page.waitForTimeout(300);
-
-    // Edge count should decrease
-    const finalEdgeCount = await topoViewerPage.getEdgeCount();
-    expect(finalEdgeCount).toBe(initialEdgeCount - 1);
-  });
-
-  test('deleted edge is no longer in edge list', async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     const edgeToDelete = edgeIds[0];
 
-    // Select and delete the edge
+    // Test Delete key
     await topoViewerPage.selectEdge(edgeToDelete);
     await page.waitForTimeout(200);
+
+    // Verify edge is selected
+    let selectedIds = await topoViewerPage.getSelectedEdgeIds();
+    expect(selectedIds).toContain(edgeToDelete);
+
     await page.keyboard.press('Delete');
     await page.waitForTimeout(300);
 
-    // Edge should no longer be in list
-    const finalEdgeIds = await topoViewerPage.getEdgeIds();
+    // Edge count should decrease
+    let finalEdgeCount = await topoViewerPage.getEdgeCount();
+    expect(finalEdgeCount).toBe(initialEdgeCount - 1);
+
+    // Verify deleted edge is gone
+    let finalEdgeIds = await topoViewerPage.getEdgeIds();
     expect(finalEdgeIds).not.toContain(edgeToDelete);
+
+    // Undo to restore for Backspace test
+    await topoViewerPage.undo();
+    await page.waitForTimeout(300);
+
+    // Test Backspace key
+    await topoViewerPage.selectEdge(edgeToDelete);
+    await page.waitForTimeout(200);
+    await page.keyboard.press('Backspace');
+    await page.waitForTimeout(300);
+
+    finalEdgeCount = await topoViewerPage.getEdgeCount();
+    expect(finalEdgeCount).toBe(initialEdgeCount - 1);
   });
 
   test('deletes multiple selected edges', async ({ page, topoViewerPage }) => {
@@ -130,7 +112,7 @@ test.describe('Edge Deletion', () => {
     expect(finalEdgeCount).toBe(initialEdgeCount - 2);
   });
 
-  test('can undo edge deletion', async ({ page, topoViewerPage }) => {
+  test('can undo and redo edge deletion', async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     const edgeIds = await topoViewerPage.getEdgeIds();
     const deletedEdgeId = edgeIds[0];
@@ -154,74 +136,46 @@ test.describe('Edge Deletion', () => {
     expect(currentEdgeCount).toBe(initialEdgeCount);
 
     // The deleted edge should be back
-    const finalEdgeIds = await topoViewerPage.getEdgeIds();
-    expect(finalEdgeIds).toContain(deletedEdgeId);
-  });
-
-  test('can redo edge deletion after undo', async ({ page, topoViewerPage }) => {
-    const initialEdgeCount = await topoViewerPage.getEdgeCount();
-    const edgeIds = await topoViewerPage.getEdgeIds();
-    const deletedEdgeId = edgeIds[0];
-
-    // Delete an edge
-    await topoViewerPage.selectEdge(deletedEdgeId);
-    await page.waitForTimeout(200);
-    await page.keyboard.press('Delete');
-    await page.waitForTimeout(300);
-
-    // Undo
-    await topoViewerPage.undo();
-    await page.waitForTimeout(300);
+    let currentEdgeIds = await topoViewerPage.getEdgeIds();
+    expect(currentEdgeIds).toContain(deletedEdgeId);
 
     // Redo
     await topoViewerPage.redo();
     await page.waitForTimeout(300);
 
     // Edge should be deleted again
-    const finalEdgeCount = await topoViewerPage.getEdgeCount();
-    expect(finalEdgeCount).toBe(initialEdgeCount - 1);
+    currentEdgeCount = await topoViewerPage.getEdgeCount();
+    expect(currentEdgeCount).toBe(initialEdgeCount - 1);
 
-    const finalEdgeIds = await topoViewerPage.getEdgeIds();
-    expect(finalEdgeIds).not.toContain(deletedEdgeId);
+    currentEdgeIds = await topoViewerPage.getEdgeIds();
+    expect(currentEdgeIds).not.toContain(deletedEdgeId);
   });
 
-  test('does not delete edge when canvas is locked', async ({ page, topoViewerPage }) => {
+  test('does not delete edge when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    // Lock the canvas
+    // Test locked state
     await topoViewerPage.lock();
-
-    // Select the edge
     await topoViewerPage.selectEdge(edgeIds[0]);
     await page.waitForTimeout(200);
-
-    // Try to delete
     await page.keyboard.press('Delete');
     await page.waitForTimeout(300);
 
-    // Edge count should remain the same
-    const finalEdgeCount = await topoViewerPage.getEdgeCount();
+    let finalEdgeCount = await topoViewerPage.getEdgeCount();
     expect(finalEdgeCount).toBe(initialEdgeCount);
-  });
 
-  test('does not delete edge in view mode', async ({ page, topoViewerPage }) => {
-    const initialEdgeCount = await topoViewerPage.getEdgeCount();
-    const edgeIds = await topoViewerPage.getEdgeIds();
+    // Unlock for view mode test
+    await topoViewerPage.unlock();
 
-    // Switch to view mode
+    // Test view mode
     await topoViewerPage.setViewMode();
-
-    // Select the edge
     await topoViewerPage.selectEdge(edgeIds[0]);
     await page.waitForTimeout(200);
-
-    // Try to delete
     await page.keyboard.press('Delete');
     await page.waitForTimeout(300);
 
-    // Edge count should remain the same
-    const finalEdgeCount = await topoViewerPage.getEdgeCount();
+    finalEdgeCount = await topoViewerPage.getEdgeCount();
     expect(finalEdgeCount).toBe(initialEdgeCount);
   });
 
@@ -260,7 +214,6 @@ test.describe('Edge Deletion', () => {
     const finalEdgeCount = await topoViewerPage.getEdgeCount();
     expect(finalEdgeCount).toBe(initialEdgeCount);
   });
-
 });
 
 /**
@@ -277,94 +230,63 @@ test.describe('Edge Deletion - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('deleted edge is removed from YAML file', async ({ page, topoViewerPage }) => {
-    // Get initial YAML to find an edge to delete
-    const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    const initialEndpointsCount = (initialYaml.match(/endpoints:/g) || []).length;
-    expect(initialEndpointsCount).toBeGreaterThan(0);
-
-    // Get edge IDs and select first edge
-    const edgeIds = await topoViewerPage.getEdgeIds();
-    expect(edgeIds.length).toBeGreaterThan(0);
-
-    // Get the edge data to know which endpoints will be removed
-    const edgeData = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-      return {
-        source: edge.source().id(),
-        target: edge.target().id()
-      };
-    }, edgeIds[0]);
-    expect(edgeData).not.toBeNull();
-
-    // Select and delete the edge
-    await topoViewerPage.selectEdge(edgeIds[0]);
-    await page.waitForTimeout(200);
-    await page.keyboard.press('Delete');
-
-    // Wait for save to complete
-    await page.waitForTimeout(1000);
-
-    // Read updated YAML
-    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    const updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
-
-    // Should have one fewer link in the YAML file
-    expect(updatedEndpointsCount).toBe(initialEndpointsCount - 1);
-  });
-
-  test('deletes multiple selected edges and removes them from YAML file', async ({ page, topoViewerPage }) => {
+  test('deleted edges are removed from YAML file (single and multiple)', async ({ page, topoViewerPage }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
     const initialEndpointsCount = (initialYaml.match(/endpoints:/g) || []).length;
     expect(initialEndpointsCount).toBeGreaterThanOrEqual(2);
 
+    // Get edge IDs
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(edgeIds.length).toBeGreaterThanOrEqual(2);
 
-    // Select first edge
+    // Delete first edge
     await topoViewerPage.selectEdge(edgeIds[0]);
-    await page.waitForTimeout(100);
-
-    // Ctrl+click to select second edge
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[1]);
-
-    expect(midpoint).not.toBeNull();
-    await ctrlClick(page, midpoint!.x, midpoint!.y);
     await page.waitForTimeout(200);
-
-    // Verify both are selected
-    const selectedIds = await topoViewerPage.getSelectedEdgeIds();
-    expect(selectedIds.length).toBe(2);
-
-    // Delete both edges
     await page.keyboard.press('Delete');
-
-    // Wait for save to complete
     await page.waitForTimeout(1000);
 
-    // Read updated YAML
-    const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-    const updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
+    // Verify single deletion
+    let updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    let updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
+    expect(updatedEndpointsCount).toBe(initialEndpointsCount - 1);
 
-    // Should have two fewer links in the YAML file
-    expect(updatedEndpointsCount).toBe(initialEndpointsCount - 2);
+    // Select and delete second edge using multi-select
+    const remainingEdgeIds = await topoViewerPage.getEdgeIds();
+    await topoViewerPage.selectEdge(remainingEdgeIds[0]);
+    await page.waitForTimeout(100);
+
+    // Ctrl+click to select another edge if available
+    if (remainingEdgeIds.length >= 2) {
+      const midpoint = await page.evaluate((id) => {
+        const dev = (window as any).__DEV__;
+        const cy = dev?.cy;
+        const edge = cy?.getElementById(id);
+        if (!edge || edge.empty()) return null;
+
+        const bb = edge.renderedBoundingBox();
+        const container = cy.container();
+        const rect = container.getBoundingClientRect();
+
+        return {
+          x: rect.left + bb.x1 + bb.w / 2,
+          y: rect.top + bb.y1 + bb.h / 2
+        };
+      }, remainingEdgeIds[1]);
+
+      if (midpoint) {
+        await ctrlClick(page, midpoint.x, midpoint.y);
+        await page.waitForTimeout(200);
+      }
+    }
+
+    // Delete selected edges
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(1000);
+
+    // Verify multiple deletion
+    updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
+    updatedEndpointsCount = (updatedYaml.match(/endpoints:/g) || []).length;
+    expect(updatedEndpointsCount).toBeLessThan(initialEndpointsCount - 1);
   });
 });

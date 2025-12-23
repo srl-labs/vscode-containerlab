@@ -7,8 +7,8 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import { convertToEditorData, convertToNetworkEditorData } from '../shared/utilities';
-import type { CytoscapeCanvasRef } from './components/canvas/CytoscapeCanvas';
 
+import type { CytoscapeCanvasRef } from './components/canvas/CytoscapeCanvas';
 import { useTopoViewerActions, useTopoViewerState } from './context/TopoViewerContext';
 import { UndoRedoProvider, useUndoRedoContext } from './context/UndoRedoContext';
 import { AnnotationProvider, useAnnotations, type PendingMembershipChange } from './context/AnnotationContext';

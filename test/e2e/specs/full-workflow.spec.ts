@@ -894,7 +894,6 @@ test.describe('Full Workflow E2E Test', () => {
     if (freeTextCountAfterUndo !== freeTextCountBefore) {
       logBug('BUG-FREE-TEXT-UNDO-001', `Text annotation undo failed: expected ${freeTextCountBefore} but got ${freeTextCountAfterUndo}`);
     }
-    // Skip assertion to allow test to continue - this is a known issue to investigate
     console.log(`[DEBUG] Free text annotation undo: expected ${freeTextCountBefore}, got ${freeTextCountAfterUndo}`);
 
     // Redo to restore text annotation (if undo worked)
@@ -902,8 +901,8 @@ test.describe('Full Workflow E2E Test', () => {
     await page.waitForTimeout(300);
 
     annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
-    console.log(`[DEBUG] Free text annotation redo: expected ${freeTextCountAfter}, got ${annotations.freeTextAnnotations?.length || 0}`);
-    // Skip assertion to continue test
+    const freeTextCountAfterRedo = annotations.freeTextAnnotations?.length || 0;
+    console.log(`[DEBUG] Free text annotation redo: expected ${freeTextCountAfter}, got ${freeTextCountAfterRedo}`);
 
     console.log('[DEBUG] Free text annotation undo/redo test completed (bugs logged if any)');
 
@@ -938,36 +937,43 @@ test.describe('Full Workflow E2E Test', () => {
     }
 
     // Verify rectangle shape was created
+    await expect.poll(
+      async () => {
+        const a = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
+        return a.freeShapeAnnotations?.length || 0;
+      },
+      { timeout: 5000, message: 'Shape annotation should be persisted after creation' }
+    ).toBe(freeShapeCountBefore + 1);
+
     annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
-    const freeShapeCountAfter = annotations.freeShapeAnnotations?.length || 0;
-    if (freeShapeCountAfter <= freeShapeCountBefore) {
-      logBug('BUG-FREE-SHAPE-CREATE-001', `Shape annotation creation failed: expected >${freeShapeCountBefore} but got ${freeShapeCountAfter}`);
-      console.log('[DEBUG] Shape annotation creation FAILED - skipping shape tests');
-    } else {
-      // Verify shape type is rectangle
-      const createdShape = annotations.freeShapeAnnotations?.find(s => s.shapeType === 'rectangle');
-      if (!createdShape) {
-        logBug('BUG-FREE-SHAPE-001', 'Rectangle shape annotation not created correctly');
-      }
-      console.log('[DEBUG] Rectangle shape annotation created successfully');
-    }
+    const createdShape = annotations.freeShapeAnnotations?.find(s => s.shapeType === 'rectangle');
+    expect(createdShape).toBeDefined();
+    console.log('[DEBUG] Rectangle shape annotation created successfully');
 
     // Test undo/redo for shape
     await topoViewerPage.undo();
     await page.waitForTimeout(300);
 
-    annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
-    const freeShapeCountAfterUndo = annotations.freeShapeAnnotations?.length || 0;
-    if (freeShapeCountAfterUndo !== freeShapeCountBefore) {
-      logBug('BUG-FREE-SHAPE-UNDO-001', `Shape annotation undo failed: expected ${freeShapeCountBefore} but got ${freeShapeCountAfterUndo}`);
-    }
-    console.log(`[DEBUG] Free shape annotation undo: expected ${freeShapeCountBefore}, got ${freeShapeCountAfterUndo}`);
+    await expect.poll(
+      async () => {
+        const a = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
+        return a.freeShapeAnnotations?.length || 0;
+      },
+      { timeout: 5000, message: 'Undo should remove the created shape annotation' }
+    ).toBe(freeShapeCountBefore);
+    console.log(`[DEBUG] Free shape annotation undo: expected ${freeShapeCountBefore}, got ${freeShapeCountBefore}`);
 
     await topoViewerPage.redo();
     await page.waitForTimeout(300);
 
-    annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
-    console.log(`[DEBUG] Free shape annotation redo: expected ${freeShapeCountAfter}, got ${annotations.freeShapeAnnotations?.length || 0}`);
+    await expect.poll(
+      async () => {
+        const a = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
+        return a.freeShapeAnnotations?.length || 0;
+      },
+      { timeout: 5000, message: 'Redo should restore the created shape annotation' }
+    ).toBe(freeShapeCountBefore + 1);
+    console.log('[DEBUG] Free shape annotation redo completed');
 
     console.log('[DEBUG] Free shape annotation undo/redo test completed (bugs logged if any)');
 
@@ -983,6 +989,7 @@ test.describe('Full Workflow E2E Test', () => {
 
     // Get current group count
     const groupCountBeforeNested = await topoViewerPage.getGroupCount();
+    const groupIdsBeforeOuter = await topoViewerPage.getGroupIds();
     console.log(`[DEBUG] Group count before nested groups: ${groupCountBeforeNested}`);
 
     // Select two nodes to create outer group
@@ -1007,7 +1014,7 @@ test.describe('Full Workflow E2E Test', () => {
     } else {
       // Get the outer group ID
       const groupIdsAfterOuter = await topoViewerPage.getGroupIds();
-      const outerGroupId = groupIdsAfterOuter[groupIdsAfterOuter.length - 1];
+      const outerGroupId = groupIdsAfterOuter.find(id => !groupIdsBeforeOuter.includes(id)) ?? groupIdsAfterOuter[groupIdsAfterOuter.length - 1];
       console.log(`[DEBUG] Created outer group: ${outerGroupId}`);
 
       // Now select only router3 and create inner group
@@ -1024,10 +1031,13 @@ test.describe('Full Workflow E2E Test', () => {
       if (groupCountAfterInner !== groupCountAfterOuter + 1) {
         logBug('BUG-NESTED-GROUP-CREATE-002', `Inner group creation failed: expected ${groupCountAfterOuter + 1} groups but got ${groupCountAfterInner}`);
       } else {
+        const groupIdsAfterInner = await topoViewerPage.getGroupIds();
+        const innerGroupId = groupIdsAfterInner.find(id => !groupIdsAfterOuter.includes(id));
+
         // Verify hierarchy - inner group should have parentId pointing to outer group
         annotations = await topoViewerPage.getAnnotationsFromFile(TOPOLOGY_FILE);
         const groups = annotations.groupStyleAnnotations || [];
-        const innerGroup = groups.find(g => g.id !== outerGroupId && !groupIdsAfterOuter.slice(0, -1).includes(g.id));
+        const innerGroup = groups.find(g => g.id === innerGroupId);
 
         if (innerGroup) {
           if (innerGroup.parentId === outerGroupId) {
@@ -1058,6 +1068,8 @@ test.describe('Full Workflow E2E Test', () => {
     await topoViewerPage.selectNode('router2');
     await page.waitForTimeout(100);
 
+    const nodeIdsBeforeAnnCopy = await topoViewerPage.getNodeIds();
+
     // Copy the selected node
     await topoViewerPage.copy();
     await page.waitForTimeout(300);
@@ -1077,7 +1089,7 @@ test.describe('Full Workflow E2E Test', () => {
     // Verify in YAML
     yaml = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
     const nodeIdsAfterCopy = await topoViewerPage.getNodeIds();
-    const newNodeId = nodeIdsAfterCopy.find(id => !['router2', 'router3', 'router4', RENAMED_NODE, 'router5'].includes(id));
+    const newNodeId = nodeIdsAfterCopy.find(id => !nodeIdsBeforeAnnCopy.includes(id));
     if (newNodeId) {
       if (!yaml.includes(`${newNodeId}:`)) {
         logBug('BUG-COPY-PASTE-YAML-001', `Pasted node ${newNodeId} not found in YAML`);

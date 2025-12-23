@@ -11,7 +11,9 @@ export const CLICK_CAPTURE_STYLE_BASE: React.CSSProperties = {
   right: 0,
   bottom: 0,
   pointerEvents: 'auto',
-  zIndex: 8
+  // Must be above annotation interaction layers so canvas clicks create annotations
+  // even when other overlays (text/groups) are present/selected.
+  zIndex: 9999
 };
 
 /** Create click capture style with custom cursor */
