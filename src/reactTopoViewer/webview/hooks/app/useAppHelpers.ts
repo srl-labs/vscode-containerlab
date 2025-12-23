@@ -158,6 +158,7 @@ export interface E2ETestingConfig {
   handleNodeCreatedCallback: (nodeId: string, nodeElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: { x: number; y: number }; classes?: string }, position: { x: number; y: number }) => void;
   handleAddGroupWithUndo: () => void;
   groups: GroupStyleAnnotation[];
+  elements: unknown[];
 }
 
 /**
@@ -165,7 +166,7 @@ export interface E2ETestingConfig {
  * Consolidates all window.__DEV__ assignments into one place.
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
-  const { cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, groups } = config;
+  const { cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, groups, elements } = config;
 
   // Core E2E exposure (cy, isLocked, mode, setLocked)
   React.useEffect(() => {
@@ -196,6 +197,13 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.groupsCount = groups.length;
     }
   }, [groups]);
+
+  // Elements E2E exposure
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.__DEV__) {
+      window.__DEV__.getElements = () => elements;
+    }
+  }, [elements]);
 }
 
 /**

@@ -127,7 +127,8 @@ const AppContent: React.FC<{
     handleEdgeCreated,
     handleNodeCreatedCallback,
     handleAddGroupWithUndo: annotations.handleAddGroupWithUndo,
-    groups: annotations.groups
+    groups: annotations.groups,
+    elements: state.elements
   });
 
   // Geo coordinate sync (consolidated hook)
@@ -315,7 +316,7 @@ const AppContent: React.FC<{
           shortcuts={{ isVisible: panelVisibility.showShortcutsPanel, onClose: panelVisibility.handleCloseShortcuts }}
           about={{ isVisible: panelVisibility.showAboutPanel, onClose: panelVisibility.handleCloseAbout }}
           findNode={{ isVisible: panelVisibility.showFindNodePanel, onClose: panelVisibility.handleCloseFindNode, cy: cyInstance }}
-          svgExport={{ isVisible: panelVisibility.showSvgExportPanel, onClose: panelVisibility.handleCloseSvgExport, cy: cyInstance }}
+          svgExport={{ isVisible: panelVisibility.showSvgExportPanel, onClose: panelVisibility.handleCloseSvgExport, cy: cyInstance, textAnnotations: annotations.textAnnotations, shapeAnnotations: annotations.shapeAnnotations, groups: annotations.groups }}
         />
         <EditorPanels
           nodeEditor={{ isVisible: !!state.editingNode, nodeData: editingNodeData, inheritedProps: editingNodeInheritedProps, onClose: nodeEditorHandlers.handleClose, onSave: nodeEditorHandlers.handleSave, onApply: nodeEditorHandlers.handleApply }}

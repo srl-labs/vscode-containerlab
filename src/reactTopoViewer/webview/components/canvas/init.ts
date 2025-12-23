@@ -4,7 +4,6 @@
 import type { Core, CytoscapeOptions, LayoutOptions } from 'cytoscape';
 import cytoscape from 'cytoscape';
 import cola from 'cytoscape-cola';
-import gridGuide from 'cytoscape-grid-guide';
 
 import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
@@ -12,7 +11,6 @@ import { log } from '../../utils/logger';
 import { cytoscapeStyles } from './styles';
 
 let colaRegistered = false;
-let gridGuideRegistered = false;
 
 /**
  * Apply stub-link class to edges connected to network nodes (cloud)
@@ -32,13 +30,6 @@ export function ensureColaRegistered(): void {
   if (!colaRegistered) {
     cytoscape.use(cola);
     colaRegistered = true;
-  }
-}
-
-export function ensureGridGuideRegistered(): void {
-  if (!gridGuideRegistered) {
-    cytoscape.use(gridGuide);
-    gridGuideRegistered = true;
   }
 }
 
@@ -137,26 +128,6 @@ export function createCytoscapeConfig(container: HTMLElement, elements: CyElemen
   };
 }
 
-/**
- * Update cytoscape elements and apply layout
- */
-export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
-  const usePresetLayout = hasPresetPositions(elements);
-  cy.batch(() => {
-    cy.elements().remove();
-    cy.add(elements);
-  });
-
-  // Apply stub-link class to edges connected to network/cloud nodes
-  applyStubLinkClasses(cy);
-
-  if (!usePresetLayout) {
-    cy.layout(getLayoutOptions('cose')).run();
-  } else {
-    cy.fit(undefined, 50);
-  }
-}
-
 export type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
 
 /**
@@ -179,13 +150,29 @@ export function collectNodePositions(cy: Core): NodePositions {
 }
 
 /**
+ * Update cytoscape elements and apply layout
+ */
+export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
+  const usePresetLayout = hasPresetPositions(elements);
+  cy.batch(() => {
+    cy.elements().remove();
+    cy.add(elements);
+  });
+
+  // Apply stub-link class to edges connected to network/cloud nodes
+  applyStubLinkClasses(cy);
+
+  if (!usePresetLayout) {
+    cy.layout(getLayoutOptions('cose')).run();
+  } else {
+    cy.fit(undefined, 50);
+  }
+}
+
+/**
  * Handle cytoscape ready event
  */
-export function handleCytoscapeReady(
-  cy: Core,
-  usePresetLayout: boolean,
-  onInitialLayoutPositions?: (positions: NodePositions) => void
-): void {
+export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
   log.info(`[CytoscapeCanvas] Cytoscape ready - nodes: ${cy.nodes().length}, edges: ${cy.edges().length}`);
   log.info(`[CytoscapeCanvas] Using preset layout: ${usePresetLayout}`);
 
@@ -219,24 +206,16 @@ export function handleCytoscapeReady(
       cy.fit(undefined, 50);
       // Mark layout as done for tests
       cy.scratch('initialLayoutDone', true);
-      // Sync positions back to React state
-      if (onInitialLayoutPositions) {
-        const positions = collectNodePositions(cy);
-        log.info(`[handleCytoscapeReady] Syncing ${positions.length} node positions to React state`);
-        onInitialLayoutPositions(positions);
-      }
     });
     cy.layout(getLayoutOptions('cose')).run();
   } else {
-    // Mark layout as done immediately for preset layouts
+    // For preset layouts, fit to viewport
+    log.info('[CytoscapeCanvas] Preset layout - fitting viewport');
+    cy.fit(undefined, 50);
+    const extent = cy.extent();
+    log.info(`[CytoscapeCanvas] After fit - zoom: ${cy.zoom()}, pan: (${cy.pan().x}, ${cy.pan().y})`);
+    log.info(`[CytoscapeCanvas] Extent: x1=${extent.x1}, y1=${extent.y1}, x2=${extent.x2}, y2=${extent.y2}`);
+    // Mark layout as done for tests
     cy.scratch('initialLayoutDone', true);
-    // Fit after a short delay for preset layout
-    setTimeout(() => {
-      cy.resize();
-      cy.fit(undefined, 50);
-      const extent = cy.extent();
-      log.info(`[CytoscapeCanvas] After fit - zoom: ${cy.zoom()}, pan: (${cy.pan().x}, ${cy.pan().y})`);
-      log.info(`[CytoscapeCanvas] Extent: x1=${extent.x1}, y1=${extent.y1}, x2=${extent.x2}, y2=${extent.y2}`);
-    }, 100);
   }
 }

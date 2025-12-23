@@ -55,6 +55,8 @@ export interface DevModeInterface {
   getReactGroups?: () => GroupStyleAnnotation[];
   /** Current group count */
   groupsCount?: number;
+  /** Get React elements state */
+  getElements?: () => unknown[];
 }
 
 /**

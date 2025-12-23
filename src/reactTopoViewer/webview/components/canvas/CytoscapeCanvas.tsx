@@ -14,7 +14,6 @@ import { log } from '../../utils/logger';
 import {
   ensureColaRegistered,
   getLayoutOptions,
-  ensureGridGuideRegistered,
   hasPresetPositions,
   createCytoscapeConfig,
   handleCytoscapeReady
@@ -97,30 +96,20 @@ function useDelayedCytoscapeInit(
 /**
  * Hook that returns a function to initialize Cytoscape
  */
-type NodePositions = Array<{ id: string; position: { x: number; y: number } }>;
-
-interface CytoscapeLifecycle {
-  onCyReady?: (cy: Core) => void;
-  onCyDestroyed?: () => void;
-  onInitialLayoutPositions?: (positions: NodePositions) => void;
-}
-
 function useCytoscapeInitializer(
   containerRef: React.RefObject<HTMLDivElement | null>,
   cyRef: React.RefObject<Core | null>,
   selectNode: SelectCallback,
   selectEdge: SelectCallback,
   options?: CytoscapeInitOptions,
-  lifecycle?: CytoscapeLifecycle
+  lifecycle?: { onCyReady?: (cy: Core) => void; onCyDestroyed?: () => void }
 ) {
   const onCyReady = lifecycle?.onCyReady;
   const onCyDestroyed = lifecycle?.onCyDestroyed;
-  const onInitialLayoutPositions = lifecycle?.onInitialLayoutPositions;
 
   return useCallback((initialElements: CyElement[]) => {
     const container = containerRef.current;
     if (!container) return null;
-    ensureGridGuideRegistered();
 
     const rect = container.getBoundingClientRect();
     log.info(`[CytoscapeCanvas] Container size: ${rect.width}x${rect.height}`);
@@ -148,7 +137,7 @@ function useCytoscapeInitializer(
       getIsLocked: options?.getIsLocked
     });
 
-    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout, onInitialLayoutPositions));
+    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
 
     return () => {
       detachWheel();
@@ -166,8 +155,7 @@ function useCytoscapeInitializer(
     options?.getMode,
     options?.getIsLocked,
     onCyReady,
-    onCyDestroyed,
-    onInitialLayoutPositions
+    onCyDestroyed
   ]);
 }
 
@@ -236,7 +224,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
 	      selectNode,
 	      selectEdge,
 	      { editNode, editEdge, getMode, getIsLocked },
-	      { onCyReady, onCyDestroyed, onInitialLayoutPositions: updateNodePositions }
+	      { onCyReady, onCyDestroyed }
 	    );
 
     useDelayedCytoscapeInit(

@@ -4,7 +4,7 @@
  */
 import type React from 'react';
 import { useRef, useCallback, useEffect, useState } from 'react';
-import type { Core } from 'cytoscape';
+import type { Core, EventObject } from 'cytoscape';
 
 import type { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
 import { log } from '../utils/logger';
@@ -20,30 +20,11 @@ interface GridOverlayHandleType {
 }
 
 /**
- * Grid guide configuration options
- */
-interface GridGuideOptions {
-  drawGrid?: boolean;
-  gridSpacing?: number;
-  gridColor?: string;
-  lineWidth?: number;
-  snapToGridOnRelease?: boolean;
-  snapToGridDuringDrag?: boolean;
-  snapToAlignmentLocationOnRelease?: boolean;
-  snapToAlignmentLocationDuringDrag?: boolean;
-  snapToGridCenter?: boolean;
-  panGrid?: boolean;
-  zoomDash?: boolean;
-  guidelinesStackOrder?: number;
-}
-
-/**
  * Extend Cytoscape Core interface to include custom properties
  */
 declare module 'cytoscape' {
   interface Core {
     __reactGridOverlay?: GridOverlayHandleType;
-    gridGuide?: (options: GridGuideOptions) => void;
   }
 }
 
@@ -343,32 +324,45 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
   return handle;
 }
 
-function applyGridSettings(cy: Core | null, lineWidth: number, enableSnapping = true): void {
+/**
+ * Apply grid settings - sets up the custom grid overlay
+ */
+function applyGridSettings(cy: Core | null, lineWidth: number): void {
   if (!cy) return;
-  const overlayHandle = ensureGridOverlay(cy, lineWidth);
-  if (typeof cy.gridGuide !== 'function') {
-    log.warn('[GridGuide] gridGuide extension unavailable on Cytoscape instance');
-    return;
-  }
-  try {
-    cy.gridGuide({
-      drawGrid: false,
-      gridSpacing: GRID_SPACING,
-      gridColor: GRID_COLOR,
-      lineWidth,
-      snapToGridOnRelease: enableSnapping,
-      snapToGridDuringDrag: false,
-      snapToAlignmentLocationOnRelease: enableSnapping,
-      snapToAlignmentLocationDuringDrag: false,
-      snapToGridCenter: enableSnapping,
-      panGrid: true,
-      zoomDash: true,
-      guidelinesStackOrder: 4
-    });
-    overlayHandle?.setLineWidth(lineWidth);
-  } catch (err) {
-    log.warn(`[GridGuide] Failed to apply grid settings: ${err}`);
-  }
+  ensureGridOverlay(cy, lineWidth);
+}
+
+/**
+ * Snap a position to the nearest grid cell center.
+ * Grid lines are at 0, 14, 28, ... so cell centers are at 7, 21, 35, ...
+ */
+function snapToGrid(value: number): number {
+  const halfSpacing = GRID_SPACING / 2;
+  return Math.round((value - halfSpacing) / GRID_SPACING) * GRID_SPACING + halfSpacing;
+}
+
+/**
+ * Setup per-node snapping that ONLY affects the individual node being dragged.
+ * This is called once when cytoscape instance is available.
+ */
+function setupPerNodeSnapping(cy: Core): () => void {
+  const handleDragFree = (evt: EventObject) => {
+    const node = evt.target;
+    // Skip special nodes (groups, annotations)
+    const role = node.data('topoViewerRole') as string | undefined;
+    if (role === 'group' || role === 'freeText' || role === 'freeShape') return;
+
+    const pos = node.position();
+    const snappedX = snapToGrid(pos.x);
+    const snappedY = snapToGrid(pos.y);
+
+    if (snappedX !== pos.x || snappedY !== pos.y) {
+      node.position({ x: snappedX, y: snappedY });
+    }
+  };
+
+  cy.on('dragfree', 'node', handleDragFree);
+  return () => cy.off('dragfree', 'node', handleDragFree);
 }
 
 export function useLayoutControls(
@@ -386,28 +380,20 @@ export function useLayoutControls(
   const [layout, setLayoutState] = useState<LayoutOption>('preset');
   const [geoMode, setGeoModeState] = useState<'pan' | 'edit'>('pan');
   const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
-  const snappingEnabledRef = useRef(false);
 
   useEffect(() => {
     if (!cyInstance) return;
-    // Initially apply grid settings with snapping DISABLED to prevent
-    // nodes from snapping to grid on initial load (preset positions should be respected)
-    applyGridSettings(cyInstance, gridLineWidth, false);
-
-    // Enable snapping after a short delay to allow preset layout to settle
-    const timer = setTimeout(() => {
-      applyGridSettings(cyInstance, gridLineWidth, true);
-      snappingEnabledRef.current = true;
-    }, 300);
-
-    return () => clearTimeout(timer);
+    // Apply grid overlay settings
+    applyGridSettings(cyInstance, gridLineWidth);
+    // Setup per-node snapping (only affects the dragged node on release)
+    return setupPerNodeSnapping(cyInstance);
   }, [cyInstance, gridLineWidth]);
 
   const setGridLineWidth = useCallback((width: number) => {
     const clamped = clampLineWidth(width);
     setGridLineWidthState(clamped);
     storeGridLineWidth(clamped);
-    applyGridSettings(cyInstance, clamped, snappingEnabledRef.current);
+    applyGridSettings(cyInstance, clamped);
   }, [cyInstance]);
 
   const setGeoMode = useCallback((mode: 'pan' | 'edit') => {

@@ -6,7 +6,6 @@ export type { CytoscapeCanvasRef } from './CytoscapeCanvas';
 export { cytoscapeStyles, generateRoleStyles, ROLE_SVG_MAP } from './styles';
 export {
   ensureColaRegistered,
-  ensureGridGuideRegistered,
   hasPresetPositions,
   getLayoutOptions,
   createCytoscapeConfig,

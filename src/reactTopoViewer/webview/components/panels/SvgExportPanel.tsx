@@ -9,11 +9,16 @@ import { BasePanel } from '../shared/editor/BasePanel';
 import { log } from '../../utils/logger';
 import type { NodeType } from '../../utils/SvgGenerator';
 import { generateEncodedSVG } from '../../utils/SvgGenerator';
+import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import { compositeAnnotationsIntoSvg, addBackgroundRect } from '../../utils/annotationsToSvg';
 
-interface SvgExportPanelProps {
+export interface SvgExportPanelProps {
   isVisible: boolean;
   onClose: () => void;
   cy: CyCore | null;
+  textAnnotations?: FreeTextAnnotation[];
+  shapeAnnotations?: FreeShapeAnnotation[];
+  groups?: GroupStyleAnnotation[];
 }
 
 /** Extract attribute from image element attributes string */
@@ -85,12 +90,12 @@ function applyPadding(svgContent: string, padding: number): string {
 }
 
 /** Trigger file download */
-function downloadSvg(content: string): void {
+function downloadSvg(content: string, filename: string): void {
   const blob = new Blob([content], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'topology.svg';
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -110,11 +115,28 @@ async function ensureSvgExtension(cy: CyCore): Promise<boolean> {
   }
 }
 
-export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({ isVisible, onClose, cy }) => {
+type BackgroundColorOption = 'transparent' | 'white' | 'custom';
+
+export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
+  isVisible,
+  onClose,
+  cy,
+  textAnnotations = [],
+  shapeAnnotations = [],
+  groups = []
+}) => {
   const [borderZoom, setBorderZoom] = useState(100);
   const [borderPadding, setBorderPadding] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+
+  // New export options
+  const [includeAnnotations, setIncludeAnnotations] = useState(true);
+  const [backgroundColorOption, setBackgroundColorOption] = useState<BackgroundColorOption>('transparent');
+  const [customBackgroundColor, setCustomBackgroundColor] = useState('#ffffff');
+  const [filename, setFilename] = useState('topology');
+
+  const hasAnnotations = textAnnotations.length > 0 || shapeAnnotations.length > 0 || groups.length > 0;
 
   const handleExport = useCallback(async () => {
     if (!cy) {
@@ -138,20 +160,36 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({ isVisible, onClo
       const exported = cyWithSvg.svg({ scale, full: true });
       let svgContent = replacePngWithSvg(exported);
 
+      // Composite annotations if enabled
+      if (includeAnnotations && hasAnnotations) {
+        svgContent = compositeAnnotationsIntoSvg(
+          svgContent,
+          { groups, textAnnotations, shapeAnnotations },
+          scale
+        );
+      }
+
+      // Add background color if not transparent
+      if (backgroundColorOption !== 'transparent') {
+        const bgColor = backgroundColorOption === 'white' ? '#ffffff' : customBackgroundColor;
+        svgContent = addBackgroundRect(svgContent, bgColor);
+      }
+
       if (borderPadding > 0) {
         svgContent = applyPadding(svgContent, borderPadding);
       }
 
-      downloadSvg(svgContent);
+      const exportFilename = `${filename.trim() || 'topology'}.svg`;
+      downloadSvg(svgContent, exportFilename);
       setExportStatus('Export successful');
-      log.info('Topology exported as SVG');
+      log.info(`Topology exported as SVG: ${exportFilename}`);
     } catch (error) {
       log.error(`Error exporting topology: ${error}`);
       setExportStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
     }
-  }, [cy, borderZoom, borderPadding]);
+  }, [cy, borderZoom, borderPadding, includeAnnotations, hasAnnotations, groups, textAnnotations, shapeAnnotations, backgroundColorOption, customBackgroundColor, filename]);
 
   return (
     <BasePanel
@@ -159,12 +197,13 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({ isVisible, onClo
       isVisible={isVisible}
       onClose={onClose}
       initialPosition={{ x: window.innerWidth - 340, y: 72 }}
-      width={300}
+      width={320}
       storageKey="svgExport"
       zIndex={90}
       footer={false}
-      minWidth={250}
+      minWidth={280}
       minHeight={200}
+      testId="svg-export-panel"
     >
       <div className="space-y-3">
         <div>
@@ -173,11 +212,12 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({ isVisible, onClo
           </p>
         </div>
 
+        {/* Border Zoom */}
         <div className="flex items-center">
-          <label className="vscode-label w-32 text-right pr-3">Border Zoom (%)</label>
+          <label className="vscode-label w-28 text-right pr-3 text-sm">Zoom (%)</label>
           <input
             type="number"
-            className="input-field text-sm w-24"
+            className="input-field text-sm w-20"
             value={borderZoom}
             onChange={(e) => setBorderZoom(Math.max(10, Math.min(300, parseInt(e.target.value) || 100)))}
             min={10}
@@ -185,17 +225,72 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({ isVisible, onClo
           />
         </div>
 
+        {/* Border Padding */}
         <div className="flex items-center">
-          <label className="vscode-label w-32 text-right pr-3">Border Padding (px)</label>
+          <label className="vscode-label w-28 text-right pr-3 text-sm">Padding (px)</label>
           <input
             type="number"
-            className="input-field text-sm w-24"
+            className="input-field text-sm w-20"
             value={borderPadding}
             onChange={(e) => setBorderPadding(Math.max(0, parseInt(e.target.value) || 0))}
             min={0}
           />
         </div>
 
+        {/* Include Annotations */}
+        <div className="flex items-center">
+          <label className="vscode-label w-28 text-right pr-3 text-sm">Annotations</label>
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="form-checkbox mr-2"
+              checked={includeAnnotations}
+              onChange={(e) => setIncludeAnnotations(e.target.checked)}
+              disabled={!hasAnnotations}
+            />
+            <span className={`text-sm ${!hasAnnotations ? 'text-secondary' : ''}`}>
+              Include {hasAnnotations ? `(${groups.length + textAnnotations.length + shapeAnnotations.length})` : '(none)'}
+            </span>
+          </label>
+        </div>
+
+        {/* Background Color */}
+        <div className="flex items-center">
+          <label className="vscode-label w-28 text-right pr-3 text-sm">Background</label>
+          <select
+            className="input-field text-sm w-28"
+            value={backgroundColorOption}
+            onChange={(e) => setBackgroundColorOption(e.target.value as BackgroundColorOption)}
+          >
+            <option value="transparent">Transparent</option>
+            <option value="white">White</option>
+            <option value="custom">Custom</option>
+          </select>
+          {backgroundColorOption === 'custom' && (
+            <input
+              type="color"
+              className="ml-2 w-8 h-6 cursor-pointer border border-gray-400 rounded"
+              value={customBackgroundColor}
+              onChange={(e) => setCustomBackgroundColor(e.target.value)}
+              title="Choose background color"
+            />
+          )}
+        </div>
+
+        {/* Filename */}
+        <div className="flex items-center">
+          <label className="vscode-label w-28 text-right pr-3 text-sm">Filename</label>
+          <input
+            type="text"
+            className="input-field text-sm flex-1"
+            value={filename}
+            onChange={(e) => setFilename(e.target.value)}
+            placeholder="topology"
+          />
+          <span className="text-sm ml-1 text-secondary">.svg</span>
+        </div>
+
+        {/* Export Button */}
         <div className="flex justify-end gap-2 pt-2">
           <button
             type="button"
@@ -214,12 +309,14 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({ isVisible, onClo
           </button>
         </div>
 
+        {/* Status Message */}
         {exportStatus && (
           <div className={`text-sm ${exportStatus.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>
             {exportStatus}
           </div>
         )}
 
+        {/* Tips */}
         <div className="text-xs text-secondary mt-2">
           <p className="font-semibold mb-1">Tips:</p>
           <ul className="list-disc list-inside space-y-0.5">
