@@ -146,6 +146,54 @@ export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
 }
 
 /**
+ * Return type for useTextLayer hook
+ */
+export interface UseTextLayerReturn {
+  textLayerNode: HTMLElement | null;
+}
+
+/**
+ * Hook to create and manage a Cytoscape layer for text annotations.
+ * Uses cytoscape-layers to render text ABOVE nodes for visibility.
+ * The layer automatically applies Cytoscape's pan/zoom transform.
+ */
+export function useTextLayer(cy: CyCore | null): UseTextLayerReturn {
+  const layerRef = React.useRef<IHTMLLayer | null>(null);
+  const [textLayerNode, setTextLayerNode] = React.useState<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (!cy) return;
+
+    ensureCytoscapeLayersRegistered();
+
+    try {
+      const layers = getCytoscapeLayers(cy);
+      log.info('[TextLayer] Creating text layer above nodes');
+
+      // Create layer ABOVE all other layers (on top)
+      const textLayer = layers.append('html');
+      layerRef.current = textLayer;
+
+      // Configure the layer node - pointer events auto so text is interactive
+      configureLayerNode(textLayer.node, 'auto', 'text-layer-container');
+
+      log.info('[TextLayer] Text layer created');
+      setTextLayerNode(textLayer.node);
+    } catch (err) {
+      log.error(`[TextLayer] Failed to create layer: ${err}`);
+    }
+
+    return () => {
+      layerRef.current?.remove();
+      layerRef.current = null;
+      setTextLayerNode(null);
+    };
+  }, [cy]);
+
+  return { textLayerNode };
+}
+
+/**
  * E2E testing exposure configuration
  */
 export interface E2ETestingConfig {

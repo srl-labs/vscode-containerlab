@@ -1,5 +1,6 @@
-import { test, expect } from '../fixtures/topoviewer';
 import type { Page } from '@playwright/test';
+
+import { test, expect } from '../fixtures/topoviewer';
 
 // Constants for topology files
 const DATACENTER_TOPOLOGY = 'datacenter.clab.yml';

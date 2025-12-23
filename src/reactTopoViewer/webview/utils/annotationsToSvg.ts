@@ -12,6 +12,7 @@ import {
   DEFAULT_ARROW_SIZE,
   DEFAULT_LINE_LENGTH
 } from '../hooks/annotations/freeShape';
+import { applyAlphaToColor } from '../components/annotations/shared/colorUtils';
 
 import { renderMarkdown } from './markdownRenderer';
 
@@ -26,22 +27,6 @@ const ANNOTATION_GROUPS_LAYER = 'annotation-groups-layer';
 const ANNOTATION_SHAPES_LAYER = 'annotation-shapes-layer';
 const ANNOTATION_TEXT_LAYER = 'annotation-text-layer';
 const DEFAULT_FONT_FAMILY = 'sans-serif';
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function applyAlphaToColor(color: string, alpha: number): string {
-  const normalizedAlpha = Math.min(1, Math.max(0, alpha));
-  const hexMatch = /^#([0-9a-f]{6})$/i.exec(color);
-  if (hexMatch) {
-    const r = parseInt(hexMatch[1].slice(0, 2), 16);
-    const g = parseInt(hexMatch[1].slice(2, 4), 16);
-    const b = parseInt(hexMatch[1].slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${normalizedAlpha})`;
-  }
-  return color;
-}
 
 function escapeXml(str: string): string {
   return str

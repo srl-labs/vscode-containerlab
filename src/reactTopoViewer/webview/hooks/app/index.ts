@@ -36,11 +36,13 @@ export {
   useCustomNodeCommands,
   useNavbarCommands,
   useShapeLayer,
+  useTextLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
   type CustomNodeCommands,
   type NavbarCommands,
   type UseShapeLayerReturn,
+  type UseTextLayerReturn,
   type E2ETestingConfig,
   type GeoCoordinateSyncConfig
 } from './useAppHelpers';

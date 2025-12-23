@@ -29,6 +29,7 @@ export {
   useCustomNodeCommands,
   useNavbarCommands,
   useShapeLayer,
+  useTextLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
   useAnnotationLayerProps,

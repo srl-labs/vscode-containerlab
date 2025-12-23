@@ -101,6 +101,7 @@ export interface AnnotationLayerPropsConfig {
   };
   mapLibreState: MapLibreState | null;
   shapeLayerNode: HTMLElement | null;
+  textLayerNode: HTMLElement | null;
 }
 
 /**
@@ -118,7 +119,7 @@ export interface AnnotationLayerPropsReturn {
  * Consolidates 3 large useMemo blocks (~100 lines) into a single hook call.
  */
 export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): AnnotationLayerPropsReturn {
-  const { cyInstance, annotations, state, layoutControls, mapLibreState, shapeLayerNode } = config;
+  const { cyInstance, annotations, state, layoutControls, mapLibreState, shapeLayerNode, textLayerNode } = config;
 
   // Helper callbacks for updating group IDs
   const updateTextGroupId = React.useCallback(
@@ -167,6 +168,7 @@ export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): Ann
     isLocked: state.isLocked,
     isAddTextMode: annotations.isAddTextMode,
     mode: state.mode,
+    textLayerNode,
     onAnnotationDoubleClick: annotations.editTextAnnotation,
     onAnnotationDelete: annotations.deleteTextAnnotation,
     onPositionChange: annotations.updateTextPosition,
@@ -185,7 +187,7 @@ export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): Ann
     onUpdateGroupId: updateTextGroupId
   }), [
     cyInstance, annotations.textAnnotations, state.isLocked, annotations.isAddTextMode,
-    state.mode, annotations.editTextAnnotation, annotations.deleteTextAnnotation,
+    state.mode, textLayerNode, annotations.editTextAnnotation, annotations.deleteTextAnnotation,
     annotations.updateTextPosition, annotations.updateTextRotation, annotations.updateTextSize,
     annotations.handleTextCanvasClick, annotations.selectedTextIds, annotations.selectTextAnnotation,
     annotations.toggleTextAnnotationSelection, annotations.boxSelectTextAnnotations,

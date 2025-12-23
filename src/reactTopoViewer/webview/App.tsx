@@ -35,7 +35,7 @@ import {
   useContextMenu, useFloatingPanelCommands,
   usePanelVisibility, useShortcutDisplay, useAppHandlers,
   // App helper hooks
-  useCustomNodeCommands, useNavbarCommands, useShapeLayer, useE2ETestingExposure, useGeoCoordinateSync,
+  useCustomNodeCommands, useNavbarCommands, useShapeLayer, useTextLayer, useE2ETestingExposure, useGeoCoordinateSync,
   // NEW: Composed hooks
   useAnnotationLayerProps, useClipboardHandlers, useAppKeyboardShortcuts, useGraphCreation,
   // Types
@@ -54,7 +54,8 @@ const AppContent: React.FC<{
   layoutControls: ReturnType<typeof useLayoutControls>;
   mapLibreState: ReturnType<typeof useGeoMap>['mapLibreState'];
   shapeLayerNode: HTMLElement | null;
-}> = ({ floatingPanelRef, pendingMembershipChangesRef, cytoscapeRef, cyInstance, onCyReady, onCyDestroyed, layoutControls, mapLibreState, shapeLayerNode }) => {
+  textLayerNode: HTMLElement | null;
+}> = ({ floatingPanelRef, pendingMembershipChangesRef, cytoscapeRef, cyInstance, onCyReady, onCyDestroyed, layoutControls, mapLibreState, shapeLayerNode, textLayerNode }) => {
   const { state, dispatch } = useTopoViewerState();
   const {
     selectNode,
@@ -272,7 +273,8 @@ const AppContent: React.FC<{
       geoMode: layoutControls.geoMode
     },
     mapLibreState,
-    shapeLayerNode
+    shapeLayerNode,
+    textLayerNode
   });
 
   return (
@@ -362,6 +364,7 @@ export const App: React.FC = () => {
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
   const { shapeLayerNode } = useShapeLayer(cyInstance);
+  const { textLayerNode } = useTextLayer(cyInstance);
   const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
   const { mapLibreState } = useGeoMap({
     cyInstance,
@@ -388,6 +391,7 @@ export const App: React.FC = () => {
           layoutControls={layoutControls}
           mapLibreState={mapLibreState}
           shapeLayerNode={shapeLayerNode}
+          textLayerNode={textLayerNode}
         />
       </AnnotationProvider>
     </UndoRedoProvider>
