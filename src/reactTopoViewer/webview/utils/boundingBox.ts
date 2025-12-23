@@ -42,30 +42,34 @@ function estimateTextDimensions(annotation: FreeTextAnnotation): { width: number
 
 /**
  * Get bounding box for a text annotation.
- * Position is treated as top-left corner.
+ * Text position is the CENTER of the annotation (same as canvas rendering).
  */
 export function getTextAnnotationBounds(annotation: FreeTextAnnotation): BoundingBox {
   const { x, y } = annotation.position;
   const width = annotation.width ?? estimateTextDimensions(annotation).width;
   const height = annotation.height ?? estimateTextDimensions(annotation).height;
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
 
   return {
-    x1: x,
-    y1: y,
-    x2: x + width,
-    y2: y + height
+    x1: x - halfWidth,
+    y1: y - halfHeight,
+    x2: x + halfWidth,
+    y2: y + halfHeight
   };
 }
 
 /**
  * Get bounding box for a shape annotation.
  * Handles rectangles, circles, and lines differently.
+ * Rectangles and circles: position is the CENTER (same as canvas rendering).
+ * Lines: position and endPosition are the actual start/end points.
  */
 export function getShapeAnnotationBounds(annotation: FreeShapeAnnotation): BoundingBox {
   const { x, y } = annotation.position;
 
   if (annotation.shapeType === 'line') {
-    // Lines have start position and end position
+    // Lines have start position and end position (not center-based)
     const endX = annotation.endPosition?.x ?? x;
     const endY = annotation.endPosition?.y ?? y;
     return {
@@ -76,14 +80,16 @@ export function getShapeAnnotationBounds(annotation: FreeShapeAnnotation): Bound
     };
   }
 
-  // Rectangles and circles: position is top-left corner
+  // Rectangles and circles: position is CENTER
   const width = annotation.width ?? 100;
   const height = annotation.height ?? 100;
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
   return {
-    x1: x,
-    y1: y,
-    x2: x + width,
-    y2: y + height
+    x1: x - halfWidth,
+    y1: y - halfHeight,
+    x2: x + halfWidth,
+    y2: y + halfHeight
   };
 }
 

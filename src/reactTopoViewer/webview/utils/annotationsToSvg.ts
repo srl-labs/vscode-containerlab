@@ -90,44 +90,125 @@ function buildStrokeAttrs(style: ShapeStyle): string {
 // Group to SVG
 // ============================================================================
 
+interface LabelPosition {
+  x: number;
+  y: number;
+  textAnchor: string;
+}
+
+interface GroupRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Calculate label position based on labelPosition property.
+ */
+function calculateLabelPosition(
+  rect: GroupRect,
+  labelPosition: string,
+  labelFontSize: number,
+  labelPadding: number
+): LabelPosition {
+  const { x, y, width, height } = rect;
+
+  const positions: Record<string, LabelPosition> = {
+    'top-center': { x: x + width / 2, y: y - labelPadding, textAnchor: 'middle' },
+    'top-right': { x: x + width - labelPadding, y: y - labelPadding, textAnchor: 'end' },
+    'bottom-left': { x: x + labelPadding, y: y + height + labelFontSize + labelPadding, textAnchor: 'start' },
+    'bottom-center': { x: x + width / 2, y: y + height + labelFontSize + labelPadding, textAnchor: 'middle' },
+    'bottom-right': { x: x + width - labelPadding, y: y + height + labelFontSize + labelPadding, textAnchor: 'end' },
+    'top-left': { x: x + labelPadding, y: y - labelPadding, textAnchor: 'start' }
+  };
+
+  return positions[labelPosition] ?? positions['top-left'];
+}
+
+/**
+ * Calculate label background X position based on text anchor.
+ */
+function calculateLabelBgX(labelX: number, textAnchor: string, labelWidth: number, bgPadding: number): number {
+  if (textAnchor === 'middle') return labelX - labelWidth / 2;
+  if (textAnchor === 'end') return labelX - labelWidth;
+  return labelX - bgPadding;
+}
+
+/**
+ * Build SVG for group label with background.
+ */
+function buildGroupLabelSvg(
+  name: string,
+  labelPos: LabelPosition,
+  labelColor: string,
+  labelFontSize: number,
+  labelPadding: number,
+  labelBgPadding: number,
+  scale: number
+): string {
+  const estimatedLabelWidth = name.length * labelFontSize * 0.6 + labelBgPadding * 2;
+  const labelBgHeight = labelFontSize + labelPadding * 2;
+  const bgX = calculateLabelBgX(labelPos.x, labelPos.textAnchor, estimatedLabelWidth, labelBgPadding);
+  const bgY = labelPos.y - labelFontSize - labelPadding / 2;
+
+  let svg = `<rect x="${bgX}" y="${bgY}" width="${estimatedLabelWidth}" height="${labelBgHeight}" `;
+  svg += `fill="rgba(0,0,0,0.4)" rx="${2 * scale}" ry="${2 * scale}" />`;
+  svg += `<text x="${labelPos.x}" y="${labelPos.y}" `;
+  svg += `fill="${labelColor}" font-size="${labelFontSize}" font-weight="500" `;
+  svg += `font-family="${DEFAULT_FONT_FAMILY}" text-anchor="${labelPos.textAnchor}">`;
+  svg += escapeXml(name);
+  svg += `</text>`;
+
+  return svg;
+}
+
 /**
  * Convert a GroupStyleAnnotation to an SVG string.
  * Groups are rendered as rectangles with optional label.
+ * NOTE: Group position represents the CENTER of the group (same as canvas rendering).
  */
 export function groupToSvgString(group: GroupStyleAnnotation, scale: number): string {
-  const x = group.position.x * scale;
-  const y = group.position.y * scale;
   const width = group.width * scale;
   const height = group.height * scale;
+  const x = (group.position.x - group.width / 2) * scale;
+  const y = (group.position.y - group.height / 2) * scale;
 
-  const bgColor = group.backgroundColor ?? 'transparent';
-  const bgOpacity = group.backgroundOpacity ?? 0.1;
+  const bgColor = group.backgroundColor ?? '#d9d9d9';
+  const bgOpacity = (group.backgroundOpacity ?? 20) / 100;
   const fillColor = bgColor === 'transparent' ? 'none' : applyAlphaToColor(bgColor, bgOpacity);
 
-  const borderColor = group.borderColor ?? '#666666';
-  const borderWidth = (group.borderWidth ?? 1) * scale;
+  const borderColor = group.borderColor ?? '#dddddd';
+  const borderWidth = (group.borderWidth ?? 0.5) * scale;
   const borderRadius = (group.borderRadius ?? 0) * scale;
   const dashArray = getGroupBorderDashArray(group.borderStyle);
 
-  const labelColor = group.labelColor ?? '#333333';
-  const labelFontSize = 12 * scale;
-  const labelY = y + labelFontSize + 4 * scale;
-
   let svg = `<g class="annotation-group" data-id="${escapeXml(group.id)}">`;
-
-  // Background rectangle
   svg += `<rect x="${x}" y="${y}" width="${width}" height="${height}" `;
   svg += `fill="${fillColor}" stroke="${borderColor}" stroke-width="${borderWidth}" `;
   if (borderRadius > 0) svg += `rx="${borderRadius}" ry="${borderRadius}" `;
   if (dashArray) svg += `stroke-dasharray="${dashArray}" `;
   svg += `/>`;
 
-  // Label
   if (group.name) {
-    svg += `<text x="${x + 8 * scale}" y="${labelY}" `;
-    svg += `fill="${labelColor}" font-size="${labelFontSize}" font-family="${DEFAULT_FONT_FAMILY}">`;
-    svg += escapeXml(group.name);
-    svg += `</text>`;
+    const labelFontSize = 9 * scale;
+    const labelPadding = 2 * scale;
+    const labelBgPadding = 6 * scale;
+    const labelPos = calculateLabelPosition(
+      { x, y, width, height },
+      group.labelPosition ?? 'top-left',
+      labelFontSize,
+      labelPadding
+    );
+    svg += buildGroupLabelSvg(
+      group.name,
+      labelPos,
+      group.labelColor ?? '#ebecf0',
+      labelFontSize,
+      labelPadding,
+      labelBgPadding,
+      scale
+    );
   }
 
   svg += `</g>`;
@@ -152,12 +233,17 @@ function buildRectangleSvg(shape: FreeShapeAnnotation, scale: number): string {
   const style = getShapeStyle(shape, scale);
   const width = (shape.width ?? 50) * scale;
   const height = (shape.height ?? 50) * scale;
-  const x = shape.position.x * scale;
-  const y = shape.position.y * scale;
+  // Shape position is CENTER-based on canvas (uses translate(-50%, -50%))
+  // Convert to top-left corner for SVG
+  const unscaledWidth = shape.width ?? 50;
+  const unscaledHeight = shape.height ?? 50;
+  const x = (shape.position.x - unscaledWidth / 2) * scale;
+  const y = (shape.position.y - unscaledHeight / 2) * scale;
   const cornerRadius = (shape.cornerRadius ?? 0) * scale;
   const rotation = shape.rotation ?? 0;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
+  // Center point for rotation
+  const cx = shape.position.x * scale;
+  const cy = shape.position.y * scale;
 
   let svg = `<g class="annotation-shape" data-id="${escapeXml(shape.id)}"`;
   if (rotation !== 0) svg += ` transform="rotate(${rotation}, ${cx}, ${cy})"`;
@@ -171,8 +257,10 @@ function buildCircleSvg(shape: FreeShapeAnnotation, scale: number): string {
   const style = getShapeStyle(shape, scale);
   const width = (shape.width ?? 50) * scale;
   const height = (shape.height ?? 50) * scale;
-  const cx = shape.position.x * scale + width / 2;
-  const cy = shape.position.y * scale + height / 2;
+  // Shape position is CENTER-based on canvas (uses translate(-50%, -50%))
+  // For ellipse, cx/cy are the center coordinates, which is exactly the position
+  const cx = shape.position.x * scale;
+  const cy = shape.position.y * scale;
   const rx = width / 2;
   const ry = height / 2;
   const rotation = shape.rotation ?? 0;
@@ -323,18 +411,16 @@ function estimateTextDimensions(
 /**
  * Convert a FreeTextAnnotation to an SVG string using foreignObject.
  * This preserves markdown rendering and styling.
+ * NOTE: Text position represents the CENTER of the annotation (same as canvas rendering).
  */
 export function textToSvgString(text: FreeTextAnnotation, scale: number): string {
-  const x = text.position.x * scale;
-  const y = text.position.y * scale;
-
   // Use explicit dimensions if provided, otherwise estimate from content
-  let width: number;
-  let height: number;
+  let unscaledWidth: number;
+  let unscaledHeight: number;
 
   if (text.width !== undefined && text.height !== undefined) {
-    width = text.width * scale;
-    height = text.height * scale;
+    unscaledWidth = text.width;
+    unscaledHeight = text.height;
   } else {
     const estimated = estimateTextDimensions(
       text.text || '',
@@ -342,13 +428,22 @@ export function textToSvgString(text: FreeTextAnnotation, scale: number): string
       text.fontFamily ?? DEFAULT_FONT_FAMILY,
       text.fontWeight ?? 'normal'
     );
-    width = (text.width ?? estimated.width) * scale;
-    height = (text.height ?? estimated.height) * scale;
+    unscaledWidth = text.width ?? estimated.width;
+    unscaledHeight = text.height ?? estimated.height;
   }
 
+  const width = unscaledWidth * scale;
+  const height = unscaledHeight * scale;
+
+  // Text position is CENTER-based on canvas (uses translate(-50%, -50%))
+  // Convert to top-left corner for SVG foreignObject
+  const x = (text.position.x - unscaledWidth / 2) * scale;
+  const y = (text.position.y - unscaledHeight / 2) * scale;
+
   const rotation = text.rotation ?? 0;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
+  // Center point for rotation (the original position)
+  const cx = text.position.x * scale;
+  const cy = text.position.y * scale;
 
   const style = getTextStyle(text, scale);
   const styleStr = buildTextStyleString(style);
@@ -450,69 +545,82 @@ interface BoundingBox {
   maxY: number;
 }
 
+/** Merge a rect (x1,y1,x2,y2) into bounds */
+function mergeBounds(bounds: BoundingBox, x1: number, y1: number, x2: number, y2: number): void {
+  bounds.minX = Math.min(bounds.minX, x1);
+  bounds.minY = Math.min(bounds.minY, y1);
+  bounds.maxX = Math.max(bounds.maxX, x2);
+  bounds.maxY = Math.max(bounds.maxY, y2);
+}
+
+/** Calculate bounds for a center-based rect */
+function getCenterBasedBounds(cx: number, cy: number, w: number, h: number, scale: number) {
+  const halfW = w / 2;
+  const halfH = h / 2;
+  return {
+    x1: (cx - halfW) * scale,
+    y1: (cy - halfH) * scale,
+    x2: (cx + halfW) * scale,
+    y2: (cy + halfH) * scale
+  };
+}
+
+function addGroupBounds(bounds: BoundingBox, groups: GroupStyleAnnotation[], scale: number): void {
+  for (const group of groups) {
+    const b = getCenterBasedBounds(group.position.x, group.position.y, group.width, group.height, scale);
+    mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
+  }
+}
+
+function addShapeBounds(bounds: BoundingBox, shapes: FreeShapeAnnotation[], scale: number): void {
+  for (const shape of shapes) {
+    if (shape.shapeType === 'line') {
+      const x1 = shape.position.x * scale;
+      const y1 = shape.position.y * scale;
+      const x2 = (shape.endPosition?.x ?? shape.position.x) * scale;
+      const y2 = (shape.endPosition?.y ?? shape.position.y) * scale;
+      mergeBounds(bounds, Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2));
+    } else {
+      const b = getCenterBasedBounds(
+        shape.position.x, shape.position.y,
+        shape.width ?? 50, shape.height ?? 50,
+        scale
+      );
+      mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
+    }
+  }
+}
+
+function getTextDimensions(text: FreeTextAnnotation): { w: number; h: number } {
+  if (text.width !== undefined && text.height !== undefined) {
+    return { w: text.width, h: text.height };
+  }
+  const estimated = estimateTextDimensions(
+    text.text || '',
+    text.fontSize ?? 14,
+    text.fontFamily ?? 'sans-serif',
+    text.fontWeight ?? 'normal'
+  );
+  return { w: text.width ?? estimated.width, h: text.height ?? estimated.height };
+}
+
+function addTextBounds(bounds: BoundingBox, texts: FreeTextAnnotation[], scale: number): void {
+  for (const text of texts) {
+    const { w, h } = getTextDimensions(text);
+    const b = getCenterBasedBounds(text.position.x, text.position.y, w, h, scale);
+    mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
+  }
+}
+
 /**
  * Calculate bounding box for all annotations (in scaled coordinates).
+ * NOTE: All annotation positions are CENTER-based on canvas.
  */
 function calculateAnnotationsBounds(annotations: AnnotationData, scale: number): BoundingBox {
-  const bounds: BoundingBox = {
-    minX: Infinity,
-    minY: Infinity,
-    maxX: -Infinity,
-    maxY: -Infinity
-  };
-
-  // Groups
-  for (const group of annotations.groups) {
-    const x = group.position.x * scale;
-    const y = group.position.y * scale;
-    const w = group.width * scale;
-    const h = group.height * scale;
-    bounds.minX = Math.min(bounds.minX, x);
-    bounds.minY = Math.min(bounds.minY, y);
-    bounds.maxX = Math.max(bounds.maxX, x + w);
-    bounds.maxY = Math.max(bounds.maxY, y + h);
-  }
-
-  // Shapes
-  for (const shape of annotations.shapeAnnotations) {
-    const x = shape.position.x * scale;
-    const y = shape.position.y * scale;
-    const w = (shape.width ?? 50) * scale;
-    const h = (shape.height ?? 50) * scale;
-    bounds.minX = Math.min(bounds.minX, x);
-    bounds.minY = Math.min(bounds.minY, y);
-    bounds.maxX = Math.max(bounds.maxX, x + w);
-    bounds.maxY = Math.max(bounds.maxY, y + h);
-  }
-
-  // Text annotations
-  for (const text of annotations.textAnnotations) {
-    const x = text.position.x * scale;
-    const y = text.position.y * scale;
-
-    // Use explicit dimensions if provided, otherwise estimate
-    let w: number;
-    let h: number;
-    if (text.width !== undefined && text.height !== undefined) {
-      w = text.width * scale;
-      h = text.height * scale;
-    } else {
-      const estimated = estimateTextDimensions(
-        text.text || '',
-        text.fontSize ?? 14,
-        text.fontFamily ?? 'sans-serif',
-        text.fontWeight ?? 'normal'
-      );
-      w = (text.width ?? estimated.width) * scale;
-      h = (text.height ?? estimated.height) * scale;
-    }
-
-    bounds.minX = Math.min(bounds.minX, x);
-    bounds.minY = Math.min(bounds.minY, y);
-    bounds.maxX = Math.max(bounds.maxX, x + w);
-    bounds.maxY = Math.max(bounds.maxY, y + h);
-  }
-
+  const bounds: BoundingBox = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  addGroupBounds(bounds, annotations.groups, scale);
+  addShapeBounds(bounds, annotations.shapeAnnotations, scale);
+  addTextBounds(bounds, annotations.textAnnotations, scale);
   return bounds;
 }
 
