@@ -95,7 +95,11 @@ const AppContent: React.FC<{
   const editingLinkData = React.useMemo(() => convertToLinkEditorData(editingLinkRawData), [editingLinkRawData]);
 
   // Navbar and menu handlers
-  const { handleZoomToFit } = useNavbarActions(cytoscapeRef);
+  const { handleZoomToFit } = useNavbarActions(cytoscapeRef, {
+    textAnnotations: annotations.textAnnotations,
+    shapeAnnotations: annotations.shapeAnnotations,
+    groups: annotations.groups
+  });
   const navbarCommands = useNavbarCommands();
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, editNetwork, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();

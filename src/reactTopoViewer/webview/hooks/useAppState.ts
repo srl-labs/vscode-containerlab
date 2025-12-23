@@ -10,6 +10,12 @@ import type { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
 import { log } from '../utils/logger';
 import { deleteNode, deleteLink } from '../services';
 import type { CyEdgeData } from '../utils/cytoscapeHelpers';
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation
+} from '../../shared/types/topology';
+import { fitViewportToAll } from '../utils/fitViewport';
 
 /**
  * Grid overlay handle interface for managing custom grid canvas
@@ -127,13 +133,42 @@ export function useSelectionData(
 }
 
 /**
+ * Annotation data for fit-to-viewport calculations
+ */
+export interface AnnotationData {
+  textAnnotations: FreeTextAnnotation[];
+  shapeAnnotations: FreeShapeAnnotation[];
+  groups: GroupStyleAnnotation[];
+}
+
+/**
  * Hook for navbar actions
  */
-export function useNavbarActions(cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>): {
+export function useNavbarActions(
+  cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
+  annotations?: AnnotationData
+): {
   handleZoomToFit: () => void;
   handleToggleLayout: () => void;
 } {
-  const handleZoomToFit = useCallback(() => cytoscapeRef.current?.fit(), [cytoscapeRef]);
+  const handleZoomToFit = useCallback(() => {
+    const cy = cytoscapeRef.current?.getCy();
+    if (!cy) return;
+
+    // Use custom fit that includes annotations
+    if (annotations) {
+      fitViewportToAll(
+        cy,
+        annotations.textAnnotations,
+        annotations.shapeAnnotations,
+        annotations.groups
+      );
+    } else {
+      // Fallback to native fit if no annotations provided
+      cy.fit(undefined, 50);
+    }
+  }, [cytoscapeRef, annotations]);
+
   const handleToggleLayout = useCallback(() => cytoscapeRef.current?.runLayout('cose'), [cytoscapeRef]);
   return { handleZoomToFit, handleToggleLayout };
 }
