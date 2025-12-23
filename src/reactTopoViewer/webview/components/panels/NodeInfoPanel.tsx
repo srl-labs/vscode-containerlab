@@ -6,7 +6,7 @@ import React from 'react';
 
 import type { NodeData } from '../../hooks/useAppState';
 
-import { FloatingPanel, PropertyRow } from './FloatingPanel';
+import { FloatingPanel, PropertyRow } from './InfoFloatingPanel';
 
 interface NodeInfoPanelProps {
   isVisible: boolean;

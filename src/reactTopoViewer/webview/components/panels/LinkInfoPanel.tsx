@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import type { LinkData } from '../../hooks/useAppState';
 import type { InterfaceStatsPayload } from '../../../shared/types/topology';
 
-import { FloatingPanel, PropertyRow } from './FloatingPanel';
+import { FloatingPanel, PropertyRow } from './InfoFloatingPanel';
 import { TrafficChart } from './TrafficChart';
 
 interface EndpointData {
