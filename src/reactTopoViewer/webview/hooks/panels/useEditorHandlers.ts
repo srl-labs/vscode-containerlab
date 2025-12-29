@@ -18,6 +18,7 @@ import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversio
 import { editNode as editNodeService, editLink as editLinkService, isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 import { ROLE_SVG_MAP } from '../../components/canvas/styles';
+import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
 
 /** Pending membership change during node drag */
 export interface PendingMembershipChange {
@@ -56,27 +57,6 @@ type RenameNodeCallback = (oldId: string, newId: string) => void;
 // Shared Helper Functions
 // ============================================================================
 
-/** Default icon color used when no custom color is set */
-const DEFAULT_ICON_COLOR = '#005aff';
-
-/**
- * Common style properties for custom icon nodes.
- * Custom icons need these layout properties to render correctly.
- * Uses 'contain' to scale the full icon, and transparent background.
- * Matches legacy topoViewer behavior.
- */
-const CUSTOM_ICON_STYLES = {
-  width: '14',
-  height: '14',
-  'background-fit': 'contain',
-  'background-position-x': '50%',
-  'background-position-y': '50%',
-  'background-repeat': 'no-repeat',
-  'background-color': 'rgba(0, 0, 0, 0)',
-  'background-opacity': 0,
-  // Note: background-clip is set dynamically based on corner radius
-} as const;
-
 /**
  * Update Cytoscape node data after editor changes
  * @param customIcons - Custom icons for checking if the icon is a custom icon
@@ -112,20 +92,7 @@ function updateCytoscapeNodeData(
   const role = data.icon || 'default';
   const customIcon = customIcons?.find(ci => ci.name === role);
   if (customIcon) {
-    // Custom icons render as-is (no color tinting)
-    // Apply layout styles that built-in roles get from stylesheet selectors
-    node.style('background-image', customIcon.dataUri);
-    node.style('width', CUSTOM_ICON_STYLES.width);
-    node.style('height', CUSTOM_ICON_STYLES.height);
-    node.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
-    node.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
-    node.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
-    node.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
-    node.style('background-color', CUSTOM_ICON_STYLES['background-color']);
-    node.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
-    // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
-    const hasCornerRadius = data.iconCornerRadius !== undefined && data.iconCornerRadius > 0;
-    node.style('background-clip', hasCornerRadius ? 'node' : 'none');
+    applyCustomIconStyles(node, customIcon.dataUri, data.iconCornerRadius);
   } else {
     // Built-in icon with optional color
     const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;

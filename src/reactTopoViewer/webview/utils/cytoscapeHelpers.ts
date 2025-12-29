@@ -79,3 +79,62 @@ export function getEdgeSource(el: CyElement): string | undefined {
 export function getEdgeTarget(el: CyElement): string | undefined {
   return (el.data as { target?: string }).target;
 }
+
+/**
+ * Default icon color for built-in icons
+ */
+export const DEFAULT_ICON_COLOR = '#005aff';
+
+/**
+ * Common style properties for custom icon nodes.
+ * Custom icons need these layout properties to render correctly.
+ * Uses 'contain' to scale the full icon, and transparent background.
+ * Matches legacy topoViewer behavior.
+ */
+export const CUSTOM_ICON_STYLES = {
+  width: '14',
+  height: '14',
+  'background-fit': 'contain',
+  'background-position-x': '50%',
+  'background-position-y': '50%',
+  'background-repeat': 'no-repeat',
+  'background-color': 'rgba(0, 0, 0, 0)',
+  'background-opacity': 0,
+  // Note: background-clip is set dynamically based on corner radius
+} as const;
+
+/**
+ * Interface for a Cytoscape node with .style() method
+ */
+interface CyNodeWithStyle {
+  style(property: string, value: string | number): void;
+}
+
+/**
+ * Apply custom icon styles to a Cytoscape node.
+ * This sets all the required styles for custom icons to render correctly.
+ *
+ * @param node - The Cytoscape node instance
+ * @param dataUri - The data URI of the custom icon
+ * @param iconCornerRadius - Optional corner radius for clipping
+ */
+export function applyCustomIconStyles(
+  node: CyNodeWithStyle,
+  dataUri: string,
+  iconCornerRadius?: number
+): void {
+  // Custom icons render as-is (no color tinting)
+  // Apply layout styles that built-in roles get from stylesheet selectors
+  node.style('background-image', dataUri);
+  node.style('width', CUSTOM_ICON_STYLES.width);
+  node.style('height', CUSTOM_ICON_STYLES.height);
+  node.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
+  node.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
+  node.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
+  node.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
+  node.style('background-color', CUSTOM_ICON_STYLES['background-color']);
+  node.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
+  // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
+  const clipMode = (iconCornerRadius !== undefined && iconCornerRadius > 0) ? 'node' : 'none';
+  node.style('background-clip', clipMode);
+}

@@ -9,6 +9,7 @@ import type { CyElement } from '../../../shared/types/messages';
 import type { CustomIconInfo } from '../../../shared/types/icons';
 import { log } from '../../utils/logger';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
+import { applyCustomIconStyles } from '../../utils/cytoscapeHelpers';
 
 import { cytoscapeStyles, ROLE_SVG_MAP } from './styles';
 
@@ -152,24 +153,6 @@ export function collectNodePositions(cy: Core): NodePositions {
 }
 
 /**
- * Common style properties for custom icon nodes.
- * Custom icons need these layout properties to render correctly.
- * Uses 'contain' to scale the full icon, and transparent background.
- * Matches legacy topoViewer behavior.
- */
-const CUSTOM_ICON_STYLES = {
-  width: '14',
-  height: '14',
-  'background-fit': 'contain',
-  'background-position-x': '50%',
-  'background-position-y': '50%',
-  'background-repeat': 'no-repeat',
-  'background-color': 'rgba(0, 0, 0, 0)',
-  'background-opacity': 0,
-  // Note: background-clip is set dynamically based on corner radius
-} as const;
-
-/**
  * Apply custom iconColor, iconCornerRadius, and custom icons to all nodes.
  * Cytoscape stylesheets are static, so we must update the style directly for each node.
  * Note: iconColor and iconCornerRadius are stored at the top level of node data (not in extraData).
@@ -195,20 +178,7 @@ export function applyNodeIconColors(cy: Core, customIcons?: CustomIconInfo[]): v
     // Check if this is a custom icon
     const customIconDataUri = customIconMap.get(role);
     if (customIconDataUri) {
-      // Custom icons render as-is (no color tinting)
-      // Apply layout styles that built-in roles get from stylesheet selectors
-      node.style('background-image', customIconDataUri);
-      node.style('width', CUSTOM_ICON_STYLES.width);
-      node.style('height', CUSTOM_ICON_STYLES.height);
-      node.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
-      node.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
-      node.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
-      node.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
-      node.style('background-color', CUSTOM_ICON_STYLES['background-color']);
-      node.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
-      // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
-      const clipMode = (iconCornerRadius !== undefined && iconCornerRadius > 0) ? 'node' : 'none';
-      node.style('background-clip', clipMode);
+      applyCustomIconStyles(node, customIconDataUri, iconCornerRadius);
     } else {
       // Built-in icon with optional color
       const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;

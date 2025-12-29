@@ -19,6 +19,7 @@ import type { NodePositions } from '../../components/canvas/init';
 import { log } from '../../utils/logger';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 import { ROLE_SVG_MAP } from '../../components/canvas/styles';
+import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
 
 export { collectNodePositions };
 export type { NodePositions };
@@ -221,27 +222,6 @@ function findReactExtraData(
   return (reactEl.data as Record<string, unknown>).extraData as Record<string, unknown> | undefined;
 }
 
-/** Default icon color used when no custom color is set */
-const DEFAULT_ICON_COLOR = '#005aff';
-
-/**
- * Common style properties for custom icon nodes.
- * Custom icons need these layout properties to render correctly.
- * Uses 'contain' to scale the full icon, and transparent background.
- * Matches legacy topoViewer behavior.
- */
-const CUSTOM_ICON_STYLES = {
-  width: '14',
-  height: '14',
-  'background-fit': 'contain',
-  'background-position-x': '50%',
-  'background-position-y': '50%',
-  'background-repeat': 'no-repeat',
-  'background-color': 'rgba(0, 0, 0, 0)',
-  'background-opacity': 0,
-  // Note: background-clip is set dynamically based on corner radius
-} as const;
-
 /**
  * Find a React element by group and ID and return its top-level data
  */
@@ -299,20 +279,7 @@ function applyNodeVisualProps(
   // Check if this is a custom icon
   const customIconDataUri = customIconMap?.get(role);
   if (customIconDataUri) {
-    // Custom icons render as-is (no color tinting)
-    // Apply layout styles that built-in roles get from stylesheet selectors
-    cyEl.style('background-image', customIconDataUri);
-    cyEl.style('width', CUSTOM_ICON_STYLES.width);
-    cyEl.style('height', CUSTOM_ICON_STYLES.height);
-    cyEl.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
-    cyEl.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
-    cyEl.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
-    cyEl.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
-    cyEl.style('background-color', CUSTOM_ICON_STYLES['background-color']);
-    cyEl.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
-    // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
-    const hasCornerRadius = iconCornerRadius !== undefined && (iconCornerRadius as number) > 0;
-    cyEl.style('background-clip', hasCornerRadius ? 'node' : 'none');
+    applyCustomIconStyles(cyEl, customIconDataUri, iconCornerRadius as number | undefined);
   } else {
     // Built-in icon with optional color
     const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
