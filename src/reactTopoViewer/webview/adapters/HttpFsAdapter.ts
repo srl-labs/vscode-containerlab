@@ -89,4 +89,46 @@ export class HttpFsAdapter implements FileSystemAdapter {
     }
     return base;
   }
+
+  /**
+   * Subscribe to file change notifications via SSE.
+   * Returns an unsubscribe function to close the connection.
+   *
+   * Works with or without sessionId:
+   * - With sessionId: receives session-specific file changes (for tests)
+   * - Without sessionId: receives disk file changes (for dev mode)
+   *
+   * @param callback - Called when a file changes with the file path
+   * @returns Unsubscribe function to close the SSE connection
+   */
+  subscribeToChanges(callback: (path: string) => void): () => void {
+    // Build URL with optional sessionId
+    let url = `${this.baseUrl}/api/events`;
+    if (this.sessionId) {
+      url += `?sessionId=${encodeURIComponent(this.sessionId)}`;
+    }
+
+    const eventSource = new EventSource(url);
+
+    eventSource.addEventListener('connected', (e) => {
+      const data = JSON.parse((e as MessageEvent).data);
+      console.log('[HttpFsAdapter] SSE connected:', data.sessionId);
+    });
+
+    eventSource.addEventListener('file-changed', (e) => {
+      const data = JSON.parse((e as MessageEvent).data);
+      console.log('[HttpFsAdapter] File changed:', data.path);
+      callback(data.path);
+    });
+
+    eventSource.addEventListener('error', () => {
+      console.warn('[HttpFsAdapter] SSE connection error, will retry...');
+    });
+
+    // Return unsubscribe function
+    return () => {
+      console.log('[HttpFsAdapter] Closing SSE connection');
+      eventSource.close();
+    };
+  }
 }

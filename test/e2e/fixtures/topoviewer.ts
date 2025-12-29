@@ -298,6 +298,12 @@ interface TopoViewerPage {
 
   /** Delete an edge by ID */
   deleteEdge(edgeId: string): Promise<void>;
+
+  /** Write YAML content to a file (for live update testing) */
+  writeYamlFile(filename: TopologyFileName, content: string): Promise<void>;
+
+  /** Write annotations content to a file (for live update testing) */
+  writeAnnotationsFile(filename: TopologyFileName, content: object): Promise<void>;
 }
 
 /**
@@ -1011,6 +1017,30 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await topoViewerPage.selectEdge(edgeId);
         await page.keyboard.press('Delete');
         await page.waitForTimeout(300);
+      },
+
+      writeYamlFile: async (filename: string, content: string) => {
+        // Build full path to YAML file
+        const yamlPath = path.join(TOPOLOGIES_DIR, filename);
+        const response = await request.put(withSession(`/file/${encodeURIComponent(yamlPath)}`), {
+          data: content,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+        if (!response.ok()) {
+          throw new Error(`Failed to write YAML: ${response.statusText()}`);
+        }
+      },
+
+      writeAnnotationsFile: async (filename: string, content: object) => {
+        // Build full path to annotations file
+        const annotationsPath = path.join(TOPOLOGIES_DIR, `${filename}.annotations.json`);
+        const response = await request.put(withSession(`/file/${encodeURIComponent(annotationsPath)}`), {
+          data: JSON.stringify(content, null, 2),
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+        if (!response.ok()) {
+          throw new Error(`Failed to write annotations: ${response.statusText()}`);
+        }
       }
     };
 

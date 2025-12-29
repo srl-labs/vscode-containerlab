@@ -11,6 +11,7 @@
  * - DELETE /file/:path   - Delete file
  * - GET  /files          - List available .clab.yml files
  * - POST /reset          - Reset session files to original state
+ * - GET  /api/events     - SSE endpoint for live file change notifications
  */
 
 import type { Plugin } from 'vite';
@@ -22,6 +23,7 @@ import {
   createSessionMaps,
   resetSession,
 } from './SessionFsAdapter';
+import { addClient, broadcastFileChange, startFileWatcher } from './sseManager';
 
 const TOPOLOGIES_DIR = path.join(__dirname, '../topologies');
 const TOPOLOGIES_ORIGINAL_DIR = path.join(__dirname, '../topologies-original');
@@ -267,6 +269,9 @@ export function fileApiPlugin(): Plugin {
   return {
     name: 'file-api',
     configureServer(server) {
+      // Start file watcher for disk changes (for dev mode without session)
+      startFileWatcher(TOPOLOGIES_DIR);
+
       server.middlewares.use(async (req, res, next) => {
         const fullUrl = req.url || '';
 
@@ -282,6 +287,30 @@ export function fileApiPlugin(): Plugin {
             const files = await listTopologyFiles(sessionId);
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(files));
+            return;
+          }
+
+          // ----------------------------------------------------------------
+          // GET /api/events - SSE endpoint for live file change notifications
+          // ----------------------------------------------------------------
+          if (urlWithoutQuery === '/api/events' && req.method === 'GET') {
+            // Use sessionId if provided, otherwise use a special "no-session" identifier
+            // This allows dev mode (no session) to receive disk file change notifications
+            const effectiveSessionId = sessionId || '__dev_mode__';
+
+            // Set SSE headers
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+
+            // Send initial connection message
+            res.write(`event: connected\ndata: {"sessionId":"${effectiveSessionId}"}\n\n`);
+
+            // Register client with SSE manager
+            addClient(effectiveSessionId, res);
+
+            // Keep connection open (don't call res.end())
             return;
           }
 
@@ -336,6 +365,14 @@ export function fileApiPlugin(): Plugin {
             if (req.method === 'PUT') {
               const content = await readBody(req);
               await writeFile(filePath, content, sessionId);
+
+              // Broadcast file change to SSE clients
+              if (sessionId) {
+                // Extract just the filename from the path for broadcasting
+                const filename = path.basename(filePath);
+                broadcastFileChange(sessionId, filename);
+              }
+
               res.statusCode = 200;
               res.end();
               return;

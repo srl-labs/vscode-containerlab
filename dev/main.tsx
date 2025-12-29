@@ -58,14 +58,70 @@ if (sessionId) {
 }
 
 // ============================================================================
+// Internal Update Tracking (for live file updates)
+// ============================================================================
+
+// Track recently written files to ignore their change events
+// Map of filename -> timestamp when we last wrote to it
+const recentlyWrittenFiles = new Map<string, number>();
+const INTERNAL_UPDATE_WINDOW_MS = 1000; // Ignore changes within 1 second of our writes
+
+/**
+ * Mark a file as being written internally (prevents SSE-triggered refresh)
+ */
+function markFileAsInternalWrite(filename: string): void {
+  recentlyWrittenFiles.set(filename, Date.now());
+  // Clean up old entries
+  const now = Date.now();
+  for (const [file, timestamp] of recentlyWrittenFiles) {
+    if (now - timestamp > INTERNAL_UPDATE_WINDOW_MS * 2) {
+      recentlyWrittenFiles.delete(file);
+    }
+  }
+}
+
+/**
+ * Check if a file change should be ignored (because we just wrote it)
+ */
+function isInternalUpdate(filename: string): boolean {
+  const writeTime = recentlyWrittenFiles.get(filename);
+  if (!writeTime) return false;
+
+  const elapsed = Date.now() - writeTime;
+  if (elapsed < INTERNAL_UPDATE_WINDOW_MS) {
+    console.log(`%c[Dev] Ignoring internal update for ${filename} (wrote ${elapsed}ms ago)`, 'color: #9E9E9E;');
+    return true;
+  }
+  return false;
+}
+
+// ============================================================================
 // Initialize Services
 // ============================================================================
 
 // Create file system adapter for dev server
-const fsAdapter = new HttpFsAdapter('', sessionId);
+const baseFsAdapter = new HttpFsAdapter('', sessionId);
+
+// Wrap the fsAdapter to track internal writes (for live update filtering)
+const fsAdapter = {
+  ...baseFsAdapter,
+  readFile: baseFsAdapter.readFile.bind(baseFsAdapter),
+  writeFile: async (filePath: string, content: string): Promise<void> => {
+    // Mark this file as an internal write before writing
+    const filename = filePath.split('/').pop() || '';
+    markFileAsInternalWrite(filename);
+    return baseFsAdapter.writeFile(filePath, content);
+  },
+  unlink: baseFsAdapter.unlink.bind(baseFsAdapter),
+  exists: baseFsAdapter.exists.bind(baseFsAdapter),
+  dirname: baseFsAdapter.dirname,
+  basename: baseFsAdapter.basename,
+  join: baseFsAdapter.join,
+  subscribeToChanges: baseFsAdapter.subscribeToChanges.bind(baseFsAdapter),
+};
 
 // Initialize the I/O services (TopologyIO, AnnotationsIO)
-initializeServices(fsAdapter, { verbose: true });
+initializeServices(fsAdapter as HttpFsAdapter, { verbose: true });
 
 // ============================================================================
 // Dev State Manager (for mode/deployment state, not file-based)
@@ -611,6 +667,68 @@ console.log('  __DEV__.getAnnotationsIO() - AnnotationsIO instance');
 console.log('  __DEV__.fsAdapter - HttpFsAdapter instance');
 
 // ============================================================================
+// Live File Updates (SSE-based)
+// ============================================================================
+
+// Debounce timer for file changes
+let fileChangeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const FILE_CHANGE_DEBOUNCE_MS = 300;
+
+/**
+ * Handle a file change notification from SSE
+ */
+function handleFileChange(changedPath: string): void {
+  if (!currentFilePath) return;
+
+  // Skip if this is an internal update (we just wrote the file ourselves)
+  if (isInternalUpdate(changedPath)) {
+    return;
+  }
+
+  // Only react to .clab.yml changes (not annotations)
+  if (!changedPath.endsWith('.clab.yml')) {
+    return;
+  }
+
+  // Check if the change affects our current file
+  const currentFilename = currentFilePath.split('/').pop() || '';
+  if (changedPath !== currentFilename) {
+    console.log(`%c[Dev] Ignoring change to different file: ${changedPath}`, 'color: #9E9E9E;');
+    return;
+  }
+
+  // Debounce rapid changes
+  if (fileChangeDebounceTimer) {
+    clearTimeout(fileChangeDebounceTimer);
+  }
+
+  fileChangeDebounceTimer = setTimeout(async () => {
+    // Double-check it's still not an internal update after debounce
+    if (isInternalUpdate(changedPath)) {
+      return;
+    }
+    console.log(`%c[Dev] Live update: reloading ${currentFilename}`, 'color: #FF9800;');
+    try {
+      await loadTopologyFile(currentFilePath!);
+      console.log('%c[Dev] Live update complete', 'color: #4CAF50;');
+    } catch (error) {
+      console.error('%c[Dev] Live update failed:', 'color: #f44336;', error);
+    }
+  }, FILE_CHANGE_DEBOUNCE_MS);
+}
+
+/**
+ * Subscribe to file changes via SSE (for live updates)
+ */
+function subscribeToFileChanges(): () => void {
+  // Subscribe to SSE - works with or without sessionId
+  // - With sessionId: receives test-specific file changes
+  // - Without sessionId: receives disk file changes (dev mode)
+  console.log('%c[Dev] Subscribing to file changes via SSE...', 'color: #2196F3;');
+  return fsAdapter.subscribeToChanges(handleFileChange);
+}
+
+// ============================================================================
 // Bootstrap: Load default topology and render
 // ============================================================================
 
@@ -618,6 +736,7 @@ console.log('  __DEV__.fsAdapter - HttpFsAdapter instance');
  * Bootstrap the application:
  * 1. Load the default topology file
  * 2. Render React with the loaded data
+ * 3. Subscribe to file changes for live updates
  *
  * This ensures the app starts with real data (not placeholders)
  */
@@ -628,6 +747,9 @@ async function bootstrap(): Promise<void> {
     const initialData = await buildInitialData(DEFAULT_TOPOLOGY);
     renderApp(initialData);
     console.log(`%c[Dev] Ready: ${initialData.labName}`, 'color: #4CAF50;');
+
+    // Subscribe to file changes for live updates
+    subscribeToFileChanges();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`%c[Dev] Bootstrap failed: ${message}`, 'color: #f44336;');
