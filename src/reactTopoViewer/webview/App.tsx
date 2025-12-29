@@ -3,6 +3,7 @@
  *
  * Uses context-based architecture for undo/redo and annotations.
  */
+/* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 

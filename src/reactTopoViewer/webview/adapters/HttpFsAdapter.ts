@@ -110,14 +110,12 @@ export class HttpFsAdapter implements FileSystemAdapter {
 
     const eventSource = new EventSource(url);
 
-    eventSource.addEventListener('connected', (e) => {
-      const data = JSON.parse((e as MessageEvent).data);
-      console.log('[HttpFsAdapter] SSE connected:', data.sessionId);
+    eventSource.addEventListener('connected', () => {
+      // SSE connection established - no action needed
     });
 
     eventSource.addEventListener('file-changed', (e) => {
-      const data = JSON.parse((e as MessageEvent).data);
-      console.log('[HttpFsAdapter] File changed:', data.path);
+      const data = JSON.parse((e as MessageEvent<string>).data) as { path: string };
       callback(data.path);
     });
 
@@ -127,7 +125,6 @@ export class HttpFsAdapter implements FileSystemAdapter {
 
     // Return unsubscribe function
     return () => {
-      console.log('[HttpFsAdapter] Closing SSE connection');
       eventSource.close();
     };
   }

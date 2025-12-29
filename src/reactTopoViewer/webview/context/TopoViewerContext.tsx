@@ -463,8 +463,6 @@ function handleExtensionMessage(
           void topologyIO.initializeFromFile(yamlFilePath).then((result) => {
             if (!result.success) {
               console.error(`[TopoViewerContext] Failed to reinitialize TopologyIO: ${result.error}`);
-            } else {
-              console.log(`[TopoViewerContext] TopologyIO reinitialized after external file change`);
             }
           });
         }

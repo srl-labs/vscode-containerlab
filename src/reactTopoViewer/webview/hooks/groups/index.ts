@@ -3,6 +3,11 @@
  * Consolidated from: core/, interactions/, undo/, utils/ sub-directories
  */
 
+// Import from shared utilities to avoid duplication
+import { getGroupBounds } from '../../utils/boundingBox';
+// Re-export with alias for backwards compatibility
+export { getGroupBounds as getGroupBoundingBox };
+
 // ============================================================================
 // Types and Constants
 // ============================================================================
@@ -88,7 +93,6 @@ export {
   createDefaultGroup,
   isPointInsideGroup,
   findGroupAtPosition,
-  getGroupBoundingBox,
   calculateBoundingBox,
   updateGroupInList,
   removeGroupFromList,

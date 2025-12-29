@@ -67,6 +67,9 @@ interface ViewportTransform {
   zoom: number;
 }
 
+/** Stable dummy position for computeAnnotationStyle (only style props like color/border are used, not x/y/zoom) */
+const DUMMY_RENDERED_POS = { x: 0, y: 0, zoom: 1 } as const;
+
 function useViewportTransform(cy: CyCore | null): ViewportTransform {
   const [transform, setTransform] = useState<ViewportTransform>({ pan: { x: 0, y: 0 }, zoom: 1 });
 
@@ -380,10 +383,8 @@ const TextItem: React.FC<TextItemProps> = ({
   const showHandles = (isHovered || isInteracting || isSelected) && !effectivelyLocked;
   const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
 
-  // Dummy renderedPos for computeAnnotationStyle (it doesn't use x/y/zoom for base style)
-  const dummyRenderedPos = { x: 0, y: 0, zoom: 1 };
   const baseStyle = useMemo(() =>
-    computeAnnotationStyle(annotation, dummyRenderedPos, isInteracting, isHovered, effectivelyLocked),
+    computeAnnotationStyle(annotation, DUMMY_RENDERED_POS, isInteracting, isHovered, effectivelyLocked),
     [annotation, isInteracting, isHovered, effectivelyLocked]
   );
 

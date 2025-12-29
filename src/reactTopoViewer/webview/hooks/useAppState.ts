@@ -4,7 +4,7 @@
  */
 import type React from 'react';
 import { useRef, useCallback, useEffect, useState } from 'react';
-import type { Core, EventObject } from 'cytoscape';
+import type { Core, EventObject, NodeSingular } from 'cytoscape';
 
 import type { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
 import { log } from '../utils/logger';
@@ -382,7 +382,7 @@ function snapToGrid(value: number): number {
  */
 function setupPerNodeSnapping(cy: Core): () => void {
   const handleDragFree = (evt: EventObject) => {
-    const node = evt.target;
+    const node = evt.target as NodeSingular;
     // Skip special nodes (groups, annotations)
     const role = node.data('topoViewerRole') as string | undefined;
     if (role === 'group' || role === 'freeText' || role === 'freeShape') return;

@@ -104,6 +104,7 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
     public nodeGroup?: string;  // Added node group from clab-node-group
     public status?: string;
 
+    // eslint-disable-next-line max-params -- TreeItem subclass with many optional properties
     constructor(
         label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,
@@ -176,6 +177,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     public state: string;      // Added state tracking
     public stats?: ClabInterfaceStats;
 
+    // eslint-disable-next-line max-params -- TreeItem subclass with many interface properties
     constructor(
         label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,

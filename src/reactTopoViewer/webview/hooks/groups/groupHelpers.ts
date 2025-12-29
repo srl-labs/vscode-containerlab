@@ -184,25 +184,6 @@ export function findGroupAtPosition(
 }
 
 /**
- * Get the bounding box of a group.
- */
-export function getGroupBoundingBox(group: GroupStyleAnnotation): {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-} {
-  const halfWidth = group.width / 2;
-  const halfHeight = group.height / 2;
-  return {
-    x1: group.position.x - halfWidth,
-    y1: group.position.y - halfHeight,
-    x2: group.position.x + halfWidth,
-    y2: group.position.y + halfHeight
-  };
-}
-
-/**
  * Calculate bounding box that encompasses all given positions with padding.
  */
 export function calculateBoundingBox(
