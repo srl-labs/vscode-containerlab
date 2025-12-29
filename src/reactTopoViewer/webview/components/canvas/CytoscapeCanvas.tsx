@@ -7,6 +7,7 @@ import type { Core } from 'cytoscape';
 import cytoscape from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
+import type { CustomIconInfo } from '../../../shared/types/icons';
 import { useTopoViewerActions, useTopoViewerState } from '../../context/TopoViewerContext';
 import { useElementsUpdate } from '../../hooks/canvas';
 import { log } from '../../utils/logger';
@@ -101,6 +102,7 @@ function useCytoscapeInitializer(
   cyRef: React.RefObject<Core | null>,
   selectNode: SelectCallback,
   selectEdge: SelectCallback,
+  customIcons: CustomIconInfo[],
   options?: CytoscapeInitOptions,
   lifecycle?: { onCyReady?: (cy: Core) => void; onCyDestroyed?: () => void }
 ) {
@@ -137,7 +139,7 @@ function useCytoscapeInitializer(
       getIsLocked: options?.getIsLocked
     });
 
-    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout));
+    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout, customIcons));
 
     return () => {
       detachWheel();
@@ -150,6 +152,7 @@ function useCytoscapeInitializer(
     selectEdge,
     containerRef,
     cyRef,
+    customIcons,
     options?.editNode,
     options?.editEdge,
     options?.getMode,
@@ -223,6 +226,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
 	      cyRef,
 	      selectNode,
 	      selectEdge,
+	      state.customIcons,
 	      { editNode, editEdge, getMode, getIsLocked },
 	      { onCyReady, onCyDestroyed }
 	    );
@@ -235,7 +239,7 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     );
 
 	    // Update elements when they change
-	    useElementsUpdate(cyRef, elements, updateNodePositions);
+	    useElementsUpdate(cyRef, elements, updateNodePositions, state.customIcons);
 
 	    return (
 	      <div

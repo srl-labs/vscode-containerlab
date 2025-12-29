@@ -2,11 +2,14 @@
  * TopoViewer Context - Global state management for React TopoViewer
  */
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
 import type { CyElement } from '../../shared/types/messages';
+import type { CustomIconInfo } from '../../shared/types/icons';
+import { extractUsedCustomIcons } from '../../shared/types/icons';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
+import { postCommand } from '../utils/extensionMessaging';
 import { getElementId, getEdgeSource, getEdgeTarget } from '../utils/cytoscapeHelpers';
 import { isServicesInitialized, getTopologyIO } from '../services';
 
@@ -45,6 +48,8 @@ export interface TopoViewerState {
   showDummyLinks: boolean;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
+  /** Custom icons loaded from workspace and global directories */
+  customIcons: CustomIconInfo[];
   /** Custom template being edited (not a graph node) */
   editingCustomTemplate: CustomTemplateEditorData | null;
   /** Whether a lifecycle operation is in progress */
@@ -71,6 +76,7 @@ const initialState: TopoViewerState = {
   showDummyLinks: true,
   customNodes: [],
   defaultNode: '',
+  customIcons: [],
   editingCustomTemplate: null,
   isProcessing: false,
   processingMode: null
@@ -116,6 +122,7 @@ type TopoViewerAction =
   | { type: 'REMOVE_NODE_AND_EDGES'; payload: string }
   | { type: 'REMOVE_EDGE'; payload: string }
   | { type: 'SET_CUSTOM_NODES'; payload: { customNodes: CustomNodeTemplate[]; defaultNode: string } }
+  | { type: 'SET_CUSTOM_ICONS'; payload: CustomIconInfo[] }
   | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null }
   | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } }
   | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] }
@@ -205,6 +212,10 @@ const reducerHandlers: ReducerHandlers = {
     ...state,
     customNodes: action.payload.customNodes,
     defaultNode: action.payload.defaultNode
+  }),
+  SET_CUSTOM_ICONS: (state, action) => ({
+    ...state,
+    customIcons: action.payload
   }),
   EDIT_CUSTOM_TEMPLATE: (state, action) => ({
     ...state,
@@ -390,7 +401,8 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
     mode: (obj.mode as 'edit' | 'view') || 'edit',
     deploymentState: (obj.deploymentState as DeploymentState) || 'unknown',
     customNodes: (obj.customNodes as CustomNodeTemplate[]) || [],
-    defaultNode: (obj.defaultNode as string) || ''
+    defaultNode: (obj.defaultNode as string) || '',
+    customIcons: (obj.customIcons as CustomIconInfo[]) || []
   };
   // Only set isLocked if explicitly provided (allows dev mode to override default)
   if (typeof obj.isLocked === 'boolean') {
@@ -506,6 +518,12 @@ function handleExtensionMessage(
           type: 'SET_CUSTOM_NODES',
           payload: { customNodes, defaultNode: defaultNode || '' }
         });
+      }
+    },
+    'icon-list-response': () => {
+      const icons = (message as unknown as { icons?: CustomIconInfo[] }).icons;
+      if (icons !== undefined) {
+        dispatch({ type: 'SET_CUSTOM_ICONS', payload: icons });
       }
     },
     'lab-lifecycle-status': () => {
@@ -665,6 +683,27 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     };
     return subscribeToWebviewMessages(handleMessage);
   }, [dispatch]);
+
+  // Track used custom icons and trigger reconciliation when usage changes
+  const prevUsedIconsRef = useRef<string[]>([]);
+  useEffect(() => {
+    // Extract custom icons currently used by nodes
+    const usedIcons = extractUsedCustomIcons(state.elements);
+    const prevUsedIcons = prevUsedIconsRef.current;
+
+    // Check if the set of used icons has changed
+    const usedSet = new Set(usedIcons);
+    const prevSet = new Set(prevUsedIcons);
+    const hasChanged = usedIcons.length !== prevUsedIcons.length ||
+      usedIcons.some(icon => !prevSet.has(icon)) ||
+      prevUsedIcons.some(icon => !usedSet.has(icon));
+
+    if (hasChanged && state.elements.length > 0) {
+      prevUsedIconsRef.current = usedIcons;
+      // Trigger icon reconciliation on extension side
+      postCommand('icon-reconcile', { usedIcons });
+    }
+  }, [state.elements]);
 
   const stateValue = useMemo<TopoViewerStateContextValue>(() => ({
     state,

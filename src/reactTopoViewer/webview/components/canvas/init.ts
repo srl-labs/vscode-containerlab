@@ -6,6 +6,7 @@ import cytoscape from 'cytoscape';
 import cola from 'cytoscape-cola';
 
 import type { CyElement } from '../../../shared/types/messages';
+import type { CustomIconInfo } from '../../../shared/types/icons';
 import { log } from '../../utils/logger';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 
@@ -151,21 +152,69 @@ export function collectNodePositions(cy: Core): NodePositions {
 }
 
 /**
- * Apply custom iconColor and iconCornerRadius to all nodes that have them set.
+ * Common style properties for custom icon nodes.
+ * Custom icons need these layout properties to render correctly.
+ * Uses 'contain' to scale the full icon, and transparent background.
+ * Matches legacy topoViewer behavior.
+ */
+const CUSTOM_ICON_STYLES = {
+  width: '14',
+  height: '14',
+  'background-fit': 'contain',
+  'background-position-x': '50%',
+  'background-position-y': '50%',
+  'background-repeat': 'no-repeat',
+  'background-color': 'rgba(0, 0, 0, 0)',
+  'background-opacity': 0,
+  // Note: background-clip is set dynamically based on corner radius
+} as const;
+
+/**
+ * Apply custom iconColor, iconCornerRadius, and custom icons to all nodes.
  * Cytoscape stylesheets are static, so we must update the style directly for each node.
  * Note: iconColor and iconCornerRadius are stored at the top level of node data (not in extraData).
+ *
+ * @param cy - Cytoscape core instance
+ * @param customIcons - Optional array of custom icons to use for non-built-in icon names
  */
-export function applyNodeIconColors(cy: Core): void {
+export function applyNodeIconColors(cy: Core, customIcons?: CustomIconInfo[]): void {
+  // Build a map for quick lookup
+  const customIconMap = new Map<string, string>();
+  if (customIcons) {
+    for (const icon of customIcons) {
+      customIconMap.set(icon.name, icon.dataUri);
+    }
+  }
+
   cy.nodes().forEach(node => {
     // iconColor and iconCornerRadius are at top-level of data (from NodeElementBuilder)
     const iconColor = node.data('iconColor') as string | undefined;
     const iconCornerRadius = node.data('iconCornerRadius') as number | undefined;
     const role = (node.data('topoViewerRole') as string) || 'default';
-    const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
 
-    // Apply iconColor to background-image
-    if (iconColor && svgType) {
-      node.style('background-image', generateEncodedSVG(svgType, iconColor));
+    // Check if this is a custom icon
+    const customIconDataUri = customIconMap.get(role);
+    if (customIconDataUri) {
+      // Custom icons render as-is (no color tinting)
+      // Apply layout styles that built-in roles get from stylesheet selectors
+      node.style('background-image', customIconDataUri);
+      node.style('width', CUSTOM_ICON_STYLES.width);
+      node.style('height', CUSTOM_ICON_STYLES.height);
+      node.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
+      node.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
+      node.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
+      node.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
+      node.style('background-color', CUSTOM_ICON_STYLES['background-color']);
+      node.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
+      // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
+      const clipMode = (iconCornerRadius !== undefined && iconCornerRadius > 0) ? 'node' : 'none';
+      node.style('background-clip', clipMode);
+    } else {
+      // Built-in icon with optional color
+      const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
+      if (iconColor && svgType) {
+        node.style('background-image', generateEncodedSVG(svgType, iconColor));
+      }
     }
 
     // Apply iconCornerRadius - requires round-rectangle shape
@@ -179,7 +228,7 @@ export function applyNodeIconColors(cy: Core): void {
 /**
  * Update cytoscape elements and apply layout
  */
-export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
+export function updateCytoscapeElements(cy: Core, elements: CyElement[], customIcons?: CustomIconInfo[]): void {
   const usePresetLayout = hasPresetPositions(elements);
   cy.batch(() => {
     cy.elements().remove();
@@ -189,8 +238,8 @@ export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
   // Apply stub-link class to edges connected to network/cloud nodes
   applyStubLinkClasses(cy);
 
-  // Apply custom iconColor to nodes that have one set in their extraData
-  applyNodeIconColors(cy);
+  // Apply custom iconColor and custom icons to nodes
+  applyNodeIconColors(cy, customIcons);
 
   if (!usePresetLayout) {
     cy.layout(getLayoutOptions('cose')).run();
@@ -202,7 +251,7 @@ export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
 /**
  * Handle cytoscape ready event
  */
-export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
+export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean, customIcons?: CustomIconInfo[]): void {
   log.info(`[CytoscapeCanvas] Cytoscape ready - nodes: ${cy.nodes().length}, edges: ${cy.edges().length}`);
   log.info(`[CytoscapeCanvas] Using preset layout: ${usePresetLayout}`);
 
@@ -228,8 +277,8 @@ export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
   // Apply stub-link class to edges connected to network/cloud nodes
   applyStubLinkClasses(cy);
 
-  // Apply custom iconColor to nodes that have one set in their extraData
-  applyNodeIconColors(cy);
+  // Apply custom iconColor and custom icons to nodes
+  applyNodeIconColors(cy, customIcons);
 
   // Run COSE layout if nodes don't have preset positions
   if (!usePresetLayout) {

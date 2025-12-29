@@ -12,6 +12,7 @@ import { IconSelectorModal } from '../../shared/IconSelectorModal';
 import type { NodeType } from '../../../utils/SvgGenerator';
 import { generateEncodedSVG } from '../../../utils/SvgGenerator';
 import { useSchema, useDockerImages } from '../../../hooks/data';
+import { useTopoViewerState } from '../../../context/TopoViewerContext';
 
 import type { TabProps } from './types';
 import { CustomNodeTemplateFields } from './CustomNodeTemplateFields';
@@ -250,35 +251,46 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
 };
 
 /**
- * Icon option renderer for dropdown
- */
-const IconOptionRenderer: React.FC<{
-  option: { value: string; label: string };
-  color: string;
-  cornerRadius: number | undefined;
-}> = ({ option, color, cornerRadius }) => (
-  <div className="flex items-center gap-2">
-    <img
-      src={getIconSrc(option.value, color)}
-      alt={option.label}
-      className="h-6 w-6 rounded"
-      style={{ borderRadius: calcBorderRadius(cornerRadius, 24) }}
-    />
-    <span>{option.label}</span>
-  </div>
-);
-
-/**
  * Icon field with preview, filterable dropdown, and edit modal
+ * Supports both built-in icons and custom icons from context
  */
 const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { state } = useTopoViewerState();
+  const customIcons = state.customIcons;
 
   const color = data.iconColor || DEFAULT_ICON_COLOR;
   // Don't apply default for dropdown value - show actual value (or empty)
   // Only use fallback for preview image rendering
   const icon = data.icon || '';
   const previewIcon = icon || 'pe';
+
+  // Build custom icon map for efficient lookup
+  const customIconMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ci of customIcons) {
+      map.set(ci.name, ci.dataUri);
+    }
+    return map;
+  }, [customIcons]);
+
+  // Build combined icon options (built-in + custom)
+  const allIconOptions = useMemo(() => {
+    const customOptions = customIcons.map(ci => ({
+      value: ci.name,
+      label: ci.name + ' (custom)'
+    }));
+    return [...ICON_OPTIONS, ...customOptions];
+  }, [customIcons]);
+
+  // Get icon source - check custom icons first, then built-in
+  const getIconSource = useCallback((iconName: string, iconColor: string): string => {
+    const customDataUri = customIconMap.get(iconName);
+    if (customDataUri) {
+      return customDataUri;
+    }
+    return getIconSrc(iconName, iconColor);
+  }, [customIconMap]);
 
   const handleIconSave = useCallback((newIcon: string, newColor: string | null, cornerRadius: number) => {
     onChange({
@@ -288,11 +300,20 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
     });
   }, [onChange]);
 
+  // Render icon option with preview
   const renderOption = useCallback(
     (option: { value: string; label: string }) => (
-      <IconOptionRenderer option={option} color={color} cornerRadius={data.iconCornerRadius} />
+      <div className="flex items-center gap-2">
+        <img
+          src={getIconSource(option.value, color)}
+          alt={option.label}
+          className="h-6 w-6 rounded"
+          style={{ borderRadius: calcBorderRadius(data.iconCornerRadius, 24) }}
+        />
+        <span>{option.label}</span>
+      </div>
     ),
-    [color, data.iconCornerRadius]
+    [color, data.iconCornerRadius, getIconSource]
   );
 
   return (
@@ -300,7 +321,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
       <FormField label="Icon">
         <div className="flex gap-2 items-start">
           <img
-            src={getIconSrc(previewIcon, color)}
+            src={getIconSource(previewIcon, color)}
             alt="Icon preview"
             className="h-9 w-9 rounded"
             style={{ borderRadius: calcBorderRadius(data.iconCornerRadius, 36) }}
@@ -308,7 +329,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
           <div className="flex-1">
             <FilterableDropdown
               id="node-icon"
-              options={ICON_OPTIONS}
+              options={allIconOptions}
               value={icon}
               onChange={(value) => onChange({ icon: value })}
               placeholder="Select icon..."

@@ -5,9 +5,11 @@
 import type * as vscode from 'vscode';
 
 import type { CyElement, FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation, NodeAnnotation } from '../../shared/types/topology';
+import type { CustomIconInfo } from '../../shared/types/icons';
 import { getDockerImages } from '../../../utils/docker/images';
 import type { CustomNodeTemplate, SchemaData } from '../../shared/schema';
 import { getCustomNodesFromConfig, loadSchemaData } from '../services/schema';
+import { iconService } from '../services/IconService';
 
 /**
  * Bootstrap data sent to the webview on initialization
@@ -21,6 +23,7 @@ export interface BootstrapData {
   defaultNode: string;
   schemaData: SchemaData;
   dockerImages: string[];
+  customIcons: CustomIconInfo[];
   freeTextAnnotations: FreeTextAnnotation[];
   freeShapeAnnotations: FreeShapeAnnotation[];
   groupStyleAnnotations: GroupStyleAnnotation[];
@@ -60,6 +63,9 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
   // Get docker images for image dropdown
   const dockerImages = getDockerImages();
 
+  // Load custom icons from workspace and global directories
+  const customIcons = await iconService.loadAllIcons(yamlFilePath);
+
   return {
     elements,
     labName,
@@ -69,6 +75,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     defaultNode,
     schemaData,
     dockerImages,
+    customIcons,
     freeTextAnnotations,
     freeShapeAnnotations,
     groupStyleAnnotations,

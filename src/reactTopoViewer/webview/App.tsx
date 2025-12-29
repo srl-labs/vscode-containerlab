@@ -163,8 +163,13 @@ const AppContent: React.FC<{
     updateGroupGeoPosition: annotations.updateGroupGeoPosition
   });
 
+  // Callback to update node data in React state (triggers icon reconciliation)
+  const updateNodeData = React.useCallback((nodeId: string, extraData: Record<string, unknown>) => {
+    dispatch({ type: 'UPDATE_NODE_DATA', payload: { nodeId, extraData } });
+  }, [dispatch]);
+
   // Editor handlers
-  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph);
+  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph, state.customIcons, updateNodeData);
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
   const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData);
 

@@ -3,10 +3,11 @@
  * Uses useLayoutEffect to ensure Cytoscape is updated before other effects read from it
  */
 import type React from 'react';
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { Core } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
+import type { CustomIconInfo } from '../../../shared/types/icons';
 import {
   applyStubLinkClasses,
   updateCytoscapeElements,
@@ -224,6 +225,24 @@ function findReactExtraData(
 const DEFAULT_ICON_COLOR = '#005aff';
 
 /**
+ * Common style properties for custom icon nodes.
+ * Custom icons need these layout properties to render correctly.
+ * Uses 'contain' to scale the full icon, and transparent background.
+ * Matches legacy topoViewer behavior.
+ */
+const CUSTOM_ICON_STYLES = {
+  width: '14',
+  height: '14',
+  'background-fit': 'contain',
+  'background-position-x': '50%',
+  'background-position-y': '50%',
+  'background-repeat': 'no-repeat',
+  'background-color': 'rgba(0, 0, 0, 0)',
+  'background-opacity': 0,
+  // Note: background-clip is set dynamically based on corner radius
+} as const;
+
+/**
  * Find a React element by group and ID and return its top-level data
  */
 function findReactNodeData(
@@ -260,10 +279,12 @@ function extractNodeVisualProps(
 
 /**
  * Apply visual properties to a Cytoscape node
+ * @param customIconMap - Map of custom icon names to their data URIs
  */
 function applyNodeVisualProps(
   cyEl: ReturnType<Core['getElementById']>,
-  props: NodeVisualProps
+  props: NodeVisualProps,
+  customIconMap?: Map<string, string>
 ): void {
   const { topoViewerRole, iconColor, iconCornerRadius } = props;
 
@@ -272,12 +293,33 @@ function applyNodeVisualProps(
   if (iconColor !== undefined) cyEl.data('iconColor', iconColor);
   if (iconCornerRadius !== undefined) cyEl.data('iconCornerRadius', iconCornerRadius);
 
-  // Update background-image style for iconColor
+  // Update background-image style
   const role = (topoViewerRole as string) || (cyEl.data('topoViewerRole') as string) || 'default';
-  const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
-  if (svgType) {
-    const color = (iconColor as string) || DEFAULT_ICON_COLOR;
-    cyEl.style('background-image', generateEncodedSVG(svgType, color));
+
+  // Check if this is a custom icon
+  const customIconDataUri = customIconMap?.get(role);
+  if (customIconDataUri) {
+    // Custom icons render as-is (no color tinting)
+    // Apply layout styles that built-in roles get from stylesheet selectors
+    cyEl.style('background-image', customIconDataUri);
+    cyEl.style('width', CUSTOM_ICON_STYLES.width);
+    cyEl.style('height', CUSTOM_ICON_STYLES.height);
+    cyEl.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
+    cyEl.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
+    cyEl.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
+    cyEl.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
+    cyEl.style('background-color', CUSTOM_ICON_STYLES['background-color']);
+    cyEl.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
+    // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
+    const hasCornerRadius = iconCornerRadius !== undefined && (iconCornerRadius as number) > 0;
+    cyEl.style('background-clip', hasCornerRadius ? 'node' : 'none');
+  } else {
+    // Built-in icon with optional color
+    const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
+    if (svgType) {
+      const color = (iconColor as string) || DEFAULT_ICON_COLOR;
+      cyEl.style('background-image', generateEncodedSVG(svgType, color));
+    }
   }
 
   // Apply iconCornerRadius - requires round-rectangle shape
@@ -290,8 +332,14 @@ function applyNodeVisualProps(
 /**
  * Update extraData for specific nodes in Cytoscape without full reload
  * Also updates top-level visual properties that Cytoscape uses for styling
+ * @param customIconMap - Map of custom icon names to their data URIs
  */
-function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[]): void {
+function updateNodeExtraData(
+  cy: Core,
+  elements: CyElement[],
+  nodeIds: string[],
+  customIconMap?: Map<string, string>
+): void {
   if (nodeIds.length === 0) return;
 
   cy.batch(() => {
@@ -310,7 +358,7 @@ function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[])
 
       // Extract and apply visual properties
       const visualProps = extractNodeVisualProps(reactExtraData, reactNodeData);
-      applyNodeVisualProps(cyEl, visualProps);
+      applyNodeVisualProps(cyEl, visualProps, customIconMap);
     }
   });
 }
@@ -436,12 +484,17 @@ function addMissingEdges(cy: Core, elements: CyElement[]): void {
 
 /**
  * Update elements when structure is the same (fast path)
+ * @param customIconMap - Map of custom icon names to their data URIs
  */
-function updateSameStructure(cy: Core, elements: CyElement[]): void {
+function updateSameStructure(
+  cy: Core,
+  elements: CyElement[],
+  customIconMap?: Map<string, string>
+): void {
   const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
   const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
 
-  updateNodeExtraData(cy, elements, nodesWithChangedExtraData);
+  updateNodeExtraData(cy, elements, nodesWithChangedExtraData, customIconMap);
   updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
 
   // Check visual data BEFORE updating - comparison needs pre-update state
@@ -577,19 +630,21 @@ function handleAlreadyInitialized(
 
 /**
  * Handle first initialization when Cytoscape has no elements yet.
+ * @param customIcons - Custom icons to use for rendering
  */
 function handleFirstInit(
   cy: Core,
   elements: CyElement[],
   usePresetLayout: boolean,
-  onInitialLayoutPositions?: (positions: NodePositions) => void
+  onInitialLayoutPositions?: (positions: NodePositions) => void,
+  customIcons?: CustomIconInfo[]
 ): void {
   log.info(`[useElementsUpdate] First init: hasPresetPositions=${usePresetLayout}, elements=${elements.length}`);
   cy.scratch('initialLayoutDone', usePresetLayout);
   if (!usePresetLayout) {
     setupLayoutstopListener(cy, onInitialLayoutPositions);
   }
-  updateCytoscapeElements(cy, elements);
+  updateCytoscapeElements(cy, elements, customIcons);
 }
 
 /**
@@ -599,13 +654,22 @@ function handleFirstInit(
  * Design: React state is the source of truth for graph structure and element data.
  * Cytoscape is treated as a rendering layer that is incrementally reconciled from state
  * to preserve positions, zoom, and selection whenever possible.
+ *
+ * @param customIcons - Custom icons to use for rendering nodes
  */
 export function useElementsUpdate(
   cyRef: React.RefObject<Core | null>,
   elements: CyElement[],
-  onInitialLayoutPositions?: (positions: NodePositions) => void
+  onInitialLayoutPositions?: (positions: NodePositions) => void,
+  customIcons?: CustomIconInfo[]
 ): void {
   const isInitializedRef = useRef(false);
+
+  // Memoize custom icon map to prevent unnecessary re-renders
+  const customIconMap = useMemo(() => {
+    if (!customIcons || customIcons.length === 0) return undefined;
+    return new Map(customIcons.map(icon => [icon.name, icon.dataUri]));
+  }, [customIcons]);
 
   useLayoutEffect(() => {
     const cy = cyRef.current;
@@ -628,7 +692,7 @@ export function useElementsUpdate(
         if (initComplete) return;
         // Fall through to reconcile logic below
       } else {
-        handleFirstInit(cy, elements, usePresetLayout, onInitialLayoutPositions);
+        handleFirstInit(cy, elements, usePresetLayout, onInitialLayoutPositions, customIcons);
         isInitializedRef.current = true;
         return;
       }
@@ -646,7 +710,7 @@ export function useElementsUpdate(
     }
 
     if (isSameStructure) {
-      updateSameStructure(cy, elements);
+      updateSameStructure(cy, elements, customIconMap);
       return;
     }
 
@@ -656,5 +720,5 @@ export function useElementsUpdate(
     if (hasPresetPositions(elements)) {
       cy.scratch('initialLayoutDone', true);
     }
-  }, [cyRef, elements]);
+  }, [cyRef, elements, customIcons, customIconMap]);
 }

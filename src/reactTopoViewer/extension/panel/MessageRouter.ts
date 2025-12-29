@@ -12,6 +12,7 @@ import { labLifecycleService } from '../services/LabLifecycleService';
 import { nodeCommandService } from '../services/NodeCommandService';
 import type { SplitViewManager } from '../services/SplitViewManager';
 import { customNodeConfigManager } from '../services/CustomNodeConfigManager';
+import { iconService } from '../services/IconService';
 
 type WebviewMessage = Record<string, unknown> & {
   type?: string;
@@ -43,6 +44,13 @@ const CUSTOM_NODE_COMMANDS = new Set([
   'save-custom-node',
   'delete-custom-node',
   'set-default-custom-node',
+]);
+
+const ICON_COMMANDS = new Set([
+  'icon-list',
+  'icon-upload',
+  'icon-delete',
+  'icon-reconcile',
 ]);
 
 /**
@@ -358,6 +366,68 @@ export class MessageRouter {
     else if (res.result) log.info(`[MessageRouter] ${res.result}`);
   }
 
+  private async handleIconList(panel: vscode.WebviewPanel): Promise<void> {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      this.sendIconResponse(panel, []);
+      return;
+    }
+    const icons = await iconService.loadAllIcons(yamlFilePath);
+    this.sendIconResponse(panel, icons);
+  }
+
+  private async handleIconUpload(panel: vscode.WebviewPanel): Promise<void> {
+    const result = await iconService.uploadIcon();
+    const yamlFilePath = this.context.yamlFilePath;
+    if (result.success && yamlFilePath) {
+      const icons = await iconService.loadAllIcons(yamlFilePath);
+      this.sendIconResponse(panel, icons);
+    }
+  }
+
+  private async handleIconDelete(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    const iconName = typeof message.iconName === 'string' ? message.iconName : '';
+    if (!iconName) {
+      log.warn('[MessageRouter] icon-delete: missing iconName');
+      return;
+    }
+    const result = await iconService.deleteGlobalIcon(iconName);
+    const yamlFilePath = this.context.yamlFilePath;
+    if (result.success && yamlFilePath) {
+      const icons = await iconService.loadAllIcons(yamlFilePath);
+      this.sendIconResponse(panel, icons);
+    }
+  }
+
+  private async handleIconReconcile(message: WebviewMessage): Promise<void> {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) return;
+    const usedIcons = Array.isArray(message.usedIcons) ? (message.usedIcons as string[]) : [];
+    await iconService.reconcileWorkspaceIcons(yamlFilePath, usedIcons);
+  }
+
+  private async handleIconCommand(command: string, message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+    try {
+      const handlers: Record<string, () => Promise<void>> = {
+        'icon-list': () => this.handleIconList(panel),
+        'icon-upload': () => this.handleIconUpload(panel),
+        'icon-delete': () => this.handleIconDelete(message, panel),
+        'icon-reconcile': () => this.handleIconReconcile(message),
+      };
+      const handler = handlers[command];
+      if (handler) await handler();
+    } catch (err) {
+      log.error(`[MessageRouter] Icon command error: ${err}`);
+    }
+  }
+
+  private sendIconResponse(panel: vscode.WebviewPanel, icons: unknown[]): void {
+    panel.webview.postMessage({
+      type: 'icon-list-response',
+      icons,
+    });
+  }
+
   private async handleCommandMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
     const command = typeof message.command === 'string' ? message.command : '';
     if (!command) return false;
@@ -384,6 +454,11 @@ export class MessageRouter {
 
     if (CUSTOM_NODE_COMMANDS.has(command)) {
       await this.handleCustomNodeCommand(command, message, panel);
+      return true;
+    }
+
+    if (ICON_COMMANDS.has(command)) {
+      await this.handleIconCommand(command, message, panel);
       return true;
     }
 

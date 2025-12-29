@@ -30,7 +30,8 @@ import { DevStateManager } from './mock/DevState';
 import { LatencySimulator } from './mock/LatencySimulator';
 
 // Mock data for initial state
-import { sampleCustomNodes } from './mockData';
+import { sampleCustomNodes, sampleCustomIcons } from './mockData';
+import type { CustomIconInfo } from '@shared/types/icons';
 
 // Schema parsing - import JSON directly and use shared parser
 import clabSchema from '../schema/clab.schema.json';
@@ -175,6 +176,7 @@ interface InitialData {
   dockerImages: string[];
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
+  customIcons: CustomIconInfo[];
   freeTextAnnotations: unknown[];
   freeShapeAnnotations: unknown[];
   groupStyleAnnotations: unknown[];
@@ -222,6 +224,7 @@ async function buildInitialData(filePath: string): Promise<InitialData> {
     dockerImages,
     customNodes: sampleCustomNodes,
     defaultNode: stateManager.getDefaultCustomNode(),
+    customIcons: sampleCustomIcons,
     freeTextAnnotations: annotations.freeTextAnnotations || [],
     freeShapeAnnotations: annotations.freeShapeAnnotations || [],
     groupStyleAnnotations: annotations.groupStyleAnnotations || [],
@@ -547,6 +550,24 @@ window.vscode = {
     // Handle split view toggle from navbar
     if (msg.command === 'topo-toggle-split-view') {
       toggleSplitView();
+    }
+
+    // Handle icon commands (mock - icons are in-memory only)
+    if (msg.command === 'icon-upload') {
+      console.log('%c[Mock] Icon upload triggered (no-op in dev mode)', 'color: #FF9800;');
+      // In dev mode, icons are static from mockData
+    }
+
+    if (msg.command === 'icon-delete') {
+      const iconName = msg.iconName as string;
+      console.log(`%c[Mock] Icon delete: ${iconName} (no-op in dev mode)`, 'color: #FF9800;');
+      // In dev mode, icons are static from mockData
+    }
+
+    if (msg.command === 'icon-reconcile') {
+      const usedIcons = msg.usedIcons as string[];
+      console.log(`%c[Mock] Icon reconcile: ${usedIcons?.length || 0} icons in use`, 'color: #9E9E9E;');
+      // In dev mode, reconciliation is a no-op
     }
   }
 };

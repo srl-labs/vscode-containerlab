@@ -103,3 +103,8 @@ export function sendSetDefaultCustomNode(nodeName: string): void {
 export function sendSaveCustomNode(data: SaveCustomNodeData): void {
   sendCommandToExtension('save-custom-node', data);
 }
+
+/**
+ * Alias for sendCommandToExtension - simpler name for common use cases.
+ */
+export const postCommand = sendCommandToExtension;

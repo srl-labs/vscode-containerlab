@@ -9,6 +9,7 @@ import type { NodeEditorData } from '../../components/panels/node-editor/types';
 import type { LinkEditorData } from '../../components/panels/link-editor/types';
 import type { NetworkEditorData } from '../../components/panels/network-editor';
 import type { CustomNodeTemplate } from '../../../shared/types/editors';
+import type { CustomIconInfo } from '../../../shared/types/icons';
 import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel';
 import type { MembershipEntry } from '../state/useUndoRedo';
 import type { CytoscapeCanvasRef } from '../../components/canvas';
@@ -59,12 +60,32 @@ type RenameNodeCallback = (oldId: string, newId: string) => void;
 const DEFAULT_ICON_COLOR = '#005aff';
 
 /**
+ * Common style properties for custom icon nodes.
+ * Custom icons need these layout properties to render correctly.
+ * Uses 'contain' to scale the full icon, and transparent background.
+ * Matches legacy topoViewer behavior.
+ */
+const CUSTOM_ICON_STYLES = {
+  width: '14',
+  height: '14',
+  'background-fit': 'contain',
+  'background-position-x': '50%',
+  'background-position-y': '50%',
+  'background-repeat': 'no-repeat',
+  'background-color': 'rgba(0, 0, 0, 0)',
+  'background-opacity': 0,
+  // Note: background-clip is set dynamically based on corner radius
+} as const;
+
+/**
  * Update Cytoscape node data after editor changes
+ * @param customIcons - Custom icons for checking if the icon is a custom icon
  */
 function updateCytoscapeNodeData(
   cy: CytoscapeCore | null,
   nodeId: string,
-  data: NodeEditorData
+  data: NodeEditorData,
+  customIcons?: CustomIconInfo[]
 ): void {
   if (!cy) return;
 
@@ -86,13 +107,32 @@ function updateCytoscapeNodeData(
   node.data('iconCornerRadius', data.iconCornerRadius);
   node.data('extraData', newExtraData);
 
-  // Update the background-image style to reflect the new iconColor
-  // Cytoscape stylesheets are static, so we must update the style directly
+  // Update the background-image style to reflect the icon
+  // Check for custom icon first
   const role = data.icon || 'default';
-  const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
-  if (svgType) {
-    const color = data.iconColor || DEFAULT_ICON_COLOR;
-    node.style('background-image', generateEncodedSVG(svgType, color));
+  const customIcon = customIcons?.find(ci => ci.name === role);
+  if (customIcon) {
+    // Custom icons render as-is (no color tinting)
+    // Apply layout styles that built-in roles get from stylesheet selectors
+    node.style('background-image', customIcon.dataUri);
+    node.style('width', CUSTOM_ICON_STYLES.width);
+    node.style('height', CUSTOM_ICON_STYLES.height);
+    node.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
+    node.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
+    node.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
+    node.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
+    node.style('background-color', CUSTOM_ICON_STYLES['background-color']);
+    node.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
+    // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
+    const hasCornerRadius = data.iconCornerRadius !== undefined && data.iconCornerRadius > 0;
+    node.style('background-clip', hasCornerRadius ? 'node' : 'none');
+  } else {
+    // Built-in icon with optional color
+    const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
+    if (svgType) {
+      const color = data.iconColor || DEFAULT_ICON_COLOR;
+      node.style('background-image', generateEncodedSVG(svgType, color));
+    }
   }
 
   // Apply iconCornerRadius - requires round-rectangle shape
@@ -112,14 +152,15 @@ function handleNodeUpdate(
   data: NodeEditorData,
   oldName: string | undefined,
   renameNode: RenameNodeCallback | undefined,
-  cyRef: React.RefObject<CytoscapeCanvasRef | null> | undefined
+  cyRef: React.RefObject<CytoscapeCanvasRef | null> | undefined,
+  customIcons?: CustomIconInfo[]
 ): void {
   if (oldName && renameNode) {
     renameNode(oldName, data.name);
   } else {
     const cy = cyRef?.current?.getCy();
     if (cy) {
-      updateCytoscapeNodeData(cy, data.id, data);
+      updateCytoscapeNodeData(cy, data.id, data, customIcons);
     }
   }
 }
@@ -154,6 +195,9 @@ function recordEdit<T extends { id: string }>(
 // useNodeEditorHandlers
 // ============================================================================
 
+/** Callback to update node data in React state (for icon reconciliation) */
+type UpdateNodeDataCallback = (nodeId: string, extraData: Record<string, unknown>) => void;
+
 /**
  * Hook for node editor handlers with undo/redo support
  */
@@ -162,7 +206,9 @@ export function useNodeEditorHandlers(
   editingNodeData: NodeEditorData | null,
   recordPropertyEdit?: (action: PropertyEditAction) => void,
   cyRef?: React.RefObject<CytoscapeCanvasRef | null>,
-  renameNode?: RenameNodeCallback
+  renameNode?: RenameNodeCallback,
+  customIcons?: CustomIconInfo[],
+  updateNodeData?: UpdateNodeDataCallback
 ) {
   const initialDataRef = React.useRef<NodeEditorData | null>(null);
 
@@ -185,10 +231,14 @@ export function useNodeEditorHandlers(
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
     void editNodeService(saveData);
-    handleNodeUpdate(data, oldName, renameNode, cyRef);
+    handleNodeUpdate(data, oldName, renameNode, cyRef, customIcons);
+    // Update React state for icon reconciliation
+    if (updateNodeData) {
+      updateNodeData(data.id, { topoViewerRole: data.icon, iconColor: data.iconColor, iconCornerRadius: data.iconCornerRadius });
+    }
     initialDataRef.current = null;
     editNode(null);
-  }, [editNode, recordPropertyEdit, cyRef, renameNode]);
+  }, [editNode, recordPropertyEdit, cyRef, renameNode, customIcons, updateNodeData]);
 
   const handleApply = React.useCallback((data: NodeEditorData) => {
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
@@ -198,8 +248,12 @@ export function useNodeEditorHandlers(
     }
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
     void editNodeService(saveData);
-    handleNodeUpdate(data, oldName, renameNode, cyRef);
-  }, [recordPropertyEdit, cyRef, renameNode]);
+    handleNodeUpdate(data, oldName, renameNode, cyRef, customIcons);
+    // Update React state for icon reconciliation
+    if (updateNodeData) {
+      updateNodeData(data.id, { topoViewerRole: data.icon, iconColor: data.iconColor, iconCornerRadius: data.iconCornerRadius });
+    }
+  }, [recordPropertyEdit, cyRef, renameNode, customIcons, updateNodeData]);
 
   return { handleClose, handleSave, handleApply };
 }

@@ -8,6 +8,7 @@ topoViewerData
 !.vscode/
 !.vscode/launch.json
 .jscpd/*
+.clab-icons/*
 
 package.json
 .DS_Store
