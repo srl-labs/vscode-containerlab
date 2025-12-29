@@ -72,30 +72,28 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
           <ShortcutRow label="Node actions" shortcut="Right Click" />
           <ShortcutRow label="Capture packets" shortcut="Right Click + Link" />
           <ShortcutRow label="Move nodes" shortcut="Drag" />
-          <ShortcutRow label="Quick Item Search" shortcut="Ctrl + F" />
         </ShortcutSection>
 
         {/* Editor Mode */}
         <ShortcutSection title="Editor Mode" icon="fa-edit" colorClass="text-blue-500">
           <ShortcutRow label="Add node" shortcut="Shift + Click" />
-          <ShortcutRow label="Create link" shortcut="Shift + Node" />
-          <ShortcutRow label="Delete" shortcut="Alt + Click" />
-          <ShortcutRow label="Release from group" shortcut="Ctrl + Click" />
+          <ShortcutRow label="Create link" shortcut="Shift + Click node" />
+          <ShortcutRow label="Delete element" shortcut="Alt + Click" />
           <ShortcutRow label="Context menu" shortcut="Right Click" />
           <ShortcutRow label="Select all" shortcut="Ctrl + A" />
+          <ShortcutRow label="Multi-select" shortcut="Ctrl + Click" />
           <ShortcutRow label="Copy selected" shortcut="Ctrl + C" />
           <ShortcutRow label="Paste" shortcut="Ctrl + V" />
           <ShortcutRow label="Duplicate selected" shortcut="Ctrl + D" />
           <ShortcutRow label="Undo" shortcut="Ctrl + Z" />
           <ShortcutRow label="Redo" shortcut="Ctrl + Y" />
-          <ShortcutRow label="Create group" shortcut="G" />
+          <ShortcutRow label="Create group" shortcut="Ctrl + G" />
           <ShortcutRow label="Delete selected" shortcut="Del" />
         </ShortcutSection>
 
-        {/* Panel Controls */}
-        <ShortcutSection title="Panel Controls" icon="fa-cog" colorClass="text-purple-500">
-          <ShortcutRow label="Close panel" shortcut="Esc" />
-          <ShortcutRow label="Submit form" shortcut="Enter" />
+        {/* Navigation */}
+        <ShortcutSection title="Navigation" icon="fa-cog" colorClass="text-purple-500">
+          <ShortcutRow label="Deselect all" shortcut="Esc" />
         </ShortcutSection>
 
         {/* Tips */}
@@ -103,10 +101,10 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
           <ul className="list-disc list-inside text-secondary space-y-1.5 text-sm">
             <li>Use layout algorithms to auto-arrange</li>
             <li>
-              Box Selection with <kbd className="shortcuts-kbd-inline">Shift</kbd> + <kbd className="shortcuts-kbd-inline">Click</kbd> and press <kbd className="shortcuts-kbd-inline">G</kbd> to group or <kbd className="shortcuts-kbd-inline">Del</kbd> to delete
+              Box select nodes, then <kbd className="shortcuts-kbd-inline">Ctrl</kbd> + <kbd className="shortcuts-kbd-inline">G</kbd> to group or <kbd className="shortcuts-kbd-inline">Del</kbd> to delete
             </li>
             <li>Double-click any item to directly edit</li>
-            <li>Export as image from context menu</li>
+            <li>Shift+Click a node to start creating a link</li>
           </ul>
         </ShortcutSection>
       </div>

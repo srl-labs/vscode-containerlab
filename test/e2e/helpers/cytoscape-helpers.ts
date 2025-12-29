@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 
 /**
  * Convert Cytoscape model coordinates to page/screen coordinates.
@@ -173,6 +173,39 @@ export async function ctrlClick(page: Page, x: number, y: number): Promise<void>
   await page.keyboard.down('Control');
   await page.mouse.click(x, y);
   await page.keyboard.up('Control');
+}
+
+/**
+ * Perform an Alt+Click at the specified position.
+ * Used for deleting elements (nodes, edges, annotations, groups).
+ */
+export async function altClick(page: Page, x: number, y: number): Promise<void> {
+  await page.keyboard.down('Alt');
+  // Small delay to ensure Alt key state is registered
+  await page.waitForTimeout(50);
+  await page.mouse.click(x, y);
+  await page.keyboard.up('Alt');
+}
+
+/**
+ * Perform an Alt+Click directly on an element using dispatchEvent.
+ * This is useful for narrow or overlapping HTML elements where coordinate-based
+ * clicking might land on the wrong element.
+ * Used for deleting HTML overlay elements (text annotations, shape annotations).
+ */
+export async function altClickElement(page: Page, locator: Locator): Promise<void> {
+  const handle = await locator.elementHandle();
+  if (!handle) throw new Error('Element not found');
+
+  await page.evaluate((el) => {
+    const clickEvent = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      altKey: true
+    });
+    el.dispatchEvent(clickEvent);
+  }, handle);
 }
 
 /**

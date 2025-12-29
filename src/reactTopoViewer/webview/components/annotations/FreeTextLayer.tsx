@@ -329,7 +329,7 @@ function calculateEffectivelyLocked(isLocked: boolean, isGeoMode?: boolean, geoM
 const TextItem: React.FC<TextItemProps> = ({
   annotation, cy, isLocked, isSelected,
   isGeoMode, geoMode, groupDragOffset,
-  onDoubleClick, onPositionChange, onRotationChange, onSizeChange,
+  onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange,
   onSelect, onToggleSelect, onDragStart, onDragEnd, onShowContextMenu
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -365,7 +365,7 @@ const TextItem: React.FC<TextItemProps> = ({
 
   // Click handlers - use onShowContextMenu to render context menu outside transformed layer
   const { handleClick, handleDoubleClick } =
-    useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, onDoubleClick);
+    useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, onDoubleClick, onDelete);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();

@@ -15,12 +15,14 @@ import { renderedToModel } from './freeText';
  * @param onSelect - Handler for single selection
  * @param onToggleSelect - Handler for toggle selection (Ctrl+click)
  * @param onDoubleClick - Optional handler for double-click (FreeText only)
+ * @param onDelete - Optional handler for Alt+click delete
  */
 export function useAnnotationClickHandlers(
   isLocked: boolean,
   onSelect: () => void,
   onToggleSelect: () => void,
-  onDoubleClick?: () => void
+  onDoubleClick?: () => void,
+  onDelete?: () => void
 ) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -28,12 +30,19 @@ export function useAnnotationClickHandlers(
     // Don't select on right-click
     if (e.button === 2) return;
     e.stopPropagation();
+
+    // Alt+Click deletes the annotation (only in edit mode, i.e. not locked)
+    if (e.altKey && onDelete && !isLocked) {
+      onDelete();
+      return;
+    }
+
     if (e.ctrlKey || e.metaKey) {
       onToggleSelect();
     } else {
       onSelect();
     }
-  }, [onSelect, onToggleSelect]);
+  }, [isLocked, onSelect, onToggleSelect, onDelete]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     if (!onDoubleClick) return;

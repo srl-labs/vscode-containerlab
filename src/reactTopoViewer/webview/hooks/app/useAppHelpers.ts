@@ -122,8 +122,9 @@ export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
       const shapeLayer = layers.nodeLayer.insertBefore('html');
       layerRef.current = shapeLayer;
 
-      // Configure the layer node
-      configureLayerNode(shapeLayer.node, 'auto', 'shape-layer-container');
+      // Configure the layer node - pointer events NONE on container so clicks pass through
+      // to layers below (like GroupLayer). Individual shape items set pointerEvents: 'auto'.
+      configureLayerNode(shapeLayer.node, 'none', 'shape-layer-container');
 
       log.info('[ShapeLayer] Shape layer created');
       setShapeLayerNode(shapeLayer.node);
@@ -174,8 +175,9 @@ export function useTextLayer(cy: CyCore | null): UseTextLayerReturn {
       const textLayer = layers.append('html');
       layerRef.current = textLayer;
 
-      // Configure the layer node - pointer events auto so text is interactive
-      configureLayerNode(textLayer.node, 'auto', 'text-layer-container');
+      // Configure the layer node - pointer events NONE on container so clicks pass through
+      // to layers below (like GroupLayer). Individual text items set pointerEvents: 'auto'.
+      configureLayerNode(textLayer.node, 'none', 'text-layer-container');
 
       log.info('[TextLayer] Text layer created');
       setTextLayerNode(textLayer.node);

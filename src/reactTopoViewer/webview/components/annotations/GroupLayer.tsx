@@ -66,6 +66,7 @@ interface GroupInteractionItemProps {
   isLocked: boolean;
   isSelected: boolean;
   onGroupEdit: (id: string) => void;
+  onDelete?: (id: string) => void;
   onDragStart?: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
@@ -361,6 +362,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     isLocked,
     isSelected,
     onGroupEdit,
+    onDelete,
     onDragStart,
     onPositionChange,
     onDragMove,
@@ -403,12 +405,19 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (e.button === 2) return;
     e.stopPropagation();
+
+    // Alt+Click deletes the group (only when not locked)
+    if (e.altKey && onDelete && !isLocked) {
+      onDelete(group.id);
+      return;
+    }
+
     if (e.ctrlKey || e.metaKey) {
       onToggleSelect?.(group.id);
       return;
     }
     onSelect?.(group.id);
-  }, [group.id, onSelect, onToggleSelect]);
+  }, [group.id, isLocked, onSelect, onToggleSelect, onDelete]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -561,6 +570,7 @@ const GroupInteractionPortal: React.FC<{
   isLocked: boolean;
   selectedGroupIds: Set<string>;
   onGroupEdit: (id: string) => void;
+  onGroupDelete?: (id: string) => void;
   onDragStart?: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
@@ -581,6 +591,7 @@ const GroupInteractionPortal: React.FC<{
   isLocked,
   selectedGroupIds,
   onGroupEdit,
+  onGroupDelete,
   onDragStart,
   onPositionChange,
   onDragMove,
@@ -603,6 +614,7 @@ const GroupInteractionPortal: React.FC<{
         isLocked={isLocked}
         isSelected={selectedGroupIds.has(group.id)}
         onGroupEdit={onGroupEdit}
+        onDelete={onGroupDelete}
         onDragStart={onDragStart}
         onPositionChange={onPositionChange}
         onDragMove={onDragMove}
@@ -756,6 +768,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           isLocked={effectivelyLocked}
           selectedGroupIds={selectedGroupIds}
           onGroupEdit={onGroupEdit}
+          onGroupDelete={onGroupDelete}
           onDragStart={onDragStart}
           onPositionChange={handlePositionChangeWithGeo}
           onDragMove={onDragMove}

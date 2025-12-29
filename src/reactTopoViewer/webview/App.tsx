@@ -45,6 +45,7 @@ import {
   // Types
   type GraphChange
 } from './hooks/internal';
+import { useAltClickDelete, useShiftClickEdgeCreation } from './hooks/graph';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
 
 /** Inner component that uses contexts */
@@ -227,6 +228,21 @@ const AppContent: React.FC<{
     onLockedDrag: handleLockedDrag,
     onMoveComplete: handleMoveComplete,
     onPositionsCommitted: updateNodePositions
+  });
+
+  // Alt+Click delete for nodes/edges
+  useAltClickDelete(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    onDeleteNode: handleDeleteNodeWithUndo,
+    onDeleteEdge: handleDeleteLinkWithUndo
+  });
+
+  // Shift+Click on node to start link creation
+  useShiftClickEdgeCreation(cyInstance, {
+    mode: state.mode,
+    isLocked: state.isLocked,
+    startEdgeCreation: graphCreation.startEdgeCreation
   });
 
   // shapeLayerNode is passed as prop from App wrapper

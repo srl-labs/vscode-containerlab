@@ -38,7 +38,8 @@ export function getCytoscapeLayers(cy: cytoscape.Core): ILayers {
 }
 
 /**
- * Configure common layer node styles
+ * Configure common layer node styles.
+ * Also configures parent wrapper created by cytoscape-layers to allow click-through.
  */
 export function configureLayerNode(
   node: HTMLElement,
@@ -49,4 +50,10 @@ export function configureLayerNode(
   node.style.overflow = 'visible';
   node.style.transformOrigin = '0 0';
   node.classList.add(className);
+
+  // cytoscape-layers creates a parent wrapper div - configure it too
+  // This ensures clicks can pass through to layers below when pointerEvents is 'none'
+  if (pointerEvents === 'none' && node.parentElement) {
+    node.parentElement.style.pointerEvents = 'none';
+  }
 }

@@ -292,7 +292,7 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
     onDragEnd
   });
 
-  const { contextMenu, handleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect);
+  const { contextMenu, handleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, undefined, onDelete);
 
   const isInteracting = [isDragging, isRotating, isBoxResizing, isLineResizing].some(Boolean);
   const showHandles = computeShowHandles({ isHovered, isInteracting, isSelected, isLocked: effectivelyLocked });
