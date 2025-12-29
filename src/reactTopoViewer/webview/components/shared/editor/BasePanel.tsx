@@ -64,7 +64,8 @@ function usePanelResize(
   initialHeight: number | undefined = undefined,
   position = DEFAULT_POSITION,
   minW = MIN_WIDTH,
-  minH = MIN_HEIGHT
+  minH = MIN_HEIGHT,
+  panelRef?: React.RefObject<HTMLDivElement | null>
 ) {
   const [size, setSize] = useState<Size>(() => loadSize(storageKey, { width: initialWidth, height: initialHeight }, position, minW, minH));
   const [isResizing, setIsResizing] = useState(false);
@@ -75,9 +76,17 @@ function usePanelResize(
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Measure actual height if not yet set (first resize)
+    let startH = size.height;
+    if (startH === undefined) {
+      startH = panelRef?.current?.getBoundingClientRect().height ?? 300;
+      setSize(prev => ({ ...prev, height: startH }));
+    }
+
     setIsResizing(true);
-    startRef.current = { x: e.clientX, y: e.clientY, w: size.width, h: size.height ?? 300 };
-  }, [size]);
+    startRef.current = { x: e.clientX, y: e.clientY, w: size.width, h: startH };
+  }, [size, panelRef]);
 
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!isResizing) return;
@@ -147,9 +156,10 @@ export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement |
   const { title, isVisible, onClose, children, storageKey, height, testId } = props;
   const btn = getButtonDefaults(props);
   const sz = getSizeDefaults(props);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const { position, isDragging, handleMouseDown } = usePanelDrag({ storageKey, initialPosition: sz.initialPosition, panelWidth: sz.width });
-  const { size, isResizing, handleResizeStart } = usePanelResize(storageKey, sz.width, height, position, sz.minWidth, sz.minHeight);
+  const { size, isResizing, handleResizeStart } = usePanelResize(storageKey, sz.width, height, position, sz.minWidth, sz.minHeight, panelRef);
 
   if (!isVisible) return null;
 
@@ -160,7 +170,7 @@ export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement |
   return (
     <>
       {sz.backdrop && <Backdrop zIndex={sz.zIndex} onClick={onClose} />}
-      <div className={cls} style={style} data-testid={testId}>
+      <div ref={panelRef} className={cls} style={style} data-testid={testId}>
         <PanelHeader title={title} isDragging={isDragging} onMouseDown={handleMouseDown} onClose={onClose} />
         <div className="panel-block p-2 overflow-y-auto flex-1 min-h-0">{children}</div>
         {btn.footer && <PanelFooter hasChanges={btn.hasChanges} onPrimary={btn.onPrimaryClick} onSecondary={btn.onSecondaryClick} primary={btn.primaryLabel} secondary={btn.secondaryLabel} />}
