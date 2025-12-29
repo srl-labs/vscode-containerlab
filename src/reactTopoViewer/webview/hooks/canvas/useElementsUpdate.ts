@@ -16,6 +16,8 @@ import {
 } from '../../components/canvas/init';
 import type { NodePositions } from '../../components/canvas/init';
 import { log } from '../../utils/logger';
+import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
+import { ROLE_SVG_MAP } from '../../components/canvas/styles';
 
 export { collectNodePositions };
 export type { NodePositions };
@@ -218,6 +220,73 @@ function findReactExtraData(
   return (reactEl.data as Record<string, unknown>).extraData as Record<string, unknown> | undefined;
 }
 
+/** Default icon color used when no custom color is set */
+const DEFAULT_ICON_COLOR = '#005aff';
+
+/**
+ * Find a React element by group and ID and return its top-level data
+ */
+function findReactNodeData(
+  elements: CyElement[],
+  id: string
+): Record<string, unknown> | undefined {
+  const reactEl = elements.find(e =>
+    e.group === 'nodes' && (e.data as Record<string, unknown>)?.id === id
+  );
+  if (!reactEl) return undefined;
+  return reactEl.data as Record<string, unknown>;
+}
+
+/** Visual properties extracted from React data */
+interface NodeVisualProps {
+  topoViewerRole?: unknown;
+  iconColor?: unknown;
+  iconCornerRadius?: unknown;
+}
+
+/**
+ * Extract visual properties from React extraData and node data
+ */
+function extractNodeVisualProps(
+  reactExtraData: Record<string, unknown> | undefined,
+  reactNodeData: Record<string, unknown> | undefined
+): NodeVisualProps {
+  return {
+    topoViewerRole: reactExtraData?.topoViewerRole ?? reactNodeData?.topoViewerRole,
+    iconColor: reactExtraData?.iconColor ?? reactNodeData?.iconColor,
+    iconCornerRadius: reactExtraData?.iconCornerRadius ?? reactNodeData?.iconCornerRadius,
+  };
+}
+
+/**
+ * Apply visual properties to a Cytoscape node
+ */
+function applyNodeVisualProps(
+  cyEl: ReturnType<Core['getElementById']>,
+  props: NodeVisualProps
+): void {
+  const { topoViewerRole, iconColor, iconCornerRadius } = props;
+
+  // Update data properties
+  if (topoViewerRole !== undefined) cyEl.data('topoViewerRole', topoViewerRole);
+  if (iconColor !== undefined) cyEl.data('iconColor', iconColor);
+  if (iconCornerRadius !== undefined) cyEl.data('iconCornerRadius', iconCornerRadius);
+
+  // Update background-image style for iconColor
+  const role = (topoViewerRole as string) || (cyEl.data('topoViewerRole') as string) || 'default';
+  const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
+  if (svgType) {
+    const color = (iconColor as string) || DEFAULT_ICON_COLOR;
+    cyEl.style('background-image', generateEncodedSVG(svgType, color));
+  }
+
+  // Apply iconCornerRadius - requires round-rectangle shape
+  if (iconCornerRadius !== undefined && (iconCornerRadius as number) > 0) {
+    cyEl.style('shape', 'round-rectangle');
+    cyEl.style('corner-radius', iconCornerRadius as number);
+  }
+}
+
 /**
  * Update extraData for specific nodes in Cytoscape without full reload
  * Also updates top-level visual properties that Cytoscape uses for styling
@@ -231,22 +300,17 @@ function updateNodeExtraData(cy: Core, elements: CyElement[], nodeIds: string[])
       if (cyEl.empty()) continue;
 
       const reactExtraData = findReactExtraData(elements, 'nodes', nodeId);
-      if (reactExtraData === undefined) continue;
+      const reactNodeData = findReactNodeData(elements, nodeId);
+      if (reactExtraData === undefined && !reactNodeData) continue;
 
       // Update extraData on the Cytoscape element
-      cyEl.data('extraData', reactExtraData || {});
+      if (reactExtraData !== undefined) {
+        cyEl.data('extraData', reactExtraData || {});
+      }
 
-      // Also update top-level visual properties that Cytoscape uses for styling
-      // These need to be at the data root level for Cytoscape style selectors
-      if (reactExtraData.topoViewerRole !== undefined) {
-        cyEl.data('topoViewerRole', reactExtraData.topoViewerRole);
-      }
-      if (reactExtraData.iconColor !== undefined) {
-        cyEl.data('iconColor', reactExtraData.iconColor);
-      }
-      if (reactExtraData.iconCornerRadius !== undefined) {
-        cyEl.data('iconCornerRadius', reactExtraData.iconCornerRadius);
-      }
+      // Extract and apply visual properties
+      const visualProps = extractNodeVisualProps(reactExtraData, reactNodeData);
+      applyNodeVisualProps(cyEl, visualProps);
     }
   });
 }

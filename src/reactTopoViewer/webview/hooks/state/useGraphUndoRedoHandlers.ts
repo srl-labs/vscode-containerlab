@@ -13,6 +13,8 @@ import {
   type NodeSaveData,
   type LinkSaveData
 } from '../../services';
+import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
+import { ROLE_SVG_MAP } from '../../components/canvas/styles';
 
 import type { GraphChange, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove, MembershipEntry } from './useUndoRedo';
 import { useUndoRedo } from './useUndoRedo';
@@ -451,11 +453,52 @@ function createDeleteLinkHandler(
   };
 }
 
+/** Default icon color used when no custom color is set */
+const DEFAULT_ICON_COLOR = '#005aff';
+
+/**
+ * Update Cytoscape node visuals after undo/redo property edit
+ */
+function updateCytoscapeNodeVisuals(
+  cy: CyCore | null,
+  nodeId: string,
+  data: Record<string, unknown>
+): void {
+  if (!cy) return;
+
+  const node = cy.getElementById(nodeId);
+  if (!node || node.empty()) return;
+
+  // Update node data
+  node.data('name', data.name);
+  node.data('topoViewerRole', data.icon);
+  node.data('iconColor', data.iconColor);
+  node.data('iconCornerRadius', data.iconCornerRadius);
+
+  // Update background-image style for iconColor
+  const role = (data.icon as string) || 'default';
+  const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
+  if (svgType) {
+    const color = (data.iconColor as string) || DEFAULT_ICON_COLOR;
+    node.style('background-image', generateEncodedSVG(svgType, color));
+  }
+
+  // Update shape/corner-radius
+  const cornerRadius = data.iconCornerRadius as number | undefined;
+  if (cornerRadius !== undefined && cornerRadius > 0) {
+    node.style('shape', 'round-rectangle');
+    node.style('corner-radius', cornerRadius);
+  } else {
+    node.style('shape', 'rectangle');
+  }
+}
+
 /**
  * Apply node property edit for undo/redo.
  * For renames, uses editNode with the current name as id.
  */
 function applyNodePropertyEdit(
+  cy: CyCore | null,
   before: Record<string, unknown>,
   after: Record<string, unknown>,
   isUndo: boolean
@@ -484,6 +527,10 @@ function applyNodePropertyEdit(
     }
   };
   void editNode(nodeData);
+
+  // Update Cytoscape canvas visuals
+  const nodeIdForVisuals = isRename ? targetNodeName : currentNodeName;
+  updateCytoscapeNodeVisuals(cy, nodeIdForVisuals, dataToApply);
 }
 
 /**
@@ -547,14 +594,14 @@ function useApplyCallbacks(params: {
     isApplyingUndoRedo.current = true;
     try {
       if (action.entityType === 'node') {
-        applyNodePropertyEdit(action.before, action.after, isUndo);
+        applyNodePropertyEdit(cyInstance, action.before, action.after, isUndo);
       } else {
         applyLinkPropertyEdit(action.before, action.after, isUndo);
       }
     } finally {
       isApplyingUndoRedo.current = false;
     }
-  }, [isApplyingUndoRedo]);
+  }, [cyInstance, isApplyingUndoRedo]);
 
   return { applyGraphChanges, applyPropertyEdit };
 }

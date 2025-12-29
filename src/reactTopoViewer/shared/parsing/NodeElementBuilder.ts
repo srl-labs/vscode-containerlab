@@ -278,7 +278,7 @@ export function buildNodeElement(params: {
     (labels?.['topoViewer-role'] as string) ||
     (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE
       ? NODE_KIND_BRIDGE
-      : 'router');
+      : 'pe');
 
   const iconVisuals = extractIconVisuals(nodeAnn);
   const element: CyElement = {

@@ -7,8 +7,9 @@ import cola from 'cytoscape-cola';
 
 import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
+import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 
-import { cytoscapeStyles } from './styles';
+import { cytoscapeStyles, ROLE_SVG_MAP } from './styles';
 
 let colaRegistered = false;
 
@@ -150,6 +151,32 @@ export function collectNodePositions(cy: Core): NodePositions {
 }
 
 /**
+ * Apply custom iconColor and iconCornerRadius to all nodes that have them set.
+ * Cytoscape stylesheets are static, so we must update the style directly for each node.
+ * Note: iconColor and iconCornerRadius are stored at the top level of node data (not in extraData).
+ */
+export function applyNodeIconColors(cy: Core): void {
+  cy.nodes().forEach(node => {
+    // iconColor and iconCornerRadius are at top-level of data (from NodeElementBuilder)
+    const iconColor = node.data('iconColor') as string | undefined;
+    const iconCornerRadius = node.data('iconCornerRadius') as number | undefined;
+    const role = (node.data('topoViewerRole') as string) || 'default';
+    const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
+
+    // Apply iconColor to background-image
+    if (iconColor && svgType) {
+      node.style('background-image', generateEncodedSVG(svgType, iconColor));
+    }
+
+    // Apply iconCornerRadius - requires round-rectangle shape
+    if (iconCornerRadius !== undefined && iconCornerRadius > 0) {
+      node.style('shape', 'round-rectangle');
+      node.style('corner-radius', iconCornerRadius);
+    }
+  });
+}
+
+/**
  * Update cytoscape elements and apply layout
  */
 export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
@@ -161,6 +188,9 @@ export function updateCytoscapeElements(cy: Core, elements: CyElement[]): void {
 
   // Apply stub-link class to edges connected to network/cloud nodes
   applyStubLinkClasses(cy);
+
+  // Apply custom iconColor to nodes that have one set in their extraData
+  applyNodeIconColors(cy);
 
   if (!usePresetLayout) {
     cy.layout(getLayoutOptions('cose')).run();
@@ -197,6 +227,9 @@ export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean): void {
 
   // Apply stub-link class to edges connected to network/cloud nodes
   applyStubLinkClasses(cy);
+
+  // Apply custom iconColor to nodes that have one set in their extraData
+  applyNodeIconColors(cy);
 
   // Run COSE layout if nodes don't have preset positions
   if (!usePresetLayout) {

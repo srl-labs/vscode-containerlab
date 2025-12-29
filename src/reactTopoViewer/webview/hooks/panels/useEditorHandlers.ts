@@ -15,6 +15,8 @@ import type { CytoscapeCanvasRef } from '../../components/canvas';
 import { convertEditorDataToNodeSaveData, convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
 import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversions';
 import { editNode as editNodeService, editLink as editLinkService, isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
+import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
+import { ROLE_SVG_MAP } from '../../components/canvas/styles';
 
 /** Pending membership change during node drag */
 export interface PendingMembershipChange {
@@ -53,6 +55,9 @@ type RenameNodeCallback = (oldId: string, newId: string) => void;
 // Shared Helper Functions
 // ============================================================================
 
+/** Default icon color used when no custom color is set */
+const DEFAULT_ICON_COLOR = '#005aff';
+
 /**
  * Update Cytoscape node data after editor changes
  */
@@ -80,6 +85,24 @@ function updateCytoscapeNodeData(
   node.data('iconColor', data.iconColor);
   node.data('iconCornerRadius', data.iconCornerRadius);
   node.data('extraData', newExtraData);
+
+  // Update the background-image style to reflect the new iconColor
+  // Cytoscape stylesheets are static, so we must update the style directly
+  const role = data.icon || 'default';
+  const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
+  if (svgType) {
+    const color = data.iconColor || DEFAULT_ICON_COLOR;
+    node.style('background-image', generateEncodedSVG(svgType, color));
+  }
+
+  // Apply iconCornerRadius - requires round-rectangle shape
+  if (data.iconCornerRadius !== undefined && data.iconCornerRadius > 0) {
+    node.style('shape', 'round-rectangle');
+    node.style('corner-radius', data.iconCornerRadius);
+  } else {
+    // Reset to default rectangle shape when corner radius is 0 or undefined
+    node.style('shape', 'rectangle');
+  }
 }
 
 /**
@@ -157,7 +180,8 @@ export function useNodeEditorHandlers(
   }, [editNode]);
 
   const handleSave = React.useCallback((data: NodeEditorData) => {
-    recordEdit('node', initialDataRef.current, data, recordPropertyEdit);
+    // Only record if there are actual changes (checkChanges = true)
+    recordEdit('node', initialDataRef.current, data, recordPropertyEdit, true);
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
     const saveData = convertEditorDataToNodeSaveData(data, oldName);
     void editNodeService(saveData);
@@ -208,7 +232,8 @@ export function useLinkEditorHandlers(
   }, [editEdge]);
 
   const handleSave = React.useCallback((data: LinkEditorData) => {
-    recordEdit('link', initialDataRef.current, data, recordPropertyEdit);
+    // Only record if there are actual changes (checkChanges = true)
+    recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
     const saveData = convertEditorDataToLinkSaveData(data);
     void editLinkService(saveData);
     initialDataRef.current = null;

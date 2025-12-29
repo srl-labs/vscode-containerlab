@@ -2,7 +2,7 @@
  * IconSelectorModal - Modal for selecting and customizing node icons
  * Built on top of BasePanel
  */
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 
 import type { NodeType } from '../../utils/SvgGenerator';
 import { generateEncodedSVG } from '../../utils/SvgGenerator';
@@ -24,10 +24,25 @@ const ICON_LABELS: Record<string, string> = {
 
 const DEFAULT_COLOR = '#1a73e8';
 const MAX_RADIUS = 40;
+const COLOR_DEBOUNCE_MS = 50;
 
 function getIconSrc(icon: string, color: string): string {
   try { return generateEncodedSVG(icon as NodeType, color); }
   catch { return generateEncodedSVG('pe', color); }
+}
+
+/**
+ * Hook to debounce a value - returns debounced value that updates after delay
+ */
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 interface UseIconSelectorStateReturn {
@@ -81,21 +96,29 @@ interface IconSelectorModalProps {
   initialCornerRadius?: number;
 }
 
-const IconButton: React.FC<{
-  icon: string; isSelected: boolean; color: string; cornerRadius: number; onClick: () => void;
-}> = ({ icon, isSelected, color, cornerRadius, onClick }) => (
-  <button
-    type="button"
-    className={`flex w-full flex-col items-center gap-0.5 rounded p-1.5 transition-colors ${
-      isSelected ? 'bg-[var(--vscode-list-activeSelectionBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
-    }`}
-    onClick={onClick}
-    title={ICON_LABELS[icon] || icon}
-  >
-    <img src={getIconSrc(icon, color)} alt={icon} className="rounded" style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }} />
-    <span className="max-w-full truncate text-[10px] text-[var(--vscode-foreground)]">{ICON_LABELS[icon] || icon}</span>
-  </button>
-);
+interface IconButtonProps {
+  icon: string;
+  isSelected: boolean;
+  iconSrc: string;
+  cornerRadius: number;
+  onClick: () => void;
+}
+
+const IconButton = React.memo<IconButtonProps>(function IconButton({ icon, isSelected, iconSrc, cornerRadius, onClick }) {
+  return (
+    <button
+      type="button"
+      className={`flex w-full flex-col items-center gap-0.5 rounded p-1.5 transition-colors ${
+        isSelected ? 'bg-[var(--vscode-list-activeSelectionBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
+      }`}
+      onClick={onClick}
+      title={ICON_LABELS[icon] || icon}
+    >
+      <img src={iconSrc} alt={icon} className="rounded" style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }} />
+      <span className="max-w-full truncate text-[10px] text-[var(--vscode-foreground)]">{ICON_LABELS[icon] || icon}</span>
+    </button>
+  );
+});
 
 const ColorPicker: React.FC<{
   color: string; enabled: boolean; onColorChange: (c: string) => void; onToggle: (e: boolean) => void;
@@ -137,6 +160,26 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
 
   useEscapeKey(isOpen, onClose);
 
+  // Debounce color for icon grid to reduce SVG regeneration during color picker drag
+  const debouncedGridColor = useDebouncedValue(displayColor, COLOR_DEBOUNCE_MS);
+
+  // Memoize icon sources - only regenerate when debounced color changes
+  const iconSources = useMemo(() => {
+    const sources: Record<string, string> = {};
+    for (const i of AVAILABLE_ICONS) {
+      sources[i] = getIconSrc(i, debouncedGridColor);
+    }
+    return sources;
+  }, [debouncedGridColor]);
+
+  // Memoize click handlers to prevent IconButton re-renders
+  const iconClickHandlers = useRef<Record<string, () => void>>({});
+  useMemo(() => {
+    for (const i of AVAILABLE_ICONS) {
+      iconClickHandlers.current[i] = () => setIcon(i);
+    }
+  }, [setIcon]);
+
   const handleSave = useCallback(() => {
     onSave(icon, resultColor, radius);
     onClose();
@@ -164,9 +207,9 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
               key={i}
               icon={i}
               isSelected={icon === i}
-              color={displayColor}
+              iconSrc={iconSources[i]}
               cornerRadius={radius}
-              onClick={() => setIcon(i)}
+              onClick={iconClickHandlers.current[i]}
             />
           ))}
         </div>

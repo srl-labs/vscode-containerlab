@@ -780,7 +780,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             const nodeData = {
               id: nodeId,
               name: nodeId,
-              topoViewerRole: 'router',
+              topoViewerRole: 'pe',
               extraData: {
                 kind,
                 image: 'ghcr.io/nokia/srlinux:latest',
