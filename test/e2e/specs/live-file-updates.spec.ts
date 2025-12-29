@@ -218,4 +218,139 @@ topology:
       }
     ).toBe(4);
   });
+
+  test('deleting externally-added node via UI persists to YAML', async ({ topoViewerPage, page }) => {
+    // This test reproduces a bug where deleting a node that was added
+    // externally (via YAML edit) doesn't persist to the YAML file
+
+    // Verify initial state (simple.clab.yml has 2 nodes: srl1, srl2)
+    const initialNodeCount = await topoViewerPage.getNodeCount();
+    expect(initialNodeCount).toBe(2);
+
+    // Externally modify the YAML to add a third node
+    const newYaml = `name: simple
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+    srl2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+    srl3:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+  links:
+    - endpoints: ["srl1:e1-1", "srl2:e1-1"]
+`;
+
+    await topoViewerPage.writeYamlFile(testFile, newYaml);
+
+    // Wait for live update to propagate
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      {
+        timeout: 5000,
+        message: 'Expected canvas to update with 3 nodes after external edit'
+      }
+    ).toBe(3);
+
+    // Verify the new node is present
+    const updatedNodeIds = await topoViewerPage.getNodeIds();
+    expect(updatedNodeIds).toContain('srl3');
+
+    // Unlock and ensure edit mode
+    await topoViewerPage.unlock();
+
+    // Wait for internal update window to expire (1000ms in dev server)
+    // to ensure our UI deletion won't be ignored
+    await page.waitForTimeout(1200);
+
+    // Now delete the externally-added node via UI
+    await topoViewerPage.deleteNode('srl3');
+
+    // Wait for deletion to complete in canvas
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      {
+        timeout: 3000,
+        message: 'Expected canvas to show 2 nodes after deleting srl3'
+      }
+    ).toBe(2);
+
+    // Verify node was actually removed from YAML file
+    // Give it some time for file write to complete
+    await page.waitForTimeout(500);
+
+    const finalYaml = await topoViewerPage.readYamlFile(testFile);
+    expect(finalYaml).not.toContain('srl3');
+    expect(finalYaml).toContain('srl1');
+    expect(finalYaml).toContain('srl2');
+  });
+
+  test('external file change clears undo history', async ({ topoViewerPage, page }) => {
+    // Verify initial state (simple.clab.yml has 2 nodes: srl1, srl2)
+    const initialNodeCount = await topoViewerPage.getNodeCount();
+    expect(initialNodeCount).toBe(2);
+
+    // Unlock and ensure edit mode for creating nodes
+    await topoViewerPage.unlock();
+
+    // Create a new node to build up undo history
+    await topoViewerPage.createNode('testnode1', { x: 300, y: 300 });
+
+    // Wait for node to be created
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 5000, message: 'Expected 3 nodes after creating testnode1' }
+    ).toBe(3);
+
+    // Verify we can undo (should have undo history)
+    expect(await topoViewerPage.canUndo()).toBe(true);
+
+    // Wait for internal update window to expire (1000ms in dev server)
+    // This ensures the subsequent file write is treated as external
+    await page.waitForTimeout(1200);
+
+    // Externally modify the YAML to add another node
+    const newYaml = `name: simple
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+    srl2:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+    externalnode:
+      kind: nokia_srlinux
+      image: ghcr.io/nokia/srlinux:latest
+`;
+
+    await topoViewerPage.writeYamlFile(testFile, newYaml);
+
+    // Wait for live update to propagate
+    await expect.poll(
+      () => topoViewerPage.getNodeIds(),
+      {
+        timeout: 5000,
+        message: 'Expected canvas to update with externalnode after external edit'
+      }
+    ).toContain('externalnode');
+
+    // After external file change, undo history should be cleared
+    // (testnode1 we created earlier won't be in the new topology,
+    // but that's expected - the external edit replaced the file)
+    await expect.poll(
+      () => topoViewerPage.canUndo(),
+      {
+        timeout: 3000,
+        message: 'Expected undo history to be cleared after external file change'
+      }
+    ).toBe(false);
+
+    // Verify both undo and redo are cleared
+    expect(await topoViewerPage.canUndo()).toBe(false);
+    expect(await topoViewerPage.canRedo()).toBe(false);
+  });
 });

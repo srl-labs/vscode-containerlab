@@ -51,3 +51,6 @@ export {
 } from '../annotations';
 
 export { useAppGroups } from '../groups';
+
+// External file change handling
+export { useExternalFileChange } from '../useExternalFileChange';

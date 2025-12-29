@@ -123,18 +123,23 @@ export class ReactTopoViewer {
     const postTopologyData = (data: unknown) => {
       panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data });
     };
+    const notifyExternalChange = () => {
+      panel.webview.postMessage({ type: 'external-file-change' });
+    };
 
     this.watcherManager.setupFileWatcher(
       this.lastYamlFilePath,
       updateController,
       () => this.loadTopologyData(),
-      postTopologyData
+      postTopologyData,
+      notifyExternalChange
     );
     this.watcherManager.setupSaveListener(
       this.lastYamlFilePath,
       updateController,
       () => this.loadTopologyData(),
-      postTopologyData
+      postTopologyData,
+      notifyExternalChange
     );
     this.watcherManager.setupDockerImagesSubscription(panel);
   }

@@ -20,6 +20,7 @@ import { FloatingActionPanel, type FloatingActionPanelHandle } from './component
 import { AnnotationLayers } from './components/AnnotationLayers';
 import { EditorPanels } from './components/EditorPanels';
 import { ViewPanels } from './components/ViewPanels';
+import { ToastContainer, useToasts } from './components/Toast';
 import { useEasterEgg, EasterEggRenderer } from './easter-eggs';
 import {
   // Graph manipulation
@@ -38,6 +39,8 @@ import {
   useCustomNodeCommands, useNavbarCommands, useShapeLayer, useTextLayer, useE2ETestingExposure, useGeoCoordinateSync,
   // NEW: Composed hooks
   useAnnotationLayerProps, useClipboardHandlers, useAppKeyboardShortcuts, useGraphCreation,
+  // External file change
+  useExternalFileChange,
   // Types
   type GraphChange
 } from './hooks/internal';
@@ -73,6 +76,16 @@ const AppContent: React.FC<{
   } = useTopoViewerActions();
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
+
+  // Toast notifications
+  const { toasts, addToast, dismissToast } = useToasts();
+
+  // Clear undo history on external file changes
+  useExternalFileChange({
+    undoRedo,
+    addToast,
+    enabled: state.mode === 'edit'
+  });
 
   const renameNodeInGraph = React.useCallback((oldId: string, newId: string) => {
     dispatch({ type: 'RENAME_NODE', payload: { oldId, newId } });
@@ -356,6 +369,7 @@ const AppContent: React.FC<{
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
         <ContextMenu isVisible={menuState.isVisible} position={menuState.position} items={menuItems} onClose={closeMenu} />
         <EasterEggRenderer easterEgg={easterEgg} cyInstance={cyInstance} />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       </main>
     </div>
   );

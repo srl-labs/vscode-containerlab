@@ -8,6 +8,7 @@ import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/
 import type { CyElement } from '../../shared/types/messages';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
 import { getElementId, getEdgeSource, getEdgeTarget } from '../utils/cytoscapeHelpers';
+import { isServicesInitialized, getTopologyIO } from '../services';
 
 // CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
 
@@ -453,6 +454,20 @@ function handleExtensionMessage(
       const elements = msg.elements || msg.data?.elements;
       if (elements) {
         dispatch({ type: 'SET_ELEMENTS', payload: elements });
+
+        // Re-initialize TopologyIO to sync with the new YAML file content
+        // This is critical for node deletion to work after external file changes
+        const yamlFilePath = (window as { __INITIAL_DATA__?: { yamlFilePath?: string } }).__INITIAL_DATA__?.yamlFilePath;
+        if (yamlFilePath && isServicesInitialized()) {
+          const topologyIO = getTopologyIO();
+          void topologyIO.initializeFromFile(yamlFilePath).then((result) => {
+            if (!result.success) {
+              console.error(`[TopoViewerContext] Failed to reinitialize TopologyIO: ${result.error}`);
+            } else {
+              console.log(`[TopoViewerContext] TopologyIO reinitialized after external file change`);
+            }
+          });
+        }
       }
     },
     'node-renamed': () => {

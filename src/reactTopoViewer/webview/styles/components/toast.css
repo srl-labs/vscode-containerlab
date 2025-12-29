@@ -1,0 +1,66 @@
+/* Toast notification styles */
+
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--vscode-foreground, #cccccc);
+  background-color: var(--vscode-notifications-background, #252526);
+  border: 1px solid var(--vscode-notifications-border, #3c3c3c);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  animation: toast-slide-up 0.3s ease-out;
+}
+
+.toast--info {
+  border-left: 3px solid var(--vscode-notificationsInfoIcon-foreground, #3794ff);
+}
+
+.toast--info .toast-icon {
+  color: var(--vscode-notificationsInfoIcon-foreground, #3794ff);
+}
+
+.toast-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  flex: 1;
+}
+
+@keyframes toast-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.toast--exiting {
+  animation: toast-fade-out 0.2s ease-in forwards;
+}

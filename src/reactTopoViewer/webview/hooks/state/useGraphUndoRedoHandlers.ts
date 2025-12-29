@@ -24,6 +24,7 @@ interface NodeElementData {
   id: string;
   name?: string;
   kind?: string;
+  type?: string;
   image?: string;
   group?: string;
   topoViewerRole?: unknown;
@@ -32,6 +33,7 @@ interface NodeElementData {
   interfacePattern?: unknown;
   extraData?: {
     kind?: string;
+    type?: string;
     image?: string;
     group?: string;
     topoViewerRole?: unknown;
@@ -158,20 +160,13 @@ function addNodeWithPersistence(cy: CyCore | null, addNode: (n: CyElement) => vo
   if (!exists) {
     addNode(element);
     // Create node via TopologyIO service
+    // Note: TopologyParser stores properties in data.extraData, so we need to merge them
     const data = element.data as NodeElementData;
     const nodeData: NodeSaveData = {
       id,
       name: (data.name as string) || id,
       position: pos,
-      extraData: {
-        kind: data.kind,
-        image: data.image,
-        group: data.group,
-        topoViewerRole: data.topoViewerRole,
-        iconColor: data.iconColor,
-        iconCornerRadius: data.iconCornerRadius,
-        interfacePattern: data.interfacePattern
-      }
+      extraData: mergeNodeExtraData(data)
     };
     void createNode(nodeData);
   } else {
@@ -368,17 +363,16 @@ function createEdgeCreatedHandler(
   };
 }
 
+/** Properties to merge from extraData with top-level fallback */
+const NODE_MERGE_PROPS = ['kind', 'type', 'image', 'group', 'topoViewerRole', 'iconColor', 'iconCornerRadius', 'interfacePattern'] as const;
+
 function mergeNodeExtraData(data: NodeElementData): NodeSaveData['extraData'] {
-  const extraData = data.extraData;
-  return {
-    kind: extraData?.kind ?? data.kind,
-    image: extraData?.image ?? data.image,
-    group: extraData?.group ?? data.group,
-    topoViewerRole: extraData?.topoViewerRole ?? data.topoViewerRole,
-    iconColor: extraData?.iconColor ?? data.iconColor,
-    iconCornerRadius: extraData?.iconCornerRadius ?? data.iconCornerRadius,
-    interfacePattern: extraData?.interfacePattern ?? data.interfacePattern
-  };
+  const ed = (data.extraData ?? {}) as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const key of NODE_MERGE_PROPS) {
+    result[key] = ed[key] ?? (data as Record<string, unknown>)[key];
+  }
+  return result;
 }
 
 function buildNodeSaveDataFromElement(nodeId: string, nodeElement: CyElement, position: { x: number; y: number }): NodeSaveData {

@@ -76,6 +76,14 @@ export interface NodeRenamedMessage extends PushMessage {
 }
 
 /**
+ * External file change message - sent when YAML file is modified outside the webview
+ * Used to notify webview to clear undo history
+ */
+export interface ExternalFileChangeMessage extends PushMessage {
+  type: 'external-file-change';
+}
+
+/**
  * Node data for Cytoscape nodes
  */
 export interface NodeData {

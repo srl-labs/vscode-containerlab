@@ -708,6 +708,11 @@ function handleFileChange(changedPath: string): void {
       return;
     }
     console.log(`%c[Dev] Live update: reloading ${currentFilename}`, 'color: #FF9800;');
+
+    // Notify webview of external file change (to clear undo history)
+    // This mirrors what ReactTopoViewerProvider does in VS Code
+    window.postMessage({ type: 'external-file-change' }, '*');
+
     try {
       await loadTopologyFile(currentFilePath!);
       console.log('%c[Dev] Live update complete', 'color: #4CAF50;');

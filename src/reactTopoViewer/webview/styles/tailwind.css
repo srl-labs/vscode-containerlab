@@ -19,6 +19,7 @@
 @import "./components/context-menu.css";
 @import "./components/about-panel.css";
 @import "./components/shortcuts-panel.css";
+@import "./components/toast.css";
 @import "./features/loading-states.css";
 @import "./features/free-text-markdown.css";
 @import "./features/geo-map.css";

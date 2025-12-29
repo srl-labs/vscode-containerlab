@@ -19,6 +19,11 @@ export type TopologyDataLoader = () => Promise<unknown>;
 export type TopologyDataPoster = (data: unknown) => void;
 
 /**
+ * Callback for notifying webview of external file change
+ */
+export type ExternalChangeNotifier = () => void;
+
+/**
  * Callback for getting/setting internal update flag
  */
 export interface InternalUpdateController {
@@ -61,7 +66,8 @@ export class WatcherManager {
     yamlFilePath: string,
     updateController: InternalUpdateController,
     loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster
+    postTopologyData: TopologyDataPoster,
+    notifyExternalChange?: ExternalChangeNotifier
   ): void {
     if (!yamlFilePath) return;
 
@@ -75,7 +81,8 @@ export class WatcherManager {
         yamlFilePath,
         updateController,
         loadTopologyData,
-        postTopologyData
+        postTopologyData,
+        notifyExternalChange
       );
     });
   }
@@ -87,7 +94,8 @@ export class WatcherManager {
     yamlFilePath: string,
     updateController: InternalUpdateController,
     loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster
+    postTopologyData: TopologyDataPoster,
+    notifyExternalChange?: ExternalChangeNotifier
   ): void {
     if (!yamlFilePath) return;
 
@@ -99,7 +107,8 @@ export class WatcherManager {
         yamlFilePath,
         updateController,
         loadTopologyData,
-        postTopologyData
+        postTopologyData,
+        notifyExternalChange
       );
     });
   }
@@ -133,7 +142,8 @@ export class WatcherManager {
     yamlFilePath: string,
     updateController: InternalUpdateController,
     loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster
+    postTopologyData: TopologyDataPoster,
+    notifyExternalChange?: ExternalChangeNotifier
   ): Promise<void> {
     if (!yamlFilePath) return;
     if (updateController.isInternalUpdate()) {
@@ -155,6 +165,10 @@ export class WatcherManager {
       }
 
       log.info(`[ReactTopoViewer] YAML ${trigger} detected, refreshing topology`);
+
+      // Notify webview of external change (to clear undo history)
+      notifyExternalChange?.();
+
       const topologyData = await loadTopologyData();
       if (topologyData) {
         postTopologyData(topologyData);
@@ -170,7 +184,8 @@ export class WatcherManager {
           yamlFilePath,
           updateController,
           loadTopologyData,
-          postTopologyData
+          postTopologyData,
+          notifyExternalChange
         );
       }
     }

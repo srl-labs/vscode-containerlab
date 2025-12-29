@@ -304,6 +304,9 @@ interface TopoViewerPage {
 
   /** Write annotations content to a file (for live update testing) */
   writeAnnotationsFile(filename: TopologyFileName, content: object): Promise<void>;
+
+  /** Read YAML content from a file (for verifying persistence) */
+  readYamlFile(filename: TopologyFileName): Promise<string>;
 }
 
 /**
@@ -757,14 +760,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       canUndo: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          return dev?.undoRedo?.canUndo?.() ?? false;
+          return dev?.undoRedo?.canUndo ?? false;
         });
       },
 
       canRedo: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          return dev?.undoRedo?.canRedo?.() ?? false;
+          return dev?.undoRedo?.canRedo ?? false;
         });
       },
 
@@ -1041,6 +1044,16 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         if (!response.ok()) {
           throw new Error(`Failed to write annotations: ${response.statusText()}`);
         }
+      },
+
+      readYamlFile: async (filename: string) => {
+        // Build full path to YAML file
+        const yamlPath = path.join(TOPOLOGIES_DIR, filename);
+        const response = await request.get(withSession(`/file/${encodeURIComponent(yamlPath)}`));
+        if (!response.ok()) {
+          throw new Error(`Failed to read YAML: ${response.statusText()}`);
+        }
+        return response.text();
       }
     };
 
