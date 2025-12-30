@@ -1,4 +1,3 @@
-/* eslint-env node, mocha */
 /* global describe, it, after */
 import Module from 'module';
 import path from 'path';

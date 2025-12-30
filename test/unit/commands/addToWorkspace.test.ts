@@ -1,4 +1,3 @@
-/* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach */
 /**
  * Tests for the `addLabFolderToWorkspace` command.

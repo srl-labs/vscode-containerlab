@@ -1,4 +1,3 @@
-/* eslint-env mocha */
 /* global describe, it, before, after, beforeEach, afterEach */
 /**
  * Tests for the `deploy` command.

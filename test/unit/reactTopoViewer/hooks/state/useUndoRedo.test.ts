@@ -1,4 +1,3 @@
-/* eslint-env mocha */
 /**
  * Tests for useUndoRedo hook
  *

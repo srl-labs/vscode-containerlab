@@ -1,4 +1,3 @@
-/* eslint-env mocha */
 /* global describe, it */
 import fs from 'fs';
 import path from 'path';

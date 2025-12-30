@@ -1,4 +1,3 @@
-/* eslint-env mocha */
 /* global describe, it, after, beforeEach, afterEach */
 /**
  * Tests covering the `ClabCommand` helper class.
