@@ -269,8 +269,17 @@ interface TopoViewerPage {
   /** Create a node at a specific position */
   createNode(nodeId: string, position: { x: number; y: number }, kind?: string): Promise<void>;
 
+  /** Create a network node (host, mgmt-net, macvlan, vxlan, vxlan-stitch, dummy, bridge, ovs-bridge) */
+  createNetwork(position: { x: number; y: number }, networkType: string): Promise<string | null>;
+
   /** Create a link between two nodes */
   createLink(sourceId: string, targetId: string, sourceEndpoint?: string, targetEndpoint?: string): Promise<void>;
+
+  /** Get all network node IDs (nodes with topoViewerRole='cloud') */
+  getNetworkNodeIds(): Promise<string[]>;
+
+  /** Drag a node to a new position */
+  dragNode(nodeId: string, delta: { x: number; y: number }): Promise<void>;
 
   /** Reset all topology and annotation files to defaults (for test isolation) */
   resetFiles(): Promise<void>;
@@ -896,6 +905,89 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         );
       },
 
+      createNetwork: async (position: { x: number; y: number }, networkType: string): Promise<string | null> => {
+        // Wait for createNetworkAtPosition to be available
+        await page.waitForFunction(
+          () => (window as any).__DEV__?.createNetworkAtPosition !== undefined,
+          { timeout: 10000 }
+        );
+
+        // Check lock state and mode before proceeding
+        const canCreate = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          if (typeof dev?.isLocked === 'function' && dev.isLocked() === true) return false;
+          if (dev?.stateManager?.getMode?.() !== 'edit') return false;
+          return true;
+        });
+
+        if (!canCreate) {
+          return null;
+        }
+
+        // Create the network node
+        const networkId = await page.evaluate(
+          ({ pos, type }) => {
+            const dev = (window as any).__DEV__;
+            if (!dev?.createNetworkAtPosition) {
+              throw new Error('createNetworkAtPosition not available');
+            }
+            return dev.createNetworkAtPosition(pos, type);
+          },
+          { pos: position, type: networkType }
+        );
+
+        if (!networkId) return null;
+
+        // Wait for the network node to appear in Cytoscape
+        await page.waitForFunction(
+          (id) => {
+            const dev = (window as any).__DEV__;
+            const cy = dev?.cy;
+            if (!cy) return false;
+            const el = cy.getElementById(id);
+            return el && el.length > 0;
+          },
+          networkId,
+          { timeout: 5000 }
+        );
+
+        return networkId;
+      },
+
+      getNetworkNodeIds: async (): Promise<string[]> => {
+        return await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          const cy = dev?.cy;
+          if (!cy) return [];
+          return cy
+            .nodes()
+            .filter((n: any) => n.data('topoViewerRole') === 'cloud')
+            .map((n: any) => n.id());
+        });
+      },
+
+      dragNode: async (nodeId: string, delta: { x: number; y: number }) => {
+        const box = await topoViewerPage.getNodeBoundingBox(nodeId);
+        if (!box) throw new Error(`Node ${nodeId} not found`);
+
+        const startX = box.x + box.width / 2;
+        const startY = box.y + box.height / 2;
+
+        await page.mouse.move(startX, startY);
+        await page.mouse.down();
+
+        // Move in steps for smooth drag
+        const steps = 10;
+        for (let i = 1; i <= steps; i++) {
+          const x = startX + (delta.x * i) / steps;
+          const y = startY + (delta.y * i) / steps;
+          await page.mouse.move(x, y);
+        }
+
+        await page.mouse.up();
+        await page.waitForTimeout(300);
+      },
+
       resetFiles: async () => {
         const response = await request.post(withSession('/api/reset'));
         const result = await response.json();
@@ -982,20 +1074,40 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       deleteNode: async (nodeId: string) => {
         // Close any open editor panel first to ensure Delete key goes to the canvas
-        const nodeEditor = page.locator('[data-testid="node-editor"]');
-        if (await nodeEditor.isVisible()) {
-          const closeBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-close-btn"]');
-          await closeBtn.click();
-          await page.waitForTimeout(200);
+        const closePanelBtns = page.locator('[data-testid="panel-close-btn"]');
+        const panelCount = await closePanelBtns.count();
+        for (let i = 0; i < panelCount; i++) {
+          const btn = closePanelBtns.nth(i);
+          if (await btn.isVisible()) {
+            await btn.click();
+            await page.waitForTimeout(100);
+          }
         }
 
-        // Click on canvas background to clear any focus/selection state
-        await page.mouse.click(50, 50);
+        // Press Escape to deselect anything and ensure focus is on canvas
+        await page.keyboard.press('Escape');
         await page.waitForTimeout(100);
 
-        await topoViewerPage.selectNode(nodeId);
+        // Select the node programmatically via Cytoscape
+        const selected = await page.evaluate((id) => {
+          const dev = (window as any).__DEV__;
+          const cy = dev?.cy;
+          if (!cy) return false;
+          cy.nodes().unselect();
+          cy.edges().unselect();
+          const node = cy.getElementById(id);
+          if (!node || node.empty()) return false;
+          node.select();
+          return node.selected();
+        }, nodeId);
+
+        if (!selected) {
+          throw new Error(`Failed to select node ${nodeId}`);
+        }
+
+        // Press Delete key
         await page.keyboard.press('Delete');
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
       },
 
       deleteEdge: async (edgeId: string) => {

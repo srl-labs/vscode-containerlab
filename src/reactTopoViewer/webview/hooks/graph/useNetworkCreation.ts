@@ -172,14 +172,12 @@ function generateNetworkId(networkType: NetworkType, existingIds: Set<string>): 
 }
 
 /**
- * Generate display label for a network node
+ * Generate display label for a network node.
+ * Labels use the full ID format (e.g., "host:eth0", "vxlan:vxlan0")
+ * to clearly indicate both the type and the specific instance.
  */
 function generateNetworkLabel(networkId: string, _networkType: NetworkType): string {
-  // For most types, the ID is already a good label
-  // For colon-separated IDs, use just the part after the colon
-  if (networkId.includes(':')) {
-    return networkId.split(':')[1] || networkId;
-  }
+  // Use the full ID as the label for clarity
   return networkId;
 }
 

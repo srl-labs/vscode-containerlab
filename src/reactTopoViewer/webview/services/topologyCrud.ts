@@ -139,6 +139,50 @@ export async function deleteLink(linkData: LinkSaveData): Promise<void> {
   }
 }
 
+/** Data for network node creation (for non-bridge types) */
+export interface NetworkNodeData {
+  id: string;
+  label: string;
+  type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy';
+  position: { x: number; y: number };
+}
+
+/**
+ * Create a network node (non-bridge type) via AnnotationsIO.
+ * Network nodes like host, vxlan, dummy etc. are stored in networkNodeAnnotations,
+ * not in the YAML nodes section.
+ */
+export async function createNetworkNode(data: NetworkNodeData): Promise<void> {
+  if (!isServicesInitialized()) {
+    console.warn(WARN_SERVICES_NOT_INIT);
+    return;
+  }
+
+  try {
+    const topologyIO = getTopologyIO();
+    const yamlPath = topologyIO.getYamlFilePath();
+    if (!yamlPath) {
+      console.warn('[Services] No YAML path available for network node creation');
+      return;
+    }
+
+    const { getAnnotationsIO } = await import('./serviceInitialization');
+    const annotationsIO = getAnnotationsIO();
+    await annotationsIO.modifyAnnotations(yamlPath, ann => {
+      if (!ann.networkNodeAnnotations) ann.networkNodeAnnotations = [];
+      ann.networkNodeAnnotations.push({
+        id: data.id,
+        label: data.label,
+        type: data.type,
+        position: data.position
+      });
+      return ann;
+    });
+  } catch (err) {
+    console.error(`[Services] Failed to create network node: ${err}`);
+  }
+}
+
 /**
  * Save node positions via TopologyIO.
  */
