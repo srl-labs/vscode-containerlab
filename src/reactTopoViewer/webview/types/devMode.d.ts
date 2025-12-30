@@ -7,6 +7,7 @@
 import type { Core as CyCore } from 'cytoscape';
 
 import type { GroupStyleAnnotation } from '../../shared/types/topology';
+import type { NetworkType } from '../../shared/types/editors';
 
 /**
  * Development mode interface for E2E testing and debugging.
@@ -51,6 +52,11 @@ export interface DevModeInterface {
   ) => void;
   /** Create group from selected nodes */
   createGroupFromSelected?: () => void;
+  /** Create a network node at a position */
+  createNetworkAtPosition?: (
+    position: { x: number; y: number },
+    networkType: NetworkType
+  ) => string | null;
   /** Get React groups state */
   getReactGroups?: () => GroupStyleAnnotation[];
   /** Current group count */

@@ -137,20 +137,6 @@ const AppContent: React.FC<{
     registerPropertyEditHandler
   });
 
-  // E2E testing exposure (consolidated hook)
-  useE2ETestingExposure({
-    cyInstance,
-    isLocked: state.isLocked,
-    mode: state.mode,
-    toggleLock,
-    undoRedo,
-    handleEdgeCreated,
-    handleNodeCreatedCallback,
-    handleAddGroupWithUndo: annotations.handleAddGroupWithUndo,
-    groups: annotations.groups,
-    elements: state.elements
-  });
-
   // Geo coordinate sync (consolidated hook)
   useGeoCoordinateSync({
     mapLibreState,
@@ -171,8 +157,8 @@ const AppContent: React.FC<{
 
   // Editor handlers
   const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph, state.customIcons, updateNodeData);
-  const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit);
-  const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData);
+  const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit, cytoscapeRef);
+  const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData, cyInstance);
 
   const recordGraphChanges = React.useCallback((before: GraphChange[], after: GraphChange[]) => {
     undoRedo.pushAction({ type: 'graph', before, after });
@@ -196,6 +182,21 @@ const AppContent: React.FC<{
     onNodeCreated: handleNodeCreatedCallback,
     addNode,
     onNewCustomNode: customNodeCommands.onNewCustomNode
+  });
+
+  // E2E testing exposure (consolidated hook) - must be after graphCreation
+  useE2ETestingExposure({
+    cyInstance,
+    isLocked: state.isLocked,
+    mode: state.mode,
+    toggleLock,
+    undoRedo,
+    handleEdgeCreated,
+    handleNodeCreatedCallback,
+    handleAddGroupWithUndo: annotations.handleAddGroupWithUndo,
+    createNetworkAtPosition: graphCreation.createNetworkAtPosition,
+    groups: annotations.groups,
+    elements: state.elements
   });
 
   // App-level handlers

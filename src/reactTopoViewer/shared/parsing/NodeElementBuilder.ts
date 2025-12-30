@@ -322,11 +322,21 @@ export function addNodeElements(
   if (!topology?.nodes) return migrations;
 
   const nodeAnnotations = opts.annotations?.nodeAnnotations;
+  const networkNodeAnnotations = opts.annotations?.networkNodeAnnotations;
   const interfacePatternMapping = buildInterfacePatternMapping();
   let nodeIndex = 0;
 
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
-    const nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName);
+    // Check nodeAnnotations first, then fallback to networkNodeAnnotations for bridges
+    // (backwards compatibility - bridges were previously saved to networkNodeAnnotations)
+    let nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName);
+    if (!nodeAnn) {
+      const networkAnn = networkNodeAnnotations?.find((na) => na.id === nodeName);
+      if (networkAnn) {
+        // Convert network annotation to node annotation format
+        nodeAnn = { id: networkAnn.id, position: networkAnn.position };
+      }
+    }
     const { element, migrationPattern } = buildNodeElement({
       parsed,
       nodeName,

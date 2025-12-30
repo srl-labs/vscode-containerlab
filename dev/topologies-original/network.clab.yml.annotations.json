@@ -4,14 +4,6 @@
   "groupStyleAnnotations": [],
   "networkNodeAnnotations": [
     {
-      "id": "dummy1",
-      "type": "dummy",
-      "position": {
-        "x": -7,
-        "y": 161
-      }
-    },
-    {
       "id": "mgmt-net:srl2-e1-2",
       "type": "mgmt-net",
       "position": {
@@ -50,6 +42,15 @@
       "position": {
         "x": 91,
         "y": 91
+      }
+    },
+    {
+      "id": "dummy0",
+      "label": "dummy0",
+      "type": "dummy",
+      "position": {
+        "x": 21,
+        "y": -21
       }
     }
   ],

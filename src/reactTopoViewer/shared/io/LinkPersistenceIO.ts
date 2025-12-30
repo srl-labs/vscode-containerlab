@@ -61,8 +61,8 @@ export interface LinkSaveData {
   originalTargetEndpoint?: string;
 }
 
-/** Link types that use single endpoint format */
-const SINGLE_ENDPOINT_TYPES = new Set(['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch']);
+/** Link types that use single endpoint format (type + endpoint, not endpoints array) */
+const SINGLE_ENDPOINT_TYPES = new Set(['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy']);
 
 /**
  * Creates a link entry in brief format: endpoints: ["node1:eth1", "node2:eth1"]
@@ -87,24 +87,145 @@ function createBriefLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YAMLM
   return linkMap;
 }
 
+/** Prefixes that indicate a special/visualization node (not a real YAML node) */
+const SPECIAL_NODE_PREFIXES = ['host:', 'mgmt-net:', 'macvlan:', 'vxlan:', 'vxlan-stitch:', 'dummy'];
+
 /**
- * Creates a single endpoint map for special link types
+ * Check if a node ID represents a special/visualization node.
+ */
+function isSpecialNode(nodeId: string): boolean {
+  return SPECIAL_NODE_PREFIXES.some(prefix => nodeId.startsWith(prefix));
+}
+
+/**
+ * Creates a single endpoint map for special link types.
+ * The endpoint should reference the REAL containerlab node, not the visualization node.
+ * We detect which side is the real node by checking for special node prefixes.
  */
 function createSingleEndpointMap(
   doc: YAML.Document,
   linkData: LinkSaveData,
-  extra: LinkSaveData['extraData']
+  extra: LinkSaveData['extraData'],
+  _linkType: string
 ): YAML.YAMLMap {
   const epMap = new YAML.YAMLMap();
   epMap.flow = false;
-  epMap.set('node', createQuotedScalar(doc, linkData.source));
-  if (linkData.sourceEndpoint) {
-    epMap.set('interface', createQuotedScalar(doc, linkData.sourceEndpoint));
+
+  // Determine which side is the real node (the one without special prefix)
+  const sourceIsSpecial = isSpecialNode(linkData.source);
+  const useTarget = sourceIsSpecial;
+
+  const node = useTarget ? linkData.target : linkData.source;
+  const iface = useTarget ? linkData.targetEndpoint : linkData.sourceEndpoint;
+  const mac = useTarget ? extra?.extTargetMac : extra?.extSourceMac;
+
+  epMap.set('node', createQuotedScalar(doc, node));
+  if (iface) {
+    epMap.set('interface', createQuotedScalar(doc, iface));
   }
-  if (extra?.extSourceMac) {
-    epMap.set('mac', doc.createNode(extra.extSourceMac));
+  if (mac) {
+    epMap.set('mac', doc.createNode(mac));
   }
   return epMap;
+}
+
+/**
+ * Extract the interface/identifier from a special node ID.
+ * e.g., "host:eth0" → "eth0", "macvlan:0" → "0"
+ */
+function extractSpecialNodeInterface(nodeId: string): string | undefined {
+  const colonIndex = nodeId.indexOf(':');
+  if (colonIndex === -1) return undefined;
+  return nodeId.slice(colonIndex + 1) || undefined;
+}
+
+/**
+ * Simple IPv4 validation check.
+ * Returns true if the string looks like an IP address (contains dots with numbers).
+ */
+function looksLikeIpAddress(value: string): boolean {
+  // Basic check: should contain at least one dot and only valid IP chars
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(value);
+}
+
+/**
+ * Extract vxlan properties from the special node ID.
+ * Format: "vxlan:remote/vni/dst-port/src-port" or "vxlan-stitch:remote/vni/dst-port/src-port"
+ * Only extracts remote if it looks like an IP address to avoid using counter-based names.
+ */
+function extractVxlanProperties(nodeId: string): {
+  remote?: string;
+  vni?: string;
+  dstPort?: string;
+  srcPort?: string;
+} {
+  const colonIndex = nodeId.indexOf(':');
+  if (colonIndex === -1) return {};
+
+  const parts = nodeId.slice(colonIndex + 1).split('/');
+  // Only use remote if it looks like an IP address
+  const remoteCandidate = parts[0];
+  return {
+    remote: remoteCandidate && looksLikeIpAddress(remoteCandidate) ? remoteCandidate : undefined,
+    vni: parts[1] || undefined,
+    dstPort: parts[2] || undefined,
+    srcPort: parts[3] || undefined
+  };
+}
+
+/** Host/macvlan/mgmt-net link types that use host-interface */
+const HOST_INTERFACE_TYPES = new Set(['host', 'macvlan', 'mgmt-net']);
+
+/**
+ * Apply host-interface properties for host/macvlan/mgmt-net link types
+ */
+function applyHostInterfaceProperties(
+  doc: YAML.Document,
+  linkMap: YAML.YAMLMap,
+  linkType: string,
+  extra: LinkSaveData['extraData'],
+  specialNodeId: string
+): void {
+  const hostInterface = extra?.extHostInterface || extractSpecialNodeInterface(specialNodeId);
+  if (hostInterface) {
+    linkMap.set('host-interface', doc.createNode(hostInterface));
+  }
+  if (linkType === 'macvlan' && extra?.extMode) {
+    linkMap.set('mode', doc.createNode(extra.extMode));
+  }
+}
+
+/** Default values for required VXLAN properties */
+const VXLAN_DEFAULTS = { remote: '127.0.0.1', vni: 100, dstPort: 4789 };
+
+/** Converts a value to number, returns default if conversion fails */
+function toNumber(value: string | number | undefined, defaultValue: number): number {
+  if (value === undefined) return defaultValue;
+  const num = Number(value);
+  return Number.isNaN(num) ? defaultValue : num;
+}
+
+/**
+ * Apply vxlan-specific properties (remote, vni, dst-port, src-port)
+ */
+function applyVxlanProperties(
+  doc: YAML.Document,
+  linkMap: YAML.YAMLMap,
+  extra: LinkSaveData['extraData'],
+  specialNodeId: string
+): void {
+  const parsed = extractVxlanProperties(specialNodeId);
+
+  const remote = extra?.extRemote || parsed.remote || VXLAN_DEFAULTS.remote;
+  const vni = toNumber(extra?.extVni ?? parsed.vni, VXLAN_DEFAULTS.vni);
+  const dstPort = toNumber(extra?.extDstPort ?? parsed.dstPort, VXLAN_DEFAULTS.dstPort);
+
+  linkMap.set('remote', doc.createNode(remote));
+  linkMap.set('vni', doc.createNode(vni));
+  linkMap.set('dst-port', doc.createNode(dstPort));
+
+  const srcPort = extra?.extSrcPort || parsed.srcPort;
+  if (srcPort) linkMap.set('src-port', doc.createNode(toNumber(srcPort, 0)));
 }
 
 /**
@@ -114,19 +235,16 @@ function applySingleEndpointProperties(
   doc: YAML.Document,
   linkMap: YAML.YAMLMap,
   linkType: string,
-  extra: LinkSaveData['extraData']
+  extra: LinkSaveData['extraData'],
+  linkData: LinkSaveData
 ): void {
-  if (extra?.extHostInterface) {
-    linkMap.set('host-interface', doc.createNode(extra.extHostInterface));
-  }
-  if (linkType === 'macvlan' && extra?.extMode) {
-    linkMap.set('mode', doc.createNode(extra.extMode));
-  }
-  if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
-    setOrDelete(doc, linkMap, 'remote', extra?.extRemote);
-    setOrDelete(doc, linkMap, 'vni', extra?.extVni);
-    setOrDelete(doc, linkMap, 'dst-port', extra?.extDstPort);
-    setOrDelete(doc, linkMap, 'src-port', extra?.extSrcPort);
+  // Get the special node ID (the one with the prefix like host:, vxlan:, etc.)
+  const specialNodeId = isSpecialNode(linkData.source) ? linkData.source : linkData.target;
+
+  if (HOST_INTERFACE_TYPES.has(linkType)) {
+    applyHostInterfaceProperties(doc, linkMap, linkType, extra, specialNodeId);
+  } else if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
+    applyVxlanProperties(doc, linkMap, extra, specialNodeId);
   }
 }
 
@@ -179,8 +297,8 @@ function createExtendedLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YA
   linkMap.set('type', doc.createNode(linkType));
 
   if (SINGLE_ENDPOINT_TYPES.has(linkType)) {
-    linkMap.set('endpoint', createSingleEndpointMap(doc, linkData, extra));
-    applySingleEndpointProperties(doc, linkMap, linkType, extra);
+    linkMap.set('endpoint', createSingleEndpointMap(doc, linkData, extra, linkType));
+    applySingleEndpointProperties(doc, linkMap, linkType, extra, linkData);
   } else {
     linkMap.set('endpoints', createDualEndpointSeq(doc, linkData, extra));
   }
@@ -212,15 +330,43 @@ function hasExtendedProperties(linkData: LinkSaveData): boolean {
 }
 
 /**
- * Generates a canonical key for a link to find duplicates
+ * Extracts the link type from a special node ID.
+ * E.g., "vxlan:vxlan0" -> "vxlan", "host:eth0" -> "host"
+ */
+function extractLinkTypeFromSpecialNode(nodeId: string): string | null {
+  const colonIdx = nodeId.indexOf(':');
+  if (colonIdx === -1) {
+    // Handle dummy nodes which don't have a colon prefix
+    if (nodeId.startsWith('dummy')) return 'dummy';
+    return null;
+  }
+  return nodeId.substring(0, colonIdx);
+}
+
+/**
+ * Generates a canonical key for a link to find duplicates.
+ * For special nodes (vxlan, host, etc.), uses the link type instead of the full node ID
+ * to match the YAML format.
  */
 function getLinkKey(linkData: LinkSaveData): string {
-  const src = linkData.sourceEndpoint
-    ? `${linkData.source}:${linkData.sourceEndpoint}`
-    : linkData.source;
-  const dst = linkData.targetEndpoint
-    ? `${linkData.target}:${linkData.targetEndpoint}`
-    : linkData.target;
+  const sourceIsSpecial = isSpecialNode(linkData.source);
+  const targetIsSpecial = isSpecialNode(linkData.target);
+
+  let src: string;
+  let dst: string;
+
+  if (sourceIsSpecial) {
+    const linkType = extractLinkTypeFromSpecialNode(linkData.source);
+    src = linkType || linkData.source;
+    dst = linkData.targetEndpoint ? `${linkData.target}:${linkData.targetEndpoint}` : linkData.target;
+  } else if (targetIsSpecial) {
+    const linkType = extractLinkTypeFromSpecialNode(linkData.target);
+    src = linkData.sourceEndpoint ? `${linkData.source}:${linkData.sourceEndpoint}` : linkData.source;
+    dst = linkType || linkData.target;
+  } else {
+    src = linkData.sourceEndpoint ? `${linkData.source}:${linkData.sourceEndpoint}` : linkData.source;
+    dst = linkData.targetEndpoint ? `${linkData.target}:${linkData.targetEndpoint}` : linkData.target;
+  }
 
   // Sort to ensure consistent key regardless of direction
   return [src, dst].toSorted().join('|');
@@ -277,6 +423,8 @@ function getYamlLinkKey(linkMap: YAML.YAMLMap): string | null {
 /**
  * Gets the lookup key for finding an existing link
  * Uses original values if provided (for when endpoints have changed)
+ * For special nodes (vxlan, host, etc.), uses the link type instead of the full node ID
+ * to match the YAML format where single-endpoint links use the type as the second key part.
  */
 function getLookupKey(linkData: LinkSaveData): string {
   const source = linkData.originalSource || linkData.source;
@@ -284,8 +432,28 @@ function getLookupKey(linkData: LinkSaveData): string {
   const sourceEndpoint = linkData.originalSourceEndpoint ?? linkData.sourceEndpoint;
   const targetEndpoint = linkData.originalTargetEndpoint ?? linkData.targetEndpoint;
 
-  const src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
-  const dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+  // Check if either endpoint is a special node
+  const sourceIsSpecial = isSpecialNode(source);
+  const targetIsSpecial = isSpecialNode(target);
+
+  let src: string;
+  let dst: string;
+
+  if (sourceIsSpecial) {
+    // Source is special node - use link type for that side, node:iface for other side
+    const linkType = extractLinkTypeFromSpecialNode(source);
+    src = linkType || source;
+    dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+  } else if (targetIsSpecial) {
+    // Target is special node - use link type for that side, node:iface for other side
+    const linkType = extractLinkTypeFromSpecialNode(target);
+    src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
+    dst = linkType || target;
+  } else {
+    // Normal veth link - use both endpoints
+    src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
+    dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+  }
 
   return [src, dst].toSorted().join('|');
 }

@@ -252,13 +252,21 @@ export interface EdgeBuildContext {
 }
 
 /**
- * Context for tracking dummy nodes across link processing.
+ * Context for tracking special nodes (dummy, vxlan, etc.) across link processing.
  */
 export interface DummyContext {
   /** Counter for generating unique dummy IDs */
   dummyCounter: number;
   /** Map from link object to generated dummy ID */
   dummyLinkMap: Map<unknown, string>;
+  /** Counter for generating unique vxlan IDs */
+  vxlanCounter: number;
+  /** Map from link object to generated vxlan ID */
+  vxlanLinkMap: Map<unknown, string>;
+  /** Counter for generating unique vxlan-stitch IDs */
+  vxlanStitchCounter: number;
+  /** Map from link object to generated vxlan-stitch ID */
+  vxlanStitchLinkMap: Map<unknown, string>;
 }
 
 // ============================================================================

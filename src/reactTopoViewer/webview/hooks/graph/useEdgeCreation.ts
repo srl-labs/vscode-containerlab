@@ -58,10 +58,20 @@ function getNextEndpointForNode(
 }
 
 /**
- * Check if a node is a network node (cloud/special endpoint)
+ * Check if a node is a network node that doesn't require interface names.
+ * Returns true for special endpoints (host, mgmt-net, macvlan, vxlan, dummy)
+ * Returns false for bridges - they are node kinds that require interfaces (bridge0:eth1)
  */
 function isNetworkNode(node: NodeSingular): boolean {
-  return node.data('topoViewerRole') === 'cloud';
+  const role = node.data('topoViewerRole') as string | undefined;
+  if (role !== 'cloud') return false;
+
+  // Bridges are node kinds, not special endpoint types - they need interface names
+  const extraData = node.data('extraData') as { kind?: string } | undefined;
+  const kind = extraData?.kind;
+  if (kind === 'bridge' || kind === 'ovs-bridge') return false;
+
+  return true;
 }
 
 /**

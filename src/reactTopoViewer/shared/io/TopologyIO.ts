@@ -6,7 +6,7 @@
  * Used by both VS Code extension and dev server.
  */
 
-import type * as YAML from 'yaml';
+import * as YAML from 'yaml';
 
 import type { ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
 import { applyInterfacePatternMigrations } from '../utilities';
@@ -252,14 +252,102 @@ export class TopologyIO {
       return { success: false, error: ERROR_SERVICE_NOT_INIT };
     }
 
+    // Try to delete as a regular YAML node first
     const result = deleteNodeFromDoc(this.doc, nodeId, this.logger);
     if (result.success) {
       await this.saveMaybeDeferred();
-
       // Also remove from annotations
       await this.removeNodeAnnotations(nodeId);
+      return result;
     }
-    return result;
+
+    // If not found as a regular node, try to delete as a network node (cloud node)
+    // Network nodes (host, vxlan, dummy, etc.) are represented as links, not nodes
+    const networkResult = this.deleteNetworkNode(nodeId);
+    if (networkResult.success) {
+      await this.saveMaybeDeferred();
+    }
+    // Always try to remove network node annotations, even if no links were found.
+    // Network nodes can exist in annotations before any links are created.
+    await this.removeNetworkNodeAnnotations(nodeId);
+    // Return success if either links were deleted OR annotations were potentially removed
+    return { success: true };
+  }
+
+  /**
+   * Deletes a network node by removing all links that reference it.
+   * Network nodes have IDs like:
+   * - host:eth0 (from host-interface property)
+   * - vxlan:vxlan0, vxlan-stitch:vxlan0
+   * - mgmt-net:net0
+   * - macvlan:0
+   * - dummy0
+   */
+  private deleteNetworkNode(nodeId: string): SaveResult {
+    if (!this.doc) {
+      return { success: false, error: ERROR_SERVICE_NOT_INIT };
+    }
+
+    const linksSeq = this.doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+    if (!linksSeq || !YAML.isSeq(linksSeq)) {
+      return { success: false, error: `Network node '${nodeId}' not found (no links in topology)` };
+    }
+
+    const initialCount = linksSeq.items.length;
+    linksSeq.items = linksSeq.items.filter(item => !this.linkMatchesNetworkNode(item, nodeId));
+
+    const deleted = initialCount - linksSeq.items.length;
+    if (deleted === 0) {
+      return { success: false, error: `Network node '${nodeId}' not found in topology links` };
+    }
+
+    this.logger.info(`[SaveTopology] Deleted ${deleted} links for network node: ${nodeId}`);
+    return { success: true };
+  }
+
+  /**
+   * Checks if a link item matches a network node ID.
+   */
+  private linkMatchesNetworkNode(item: unknown, nodeId: string): boolean {
+    if (!YAML.isMap(item)) return false;
+    const linkMap = item as YAML.YAMLMap;
+
+    const linkType = linkMap.get('type');
+    if (!linkType) return false;
+    const typeStr = YAML.isScalar(linkType) ? String(linkType.value) : String(linkType);
+
+    const expectedId = this.buildExpectedCloudNodeId(typeStr, linkMap, nodeId);
+    return expectedId === nodeId;
+  }
+
+  /**
+   * Builds the expected cloud node ID for a link based on its type.
+   */
+  private buildExpectedCloudNodeId(typeStr: string, linkMap: YAML.YAMLMap, nodeId: string): string | null {
+    if (typeStr === 'host') {
+      const hostInterface = linkMap.get('host-interface');
+      if (hostInterface) {
+        const ifaceStr = YAML.isScalar(hostInterface) ? String(hostInterface.value) : String(hostInterface);
+        return `host:${ifaceStr}`;
+      }
+      return null;
+    }
+
+    // For counter-based types, match by prefix
+    const prefixMatches: Record<string, string> = {
+      'mgmt-net': 'mgmt-net:',
+      'macvlan': 'macvlan:',
+      'vxlan': 'vxlan:',
+      'vxlan-stitch': 'vxlan-stitch:',
+      'dummy': 'dummy'
+    };
+
+    const prefix = prefixMatches[typeStr];
+    if (prefix && nodeId.startsWith(prefix)) {
+      return nodeId;
+    }
+
+    return null;
   }
 
   /**
@@ -269,6 +357,18 @@ export class TopologyIO {
     await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
       if (annotations.nodeAnnotations) {
         annotations.nodeAnnotations = annotations.nodeAnnotations.filter(n => n.id !== nodeId);
+      }
+      return annotations;
+    });
+  }
+
+  /**
+   * Removes a network node's annotations
+   */
+  private async removeNetworkNodeAnnotations(nodeId: string): Promise<void> {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+      if (annotations.networkNodeAnnotations) {
+        annotations.networkNodeAnnotations = annotations.networkNodeAnnotations.filter(n => n.id !== nodeId);
       }
       return annotations;
     });
@@ -357,7 +457,8 @@ export class TopologyIO {
   }
 
   /**
-   * Saves multiple node positions to annotations file
+   * Saves multiple node positions to annotations file.
+   * Network nodes are saved to networkNodeAnnotations, regular nodes to nodeAnnotations.
    */
   async savePositions(positions: Array<{ id: string; position: { x: number; y: number } }>): Promise<SaveResult> {
     if (!this.yamlFilePath) {
@@ -371,11 +472,19 @@ export class TopologyIO {
         }
 
         for (const { id, position } of positions) {
-          const existing = annotations.nodeAnnotations.find(n => n.id === id);
-          if (existing) {
-            existing.position = position;
+          // Check if this is a network node (exists in networkNodeAnnotations)
+          const networkNode = annotations.networkNodeAnnotations?.find(n => n.id === id);
+          if (networkNode) {
+            // Update position in networkNodeAnnotations
+            networkNode.position = position;
           } else {
-            annotations.nodeAnnotations.push({ id, position });
+            // Update or add to nodeAnnotations
+            const existing = annotations.nodeAnnotations.find(n => n.id === id);
+            if (existing) {
+              existing.position = position;
+            } else {
+              annotations.nodeAnnotations.push({ id, position });
+            }
           }
         }
 

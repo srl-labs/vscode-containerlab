@@ -10,10 +10,13 @@ export function getString(val: unknown): string | undefined {
 }
 
 /**
- * Safely get string value with empty string default
+ * Safely get string value with empty string default.
+ * Also converts numbers to strings for fields that may be stored as numbers.
  */
 export function getStringOrEmpty(val: unknown): string {
-  return typeof val === 'string' ? val : '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  return '';
 }
 
 /**

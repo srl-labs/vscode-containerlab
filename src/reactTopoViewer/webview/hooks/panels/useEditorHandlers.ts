@@ -3,7 +3,7 @@
  * Extracted from App.tsx to reduce file size.
  */
 import React from 'react';
-import type { Core as CyCore, Core as CytoscapeCore } from 'cytoscape';
+import type { Core as CyCore, Core as CytoscapeCore, EdgeSingular } from 'cytoscape';
 
 import type { NodeEditorData } from '../../components/panels/node-editor/types';
 import type { LinkEditorData } from '../../components/panels/link-editor/types';
@@ -55,6 +55,47 @@ type RenameNodeCallback = (oldId: string, newId: string) => void;
 // ============================================================================
 // Shared Helper Functions
 // ============================================================================
+
+/**
+ * Update Cytoscape edge data after editor changes.
+ * This ensures the edge's extraData reflects the saved values without requiring a reload.
+ */
+function updateCytoscapeEdgeData(
+  cy: CytoscapeCore | null,
+  edgeId: string,
+  data: LinkEditorData
+): void {
+  if (!cy) return;
+
+  const edge = cy.getElementById(edgeId);
+  if (!edge || edge.empty()) return;
+
+  // Build new extraData from editor data (same logic as convertEditorDataToLinkSaveData)
+  const newExtraData: Record<string, unknown> = {};
+
+  if (data.type && data.type !== 'veth') {
+    newExtraData.extType = data.type;
+  }
+  if (data.mtu !== undefined && data.mtu !== '') {
+    newExtraData.extMtu = data.mtu;
+  }
+  if (data.sourceMac) {
+    newExtraData.extSourceMac = data.sourceMac;
+  }
+  if (data.targetMac) {
+    newExtraData.extTargetMac = data.targetMac;
+  }
+  if (data.vars && Object.keys(data.vars).length > 0) {
+    newExtraData.extVars = data.vars;
+  }
+  if (data.labels && Object.keys(data.labels).length > 0) {
+    newExtraData.extLabels = data.labels;
+  }
+
+  // Merge with existing extraData to preserve other properties
+  const existingExtraData = (edge.data('extraData') as Record<string, unknown> | undefined) ?? {};
+  edge.data('extraData', { ...existingExtraData, ...newExtraData });
+}
 
 /**
  * Update Cytoscape node data after editor changes
@@ -234,7 +275,8 @@ export function useNodeEditorHandlers(
 export function useLinkEditorHandlers(
   editEdge: (id: string | null) => void,
   editingLinkData: LinkEditorData | null,
-  recordPropertyEdit?: (action: PropertyEditAction) => void
+  recordPropertyEdit?: (action: PropertyEditAction) => void,
+  cyRef?: React.RefObject<CytoscapeCanvasRef | null>
 ) {
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
 
@@ -256,9 +298,14 @@ export function useLinkEditorHandlers(
     recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
     const saveData = convertEditorDataToLinkSaveData(data);
     void editLinkService(saveData);
+    // Update Cytoscape edge data so re-opening editor shows new values
+    const cy = cyRef?.current?.getCy();
+    if (cy) {
+      updateCytoscapeEdgeData(cy, data.id, data);
+    }
     initialDataRef.current = null;
     editEdge(null);
-  }, [editEdge, recordPropertyEdit]);
+  }, [editEdge, recordPropertyEdit, cyRef]);
 
   const handleApply = React.useCallback((data: LinkEditorData) => {
     const changed = recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
@@ -267,7 +314,12 @@ export function useLinkEditorHandlers(
     }
     const saveData = convertEditorDataToLinkSaveData(data);
     void editLinkService(saveData);
-  }, [recordPropertyEdit]);
+    // Update Cytoscape edge data so re-opening editor shows new values
+    const cy = cyRef?.current?.getCy();
+    if (cy) {
+      updateCytoscapeEdgeData(cy, data.id, data);
+    }
+  }, [recordPropertyEdit, cyRef]);
 
   return { handleClose, handleSave, handleApply };
 }
@@ -276,10 +328,39 @@ export function useLinkEditorHandlers(
 // useNetworkEditorHandlers
 // ============================================================================
 
+/** VXLAN types that need link property updates */
+const VXLAN_NETWORK_TYPES = new Set(['vxlan', 'vxlan-stitch']);
+
+/** Host-like types that have host-interface property */
+const HOST_INTERFACE_TYPES = new Set(['host', 'mgmt-net', 'macvlan']);
+
+/** Network types that are stored as link types (not YAML nodes) */
+const LINK_BASED_NETWORK_TYPES = new Set(['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy']);
+
 /**
- * Save network annotation label to the annotations file
+ * Calculate the expected node ID based on network type and interface.
+ * For host/mgmt-net/macvlan, the ID is `type:interface` (e.g., `host:eth0`, `macvlan:100`).
  */
-function saveNetworkAnnotation(data: NetworkEditorData): void {
+function calculateExpectedNodeId(data: NetworkEditorData): string {
+  if (data.networkType === 'host') {
+    return `host:${data.interfaceName || 'eth0'}`;
+  }
+  if (data.networkType === 'mgmt-net') {
+    return `mgmt-net:${data.interfaceName || 'net0'}`;
+  }
+  if (data.networkType === 'macvlan') {
+    return `macvlan:${data.interfaceName || 'eth1'}`;
+  }
+  // For other types, the ID doesn't change based on interface
+  return data.id;
+}
+
+/**
+ * Save network annotation label to the annotations file.
+ * Also handles rename if interface changed (which changes the node ID).
+ * When renamed, the label is automatically set to the new node ID.
+ */
+function saveNetworkAnnotation(data: NetworkEditorData, newNodeId: string): void {
   if (!isServicesInitialized()) return;
 
   const annotationsIO = getAnnotationsIO();
@@ -287,16 +368,161 @@ function saveNetworkAnnotation(data: NetworkEditorData): void {
   const yamlPath = topologyIO.getYamlFilePath();
   if (!yamlPath) return;
 
+  const oldId = data.id;
+  const isRename = oldId !== newNodeId;
+  // When renamed, always use the new ID as label for consistency
+  const newLabel = isRename ? newNodeId : data.label;
+
   void annotationsIO.modifyAnnotations(yamlPath, annotations => {
     if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
-    const existing = annotations.nodeAnnotations.find(n => n.id === data.id);
+
+    // Update nodeAnnotations
+    const existing = annotations.nodeAnnotations.find(n => n.id === oldId);
     if (existing) {
-      existing.label = data.label;
-    } else {
-      annotations.nodeAnnotations.push({ id: data.id, label: data.label });
+      if (isRename) existing.id = newNodeId;
+      existing.label = newLabel;
+    } else if (!isRename) {
+      annotations.nodeAnnotations.push({ id: data.id, label: newLabel });
     }
+
+    // Also update networkNodeAnnotations if present
+    if (isRename && annotations.networkNodeAnnotations) {
+      const networkAnn = annotations.networkNodeAnnotations.find(n => n.id === oldId);
+      if (networkAnn) {
+        networkAnn.id = newNodeId;
+        networkAnn.label = newLabel;
+      }
+    }
+
     return annotations;
   });
+}
+
+/** Convert string to number or undefined */
+const toNumOrUndef = (val: string | undefined): number | undefined => val ? Number(val) : undefined;
+
+/** Get non-empty string or undefined */
+const strOrUndef = (val: string | undefined): string | undefined => val || undefined;
+
+/** Get non-empty record or undefined */
+const recordOrUndef = (val: Record<string, string> | undefined): Record<string, string> | undefined =>
+  (val && Object.keys(val).length > 0) ? val : undefined;
+
+/**
+ * Build extraData for network link based on type.
+ * All fields are explicitly set (including undefined) to allow clearing removed values.
+ */
+function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown> {
+  const extraData: Record<string, unknown> = { extType: data.networkType };
+
+  // Type-specific properties
+  if (VXLAN_NETWORK_TYPES.has(data.networkType)) {
+    Object.assign(extraData, {
+      extRemote: strOrUndef(data.vxlanRemote),
+      extVni: toNumOrUndef(data.vxlanVni),
+      extDstPort: toNumOrUndef(data.vxlanDstPort),
+      extSrcPort: toNumOrUndef(data.vxlanSrcPort),
+    });
+  } else if (HOST_INTERFACE_TYPES.has(data.networkType)) {
+    extraData.extHostInterface = strOrUndef(data.interfaceName);
+    extraData.extMode = (data.networkType === 'macvlan') ? strOrUndef(data.macvlanMode) : undefined;
+  }
+
+  // Common properties
+  Object.assign(extraData, {
+    extMtu: toNumOrUndef(data.mtu),
+    extMac: strOrUndef(data.mac),
+    extVars: recordOrUndef(data.vars),
+    extLabels: recordOrUndef(data.labels),
+  });
+
+  return extraData;
+}
+
+/**
+ * Update canvas elements when network node is renamed.
+ */
+function updateCanvasForRename(
+  networkNode: ReturnType<CyCore['getElementById']>,
+  edge: EdgeSingular,
+  oldId: string,
+  newNodeId: string,
+  newLabel: string
+): void {
+  networkNode.data('id', newNodeId);
+  networkNode.data('name', newLabel);
+
+  const edgeData = edge.data() as { source: string; target: string };
+  if (edgeData.source === oldId) edge.data('source', newNodeId);
+  if (edgeData.target === oldId) edge.data('target', newNodeId);
+}
+
+/**
+ * Save network link properties to the YAML file.
+ * Handles VXLAN properties (remote, vni, dst-port, src-port) and
+ * host-interface property for host/mgmt-net/macvlan types.
+ */
+function saveNetworkLinkProperties(
+  data: NetworkEditorData,
+  newNodeId: string,
+  cy: CyCore | null
+): void {
+  if (!cy || !isServicesInitialized()) return;
+  if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
+
+  const oldId = data.id;
+  const isRename = oldId !== newNodeId;
+
+  const networkNode = cy.getElementById(oldId);
+  if (networkNode.empty()) return;
+
+  const connectedEdges = networkNode.connectedEdges();
+  if (connectedEdges.empty()) return;
+
+  const edge = connectedEdges.first();
+  const edgeData = edge.data() as { id: string; source: string; target: string; sourceEndpoint?: string; targetEndpoint?: string };
+  const extraData = buildNetworkExtraData(data);
+
+  // For YAML save: convert extMac to extSourceMac/extTargetMac based on which side is the real node
+  const yamlExtraData = { ...extraData };
+  if (yamlExtraData.extMac) {
+    const networkIsSource = edgeData.source === oldId;
+    if (networkIsSource) {
+      yamlExtraData.extTargetMac = yamlExtraData.extMac;
+    } else {
+      yamlExtraData.extSourceMac = yamlExtraData.extMac;
+    }
+    delete yamlExtraData.extMac; // Remove generic extMac for YAML
+  }
+
+  const linkSaveData = {
+    id: edgeData.id,
+    source: edgeData.source === oldId ? newNodeId : edgeData.source,
+    target: edgeData.target === oldId ? newNodeId : edgeData.target,
+    sourceEndpoint: edgeData.sourceEndpoint,
+    targetEndpoint: edgeData.targetEndpoint,
+    extraData: yamlExtraData,
+  };
+
+  void editLinkService(linkSaveData);
+
+  if (isRename) {
+    updateCanvasForRename(networkNode, edge, oldId, newNodeId, newNodeId);
+  }
+
+  // Update network node's extraData - keep extMac for editor to read
+  // Filter out undefined values for cleaner data
+  const cleanExtraData = Object.fromEntries(
+    Object.entries(extraData).filter(([, v]) => v !== undefined)
+  );
+  networkNode.data('extraData', cleanExtraData);
+
+  // Update edge's extraData with YAML format (extSourceMac/extTargetMac)
+  const cleanYamlExtra = Object.fromEntries(
+    Object.entries(yamlExtraData).filter(([, v]) => v !== undefined)
+  );
+  const existingEdgeExtra = (edge.data('extraData') as Record<string, unknown> | undefined) ?? {};
+  edge.data('extraData', { ...existingEdgeExtra, ...cleanYamlExtra });
 }
 
 /**
@@ -304,20 +530,25 @@ function saveNetworkAnnotation(data: NetworkEditorData): void {
  */
 export function useNetworkEditorHandlers(
   editNetwork: (id: string | null) => void,
-  _editingNetworkData: NetworkEditorData | null
+  _editingNetworkData: NetworkEditorData | null,
+  cyInstance: CyCore | null
 ) {
   const handleClose = React.useCallback(() => {
     editNetwork(null);
   }, [editNetwork]);
 
   const handleSave = React.useCallback((data: NetworkEditorData) => {
-    saveNetworkAnnotation(data);
+    const newNodeId = calculateExpectedNodeId(data);
+    saveNetworkAnnotation(data, newNodeId);
+    saveNetworkLinkProperties(data, newNodeId, cyInstance);
     editNetwork(null);
-  }, [editNetwork]);
+  }, [editNetwork, cyInstance]);
 
   const handleApply = React.useCallback((data: NetworkEditorData) => {
-    saveNetworkAnnotation(data);
-  }, []);
+    const newNodeId = calculateExpectedNodeId(data);
+    saveNetworkAnnotation(data, newNodeId);
+    saveNetworkLinkProperties(data, newNodeId, cyInstance);
+  }, [cyInstance]);
 
   return { handleClose, handleSave, handleApply };
 }

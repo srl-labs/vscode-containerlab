@@ -32,10 +32,11 @@ export {
   createLink,
   editLink,
   deleteLink,
+  createNetworkNode,
   saveNodePositions,
   beginBatch,
   endBatch,
 } from './topologyCrud';
 
 // Re-export types
-export type { NodeSaveData, LinkSaveData } from './topologyCrud';
+export type { NodeSaveData, LinkSaveData, NetworkNodeData } from './topologyCrud';

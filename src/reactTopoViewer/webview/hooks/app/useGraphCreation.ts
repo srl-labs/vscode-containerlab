@@ -16,7 +16,6 @@ import { useNodeCreationHandlers, type NodeCreationState } from '../panels/useEd
 import type { CustomNodeTemplate } from '../../../shared/types/editors';
 import type { CyElement } from '../../../shared/types/topology';
 import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel/FloatingActionPanel';
-import { isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
 
 /** Edge data structure for edge creation callback */
 interface EdgeData {
@@ -89,7 +88,8 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     state,
     onEdgeCreated,
     onNodeCreated,
-    addNode,
+    // addNode is kept in interface for backwards compatibility but not used here
+    // Network nodes now use onNodeCreated for undo/redo support
     onNewCustomNode
   } = config;
 
@@ -167,26 +167,19 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     onNewCustomNode
   );
 
-  // Network creation callback
+  // Network creation callback - uses the same handler as regular nodes (which has undo/redo support)
+  // The persistence logic is handled in useGraphUndoRedoHandlers based on node type
   const handleNetworkCreatedCallback = React.useCallback((
     networkId: string,
     networkElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: Position; classes?: string },
     position: Position
   ) => {
-    addNode(networkElement);
-    if (isServicesInitialized()) {
-      const annotationsIO = getAnnotationsIO();
-      const topologyIO = getTopologyIO();
-      const yamlPath = topologyIO.getYamlFilePath();
-      if (yamlPath) {
-        void annotationsIO.modifyAnnotations(yamlPath, ann => {
-          if (!ann.nodeAnnotations) ann.nodeAnnotations = [];
-          ann.nodeAnnotations.push({ id: networkId, label: networkElement.data.name as string, position });
-          return ann;
-        });
-      }
-    }
-  }, [addNode]);
+    // Delegate to the node created handler which handles persistence and undo/redo
+    // The handler detects network nodes by topoViewerRole='cloud' and persists appropriately:
+    // - Bridge types (bridge, ovs-bridge): saved to YAML nodes + nodeAnnotations
+    // - Other network types (host, vxlan, etc.): saved to networkNodeAnnotations only
+    onNodeCreated(networkId, networkElement as CyElement, position);
+  }, [onNodeCreated]);
 
   // Network creation
   const { createNetworkAtPosition } = useNetworkCreation(cyInstance, {

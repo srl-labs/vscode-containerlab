@@ -7,11 +7,13 @@ import {
   createLink,
   editNode,
   editLink,
+  createNetworkNode,
   saveNodePositions,
   beginBatch,
   endBatch,
   type NodeSaveData,
-  type LinkSaveData
+  type LinkSaveData,
+  type NetworkNodeData
 } from '../../services';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 import { ROLE_SVG_MAP } from '../../components/canvas/styles';
@@ -134,9 +136,11 @@ function getEdgeKeyFromData(data: Record<string, unknown>): string | null {
   const target = data.target as string | undefined;
   const sourceEndpoint = data.sourceEndpoint as string | undefined;
   const targetEndpoint = data.targetEndpoint as string | undefined;
-  if (!source || !target || !sourceEndpoint || !targetEndpoint) return null;
-  const left = `${source}:${sourceEndpoint}`;
-  const right = `${target}:${targetEndpoint}`;
+  // Source and target are required
+  if (!source || !target) return null;
+  // For network links, endpoints might be empty - use node IDs only if no endpoints
+  const left = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
+  const right = targetEndpoint ? `${target}:${targetEndpoint}` : target;
   return left < right ? `${left}--${right}` : `${right}--${left}`;
 }
 
@@ -154,14 +158,85 @@ function findEdgeByData(cy: CyCore, data: Record<string, unknown>) {
   return cy.edges().filter(e => getEdgeKeyFromData(e.data()) === targetKey).first();
 }
 
+/**
+ * Check if a node element is a network/cloud node
+ */
+function isNetworkNode(data: NodeElementData): boolean {
+  return data.topoViewerRole === 'cloud';
+}
+
+/**
+ * Get the network type from node data
+ */
+function getNetworkType(data: NodeElementData): string | undefined {
+  const kind = data.kind;
+  if (typeof kind === 'string') return kind;
+  const extraKind = data.extraData?.kind;
+  if (typeof extraKind === 'string') return extraKind;
+  return undefined;
+}
+
+/**
+ * Add a network node (non-bridge type) to annotations
+ */
+function addNetworkNodeWithPersistence(
+  addNode: (n: CyElement) => void,
+  element: CyElement,
+  id: string,
+  networkType: NonBridgeNetworkType,
+  position: { x: number; y: number }
+): void {
+  addNode(element);
+  const data = element.data as NodeElementData;
+  const networkData: NetworkNodeData = {
+    id,
+    label: (data.name as string) || id,
+    type: networkType,
+    position
+  };
+  void createNetworkNode(networkData);
+}
+
 function addNodeWithPersistence(cy: CyCore | null, addNode: (n: CyElement) => void, element: CyElement, id: string): void {
   const pos = element.position || { x: 0, y: 0 };
   const exists = cy?.getElementById(id)?.nonempty();
   if (!exists) {
+    const data = element.data as NodeElementData;
+
+    // Check if this is a network node (cloud)
+    if (isNetworkNode(data)) {
+      const networkType = getNetworkType(data);
+      // Bridge types are stored as YAML nodes
+      if (networkType && BRIDGE_NETWORK_TYPES.has(networkType)) {
+        addNode(element);
+        const nodeData: NodeSaveData = {
+          id,
+          name: (data.name as string) || id,
+          position: pos,
+          extraData: { kind: networkType }
+        };
+        void createNode(nodeData);
+      } else if (networkType && SPECIAL_NETWORK_TYPES.has(networkType)) {
+        // Non-bridge network types go to networkNodeAnnotations only
+        addNetworkNodeWithPersistence(addNode, element, id, networkType as NonBridgeNetworkType, pos);
+      } else {
+        // Unknown network type, treat as regular node
+        addNode(element);
+        const nodeData: NodeSaveData = {
+          id,
+          name: (data.name as string) || id,
+          position: pos,
+          extraData: mergeNodeExtraData(data)
+        };
+        void createNode(nodeData);
+      }
+      return;
+    }
+
+    // Regular node - use standard path
     addNode(element);
     // Create node via TopologyIO service
     // Note: TopologyParser stores properties in data.extraData, so we need to merge them
-    const data = element.data as NodeElementData;
     const nodeData: NodeSaveData = {
       id,
       name: (data.name as string) || id,
@@ -182,12 +257,15 @@ function addEdgeWithPersistence(cy: CyCore | null, addEdge: (e: CyElement) => vo
   addEdge(element);
   // Create link via TopologyIO service
   const data = element.data as EdgeElementData;
+  // Include extraData if present (for special link types like host, vxlan, etc.)
+  const extraData = data.extraData as Record<string, unknown> | undefined;
   const linkData: LinkSaveData = {
     id: data.id,
     source: data.source,
     target: data.target,
     sourceEndpoint: data.sourceEndpoint,
-    targetEndpoint: data.targetEndpoint
+    targetEndpoint: data.targetEndpoint,
+    ...(extraData && { extraData })
   };
   void createLink(linkData);
 }
@@ -326,12 +404,73 @@ function replayGraphChanges(changes: GraphChange[], ctx: { cy: CyCore | null; ad
   buckets.deleteNodes.forEach(change => processGraphChange(change, ctx));
 }
 
+/** Network types that require special link format */
+const SPECIAL_NETWORK_TYPES = new Set(['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy']);
+
+/** Bridge network types that are stored as YAML nodes */
+const BRIDGE_NETWORK_TYPES = new Set(['bridge', 'ovs-bridge']);
+
+/** Non-bridge network types that are stored in networkNodeAnnotations only */
+type NonBridgeNetworkType = 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy';
+
+/** VXLAN types that have default properties */
+const VXLAN_TYPES = new Set(['vxlan', 'vxlan-stitch']);
+
+/** Default VXLAN properties - must match LinkPersistenceIO.ts */
+const VXLAN_DEFAULTS = { extRemote: '127.0.0.1', extVni: '100', extDstPort: '4789' };
+
+/** Result of detecting link type */
+interface LinkTypeDetectionResult {
+  linkType: string;
+  cloudNodeId: string;
+}
+
+/**
+ * Detect the link type based on source/target nodes.
+ * Returns the network kind and cloud node ID if either endpoint is a special network node.
+ */
+function detectLinkType(cy: CyCore | null, sourceId: string, targetId: string): LinkTypeDetectionResult | undefined {
+  if (!cy) return undefined;
+
+  // Check source node
+  const sourceNode = cy.getElementById(sourceId);
+  if (!sourceNode.empty()) {
+    const sourceRole = sourceNode.data('topoViewerRole') as string | undefined;
+    if (sourceRole === 'cloud') {
+      const sourceKind = (sourceNode.data('extraData') as { kind?: string } | undefined)?.kind;
+      if (sourceKind && SPECIAL_NETWORK_TYPES.has(sourceKind)) {
+        return { linkType: sourceKind, cloudNodeId: sourceId };
+      }
+    }
+  }
+
+  // Check target node
+  const targetNode = cy.getElementById(targetId);
+  if (!targetNode.empty()) {
+    const targetRole = targetNode.data('topoViewerRole') as string | undefined;
+    if (targetRole === 'cloud') {
+      const targetKind = (targetNode.data('extraData') as { kind?: string } | undefined)?.kind;
+      if (targetKind && SPECIAL_NETWORK_TYPES.has(targetKind)) {
+        return { linkType: targetKind, cloudNodeId: targetId };
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function createEdgeCreatedHandler(
   addEdge: (e: CyElement) => void,
   undoRedo: ReturnType<typeof useUndoRedo>,
-  isApplyingUndoRedo: React.RefObject<boolean>
+  isApplyingUndoRedo: React.RefObject<boolean>,
+  cyInstance: CyCore | null
 ) {
   return (_sourceId: string, _targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => {
+    // Detect if this is a special network link type
+    const detection = detectLinkType(cyInstance, edgeData.source, edgeData.target);
+    const linkType = detection?.linkType;
+
+    // Build edge element - include extraData for special link types so it's stored in undo action
     const edgeEl = {
       group: 'edges' as const,
       data: {
@@ -339,19 +478,39 @@ function createEdgeCreatedHandler(
         source: edgeData.source,
         target: edgeData.target,
         sourceEndpoint: edgeData.sourceEndpoint,
-        targetEndpoint: edgeData.targetEndpoint
+        targetEndpoint: edgeData.targetEndpoint,
+        ...(linkType && { extraData: { extType: linkType } })
       }
     };
     addEdge(edgeEl);
+
     // Create link via TopologyIO service
     const linkData: LinkSaveData = {
       id: edgeData.id,
       source: edgeData.source,
       target: edgeData.target,
       sourceEndpoint: edgeData.sourceEndpoint,
-      targetEndpoint: edgeData.targetEndpoint
+      targetEndpoint: edgeData.targetEndpoint,
+      ...(linkType && { extraData: { extType: linkType } })
     };
     void createLink(linkData);
+
+    // For VXLAN types, update the cloud node's extraData with default properties
+    // so they're immediately available in the network editor without requiring reload
+    if (detection && VXLAN_TYPES.has(detection.linkType) && cyInstance) {
+      const cloudNode = cyInstance.getElementById(detection.cloudNodeId);
+      if (!cloudNode.empty()) {
+        const existingExtraData = (cloudNode.data('extraData') as Record<string, unknown> | undefined) ?? {};
+        // Only set defaults if properties aren't already set
+        const newExtraData = {
+          ...existingExtraData,
+          extRemote: existingExtraData.extRemote ?? VXLAN_DEFAULTS.extRemote,
+          extVni: existingExtraData.extVni ?? VXLAN_DEFAULTS.extVni,
+          extDstPort: existingExtraData.extDstPort ?? VXLAN_DEFAULTS.extDstPort,
+        };
+        cloudNode.data('extraData', newExtraData);
+      }
+    }
 
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
@@ -385,6 +544,49 @@ function buildNodeSaveDataFromElement(nodeId: string, nodeElement: CyElement, po
   };
 }
 
+/**
+ * Persist a newly created node to YAML/annotations based on its type.
+ * - Regular nodes: saved to YAML nodes section + nodeAnnotations
+ * - Bridge network nodes (bridge, ovs-bridge): saved to YAML nodes section + nodeAnnotations
+ * - Other network nodes (host, vxlan, etc.): saved to networkNodeAnnotations only
+ */
+function persistNewNode(nodeId: string, nodeElement: CyElement, position: { x: number; y: number }): void {
+  const data = nodeElement.data as NodeElementData;
+
+  // Check if this is a network node (cloud)
+  if (isNetworkNode(data)) {
+    const networkType = getNetworkType(data);
+    // Bridge types are stored as YAML nodes
+    if (networkType && BRIDGE_NETWORK_TYPES.has(networkType)) {
+      const nodeData: NodeSaveData = {
+        id: nodeId,
+        name: (data.name as string) || nodeId,
+        position,
+        extraData: { kind: networkType }
+      };
+      void createNode(nodeData);
+    } else if (networkType && SPECIAL_NETWORK_TYPES.has(networkType)) {
+      // Non-bridge network types go to networkNodeAnnotations only
+      const networkData: NetworkNodeData = {
+        id: nodeId,
+        label: (data.name as string) || nodeId,
+        type: networkType as NonBridgeNetworkType,
+        position
+      };
+      void createNetworkNode(networkData);
+    } else {
+      // Unknown network type, treat as regular node
+      const nodeData = buildNodeSaveDataFromElement(nodeId, nodeElement, position);
+      void createNode(nodeData);
+    }
+    return;
+  }
+
+  // Regular node - use standard path
+  const nodeData = buildNodeSaveDataFromElement(nodeId, nodeElement, position);
+  void createNode(nodeData);
+}
+
 function createNodeCreatedHandler(
   addNode: (n: CyElement) => void,
   undoRedo: ReturnType<typeof useUndoRedo>,
@@ -392,9 +594,8 @@ function createNodeCreatedHandler(
 ) {
   return (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => {
     addNode(nodeElement);
-    // Create node via TopologyIO service
-    const nodeData = buildNodeSaveDataFromElement(nodeId, nodeElement, position);
-    void createNode(nodeData);
+    // Persist node based on its type (regular vs network/cloud)
+    persistNewNode(nodeId, nodeElement, position);
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
         type: 'graph',
@@ -615,8 +816,8 @@ function useGraphMutationHandlers(params: {
   const { cyInstance, addNode, addEdge, menuHandlers, undoRedo, isApplyingUndoRedo } = params;
 
   const handleEdgeCreated = React.useMemo(
-    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo),
-    [addEdge, undoRedo, isApplyingUndoRedo]
+    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo, cyInstance),
+    [addEdge, undoRedo, isApplyingUndoRedo, cyInstance]
   );
 
   const handleNodeCreatedCallback = React.useMemo(

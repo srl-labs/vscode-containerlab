@@ -10,7 +10,6 @@ import {
   PREFIX_VXLAN,
   PREFIX_VXLAN_STITCH,
   SINGLE_ENDPOINT_TYPES,
-  VX_TYPES,
   HOSTY_TYPES,
   splitEndpointLike,
   isSpecialEndpointId,
@@ -98,24 +97,40 @@ function buildHostyId(t: string, linkObj: Record<string, unknown>): string {
 }
 
 /**
- * Builds a vxlan/vxlan-stitch ID.
+ * Builds a vxlan ID using the context counter.
+ * Uses counter-based ID like "vxlan:vxlan0" to match UI-created nodes.
  */
-function buildVxlanId(t: string, linkObj: Record<string, unknown>): string {
-  const remote = linkObj?.remote ?? '';
-  const vni = linkObj?.vni ?? '';
-  const dstPort = linkObj?.['dst-port'] ?? '';
-  const srcPort = linkObj?.['src-port'] ?? '';
-  return `${t}:${remote}/${vni}/${dstPort}/${srcPort}`;
+function buildVxlanId(linkObj: unknown, ctx: DummyContext): string {
+  const cached = ctx.vxlanLinkMap.get(linkObj);
+  if (cached) return cached;
+  const vxlanId = `vxlan:vxlan${ctx.vxlanCounter}`;
+  ctx.vxlanCounter += 1;
+  ctx.vxlanLinkMap.set(linkObj, vxlanId);
+  return vxlanId;
+}
+
+/**
+ * Builds a vxlan-stitch ID using the context counter.
+ * Uses counter-based ID like "vxlan-stitch:vxlan0" to match UI-created nodes.
+ */
+function buildVxlanStitchId(linkObj: unknown, ctx: DummyContext): string {
+  const cached = ctx.vxlanStitchLinkMap.get(linkObj);
+  if (cached) return cached;
+  const vxlanId = `vxlan-stitch:vxlan${ctx.vxlanStitchCounter}`;
+  ctx.vxlanStitchCounter += 1;
+  ctx.vxlanStitchLinkMap.set(linkObj, vxlanId);
+  return vxlanId;
 }
 
 /**
  * Builds a dummy ID using the context counter.
+ * Uses counter then increments to match UI behavior (dummy0, dummy1, ...).
  */
 function buildDummyId(linkObj: unknown, ctx: DummyContext): string {
   const cached = ctx.dummyLinkMap.get(linkObj);
   if (cached) return cached;
-  ctx.dummyCounter += 1;
   const dummyId = `dummy${ctx.dummyCounter}`;
+  ctx.dummyCounter += 1;
   ctx.dummyLinkMap.set(linkObj, dummyId);
   return dummyId;
 }
@@ -129,7 +144,8 @@ export function normalizeSingleTypeToSpecialId(
   ctx: DummyContext
 ): string {
   if (HOSTY_TYPES.has(t)) return buildHostyId(t, linkObj);
-  if (VX_TYPES.has(t)) return buildVxlanId(t, linkObj);
+  if (t === 'vxlan') return buildVxlanId(linkObj, ctx);
+  if (t === 'vxlan-stitch') return buildVxlanStitchId(linkObj, ctx);
   if (t === 'dummy') return buildDummyId(linkObj, ctx);
   return '';
 }
@@ -236,5 +252,9 @@ export function createDummyContext(): DummyContext {
   return {
     dummyCounter: 0,
     dummyLinkMap: new Map(),
+    vxlanCounter: 0,
+    vxlanLinkMap: new Map(),
+    vxlanStitchCounter: 0,
+    vxlanStitchLinkMap: new Map(),
   };
 }

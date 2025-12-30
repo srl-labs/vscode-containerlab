@@ -52,9 +52,13 @@ function isValidNetworkType(type: string): boolean {
   ].includes(type);
 }
 
+/** Host-like types that have host-interface property */
+const HOST_INTERFACE_TYPES = new Set(['host', 'macvlan', 'mgmt-net']);
+
 /**
- * Parse interface name from node ID
- * For network nodes, the interface is typically after the colon (e.g., "host:eth0" -> "eth0")
+ * Parse interface name from node ID or extraData
+ * For network nodes, prefers extHostInterface from extraData if available,
+ * otherwise falls back to extracting from node ID (e.g., "host:eth0" -> "eth0")
  * For bridges, it might be the full ID or from extYamlNodeId
  */
 function parseInterfaceName(nodeId: string, networkType: NetworkType, extraData: Record<string, unknown>): string {
@@ -70,7 +74,13 @@ function parseInterfaceName(nodeId: string, networkType: NetworkType, extraData:
     return '';
   }
 
-  // For other types, extract from node ID
+  // For host-interface types, check extHostInterface first (saved by network editor)
+  if (HOST_INTERFACE_TYPES.has(networkType)) {
+    const hostInterface = getStringOrEmpty(extraData.extHostInterface);
+    if (hostInterface) return hostInterface;
+  }
+
+  // Fall back to extracting from node ID
   const parts = nodeId.split(':');
   return parts[1] || 'eth1';
 }
@@ -101,9 +111,9 @@ export function convertToNetworkEditorData(rawData: Record<string, unknown> | nu
     mac: getStringOrEmpty(extra.extMac),
     // MTU
     mtu: getStringOrEmpty(extra.extMtu),
-    // Optional metadata
-    vars: getRecord(extra.vars),
-    labels: getRecord(extra.labels)
+    // Optional metadata (check extVars/extLabels first, fall back to vars/labels)
+    vars: getRecord(extra.extVars) || getRecord(extra.vars),
+    labels: getRecord(extra.extLabels) || getRecord(extra.labels)
   };
 }
 

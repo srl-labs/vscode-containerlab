@@ -105,13 +105,24 @@ export function getSpecialId(end: unknown): string | null {
 // ============================================================================
 
 /**
+ * Converts a value to string. Handles numbers, strings, and other types.
+ */
+function toStr(val: unknown): string {
+  if (val === undefined || val === null) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  return String(val);
+}
+
+/**
  * Assigns common link properties to base props.
+ * MTU is converted to string for consistent editor handling.
  */
 export function assignCommonLinkProps(
   linkObj: Record<string, unknown>,
   baseProps: Record<string, unknown>
 ): void {
-  if (linkObj?.mtu !== undefined) baseProps.extMtu = linkObj.mtu;
+  if (linkObj?.mtu !== undefined) baseProps.extMtu = toStr(linkObj.mtu);
   if (linkObj?.vars !== undefined) baseProps.extVars = linkObj.vars;
   if (linkObj?.labels !== undefined) baseProps.extLabels = linkObj.labels;
 }
@@ -132,6 +143,7 @@ export function assignHostMgmtProps(
 
 /**
  * Assigns vxlan/vxlan-stitch specific properties.
+ * Converts all values to strings for consistent handling in the editor.
  */
 export function assignVxlanProps(
   linkType: string,
@@ -139,10 +151,10 @@ export function assignVxlanProps(
   baseProps: Record<string, unknown>
 ): void {
   if (![TYPES.VXLAN, TYPES.VXLAN_STITCH].includes(linkType as typeof TYPES.VXLAN)) return;
-  if (linkObj?.remote !== undefined) baseProps.extRemote = linkObj.remote;
-  if (linkObj?.vni !== undefined) baseProps.extVni = linkObj.vni;
-  if (linkObj?.['dst-port'] !== undefined) baseProps.extDstPort = linkObj['dst-port'];
-  if (linkObj?.['src-port'] !== undefined) baseProps.extSrcPort = linkObj['src-port'];
+  if (linkObj?.remote !== undefined) baseProps.extRemote = toStr(linkObj.remote);
+  if (linkObj?.vni !== undefined) baseProps.extVni = toStr(linkObj.vni);
+  if (linkObj?.['dst-port'] !== undefined) baseProps.extDstPort = toStr(linkObj['dst-port']);
+  if (linkObj?.['src-port'] !== undefined) baseProps.extSrcPort = toStr(linkObj['src-port']);
 }
 
 /**
@@ -346,6 +358,55 @@ function createCloudNodeElement(
 }
 
 /**
+ * Creates a SpecialNodeInfo from a network annotation type.
+ */
+function networkTypeToSpecialInfo(
+  id: string,
+  type: string,
+  label?: string
+): SpecialNodeInfo {
+  return {
+    id,
+    type: type as SpecialNodeInfo['type'],
+    label: label || id,
+  };
+}
+
+/**
+ * Adds cloud nodes from networkNodeAnnotations that don't have corresponding YAML links.
+ * This allows network nodes to persist even when their links are deleted.
+ */
+function addOrphanedNetworkNodes(
+  result: CyElement[],
+  annotations?: TopologyAnnotations,
+  specialNodes?: Map<string, SpecialNodeInfo>,
+  specialNodeProps?: Map<string, Record<string, unknown>>
+): void {
+  const networkAnnotations = annotations?.networkNodeAnnotations;
+  if (!networkAnnotations?.length) return;
+
+  // Track which node IDs are already in result
+  const existingIds = new Set(result.map((el) => el.data?.id).filter(Boolean));
+
+  for (const annotation of networkAnnotations) {
+    // Skip if already created from YAML links
+    if (existingIds.has(annotation.id)) continue;
+    if (specialNodes?.has(annotation.id)) continue;
+
+    // Create cloud node from annotation
+    const nodeInfo = networkTypeToSpecialInfo(
+      annotation.id,
+      annotation.type,
+      annotation.label
+    );
+    const placement = extractNetworkPlacement(annotation);
+    const extraProps = specialNodeProps?.get(annotation.id) || {};
+    const cloudNodeEl = createCloudNodeElement(annotation.id, nodeInfo, placement, extraProps);
+    result.push(cloudNodeEl);
+  }
+}
+
+/**
  * Adds cloud nodes (special nodes) to the elements array.
  */
 export function addCloudNodes(
@@ -364,6 +425,10 @@ export function addCloudNodes(
     const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, placement, extraProps);
     result.push(cloudNodeEl);
   }
+
+  // Also add network nodes from annotations that don't have YAML links
+  addOrphanedNetworkNodes(result, annotations, specialNodes, specialNodeProps);
+
   return result;
 }
 

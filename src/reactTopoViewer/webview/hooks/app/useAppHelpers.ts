@@ -4,7 +4,7 @@
 import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
-import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../../shared/types/editors';
+import type { CustomNodeTemplate, CustomTemplateEditorData, NetworkType } from '../../../shared/types/editors';
 import {
   createNewTemplateEditorData,
   convertTemplateToEditorData
@@ -207,6 +207,7 @@ export interface E2ETestingConfig {
   handleEdgeCreated: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void;
   handleNodeCreatedCallback: (nodeId: string, nodeElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: { x: number; y: number }; classes?: string }, position: { x: number; y: number }) => void;
   handleAddGroupWithUndo: () => void;
+  createNetworkAtPosition: (position: { x: number; y: number }, networkType: NetworkType) => string | null;
   groups: GroupStyleAnnotation[];
   elements: unknown[];
 }
@@ -216,7 +217,7 @@ export interface E2ETestingConfig {
  * Consolidates all window.__DEV__ assignments into one place.
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
-  const { cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, groups, elements } = config;
+  const { cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, createNetworkAtPosition, groups, elements } = config;
 
   // Core E2E exposure (cy, isLocked, mode, setLocked)
   React.useEffect(() => {
@@ -237,8 +238,9 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.handleEdgeCreated = handleEdgeCreated;
       window.__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
       window.__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
+      window.__DEV__.createNetworkAtPosition = createNetworkAtPosition;
     }
-  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo]);
+  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, createNetworkAtPosition]);
 
   // Groups E2E exposure
   React.useEffect(() => {
