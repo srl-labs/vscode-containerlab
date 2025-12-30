@@ -8,7 +8,8 @@
   "version": "0.21.1",
   "homepage": "https://containerlab.dev/manual/vsc-extension/",
   "engines": {
-    "vscode": "^1.99.0"
+    "vscode": "^1.99.0",
+    "node": ">=24.0.0"
   },
   "repository": {
     "type": "git",
@@ -1398,10 +1399,10 @@
     "dev": "vite --config dev/vite.config.ts",
     "dev:build": "vite build --config dev/vite.config.ts",
     "bundle": "node esbuild.config.js",
-    "package": "rm -rf dist && npm run typecheck && npm run lint && vsce package",
-    "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
+    "package": "rm -rf dist && npm run lint && vsce package",
+    "vscode:prepublish": "(npm run bundle & npm run build:webview & wait)",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
-    "lint": "npm run typecheck && npm run lint:ts && npm run lint:circular && npm run lint:deps && npm run lint:cpd && npm run lint:barrels",
+    "lint": "npm run typecheck && (npm run lint:ts & npm run lint:circular & npm run lint:deps & npm run lint:cpd & npm run lint:barrels & wait)",
     "lint:ts": "eslint --cache --cache-location node_modules/.cache/eslint --ext .ts,.tsx .",
     "lint:ts:fix": "eslint --ext .ts,.tsx . --fix",
     "lint:fix": "npm run lint:ts:fix",
@@ -1432,7 +1433,7 @@
     "@types/markdown-it": "^14.1.2",
     "@types/markdown-it-emoji": "^3.0.1",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^24.10.1",
+    "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/sinon": "^21.0.0",
@@ -1478,7 +1479,6 @@
     "mini-css-extract-plugin": "^2.9.4",
     "mocha": "^11.7.5",
     "mochawesome": "^7.1.4",
-    "npm-run-all": "^4.1.5",
     "postcss": "^8.5.6",
     "postcss-loader": "^8.2.0",
     "prettier": "^3.7.4",

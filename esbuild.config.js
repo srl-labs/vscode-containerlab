@@ -23,7 +23,8 @@ async function build() {
     format: 'cjs',
     external: ['vscode'],
     outfile: 'dist/extension.js',
-    sourcemap: true,
+    minify: true,
+    treeShaking: true,
     plugins: [nativeNodeModulesPlugin],
   });
 

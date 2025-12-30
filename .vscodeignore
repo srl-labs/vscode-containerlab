@@ -5,6 +5,7 @@
 .eslintrc.json
 .eslintignore
 .yarnrc
+.nvmrc
 tsconfig.json
 eslint.config.mjs
 .dependency-cruiser.cjs
@@ -34,7 +35,11 @@ out/**
 # Build artifacts
 **/*.map
 **/*.ts
+**/*.LICENSE.txt
 *.vsix
+
+# Resources only needed for marketplace (loaded from GitHub)
+resources/screenshot.png
 
 # Test files
 test.clab.yml
