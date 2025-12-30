@@ -1413,6 +1413,7 @@
     "test:compile": "tsc -p test/tsconfig.json",
     "test:e2e": "playwright test --config test/e2e/playwright.config.ts",
     "test:e2e:ui": "playwright test --config test/e2e/playwright.config.ts --ui",
+    "test:e2e:ui:remote": "npx playwright test --config test/e2e/playwright.config.ts --ui --ui-host=0.0.0.0 --ui-port=8080",
     "test:e2e:debug": "playwright test --config test/e2e/playwright.config.ts --debug",
     "postinstall": "playwright install chromium"
   },
