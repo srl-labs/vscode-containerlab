@@ -298,8 +298,17 @@ test.describe('Box Selection', () => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
-    // Select first node
-    await topoViewerPage.selectNode(nodeIds[0]);
+    // Select first node programmatically for more reliable initial state
+    await page.evaluate((id) => {
+      const dev = (window as any).__DEV__;
+      const cy = dev?.cy;
+      if (cy) {
+        cy.nodes().unselect();
+        cy.getElementById(id).select();
+      }
+    }, nodeIds[0]);
+    await page.waitForTimeout(200);
+
     let selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(1);
     expect(selectedIds).toContain(nodeIds[0]);

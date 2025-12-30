@@ -242,10 +242,14 @@ test.describe('Node Editor Panel', () => {
     let editorPanel = page.locator(SEL_NODE_EDITOR);
     await expect(editorPanel).toBeVisible();
 
-    // Close the panel
+    // Close the panel and wait for it to be actually hidden
     const closeBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-close-btn"]');
     await closeBtn.click();
-    await page.waitForTimeout(300);
+    await expect(editorPanel).not.toBeVisible({ timeout: 2000 });
+
+    // Clear selection to ensure clean state for next double-click
+    await topoViewerPage.clearSelection();
+    await page.waitForTimeout(200);
 
     // Open editor for second node
     await openNodeEditorByNodeId(page, nodeIds[1]);
