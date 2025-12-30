@@ -158,7 +158,7 @@ const dockerImages = [
 ];
 
 // Default topology path
-const TOPOLOGIES_DIR = '/home/clab/projects/flosch/vscode-containerlab/dev/topologies';
+const TOPOLOGIES_DIR = './dev/topologies';
 const DEFAULT_TOPOLOGY = `${TOPOLOGIES_DIR}/simple.clab.yml`;
 
 // ============================================================================
