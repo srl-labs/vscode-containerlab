@@ -1398,7 +1398,7 @@
     "dev": "vite --config dev/vite.config.ts",
     "dev:build": "vite build --config dev/vite.config.ts",
     "bundle": "node esbuild.config.js",
-    "package": "rm -rf dist && npm run typecheck && npm run lint && vsce package --allow-package-secrets npm",
+    "package": "rm -rf dist && npm run typecheck && npm run lint && vsce package",
     "vscode:prepublish": "npm-run-all --parallel bundle build:webview",
     "package:dev": "npm run watch & webpack --config webpack.config.js --watch",
     "lint": "npm run typecheck && npm run lint:ts && npm run lint:circular && npm run lint:deps && npm run lint:cpd && npm run lint:barrels",

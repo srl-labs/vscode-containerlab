@@ -7,6 +7,10 @@
 .yarnrc
 tsconfig.json
 eslint.config.mjs
+.dependency-cruiser.cjs
+.jscpd.json
+.jscpd/**
+scripts/**
 webpack.config.js
 esbuild.config.js
 postcss.config.js
