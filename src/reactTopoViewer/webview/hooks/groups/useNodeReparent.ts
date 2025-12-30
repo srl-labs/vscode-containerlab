@@ -44,6 +44,7 @@ function handleMembershipChange(
   nodeId: string,
   oldGroupId: string | null,
   newGroupId: string | null,
+  newGroup: GroupStyleAnnotation | null,
   actions: MembershipActions,
   onMembershipWillChange?: (nodeId: string, oldGroupId: string | null, newGroupId: string | null) => void
 ): void {
@@ -61,7 +62,7 @@ function handleMembershipChange(
 
   if (!oldGroupId && newGroupId) {
     actions.addNodeToGroup(nodeId, newGroupId);
-    saveNodeMembership(nodeId, newGroupId);
+    saveNodeMembership(nodeId, newGroup);
     log.info(`[Reparent] Node ${nodeId} added to group`);
     return;
   }
@@ -69,7 +70,7 @@ function handleMembershipChange(
   if (oldGroupId && newGroupId) {
     actions.removeNodeFromGroup(nodeId);
     actions.addNodeToGroup(nodeId, newGroupId);
-    saveNodeMembership(nodeId, newGroupId);
+    saveNodeMembership(nodeId, newGroup);
     log.info(`[Reparent] Node ${nodeId} moved between groups`);
   }
 }
@@ -92,10 +93,18 @@ export function useNodeReparent(cy: Core | null, options: UseNodeReparentOptions
 
     const nodeId = node.id();
     const oldGroupId = nodeGroupRef.current.get(nodeId) ?? null;
-    const newGroupId = findGroupForNode(node, groups)?.id ?? null;
+    const newGroup = findGroupForNode(node, groups);
+    const newGroupId = newGroup?.id ?? null;
     nodeGroupRef.current.delete(nodeId);
 
-    handleMembershipChange(nodeId, oldGroupId, newGroupId, { addNodeToGroup, removeNodeFromGroup }, onMembershipWillChange);
+    handleMembershipChange(
+      nodeId,
+      oldGroupId,
+      newGroupId,
+      newGroup,
+      { addNodeToGroup, removeNodeFromGroup },
+      onMembershipWillChange
+    );
   }, [groups, addNodeToGroup, removeNodeFromGroup, onMembershipWillChange]);
 
   useEffect(() => {

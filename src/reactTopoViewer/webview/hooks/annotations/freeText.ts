@@ -52,7 +52,7 @@ export interface AnnotationActionMethods {
   updateRotation: (id: string, rotation: number) => void;
   updateAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
   updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
-  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
+  migrateGroupId: (oldGroupId: string, newGroupId: string | null) => void;
   loadAnnotations: (annotations: FreeTextAnnotation[]) => void;
 }
 

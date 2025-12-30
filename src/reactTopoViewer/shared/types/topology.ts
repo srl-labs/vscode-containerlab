@@ -144,7 +144,7 @@ export interface FreeShapeAnnotation {
 
 /**
  * Group annotation for overlay groups (rendered as HTML/SVG, not Cytoscape nodes).
- * Members are tracked via NodeAnnotation.group/level fields.
+ * Members are tracked via NodeAnnotation.groupId (preferred) and group/level for legacy display.
  * Groups can be nested via parentId for hierarchical organization.
  */
 export interface GroupStyleAnnotation {
@@ -215,6 +215,8 @@ export interface NodeAnnotation {
   iconColor?: string;
   iconCornerRadius?: number;
   groupLabelPos?: string;
+  /** Internal group ID for membership (preferred). */
+  groupId?: string;
   group?: string;
   level?: string;
   interfacePattern?: string;

@@ -98,8 +98,8 @@ export interface UseFreeShapeActionsReturn extends AnnotationSelectionActions {
   updateAnnotation: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
   updateGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   updateEndGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
-  /** Migrate all annotations from one groupId to another (used when group is renamed) */
-  migrateGroupId: (oldGroupId: string, newGroupId: string) => void;
+  /** Reassign all annotations from one groupId to another (used when groups are removed) */
+  migrateGroupId: (oldGroupId: string, newGroupId: string | null) => void;
   loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
 }
 

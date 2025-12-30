@@ -12,12 +12,11 @@ import type { CustomNodeTemplate } from '../../../shared/types/editors';
 import type { CustomIconInfo } from '../../../shared/types/icons';
 import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel';
 import type { MembershipEntry } from '../state/useUndoRedo';
-import type { CytoscapeCanvasRef } from '../../components/canvas';
+import { ROLE_SVG_MAP, type CytoscapeCanvasRef } from '../../components/canvas';
 import { convertEditorDataToNodeSaveData, convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
 import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversions';
 import { editNode as editNodeService, editLink as editLinkService, isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
-import { ROLE_SVG_MAP } from '../../components/canvas/styles';
 import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
 
 /** Pending membership change during node drag */

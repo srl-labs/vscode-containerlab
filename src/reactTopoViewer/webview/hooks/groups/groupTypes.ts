@@ -200,9 +200,9 @@ export interface UseGroupsOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;
-  // For group rename migration - when group ID changes, these callbacks update references
-  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string) => void;
-  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string) => void;
+  // For group membership reassignment (e.g., delete/promotion) in related annotations
+  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
+  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
 }
 
 /**

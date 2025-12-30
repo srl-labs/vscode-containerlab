@@ -485,7 +485,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
       <div
         data-testid={`group-label-${group.id}`}
         style={{
-          ...buildLabelStyle(group.labelPosition, group.labelColor),
+          ...buildLabelStyle(group.labelPosition, group.labelColor ?? group.color),
           pointerEvents: isLocked ? 'none' : 'auto',
           padding: '2px 6px',
           borderRadius: '2px',

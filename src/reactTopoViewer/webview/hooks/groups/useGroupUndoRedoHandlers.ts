@@ -5,7 +5,7 @@
 import React from 'react';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import type { UndoRedoActionAnnotation } from '../state/useUndoRedo';
+import type { RelatedAnnotationChange, UndoRedoActionAnnotation } from '../state/useUndoRedo';
 import { type UndoRedoApi, updateWithUndo, createPushUndoFn } from '../shared/undoHelpers';
 
 import type { UseGroupsReturn } from './groupTypes';
@@ -80,7 +80,18 @@ export function useGroupUndoRedoHandlers(
       if (result) {
         const after = cloneGroup(result.group);
         if (after && !isApplyingGroupUndoRedo.current) {
-          undoRedo.pushAction(groupsApi.getUndoRedoAction(null, after));
+          const action = groupsApi.getUndoRedoAction(null, after);
+          if (selectedNodeIds && selectedNodeIds.length > 0) {
+            action.membershipBefore = selectedNodeIds.map(nodeId => ({
+              nodeId,
+              groupId: groupsApi.getNodeMembership(nodeId)
+            }));
+            action.membershipAfter = selectedNodeIds.map(nodeId => ({
+              nodeId,
+              groupId: result.groupId
+            }));
+          }
+          undoRedo.pushAction(action);
         }
         return result.groupId;
       }
@@ -93,7 +104,31 @@ export function useGroupUndoRedoHandlers(
     (groupId: string): void => {
       const beforeGroup = cloneGroup(groupsApi.groups.find(g => g.id === groupId));
       if (beforeGroup && !isApplyingGroupUndoRedo.current) {
-        undoRedo.pushAction(groupsApi.getUndoRedoAction(beforeGroup, null));
+        const action = groupsApi.getUndoRedoAction(beforeGroup, null);
+        const relatedAnnotations: RelatedAnnotationChange[] = [];
+        const childGroups = groupsApi.getChildGroups(groupId);
+        if (childGroups.length > 0) {
+          const promotedParentId = beforeGroup.parentId;
+          childGroups.forEach(child => {
+            const beforeChild = cloneGroup(child);
+            if (!beforeChild) return;
+            relatedAnnotations.push({
+              annotationType: 'group',
+              before: beforeChild,
+              after: { ...beforeChild, parentId: promotedParentId }
+            });
+          });
+        }
+        const memberIds = groupsApi.getGroupMembers(groupId);
+        if (memberIds.length > 0) {
+          const parentId = groupsApi.getParentGroup(groupId)?.id ?? null;
+          action.membershipBefore = memberIds.map(nodeId => ({ nodeId, groupId }));
+          action.membershipAfter = memberIds.map(nodeId => ({ nodeId, groupId: parentId }));
+        }
+        if (relatedAnnotations.length > 0) {
+          action.relatedAnnotations = relatedAnnotations;
+        }
+        undoRedo.pushAction(action);
       }
       groupsApi.deleteGroup(groupId);
     },

@@ -10,13 +10,12 @@ import type { Core as CyCore, NodeSingular } from 'cytoscape';
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
 import { log } from '../../utils/logger';
 import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
-// Note: saveNodeMembership is imported from groupHelpers for single node membership updates
+import { applyMembershipUpdates, type MembershipUpdateEntry } from '../shared/membershipHelpers';
 
 import { useGroupState } from './useGroupState';
+// Note: saveNodeMembership is imported from groupHelpers for single node membership updates
 import {
   generateGroupId,
-  parseGroupId,
-  buildGroupId,
   createDefaultGroup,
   findGroupAtPosition as findGroupAtPositionHelper,
   updateGroupInList,
@@ -48,7 +47,7 @@ export interface UseGroupsHookOptions extends UseGroupsOptions {
 /**
  * Save multiple node memberships in a single batch operation
  */
-function saveBatchMemberships(memberships: Array<{ nodeId: string; group: string; level: string }>): void {
+function saveBatchMemberships(memberships: MembershipUpdateEntry[]): void {
   if (!isServicesInitialized()) {
     log.warn('[Groups] Services not initialized for batch membership save');
     return;
@@ -64,20 +63,7 @@ function saveBatchMemberships(memberships: Array<{ nodeId: string; group: string
   }
 
   annotationsIO.modifyAnnotations(yamlPath, annotations => {
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
-
-    for (const { nodeId, group, level } of memberships) {
-      const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-      if (existing) {
-        existing.group = group;
-        existing.level = level;
-      } else {
-        annotations.nodeAnnotations.push({ id: nodeId, group, level });
-      }
-    }
-
+    applyMembershipUpdates(annotations, memberships);
     return annotations;
   }).catch(err => {
     log.error(`[Groups] Failed to save batch memberships: ${err}`);
@@ -108,6 +94,17 @@ function getViewportCenter(cy: CyCore): { x: number; y: number } {
     x: (extent.x1 + extent.x2) / 2,
     y: (extent.y1 + extent.y2) / 2
   };
+}
+
+/**
+ * Derive a default display name from a generated group ID.
+ */
+function getDefaultGroupName(groupId: string): string {
+  const match = /^group-(\d+)$/.exec(groupId);
+  if (match) {
+    return `group${match[1]}`;
+  }
+  return groupId;
 }
 
 /**
@@ -154,6 +151,8 @@ function useCreateGroup(
       }
 
       const groupId = generateGroupId(groups);
+      const groupName = getDefaultGroupName(groupId);
+      const groupLevel = '1';
       let position: { x: number; y: number };
       let width: number;
       let height: number;
@@ -166,10 +165,8 @@ function useCreateGroup(
         width = bounds.width;
         height = bounds.height;
 
-        // Save node membership
-        const { name, level } = parseGroupId(groupId);
         selectedNodeIds.forEach(nodeId => {
-          saveNodeMembership(nodeId, name, level);
+          saveNodeMembership(nodeId, { id: groupId, name: groupName, level: groupLevel });
         });
       } else {
         // Create empty group at viewport center
@@ -178,7 +175,7 @@ function useCreateGroup(
         height = DEFAULT_GROUP_HEIGHT;
       }
 
-      const newGroup = createDefaultGroup(groupId, position, lastStyleRef.current);
+      const newGroup = createDefaultGroup(groupId, groupName, groupLevel, position, lastStyleRef.current);
       newGroup.width = width;
       newGroup.height = height;
       // Ensure newly created groups are on top by default, regardless of lastStyle zIndex.
@@ -220,15 +217,34 @@ function useCreateGroup(
  * Hook for deleting a group.
  * Promotes child groups to the deleted group's parent level.
  */
-function useDeleteGroup(
-  mode: 'edit' | 'view',
-  isLocked: boolean,
-  onLockedAction: (() => void) | undefined,
-  editingGroup: GroupEditorData | null,
-  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
-  setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>,
-  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
-) {
+interface UseDeleteGroupOptions {
+  mode: 'edit' | 'view';
+  isLocked: boolean;
+  onLockedAction: (() => void) | undefined;
+  editingGroup: GroupEditorData | null;
+  groups: GroupStyleAnnotation[];
+  membership: Pick<UseGroupsReturn, 'getGroupMembers' | 'addNodeToGroup' | 'removeNodeFromGroup'>;
+  setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>;
+  setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>;
+  saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void;
+  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
+  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
+}
+
+function useDeleteGroup(options: UseDeleteGroupOptions) {
+  const {
+    mode,
+    isLocked,
+    onLockedAction,
+    editingGroup,
+    groups,
+    membership,
+    setGroups,
+    setEditingGroup,
+    saveGroupsToExtension,
+    onMigrateTextAnnotations,
+    onMigrateShapeAnnotations
+  } = options;
   return useCallback(
     (groupId: string): void => {
       if (mode === 'view' || isLocked) {
@@ -236,11 +252,24 @@ function useDeleteGroup(
         return;
       }
 
-      setGroups(prev => {
-        // Find the group being deleted
-        const deletedGroup = prev.find(g => g.id === groupId);
-        if (!deletedGroup) return prev;
+      const deletedGroup = groups.find(g => g.id === groupId);
+      if (!deletedGroup) return;
 
+      const parentId = deletedGroup.parentId ?? null;
+      const memberIds = membership.getGroupMembers(groupId);
+      if (memberIds.length > 0) {
+        if (parentId) {
+          memberIds.forEach(nodeId => membership.addNodeToGroup(nodeId, parentId));
+        } else {
+          memberIds.forEach(nodeId => membership.removeNodeFromGroup(nodeId));
+        }
+      }
+
+      // Promote annotation memberships to parent (or clear if no parent)
+      onMigrateTextAnnotations?.(groupId, parentId);
+      onMigrateShapeAnnotations?.(groupId, parentId);
+
+      setGroups(prev => {
         // Get the parent ID to promote children to
         const newParentId = deletedGroup.parentId;
 
@@ -265,7 +294,19 @@ function useDeleteGroup(
         setEditingGroup(null);
       }
     },
-    [mode, isLocked, onLockedAction, editingGroup, setGroups, setEditingGroup, saveGroupsToExtension]
+    [
+      mode,
+      isLocked,
+      onLockedAction,
+      editingGroup,
+      groups,
+      membership,
+      setGroups,
+      setEditingGroup,
+      saveGroupsToExtension,
+      onMigrateTextAnnotations,
+      onMigrateShapeAnnotations
+    ]
   );
 }
 
@@ -307,20 +348,19 @@ function useEditGroup(
 
 /**
  * Hook for saving group edits.
- * Handles migration of child groups, node memberships, and annotation groupIds when group is renamed.
+ * Updates group styles and syncs member annotations when name/level changes.
  */
 interface SaveGroupOptions {
   cy: CyCore | null;
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction: (() => void) | undefined;
+  groups: GroupStyleAnnotation[];
+  getGroupMembers: (groupId: string) => string[];
   setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>;
   setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>;
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void;
   lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>;
-  onMigrateNodeMemberships: (oldGroupId: string, newGroupId: string) => void;
-  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string) => void;
-  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string) => void;
 }
 
 function useSaveGroup(options: SaveGroupOptions) {
@@ -329,13 +369,12 @@ function useSaveGroup(options: SaveGroupOptions) {
     mode,
     isLocked,
     onLockedAction,
+    groups,
+    getGroupMembers,
     setGroups,
     setEditingGroup,
     saveGroupsToExtension,
-    lastStyleRef,
-    onMigrateNodeMemberships,
-    onMigrateTextAnnotations,
-    onMigrateShapeAnnotations
+    lastStyleRef
   } = options;
   return useCallback(
     (data: GroupEditorData): void => {
@@ -344,94 +383,73 @@ function useSaveGroup(options: SaveGroupOptions) {
         return;
       }
 
-      const oldGroupId = data.id;
-      const newGroupId = buildGroupId(data.name, data.level);
+      const groupId = data.id;
       lastStyleRef.current = { ...data.style };
 
-      // Track if we're doing a rename so we can trigger annotation migration after state update
-      const isRename = oldGroupId !== newGroupId;
+      const existing = groups.find(g => g.id === groupId);
+      if (!existing) {
+        log.warn(`[Groups] Group not found: ${groupId}`);
+        return;
+      }
+      const nameLevelChanged = existing.name !== data.name || existing.level !== data.level;
 
       setGroups(prev => {
-        const oldGroup = prev.find(g => g.id === oldGroupId);
-        if (!oldGroup) {
-          log.warn(`[Groups] Group not found: ${oldGroupId}`);
-          return prev;
-        }
+        const updated = updateGroupInList(prev, groupId, {
+          ...data.style,
+          name: data.name,
+          level: data.level
+        });
 
-        let updated: GroupStyleAnnotation[];
-        if (isRename) {
-          // Rename: remove old, add new with updated ID
-          updated = removeGroupFromList(prev, oldGroupId);
-          updated = [...updated, {
-            ...data.style,
-            id: newGroupId,
-            name: data.name,
-            level: data.level,
-            position: oldGroup.position,
-            width: oldGroup.width,
-            height: oldGroup.height,
-            parentId: oldGroup.parentId  // Preserve parentId
-          }];
-
-          // MIGRATION 1: Update child group parentIds to point to new ID
-          updated = updated.map(g => {
-            if (g.parentId === oldGroupId) {
-              return { ...g, parentId: newGroupId };
-            }
-            return g;
-          });
-
-          // MIGRATION 2: Update node memberships
-          const { name: oldName, level: oldLevel } = parseGroupId(oldGroupId);
-
-          // Update the membership map (this is what getGroupMembers uses)
-          onMigrateNodeMemberships(oldGroupId, newGroupId);
-
-          // Update Cytoscape node data and persist
-          if (cy) {
-            const migratedNodes: Array<{ nodeId: string; group: string; level: string }> = [];
-            cy.nodes().forEach(node => {
-              const annotation = node.data('clabAnnotation') as { group?: string; level?: string } | undefined;
-              if (annotation?.group === oldName && annotation?.level === oldLevel) {
-                node.data('clabAnnotation', {
-                  ...annotation,
-                  group: data.name,
-                  level: data.level
-                });
-                migratedNodes.push({ nodeId: node.id(), group: data.name, level: data.level });
-              }
-            });
-            // Persist node membership changes
-            if (migratedNodes.length > 0) {
-              saveBatchMemberships(migratedNodes);
-              log.info(`[Groups] Migrated ${migratedNodes.length} node memberships to new group ID`);
-            }
-          }
-
-          log.info(`[Groups] Renamed group: ${oldGroupId} -> ${newGroupId}`);
-        } else {
-          // Just update style
-          updated = updateGroupInList(prev, oldGroupId, {
-            ...data.style,
-            name: data.name,
-            level: data.level
-          });
-          log.info(`[Groups] Updated group style: ${oldGroupId}`);
-        }
+        log.info(`[Groups] Updated group style: ${groupId}`);
 
         saveGroupsToExtension(updated);
         return updated;
       });
 
-      // MIGRATION 3: Update annotation groupIds (after state update)
-      if (isRename) {
-        onMigrateTextAnnotations?.(oldGroupId, newGroupId);
-        onMigrateShapeAnnotations?.(oldGroupId, newGroupId);
+      if (nameLevelChanged) {
+        const memberIds = getGroupMembers(groupId);
+        if (memberIds.length > 0) {
+          const updates = memberIds.map(nodeId => ({
+            nodeId,
+            groupId,
+            groupName: data.name,
+            groupLevel: data.level
+          }));
+          saveBatchMemberships(updates);
+        }
+
+        if (cy) {
+          memberIds.forEach(nodeId => {
+            const node = cy.getElementById(nodeId);
+            if (node.length > 0) {
+              const annotation = node.data('clabAnnotation') as { group?: string; level?: string; groupId?: string } | undefined;
+              if (annotation) {
+                node.data('clabAnnotation', {
+                  ...annotation,
+                  groupId,
+                  group: data.name,
+                  level: data.level
+                });
+              }
+            }
+          });
+        }
       }
 
       setEditingGroup(null);
     },
-    [cy, mode, isLocked, onLockedAction, setGroups, setEditingGroup, saveGroupsToExtension, lastStyleRef, onMigrateNodeMemberships, onMigrateTextAnnotations, onMigrateShapeAnnotations]
+    [
+      cy,
+      mode,
+      isLocked,
+      onLockedAction,
+      groups,
+      getGroupMembers,
+      setGroups,
+      setEditingGroup,
+      saveGroupsToExtension,
+      lastStyleRef
+    ]
   );
 }
 
@@ -530,15 +548,15 @@ function useUpdateGroupGeoPosition(
 function addNodeToGroupHelper(
   membershipRef: React.RefObject<Map<string, string>>,
   nodeId: string,
-  groupId: string
+  groupId: string,
+  group?: GroupStyleAnnotation
 ): void {
   // Note: We don't validate group existence here because this may be called
   // right after a group is added but before React re-renders.
   // The membership is stored immediately; the group will exist by the time
   // the UI needs to display it.
   membershipRef.current.set(nodeId, groupId);
-  const { name, level } = parseGroupId(groupId);
-  saveNodeMembership(nodeId, name, level);
+  saveNodeMembership(nodeId, group ? { id: groupId, name: group.name, level: group.level } : { id: groupId });
   log.info(`[Groups] Added node ${nodeId} to group ${groupId}`);
 }
 
@@ -548,7 +566,7 @@ function removeNodeFromGroupHelper(
   nodeId: string
 ): void {
   membershipRef.current.delete(nodeId);
-  saveNodeMembership(nodeId, null, null);
+  saveNodeMembership(nodeId, null);
   log.info(`[Groups] Removed node ${nodeId} from group`);
 }
 
@@ -601,8 +619,9 @@ function useNodeGroupMembership(
   const addNodeToGroup = useCallback((nodeId: string, groupId: string): void => {
     if (mode === 'view' || isLocked) return;
     markMembershipDirty();
-    addNodeToGroupHelper(membershipRef, nodeId, groupId);
-  }, [mode, isLocked, markMembershipDirty]);
+    const group = groups.find(g => g.id === groupId);
+    addNodeToGroupHelper(membershipRef, nodeId, groupId, group);
+  }, [mode, isLocked, markMembershipDirty, groups]);
 
   /** Add node to group locally (in-memory only, no extension notification) */
   const addNodeToGroupLocal = useCallback((nodeId: string, groupId: string): void => {
@@ -616,7 +635,7 @@ function useNodeGroupMembership(
     removeNodeFromGroupHelper(membershipRef, nodeId);
   }, [mode, isLocked, markMembershipDirty]);
 
-  /** Migrate all node memberships from one groupId to another (used when group is renamed) */
+  /** Reassign all node memberships from one groupId to another (legacy migrations) */
   const migrateMemberships = useCallback((oldGroupId: string, newGroupId: string): void => {
     markMembershipDirty();
     membershipRef.current.forEach((gId, nodeId) => {
@@ -651,13 +670,26 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     clearGroupSelection
   } = state;
 
+  // Node membership management - must be before saveGroup for migration callbacks
+  const membership = useNodeGroupMembership(mode, isLocked, groups);
+
   const createGroup = useCreateGroup(
     cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef
   );
 
-  const deleteGroup = useDeleteGroup(
-    mode, isLocked, onLockedAction, editingGroup, setGroups, setEditingGroup, saveGroupsToExtension
-  );
+  const deleteGroup = useDeleteGroup({
+    mode,
+    isLocked,
+    onLockedAction,
+    editingGroup,
+    groups,
+    membership,
+    setGroups,
+    setEditingGroup,
+    saveGroupsToExtension,
+    onMigrateTextAnnotations,
+    onMigrateShapeAnnotations
+  });
 
   const editGroup = useEditGroup(mode, isLocked, onLockedAction, groups, setEditingGroup);
 
@@ -665,9 +697,6 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     setEditingGroup(null);
     log.info('[Groups] Editor closed');
   }, [setEditingGroup]);
-
-  // Node membership management - must be before saveGroup for migration callbacks
-  const membership = useNodeGroupMembership(mode, isLocked, groups);
 
   // Wrap createGroup to also update in-memory membership when creating with nodes
   // This ensures getNodeMembership() returns correct results immediately after group creation
@@ -713,13 +742,12 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
     mode,
     isLocked,
     onLockedAction,
+    groups,
+    getGroupMembers: membership.getGroupMembers,
     setGroups,
     setEditingGroup,
     saveGroupsToExtension,
-    lastStyleRef,
-    onMigrateNodeMemberships: membership.migrateMemberships,
-    onMigrateTextAnnotations,
-    onMigrateShapeAnnotations
+    lastStyleRef
   });
 
   const updateGroup = useUpdateGroup(mode, isLocked, setGroups, saveGroupsToExtension);

@@ -6,6 +6,8 @@ import type { Core, EventObject, NodeSingular } from 'cytoscape';
 
 import { log } from '../../utils/logger';
 
+import { getModifierTapTarget } from './graphClickHelpers';
+
 interface ShiftClickEdgeCreationOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
@@ -26,22 +28,12 @@ export function useShiftClickEdgeCreation(
     if (!cy) return;
 
     const handleTap = (evt: EventObject) => {
-      // Only work in edit mode when not locked
-      if (mode !== 'edit' || isLocked) return;
-
-      const originalEvent = evt.originalEvent as MouseEvent;
-      if (!originalEvent?.shiftKey) return;
-
-      const target = evt.target as NodeSingular | Core;
-
-      // Skip background clicks (handled by node creation)
-      if (target === cy) return;
-
-      const node = target as NodeSingular;
-
-      // Skip annotation nodes
-      const role = node.data('topoViewerRole') as string | undefined;
-      if (role === 'freeText' || role === 'freeShape' || role === 'group') return;
+      const node = getModifierTapTarget<NodeSingular>(evt, cy, {
+        mode,
+        isLocked,
+        modifier: 'shift'
+      });
+      if (!node) return;
 
       log.info(`[ShiftClickEdgeCreation] Starting edge creation from node: ${node.id()}`);
       startEdgeCreation(node.id());

@@ -112,7 +112,7 @@ interface AnnotationActionsContextValue {
   updateTextGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
   updateTextAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
   handleTextCanvasClick: (position: { x: number; y: number }) => void;
-  migrateTextAnnotationsGroupId: (oldGroupId: string, newGroupId: string) => void;
+  migrateTextAnnotationsGroupId: (oldGroupId: string, newGroupId: string | null) => void;
 
   handleAddShapes: (shapeType?: string) => void;
   selectShapeAnnotation: (id: string) => void;
@@ -135,7 +135,7 @@ interface AnnotationActionsContextValue {
   handleShapeCanvasClickWithUndo: (position: { x: number; y: number }) => void;
   captureShapeAnnotationBefore: (id: string) => FreeShapeAnnotation | null;
   finalizeShapeWithUndo: (before: FreeShapeAnnotation | null, id: string) => void;
-  migrateShapeAnnotationsGroupId: (oldGroupId: string, newGroupId: string) => void;
+  migrateShapeAnnotationsGroupId: (oldGroupId: string, newGroupId: string | null) => void;
 
   // Membership callbacks for node reparent
   applyMembershipChange: (memberships: { nodeId: string; groupId: string | null }[]) => void;
@@ -163,8 +163,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   const { undoRedo, registerAnnotationHandler, registerGroupMoveHandler, registerMembershipHandler } = useUndoRedoContext();
 
   // Refs for late-bound migration callbacks
-  const migrateTextAnnotationsRef = useRef<((oldGroupId: string, newGroupId: string) => void) | undefined>(undefined);
-  const migrateShapeAnnotationsRef = useRef<((oldGroupId: string, newGroupId: string) => void) | undefined>(undefined);
+  const migrateTextAnnotationsRef = useRef<((oldGroupId: string, newGroupId: string | null) => void) | undefined>(undefined);
+  const migrateShapeAnnotationsRef = useRef<((oldGroupId: string, newGroupId: string | null) => void) | undefined>(undefined);
 
   // Groups
   const { groups: groupsHook } = useAppGroups({
@@ -246,7 +246,9 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   const { handleAddGroupWithUndo, deleteGroupWithUndo } = useAppGroupUndoHandlers({
     cyInstance: cy,
     groups: groupsHook,
-    undoRedo
+    undoRedo,
+    textAnnotations: freeTextAnnotations.annotations,
+    shapeAnnotations: freeShapeAnnotations.annotations
   });
 
   const groupUndoHandlers = useGroupUndoRedoHandlers(groupsHook, undoRedo);

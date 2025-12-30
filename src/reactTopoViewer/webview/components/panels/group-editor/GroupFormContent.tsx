@@ -125,8 +125,8 @@ const TextSection: React.FC<{
     <div className="flex items-end gap-4">
       <ColorSwatch
         label="Text Color"
-        value={formData.style.color ?? '#ebecf0'}
-        onChange={(v) => updateStyle('color', v)}
+        value={formData.style.labelColor ?? formData.style.color ?? '#ebecf0'}
+        onChange={(v) => updateStyle('labelColor', v)}
       />
     </div>
   </div>
@@ -154,7 +154,7 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
         >
           <span
             className="text-xs font-medium"
-            style={{ color: style.color ?? '#ebecf0' }}
+            style={{ color: style.labelColor ?? style.color ?? '#ebecf0' }}
           >
             {formData.name || 'Group Name'}
           </span>

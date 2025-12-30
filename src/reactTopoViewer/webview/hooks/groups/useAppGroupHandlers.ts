@@ -6,7 +6,8 @@
 import { useCallback } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 
-import type { UndoRedoAction } from '../state/useUndoRedo';
+import type { FreeShapeAnnotation, FreeTextAnnotation } from '../../../shared/types/topology';
+import type { RelatedAnnotationChange, UndoRedoAction } from '../state/useUndoRedo';
 
 import type { UseGroupsReturn } from './groupTypes';
 import { useGroupUndoRedoHandlers } from './useGroupUndoRedoHandlers';
@@ -19,6 +20,8 @@ interface UseAppGroupUndoHandlersOptions {
   cyInstance: CyCore | null;
   groups: UseGroupsReturn;
   undoRedo: UndoRedoApi;
+  textAnnotations?: FreeTextAnnotation[];
+  shapeAnnotations?: FreeShapeAnnotation[];
 }
 
 export interface UseAppGroupUndoHandlersReturn {
@@ -36,7 +39,7 @@ function canBeGrouped(node: NodeSingular): boolean {
 }
 
 export function useAppGroupUndoHandlers(options: UseAppGroupUndoHandlersOptions): UseAppGroupUndoHandlersReturn {
-  const { cyInstance, groups, undoRedo } = options;
+  const { cyInstance, groups, undoRedo, textAnnotations, shapeAnnotations } = options;
 
   // Group undo/redo handlers
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
@@ -63,9 +66,66 @@ export function useAppGroupUndoHandlers(options: UseAppGroupUndoHandlersOptions)
     }
   }, [cyInstance, groupUndoHandlers, groups]);
 
+  const deleteGroupWithUndo = useCallback((groupId: string) => {
+    const beforeGroup = groups.groups.find(g => g.id === groupId);
+    if (!beforeGroup) return;
+
+    if (!groupUndoHandlers.isApplyingGroupUndoRedo.current) {
+      const parentId = groups.getParentGroup(groupId)?.id ?? null;
+      const memberIds = groups.getGroupMembers(groupId);
+      const action = groups.getUndoRedoAction(beforeGroup, null);
+
+      if (memberIds.length > 0) {
+        action.membershipBefore = memberIds.map(nodeId => ({ nodeId, groupId }));
+        action.membershipAfter = memberIds.map(nodeId => ({ nodeId, groupId: parentId }));
+      }
+
+      const relatedAnnotations: RelatedAnnotationChange[] = [];
+      const childGroups = groups.getChildGroups(groupId);
+      if (childGroups.length > 0) {
+        const promotedParentId = beforeGroup.parentId;
+        childGroups.forEach(child => {
+          const beforeChild = { ...child, position: { ...child.position } };
+          relatedAnnotations.push({
+            annotationType: 'group',
+            before: beforeChild,
+            after: { ...beforeChild, parentId: promotedParentId }
+          });
+        });
+      }
+      if (textAnnotations) {
+        textAnnotations.forEach(annotation => {
+          if (annotation.groupId !== groupId) return;
+          relatedAnnotations.push({
+            annotationType: 'freeText',
+            before: { ...annotation },
+            after: { ...annotation, groupId: parentId ?? undefined }
+          });
+        });
+      }
+      if (shapeAnnotations) {
+        shapeAnnotations.forEach(annotation => {
+          if (annotation.groupId !== groupId) return;
+          relatedAnnotations.push({
+            annotationType: 'freeShape',
+            before: { ...annotation },
+            after: { ...annotation, groupId: parentId ?? undefined }
+          });
+        });
+      }
+      if (relatedAnnotations.length > 0) {
+        action.relatedAnnotations = relatedAnnotations;
+      }
+
+      undoRedo.pushAction(action);
+    }
+
+    groups.deleteGroup(groupId);
+  }, [groups, undoRedo, textAnnotations, shapeAnnotations, groupUndoHandlers]);
+
   return {
     handleAddGroupWithUndo,
-    deleteGroupWithUndo: groupUndoHandlers.deleteGroupWithUndo
+    deleteGroupWithUndo
   };
 }
 

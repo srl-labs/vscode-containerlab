@@ -6,6 +6,8 @@ import type { Core, EventObject, NodeSingular, EdgeSingular } from 'cytoscape';
 
 import { log } from '../../utils/logger';
 
+import { getModifierTapTarget } from './graphClickHelpers';
+
 interface AltClickDeleteOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
@@ -27,21 +29,12 @@ export function useAltClickDelete(
     if (!cy) return;
 
     const handleTap = (evt: EventObject) => {
-      // Only work in edit mode when not locked
-      if (mode !== 'edit' || isLocked) return;
-
-      const originalEvent = evt.originalEvent as MouseEvent;
-      if (!originalEvent?.altKey) return;
-
-      const target = evt.target as NodeSingular | EdgeSingular | Core;
-
-      // Skip background clicks
-      if (target === cy) return;
-
-      // Skip annotation nodes (handled by their own layers)
-      const element = target as NodeSingular | EdgeSingular;
-      const role = element.data('topoViewerRole') as string | undefined;
-      if (role === 'freeText' || role === 'freeShape' || role === 'group') return;
+      const element = getModifierTapTarget<NodeSingular | EdgeSingular>(evt, cy, {
+        mode,
+        isLocked,
+        modifier: 'alt'
+      });
+      if (!element) return;
 
       if (element.isNode()) {
         log.info(`[AltClickDelete] Deleting node: ${element.id()}`);

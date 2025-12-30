@@ -266,16 +266,17 @@ export function useGenericAnnotationUpdates<T extends BaseAnnotationWithGroupId>
     });
   }, [setAnnotations, saveAnnotationsToExtension, updateInList]);
 
-  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string) => {
+  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string | null) => {
     setAnnotations(prev => {
       const updated = prev.map(a =>
-        a.groupId === oldGroupId ? { ...a, groupId: newGroupId } : a
+        a.groupId === oldGroupId ? { ...a, groupId: newGroupId ?? undefined } : a
       );
       // Only save if something actually changed
       const hasChanges = updated.some((a, i) => a !== prev[i]);
       if (hasChanges) {
         saveAnnotationsToExtension(updated);
-        log.info(`[${logPrefix}] Migrated annotations from group ${oldGroupId} to ${newGroupId}`);
+        const targetLabel = newGroupId ?? 'root';
+        log.info(`[${logPrefix}] Migrated annotations from group ${oldGroupId} to ${targetLabel}`);
       }
       return updated;
     });

@@ -8,6 +8,7 @@ import type { Core } from 'cytoscape';
 import type { CyElement } from '../../../shared/types/messages';
 import { log } from '../../utils/logger';
 import { saveNodePositions, getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
+import { applyMembershipUpdates } from '../shared/membershipHelpers';
 
 /**
  * Represents a node position entry
@@ -79,6 +80,12 @@ export interface UndoRedoActionPropertyEdit {
 /** Type of annotation (freeText, freeShape, or group) */
 export type AnnotationType = 'freeText' | 'freeShape' | 'group';
 
+export interface RelatedAnnotationChange {
+  annotationType: AnnotationType;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+}
+
 /**
  * Represents an annotation action (for free text/shapes/groups)
  */
@@ -90,6 +97,11 @@ export interface UndoRedoActionAnnotation {
   before: Record<string, unknown> | null;
   /** Annotation state after the change (null = deleted) */
   after: Record<string, unknown> | null;
+  /** Optional node membership changes associated with the annotation */
+  membershipBefore?: MembershipEntry[];
+  membershipAfter?: MembershipEntry[];
+  /** Optional related annotation changes (e.g., group membership promotions) */
+  relatedAnnotations?: RelatedAnnotationChange[];
   [key: string]: unknown;
 }
 
@@ -324,6 +336,98 @@ function applyGroupMoveRedo(
   sendPositionsToExtension(action.nodesAfter);
 }
 
+function applyGraphAction(
+  action: UndoRedoActionGraph,
+  isUndo: boolean,
+  applyGraphChanges: ((changes: GraphChange[]) => void) | undefined
+): void {
+  const changes = isUndo ? action.before : action.after;
+  const operation = isUndo ? 'Undoing' : 'Redoing';
+  log.info(`[UndoRedo] ${operation} graph action with ${changes.length} change(s)`);
+  applyGraphChanges?.(changes);
+}
+
+function applyPropertyEditAction(
+  action: UndoRedoActionPropertyEdit,
+  isUndo: boolean,
+  applyPropertyEdit: ((action: UndoRedoActionPropertyEdit, isUndo: boolean) => void) | undefined
+): void {
+  const operation = isUndo ? 'Undoing' : 'Redoing';
+  log.info(`[UndoRedo] ${operation} property edit for ${action.entityType} ${action.entityId}`);
+  applyPropertyEdit?.(action, isUndo);
+}
+
+function applyAnnotationAction(
+  action: UndoRedoActionAnnotation,
+  isUndo: boolean,
+  applyAnnotationChange: ((action: UndoRedoActionAnnotation, isUndo: boolean) => void) | undefined,
+  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
+): void {
+  const operation = isUndo ? 'Undoing' : 'Redoing';
+  log.info(`[UndoRedo] ${operation} ${action.annotationType} annotation change`);
+
+  applyAnnotationChange?.(action, isUndo);
+
+  if (action.relatedAnnotations && action.relatedAnnotations.length > 0 && applyAnnotationChange) {
+    action.relatedAnnotations.forEach(change => {
+      applyAnnotationChange(
+        {
+          type: 'annotation',
+          annotationType: change.annotationType,
+          before: change.before,
+          after: change.after
+        },
+        isUndo
+      );
+    });
+  }
+
+  const membership = isUndo ? action.membershipBefore : action.membershipAfter;
+  if (membership && membership.length > 0) {
+    applyMembershipChange?.(membership);
+    sendMembershipToExtension(membership);
+  }
+}
+
+function applyMoveAction(
+  action: UndoRedoActionMove,
+  isUndo: boolean,
+  cy: Core,
+  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
+): void {
+  if (isUndo) {
+    applyMoveUndo(action, cy, applyMembershipChange);
+    return;
+  }
+  applyMoveRedo(action, cy, applyMembershipChange);
+}
+
+function applyGroupMoveAction(
+  action: UndoRedoActionGroupMove,
+  isUndo: boolean,
+  cy: Core,
+  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
+): void {
+  if (isUndo) {
+    applyGroupMoveUndo(action, cy, applyGroupMoveChange);
+    return;
+  }
+  applyGroupMoveRedo(action, cy, applyGroupMoveChange);
+}
+
+function applyCompoundAction(
+  action: UndoRedoActionCompound,
+  isUndo: boolean,
+  applyGraphChanges: ((changes: GraphChange[]) => void) | undefined,
+  applyAnnotationChange: ((action: UndoRedoActionAnnotation, isUndo: boolean) => void) | undefined
+): void {
+  if (isUndo) {
+    applyCompoundUndo(action, applyGraphChanges, applyAnnotationChange);
+    return;
+  }
+  applyCompoundRedo(action, applyGraphChanges, applyAnnotationChange);
+}
+
 /**
  * Helper to add action to past with size limit
  */
@@ -415,33 +519,7 @@ function sendMembershipToExtension(memberships: MembershipEntry[]): void {
 
   // Batch all membership updates in a single annotations modification
   annotationsIO.modifyAnnotations(yamlPath, annotations => {
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
-
-    for (const entry of memberships) {
-      // Parse groupId to get name and level (groupId format: "name:level")
-      let group: string | null = null;
-      let level: string | null = null;
-      if (entry.groupId) {
-        const parts = entry.groupId.split(':');
-        group = parts[0];
-        level = parts[1] ?? '1';
-      }
-
-      const existing = annotations.nodeAnnotations.find(n => n.id === entry.nodeId);
-      if (existing) {
-        existing.group = group ?? undefined;
-        existing.level = level ?? undefined;
-      } else {
-        annotations.nodeAnnotations.push({
-          id: entry.nodeId,
-          group: group ?? undefined,
-          level: level ?? undefined
-        });
-      }
-    }
-
+    applyMembershipUpdates(annotations, memberships);
     return annotations;
   }).catch(err => {
     log.error(`[UndoRedo] Failed to save membership: ${err}`);
@@ -573,42 +651,24 @@ function applyAction(
   applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void,
   applyMembershipChange?: (memberships: MembershipEntry[]) => void
 ): void {
-  const operation = isUndo ? 'Undoing' : 'Redoing';
   switch (action.type) {
     case 'move':
-      if (isUndo) {
-        applyMoveUndo(action, cy, applyMembershipChange);
-      } else {
-        applyMoveRedo(action, cy, applyMembershipChange);
-      }
+      applyMoveAction(action, isUndo, cy, applyMembershipChange);
       break;
-    case 'graph': {
-      const changes = isUndo ? action.before : action.after;
-      log.info(`[UndoRedo] ${operation} graph action with ${changes.length} change(s)`);
-      applyGraphChanges?.(changes);
+    case 'graph':
+      applyGraphAction(action, isUndo, applyGraphChanges);
       break;
-    }
     case 'property-edit':
-      log.info(`[UndoRedo] ${operation} property edit for ${action.entityType} ${action.entityId}`);
-      applyPropertyEdit?.(action, isUndo);
+      applyPropertyEditAction(action, isUndo, applyPropertyEdit);
       break;
     case 'annotation':
-      log.info(`[UndoRedo] ${operation} ${action.annotationType} annotation change`);
-      applyAnnotationChange?.(action, isUndo);
+      applyAnnotationAction(action, isUndo, applyAnnotationChange, applyMembershipChange);
       break;
     case ACTION_TYPE_GROUP_MOVE:
-      if (isUndo) {
-        applyGroupMoveUndo(action, cy, applyGroupMoveChange);
-      } else {
-        applyGroupMoveRedo(action, cy, applyGroupMoveChange);
-      }
+      applyGroupMoveAction(action, isUndo, cy, applyGroupMoveChange);
       break;
     case 'compound':
-      if (isUndo) {
-        applyCompoundUndo(action, applyGraphChanges, applyAnnotationChange);
-      } else {
-        applyCompoundRedo(action, applyGraphChanges, applyAnnotationChange);
-      }
+      applyCompoundAction(action, isUndo, applyGraphChanges, applyAnnotationChange);
       break;
   }
 }

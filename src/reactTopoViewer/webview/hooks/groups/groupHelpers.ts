@@ -24,19 +24,20 @@ export const GROUP_SAVE_DEBOUNCE_MS = 300;
  */
 export function generateGroupId(existingGroups: GroupStyleAnnotation[]): string {
   let counter = 1;
-  let newId = `group${counter}:1`;
+  let newId = `group-${counter}`;
 
   const existingIds = new Set(existingGroups.map(g => g.id));
   while (existingIds.has(newId)) {
     counter++;
-    newId = `group${counter}:1`;
+    newId = `group-${counter}`;
   }
 
   return newId;
 }
 
 /**
- * Parse a group ID into name and level.
+ * Parse a legacy group ID into name and level.
+ * Legacy IDs used the format "name:level".
  */
 export function parseGroupId(groupId: string): { name: string; level: string } {
   const [name, level] = groupId.split(':');
@@ -45,12 +46,10 @@ export function parseGroupId(groupId: string): { name: string; level: string } {
 
 /**
  * Save node membership to annotations file.
- * Can be called with a groupId (which gets parsed) or with explicit group/level values.
  */
 export function saveNodeMembership(
   nodeId: string,
-  groupOrGroupId: string | null,
-  level?: string | null
+  group: { id: string; name?: string; level?: string } | null
 ): void {
   if (!isServicesInitialized()) {
     log.warn('[Groups] Services not initialized for membership save');
@@ -66,23 +65,9 @@ export function saveNodeMembership(
     return;
   }
 
-  // Determine group name and level - either from parsing groupId or from explicit params
-  let groupName: string | null;
-  let groupLevel: string | null;
-  if (level !== undefined) {
-    // Called with explicit group/level (useGroups style)
-    groupName = groupOrGroupId;
-    groupLevel = level;
-  } else if (groupOrGroupId) {
-    // Called with groupId (useNodeReparent style)
-    const parsed = parseGroupId(groupOrGroupId);
-    groupName = parsed.name;
-    groupLevel = parsed.level;
-  } else {
-    // Clearing membership
-    groupName = null;
-    groupLevel = null;
-  }
+  const groupId = group?.id ?? null;
+  const groupName = group?.name ?? null;
+  const groupLevel = group?.level ?? null;
 
   annotationsIO.modifyAnnotations(yamlPath, annotations => {
     if (!annotations.nodeAnnotations) {
@@ -91,11 +76,13 @@ export function saveNodeMembership(
 
     const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
     if (existing) {
+      existing.groupId = groupId ?? undefined;
       existing.group = groupName ?? undefined;
       existing.level = groupLevel ?? undefined;
     } else {
       annotations.nodeAnnotations.push({
         id: nodeId,
+        groupId: groupId ?? undefined,
         group: groupName ?? undefined,
         level: groupLevel ?? undefined
       });
@@ -108,7 +95,8 @@ export function saveNodeMembership(
 }
 
 /**
- * Build a group ID from name and level.
+ * Build a legacy group key from name and level ("name:level").
+ * Use only for resolving pre-existing data that does not include groupId.
  */
 export function buildGroupId(name: string, level: string): string {
   return `${name}:${level}`;
@@ -123,10 +111,11 @@ const EXCLUDED_STYLE_KEYS = new Set(['width', 'height', 'position', 'id', 'name'
  */
 export function createDefaultGroup(
   id: string,
+  name: string,
+  level: string,
   position: { x: number; y: number },
   lastStyle?: Partial<GroupStyleAnnotation>
 ): GroupStyleAnnotation {
-  const { name, level } = parseGroupId(id);
   // Only copy visual style properties, not geometry
   const visualStyles: Partial<GroupStyleAnnotation> = {};
   if (lastStyle) {

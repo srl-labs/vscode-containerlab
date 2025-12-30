@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { Core as CyCore, NodeSingular } from 'cytoscape';
 
 import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';
+import { log } from '../../utils/logger';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
 
 import { useGroups } from './useGroups';
@@ -30,11 +31,41 @@ type MembershipEntry = { nodeId: string; groupId: string };
 /**
  * Extract group memberships from node annotations.
  */
-function extractMemberships(nodeAnnotations: NodeAnnotation[] | undefined): MembershipEntry[] {
+function extractMemberships(
+  nodeAnnotations: NodeAnnotation[] | undefined,
+  groups: GroupStyleAnnotation[] | undefined
+): MembershipEntry[] {
   if (!nodeAnnotations) return [];
-  return nodeAnnotations
-    .filter(ann => ann.group && ann.level)
-    .map(ann => ({ nodeId: ann.id, groupId: buildGroupId(ann.group!, ann.level!) }));
+
+  const groupKeyToIds = new Map<string, string[]>();
+  (groups ?? []).forEach(group => {
+    const key = buildGroupId(group.name, group.level);
+    const list = groupKeyToIds.get(key) ?? [];
+    list.push(group.id);
+    groupKeyToIds.set(key, list);
+  });
+
+  const memberships: MembershipEntry[] = [];
+  for (const ann of nodeAnnotations) {
+    if (ann.groupId) {
+      memberships.push({ nodeId: ann.id, groupId: ann.groupId });
+      continue;
+    }
+    if (ann.group && ann.level) {
+      const key = buildGroupId(ann.group, ann.level);
+      const ids = groupKeyToIds.get(key) ?? [];
+      if (ids.length > 1) {
+        log.warn(`[Groups] Ambiguous membership for ${ann.id}: ${key} maps to ${ids.length} groups`);
+      }
+      if (ids.length > 0) {
+        memberships.push({ nodeId: ann.id, groupId: ids[0] });
+      } else {
+        log.warn(`[Groups] No group match for membership ${ann.id}: ${key}`);
+      }
+    }
+  }
+
+  return memberships;
 }
 
 /**
@@ -49,13 +80,16 @@ function migrateLegacyGroups(
   if (!groups?.length) return [];
 
   return groups.map(group => {
+    const labelColor = group.labelColor ?? group.color;
+
     // Already has geometry - just ensure name/level exist
     if (group.position && group.width && group.height) {
       if (!group.name || !group.level) {
         const { name, level } = parseGroupId(group.id);
-        return { ...group, name, level };
+        const updated = { ...group, name, level };
+        return labelColor !== undefined ? { ...updated, labelColor } : updated;
       }
-      return group;
+      return labelColor !== undefined ? { ...group, labelColor } : group;
     }
 
     // Legacy group - compute geometry from member node positions
@@ -69,7 +103,7 @@ function migrateLegacyGroups(
     // Calculate bounding box from positions
     const bounds = calculateBoundingBox(memberPositions);
 
-    return {
+    const updated = {
       ...group,
       name,
       level,
@@ -77,6 +111,7 @@ function migrateLegacyGroups(
       width: bounds.width,
       height: bounds.height
     };
+    return labelColor !== undefined ? { ...updated, labelColor } : updated;
   });
 }
 
@@ -93,10 +128,10 @@ interface UseAppGroupsOptions {
   mode: 'edit' | 'view';
   isLocked: boolean;
   onLockedAction?: () => void;
-  /** Callback to migrate text annotations when a group is renamed */
-  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string) => void;
-  /** Callback to migrate shape annotations when a group is renamed */
-  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string) => void;
+  /** Callback to reassign text annotations when group membership changes */
+  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
+  /** Callback to reassign shape annotations when group membership changes */
+  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
 }
 
 /**
@@ -112,14 +147,14 @@ function useGroupDataLoader(
     const initialData = (window as unknown as { __INITIAL_DATA__?: InitialData }).__INITIAL_DATA__;
     const nodeAnnotations = initialData?.nodeAnnotations;
 
-    // Extract memberships first (needed for migration)
-    const memberships = extractMemberships(nodeAnnotations);
-    if (memberships.length) initializeMembership(memberships);
-
     // Migrate legacy groups and load
     const rawGroups = initialData?.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
     const migratedGroups = migrateLegacyGroups(rawGroups, nodeAnnotations);
     if (migratedGroups.length) loadGroups(migratedGroups, false);
+
+    // Extract memberships after group migration so we can resolve group IDs
+    const memberships = extractMemberships(nodeAnnotations, migratedGroups);
+    if (memberships.length) initializeMembership(memberships);
 
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as TopologyDataMessage | undefined;
@@ -131,8 +166,10 @@ function useGroupDataLoader(
       const msgNodeAnnotations = data.nodeAnnotations;
       // Only update membership when nodeAnnotations are present in the message.
       // Some topology refreshes omit nodeAnnotations; in that case we keep local membership state.
+      const msgGroups = data.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
+      const membershipGroups = msgGroups && msgGroups.length > 0 ? msgGroups : currentGroupsRef.current;
       if (msgNodeAnnotations) {
-        initializeMembership(extractMemberships(msgNodeAnnotations));
+        initializeMembership(extractMemberships(msgNodeAnnotations, membershipGroups));
       }
 
       // Group reload logic:
@@ -141,7 +178,6 @@ function useGroupDataLoader(
       // - HOWEVER, if React has no groups but the file has groups, this indicates
       //   the topology was reloaded from file and we should sync the state
       // This handles the "reload from file" case (BUG-NESTED-GROUP-CREATE-001)
-      const msgGroups = data.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
       const hasMessageGroups = msgGroups && msgGroups.length > 0;
       const hasNoLocalGroups = currentGroupsRef.current.length === 0;
 
