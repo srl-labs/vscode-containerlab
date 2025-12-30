@@ -48,14 +48,23 @@ function applyGroupAnnotationChangeInternal(
   try {
     if (target && !opposite) {
       // Restoring a deleted group - add back
-      groupsApi.loadGroups([...groupsApi.groups, target]);
+      groupsApi.loadGroups(prev => {
+        const existing = prev.find(g => g.id === target.id);
+        if (existing) return prev;
+        return [...prev, target];
+      });
     } else if (!target && opposite) {
       // Deleting a group
-      groupsApi.deleteGroup(opposite.id);
+      groupsApi.loadGroups(prev => prev.filter(g => g.id !== opposite.id));
     } else if (target && opposite) {
       // Updating group
-      const newGroups = groupsApi.groups.map(g => (g.id === target.id ? target : g));
-      groupsApi.loadGroups(newGroups);
+      groupsApi.loadGroups(prev => {
+        const exists = prev.some(g => g.id === target.id);
+        if (!exists) {
+          return [...prev, target];
+        }
+        return prev.map(g => (g.id === target.id ? target : g));
+      });
     }
   } finally {
     isApplyingRef.current = false;

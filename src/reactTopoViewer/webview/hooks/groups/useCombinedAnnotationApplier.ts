@@ -43,25 +43,33 @@ function logGroupUndoState(
 /** Restore a deleted group */
 function restoreGroup(target: GroupStyleAnnotation, groupsApi: GroupsApi): void {
   log.info(`[GroupUndo] Restoring deleted group: ${target.id}`);
-  const existing = groupsApi.groups.find(g => g.id === target.id);
-  if (!existing) {
-    groupsApi.loadGroups([...groupsApi.groups, target]);
-  }
+  groupsApi.loadGroups(prev => {
+    const existing = prev.find(g => g.id === target.id);
+    if (existing) return prev;
+    return [...prev, target];
+  });
 }
 
 /** Delete a group via loadGroups to bypass mode checks */
 function removeGroup(opposite: GroupStyleAnnotation, groupsApi: GroupsApi): void {
   log.info(`[GroupUndo] Deleting group: ${opposite.id}`);
-  const filteredGroups = groupsApi.groups.filter(g => g.id !== opposite.id);
-  log.info(`[GroupUndo] Filtered groups: ${filteredGroups.map(g => g.id).join(', ')}`);
-  groupsApi.loadGroups(filteredGroups);
+  groupsApi.loadGroups(prev => {
+    const filteredGroups = prev.filter(g => g.id !== opposite.id);
+    log.info(`[GroupUndo] Filtered groups: ${filteredGroups.map(g => g.id).join(', ')}`);
+    return filteredGroups;
+  });
 }
 
 /** Update an existing group */
 function updateGroup(target: GroupStyleAnnotation, groupsApi: GroupsApi): void {
   log.info(`[GroupUndo] Updating group: ${target.id}`);
-  const newGroups = groupsApi.groups.map(g => (g.id === target.id ? target : g));
-  groupsApi.loadGroups(newGroups);
+  groupsApi.loadGroups(prev => {
+    const exists = prev.some(g => g.id === target.id);
+    if (!exists) {
+      return [...prev, target];
+    }
+    return prev.map(g => (g.id === target.id ? target : g));
+  });
 }
 
 function applyGroupAnnotationChangeInternal(

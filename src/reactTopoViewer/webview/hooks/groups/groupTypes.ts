@@ -221,7 +221,10 @@ export interface UseGroupsReturn {
   updateGroupPosition: (groupId: string, position: { x: number; y: number }) => void;
   updateGroupSize: (groupId: string, width: number, height: number) => void;
   updateGroupGeoPosition: (groupId: string, geoCoordinates: { lat: number; lng: number }) => void;
-  loadGroups: (groups: GroupStyleAnnotation[], persistToExtension?: boolean) => void;
+  loadGroups: (
+    groups: GroupStyleAnnotation[] | ((prev: GroupStyleAnnotation[]) => GroupStyleAnnotation[]),
+    persistToExtension?: boolean
+  ) => void;
   addGroup: (group: GroupStyleAnnotation) => void;
   getUndoRedoAction: (
     before: GroupStyleAnnotation | null,

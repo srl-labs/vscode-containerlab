@@ -756,13 +756,19 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   const updateGroupGeoPosition = useUpdateGroupGeoPosition(setGroups, saveGroupsToExtension);
 
   const loadGroups = useCallback(
-    (loadedGroups: GroupStyleAnnotation[], persistToExtension = true): void => {
-      setGroups(loadedGroups);
-      // Persist to extension unless this is initial data loading
-      if (persistToExtension) {
-        saveGroupsToExtension(loadedGroups);
-      }
-      log.info(`[Groups] Loaded ${loadedGroups.length} overlay groups`);
+    (
+      loadedGroups: GroupStyleAnnotation[] | ((prev: GroupStyleAnnotation[]) => GroupStyleAnnotation[]),
+      persistToExtension = true
+    ): void => {
+      setGroups(prev => {
+        const next = typeof loadedGroups === 'function' ? loadedGroups(prev) : loadedGroups;
+        // Persist to extension unless this is initial data loading
+        if (persistToExtension) {
+          saveGroupsToExtension(next);
+        }
+        log.info(`[Groups] Loaded ${next.length} overlay groups`);
+        return next;
+      });
     },
     [setGroups, saveGroupsToExtension]
   );

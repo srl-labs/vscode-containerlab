@@ -139,7 +139,10 @@ interface UseAppGroupsOptions {
  * Handles migration of legacy groups that are missing geometry fields.
  */
 function useGroupDataLoader(
-  loadGroups: (groups: GroupStyleAnnotation[], persistToExtension?: boolean) => void,
+  loadGroups: (
+    groups: GroupStyleAnnotation[] | ((prev: GroupStyleAnnotation[]) => GroupStyleAnnotation[]),
+    persistToExtension?: boolean
+  ) => void,
   initializeMembership: (memberships: MembershipEntry[]) => void,
   currentGroupsRef: React.RefObject<GroupStyleAnnotation[]>
 ): void {
