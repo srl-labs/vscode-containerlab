@@ -56,6 +56,8 @@ export interface TopoViewerState {
   isProcessing: boolean;
   /** Current processing mode for visual feedback */
   processingMode: ProcessingMode;
+  /** Counter to trigger editor data refresh after Apply */
+  editorDataVersion: number;
 }
 
 /**
@@ -79,7 +81,8 @@ const initialState: TopoViewerState = {
   customIcons: [],
   editingCustomTemplate: null,
   isProcessing: false,
-  processingMode: null
+  processingMode: null,
+  editorDataVersion: 0
 };
 
 /**
@@ -128,7 +131,8 @@ type TopoViewerAction =
   | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] }
   | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string } }
   | { type: 'UPDATE_NODE_DATA'; payload: UpdateNodeDataPayload }
-  | { type: 'UPDATE_NODE_POSITIONS'; payload: UpdateNodePositionsPayload };
+  | { type: 'UPDATE_NODE_POSITIONS'; payload: UpdateNodePositionsPayload }
+  | { type: 'REFRESH_EDITOR_DATA' };
 
 /**
  * Reducer function
@@ -291,15 +295,16 @@ const reducerHandlers: ReducerHandlers = {
   UPDATE_NODE_DATA: (state, action) => {
     const { nodeId, extraData } = action.payload;
     // Update the node's extraData AND top-level visual properties
+    // IMPORTANT: We REPLACE extraData entirely (not merge) so deleted fields stay deleted
     const elements = state.elements.map(el => {
       if (el.group === 'nodes' && (el.data as Record<string, unknown>)?.id === nodeId) {
         const currentData = el.data as Record<string, unknown>;
-        const currentExtraData = (currentData.extraData ?? {}) as Record<string, unknown>;
 
         // Build updated data with top-level visual properties
+        // Replace extraData entirely - the caller provides the complete new state
         const updatedData: Record<string, unknown> = {
           ...currentData,
-          extraData: { ...currentExtraData, ...extraData }
+          extraData: extraData
         };
 
         // Also update top-level visual properties that Cytoscape uses for styling
@@ -334,7 +339,8 @@ const reducerHandlers: ReducerHandlers = {
     });
 
     return { ...state, elements: nextElements };
-  }
+  },
+  REFRESH_EDITOR_DATA: (state) => ({ ...state, editorDataVersion: state.editorDataVersion + 1 })
 };
 
 function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): TopoViewerState {
@@ -371,6 +377,7 @@ interface TopoViewerActionsContextValue {
   setCustomNodes: (customNodes: CustomNodeTemplate[], defaultNode: string) => void;
   editCustomTemplate: (data: CustomTemplateEditorData | null) => void;
   setProcessing: (isProcessing: boolean, mode?: 'deploy' | 'destroy') => void;
+  refreshEditorData: () => void;
 }
 
 /**
@@ -619,6 +626,10 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     dispatch({ type: 'SET_PROCESSING', payload: { isProcessing, mode: mode ?? null } });
   }, [dispatch]);
 
+  const refreshEditorData = useCallback(() => {
+    dispatch({ type: 'REFRESH_EDITOR_DATA' });
+  }, [dispatch]);
+
   return useMemo(() => ({
     toggleLock,
     setMode,
@@ -626,7 +637,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     toggleDummyLinks,
     setCustomNodes,
     editCustomTemplate,
-    setProcessing
+    setProcessing,
+    refreshEditorData
   }), [
     toggleLock,
     setMode,
@@ -634,7 +646,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     toggleDummyLinks,
     setCustomNodes,
     editCustomTemplate,
-    setProcessing
+    setProcessing,
+    refreshEditorData
   ]);
 }
 

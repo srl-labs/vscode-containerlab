@@ -74,7 +74,8 @@ const AppContent: React.FC<{
     removeEdge,
     updateNodePositions,
     editCustomTemplate,
-    toggleLock
+    toggleLock,
+    refreshEditorData
   } = useTopoViewerActions();
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
@@ -97,9 +98,9 @@ const AppContent: React.FC<{
 
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge, state.elements);
-  const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null);
-  const { selectedNodeData: editingNetworkRawData } = useSelectionData(cytoscapeRef, state.editingNetwork, null);
-  const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge);
+  const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null, state.editorDataVersion);
+  const { selectedNodeData: editingNetworkRawData } = useSelectionData(cytoscapeRef, state.editingNetwork, null, state.editorDataVersion);
+  const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge, state.editorDataVersion);
   const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
   const editingNodeInheritedProps = React.useMemo(() => {
     const extra = editingNodeRawData?.extraData as Record<string, unknown> | undefined;
@@ -156,7 +157,7 @@ const AppContent: React.FC<{
   }, [dispatch]);
 
   // Editor handlers
-  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph, state.customIcons, updateNodeData);
+  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph, state.customIcons, updateNodeData, refreshEditorData);
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit, cytoscapeRef);
   const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData, cyInstance);
 

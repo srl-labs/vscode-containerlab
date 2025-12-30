@@ -225,33 +225,80 @@ export interface YamlExtraData {
   [key: string]: unknown;
 }
 
+// ============================================================================
+// Helper functions for clearable field conversion
+// These helpers reduce cognitive complexity by encapsulating the null-or-value pattern
+// ============================================================================
+
+/** Convert a string field: returns value if truthy, null if empty (for deletion) */
+function toStringOrNull(value: unknown): string | null {
+  return value ? String(value) : null;
+}
+
+/** Convert an array field: returns value if non-empty, null if empty (for deletion) */
+function toArrayOrNull<T>(arr: T[]): T[] | null {
+  return arr.length > 0 ? arr : null;
+}
+
+/** Convert a record field: returns value if non-empty, null if empty (for deletion) */
+function toRecordOrNull(obj: Record<string, unknown>): Record<string, unknown> | null {
+  return Object.keys(obj).length > 0 ? obj : null;
+}
+
+/**
+ * Convert a boolean field: returns true only if explicitly true, null otherwise (for deletion).
+ * This matches containerlab behavior where most boolean fields default to false,
+ * so explicit false is redundant and should be omitted.
+ */
+function toBooleanOrNull(value: unknown): true | null {
+  return value === true ? true : null;
+}
+
+/**
+ * Convert a number field: returns value if it's a valid positive number, null otherwise.
+ * Empty strings, 0, NaN, undefined all result in null (deletion).
+ */
+function toNumberOrNull(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const num = Number(value);
+  // Only return if it's a valid non-NaN number (allow 0 for explicit zero values)
+  // But for most fields, 0 is the default, so we delete it
+  return !isNaN(num) && num !== 0 ? num : null;
+}
+
 /** Convert basic properties to YAML format */
 function convertBasicToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
+  // kind is typically required, so only set if present
   if (data.kind) extraData.kind = String(data.kind);
-  if (data.type) extraData.type = String(data.type);
-  if (data.image) extraData.image = String(data.image);
-  if (data.group) extraData.group = String(data.group);
+  // String fields: set value if non-empty, null if empty string (to trigger deletion)
+  // Use 'in' check to detect when user explicitly cleared the field (set to undefined)
+  if ('type' in data) extraData.type = toStringOrNull(data.type) as string;
+  if ('image' in data) extraData.image = toStringOrNull(data.image) as string;
+  if ('group' in data) extraData.group = toStringOrNull(data.group) as string;
 }
 
 /** Convert startup config properties to YAML format */
 function convertStartupConfigToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (data.startupConfig) extraData['startup-config'] = String(data.startupConfig);
-  if (data.enforceStartupConfig !== undefined) extraData['enforce-startup-config'] = Boolean(data.enforceStartupConfig);
-  if (data.suppressStartupConfig !== undefined) extraData['suppress-startup-config'] = Boolean(data.suppressStartupConfig);
-  if (data.license) extraData.license = String(data.license);
+  if ('startupConfig' in data) extraData['startup-config'] = toStringOrNull(data.startupConfig) as string;
+  // Boolean fields: only write true, otherwise delete (null)
+  if ('enforceStartupConfig' in data) {
+    extraData['enforce-startup-config'] = toBooleanOrNull(data.enforceStartupConfig) as boolean;
+  }
+  if ('suppressStartupConfig' in data) {
+    extraData['suppress-startup-config'] = toBooleanOrNull(data.suppressStartupConfig) as boolean;
+  }
+  if ('license' in data) extraData.license = toStringOrNull(data.license) as string;
 }
 
 /** Convert container config properties to YAML format */
 function convertContainerConfigToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (data.binds && Array.isArray(data.binds) && data.binds.length > 0) extraData.binds = data.binds as string[];
-  if (data.env && typeof data.env === 'object' && Object.keys(data.env as object).length > 0) {
-    extraData.env = data.env as Record<string, unknown>;
+  if (Array.isArray(data.binds)) extraData.binds = toArrayOrNull(data.binds) as string[];
+  if (typeof data.env === 'object' && data.env !== null) {
+    extraData.env = toRecordOrNull(data.env as Record<string, unknown>) as Record<string, unknown>;
   }
-  if (data.envFiles && Array.isArray(data.envFiles) && data.envFiles.length > 0) {
-    extraData['env-files'] = data.envFiles as string[];
-  }
-  if (data.labels && typeof data.labels === 'object' && Object.keys(data.labels as object).length > 0) {
-    extraData.labels = data.labels as Record<string, unknown>;
+  if (Array.isArray(data.envFiles)) extraData['env-files'] = toArrayOrNull(data.envFiles) as string[];
+  if (typeof data.labels === 'object' && data.labels !== null) {
+    extraData.labels = toRecordOrNull(data.labels as Record<string, unknown>) as Record<string, unknown>;
   }
 }
 
@@ -263,70 +310,88 @@ function convertConfigToYaml(data: Record<string, unknown>, extraData: YamlExtra
 
 /** Convert runtime properties to YAML format */
 function convertRuntimeToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (data.user) extraData.user = String(data.user);
-  if (data.entrypoint) extraData.entrypoint = String(data.entrypoint);
-  if (data.cmd) extraData.cmd = String(data.cmd);
-  if (data.exec && Array.isArray(data.exec) && data.exec.length > 0) extraData.exec = data.exec as string[];
-  if (data.restartPolicy) extraData['restart-policy'] = String(data.restartPolicy);
-  if (data.autoRemove !== undefined) extraData['auto-remove'] = Boolean(data.autoRemove);
-  if (data.startupDelay !== undefined && data.startupDelay !== null) {
-    extraData['startup-delay'] = Number(data.startupDelay);
+  if ('user' in data) extraData.user = toStringOrNull(data.user) as string;
+  if ('entrypoint' in data) extraData.entrypoint = toStringOrNull(data.entrypoint) as string;
+  if ('cmd' in data) extraData.cmd = toStringOrNull(data.cmd) as string;
+  if (Array.isArray(data.exec)) extraData.exec = toArrayOrNull(data.exec) as string[];
+  if ('restartPolicy' in data) extraData['restart-policy'] = toStringOrNull(data.restartPolicy) as string;
+  // Boolean field: only write true, otherwise delete (null)
+  if ('autoRemove' in data) {
+    extraData['auto-remove'] = toBooleanOrNull(data.autoRemove) as boolean;
+  }
+  // Number field: only write if non-zero, otherwise delete (null)
+  // Use 'in' check to detect when user explicitly cleared the field (set to undefined)
+  if ('startupDelay' in data) {
+    extraData['startup-delay'] = toNumberOrNull(data.startupDelay) as number;
   }
 }
 
 /** Convert network properties to YAML format */
 function convertNetworkToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (data.mgmtIpv4) extraData['mgmt-ipv4'] = String(data.mgmtIpv4);
-  if (data.mgmtIpv6) extraData['mgmt-ipv6'] = String(data.mgmtIpv6);
-  if (data.networkMode) extraData['network-mode'] = String(data.networkMode);
-  if (data.ports && Array.isArray(data.ports) && data.ports.length > 0) extraData.ports = data.ports as string[];
-  if (data.dnsServers && Array.isArray(data.dnsServers) && data.dnsServers.length > 0) {
-    extraData.dns = data.dnsServers as string[];
-  }
-  if (data.aliases && Array.isArray(data.aliases) && data.aliases.length > 0) {
-    extraData.aliases = data.aliases as string[];
-  }
+  if ('mgmtIpv4' in data) extraData['mgmt-ipv4'] = toStringOrNull(data.mgmtIpv4) as string;
+  if ('mgmtIpv6' in data) extraData['mgmt-ipv6'] = toStringOrNull(data.mgmtIpv6) as string;
+  if ('networkMode' in data) extraData['network-mode'] = toStringOrNull(data.networkMode) as string;
+  if (Array.isArray(data.ports)) extraData.ports = toArrayOrNull(data.ports) as string[];
+  if (Array.isArray(data.dnsServers)) extraData.dns = toArrayOrNull(data.dnsServers) as string[];
+  if (Array.isArray(data.aliases)) extraData.aliases = toArrayOrNull(data.aliases) as string[];
 }
 
 /** Convert resource limit properties to YAML format */
 function convertResourceLimitsToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (data.cpu !== undefined && data.cpu !== null) extraData.cpu = Number(data.cpu);
-  if (data.cpuSet) extraData['cpu-set'] = String(data.cpuSet);
-  if (data.memory) extraData.memory = String(data.memory);
-  if (data.shmSize) extraData['shm-size'] = String(data.shmSize);
+  // Number field: only write if non-zero, otherwise delete (null)
+  if ('cpu' in data) {
+    extraData.cpu = toNumberOrNull(data.cpu) as number;
+  }
+  if ('cpuSet' in data) extraData['cpu-set'] = toStringOrNull(data.cpuSet) as string;
+  if ('memory' in data) extraData.memory = toStringOrNull(data.memory) as string;
+  if ('shmSize' in data) extraData['shm-size'] = toStringOrNull(data.shmSize) as string;
 }
 
 /** Convert container capabilities and sysctls to YAML format */
 function convertCapabilitiesToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (data.capAdd && Array.isArray(data.capAdd) && data.capAdd.length > 0) {
-    extraData['cap-add'] = data.capAdd as string[];
+  if (Array.isArray(data.capAdd)) extraData['cap-add'] = toArrayOrNull(data.capAdd) as string[];
+  if (typeof data.sysctls === 'object' && data.sysctls !== null) {
+    extraData.sysctls = toRecordOrNull(data.sysctls as Record<string, unknown>) as Record<string, unknown>;
   }
-  if (data.sysctls && typeof data.sysctls === 'object' && Object.keys(data.sysctls as object).length > 0) {
-    extraData.sysctls = data.sysctls as Record<string, unknown>;
-  }
-  if (data.devices && Array.isArray(data.devices) && data.devices.length > 0) {
-    extraData.devices = data.devices as string[];
-  }
+  if (Array.isArray(data.devices)) extraData.devices = toArrayOrNull(data.devices) as string[];
 }
 
 /** Convert advanced/resource properties to YAML format */
 function convertAdvancedToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
   convertResourceLimitsToYaml(data, extraData);
   convertCapabilitiesToYaml(data, extraData);
-  if (data.imagePullPolicy) extraData['image-pull-policy'] = String(data.imagePullPolicy);
-  if (data.runtime) extraData.runtime = String(data.runtime);
+  if ('imagePullPolicy' in data) extraData['image-pull-policy'] = toStringOrNull(data.imagePullPolicy) as string;
+  if ('runtime' in data) extraData.runtime = toStringOrNull(data.runtime) as string;
 }
 
 /** Convert certificate properties to YAML format */
 function convertCertToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (data.certIssue === undefined && !data.certKeySize && !data.certValidity && !data.sans) return;
+  // Check if ANY certificate field is defined (even if empty - we need to know if user touched them)
+  const hasCertFields = data.certIssue !== undefined ||
+                        data.certKeySize !== undefined ||
+                        data.certValidity !== undefined ||
+                        data.sans !== undefined;
+  if (!hasCertFields) return;
 
   const cert: Record<string, unknown> = {};
-  if (data.certIssue !== undefined) cert.issue = Boolean(data.certIssue);
-  if (data.certKeySize) cert['key-size'] = String(data.certKeySize);
-  if (data.certValidity) cert['validity-duration'] = String(data.certValidity);
-  if (data.sans && Array.isArray(data.sans) && data.sans.length > 0) cert.SANs = data.sans;
-  if (Object.keys(cert).length > 0) extraData.certificate = cert;
+  // Boolean field: only write true
+  if (data.certIssue === true) cert.issue = true;
+  // String fields
+  const keySize = toStringOrNull(data.certKeySize);
+  if (keySize) cert['key-size'] = keySize;
+  const validity = toStringOrNull(data.certValidity);
+  if (validity) cert['validity-duration'] = validity;
+  // Array field
+  const sansArr = Array.isArray(data.sans) ? toArrayOrNull(data.sans) : null;
+  if (sansArr) cert.SANs = sansArr;
+
+  // If all fields are empty, signal deletion; otherwise set the certificate object
+  if (Object.keys(cert).length > 0) {
+    extraData.certificate = cert;
+  } else {
+    // All certificate fields were cleared - delete the certificate
+    extraData.certificate = null as unknown as Record<string, unknown>;
+  }
 }
 
 /** Convert healthcheck properties to YAML format */
@@ -335,12 +400,26 @@ function convertHealthcheckToYaml(data: Record<string, unknown>, extraData: Yaml
   if (!hc || typeof hc !== 'object') return;
 
   const healthcheck: Record<string, unknown> = {};
-  if (hc.test) healthcheck.test = String(hc.test);
-  if (hc.startPeriod !== undefined) healthcheck['start-period'] = Number(hc.startPeriod);
-  if (hc.interval !== undefined) healthcheck.interval = Number(hc.interval);
-  if (hc.timeout !== undefined) healthcheck.timeout = Number(hc.timeout);
-  if (hc.retries !== undefined) healthcheck.retries = Number(hc.retries);
-  if (Object.keys(healthcheck).length > 0) extraData.healthcheck = healthcheck;
+  // String field
+  const test = toStringOrNull(hc.test);
+  if (test) healthcheck.test = test;
+  // Number fields - use toNumberOrNull for proper empty/zero handling
+  const startPeriod = toNumberOrNull(hc.startPeriod);
+  if (startPeriod !== null) healthcheck['start-period'] = startPeriod;
+  const interval = toNumberOrNull(hc.interval);
+  if (interval !== null) healthcheck.interval = interval;
+  const timeout = toNumberOrNull(hc.timeout);
+  if (timeout !== null) healthcheck.timeout = timeout;
+  const retries = toNumberOrNull(hc.retries);
+  if (retries !== null) healthcheck.retries = retries;
+
+  // If all fields are empty, signal deletion; otherwise set the healthcheck object
+  if (Object.keys(healthcheck).length > 0) {
+    extraData.healthcheck = healthcheck;
+  } else {
+    // All healthcheck fields were cleared - delete the healthcheck
+    extraData.healthcheck = null as unknown as Record<string, unknown>;
+  }
 }
 
 /** Check if a component object has any meaningful properties */

@@ -9,6 +9,7 @@ import type { RelatedAnnotationChange, UndoRedoActionAnnotation } from '../state
 import { type UndoRedoApi, updateWithUndo, createPushUndoFn } from '../shared/undoHelpers';
 
 import type { UseGroupsReturn } from './groupTypes';
+import { createGroupInserter, createGroupRemover, createGroupUpserter } from './groupHelpers';
 
 export interface UseGroupUndoRedoHandlersReturn {
   createGroupWithUndo: (selectedNodeIds?: string[]) => string | null;
@@ -48,23 +49,13 @@ function applyGroupAnnotationChangeInternal(
   try {
     if (target && !opposite) {
       // Restoring a deleted group - add back
-      groupsApi.loadGroups(prev => {
-        const existing = prev.find(g => g.id === target.id);
-        if (existing) return prev;
-        return [...prev, target];
-      });
+      groupsApi.loadGroups(createGroupInserter(target));
     } else if (!target && opposite) {
       // Deleting a group
-      groupsApi.loadGroups(prev => prev.filter(g => g.id !== opposite.id));
+      groupsApi.loadGroups(createGroupRemover(opposite.id));
     } else if (target && opposite) {
       // Updating group
-      groupsApi.loadGroups(prev => {
-        const exists = prev.some(g => g.id === target.id);
-        if (!exists) {
-          return [...prev, target];
-        }
-        return prev.map(g => (g.id === target.id ? target : g));
-      });
+      groupsApi.loadGroups(createGroupUpserter(target));
     }
   } finally {
     isApplyingRef.current = false;

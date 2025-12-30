@@ -98,7 +98,8 @@ function updateCytoscapeEdgeData(
 }
 
 /**
- * Update Cytoscape node data after editor changes
+ * Update Cytoscape node data after editor changes.
+ * Returns the new extraData that was set on the node, so callers can sync React state.
  * @param customIcons - Custom icons for checking if the icon is a custom icon
  */
 function updateCytoscapeNodeData(
@@ -106,19 +107,28 @@ function updateCytoscapeNodeData(
   nodeId: string,
   data: NodeEditorData,
   customIcons?: CustomIconInfo[]
-): void {
-  if (!cy) return;
+): Record<string, unknown> | null {
+  if (!cy) return null;
 
   const node = cy.getElementById(nodeId);
-  if (!node || node.empty()) return;
+  if (!node || node.empty()) return null;
 
   // Convert editor data to YAML format (kebab-case keys) and merge with existing
   const existingExtraData = (node.data('extraData') as Record<string, unknown> | undefined) ?? {};
   const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
+
   const newExtraData: Record<string, unknown> = {
     ...existingExtraData,
     ...yamlExtraData,
   };
+
+  // Remove null values from the merged data - null signals "delete this property"
+  // This ensures the property is completely absent, not present with null value
+  for (const key of Object.keys(newExtraData)) {
+    if (newExtraData[key] === null) {
+      delete newExtraData[key];
+    }
+  }
 
   // Update the node data
   node.data('name', data.name);
@@ -150,10 +160,14 @@ function updateCytoscapeNodeData(
     // Reset to default rectangle shape when corner radius is 0 or undefined
     node.style('shape', 'rectangle');
   }
+
+  // Return the new extraData so callers can sync React state
+  return newExtraData;
 }
 
 /**
- * Handle node update after edit (rename or data update)
+ * Handle node update after edit (rename or data update).
+ * Returns the new extraData so callers can sync React state.
  */
 function handleNodeUpdate(
   data: NodeEditorData,
@@ -161,14 +175,16 @@ function handleNodeUpdate(
   renameNode: RenameNodeCallback | undefined,
   cyRef: React.RefObject<CytoscapeCanvasRef | null> | undefined,
   customIcons?: CustomIconInfo[]
-): void {
+): Record<string, unknown> | null {
   if (oldName && renameNode) {
     renameNode(oldName, data.name);
+    return null;
   } else {
     const cy = cyRef?.current?.getCy();
     if (cy) {
-      updateCytoscapeNodeData(cy, data.id, data, customIcons);
+      return updateCytoscapeNodeData(cy, data.id, data, customIcons);
     }
+    return null;
   }
 }
 
@@ -205,6 +221,37 @@ function recordEdit<T extends { id: string }>(
 /** Callback to update node data in React state (for icon reconciliation) */
 type UpdateNodeDataCallback = (nodeId: string, extraData: Record<string, unknown>) => void;
 
+/** Dependencies for persisting node editor changes */
+interface NodePersistDeps {
+  cyRef?: React.RefObject<CytoscapeCanvasRef | null>;
+  renameNode?: RenameNodeCallback;
+  customIcons?: CustomIconInfo[];
+  updateNodeData?: UpdateNodeDataCallback;
+  refreshEditorData?: () => void;
+}
+
+/**
+ * Persist node editor changes to the service and update canvas/state.
+ * Shared by both Save and Apply operations.
+ */
+function persistNodeChanges(
+  data: NodeEditorData,
+  oldName: string | undefined,
+  deps: NodePersistDeps
+): void {
+  const { cyRef, renameNode, customIcons, updateNodeData, refreshEditorData } = deps;
+  const saveData = convertEditorDataToNodeSaveData(data, oldName);
+  void editNodeService(saveData);
+  const newExtraData = handleNodeUpdate(data, oldName, renameNode, cyRef, customIcons);
+  // Update React state with the SAME extraData that was set on Cytoscape
+  // This prevents useElementsUpdate from overwriting Cytoscape with stale React state
+  if (updateNodeData && newExtraData) {
+    updateNodeData(data.id, newExtraData);
+  }
+  // Trigger editor data refresh so reopening the editor shows updated values
+  refreshEditorData?.();
+}
+
 /**
  * Hook for node editor handlers with undo/redo support
  */
@@ -215,7 +262,8 @@ export function useNodeEditorHandlers(
   cyRef?: React.RefObject<CytoscapeCanvasRef | null>,
   renameNode?: RenameNodeCallback,
   customIcons?: CustomIconInfo[],
-  updateNodeData?: UpdateNodeDataCallback
+  updateNodeData?: UpdateNodeDataCallback,
+  refreshEditorData?: () => void
 ) {
   const initialDataRef = React.useRef<NodeEditorData | null>(null);
 
@@ -232,20 +280,20 @@ export function useNodeEditorHandlers(
     editNode(null);
   }, [editNode]);
 
+  // Memoize dependencies for persistNodeChanges
+  const persistDeps = React.useMemo<NodePersistDeps>(
+    () => ({ cyRef, renameNode, customIcons, updateNodeData, refreshEditorData }),
+    [cyRef, renameNode, customIcons, updateNodeData, refreshEditorData]
+  );
+
   const handleSave = React.useCallback((data: NodeEditorData) => {
     // Only record if there are actual changes (checkChanges = true)
     recordEdit('node', initialDataRef.current, data, recordPropertyEdit, true);
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-    const saveData = convertEditorDataToNodeSaveData(data, oldName);
-    void editNodeService(saveData);
-    handleNodeUpdate(data, oldName, renameNode, cyRef, customIcons);
-    // Update React state for icon reconciliation
-    if (updateNodeData) {
-      updateNodeData(data.id, { topoViewerRole: data.icon, iconColor: data.iconColor, iconCornerRadius: data.iconCornerRadius });
-    }
+    persistNodeChanges(data, oldName, persistDeps);
     initialDataRef.current = null;
     editNode(null);
-  }, [editNode, recordPropertyEdit, cyRef, renameNode, customIcons, updateNodeData]);
+  }, [editNode, recordPropertyEdit, persistDeps]);
 
   const handleApply = React.useCallback((data: NodeEditorData) => {
     const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
@@ -253,14 +301,8 @@ export function useNodeEditorHandlers(
     if (changed) {
       initialDataRef.current = { ...data };
     }
-    const saveData = convertEditorDataToNodeSaveData(data, oldName);
-    void editNodeService(saveData);
-    handleNodeUpdate(data, oldName, renameNode, cyRef, customIcons);
-    // Update React state for icon reconciliation
-    if (updateNodeData) {
-      updateNodeData(data.id, { topoViewerRole: data.icon, iconColor: data.iconColor, iconCornerRadius: data.iconCornerRadius });
-    }
-  }, [recordPropertyEdit, cyRef, renameNode, customIcons, updateNodeData]);
+    persistNodeChanges(data, oldName, persistDeps);
+  }, [recordPropertyEdit, persistDeps]);
 
   return { handleClose, handleSave, handleApply };
 }

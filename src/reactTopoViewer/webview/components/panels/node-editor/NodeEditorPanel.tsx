@@ -58,13 +58,18 @@ function useNodeEditorForm(nodeData: NodeEditorData | null) {
   const [loadedNodeId, setLoadedNodeId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only reset form when loading a different node (by id)
+    // Reset form when loading a different node (by id)
     if (nodeData && nodeData.id !== loadedNodeId) {
       setFormData({ ...nodeData });
       setLastAppliedData({ ...nodeData });
       setOriginalData({ ...nodeData });
       setLoadedNodeId(nodeData.id);
       setActiveTab('basic');
+    } else if (nodeData && nodeData.id === loadedNodeId) {
+      // Same node but data changed (e.g., after Apply updated Cytoscape)
+      // Sync formData with the updated nodeData to reflect saved changes
+      setFormData({ ...nodeData });
+      setLastAppliedData({ ...nodeData });
     } else if (!nodeData && loadedNodeId) {
       // Panel closed - reset loadedNodeId so reopening same node reloads data
       setLoadedNodeId(null);

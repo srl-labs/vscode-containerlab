@@ -12,6 +12,7 @@ import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } fr
 import { log } from '../../utils/logger';
 
 import type { UseGroupsReturn } from './groupTypes';
+import { createGroupInserter, createGroupRemover, createGroupUpserter } from './groupHelpers';
 
 // ============================================================================
 // Group Annotation Applier Types and Functions
@@ -43,33 +44,19 @@ function logGroupUndoState(
 /** Restore a deleted group */
 function restoreGroup(target: GroupStyleAnnotation, groupsApi: GroupsApi): void {
   log.info(`[GroupUndo] Restoring deleted group: ${target.id}`);
-  groupsApi.loadGroups(prev => {
-    const existing = prev.find(g => g.id === target.id);
-    if (existing) return prev;
-    return [...prev, target];
-  });
+  groupsApi.loadGroups(createGroupInserter(target));
 }
 
 /** Delete a group via loadGroups to bypass mode checks */
 function removeGroup(opposite: GroupStyleAnnotation, groupsApi: GroupsApi): void {
   log.info(`[GroupUndo] Deleting group: ${opposite.id}`);
-  groupsApi.loadGroups(prev => {
-    const filteredGroups = prev.filter(g => g.id !== opposite.id);
-    log.info(`[GroupUndo] Filtered groups: ${filteredGroups.map(g => g.id).join(', ')}`);
-    return filteredGroups;
-  });
+  groupsApi.loadGroups(createGroupRemover(opposite.id));
 }
 
 /** Update an existing group */
 function updateGroup(target: GroupStyleAnnotation, groupsApi: GroupsApi): void {
   log.info(`[GroupUndo] Updating group: ${target.id}`);
-  groupsApi.loadGroups(prev => {
-    const exists = prev.some(g => g.id === target.id);
-    if (!exists) {
-      return [...prev, target];
-    }
-    return prev.map(g => (g.id === target.id ? target : g));
-  });
+  groupsApi.loadGroups(createGroupUpserter(target));
 }
 
 function applyGroupAnnotationChangeInternal(

@@ -245,6 +245,45 @@ export function isGroupInSelectionBox(
   );
 }
 
+// ============================================================================
+// State Updater Utilities (for loadGroups)
+// ============================================================================
+
+/**
+ * Create an updater that inserts a group if it doesn't exist.
+ * Used for restoring deleted groups during undo.
+ */
+export function createGroupInserter(group: GroupStyleAnnotation) {
+  return (prev: GroupStyleAnnotation[]): GroupStyleAnnotation[] => {
+    const existing = prev.find(g => g.id === group.id);
+    if (existing) return prev;
+    return [...prev, group];
+  };
+}
+
+/**
+ * Create an updater that removes a group by ID.
+ * Used for deleting groups during redo.
+ */
+export function createGroupRemover(groupId: string) {
+  return (prev: GroupStyleAnnotation[]): GroupStyleAnnotation[] =>
+    prev.filter(g => g.id !== groupId);
+}
+
+/**
+ * Create an updater that upserts (inserts or updates) a group.
+ * Used for updating group properties during undo/redo.
+ */
+export function createGroupUpserter(group: GroupStyleAnnotation) {
+  return (prev: GroupStyleAnnotation[]): GroupStyleAnnotation[] => {
+    const exists = prev.some(g => g.id === group.id);
+    if (!exists) {
+      return [...prev, group];
+    }
+    return prev.map(g => (g.id === group.id ? group : g));
+  };
+}
+
 /**
  * Get label position styles based on labelPosition setting.
  * Labels are positioned OUTSIDE the group border.
