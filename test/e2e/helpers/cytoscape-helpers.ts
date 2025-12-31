@@ -372,6 +372,7 @@ export async function pressShortcut(
 
 /**
  * Perform box selection by dragging from one corner to another.
+ * Uses a small delay after pressing Shift to ensure the key state is registered.
  */
 export async function boxSelect(
   page: Page,
@@ -379,6 +380,8 @@ export async function boxSelect(
   to: { x: number; y: number }
 ): Promise<void> {
   await page.keyboard.down('Shift');
+  // Small delay to ensure Shift key state is registered (same as shiftClick)
+  await page.waitForTimeout(50);
   await drag(page, from, to, { steps: 5 });
   await page.keyboard.up('Shift');
 }
