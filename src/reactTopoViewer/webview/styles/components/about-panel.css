@@ -14,8 +14,6 @@
 
   .about-content {
     padding: 1.25rem;
-    overflow-y: auto;
-    max-height: calc(85vh - 3rem);
   }
 
   .about-link {
