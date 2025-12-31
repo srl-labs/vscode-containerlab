@@ -534,6 +534,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register commands
   registerCommands(context);
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onDidChangeConfiguration));
+
+  // Expose a stable API surface for other extensions to access providers safely.
+  return {
+    getLocalLabsProvider: () => localLabsProvider,
+    getRunningLabsProvider: () => runningLabsProvider,
+  };
 }
 
 export function deactivate() {
