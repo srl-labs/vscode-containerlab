@@ -156,12 +156,12 @@ export async function drag(
 
 /**
  * Perform a Shift+Click at the specified position.
- * Uses a small delay to ensure Shift key is registered before click.
+ * Uses a delay to ensure Shift key is registered before click.
  */
 export async function shiftClick(page: Page, x: number, y: number): Promise<void> {
   await page.keyboard.down('Shift');
-  // Small delay to ensure Shift key state is registered
-  await page.waitForTimeout(50);
+  // Delay to ensure Shift key state is registered before the click event
+  await page.waitForTimeout(100);
   await page.mouse.click(x, y);
   await page.keyboard.up('Shift');
 }
@@ -372,7 +372,7 @@ export async function pressShortcut(
 
 /**
  * Perform box selection by dragging from one corner to another.
- * Uses a small delay after pressing Shift to ensure the key state is registered.
+ * Uses a delay after pressing Shift to ensure the key state is registered.
  */
 export async function boxSelect(
   page: Page,
@@ -380,8 +380,8 @@ export async function boxSelect(
   to: { x: number; y: number }
 ): Promise<void> {
   await page.keyboard.down('Shift');
-  // Small delay to ensure Shift key state is registered (same as shiftClick)
-  await page.waitForTimeout(50);
+  // Delay to ensure Shift key state is registered before the drag (same as shiftClick)
+  await page.waitForTimeout(100);
   await drag(page, from, to, { steps: 5 });
   await page.keyboard.up('Shift');
 }
