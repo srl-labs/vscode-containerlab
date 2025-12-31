@@ -475,6 +475,67 @@ test.describe('Copy, Paste, and Cut Operations', () => {
     console.log('[INFO] Redo successfully restored all pasted elements');
   });
 
+  test('paste keeps selection additive and supports undo/redo', async ({ topoViewerPage, page }) => {
+    console.log('[TEST] paste keeps selection additive and supports undo/redo');
+
+    const initialNodeIds = await topoViewerPage.getNodeIds();
+
+    // Select and copy srl1
+    await topoViewerPage.selectNode('srl1');
+    await page.waitForTimeout(100);
+    await topoViewerPage.copy();
+    await page.waitForTimeout(300);
+
+    // Paste once
+    await topoViewerPage.paste();
+    await page.waitForTimeout(500);
+
+    let nodeIds = await topoViewerPage.getNodeIds();
+    const pastedAfterFirst = nodeIds.filter(id => !initialNodeIds.includes(id));
+    expect(pastedAfterFirst.length).toBe(1);
+    const firstPastedId = pastedAfterFirst[0];
+
+    let selectedIds = await topoViewerPage.getSelectedNodeIds();
+    expect(selectedIds.length).toBe(2);
+    expect(selectedIds).toContain('srl1');
+    expect(selectedIds).toContain(firstPastedId);
+
+    // Paste again - selection should stay additive
+    await topoViewerPage.paste();
+    await page.waitForTimeout(500);
+
+    nodeIds = await topoViewerPage.getNodeIds();
+    const pastedAfterSecond = nodeIds.filter(id => !initialNodeIds.includes(id));
+    expect(pastedAfterSecond.length).toBe(2);
+    const secondPastedId = pastedAfterSecond.find(id => id !== firstPastedId);
+    expect(secondPastedId).toBeDefined();
+
+    selectedIds = await topoViewerPage.getSelectedNodeIds();
+    expect(selectedIds.length).toBe(3);
+    expect(selectedIds).toContain('srl1');
+    expect(selectedIds).toContain(firstPastedId);
+    expect(selectedIds).toContain(secondPastedId!);
+
+    // Undo should remove the last paste
+    await topoViewerPage.undo();
+    await page.waitForTimeout(500);
+
+    nodeIds = await topoViewerPage.getNodeIds();
+    expect(nodeIds).not.toContain(secondPastedId!);
+
+    selectedIds = await topoViewerPage.getSelectedNodeIds();
+    expect(selectedIds).toContain('srl1');
+    expect(selectedIds).toContain(firstPastedId);
+    expect(selectedIds).not.toContain(secondPastedId!);
+
+    // Redo should restore it
+    await topoViewerPage.redo();
+    await page.waitForTimeout(500);
+
+    nodeIds = await topoViewerPage.getNodeIds();
+    expect(nodeIds).toContain(secondPastedId!);
+  });
+
   // ============================================================================
   // PERSISTENCE VERIFICATION
   // ============================================================================
