@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { EndpointResult } from '../../shared/types/endpoint';
+import type { CustomNodeTemplate } from '../../shared/types/editors';
 
 import { log } from './logger';
 
@@ -9,13 +10,7 @@ const CONFIG_SECTION = 'containerlab.editor';
 /**
  * Custom node configuration stored in VS Code settings
  */
-export interface CustomNodeConfig {
-  name: string;
-  kind?: string;
-  type?: string;
-  image?: string;
-  setDefault?: boolean;
-}
+export type CustomNodeConfig = CustomNodeTemplate;
 
 /**
  * Custom node data structure for save operations
@@ -37,20 +32,14 @@ export class CustomNodeConfigManager {
     try {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
       let customNodes = config.get<CustomNodeConfig[]>('customNodes', []);
+      const { oldName, ...nodeData } = data;
 
       if (data.setDefault) {
         customNodes = customNodes.map((n) => ({ ...n, setDefault: false }));
       }
 
-      if (data.oldName) {
-        const oldIndex = customNodes.findIndex((n) => n.name === data.oldName);
-        const nodeData: CustomNodeConfig = {
-          name: data.name,
-          kind: data.kind,
-          type: data.type,
-          image: data.image,
-          setDefault: data.setDefault,
-        };
+      if (oldName) {
+        const oldIndex = customNodes.findIndex((n) => n.name === oldName);
         if (oldIndex >= 0) {
           customNodes[oldIndex] = nodeData;
         } else {
@@ -59,9 +48,9 @@ export class CustomNodeConfigManager {
       } else {
         const existingIndex = customNodes.findIndex((n) => n.name === data.name);
         if (existingIndex >= 0) {
-          customNodes[existingIndex] = data;
+          customNodes[existingIndex] = nodeData;
         } else {
-          customNodes.push(data);
+          customNodes.push(nodeData);
         }
       }
 

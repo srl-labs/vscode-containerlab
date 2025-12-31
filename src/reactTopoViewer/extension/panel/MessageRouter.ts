@@ -12,6 +12,7 @@ import { labLifecycleService } from '../services/LabLifecycleService';
 import { nodeCommandService } from '../services/NodeCommandService';
 import type { SplitViewManager } from '../services/SplitViewManager';
 import { customNodeConfigManager } from '../services/CustomNodeConfigManager';
+import type { CustomNodeConfig } from '../services/CustomNodeConfigManager';
 import { iconService } from '../services/IconService';
 
 type WebviewMessage = Record<string, unknown> & {
@@ -305,17 +306,7 @@ export class MessageRouter {
   }
 
   private async handleCustomNodeCommand(command: string, message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
-    let res: { result?: unknown; error?: string | null } | undefined;
-    if (command === 'save-custom-node') {
-      res = await customNodeConfigManager.saveCustomNode(message as unknown as { name: string } & Record<string, unknown>);
-    } else if (command === 'delete-custom-node') {
-      const name = typeof message.name === 'string' ? message.name : '';
-      res = await customNodeConfigManager.deleteCustomNode(name);
-    } else if (command === 'set-default-custom-node') {
-      const name = typeof message.name === 'string' ? message.name : '';
-      res = await customNodeConfigManager.setDefaultCustomNode(name);
-    }
-
+    const res = await this.executeCustomNodeCommand(command, message);
     if (!res) return;
 
     if (res.error) {
@@ -331,6 +322,41 @@ export class MessageRouter {
         defaultNode: payload.defaultNode ?? ''
       });
     }
+  }
+
+  private async executeCustomNodeCommand(
+    command: string,
+    message: WebviewMessage
+  ): Promise<{ result?: unknown; error?: string | null } | undefined> {
+    let res: { result?: unknown; error?: string | null } | undefined;
+    if (command === 'save-custom-node') {
+      const data = this.parseCustomNodeSavePayload(message);
+      if (data) {
+        res = await customNodeConfigManager.saveCustomNode(data);
+      }
+    } else if (command === 'delete-custom-node') {
+      const name = this.getCustomNodeName(message);
+      res = await customNodeConfigManager.deleteCustomNode(name);
+    } else if (command === 'set-default-custom-node') {
+      const name = this.getCustomNodeName(message);
+      res = await customNodeConfigManager.setDefaultCustomNode(name);
+    }
+    return res;
+  }
+
+  private parseCustomNodeSavePayload(message: WebviewMessage): CustomNodeConfig | null {
+    const payload = message as Record<string, unknown>;
+    const name = typeof payload.name === 'string' ? payload.name : '';
+    const kind = typeof payload.kind === 'string' ? payload.kind : '';
+    if (!name || !kind) {
+      log.error(`[MessageRouter] Invalid custom node payload: ${JSON.stringify(message)}`);
+      return null;
+    }
+    return { ...(payload as CustomNodeConfig), name, kind };
+  }
+
+  private getCustomNodeName(message: WebviewMessage): string {
+    return typeof message.name === 'string' ? message.name : '';
   }
 
   private async handleNodeCommand(command: string, message: WebviewMessage): Promise<void> {

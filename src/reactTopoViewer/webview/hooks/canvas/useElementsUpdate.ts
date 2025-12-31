@@ -403,6 +403,36 @@ function getFallbackPosition(cy: Core): { x: number; y: number } {
   return { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
 }
 
+function shouldApplyVisualProps(
+  visualProps: NodeVisualProps,
+  role: string,
+  customIconMap?: Map<string, string>
+): boolean {
+  return visualProps.iconColor !== undefined ||
+    visualProps.iconCornerRadius !== undefined ||
+    Boolean(customIconMap?.has(role));
+}
+
+function applyVisualPropsForElement(
+  cy: Core,
+  reactEl: CyElement,
+  customIconMap?: Map<string, string>
+): void {
+  if (reactEl.group !== 'nodes') return;
+  const id = getElementId(reactEl);
+  if (!id) return;
+  const cyEl = cy.getElementById(id);
+  if (cyEl.empty()) return;
+
+  const reactData = reactEl.data as Record<string, unknown>;
+  const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
+  const visualProps = extractNodeVisualProps(reactExtraData, reactData);
+  const role = (visualProps.topoViewerRole as string) || (reactData.topoViewerRole as string) || 'default';
+  if (!shouldApplyVisualProps(visualProps, role, customIconMap)) return;
+
+  applyNodeVisualProps(cyEl, { ...visualProps, topoViewerRole: role }, customIconMap);
+}
+
 function indexElementsById(elements: CyElement[]): Map<string, CyElement> {
   const map = new Map<string, CyElement>();
   for (const el of elements) {
@@ -420,7 +450,12 @@ function removeUnknownElements(cy: Core, allowedIds: Set<string>): void {
   }
 }
 
-function addMissingNodes(cy: Core, elements: CyElement[], fallbackPosition: { x: number; y: number }): void {
+function addMissingNodes(
+  cy: Core,
+  elements: CyElement[],
+  fallbackPosition: { x: number; y: number },
+  customIconMap?: Map<string, string>
+): void {
   for (const el of elements) {
     if (el.group !== 'nodes') continue;
     const id = getElementId(el);
@@ -428,6 +463,7 @@ function addMissingNodes(cy: Core, elements: CyElement[], fallbackPosition: { x:
     if (cy.getElementById(id).nonempty()) continue;
     const position = el.position ?? fallbackPosition;
     cy.add({ group: 'nodes', data: el.data, position, classes: el.classes });
+    applyVisualPropsForElement(cy, el, customIconMap);
   }
 }
 
@@ -472,14 +508,14 @@ function updateSameStructure(
   }
 }
 
-function reconcileStructure(cy: Core, elements: CyElement[]): void {
+function reconcileStructure(cy: Core, elements: CyElement[], customIconMap?: Map<string, string>): void {
   const reactById = indexElementsById(elements);
   const reactIds = new Set(reactById.keys());
   const fallbackPosition = getFallbackPosition(cy);
 
   cy.batch(() => {
     removeUnknownElements(cy, reactIds);
-    addMissingNodes(cy, elements, fallbackPosition);
+    addMissingNodes(cy, elements, fallbackPosition, customIconMap);
     addMissingEdges(cy, elements);
     updateElementData(cy, [...reactById.values()]);
   });
@@ -533,7 +569,13 @@ function detectRename(cy: Core, elements: CyElement[]): { oldId: string; newId: 
  * So we must save the edge data, remove the node (which removes edges), add the new node,
  * then re-add the edges with updated source/target references.
  */
-function handleRenameInPlace(cy: Core, oldId: string, newId: string, elements: CyElement[]): void {
+function handleRenameInPlace(
+  cy: Core,
+  oldId: string,
+  newId: string,
+  elements: CyElement[],
+  customIconMap?: Map<string, string>
+): void {
   const oldNode = cy.getElementById(oldId);
   if (!oldNode.length) return;
 
@@ -565,6 +607,8 @@ function handleRenameInPlace(cy: Core, oldId: string, newId: string, elements: C
     // Re-add the edges with updated references
     edgesToRestore.forEach(edge => cy.add(edge));
   });
+
+  applyVisualPropsForElement(cy, newNodeEl, customIconMap);
 }
 
 /**
@@ -673,7 +717,7 @@ export function useElementsUpdate(
     // Handle node rename in-place (preserves position + connected edges).
     const rename = detectRename(cy, elements);
     if (rename) {
-      handleRenameInPlace(cy, rename.oldId, rename.newId, elements);
+      handleRenameInPlace(cy, rename.oldId, rename.newId, elements, customIconMap);
     }
 
     if (isSameStructure) {
@@ -681,7 +725,7 @@ export function useElementsUpdate(
       return;
     }
 
-    reconcileStructure(cy, elements);
+    reconcileStructure(cy, elements, customIconMap);
     // After reconciling a significant structure change (e.g., file switch),
     // update initialLayoutDone based on whether the new elements have preset positions.
     if (hasPresetPositions(elements)) {
