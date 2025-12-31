@@ -61,6 +61,7 @@ interface ConfirmCreateParams {
   cy: CyCore | null;
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
+  addEdge?: (edge: CyElement) => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
   setStatus: SetStatus;
   setPendingCandidates: SetCandidates;
@@ -71,6 +72,7 @@ export async function confirmAndCreateLinks({
   cy,
   pendingCandidates,
   canApply,
+  addEdge,
   recordGraphChanges,
   setStatus,
   setPendingCandidates,
@@ -91,6 +93,9 @@ export async function confirmAndCreateLinks({
   }
 
   const { before, after } = buildUndoRedoEntries(edges);
+  if (addEdge) {
+    edges.forEach(edge => addEdge(edge));
+  }
   await sendBulkEdgesToExtension(edges);
   recordGraphChanges?.(before, after);
 

@@ -6,6 +6,7 @@ import type { Core as CyCore } from 'cytoscape';
 
 import { BasePanel } from '../../shared/editor/BasePanel';
 import type { GraphChange } from '../../../hooks/state';
+import type { CyElement } from '../../../../shared/types/messages';
 
 import { CopyableCode } from './CopyableCode';
 import { ConfirmBulkLinksModal } from './ConfirmBulkLinksModal';
@@ -19,6 +20,7 @@ interface BulkLinkPanelProps {
   cy: CyCore | null;
   onClose: () => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
+  addEdge?: (edge: CyElement) => void;
   storageKey?: string;
 }
 
@@ -70,6 +72,7 @@ interface UseBulkLinkPanelOptions {
   cy: CyCore | null;
   onClose: () => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
+  addEdge?: (edge: CyElement) => void;
 }
 
 function useBulkLinkPanel({
@@ -78,7 +81,8 @@ function useBulkLinkPanel({
   isLocked,
   cy,
   onClose,
-  recordGraphChanges
+  recordGraphChanges,
+  addEdge
 }: UseBulkLinkPanelOptions) {
   const [sourcePattern, setSourcePattern] = React.useState('');
   const [targetPattern, setTargetPattern] = React.useState('');
@@ -111,12 +115,13 @@ function useBulkLinkPanel({
       cy,
       pendingCandidates,
       canApply,
+      addEdge,
       recordGraphChanges,
       setStatus,
       setPendingCandidates,
       onClose
     });
-  }, [cy, pendingCandidates, canApply, recordGraphChanges, onClose]);
+  }, [cy, pendingCandidates, canApply, addEdge, recordGraphChanges, onClose]);
 
   const handleDismissConfirm = React.useCallback(() => {
     setPendingCandidates(null);
@@ -145,6 +150,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
   cy,
   onClose,
   recordGraphChanges,
+  addEdge,
   storageKey = 'bulk-link'
 }) => {
   const {
@@ -160,7 +166,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
     handleCompute,
     handleConfirmCreate,
     handleDismissConfirm
-  } = useBulkLinkPanel({ isVisible, mode, isLocked, cy, onClose, recordGraphChanges });
+  } = useBulkLinkPanel({ isVisible, mode, isLocked, cy, onClose, recordGraphChanges, addEdge });
 
   return (
     <>
