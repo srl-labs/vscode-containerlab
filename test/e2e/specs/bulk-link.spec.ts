@@ -40,8 +40,19 @@ test.describe('Bulk Link Devices', () => {
       'leaf2-spine2'
     ]));
 
-    const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
-    const endpointMatches = yaml.match(/endpoints:/g) ?? [];
-    expect(endpointMatches.length).toBe(4);
+    const getEndpointCount = async () => {
+      const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+      return (yaml.match(/endpoints:/g) ?? []).length;
+    };
+
+    await expect.poll(getEndpointCount).toBe(4);
+
+    await topoViewerPage.undo();
+    await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(0);
+    await expect.poll(getEndpointCount).toBe(0);
+
+    await topoViewerPage.redo();
+    await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(4);
+    await expect.poll(getEndpointCount).toBe(4);
   });
 });
