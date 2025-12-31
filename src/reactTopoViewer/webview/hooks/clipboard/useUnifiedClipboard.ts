@@ -646,6 +646,34 @@ function pasteShapeAnnotations(
   return newShapeAnnotationIds;
 }
 
+const PASTE_SELECTION_RETRIES = 10;
+
+function selectPastedNodes(cy: CyCore, nodeIds: string[]): void {
+  if (nodeIds.length === 0) return;
+
+  const attemptSelect = (attempt: number) => {
+    let selection = cy.collection();
+
+    for (const nodeId of nodeIds) {
+      const node = cy.getElementById(nodeId);
+      if (node.length > 0) {
+        selection = selection.union(node);
+      }
+    }
+
+    if (selection.length < nodeIds.length && attempt < PASTE_SELECTION_RETRIES) {
+      window.requestAnimationFrame(() => attemptSelect(attempt + 1));
+      return;
+    }
+
+    if (selection.length > 0) {
+      selection.select();
+    }
+  };
+
+  window.requestAnimationFrame(() => attemptSelect(0));
+}
+
 export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUnifiedClipboardReturn {
   const {
     cyInstance,
@@ -795,6 +823,8 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
     if (needsBatching && endUndoBatch) {
       endUndoBatch();
     }
+
+    selectPastedNodes(cyInstance, newNodeIds);
 
     log.info(
       `[UnifiedClipboard] Pasted ${newNodeIds.length} nodes, ` +
