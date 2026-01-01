@@ -30,7 +30,7 @@ import {
   useGraphHandlersWithContext, useCustomTemplateEditor,
   // Canvas/App state
   useCytoscapeInstance, useSelectionData, useNavbarActions, useContextMenuHandlers,
-  useLayoutControls, useLinkLabelVisibility, useGeoMap,
+  useLayoutControls, useEndpointLabelOffset, useLinkLabelVisibility, useGeoMap,
   // Panel handlers
   useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers,
   // UI hooks
@@ -95,6 +95,7 @@ const AppContent: React.FC<{
   }, [dispatch]);
 
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);
+  useEndpointLabelOffset(cyInstance, state.endpointLabelOffsetEnabled, state.endpointLabelOffset);
 
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge, state.elements);

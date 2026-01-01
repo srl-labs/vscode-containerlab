@@ -25,6 +25,8 @@ export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
  */
 export type LinkLabelMode = 'show-all' | 'on-select' | 'hide';
 
+export const DEFAULT_ENDPOINT_LABEL_OFFSET = 20;
+
 /**
  * Processing mode for lifecycle operations
  */
@@ -46,6 +48,8 @@ export interface TopoViewerState {
   isLocked: boolean;
   linkLabelMode: LinkLabelMode;
   showDummyLinks: boolean;
+  endpointLabelOffsetEnabled: boolean;
+  endpointLabelOffset: number;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
   /** Custom icons loaded from workspace and global directories */
@@ -76,6 +80,8 @@ const initialState: TopoViewerState = {
   isLocked: true,
   linkLabelMode: 'show-all',
   showDummyLinks: true,
+  endpointLabelOffsetEnabled: false,
+  endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
   customNodes: [],
   defaultNode: '',
   customIcons: [],
@@ -119,6 +125,8 @@ type TopoViewerAction =
   | { type: 'TOGGLE_LOCK' }
   | { type: 'SET_LINK_LABEL_MODE'; payload: LinkLabelMode }
   | { type: 'TOGGLE_DUMMY_LINKS' }
+  | { type: 'TOGGLE_ENDPOINT_LABEL_OFFSET' }
+  | { type: 'SET_ENDPOINT_LABEL_OFFSET'; payload: number }
   | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> }
   | { type: 'ADD_NODE'; payload: CyElement }
   | { type: 'ADD_EDGE'; payload: CyElement }
@@ -156,6 +164,8 @@ const reducerHandlers: ReducerHandlers = {
   TOGGLE_LOCK: (state) => ({ ...state, isLocked: !state.isLocked }),
   SET_LINK_LABEL_MODE: (state, action) => ({ ...state, linkLabelMode: action.payload }),
   TOGGLE_DUMMY_LINKS: (state) => ({ ...state, showDummyLinks: !state.showDummyLinks }),
+  TOGGLE_ENDPOINT_LABEL_OFFSET: (state) => ({ ...state, endpointLabelOffsetEnabled: !state.endpointLabelOffsetEnabled }),
+  SET_ENDPOINT_LABEL_OFFSET: (state, action) => ({ ...state, endpointLabelOffset: action.payload }),
   SET_INITIAL_DATA: (state, action) => ({ ...state, ...action.payload }),
   ADD_NODE: (state, action) => ({
     ...state,
@@ -369,6 +379,8 @@ interface TopoViewerActionsContextValue {
   setMode: (mode: 'edit' | 'view') => void;
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
+  toggleEndpointLabelOffset: () => void;
+  setEndpointLabelOffset: (value: number) => void;
   addNode: (node: CyElement) => void;
   addEdge: (edge: CyElement) => void;
   removeNodeAndEdges: (nodeId: string) => void;
@@ -616,6 +628,12 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const toggleDummyLinks = useCallback(() => {
     dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
   }, [dispatch]);
+  const toggleEndpointLabelOffset = useCallback(() => {
+    dispatch({ type: 'TOGGLE_ENDPOINT_LABEL_OFFSET' });
+  }, [dispatch]);
+  const setEndpointLabelOffset = useCallback((value: number) => {
+    dispatch({ type: 'SET_ENDPOINT_LABEL_OFFSET', payload: value });
+  }, [dispatch]);
   const setCustomNodes = useCallback((customNodes: CustomNodeTemplate[], defaultNode: string) => {
     dispatch({ type: 'SET_CUSTOM_NODES', payload: { customNodes, defaultNode } });
   }, [dispatch]);
@@ -635,6 +653,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setMode,
     setLinkLabelMode,
     toggleDummyLinks,
+    toggleEndpointLabelOffset,
+    setEndpointLabelOffset,
     setCustomNodes,
     editCustomTemplate,
     setProcessing,
@@ -644,6 +664,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setMode,
     setLinkLabelMode,
     toggleDummyLinks,
+    toggleEndpointLabelOffset,
+    setEndpointLabelOffset,
     setCustomNodes,
     editCustomTemplate,
     setProcessing,

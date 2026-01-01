@@ -17,7 +17,7 @@ export {
   useAppHandlers
 } from '../ui';
 export { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from '../panels';
-export { useLinkLabelVisibility, useGeoMap } from '../canvas';
+export { useEndpointLabelOffset, useLinkLabelVisibility, useGeoMap } from '../canvas';
 export {
   useCytoscapeInstance,
   useSelectionData,
