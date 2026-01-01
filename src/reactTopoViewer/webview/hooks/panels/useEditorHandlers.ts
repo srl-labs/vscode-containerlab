@@ -5,17 +5,27 @@
 import React from 'react';
 import type { Core as CyCore, Core as CytoscapeCore, EdgeSingular } from 'cytoscape';
 
-import type { NodeEditorData } from '../../components/panels/node-editor/types';
-import type { LinkEditorData } from '../../components/panels/link-editor/types';
-import type { NetworkEditorData } from '../../components/panels/network-editor';
+import type { NodeEditorData, LinkEditorData, NetworkEditorData, FloatingActionPanelHandle } from '../../components/panels';
 import type { CustomNodeTemplate } from '../../../shared/types/editors';
 import type { CustomIconInfo } from '../../../shared/types/icons';
-import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel';
+import type { EdgeAnnotation } from '../../../shared/types/topology';
 import type { MembershipEntry } from '../state/useUndoRedo';
 import { ROLE_SVG_MAP, type CytoscapeCanvasRef } from '../../components/canvas';
 import { convertEditorDataToNodeSaveData, convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
 import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversions';
-import { editNode as editNodeService, editLink as editLinkService, isServicesInitialized, getAnnotationsIO, getTopologyIO } from '../../services';
+import {
+  editNode as editNodeService,
+  editLink as editLinkService,
+  saveEdgeAnnotations,
+  isServicesInitialized,
+  getAnnotationsIO,
+  getTopologyIO
+} from '../../services';
+import { findEdgeAnnotation, upsertEdgeAnnotation } from '../../utils/edgeAnnotations';
+import {
+  DEFAULT_ENDPOINT_LABEL_OFFSET,
+  parseEndpointLabelOffset
+} from '../../utils/endpointLabelOffset';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
 
@@ -37,6 +47,11 @@ interface PropertyEditAction {
   before: Record<string, unknown>;
   after: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+interface EdgeAnnotationHandlers {
+  edgeAnnotations: EdgeAnnotation[];
+  setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
 }
 
 /** State shape for node creation handlers */
@@ -214,6 +229,33 @@ function recordEdit<T extends { id: string }>(
   return true;
 }
 
+function persistEdgeLabelOffset(
+  data: LinkEditorData,
+  handlers: EdgeAnnotationHandlers | undefined
+): void {
+  if (!handlers) return;
+  const existing = findEdgeAnnotation(handlers.edgeAnnotations, data);
+  const shouldPersist = data.endpointLabelOffsetEnabled === true || existing !== undefined;
+  if (!shouldPersist) return;
+
+  const fallbackOffset = parseEndpointLabelOffset(existing?.endpointLabelOffset) ?? DEFAULT_ENDPOINT_LABEL_OFFSET;
+  const offset = parseEndpointLabelOffset(data.endpointLabelOffset) ?? fallbackOffset;
+
+  const nextAnnotation: EdgeAnnotation = {
+    id: data.id,
+    source: data.source,
+    target: data.target,
+    sourceEndpoint: data.sourceEndpoint,
+    targetEndpoint: data.targetEndpoint,
+    endpointLabelOffsetEnabled: data.endpointLabelOffsetEnabled === true,
+    endpointLabelOffset: offset
+  };
+
+  const nextAnnotations = upsertEdgeAnnotation(handlers.edgeAnnotations, nextAnnotation);
+  handlers.setEdgeAnnotations(nextAnnotations);
+  void saveEdgeAnnotations(nextAnnotations);
+}
+
 // ============================================================================
 // useNodeEditorHandlers
 // ============================================================================
@@ -318,7 +360,8 @@ export function useLinkEditorHandlers(
   editEdge: (id: string | null) => void,
   editingLinkData: LinkEditorData | null,
   recordPropertyEdit?: (action: PropertyEditAction) => void,
-  cyRef?: React.RefObject<CytoscapeCanvasRef | null>
+  cyRef?: React.RefObject<CytoscapeCanvasRef | null>,
+  edgeAnnotationHandlers?: EdgeAnnotationHandlers
 ) {
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
 
@@ -340,6 +383,7 @@ export function useLinkEditorHandlers(
     recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
     const saveData = convertEditorDataToLinkSaveData(data);
     void editLinkService(saveData);
+    persistEdgeLabelOffset(data, edgeAnnotationHandlers);
     // Update Cytoscape edge data so re-opening editor shows new values
     const cy = cyRef?.current?.getCy();
     if (cy) {
@@ -347,7 +391,7 @@ export function useLinkEditorHandlers(
     }
     initialDataRef.current = null;
     editEdge(null);
-  }, [editEdge, recordPropertyEdit, cyRef]);
+  }, [editEdge, recordPropertyEdit, cyRef, edgeAnnotationHandlers]);
 
   const handleApply = React.useCallback((data: LinkEditorData) => {
     const changed = recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
@@ -356,12 +400,13 @@ export function useLinkEditorHandlers(
     }
     const saveData = convertEditorDataToLinkSaveData(data);
     void editLinkService(saveData);
+    persistEdgeLabelOffset(data, edgeAnnotationHandlers);
     // Update Cytoscape edge data so re-opening editor shows new values
     const cy = cyRef?.current?.getCy();
     if (cy) {
       updateCytoscapeEdgeData(cy, data.id, data);
     }
-  }, [recordPropertyEdit, cyRef]);
+  }, [recordPropertyEdit, cyRef, edgeAnnotationHandlers]);
 
   return { handleClose, handleSave, handleApply };
 }

@@ -9,6 +9,7 @@ import { useTopoViewerActions, useTopoViewerState } from '../../context/TopoView
 import { DEFAULT_GRID_LINE_WIDTH } from '../../hooks/useAppState';
 import type { LayoutOption } from '../../hooks/useAppState';
 import { useDropdown } from '../../hooks/ui/useDropdown';
+import { ENDPOINT_LABEL_OFFSET_MAX, ENDPOINT_LABEL_OFFSET_MIN } from '../../utils/endpointLabelOffset';
 
 import { ContainerlabLogo } from './ContainerlabLogo';
 import { NavbarLoadingIndicator } from './NavbarLoadingIndicator';
@@ -354,8 +355,8 @@ const LinkLabelMenu: React.FC<LinkLabelMenuProps> = ({
         </div>
         <input
           type="range"
-          min="0"
-          max="60"
+          min={ENDPOINT_LABEL_OFFSET_MIN}
+          max={ENDPOINT_LABEL_OFFSET_MAX}
           step="1"
           value={endpointLabelOffset}
           onChange={handleEndpointOffsetChange}

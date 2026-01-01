@@ -1,9 +1,14 @@
 /**
- * Apply a global source/target endpoint label offset to all edges.
- * Offsets are clamped per-edge so labels never cross the midpoint.
+ * Apply source/target endpoint label offsets to edges.
+ * Per-link overrides take precedence over the global setting.
  */
 import { useEffect } from 'react';
 import type { Core as CyCore, EdgeSingular, EventObject, NodeSingular } from 'cytoscape';
+
+import type { EdgeAnnotation } from '../../../shared/types/topology';
+import type { EdgeIdentity } from '../../utils/edgeAnnotations';
+import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from '../../utils/edgeAnnotations';
+import { clampEndpointLabelOffset, parseEndpointLabelOffset } from '../../utils/endpointLabelOffset';
 
 const OFFSET_STYLE_KEYS = 'source-text-offset target-text-offset';
 const MIN_HALF_GAP = 2;
@@ -15,6 +20,12 @@ const DEFAULT_TEXT_PADDING = 1;
 type EdgePrivateData = {
   rstyle?: Record<string, unknown>;
   rscratch?: Record<string, unknown>;
+};
+
+export type EndpointLabelOffsetConfig = {
+  globalEnabled: boolean;
+  globalOffset: number;
+  edgeAnnotations?: EdgeAnnotation[];
 };
 
 let measureContext: CanvasRenderingContext2D | null = null;
@@ -128,40 +139,70 @@ function applyOffset(edge: EdgeSingular, offset: number): void {
   });
 }
 
+function getEdgeIdentity(edge: EdgeSingular): EdgeIdentity {
+  return {
+    id: edge.id(),
+    source: edge.data('source') as string | undefined,
+    target: edge.data('target') as string | undefined,
+    sourceEndpoint: edge.data('sourceEndpoint') as string | undefined,
+    targetEndpoint: edge.data('targetEndpoint') as string | undefined,
+  };
+}
+
 export function useEndpointLabelOffset(
   cyInstance: CyCore | null,
-  enabled: boolean,
-  offset: number
+  config: EndpointLabelOffsetConfig
 ): void {
   useEffect(() => {
     if (!cyInstance) return;
 
-    const applyToEdges = () => {
-      const edges = cyInstance.edges();
-      if (enabled) {
-        edges.forEach(edge => applyOffset(edge as EdgeSingular, offset));
+    const globalOffset = clampEndpointLabelOffset(config.globalOffset);
+    const lookup = buildEdgeAnnotationLookup(config.edgeAnnotations);
+
+    const resolveOffset = (edge: EdgeSingular): { apply: boolean; offset: number } => {
+      const annotation = findEdgeAnnotationInLookup(lookup, getEdgeIdentity(edge));
+      const hasOverride = annotation
+        ? (annotation.endpointLabelOffsetEnabled ?? annotation.endpointLabelOffset !== undefined)
+        : false;
+
+      if (hasOverride) {
+        const overrideOffset = parseEndpointLabelOffset(annotation?.endpointLabelOffset);
+        return { apply: true, offset: overrideOffset ?? globalOffset };
+      }
+      if (config.globalEnabled) {
+        return { apply: true, offset: globalOffset };
+      }
+      return { apply: false, offset: 0 };
+    };
+
+    const applyEdgeOffset = (edge: EdgeSingular) => {
+      const { apply, offset } = resolveOffset(edge);
+      if (apply) {
+        applyOffset(edge, offset);
       } else {
-        edges.removeStyle(OFFSET_STYLE_KEYS);
+        edge.removeStyle(OFFSET_STYLE_KEYS);
       }
     };
 
+    const applyToEdges = () => {
+      const edges = cyInstance.edges();
+      edges.forEach(edge => applyEdgeOffset(edge as EdgeSingular));
+    };
+
     const handleEdgeChange = (evt: EventObject) => {
-      if (!enabled) return;
       const edge = evt.target as EdgeSingular;
       if (!edge || !edge.isEdge()) return;
-      applyOffset(edge, offset);
+      applyEdgeOffset(edge);
     };
 
     const handleNodePosition = (evt: EventObject) => {
-      if (!enabled) return;
       const node = evt.target as NodeSingular;
       if (!node || !node.isNode()) return;
-      node.connectedEdges().forEach(edge => applyOffset(edge as EdgeSingular, offset));
+      node.connectedEdges().forEach(edge => applyEdgeOffset(edge as EdgeSingular));
     };
 
     const handleLayoutStop = () => {
-      if (!enabled) return;
-      cyInstance.edges().forEach(edge => applyOffset(edge as EdgeSingular, offset));
+      cyInstance.edges().forEach(edge => applyEdgeOffset(edge as EdgeSingular));
     };
 
     applyToEdges();
@@ -176,5 +217,5 @@ export function useEndpointLabelOffset(
       cyInstance.off('position', 'node', handleNodePosition);
       cyInstance.off('layoutstop', handleLayoutStop);
     };
-  }, [cyInstance, enabled, offset]);
+  }, [cyInstance, config.globalEnabled, config.globalOffset, config.edgeAnnotations]);
 }

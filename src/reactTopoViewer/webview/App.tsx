@@ -47,6 +47,8 @@ import {
 } from './hooks/internal';
 import { useAltClickDelete, useShiftClickEdgeCreation } from './hooks/graph';
 import { convertToLinkEditorData } from './utils/linkEditorConversions';
+import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from './utils/edgeAnnotations';
+import { parseEndpointLabelOffset } from './utils/endpointLabelOffset';
 
 /** Inner component that uses contexts */
 const AppContent: React.FC<{
@@ -74,6 +76,7 @@ const AppContent: React.FC<{
     removeEdge,
     updateNodePositions,
     editCustomTemplate,
+    setEdgeAnnotations,
     toggleLock,
     refreshEditorData
   } = useTopoViewerActions();
@@ -95,7 +98,16 @@ const AppContent: React.FC<{
   }, [dispatch]);
 
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);
-  useEndpointLabelOffset(cyInstance, state.endpointLabelOffsetEnabled, state.endpointLabelOffset);
+  useEndpointLabelOffset(cyInstance, {
+    globalEnabled: state.endpointLabelOffsetEnabled,
+    globalOffset: state.endpointLabelOffset,
+    edgeAnnotations: state.edgeAnnotations
+  });
+
+  const edgeAnnotationLookup = React.useMemo(
+    () => buildEdgeAnnotationLookup(state.edgeAnnotations),
+    [state.edgeAnnotations]
+  );
 
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge, state.elements);
@@ -109,7 +121,25 @@ const AppContent: React.FC<{
     return Array.isArray(inherited) ? inherited.filter((p): p is string => typeof p === 'string') : [];
   }, [editingNodeRawData]);
   const editingNetworkData = React.useMemo(() => convertToNetworkEditorData(editingNetworkRawData), [editingNetworkRawData]);
-  const editingLinkData = React.useMemo(() => convertToLinkEditorData(editingLinkRawData), [editingLinkRawData]);
+  const editingLinkData = React.useMemo(() => {
+    const base = convertToLinkEditorData(editingLinkRawData);
+    if (!base) return null;
+    const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
+      id: base.id,
+      source: base.source,
+      target: base.target,
+      sourceEndpoint: base.sourceEndpoint,
+      targetEndpoint: base.targetEndpoint
+    });
+    const offset = parseEndpointLabelOffset(annotation?.endpointLabelOffset) ?? state.endpointLabelOffset;
+    const enabled = annotation?.endpointLabelOffsetEnabled ??
+      (annotation?.endpointLabelOffset !== undefined ? true : false);
+    return {
+      ...base,
+      endpointLabelOffsetEnabled: enabled,
+      endpointLabelOffset: offset
+    };
+  }, [editingLinkRawData, edgeAnnotationLookup, state.endpointLabelOffset]);
 
   // Navbar and menu handlers
   const { handleZoomToFit } = useNavbarActions(cytoscapeRef, {
@@ -159,7 +189,16 @@ const AppContent: React.FC<{
 
   // Editor handlers
   const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph, state.customIcons, updateNodeData, refreshEditorData);
-  const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit, cytoscapeRef);
+  const linkEditorHandlers = useLinkEditorHandlers(
+    editEdge,
+    editingLinkData,
+    recordPropertyEdit,
+    cytoscapeRef,
+    {
+      edgeAnnotations: state.edgeAnnotations,
+      setEdgeAnnotations
+    }
+  );
   const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData, cyInstance);
 
   const recordGraphChanges = React.useCallback((before: GraphChange[], after: GraphChange[]) => {

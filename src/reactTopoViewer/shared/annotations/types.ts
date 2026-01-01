@@ -11,6 +11,7 @@ import type {
   CloudNodeAnnotation as _CloudNodeAnnotation,
   NetworkNodeAnnotation as _NetworkNodeAnnotation,
   NodeAnnotation as _NodeAnnotation,
+  EdgeAnnotation as _EdgeAnnotation,
   AliasEndpointAnnotation as _AliasEndpointAnnotation,
   TopologyAnnotations as _TopologyAnnotations,
 } from '../types/topology';
@@ -23,6 +24,7 @@ export type GroupStyleAnnotation = _GroupStyleAnnotation;
 export type CloudNodeAnnotation = _CloudNodeAnnotation;
 export type NetworkNodeAnnotation = _NetworkNodeAnnotation;
 export type NodeAnnotation = _NodeAnnotation;
+export type EdgeAnnotation = _EdgeAnnotation;
 export type AliasEndpointAnnotation = _AliasEndpointAnnotation;
 export type TopologyAnnotations = _TopologyAnnotations;
 
@@ -36,6 +38,8 @@ export function createEmptyAnnotations(): TopologyAnnotations {
     groupStyleAnnotations: [],
     networkNodeAnnotations: [],
     nodeAnnotations: [],
+    edgeAnnotations: [],
     aliasEndpointAnnotations: [],
+    viewerSettings: {},
   };
 }

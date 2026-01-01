@@ -223,6 +223,19 @@ export interface NodeAnnotation {
 }
 
 /**
+ * Edge annotation for per-link visual settings.
+ */
+export interface EdgeAnnotation {
+  id?: string;
+  source?: string;
+  target?: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  endpointLabelOffsetEnabled?: boolean;
+  endpointLabelOffset?: number;
+}
+
+/**
  * Alias endpoint annotation for mapping YAML nodes to visual aliases.
  */
 export interface AliasEndpointAnnotation {
@@ -245,6 +258,7 @@ export interface TopologyAnnotations {
   cloudNodeAnnotations?: CloudNodeAnnotation[];
   networkNodeAnnotations?: NetworkNodeAnnotation[];
   nodeAnnotations?: NodeAnnotation[];
+  edgeAnnotations?: EdgeAnnotation[];
   aliasEndpointAnnotations?: AliasEndpointAnnotation[];
   viewerSettings?: {
     gridLineWidth?: number;

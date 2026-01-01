@@ -10,6 +10,7 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation,
   NodeAnnotation,
+  EdgeAnnotation,
   TopologyAnnotations
 } from '../../shared/types/topology';
 import type { CustomIconInfo } from '../../shared/types/icons';
@@ -35,6 +36,7 @@ export interface BootstrapData {
   freeShapeAnnotations: FreeShapeAnnotation[];
   groupStyleAnnotations: GroupStyleAnnotation[];
   nodeAnnotations: NodeAnnotation[];
+  edgeAnnotations: EdgeAnnotation[];
   viewerSettings?: TopologyAnnotations['viewerSettings'];
   yamlFilePath: string;
 }
@@ -53,6 +55,7 @@ export interface BootstrapDataInput {
   freeShapeAnnotations?: FreeShapeAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
   nodeAnnotations?: NodeAnnotation[];
+  edgeAnnotations?: EdgeAnnotation[];
   viewerSettings?: TopologyAnnotations['viewerSettings'];
 }
 
@@ -71,6 +74,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     freeShapeAnnotations = [],
     groupStyleAnnotations = [],
     nodeAnnotations = [],
+    edgeAnnotations = [],
     viewerSettings
   } = input;
 
@@ -101,6 +105,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     freeShapeAnnotations,
     groupStyleAnnotations,
     nodeAnnotations,
+    edgeAnnotations,
     viewerSettings,
     yamlFilePath
   };

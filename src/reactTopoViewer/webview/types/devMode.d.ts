@@ -6,7 +6,7 @@
 
 import type { Core as CyCore } from 'cytoscape';
 
-import type { GroupStyleAnnotation } from '../../shared/types/topology';
+import type { GroupStyleAnnotation, EdgeAnnotation } from '../../shared/types/topology';
 import type { NetworkType } from '../../shared/types/editors';
 
 /**
@@ -78,6 +78,7 @@ export interface WebviewInitialData {
   schemaData?: Record<string, unknown>;
   dockerImages?: string[];
   annotations?: Record<string, unknown>;
+  edgeAnnotations?: EdgeAnnotation[];
   viewerSettings?: {
     gridLineWidth?: number;
     endpointLabelOffsetEnabled?: boolean;

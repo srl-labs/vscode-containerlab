@@ -4,7 +4,13 @@
  * Helper functions for saving annotation data via AnnotationsIO.
  */
 
-import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation, TopologyAnnotations } from '../../shared/types/topology';
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation,
+  EdgeAnnotation,
+  TopologyAnnotations
+} from '../../shared/types/topology';
 
 import { getTopologyIO, getAnnotationsIO, isServicesInitialized } from './serviceInitialization';
 
@@ -55,6 +61,13 @@ export async function saveFreeShapeAnnotations(annotations: FreeShapeAnnotation[
  */
 export async function saveGroupStyleAnnotations(annotations: GroupStyleAnnotation[]): Promise<void> {
   await saveAnnotationsGeneric(current => ({ ...current, groupStyleAnnotations: annotations }));
+}
+
+/**
+ * Save edge annotations via AnnotationsIO.
+ */
+export async function saveEdgeAnnotations(annotations: EdgeAnnotation[]): Promise<void> {
+  await saveAnnotationsGeneric(current => ({ ...current, edgeAnnotations: annotations }));
 }
 
 /**

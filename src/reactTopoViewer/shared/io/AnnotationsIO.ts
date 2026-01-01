@@ -244,6 +244,7 @@ export class AnnotationsIO {
     // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
     if (this.hasContent(annotations.cloudNodeAnnotations)) return true;
     if (this.hasContent(annotations.nodeAnnotations)) return true;
+    if (this.hasContent(annotations.edgeAnnotations)) return true;
     if (this.hasContent(annotations.aliasEndpointAnnotations)) return true;
     if (annotations.viewerSettings && Object.keys(annotations.viewerSettings).length > 0) return true;
     return false;

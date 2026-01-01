@@ -22,6 +22,7 @@ export {
   saveFreeTextAnnotations,
   saveFreeShapeAnnotations,
   saveGroupStyleAnnotations,
+  saveEdgeAnnotations,
   saveViewerSettings,
 } from './annotationSaveHelpers';
 

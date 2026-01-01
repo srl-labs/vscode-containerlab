@@ -271,6 +271,8 @@ export interface LinkEditorData {
   mtu?: number | string;
   vars?: Record<string, string>;
   labels?: Record<string, string>;
+  endpointLabelOffsetEnabled?: boolean;
+  endpointLabelOffset?: number;
   // Original values for finding the link when endpoints change
   originalSource?: string;
   originalTarget?: string;

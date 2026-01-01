@@ -4,6 +4,7 @@
  */
 
 import type { ClabTopology, TopologyAnnotations, NodeAnnotation } from '../types/topology';
+import { createEmptyAnnotations } from '../annotations/types';
 
 import type { GraphLabelMigration } from './types';
 
@@ -148,13 +149,13 @@ export function detectGraphLabelMigrations(
  * Creates base annotations from existing annotations.
  */
 function createBaseAnnotations(annotations: TopologyAnnotations | undefined): TopologyAnnotations {
+  const base = createEmptyAnnotations();
+  if (!annotations) return base;
+  const nodeAnnotations = annotations.nodeAnnotations ?? base.nodeAnnotations ?? [];
   return {
-    freeTextAnnotations: annotations?.freeTextAnnotations ?? [],
-    freeShapeAnnotations: annotations?.freeShapeAnnotations ?? [],
-    groupStyleAnnotations: annotations?.groupStyleAnnotations ?? [],
-    networkNodeAnnotations: annotations?.networkNodeAnnotations ?? [],
-    nodeAnnotations: [...(annotations?.nodeAnnotations ?? [])],
-    aliasEndpointAnnotations: annotations?.aliasEndpointAnnotations ?? [],
+    ...base,
+    ...annotations,
+    nodeAnnotations: [...nodeAnnotations],
   };
 }
 
@@ -193,7 +194,9 @@ export function processGraphLabelMigrations(
         groupStyleAnnotations: [],
         networkNodeAnnotations: [],
         nodeAnnotations: [],
+        edgeAnnotations: [],
         aliasEndpointAnnotations: [],
+        viewerSettings: {},
       },
       migrations: [],
       needsSave: false,

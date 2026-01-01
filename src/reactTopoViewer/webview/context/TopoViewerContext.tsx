@@ -5,12 +5,19 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
+import type { EdgeAnnotation } from '../../shared/types/topology';
 import type { CyElement } from '../../shared/types/messages';
 import type { CustomIconInfo } from '../../shared/types/icons';
 import { extractUsedCustomIcons } from '../../shared/types/icons';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
 import { postCommand } from '../utils/extensionMessaging';
 import { getElementId, getEdgeSource, getEdgeTarget } from '../utils/cytoscapeHelpers';
+import { upsertEdgeAnnotation } from '../utils/edgeAnnotations';
+import {
+  DEFAULT_ENDPOINT_LABEL_OFFSET,
+  clampEndpointLabelOffset,
+  parseEndpointLabelOffset
+} from '../utils/endpointLabelOffset';
 import { isServicesInitialized, getTopologyIO, saveViewerSettings } from '../services';
 
 // CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
@@ -24,10 +31,6 @@ export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
  * Link label display mode
  */
 export type LinkLabelMode = 'show-all' | 'on-select' | 'hide';
-
-export const DEFAULT_ENDPOINT_LABEL_OFFSET = 20;
-const ENDPOINT_LABEL_OFFSET_MIN = 0;
-const ENDPOINT_LABEL_OFFSET_MAX = 60;
 
 /**
  * Processing mode for lifecycle operations
@@ -52,6 +55,7 @@ export interface TopoViewerState {
   showDummyLinks: boolean;
   endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
+  edgeAnnotations: EdgeAnnotation[];
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
   /** Custom icons loaded from workspace and global directories */
@@ -84,6 +88,7 @@ const initialState: TopoViewerState = {
   showDummyLinks: true,
   endpointLabelOffsetEnabled: false,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
+  edgeAnnotations: [],
   customNodes: [],
   defaultNode: '',
   customIcons: [],
@@ -92,23 +97,6 @@ const initialState: TopoViewerState = {
   processingMode: null,
   editorDataVersion: 0
 };
-
-function clampEndpointLabelOffset(value: number): number {
-  return Math.min(ENDPOINT_LABEL_OFFSET_MAX, Math.max(ENDPOINT_LABEL_OFFSET_MIN, value));
-}
-
-function parseEndpointLabelOffset(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return clampEndpointLabelOffset(value);
-  }
-  if (typeof value === 'string') {
-    const parsed = Number.parseFloat(value);
-    if (Number.isFinite(parsed)) {
-      return clampEndpointLabelOffset(parsed);
-    }
-  }
-  return null;
-}
 
 /**
  * Action types
@@ -146,6 +134,8 @@ type TopoViewerAction =
   | { type: 'TOGGLE_DUMMY_LINKS' }
   | { type: 'TOGGLE_ENDPOINT_LABEL_OFFSET' }
   | { type: 'SET_ENDPOINT_LABEL_OFFSET'; payload: number }
+  | { type: 'SET_EDGE_ANNOTATIONS'; payload: EdgeAnnotation[] }
+  | { type: 'UPSERT_EDGE_ANNOTATION'; payload: EdgeAnnotation }
   | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> }
   | { type: 'ADD_NODE'; payload: CyElement }
   | { type: 'ADD_EDGE'; payload: CyElement }
@@ -185,6 +175,11 @@ const reducerHandlers: ReducerHandlers = {
   TOGGLE_DUMMY_LINKS: (state) => ({ ...state, showDummyLinks: !state.showDummyLinks }),
   TOGGLE_ENDPOINT_LABEL_OFFSET: (state) => ({ ...state, endpointLabelOffsetEnabled: !state.endpointLabelOffsetEnabled }),
   SET_ENDPOINT_LABEL_OFFSET: (state, action) => ({ ...state, endpointLabelOffset: action.payload }),
+  SET_EDGE_ANNOTATIONS: (state, action) => ({ ...state, edgeAnnotations: action.payload }),
+  UPSERT_EDGE_ANNOTATION: (state, action) => ({
+    ...state,
+    edgeAnnotations: upsertEdgeAnnotation(state.edgeAnnotations, action.payload)
+  }),
   SET_INITIAL_DATA: (state, action) => ({ ...state, ...action.payload }),
   ADD_NODE: (state, action) => ({
     ...state,
@@ -400,6 +395,8 @@ interface TopoViewerActionsContextValue {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
+  setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
+  upsertEdgeAnnotation: (annotation: EdgeAnnotation) => void;
   addNode: (node: CyElement) => void;
   addEdge: (edge: CyElement) => void;
   removeNodeAndEdges: (nodeId: string) => void;
@@ -448,6 +445,9 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
   }
   const viewerSettings = obj.viewerSettings as Record<string, unknown> | undefined;
   Object.assign(result, extractEndpointLabelSettings(viewerSettings));
+  if (Array.isArray(obj.edgeAnnotations)) {
+    result.edgeAnnotations = obj.edgeAnnotations as EdgeAnnotation[];
+  }
   return result;
 }
 
@@ -519,7 +519,11 @@ function handleExtensionMessage(
       // Elements can be at top level (message.elements) or in data (message.data.elements)
       const msg = message as unknown as {
         elements?: CyElement[];
-        data?: { elements?: CyElement[]; viewerSettings?: Record<string, unknown> };
+        data?: {
+          elements?: CyElement[];
+          viewerSettings?: Record<string, unknown>;
+          edgeAnnotations?: EdgeAnnotation[];
+        };
       };
       const elements = msg.elements || msg.data?.elements;
       if (elements) {
@@ -541,6 +545,9 @@ function handleExtensionMessage(
       const viewerSettings = extractEndpointLabelSettings(msg.data?.viewerSettings);
       if (Object.keys(viewerSettings).length > 0) {
         dispatch({ type: 'SET_INITIAL_DATA', payload: viewerSettings });
+      }
+      if (msg.data?.edgeAnnotations) {
+        dispatch({ type: 'SET_EDGE_ANNOTATIONS', payload: msg.data.edgeAnnotations });
       }
     },
     'node-renamed': () => {
@@ -679,6 +686,12 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     const next = Number.isFinite(value) ? clampEndpointLabelOffset(value) : DEFAULT_ENDPOINT_LABEL_OFFSET;
     dispatch({ type: 'SET_ENDPOINT_LABEL_OFFSET', payload: next });
   }, [dispatch]);
+  const setEdgeAnnotations = useCallback((annotations: EdgeAnnotation[]) => {
+    dispatch({ type: 'SET_EDGE_ANNOTATIONS', payload: annotations });
+  }, [dispatch]);
+  const upsertEdgeAnnotationAction = useCallback((annotation: EdgeAnnotation) => {
+    dispatch({ type: 'UPSERT_EDGE_ANNOTATION', payload: annotation });
+  }, [dispatch]);
   const setCustomNodes = useCallback((customNodes: CustomNodeTemplate[], defaultNode: string) => {
     dispatch({ type: 'SET_CUSTOM_NODES', payload: { customNodes, defaultNode } });
   }, [dispatch]);
@@ -700,6 +713,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     toggleDummyLinks,
     toggleEndpointLabelOffset,
     setEndpointLabelOffset,
+    setEdgeAnnotations,
+    upsertEdgeAnnotation: upsertEdgeAnnotationAction,
     setCustomNodes,
     editCustomTemplate,
     setProcessing,
@@ -711,6 +726,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     toggleDummyLinks,
     toggleEndpointLabelOffset,
     setEndpointLabelOffset,
+    setEdgeAnnotations,
+    upsertEdgeAnnotationAction,
     setCustomNodes,
     editCustomTemplate,
     setProcessing,
