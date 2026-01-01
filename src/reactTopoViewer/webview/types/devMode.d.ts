@@ -78,6 +78,11 @@ export interface WebviewInitialData {
   schemaData?: Record<string, unknown>;
   dockerImages?: string[];
   annotations?: Record<string, unknown>;
+  viewerSettings?: {
+    gridLineWidth?: number;
+    endpointLabelOffsetEnabled?: boolean;
+    endpointLabelOffset?: number;
+  };
   isViewMode?: boolean;
   labName?: string;
   yamlFilePath?: string;

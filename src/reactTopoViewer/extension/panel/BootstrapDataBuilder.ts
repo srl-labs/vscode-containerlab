@@ -4,7 +4,14 @@
 
 import type * as vscode from 'vscode';
 
-import type { CyElement, FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation, NodeAnnotation } from '../../shared/types/topology';
+import type {
+  CyElement,
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation,
+  NodeAnnotation,
+  TopologyAnnotations
+} from '../../shared/types/topology';
 import type { CustomIconInfo } from '../../shared/types/icons';
 import { getDockerImages } from '../../../utils/docker/images';
 import type { CustomNodeTemplate, SchemaData } from '../../shared/schema';
@@ -28,6 +35,7 @@ export interface BootstrapData {
   freeShapeAnnotations: FreeShapeAnnotation[];
   groupStyleAnnotations: GroupStyleAnnotation[];
   nodeAnnotations: NodeAnnotation[];
+  viewerSettings?: TopologyAnnotations['viewerSettings'];
   yamlFilePath: string;
 }
 
@@ -45,13 +53,26 @@ export interface BootstrapDataInput {
   freeShapeAnnotations?: FreeShapeAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
   nodeAnnotations?: NodeAnnotation[];
+  viewerSettings?: TopologyAnnotations['viewerSettings'];
 }
 
 /**
  * Assembles bootstrap data for the webview from various sources
  */
 export async function buildBootstrapData(input: BootstrapDataInput): Promise<BootstrapData> {
-  const { elements, labName, isViewMode, deploymentState, extensionUri, yamlFilePath, freeTextAnnotations = [], freeShapeAnnotations = [], groupStyleAnnotations = [], nodeAnnotations = [] } = input;
+  const {
+    elements,
+    labName,
+    isViewMode,
+    deploymentState,
+    extensionUri,
+    yamlFilePath,
+    freeTextAnnotations = [],
+    freeShapeAnnotations = [],
+    groupStyleAnnotations = [],
+    nodeAnnotations = [],
+    viewerSettings
+  } = input;
 
   // Get custom nodes from VS Code configuration
   const customNodes = getCustomNodesFromConfig();
@@ -80,6 +101,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
     freeShapeAnnotations,
     groupStyleAnnotations,
     nodeAnnotations,
+    viewerSettings,
     yamlFilePath
   };
 }

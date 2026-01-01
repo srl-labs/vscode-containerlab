@@ -11,7 +11,7 @@ import { extractUsedCustomIcons } from '../../shared/types/icons';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
 import { postCommand } from '../utils/extensionMessaging';
 import { getElementId, getEdgeSource, getEdgeTarget } from '../utils/cytoscapeHelpers';
-import { isServicesInitialized, getTopologyIO } from '../services';
+import { isServicesInitialized, getTopologyIO, saveViewerSettings } from '../services';
 
 // CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
 
@@ -26,6 +26,8 @@ export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
 export type LinkLabelMode = 'show-all' | 'on-select' | 'hide';
 
 export const DEFAULT_ENDPOINT_LABEL_OFFSET = 20;
+const ENDPOINT_LABEL_OFFSET_MIN = 0;
+const ENDPOINT_LABEL_OFFSET_MAX = 60;
 
 /**
  * Processing mode for lifecycle operations
@@ -90,6 +92,23 @@ const initialState: TopoViewerState = {
   processingMode: null,
   editorDataVersion: 0
 };
+
+function clampEndpointLabelOffset(value: number): number {
+  return Math.min(ENDPOINT_LABEL_OFFSET_MAX, Math.max(ENDPOINT_LABEL_OFFSET_MIN, value));
+}
+
+function parseEndpointLabelOffset(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return clampEndpointLabelOffset(value);
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) {
+      return clampEndpointLabelOffset(parsed);
+    }
+  }
+  return null;
+}
 
 /**
  * Action types
@@ -427,6 +446,23 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
   if (typeof obj.isLocked === 'boolean') {
     result.isLocked = obj.isLocked;
   }
+  const viewerSettings = obj.viewerSettings as Record<string, unknown> | undefined;
+  Object.assign(result, extractEndpointLabelSettings(viewerSettings));
+  return result;
+}
+
+function extractEndpointLabelSettings(
+  viewerSettings: Record<string, unknown> | undefined
+): Partial<TopoViewerState> {
+  if (!viewerSettings) return {};
+  const result: Partial<TopoViewerState> = {};
+  if (typeof viewerSettings.endpointLabelOffsetEnabled === 'boolean') {
+    result.endpointLabelOffsetEnabled = viewerSettings.endpointLabelOffsetEnabled;
+  }
+  const offset = parseEndpointLabelOffset(viewerSettings.endpointLabelOffset);
+  if (offset !== null) {
+    result.endpointLabelOffset = offset;
+  }
   return result;
 }
 
@@ -481,7 +517,10 @@ function handleExtensionMessage(
   const handlers: Record<string, () => void> = {
     'topology-data': () => {
       // Elements can be at top level (message.elements) or in data (message.data.elements)
-      const msg = message as unknown as { elements?: CyElement[]; data?: { elements?: CyElement[] } };
+      const msg = message as unknown as {
+        elements?: CyElement[];
+        data?: { elements?: CyElement[]; viewerSettings?: Record<string, unknown> };
+      };
       const elements = msg.elements || msg.data?.elements;
       if (elements) {
         dispatch({ type: 'SET_ELEMENTS', payload: elements });
@@ -497,6 +536,11 @@ function handleExtensionMessage(
             }
           });
         }
+      }
+
+      const viewerSettings = extractEndpointLabelSettings(msg.data?.viewerSettings);
+      if (Object.keys(viewerSettings).length > 0) {
+        dispatch({ type: 'SET_INITIAL_DATA', payload: viewerSettings });
       }
     },
     'node-renamed': () => {
@@ -632,7 +676,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     dispatch({ type: 'TOGGLE_ENDPOINT_LABEL_OFFSET' });
   }, [dispatch]);
   const setEndpointLabelOffset = useCallback((value: number) => {
-    dispatch({ type: 'SET_ENDPOINT_LABEL_OFFSET', payload: value });
+    const next = Number.isFinite(value) ? clampEndpointLabelOffset(value) : DEFAULT_ENDPOINT_LABEL_OFFSET;
+    dispatch({ type: 'SET_ENDPOINT_LABEL_OFFSET', payload: next });
   }, [dispatch]);
   const setCustomNodes = useCallback((customNodes: CustomNodeTemplate[], defaultNode: string) => {
     dispatch({ type: 'SET_CUSTOM_NODES', payload: { customNodes, defaultNode } });
@@ -707,6 +752,8 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     }
   );
   const actions = useActions(dispatch);
+  const endpointOffsetPersistRef = useRef<{ enabled: boolean; offset: number } | null>(null);
+  const skipEndpointOffsetPersistRef = useRef(true);
 
   // Listen for messages from extension
   useEffect(() => {
@@ -718,6 +765,27 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     };
     return subscribeToWebviewMessages(handleMessage);
   }, [dispatch]);
+
+  useEffect(() => {
+    const current = {
+      enabled: state.endpointLabelOffsetEnabled,
+      offset: state.endpointLabelOffset
+    };
+    if (skipEndpointOffsetPersistRef.current) {
+      skipEndpointOffsetPersistRef.current = false;
+      endpointOffsetPersistRef.current = current;
+      return;
+    }
+    const previous = endpointOffsetPersistRef.current;
+    if (previous && previous.enabled === current.enabled && previous.offset === current.offset) {
+      return;
+    }
+    endpointOffsetPersistRef.current = current;
+    void saveViewerSettings({
+      endpointLabelOffsetEnabled: current.enabled,
+      endpointLabelOffset: current.offset
+    });
+  }, [state.endpointLabelOffsetEnabled, state.endpointLabelOffset]);
 
   // Track used custom icons and trigger reconciliation when usage changes
   const prevUsedIconsRef = useRef<string[]>([]);

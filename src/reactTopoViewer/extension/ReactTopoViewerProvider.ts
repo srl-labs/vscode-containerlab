@@ -282,6 +282,7 @@ export class ReactTopoViewer {
       const freeShapeAnnotations = annotations.freeShapeAnnotations || [];
       const groupStyleAnnotations = annotations.groupStyleAnnotations || [];
       const nodeAnnotations = annotations.nodeAnnotations || [];
+      const viewerSettings = annotations.viewerSettings;
 
       // Use lab name from parsed YAML (source of truth), fallback to stored name
       const parsedLabName = this.adaptor.currentClabName || this.currentLabName;
@@ -306,7 +307,8 @@ export class ReactTopoViewer {
         freeTextAnnotations,
         freeShapeAnnotations,
         groupStyleAnnotations,
-        nodeAnnotations
+        nodeAnnotations,
+        viewerSettings
       });
     } catch (err) {
       this.lastTopologyElements = [];

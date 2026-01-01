@@ -3,7 +3,7 @@
  */
 
 // Re-export CyElement from topology.ts (single source of truth)
-import { CyElement } from './topology';
+import { CyElement, type TopologyAnnotations } from './topology';
 export { CyElement };
 
 /**
@@ -50,6 +50,7 @@ export interface TopologyDataMessage extends PushMessage {
     elements: CyElement[];
     labName: string;
     mode: 'edit' | 'view';
+    viewerSettings?: TopologyAnnotations['viewerSettings'];
   };
 }
 

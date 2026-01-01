@@ -22,6 +22,7 @@ export {
   saveFreeTextAnnotations,
   saveFreeShapeAnnotations,
   saveGroupStyleAnnotations,
+  saveViewerSettings,
 } from './annotationSaveHelpers';
 
 // Re-export topology CRUD helpers

@@ -56,3 +56,18 @@ export async function saveFreeShapeAnnotations(annotations: FreeShapeAnnotation[
 export async function saveGroupStyleAnnotations(annotations: GroupStyleAnnotation[]): Promise<void> {
   await saveAnnotationsGeneric(current => ({ ...current, groupStyleAnnotations: annotations }));
 }
+
+/**
+ * Save viewer settings via AnnotationsIO.
+ */
+export async function saveViewerSettings(
+  settings: NonNullable<TopologyAnnotations['viewerSettings']>
+): Promise<void> {
+  await saveAnnotationsGeneric(current => ({
+    ...current,
+    viewerSettings: {
+      ...(current.viewerSettings ?? {}),
+      ...settings
+    }
+  }));
+}
