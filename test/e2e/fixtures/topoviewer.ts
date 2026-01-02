@@ -146,6 +146,15 @@ interface TopologyAnnotations {
   freeShapeAnnotations?: Array<{ id: string; shapeType: string; position: { x: number; y: number } }>;
   groupStyleAnnotations?: Array<{ id: string; name: string; parentId?: string }>;
   networkNodeAnnotations?: Array<{ id: string; type: string; label: string; position: { x: number; y: number } }>;
+  edgeAnnotations?: Array<{
+    id?: string;
+    source?: string;
+    target?: string;
+    sourceEndpoint?: string;
+    targetEndpoint?: string;
+    endpointLabelOffsetEnabled?: boolean;
+    endpointLabelOffset?: number;
+  }>;
   viewerSettings?: {
     endpointLabelOffsetEnabled?: boolean;
     endpointLabelOffset?: number;
@@ -444,6 +453,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               freeTextAnnotations: [],
               freeShapeAnnotations: [],
               groupStyleAnnotations: [],
+              edgeAnnotations: [],
               viewerSettings: {}
             };
           }

@@ -11,12 +11,39 @@ const SEL_LINK_LABELS_BTN = '[data-testid="navbar-link-labels"]';
 const SEL_LINK_LABELS_MENU = `.navbar-menu:has-text("${ENDPOINT_LABEL_MENU_TEXT}")`;
 const SEL_ENDPOINT_TOGGLE = `${SEL_LINK_LABELS_MENU} .navbar-menu-option:has-text("${ENDPOINT_LABEL_MENU_TEXT}")`;
 const SEL_ENDPOINT_SLIDER = `${SEL_LINK_LABELS_MENU} input[aria-label="Endpoint label offset"]`;
+const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
+const SEL_PANEL_APPLY = '[data-testid="panel-apply-btn"]';
+const SEL_LINK_OFFSET_OVERRIDE = '#link-endpoint-offset-override';
 
 async function openLinkLabelsMenu(page: Page): Promise<Locator> {
   await page.locator(SEL_LINK_LABELS_BTN).click();
   const menu = page.locator(SEL_LINK_LABELS_MENU);
   await expect(menu).toBeVisible();
   return menu;
+}
+
+async function openLinkEditorForEdge(page: Page, edgeId: string): Promise<Locator> {
+  const midpoint = await page.evaluate((id) => {
+    const dev = (window as any).__DEV__;
+    const cy = dev?.cy;
+    const edge = cy?.getElementById(id);
+    if (!edge || edge.empty()) return null;
+
+    const bb = edge.renderedBoundingBox();
+    const container = cy.container();
+    const rect = container.getBoundingClientRect();
+
+    return {
+      x: rect.left + bb.x1 + bb.w / 2,
+      y: rect.top + bb.y1 + bb.h / 2
+    };
+  }, edgeId);
+
+  if (!midpoint) throw new Error(`Edge ${edgeId} not found`);
+  await page.mouse.dblclick(midpoint.x, midpoint.y);
+  const panel = page.locator(SEL_LINK_EDITOR);
+  await expect(panel).toBeVisible();
+  return panel;
 }
 
 test.describe('Endpoint Label Offset', () => {
@@ -83,5 +110,41 @@ test.describe('Endpoint Label Offset', () => {
     await expect(page.locator(SEL_ENDPOINT_TOGGLE)).toHaveAttribute(ARIA_CHECKED_ATTR, 'true');
     await expect(page.locator(SEL_ENDPOINT_SLIDER)).toBeEnabled();
     await expect(page.locator(SEL_ENDPOINT_SLIDER)).toHaveValue(String(offsetValue));
+  });
+
+  test('undo/redo syncs per-link endpoint offset override', async ({ page, topoViewerPage }) => {
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    const edgeIds = await topoViewerPage.getEdgeIds();
+    expect(edgeIds.length).toBeGreaterThan(0);
+    const edgeId = edgeIds[0];
+
+    const panel = await openLinkEditorForEdge(page, edgeId);
+    await panel.locator(SEL_LINK_OFFSET_OVERRIDE).check();
+    await panel.locator(SEL_PANEL_APPLY).click();
+
+    const getOffsetEnabled = async () => {
+      const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+      const entry = annotations.edgeAnnotations?.find((edge) => edge.id === edgeId);
+      return entry?.endpointLabelOffsetEnabled ?? false;
+    };
+
+    await expect.poll(getOffsetEnabled, {
+      timeout: 5000,
+      message: 'per-link endpoint offset should persist on apply'
+    }).toBe(true);
+
+    await topoViewerPage.undo();
+    await expect.poll(getOffsetEnabled, {
+      timeout: 5000,
+      message: 'undo should revert per-link endpoint offset override'
+    }).toBe(false);
+
+    await topoViewerPage.redo();
+    await expect.poll(getOffsetEnabled, {
+      timeout: 5000,
+      message: 'redo should restore per-link endpoint offset override'
+    }).toBe(true);
   });
 });
