@@ -21,11 +21,7 @@ import {
   getAnnotationsIO,
   getTopologyIO
 } from '../../services';
-import { findEdgeAnnotation, upsertEdgeAnnotation } from '../../utils/edgeAnnotations';
-import {
-  DEFAULT_ENDPOINT_LABEL_OFFSET,
-  parseEndpointLabelOffset
-} from '../../utils/endpointLabelOffset';
+import { upsertEdgeLabelOffsetAnnotation } from '../../utils/edgeAnnotations';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
 
@@ -234,24 +230,8 @@ function persistEdgeLabelOffset(
   handlers: EdgeAnnotationHandlers | undefined
 ): void {
   if (!handlers) return;
-  const existing = findEdgeAnnotation(handlers.edgeAnnotations, data);
-  const shouldPersist = data.endpointLabelOffsetEnabled === true || existing !== undefined;
-  if (!shouldPersist) return;
-
-  const fallbackOffset = parseEndpointLabelOffset(existing?.endpointLabelOffset) ?? DEFAULT_ENDPOINT_LABEL_OFFSET;
-  const offset = parseEndpointLabelOffset(data.endpointLabelOffset) ?? fallbackOffset;
-
-  const nextAnnotation: EdgeAnnotation = {
-    id: data.id,
-    source: data.source,
-    target: data.target,
-    sourceEndpoint: data.sourceEndpoint,
-    targetEndpoint: data.targetEndpoint,
-    endpointLabelOffsetEnabled: data.endpointLabelOffsetEnabled === true,
-    endpointLabelOffset: offset
-  };
-
-  const nextAnnotations = upsertEdgeAnnotation(handlers.edgeAnnotations, nextAnnotation);
+  const nextAnnotations = upsertEdgeLabelOffsetAnnotation(handlers.edgeAnnotations, data);
+  if (!nextAnnotations) return;
   handlers.setEdgeAnnotations(nextAnnotations);
   void saveEdgeAnnotations(nextAnnotations);
 }

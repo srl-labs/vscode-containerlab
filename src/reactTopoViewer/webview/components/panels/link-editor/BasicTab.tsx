@@ -9,6 +9,7 @@ import {
   ENDPOINT_LABEL_OFFSET_MIN,
   ENDPOINT_LABEL_OFFSET_MAX
 } from '../../../utils/endpointLabelOffset';
+
 import type { LinkTabProps } from './types';
 
 const SECTION_HEADING_COLOR = 'var(--vscode-foreground)';

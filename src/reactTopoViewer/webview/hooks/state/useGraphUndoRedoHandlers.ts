@@ -2,12 +2,14 @@ import React from 'react';
 import type { Core as CyCore } from 'cytoscape';
 
 import type { CyElement } from '../../../shared/types/messages';
+import type { EdgeAnnotation } from '../../../shared/types/topology';
 import {
   createNode,
   createLink,
   editNode,
   editLink,
   createNetworkNode,
+  saveEdgeAnnotations,
   saveNodePositions,
   beginBatch,
   endBatch,
@@ -17,6 +19,7 @@ import {
 } from '../../services';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 import { ROLE_SVG_MAP } from '../../components/canvas/styles';
+import { upsertEdgeLabelOffsetAnnotation, type EdgeOffsetUpdateInput } from '../../utils/edgeAnnotations';
 
 import type { GraphChange, UndoRedoActionPropertyEdit, UndoRedoActionAnnotation, UndoRedoActionGroupMove, MembershipEntry } from './useUndoRedo';
 import { useUndoRedo } from './useUndoRedo';
@@ -60,12 +63,18 @@ interface MenuHandlers {
   handleDeleteLink: (id: string) => void;
 }
 
+interface EdgeAnnotationHandlers {
+  edgeAnnotations: EdgeAnnotation[];
+  setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
+}
+
 interface UseGraphUndoRedoHandlersParams {
   cyInstance: CyCore | null;
   mode: 'edit' | 'view';
   addNode: (node: CyElement) => void;
   addEdge: (edge: CyElement) => void;
   menuHandlers: MenuHandlers;
+  edgeAnnotationHandlers?: EdgeAnnotationHandlers;
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
   applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
   applyMembershipChange?: (memberships: MembershipEntry[]) => void;
@@ -77,6 +86,7 @@ interface UseGraphUndoRedoWithContextParams {
   addNode: (node: CyElement) => void;
   addEdge: (edge: CyElement) => void;
   menuHandlers: MenuHandlers;
+  edgeAnnotationHandlers?: EdgeAnnotationHandlers;
   /** External undoRedo instance from context */
   undoRedo: ReturnType<typeof useUndoRedo>;
   /** Register graph changes handler with context */
@@ -114,6 +124,32 @@ function buildEdgeElement(cy: CyCore | null, edgeId: string): CyElement | null {
   return {
     group: 'edges',
     data: edge.data() as Record<string, unknown>
+  };
+}
+
+function toEdgeOffsetUpdateInput(data: Record<string, unknown>): EdgeOffsetUpdateInput | null {
+  const id = typeof data.id === 'string' ? data.id : undefined;
+  const source = typeof data.source === 'string' ? data.source : undefined;
+  const target = typeof data.target === 'string' ? data.target : undefined;
+  const sourceEndpoint = typeof data.sourceEndpoint === 'string' ? data.sourceEndpoint : undefined;
+  const targetEndpoint = typeof data.targetEndpoint === 'string' ? data.targetEndpoint : undefined;
+  const endpointLabelOffsetEnabled = typeof data.endpointLabelOffsetEnabled === 'boolean'
+    ? data.endpointLabelOffsetEnabled
+    : undefined;
+  const endpointLabelOffset = typeof data.endpointLabelOffset === 'number'
+    ? data.endpointLabelOffset
+    : undefined;
+
+  if (!id && (!source || !target)) return null;
+
+  return {
+    id,
+    source,
+    target,
+    sourceEndpoint,
+    targetEndpoint,
+    endpointLabelOffsetEnabled,
+    endpointLabelOffset
   };
 }
 
@@ -766,9 +802,10 @@ function useApplyCallbacks(params: {
   addNode: (n: CyElement) => void;
   addEdge: (e: CyElement) => void;
   menuHandlers: MenuHandlers;
+  edgeAnnotationHandlers?: EdgeAnnotationHandlers;
   isApplyingUndoRedo: React.RefObject<boolean>;
 }) {
-  const { cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo } = params;
+  const { cyInstance, addNode, addEdge, menuHandlers, edgeAnnotationHandlers, isApplyingUndoRedo } = params;
 
   const applyGraphChanges = React.useCallback((changes: GraphChange[]) => {
     if (!cyInstance) return;
@@ -792,11 +829,22 @@ function useApplyCallbacks(params: {
         applyNodePropertyEdit(cyInstance, action.before, action.after, isUndo);
       } else {
         applyLinkPropertyEdit(action.before, action.after, isUndo);
+        if (edgeAnnotationHandlers) {
+          const dataToApply = (isUndo ? action.before : action.after) as Record<string, unknown>;
+          const update = toEdgeOffsetUpdateInput(dataToApply);
+          if (update) {
+            const nextAnnotations = upsertEdgeLabelOffsetAnnotation(edgeAnnotationHandlers.edgeAnnotations, update);
+            if (nextAnnotations) {
+              edgeAnnotationHandlers.setEdgeAnnotations(nextAnnotations);
+              void saveEdgeAnnotations(nextAnnotations);
+            }
+          }
+        }
       }
     } finally {
       isApplyingUndoRedo.current = false;
     }
-  }, [cyInstance, isApplyingUndoRedo]);
+  }, [cyInstance, edgeAnnotationHandlers, isApplyingUndoRedo]);
 
   return { applyGraphChanges, applyPropertyEdit };
 }
@@ -849,11 +897,11 @@ function useGraphMutationHandlers(params: {
 }
 
 function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
-  const { cyInstance, mode, addNode, addEdge, menuHandlers, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange } = params;
+  const { cyInstance, mode, addNode, addEdge, menuHandlers, edgeAnnotationHandlers, applyAnnotationChange, applyGroupMoveChange, applyMembershipChange } = params;
   const isApplyingUndoRedo = React.useRef(false);
 
   const { applyGraphChanges, applyPropertyEdit } = useApplyCallbacks({
-    cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo
+    cyInstance, addNode, addEdge, menuHandlers, edgeAnnotationHandlers, isApplyingUndoRedo
   });
 
   const undoRedo = useUndoRedo({
@@ -891,11 +939,11 @@ interface GraphHandlersResult {
  * Registers graph and property edit handlers with the context.
  */
 export function useGraphHandlersWithContext(params: UseGraphUndoRedoWithContextParams): GraphHandlersResult {
-  const { cyInstance, addNode, addEdge, menuHandlers, undoRedo, registerGraphHandler, registerPropertyEditHandler } = params;
+  const { cyInstance, addNode, addEdge, menuHandlers, edgeAnnotationHandlers, undoRedo, registerGraphHandler, registerPropertyEditHandler } = params;
   const isApplyingUndoRedo = React.useRef(false);
 
   const { applyGraphChanges, applyPropertyEdit } = useApplyCallbacks({
-    cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo
+    cyInstance, addNode, addEdge, menuHandlers, edgeAnnotationHandlers, isApplyingUndoRedo
   });
 
   // Register handlers with context on mount

@@ -4,9 +4,12 @@ import { test, expect } from '../fixtures/topoviewer';
 
 const SIMPLE_FILE = 'simple.clab.yml';
 
+const ENDPOINT_LABEL_MENU_TEXT = 'Adjust Endpoint Offset';
+const ARIA_CHECKED_ATTR = 'aria-checked';
+
 const SEL_LINK_LABELS_BTN = '[data-testid="navbar-link-labels"]';
-const SEL_LINK_LABELS_MENU = '.navbar-menu:has-text("Adjust Endpoint Offset")';
-const SEL_ENDPOINT_TOGGLE = `${SEL_LINK_LABELS_MENU} .navbar-menu-option:has-text("Adjust Endpoint Offset")`;
+const SEL_LINK_LABELS_MENU = `.navbar-menu:has-text("${ENDPOINT_LABEL_MENU_TEXT}")`;
+const SEL_ENDPOINT_TOGGLE = `${SEL_LINK_LABELS_MENU} .navbar-menu-option:has-text("${ENDPOINT_LABEL_MENU_TEXT}")`;
 const SEL_ENDPOINT_SLIDER = `${SEL_LINK_LABELS_MENU} input[aria-label="Endpoint label offset"]`;
 
 async function openLinkLabelsMenu(page: Page): Promise<Locator> {
@@ -36,11 +39,11 @@ test.describe('Endpoint Label Offset', () => {
     const toggle = page.locator(SEL_ENDPOINT_TOGGLE);
     const slider = page.locator(SEL_ENDPOINT_SLIDER);
 
-    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await expect(toggle).toHaveAttribute(ARIA_CHECKED_ATTR, 'true');
     await expect(slider).toBeEnabled();
 
     await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await expect(toggle).toHaveAttribute(ARIA_CHECKED_ATTR, 'false');
     await expect(slider).toBeDisabled();
     await expect.poll(
       async () => {
@@ -51,7 +54,7 @@ test.describe('Endpoint Label Offset', () => {
     ).toBe(false);
 
     await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await expect(toggle).toHaveAttribute(ARIA_CHECKED_ATTR, 'true');
     await expect(slider).toBeEnabled();
     await expect.poll(
       async () => {
@@ -77,7 +80,7 @@ test.describe('Endpoint Label Offset', () => {
     await topoViewerPage.waitForCanvasReady();
 
     await openLinkLabelsMenu(page);
-    await expect(page.locator(SEL_ENDPOINT_TOGGLE)).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator(SEL_ENDPOINT_TOGGLE)).toHaveAttribute(ARIA_CHECKED_ATTR, 'true');
     await expect(page.locator(SEL_ENDPOINT_SLIDER)).toBeEnabled();
     await expect(page.locator(SEL_ENDPOINT_SLIDER)).toHaveValue(String(offsetValue));
   });

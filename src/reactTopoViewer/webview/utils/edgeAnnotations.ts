@@ -1,5 +1,7 @@
 import type { EdgeAnnotation } from '../../shared/types/topology';
 
+import { DEFAULT_ENDPOINT_LABEL_OFFSET, parseEndpointLabelOffset } from './endpointLabelOffset';
+
 export type EdgeIdentity = {
   id?: string;
   source?: string;
@@ -11,6 +13,11 @@ export type EdgeIdentity = {
 export type EdgeAnnotationLookup = {
   byId: Map<string, EdgeAnnotation>;
   byKey: Map<string, EdgeAnnotation>;
+};
+
+export type EdgeOffsetUpdateInput = EdgeIdentity & {
+  endpointLabelOffsetEnabled?: boolean;
+  endpointLabelOffset?: number;
 };
 
 function buildEdgeKey(identity: EdgeIdentity): string | null {
@@ -89,4 +96,28 @@ export function upsertEdgeAnnotation(
 
   if (updated) return updatedList;
   return [...annotations, next];
+}
+
+export function upsertEdgeLabelOffsetAnnotation(
+  annotations: EdgeAnnotation[],
+  data: EdgeOffsetUpdateInput
+): EdgeAnnotation[] | null {
+  const existing = findEdgeAnnotation(annotations, data);
+  const shouldPersist = data.endpointLabelOffsetEnabled === true || existing !== undefined;
+  if (!shouldPersist) return null;
+
+  const fallbackOffset = parseEndpointLabelOffset(existing?.endpointLabelOffset) ?? DEFAULT_ENDPOINT_LABEL_OFFSET;
+  const offset = parseEndpointLabelOffset(data.endpointLabelOffset) ?? fallbackOffset;
+
+  const nextAnnotation: EdgeAnnotation = {
+    id: data.id,
+    source: data.source,
+    target: data.target,
+    sourceEndpoint: data.sourceEndpoint,
+    targetEndpoint: data.targetEndpoint,
+    endpointLabelOffsetEnabled: data.endpointLabelOffsetEnabled === true,
+    endpointLabelOffset: offset
+  };
+
+  return upsertEdgeAnnotation(annotations, nextAnnotation);
 }

@@ -164,6 +164,10 @@ const AppContent: React.FC<{
     addNode,
     addEdge,
     menuHandlers,
+    edgeAnnotationHandlers: {
+      edgeAnnotations: state.edgeAnnotations,
+      setEdgeAnnotations
+    },
     undoRedo,
     registerGraphHandler,
     registerPropertyEditHandler
