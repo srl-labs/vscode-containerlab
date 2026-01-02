@@ -12,13 +12,13 @@ import { extractUsedCustomIcons } from '../../shared/types/icons';
 import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
 import { postCommand } from '../utils/extensionMessaging';
 import { getElementId, getEdgeSource, getEdgeTarget } from '../utils/cytoscapeHelpers';
-import { upsertEdgeAnnotation } from '../utils/edgeAnnotations';
+import { pruneEdgeAnnotations, upsertEdgeAnnotation } from '../utils/edgeAnnotations';
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset,
   parseEndpointLabelOffset
 } from '../utils/endpointLabelOffset';
-import { isServicesInitialized, getTopologyIO, saveViewerSettings } from '../services';
+import { isServicesInitialized, getTopologyIO, saveEdgeAnnotations, saveViewerSettings } from '../services';
 
 // CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
 
@@ -534,6 +534,10 @@ function handleExtensionMessage(
         };
       };
       const elements = msg.elements || msg.data?.elements;
+      const rawEdgeAnnotations = msg.data?.edgeAnnotations;
+      const cleanedEdgeAnnotations = Array.isArray(rawEdgeAnnotations) && Array.isArray(elements)
+        ? pruneEdgeAnnotations(rawEdgeAnnotations, elements)
+        : rawEdgeAnnotations;
       if (elements) {
         dispatch({ type: 'SET_ELEMENTS', payload: elements });
 
@@ -554,8 +558,11 @@ function handleExtensionMessage(
       if (Object.keys(viewerSettings).length > 0) {
         dispatch({ type: 'SET_INITIAL_DATA', payload: viewerSettings });
       }
-      if (msg.data?.edgeAnnotations) {
-        dispatch({ type: 'SET_EDGE_ANNOTATIONS', payload: msg.data.edgeAnnotations });
+      if (Array.isArray(cleanedEdgeAnnotations)) {
+        if (Array.isArray(rawEdgeAnnotations) && cleanedEdgeAnnotations.length !== rawEdgeAnnotations.length) {
+          void saveEdgeAnnotations(cleanedEdgeAnnotations);
+        }
+        dispatch({ type: 'SET_EDGE_ANNOTATIONS', payload: cleanedEdgeAnnotations });
       }
     },
     'node-renamed': () => {
@@ -764,12 +771,20 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
 export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children, initialData }) => {
   // Initialize reducer with parsed initial data to avoid race conditions
   // where state.defaultNode would be empty on first render
+  const initialEdgeAnnotationCleanupRef = useRef(false);
   const [state, dispatch] = useReducer(
     topoViewerReducer,
     initialData,
     (initial) => {
       try {
         const parsed = parseInitialData(initial);
+        if (parsed.edgeAnnotations) {
+          const cleaned = pruneEdgeAnnotations(parsed.edgeAnnotations, parsed.elements);
+          if (cleaned.length !== parsed.edgeAnnotations.length) {
+            initialEdgeAnnotationCleanupRef.current = true;
+            parsed.edgeAnnotations = cleaned;
+          }
+        }
         return { ...initialState, ...parsed };
       } catch {
         return initialState;
@@ -791,6 +806,12 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     };
     return subscribeToWebviewMessages(handleMessage);
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!initialEdgeAnnotationCleanupRef.current) return;
+    initialEdgeAnnotationCleanupRef.current = false;
+    void saveEdgeAnnotations(state.edgeAnnotations);
+  }, [state.edgeAnnotations]);
 
   useEffect(() => {
     const current = {
