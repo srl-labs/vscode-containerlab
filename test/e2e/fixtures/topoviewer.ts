@@ -146,6 +146,10 @@ interface TopologyAnnotations {
   freeShapeAnnotations?: Array<{ id: string; shapeType: string; position: { x: number; y: number } }>;
   groupStyleAnnotations?: Array<{ id: string; name: string; parentId?: string }>;
   networkNodeAnnotations?: Array<{ id: string; type: string; label: string; position: { x: number; y: number } }>;
+  viewerSettings?: {
+    endpointLabelOffsetEnabled?: boolean;
+    endpointLabelOffset?: number;
+  };
   aliasEndpointAnnotations?: Array<{ id: string }>;
 }
 
@@ -435,7 +439,13 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         if (!response.ok()) {
           if (response.status() === 404) {
             // Return empty annotations if file doesn't exist
-            return { nodeAnnotations: [], freeTextAnnotations: [], freeShapeAnnotations: [], groupStyleAnnotations: [] };
+            return {
+              nodeAnnotations: [],
+              freeTextAnnotations: [],
+              freeShapeAnnotations: [],
+              groupStyleAnnotations: [],
+              viewerSettings: {}
+            };
           }
           throw new Error(`Failed to read annotations: ${response.statusText()}`);
         }

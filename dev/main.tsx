@@ -183,6 +183,8 @@ interface InitialData {
   nodeAnnotations: unknown[];
   cloudNodeAnnotations: unknown[];
   networkNodeAnnotations: unknown[];
+  edgeAnnotations?: TopologyAnnotations['edgeAnnotations'];
+  viewerSettings?: TopologyAnnotations['viewerSettings'];
 }
 
 // ============================================================================
@@ -230,7 +232,9 @@ async function buildInitialData(filePath: string): Promise<InitialData> {
     groupStyleAnnotations: annotations.groupStyleAnnotations || [],
     nodeAnnotations: annotations.nodeAnnotations || [],
     cloudNodeAnnotations: annotations.cloudNodeAnnotations || [],
-    networkNodeAnnotations: annotations.networkNodeAnnotations || []
+    networkNodeAnnotations: annotations.networkNodeAnnotations || [],
+    edgeAnnotations: annotations.edgeAnnotations || [],
+    viewerSettings: annotations.viewerSettings || {}
   };
 }
 
