@@ -86,7 +86,7 @@ const initialState: TopoViewerState = {
   isLocked: true,
   linkLabelMode: 'show-all',
   showDummyLinks: true,
-  endpointLabelOffsetEnabled: false,
+  endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
   edgeAnnotations: [],
   customNodes: [],
@@ -451,6 +451,14 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
   return result;
 }
 
+function hasEndpointOffsetEnabledSetting(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  const viewerSettings = obj.viewerSettings;
+  if (!viewerSettings || typeof viewerSettings !== 'object') return false;
+  return Object.prototype.hasOwnProperty.call(viewerSettings, 'endpointLabelOffsetEnabled');
+}
+
 function extractEndpointLabelSettings(
   viewerSettings: Record<string, unknown> | undefined
 ): Partial<TopoViewerState> {
@@ -771,6 +779,7 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
   const actions = useActions(dispatch);
   const endpointOffsetPersistRef = useRef<{ enabled: boolean; offset: number } | null>(null);
   const skipEndpointOffsetPersistRef = useRef(true);
+  const initialOffsetEnabledDefinedRef = useRef(hasEndpointOffsetEnabledSetting(initialData));
 
   // Listen for messages from extension
   useEffect(() => {
@@ -791,6 +800,9 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     if (skipEndpointOffsetPersistRef.current) {
       skipEndpointOffsetPersistRef.current = false;
       endpointOffsetPersistRef.current = current;
+      if (!initialOffsetEnabledDefinedRef.current) {
+        void saveViewerSettings({ endpointLabelOffsetEnabled: current.enabled });
+      }
       return;
     }
     const previous = endpointOffsetPersistRef.current;
