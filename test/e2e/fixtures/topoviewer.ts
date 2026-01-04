@@ -420,6 +420,18 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               );
             }
 
+            // Wait for the layout to complete (initialLayoutDone is set after layout animation)
+            // This is critical to avoid race conditions with fitViewportToAll
+            await page.waitForFunction(
+              () => {
+                const dev = (window as any).__DEV__;
+                const cy = dev?.cy;
+                if (!cy) return false;
+                return cy.scratch?.('initialLayoutDone') === true;
+              },
+              { timeout: 10000, polling: 100 }
+            );
+
             // Success - break out of retry loop
             break;
           } catch (error) {
@@ -431,8 +443,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           }
         }
 
-        // Additional wait for graph to stabilize
-        await page.waitForTimeout(300);
+        // Small additional wait for React effects to settle (useEffect for __DEV__.cy)
+        await page.waitForTimeout(100);
       },
 
       getCurrentFile: async () => {
