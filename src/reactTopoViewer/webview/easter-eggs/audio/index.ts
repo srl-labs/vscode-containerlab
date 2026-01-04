@@ -13,6 +13,3 @@ export type { UseNightcallAudioReturn } from './useNightcallAudio';
 
 export { useStickerbushAudio } from './useStickerbushAudio';
 export type { UseStickerbushAudioReturn } from './useStickerbushAudio';
-
-export { useFinalCountdownAudio } from './useFinalCountdownAudio';
-export type { UseFinalCountdownAudioReturn } from './useFinalCountdownAudio';

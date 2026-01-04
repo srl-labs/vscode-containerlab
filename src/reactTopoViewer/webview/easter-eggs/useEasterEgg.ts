@@ -20,7 +20,7 @@ const CLICKS_REQUIRED = 10;
 const CLICK_TIMEOUT = 2000;
 
 /** Available easter egg modes */
-export type EasterEggMode = 'nightcall' | 'stickerbrush' | 'aquatic' | 'vaporwave' | 'deusex' | 'finalcountdown';
+export type EasterEggMode = 'nightcall' | 'stickerbrush' | 'aquatic' | 'vaporwave' | 'deusex';
 
 export interface EasterEggState {
   /** Whether easter egg mode is currently active */
@@ -41,7 +41,7 @@ export interface UseEasterEggOptions {
 }
 
 /** All available modes in order */
-const ALL_MODES: EasterEggMode[] = ['nightcall', 'stickerbrush', 'aquatic', 'vaporwave', 'deusex', 'finalcountdown'];
+const ALL_MODES: EasterEggMode[] = ['nightcall', 'stickerbrush', 'aquatic', 'vaporwave', 'deusex'];
 
 export interface UseEasterEggReturn {
   /** Current easter egg state */
@@ -100,7 +100,6 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
       aquatic: 'Aquatic',
       vaporwave: 'Vaporwave',
       deusex: 'Deus Ex',
-      finalcountdown: 'Final Countdown',
     };
     return names[easterEggMode];
   }, [easterEggMode]);
@@ -111,22 +110,20 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
   const triggerPartyMode = useCallback(() => {
     if (isPartyMode) return;
 
-    // Equal random selection between modes (visual effect only, not security-sensitive)
+    // 20/20/20/20/20 random selection between modes (visual effect only, not security-sensitive)
     // eslint-disable-next-line sonarjs/pseudo-random
     const rand = Math.random();
     let mode: EasterEggMode;
-    if (rand < 1 / 6) {
+    if (rand < 0.2) {
       mode = 'nightcall';
-    } else if (rand < 2 / 6) {
+    } else if (rand < 0.4) {
       mode = 'stickerbrush';
-    } else if (rand < 3 / 6) {
+    } else if (rand < 0.6) {
       mode = 'aquatic';
-    } else if (rand < 4 / 6) {
+    } else if (rand < 0.8) {
       mode = 'vaporwave';
-    } else if (rand < 5 / 6) {
-      mode = 'deusex';
     } else {
-      mode = 'finalcountdown';
+      mode = 'deusex';
     }
     setEasterEggMode(mode);
 

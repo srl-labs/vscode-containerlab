@@ -95,22 +95,3 @@ export function getAMinorFrequency(scaleDegree: number, octave: number): number 
 export function getBMinorFrequency(scaleDegree: number, octave: number): number {
   return getScaleFrequency(scaleDegree, octave, B_MINOR_SCALE, 246.94);
 }
-
-/**
- * F# minor scale frequencies
- * Scale degrees: 1=F#, 2=G#, 3=A, 4=B, 5=C#, 6=D, 7=E
- */
-export const F_SHARP_MINOR_SCALE: ScaleDefinition = {
-  [-2]: [46.25, 51.91, 55.0, 61.74, 69.30, 73.42, 82.41],
-  [-1]: [92.50, 103.83, 110.0, 123.47, 138.59, 146.83, 164.81],
-  [0]: [185.0, 207.65, 220.0, 246.94, 277.18, 293.66, 329.63],
-  [1]: [369.99, 415.30, 440.0, 493.88, 554.37, 587.33, 659.25],
-  [2]: [739.99, 830.61, 880.0, 987.77, 1108.73, 1174.66, 1318.51],
-};
-
-/**
- * Get F# minor frequency helper
- */
-export function getFSharpMinorFrequency(scaleDegree: number, octave: number): number {
-  return getScaleFrequency(scaleDegree, octave, F_SHARP_MINOR_SCALE, 185.0);
-}

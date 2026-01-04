@@ -13,7 +13,6 @@ import {
   AquaticAmbienceMode,
   VaporwaveMode,
   DeusExMode,
-  FinalCountdownMode,
 } from './modes';
 
 interface EasterEggRendererProps {
@@ -50,8 +49,6 @@ export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({
       return <VaporwaveMode {...commonProps} />;
     case 'deusex':
       return <DeusExMode {...commonProps} />;
-    case 'finalcountdown':
-      return <FinalCountdownMode {...commonProps} />;
     default:
       return null;
   }

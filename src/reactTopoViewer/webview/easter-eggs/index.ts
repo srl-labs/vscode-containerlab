@@ -1,13 +1,12 @@
 /**
  * Easter Eggs - Hidden visual modes
  *
- * Click the Containerlab logo 10 times to trigger one of six easter eggs:
+ * Click the Containerlab logo 10 times to trigger one of five easter eggs:
  * - Nightcall: 80s synthwave vibe (Kavinsky inspired)
  * - Stickerbrush Symphony: Dreamy forest ambient (DKC2 inspired)
  * - Aquatic Ambience: Underwater serenity (DKC inspired)
  * - Vaporwave: Slowed down smooth jazz aesthetic
  * - Deus Ex: 3D rotating logo with metallic theme (silent mode)
- * - Final Countdown: New Year's Eve celebration with fireworks (Europe inspired)
  */
 
 // Main easter egg hook
@@ -26,7 +25,6 @@ export {
   NightcallMode,
   StickerbushMode,
   DeusExMode,
-  FinalCountdownMode,
 } from './modes';
 
 // Renderer component
@@ -38,7 +36,6 @@ export {
   useVaporwaveAudio,
   useNightcallAudio,
   useStickerbushAudio,
-  useFinalCountdownAudio,
 } from './audio';
 
 export type {
@@ -46,7 +43,6 @@ export type {
   UseVaporwaveAudioReturn,
   UseNightcallAudioReturn,
   UseStickerbushAudioReturn,
-  UseFinalCountdownAudioReturn,
 } from './audio';
 
 // Shared utilities (re-export for convenience)
