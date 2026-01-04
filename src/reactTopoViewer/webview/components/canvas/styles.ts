@@ -140,6 +140,15 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
       'z-index': 10
     }
   },
+  // Self-loop (hairpin) edge styling
+  {
+    selector: 'edge[source = target]',
+    style: {
+      'loop-direction': '0deg',
+      'loop-sweep': '90deg',
+      'control-point-step-size': 20
+    }
+  },
   {
     selector: 'edge.link-up',
     style: {

@@ -161,3 +161,36 @@ export function getNextEndpointForNode(
 
   return generateInterfaceName(parsed, nextIndex);
 }
+
+/**
+ * Get the next available endpoint for a node, excluding specified endpoints.
+ * Used for self-loops where we need two different endpoints on the same node.
+ * @param cy Cytoscape instance
+ * @param node Node to get endpoint for
+ * @param interfacePatternMapping Custom interface pattern mapping
+ * @param excludeEndpoints Endpoints to exclude from allocation
+ */
+export function getNextEndpointForNodeExcluding(
+  cy: CyCore,
+  node: NodeSingular,
+  interfacePatternMapping: Record<string, string>,
+  excludeEndpoints: string[]
+): string {
+  const pattern = getNodeInterfacePattern(node, interfacePatternMapping);
+  const parsed = parseInterfacePattern(pattern);
+  const usedIndices = collectUsedIndices(cy, node.id(), parsed);
+
+  // Also exclude specified endpoints
+  for (const ep of excludeEndpoints) {
+    const idx = extractInterfaceIndex(ep, parsed);
+    if (idx >= 0) usedIndices.add(idx);
+  }
+
+  // Find next available index
+  let nextIndex = 0;
+  while (usedIndices.has(nextIndex)) {
+    nextIndex++;
+  }
+
+  return generateInterfaceName(parsed, nextIndex);
+}

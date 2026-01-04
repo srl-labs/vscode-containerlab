@@ -9,7 +9,8 @@ import edgehandles from 'cytoscape-edgehandles';
 import { log } from '../../utils/logger';
 import {
   DEFAULT_INTERFACE_PATTERNS,
-  getNextEndpointForNode as getNextEndpoint
+  getNextEndpointForNode as getNextEndpoint,
+  getNextEndpointForNodeExcluding
 } from '../../utils/interfacePatterns';
 
 // Register extension once
@@ -95,7 +96,6 @@ function canConnect(sourceNode: NodeSingular, targetNode: NodeSingular): boolean
   const result = (
     (!sourceRole || !invalidRoles.includes(sourceRole)) &&
     (!targetRole || !invalidRoles.includes(targetRole)) &&
-    !sourceNode.same(targetNode) &&
     !sourceNode.isParent() &&
     !targetNode.isParent()
   );
@@ -114,7 +114,16 @@ function createEdgeParams(
   interfacePatternMapping: Record<string, string>
 ): EdgeData {
   const sourceEndpoint = getNextEndpointForNode(cy, sourceNode, interfacePatternMapping);
-  const targetEndpoint = getNextEndpointForNode(cy, targetNode, interfacePatternMapping);
+
+  // For self-loops (hairpin): allocate a different endpoint for target
+  let targetEndpoint: string;
+  if (sourceNode.same(targetNode)) {
+    targetEndpoint = getNextEndpointForNodeExcluding(
+      cy, targetNode, interfacePatternMapping, [sourceEndpoint]
+    );
+  } else {
+    targetEndpoint = getNextEndpointForNode(cy, targetNode, interfacePatternMapping);
+  }
 
   return {
     id: `${sourceNode.id()}-${targetNode.id()}`,
