@@ -42,6 +42,10 @@ interface AnnotationsSubset {
   onGroupDragEnd: (groupId: string, finalPosition: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onGroupDragMove: (groupId: string, delta: { dx: number; dy: number }) => void;
   updateGroupSizeWithUndo: (id: string, width: number, height: number) => void;
+  // Resize handlers (separate from drag to avoid undo spam)
+  onResizeStart: (groupId: string) => void;
+  onResizeMove: (groupId: string, width: number, height: number, position: { x: number; y: number }) => void;
+  onResizeEnd: (groupId: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void;
   selectGroup: (id: string) => void;
   toggleGroupSelection: (id: string) => void;
   boxSelectGroups: (ids: string[]) => void;
@@ -142,7 +146,10 @@ export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): Ann
     onDragStart: annotations.onGroupDragStart,
     onPositionChange: annotations.onGroupDragEnd,
     onDragMove: annotations.onGroupDragMove,
-    onSizeChange: annotations.updateGroupSizeWithUndo,
+    // Resize handlers (use dedicated undo handler to avoid spam)
+    onResizeStart: annotations.onResizeStart,
+    onResizeMove: annotations.onResizeMove,
+    onResizeEnd: annotations.onResizeEnd,
     selectedGroupIds: annotations.selectedGroupIds,
     onGroupSelect: annotations.selectGroup,
     onGroupToggleSelect: annotations.toggleGroupSelection,
@@ -155,10 +162,10 @@ export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): Ann
   }), [
     cyInstance, annotations.groups, state.isLocked, annotations.editGroup,
     annotations.deleteGroupWithUndo, annotations.onGroupDragStart, annotations.onGroupDragEnd,
-    annotations.onGroupDragMove, annotations.updateGroupSizeWithUndo, annotations.selectedGroupIds,
-    annotations.selectGroup, annotations.toggleGroupSelection, annotations.boxSelectGroups,
-    annotations.updateGroupParent, layoutControls.isGeoLayout, layoutControls.geoMode,
-    mapLibreState, annotations.updateGroupGeoPosition
+    annotations.onGroupDragMove, annotations.onResizeStart, annotations.onResizeMove,
+    annotations.onResizeEnd, annotations.selectedGroupIds, annotations.selectGroup,
+    annotations.toggleGroupSelection, annotations.boxSelectGroups, annotations.updateGroupParent,
+    layoutControls.isGeoLayout, layoutControls.geoMode, mapLibreState, annotations.updateGroupGeoPosition
   ]);
 
   // FreeTextLayer props

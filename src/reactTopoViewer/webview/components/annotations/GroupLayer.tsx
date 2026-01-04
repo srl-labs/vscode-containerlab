@@ -37,16 +37,22 @@ import { AnnotationContextMenu } from './shared/AnnotationContextMenu';
 // Types
 // ============================================================================
 
-interface GroupLayerProps {
+/** Shared handler types for group drag/resize operations (eliminates duplication) */
+interface GroupDragResizeHandlers {
+  onDragStart?: (id: string) => void;
+  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
+  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
+  onResizeStart: (id: string) => void;
+  onResizeMove: (id: string, width: number, height: number, position: { x: number; y: number }) => void;
+  onResizeEnd: (id: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void;
+}
+
+interface GroupLayerProps extends GroupDragResizeHandlers {
   cy: CyCore | null;
   groups: GroupStyleAnnotation[];
   isLocked: boolean;
   onGroupEdit: (id: string) => void;
   onGroupDelete: (id: string) => void;
-  onDragStart?: (id: string) => void;
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onSizeChange: (id: string, width: number, height: number) => void;
   selectedGroupIds?: Set<string>;
   onGroupSelect?: (id: string) => void;
   onGroupToggleSelect?: (id: string) => void;
@@ -60,17 +66,13 @@ interface GroupLayerProps {
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
 
-interface GroupInteractionItemProps {
+interface GroupInteractionItemProps extends GroupDragResizeHandlers {
   group: GroupStyleAnnotation;
   cy: CyCore;
   isLocked: boolean;
   isSelected: boolean;
   onGroupEdit: (id: string) => void;
   onDelete?: (id: string) => void;
-  onDragStart?: (id: string) => void;
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onSizeChange: (id: string, width: number, height: number) => void;
   onSelect?: (id: string) => void;
   onToggleSelect?: (id: string) => void;
   onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
@@ -366,7 +368,9 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onDragStart,
     onPositionChange,
     onDragMove,
-    onSizeChange,
+    onResizeStart,
+    onResizeMove,
+    onResizeEnd,
     onSelect,
     onToggleSelect,
     onVisualPositionChange,
@@ -397,8 +401,9 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     group,
     group.id,
     isLocked,
-    onSizeChange,
-    onPositionChange
+    onResizeStart,
+    onResizeMove,
+    onResizeEnd
   );
 
   // Group item event handlers
@@ -563,7 +568,7 @@ const GroupBackgroundPortal: React.FC<{
   layerNode
 );
 
-const GroupInteractionPortal: React.FC<{
+interface GroupInteractionPortalProps extends GroupDragResizeHandlers {
   layerNode: HTMLElement;
   groups: GroupStyleAnnotation[];
   cy: CyCore;
@@ -571,20 +576,17 @@ const GroupInteractionPortal: React.FC<{
   selectedGroupIds: Set<string>;
   onGroupEdit: (id: string) => void;
   onGroupDelete?: (id: string) => void;
-  onDragStart?: (id: string) => void;
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onSizeChange: (id: string, width: number, height: number) => void;
   onGroupSelect?: (id: string) => void;
   onGroupToggleSelect?: (id: string) => void;
   onVisualPositionChange: (id: string, position: { x: number; y: number }) => void;
   onVisualPositionClear: (id: string) => void;
   onShowContextMenu: (groupId: string, position: { x: number; y: number }) => void;
   onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
-  // Geo mode props
   isGeoMode?: boolean;
   mapLibreState?: MapLibreState | null;
-}> = ({
+}
+
+const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
   layerNode,
   groups,
   cy,
@@ -595,7 +597,9 @@ const GroupInteractionPortal: React.FC<{
   onDragStart,
   onPositionChange,
   onDragMove,
-  onSizeChange,
+  onResizeStart,
+  onResizeMove,
+  onResizeEnd,
   onGroupSelect,
   onGroupToggleSelect,
   onVisualPositionChange,
@@ -618,7 +622,9 @@ const GroupInteractionPortal: React.FC<{
         onDragStart={onDragStart}
         onPositionChange={onPositionChange}
         onDragMove={onDragMove}
-        onSizeChange={onSizeChange}
+        onResizeStart={onResizeStart}
+        onResizeMove={onResizeMove}
+        onResizeEnd={onResizeEnd}
         onSelect={onGroupSelect}
         onToggleSelect={onGroupToggleSelect}
         onVisualPositionChange={onVisualPositionChange}
@@ -642,7 +648,9 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   onDragStart,
   onPositionChange,
   onDragMove,
-  onSizeChange,
+  onResizeStart,
+  onResizeMove,
+  onResizeEnd,
   selectedGroupIds = new Set(),
   onGroupSelect,
   onGroupToggleSelect,
@@ -772,7 +780,9 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           onDragStart={onDragStart}
           onPositionChange={handlePositionChangeWithGeo}
           onDragMove={onDragMove}
-          onSizeChange={onSizeChange}
+          onResizeStart={onResizeStart}
+          onResizeMove={onResizeMove}
+          onResizeEnd={onResizeEnd}
           onGroupSelect={onGroupSelect}
           onGroupToggleSelect={onGroupToggleSelect}
           onVisualPositionChange={dragOverrides.setDragPosition}

@@ -2,7 +2,7 @@
  * Hook for drag-to-group functionality with overlay groups.
  * When a node is dragged and dropped inside a group overlay, it becomes a member.
  */
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Core, NodeSingular, EventObject } from 'cytoscape';
 
 import type { GroupStyleAnnotation } from '../../../shared/types/topology';
@@ -80,35 +80,43 @@ export function useNodeReparent(cy: Core | null, options: UseNodeReparentOptions
   const { groups, addNodeToGroup, removeNodeFromGroup } = deps;
   const nodeGroupRef = useRef<Map<string, string | null>>(new Map());
 
-  const handleGrab = useCallback((event: EventObject) => {
-    const node = event.target as NodeSingular;
-    if (!canHaveGroupMembership(node)) return;
-    const currentGroup = findGroupForNode(node, groups);
-    nodeGroupRef.current.set(node.id(), currentGroup?.id ?? null);
+  // Use refs to avoid recreating callbacks when these values change
+  // This prevents the useEffect from re-running on every groups update
+  const groupsRef = useRef(groups);
+  const actionsRef = useRef({ addNodeToGroup, removeNodeFromGroup, onMembershipWillChange });
+
+  // Keep refs up to date
+  useEffect(() => {
+    groupsRef.current = groups;
   }, [groups]);
 
-  const handleDragFree = useCallback((event: EventObject) => {
-    const node = event.target as NodeSingular;
-    if (!canHaveGroupMembership(node)) return;
-
-    const nodeId = node.id();
-    const oldGroupId = nodeGroupRef.current.get(nodeId) ?? null;
-    const newGroup = findGroupForNode(node, groups);
-    const newGroupId = newGroup?.id ?? null;
-    nodeGroupRef.current.delete(nodeId);
-
-    handleMembershipChange(
-      nodeId,
-      oldGroupId,
-      newGroupId,
-      newGroup,
-      { addNodeToGroup, removeNodeFromGroup },
-      onMembershipWillChange
-    );
-  }, [groups, addNodeToGroup, removeNodeFromGroup, onMembershipWillChange]);
+  useEffect(() => {
+    actionsRef.current = { addNodeToGroup, removeNodeFromGroup, onMembershipWillChange };
+  }, [addNodeToGroup, removeNodeFromGroup, onMembershipWillChange]);
 
   useEffect(() => {
     if (!cy || mode !== 'edit' || isLocked) return;
+
+    const handleGrab = (event: EventObject) => {
+      const node = event.target as NodeSingular;
+      if (!canHaveGroupMembership(node)) return;
+      const currentGroup = findGroupForNode(node, groupsRef.current);
+      nodeGroupRef.current.set(node.id(), currentGroup?.id ?? null);
+    };
+
+    const handleDragFree = (event: EventObject) => {
+      const node = event.target as NodeSingular;
+      if (!canHaveGroupMembership(node)) return;
+
+      const nodeId = node.id();
+      const oldGroupId = nodeGroupRef.current.get(nodeId) ?? null;
+      const newGroup = findGroupForNode(node, groupsRef.current);
+      const newGroupId = newGroup?.id ?? null;
+      nodeGroupRef.current.delete(nodeId);
+
+      const { addNodeToGroup: add, removeNodeFromGroup: remove, onMembershipWillChange: onChange } = actionsRef.current;
+      handleMembershipChange(nodeId, oldGroupId, newGroupId, newGroup, { addNodeToGroup: add, removeNodeFromGroup: remove }, onChange);
+    };
 
     cy.on('grab', 'node', handleGrab);
     cy.on('dragfree', 'node', handleDragFree);
@@ -118,5 +126,5 @@ export function useNodeReparent(cy: Core | null, options: UseNodeReparentOptions
       cy.off('grab', 'node', handleGrab);
       cy.off('dragfree', 'node', handleDragFree);
     };
-  }, [cy, mode, isLocked, handleGrab, handleDragFree]);
+  }, [cy, mode, isLocked]);
 }

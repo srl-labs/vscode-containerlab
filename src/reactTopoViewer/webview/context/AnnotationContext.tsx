@@ -25,6 +25,7 @@ import {
   useAppGroupUndoHandlers,
   useCombinedAnnotationApplier,
   useGroupDragUndo,
+  useGroupResizeUndo,
   useGroupUndoRedoHandlers,
   useNodeReparent,
   generateGroupId
@@ -93,6 +94,10 @@ interface AnnotationActionsContextValue {
   onGroupDragEnd: (groupId: string, finalPosition: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
   onGroupDragMove: (groupId: string, delta: { dx: number; dy: number }) => void;
   updateGroupSizeWithUndo: (id: string, width: number, height: number) => void;
+  // Group resize handlers (separate from drag to avoid undo spam)
+  onResizeStart: (groupId: string) => void;
+  onResizeMove: (groupId: string, width: number, height: number, position: { x: number; y: number }) => void;
+  onResizeEnd: (groupId: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void;
 
   handleAddText: () => void;
   selectTextAnnotation: (id: string) => void;
@@ -265,6 +270,13 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     onUpdateShapeAnnotation: freeShapeAnnotations.updateAnnotation
   });
 
+  // Group resize undo (separate from drag to avoid undo spam during resize)
+  const groupResizeUndo = useGroupResizeUndo({
+    groups: groupsHook,
+    undoRedo,
+    isApplyingGroupUndoRedo: groupUndoHandlers.isApplyingGroupUndoRedo
+  });
+
   // Text undo handlers
   const freeTextUndoHandlers = useFreeTextUndoRedoHandlers(
     freeTextAnnotations,
@@ -389,6 +401,9 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     onGroupDragEnd: groupDragUndo.onGroupDragEnd,
     onGroupDragMove: groupDragUndo.onGroupDragMove,
     updateGroupSizeWithUndo: groupUndoHandlers.updateGroupSizeWithUndo,
+    onResizeStart: groupResizeUndo.onResizeStart,
+    onResizeMove: groupResizeUndo.onResizeMove,
+    onResizeEnd: groupResizeUndo.onResizeEnd,
 
     // Text annotations
     handleAddText: freeTextAnnotations.handleAddText,
@@ -465,6 +480,9 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     groupDragUndo.onGroupDragEnd,
     groupDragUndo.onGroupDragMove,
     groupUndoHandlers.updateGroupSizeWithUndo,
+    groupResizeUndo.onResizeStart,
+    groupResizeUndo.onResizeMove,
+    groupResizeUndo.onResizeEnd,
     freeTextAnnotations.handleAddText,
     freeTextAnnotations.selectAnnotation,
     freeTextAnnotations.toggleAnnotationSelection,

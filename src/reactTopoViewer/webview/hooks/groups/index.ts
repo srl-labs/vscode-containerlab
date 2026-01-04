@@ -79,6 +79,8 @@ export { useGroupAnnotationApplier, useCombinedAnnotationApplier } from './useCo
 export type { UseGroupAnnotationApplierReturn, UseCombinedAnnotationApplierReturn } from './useCombinedAnnotationApplier';
 export { useGroupDragUndo } from './useGroupDragUndo';
 export type { UseGroupDragUndoOptions, UseGroupDragUndoReturn } from './useGroupDragUndo';
+export { useGroupResizeUndo } from './useGroupResizeUndo';
+export type { UseGroupResizeUndoOptions, UseGroupResizeUndoReturn } from './useGroupResizeUndo';
 
 // ============================================================================
 // Utility Functions

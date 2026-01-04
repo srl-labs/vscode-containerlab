@@ -244,8 +244,22 @@ function calcResizedPosition(ref: ResizeState, w: number, h: number): { x: numbe
   return { x: ref.posX + dw * xMult, y: ref.posY + dh * yMult };
 }
 
+/** Compute resize dimensions and position from mouse event */
+function computeResizeFromEvent(
+  e: MouseEvent,
+  ref: ResizeState,
+  zoom: number
+): { w: number; h: number; pos: { x: number; y: number } } {
+  const dx = (e.clientX - ref.startX) / zoom;
+  const dy = (e.clientY - ref.startY) / zoom;
+  const { w, h } = calcResizedDimensions(ref, dx, dy);
+  const pos = calcResizedPosition(ref, w, h);
+  return { w, h, pos };
+}
+
 /**
- * Hook for resize event handlers
+ * Hook for resize event handlers.
+ * Uses dedicated resize handlers to avoid undo spam during resize.
  */
 function useGroupResizeEvents(
   isResizing: boolean,
@@ -253,30 +267,31 @@ function useGroupResizeEvents(
   groupId: string,
   dragRef: React.RefObject<ResizeState | null>,
   setIsResizing: React.Dispatch<React.SetStateAction<boolean>>,
-  onSizeChange: (id: string, width: number, height: number) => void,
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void
+  onResizeMove: (id: string, width: number, height: number, position: { x: number; y: number }) => void,
+  onResizeEnd: (id: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void
 ): void {
   useEffect(() => {
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return;
-      const zoom = cy.zoom();
-      const dx = (e.clientX - dragRef.current.startX) / zoom;
-      const dy = (e.clientY - dragRef.current.startY) / zoom;
-
-      const { w, h } = calcResizedDimensions(dragRef.current, dx, dy);
-      const pos = calcResizedPosition(dragRef.current, w, h);
-      onSizeChange(groupId, w, h);
-      onPositionChange(groupId, pos, { dx: 0, dy: 0 });
+      const { w, h, pos } = computeResizeFromEvent(e, dragRef.current, cy.zoom());
+      // Use onResizeMove for visual updates (no undo recording)
+      onResizeMove(groupId, w, h, pos);
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      if (dragRef.current) {
+        const { w, h, pos } = computeResizeFromEvent(e, dragRef.current, cy.zoom());
+        // Use onResizeEnd to record the undo action and final save
+        onResizeEnd(groupId, w, h, pos);
+      }
       setIsResizing(false);
+      dragRef.current = null;
     };
 
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
-  }, [isResizing, cy, groupId, dragRef, setIsResizing, onSizeChange, onPositionChange]);
+  }, [isResizing, cy, groupId, dragRef, setIsResizing, onResizeMove, onResizeEnd]);
 }
 
 export function useGroupResize(
@@ -284,13 +299,14 @@ export function useGroupResize(
   group: GroupStyleAnnotation,
   groupId: string,
   isLocked: boolean,
-  onSizeChange: (id: string, width: number, height: number) => void,
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void
+  onResizeStart: (id: string) => void,
+  onResizeMove: (id: string, width: number, height: number, position: { x: number; y: number }) => void,
+  onResizeEnd: (id: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void
 ): UseGroupResizeReturn {
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef<ResizeState | null>(null);
 
-  useGroupResizeEvents(isResizing, cy, groupId, dragRef, setIsResizing, onSizeChange, onPositionChange);
+  useGroupResizeEvents(isResizing, cy, groupId, dragRef, setIsResizing, onResizeMove, onResizeEnd);
 
   const handleResizeMouseDown = useCallback((e: React.MouseEvent, corner: ResizeCorner) => {
     if (isLocked || e.button !== 0) return;
@@ -305,8 +321,10 @@ export function useGroupResize(
       posX: group.position.x,
       posY: group.position.y
     };
+    // Notify resize start to capture initial state for undo
+    onResizeStart(groupId);
     setIsResizing(true);
-  }, [isLocked, group]);
+  }, [isLocked, group, groupId, onResizeStart]);
 
   return { isResizing, handleResizeMouseDown };
 }
