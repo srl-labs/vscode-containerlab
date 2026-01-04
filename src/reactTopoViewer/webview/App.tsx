@@ -461,6 +461,7 @@ const AppContent: React.FC<{
 /** Main App component with providers */
 export const App: React.FC = () => {
   const { state } = useTopoViewerState();
+  const { updateNodePositions } = useTopoViewerActions();
   const { cytoscapeRef, cyInstance, onCyReady, onCyDestroyed } = useCytoscapeInstance();
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
@@ -481,6 +482,7 @@ export const App: React.FC = () => {
         isLocked={state.isLocked}
         onLockedAction={() => floatingPanelRef.current?.triggerShake()}
         pendingMembershipChangesRef={pendingMembershipChangesRef}
+        updateNodePositions={updateNodePositions}
       >
         <AppContent
           floatingPanelRef={floatingPanelRef}

@@ -47,6 +47,8 @@ interface AnnotationProviderProps {
   isLocked: boolean;
   onLockedAction: () => void;
   pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
+  /** Callback to sync node positions to React state (prevents position drift during reconcile) */
+  updateNodePositions: (positions: Array<{ id: string; position: { x: number; y: number } }>) => void;
   children: React.ReactNode;
 }
 
@@ -163,6 +165,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   isLocked,
   onLockedAction,
   pendingMembershipChangesRef,
+  updateNodePositions,
   children
 }) => {
   const { undoRedo, registerAnnotationHandler, registerGroupMoveHandler, registerMembershipHandler } = useUndoRedoContext();
@@ -267,7 +270,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     textAnnotations: freeTextAnnotations.annotations,
     shapeAnnotations: freeShapeAnnotations.annotations,
     onUpdateTextAnnotation: freeTextAnnotations.updateAnnotation,
-    onUpdateShapeAnnotation: freeShapeAnnotations.updateAnnotation
+    onUpdateShapeAnnotation: freeShapeAnnotations.updateAnnotation,
+    onPositionsCommitted: updateNodePositions
   });
 
   // Group resize undo (separate from drag to avoid undo spam during resize)

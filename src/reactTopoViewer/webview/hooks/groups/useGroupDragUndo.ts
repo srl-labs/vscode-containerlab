@@ -42,6 +42,8 @@ export interface UseGroupDragUndoOptions {
   shapeAnnotations?: FreeShapeAnnotation[];
   onUpdateTextAnnotation?: (id: string, updates: Partial<FreeTextAnnotation>) => void;
   onUpdateShapeAnnotation?: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
+  /** Callback to sync committed positions into React state (prevents position drift on next reconcile) */
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void;
 }
 
 export interface UseGroupDragUndoReturn {
@@ -228,10 +230,15 @@ function createGroupMoveAction(
   };
 }
 
-/** Save node positions via TopologyIO service */
-function sendNodePositionsToExtension(positions: NodePositionEntry[]): void {
+/** Save node positions via TopologyIO service and sync to React state */
+function sendNodePositionsToExtension(
+  positions: NodePositionEntry[],
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void
+): void {
   if (positions.length === 0) return;
   void saveNodePositions(positions);
+  // Sync to React state to prevent position drift on next reconcile
+  onPositionsCommitted?.(positions);
   log.info(`[GroupDragUndo] Saved ${positions.length} member node positions`);
 }
 
@@ -241,11 +248,12 @@ function handleFallbackDragEnd(
   finalPosition: { x: number; y: number },
   getGroupMembers: (id: string) => string[],
   capturePositions: (ids: string[]) => NodePositionEntry[],
-  updateGroupPosition: (id: string, pos: { x: number; y: number }) => void
+  updateGroupPosition: (id: string, pos: { x: number; y: number }) => void,
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void
 ): void {
   const memberIds = getGroupMembers(groupId);
   if (memberIds.length > 0) {
-    sendNodePositionsToExtension(capturePositions(memberIds));
+    sendNodePositionsToExtension(capturePositions(memberIds), onPositionsCommitted);
   }
   updateGroupPosition(groupId, finalPosition);
 }
@@ -259,7 +267,8 @@ function processDragEnd(
   textAnnotationsAfter: FreeTextAnnotation[],
   shapeAnnotationsAfter: FreeShapeAnnotation[],
   pushAction: (action: UndoRedoAction) => void,
-  groupId: string
+  groupId: string,
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void
 ): void {
   const posChanged = hasPositionChanged(startState.groupBefore.position, finalPosition);
   const nodesChanged = hasNodesChanged(startState.nodesBefore, nodesAfter);
@@ -273,8 +282,8 @@ function processDragEnd(
       textAnnotationsAfter,
       shapeAnnotationsAfter
     ));
-    // Persist node positions to annotations.json
-    sendNodePositionsToExtension(nodesAfter);
+    // Persist node positions to annotations.json and sync to React state
+    sendNodePositionsToExtension(nodesAfter, onPositionsCommitted);
     log.info(`[GroupDragUndo] Recorded group move for ${groupId} with ${nodesAfter.length} nodes`);
   }
 }
@@ -288,7 +297,8 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
     textAnnotations = [],
     shapeAnnotations = [],
     onUpdateTextAnnotation,
-    onUpdateShapeAnnotation
+    onUpdateShapeAnnotation,
+    onPositionsCommitted
   } = options;
   const dragStartRef = useRef<DragStartState | null>(null);
 
@@ -327,7 +337,7 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
     if (!cyInstance || isApplyingGroupUndoRedo.current) return;
     const startState = dragStartRef.current;
     if (!startState || startState.groupId !== groupId) {
-      handleFallbackDragEnd(groupId, finalPosition, groups.getGroupMembers, undoRedo.capturePositions, groups.updateGroupPosition);
+      handleFallbackDragEnd(groupId, finalPosition, groups.getGroupMembers, undoRedo.capturePositions, groups.updateGroupPosition, onPositionsCommitted);
       return;
     }
 
@@ -353,11 +363,12 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
       textAnnotationsAfter,
       shapeAnnotationsAfter,
       undoRedo.pushAction,
-      groupId
+      groupId,
+      onPositionsCommitted
     );
     groups.updateGroupPosition(groupId, finalPosition);
     dragStartRef.current = null;
-  }, [cyInstance, groups, undoRedo, isApplyingGroupUndoRedo, textAnnotations, shapeAnnotations]);
+  }, [cyInstance, groups, undoRedo, isApplyingGroupUndoRedo, textAnnotations, shapeAnnotations, onPositionsCommitted]);
 
   const onGroupDragMove = useCallback((groupId: string, delta: { dx: number; dy: number }) => {
     if (!cyInstance || (delta.dx === 0 && delta.dy === 0)) return;
