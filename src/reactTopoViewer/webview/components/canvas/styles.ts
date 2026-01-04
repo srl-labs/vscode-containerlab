@@ -8,7 +8,8 @@ import { generateEncodedSVG } from '../../utils/SvgGenerator';
 
 // Style constants to avoid duplication
 const DATA_NAME = 'data(name)';
-const SELECTION_COLOR = 'var(--vscode-focusBorder, #007ACC)';
+// Cytoscape doesn't support CSS variables, use fallback color directly
+const SELECTION_COLOR = '#007ACC';
 
 /**
  * Role to SVG node type mapping
@@ -70,8 +71,6 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
       shape: 'rectangle',
       width: '10',
       height: '10',
-      content: DATA_NAME,
-      label: DATA_NAME,
       'font-size': '0.58em',
       'text-valign': 'bottom',
       'text-halign': 'center',
@@ -85,6 +84,14 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
       'text-background-shape': 'roundrectangle',
       'text-background-padding': '1px',
       'z-index': 2
+    }
+  },
+  // Node labels only for nodes that have the name field
+  {
+    selector: 'node[name]',
+    style: {
+      content: DATA_NAME,
+      label: DATA_NAME
     }
   },
   {
@@ -104,8 +111,6 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
     style: {
       'target-arrow-shape': 'none',
       'font-size': '0.42em',
-      'source-label': 'data(sourceEndpoint)',
-      'target-label': 'data(targetEndpoint)',
       'source-text-offset': 20,
       'target-text-offset': 20,
       'arrow-scale': 0.5,
@@ -126,6 +131,19 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
       'overlay-padding': '2px'
     }
   },
+  // Endpoint labels only for edges that have the data fields
+  {
+    selector: 'edge[sourceEndpoint]',
+    style: {
+      'source-label': 'data(sourceEndpoint)'
+    }
+  },
+  {
+    selector: 'edge[targetEndpoint]',
+    style: {
+      'target-label': 'data(targetEndpoint)'
+    }
+  },
   {
     selector: 'edge:selected',
     style: {
@@ -142,7 +160,7 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
   },
   // Self-loop (hairpin) edge styling
   {
-    selector: 'edge[source = target]',
+    selector: 'edge:loop',
     style: {
       'loop-direction': '0deg',
       'loop-sweep': '90deg',
@@ -198,9 +216,7 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
       shape: 'rectangle',
       width: '14',
       height: '14',
-      'font-size': '0.5em',
-      content: DATA_NAME,
-      label: DATA_NAME
+      'font-size': '0.5em'
     }
   },
   // Link label highlight styles for 'on-select' mode
@@ -232,7 +248,7 @@ export const cytoscapeStylesBase: cytoscape.StylesheetStyle[] = [
  * Complete Cytoscape stylesheet with role-based styles inserted
  */
 export const cytoscapeStyles: cytoscape.StylesheetStyle[] = [
-  ...cytoscapeStylesBase.slice(0, 4), // core + node styles
+  ...cytoscapeStylesBase.slice(0, 3), // node, node[name], node:selected
   ...generateRoleStyles(),
-  ...cytoscapeStylesBase.slice(4) // edge styles and rest
+  ...cytoscapeStylesBase.slice(3) // edge styles and rest
 ];
