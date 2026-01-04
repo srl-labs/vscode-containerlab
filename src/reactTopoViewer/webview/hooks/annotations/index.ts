@@ -72,5 +72,5 @@ export type { UseCombinedAnnotationShortcutsReturn, GroupClipboardOptions } from
 export { useAnnotationEffects } from './useAnnotationEffects';
 export { useAnnotationReparent } from './useAnnotationReparent';
 export type { UseAnnotationReparentOptions, UseAnnotationReparentReturn } from './useAnnotationReparent';
-export { generateAnnotationId, useDebouncedSave } from './sharedAnnotationHelpers';
-export type { UseDebouncedSaveReturn } from './sharedAnnotationHelpers';
+export { generateAnnotationId, useDebouncedSave, useDebouncedHover } from './sharedAnnotationHelpers';
+export type { UseDebouncedSaveReturn, UseDebouncedHoverReturn } from './sharedAnnotationHelpers';

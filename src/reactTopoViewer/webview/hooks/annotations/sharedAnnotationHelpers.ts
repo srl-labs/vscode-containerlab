@@ -3,7 +3,7 @@
  * Consolidates: pure helper functions + React hook factories for annotation state management
  */
 import type React from 'react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { log } from '../../utils/logger';
 
@@ -331,4 +331,49 @@ export function useDebouncedSave<T>(
   useEffect(() => clear, [clear]);
 
   return { saveDebounced, saveImmediate };
+}
+
+// ============================================================================
+// Debounced Hover Hook
+// ============================================================================
+
+export interface UseDebouncedHoverReturn {
+  isHovered: boolean;
+  hoverHandlers: {
+    onMouseEnter: () => void;
+    onMouseLeave: () => void;
+  };
+}
+
+/**
+ * Hook for debounced hover state management.
+ * Prevents flickering when moving between adjacent elements (e.g., frame and handles).
+ * @param debounceMs - Delay before setting hover to false (default: 10ms)
+ */
+export function useDebouncedHover(debounceMs: number = 10): UseDebouncedHoverReturn {
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<number | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    if (hoverTimeoutRef.current !== null) {
+      window.clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    hoverTimeoutRef.current = window.setTimeout(() => {
+      setIsHovered(false);
+      hoverTimeoutRef.current = null;
+    }, debounceMs);
+  }, [debounceMs]);
+
+  return {
+    isHovered,
+    hoverHandlers: {
+      onMouseEnter: handleMouseEnter,
+      onMouseLeave: handleMouseLeave
+    }
+  };
 }

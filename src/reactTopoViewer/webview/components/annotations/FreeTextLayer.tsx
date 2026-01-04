@@ -14,7 +14,8 @@ import {
   useAnnotationClickHandlers,
   useLayerClickHandler,
   useAnnotationBoxSelection,
-  useAnnotationReparent
+  useAnnotationReparent,
+  useDebouncedHover
 } from '../../hooks/annotations';
 import { renderMarkdown } from '../../utils/markdownRenderer';
 import type { MapLibreState } from '../../hooks/canvas/maplibreUtils';
@@ -340,26 +341,9 @@ const TextItem: React.FC<TextItemProps> = ({
   onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange,
   onSelect, onToggleSelect, onDragStart, onDragEnd, onShowContextMenu
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const hoverTimeoutRef = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { isHovered, hoverHandlers } = useDebouncedHover();
   const effectivelyLocked = calculateEffectivelyLocked(isLocked, isGeoMode, geoMode);
-
-  // Debounced hover handlers to prevent flickering when moving between content and handles
-  const handleMouseEnter = useCallback(() => {
-    if (hoverTimeoutRef.current !== null) {
-      window.clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    setIsHovered(true);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    hoverTimeoutRef.current = window.setTimeout(() => {
-      setIsHovered(false);
-      hoverTimeoutRef.current = null;
-    }, 10);
-  }, []);
 
   // Drag handling
   const { isDragging, currentPosition, handleMouseDown } = useTextDrag({
@@ -472,12 +456,12 @@ const TextItem: React.FC<TextItemProps> = ({
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClickWrapper}
         onContextMenu={handleContextMenu}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        onMouseEnter={hoverHandlers.onMouseEnter}
+        onMouseLeave={hoverHandlers.onMouseLeave}
         title={effectivelyLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
       >
         <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
-        {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} />}
+        {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} onMouseEnter={hoverHandlers.onMouseEnter} onMouseLeave={hoverHandlers.onMouseLeave} />}
       </div>
     </div>
   );
