@@ -13,7 +13,7 @@ export interface Position {
 }
 
 const MIN_VISIBLE_HEIGHT = 50;
-const MIN_VISIBLE_WIDTH = 100;
+const MIN_VISIBLE_WIDTH = 20;
 const DEFAULT_TOP_MARGIN = 72; // Navbar height
 const DEFAULT_PANEL_HEIGHT = 400; // Estimated panel height for centering
 
