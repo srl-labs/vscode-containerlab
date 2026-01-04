@@ -89,7 +89,8 @@ const LineEndHandle: React.FC<{ position: { x: number; y: number }; onMouseDown:
       borderRadius: '2px',
       transform: CENTER_TRANSLATE,
       boxShadow: HANDLE_BOX_SHADOW,
-      cursor: 'nwse-resize'
+      cursor: 'nwse-resize',
+      pointerEvents: 'auto'
     }}
     title="Drag to resize line"
   />
@@ -235,7 +236,25 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   onReparentDragEnd
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Debounced hover handlers to prevent flickering when moving between frame and handles
+  const handleMouseEnter = useCallback(() => {
+    if (hoverTimeoutRef.current !== null) {
+      window.clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    // Small delay before setting hover false to allow mouseEnter on adjacent element
+    hoverTimeoutRef.current = window.setTimeout(() => {
+      setIsHovered(false);
+      hoverTimeoutRef.current = null;
+    }, 10);
+  }, []);
 
   const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === 'pan');
   const modelPosition = getModelPosition(annotation);
@@ -303,7 +322,11 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   const finalX = groupDragOffset ? renderedPos.x + groupDragOffset.dx : renderedPos.x;
   const finalY = groupDragOffset ? renderedPos.y + groupDragOffset.dy : renderedPos.y;
 
-  // Use same transform approach as background layer for alignment
+  // Border edge width for interaction (like groups)
+  const borderDragWidth = 12;
+
+  // Wrapper has pointerEvents: 'none' - clicks pass through to nodes
+  // Only border edges and handles have pointerEvents: 'auto'
   const wrapperStyle: React.CSSProperties = {
     position: 'absolute',
     left: finalX,
@@ -313,8 +336,29 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
     width: `${width}px`,
     height: `${height}px`,
     zIndex: annotation.zIndex ?? 10,
-    cursor: getCursorStyle(effectivelyLocked, isDragging),
-    pointerEvents: 'auto'
+    pointerEvents: 'none'
+  };
+
+  const cursor = getCursorStyle(effectivelyLocked, isDragging);
+
+  // Frame style using clip-path to create a hollow rectangle (only edges are interactive)
+  const frameStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: effectivelyLocked ? 'none' : 'auto',
+    cursor,
+    // Clip to create a frame: outer rectangle minus inner rectangle
+    clipPath: `polygon(
+      0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+      ${borderDragWidth}px ${borderDragWidth}px,
+      ${borderDragWidth}px calc(100% - ${borderDragWidth}px),
+      calc(100% - ${borderDragWidth}px) calc(100% - ${borderDragWidth}px),
+      calc(100% - ${borderDragWidth}px) ${borderDragWidth}px,
+      ${borderDragWidth}px ${borderDragWidth}px
+    )`
   };
 
   return (
@@ -322,22 +366,26 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
       <div
         ref={contentRef}
         style={wrapperStyle}
-        onClick={handleClick}
-        onMouseDown={handleMouseDown}
-        onContextMenu={handleContextMenu}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        title={effectivelyLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
       >
+        {/* Single frame element for hover/interaction - no flicker between edges */}
+        <div
+          style={frameStyle}
+          onClick={handleClick}
+          onMouseDown={handleMouseDown}
+          onContextMenu={handleContextMenu}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          title={effectivelyLocked ? undefined : UNLOCKED_ANNOTATION_TOOLTIP}
+        />
         {showHandles && (
           isLine ? (
             <>
               <SelectionOutline />
-              <RotationHandle onMouseDown={handleRotationMouseDown} />
+              <RotationHandle onMouseDown={handleRotationMouseDown} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} />
               {endHandlePos && <LineEndHandle position={endHandlePos} onMouseDown={handleLineResizeMouseDown} />}
             </>
           ) : (
-            <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />
+            <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} />
           )
         )}
       </div>

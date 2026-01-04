@@ -29,6 +29,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({ position, onMouseDow
       border: HANDLE_BORDER,
       borderRadius: '2px',
       boxShadow: HANDLE_BOX_SHADOW,
+      pointerEvents: 'auto',
       ...CORNER_STYLES[position]
     }}
     title="Drag to resize (Shift for aspect ratio)"

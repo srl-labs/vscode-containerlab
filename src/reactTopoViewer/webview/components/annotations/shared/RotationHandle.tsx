@@ -12,21 +12,28 @@ import {
 
 interface RotationHandleProps {
   onMouseDown: (e: React.MouseEvent) => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
-export const RotationHandle: React.FC<RotationHandleProps> = ({ onMouseDown }) => (
+export const RotationHandle: React.FC<RotationHandleProps> = ({ onMouseDown, onMouseEnter, onMouseLeave }) => (
   <>
-    {/* Invisible hitbox for easier grabbing */}
+    {/* Invisible hitbox for easier grabbing - only covers handle area, not extending down */}
     <div
+      onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={{
         position: 'absolute',
         top: `-${ROTATION_HANDLE_OFFSET}px`,
         left: '50%',
         width: '16px',
-        height: `${ROTATION_HANDLE_OFFSET + 4}px`,
+        height: `${HANDLE_SIZE + 6}px`,
         transform: 'translateX(-50%)',
-        pointerEvents: 'auto'
+        pointerEvents: 'auto',
+        cursor: 'grab'
       }}
+      title="Drag to rotate (Shift for 15° snap)"
     />
     {/* Connecting line */}
     <div
@@ -44,6 +51,8 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({ onMouseDown }) =
     {/* Handle circle */}
     <div
       onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={{
         position: 'absolute',
         top: `-${ROTATION_HANDLE_OFFSET}px`,
@@ -55,7 +64,8 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({ onMouseDown }) =
         borderRadius: '50%',
         transform: CENTER_TRANSLATE,
         cursor: 'grab',
-        boxShadow: HANDLE_BOX_SHADOW
+        boxShadow: HANDLE_BOX_SHADOW,
+        pointerEvents: 'auto'
       }}
       title="Drag to rotate (Shift for 15° snap)"
     />

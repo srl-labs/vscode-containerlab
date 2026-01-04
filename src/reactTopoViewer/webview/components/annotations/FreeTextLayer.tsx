@@ -157,6 +157,11 @@ function useTextDrag(options: UseDragOptions) {
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isLocked || e.button !== 0) return;
+    // Allow link clicks to pass through
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A' || target.closest('a')) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
@@ -336,8 +341,25 @@ const TextItem: React.FC<TextItemProps> = ({
   onSelect, onToggleSelect, onDragStart, onDragEnd, onShowContextMenu
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const effectivelyLocked = calculateEffectivelyLocked(isLocked, isGeoMode, geoMode);
+
+  // Debounced hover handlers to prevent flickering when moving between content and handles
+  const handleMouseEnter = useCallback(() => {
+    if (hoverTimeoutRef.current !== null) {
+      window.clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    hoverTimeoutRef.current = window.setTimeout(() => {
+      setIsHovered(false);
+      hoverTimeoutRef.current = null;
+    }, 10);
+  }, []);
 
   // Drag handling
   const { isDragging, currentPosition, handleMouseDown } = useTextDrag({
@@ -368,8 +390,25 @@ const TextItem: React.FC<TextItemProps> = ({
   });
 
   // Click handlers - use onShowContextMenu to render context menu outside transformed layer
-  const { handleClick, handleDoubleClick } =
+  const { handleClick: baseHandleClick, handleDoubleClick } =
     useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, onDoubleClick, onDelete);
+
+  // Wrap click/doubleClick handlers to allow link clicks to pass through
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A' || target.closest('a')) {
+      return; // Don't intercept link clicks
+    }
+    baseHandleClick(e);
+  }, [baseHandleClick]);
+
+  const handleDoubleClickWrapper = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A' || target.closest('a')) {
+      return; // Don't intercept link double-clicks
+    }
+    handleDoubleClick(e);
+  }, [handleDoubleClick]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -405,6 +444,7 @@ const TextItem: React.FC<TextItemProps> = ({
   const markdownStyle = useMemo(() => getMarkdownContentStyle(annotation), [annotation]);
 
   // Wrapper uses MODEL coordinates - layer transform handles screen conversion
+  // Wrapper has pointerEvents: 'none', only the text content itself is interactive
   const wrapperStyle: React.CSSProperties = {
     position: 'absolute',
     left: finalX,
@@ -412,26 +452,32 @@ const TextItem: React.FC<TextItemProps> = ({
     transform: `${CENTER_TRANSLATE} rotate(${annotation.rotation || 0}deg)`,
     transformOrigin: 'center center',
     zIndex: annotation.zIndex ?? 11,
-    pointerEvents: 'auto',
+    pointerEvents: 'none',
     padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
     margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`
+  };
+
+  // Content style needs pointerEvents: 'auto' to be interactive
+  const interactiveContentStyle: React.CSSProperties = {
+    ...contentStyle,
+    pointerEvents: 'auto'
   };
 
   return (
     <div style={wrapperStyle}>
       <div
         ref={contentRef}
-        style={contentStyle}
+        style={interactiveContentStyle}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
-        onDoubleClick={handleDoubleClick}
+        onDoubleClick={handleDoubleClickWrapper}
         onContextMenu={handleContextMenu}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         title={effectivelyLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
       >
         <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
-        {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} />}
+        {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} />}
       </div>
     </div>
   );

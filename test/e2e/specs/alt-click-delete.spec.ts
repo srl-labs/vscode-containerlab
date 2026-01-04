@@ -306,6 +306,11 @@ test.describe('Alt+Click Delete', () => {
       // Get the position of the shape from annotations file
       const shapeAnnotation = beforeAnnotations.freeShapeAnnotations[0];
 
+      // Click on the border edge of the shape (shapes have pointerEvents only on 12px border frame)
+      // Use left edge: position.x - width/2 + 6 (middle of border)
+      const shapeLeftEdgeX = shapeAnnotation.position.x - (shapeAnnotation.width || 100) / 2 + 6;
+      const shapeCenterY = shapeAnnotation.position.y;
+
       // Convert model position to page coordinates for clicking
       const pageCoords = await page.evaluate(({ modelX, modelY }) => {
         const dev = (window as any).__DEV__;
@@ -319,7 +324,7 @@ test.describe('Alt+Click Delete', () => {
           x: rect.left + modelX * zoom + pan.x,
           y: rect.top + modelY * zoom + pan.y
         };
-      }, { modelX: shapeAnnotation.position.x, modelY: shapeAnnotation.position.y });
+      }, { modelX: shapeLeftEdgeX, modelY: shapeCenterY });
 
       // Alt+Click on the shape
       await altClick(page, pageCoords.x, pageCoords.y);
