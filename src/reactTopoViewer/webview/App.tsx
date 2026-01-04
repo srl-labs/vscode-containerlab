@@ -147,6 +147,21 @@ const AppContent: React.FC<{
     shapeAnnotations: annotations.shapeAnnotations,
     groups: annotations.groups
   });
+
+  // Fit viewport to include annotations on initial load
+  const initialFitDoneRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!cyInstance || initialFitDoneRef.current) return;
+
+    // Check if initial layout is done
+    const layoutDone = cyInstance.scratch('initialLayoutDone') as boolean | undefined;
+    if (!layoutDone) return;
+
+    // Do the fit with annotations
+    handleZoomToFit();
+    initialFitDoneRef.current = true;
+  }, [cyInstance, handleZoomToFit]);
+
   const navbarCommands = useNavbarCommands();
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, editNetwork, removeNodeAndEdges, removeEdge });
   const floatingPanelCommands = useFloatingPanelCommands();

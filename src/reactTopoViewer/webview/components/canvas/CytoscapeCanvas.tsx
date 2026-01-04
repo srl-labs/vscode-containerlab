@@ -11,6 +11,7 @@ import type { CustomIconInfo } from '../../../shared/types/icons';
 import { useTopoViewerActions, useTopoViewerState } from '../../context/TopoViewerContext';
 import { useElementsUpdate } from '../../hooks/canvas';
 import { log } from '../../utils/logger';
+import { fitViewportToAll } from '../../utils/fitViewport';
 
 import {
   ensureColaRegistered,
@@ -152,7 +153,7 @@ function useCytoscapeInitializer(
         log.info('[CytoscapeCanvas] Running COSE layout for nodes without positions');
         cy.one('layoutstop', () => {
           cy.resize();
-          cy.fit(undefined, 50);
+          fitViewportToAll(cy, [], [], []);
           cy.scratch('initialLayoutDone', true);
           // Sync positions back to React state
           if (onLayoutComplete) {
@@ -161,7 +162,7 @@ function useCytoscapeInitializer(
         });
         cy.layout(getLayoutOptions('cose')).run();
       } else {
-        cy.fit(undefined, 50);
+        fitViewportToAll(cy, [], [], []);
         cy.scratch('initialLayoutDone', true);
       }
     });

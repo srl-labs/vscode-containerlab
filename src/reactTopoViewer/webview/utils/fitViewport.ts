@@ -26,17 +26,19 @@ const MAX_ZOOM = 3;
  * Get the Cytoscape extent as a BoundingBox, or null if no elements.
  */
 function getCytoscapeExtent(cy: Core): BoundingBox | null {
-  const elements = cy.elements();
-  if (elements.length === 0) {
+  const nodes = cy.nodes();
+  if (nodes.length === 0) {
     return null;
   }
 
-  const extent = cy.extent();
+  // Use nodes().boundingBox() for stable bounds matching native cy.fit() behavior
+  // Edges are excluded since they don't add meaningful extent (they connect nodes)
+  const bb = nodes.boundingBox();
   return {
-    x1: extent.x1,
-    y1: extent.y1,
-    x2: extent.x2,
-    y2: extent.y2
+    x1: bb.x1,
+    y1: bb.y1,
+    x2: bb.x2,
+    y2: bb.y2
   };
 }
 
