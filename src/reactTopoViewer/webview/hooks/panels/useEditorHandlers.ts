@@ -333,6 +333,28 @@ export function useNodeEditorHandlers(
 // useLinkEditorHandlers
 // ============================================================================
 
+/** Dependencies for persisting link editor changes */
+interface LinkPersistDeps {
+  cyRef?: React.RefObject<CytoscapeCanvasRef | null>;
+  edgeAnnotationHandlers?: EdgeAnnotationHandlers;
+}
+
+/**
+ * Persist link editor changes to the service and update canvas.
+ * Shared by both Save and Apply operations.
+ */
+function persistLinkChanges(data: LinkEditorData, deps: LinkPersistDeps): void {
+  const { cyRef, edgeAnnotationHandlers } = deps;
+  const saveData = convertEditorDataToLinkSaveData(data);
+  void editLinkService(saveData);
+  persistEdgeLabelOffset(data, edgeAnnotationHandlers);
+  // Update Cytoscape edge data so re-opening editor shows new values
+  const cy = cyRef?.current?.getCy();
+  if (cy) {
+    updateCytoscapeEdgeData(cy, data.id, data);
+  }
+}
+
 /**
  * Hook for link editor handlers with undo/redo support
  */
@@ -358,35 +380,27 @@ export function useLinkEditorHandlers(
     editEdge(null);
   }, [editEdge]);
 
+  // Memoize dependencies for persistLinkChanges
+  const persistDeps = React.useMemo<LinkPersistDeps>(
+    () => ({ cyRef, edgeAnnotationHandlers }),
+    [cyRef, edgeAnnotationHandlers]
+  );
+
   const handleSave = React.useCallback((data: LinkEditorData) => {
     // Only record if there are actual changes (checkChanges = true)
     recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
-    const saveData = convertEditorDataToLinkSaveData(data);
-    void editLinkService(saveData);
-    persistEdgeLabelOffset(data, edgeAnnotationHandlers);
-    // Update Cytoscape edge data so re-opening editor shows new values
-    const cy = cyRef?.current?.getCy();
-    if (cy) {
-      updateCytoscapeEdgeData(cy, data.id, data);
-    }
+    persistLinkChanges(data, persistDeps);
     initialDataRef.current = null;
     editEdge(null);
-  }, [editEdge, recordPropertyEdit, cyRef, edgeAnnotationHandlers]);
+  }, [editEdge, recordPropertyEdit, persistDeps]);
 
   const handleApply = React.useCallback((data: LinkEditorData) => {
     const changed = recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
     if (changed) {
       initialDataRef.current = { ...data };
     }
-    const saveData = convertEditorDataToLinkSaveData(data);
-    void editLinkService(saveData);
-    persistEdgeLabelOffset(data, edgeAnnotationHandlers);
-    // Update Cytoscape edge data so re-opening editor shows new values
-    const cy = cyRef?.current?.getCy();
-    if (cy) {
-      updateCytoscapeEdgeData(cy, data.id, data);
-    }
-  }, [recordPropertyEdit, cyRef, edgeAnnotationHandlers]);
+    persistLinkChanges(data, persistDeps);
+  }, [recordPropertyEdit, persistDeps]);
 
   return { handleClose, handleSave, handleApply };
 }

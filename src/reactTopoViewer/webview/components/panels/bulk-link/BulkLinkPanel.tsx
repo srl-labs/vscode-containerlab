@@ -65,15 +65,7 @@ const ExamplesSection: React.FC = () => (
   </div>
 );
 
-interface UseBulkLinkPanelOptions {
-  isVisible: boolean;
-  mode: 'edit' | 'view';
-  isLocked: boolean;
-  cy: CyCore | null;
-  onClose: () => void;
-  recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
-  addEdge?: (edge: CyElement) => void;
-}
+type UseBulkLinkPanelOptions = Omit<BulkLinkPanelProps, 'storageKey'>;
 
 function useBulkLinkPanel({
   isVisible,

@@ -59,9 +59,29 @@ export interface SrosComponent {
 }
 
 /**
+ * Advanced node fields shared between NodeEditorData and CustomTemplateEditorData
+ */
+export interface AdvancedNodeFields {
+  cpu?: number;
+  cpuSet?: string;
+  memory?: string;
+  shmSize?: string;
+  capAdd?: string[];
+  sysctls?: Record<string, string>;
+  devices?: string[];
+  certIssue?: boolean;
+  certKeySize?: string;
+  certValidity?: string;
+  sans?: string[];
+  healthCheck?: HealthCheckConfig;
+  imagePullPolicy?: string;
+  runtime?: string;
+}
+
+/**
  * Node editor data structure
  */
-export interface NodeEditorData {
+export interface NodeEditorData extends AdvancedNodeFields {
   id: string;
   name: string;
   /** Whether this is a custom node template (temp-custom-node or edit-custom-node) */
@@ -102,21 +122,6 @@ export interface NodeEditorData {
   ports?: string[];
   dnsServers?: string[];
   aliases?: string[];
-  // Advanced
-  cpu?: number;
-  cpuSet?: string;
-  memory?: string;
-  shmSize?: string;
-  capAdd?: string[];
-  sysctls?: Record<string, string>;
-  devices?: string[];
-  certIssue?: boolean;
-  certKeySize?: string;
-  certValidity?: string;
-  sans?: string[];
-  healthCheck?: HealthCheckConfig;
-  imagePullPolicy?: string;
-  runtime?: string;
   // Components (SROS)
   isDistributed?: boolean;
   components?: SrosComponent[];
@@ -310,7 +315,7 @@ export interface CustomNodeTemplate {
  * Includes all NodeEditorData fields so templates can have default values
  * for license, startup-config, env, binds, etc.
  */
-export interface CustomTemplateEditorData {
+export interface CustomTemplateEditorData extends AdvancedNodeFields {
   id: string;  // 'temp-custom-node' for new, 'edit-custom-node' for editing
   isCustomTemplate: true;
   customName: string;
@@ -356,22 +361,6 @@ export interface CustomTemplateEditorData {
   ports?: string[];
   dnsServers?: string[];
   aliases?: string[];
-
-  // Advanced tab fields
-  cpu?: number;
-  cpuSet?: string;
-  memory?: string;
-  shmSize?: string;
-  capAdd?: string[];
-  sysctls?: Record<string, string>;
-  devices?: string[];
-  certIssue?: boolean;
-  certKeySize?: string;
-  certValidity?: string;
-  sans?: string[];
-  healthCheck?: HealthCheckConfig;
-  imagePullPolicy?: string;
-  runtime?: string;
 
   // Components tab fields (SROS)
   isDistributed?: boolean;
