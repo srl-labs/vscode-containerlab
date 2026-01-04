@@ -302,6 +302,7 @@ function computeBackgroundStyle(annotation: FreeTextAnnotation, _renderedPos: Re
     style.width = `${annotation.width}px`;
   } else {
     style.maxWidth = '300px';
+    style.minWidth = '20px';
   }
   if (annotation.height) {
     style.height = `${annotation.height}px`;

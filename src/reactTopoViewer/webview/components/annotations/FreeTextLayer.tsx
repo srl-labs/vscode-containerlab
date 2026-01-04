@@ -232,13 +232,14 @@ function useTextRotation(options: {
 // ============================================================================
 
 function useTextResize(options: {
+  cy: CyCore;
   currentWidth: number | undefined;
   currentHeight: number | undefined;
   contentRef: React.RefObject<HTMLDivElement | null>;
   isLocked: boolean;
   onSizeChange: (width: number, height: number) => void;
 }) {
-  const { currentWidth, currentHeight, contentRef, isLocked, onSizeChange } = options;
+  const { cy, currentWidth, currentHeight, contentRef, isLocked, onSizeChange } = options;
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef<{ mouseX: number; mouseY: number; width: number; height: number } | null>(null);
 
@@ -249,8 +250,8 @@ function useTextResize(options: {
       if (!resizeStartRef.current) return;
       const dx = e.clientX - resizeStartRef.current.mouseX;
       const dy = e.clientY - resizeStartRef.current.mouseY;
-      const newWidth = Math.max(50, resizeStartRef.current.width + dx);
-      const newHeight = Math.max(30, resizeStartRef.current.height + dy);
+      const newWidth = Math.max(10, resizeStartRef.current.width + dx);
+      const newHeight = Math.max(10, resizeStartRef.current.height + dy);
       onSizeChange(Math.round(newWidth), Math.round(newHeight));
     };
 
@@ -272,13 +273,15 @@ function useTextResize(options: {
     e.preventDefault();
     e.stopPropagation();
 
+    const zoom = cy.zoom();
     const rect = contentRef.current?.getBoundingClientRect();
-    const width = currentWidth || rect?.width || 100;
-    const height = currentHeight || rect?.height || 50;
+    // Divide by zoom to convert screen-space to model-space dimensions
+    const width = currentWidth || (rect ? rect.width / zoom : 100);
+    const height = currentHeight || (rect ? rect.height / zoom : 50);
 
     resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width, height };
     setIsResizing(true);
-  }, [isLocked, currentWidth, currentHeight, contentRef]);
+  }, [isLocked, cy, currentWidth, currentHeight, contentRef]);
 
   return { isResizing, handleResizeMouseDown };
 }
@@ -356,6 +359,7 @@ const TextItem: React.FC<TextItemProps> = ({
 
   // Resize handling
   const { isResizing, handleResizeMouseDown } = useTextResize({
+    cy,
     currentWidth: annotation.width,
     currentHeight: annotation.height,
     contentRef,
@@ -545,10 +549,13 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
   };
 
   // Transformed layer - applies Cytoscape's viewport transform
+  // Large explicit dimensions prevent CSS from constraining child widths based on position
   const transformedLayerStyle: React.CSSProperties = {
     position: 'absolute',
     top: 0,
     left: 0,
+    width: '10000px',
+    height: '10000px',
     transformOrigin: '0 0',
     pointerEvents: 'none'
   };
