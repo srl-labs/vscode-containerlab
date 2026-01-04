@@ -83,6 +83,25 @@ function isDraggableNode(node: NodeSingular): boolean {
 function useLockState(cy: Core | null, isLocked: boolean): void {
   useEffect(() => {
     if (!cy) return;
+
+    // Don't lock nodes until initial layout is done
+    // Otherwise COSE layout can't move nodes
+    const layoutDone = cy.scratch('initialLayoutDone') as boolean | undefined;
+    if (!layoutDone) {
+      // Wait for layout to complete before applying lock state
+      const checkLayout = () => {
+        const done = cy.scratch('initialLayoutDone') as boolean | undefined;
+        if (done) {
+          if (isLocked) { lockNodes(cy); } else { unlockNodes(cy); }
+        } else {
+          // Check again after a short delay
+          setTimeout(checkLayout, 100);
+        }
+      };
+      checkLayout();
+      return;
+    }
+
     if (isLocked) { lockNodes(cy); } else { unlockNodes(cy); }
   }, [cy, isLocked]);
 }

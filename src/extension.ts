@@ -123,30 +123,47 @@ async function createTopoViewerTemplateFileCommand() {
     title: 'Enter containerlab topology template file name',
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
     saveLabel: 'Create Containerlab topology template file',
-    filters: { YAML: ['yaml', 'yml'] }
+    filters: { 'Containerlab YAML': ['clab.yml', 'clab.yaml'], 'YAML': ['yaml', 'yml'] }
   });
   if (!uri) {
     vscode.window.showWarningMessage('No file path selected. Operation canceled.');
     return;
   }
 
-  // Create a minimal template file
-  const baseName = path.basename(uri.fsPath);
+  // Ensure the file has .clab.yml extension
+  let filePath = uri.fsPath;
+  if (!/\.clab\.(yml|yaml)$/i.test(filePath)) {
+    // Replace .yml/.yaml with .clab.yml, or append if no extension
+    filePath = filePath.replace(/\.(yml|yaml)$/i, '') + '.clab.yml';
+  }
+
+  // Create a starter template file with example nodes
+  const baseName = path.basename(filePath);
   const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
   const template = `name: ${labName}
 
 topology:
   nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+    client1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+
+  links:
+    - endpoints: [ "srl1:e1-1", "client1:eth1" ]
 `;
-  fs.writeFileSync(uri.fsPath, template);
+  fs.writeFileSync(filePath, template);
 
   // Open the file in the editor
-  const doc = await vscode.workspace.openTextDocument(uri);
+  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
   await vscode.window.showTextDocument(doc);
 
   // Open the TopoViewer
   const node = {
-    labPath: { absolute: uri.fsPath, relative: path.basename(uri.fsPath) },
+    labPath: { absolute: filePath, relative: path.basename(filePath) },
     name: labName
   } as c.ClabLabTreeNode;
   return graphTopoViewer(node);

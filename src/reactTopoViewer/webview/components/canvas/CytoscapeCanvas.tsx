@@ -16,8 +16,11 @@ import {
   ensureColaRegistered,
   getLayoutOptions,
   hasPresetPositions,
+  nodesNeedAutoLayout,
   createCytoscapeConfig,
-  handleCytoscapeReady
+  handleCytoscapeReady,
+  collectNodePositions,
+  type NodePositions
 } from './init';
 import { setupEventHandlers, attachCustomWheelZoom } from './events';
 
@@ -104,7 +107,8 @@ function useCytoscapeInitializer(
   selectEdge: SelectCallback,
   customIcons: CustomIconInfo[],
   options?: CytoscapeInitOptions,
-  lifecycle?: { onCyReady?: (cy: Core) => void; onCyDestroyed?: () => void }
+  lifecycle?: { onCyReady?: (cy: Core) => void; onCyDestroyed?: () => void },
+  onLayoutComplete?: (positions: NodePositions) => void
 ) {
   const onCyReady = lifecycle?.onCyReady;
   const onCyDestroyed = lifecycle?.onCyDestroyed;
@@ -139,7 +143,28 @@ function useCytoscapeInitializer(
       getIsLocked: options?.getIsLocked
     });
 
-    cy.ready(() => handleCytoscapeReady(cy, usePresetLayout, customIcons));
+    cy.ready(() => {
+      handleCytoscapeReady(cy, usePresetLayout, customIcons);
+
+      // Run COSE layout if nodes don't have positions
+      const needsAutoLayout = !usePresetLayout || nodesNeedAutoLayout(cy);
+      if (needsAutoLayout) {
+        log.info('[CytoscapeCanvas] Running COSE layout for nodes without positions');
+        cy.one('layoutstop', () => {
+          cy.resize();
+          cy.fit(undefined, 50);
+          cy.scratch('initialLayoutDone', true);
+          // Sync positions back to React state
+          if (onLayoutComplete) {
+            onLayoutComplete(collectNodePositions(cy));
+          }
+        });
+        cy.layout(getLayoutOptions('cose')).run();
+      } else {
+        cy.fit(undefined, 50);
+        cy.scratch('initialLayoutDone', true);
+      }
+    });
 
     return () => {
       detachWheel();
@@ -158,7 +183,8 @@ function useCytoscapeInitializer(
     options?.getMode,
     options?.getIsLocked,
     onCyReady,
-    onCyDestroyed
+    onCyDestroyed,
+    onLayoutComplete
   ]);
 }
 
@@ -221,15 +247,16 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     // Expose methods via ref
     useImperativeHandle(ref, () => createRefMethods(cyRef), []);
 
-	    const initCytoscape = useCytoscapeInitializer(
-	      containerRef,
-	      cyRef,
-	      selectNode,
-	      selectEdge,
-	      state.customIcons,
-	      { editNode, editEdge, getMode, getIsLocked },
-	      { onCyReady, onCyDestroyed }
-	    );
+    const initCytoscape = useCytoscapeInitializer(
+      containerRef,
+      cyRef,
+      selectNode,
+      selectEdge,
+      state.customIcons,
+      { editNode, editEdge, getMode, getIsLocked },
+      { onCyReady, onCyDestroyed },
+      updateNodePositions
+    );
 
     useDelayedCytoscapeInit(
       containerRef,

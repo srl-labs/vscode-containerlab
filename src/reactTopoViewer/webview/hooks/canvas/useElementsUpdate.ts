@@ -12,6 +12,7 @@ import {
   applyStubLinkClasses,
   updateCytoscapeElements,
   hasPresetPositions,
+  nodesNeedAutoLayout,
   getLayoutOptions,
   collectNodePositions
 } from '../../components/canvas/init';
@@ -120,6 +121,15 @@ function syncNodePosition(cy: Core, nodeId: string, position: { x: number; y: nu
   const cyEl = cy.getElementById(nodeId);
   if (cyEl.empty()) return;
   const cyPos = cyEl.position();
+
+  // Don't reset from layout-generated positions back to origin
+  // This preserves COSE layout positions when React state hasn't been synced yet
+  const reactAtOrigin = Math.abs(position.x) < 1 && Math.abs(position.y) < 1;
+  const cyNotAtOrigin = Math.abs(cyPos.x) >= 1 || Math.abs(cyPos.y) >= 1;
+  if (reactAtOrigin && cyNotAtOrigin) {
+    return;
+  }
+
   if (Math.round(cyPos.x) !== Math.round(position.x) || Math.round(cyPos.y) !== Math.round(position.y)) {
     cyEl.position({ x: position.x, y: position.y });
   }
@@ -626,10 +636,21 @@ function handleAlreadyInitialized(
   if (alreadySynced) {
     // First initialization after mount - Cytoscape and React state match
     log.info(`[useElementsUpdate] Cytoscape already initialized with ${cy.nodes().length} nodes`);
-    if (!usePresetLayout) {
-      runInitialCoseLayout(cy, onInitialLayoutPositions);
+
+    // Check if layout was already handled by cy.ready() in CytoscapeCanvas
+    const layoutDone = cy.scratch('initialLayoutDone') as boolean | undefined;
+    if (layoutDone) {
+      log.info('[useElementsUpdate] Layout already done, skipping');
+      return true;
     }
-    cy.scratch('initialLayoutDone', usePresetLayout);
+
+    // Run COSE if no preset positions OR all nodes are at origin (fallback check)
+    const needsAutoLayout = !usePresetLayout || nodesNeedAutoLayout(cy);
+    if (needsAutoLayout) {
+      runInitialCoseLayout(cy, onInitialLayoutPositions);
+    } else {
+      cy.scratch('initialLayoutDone', true);
+    }
     return true; // Done, no reconcile needed
   }
 
@@ -646,16 +667,13 @@ function handleAlreadyInitialized(
 function handleFirstInit(
   cy: Core,
   elements: CyElement[],
-  usePresetLayout: boolean,
+  _usePresetLayout: boolean,
   onInitialLayoutPositions?: (positions: NodePositions) => void,
   customIcons?: CustomIconInfo[]
 ): void {
-  log.info(`[useElementsUpdate] First init: hasPresetPositions=${usePresetLayout}, elements=${elements.length}`);
-  cy.scratch('initialLayoutDone', usePresetLayout);
-  if (!usePresetLayout) {
-    setupLayoutstopListener(cy, onInitialLayoutPositions);
-  }
-  updateCytoscapeElements(cy, elements, customIcons);
+  log.info(`[useElementsUpdate] First init: hasPresetPositions=${_usePresetLayout}, elements=${elements.length}`);
+  // Pass the callback to updateCytoscapeElements so positions are synced after any auto-layout
+  updateCytoscapeElements(cy, elements, customIcons, onInitialLayoutPositions);
 }
 
 /**

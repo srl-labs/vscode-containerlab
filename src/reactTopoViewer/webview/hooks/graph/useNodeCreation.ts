@@ -8,6 +8,7 @@ import { log } from '../../utils/logger';
 import type { CyElement } from '../../../shared/types/messages';
 import type { CustomNodeTemplate } from '../../../shared/types/editors';
 import { getUniqueId } from '../../../shared/utilities/idUtils';
+import { convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
 
 interface NodeCreationOptions {
   mode: 'edit' | 'view';
@@ -105,14 +106,37 @@ function determineType(kind: string, template?: CustomNodeTemplate): string | un
 }
 
 /**
- * Extract extra template data (excluding known fields)
+ * Fields that are handled separately and should not be included in extraData.
+ * These are either top-level node properties or annotation-only fields.
+ */
+const TEMPLATE_EXCLUDED_FIELDS = new Set([
+  'name', 'kind', 'type', 'image', 'icon', 'iconColor', 'iconCornerRadius',
+  'setDefault', 'baseName', 'interfacePattern', 'oldName'
+]);
+
+/**
+ * Extract extra template data and convert to kebab-case for YAML compatibility.
+ * Template fields are stored in camelCase (e.g., autoRemove) but extraData
+ * needs kebab-case (e.g., auto-remove) for proper YAML persistence.
  */
 function extractExtraTemplate(template?: CustomNodeTemplate): Record<string, unknown> {
   if (!template) return {};
 
-  const excluded = ['name', 'kind', 'type', 'image', 'icon', 'iconColor', 'iconCornerRadius', 'setDefault', 'baseName'];
+  // Filter out excluded fields first
+  const templateData = Object.fromEntries(
+    Object.entries(template).filter(([key]) => !TEMPLATE_EXCLUDED_FIELDS.has(key))
+  );
+
+  // If no extra fields, return empty object
+  if (Object.keys(templateData).length === 0) return {};
+
+  // Convert camelCase fields to kebab-case using the same conversion as node editor
+  // This ensures fields like autoRemove -> auto-remove, startupConfig -> startup-config
+  const yamlData = convertEditorDataToYaml(templateData);
+
+  // Filter out null values (used to signal deletion) and undefined values
   return Object.fromEntries(
-    Object.entries(template).filter(([key]) => !excluded.includes(key))
+    Object.entries(yamlData).filter(([, v]) => v !== null && v !== undefined)
   );
 }
 

@@ -83,6 +83,7 @@ export function getLayoutOptions(layoutName: string): ExtendedLayoutOptions {
       name: 'cose',
       animate: true,
       animationDuration: 500,
+      randomize: true,  // Add initial jitter when nodes start at same position
       nodeRepulsion: () => 8000,
       idealEdgeLength: () => 100,
       edgeElasticity: () => 100
@@ -197,8 +198,14 @@ export function applyNodeIconColors(cy: Core, customIcons?: CustomIconInfo[]): v
 
 /**
  * Update cytoscape elements and apply layout
+ * @param onLayoutComplete - Optional callback called after layout completes with node positions
  */
-export function updateCytoscapeElements(cy: Core, elements: CyElement[], customIcons?: CustomIconInfo[]): void {
+export function updateCytoscapeElements(
+  cy: Core,
+  elements: CyElement[],
+  customIcons?: CustomIconInfo[],
+  onLayoutComplete?: (positions: NodePositions) => void
+): void {
   const usePresetLayout = hasPresetPositions(elements);
   cy.batch(() => {
     cy.elements().remove();
@@ -211,19 +218,62 @@ export function updateCytoscapeElements(cy: Core, elements: CyElement[], customI
   // Apply custom iconColor and custom icons to nodes
   applyNodeIconColors(cy, customIcons);
 
-  if (!usePresetLayout) {
+  // Run COSE layout if no preset positions OR all nodes are at origin
+  const needsAutoLayout = !usePresetLayout || nodesNeedAutoLayout(cy);
+
+  if (needsAutoLayout) {
+    cy.one('layoutstop', () => {
+      cy.scratch('initialLayoutDone', true);
+      // Sync positions back to React state so they persist
+      if (onLayoutComplete) {
+        onLayoutComplete(collectNodePositions(cy));
+      }
+    });
     cy.layout(getLayoutOptions('cose')).run();
   } else {
     cy.fit(undefined, 50);
+    cy.scratch('initialLayoutDone', true);
   }
 }
 
 /**
- * Handle cytoscape ready event
+ * Check if nodes need automatic layout (all at origin or no valid positions)
+ * This is a runtime check on actual Cytoscape nodes, not React elements
  */
-export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean, customIcons?: CustomIconInfo[]): void {
+export function nodesNeedAutoLayout(cy: Core): boolean {
+  const nodes = cy.nodes();
+  if (nodes.length === 0) return false;
+
+  // Check if all regular topology nodes are at or near the origin
+  const excludedRoles = new Set(['group', 'freeText', 'freeShape', 'cloud']);
+  let regularNodeCount = 0;
+  let nodesAtOrigin = 0;
+
+  nodes.forEach(node => {
+    const role = node.data('topoViewerRole') as string | undefined;
+    if (role && excludedRoles.has(role)) return;
+
+    regularNodeCount++;
+    const pos = node.position();
+    // Consider positions within a small epsilon of origin as "at origin"
+    if (Math.abs(pos.x) < 1 && Math.abs(pos.y) < 1) {
+      nodesAtOrigin++;
+    }
+  });
+
+  // Run auto-layout if all regular nodes are at/near origin
+  return regularNodeCount > 0 && nodesAtOrigin === regularNodeCount;
+}
+
+/**
+ * Handle cytoscape ready event - applies styles only, layout is handled by useElementsUpdate
+ */
+export function handleCytoscapeReady(
+  cy: Core,
+  _usePresetLayout: boolean,
+  customIcons?: CustomIconInfo[]
+): void {
   log.info(`[CytoscapeCanvas] Cytoscape ready - nodes: ${cy.nodes().length}, edges: ${cy.edges().length}`);
-  log.info(`[CytoscapeCanvas] Using preset layout: ${usePresetLayout}`);
 
   // Check if canvas was created
   const container = cy.container();
@@ -250,24 +300,6 @@ export function handleCytoscapeReady(cy: Core, usePresetLayout: boolean, customI
   // Apply custom iconColor and custom icons to nodes
   applyNodeIconColors(cy, customIcons);
 
-  // Run COSE layout if nodes don't have preset positions
-  if (!usePresetLayout) {
-    log.info('[handleCytoscapeReady] Running COSE layout for elements without positions');
-    cy.one('layoutstop', () => {
-      cy.resize();
-      cy.fit(undefined, 50);
-      // Mark layout as done for tests
-      cy.scratch('initialLayoutDone', true);
-    });
-    cy.layout(getLayoutOptions('cose')).run();
-  } else {
-    // For preset layouts, fit to viewport
-    log.info('[CytoscapeCanvas] Preset layout - fitting viewport');
-    cy.fit(undefined, 50);
-    const extent = cy.extent();
-    log.info(`[CytoscapeCanvas] After fit - zoom: ${cy.zoom()}, pan: (${cy.pan().x}, ${cy.pan().y})`);
-    log.info(`[CytoscapeCanvas] Extent: x1=${extent.x1}, y1=${extent.y1}, x2=${extent.x2}, y2=${extent.y2}`);
-    // Mark layout as done for tests
-    cy.scratch('initialLayoutDone', true);
-  }
+  // NOTE: Layout is NOT run here - it's handled by useElementsUpdate which has
+  // access to the callback to sync positions back to React state
 }

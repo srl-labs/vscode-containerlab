@@ -305,22 +305,75 @@ export interface CustomNodeTemplate {
 }
 
 /**
- * Custom template editor data - used when editing custom node templates
- * Has 'id' field to track whether it's a new template or editing existing
+ * Custom template editor data - used when editing custom node templates.
+ * Has 'id' field to track whether it's a new template or editing existing.
+ * Includes all NodeEditorData fields so templates can have default values
+ * for license, startup-config, env, binds, etc.
  */
 export interface CustomTemplateEditorData {
   id: string;  // 'temp-custom-node' for new, 'edit-custom-node' for editing
   isCustomTemplate: true;
   customName: string;
   kind: string;
+  /** When editing, track the original name to find and update it */
+  originalName?: string;
+
+  // Basic tab fields
   type?: string;
   image?: string;
   icon?: string;
   iconColor?: string;
   iconCornerRadius?: number;
+
+  // Custom template specific
   baseName?: string;
   interfacePattern?: string;
   isDefaultCustomNode?: boolean;
-  /** When editing, track the original name to find and update it */
-  originalName?: string;
+
+  // Configuration tab fields
+  license?: string;
+  startupConfig?: string;
+  enforceStartupConfig?: boolean;
+  suppressStartupConfig?: boolean;
+  binds?: string[];
+  env?: Record<string, string>;
+  envFiles?: string[];
+  labels?: Record<string, string>;
+
+  // Runtime tab fields
+  user?: string;
+  entrypoint?: string;
+  cmd?: string;
+  exec?: string[];
+  restartPolicy?: string;
+  autoRemove?: boolean;
+  startupDelay?: number;
+
+  // Network tab fields
+  mgmtIpv4?: string;
+  mgmtIpv6?: string;
+  networkMode?: string;
+  ports?: string[];
+  dnsServers?: string[];
+  aliases?: string[];
+
+  // Advanced tab fields
+  cpu?: number;
+  cpuSet?: string;
+  memory?: string;
+  shmSize?: string;
+  capAdd?: string[];
+  sysctls?: Record<string, string>;
+  devices?: string[];
+  certIssue?: boolean;
+  certKeySize?: string;
+  certValidity?: string;
+  sans?: string[];
+  healthCheck?: HealthCheckConfig;
+  imagePullPolicy?: string;
+  runtime?: string;
+
+  // Components tab fields (SROS)
+  isDistributed?: boolean;
+  components?: SrosComponent[];
 }
