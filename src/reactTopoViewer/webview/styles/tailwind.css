@@ -6,6 +6,7 @@
 /* Third-party CSS imports (must come before tailwindcss) */
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 @import "maplibre-gl/dist/maplibre-gl.css";
+@import "uplot/dist/uPlot.min.css";
 
 /* Custom CSS imports (must come before tailwindcss for proper processing) */
 @import "./base.css";

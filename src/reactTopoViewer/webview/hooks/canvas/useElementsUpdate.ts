@@ -218,6 +218,30 @@ function getElementsWithChangedExtraData(cy: Core, elements: CyElement[], group:
 }
 
 /**
+ * Check if any edge's classes have changed
+ * Returns the IDs of edges with changed classes (for link-up/link-down state)
+ */
+function getEdgesWithChangedClasses(cy: Core, elements: CyElement[]): string[] {
+  const changedIds: string[] = [];
+  for (const reactEl of elements) {
+    if (reactEl.group !== 'edges') continue;
+    const id = reactEl.data?.id as string;
+    if (!id) continue;
+
+    const cyEl = cy.getElementById(id);
+    if (cyEl.empty()) continue;
+
+    const reactClasses = reactEl.classes ?? '';
+    const cyClasses = cyEl.classes().join(' ');
+
+    if (reactClasses !== cyClasses) {
+      changedIds.push(id);
+    }
+  }
+  return changedIds;
+}
+
+/**
  * Find a React element by group and ID and return its extraData
  */
 function findReactExtraData(
@@ -244,6 +268,19 @@ function findReactNodeData(
   );
   if (!reactEl) return undefined;
   return reactEl.data as Record<string, unknown>;
+}
+
+/**
+ * Find a React edge element by ID and return its classes
+ */
+function findReactEdgeClasses(
+  elements: CyElement[],
+  edgeId: string
+): string | undefined {
+  const reactEl = elements.find(e =>
+    e.group === 'edges' && (e.data as Record<string, unknown>)?.id === edgeId
+  );
+  return reactEl?.classes;
 }
 
 /** Visual properties extracted from React data */
@@ -341,8 +378,8 @@ function updateNodeExtraData(
 }
 
 /**
- * Update extraData for specific edges in Cytoscape without full reload
- * This is critical for real-time traffic stats updates
+ * Update extraData and classes for specific edges in Cytoscape without full reload
+ * This is critical for real-time traffic stats updates and link state visualization
  */
 function updateEdgeExtraData(cy: Core, elements: CyElement[], edgeIds: string[]): void {
   if (edgeIds.length === 0) return;
@@ -353,10 +390,20 @@ function updateEdgeExtraData(cy: Core, elements: CyElement[], edgeIds: string[])
       if (cyEl.empty()) continue;
 
       const reactExtraData = findReactExtraData(elements, 'edges', edgeId);
-      if (reactExtraData === undefined) continue;
+      if (reactExtraData !== undefined) {
+        // Update extraData on the Cytoscape element
+        cyEl.data('extraData', reactExtraData || {});
+      }
 
-      // Update extraData on the Cytoscape element
-      cyEl.data('extraData', reactExtraData || {});
+      // Sync classes (link-up/link-down) for edge state visualization
+      const reactClasses = findReactEdgeClasses(elements, edgeId);
+      if (reactClasses !== undefined) {
+        const cyClasses = cyEl.classes().join(' ');
+        if (reactClasses !== cyClasses) {
+          // Clear existing classes and apply new ones
+          cyEl.classes(reactClasses);
+        }
+      }
     }
   });
 }
@@ -506,9 +553,13 @@ function updateSameStructure(
 ): void {
   const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
   const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
+  const edgesWithChangedClasses = getEdgesWithChangedClasses(cy, elements);
+
+  // Merge edge IDs that need updating (extraData or classes changes)
+  const edgesToUpdate = [...new Set([...edgesWithChangedExtraData, ...edgesWithChangedClasses])];
 
   updateNodeExtraData(cy, elements, nodesWithChangedExtraData, customIconMap);
-  updateEdgeExtraData(cy, elements, edgesWithChangedExtraData);
+  updateEdgeExtraData(cy, elements, edgesToUpdate);
 
   // Check visual data BEFORE updating - comparison needs pre-update state
   const needsStubClassUpdate = hasVisualDataChanged(cy, elements);
