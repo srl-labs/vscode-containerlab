@@ -66,6 +66,38 @@ jobs:
             .npm/_logs/
           retention-days: 7
 
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers and dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-${{ github.run_number }}
+          path: playwright-report/
+          retention-days: 30
+
   # Optional: Add a job to test the packaged extension
   package-validation:
     runs-on: ubuntu-latest
@@ -113,7 +145,7 @@ jobs:
   # Summary job that depends on all other jobs
   pr-check-summary:
     runs-on: ubuntu-latest
-    needs: [build-and-test, package-validation]
+    needs: [build-and-test, package-validation, e2e-tests]
     if: always()
 
     steps:
@@ -121,8 +153,9 @@ jobs:
         run: |
           echo "Build and Test: ${{ needs.build-and-test.result }}"
           echo "Package Validation: ${{ needs.package-validation.result }}"
+          echo "E2E Tests: ${{ needs.e2e-tests.result }}"
 
-          if [[ "${{ needs.build-and-test.result }}" == "success" && "${{ needs.package-validation.result }}" == "success" ]]; then
+          if [[ "${{ needs.build-and-test.result }}" == "success" && "${{ needs.package-validation.result }}" == "success" && "${{ needs.e2e-tests.result }}" == "success" ]]; then
             echo "✅ All checks passed!"
           else
             echo "❌ Some checks failed. Please review the artifacts and logs."
