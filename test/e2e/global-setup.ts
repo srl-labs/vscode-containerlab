@@ -13,6 +13,9 @@ export default async function globalSetup(): Promise<void> {
   console.log('[GlobalSetup] Resetting disk files from topologies-original...');
 
   try {
+    // Ensure topologies directory exists (it's gitignored so may not exist in CI)
+    await fs.promises.mkdir(TOPOLOGIES_DIR, { recursive: true });
+
     // First, delete all annotation files in topologies (clean slate)
     const currentFiles = await fs.promises.readdir(TOPOLOGIES_DIR);
     for (const file of currentFiles) {
