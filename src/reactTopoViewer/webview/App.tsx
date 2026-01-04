@@ -109,6 +109,33 @@ const AppContent: React.FC<{
     [state.edgeAnnotations]
   );
 
+  // Filter elements based on showDummyLinks setting
+  // When disabled, hide nodes starting with "dummy" and edges connected to them
+  const filteredElements = React.useMemo(() => {
+    if (state.showDummyLinks) {
+      return state.elements;
+    }
+
+    // Identify dummy nodes (IDs starting with "dummy")
+    const dummyNodeIds = new Set(
+      state.elements
+        .filter(el => el.group === 'nodes' && (el.data?.id as string)?.startsWith('dummy'))
+        .map(el => el.data?.id as string)
+    );
+
+    // Filter out dummy nodes and edges connected to them
+    return state.elements.filter(el => {
+      if (el.group === 'nodes') {
+        return !dummyNodeIds.has(el.data?.id as string);
+      }
+      if (el.group === 'edges') {
+        const data = el.data as { source?: string; target?: string };
+        return !dummyNodeIds.has(data.source ?? '') && !dummyNodeIds.has(data.target ?? '');
+      }
+      return true;
+    });
+  }, [state.elements, state.showDummyLinks]);
+
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge, state.elements);
   const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null, state.editorDataVersion);
@@ -406,7 +433,7 @@ const AppContent: React.FC<{
         isPartyMode={easterEgg.state.isPartyMode}
       />
       <main className="topoviewer-main">
-        <CytoscapeCanvas ref={cytoscapeRef} elements={state.elements} onCyReady={onCyReady} onCyDestroyed={onCyDestroyed} />
+        <CytoscapeCanvas ref={cytoscapeRef} elements={filteredElements} onCyReady={onCyReady} onCyDestroyed={onCyDestroyed} />
         <AnnotationLayers
           groupLayerProps={groupLayerProps}
           freeTextLayerProps={freeTextLayerProps}
