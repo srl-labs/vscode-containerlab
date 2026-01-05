@@ -176,9 +176,21 @@ function processEdgeCreation(
 
   if (!onEdgeCreated) return;
 
+  const isSelfLoop = sourceNode.same(targetNode);
+  const existingSourceEndpoint = addedEdge.data('sourceEndpoint') as string | undefined;
+  const existingTargetEndpoint = addedEdge.data('targetEndpoint') as string | undefined;
+
   // Calculate endpoints directly using node-specific interface patterns
-  const srcEndpoint = getNextEndpointForNode(cy, sourceNode, interfacePatternMapping);
-  const tgtEndpoint = getNextEndpointForNode(cy, targetNode, interfacePatternMapping);
+  let srcEndpoint = existingSourceEndpoint || getNextEndpointForNode(cy, sourceNode, interfacePatternMapping);
+  let tgtEndpoint = existingTargetEndpoint || (
+    isSelfLoop
+      ? getNextEndpointForNodeExcluding(cy, targetNode, interfacePatternMapping, [srcEndpoint])
+      : getNextEndpointForNode(cy, targetNode, interfacePatternMapping)
+  );
+
+  if (isSelfLoop && srcEndpoint && tgtEndpoint && srcEndpoint === tgtEndpoint) {
+    tgtEndpoint = getNextEndpointForNodeExcluding(cy, targetNode, interfacePatternMapping, [srcEndpoint]);
+  }
 
   // Update the edge data with endpoints
   addedEdge.data('sourceEndpoint', srcEndpoint);
