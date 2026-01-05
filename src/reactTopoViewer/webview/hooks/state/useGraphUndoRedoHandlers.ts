@@ -167,6 +167,15 @@ function cloneElement(el: CyElement): CyElement {
   };
 }
 
+function stripLinkOffsetFields(data: Record<string, unknown>): Record<string, unknown> {
+  const { endpointLabelOffset, endpointLabelOffsetEnabled, ...rest } = data;
+  return rest;
+}
+
+function isOffsetOnlyLinkChange(before: Record<string, unknown>, after: Record<string, unknown>): boolean {
+  return JSON.stringify(stripLinkOffsetFields(before)) === JSON.stringify(stripLinkOffsetFields(after));
+}
+
 function getEdgeKeyFromData(data: Record<string, unknown>): string | null {
   const source = data.source as string | undefined;
   const target = data.target as string | undefined;
@@ -773,6 +782,9 @@ function applyLinkPropertyEdit(
   after: Record<string, unknown>,
   isUndo: boolean
 ): void {
+  if (isOffsetOnlyLinkChange(before, after)) {
+    return;
+  }
   const dataToApply = isUndo ? before : after;
   // Current link endpoints are from the "other" state (the one we're NOT applying)
   const currentState = isUndo ? after : before;

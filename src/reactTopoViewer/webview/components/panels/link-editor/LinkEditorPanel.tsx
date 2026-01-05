@@ -1,7 +1,7 @@
 /**
  * Link Editor Panel - Multi-tab editor for link configuration
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import type { TabDefinition } from '../../shared/editor';
 import { EditorPanel } from '../../shared/editor';
@@ -16,6 +16,7 @@ interface LinkEditorPanelProps {
   onClose: () => void;
   onSave: (data: LinkEditorData) => void;
   onApply: (data: LinkEditorData) => void;
+  onAutoApplyOffset?: (data: LinkEditorData) => void;
 }
 
 const ALL_TABS: TabDefinition[] = [
@@ -34,13 +35,30 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
   const [activeTab, setActiveTab] = useState<LinkEditorTabId>('basic');
   const [formData, setFormData] = useState<LinkEditorData | null>(null);
   const [initialData, setInitialData] = useState<string | null>(null);
+  const initialDataRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (linkData) {
-      setFormData({ ...linkData });
-      setInitialData(JSON.stringify(linkData));
-      setActiveTab('basic');
-    }
+    initialDataRef.current = initialData;
+  }, [initialData]);
+
+  useEffect(() => {
+    if (!linkData) return;
+    setFormData(prev => {
+      const isNewLink = !prev || prev.id !== linkData.id;
+      const hasPendingChanges = prev && initialDataRef.current
+        ? JSON.stringify(prev) !== initialDataRef.current
+        : false;
+      if (isNewLink || !hasPendingChanges) {
+        const serialized = JSON.stringify(linkData);
+        initialDataRef.current = serialized;
+        setInitialData(serialized);
+        if (isNewLink) {
+          setActiveTab('basic');
+        }
+        return { ...linkData };
+      }
+      return prev;
+    });
   }, [linkData]);
 
   const handleChange = useCallback((updates: Partial<LinkEditorData>) => {
@@ -64,12 +82,31 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
     }
   }, [formData]);
 
+  const markOffsetApplied = useCallback((offset?: number, enabled?: boolean) => {
+    setInitialData(prev => {
+      if (!prev) return prev;
+      try {
+        const parsed = JSON.parse(prev) as LinkEditorData;
+        const next = {
+          ...parsed,
+          endpointLabelOffset: offset,
+          endpointLabelOffsetEnabled: enabled
+        };
+        const serialized = JSON.stringify(next);
+        initialDataRef.current = serialized;
+        return serialized;
+      } catch {
+        return prev;
+      }
+    });
+  }, []);
+
   // Check if form has changes compared to initial state
   const hasChanges = formData && initialData
     ? JSON.stringify(formData) !== initialData
     : false;
 
-  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply };
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, markOffsetApplied };
 }
 
 /**
@@ -79,10 +116,11 @@ const TabContent: React.FC<{
   activeTab: LinkEditorTabId;
   formData: LinkEditorData;
   onChange: (updates: Partial<LinkEditorData>) => void;
-}> = ({ activeTab, formData, onChange }) => {
+  onAutoApplyOffset?: (data: LinkEditorData) => void;
+}> = ({ activeTab, formData, onChange, onAutoApplyOffset }) => {
   switch (activeTab) {
     case 'basic':
-      return <BasicTab data={formData} onChange={onChange} />;
+      return <BasicTab data={formData} onChange={onChange} onAutoApplyOffset={onAutoApplyOffset} />;
     case 'extended':
       return <ExtendedTab data={formData} onChange={onChange} />;
     default:
@@ -121,9 +159,18 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
   linkData,
   onClose,
   onSave,
-  onApply
+  onApply,
+  onAutoApplyOffset
 }) => {
-  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply } = useLinkEditorForm(linkData);
+  const {
+    activeTab,
+    setActiveTab,
+    formData,
+    handleChange,
+    hasChanges,
+    resetAfterApply,
+    markOffsetApplied
+  } = useLinkEditorForm(linkData);
 
   const validationErrors = useMemo(() => {
     if (!formData) return [];
@@ -142,6 +189,12 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
       onSave(formData);
     }
   }, [formData, validationErrors, onSave]);
+
+  const handleAutoApplyOffset = useCallback((nextData: LinkEditorData) => {
+    if (!onAutoApplyOffset) return;
+    onAutoApplyOffset(nextData);
+    markOffsetApplied(nextData.endpointLabelOffset, nextData.endpointLabelOffsetEnabled);
+  }, [onAutoApplyOffset, markOffsetApplied]);
 
   if (!formData) return null;
 
@@ -175,6 +228,7 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
         activeTab={effectiveActiveTab}
         formData={formData}
         onChange={handleChange}
+        onAutoApplyOffset={handleAutoApplyOffset}
       />
     </EditorPanel>
   );

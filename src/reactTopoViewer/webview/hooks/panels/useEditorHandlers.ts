@@ -21,7 +21,7 @@ import {
   getAnnotationsIO,
   getTopologyIO
 } from '../../services';
-import { upsertEdgeLabelOffsetAnnotation } from '../../utils/edgeAnnotations';
+import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from '../../utils/edgeAnnotations';
 import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
 import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
 
@@ -336,6 +336,8 @@ export function useNodeEditorHandlers(
 // useLinkEditorHandlers
 // ============================================================================
 
+const EDGE_OFFSET_SAVE_DEBOUNCE_MS = 300;
+
 /** Dependencies for persisting link editor changes */
 interface LinkPersistDeps {
   cyRef?: React.RefObject<CytoscapeCanvasRef | null>;
@@ -363,6 +365,26 @@ function enableLinkEndpointOffset(data: LinkEditorData): LinkEditorData {
   return { ...data, endpointLabelOffsetEnabled: true };
 }
 
+function stripLinkOffsetFields(data: LinkEditorData): Omit<LinkEditorData, 'endpointLabelOffset' | 'endpointLabelOffsetEnabled'> {
+  // Remove offset fields so we can detect offset-only edits.
+  const { endpointLabelOffset, endpointLabelOffsetEnabled, ...rest } = data;
+  return rest;
+}
+
+function isOffsetOnlyChange(before: LinkEditorData | null, after: LinkEditorData): boolean {
+  if (!before) return false;
+  return JSON.stringify(stripLinkOffsetFields(before)) === JSON.stringify(stripLinkOffsetFields(after));
+}
+
+function mergeOffsetBaseline(current: LinkEditorData | null, next: LinkEditorData): LinkEditorData | null {
+  if (!current) return current;
+  return {
+    ...current,
+    endpointLabelOffset: next.endpointLabelOffset,
+    endpointLabelOffsetEnabled: next.endpointLabelOffsetEnabled
+  };
+}
+
 /**
  * Hook for link editor handlers with undo/redo support
  */
@@ -374,6 +396,10 @@ export function useLinkEditorHandlers(
   edgeAnnotationHandlers?: EdgeAnnotationHandlers
 ) {
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
+  const edgeAnnotationSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingEdgeAnnotationsRef = React.useRef<EdgeAnnotation[] | null>(null);
+  const offsetEditSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingOffsetEditRef = React.useRef<{ before: LinkEditorData; after: LinkEditorData } | null>(null);
 
   React.useEffect(() => {
     if (editingLinkData) {
@@ -382,6 +408,83 @@ export function useLinkEditorHandlers(
       initialDataRef.current = null;
     }
   }, [editingLinkData?.id]);
+
+  const clearEdgeAnnotationSave = React.useCallback(() => {
+    if (!edgeAnnotationSaveRef.current) return;
+    clearTimeout(edgeAnnotationSaveRef.current);
+    edgeAnnotationSaveRef.current = null;
+  }, []);
+
+  const clearOffsetEditSave = React.useCallback(() => {
+    if (!offsetEditSaveRef.current) return;
+    clearTimeout(offsetEditSaveRef.current);
+    offsetEditSaveRef.current = null;
+  }, []);
+
+  const resolveOffsetBaseline = React.useCallback((before: LinkEditorData) => {
+    if (!edgeAnnotationHandlers) return before;
+    const existing = findEdgeAnnotation(edgeAnnotationHandlers.edgeAnnotations, before);
+    const hadOverride = existing
+      ? (existing.endpointLabelOffsetEnabled ?? existing.endpointLabelOffset !== undefined)
+      : false;
+    if (before.endpointLabelOffsetEnabled === hadOverride) return before;
+    return { ...before, endpointLabelOffsetEnabled: hadOverride };
+  }, [edgeAnnotationHandlers]);
+
+  const flushPendingOffsetEdit = React.useCallback(() => {
+    clearOffsetEditSave();
+    const pending = pendingOffsetEditRef.current;
+    pendingOffsetEditRef.current = null;
+    if (!pending) return false;
+    recordEdit('link', pending.before, pending.after, recordPropertyEdit, true);
+    return true;
+  }, [clearOffsetEditSave, recordPropertyEdit]);
+
+  const queueOffsetEdit = React.useCallback((before: LinkEditorData | null, after: LinkEditorData) => {
+    if (!before) return;
+    const baseline = pendingOffsetEditRef.current?.before ?? resolveOffsetBaseline(before);
+    pendingOffsetEditRef.current = { before: baseline, after };
+    clearOffsetEditSave();
+    offsetEditSaveRef.current = setTimeout(() => {
+      flushPendingOffsetEdit();
+    }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
+  }, [clearOffsetEditSave, flushPendingOffsetEdit, resolveOffsetBaseline]);
+
+  const saveEdgeAnnotationsImmediate = React.useCallback((annotations: EdgeAnnotation[]) => {
+    clearEdgeAnnotationSave();
+    pendingEdgeAnnotationsRef.current = null;
+    void saveEdgeAnnotations(annotations);
+  }, [clearEdgeAnnotationSave]);
+
+  const saveEdgeAnnotationsDebounced = React.useCallback((annotations: EdgeAnnotation[]) => {
+    pendingEdgeAnnotationsRef.current = annotations;
+    clearEdgeAnnotationSave();
+    edgeAnnotationSaveRef.current = setTimeout(() => {
+      const pending = pendingEdgeAnnotationsRef.current;
+      pendingEdgeAnnotationsRef.current = null;
+      edgeAnnotationSaveRef.current = null;
+      if (!pending) return;
+      void saveEdgeAnnotations(pending);
+    }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
+  }, [clearEdgeAnnotationSave]);
+
+  React.useEffect(() => () => {
+    clearEdgeAnnotationSave();
+    pendingEdgeAnnotationsRef.current = null;
+    clearOffsetEditSave();
+    pendingOffsetEditRef.current = null;
+  }, [clearEdgeAnnotationSave, clearOffsetEditSave]);
+
+  const applyOffsetAnnotations = React.useCallback((
+    data: LinkEditorData,
+    saveAnnotations: (annotations: EdgeAnnotation[]) => void
+  ) => {
+    if (!edgeAnnotationHandlers) return;
+    const nextAnnotations = upsertEdgeLabelOffsetAnnotation(edgeAnnotationHandlers.edgeAnnotations, data);
+    if (!nextAnnotations) return;
+    edgeAnnotationHandlers.setEdgeAnnotations(nextAnnotations);
+    saveAnnotations(nextAnnotations);
+  }, [edgeAnnotationHandlers]);
 
   const handleClose = React.useCallback(() => {
     initialDataRef.current = null;
@@ -395,24 +498,59 @@ export function useLinkEditorHandlers(
   );
 
   const handleSave = React.useCallback((data: LinkEditorData) => {
+    clearEdgeAnnotationSave();
+    const offsetFlushed = flushPendingOffsetEdit();
     const normalized = enableLinkEndpointOffset(data);
+    if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
+      if (!offsetFlushed) {
+        recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
+      }
+      applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
+      initialDataRef.current = null;
+      editEdge(null);
+      return;
+    }
     // Only record if there are actual changes (checkChanges = true)
     recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
     persistLinkChanges(normalized, persistDeps);
     initialDataRef.current = null;
     editEdge(null);
-  }, [editEdge, recordPropertyEdit, persistDeps]);
+  }, [applyOffsetAnnotations, clearEdgeAnnotationSave, editEdge, flushPendingOffsetEdit, recordPropertyEdit, saveEdgeAnnotationsImmediate, persistDeps]);
 
   const handleApply = React.useCallback((data: LinkEditorData) => {
+    clearEdgeAnnotationSave();
+    const offsetFlushed = flushPendingOffsetEdit();
     const normalized = enableLinkEndpointOffset(data);
+    if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
+      if (!offsetFlushed) {
+        const changed = recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
+        if (changed) {
+          initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
+        }
+      }
+      applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
+      return;
+    }
     const changed = recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
     if (changed) {
       initialDataRef.current = { ...normalized };
     }
     persistLinkChanges(normalized, persistDeps);
-  }, [recordPropertyEdit, persistDeps]);
+  }, [applyOffsetAnnotations, clearEdgeAnnotationSave, flushPendingOffsetEdit, recordPropertyEdit, saveEdgeAnnotationsImmediate, persistDeps]);
 
-  return { handleClose, handleSave, handleApply };
+  const handleAutoApplyOffset = React.useCallback((data: LinkEditorData) => {
+    if (!edgeAnnotationHandlers) return;
+    const normalized = enableLinkEndpointOffset(data);
+    const hasOffsetChange = !initialDataRef.current ||
+      normalized.endpointLabelOffset !== initialDataRef.current.endpointLabelOffset ||
+      normalized.endpointLabelOffsetEnabled !== initialDataRef.current.endpointLabelOffsetEnabled;
+    if (!hasOffsetChange) return;
+    applyOffsetAnnotations(normalized, saveEdgeAnnotationsDebounced);
+    queueOffsetEdit(initialDataRef.current, normalized);
+    initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
+  }, [applyOffsetAnnotations, edgeAnnotationHandlers, queueOffsetEdit, saveEdgeAnnotationsDebounced]);
+
+  return { handleClose, handleSave, handleApply, handleAutoApplyOffset };
 }
 
 // ============================================================================

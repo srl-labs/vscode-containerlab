@@ -12,8 +12,7 @@ const SEL_LINK_LABELS_MENU = `.navbar-menu:has-text("${ENDPOINT_LABEL_MENU_TEXT}
 const SEL_ENDPOINT_TOGGLE = `${SEL_LINK_LABELS_MENU} .navbar-menu-option:has-text("${ENDPOINT_LABEL_MENU_TEXT}")`;
 const SEL_ENDPOINT_SLIDER = `${SEL_LINK_LABELS_MENU} input[aria-label="Endpoint label offset"]`;
 const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
-const SEL_PANEL_APPLY = '[data-testid="panel-apply-btn"]';
-const SEL_LINK_OFFSET_OVERRIDE = '#link-endpoint-offset-override';
+const SEL_LINK_OFFSET_SLIDER = '#link-endpoint-offset';
 
 async function openLinkLabelsMenu(page: Page): Promise<Locator> {
   await page.locator(SEL_LINK_LABELS_BTN).click();
@@ -121,30 +120,46 @@ test.describe('Endpoint Label Offset', () => {
     const edgeId = edgeIds[0];
 
     const panel = await openLinkEditorForEdge(page, edgeId);
-    await panel.locator(SEL_LINK_OFFSET_OVERRIDE).check();
-    await panel.locator(SEL_PANEL_APPLY).click();
+    const slider = panel.locator(SEL_LINK_OFFSET_SLIDER);
+    const initialValue = Number(await slider.inputValue());
+    const maxValue = Number(await slider.getAttribute('max') ?? '60');
+    const minValue = Number(await slider.getAttribute('min') ?? '0');
+    const nextValue = initialValue + 7 <= maxValue ? initialValue + 7 : Math.max(minValue, initialValue - 7);
 
-    const getOffsetEnabled = async () => {
+    await slider.evaluate((el, value) => {
+      const input = el as HTMLInputElement;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, String(value));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, nextValue);
+
+    await expect(slider).toHaveValue(String(nextValue));
+
+    const getOffsetState = async () => {
       const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
       const entry = annotations.edgeAnnotations?.find((edge) => edge.id === edgeId);
-      return entry?.endpointLabelOffsetEnabled ?? false;
+      return {
+        enabled: entry?.endpointLabelOffsetEnabled ?? false,
+        offset: entry?.endpointLabelOffset
+      };
     };
 
-    await expect.poll(getOffsetEnabled, {
+    await expect.poll(getOffsetState, {
       timeout: 5000,
-      message: 'per-link endpoint offset should persist on apply'
-    }).toBe(true);
+      message: 'per-link endpoint offset should persist after slider change'
+    }).toEqual({ enabled: true, offset: nextValue });
 
     await topoViewerPage.undo();
-    await expect.poll(getOffsetEnabled, {
+    await expect.poll(getOffsetState, {
       timeout: 5000,
       message: 'undo should revert per-link endpoint offset override'
-    }).toBe(false);
+    }).toEqual({ enabled: false, offset: initialValue });
 
     await topoViewerPage.redo();
-    await expect.poll(getOffsetEnabled, {
+    await expect.poll(getOffsetState, {
       timeout: 5000,
       message: 'redo should restore per-link endpoint offset override'
-    }).toBe(true);
+    }).toEqual({ enabled: true, offset: nextValue });
+
   });
 });

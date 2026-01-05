@@ -12,7 +12,7 @@ import {
 
 import type { LinkTabProps } from './types';
 
-export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
+export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOffset }) => {
   const rawEndpointOffset = typeof data.endpointLabelOffset === 'number' ? data.endpointLabelOffset : Number.NaN;
   const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
     ? rawEndpointOffset
@@ -21,17 +21,30 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
   const handleOffsetChange = (value: string) => {
     const parsed = Number.parseFloat(value);
+    const nextOffset = Number.isFinite(parsed) ? parsed : 0;
+    const nextData = {
+      ...data,
+      endpointLabelOffset: nextOffset,
+      endpointLabelOffsetEnabled: true
+    };
     onChange({
-      endpointLabelOffset: Number.isFinite(parsed) ? parsed : 0,
+      endpointLabelOffset: nextOffset,
       endpointLabelOffsetEnabled: true
     });
+    onAutoApplyOffset?.(nextData);
   };
 
   const handleOffsetReset = () => {
+    const nextData = {
+      ...data,
+      endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
+      endpointLabelOffsetEnabled: true
+    };
     onChange({
       endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
       endpointLabelOffsetEnabled: true
     });
+    onAutoApplyOffset?.(nextData);
   };
 
   return (
