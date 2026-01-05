@@ -155,14 +155,77 @@ export function setupEventHandlers(
   }
 }
 
+/** State for smooth zoom animation */
+interface SmoothZoomState {
+  targetZoom: number;
+  currentZoom: number;
+  velocity: number;
+  lastPosition: { x: number; y: number };
+  animationFrame: number | null;
+  lastWheelTime: number;
+}
+
 /**
- * Create custom wheel handler for smooth zooming
+ * Create custom wheel handler for super smooth zooming
+ * Uses momentum-based animation with easing for fluid zoom experience
  * NOTE: This handler is disabled when GeoMap is active (cy.scratch('geoMapActive'))
  * because GeoMap manages zoom through MapLibre and requires cy.zoom() to stay at 1.
  */
 export function createCustomWheelHandler(
   cyRef: React.RefObject<Core | null>
 ): (event: WheelEvent) => void {
+  // Smooth zoom state - persists across wheel events
+  const state: SmoothZoomState = {
+    targetZoom: 1,
+    currentZoom: 1,
+    velocity: 0,
+    lastPosition: { x: 0, y: 0 },
+    animationFrame: null,
+    lastWheelTime: 0
+  };
+
+  // Smoothing parameters
+  const LERP_FACTOR = 0.35; // How quickly zoom catches up (0-1, higher = snappier)
+  const VELOCITY_DECAY = 0.75; // Momentum decay per frame (0-1, lower = stops faster)
+  const MIN_VELOCITY = 0.0001; // Stop animating below this velocity
+  const ZOOM_MIN = 0.05;
+  const ZOOM_MAX = 100;
+
+  const animate = () => {
+    const cy = cyRef.current;
+    if (!cy) {
+      state.animationFrame = null;
+      return;
+    }
+
+    // Apply velocity to target
+    state.targetZoom *= 1 + state.velocity;
+    state.targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, state.targetZoom));
+
+    // Decay velocity (momentum)
+    state.velocity *= VELOCITY_DECAY;
+
+    // Lerp current zoom toward target
+    const diff = state.targetZoom - state.currentZoom;
+    state.currentZoom += diff * LERP_FACTOR;
+
+    // Apply zoom
+    cy.zoom({
+      level: state.currentZoom,
+      renderedPosition: state.lastPosition
+    });
+
+    // Continue animation if there's significant movement
+    const isMoving = Math.abs(diff) > 0.0001 || Math.abs(state.velocity) > MIN_VELOCITY;
+    if (isMoving) {
+      state.animationFrame = window.requestAnimationFrame(animate);
+    } else {
+      state.animationFrame = null;
+      // Snap to target when settled
+      state.currentZoom = state.targetZoom;
+    }
+  };
+
   return (event: WheelEvent) => {
     const cy = cyRef.current;
     if (!cy) return;
@@ -174,20 +237,37 @@ export function createCustomWheelHandler(
     }
 
     event.preventDefault();
-    let step = event.deltaY;
-    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
-      step *= 100;
-    } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-      step *= window.innerHeight;
+
+    // Initialize state from current cy zoom if animation not running
+    if (state.animationFrame === null) {
+      state.currentZoom = cy.zoom();
+      state.targetZoom = cy.zoom();
+      state.velocity = 0;
     }
+
+    // Normalize delta across different input modes
+    let delta = event.deltaY;
+    if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      delta *= 40; // Approximate pixels per line
+    } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+      delta *= window.innerHeight;
+    }
+
+    // Detect trackpad vs mouse wheel for appropriate sensitivity
     const isTrackpad = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(event.deltaY) < 50;
-    const sensitivity = isTrackpad ? 0.002 : 0.0002;
-    const factor = Math.pow(10, -step * sensitivity);
-    const newZoom = cy.zoom() * factor;
-    cy.zoom({
-      level: newZoom,
-      renderedPosition: { x: event.offsetX, y: event.offsetY }
-    });
+    const sensitivity = isTrackpad ? 0.002 : 0.00025;
+
+    // Add to velocity (negative because scroll down = zoom out)
+    state.velocity -= delta * sensitivity;
+
+    // Update zoom position (where to zoom toward)
+    state.lastPosition = { x: event.offsetX, y: event.offsetY };
+    state.lastWheelTime = Date.now();
+
+    // Start animation loop if not already running
+    if (state.animationFrame === null) {
+      state.animationFrame = window.requestAnimationFrame(animate);
+    }
   };
 }
 
