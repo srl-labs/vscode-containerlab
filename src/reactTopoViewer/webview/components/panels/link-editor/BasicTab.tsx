@@ -82,10 +82,10 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
         <div className="text-sm font-semibold mb-2" style={{ color: SECTION_HEADING_COLOR }}>
           Label Offset
         </div>
-        <FormField label="Offset" tooltip="Distance from the node; clamped per-link to avoid label crossover.">
+        <div className="form-group">
           <div className="px-2">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-[var(--vscode-descriptionForeground)]">Offset</span>
+              <span className="text-xs text-[var(--vscode-descriptionForeground)]">Value</span>
               <span className="grid-line-display">{endpointOffsetValue.toFixed(0)}</span>
             </div>
             <input
@@ -99,7 +99,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
               className="grid-line-slider"
             />
           </div>
-        </FormField>
+        </div>
       </div>
     </div>
   );
