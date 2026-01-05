@@ -22,6 +22,8 @@ type EdgePrivateData = {
   rscratch?: Record<string, unknown>;
 };
 
+type Point = { x: number; y: number };
+
 export type EndpointLabelOffsetConfig = {
   globalEnabled: boolean;
   globalOffset: number;
@@ -38,7 +40,50 @@ function getMeasureContext(): CanvasRenderingContext2D | null {
   return measureContext;
 }
 
+function isValidPoint(point: Point | null | undefined): point is Point {
+  return !!point && Number.isFinite(point.x) && Number.isFinite(point.y);
+}
+
+function getPolylineLength(points: Point[]): number | null {
+  if (points.length < 2) return null;
+  let length = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const prev = points[i - 1];
+    const current = points[i];
+    const segment = Math.hypot(current.x - prev.x, current.y - prev.y);
+    if (!Number.isFinite(segment)) return null;
+    length += segment;
+  }
+  return Number.isFinite(length) ? length : null;
+}
+
+function getLoopLength(edge: EdgeSingular): number | null {
+  const points: Point[] = [];
+  const sourceEndpoint = edge.sourceEndpoint();
+  const targetEndpoint = edge.targetEndpoint();
+  const controlPoints = edge.controlPoints();
+
+  if (isValidPoint(sourceEndpoint)) points.push(sourceEndpoint);
+  if (Array.isArray(controlPoints)) {
+    controlPoints.forEach((point) => {
+      if (isValidPoint(point)) points.push(point);
+    });
+  }
+  if (isValidPoint(targetEndpoint)) points.push(targetEndpoint);
+
+  const polylineLength = getPolylineLength(points);
+  if (polylineLength !== null && polylineLength > 0) return polylineLength;
+
+  const source = edge.source();
+  if (source.empty()) return null;
+  const stepSize = getStyleNumber(edge, 'control-point-step-size', 20);
+  const nodeRadius = Math.max(source.width(), source.height()) / 2;
+  const approxLength = Math.max(stepSize * 2.8, nodeRadius * Math.PI);
+  return Number.isFinite(approxLength) && approxLength > 0 ? approxLength : null;
+}
+
 function getEdgeLength(edge: EdgeSingular): number | null {
+  if (isSelfLoop(edge)) return getLoopLength(edge);
   const source = edge.source();
   const target = edge.target();
   if (source.empty() || target.empty()) return null;
@@ -50,6 +95,13 @@ function getEdgeLength(edge: EdgeSingular): number | null {
   const length = Math.hypot(dx, dy);
 
   return Number.isFinite(length) ? length : null;
+}
+
+function isSelfLoop(edge: EdgeSingular): boolean {
+  const source = edge.source();
+  const target = edge.target();
+  if (source.empty() || target.empty()) return false;
+  return source.id() === target.id();
 }
 
 function getZoom(edge: EdgeSingular): number {

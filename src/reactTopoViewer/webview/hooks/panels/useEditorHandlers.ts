@@ -81,6 +81,9 @@ function updateCytoscapeEdgeData(
   const edge = cy.getElementById(edgeId);
   if (!edge || edge.empty()) return;
 
+  edge.data('sourceEndpoint', data.sourceEndpoint);
+  edge.data('targetEndpoint', data.targetEndpoint);
+
   // Build new extraData from editor data (same logic as convertEditorDataToLinkSaveData)
   const newExtraData: Record<string, unknown> = {};
 

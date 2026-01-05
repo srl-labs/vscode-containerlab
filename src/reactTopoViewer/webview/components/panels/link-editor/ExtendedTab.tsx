@@ -122,16 +122,16 @@ export function validateLinkEditorData(data: LinkEditorData): string[] {
   if (!data.target) {
     errors.push('Target node is required');
   }
+  const isSelfLoop = !!data.source && data.source === data.target;
   // Only require interface for regular (non-network) endpoints
-  if (!data.sourceEndpoint && !data.sourceIsNetwork) {
+  if (!data.sourceEndpoint && !data.sourceIsNetwork && !isSelfLoop) {
     errors.push('Source interface is required');
   }
-  if (!data.targetEndpoint && !data.targetIsNetwork) {
+  if (!data.targetEndpoint && !data.targetIsNetwork && !isSelfLoop) {
     errors.push('Target interface is required');
   }
-  if (data.source && data.target && data.source === data.target) {
-    errors.push('Source and target nodes must be different');
+  if (isSelfLoop && data.sourceEndpoint && data.targetEndpoint && data.sourceEndpoint === data.targetEndpoint) {
+    errors.push('Source and target interfaces must be different for a self-loop');
   }
-
   return errors;
 }
