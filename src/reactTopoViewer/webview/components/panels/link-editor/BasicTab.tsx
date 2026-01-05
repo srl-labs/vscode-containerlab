@@ -17,11 +17,19 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
   const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
     ? rawEndpointOffset
     : DEFAULT_ENDPOINT_LABEL_OFFSET;
+  const isDefaultOffset = endpointOffsetValue === DEFAULT_ENDPOINT_LABEL_OFFSET;
 
   const handleOffsetChange = (value: string) => {
     const parsed = Number.parseFloat(value);
     onChange({
       endpointLabelOffset: Number.isFinite(parsed) ? parsed : 0,
+      endpointLabelOffsetEnabled: true
+    });
+  };
+
+  const handleOffsetReset = () => {
+    onChange({
+      endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
       endpointLabelOffsetEnabled: true
     });
   };
@@ -85,13 +93,6 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[var(--vscode-font-size)] text-[var(--vscode-descriptionForeground)]">Value</span>
               <input
-                type="text"
-                value={endpointOffsetValue.toFixed(0)}
-                readOnly
-                aria-label="Offset value"
-                className="input-field w-12 text-center text-[var(--vscode-font-size)]"
-              />
-              <input
                 id="link-endpoint-offset"
                 type="range"
                 min={ENDPOINT_LABEL_OFFSET_MIN}
@@ -99,8 +100,27 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
                 step="1"
                 value={endpointOffsetValue}
                 onChange={(evt) => handleOffsetChange(evt.target.value)}
-                className="grid-line-slider text-[var(--vscode-font-size)]"
+                className="grid-line-slider m-0 flex-1 text-[var(--vscode-font-size)]"
               />
+              <input
+                type="text"
+                value={endpointOffsetValue.toFixed(0)}
+                readOnly
+                aria-label="Offset value"
+                className="input-field w-12 text-center text-[var(--vscode-font-size)]"
+              />
+              <div className="w-20">
+                {!isDefaultOffset ? (
+                  <button
+                    type="button"
+                    className="btn btn-small btn-secondary w-full whitespace-nowrap"
+                    onClick={handleOffsetReset}
+                    title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
+                  >
+                    Reset
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
