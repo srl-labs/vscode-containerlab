@@ -12,8 +12,6 @@ import {
 
 import type { LinkTabProps } from './types';
 
-const SECTION_HEADING_COLOR = 'var(--vscode-foreground)';
-
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
   const rawEndpointOffset = typeof data.endpointLabelOffset === 'number' ? data.endpointLabelOffset : Number.NaN;
   const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
@@ -32,7 +30,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
     <div className="space-y-3">
       {/* Source Endpoint Section */}
       <div className="border-b pb-3 mb-3" style={{ borderColor: 'var(--vscode-panel-border)' }}>
-        <div className="text-sm font-semibold mb-2" style={{ color: SECTION_HEADING_COLOR }}>
+        <div className="vscode-label mb-2">
           Source Endpoint
         </div>
         <FormField label="Node">
@@ -56,7 +54,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
       {/* Target Endpoint Section */}
       <div>
-        <div className="text-sm font-semibold mb-2" style={{ color: SECTION_HEADING_COLOR }}>
+        <div className="vscode-label mb-2">
           Target Endpoint
         </div>
         <FormField label="Node">
@@ -79,25 +77,31 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
       </div>
 
       <div className="border-t pt-3 mt-4" style={{ borderColor: 'var(--vscode-panel-border)' }}>
-        <div className="text-sm font-semibold mb-2" style={{ color: SECTION_HEADING_COLOR }}>
+        <div className="vscode-label mb-2">
           Label Offset
         </div>
         <div className="form-group">
           <div className="px-2">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-[var(--vscode-descriptionForeground)]">Value</span>
-              <span className="grid-line-display">{endpointOffsetValue.toFixed(0)}</span>
+              <span className="text-[var(--vscode-font-size)] text-[var(--vscode-descriptionForeground)]">Value</span>
+              <input
+                type="text"
+                value={endpointOffsetValue.toFixed(0)}
+                readOnly
+                aria-label="Offset value"
+                className="input-field w-12 text-center text-[var(--vscode-font-size)]"
+              />
+              <input
+                id="link-endpoint-offset"
+                type="range"
+                min={ENDPOINT_LABEL_OFFSET_MIN}
+                max={ENDPOINT_LABEL_OFFSET_MAX}
+                step="1"
+                value={endpointOffsetValue}
+                onChange={(evt) => handleOffsetChange(evt.target.value)}
+                className="grid-line-slider text-[var(--vscode-font-size)]"
+              />
             </div>
-            <input
-              id="link-endpoint-offset"
-              type="range"
-              min={ENDPOINT_LABEL_OFFSET_MIN}
-              max={ENDPOINT_LABEL_OFFSET_MAX}
-              step="1"
-              value={endpointOffsetValue}
-              onChange={(evt) => handleOffsetChange(evt.target.value)}
-              className="grid-line-slider"
-            />
           </div>
         </div>
       </div>
