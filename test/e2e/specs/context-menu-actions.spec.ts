@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/topoviewer';
-import { rightClick } from '../helpers/cytoscape-helpers';
+import { rightClick, getEdgeMidpoint } from '../helpers/cytoscape-helpers';
 
 // Test file name
 const SIMPLE_FILE = 'simple.clab.yml';
@@ -204,22 +204,7 @@ test.describe('Context Menu Actions', () => {
       const edgeIds = await topoViewerPage.getEdgeIds();
       expect(edgeIds.length).toBeGreaterThan(0);
 
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
-
+      const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
       expect(midpoint).not.toBeNull();
 
       await rightClick(page, midpoint!.x, midpoint!.y);
@@ -235,22 +220,7 @@ test.describe('Context Menu Actions', () => {
     test('clicking Edit opens link editor panel', async ({ page, topoViewerPage }) => {
       const edgeIds = await topoViewerPage.getEdgeIds();
 
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
-
+      const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
@@ -267,22 +237,7 @@ test.describe('Context Menu Actions', () => {
       const initialEdgeCount = await topoViewerPage.getEdgeCount();
       const edgeIds = await topoViewerPage.getEdgeIds();
 
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
-
+      const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);
 
@@ -306,21 +261,8 @@ test.describe('Context Menu Actions', () => {
       const edgeIds = await topoViewerPage.getEdgeIds();
       expect(edgeIds.length).toBeGreaterThan(0);
 
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, edgeIds[0]);
+      const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
+      expect(midpoint).not.toBeNull();
 
       await rightClick(page, midpoint!.x, midpoint!.y);
       await page.waitForTimeout(300);

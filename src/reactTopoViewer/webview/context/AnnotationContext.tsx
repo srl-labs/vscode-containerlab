@@ -19,7 +19,8 @@ import {
   useFreeTextUndoRedoHandlers,
   useFreeShapeUndoRedoHandlers,
   useAnnotationEffects,
-  useAddShapesHandler
+  useAddShapesHandler,
+  filterEntriesWithPosition
 } from '../hooks/internal';
 import {
   useAppGroupUndoHandlers,
@@ -271,7 +272,10 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     shapeAnnotations: freeShapeAnnotations.annotations,
     onUpdateTextAnnotation: freeTextAnnotations.updateAnnotation,
     onUpdateShapeAnnotation: freeShapeAnnotations.updateAnnotation,
-    onPositionsCommitted: updateNodePositions
+    onPositionsCommitted: (positions) => {
+      const withPosition = filterEntriesWithPosition(positions);
+      if (withPosition.length > 0) updateNodePositions(withPosition);
+    }
   });
 
   // Group resize undo (separate from drag to avoid undo spam during resize)

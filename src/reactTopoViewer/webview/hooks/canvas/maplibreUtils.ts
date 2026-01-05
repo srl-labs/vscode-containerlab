@@ -320,6 +320,9 @@ function getNodeBounds(cy: Core): maplibregl.LngLatBounds | null {
  * Update all node positions based on current map projection.
  * Temporarily unlocks nodes to allow position updates (Cytoscape's lock()
  * can prevent programmatic position changes in some cases).
+ *
+ * NOTE: Nodes that are currently being grabbed (dragged by user) are excluded
+ * to prevent snapping them back to their old geo position during drag.
  */
 function updateNodePositions(cy: Core, state: MapLibreState): void {
   if (!state.map) return;
@@ -334,6 +337,10 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
 
   cy.batch(() => {
     cy.nodes().forEach((node) => {
+      // Skip nodes that are currently being grabbed (user is dragging them)
+      // This prevents snapping them back to old geo position during drag
+      if (node.grabbed()) return;
+
       const lngLat = getNodeLngLat(node);
       if (lngLat) {
         const point = state.map!.project(lngLat);
@@ -690,6 +697,9 @@ export async function initializeMapLibre(
     // Setup drag handler for node position updates
     cy.on('dragfree', onDragFree);
 
+    // Mark GeoMap as active on Cytoscape (for external wheel handlers)
+    cy.scratch('geoMapActive', true);
+
     state.isInitialized = true;
     log.info('[MapLibre] Geo map initialization complete');
   } catch (err) {
@@ -859,6 +869,9 @@ export function cleanupMapLibreState(
 
   // Remove Cytoscape event listener
   cy.off('dragfree', onDragFree);
+
+  // Clear GeoMap active marker
+  cy.scratch('geoMapActive', false);
 
   // Remove map event listener and destroy map
   if (state.map) {

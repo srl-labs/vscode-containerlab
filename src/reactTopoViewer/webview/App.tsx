@@ -27,7 +27,7 @@ import {
   // Graph manipulation
   useNodeDragging,
   // State management
-  useGraphHandlersWithContext, useCustomTemplateEditor,
+  useGraphHandlersWithContext, useCustomTemplateEditor, filterEntriesWithPosition,
   // Canvas/App state
   useCytoscapeInstance, useSelectionData, useNavbarActions, useContextMenuHandlers,
   useLayoutControls, useEndpointLabelOffset, useLinkLabelVisibility, useGeoMap,
@@ -283,7 +283,11 @@ const AppContent: React.FC<{
     handleAddGroupWithUndo: annotations.handleAddGroupWithUndo,
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
     groups: annotations.groups,
-    elements: state.elements
+    elements: state.elements,
+    setLayout: layoutControls.setLayout,
+    setGeoMode: layoutControls.setGeoMode,
+    isGeoLayout: layoutControls.isGeoLayout,
+    geoMode: layoutControls.geoMode
   });
 
   // App-level handlers
@@ -315,7 +319,10 @@ const AppContent: React.FC<{
     isLocked: state.isLocked,
     onLockedDrag: handleLockedDrag,
     onMoveComplete: handleMoveComplete,
-    onPositionsCommitted: updateNodePositions
+    onPositionsCommitted: (positions) => {
+      const withPosition = filterEntriesWithPosition(positions);
+      if (withPosition.length > 0) updateNodePositions(withPosition);
+    }
   });
 
   // Alt+Click delete for nodes/edges

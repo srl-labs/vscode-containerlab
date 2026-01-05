@@ -118,6 +118,11 @@ function getElementId(reactEl: CyElement): string | null {
 }
 
 function syncNodePosition(cy: Core, nodeId: string, position: { x: number; y: number }): void {
+  // Skip position sync when GeoMap is active - the map projection controls positions
+  if (cy.scratch('geoMapActive') === true) {
+    return;
+  }
+
   const cyEl = cy.getElementById(nodeId);
   if (cyEl.empty()) return;
   const cyPos = cyEl.position();

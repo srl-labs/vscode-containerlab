@@ -84,6 +84,9 @@ function calculateViewport(
 /**
  * Fit the viewport to include all Cytoscape elements and annotations.
  *
+ * NOTE: This function is skipped when GeoMap is active because GeoMap requires
+ * cy.zoom() to stay at 1 and cy.pan() at {0,0} for correct projection.
+ *
  * @param cy - Cytoscape instance
  * @param textAnnotations - Array of text annotations
  * @param shapeAnnotations - Array of shape annotations
@@ -97,6 +100,9 @@ export function fitViewportToAll(
   groups: GroupStyleAnnotation[],
   padding: number = DEFAULT_PADDING
 ): void {
+  // Skip if GeoMap is active - GeoMap requires cy.zoom()=1 and cy.pan()={0,0}
+  if (cy.scratch('geoMapActive') === true) return;
+
   const container = cy.container();
   if (!container) return;
 

@@ -157,6 +157,8 @@ export function setupEventHandlers(
 
 /**
  * Create custom wheel handler for smooth zooming
+ * NOTE: This handler is disabled when GeoMap is active (cy.scratch('geoMapActive'))
+ * because GeoMap manages zoom through MapLibre and requires cy.zoom() to stay at 1.
  */
 export function createCustomWheelHandler(
   cyRef: React.RefObject<Core | null>
@@ -164,6 +166,13 @@ export function createCustomWheelHandler(
   return (event: WheelEvent) => {
     const cy = cyRef.current;
     if (!cy) return;
+
+    // Skip if GeoMap is active - let MapLibre handle zoom
+    // GeoMap requires cy.zoom() to stay at 1 for correct projection
+    if (cy.scratch('geoMapActive') === true) {
+      return;
+    }
+
     event.preventDefault();
     let step = event.deltaY;
     if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {

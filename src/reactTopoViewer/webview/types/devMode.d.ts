@@ -9,6 +9,9 @@ import type { Core as CyCore } from 'cytoscape';
 import type { GroupStyleAnnotation, EdgeAnnotation } from '../../shared/types/topology';
 import type { NetworkType } from '../../shared/types/editors';
 
+/** Layout option type */
+type LayoutOption = 'preset' | 'cose' | 'cola' | 'radial' | 'hierarchical' | 'geo';
+
 /**
  * Development mode interface for E2E testing and debugging.
  * Exposed on window.__DEV__ only in development builds.
@@ -63,6 +66,14 @@ export interface DevModeInterface {
   groupsCount?: number;
   /** Get React elements state */
   getElements?: () => unknown[];
+  /** Set layout for the graph (for E2E testing) */
+  setLayout?: (layout: LayoutOption) => void;
+  /** Set geo mode (pan/edit) for GeoMap layout */
+  setGeoMode?: (mode: 'pan' | 'edit') => void;
+  /** Check if currently in geo layout mode */
+  isGeoLayout?: () => boolean;
+  /** Get current geo mode */
+  geoMode?: () => 'pan' | 'edit';
 }
 
 /**

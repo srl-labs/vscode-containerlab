@@ -335,18 +335,37 @@ export async function getEdgeBoundingBox(
 }
 
 /**
- * Get the midpoint of an edge in page coordinates.
+ * Get the midpoint of an edge line in page coordinates.
+ * Uses the geometric midpoint between source and target nodes,
+ * NOT the bounding box center (which can overlap with nodes).
  */
 export async function getEdgeMidpoint(
   page: Page,
   edgeId: string
 ): Promise<{ x: number; y: number } | null> {
-  const box = await getEdgeBoundingBox(page, edgeId);
-  if (!box) return null;
-  return {
-    x: box.x + box.width / 2,
-    y: box.y + box.height / 2
-  };
+  return await page.evaluate((id) => {
+    const dev = (window as any).__DEV__;
+    const cy = dev?.cy;
+    const edge = cy?.getElementById(id);
+    if (!edge || edge.empty()) return null;
+
+    // Get actual source and target node positions
+    const source = edge.source();
+    const target = edge.target();
+    if (!source || !target) return null;
+
+    const srcPos = source.renderedPosition();
+    const tgtPos = target.renderedPosition();
+
+    // Calculate geometric midpoint of the edge line
+    const container = cy.container();
+    const rect = container.getBoundingClientRect();
+
+    return {
+      x: rect.left + (srcPos.x + tgtPos.x) / 2,
+      y: rect.top + (srcPos.y + tgtPos.y) / 2
+    };
+  }, edgeId);
 }
 
 /**

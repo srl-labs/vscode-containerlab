@@ -42,17 +42,30 @@ async function savePositions(positions: NodePositionEntry[]): Promise<void> {
 }
 
 /**
- * Extract position data from a node
+ * Extract position data from a node, including geo coordinates if available
  */
 function getNodePosition(node: NodeSingular): NodePositionEntry {
   const pos = node.position();
-  return {
+  const entry: NodePositionEntry = {
     id: node.id(),
     position: {
       x: Math.round(pos.x),
       y: Math.round(pos.y)
     }
   };
+
+  // Include geo coordinates if the node has them (set by GeoMap mode)
+  const lat = node.data('lat') as string | undefined;
+  const lng = node.data('lng') as string | undefined;
+  if (lat !== undefined && lng !== undefined) {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (!Number.isNaN(latNum) && !Number.isNaN(lngNum)) {
+      entry.geoCoordinates = { lat: latNum, lng: lngNum };
+    }
+  }
+
+  return entry;
 }
 
 /**
@@ -123,12 +136,43 @@ interface DragBatchRefs {
   batchTimer: { current: ReturnType<typeof setTimeout> | null };
 }
 
+/**
+ * Re-read geo coordinates from a Cytoscape node and build the position entry.
+ * In GeoMap mode (geoMapActive=true), only returns geo coordinates - position is omitted
+ * so that the preset position in annotations is not overwritten.
+ */
+function refreshGeoCoordinates(cy: Core | null, position: NodePositionEntry): NodePositionEntry {
+  if (!cy) return position;
+  const node = cy.getElementById(position.id);
+  if (!node || node.empty() || !node.isNode()) return position;
+
+  // Check if GeoMap is active
+  const isGeoMapActive = cy.scratch('geoMapActive') === true;
+
+  // Re-read lat/lng from node data (may have been updated by useGeoMap after drag)
+  const lat = node.data('lat') as string | undefined;
+  const lng = node.data('lng') as string | undefined;
+  if (lat !== undefined && lng !== undefined) {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (!Number.isNaN(latNum) && !Number.isNaN(lngNum)) {
+      if (isGeoMapActive) {
+        // In GeoMap mode, only update geo coordinates - don't touch position
+        return { id: position.id, geoCoordinates: { lat: latNum, lng: lngNum } };
+      }
+      return { ...position, geoCoordinates: { lat: latNum, lng: lngNum } };
+    }
+  }
+  return position;
+}
+
 /** Create flush handler for batched drags */
 function createFlushHandler(
   refs: DragBatchRefs,
   mode: 'edit' | 'view',
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
-  onPositionsCommitted?: (positions: NodePositionEntry[]) => void
+  onPositionsCommitted?: (positions: NodePositionEntry[]) => void,
+  cy?: Core | null
 ): () => void {
   return () => {
     const pending = refs.pendingDrags.current;
@@ -136,7 +180,8 @@ function createFlushHandler(
 
     const nodeIds = pending.map(p => p.nodeId);
     const beforePositions = pending.map(p => p.before);
-    const afterPositions = pending.map(p => p.after);
+    // Re-read geo coordinates at flush time to capture updates from useGeoMap
+    const afterPositions = pending.map(p => refreshGeoCoordinates(cy ?? null, p.after));
 
     log.info(`[NodeDragging] Flushing batch of ${pending.length} node drag(s)`);
 
@@ -167,7 +212,7 @@ function createDragStartHandler(
 
     const position = getNodePosition(node);
     dragStartPositions.current.set(node.id(), position);
-    log.info(`[NodeDragging] Drag started for node ${node.id()} at (${position.position.x}, ${position.position.y})`);
+    log.info(`[NodeDragging] Drag started for node ${node.id()} at (${position.position?.x ?? 0}, ${position.position?.y ?? 0})`);
   };
 }
 
@@ -186,9 +231,9 @@ function createDragFreeHandler(
     const beforePosition = refs.dragStartPositions.current.get(nodeId);
     const afterPosition = getNodePosition(node);
 
-    log.info(`[NodeDragging] Node ${nodeId} dragged to (${afterPosition.position.x}, ${afterPosition.position.y})`);
+    log.info(`[NodeDragging] Node ${nodeId} dragged to (${afterPosition.position?.x ?? 0}, ${afterPosition.position?.y ?? 0})`);
 
-    if (beforePosition) {
+    if (beforePosition && beforePosition.position && afterPosition.position) {
       const positionChanged =
         beforePosition.position.x !== afterPosition.position.x ||
         beforePosition.position.y !== afterPosition.position.y;
@@ -227,8 +272,8 @@ function useDragHandlers(
   };
 
   const flushPendingDrags = useCallback(
-    () => createFlushHandler(refs, mode, onMoveComplete, onPositionsCommitted)(),
-    [mode, onMoveComplete, onPositionsCommitted]
+    () => createFlushHandler(refs, mode, onMoveComplete, onPositionsCommitted, cy)(),
+    [cy, mode, onMoveComplete, onPositionsCommitted]
   );
 
   const handleDragStart = useCallback(

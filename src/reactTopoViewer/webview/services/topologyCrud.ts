@@ -185,8 +185,10 @@ export async function createNetworkNode(data: NetworkNodeData): Promise<void> {
 
 /**
  * Save node positions via TopologyIO.
+ * In GeoMap mode, only geoCoordinates should be provided (position is omitted)
+ * to avoid overwriting the preset position.
  */
-export async function saveNodePositions(positions: Array<{ id: string; position: { x: number; y: number } }>): Promise<void> {
+export async function saveNodePositions(positions: Array<{ id: string; position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } }>): Promise<void> {
   if (!isServicesInitialized()) {
     console.warn(WARN_SERVICES_NOT_INIT);
     return;

@@ -8,7 +8,7 @@
 // Used by App.tsx wiring
 export { useNodeDragging } from '../graph';
 export type { GraphChange } from '../state';
-export { useGraphHandlersWithContext, useCustomTemplateEditor } from '../state';
+export { useGraphHandlersWithContext, useCustomTemplateEditor, filterEntriesWithPosition } from '../state';
 export {
   useContextMenu,
   useFloatingPanelCommands,

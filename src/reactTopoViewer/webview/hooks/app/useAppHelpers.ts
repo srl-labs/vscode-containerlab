@@ -195,6 +195,9 @@ export function useTextLayer(cy: CyCore | null): UseTextLayerReturn {
   return { textLayerNode };
 }
 
+/** Layout option type for E2E testing */
+export type LayoutOption = 'preset' | 'cose' | 'cola' | 'radial' | 'hierarchical' | 'geo';
+
 /**
  * E2E testing exposure configuration
  */
@@ -210,6 +213,11 @@ export interface E2ETestingConfig {
   createNetworkAtPosition: (position: { x: number; y: number }, networkType: NetworkType) => string | null;
   groups: GroupStyleAnnotation[];
   elements: unknown[];
+  /** Layout controls for E2E testing */
+  setLayout?: (layout: LayoutOption) => void;
+  setGeoMode?: (mode: 'pan' | 'edit') => void;
+  isGeoLayout?: boolean;
+  geoMode?: 'pan' | 'edit';
 }
 
 /**
@@ -217,7 +225,11 @@ export interface E2ETestingConfig {
  * Consolidates all window.__DEV__ assignments into one place.
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
-  const { cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, createNetworkAtPosition, groups, elements } = config;
+  const {
+    cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback,
+    handleAddGroupWithUndo, createNetworkAtPosition, groups, elements,
+    setLayout, setGeoMode, isGeoLayout, geoMode
+  } = config;
 
   // Core E2E exposure (cy, isLocked, mode, setLocked)
   React.useEffect(() => {
@@ -256,6 +268,16 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.getElements = () => elements;
     }
   }, [elements]);
+
+  // Layout controls E2E exposure
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.__DEV__) {
+      if (setLayout) window.__DEV__.setLayout = setLayout;
+      if (setGeoMode) window.__DEV__.setGeoMode = setGeoMode;
+      window.__DEV__.isGeoLayout = () => isGeoLayout ?? false;
+      window.__DEV__.geoMode = () => geoMode ?? 'pan';
+    }
+  }, [setLayout, setGeoMode, isGeoLayout, geoMode]);
 }
 
 /**

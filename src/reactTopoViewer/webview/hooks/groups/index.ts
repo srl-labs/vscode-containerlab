@@ -2,6 +2,7 @@
  * Groups hooks barrel - exports all group-related hooks
  * Consolidated from: core/, interactions/, undo/, utils/ sub-directories
  */
+/* eslint-disable import-x/max-dependencies -- Barrel file aggregates exports from many modules */
 
 // Import from shared utilities to avoid duplication
 import { getGroupBounds } from '../../utils/boundingBox';

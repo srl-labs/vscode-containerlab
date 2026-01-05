@@ -2,9 +2,10 @@
  * State management hooks
  */
 
-export { useUndoRedo } from './useUndoRedo';
+export { useUndoRedo, filterEntriesWithPosition } from './useUndoRedo';
 export type {
   NodePositionEntry,
+  NodePositionEntryWithPosition,
   MembershipEntry,
   GraphChange,
   UndoRedoActionMove,

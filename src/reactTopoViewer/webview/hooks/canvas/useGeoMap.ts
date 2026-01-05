@@ -63,12 +63,13 @@ export function useGeoMap({ cyInstance, isGeoLayout, geoMode, onGeoMapReady }: U
   // Node drag handler - updates geo coordinates after dragging
   const handleDragFree = useCallback(
     (event: EventObject) => {
-      const target = event.target as unknown;
-      if (typeof target === 'object' && target !== null && 'isNode' in target && typeof (target as { isNode: unknown }).isNode === 'function') {
-        const isNodeFn = (target as { isNode: () => boolean }).isNode;
-        if (isNodeFn()) {
-          handleNodeDragFree(target as NodeSingular, stateRef.current);
-        }
+      // Cast target to NodeSingular for type safety - Cytoscape events always have a target
+      const target = event.target as NodeSingular | undefined;
+      // Check if target is a node element by calling isNode() with proper 'this' context
+      // We must call the method directly on the target, NOT extract and call it separately,
+      // because Cytoscape's isNode() uses 'this' internally to check the element's group.
+      if (target && typeof target.isNode === 'function' && target.isNode()) {
+        handleNodeDragFree(target, stateRef.current);
       }
     },
     []

@@ -155,6 +155,9 @@ export function useNavbarActions(
     const cy = cytoscapeRef.current?.getCy();
     if (!cy) return;
 
+    // Skip if GeoMap is active - GeoMap requires cy.zoom()=1 and cy.pan()={0,0}
+    if (cy.scratch('geoMapActive') === true) return;
+
     // Use custom fit that includes annotations
     if (annotations) {
       fitViewportToAll(

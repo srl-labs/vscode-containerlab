@@ -23,6 +23,43 @@ import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenc
 // Types are available from ./NodePersistenceIO and ./LinkPersistenceIO directly
 
 /**
+ * Helper to update position and/or geo coordinates on an annotation.
+ * Only updates fields that are provided - this allows GeoMap mode to update
+ * only geo coordinates without overwriting the preset position.
+ */
+function updateNodeAnnotationPosition(
+  annotation: { position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } },
+  position?: { x: number; y: number },
+  geoCoordinates?: { lat: number; lng: number }
+): void {
+  if (position) {
+    annotation.position = position;
+  }
+  if (geoCoordinates) {
+    annotation.geoCoordinates = geoCoordinates;
+  }
+}
+
+/**
+ * Helper to create a new node annotation with position and/or geo coordinates.
+ * At least one of position or geoCoordinates should be provided.
+ */
+function createNodeAnnotationWithPosition(
+  id: string,
+  position?: { x: number; y: number },
+  geoCoordinates?: { lat: number; lng: number }
+): NodeAnnotation {
+  const annotation: NodeAnnotation = { id };
+  if (position) {
+    annotation.position = position;
+  }
+  if (geoCoordinates) {
+    annotation.geoCoordinates = geoCoordinates;
+  }
+  return annotation;
+}
+
+/**
  * Options for creating a TopologyIO instance
  */
 export interface TopologyIOOptions {
@@ -459,8 +496,11 @@ export class TopologyIO {
   /**
    * Saves multiple node positions to annotations file.
    * Network nodes are saved to networkNodeAnnotations, regular nodes to nodeAnnotations.
+   *
+   * In GeoMap mode, only geoCoordinates should be provided (position is omitted)
+   * to avoid overwriting the preset position.
    */
-  async savePositions(positions: Array<{ id: string; position: { x: number; y: number } }>): Promise<SaveResult> {
+  async savePositions(positions: Array<{ id: string; position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } }>): Promise<SaveResult> {
     if (!this.yamlFilePath) {
       return { success: false, error: ERROR_NO_YAML_PATH };
     }
@@ -471,20 +511,20 @@ export class TopologyIO {
           annotations.nodeAnnotations = [];
         }
 
-        for (const { id, position } of positions) {
+        for (const { id, position, geoCoordinates } of positions) {
           // Check if this is a network node (exists in networkNodeAnnotations)
           const networkNode = annotations.networkNodeAnnotations?.find(n => n.id === id);
           if (networkNode) {
-            // Update position in networkNodeAnnotations
-            networkNode.position = position;
+            updateNodeAnnotationPosition(networkNode, position, geoCoordinates);
+            continue;
+          }
+
+          // Update or add to nodeAnnotations
+          const existing = annotations.nodeAnnotations.find(n => n.id === id);
+          if (existing) {
+            updateNodeAnnotationPosition(existing, position, geoCoordinates);
           } else {
-            // Update or add to nodeAnnotations
-            const existing = annotations.nodeAnnotations.find(n => n.id === id);
-            if (existing) {
-              existing.position = position;
-            } else {
-              annotations.nodeAnnotations.push({ id, position });
-            }
+            annotations.nodeAnnotations.push(createNodeAnnotationWithPosition(id, position, geoCoordinates));
           }
         }
 

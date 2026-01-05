@@ -78,7 +78,7 @@ function hasNodesChanged(
 ): boolean {
   return nodesBefore.some(before => {
     const after = nodesAfter.find(a => a.id === before.id);
-    return after && hasPositionChanged(before.position, after.position);
+    return after && before.position && after.position && hasPositionChanged(before.position, after.position);
   });
 }
 

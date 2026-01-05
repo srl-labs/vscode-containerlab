@@ -11,11 +11,24 @@ import { saveNodePositions, getAnnotationsIO, getTopologyIO, isServicesInitializ
 import { applyMembershipUpdates } from '../shared/membershipHelpers';
 
 /**
- * Represents a node position entry
+ * Represents a node position entry.
+ * In GeoMap mode, only geoCoordinates should be updated (position stays unchanged).
+ * In preset mode, only position should be updated.
  */
 export interface NodePositionEntry {
   id: string;
-  position: { x: number; y: number };
+  /** Position for preset mode. Optional when only updating geo coordinates. */
+  position?: { x: number; y: number };
+  /** Geo coordinates for GeoMap mode */
+  geoCoordinates?: { lat: number; lng: number };
+}
+
+/** NodePositionEntry with a guaranteed position (not geo-only) */
+export type NodePositionEntryWithPosition = NodePositionEntry & { position: { x: number; y: number } };
+
+/** Filter NodePositionEntry[] to only entries with defined position (excludes geo-only entries) */
+export function filterEntriesWithPosition(positions: NodePositionEntry[]): NodePositionEntryWithPosition[] {
+  return positions.filter((p): p is NodePositionEntryWithPosition => p.position !== undefined);
 }
 
 /**
@@ -484,7 +497,7 @@ function applyPositionsToGraph(cy: Core, positions: NodePositionEntry[]): void {
   cy.batch(() => {
     for (const entry of positions) {
       const node = cy.getElementById(entry.id);
-      if (node.length > 0 && node.isNode()) {
+      if (node.length > 0 && node.isNode() && entry.position) {
         node.position(entry.position);
       }
     }
@@ -774,7 +787,7 @@ export function useUndoRedo({ cy, enabled = true, applyGraphChanges, applyProper
     const afterPositions = capturePositions(nodeIds);
     const hasChanged = beforePositions.some(before => {
       const after = afterPositions.find(a => a.id === before.id);
-      return after && (before.position.x !== after.position.x || before.position.y !== after.position.y);
+      return after && before.position && after.position && (before.position.x !== after.position.x || before.position.y !== after.position.y);
     });
     if (hasChanged) {
       pushAction({ type: 'move', before: beforePositions, after: afterPositions, membershipBefore, membershipAfter });
