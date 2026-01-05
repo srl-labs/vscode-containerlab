@@ -358,6 +358,11 @@ function persistLinkChanges(data: LinkEditorData, deps: LinkPersistDeps): void {
   }
 }
 
+function enableLinkEndpointOffset(data: LinkEditorData): LinkEditorData {
+  if (data.endpointLabelOffsetEnabled === true) return data;
+  return { ...data, endpointLabelOffsetEnabled: true };
+}
+
 /**
  * Hook for link editor handlers with undo/redo support
  */
@@ -390,19 +395,21 @@ export function useLinkEditorHandlers(
   );
 
   const handleSave = React.useCallback((data: LinkEditorData) => {
+    const normalized = enableLinkEndpointOffset(data);
     // Only record if there are actual changes (checkChanges = true)
-    recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
-    persistLinkChanges(data, persistDeps);
+    recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
+    persistLinkChanges(normalized, persistDeps);
     initialDataRef.current = null;
     editEdge(null);
   }, [editEdge, recordPropertyEdit, persistDeps]);
 
   const handleApply = React.useCallback((data: LinkEditorData) => {
-    const changed = recordEdit('link', initialDataRef.current, data, recordPropertyEdit, true);
+    const normalized = enableLinkEndpointOffset(data);
+    const changed = recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
     if (changed) {
-      initialDataRef.current = { ...data };
+      initialDataRef.current = { ...normalized };
     }
-    persistLinkChanges(data, persistDeps);
+    persistLinkChanges(normalized, persistDeps);
   }, [recordPropertyEdit, persistDeps]);
 
   return { handleClose, handleSave, handleApply };

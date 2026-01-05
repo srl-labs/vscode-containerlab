@@ -3,7 +3,7 @@
  */
 import React from 'react';
 
-import { FormField, ReadOnlyBadge, CheckboxField, InputField } from '../../shared/form';
+import { FormField, ReadOnlyBadge, InputField } from '../../shared/form';
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,
@@ -15,7 +15,6 @@ import type { LinkTabProps } from './types';
 const SECTION_HEADING_COLOR = 'var(--vscode-foreground)';
 
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
-  const endpointOffsetEnabled = data.endpointLabelOffsetEnabled ?? false;
   const rawEndpointOffset = typeof data.endpointLabelOffset === 'number' ? data.endpointLabelOffset : Number.NaN;
   const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
     ? rawEndpointOffset
@@ -23,7 +22,10 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
   const handleOffsetChange = (value: string) => {
     const parsed = Number.parseFloat(value);
-    onChange({ endpointLabelOffset: Number.isFinite(parsed) ? parsed : 0 });
+    onChange({
+      endpointLabelOffset: Number.isFinite(parsed) ? parsed : 0,
+      endpointLabelOffsetEnabled: true
+    });
   };
 
   return (
@@ -80,14 +82,6 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
         <div className="text-sm font-semibold mb-2" style={{ color: SECTION_HEADING_COLOR }}>
           Label Offset
         </div>
-        <FormField label="Custom Offset" tooltip="Override the global endpoint label offset for this link.">
-          <CheckboxField
-            id="link-endpoint-offset-override"
-            label="Override global setting"
-            checked={endpointOffsetEnabled}
-            onChange={(checked) => onChange({ endpointLabelOffsetEnabled: checked })}
-          />
-        </FormField>
         <FormField label="Offset" tooltip="Distance from the node; clamped per-link to avoid label crossover.">
           <div className="px-2">
             <div className="flex items-center gap-2 mb-2">
@@ -103,7 +97,6 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
               value={endpointOffsetValue}
               onChange={(evt) => handleOffsetChange(evt.target.value)}
               className="grid-line-slider"
-              disabled={!endpointOffsetEnabled}
             />
           </div>
         </FormField>
