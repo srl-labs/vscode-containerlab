@@ -172,7 +172,7 @@ export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement |
       {sz.backdrop && <Backdrop zIndex={sz.zIndex} onClick={onClose} />}
       <div ref={panelRef} className={cls} style={style} data-testid={testId}>
         <PanelHeader title={title} isDragging={isDragging} onMouseDown={handleMouseDown} onClose={onClose} />
-        <div className="panel-block p-2 overflow-y-auto flex-1 min-h-0">{children}</div>
+        <div className="panel-block p-4 overflow-y-auto flex-1 min-h-0">{children}</div>
         {btn.footer && <PanelFooter hasChanges={btn.hasChanges} onPrimary={btn.onPrimaryClick} onSecondary={btn.onSecondaryClick} primary={btn.primaryLabel} secondary={btn.secondaryLabel} />}
         {sz.resizable && <ResizeHandle onMouseDown={handleResizeStart} />}
       </div>
