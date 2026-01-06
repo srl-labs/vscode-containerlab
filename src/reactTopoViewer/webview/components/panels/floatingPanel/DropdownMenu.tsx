@@ -165,6 +165,8 @@ interface PanelButtonWithDropdownProps {
   /** Optional actions for custom node items */
   customNodeActions?: CustomNodeActions;
   testId?: string;
+  /** If true, clicking button directly adds the default item (hover still shows dropdown) */
+  clickAddsDefault?: boolean;
 }
 
 export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = ({
@@ -177,7 +179,8 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   onSelect,
   onLockedClick,
   customNodeActions,
-  testId
+  testId,
+  clickAddsDefault = false
 }) => {
   const {
     isOpen, filter, focusedIndex,
@@ -206,8 +209,16 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   const handleButtonClick = useCallback(() => {
     if (disabled && onLockedClick) {
       onLockedClick();
+      return;
     }
-  }, [disabled, onLockedClick]);
+    if (clickAddsDefault && !disabled) {
+      // Find the default item, or use the first item if no default
+      const defaultItem = items.find(item => item.isDefault) ?? items[0];
+      if (defaultItem) {
+        onSelect(defaultItem.id);
+      }
+    }
+  }, [disabled, onLockedClick, clickAddsDefault, items, onSelect]);
 
   useFocusOnOpen(isOpen, filterInputRef);
 

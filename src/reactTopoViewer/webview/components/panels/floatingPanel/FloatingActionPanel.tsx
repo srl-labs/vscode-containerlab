@@ -319,6 +319,7 @@ const PanelContent: React.FC<PanelContentProps> = ({
           onLockedClick={onLockedClick}
           customNodeActions={customNodeActions}
           testId="floating-panel-add-node-btn"
+          clickAddsDefault
         />
       )}
       {!isViewerMode && (
@@ -332,6 +333,7 @@ const PanelContent: React.FC<PanelContentProps> = ({
           onSelect={handleNetworkSelect}
           onLockedClick={onLockedClick}
           testId="floating-panel-add-network-btn"
+          clickAddsDefault
         />
       )}
       <PanelButton icon="fa-layer-group" tooltip="Add Group" onClick={createLockAwareHandler(onAddGroup)} disabled={isLocked} testId="floating-panel-add-group-btn" />
