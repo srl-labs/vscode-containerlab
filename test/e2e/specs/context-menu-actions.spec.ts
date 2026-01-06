@@ -40,9 +40,8 @@ test.describe('Context Menu Actions', () => {
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
-      await page.waitForTimeout(300);
 
-      // Verify context menu is visible
+      // Verify context menu is visible (Playwright auto-waits)
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
 
@@ -61,11 +60,11 @@ test.describe('Context Menu Actions', () => {
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
-      await page.waitForTimeout(300);
 
+      // Wait for menu item to be visible, then click
       const editItem = page.locator(SEL_EDIT_NODE_ITEM);
+      await expect(editItem).toBeVisible();
       await editItem.click();
-      await page.waitForTimeout(500);
 
       // Context menu should close
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
@@ -86,11 +85,15 @@ test.describe('Context Menu Actions', () => {
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
-      await page.waitForTimeout(300);
 
+      // Wait for menu item to be visible, then click
       const deleteItem = page.locator('[data-testid="context-menu-item-delete-node"]');
+      await expect(deleteItem).toBeVisible();
       await deleteItem.click();
-      await page.waitForTimeout(500);
+
+      // Wait for menu to close (indicates action completed)
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
+      await expect(contextMenu).not.toBeVisible();
 
       const finalNodeCount = await topoViewerPage.getNodeCount();
       expect(finalNodeCount).toBe(initialNodeCount - 1);
@@ -99,6 +102,7 @@ test.describe('Context Menu Actions', () => {
     test('context menu closes when clicking elsewhere or pressing Escape', async ({ page, topoViewerPage }) => {
       const nodeIds = await topoViewerPage.getNodeIds();
       const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
 
       // Open context menu
       await rightClick(
@@ -106,15 +110,11 @@ test.describe('Context Menu Actions', () => {
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
-      await page.waitForTimeout(300);
-
-      const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
 
-      // Click elsewhere to close
+      // Click elsewhere to close - use a position far from the node
       const canvasCenter = await topoViewerPage.getCanvasCenter();
       await page.mouse.click(canvasCenter.x + 200, canvasCenter.y + 200);
-      await page.waitForTimeout(300);
       await expect(contextMenu).not.toBeVisible();
 
       // Open again and close with Escape
@@ -123,11 +123,9 @@ test.describe('Context Menu Actions', () => {
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
-      await page.waitForTimeout(300);
       await expect(contextMenu).toBeVisible();
 
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(300);
       await expect(contextMenu).not.toBeVisible();
     });
 
@@ -142,12 +140,15 @@ test.describe('Context Menu Actions', () => {
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
+
+      // When locked, the menu items are empty so the menu itself won't render
+      // Use a short timeout since we expect it NOT to appear
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
+      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
+
+      // Wait a moment for any potential menu to appear
       await page.waitForTimeout(300);
 
-      // Context menu should appear but with no items (empty)
-      const contextMenu = page.locator(SEL_CONTEXT_MENU);
-      // When locked, the menu items are empty so the menu itself won't render
-      const editItem = page.locator(SEL_EDIT_NODE_ITEM);
       const isMenuVisible = await contextMenu.count();
       const isEditItemVisible = await editItem.count();
 
@@ -175,9 +176,8 @@ test.describe('Context Menu Actions', () => {
         nodeBox!.x + nodeBox!.width / 2,
         nodeBox!.y + nodeBox!.height / 2
       );
-      await page.waitForTimeout(300);
 
-      // Verify context menu is visible
+      // Verify context menu is visible (Playwright auto-waits)
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
 
@@ -208,9 +208,8 @@ test.describe('Context Menu Actions', () => {
       expect(midpoint).not.toBeNull();
 
       await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
 
-      // Verify context menu and options
+      // Verify context menu and options (Playwright auto-waits)
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
       await expect(page.locator(SEL_EDIT_EDGE_ITEM)).toBeVisible();
@@ -222,11 +221,11 @@ test.describe('Context Menu Actions', () => {
 
       const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
       await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
 
+      // Wait for menu item to be visible, then click
       const editItem = page.locator(SEL_EDIT_EDGE_ITEM);
+      await expect(editItem).toBeVisible();
       await editItem.click();
-      await page.waitForTimeout(500);
 
       // Link editor should open
       const linkEditor = page.locator('[data-testid="link-editor"]');
@@ -239,11 +238,15 @@ test.describe('Context Menu Actions', () => {
 
       const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
       await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
 
+      // Wait for menu item to be visible, then click
       const deleteItem = page.locator('[data-testid="context-menu-item-delete-edge"]');
+      await expect(deleteItem).toBeVisible();
       await deleteItem.click();
-      await page.waitForTimeout(500);
+
+      // Wait for menu to close (indicates action completed)
+      const contextMenu = page.locator(SEL_CONTEXT_MENU);
+      await expect(contextMenu).not.toBeVisible();
 
       const finalEdgeCount = await topoViewerPage.getEdgeCount();
       expect(finalEdgeCount).toBe(initialEdgeCount - 1);
@@ -265,9 +268,8 @@ test.describe('Context Menu Actions', () => {
       expect(midpoint).not.toBeNull();
 
       await rightClick(page, midpoint!.x, midpoint!.y);
-      await page.waitForTimeout(300);
 
-      // Verify context menu and options
+      // Verify context menu and options (Playwright auto-waits)
       const contextMenu = page.locator(SEL_CONTEXT_MENU);
       await expect(contextMenu).toBeVisible();
       await expect(page.locator('[data-testid="context-menu-item-info-edge"]')).toBeVisible();

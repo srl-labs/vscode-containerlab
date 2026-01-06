@@ -11,6 +11,7 @@ export interface ContextMenuItem {
   iconComponent?: React.ReactNode;
   disabled?: boolean;
   divider?: boolean;
+  danger?: boolean;
   onClick?: () => void;
 }
 
@@ -100,9 +101,15 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
     }
   }, [item, onClose]);
 
+  const classNames = [
+    'context-menu-item',
+    item.disabled ? 'disabled' : '',
+    item.danger ? 'danger' : ''
+  ].filter(Boolean).join(' ');
+
   return (
     <button
-      className={`context-menu-item ${item.disabled ? 'disabled' : ''}`}
+      className={classNames}
       role="menuitem"
       onClick={handleClick}
       disabled={item.disabled}

@@ -50,4 +50,16 @@
     background-color: rgba(255, 255, 255, 0.1);
     margin: 4px 0;
   }
+
+  .context-menu-item.danger {
+    color: #f87171;
+  }
+
+  .context-menu-item.danger i {
+    color: #f87171;
+  }
+
+  .context-menu-item.danger:hover:not(.disabled) {
+    background-color: rgba(248, 113, 113, 0.15);
+  }
 }

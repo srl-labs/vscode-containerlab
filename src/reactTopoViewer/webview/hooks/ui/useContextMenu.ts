@@ -56,6 +56,9 @@ const ICON_EDIT = 'fas fa-pen';
 const ICON_DELETE = 'fas fa-trash';
 const ICON_LINK = 'fas fa-link';
 
+// Divider ID for menu separation
+const DIVIDER_DELETE_ID = 'divider-delete';
+
 /**
  * Extract capture endpoints from edge data (similar to legacy ContextMenuManager)
  */
@@ -116,21 +119,23 @@ function buildNodeEditMenuItems(
         }
       },
       {
-        id: 'delete-node',
-        label: 'Delete',
-        icon: ICON_DELETE,
-        onClick: () => {
-          log.info(`[ContextMenu] Delete network node: ${nodeId}`);
-          options.onDeleteNode?.(nodeId);
-        }
-      },
-      {
         id: 'link-node',
         label: 'Create Link',
         icon: ICON_LINK,
         onClick: () => {
           log.info(`[ContextMenu] Add link from network: ${nodeId}`);
           options.onCreateLinkFromNode?.(nodeId);
+        }
+      },
+      { id: DIVIDER_DELETE_ID, label: '', divider: true },
+      {
+        id: 'delete-node',
+        label: 'Delete',
+        icon: ICON_DELETE,
+        danger: true,
+        onClick: () => {
+          log.info(`[ContextMenu] Delete network node: ${nodeId}`);
+          options.onDeleteNode?.(nodeId);
         }
       }
     ];
@@ -148,21 +153,23 @@ function buildNodeEditMenuItems(
       }
     },
     {
-      id: 'delete-node',
-      label: 'Delete',
-      icon: ICON_DELETE,
-      onClick: () => {
-        log.info(`[ContextMenu] Delete node: ${nodeId}`);
-        options.onDeleteNode?.(nodeId);
-      }
-    },
-    {
       id: 'link-node',
       label: 'Create Link',
       icon: ICON_LINK,
       onClick: () => {
         log.info(`[ContextMenu] Add link from: ${nodeId}`);
         options.onCreateLinkFromNode?.(nodeId);
+      }
+    },
+    { id: DIVIDER_DELETE_ID, label: '', divider: true },
+    {
+      id: 'delete-node',
+      label: 'Delete',
+      icon: ICON_DELETE,
+      danger: true,
+      onClick: () => {
+        log.info(`[ContextMenu] Delete node: ${nodeId}`);
+        options.onDeleteNode?.(nodeId);
       }
     }
   ];
@@ -260,10 +267,12 @@ function buildEdgeEditMenuItems(
         options.onEditLink?.(edgeId);
       }
     },
+    { id: DIVIDER_DELETE_ID, label: '', divider: true },
     {
       id: 'delete-edge',
       label: 'Delete',
-      icon: 'fas fa-trash',
+      icon: ICON_DELETE,
+      danger: true,
       onClick: () => {
         log.info(`[ContextMenu] Delete link: ${edgeId}`);
         options.onDeleteLink?.(edgeId);
