@@ -140,7 +140,7 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
   return (
     <div className="flex flex-col gap-1">
       <span className="field-label">Preview</span>
-      <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 min-h-[80px] flex items-center justify-center">
+      <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 min-h-[80px] flex items-center justify-center">
         <div
           className="relative w-full h-16 flex items-start justify-center pt-1"
           style={{

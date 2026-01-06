@@ -307,7 +307,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
         <img
           src={getIconSource(option.value, color)}
           alt={option.label}
-          className="h-6 w-6 rounded"
+          className="h-6 w-6 rounded-sm"
           style={{ borderRadius: calcBorderRadius(data.iconCornerRadius, 24) }}
         />
         <span>{option.label}</span>
@@ -323,7 +323,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
           <img
             src={getIconSource(previewIcon, color)}
             alt="Icon preview"
-            className="h-9 w-9 rounded"
+            className="h-9 w-9 rounded-sm"
             style={{ borderRadius: calcBorderRadius(data.iconCornerRadius, 36) }}
           />
           <div className="flex-1">

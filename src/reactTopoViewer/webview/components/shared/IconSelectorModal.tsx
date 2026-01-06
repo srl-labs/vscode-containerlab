@@ -125,13 +125,13 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
     <div className="relative group">
       <button
         type="button"
-        className={`flex w-full flex-col items-center gap-0.5 rounded p-1.5 transition-colors ${
+        className={`flex w-full flex-col items-center gap-0.5 rounded-sm p-1.5 transition-colors ${
           isSelected ? 'bg-[var(--vscode-list-activeSelectionBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
         }`}
         onClick={onClick}
         title={(ICON_LABELS[icon] || icon) + (source ? ' (' + source + ')' : '')}
       >
-        <img src={iconSrc} alt={icon} className="rounded" style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }} />
+        <img src={iconSrc} alt={icon} className="rounded-sm" style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }} />
         <span className="max-w-full truncate text-[10px] text-[var(--vscode-foreground)]">{ICON_LABELS[icon] || icon}</span>
       </button>
       {/* Delete button for global custom icons */}
@@ -139,7 +139,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--vscode-errorForeground)] text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--vscode-errorForeground)] text-white rounded-sm text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
           title={`Delete ${icon}`}
         >
           x
@@ -157,7 +157,7 @@ const ColorPicker: React.FC<{
     <div className="flex items-center gap-2">
       <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} className="h-4 w-4" />
       <input type="color" value={color} onChange={(e) => { onColorChange(e.target.value); onToggle(true); }}
-        className="h-7 w-12 cursor-pointer rounded border border-[var(--vscode-panel-border)] p-0.5" disabled={!enabled} />
+        className="h-7 w-12 cursor-pointer rounded-sm border border-[var(--vscode-panel-border)] p-0.5" disabled={!enabled} />
       <input type="text" value={enabled ? color : ''} onChange={(e) => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) { onColorChange(e.target.value); onToggle(true); } }}
         className="input-field flex-1 text-xs" placeholder={DEFAULT_COLOR} maxLength={7} disabled={!enabled} />
     </div>
@@ -168,7 +168,7 @@ const RadiusSlider: React.FC<{ value: number; onChange: (v: number) => void }> =
   <div className="space-y-1">
     <label className="field-label">Corner Radius: {value}px</label>
     <input type="range" min={0} max={MAX_RADIUS} value={value} onChange={(e) => onChange(Number(e.target.value))}
-      className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[var(--vscode-input-background)]" />
+      className="h-2 w-full cursor-pointer appearance-none rounded-sm bg-[var(--vscode-input-background)]" />
   </div>
 );
 
@@ -249,7 +249,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
       {/* Built-in Icons Grid */}
       <div className="space-y-1 mb-3">
         <label className="field-label">Built-in Icons</label>
-        <div className="grid grid-cols-7 gap-1 rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
+        <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
           {AVAILABLE_ICONS.map((i) => (
             <IconButton
               key={i}
@@ -270,14 +270,14 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
           <button
             type="button"
             onClick={handleUploadIcon}
-            className="text-xs px-2 py-0.5 rounded bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)]"
+            className="text-xs px-2 py-0.5 rounded-sm bg-[var(--vscode-button-secondaryBackground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] text-[var(--vscode-button-secondaryForeground)]"
             title="Add custom icon"
           >
             + Add
           </button>
         </div>
         {customIcons.length > 0 ? (
-          <div className="grid grid-cols-7 gap-1 rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
+          <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
             {customIcons.map((ci) => (
               <IconButton
                 key={ci.name}
@@ -293,7 +293,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
             ))}
           </div>
         ) : (
-          <div className="text-xs text-[var(--vscode-descriptionForeground)] italic p-2 text-center border border-dashed border-[var(--vscode-panel-border)] rounded">
+          <div className="text-xs text-[var(--vscode-descriptionForeground)] italic p-2 text-center border border-dashed border-[var(--vscode-panel-border)] rounded-sm">
             No custom icons. Click &quot;+ Add&quot; to upload.
           </div>
         )}
@@ -324,7 +324,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
 const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc, radius }) => (
   <div className="space-y-1">
     <label className="field-label">Preview</label>
-    <div className="flex items-center justify-center rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-3">
+    <div className="flex items-center justify-center rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-3">
       <img src={iconSrc} alt="Preview" style={{ width: 56, height: 56, borderRadius: `${(radius / 48) * 56}px` }} />
     </div>
   </div>

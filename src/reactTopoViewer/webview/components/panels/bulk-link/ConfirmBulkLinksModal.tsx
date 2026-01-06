@@ -33,7 +33,7 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
     footer={false}
   >
     <div className="space-y-3">
-      <div className="rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2">
+      <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2">
         <div className="text-sm">
           Create <span className="font-semibold">{count}</span> new link{count === 1 ? '' : 's'}?
         </div>

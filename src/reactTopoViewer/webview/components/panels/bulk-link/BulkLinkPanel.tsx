@@ -25,7 +25,7 @@ interface BulkLinkPanelProps {
 }
 
 const ExamplesSection: React.FC = () => (
-  <div className="rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 space-y-2">
+  <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 space-y-2">
     <div className="section-header">Examples</div>
 
     <div className="space-y-1.5 text-sm text-secondary">
@@ -213,13 +213,13 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
           </div>
 
           {status && (
-            <div className="rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 text-sm text-secondary">
+            <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 text-sm text-secondary">
               {status}
             </div>
           )}
 
           {!canApply && (
-            <div className="rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 text-sm text-secondary">
+            <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 text-sm text-secondary">
               Bulk linking is disabled while locked or in view mode.
             </div>
           )}

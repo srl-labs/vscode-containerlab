@@ -15,7 +15,7 @@ export const Toggle: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`px-3 py-1.5 text-[11px] font-medium rounded-full transition-all duration-150 ${
+    className={`px-3 py-1.5 text-[11px] font-medium rounded-sm transition-all duration-150 ${
       active
         ? 'bg-[var(--accent)] text-white shadow-sm'
         : 'bg-white/5 text-[var(--vscode-foreground)] hover:bg-white/10 border border-white/10'
@@ -36,7 +36,7 @@ export const ColorSwatch: React.FC<{
 }> = ({ label, value, onChange, disabled }) => (
   <div className="flex flex-col gap-0.5">
     <span className="field-label">{label}</span>
-    <div className={`relative w-[30px] h-[30px] rounded-lg overflow-hidden border border-white/10 hover:border-white/20 transition-colors ${disabled ? 'opacity-40' : ''}`}>
+    <div className={`relative w-[30px] h-[30px] rounded-sm overflow-hidden border border-white/10 hover:border-white/20 transition-colors ${disabled ? 'opacity-40' : ''}`}>
       <input
         type="color"
         value={value}
@@ -65,7 +65,7 @@ export const NumberInput: React.FC<{
     <div className="relative">
       <input
         type="number"
-        className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs text-center hover:border-white/20 transition-colors"
+        className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs text-center hover:border-white/20 transition-colors"
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         min={min}
@@ -92,7 +92,7 @@ export const TextInput: React.FC<{
     <span className="field-label">{label}</span>
     <input
       type="text"
-      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs hover:border-white/20 transition-colors"
+      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs hover:border-white/20 transition-colors"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -112,7 +112,7 @@ export const SelectInput: React.FC<{
   <div className="flex flex-col gap-0.5">
     <span className="field-label">{label}</span>
     <select
-      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs cursor-pointer hover:border-white/20 transition-colors"
+      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
@@ -146,7 +146,7 @@ export const RangeSlider: React.FC<{
         max={max}
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
+        className="w-full h-2 bg-white/10 rounded-sm appearance-none cursor-pointer"
       />
     </div>
   </div>

@@ -168,7 +168,7 @@ const BackgroundSection: React.FC<{
           <i className="fas fa-chess-board mr-1.5 text-[10px]" />Transparent
         </Toggle>
         <Toggle active={option === 'white'} onClick={() => setOption('white')}>
-          <span className="inline-block w-3 h-3 bg-white rounded mr-1.5 border border-white/30" />White
+          <span className="inline-block w-3 h-3 bg-white rounded-sm mr-1.5 border border-white/30" />White
         </Toggle>
         <Toggle active={option === 'custom'} onClick={() => setOption('custom')}>
           <i className="fas fa-palette mr-1.5 text-[10px]" />Custom
@@ -197,7 +197,7 @@ const AnnotationsSection: React.FC<{
   return (
     <div className="flex flex-col gap-3">
       <SectionHeader>Annotations</SectionHeader>
-      <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+      <div className="flex items-center justify-between p-3 bg-black/20 rounded-sm border border-white/5">
         <div className="flex flex-col">
           <span className="text-sm text-[var(--vscode-foreground)]">
             {hasAny ? `${total} annotation${total !== 1 ? 's' : ''}` : 'No annotations'}
@@ -230,7 +230,7 @@ const FilenameSection: React.FC<{
     <div className="flex items-center gap-1">
       <input
         type="text"
-        className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs hover:border-white/20 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors outline-none"
+        className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs hover:border-white/20 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors outline-none"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="topology"
@@ -256,11 +256,11 @@ const PreviewSection: React.FC<{
   return (
     <div className="flex flex-col gap-1">
       <SectionHeader>Preview</SectionHeader>
-      <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 overflow-hidden">
+      <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 overflow-hidden">
         <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-30`} />
         <div className="relative z-10 flex items-center justify-center">
           <div
-            className="w-24 h-16 rounded-lg shadow-lg border border-white/10 flex items-center justify-center transition-all duration-200"
+            className="w-24 h-16 rounded-sm shadow-lg border border-white/10 flex items-center justify-center transition-all duration-200"
             style={{
               ...bgStyle,
               padding: `${Math.min(padding / 20, 8)}px`,
@@ -270,7 +270,7 @@ const PreviewSection: React.FC<{
             <div className="flex flex-col items-center gap-1">
               <i className="fas fa-project-diagram text-lg text-[var(--accent)] opacity-80" />
               {includeAnnotations && annotationCount > 0 && (
-                <span className="text-[8px] px-1.5 py-0.5 bg-[var(--accent)]/20 text-[var(--accent)] rounded-full">
+                <span className="text-[8px] px-1.5 py-0.5 bg-[var(--accent)]/20 text-[var(--accent)] rounded-sm">
                   +{annotationCount}
                 </span>
               )}
@@ -284,7 +284,7 @@ const PreviewSection: React.FC<{
 
 // Tips section
 const TipsSection: React.FC = () => (
-  <div className="flex flex-col gap-1.5 p-3 bg-black/10 rounded-xl border border-white/5">
+  <div className="flex flex-col gap-1.5 p-3 bg-black/10 rounded-sm border border-white/5">
     <div className="flex items-center gap-2 text-[var(--vscode-descriptionForeground)]">
       <i className="fas fa-lightbulb text-yellow-400/70 text-xs" />
       <span className="field-label">Tips</span>
@@ -424,7 +424,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
         {/* Export button */}
         <button
           type="button"
-          className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
+          className={`w-full py-3 px-4 rounded-sm font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
             isExporting || !cy
               ? 'bg-white/5 text-[var(--vscode-descriptionForeground)] cursor-not-allowed'
               : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:shadow-[var(--accent)]/30'
@@ -447,7 +447,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
 
         {/* Status message */}
         {exportStatus && (
-          <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${
+          <div className={`flex items-center gap-2 p-3 rounded-sm text-sm ${
             exportStatus.type === 'success'
               ? 'bg-green-500/10 text-green-400 border border-green-500/20'
               : 'bg-red-500/10 text-red-400 border border-red-500/20'

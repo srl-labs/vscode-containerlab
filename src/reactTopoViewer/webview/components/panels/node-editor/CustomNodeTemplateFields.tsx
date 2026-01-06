@@ -45,7 +45,7 @@ const CopyableCode: React.FC<{ text: string; className?: string }> = ({ text, cl
     <button
       type="button"
       onClick={() => void handleCopy()}
-      className={`inline-flex items-center gap-1.5 font-mono text-xs px-1.5 py-0.5 rounded
+      className={`inline-flex items-center gap-1.5 font-mono text-xs px-1.5 py-0.5 rounded-sm
         bg-[var(--vscode-textCodeBlock-background)]
         hover:bg-[var(--vscode-list-hoverBackground)]
         text-[var(--vscode-textPreformat-foreground)]
@@ -67,7 +67,7 @@ const InterfacePatternInfo: React.FC<{ isExpanded: boolean; onToggle: () => void
   onToggle
 }) => {
   return (
-    <div className="mt-2 rounded border border-[var(--vscode-widget-border)] overflow-hidden">
+    <div className="mt-2 rounded-sm border border-[var(--vscode-widget-border)] overflow-hidden">
       {/* Header - always visible */}
       <button
         type="button"
@@ -80,7 +80,7 @@ const InterfacePatternInfo: React.FC<{ isExpanded: boolean; onToggle: () => void
         <i className={`fas fa-chevron-right text-[10px] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
         <i className="fas fa-info-circle text-[var(--vscode-textLink-foreground)]" />
         <span className="text-[var(--vscode-descriptionForeground)]">
-          Pattern syntax: Use <code className="px-1 bg-[var(--vscode-textCodeBlock-background)] rounded">{'{n}'}</code> for sequential numbering
+          Pattern syntax: Use <code className="px-1 bg-[var(--vscode-textCodeBlock-background)] rounded-sm">{'{n}'}</code> for sequential numbering
         </span>
       </button>
 

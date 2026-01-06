@@ -46,7 +46,7 @@ const TooltipIcon: React.FC<{ tooltip: string; label: string }> = ({ tooltip, la
     >
       <i className="fas fa-info-circle text-xs" aria-hidden="true"></i>
     </button>
-    <span className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-md border border-[var(--vscode-editorHoverWidget-border)] bg-[var(--vscode-editorHoverWidget-background)] px-3 py-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+    <span className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-sm border border-[var(--vscode-editorHoverWidget-border)] bg-[var(--vscode-editorHoverWidget-background)] px-3 py-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
       {tooltip}
     </span>
   </span>

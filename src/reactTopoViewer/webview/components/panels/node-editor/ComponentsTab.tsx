@@ -36,15 +36,15 @@ const toSelectOptions = (types: string[]): Array<{ value: string; label: string 
 // ============================================================================
 
 const cardStyles = {
-  container: 'bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-md overflow-hidden',
+  container: 'bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-sm overflow-hidden',
   header: 'flex items-center justify-between px-3 py-2 bg-[var(--vscode-sideBar-background)] cursor-pointer select-none hover:bg-[var(--vscode-list-hoverBackground)] transition-colors',
   headerTitle: 'flex items-center gap-2 font-medium text-sm',
   body: 'p-3 space-y-3 border-t border-[var(--vscode-panel-border)]',
-  deleteBtn: 'flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-errorForeground)] transition-colors',
-  addBtn: 'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+  deleteBtn: 'flex items-center justify-center w-6 h-6 rounded-sm hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-errorForeground)] transition-colors',
+  addBtn: 'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
   subSection: 'mt-3 pt-3 border-t border-[var(--vscode-panel-border)]',
   subSectionTitle: 'text-xs font-medium text-[var(--vscode-foreground)] mb-2',
-  badge: 'px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]',
+  badge: 'px-1.5 py-0.5 text-[10px] font-medium rounded-sm bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]',
 };
 
 // ============================================================================
@@ -61,7 +61,7 @@ interface MdaEntryProps {
 }
 
 const MdaEntry: React.FC<MdaEntryProps> = ({ mda, index, mdaTypes, onUpdate, onRemove, slotPrefix = '' }) => (
-  <div className="flex items-center gap-2 py-2 px-2 rounded bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)]">
+  <div className="flex items-center gap-2 py-2 px-2 rounded-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)]">
     {slotPrefix && (
       <span className={cardStyles.badge}>{slotPrefix}</span>
     )}
@@ -768,7 +768,7 @@ export const ComponentsTab: React.FC<TabProps> = ({ data, onChange }) => {
   return (
     <div className="space-y-3">
       {/* Mode indicator */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-sm bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]">
         <i className={`fas ${isIntegrated ? 'fa-server' : 'fa-network-wired'} text-[var(--vscode-textLink-foreground)]`} />
         <div>
           <div className="text-sm font-medium">

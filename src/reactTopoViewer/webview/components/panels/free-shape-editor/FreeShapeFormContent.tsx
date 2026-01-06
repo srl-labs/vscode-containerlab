@@ -31,7 +31,7 @@ const ShapeTypeSelector: React.FC<{ value: FreeShapeAnnotation['shapeType']; onC
   <div className="flex flex-col gap-0.5">
     <span className="field-label">Shape Type</span>
     <select
-      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs cursor-pointer hover:border-white/20 transition-colors"
+      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
       value={value}
       onChange={(e) => onChange(e.target.value as FreeShapeAnnotation['shapeType'])}
     >
@@ -94,7 +94,7 @@ const FillControls: React.FC<{ formData: FreeShapeAnnotation; updateField: Props
             max={100}
             value={Math.round(opacity * 100)}
             onChange={(e) => updateField('fillOpacity', parseInt(e.target.value) / 100)}
-            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-2 bg-white/10 rounded-sm appearance-none cursor-pointer"
           />
         </div>
       </div>
@@ -133,7 +133,7 @@ const BorderControls: React.FC<{ formData: FreeShapeAnnotation; updateField: Pro
         <div className="flex flex-col gap-0.5 flex-1 min-w-[80px]">
           <span className="field-label">Style</span>
           <select
-            className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs cursor-pointer hover:border-white/20 transition-colors"
+            className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
             value={formData.borderStyle ?? DEFAULT_BORDER_STYLE}
             onChange={(e) => updateField('borderStyle', e.target.value as FreeShapeAnnotation['borderStyle'])}
           >
@@ -229,7 +229,7 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
   return (
     <div className="flex flex-col gap-1">
       <span className="field-label">Preview</span>
-      <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 min-h-[100px] flex items-center justify-center overflow-hidden">
+      <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 min-h-[100px] flex items-center justify-center overflow-hidden">
         <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
         <div
           className="relative z-10 transition-all duration-200"

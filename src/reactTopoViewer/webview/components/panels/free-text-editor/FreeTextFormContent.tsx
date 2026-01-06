@@ -26,7 +26,7 @@ const IconBtn: React.FC<{ active: boolean; onClick: () => void; children: React.
   <button
     title={title}
     onClick={onClick}
-    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150 ${
+    className={`w-8 h-8 flex items-center justify-center rounded-sm transition-all duration-150 ${
       active
         ? 'bg-[var(--accent)] text-white shadow-sm'
         : 'text-[var(--vscode-foreground)] hover:bg-white/10'
@@ -44,7 +44,7 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props['upda
   const align = formData.textAlign || 'left';
 
   return (
-    <div className="flex items-center gap-0.5 p-1.5 bg-black/20 rounded-xl backdrop-blur-sm">
+    <div className="flex items-center gap-0.5 p-1.5 bg-black/20 rounded-sm backdrop-blur-sm">
       <IconBtn active={isBold} onClick={() => updateField('fontWeight', isBold ? 'normal' : 'bold')} title="Bold">
         <span className="font-bold text-sm">B</span>
       </IconBtn>
@@ -72,7 +72,7 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props['upda
 const FontControls: React.FC<{ formData: FreeTextAnnotation; updateField: Props['updateField'] }> = ({ formData, updateField }) => (
   <div className="flex gap-2">
     <select
-      className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs cursor-pointer hover:border-white/20 transition-colors"
+      className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
       value={formData.fontFamily || 'monospace'}
       onChange={(e) => updateField('fontFamily', e.target.value)}
     >
@@ -81,7 +81,7 @@ const FontControls: React.FC<{ formData: FreeTextAnnotation; updateField: Props[
     <div className="relative">
       <input
         type="number"
-        className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs text-center hover:border-white/20 transition-colors"
+        className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs text-center hover:border-white/20 transition-colors"
         value={formData.fontSize || 14}
         onChange={(e) => updateField('fontSize', parseInt(e.target.value) || 14)}
         min={1}
@@ -109,7 +109,7 @@ const StyleOptions: React.FC<{ formData: FreeTextAnnotation; updateField: Props[
         <span className="field-label">Rotate</span>
         <input
           type="number"
-          className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs text-center hover:border-white/20 transition-colors"
+          className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs text-center hover:border-white/20 transition-colors"
           value={formData.rotation || 0}
           onChange={(e) => updateField('rotation', parseInt(e.target.value) || 0)}
           min={-360}
@@ -158,7 +158,7 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
   return (
     <div className="flex flex-col gap-1">
       <PreviewHeader />
-      <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 min-h-[80px] flex items-center justify-center overflow-hidden">
+      <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 min-h-[80px] flex items-center justify-center overflow-hidden">
         <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
         <div className="relative z-10 transition-all duration-200 free-text-markdown" style={style}>
           {isEmpty ? (
@@ -176,7 +176,7 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
 export const FreeTextFormContent: React.FC<Props> = ({ formData, updateField, isNew, onDelete }) => (
   <div className="flex flex-col gap-4">
     <textarea
-      className="w-full h-32 px-4 py-3 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] placeholder-[var(--vscode-input-placeholderForeground)] border border-white/10 rounded-xl resize-y focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+      className="w-full h-32 px-4 py-3 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] placeholder-[var(--vscode-input-placeholderForeground)] border border-white/10 rounded-sm resize-y focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
       value={formData.text}
       onChange={(e) => updateField('text', e.target.value)}
       placeholder="Enter your text... (Markdown and fenced code blocks supported)"

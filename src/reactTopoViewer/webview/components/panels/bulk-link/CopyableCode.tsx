@@ -25,7 +25,7 @@ export const CopyableCode: React.FC<CopyableCodeProps> = ({ children, className 
     <code
       onClick={() => void handleCopy()}
       title="Click to copy"
-      className={`cursor-pointer select-text rounded bg-[var(--vscode-textCodeBlock-background)] px-1 py-0.5 font-mono text-xs transition-colors hover:bg-[var(--vscode-list-hoverBackground)] ${copied ? 'ring-1 ring-[var(--vscode-focusBorder)]' : ''} ${className}`}
+      className={`cursor-pointer select-text rounded-sm bg-[var(--vscode-textCodeBlock-background)] px-1 py-0.5 font-mono text-xs transition-colors hover:bg-[var(--vscode-list-hoverBackground)] ${copied ? 'ring-1 ring-[var(--vscode-focusBorder)]' : ''} ${className}`}
     >
       {copied ? 'Copied!' : children}
     </code>

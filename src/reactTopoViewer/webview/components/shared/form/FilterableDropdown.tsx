@@ -51,7 +51,7 @@ const DropdownMenu: React.FC<{
 }> = ({ menuRef, menuClassName, options, highlightedIndex, onSelect, onHighlight, renderOption }) => (
   <div
     ref={menuRef}
-    className={`absolute left-0 top-full z-[60] mt-1 w-full overflow-y-auto rounded border border-[var(--vscode-dropdown-border)] bg-[var(--vscode-dropdown-background)] shadow-lg ${menuClassName}`}
+    className={`absolute left-0 top-full z-[60] mt-1 w-full overflow-y-auto rounded-sm border border-[var(--vscode-dropdown-border)] bg-[var(--vscode-dropdown-background)] shadow-lg ${menuClassName}`}
   >
     {options.map((option, index) => (
       <DropdownItem
@@ -68,7 +68,7 @@ const DropdownMenu: React.FC<{
 
 const EmptyState: React.FC<{ filterText: string; allowFreeText: boolean }> = ({ filterText, allowFreeText }) => (
   <div
-    className="absolute left-0 top-full z-[60] mt-1 w-full rounded border border-[var(--vscode-dropdown-border)] bg-[var(--vscode-dropdown-background)] px-3 py-2 shadow-lg"
+    className="absolute left-0 top-full z-[60] mt-1 w-full rounded-sm border border-[var(--vscode-dropdown-border)] bg-[var(--vscode-dropdown-background)] px-3 py-2 shadow-lg"
     style={{ color: 'var(--vscode-foreground)', opacity: 0.6 }}
   >
     {allowFreeText ? `Use "${filterText}" as custom value` : 'No matches found'}

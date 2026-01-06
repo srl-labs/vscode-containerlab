@@ -85,7 +85,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => (
  */
 const NonVethInfo: React.FC = () => (
   <div className="my-1">
-    <div className="p-2 rounded" style={quoteBlockStyle}>
+    <div className="p-2 rounded-sm" style={quoteBlockStyle}>
       <div className="text-sm">
         <span className="font-semibold">Note:</span>{' '}
         This link connects to a network node. Configure extended properties on the network

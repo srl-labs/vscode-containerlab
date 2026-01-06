@@ -136,7 +136,7 @@ const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
 
   return (
     <div
-      className="mb-2 p-2 rounded"
+      className="mb-2 p-2 rounded-sm"
       style={{
         backgroundColor: 'var(--vscode-inputValidation-errorBackground)',
         border: '1px solid var(--vscode-inputValidation-errorBorder)'
