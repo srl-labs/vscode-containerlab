@@ -5,9 +5,20 @@
 .eslintrc.json
 .eslintignore
 .yarnrc
+.nvmrc
 tsconfig.json
 eslint.config.mjs
+.dependency-cruiser.cjs
+.jscpd.json
+.jscpd/**
+scripts/**
 webpack.config.js
+esbuild.config.js
+postcss.config.js
+tailwind.config.js
+.mocharc.json
+.prettierignore
+.prettierrc
 Makefile
 vsc-extension-quickstart.md
 
@@ -24,7 +35,11 @@ out/**
 # Build artifacts
 **/*.map
 **/*.ts
+**/*.LICENSE.txt
 *.vsix
+
+# Resources only needed for marketplace (loaded from GitHub)
+resources/screenshot.png
 
 # Test files
 test.clab.yml
@@ -37,11 +52,21 @@ clab-*/
 *.clab.yml*
 labs/
 
-#others
+# Development directories
+dev/**
+dist-dev/**
 .claude/**
 legacy-backup/**
+
+# Test and coverage output
+.nyc_output/**
+playwright-report/**
+test-results/**
+mochawesome-report/**
+test/**
+
+# Documentation and scripts
 AGENTS.md
 CLAUDE.md
-mochawesome-report/**
 patch.sh
 report/

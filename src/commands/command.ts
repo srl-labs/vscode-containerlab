@@ -1,10 +1,12 @@
-import * as vscode from 'vscode';
-import * as utils from '../utils/index';
 import { spawn } from 'child_process';
-import { outputChannel } from '../extension';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+
+import * as vscode from 'vscode';
+
+import { outputChannel } from '../globals';
+import * as utils from "../utils";
 
 /**
  * Run a shell command in a named VS Code terminal.
@@ -60,7 +62,7 @@ function splitArgs(input: string): string[] {
         }
 
         // Not in quotes
-        if (ch === '"' || ch === "'") { quote = ch as any; continue; }
+        if (ch === '"' || ch === "'") { quote = ch; continue; }
         if (ch === ' ') {
             if (current) { args.push(current); current = ''; }
             continue;
@@ -72,19 +74,21 @@ function splitArgs(input: string): string[] {
     return args;
 }
 
-export async function execCommandInOutput(command: string, show?: boolean, stdoutCb?: Function, stderrCb?: Function) {
+type OutputCallback = (proc: ReturnType<typeof spawn>, cleanedOutput: string) => void;
+
+export async function execCommandInOutput(command: string, show?: boolean, stdoutCb?: OutputCallback, stderrCb?: OutputCallback) {
     const [cmd, ...args] = splitArgs(command);
     const proc = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
     if (show) { outputChannel.show(); }
 
-    proc.stdout?.on('data', (data) => {
+    proc.stdout?.on('data', (data: Buffer) => {
         const cleaned = utils.stripAnsi(data.toString());
         outputChannel.info(cleaned);
         if (stdoutCb) { stdoutCb(proc, cleaned); }
     });
 
-    proc.stderr?.on('data', (data) => {
+    proc.stderr?.on('data', (data: Buffer) => {
         const cleaned = utils.stripAnsi(data.toString());
         outputChannel.info(cleaned);
         if (stderrCb) { stderrCb(proc, cleaned); }
@@ -232,9 +236,10 @@ export class Command {
                 });
 
             await vscode.commands.executeCommand("containerlab.refresh");
-        } catch (err: any) {
+        } catch (err: unknown) {
             const command = cmd[1];
-            const failMsg = this.spinnerMsg?.failMsg ? `${this.spinnerMsg.failMsg}. Err: ${err}` : `${utils.titleCase(command)} failed: ${err.message}`;
+            const errMessage = err instanceof Error ? err.message : String(err);
+            const failMsg = this.spinnerMsg?.failMsg ? `${this.spinnerMsg.failMsg}. Err: ${err}` : `${utils.titleCase(command)} failed: ${errMessage}`;
             const viewOutputBtn = await vscode.window.showErrorMessage(failMsg, "View logs");
             if (viewOutputBtn === "View logs") { outputChannel.show(); }
             if (this.onFailureCallback) {

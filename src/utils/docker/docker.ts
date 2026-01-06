@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
-import { dockerClient, outputChannel } from "../../extension";
+import type Dockerode from "dockerode";
+
+import { dockerClient, outputChannel } from "../../globals";
 import { ContainerAction, ImagePullPolicy } from "../consts";
-import Dockerode from "dockerode";
 
 // Internal helper to pull the docker image using dockerode client
 async function pullDockerImage(image: string): Promise<boolean> {
@@ -36,8 +37,8 @@ async function pullDockerImage(image: string): Promise<boolean> {
         vscode.window.showInformationMessage(`Successfully pulled image '${image}'`);
         outputChannel.info(`Successfully pulled image '${image}'`);
         return true;
-      } catch (err: any) {
-        const message = err?.message || String(err);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
         outputChannel.error(`Failed to pull image '${image}': ${message}`);
         vscode.window.showErrorMessage(`Failed to pull image '${image}': ${message}`);
         return false;
@@ -115,7 +116,7 @@ export async function runContainerAction(containerId: string, action: ContainerA
     return;
   }
 
-  const container = await dockerClient.getContainer(containerId);
+  const container = dockerClient.getContainer(containerId);
   if (!container) {
     vscode.window.showErrorMessage(`Unable to ${action} container: Failed to get '${containerId}'`);
     return;
@@ -141,8 +142,9 @@ export async function runContainerAction(containerId: string, action: ContainerA
     const msg = `${action}: Success for '${ctrName}'`
     outputChannel.info(msg);
     vscode.window.showInformationMessage(msg);
-  } catch (err: any) {
-    const msg = `Failed to ${action} container ${ctrName}: ${err.message}`
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const msg = `Failed to ${action} container ${ctrName}: ${message}`
     outputChannel.error(msg);
     vscode.window.showErrorMessage(msg);
   }

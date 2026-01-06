@@ -1,0 +1,11 @@
+{
+  "freeTextAnnotations": [],
+  "freeShapeAnnotations": [],
+  "groupStyleAnnotations": [],
+  "networkNodeAnnotations": [],
+  "nodeAnnotations": [
+    { "id": "srsim1", "interfacePattern": "1/1/c{n}" },
+    { "id": "srsim2", "interfacePattern": "1/1/c{n}" }
+  ],
+  "aliasEndpointAnnotations": []
+}

@@ -1,10 +1,13 @@
+import path = require("path");
+
 import * as vscode from "vscode"
+
 import * as utils from "../utils/utils"
+import { localTreeView, favoriteLabs, outputChannel } from "../globals";
+import { FilterUtils } from "../helpers/filterUtils";
+
 import * as c from "./common";
 import * as ins from "./inspector";
-import { localTreeView, favoriteLabs } from "../extension";
-import { FilterUtils } from "../helpers/filterUtils";
-import path = require("path");
 
 const WATCHER_GLOB_PATTERN = "**/*.clab.{yaml,yml}";
 const CLAB_GLOB_PATTERN = "{**/*.clab.yml,**/*.clab.yaml}";
@@ -87,7 +90,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     }
 
     // Populate the tree
-    async getChildren(element: any): Promise<any> {
+    async getChildren(element: c.ClabLabTreeNode | c.ClabFolderTreeNode | undefined): Promise<(c.ClabFolderTreeNode | c.ClabLabTreeNode)[] | undefined> {
         if (element instanceof c.ClabFolderTreeNode) {
             return this.discoverLabs(element.fullPath);
         }
@@ -96,7 +99,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
     }
 
     private async discoverLabs(dir?: string): Promise<(c.ClabFolderTreeNode | c.ClabLabTreeNode)[] | undefined> {
-        console.log("[LocalTreeDataProvider]:\tDiscovering...");
+        outputChannel.debug("[LocalTreeDataProvider] Discovering labs...");
 
         const uris = await this.getLabUris();
         const labs: Record<string, c.ClabLabTreeNode> = {};
@@ -123,10 +126,10 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
     private async getLabUris(): Promise<vscode.Uri[]> {
         if (this.fileCache) {
-            console.log("[LocalTreeDataProvider]:\tUsing cached file list");
+            outputChannel.debug("[LocalTreeDataProvider] Using cached file list");
             return this.fileCache;
         }
-        console.log("[LocalTreeDataProvider]:\tPerforming file discovery");
+        outputChannel.debug("[LocalTreeDataProvider] Performing file discovery");
         const uris = (await vscode.workspace.findFiles(CLAB_GLOB_PATTERN, IGNORE_GLOB_PATTERN))
             .filter(u => !u.scheme || u.scheme === 'file');
         this.fileCache = uris;
@@ -152,7 +155,7 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
 
         if (labNode) {
             labNode.contextValue = contextVal;
-            (labNode as any).favorite = isFavorite;
+            labNode.favorite = isFavorite;
             labNode.description = utils.getRelLabFolderPath(normPath);
         } else {
             labNode = new c.ClabLabTreeNode(
@@ -250,14 +253,21 @@ export class LocalLabTreeDataProvider implements vscode.TreeDataProvider<c.ClabL
         const data = ins.rawInspectData;
 
         if (Array.isArray(data)) {
-            // Old format: flat array of containers
-            data.forEach((container: any) => {
-                const p = container?.Labels?.['clab-topo-file'];
-                if (p) { labPaths.add(p); }
+            // Old format: flat array of containers (for backward compatibility)
+            data.forEach((container: unknown) => {
+                if (container && typeof container === 'object' && 'Labels' in container) {
+                    const labels = container.Labels;
+                    if (labels && typeof labels === 'object' && 'clab-topo-file' in labels) {
+                        const p = labels['clab-topo-file'];
+                        if (typeof p === 'string') {
+                            labPaths.add(p);
+                        }
+                    }
+                }
             });
         } else if (data && typeof data === 'object') {
-            // Possibly new format: object with lab names as keys
-            Object.values(data).forEach((containers: any) => {
+            // New format: object with lab names as keys
+            Object.values(data).forEach((containers: c.ClabDetailedJSON[]) => {
                 if (Array.isArray(containers) && containers.length > 0) {
                     const p = containers[0]?.Labels?.['clab-topo-file'];
                     if (p) { labPaths.add(p); }

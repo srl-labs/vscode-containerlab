@@ -1,8 +1,10 @@
 import * as vscode from "vscode";
-import { execCommandInTerminal } from "./command";
-import { execCmdMapping } from "../extension";
-import { ClabContainerTreeNode } from "../treeView/common";
+
+import { execCmdMapping } from "../globals";
+import type { ClabContainerTreeNode } from "../treeView/common";
 import { DEFAULT_ATTACH_SHELL_CMD, DEFAULT_ATTACH_TELNET_PORT } from "../utils";
+
+import { execCommandInTerminal } from "./command";
 
 interface NodeContext {
   containerId: string;
@@ -33,12 +35,13 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
   const ctx = getNodeContext(node);
   if (!ctx) return;
 
-  let execCmd = (execCmdMapping as any)[ctx.containerKind] || DEFAULT_ATTACH_SHELL_CMD;
+  const defaultMapping = execCmdMapping as Record<string, string>;
+  let execCmd = defaultMapping[ctx.containerKind] ?? DEFAULT_ATTACH_SHELL_CMD;
   const config = vscode.workspace.getConfiguration("containerlab");
-  const userExecMapping = config.get("node.execCommandMapping") as { [key: string]: string };
+  const userExecMapping = config.get("node.execCommandMapping") as Record<string, string> | undefined;
   const runtime = config.get<string>("runtime", "docker");
 
-  execCmd = userExecMapping[ctx.containerKind] || execCmd;
+  execCmd = userExecMapping?.[ctx.containerKind] ?? execCmd;
 
   execCommandInTerminal(
     `${runtime} exec -it ${ctx.containerId} ${execCmd}`,

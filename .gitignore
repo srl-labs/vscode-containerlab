@@ -1,11 +1,14 @@
 out
 dist
+dist-dev
 node_modules
 .vscode-test/
 topoViewerData
 .vscode/*
 !.vscode/
 !.vscode/launch.json
+.jscpd/*
+.clab-icons/*
 
 package.json
 .DS_Store
@@ -14,9 +17,14 @@ package.json
 mochawesome-report/
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
 clab-*/
 *.clab.yml*
 *.clab.yaml*
+!dev/topologies-original/**
+dev/topologies/
 CLAUDE.md
 AGENTS.md
 patch.sh

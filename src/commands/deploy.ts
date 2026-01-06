@@ -1,6 +1,7 @@
-import { ClabLabTreeNode } from "../treeView/common";
 import * as vscode from "vscode";
-import { deployPopularLab } from "./deployPopular";
+
+import { ClabLabTreeNode } from "../treeView/common";
+
 import { runClabAction } from "./runClabAction";
 
 export async function deploy(node?: ClabLabTreeNode) {
@@ -46,6 +47,8 @@ export async function deploySpecificFile() {
       return;
     }
   } else {
+    // Dynamic import to avoid circular dependency
+    const { deployPopularLab } = await import("./deployPopular");
     await deployPopularLab();
     return;
   }
@@ -55,5 +58,5 @@ export async function deploySpecificFile() {
     vscode.TreeItemCollapsibleState.None,
     { absolute: labRef, relative: "" }
   );
-  deploy(tempNode);
+  void deploy(tempNode);
 }

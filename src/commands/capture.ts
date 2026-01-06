@@ -1,11 +1,13 @@
 import * as vscode from "vscode"
-import { outputChannel, dockerClient, username } from "../extension";
-import * as utils from "../utils/index";
-import { ClabInterfaceTreeNode } from "../treeView/common";
-import { genPacketflixURI } from "../utils/packetflix";
-import { DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE, DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY, ImagePullPolicy, WIRESHARK_VNC_CTR_NAME_PREFIX } from "../utils/consts";
 
-export { getHostname, setSessionHostname } from "../utils/packetflix";
+import { outputChannel, dockerClient, username } from "../globals";
+import * as utils from "../utils";
+import type { ClabInterfaceTreeNode } from "../treeView/common";
+import { genPacketflixURI, getHostname, setSessionHostname } from "../utils/packetflix";
+import type { ImagePullPolicy} from "../utils/consts";
+import { DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE, DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY, WIRESHARK_VNC_CTR_NAME_PREFIX } from "../utils/consts";
+
+export { getHostname, setSessionHostname };
 
 /**
  * Begin packet capture on an interface.
@@ -121,13 +123,15 @@ async function getEdgesharkNetwork(): Promise<string> {
     const containerInfo = await container.inspect();
 
     const networks = containerInfo.NetworkSettings.Networks || {};
-    const networkIds = Object.values(networks).map((net: any) => net.NetworkID).filter(Boolean);
+    const networkIds = Object.values(networks)
+      .map((net) => (net as { NetworkID?: string }).NetworkID)
+      .filter((id): id is string => Boolean(id));
 
     if (networkIds.length === 0) {
       return "";
     }
 
-    const networkId = networkIds[0];
+    const networkId: string = networkIds[0];
     if (!networkId) {
       return "";
     }
@@ -239,8 +243,9 @@ async function startWiresharkContainer(options: WiresharkContainerOptions): Prom
     await container.start();
     outputChannel.info(`Started Wireshark VNC container: ${container.id}`);
     return container.id;
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Starting Wireshark: ${err.message || String(err)}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Starting Wireshark: ${message}`);
     return undefined;
   }
 }
@@ -586,7 +591,7 @@ export async function killAllWiresharkVNCCtrs() {
     if (containers.length > 0) {
       // equivalent of docker rm -f for each container
       await Promise.all(
-        containers.map(async (containerInfo: any) => {
+        containers.map(async (containerInfo) => {
           try {
             const container = dockerClient.getContainer(containerInfo.Id);
             await container.remove(
@@ -601,7 +606,8 @@ export async function killAllWiresharkVNCCtrs() {
         })
       );
     }
-  } catch (err: any) {
-    vscode.window.showErrorMessage(`Failed to remove Wireshark VNC containers: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Failed to remove Wireshark VNC containers: ${message}`);
   }
 }

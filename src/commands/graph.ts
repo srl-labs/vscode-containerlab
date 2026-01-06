@@ -1,11 +1,15 @@
-import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import { ClabCommand } from "./clabCommand";
-import { ClabLabTreeNode } from "../treeView/common";
 
-import { TopoViewer } from "../topoViewer";
+import * as vscode from "vscode";
+
+
+import type { ClabLabTreeNode } from "../treeView/common";
+import type { ReactTopoViewer} from "../reactTopoViewer";
+import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
+
+import { ClabCommand } from "./clabCommand";
 
 
 /**
@@ -67,18 +71,15 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
 
   const graphCmd = new ClabCommand("graph", node, undefined, true, "Containerlab Graph");
 
-  graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
+  void graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
 }
-
 
 
 /**
  * Graph Lab (TopoViewer)
  */
 
-let currentTopoViewer: TopoViewer | undefined;
-let currentTopoViewerPanel: vscode.WebviewPanel | undefined;
-const activeTopoViewers: Set<TopoViewer> = new Set();
+let currentTopoViewer: ReactTopoViewer | undefined;
 
 type LifecycleCommandType = 'deploy' | 'destroy' | 'redeploy';
 
@@ -103,16 +104,6 @@ function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: 
   return undefined;
 }
 
-function findActiveViewer(labPath: string, labName: string): TopoViewer | undefined {
-  for (const openViewer of activeTopoViewers) {
-    if (openViewer.currentPanel &&
-        (openViewer.lastYamlFilePath === labPath || openViewer.currentLabName === labName)) {
-      return openViewer;
-    }
-  }
-  return undefined;
-}
-
 export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.ExtensionContext) {
   // Get node if not provided
   node = await getSelectedLabNode(node);
@@ -128,98 +119,33 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
     return;
   }
 
-  // Derive the lab name for matching existing viewers
+  // Derive the lab name
   const labName =
     node?.name ||
     (labPath
       ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '')
       : 'Unknown Lab');
 
-  // Check if a TopoViewer for this lab is already open
-  const existingViewer = findActiveViewer(labPath, labName);
-  if (existingViewer) {
-    setCurrentTopoViewer(existingViewer);
-    existingViewer.currentPanel!.reveal();
-    vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
-    return;
-  }
+  // Use the provider to create/get the viewer
+  const provider = ReactTopoViewerProvider.getInstance(context);
+  const viewer = await provider.openViewer(labPath, labName, isViewMode);
 
-  // 1) create a new TopoViewer
-  const viewer = new TopoViewer(context);
+  currentTopoViewer = viewer;
 
-  // 2) store the viewer in the global variable
-  setCurrentTopoViewer(viewer);
+  // Set context for any UI state
+  vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
 
-  try {
-    await viewer.createWebviewPanel(
-      context,
-      labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(''),
-      labName,
-      isViewMode
-    );
-    currentTopoViewerPanel = (viewer as any).currentPanel;
-
-    if (!currentTopoViewerPanel) {
-      return;
-    }
-
-    // 5) Set context so reload button can appear
-    vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
-
-    // 6) Track disposal
-    currentTopoViewerPanel.onDidDispose(() => {
-      setCurrentTopoViewer(undefined);
+  // Handle disposal
+  if (viewer.currentPanel) {
+    viewer.currentPanel.onDidDispose(() => {
+      currentTopoViewer = undefined;
       vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
     });
-
-  } catch (error) {
-    console.error(error);
   }
 }
 
-
-/**
- * Graph Lab (TopoViewer Reload)
- */
-export async function graphTopoviewerReload() {
-  // 1) If there's no panel, show an error
-  if (!currentTopoViewerPanel) {
-    vscode.window.showErrorMessage("No active TopoViewer panel to reload.");
-    return;
-  }
-
-  // 2) If there's no viewer, also show an error
-  if (!currentTopoViewer) {
-    vscode.window.showErrorMessage("No active TopoViewer instance.");
-    return;
-  }
-
-  // 3) Now call updatePanelHtml on the existing panel (don't bypass mode switch check for manual reload)
-  await currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
-}
-
-/**
- * Get the current TopoViewer instance
- */
-export function getCurrentTopoViewer(): TopoViewer | undefined {
+export function getCurrentTopoViewer(): ReactTopoViewer | undefined {
   return currentTopoViewer;
-}
-
-export function setCurrentTopoViewer(viewer: TopoViewer | undefined) {
-  currentTopoViewer = viewer;
-  if (viewer) {
-    currentTopoViewerPanel = (viewer as any).currentPanel;
-    activeTopoViewers.add(viewer);
-
-    // Set up disposal handler to remove from active set
-    if (currentTopoViewerPanel) {
-      currentTopoViewerPanel.onDidDispose(() => {
-        activeTopoViewers.delete(viewer);
-      });
-    }
-  } else {
-    currentTopoViewerPanel = undefined;
-  }
 }
 
 async function postLifecycleStatus(
@@ -227,19 +153,15 @@ async function postLifecycleStatus(
   status: 'success' | 'error',
   errorMessage?: string
 ): Promise<void> {
-  if (!currentTopoViewer || !currentTopoViewerPanel) {
+  if (!currentTopoViewer?.currentPanel) {
     return;
   }
 
   try {
-    if (typeof (currentTopoViewer as any).postLifecycleStatus === 'function') {
-      await (currentTopoViewer as any).postLifecycleStatus({ commandType, status, errorMessage });
-    } else if (currentTopoViewerPanel.webview) {
-      await currentTopoViewerPanel.webview.postMessage({
-        type: 'lab-lifecycle-status',
-        data: { commandType, status, errorMessage }
-      });
-    }
+    await currentTopoViewer.currentPanel.webview.postMessage({
+      type: 'lab-lifecycle-status',
+      data: { commandType, status, errorMessage }
+    });
   } catch (err) {
     console.error(`Failed to publish lifecycle status (${status}) for ${commandType}:`, err);
   }
@@ -250,25 +172,19 @@ async function postLifecycleStatus(
  * This should ONLY be called after a containerlab command has successfully completed
  */
 export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: LifecycleCommandType) {
-  // Only notify the current active TopoViewer
-  if (!currentTopoViewer || !currentTopoViewerPanel) {
+  if (!currentTopoViewer?.currentPanel) {
     return;
   }
 
-  try {
-    // Determine the new state based on the command
-    const newDeploymentState = commandType === 'destroy' ? 'undeployed' : 'deployed';
+  // Determine the new state based on the command
+  const newDeploymentState = commandType === 'destroy' ? 'undeployed' : 'deployed';
 
-    if (typeof (currentTopoViewer as any).refreshAfterExternalCommand === 'function') {
-      await (currentTopoViewer as any).refreshAfterExternalCommand(newDeploymentState);
-    } else if (currentTopoViewer.updatePanelHtml) {
-      // Fallback to legacy behaviour
-      currentTopoViewer.deploymentState = newDeploymentState;
-      currentTopoViewer.isViewMode = newDeploymentState === 'deployed';
-      await currentTopoViewer.updatePanelHtml(currentTopoViewerPanel);
+  try {
+    if (typeof currentTopoViewer.refreshAfterExternalCommand === 'function') {
+      await currentTopoViewer.refreshAfterExternalCommand(newDeploymentState);
     }
   } catch (error) {
-    console.error(`Failed to update topoviewer after ${commandType}:`, error);
+    console.error(`Failed to update TopoViewer after ${commandType}:`, error);
   } finally {
     await postLifecycleStatus(commandType, 'success');
   }

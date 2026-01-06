@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
+
 import { getInspectHtml } from "../webview/inspectHtml";
-import { ClabLabTreeNode } from "../treeView/common";
-import { outputChannel } from "../extension"; // Import outputChannel for logging
+import type { ClabLabTreeNode } from "../treeView/common";
+import { outputChannel } from "../globals";
 import * as inspector from "../treeView/inspector";
 
 // Store the current panel and context for refresh functionality
@@ -12,10 +13,15 @@ let currentContext: {
   extensionUri: vscode.Uri;
 } | undefined;
 
+type InspectContainer = Record<string, unknown>;
+type InspectDataLegacy = { containers?: InspectContainer[] };
+type InspectDataGrouped = Record<string, InspectContainer[]>;
+type InspectData = InspectDataLegacy | InspectDataGrouped | null | undefined;
+
 // Helper function to normalize inspect data to a flat container list
-function normalizeInspectOutput(parsedData: any): any[] {
-    let containers: any[] = [];
-    if (parsedData && Array.isArray(parsedData.containers)) {
+function normalizeInspectOutput(parsedData: InspectData): InspectContainer[] {
+    let containers: InspectContainer[] = [];
+    if (parsedData && 'containers' in parsedData && Array.isArray(parsedData.containers)) {
         // Old format: Top-level "containers" array
         outputChannel.appendLine("[Inspect Command]: Detected old inspect format.");
         containers = parsedData.containers;
@@ -24,8 +30,9 @@ function normalizeInspectOutput(parsedData: any): any[] {
         outputChannel.appendLine("[Inspect Command]: Detected new inspect format (grouped or single lab object).");
         for (const key in parsedData) {
             // Check if the value associated with the key is an array (list of containers)
-            if (Array.isArray(parsedData[key])) {
-                containers.push(...parsedData[key]);
+            const value = (parsedData as Record<string, unknown>)[key];
+            if (Array.isArray(value)) {
+                containers.push(...(value as InspectContainer[]));
             } else {
                 // Log if we find unexpected data structure
                 outputChannel.appendLine(`[Inspect Command]: Found non-array value for key '${key}' in inspect output.`);
@@ -54,9 +61,10 @@ export async function inspectAllLabs(context: vscode.ExtensionContext) {
 
     showInspectWebview(normalizedContainers, "Inspect - All Labs", context.extensionUri);
 
-  } catch (err: any) {
-    outputChannel.appendLine(`[Inspect Command]: Failed to refresh inspect data: ${err.message || err}`);
-    vscode.window.showErrorMessage(`Failed to refresh inspect data: ${err.message || err}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.appendLine(`[Inspect Command]: Failed to refresh inspect data: ${message}`);
+    vscode.window.showErrorMessage(`Failed to refresh inspect data: ${message}`);
     // Optionally show an empty webview on error
     // showInspectWebview([], "Inspect - All Labs (Error)", context.extensionUri);
   }
@@ -74,20 +82,21 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
     await inspector.update();
 
     const parsed = inspector.rawInspectData || {};
-    const filtered: Record<string, any> = {};
+    const filtered: InspectDataGrouped = {};
 
     for (const [labName, containers] of Object.entries(parsed)) {
       if (!Array.isArray(containers)) {
         continue;
       }
-      const topoFile = (containers as any)['topo-file'];
+      const containersList = containers as unknown as InspectContainer[];
+      const topoFile = containersList.length > 0 ? containersList[0]['topo-file'] : undefined;
       if ((node.name && labName === node.name) || topoFile === node.labPath.absolute) {
-        filtered[labName] = containers;
+        filtered[labName] = containersList;
         break;
       }
     }
 
-    const normalizedContainers = normalizeInspectOutput(Object.keys(filtered).length ? filtered : []);
+    const normalizedContainers = normalizeInspectOutput(Object.keys(filtered).length ? filtered : null);
 
     currentContext = {
       type: 'single',
@@ -97,14 +106,21 @@ export async function inspectOneLab(node: ClabLabTreeNode, context: vscode.Exten
 
     showInspectWebview(normalizedContainers, `Inspect - ${node.label}`, context.extensionUri);
 
-  } catch (err: any) {
-    outputChannel.appendLine(`[Inspect Command]: Failed to refresh lab ${node.label}: ${err.message || err}`);
-    vscode.window.showErrorMessage(`Failed to refresh lab ${node.label}: ${err.message || err}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.appendLine(`[Inspect Command]: Failed to refresh lab ${node.label}: ${message}`);
+    vscode.window.showErrorMessage(`Failed to refresh lab ${node.label}: ${message}`);
   }
 }
 
+interface WebviewMessage {
+  command: string;
+  containerName?: string;
+  port?: number;
+}
+
 // showInspectWebview now sets up message handling
-function showInspectWebview(containers: any[], title: string, extensionUri: vscode.Uri) {
+function showInspectWebview(containers: InspectContainer[], title: string, extensionUri: vscode.Uri) {
   if (currentPanel) {
     currentPanel.title = title;
     currentPanel.webview.html = getInspectHtml(currentPanel.webview, containers, extensionUri);
@@ -129,7 +145,7 @@ function showInspectWebview(containers: any[], title: string, extensionUri: vsco
 
   // Handle messages from the webview
   panel.webview.onDidReceiveMessage(
-    async message => {
+    async (message: WebviewMessage) => {
       switch (message.command) {
         case 'refresh':
           outputChannel.appendLine('[Inspect Command]: Refresh requested');

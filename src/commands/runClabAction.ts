@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
-import { ClabCommand } from "./clabCommand";
-import { ClabLabTreeNode } from "../treeView/common";
+
+import type { ClabLabTreeNode } from "../treeView/common";
 import { getSelectedLabNode } from "../utils/utils";
+
+import { ClabCommand } from "./clabCommand";
 import { notifyCurrentTopoViewerOfCommandFailure, notifyCurrentTopoViewerOfCommandSuccess } from "./graph";
 
 export async function runClabAction(action: "deploy" | "redeploy" | "destroy", node?: ClabLabTreeNode, cleanup = false): Promise<void> {

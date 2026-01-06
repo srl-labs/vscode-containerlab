@@ -1,4 +1,13 @@
 # Change Log
+## [0.22.0] - 2026-01-06
+- TopoViewer rewritten in React
+- TopoViewer/editor:
+  - Undo/Redo support (Ctrl+Z / Ctrl+Shift+Z)
+  - When custom icons are used in lab, they will be copied to lab folder.
+  - Per-link endpoint label offset overrides
+  - Global endpoint label offset setting
+- Fixes
+
 ## [0.21.0] - 2025-12-03
 - Events, with clab 0.72.0 the extension does not poll anymore, everything is streamed from clab
 - TopoViewer/editor:

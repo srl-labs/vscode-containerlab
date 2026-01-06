@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { dockerClient, outputChannel } from "../../extension";
+
+import { dockerClient, outputChannel } from "../../globals";
 
 let dockerImagesCache: string[] = [];
 
@@ -73,7 +74,7 @@ export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
   dockerClient.getEvents({ filters:{ type: ["image"] }}).then(stream => {
       const onData = () => {
         // upon any event, the cache should be updated.
-        refreshDockerImages();
+        void refreshDockerImages();
       };
 
       const onError = (err: Error) => {
@@ -95,7 +96,8 @@ export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
       context.subscriptions.push(monitorHandle);
 
     })
-    .catch((err: any) => {
-      outputChannel.warn(`Unable to subscribe to Docker image events: ${err?.message || err}`);
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      outputChannel.warn(`Unable to subscribe to Docker image events: ${message}`);
     });
 }

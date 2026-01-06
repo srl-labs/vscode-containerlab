@@ -1,9 +1,9 @@
-/* eslint-env mocha */
-/* global describe, it, before, after, beforeEach, afterEach, __dirname */
-import { expect } from 'chai';
-import sinon from 'sinon';
+/* global describe, it, before, after, beforeEach, afterEach */
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 describe('refreshSshxSessions', () => {
   const originalResolve = (Module as any)._resolveFilename;
@@ -11,7 +11,7 @@ describe('refreshSshxSessions', () => {
   let sshxSessions: Map<string, string>;
   let utilsStub: any;
   let vscodeStub: any;
-  let extension: any;
+  let globals: any;
 
   // Helper to clear module cache for all vscode-containerlab modules
   function clearModuleCache() {
@@ -34,15 +34,19 @@ describe('refreshSshxSessions', () => {
       if (request.includes('utils') && !request.includes('stub')) {
         return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
       }
+      if (request === 'dockerode') {
+        return path.join(__dirname, '..', '..', 'helpers', 'dockerode-stub.js');
+      }
       return originalResolve.call(this, request, parent, isMain, options);
     };
 
     // Now require the modules fresh
     vscodeStub = require('../../helpers/vscode-stub');
     utilsStub = require('../../helpers/utils-stub');
-    extension = require('../../../src/extension');
-    refreshSshxSessions = extension.refreshSshxSessions;
-    sshxSessions = extension.sshxSessions;
+    globals = require('../../../src/globals');
+    const sessionRefresh = require('../../../src/services/sessionRefresh');
+    refreshSshxSessions = sessionRefresh.refreshSshxSessions;
+    sshxSessions = globals.sshxSessions;
   });
 
   after(() => {
@@ -54,7 +58,7 @@ describe('refreshSshxSessions', () => {
     utilsStub.calls.length = 0;
     utilsStub.setOutput('');
     sshxSessions.clear();
-    (extension as any).outputChannel = vscodeStub.window.createOutputChannel('test', { log: true });
+    globals.outputChannel = vscodeStub.window.createOutputChannel('test', { log: true });
   });
 
   afterEach(() => {

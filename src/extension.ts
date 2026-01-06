@@ -1,46 +1,45 @@
-import * as vscode from 'vscode';
-import * as cmd from './commands/index';
-import * as utils from './utils/index';
-import * as ins from "./treeView/inspector"
-import * as c from './treeView/common';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
+
+import * as vscode from 'vscode';
 import Docker from 'dockerode';
 
-import { TopoViewerEditor } from './topoViewer/extension/services/EditorProvider';
-import { setCurrentTopoViewer } from './commands/graph';
-
-
+import * as cmd from "./commands";
+import * as utils from "./utils";
+import {
+  outputChannel,
+  containerlabBinaryPath,
+  runningLabsProvider,
+  localLabsProvider,
+  extensionContext,
+  setOutputChannel,
+  setUsername,
+  setDockerClient,
+  setContainerlabBinaryPath,
+  setExtensionContext,
+  setFavoriteLabs,
+  setLocalLabsProvider,
+  setRunningLabsProvider,
+  setHelpFeedbackProvider,
+  setLocalTreeView,
+  setRunningTreeView,
+  setHelpTreeView,
+  setHideNonOwnedLabsState,
+} from './globals';
 import { WelcomePage } from './welcomePage';
-import { LocalLabTreeDataProvider } from './treeView/localLabsProvider';
-import { RunningLabTreeDataProvider } from './treeView/runningLabsProvider';
-import { HelpFeedbackProvider } from './treeView/helpFeedbackProvider';
 import { registerClabImageCompletion } from './yaml/imageCompletion';
-import { onDataChanged as onEventsDataChanged, onContainerStateChanged } from "./services/containerlabEvents";
-import { onDataChanged as onFallbackDataChanged, stopPolling as stopFallbackPolling } from "./services/containerlabInspectFallback";
-import { isPollingMode } from "./treeView/inspector";
-
-/** Our global output channel */
-export let outputChannel: vscode.LogOutputChannel;
-export let treeView: any;
-export let localTreeView: any;
-export let runningTreeView: any;
-export let helpTreeView: any;
-export let username: string;
-export let hideNonOwnedLabsState: boolean = false;
-export let favoriteLabs: Set<string> = new Set();
-export let extensionContext: vscode.ExtensionContext;
-export let localLabsProvider: LocalLabTreeDataProvider;
-export let runningLabsProvider: RunningLabTreeDataProvider;
-export let helpFeedbackProvider: HelpFeedbackProvider;
-export let sshxSessions: Map<string, string> = new Map();
-export let gottySessions: Map<string, string> = new Map();
-
-export const extensionVersion = vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON.version;
-
-export let containerlabBinaryPath: string = 'containerlab';
-export let dockerClient: Docker;
+import * as ins from "./treeView/inspector";
+import type * as c from './treeView/common';
+import { LocalLabTreeDataProvider, RunningLabTreeDataProvider, HelpFeedbackProvider, isPollingMode } from './treeView';
+import {
+  refreshSshxSessions,
+  refreshGottySessions,
+  onEventsDataChanged,
+  onContainerStateChanged,
+  onFallbackDataChanged,
+  stopFallbackPolling
+} from "./services";
 
 function registerUnsupportedViews(context: vscode.ExtensionContext) {
   let warningShown = false;
@@ -88,89 +87,9 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
   });
 }
 
-function extractLabName(session: any, prefix: string): string | undefined {
-  if (typeof session.network === 'string' && session.network.startsWith('clab-')) {
-    return session.network.slice(5);
-  }
-  if (typeof session.name !== 'string') {
-    return undefined;
-  }
-  const name = session.name;
-  if (name.startsWith(`${prefix}-`)) {
-    return name.slice(prefix.length + 1);
-  }
-  if (name.startsWith('clab-') && name.endsWith(`-${prefix}`)) {
-    return name.slice(5, -(prefix.length + 1));
-  }
-  return undefined;
-}
-
-export async function refreshSshxSessions() {
-  try {
-    const out = await utils.runCommand(
-      `${containerlabBinaryPath} tools sshx list -f json`,
-      'List SSHX sessions',
-      outputChannel,
-      true,
-      false
-    ) as string;
-    sshxSessions.clear();
-    if (out) {
-      const parsed = JSON.parse(out);
-      parsed.forEach((s: any) => {
-        if (!s.link || s.link === 'N/A') {
-          return;
-        }
-        const lab = extractLabName(s, 'sshx');
-        if (lab) {
-          sshxSessions.set(lab, s.link);
-        }
-      });
-    }
-  } catch (err: any) {
-    outputChannel.error(`Failed to refresh SSHX sessions: ${err.message || err}`);
-  }
-}
-
-export async function refreshGottySessions() {
-  try {
-    const out = await utils.runCommand(
-      `${containerlabBinaryPath} tools gotty list -f json`,
-      'List GoTTY sessions',
-      outputChannel,
-      true,
-      false
-    ) as string;
-    gottySessions.clear();
-    if (out) {
-      const parsed = JSON.parse(out);
-      const { getHostname } = await import('./commands/capture');
-      const hostname = await getHostname();
-
-      parsed.forEach((s: any) => {
-        if (!s.port || !hostname) {
-          return;
-        }
-        const lab = extractLabName(s, 'gotty');
-        if (lab) {
-          // Construct the URL using hostname and port
-          const bracketed = hostname.includes(":") ? `[${hostname}]` : hostname;
-          const url = `http://${bracketed}:${s.port}`;
-          gottySessions.set(lab, url);
-        }
-      });
-    }
-  } catch (err: any) {
-    outputChannel.error(`Failed to refresh GoTTY sessions: ${err.message || err}`);
-  }
-}
+// Session refresh functions are available from ./services/sessionRefresh directly
 
 
-import * as execCmdJson from '../resources/exec_cmd.json';
-import * as sshUserJson from '../resources/ssh_users.json';
-
-export const execCmdMapping = execCmdJson;
-export const sshUserMapping = sshUserJson;
 
 function showOutputChannel() {
   outputChannel.show(true);
@@ -179,10 +98,10 @@ function showOutputChannel() {
 async function refreshLabViews() {
   await ins.update();
   localLabsProvider.forceRefresh();
-  runningLabsProvider.refresh();
+  Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
 }
 
-function manageImpairments(node: any) {
+function manageImpairments(node: c.ClabContainerTreeNode) {
   return cmd.manageNodeImpairments(node, extensionContext);
 }
 
@@ -191,37 +110,8 @@ function graphTopoViewer(node: c.ClabLabTreeNode) {
 }
 
 async function openTopoViewerEditorCommand(node?: c.ClabLabTreeNode) {
-  const ctx = extensionContext;
-  if (!ctx) {
-    return;
-  }
-  if (!node) {
-    node = runningTreeView?.selection[0] || localTreeView?.selection[0];
-  }
-  let yamlUri: vscode.Uri | undefined;
-  if (node && node.labPath) {
-    yamlUri = vscode.Uri.file(node.labPath.absolute);
-  } else if (vscode.window.activeTextEditor) {
-    yamlUri = vscode.window.activeTextEditor.document.uri;
-  }
-  if (!yamlUri) {
-    vscode.window.showErrorMessage('No lab node or topology file selected');
-    return;
-  }
-  const baseName = path.basename(yamlUri.fsPath);
-  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-  const editor = new TopoViewerEditor(ctx);
-  setCurrentTopoViewer(editor);
-  editor.lastYamlFilePath = yamlUri.fsPath;
-  await editor.createWebviewPanel(ctx, yamlUri, labName);
-  // Ensure the global TopoViewer state tracks the created panel so command callbacks can update it
-  setCurrentTopoViewer(editor);
-  if (editor.currentPanel) {
-    editor.currentPanel.onDidDispose(() => {
-      setCurrentTopoViewer(undefined);
-    });
-  }
-  await editor.openTemplateFile(yamlUri.fsPath);
+  // Just delegate to graphTopoViewer which handles everything
+  return graphTopoViewer(node as c.ClabLabTreeNode);
 }
 
 async function createTopoViewerTemplateFileCommand() {
@@ -233,34 +123,54 @@ async function createTopoViewerTemplateFileCommand() {
     title: 'Enter containerlab topology template file name',
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
     saveLabel: 'Create Containerlab topology template file',
-    filters: { YAML: ['yaml', 'yml'] }
+    filters: { 'Containerlab YAML': ['clab.yml', 'clab.yaml'], 'YAML': ['yaml', 'yml'] }
   });
   if (!uri) {
     vscode.window.showWarningMessage('No file path selected. Operation canceled.');
     return;
   }
-  const baseName = path.basename(uri.fsPath);
-  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
-  const editor = new TopoViewerEditor(ctx);
-  setCurrentTopoViewer(editor);
-  try {
-    await editor.createTemplateFile(uri);
-    await editor.createWebviewPanel(ctx, uri, labName);
-    // Update the global viewer reference now that the panel is available
-    setCurrentTopoViewer(editor);
-    if (editor.currentPanel) {
-      editor.currentPanel.onDidDispose(() => {
-        setCurrentTopoViewer(undefined);
-      });
-    }
-    await editor.openTemplateFile(editor.lastYamlFilePath);
-  } catch {
-    return;
+
+  // Ensure the file has .clab.yml extension
+  let filePath = uri.fsPath;
+  if (!/\.clab\.(yml|yaml)$/i.test(filePath)) {
+    // Replace .yml/.yaml with .clab.yml, or append if no extension
+    filePath = filePath.replace(/\.(yml|yaml)$/i, '') + '.clab.yml';
   }
+
+  // Create a starter template file with example nodes
+  const baseName = path.basename(filePath);
+  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+  const template = `name: ${labName}
+
+topology:
+  nodes:
+    srl1:
+      kind: nokia_srlinux
+      type: ixrd1
+      image: ghcr.io/nokia/srlinux:latest
+    client1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+
+  links:
+    - endpoints: [ "srl1:e1-1", "client1:eth1" ]
+`;
+  fs.writeFileSync(filePath, template);
+
+  // Open the file in the editor
+  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+  await vscode.window.showTextDocument(doc);
+
+  // Open the TopoViewer
+  const node = {
+    labPath: { absolute: filePath, relative: path.basename(filePath) },
+    name: labName
+  } as c.ClabLabTreeNode;
+  return graphTopoViewer(node);
 }
 
 function updateHideNonOwnedLabs(hide: boolean) {
-  hideNonOwnedLabsState = hide;
+  setHideNonOwnedLabsState(hide);
   vscode.commands.executeCommand('setContext', 'containerlab:nonOwnedLabsHidden', hide);
 }
 
@@ -309,7 +219,8 @@ function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 }
 
 function registerCommands(context: vscode.ExtensionContext) {
-  const commands: Array<[string, any]> = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const commands: Array<[string, (...args: any[]) => unknown]> = [
     ['containerlab.lab.openFile', cmd.openLabFile],
     ['containerlab.lab.addToWorkspace', cmd.addLabFolderToWorkspace],
     ['containerlab.lab.openFolderInNewWindow', cmd.openFolderInNewWindow],
@@ -339,7 +250,6 @@ function registerCommands(context: vscode.ExtensionContext) {
     ['containerlab.lab.graph.drawio.horizontal', cmd.graphDrawIOHorizontal],
     ['containerlab.lab.graph.drawio.vertical', cmd.graphDrawIOVertical],
     ['containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive],
-    ['containerlab.lab.graph.topoViewerReload', cmd.graphTopoviewerReload],
     ['containerlab.node.start', cmd.startNode],
     ['containerlab.node.stop', cmd.stopNode],
     ['containerlab.node.pause', cmd.pauseNode],
@@ -404,7 +314,7 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   const handleDataChanged = () => {
     ins.refreshFromEventStream();
     if (runningLabsProvider) {
-      void runningLabsProvider.softRefresh().catch(err => {
+      runningLabsProvider.softRefresh().catch((err: unknown) => {
         console.error("[containerlab extension]: realtime refresh failed", err);
       });
     }
@@ -432,7 +342,7 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   // Register listener for container state changes (only relevant in events mode)
   const disposeStateChange = onContainerStateChanged((containerShortId, newState) => {
     if (!isPollingMode() && runningLabsProvider) {
-      void runningLabsProvider.refreshContainer(containerShortId, newState).catch(err => {
+      runningLabsProvider.refreshContainer(containerShortId, newState).catch((err: unknown) => {
         outputChannel.debug(`Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`);
       });
     }
@@ -459,21 +369,21 @@ function setClabBinPath(): boolean {
       const stdout = execSync('which containerlab', { encoding: 'utf-8' });
       const resolvedPath = stdout.trim();
       if (resolvedPath) {
-        containerlabBinaryPath = resolvedPath;
+        setContainerlabBinaryPath(resolvedPath);
         outputChannel.info(`Resolved containerlab binary from sys PATH as: ${resolvedPath}`);
         return true;
       }
     } catch (err) {
       outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${err}`);
     }
-    containerlabBinaryPath = 'containerlab';
+    setContainerlabBinaryPath('containerlab');
     return true;
   }
 
   try {
     // Check if file exists and is executable
     fs.accessSync(configPath, fs.constants.X_OK);
-    containerlabBinaryPath = configPath;
+    setContainerlabBinaryPath(configPath);
     outputChannel.info(`Using user configured containerlab binary: ${configPath}`);
     return true;
   } catch (err) {
@@ -491,8 +401,9 @@ function setClabBinPath(): boolean {
  */
 export async function activate(context: vscode.ExtensionContext) {
   // Create and register the output channel
-  outputChannel = vscode.window.createOutputChannel('Containerlab', { log: true });
-  context.subscriptions.push(outputChannel);
+  const channel = vscode.window.createOutputChannel('Containerlab', { log: true });
+  setOutputChannel(channel);
+  context.subscriptions.push(channel);
   outputChannel.info('Registered output channel sucessfully.');
   outputChannel.info(`Detected platform: ${process.platform}`);
 
@@ -538,7 +449,7 @@ export async function activate(context: vscode.ExtensionContext) {
   outputChannel.debug(`Starting user permissions check`);
   // 1) Check if user has required permissions
   const userInfo = utils.getUserInfo();
-  username = userInfo.username;
+  setUsername(userInfo.username);
   if (!userInfo.hasPermission) {
     outputChannel.error(`User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`);
 
@@ -552,8 +463,9 @@ export async function activate(context: vscode.ExtensionContext) {
   // 2) Check for updates
   const skipUpdateCheck = config.get<boolean>('skipUpdateCheck', false);
   if (!skipUpdateCheck) {
-    utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch(err => {
-      outputChannel.error(`Update check error: ${err.message}`);
+    utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      outputChannel.error(`Update check error: ${message}`);
     });
   }
 
@@ -561,12 +473,14 @@ export async function activate(context: vscode.ExtensionContext) {
    * CONNECT TO DOCKER SOCKET VIA DOCKERODE
    */
   try {
-    dockerClient = new Docker({ socketPath: '/var/run/docker.sock' });
+    const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+    setDockerClient(docker);
     // verify we are connected
-    await dockerClient.ping();
+    await docker.ping();
     outputChannel.info('Successfully connected to Docker socket');
-  } catch (err: any) {
-    outputChannel.error(`Failed to connect to Docker socket: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    outputChannel.error(`Failed to connect to Docker socket: ${message}`);
     vscode.window.showErrorMessage(
       `Failed to connect to Docker. Ensure Docker is running and you have proper permissions.`
     );
@@ -579,7 +493,7 @@ export async function activate(context: vscode.ExtensionContext) {
    *  - Initially load docker images cache
    *  - Start the docker images listener
    */
-  utils.refreshDockerImages();
+  void utils.refreshDockerImages();
   utils.startDockerImageEventMonitor(context);
 
   // Show welcome page
@@ -587,35 +501,38 @@ export async function activate(context: vscode.ExtensionContext) {
   await welcomePage.show();
 
   // Initial pull of inspect data
-  ins.update();
+  void ins.update();
 
   // Tree data provider
-  extensionContext = context;
-  favoriteLabs = new Set(context.globalState.get<string[]>('favoriteLabs', []));
+  setExtensionContext(context);
+  setFavoriteLabs(new Set(context.globalState.get<string[]>('favoriteLabs', [])));
 
-  localLabsProvider = new LocalLabTreeDataProvider();
-  runningLabsProvider = new RunningLabTreeDataProvider(context);
-  helpFeedbackProvider = new HelpFeedbackProvider();
+  const newLocalProvider = new LocalLabTreeDataProvider();
+  const newRunningProvider = new RunningLabTreeDataProvider(context);
+  const newHelpProvider = new HelpFeedbackProvider();
+  setLocalLabsProvider(newLocalProvider);
+  setRunningLabsProvider(newRunningProvider);
+  setHelpFeedbackProvider(newHelpProvider);
 
   await refreshSshxSessions();
   await refreshGottySessions();
   // Docker images are refreshed on TopoViewer open to avoid unnecessary calls
 
 
-  localTreeView = vscode.window.createTreeView('localLabs', {
-    treeDataProvider: localLabsProvider,
+  setLocalTreeView(vscode.window.createTreeView('localLabs', {
+    treeDataProvider: newLocalProvider,
     canSelectMany: true
-  });
+  }));
 
-  runningTreeView = vscode.window.createTreeView('runningLabs', {
-    treeDataProvider: runningLabsProvider,
+  setRunningTreeView(vscode.window.createTreeView('runningLabs', {
+    treeDataProvider: newRunningProvider,
     canSelectMany: true
-  });
+  }));
 
-  helpTreeView = vscode.window.createTreeView('helpFeedback', {
-    treeDataProvider: helpFeedbackProvider,
+  setHelpTreeView(vscode.window.createTreeView('helpFeedback', {
+    treeDataProvider: newHelpProvider,
     canSelectMany: false
-  });
+  }));
 
   registerRealtimeUpdates(context);
 
@@ -634,6 +551,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // Register commands
   registerCommands(context);
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onDidChangeConfiguration));
+
+  // Expose a stable API surface for other extensions to access providers safely.
+  return {
+    getLocalLabsProvider: () => localLabsProvider,
+    getRunningLabsProvider: () => runningLabsProvider,
+  };
 }
 
 export function deactivate() {

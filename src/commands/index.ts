@@ -1,29 +1,103 @@
-export * from "./command";
-export * from "./deploy";
-export * from "./destroy";
-export * from "./redeploy";
-export * from "./save";
-export * from "./openLabFile";
-export * from "./nodeActions";
-export * from "./nodeExec";
-export * from "./ssh";
-export * from "./nodeImpairments";
-export * from "./showLogs";
-export * from "./graph";
-export * from "./copy";
-export * from "./addToWorkspace";
-export * from "./openFolderInNewWindow";
-export * from "./inspect";
-export * from "./capture";
-export * from "./impairments";
-export * from "./edgeshark";
-export * from "./openBrowser";
-export * from "./favorite";
-export * from "./deleteLab";
-export * from "./cloneRepo";
-export * from "./deployPopular";
-export * from "./clonePopularRepo";
-export * from "./openLink";
-export * from "./sshxShare";
-export * from "./gottyShare";
-export * from "./fcli";
+/**
+ * Commands barrel file - re-exports from sub-barrels
+ */
+
+// Base command classes and utilities
+export {
+  Command,
+  execCommandInTerminal,
+  execCommandInOutput,
+  ClabCommand
+} from "./base";
+export type {
+  SpinnerOptions,
+  TerminalOptions,
+  CmdOptions,
+  SpinnerMsg,
+  CommandFailureHandler
+} from "./base";
+
+// Lifecycle commands (deploy, destroy, redeploy, save)
+export {
+  deploy, deployCleanup, deploySpecificFile,
+  destroy, destroyCleanup,
+  redeploy, redeployCleanup,
+  saveLab, saveNode,
+  runClabAction
+} from "./lifecycle";
+
+// Node-related commands
+export {
+  startNode, stopNode, pauseNode, unpauseNode,
+  attachShell, telnetToNode,
+  sshToNode, sshToLab,
+  manageNodeImpairments,
+  showLogs,
+  sshxAttach, sshxDetach, sshxReattach, sshxCopyLink,
+  gottyAttach, gottyDetach, gottyReattach, gottyCopyLink
+} from "./node";
+
+// Network and interface commands
+export {
+  captureInterface,
+  captureInterfaceWithPacketflix,
+  captureEdgesharkVNC,
+  killAllWiresharkVNCCtrs,
+  getHostname,
+  setSessionHostname,
+  setLinkDelay,
+  setLinkJitter,
+  setLinkLoss,
+  setLinkRate,
+  setLinkCorruption,
+  getEdgesharkInstallCmd,
+  getEdgesharkUninstallCmd,
+  EDGESHARK_INSTALL_CMD,
+  EDGESHARK_UNINSTALL_CMD,
+  installEdgeshark,
+  uninstallEdgeshark
+} from "./network";
+
+// Workspace and file management commands
+export {
+  openLabFile,
+  addLabFolderToWorkspace,
+  openFolderInNewWindow,
+  copyLabPath,
+  copyContainerIPv4Address,
+  copyContainerIPv6Address,
+  copyContainerName,
+  copyContainerID,
+  copyContainerKind,
+  copyContainerImage,
+  copyMACAddress,
+  deleteLab,
+  toggleFavorite
+} from "./workspace";
+
+// External tool and repo commands
+export {
+  graphDrawIOHorizontal,
+  graphDrawIOVertical,
+  graphDrawIOInteractive,
+  graphTopoviewer,
+  getCurrentTopoViewer,
+  notifyCurrentTopoViewerOfCommandSuccess,
+  notifyCurrentTopoViewerOfCommandFailure,
+  inspectAllLabs, inspectOneLab,
+  openBrowser,
+  cloneRepo,
+  cloneRepoFromUrl,
+  deployPopularLab,
+  clonePopularRepo,
+  openLink,
+  fcliBgpPeers,
+  fcliBgpRib,
+  fcliIpv4Rib,
+  fcliLldp,
+  fcliMac,
+  fcliNi,
+  fcliSubif,
+  fcliSysInfo,
+  fcliCustom
+} from "./external";

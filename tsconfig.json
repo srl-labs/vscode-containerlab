@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "alwaysStrict": true,
+    "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
     "lib": ["ES2024", "dom"],
     "module": "commonjs",
     "noFallthroughCasesInSwitch": true,
@@ -30,6 +32,7 @@
     ".vscode-test",
     "test/**/*",
     "legacy-backup/**/*",
-    "labs/**/*"
+    "labs/**/*",
+    "dev/**/*"
   ]
 }

@@ -1,8 +1,10 @@
-import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ClabLabTreeNode } from '../treeView/common';
-import { favoriteLabs, extensionContext } from '../extension';
+
+import * as vscode from 'vscode';
+
+import type { ClabLabTreeNode } from '../treeView/common';
+import { favoriteLabs, extensionContext } from '../globals';
 
 export async function deleteLab(node: ClabLabTreeNode) {
   const filePath = node?.labPath?.absolute;

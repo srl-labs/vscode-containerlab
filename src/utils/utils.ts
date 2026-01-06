@@ -1,12 +1,14 @@
-import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
 import { exec, execSync } from "child_process";
 import * as net from "net";
 import { promisify } from "util";
+
+import * as vscode from "vscode";
+
 import { ClabLabTreeNode } from "../treeView/common";
-import { containerlabBinaryPath, outputChannel } from "../extension";
+import { containerlabBinaryPath, outputChannel } from "../globals";
 
 const execAsync = promisify(exec);
 
@@ -136,8 +138,9 @@ export function getUserInfo(): {
         uid
       };
     }
-  } catch (err: any) {
-    outputChannel.error(`User info check failed: ${err}`)
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    outputChannel.error(`User info check failed: ${errorMessage}`)
     return {
       hasPermission: false,
       isRoot: false,
@@ -180,7 +183,7 @@ export async function getFreePort(): Promise<number> {
 }
 
 // Get the config, set the default to undefined as all defaults **SHOULD** be set in package.json
-export function getConfig(relCfgPath: string): any {
+export function getConfig(relCfgPath: string): unknown {
   return vscode.workspace.getConfiguration("containerlab").get(relCfgPath, undefined);
 }
 
@@ -300,8 +303,9 @@ export async function checkAndUpdateClabIfNeeded(
     } else {
       log("Containerlab is up to date.", outputChannel);
     }
-  } catch (err: any) {
-    log(`containerlab version check failed: ${err.message}`, outputChannel);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    log(`containerlab version check failed: ${errorMessage}`, outputChannel);
     vscode.window.showErrorMessage(
       'Unable to detect containerlab version. Please check your installation.'
     );
@@ -317,12 +321,12 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
     return node;
   }
 
-  // Try to get from tree selection
-  const { localTreeView, runningTreeView } = await import("../extension");
+  // Try to get from tree selection - import from globals to avoid circular dependency
+  const { localTreeView, runningTreeView } = await import("../globals");
 
   // Try running tree first
   if (runningTreeView && runningTreeView.selection.length > 0) {
-    const selected = runningTreeView.selection[0];
+    const selected: unknown = runningTreeView.selection[0];
     if (selected instanceof ClabLabTreeNode) {
       return selected;
     }
@@ -330,7 +334,7 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
 
   // Then try local tree
   if (localTreeView && localTreeView.selection.length > 0) {
-    const selected = localTreeView.selection[0];
+    const selected: unknown = localTreeView.selection[0];
     if (selected instanceof ClabLabTreeNode) {
       return selected;
     }

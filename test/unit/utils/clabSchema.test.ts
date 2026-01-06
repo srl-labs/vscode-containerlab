@@ -1,10 +1,10 @@
-/* eslint-env mocha */
-/* global describe, it, __dirname */
+/* global describe, it */
+import fs from 'fs';
+import path from 'path';
+
 import { expect } from 'chai';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import fs from 'fs';
-import path from 'path';
 
 describe('clab.schema.json', () => {
   it('compiles with custom markdownDescription keyword', () => {

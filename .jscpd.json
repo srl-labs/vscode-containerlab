@@ -1,0 +1,24 @@
+{
+  "threshold": 3,
+  "minLines": 8,
+  "minTokens": 50,
+  "reporters": ["console", "json"],
+  "ignore": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.d.ts",
+    "**/out/**",
+    "**/dist/**",
+    "**/dist-dev/**",
+    "**/node_modules/**",
+    "**/legacy-backup/**",
+    "**/easter-eggs/**"
+  ],
+  "absolute": true,
+  "gitignore": true,
+  "blame": false,
+  "silent": false,
+  "output": ".jscpd",
+  "format": ["typescript", "tsx"],
+  "skipLocal": false
+}

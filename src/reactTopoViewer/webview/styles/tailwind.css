@@ -1,0 +1,32 @@
+/* =============================================================================
+ * Tailwind v4 Entry Point for React TopoViewer
+ * All styles are organized into modular files for maintainability
+ * ============================================================================= */
+
+/* Third-party CSS imports (must come before tailwindcss) */
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
+@import "uplot/dist/uPlot.min.css";
+
+/* Custom CSS imports (must come before tailwindcss for proper processing) */
+@import "./base.css";
+@import "./utilities.css";
+@import "./animations.css";
+@import "./components/navbar.css";
+@import "./components/panels.css";
+@import "./components/buttons.css";
+@import "./components/forms.css";
+@import "./components/floating-panel.css";
+@import "./components/context-menu.css";
+@import "./components/about-panel.css";
+@import "./components/shortcuts-panel.css";
+@import "./components/toast.css";
+@import "./features/loading-states.css";
+@import "./features/free-text-markdown.css";
+@import "./features/geo-map.css";
+@import "./easter-eggs/logo-animations.css";
+
+/* Tailwind v4 - must come after all @import statements */
+@import "tailwindcss";
+
+@source "./../**/*.{ts,tsx}";

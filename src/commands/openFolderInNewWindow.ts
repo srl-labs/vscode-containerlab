@@ -1,6 +1,8 @@
-import * as vscode from "vscode";
 import * as path from "path";
-import { ClabLabTreeNode } from "../treeView/common";
+
+import * as vscode from "vscode";
+
+import type { ClabLabTreeNode } from "../treeView/common";
 
 export async function openFolderInNewWindow(node: ClabLabTreeNode) {
     if (!node.labPath.absolute) {

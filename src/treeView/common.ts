@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+
 import type { ClabInterfaceStats } from "../types/containerlab";
 
 // LabPath interface
@@ -31,15 +32,15 @@ export class ClabLabTreeNode extends vscode.TreeItem {
     public readonly labPath: LabPath;
     public readonly name?: string;
     public readonly owner?: string;
-    public readonly containers?: ClabContainerTreeNode[];
-    public readonly favorite: boolean;
+    public containers?: ClabContainerTreeNode[];
+    public favorite: boolean;
     public sshxLink?: string;
     public sshxNode?: ClabSshxLinkTreeNode;
     public gottyLink?: string;
     public gottyNode?: ClabGottyLinkTreeNode;
 
     constructor(
-        public readonly label: string,
+        public override label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,
         labPath: LabPath,
         name?: string,
@@ -91,18 +92,19 @@ export class ClabFolderTreeNode extends vscode.TreeItem {
 export class ClabContainerTreeNode extends vscode.TreeItem {
     public readonly name: string;
     public readonly name_short: string;  // Added short name from clab-node-name
-    public readonly cID: string;
-    public readonly state: string;
-    public readonly kind: string;
-    public readonly image: string;
-    public readonly interfaces: ClabInterfaceTreeNode[];
+    public cID: string;
+    public state: string;
+    public kind: string;
+    public image: string;
+    public interfaces: ClabInterfaceTreeNode[];
     public readonly labPath: LabPath;
-    public readonly v4Address?: string;
-    public readonly v6Address?: string;
-    public readonly nodeType?: string;   // Added node type from clab-node-type
-    public readonly nodeGroup?: string;  // Added node group from clab-node-group
-    public readonly status?: string;
+    public v4Address?: string;
+    public v6Address?: string;
+    public nodeType?: string;   // Added node type from clab-node-type
+    public nodeGroup?: string;  // Added node group from clab-node-group
+    public status?: string;
 
+    // eslint-disable-next-line max-params -- TreeItem subclass with many optional properties
     constructor(
         label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,
@@ -165,16 +167,17 @@ export class ClabContainerTreeNode extends vscode.TreeItem {
  */
 export class ClabInterfaceTreeNode extends vscode.TreeItem {
     public readonly parentName: string; // name of the parent container/node
-    public readonly cID: string;        // parent container ID
+    public cID: string;        // parent container ID
     public readonly name: string;       // the interface name itself
-    public readonly type: string;       // the interface type (veth, dummy, etc.)
-    public readonly alias: string;      // the interface name alias (ie ge-0/0/x -> ethX)
-    public readonly mac: string;
-    public readonly mtu: number;
+    public type: string;       // the interface type (veth, dummy, etc.)
+    public alias: string;      // the interface name alias (ie ge-0/0/x -> ethX)
+    public mac: string;
+    public mtu: number;
     public readonly ifIndex: number;
     public state: string;      // Added state tracking
-    public readonly stats?: ClabInterfaceStats;
+    public stats?: ClabInterfaceStats;
 
+    // eslint-disable-next-line max-params -- TreeItem subclass with many interface properties
     constructor(
         label: string,
         collapsibleState: vscode.TreeItemCollapsibleState,
@@ -286,7 +289,7 @@ export interface ClabDetailedJSON {
         Source: string;
         Destination: string;
     }>;
-    Ports: Array<any>;
+    Ports: Array<{ port: string | number; protocol: string }>;
     Pid?: number;
     NetworkName?: string; // management network name (>=0.68.0)
 }

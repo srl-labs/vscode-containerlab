@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { ClabLabTreeNode } from "../treeView/common";
+
+import type { ClabLabTreeNode } from "../treeView/common";
 
 export function openLabFile(node: ClabLabTreeNode) {
     if (!node) {

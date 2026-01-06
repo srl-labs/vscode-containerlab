@@ -1,5 +1,4 @@
-/* eslint-env mocha */
-/* global describe, it, after, beforeEach, afterEach, __dirname */
+/* global describe, it, after, beforeEach, afterEach */
 /**
  * Unit tests for `LocalLabTreeDataProvider`.
  *
@@ -11,10 +10,11 @@
  *   2. Running labs are filtered from the results and the remaining labs are
  *      returned alphabetically.
  */
-import { expect } from 'chai';
-import sinon from 'sinon';
 import Module from 'module';
 import path from 'path';
+
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 // Stub the vscode module before importing the provider
 const originalResolve = (Module as any)._resolveFilename;
@@ -29,9 +29,11 @@ const originalResolve = (Module as any)._resolveFilename;
 };
 
 import { LocalLabTreeDataProvider } from '../../../src/treeView/localLabsProvider';
+import type { ClabLabTreeNode } from '../../../src/treeView/common';
 import * as ins from '../../../src/treeView/inspector';
+import * as globals from '../../../src/globals';
+
 const vscodeStub = require('../../helpers/vscode-stub');
-const extension = require('../../../src/extension');
 
 const LAB_B = '/workspace/b/lab2.clab.yaml';
 const LAB_A = '/workspace/a/lab1.clab.yml';
@@ -74,8 +76,10 @@ describe('LocalLabTreeDataProvider', () => {
     } catch {
       /* ignore cleanup errors */
     }
-    extension.favoriteLabs = new Set();
-    extension.extensionContext = { globalState: { update: sinon.stub().resolves() } } as any;
+    globals.setFavoriteLabs(new Set());
+    globals.setExtensionContext({ globalState: { update: sinon.stub().resolves() } } as any);
+    // Stub outputChannel with log methods
+    globals.setOutputChannel({ debug: noop, info: noop, warn: noop, error: noop } as any);
     (ins as any).rawInspectData = [];
   });
 
@@ -115,7 +119,7 @@ describe('LocalLabTreeDataProvider', () => {
     expect(folder.label).to.equal('a');
     const children = await provider.getChildren(folder as any);
     expect(children).to.have.lengthOf(1);
-    const node = children![0];
+    const node = children![0] as ClabLabTreeNode;
     expect(node.label).to.equal('lab1.clab.yml');
     expect(node.labPath.absolute).to.equal(LAB_A);
     expect(node.description).to.equal('a');
@@ -145,7 +149,7 @@ describe('LocalLabTreeDataProvider', () => {
       vscodeStub.Uri.file(LAB_A),
     ]);
 
-    extension.favoriteLabs.add(LAB_B);
+    globals.favoriteLabs.add(LAB_B);
 
     const provider = new LocalLabTreeDataProvider();
     const nodes = await provider.getChildren(undefined);
@@ -156,24 +160,25 @@ describe('LocalLabTreeDataProvider', () => {
     const secondFolder = nodes![1];
     expect(secondFolder.label).to.equal('b');
     const children = await provider.getChildren(secondFolder as any);
-    expect(children![0].contextValue).to.equal('containerlabLabUndeployedFavorite');
-    expect(children![0].favorite).to.be.true;
+    const favChild = children![0] as ClabLabTreeNode;
+    expect(favChild.contextValue).to.equal('containerlabLabUndeployedFavorite');
+    expect(favChild.favorite).to.be.true;
   });
 
   it('keeps favorites that no longer exist and displays them', async () => {
     sinon.stub(vscodeStub.workspace, 'findFiles').resolves([]);
     sinon.stub(require('fs'), 'existsSync').returns(false);
 
-    extension.favoriteLabs.add('/outside/lab.clab.yml');
+    globals.favoriteLabs.add('/outside/lab.clab.yml');
 
     const provider = new LocalLabTreeDataProvider();
     const nodes = await provider.getChildren(undefined);
 
     expect(nodes).to.have.lengthOf(1);
-    const favNode = nodes![0];
+    const favNode = nodes![0] as ClabLabTreeNode;
     expect(favNode.label).to.equal('lab.clab.yml');
     expect(favNode.favorite).to.be.true;
-    expect(extension.favoriteLabs.size).to.equal(1);
+    expect(globals.favoriteLabs.size).to.equal(1);
     expect(vscodeStub.commands.executed).to.deep.include({
       command: 'setContext',
       args: ['localLabsEmpty', false],
