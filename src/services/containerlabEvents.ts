@@ -208,9 +208,10 @@ interface LabRecord {
 }
 
 const INITIAL_IDLE_TIMEOUT_MS = 250;
-const INITIAL_FALLBACK_TIMEOUT_MS = 500;
+const INITIAL_FALLBACK_TIMEOUT_MS = 2000;
 
 let currentRuntime: string | undefined;
+let receivedInitialEvent = false;
 let child: ChildProcess | null = null;
 let stdoutInterface: readline.Interface | null = null;
 let initialLoadComplete = false;
@@ -271,6 +272,16 @@ function scheduleInitialResolution(): void {
         return;
     }
 
+    // Once we receive the first event, cancel the fallback timer.
+    // We'll rely on the idle timer to finalize after events stop arriving.
+    if (!receivedInitialEvent) {
+        receivedInitialEvent = true;
+        if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+        }
+    }
+
     if (idleTimer) {
         clearTimeout(idleTimer);
     }
@@ -327,6 +338,7 @@ function stopProcess(): void {
     initialLoadPromise = null;
     resolveInitialLoad = null;
     rejectInitialLoad = null;
+    receivedInitialEvent = false;
 
     if (idleTimer) {
         clearTimeout(idleTimer);
