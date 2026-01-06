@@ -78,13 +78,25 @@ const AppContent: React.FC<{
     editCustomTemplate,
     setEdgeAnnotations,
     toggleLock,
-    refreshEditorData
+    refreshEditorData,
+    clearCustomNodeError
   } = useTopoViewerActions();
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
 
   // Toast notifications
   const { toasts, addToast, dismissToast } = useToasts();
+
+  // Show toast when custom node save fails
+  React.useEffect(() => {
+    if (state.customNodeError) {
+      const errorMsg = typeof state.customNodeError === 'string'
+        ? state.customNodeError
+        : 'Unknown error';
+      addToast(`Failed to save custom node: ${errorMsg}`, 'error', 5000);
+      clearCustomNodeError();
+    }
+  }, [state.customNodeError, addToast, clearCustomNodeError]);
 
   // Clear undo history on external file changes
   useExternalFileChange({

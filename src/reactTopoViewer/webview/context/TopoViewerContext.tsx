@@ -68,6 +68,8 @@ export interface TopoViewerState {
   processingMode: ProcessingMode;
   /** Counter to trigger editor data refresh after Apply */
   editorDataVersion: number;
+  /** Error message from custom node operations (shown as toast) */
+  customNodeError: string | null;
 }
 
 /**
@@ -95,7 +97,8 @@ const initialState: TopoViewerState = {
   editingCustomTemplate: null,
   isProcessing: false,
   processingMode: null,
-  editorDataVersion: 0
+  editorDataVersion: 0,
+  customNodeError: null
 };
 
 /**
@@ -149,7 +152,8 @@ type TopoViewerAction =
   | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string } }
   | { type: 'UPDATE_NODE_DATA'; payload: UpdateNodeDataPayload }
   | { type: 'UPDATE_NODE_POSITIONS'; payload: UpdateNodePositionsPayload }
-  | { type: 'REFRESH_EDITOR_DATA' };
+  | { type: 'REFRESH_EDITOR_DATA' }
+  | { type: 'SET_CUSTOM_NODE_ERROR'; payload: string | null };
 
 /**
  * Reducer function
@@ -239,7 +243,13 @@ const reducerHandlers: ReducerHandlers = {
   SET_CUSTOM_NODES: (state, action) => ({
     ...state,
     customNodes: action.payload.customNodes,
-    defaultNode: action.payload.defaultNode
+    defaultNode: action.payload.defaultNode,
+    // Clear any pending error when we get a successful update
+    customNodeError: null
+  }),
+  SET_CUSTOM_NODE_ERROR: (state, action) => ({
+    ...state,
+    customNodeError: action.payload
   }),
   SET_CUSTOM_ICONS: (state, action) => ({
     ...state,
@@ -406,6 +416,7 @@ interface TopoViewerActionsContextValue {
   editCustomTemplate: (data: CustomTemplateEditorData | null) => void;
   setProcessing: (isProcessing: boolean, mode?: 'deploy' | 'destroy') => void;
   refreshEditorData: () => void;
+  clearCustomNodeError: () => void;
 }
 
 /**
@@ -605,6 +616,12 @@ function handleExtensionMessage(
         });
       }
     },
+    'custom-node-error': () => {
+      const error = (message as unknown as { error?: string }).error;
+      if (error) {
+        dispatch({ type: 'SET_CUSTOM_NODE_ERROR', payload: error });
+      }
+    },
     'icon-list-response': () => {
       const icons = (message as unknown as { icons?: CustomIconInfo[] }).icons;
       if (icons !== undefined) {
@@ -721,6 +738,10 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     dispatch({ type: 'REFRESH_EDITOR_DATA' });
   }, [dispatch]);
 
+  const clearCustomNodeError = useCallback(() => {
+    dispatch({ type: 'SET_CUSTOM_NODE_ERROR', payload: null });
+  }, [dispatch]);
+
   return useMemo(() => ({
     toggleLock,
     setMode,
@@ -733,7 +754,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setCustomNodes,
     editCustomTemplate,
     setProcessing,
-    refreshEditorData
+    refreshEditorData,
+    clearCustomNodeError
   }), [
     toggleLock,
     setMode,
@@ -746,7 +768,8 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setCustomNodes,
     editCustomTemplate,
     setProcessing,
-    refreshEditorData
+    refreshEditorData,
+    clearCustomNodeError
   ]);
 }
 

@@ -311,6 +311,11 @@ export class MessageRouter {
 
     if (res.error) {
       log.error(`[MessageRouter] ${res.error}`);
+      // Send error back to webview so user can see the failure
+      panel.webview.postMessage({
+        type: 'custom-node-error',
+        error: res.error
+      });
       return;
     }
 
