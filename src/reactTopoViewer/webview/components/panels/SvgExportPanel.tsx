@@ -1,6 +1,6 @@
 /**
  * SvgExportPanel - Configure and export topology as SVG
- * Migrated from legacy TopoViewer viewport-drawer-capture-sceenshoot.html
+ * Modern, sleek design matching other annotation editors
  */
 import React, { useState, useCallback } from 'react';
 import type { Core as CyCore } from 'cytoscape';
@@ -11,6 +11,7 @@ import type { NodeType } from '../../utils/SvgGenerator';
 import { generateEncodedSVG } from '../../utils/SvgGenerator';
 import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
 import { compositeAnnotationsIntoSvg, addBackgroundRect } from '../../utils/annotationsToSvg';
+import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from '../shared/form';
 
 export interface SvgExportPanelProps {
   isVisible: boolean;
@@ -115,7 +116,184 @@ async function ensureSvgExtension(cy: CyCore): Promise<boolean> {
   }
 }
 
-type BackgroundColorOption = 'transparent' | 'white' | 'custom';
+type BackgroundOption = 'transparent' | 'white' | 'custom';
+
+// Section header component
+const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h4 className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)] font-medium">{children}</h4>
+);
+
+// Quality section
+const QualitySection: React.FC<{
+  zoom: number;
+  setZoom: (v: number) => void;
+  padding: number;
+  setPadding: (v: number) => void;
+}> = ({ zoom, setZoom, padding, setPadding }) => (
+  <div className="flex flex-col gap-3">
+    <SectionHeader>Quality & Size</SectionHeader>
+    <div className="grid grid-cols-2 gap-3">
+      <NumberInput
+        label="Zoom"
+        value={zoom}
+        onChange={(v) => setZoom(Math.max(10, Math.min(300, v)))}
+        min={10}
+        max={300}
+        unit="%"
+      />
+      <NumberInput
+        label="Padding"
+        value={padding}
+        onChange={(v) => setPadding(Math.max(0, v))}
+        min={0}
+        max={500}
+        unit="px"
+      />
+    </div>
+  </div>
+);
+
+// Background section
+const BackgroundSection: React.FC<{
+  option: BackgroundOption;
+  setOption: (v: BackgroundOption) => void;
+  customColor: string;
+  setCustomColor: (v: string) => void;
+}> = ({ option, setOption, customColor, setCustomColor }) => (
+  <div className="flex flex-col gap-3">
+    <SectionHeader>Background</SectionHeader>
+    <div className="flex items-end gap-3 flex-wrap">
+      <Toggle active={option === 'transparent'} onClick={() => setOption('transparent')}>
+        <i className="fas fa-chess-board mr-1.5 text-[10px]" />Transparent
+      </Toggle>
+      <Toggle active={option === 'white'} onClick={() => setOption('white')}>
+        <span className="inline-block w-3 h-3 bg-white rounded mr-1.5 border border-white/30" />White
+      </Toggle>
+      <Toggle active={option === 'custom'} onClick={() => setOption('custom')}>
+        <i className="fas fa-palette mr-1.5 text-[10px]" />Custom
+      </Toggle>
+      {option === 'custom' && (
+        <ColorSwatch
+          label="Color"
+          value={customColor}
+          onChange={setCustomColor}
+        />
+      )}
+    </div>
+  </div>
+);
+
+// Annotations section
+const AnnotationsSection: React.FC<{
+  include: boolean;
+  setInclude: (v: boolean) => void;
+  counts: { groups: number; text: number; shapes: number };
+}> = ({ include, setInclude, counts }) => {
+  const total = counts.groups + counts.text + counts.shapes;
+  const hasAny = total > 0;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <SectionHeader>Annotations</SectionHeader>
+      <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+        <div className="flex flex-col">
+          <span className="text-sm text-[var(--vscode-foreground)]">
+            {hasAny ? `${total} annotation${total !== 1 ? 's' : ''}` : 'No annotations'}
+          </span>
+          {hasAny && (
+            <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">
+              {[
+                counts.groups > 0 && `${counts.groups} group${counts.groups !== 1 ? 's' : ''}`,
+                counts.text > 0 && `${counts.text} text`,
+                counts.shapes > 0 && `${counts.shapes} shape${counts.shapes !== 1 ? 's' : ''}`
+              ].filter(Boolean).join(', ')}
+            </span>
+          )}
+        </div>
+        <Toggle active={include} onClick={() => setInclude(!include)}>
+          {include ? 'Included' : 'Excluded'}
+        </Toggle>
+      </div>
+    </div>
+  );
+};
+
+// Filename section
+const FilenameSection: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+}> = ({ value, onChange }) => (
+  <div className="flex flex-col gap-1">
+    <SectionHeader>Filename</SectionHeader>
+    <div className="flex items-center gap-1">
+      <input
+        type="text"
+        className="flex-1 px-3 py-2 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-xl text-sm hover:border-white/20 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors outline-none"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="topology"
+      />
+      <span className="text-sm text-[var(--vscode-descriptionForeground)] px-2">.svg</span>
+    </div>
+  </div>
+);
+
+// Preview section
+const PreviewSection: React.FC<{
+  zoom: number;
+  padding: number;
+  background: BackgroundOption;
+  customColor: string;
+  includeAnnotations: boolean;
+  annotationCount: number;
+}> = ({ zoom, padding, background, customColor, includeAnnotations, annotationCount }) => {
+  const bgStyle = background === 'transparent'
+    ? { backgroundImage: 'linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)', backgroundSize: '8px 8px', backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px' }
+    : { backgroundColor: background === 'white' ? '#ffffff' : customColor };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <SectionHeader>Preview</SectionHeader>
+      <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 overflow-hidden">
+        <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-30`} />
+        <div className="relative z-10 flex items-center justify-center">
+          <div
+            className="w-24 h-16 rounded-lg shadow-lg border border-white/10 flex items-center justify-center transition-all duration-200"
+            style={{
+              ...bgStyle,
+              padding: `${Math.min(padding / 20, 8)}px`,
+              transform: `scale(${0.8 + (zoom / 500)})`
+            }}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <i className="fas fa-project-diagram text-lg text-[var(--accent)] opacity-80" />
+              {includeAnnotations && annotationCount > 0 && (
+                <span className="text-[8px] px-1.5 py-0.5 bg-[var(--accent)]/20 text-[var(--accent)] rounded-full">
+                  +{annotationCount}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Tips section
+const TipsSection: React.FC = () => (
+  <div className="flex flex-col gap-1.5 p-3 bg-black/10 rounded-xl border border-white/5">
+    <div className="flex items-center gap-2 text-[var(--vscode-descriptionForeground)]">
+      <i className="fas fa-lightbulb text-yellow-400/70 text-xs" />
+      <span className="text-[10px] uppercase tracking-wider font-medium">Tips</span>
+    </div>
+    <ul className="text-xs text-[var(--vscode-descriptionForeground)] space-y-1 ml-5">
+      <li>Higher zoom = better quality, larger file</li>
+      <li>SVG files scale without quality loss</li>
+      <li>Transparent background for layering</li>
+    </ul>
+  </div>
+);
 
 export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   isVisible,
@@ -128,19 +306,22 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   const [borderZoom, setBorderZoom] = useState(100);
   const [borderPadding, setBorderPadding] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportStatus, setExportStatus] = useState<string | null>(null);
-
-  // New export options
+  const [exportStatus, setExportStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [includeAnnotations, setIncludeAnnotations] = useState(true);
-  const [backgroundColorOption, setBackgroundColorOption] = useState<BackgroundColorOption>('transparent');
-  const [customBackgroundColor, setCustomBackgroundColor] = useState('#ffffff');
+  const [backgroundOption, setBackgroundOption] = useState<BackgroundOption>('transparent');
+  const [customBackgroundColor, setCustomBackgroundColor] = useState('#1e1e1e');
   const [filename, setFilename] = useState('topology');
 
-  const hasAnnotations = textAnnotations.length > 0 || shapeAnnotations.length > 0 || groups.length > 0;
+  const annotationCounts = {
+    groups: groups.length,
+    text: textAnnotations.length,
+    shapes: shapeAnnotations.length
+  };
+  const totalAnnotations = annotationCounts.groups + annotationCounts.text + annotationCounts.shapes;
 
   const handleExport = useCallback(async () => {
     if (!cy) {
-      setExportStatus('Error: Cytoscape not available');
+      setExportStatus({ type: 'error', message: 'Cytoscape not available' });
       return;
     }
 
@@ -150,7 +331,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
     try {
       const extensionLoaded = await ensureSvgExtension(cy);
       if (!extensionLoaded) {
-        setExportStatus('Error: SVG export extension not available');
+        setExportStatus({ type: 'error', message: 'SVG extension not available' });
         setIsExporting(false);
         return;
       }
@@ -160,8 +341,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
       const exported = cyWithSvg.svg({ scale, full: true });
       let svgContent = replacePngWithSvg(exported);
 
-      // Composite annotations if enabled
-      if (includeAnnotations && hasAnnotations) {
+      if (includeAnnotations && totalAnnotations > 0) {
         svgContent = compositeAnnotationsIntoSvg(
           svgContent,
           { groups, textAnnotations, shapeAnnotations },
@@ -169,9 +349,8 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
         );
       }
 
-      // Add background color if not transparent
-      if (backgroundColorOption !== 'transparent') {
-        const bgColor = backgroundColorOption === 'white' ? '#ffffff' : customBackgroundColor;
+      if (backgroundOption !== 'transparent') {
+        const bgColor = backgroundOption === 'white' ? '#ffffff' : customBackgroundColor;
         svgContent = addBackgroundRect(svgContent, bgColor);
       }
 
@@ -181,150 +360,102 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
 
       const exportFilename = `${filename.trim() || 'topology'}.svg`;
       downloadSvg(svgContent, exportFilename);
-      setExportStatus('Export successful');
+      setExportStatus({ type: 'success', message: `Exported ${exportFilename}` });
       log.info(`Topology exported as SVG: ${exportFilename}`);
     } catch (error) {
       log.error(`Error exporting topology: ${error}`);
-      setExportStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setExportStatus({ type: 'error', message: error instanceof Error ? error.message : 'Export failed' });
     } finally {
       setIsExporting(false);
     }
-  }, [cy, borderZoom, borderPadding, includeAnnotations, hasAnnotations, groups, textAnnotations, shapeAnnotations, backgroundColorOption, customBackgroundColor, filename]);
+  }, [cy, borderZoom, borderPadding, includeAnnotations, totalAnnotations, groups, textAnnotations, shapeAnnotations, backgroundOption, customBackgroundColor, filename]);
 
   return (
     <BasePanel
       title="Export SVG"
       isVisible={isVisible}
       onClose={onClose}
-      initialPosition={{ x: window.innerWidth - 340, y: 72 }}
-      width={320}
+      initialPosition={{ x: window.innerWidth - 360, y: 72 }}
+      width={340}
       storageKey="svgExport"
       zIndex={90}
       footer={false}
-      minWidth={280}
+      minWidth={300}
       minHeight={200}
       testId="svg-export-panel"
     >
-      <div className="space-y-3">
-        <div>
-          <p className="text-secondary text-sm mb-2">
-            Configure options for exporting the topology as an SVG file.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <QualitySection
+          zoom={borderZoom}
+          setZoom={setBorderZoom}
+          padding={borderPadding}
+          setPadding={setBorderPadding}
+        />
 
-        {/* Border Zoom */}
-        <div className="flex items-center">
-          <label className="vscode-label w-28 text-right pr-3 text-sm">Zoom (%)</label>
-          <input
-            type="number"
-            className="input-field text-sm w-20"
-            value={borderZoom}
-            onChange={(e) => setBorderZoom(Math.max(10, Math.min(300, parseInt(e.target.value) || 100)))}
-            min={10}
-            max={300}
-          />
-        </div>
+        <BackgroundSection
+          option={backgroundOption}
+          setOption={setBackgroundOption}
+          customColor={customBackgroundColor}
+          setCustomColor={setCustomBackgroundColor}
+        />
 
-        {/* Border Padding */}
-        <div className="flex items-center">
-          <label className="vscode-label w-28 text-right pr-3 text-sm">Padding (px)</label>
-          <input
-            type="number"
-            className="input-field text-sm w-20"
-            value={borderPadding}
-            onChange={(e) => setBorderPadding(Math.max(0, parseInt(e.target.value) || 0))}
-            min={0}
-          />
-        </div>
+        <AnnotationsSection
+          include={includeAnnotations}
+          setInclude={setIncludeAnnotations}
+          counts={annotationCounts}
+        />
 
-        {/* Include Annotations */}
-        <div className="flex items-center">
-          <label className="vscode-label w-28 text-right pr-3 text-sm">Annotations</label>
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="form-checkbox mr-2"
-              checked={includeAnnotations}
-              onChange={(e) => setIncludeAnnotations(e.target.checked)}
-              disabled={!hasAnnotations}
-            />
-            <span className={`text-sm ${!hasAnnotations ? 'text-secondary' : ''}`}>
-              Include {hasAnnotations ? `(${groups.length + textAnnotations.length + shapeAnnotations.length})` : '(none)'}
-            </span>
-          </label>
-        </div>
+        <FilenameSection
+          value={filename}
+          onChange={setFilename}
+        />
 
-        {/* Background Color */}
-        <div className="flex items-center">
-          <label className="vscode-label w-28 text-right pr-3 text-sm">Background</label>
-          <select
-            className="input-field text-sm w-28"
-            value={backgroundColorOption}
-            onChange={(e) => setBackgroundColorOption(e.target.value as BackgroundColorOption)}
-          >
-            <option value="transparent">Transparent</option>
-            <option value="white">White</option>
-            <option value="custom">Custom</option>
-          </select>
-          {backgroundColorOption === 'custom' && (
-            <input
-              type="color"
-              className="ml-2 w-8 h-6 cursor-pointer border border-gray-400 rounded"
-              value={customBackgroundColor}
-              onChange={(e) => setCustomBackgroundColor(e.target.value)}
-              title="Choose background color"
-            />
+        <PreviewSection
+          zoom={borderZoom}
+          padding={borderPadding}
+          background={backgroundOption}
+          customColor={customBackgroundColor}
+          includeAnnotations={includeAnnotations}
+          annotationCount={totalAnnotations}
+        />
+
+        {/* Export button */}
+        <button
+          type="button"
+          className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
+            isExporting || !cy
+              ? 'bg-white/5 text-[var(--vscode-descriptionForeground)] cursor-not-allowed'
+              : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:shadow-[var(--accent)]/30'
+          }`}
+          onClick={() => void handleExport()}
+          disabled={isExporting || !cy}
+        >
+          {isExporting ? (
+            <>
+              <i className="fas fa-circle-notch fa-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <i className="fas fa-download" />
+              Export SVG
+            </>
           )}
-        </div>
+        </button>
 
-        {/* Filename */}
-        <div className="flex items-center">
-          <label className="vscode-label w-28 text-right pr-3 text-sm">Filename</label>
-          <input
-            type="text"
-            className="input-field text-sm flex-1"
-            value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-            placeholder="topology"
-          />
-          <span className="text-sm ml-1 text-secondary">.svg</span>
-        </div>
-
-        {/* Export Button */}
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            className="btn btn-primary btn-small"
-            onClick={() => void handleExport()}
-            disabled={isExporting || !cy}
-          >
-            {isExporting ? (
-              <>
-                <i className="fas fa-spinner fa-spin mr-1" aria-hidden="true"></i>
-                Exporting...
-              </>
-            ) : (
-              'Export'
-            )}
-          </button>
-        </div>
-
-        {/* Status Message */}
+        {/* Status message */}
         {exportStatus && (
-          <div className={`text-sm ${exportStatus.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>
-            {exportStatus}
+          <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${
+            exportStatus.type === 'success'
+              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+          }`}>
+            <i className={`fas ${exportStatus.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`} />
+            {exportStatus.message}
           </div>
         )}
 
-        {/* Tips */}
-        <div className="text-xs text-secondary mt-2">
-          <p className="font-semibold mb-1">Tips:</p>
-          <ul className="list-disc list-inside space-y-0.5">
-            <li>Higher zoom = higher quality but larger file</li>
-            <li>Padding adds whitespace around the topology</li>
-            <li>SVG files can be scaled without quality loss</li>
-          </ul>
-        </div>
+        <TipsSection />
       </div>
     </BasePanel>
   );

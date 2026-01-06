@@ -61,14 +61,14 @@ interface ShapeStyle {
   dashArray: string;
 }
 
-function getShapeStyle(shape: FreeShapeAnnotation, scale: number): ShapeStyle {
+function getShapeStyle(shape: FreeShapeAnnotation): ShapeStyle {
   return {
     fillColor: applyAlphaToColor(
       shape.fillColor ?? DEFAULT_FILL_COLOR,
       shape.fillOpacity ?? DEFAULT_FILL_OPACITY
     ),
     strokeColor: shape.borderColor ?? DEFAULT_BORDER_COLOR,
-    strokeWidth: (shape.borderWidth ?? DEFAULT_BORDER_WIDTH) * scale,
+    strokeWidth: shape.borderWidth ?? DEFAULT_BORDER_WIDTH,
     dashArray: getBorderDashArray(shape.borderStyle ?? DEFAULT_BORDER_STYLE)
   };
 }
@@ -137,6 +137,7 @@ function calculateLabelBgX(labelX: number, textAnchor: string, labelWidth: numbe
 
 /**
  * Build SVG for group label with background.
+ * Uses MODEL coordinates - the parent transform handles scaling.
  */
 function buildGroupLabelSvg(
   name: string,
@@ -144,8 +145,7 @@ function buildGroupLabelSvg(
   labelColor: string,
   labelFontSize: number,
   labelPadding: number,
-  labelBgPadding: number,
-  scale: number
+  labelBgPadding: number
 ): string {
   const estimatedLabelWidth = name.length * labelFontSize * 0.6 + labelBgPadding * 2;
   const labelBgHeight = labelFontSize + labelPadding * 2;
@@ -153,7 +153,7 @@ function buildGroupLabelSvg(
   const bgY = labelPos.y - labelFontSize - labelPadding / 2;
 
   let svg = `<rect x="${bgX}" y="${bgY}" width="${estimatedLabelWidth}" height="${labelBgHeight}" `;
-  svg += `fill="rgba(0,0,0,0.4)" rx="${2 * scale}" ry="${2 * scale}" />`;
+  svg += `fill="rgba(0,0,0,0.4)" rx="2" ry="2" />`;
   svg += `<text x="${labelPos.x}" y="${labelPos.y}" `;
   svg += `fill="${labelColor}" font-size="${labelFontSize}" font-weight="500" `;
   svg += `font-family="${DEFAULT_FONT_FAMILY}" text-anchor="${labelPos.textAnchor}">`;
@@ -166,21 +166,23 @@ function buildGroupLabelSvg(
 /**
  * Convert a GroupStyleAnnotation to an SVG string.
  * Groups are rendered as rectangles with optional label.
- * NOTE: Group position represents the CENTER of the group (same as canvas rendering).
+ * NOTE: Uses MODEL coordinates - the parent transform handles scaling.
+ * Group position represents the CENTER of the group (same as canvas rendering).
  */
-export function groupToSvgString(group: GroupStyleAnnotation, scale: number): string {
-  const width = group.width * scale;
-  const height = group.height * scale;
-  const x = (group.position.x - group.width / 2) * scale;
-  const y = (group.position.y - group.height / 2) * scale;
+export function groupToSvgString(group: GroupStyleAnnotation): string {
+  const width = group.width;
+  const height = group.height;
+  // Group position is CENTER-based, convert to top-left for SVG rect
+  const x = group.position.x - group.width / 2;
+  const y = group.position.y - group.height / 2;
 
   const bgColor = group.backgroundColor ?? '#d9d9d9';
   const bgOpacity = (group.backgroundOpacity ?? 20) / 100;
   const fillColor = bgColor === 'transparent' ? 'none' : applyAlphaToColor(bgColor, bgOpacity);
 
   const borderColor = group.borderColor ?? '#dddddd';
-  const borderWidth = (group.borderWidth ?? 0.5) * scale;
-  const borderRadius = (group.borderRadius ?? 0) * scale;
+  const borderWidth = group.borderWidth ?? 0.5;
+  const borderRadius = group.borderRadius ?? 0;
   const dashArray = getGroupBorderDashArray(group.borderStyle);
 
   let svg = `<g class="annotation-group" data-id="${escapeXml(group.id)}">`;
@@ -191,9 +193,9 @@ export function groupToSvgString(group: GroupStyleAnnotation, scale: number): st
   svg += `/>`;
 
   if (group.name) {
-    const labelFontSize = 9 * scale;
-    const labelPadding = 2 * scale;
-    const labelBgPadding = 6 * scale;
+    const labelFontSize = 9;
+    const labelPadding = 2;
+    const labelBgPadding = 6;
     const labelPos = calculateLabelPosition(
       { x, y, width, height },
       group.labelPosition ?? 'top-left',
@@ -206,8 +208,7 @@ export function groupToSvgString(group: GroupStyleAnnotation, scale: number): st
       group.labelColor ?? '#ebecf0',
       labelFontSize,
       labelPadding,
-      labelBgPadding,
-      scale
+      labelBgPadding
     );
   }
 
@@ -229,21 +230,19 @@ function makeArrowPoints(arrowSize: number, x: number, y: number, fromX: number,
   return `${p1x},${p1y} ${x},${y} ${p3x},${p3y}`;
 }
 
-function buildRectangleSvg(shape: FreeShapeAnnotation, scale: number): string {
-  const style = getShapeStyle(shape, scale);
-  const width = (shape.width ?? 50) * scale;
-  const height = (shape.height ?? 50) * scale;
+function buildRectangleSvg(shape: FreeShapeAnnotation): string {
+  const style = getShapeStyle(shape);
+  const width = shape.width ?? 50;
+  const height = shape.height ?? 50;
   // Shape position is CENTER-based on canvas (uses translate(-50%, -50%))
   // Convert to top-left corner for SVG
-  const unscaledWidth = shape.width ?? 50;
-  const unscaledHeight = shape.height ?? 50;
-  const x = (shape.position.x - unscaledWidth / 2) * scale;
-  const y = (shape.position.y - unscaledHeight / 2) * scale;
-  const cornerRadius = (shape.cornerRadius ?? 0) * scale;
+  const x = shape.position.x - width / 2;
+  const y = shape.position.y - height / 2;
+  const cornerRadius = shape.cornerRadius ?? 0;
   const rotation = shape.rotation ?? 0;
   // Center point for rotation
-  const cx = shape.position.x * scale;
-  const cy = shape.position.y * scale;
+  const cx = shape.position.x;
+  const cy = shape.position.y;
 
   let svg = `<g class="annotation-shape" data-id="${escapeXml(shape.id)}"`;
   if (rotation !== 0) svg += ` transform="rotate(${rotation}, ${cx}, ${cy})"`;
@@ -253,14 +252,14 @@ function buildRectangleSvg(shape: FreeShapeAnnotation, scale: number): string {
   return svg;
 }
 
-function buildCircleSvg(shape: FreeShapeAnnotation, scale: number): string {
-  const style = getShapeStyle(shape, scale);
-  const width = (shape.width ?? 50) * scale;
-  const height = (shape.height ?? 50) * scale;
+function buildCircleSvg(shape: FreeShapeAnnotation): string {
+  const style = getShapeStyle(shape);
+  const width = shape.width ?? 50;
+  const height = shape.height ?? 50;
   // Shape position is CENTER-based on canvas (uses translate(-50%, -50%))
   // For ellipse, cx/cy are the center coordinates, which is exactly the position
-  const cx = shape.position.x * scale;
-  const cy = shape.position.y * scale;
+  const cx = shape.position.x;
+  const cy = shape.position.y;
   const rx = width / 2;
   const ry = height / 2;
   const rotation = shape.rotation ?? 0;
@@ -273,13 +272,13 @@ function buildCircleSvg(shape: FreeShapeAnnotation, scale: number): string {
   return svg;
 }
 
-function buildLineSvg(shape: FreeShapeAnnotation, scale: number): string {
-  const style = getShapeStyle(shape, scale);
-  const startX = shape.position.x * scale;
-  const startY = shape.position.y * scale;
-  const endX = (shape.endPosition?.x ?? (shape.position.x + DEFAULT_LINE_LENGTH)) * scale;
-  const endY = (shape.endPosition?.y ?? shape.position.y) * scale;
-  const arrowSize = (shape.lineArrowSize ?? DEFAULT_ARROW_SIZE) * scale;
+function buildLineSvg(shape: FreeShapeAnnotation): string {
+  const style = getShapeStyle(shape);
+  const startX = shape.position.x;
+  const startY = shape.position.y;
+  const endX = shape.endPosition?.x ?? (shape.position.x + DEFAULT_LINE_LENGTH);
+  const endY = shape.endPosition?.y ?? shape.position.y;
+  const arrowSize = shape.lineArrowSize ?? DEFAULT_ARROW_SIZE;
 
   // Shorten line ends if arrows are present
   const dx = endX - startX;
@@ -316,14 +315,15 @@ function buildLineSvg(shape: FreeShapeAnnotation, scale: number): string {
 
 /**
  * Convert a FreeShapeAnnotation to an SVG string.
+ * NOTE: Uses MODEL coordinates - the parent transform handles scaling.
  */
-export function shapeToSvgString(shape: FreeShapeAnnotation, scale: number): string {
+export function shapeToSvgString(shape: FreeShapeAnnotation): string {
   switch (shape.shapeType) {
-    case 'rectangle': return buildRectangleSvg(shape, scale);
-    case 'circle': return buildCircleSvg(shape, scale);
+    case 'rectangle': return buildRectangleSvg(shape);
+    case 'circle': return buildCircleSvg(shape);
     case 'line':
     default:
-      return buildLineSvg(shape, scale);
+      return buildLineSvg(shape);
   }
 }
 
@@ -344,9 +344,9 @@ interface TextStyle {
   padding: number;
 }
 
-function getTextStyle(text: FreeTextAnnotation, scale: number): TextStyle {
+function getTextStyle(text: FreeTextAnnotation): TextStyle {
   return {
-    fontSize: (text.fontSize ?? 14) * scale,
+    fontSize: text.fontSize ?? 14,
     fontColor: text.fontColor ?? '#000000',
     fontWeight: text.fontWeight ?? 'normal',
     fontStyle: text.fontStyle ?? 'normal',
@@ -354,8 +354,8 @@ function getTextStyle(text: FreeTextAnnotation, scale: number): TextStyle {
     textAlign: text.textAlign ?? 'left',
     fontFamily: text.fontFamily ?? DEFAULT_FONT_FAMILY,
     backgroundColor: text.backgroundColor ?? 'transparent',
-    borderRadius: text.roundedBackground ? 4 * scale : 0,
-    padding: 4 * scale
+    borderRadius: text.roundedBackground ? 4 : 0,
+    padding: 4
   };
 }
 
@@ -411,16 +411,17 @@ function estimateTextDimensions(
 /**
  * Convert a FreeTextAnnotation to an SVG string using foreignObject.
  * This preserves markdown rendering and styling.
- * NOTE: Text position represents the CENTER of the annotation (same as canvas rendering).
+ * NOTE: Uses MODEL coordinates - the parent transform handles scaling.
+ * Text position represents the CENTER of the annotation (same as canvas rendering).
  */
-export function textToSvgString(text: FreeTextAnnotation, scale: number): string {
+export function textToSvgString(text: FreeTextAnnotation): string {
   // Use explicit dimensions if provided, otherwise estimate from content
-  let unscaledWidth: number;
-  let unscaledHeight: number;
+  let width: number;
+  let height: number;
 
   if (text.width !== undefined && text.height !== undefined) {
-    unscaledWidth = text.width;
-    unscaledHeight = text.height;
+    width = text.width;
+    height = text.height;
   } else {
     const estimated = estimateTextDimensions(
       text.text || '',
@@ -428,24 +429,28 @@ export function textToSvgString(text: FreeTextAnnotation, scale: number): string
       text.fontFamily ?? DEFAULT_FONT_FAMILY,
       text.fontWeight ?? 'normal'
     );
-    unscaledWidth = text.width ?? estimated.width;
-    unscaledHeight = text.height ?? estimated.height;
+    width = text.width ?? estimated.width;
+    height = text.height ?? estimated.height;
   }
 
-  const width = unscaledWidth * scale;
-  const height = unscaledHeight * scale;
-
   // Text position is CENTER-based on canvas (uses translate(-50%, -50%))
+  // Canvas wrapper has padding that affects centering calculation.
+  // The wrapper is larger than content due to padding, and translate(-50%, -50%)
+  // uses the wrapper size, shifting content differently than pure center calculation.
+  // Empirically determined offsets to match canvas rendering:
+  const CANVAS_Y_OFFSET = 28;  // Shifts text UP to match canvas
+  const CANVAS_X_OFFSET = 5;  // Shifts text LEFT to match canvas
+
   // Convert to top-left corner for SVG foreignObject
-  const x = (text.position.x - unscaledWidth / 2) * scale;
-  const y = (text.position.y - unscaledHeight / 2) * scale;
+  const x = text.position.x - CANVAS_X_OFFSET - width / 2;
+  const y = text.position.y - CANVAS_Y_OFFSET - height / 2;
 
   const rotation = text.rotation ?? 0;
   // Center point for rotation (the original position)
-  const cx = text.position.x * scale;
-  const cy = text.position.y * scale;
+  const cx = text.position.x;
+  const cy = text.position.y;
 
-  const style = getTextStyle(text, scale);
+  const style = getTextStyle(text);
   const styleStr = buildTextStyleString(style);
   const htmlContent = renderMarkdown(text.text || '');
 
@@ -513,29 +518,50 @@ function parseAndImportElement(doc: Document, parser: DOMParser, svgStr: string)
 }
 
 /**
- * Extract transform values from a cytoscape SVG's main group.
- * Returns { translateX, translateY, scaleX, scaleY }
+ * Extract the full transform attribute from a cytoscape SVG's main group.
+ * Returns the complete transform string including all translates and scale.
  */
-function extractCytoscapeTransform(svgEl: Element): { tx: number; ty: number; sx: number; sy: number } {
-  // Find the main content group with transform
-  const mainGroup = svgEl.querySelector('g[transform]');
-  if (!mainGroup) {
-    return { tx: 0, ty: 0, sx: 1, sy: 1 };
+function extractCytoscapeTransform(svgEl: Element): string {
+  // Find the main content group with transform (should have scale for cytoscape exports)
+  const groups = svgEl.querySelectorAll('g[transform]');
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i];
+    const transform = group.getAttribute('transform') || '';
+    // Look for the cytoscape main group which has scale in its transform
+    if (transform.includes('scale(')) {
+      return transform;
+    }
   }
 
-  const transform = mainGroup.getAttribute('transform') || '';
+  // Fallback: find any group with a translate transform
+  const firstGroup = svgEl.querySelector('g[transform]');
+  return firstGroup?.getAttribute('transform') || '';
+}
 
-  // Parse translate(x,y)
-  const translateMatch = /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(transform);
-  const tx = translateMatch ? parseFloat(translateMatch[1]) : 0;
-  const ty = translateMatch ? parseFloat(translateMatch[2]) : 0;
-
-  // Parse scale(x,y) or scale(x)
+/**
+ * Parse transform to extract scale value for bounds calculation.
+ */
+function extractScaleFromTransform(transform: string): number {
   const scaleMatch = /scale\(\s*([-\d.]+)(?:\s*,\s*([-\d.]+))?\s*\)/.exec(transform);
-  const sx = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
-  const sy = scaleMatch ? parseFloat(scaleMatch[2] ?? scaleMatch[1]) : sx;
+  return scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+}
 
-  return { tx, ty, sx, sy };
+/**
+ * Parse transform to extract the total translate values for bounds calculation.
+ * Sums all translate operations in the transform string.
+ */
+function extractTranslateFromTransform(transform: string): { tx: number; ty: number } {
+  let totalTx = 0;
+  let totalTy = 0;
+
+  const translateRegex = /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/g;
+  let match;
+  while ((match = translateRegex.exec(transform)) !== null) {
+    totalTx += parseFloat(match[1]);
+    totalTy += parseFloat(match[2]);
+  }
+
+  return { tx: totalTx, ty: totalTy };
 }
 
 interface BoundingBox {
@@ -553,38 +579,37 @@ function mergeBounds(bounds: BoundingBox, x1: number, y1: number, x2: number, y2
   bounds.maxY = Math.max(bounds.maxY, y2);
 }
 
-/** Calculate bounds for a center-based rect */
-function getCenterBasedBounds(cx: number, cy: number, w: number, h: number, scale: number) {
+/** Calculate bounds for a center-based rect (in model coordinates) */
+function getCenterBasedBounds(cx: number, cy: number, w: number, h: number) {
   const halfW = w / 2;
   const halfH = h / 2;
   return {
-    x1: (cx - halfW) * scale,
-    y1: (cy - halfH) * scale,
-    x2: (cx + halfW) * scale,
-    y2: (cy + halfH) * scale
+    x1: cx - halfW,
+    y1: cy - halfH,
+    x2: cx + halfW,
+    y2: cy + halfH
   };
 }
 
-function addGroupBounds(bounds: BoundingBox, groups: GroupStyleAnnotation[], scale: number): void {
+function addGroupBounds(bounds: BoundingBox, groups: GroupStyleAnnotation[]): void {
   for (const group of groups) {
-    const b = getCenterBasedBounds(group.position.x, group.position.y, group.width, group.height, scale);
+    const b = getCenterBasedBounds(group.position.x, group.position.y, group.width, group.height);
     mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
   }
 }
 
-function addShapeBounds(bounds: BoundingBox, shapes: FreeShapeAnnotation[], scale: number): void {
+function addShapeBounds(bounds: BoundingBox, shapes: FreeShapeAnnotation[]): void {
   for (const shape of shapes) {
     if (shape.shapeType === 'line') {
-      const x1 = shape.position.x * scale;
-      const y1 = shape.position.y * scale;
-      const x2 = (shape.endPosition?.x ?? shape.position.x) * scale;
-      const y2 = (shape.endPosition?.y ?? shape.position.y) * scale;
+      const x1 = shape.position.x;
+      const y1 = shape.position.y;
+      const x2 = shape.endPosition?.x ?? shape.position.x;
+      const y2 = shape.endPosition?.y ?? shape.position.y;
       mergeBounds(bounds, Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2));
     } else {
       const b = getCenterBasedBounds(
         shape.position.x, shape.position.y,
-        shape.width ?? 50, shape.height ?? 50,
-        scale
+        shape.width ?? 50, shape.height ?? 50
       );
       mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
     }
@@ -604,61 +629,24 @@ function getTextDimensions(text: FreeTextAnnotation): { w: number; h: number } {
   return { w: text.width ?? estimated.width, h: text.height ?? estimated.height };
 }
 
-function addTextBounds(bounds: BoundingBox, texts: FreeTextAnnotation[], scale: number): void {
+function addTextBounds(bounds: BoundingBox, texts: FreeTextAnnotation[]): void {
   for (const text of texts) {
     const { w, h } = getTextDimensions(text);
-    const b = getCenterBasedBounds(text.position.x, text.position.y, w, h, scale);
+    const b = getCenterBasedBounds(text.position.x, text.position.y, w, h);
     mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
   }
 }
 
 /**
- * Calculate bounding box for all annotations (in scaled coordinates).
+ * Calculate bounding box for all annotations (in MODEL coordinates).
  * NOTE: All annotation positions are CENTER-based on canvas.
  */
-function calculateAnnotationsBounds(annotations: AnnotationData, scale: number): BoundingBox {
+function calculateAnnotationsBounds(annotations: AnnotationData): BoundingBox {
   const bounds: BoundingBox = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-  addGroupBounds(bounds, annotations.groups, scale);
-  addShapeBounds(bounds, annotations.shapeAnnotations, scale);
-  addTextBounds(bounds, annotations.textAnnotations, scale);
+  addGroupBounds(bounds, annotations.groups);
+  addShapeBounds(bounds, annotations.shapeAnnotations);
+  addTextBounds(bounds, annotations.textAnnotations);
   return bounds;
-}
-
-interface ExpandedBounds {
-  newMinX: number;
-  newMinY: number;
-  newWidth: number;
-  newHeight: number;
-  needsExpansion: boolean;
-}
-
-function calculateExpandedBounds(
-  currentWidth: number,
-  currentHeight: number,
-  annotationBounds: BoundingBox,
-  tx: number,
-  ty: number
-): ExpandedBounds {
-  // Add margin to ensure content at edges is fully visible
-  const margin = 20;
-
-  // Annotation bounds in SVG coordinate space
-  const annMinX = annotationBounds.minX + tx - margin;
-  const annMinY = annotationBounds.minY + ty - margin;
-  const annMaxX = annotationBounds.maxX + tx + margin;
-  const annMaxY = annotationBounds.maxY + ty + margin;
-
-  // Combined bounds
-  const newMinX = Math.min(0, annMinX);
-  const newMinY = Math.min(0, annMinY);
-  const newMaxX = Math.max(currentWidth, annMaxX);
-  const newMaxY = Math.max(currentHeight, annMaxY);
-
-  const newWidth = newMaxX - newMinX;
-  const newHeight = newMaxY - newMinY;
-  const needsExpansion = newMinX < 0 || newMinY < 0 || newWidth > currentWidth || newHeight > currentHeight;
-
-  return { newMinX, newMinY, newWidth, newHeight, needsExpansion };
 }
 
 function shiftGroupTransforms(svgEl: Element, shiftX: number, shiftY: number): void {
@@ -689,37 +677,60 @@ function shiftBackgroundRect(svgEl: Element, shiftX: number, shiftY: number, new
 
 /**
  * Expand SVG dimensions to include annotation bounds.
+ * @param transform - The full transform string from cytoscape
  */
-function expandSvgBounds(svgEl: Element, annotationBounds: BoundingBox, tx: number, ty: number): void {
+function expandSvgBounds(svgEl: Element, annotationBounds: BoundingBox, transform: string): void {
   const currentWidth = parseFloat(svgEl.getAttribute('width') || '0');
   const currentHeight = parseFloat(svgEl.getAttribute('height') || '0');
 
-  const bounds = calculateExpandedBounds(currentWidth, currentHeight, annotationBounds, tx, ty);
+  // Extract translate and scale from the transform
+  const { tx, ty } = extractTranslateFromTransform(transform);
+  const scale = extractScaleFromTransform(transform);
 
-  if (!bounds.needsExpansion) return;
+  // Transform annotation bounds from model coordinates to SVG coordinates
+  // The transform applies scale THEN translate, so:
+  // SVG_x = model_x * scale + tx
+  const margin = 20;
+  const annMinX = annotationBounds.minX * scale + tx - margin;
+  const annMinY = annotationBounds.minY * scale + ty - margin;
+  const annMaxX = annotationBounds.maxX * scale + tx + margin;
+  const annMaxY = annotationBounds.maxY * scale + ty + margin;
 
-  svgEl.setAttribute('width', bounds.newWidth.toString());
-  svgEl.setAttribute('height', bounds.newHeight.toString());
+  // Combined bounds
+  const newMinX = Math.min(0, annMinX);
+  const newMinY = Math.min(0, annMinY);
+  const newMaxX = Math.max(currentWidth, annMaxX);
+  const newMaxY = Math.max(currentHeight, annMaxY);
+
+  const newWidth = newMaxX - newMinX;
+  const newHeight = newMaxY - newMinY;
+  const needsExpansion = newMinX < 0 || newMinY < 0 || newWidth > currentWidth || newHeight > currentHeight;
+
+  if (!needsExpansion) return;
+
+  svgEl.setAttribute('width', newWidth.toString());
+  svgEl.setAttribute('height', newHeight.toString());
 
   // If we expanded to negative coordinates, shift all content
-  if (bounds.newMinX < 0 || bounds.newMinY < 0) {
-    const shiftX = bounds.newMinX < 0 ? -bounds.newMinX : 0;
-    const shiftY = bounds.newMinY < 0 ? -bounds.newMinY : 0;
+  if (newMinX < 0 || newMinY < 0) {
+    const shiftX = newMinX < 0 ? -newMinX : 0;
+    const shiftY = newMinY < 0 ? -newMinY : 0;
 
     shiftGroupTransforms(svgEl, shiftX, shiftY);
-    shiftBackgroundRect(svgEl, shiftX, shiftY, bounds.newWidth, bounds.newHeight);
+    shiftBackgroundRect(svgEl, shiftX, shiftY, newWidth, newHeight);
   }
 }
 
 /**
  * Composite annotations into an existing Cytoscape SVG.
  * Annotations are inserted in z-order: groups (background), shapes, text (foreground).
- * The cytoscape transform is extracted and applied to annotation layers.
+ * The cytoscape transform is extracted and applied to annotation layers so they
+ * use the same coordinate system as the cytoscape graph (model coordinates).
  */
 export function compositeAnnotationsIntoSvg(
   cytoscapeSvg: string,
   annotations: AnnotationData,
-  scale: number
+  _scale: number // Kept for API compatibility but not used - scale comes from transform
 ): string {
   const { groups, textAnnotations, shapeAnnotations } = annotations;
 
@@ -732,44 +743,43 @@ export function compositeAnnotationsIntoSvg(
   const doc = parser.parseFromString(cytoscapeSvg, SVG_MIME_TYPE);
   const svgEl = doc.documentElement;
 
-  // Extract transform from cytoscape content to match annotation positioning
-  const { tx, ty } = extractCytoscapeTransform(svgEl);
+  // Extract the FULL transform from cytoscape content (including all translates and scale)
+  // This ensures annotations use the exact same coordinate system as cytoscape nodes
+  const transform = extractCytoscapeTransform(svgEl);
 
-  // Create annotation layer groups with same transform as cytoscape content
-  const transformAttr = `translate(${tx}, ${ty})`;
-
+  // Create annotation layer groups with the SAME transform as cytoscape content
   const groupsLayer = doc.createElementNS(SVG_NS, 'g');
   groupsLayer.setAttribute('class', ANNOTATION_GROUPS_LAYER);
-  groupsLayer.setAttribute('transform', transformAttr);
+  groupsLayer.setAttribute('transform', transform);
 
   const shapesLayer = doc.createElementNS(SVG_NS, 'g');
   shapesLayer.setAttribute('class', ANNOTATION_SHAPES_LAYER);
-  shapesLayer.setAttribute('transform', transformAttr);
+  shapesLayer.setAttribute('transform', transform);
 
   const textLayer = doc.createElementNS(SVG_NS, 'g');
   textLayer.setAttribute('class', ANNOTATION_TEXT_LAYER);
-  textLayer.setAttribute('transform', transformAttr);
+  textLayer.setAttribute('transform', transform);
 
   // Sort by zIndex
   const sortedGroups = [...groups].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
   const sortedShapes = [...shapeAnnotations].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
   const sortedText = [...textAnnotations].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
 
-  // Render groups
+  // Render groups (in model coordinates - the transform handles scaling)
   for (const group of sortedGroups) {
-    const element = parseAndImportElement(doc, parser, groupToSvgString(group, scale));
+    const element = parseAndImportElement(doc, parser, groupToSvgString(group));
     if (element) groupsLayer.appendChild(element);
   }
 
   // Render shapes
   for (const shape of sortedShapes) {
-    const element = parseAndImportElement(doc, parser, shapeToSvgString(shape, scale));
+    const element = parseAndImportElement(doc, parser, shapeToSvgString(shape));
     if (element) shapesLayer.appendChild(element);
   }
 
   // Render text annotations
   for (const text of sortedText) {
-    const element = parseAndImportElement(doc, parser, textToSvgString(text, scale));
+    const element = parseAndImportElement(doc, parser, textToSvgString(text));
     if (element) textLayer.appendChild(element);
   }
 
@@ -780,10 +790,10 @@ export function compositeAnnotationsIntoSvg(
   svgEl.appendChild(shapesLayer);
   svgEl.appendChild(textLayer);
 
-  // Calculate annotation bounds and expand SVG if needed
-  const annotationBounds = calculateAnnotationsBounds(annotations, scale);
+  // Calculate annotation bounds (in model coordinates) and expand SVG if needed
+  const annotationBounds = calculateAnnotationsBounds(annotations);
   if (annotationBounds.minX !== Infinity) {
-    expandSvgBounds(svgEl, annotationBounds, tx, ty);
+    expandSvgBounds(svgEl, annotationBounds, transform);
   }
 
   return new XMLSerializer().serializeToString(svgEl);
