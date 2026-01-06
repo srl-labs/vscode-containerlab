@@ -193,6 +193,8 @@ const AnnotationsSection: React.FC<{
 }> = ({ include, setInclude, counts }) => {
   const total = counts.groups + counts.text + counts.shapes;
   const hasAny = total > 0;
+  const pluralSuffix = total !== 1 ? 's' : '';
+  const annotationLabel = hasAny ? `${total} annotation${pluralSuffix}` : 'No annotations';
 
   return (
     <div className="flex flex-col gap-3">
@@ -200,7 +202,7 @@ const AnnotationsSection: React.FC<{
       <div className="flex items-center justify-between p-3 bg-black/20 rounded-sm border border-white/5">
         <div className="flex flex-col">
           <span className="text-sm text-[var(--vscode-foreground)]">
-            {hasAny ? `${total} annotation${total !== 1 ? 's' : ''}` : 'No annotations'}
+            {annotationLabel}
           </span>
           {hasAny && (
             <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">

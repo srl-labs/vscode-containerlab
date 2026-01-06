@@ -59,6 +59,23 @@ const ICON_LINK = 'fas fa-link';
 // Divider ID for menu separation
 const DIVIDER_DELETE_ID = 'divider-delete';
 
+/** Creates a "Create Link" menu item for nodes */
+function createLinkMenuItem(
+  nodeId: string,
+  nodeContext: string,
+  options: ContextMenuOptions
+): ContextMenuItem {
+  return {
+    id: 'link-node',
+    label: 'Create Link',
+    icon: ICON_LINK,
+    onClick: () => {
+      log.info(`[ContextMenu] Add link from ${nodeContext}: ${nodeId}`);
+      options.onCreateLinkFromNode?.(nodeId);
+    }
+  };
+}
+
 /**
  * Extract capture endpoints from edge data (similar to legacy ContextMenuManager)
  */
@@ -118,15 +135,7 @@ function buildNodeEditMenuItems(
           options.onEditNetwork?.(nodeId);
         }
       },
-      {
-        id: 'link-node',
-        label: 'Create Link',
-        icon: ICON_LINK,
-        onClick: () => {
-          log.info(`[ContextMenu] Add link from network: ${nodeId}`);
-          options.onCreateLinkFromNode?.(nodeId);
-        }
-      },
+      createLinkMenuItem(nodeId, 'network', options),
       { id: DIVIDER_DELETE_ID, label: '', divider: true },
       {
         id: 'delete-node',
@@ -152,15 +161,7 @@ function buildNodeEditMenuItems(
         options.onEditNode?.(nodeId);
       }
     },
-    {
-      id: 'link-node',
-      label: 'Create Link',
-      icon: ICON_LINK,
-      onClick: () => {
-        log.info(`[ContextMenu] Add link from: ${nodeId}`);
-        options.onCreateLinkFromNode?.(nodeId);
-      }
-    },
+    createLinkMenuItem(nodeId, 'node', options),
     { id: DIVIDER_DELETE_ID, label: '', divider: true },
     {
       id: 'delete-node',

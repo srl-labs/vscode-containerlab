@@ -1,9 +1,14 @@
-import { test, expect } from '../fixtures/topoviewer';
 import * as fs from 'fs';
-import * as path from 'path';
+
+import { test, expect } from '../fixtures/topoviewer';
 
 const SIMPLE_FILE = 'simple.clab.yml';
 const DATACENTER_FILE = 'datacenter.clab.yml';
+
+// Annotation layer identifiers in exported SVG
+const LAYER_GROUPS = 'annotation-groups-layer';
+const LAYER_SHAPES = 'annotation-shapes-layer';
+const LAYER_TEXT = 'annotation-text-layer';
 
 // Selectors for new UI design
 const SEL_NAVBAR_CAPTURE = '[data-testid="navbar-capture"]';
@@ -122,14 +127,14 @@ test.describe('SVG Export', () => {
     // Log SVG structure for debugging
     console.log('=== Exported SVG structure ===');
     console.log('SVG length:', svgString.length);
-    console.log('Has annotation-groups-layer:', svgString.includes('annotation-groups-layer'));
-    console.log('Has annotation-shapes-layer:', svgString.includes('annotation-shapes-layer'));
-    console.log('Has annotation-text-layer:', svgString.includes('annotation-text-layer'));
+    console.log(`Has ${LAYER_GROUPS}:`, svgString.includes(LAYER_GROUPS));
+    console.log(`Has ${LAYER_SHAPES}:`, svgString.includes(LAYER_SHAPES));
+    console.log(`Has ${LAYER_TEXT}:`, svgString.includes(LAYER_TEXT));
 
     // Verify annotation layers exist
-    expect(svgString).toContain('annotation-groups-layer');
-    expect(svgString).toContain('annotation-shapes-layer');
-    expect(svgString).toContain('annotation-text-layer');
+    expect(svgString).toContain(LAYER_GROUPS);
+    expect(svgString).toContain(LAYER_SHAPES);
+    expect(svgString).toContain(LAYER_TEXT);
 
     // Verify groups are rendered (should have annotation-group class)
     expect(svgString).toContain('annotation-group');
@@ -145,10 +150,10 @@ test.describe('SVG Export', () => {
     expect(svgString).toContain('Border Layer'); // Layer label
 
     // Verify transform is applied to annotation layers (matching cytoscape transform)
-    expect(svgString).toMatch(/annotation-groups-layer.*transform="translate\(/s);
+    expect(svgString).toMatch(new RegExp(`${LAYER_GROUPS}.*transform="translate\\(`, 's'));
 
     // Log text layer content
-    const textLayerRegex = /<g class="annotation-text-layer"[^>]*>[\s\S]*?<\/g>\s*<\/svg>/;
+    const textLayerRegex = new RegExp(`<g class="${LAYER_TEXT}"[^>]*>[\\s\\S]*?</g>\\s*</svg>`);
     const textLayerMatch = textLayerRegex.exec(svgString);
     console.log('=== Text layer content ===');
     console.log(textLayerMatch ? textLayerMatch[0].substring(0, 2000) : 'Not found');
@@ -297,8 +302,8 @@ test.describe('SVG Export', () => {
     console.log('=== SVG Analysis ===');
 
     // Extract the annotation layer transforms (may have multiple translates and scale)
-    const groupsLayerMatch = /annotation-groups-layer[^>]*transform="([^"]+)"/.exec(svgString);
-    const textLayerMatch = /annotation-text-layer[^>]*transform="([^"]+)"/.exec(svgString);
+    const groupsLayerMatch = new RegExp(`${LAYER_GROUPS}[^>]*transform="([^"]+)"`).exec(svgString);
+    const textLayerMatch = new RegExp(`${LAYER_TEXT}[^>]*transform="([^"]+)"`).exec(svgString);
 
     if (groupsLayerMatch) {
       console.log('Groups layer transform:', groupsLayerMatch[1]);
@@ -348,7 +353,7 @@ test.describe('SVG Export', () => {
     // Verify SVG contains expected content
     expect(svgString).toContain('Data Center West');
     expect(svgString).toContain('Border Layer');
-    expect(svgString).toContain('annotation-groups-layer');
-    expect(svgString).toContain('annotation-text-layer');
+    expect(svgString).toContain(LAYER_GROUPS);
+    expect(svgString).toContain(LAYER_TEXT);
   });
 });
