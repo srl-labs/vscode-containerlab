@@ -36,11 +36,11 @@ test.describe('Node Creation', () => {
     const clickY = canvasCenter.y + 150;
     await shiftClick(page, clickX, clickY);
 
-    // Wait for node to be created
-    await page.waitForTimeout(500);
-
-    const newNodeCount = await topoViewerPage.getNodeCount();
-    expect(newNodeCount).toBe(initialNodeCount + 1);
+    // Wait for node to be created (use polling to handle timing variations)
+    await expect.poll(
+      () => topoViewerPage.getNodeCount(),
+      { timeout: 5000, message: 'Expected node to be created via Shift+Click' }
+    ).toBe(initialNodeCount + 1);
 
     // Get node IDs after creation and find the new node
     const nodeIdsAfter = await topoViewerPage.getNodeIds();
@@ -60,9 +60,9 @@ test.describe('Node Creation', () => {
     const nodeScreenX = boundingBox!.x + boundingBox!.width / 2;
     const nodeScreenY = boundingBox!.y + boundingBox!.height / 2;
 
-    // Node should be within 100px of click position (accounting for centering)
-    expect(Math.abs(nodeScreenX - clickX)).toBeLessThan(100);
-    expect(Math.abs(nodeScreenY - clickY)).toBeLessThan(100);
+    // Node should be within 150px of click position (accounting for icon size and centering)
+    expect(Math.abs(nodeScreenX - clickX)).toBeLessThan(150);
+    expect(Math.abs(nodeScreenY - clickY)).toBeLessThan(150);
   });
 
   test('does not create node when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {

@@ -101,6 +101,7 @@
   .panel-tabs {
     display: flex;
     border-bottom: 1px solid var(--vscode-panel-border);
+    margin-bottom: 0.75rem;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -159,9 +160,9 @@
   }
 
   .panel-tab-button {
-    padding: 0.5rem 1rem;
+    padding: 0.375rem 0.75rem;
     font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
+    font-size: 0.75rem;
     font-weight: 500;
     background-color: transparent;
     color: var(--vscode-foreground);

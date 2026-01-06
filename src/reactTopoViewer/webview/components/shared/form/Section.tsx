@@ -25,7 +25,7 @@ export const Section: React.FC<SectionProps> = ({
     className={`${hasBorder ? 'border-b pb-3 mb-3' : ''} ${className}`}
     style={hasBorder ? { borderColor: 'var(--vscode-panel-border)' } : undefined}
   >
-    <h3 className="vscode-section-header mb-2">
+    <h3 className="section-header">
       {title}
       {inherited && <InheritanceBadge />}
     </h3>

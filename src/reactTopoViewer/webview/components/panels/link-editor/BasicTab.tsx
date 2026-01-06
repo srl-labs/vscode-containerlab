@@ -51,7 +51,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
     <div className="space-y-3">
       {/* Source Endpoint Section */}
       <div className="border-b pb-3 mb-3" style={{ borderColor: 'var(--vscode-panel-border)' }}>
-        <div className="vscode-label mb-2">
+        <div className="section-header">
           Source Endpoint
         </div>
         <FormField label="Node">
@@ -75,7 +75,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
 
       {/* Target Endpoint Section */}
       <div>
-        <div className="vscode-label mb-2">
+        <div className="section-header">
           Target Endpoint
         </div>
         <FormField label="Node">
@@ -98,13 +98,13 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
       </div>
 
       <div className="border-t pt-3 mt-4" style={{ borderColor: 'var(--vscode-panel-border)' }}>
-        <div className="vscode-label mb-2">
+        <div className="section-header">
           Label Offset
         </div>
         <div className="form-group">
           <div className="px-2">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[var(--vscode-font-size)] text-[var(--vscode-descriptionForeground)]">Value</span>
+              <span className="field-label">Value</span>
               <input
                 id="link-endpoint-offset"
                 type="range"

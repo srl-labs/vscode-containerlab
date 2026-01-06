@@ -153,7 +153,7 @@ const ColorPicker: React.FC<{
   color: string; enabled: boolean; onColorChange: (c: string) => void; onToggle: (e: boolean) => void;
 }> = ({ color, enabled, onColorChange, onToggle }) => (
   <div className="space-y-1">
-    <label className="vscode-label text-xs">Icon Color</label>
+    <label className="field-label">Icon Color</label>
     <div className="flex items-center gap-2">
       <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} className="h-4 w-4" />
       <input type="color" value={color} onChange={(e) => { onColorChange(e.target.value); onToggle(true); }}
@@ -166,7 +166,7 @@ const ColorPicker: React.FC<{
 
 const RadiusSlider: React.FC<{ value: number; onChange: (v: number) => void }> = ({ value, onChange }) => (
   <div className="space-y-1">
-    <label className="vscode-label text-xs">Corner Radius: {value}px</label>
+    <label className="field-label">Corner Radius: {value}px</label>
     <input type="range" min={0} max={MAX_RADIUS} value={value} onChange={(e) => onChange(Number(e.target.value))}
       className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-[var(--vscode-input-background)]" />
   </div>
@@ -248,7 +248,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
     >
       {/* Built-in Icons Grid */}
       <div className="space-y-1 mb-3">
-        <label className="vscode-label text-xs">Built-in Icons</label>
+        <label className="field-label">Built-in Icons</label>
         <div className="grid grid-cols-7 gap-1 rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
           {AVAILABLE_ICONS.map((i) => (
             <IconButton
@@ -266,7 +266,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
       {/* Custom Icons Section */}
       <div className="space-y-1 mb-3">
         <div className="flex items-center justify-between">
-          <label className="vscode-label text-xs">Custom Icons</label>
+          <label className="field-label">Custom Icons</label>
           <button
             type="button"
             onClick={handleUploadIcon}
@@ -323,7 +323,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
  */
 const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc, radius }) => (
   <div className="space-y-1">
-    <label className="vscode-label text-xs">Preview</label>
+    <label className="field-label">Preview</label>
     <div className="flex items-center justify-center rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-3">
       <img src={iconSrc} alt="Preview" style={{ width: 56, height: 56, borderRadius: `${(radius / 48) * 56}px` }} />
     </div>

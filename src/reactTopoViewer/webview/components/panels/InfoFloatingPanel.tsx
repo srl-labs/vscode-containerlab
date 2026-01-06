@@ -71,7 +71,7 @@ interface PropertyRowProps {
 
 export const PropertyRow: React.FC<PropertyRowProps> = ({ label, value, className = '' }) => (
   <div className={`flex flex-col items-center ${className}`}>
-    <span className="vscode-label text-xs mb-1 font-bold">{label}</span>
+    <span className="field-label mb-1">{label}</span>
     <span className="text-sm text-[var(--vscode-foreground)] text-center break-all">
       {value || 'N/A'}
     </span>

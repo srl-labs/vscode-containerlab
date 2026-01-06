@@ -1,35 +1,75 @@
 /* =============================================================================
- * Form Component Styles
- * Form groups, labels, and input fields
+ * Form Component Styles - Typography Scale
+ *
+ * SCALE:
+ *   Panel Title:    13px, 600, Title Case     (panels.css)
+ *   Section Header: 11px, 500, Title Case     (.section-header)
+ *   Field Label:    10px, 500, UPPERCASE      (.field-label)
+ *   Input Text:     12px, 400, Normal         (.input-field)
+ *   Helper Text:    10px, 400, Muted          (.helper-text)
  * ============================================================================= */
 
 @layer components {
-  /* Form styles */
   .form-group {
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.375rem;
   }
 
-  .vscode-label {
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-    font-weight: 600;
+  /* Section header - Title Case divider for major sections */
+  .section-header {
+    font-size: 0.6875rem;
+    font-weight: 500;
     color: var(--vscode-foreground);
-    display: block;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--vscode-panel-border);
   }
 
-  /* Input styles */
+  /* Field label - compact UPPERCASE labels */
+  .field-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--vscode-foreground);
+    opacity: 0.7;
+  }
+
+  /* Helper text - small descriptions */
+  .helper-text {
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    color: var(--vscode-descriptionForeground);
+  }
+
+  /* Input field - readable text */
   .input-field {
-    background-color: var(--vscode-input-background);
+    font-size: 0.8125rem;
+    padding: 0.3125rem 0.5rem;
+    background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border);
+    border-radius: 0.25rem;
     width: 100%;
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.375rem;
     outline: none;
   }
 
   .input-field:focus {
     border-color: var(--vscode-focusBorder);
-    box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+  }
+
+  /* Checkbox label */
+  .checkbox-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+  }
+
+  /* Legacy - backwards compat */
+  .vscode-label {
+    font-size: var(--vscode-font-size);
+    font-weight: 600;
+    color: var(--vscode-foreground);
+    display: block;
   }
 }

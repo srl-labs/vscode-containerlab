@@ -72,7 +72,7 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props['upda
 const FontControls: React.FC<{ formData: FreeTextAnnotation; updateField: Props['updateField'] }> = ({ formData, updateField }) => (
   <div className="flex gap-2">
     <select
-      className="flex-1 px-3 py-2 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-xl text-sm cursor-pointer hover:border-white/20 transition-colors"
+      className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs cursor-pointer hover:border-white/20 transition-colors"
       value={formData.fontFamily || 'monospace'}
       onChange={(e) => updateField('fontFamily', e.target.value)}
     >
@@ -81,13 +81,13 @@ const FontControls: React.FC<{ formData: FreeTextAnnotation; updateField: Props[
     <div className="relative">
       <input
         type="number"
-        className="w-20 px-3 py-2 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-xl text-sm text-center hover:border-white/20 transition-colors"
+        className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs text-center hover:border-white/20 transition-colors"
         value={formData.fontSize || 14}
         onChange={(e) => updateField('fontSize', parseInt(e.target.value) || 14)}
         min={1}
         max={72}
       />
-      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--vscode-descriptionForeground)] pointer-events-none">px</span>
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--vscode-descriptionForeground)] pointer-events-none">px</span>
     </div>
   </div>
 );
@@ -98,14 +98,15 @@ const StyleOptions: React.FC<{ formData: FreeTextAnnotation; updateField: Props[
   const isRounded = isBackgroundRounded(formData.roundedBackground);
 
   return (
-    <div className="flex items-end gap-4 flex-wrap">
+    <div className="flex items-start gap-4 flex-wrap">
       <ColorSwatch label="Text" value={formData.fontColor || '#FFFFFF'} onChange={(v) => updateField('fontColor', v)} />
       <ColorSwatch label="Fill" value={isTransparent ? '#000000' : (formData.backgroundColor || '#000000')} onChange={(v) => updateField('backgroundColor', v)} disabled={isTransparent} />
-      <div className="flex flex-col gap-2">
+      <div className="flex gap-2 pt-4">
         <Toggle active={isTransparent} onClick={() => updateField('backgroundColor', isTransparent ? '#000000' : 'transparent')}>No Fill</Toggle>
         <Toggle active={isRounded} onClick={() => updateField('roundedBackground', !isRounded)}>Rounded</Toggle>
       </div>
-      <div className="flex flex-col items-center gap-1 ml-auto">
+      <div className="flex flex-col gap-0.5 ml-auto">
+        <span className="field-label">Rotate</span>
         <input
           type="number"
           className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs text-center hover:border-white/20 transition-colors"
@@ -114,7 +115,6 @@ const StyleOptions: React.FC<{ formData: FreeTextAnnotation; updateField: Props[
           min={-360}
           max={360}
         />
-        <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Rotate</span>
       </div>
     </div>
   );
@@ -144,8 +144,8 @@ function computePreviewStyle(formData: FreeTextAnnotation): React.CSSProperties 
 // Preview header component
 const PreviewHeader: React.FC = () => (
   <div className="flex items-center justify-between">
-    <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Preview</span>
-    <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">Markdown supported</span>
+    <span className="field-label">Preview</span>
+    <span className="helper-text">Markdown supported</span>
   </div>
 );
 

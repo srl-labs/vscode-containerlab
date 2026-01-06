@@ -120,7 +120,7 @@ type BackgroundOption = 'transparent' | 'white' | 'custom';
 
 // Section header component
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h4 className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)] font-medium">{children}</h4>
+  <h4 className="section-header">{children}</h4>
 );
 
 // Quality section
@@ -162,16 +162,18 @@ const BackgroundSection: React.FC<{
 }> = ({ option, setOption, customColor, setCustomColor }) => (
   <div className="flex flex-col gap-3">
     <SectionHeader>Background</SectionHeader>
-    <div className="flex items-end gap-3 flex-wrap">
-      <Toggle active={option === 'transparent'} onClick={() => setOption('transparent')}>
-        <i className="fas fa-chess-board mr-1.5 text-[10px]" />Transparent
-      </Toggle>
-      <Toggle active={option === 'white'} onClick={() => setOption('white')}>
-        <span className="inline-block w-3 h-3 bg-white rounded mr-1.5 border border-white/30" />White
-      </Toggle>
-      <Toggle active={option === 'custom'} onClick={() => setOption('custom')}>
-        <i className="fas fa-palette mr-1.5 text-[10px]" />Custom
-      </Toggle>
+    <div className="flex items-start gap-3 flex-wrap">
+      <div className="flex gap-2 pt-4">
+        <Toggle active={option === 'transparent'} onClick={() => setOption('transparent')}>
+          <i className="fas fa-chess-board mr-1.5 text-[10px]" />Transparent
+        </Toggle>
+        <Toggle active={option === 'white'} onClick={() => setOption('white')}>
+          <span className="inline-block w-3 h-3 bg-white rounded mr-1.5 border border-white/30" />White
+        </Toggle>
+        <Toggle active={option === 'custom'} onClick={() => setOption('custom')}>
+          <i className="fas fa-palette mr-1.5 text-[10px]" />Custom
+        </Toggle>
+      </div>
       {option === 'custom' && (
         <ColorSwatch
           label="Color"
@@ -228,12 +230,12 @@ const FilenameSection: React.FC<{
     <div className="flex items-center gap-1">
       <input
         type="text"
-        className="flex-1 px-3 py-2 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-xl text-sm hover:border-white/20 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors outline-none"
+        className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs hover:border-white/20 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors outline-none"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="topology"
       />
-      <span className="text-sm text-[var(--vscode-descriptionForeground)] px-2">.svg</span>
+      <span className="text-xs text-[var(--vscode-descriptionForeground)] px-2">.svg</span>
     </div>
   </div>
 );
@@ -285,9 +287,9 @@ const TipsSection: React.FC = () => (
   <div className="flex flex-col gap-1.5 p-3 bg-black/10 rounded-xl border border-white/5">
     <div className="flex items-center gap-2 text-[var(--vscode-descriptionForeground)]">
       <i className="fas fa-lightbulb text-yellow-400/70 text-xs" />
-      <span className="text-[10px] uppercase tracking-wider font-medium">Tips</span>
+      <span className="field-label">Tips</span>
     </div>
-    <ul className="text-xs text-[var(--vscode-descriptionForeground)] space-y-1 ml-5">
+    <ul className="helper-text space-y-1 ml-5">
       <li>Higher zoom = better quality, larger file</li>
       <li>SVG files scale without quality loss</li>
       <li>Transparent background for layering</li>

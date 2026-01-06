@@ -41,7 +41,7 @@ const Ipv4Section: React.FC<Pick<MgmtTabProps,
   'onIpv4TypeChange' | 'onIpv4SubnetChange' | 'onIpv4GatewayChange' | 'onIpv4RangeChange'
 >> = (props) => (
   <div className="form-group">
-    <label className="block vscode-label mb-1">IPv4 Subnet</label>
+    <label className="block field-label mb-1">IPv4 Subnet</label>
     <select
       className="input-field w-full mb-2"
       value={props.ipv4Type}
@@ -57,12 +57,12 @@ const Ipv4Section: React.FC<Pick<MgmtTabProps,
         <input type="text" className="input-field w-full mb-2" placeholder="e.g., 172.100.100.0/24"
           value={props.ipv4Subnet} onChange={(e) => props.onIpv4SubnetChange(e.target.value)} disabled={props.isViewMode} />
         <div className="form-group">
-          <label className="block vscode-label mb-1">IPv4 Gateway</label>
+          <label className="block field-label mb-1">IPv4 Gateway</label>
           <input type="text" className="input-field w-full" placeholder="e.g., 172.100.100.1"
             value={props.ipv4Gateway} onChange={(e) => props.onIpv4GatewayChange(e.target.value)} disabled={props.isViewMode} />
         </div>
         <div className="form-group">
-          <label className="block vscode-label mb-1">IPv4 Range</label>
+          <label className="block field-label mb-1">IPv4 Range</label>
           <input type="text" className="input-field w-full" placeholder="e.g., 172.100.100.128/25"
             value={props.ipv4Range} onChange={(e) => props.onIpv4RangeChange(e.target.value)} disabled={props.isViewMode} />
         </div>
@@ -77,7 +77,7 @@ const Ipv6Section: React.FC<Pick<MgmtTabProps,
   'onIpv6TypeChange' | 'onIpv6SubnetChange' | 'onIpv6GatewayChange'
 >> = (props) => (
   <div className="form-group">
-    <label className="block vscode-label mb-1">IPv6 Subnet</label>
+    <label className="block field-label mb-1">IPv6 Subnet</label>
     <select
       className="input-field w-full mb-2"
       value={props.ipv6Type}
@@ -93,7 +93,7 @@ const Ipv6Section: React.FC<Pick<MgmtTabProps,
         <input type="text" className="input-field w-full mb-2" placeholder="e.g., 3fff:172:100:100::/80"
           value={props.ipv6Subnet} onChange={(e) => props.onIpv6SubnetChange(e.target.value)} disabled={props.isViewMode} />
         <div className="form-group">
-          <label className="block vscode-label mb-1">IPv6 Gateway</label>
+          <label className="block field-label mb-1">IPv6 Gateway</label>
           <input type="text" className="input-field w-full" placeholder="e.g., 3fff:172:100:100::1"
             value={props.ipv6Gateway} onChange={(e) => props.onIpv6GatewayChange(e.target.value)} disabled={props.isViewMode} />
         </div>
@@ -107,7 +107,7 @@ const DriverOptionsSection: React.FC<Pick<MgmtTabProps,
   'driverOptions' | 'isViewMode' | 'onAddDriverOption' | 'onRemoveDriverOption' | 'onUpdateDriverOption'
 >> = (props) => (
   <div className="form-group">
-    <label className="block vscode-label mb-1">Bridge Driver Options</label>
+    <label className="block field-label mb-1">Bridge Driver Options</label>
     <div className="space-y-2">
       {props.driverOptions.map((opt, idx) => (
         <div key={idx} className="flex gap-2">
@@ -137,10 +137,10 @@ export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
     <div className="space-y-3">
       {/* Network Name */}
       <div className="form-group">
-        <label className="block vscode-label mb-1">Network Name</label>
+        <label className="block field-label mb-1">Network Name</label>
         <input type="text" className="input-field w-full" placeholder="clab"
           value={props.networkName} onChange={(e) => props.onNetworkNameChange(e.target.value)} disabled={props.isViewMode} />
-        <small className="text-secondary text-xs">Docker network name (default: clab)</small>
+        <small className="helper-text">Docker network name (default: clab)</small>
       </div>
 
       <Ipv4Section {...props} />
@@ -148,18 +148,18 @@ export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
 
       {/* MTU */}
       <div className="form-group">
-        <label className="block vscode-label mb-1">MTU</label>
+        <label className="block field-label mb-1">MTU</label>
         <input type="number" className="input-field w-full" placeholder="Default: auto"
           value={props.mtu} onChange={(e) => props.onMtuChange(e.target.value)} disabled={props.isViewMode} />
-        <small className="text-secondary text-xs">MTU size (defaults to docker0 interface MTU)</small>
+        <small className="helper-text">MTU size (defaults to docker0 interface MTU)</small>
       </div>
 
       {/* Bridge Name */}
       <div className="form-group">
-        <label className="block vscode-label mb-1">Bridge Name</label>
+        <label className="block field-label mb-1">Bridge Name</label>
         <input type="text" className="input-field w-full" placeholder="Default: auto"
           value={props.bridge} onChange={(e) => props.onBridgeChange(e.target.value)} disabled={props.isViewMode} />
-        <small className="text-secondary text-xs">Custom Linux bridge name (default: br-&lt;network-id&gt;)</small>
+        <small className="helper-text">Custom Linux bridge name (default: br-&lt;network-id&gt;)</small>
       </div>
 
       {/* External Access */}
@@ -169,7 +169,7 @@ export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
             checked={props.externalAccess} onChange={(e) => props.onExternalAccessChange(e.target.checked)} disabled={props.isViewMode} />
           <label htmlFor="mgmt-external-access" className="checkbox-label">Enable External Access</label>
         </div>
-        <small className="text-secondary text-xs">Allow external systems to reach lab nodes</small>
+        <small className="helper-text">Allow external systems to reach lab nodes</small>
       </div>
 
       <DriverOptionsSection {...props} />

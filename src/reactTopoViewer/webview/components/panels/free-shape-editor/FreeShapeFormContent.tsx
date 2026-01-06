@@ -28,10 +28,10 @@ interface Props {
 
 // Shape type selector
 const ShapeTypeSelector: React.FC<{ value: FreeShapeAnnotation['shapeType']; onChange: (v: FreeShapeAnnotation['shapeType']) => void }> = ({ value, onChange }) => (
-  <div className="flex flex-col gap-1">
-    <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Shape Type</span>
+  <div className="flex flex-col gap-0.5">
+    <span className="field-label">Shape Type</span>
     <select
-      className="w-full px-3 py-2 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-xl text-sm cursor-pointer hover:border-white/20 transition-colors"
+      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs cursor-pointer hover:border-white/20 transition-colors"
       value={value}
       onChange={(e) => onChange(e.target.value as FreeShapeAnnotation['shapeType'])}
     >
@@ -75,30 +75,34 @@ const FillControls: React.FC<{ formData: FreeShapeAnnotation; updateField: Props
   const isTransparent = opacity === 0;
 
   return (
-    <div className="flex items-end gap-4 flex-wrap">
+    <div className="flex items-start gap-4 flex-wrap">
       <ColorSwatch
         label="Fill"
         value={formData.fillColor ?? DEFAULT_FILL_COLOR}
         onChange={(v) => updateField('fillColor', v)}
         disabled={isTransparent}
       />
-      <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+      <div className="flex flex-col gap-0.5 flex-1 min-w-[120px]">
         <div className="flex justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Opacity</span>
-          <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">{Math.round(opacity * 100)}%</span>
+          <span className="field-label">Opacity</span>
+          <span className="field-label">{Math.round(opacity * 100)}%</span>
         </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={Math.round(opacity * 100)}
-          onChange={(e) => updateField('fillOpacity', parseInt(e.target.value) / 100)}
-          className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
-        />
+        <div className="flex items-center h-[30px]">
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(opacity * 100)}
+            onChange={(e) => updateField('fillOpacity', parseInt(e.target.value) / 100)}
+            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
       </div>
-      <Toggle active={isTransparent} onClick={() => updateField('fillOpacity', isTransparent ? 1 : 0)}>
-        Transparent
-      </Toggle>
+      <div className="pt-4">
+        <Toggle active={isTransparent} onClick={() => updateField('fillOpacity', isTransparent ? 1 : 0)}>
+          Transparent
+        </Toggle>
+      </div>
     </div>
   );
 };
@@ -111,7 +115,7 @@ const BorderControls: React.FC<{ formData: FreeShapeAnnotation; updateField: Pro
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-end gap-4 flex-wrap">
+      <div className="flex items-start gap-4 flex-wrap">
         <ColorSwatch
           label={isLine ? 'Line' : 'Border'}
           value={formData.borderColor ?? DEFAULT_BORDER_COLOR}
@@ -126,10 +130,10 @@ const BorderControls: React.FC<{ formData: FreeShapeAnnotation; updateField: Pro
           max={20}
           unit="px"
         />
-        <div className="flex flex-col gap-1 flex-1 min-w-[100px]">
-          <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Style</span>
+        <div className="flex flex-col gap-0.5 flex-1 min-w-[80px]">
+          <span className="field-label">Style</span>
           <select
-            className="w-full px-3 py-2 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-xl text-sm cursor-pointer hover:border-white/20 transition-colors"
+            className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-lg text-xs cursor-pointer hover:border-white/20 transition-colors"
             value={formData.borderStyle ?? DEFAULT_BORDER_STYLE}
             onChange={(e) => updateField('borderStyle', e.target.value as FreeShapeAnnotation['borderStyle'])}
           >
@@ -139,9 +143,11 @@ const BorderControls: React.FC<{ formData: FreeShapeAnnotation; updateField: Pro
           </select>
         </div>
         {!isLine && (
-          <Toggle active={noBorder} onClick={() => updateField('borderWidth', noBorder ? DEFAULT_BORDER_WIDTH : 0)}>
-            No Border
-          </Toggle>
+          <div className="pt-4">
+            <Toggle active={noBorder} onClick={() => updateField('borderWidth', noBorder ? DEFAULT_BORDER_WIDTH : 0)}>
+              No Border
+            </Toggle>
+          </div>
         )}
       </div>
     </div>
@@ -166,21 +172,24 @@ const CornerRadiusControl: React.FC<{ formData: FreeShapeAnnotation; updateField
 // Line arrow controls
 const ArrowControls: React.FC<{ formData: FreeShapeAnnotation; updateField: Props['updateField'] }> = ({ formData, updateField }) => {
   if (formData.shapeType !== 'line') return null;
+  const hasArrows = formData.lineStartArrow || formData.lineEndArrow;
   return (
-    <div className="flex items-end gap-4 flex-wrap">
-      <Toggle
-        active={formData.lineStartArrow ?? false}
-        onClick={() => updateField('lineStartArrow', !formData.lineStartArrow)}
-      >
-        Start Arrow
-      </Toggle>
-      <Toggle
-        active={formData.lineEndArrow ?? false}
-        onClick={() => updateField('lineEndArrow', !formData.lineEndArrow)}
-      >
-        End Arrow
-      </Toggle>
-      {(formData.lineStartArrow || formData.lineEndArrow) && (
+    <div className="flex items-start gap-4 flex-wrap">
+      <div className={hasArrows ? 'pt-4 flex gap-2' : 'flex gap-2'}>
+        <Toggle
+          active={formData.lineStartArrow ?? false}
+          onClick={() => updateField('lineStartArrow', !formData.lineStartArrow)}
+        >
+          Start Arrow
+        </Toggle>
+        <Toggle
+          active={formData.lineEndArrow ?? false}
+          onClick={() => updateField('lineEndArrow', !formData.lineEndArrow)}
+        >
+          End Arrow
+        </Toggle>
+      </div>
+      {hasArrows && (
         <NumberInput
           label="Arrow Size"
           value={formData.lineArrowSize ?? DEFAULT_ARROW_SIZE}
@@ -219,7 +228,7 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Preview</span>
+      <span className="field-label">Preview</span>
       <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 min-h-[100px] flex items-center justify-center overflow-hidden">
         <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
         <div

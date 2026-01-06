@@ -28,7 +28,7 @@ export const BasicTab: React.FC<BasicTabProps> = ({
     <div className="space-y-3">
       {/* Lab Name */}
       <div className="form-group">
-        <label className="block vscode-label mb-1">Lab Name</label>
+        <label className="block field-label mb-1">Lab Name</label>
         <input
           type="text"
           className="input-field w-full"
@@ -37,14 +37,14 @@ export const BasicTab: React.FC<BasicTabProps> = ({
           onChange={(e) => onLabNameChange(e.target.value)}
           disabled={isViewMode}
         />
-        <small className="text-secondary text-xs">
+        <small className="helper-text">
           Unique name to identify and distinguish this topology from others
         </small>
       </div>
 
       {/* Prefix */}
       <div className="form-group">
-        <label className="block vscode-label mb-1">Container Name Prefix</label>
+        <label className="block field-label mb-1">Container Name Prefix</label>
         <select
           className="input-field w-full mb-2"
           value={prefixType}
@@ -65,7 +65,7 @@ export const BasicTab: React.FC<BasicTabProps> = ({
             disabled={isViewMode}
           />
         )}
-        <small className="text-secondary text-xs">
+        <small className="helper-text">
           Default: clab-&lt;lab-name&gt;-&lt;node-name&gt; | No prefix: &lt;node-name&gt;
         </small>
       </div>

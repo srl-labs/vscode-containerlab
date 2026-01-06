@@ -22,7 +22,7 @@ const BasicInfoSection: React.FC<{
   updateField: Props['updateField'];
 }> = ({ formData, updateField }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="text-xs font-medium text-[var(--vscode-foreground)] border-b border-white/10 pb-1">Basic Information</h4>
+    <h4 className="section-header">Basic Information</h4>
     <div className="grid grid-cols-2 gap-3">
       <TextInput
         label="Group Name"
@@ -55,8 +55,8 @@ const BackgroundSection: React.FC<{
   updateStyle: Props['updateStyle'];
 }> = ({ formData, updateStyle }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="text-xs font-medium text-[var(--vscode-foreground)] border-b border-white/10 pb-1">Background</h4>
-    <div className="flex items-end gap-4 flex-wrap">
+    <h4 className="section-header">Background</h4>
+    <div className="flex items-start gap-4 flex-wrap">
       <ColorSwatch
         label="Color"
         value={formData.style.backgroundColor ?? '#d9d9d9'}
@@ -77,8 +77,8 @@ const BorderSection: React.FC<{
   updateStyle: Props['updateStyle'];
 }> = ({ formData, updateStyle }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="text-xs font-medium text-[var(--vscode-foreground)] border-b border-white/10 pb-1">Border</h4>
-    <div className="flex items-end gap-4 flex-wrap">
+    <h4 className="section-header">Border</h4>
+    <div className="flex items-start gap-4 flex-wrap">
       <ColorSwatch
         label="Color"
         value={formData.style.borderColor ?? '#dddddd'}
@@ -121,8 +121,8 @@ const TextSection: React.FC<{
   updateStyle: Props['updateStyle'];
 }> = ({ formData, updateStyle }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="text-xs font-medium text-[var(--vscode-foreground)] border-b border-white/10 pb-1">Label</h4>
-    <div className="flex items-end gap-4">
+    <h4 className="section-header">Label</h4>
+    <div className="flex items-start gap-4">
       <ColorSwatch
         label="Text Color"
         value={formData.style.labelColor ?? formData.style.color ?? '#ebecf0'}
@@ -139,7 +139,7 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)]">Preview</span>
+      <span className="field-label">Preview</span>
       <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-xl border border-white/5 min-h-[80px] flex items-center justify-center">
         <div
           className="relative w-full h-16 flex items-start justify-center pt-1"

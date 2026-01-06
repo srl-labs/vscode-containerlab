@@ -24,7 +24,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   inherited
 }) => (
   <div className={`form-group ${className}`}>
-    <label className="block vscode-label mb-1">
+    <label className="block field-label mb-1">
       {label}
       {required && <span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>}
       {inherited && <InheritanceBadge />}

@@ -434,7 +434,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
 
       {/* Show loading indicator if schema not yet loaded */}
       {!isLoaded && (
-        <div className="text-xs text-[var(--vscode-descriptionForeground)] opacity-60">
+        <div className="helper-text opacity-60">
           Loading schema...
         </div>
       )}

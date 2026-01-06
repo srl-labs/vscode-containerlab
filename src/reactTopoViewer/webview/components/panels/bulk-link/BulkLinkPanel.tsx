@@ -26,7 +26,7 @@ interface BulkLinkPanelProps {
 
 const ExamplesSection: React.FC = () => (
   <div className="rounded border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 space-y-2">
-    <div className="text-sm font-medium text-[var(--vscode-foreground)]">Examples</div>
+    <div className="section-header">Examples</div>
 
     <div className="space-y-1.5 text-sm text-secondary">
       <div className="flex items-start gap-2">
@@ -175,7 +175,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
         onSecondaryClick={handleCancel}
       >
         <div className="space-y-3">
-          <p className="text-sm text-secondary">
+          <p className="helper-text">
             Create multiple links by matching node names with patterns.
           </p>
 
@@ -183,7 +183,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
 
           <div className="space-y-2">
             <div className="form-group">
-              <label className="block vscode-label mb-1">
+              <label className="block field-label mb-1">
                 Source Pattern<span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
               </label>
               <input
@@ -198,7 +198,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
             </div>
 
             <div className="form-group">
-              <label className="block vscode-label mb-1">
+              <label className="block field-label mb-1">
                 Target Pattern<span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
               </label>
               <input
