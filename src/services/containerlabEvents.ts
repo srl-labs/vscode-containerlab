@@ -582,10 +582,57 @@ function mergeNetworkSettings(
     return merged;
 }
 
-function resolveStatusValue(current: string, fallback: string | undefined, action: string): string {
-    if (shouldResetLifecycleStatus(action)) {
-        return current || "";
+/**
+ * Extract healthcheck suffix from health_status action.
+ * Actions like "health_status: healthy" -> "(healthy)"
+ */
+function extractHealthSuffix(action: string): string | undefined {
+    if (!action.startsWith("health_status:")) {
+        return undefined;
     }
+    const status = action.slice("health_status:".length).trim();
+    if (!status) {
+        return undefined;
+    }
+    // Map to display format
+    if (status === "healthy") return "(healthy)";
+    if (status === "unhealthy") return "(unhealthy)";
+    return `(health: ${status})`;  // e.g., "(health: starting)"
+}
+
+/**
+ * Update status string with new healthcheck suffix.
+ * Replaces any existing healthcheck suffix or appends if none.
+ */
+function updateStatusWithHealthSuffix(status: string, healthSuffix: string): string {
+    if (!status) {
+        return status;
+    }
+    // Remove any existing healthcheck suffix
+    const trimmed = status.trim();
+    const openIdx = trimmed.lastIndexOf("(");
+    if (openIdx !== -1 && trimmed.endsWith(")")) {
+        const baseStatus = trimmed.slice(0, openIdx).trimEnd();
+        return `${baseStatus} ${healthSuffix}`;
+    }
+    // No existing suffix, append new one
+    return `${trimmed} ${healthSuffix}`;
+}
+
+function resolveStatusValue(current: string, fallback: string | undefined, action: string): string {
+    // For termination events (stop/die/kill), reset status - don't preserve old "Up X" for stopped containers
+    if (action === "stop" || action === "die" || action === "kill") {
+        return current;
+    }
+
+    // For health_status events, update the status with healthcheck suffix
+    const healthSuffix = extractHealthSuffix(action);
+    if (healthSuffix && fallback) {
+        return updateStatusWithHealthSuffix(fallback, healthSuffix);
+    }
+
+    // For other events (including "running"), preserve status if current is empty
+    // This ensures healthcheck suffix like "(healthy)" is not lost when events have empty status
     return pickNonEmpty(current, fallback);
 }
 
