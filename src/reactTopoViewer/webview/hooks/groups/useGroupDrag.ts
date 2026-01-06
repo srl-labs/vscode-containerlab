@@ -220,6 +220,8 @@ interface ResizeState {
   height: number;
   posX: number;
   posY: number;
+  minWidth: number;
+  minHeight: number;
 }
 
 export interface UseGroupResizeReturn {
@@ -230,9 +232,9 @@ export interface UseGroupResizeReturn {
 function calcResizedDimensions(ref: ResizeState, dx: number, dy: number): { w: number; h: number } {
   const isEast = ref.corner === 'se' || ref.corner === 'ne';
   const isSouth = ref.corner === 'se' || ref.corner === 'sw';
-  // Allow any size down to 20px minimum (just to prevent collapse)
-  const w = Math.max(20, ref.width + dx * (isEast ? 1 : -1));
-  const h = Math.max(20, ref.height + dy * (isSouth ? 1 : -1));
+  // Use dynamic minimum based on contained objects (calculated at resize start)
+  const w = Math.max(ref.minWidth, ref.width + dx * (isEast ? 1 : -1));
+  const h = Math.max(ref.minHeight, ref.height + dy * (isSouth ? 1 : -1));
   return { w, h };
 }
 
@@ -301,7 +303,8 @@ export function useGroupResize(
   isLocked: boolean,
   onResizeStart: (id: string) => void,
   onResizeMove: (id: string, width: number, height: number, position: { x: number; y: number }) => void,
-  onResizeEnd: (id: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void
+  onResizeEnd: (id: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void,
+  getMinimumBounds: (groupId: string) => { minWidth: number; minHeight: number }
 ): UseGroupResizeReturn {
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef<ResizeState | null>(null);
@@ -312,6 +315,8 @@ export function useGroupResize(
     if (isLocked || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+    // Calculate minimum bounds at resize start (based on contained objects)
+    const { minWidth, minHeight } = getMinimumBounds(groupId);
     dragRef.current = {
       corner,
       startX: e.clientX,
@@ -319,12 +324,14 @@ export function useGroupResize(
       width: group.width,
       height: group.height,
       posX: group.position.x,
-      posY: group.position.y
+      posY: group.position.y,
+      minWidth,
+      minHeight
     };
     // Notify resize start to capture initial state for undo
     onResizeStart(groupId);
     setIsResizing(true);
-  }, [isLocked, group, groupId, onResizeStart]);
+  }, [isLocked, group, groupId, onResizeStart, getMinimumBounds]);
 
   return { isResizing, handleResizeMouseDown };
 }

@@ -64,6 +64,8 @@ interface GroupLayerProps extends GroupDragResizeHandlers {
   geoMode?: 'pan' | 'edit';
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
+  /** Calculate minimum bounds for group resize based on contained objects */
+  getMinimumBounds: (groupId: string) => { minWidth: number; minHeight: number };
 }
 
 interface GroupInteractionItemProps extends GroupDragResizeHandlers {
@@ -84,6 +86,8 @@ interface GroupInteractionItemProps extends GroupDragResizeHandlers {
   // Geo mode props
   isGeoMode?: boolean;
   mapLibreState?: MapLibreState | null;
+  /** Calculate minimum bounds for group resize based on contained objects */
+  getMinimumBounds: (groupId: string) => { minWidth: number; minHeight: number };
 }
 
 // ============================================================================
@@ -378,7 +382,8 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     onShowContextMenu,
     onDragEnd,
     isGeoMode,
-    mapLibreState
+    mapLibreState,
+    getMinimumBounds
   } = props;
 
   const { isHovered, onEnter: handleMouseEnter, onLeave: handleMouseLeave } = useDelayedHover();
@@ -403,7 +408,8 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
     isLocked,
     onResizeStart,
     onResizeMove,
-    onResizeEnd
+    onResizeEnd,
+    getMinimumBounds
   );
 
   // Group item event handlers
@@ -584,6 +590,7 @@ interface GroupInteractionPortalProps extends GroupDragResizeHandlers {
   onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
   isGeoMode?: boolean;
   mapLibreState?: MapLibreState | null;
+  getMinimumBounds: (groupId: string) => { minWidth: number; minHeight: number };
 }
 
 const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
@@ -607,7 +614,8 @@ const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
   onShowContextMenu,
   onDragEnd,
   isGeoMode,
-  mapLibreState
+  mapLibreState,
+  getMinimumBounds
 }) => createPortal(
   <div className="group-layer-content group-layer-content--interaction" style={LAYER_CONTENT_STYLE}>
     {groups.map(group => (
@@ -633,6 +641,7 @@ const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
         onDragEnd={onDragEnd}
         isGeoMode={isGeoMode}
         mapLibreState={mapLibreState}
+        getMinimumBounds={getMinimumBounds}
       />
     ))}
   </div>,
@@ -659,7 +668,8 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   isGeoMode,
   geoMode,
   mapLibreState,
-  onGeoPositionChange
+  onGeoPositionChange,
+  getMinimumBounds
 }) => {
   // Create group background + interaction layers using cytoscape-layers
   const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cy);
@@ -791,6 +801,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
           onDragEnd={handleDragEnd}
           isGeoMode={isGeoMode}
           mapLibreState={mapLibreState}
+          getMinimumBounds={getMinimumBounds}
         />
       )}
       {/* Context menu rendered outside portals to avoid transform issues */}

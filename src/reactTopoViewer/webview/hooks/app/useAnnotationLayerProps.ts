@@ -51,6 +51,7 @@ interface AnnotationsSubset {
   boxSelectGroups: (ids: string[]) => void;
   updateGroupParent: (id: string, parentId: string | null) => void;
   updateGroupGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
+  getGroupMembers: (groupId: string) => string[];
 
   // Text annotations
   textAnnotations: FreeTextAnnotation[];
@@ -117,6 +118,61 @@ export interface AnnotationLayerPropsReturn {
   freeShapeLayerProps: FreeShapeLayerProps;
 }
 
+// Constants for minimum bounds calculation
+const MIN_BOUNDS_PADDING = 20;
+const MIN_BOUNDS_FALLBACK = 40;
+
+/** Bounds accumulator type */
+interface BoundsAccumulator {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  hasContent: boolean;
+}
+
+/** Expand bounds to include a rectangular area */
+function expandBoundsRect(bounds: BoundsAccumulator, x: number, y: number, w: number, h: number): void {
+  bounds.minX = Math.min(bounds.minX, x - w / 2);
+  bounds.maxX = Math.max(bounds.maxX, x + w / 2);
+  bounds.minY = Math.min(bounds.minY, y - h / 2);
+  bounds.maxY = Math.max(bounds.maxY, y + h / 2);
+  bounds.hasContent = true;
+}
+
+/** Expand bounds to include a line between two points */
+function expandBoundsLine(bounds: BoundsAccumulator, x1: number, y1: number, x2: number, y2: number): void {
+  bounds.minX = Math.min(bounds.minX, x1, x2);
+  bounds.maxX = Math.max(bounds.maxX, x1, x2);
+  bounds.minY = Math.min(bounds.minY, y1, y2);
+  bounds.maxY = Math.max(bounds.maxY, y1, y2);
+  bounds.hasContent = true;
+}
+
+/** Expand bounds to include a bounding box */
+function expandBoundsBB(bounds: BoundsAccumulator, bb: { x1: number; x2: number; y1: number; y2: number }): void {
+  bounds.minX = Math.min(bounds.minX, bb.x1);
+  bounds.maxX = Math.max(bounds.maxX, bb.x2);
+  bounds.minY = Math.min(bounds.minY, bb.y1);
+  bounds.maxY = Math.max(bounds.maxY, bb.y2);
+  bounds.hasContent = true;
+}
+
+/** Process a shape annotation and expand bounds accordingly */
+function processShapeBounds(bounds: BoundsAccumulator, shape: FreeShapeAnnotation): void {
+  if (shape.shapeType === 'line' && shape.endPosition) {
+    expandBoundsLine(bounds, shape.position.x, shape.position.y, shape.endPosition.x, shape.endPosition.y);
+  } else {
+    expandBoundsRect(bounds, shape.position.x, shape.position.y, shape.width ?? 50, shape.height ?? 50);
+  }
+}
+
+/** Process a child group and expand bounds accordingly */
+function processChildGroupBounds(bounds: BoundsAccumulator, group: GroupStyleAnnotation): void {
+  // Child group bounds: position is center, so expand by half width/height
+  expandBoundsRect(bounds, group.position.x, group.position.y, group.width, group.height);
+}
+
 /**
  * Hook that builds memoized props for all annotation layer components.
  *
@@ -135,6 +191,38 @@ export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): Ann
     (id: string, groupId: string | undefined) => annotations.updateShapeAnnotation(id, { groupId }),
     [annotations.updateShapeAnnotation]
   );
+
+  // Calculate minimum bounds for group resize based on contained objects
+  const getMinimumBounds = React.useCallback((groupId: string) => {
+    const bounds: BoundsAccumulator = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, hasContent: false };
+
+    // Accumulate node bounds
+    for (const nodeId of annotations.getGroupMembers(groupId)) {
+      const node = cyInstance?.getElementById(nodeId);
+      if (node && !node.empty()) expandBoundsBB(bounds, node.boundingBox());
+    }
+
+    // Accumulate text annotation bounds
+    for (const text of annotations.textAnnotations) {
+      if (text.groupId === groupId) expandBoundsRect(bounds, text.position.x, text.position.y, text.width ?? 100, text.height ?? 24);
+    }
+
+    // Accumulate shape annotation bounds
+    for (const shape of annotations.shapeAnnotations) {
+      if (shape.groupId === groupId) processShapeBounds(bounds, shape);
+    }
+
+    // Accumulate child group bounds (groups with parentId === groupId)
+    for (const childGroup of annotations.groups) {
+      if (childGroup.parentId === groupId) processChildGroupBounds(bounds, childGroup);
+    }
+
+    if (!bounds.hasContent) return { minWidth: MIN_BOUNDS_FALLBACK, minHeight: MIN_BOUNDS_FALLBACK };
+    return {
+      minWidth: Math.max(MIN_BOUNDS_FALLBACK, (bounds.maxX - bounds.minX) + MIN_BOUNDS_PADDING * 2),
+      minHeight: Math.max(MIN_BOUNDS_FALLBACK, (bounds.maxY - bounds.minY) + MIN_BOUNDS_PADDING * 2)
+    };
+  }, [cyInstance, annotations.getGroupMembers, annotations.textAnnotations, annotations.shapeAnnotations, annotations.groups]);
 
   // GroupLayer props
   const groupLayerProps = React.useMemo(() => ({
@@ -158,14 +246,16 @@ export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): Ann
     isGeoMode: layoutControls.isGeoLayout,
     geoMode: layoutControls.geoMode,
     mapLibreState,
-    onGeoPositionChange: annotations.updateGroupGeoPosition
+    onGeoPositionChange: annotations.updateGroupGeoPosition,
+    getMinimumBounds
   }), [
     cyInstance, annotations.groups, state.isLocked, annotations.editGroup,
     annotations.deleteGroupWithUndo, annotations.onGroupDragStart, annotations.onGroupDragEnd,
     annotations.onGroupDragMove, annotations.onResizeStart, annotations.onResizeMove,
     annotations.onResizeEnd, annotations.selectedGroupIds, annotations.selectGroup,
     annotations.toggleGroupSelection, annotations.boxSelectGroups, annotations.updateGroupParent,
-    layoutControls.isGeoLayout, layoutControls.geoMode, mapLibreState, annotations.updateGroupGeoPosition
+    layoutControls.isGeoLayout, layoutControls.geoMode, mapLibreState, annotations.updateGroupGeoPosition,
+    getMinimumBounds
   ]);
 
   // FreeTextLayer props
