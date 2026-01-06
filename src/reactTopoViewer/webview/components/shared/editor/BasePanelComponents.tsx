@@ -5,7 +5,7 @@ import React from 'react';
 
 export const PanelFooter: React.FC<{ hasChanges: boolean; onPrimary: () => void; onSecondary: () => void; primary: string; secondary: string }> =
   ({ hasChanges, onPrimary, onSecondary, primary, secondary }) => (
-  <div className="panel-footer flex justify-end gap-2 p-2 border-t flex-shrink-0" style={{ borderColor: 'var(--vscode-panel-border)' }}>
+  <div className="panel-footer flex justify-end gap-2 p-4 border-t flex-shrink-0" style={{ borderColor: 'var(--vscode-panel-border)' }}>
     <button type="button" className={`btn btn-small ${hasChanges ? 'btn-has-changes' : 'btn-secondary'}`} onClick={onSecondary} data-testid="panel-apply-btn">{secondary}</button>
     <button type="button" className="btn btn-primary btn-small" onClick={onPrimary} data-testid="panel-ok-btn">{primary}</button>
   </div>
