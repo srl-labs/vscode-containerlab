@@ -403,8 +403,8 @@ interface TopoViewerActionsContextValue {
   setMode: (mode: 'edit' | 'view') => void;
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
-  toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
+  saveEndpointLabelOffset: () => void;
   setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
   upsertEdgeAnnotation: (annotation: EdgeAnnotation) => void;
   addNode: (node: CyElement) => void;
@@ -462,22 +462,11 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
   return result;
 }
 
-function hasEndpointOffsetEnabledSetting(data: unknown): boolean {
-  if (!data || typeof data !== 'object') return false;
-  const obj = data as Record<string, unknown>;
-  const viewerSettings = obj.viewerSettings;
-  if (!viewerSettings || typeof viewerSettings !== 'object') return false;
-  return Object.prototype.hasOwnProperty.call(viewerSettings, 'endpointLabelOffsetEnabled');
-}
-
 function extractEndpointLabelSettings(
   viewerSettings: Record<string, unknown> | undefined
 ): Partial<TopoViewerState> {
   if (!viewerSettings) return {};
   const result: Partial<TopoViewerState> = {};
-  if (typeof viewerSettings.endpointLabelOffsetEnabled === 'boolean') {
-    result.endpointLabelOffsetEnabled = viewerSettings.endpointLabelOffsetEnabled;
-  }
   const offset = parseEndpointLabelOffset(viewerSettings.endpointLabelOffset);
   if (offset !== null) {
     result.endpointLabelOffset = offset;
@@ -711,9 +700,6 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const toggleDummyLinks = useCallback(() => {
     dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
   }, [dispatch]);
-  const toggleEndpointLabelOffset = useCallback(() => {
-    dispatch({ type: 'TOGGLE_ENDPOINT_LABEL_OFFSET' });
-  }, [dispatch]);
   const setEndpointLabelOffset = useCallback((value: number) => {
     const next = Number.isFinite(value) ? clampEndpointLabelOffset(value) : DEFAULT_ENDPOINT_LABEL_OFFSET;
     dispatch({ type: 'SET_ENDPOINT_LABEL_OFFSET', payload: next });
@@ -747,7 +733,6 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setMode,
     setLinkLabelMode,
     toggleDummyLinks,
-    toggleEndpointLabelOffset,
     setEndpointLabelOffset,
     setEdgeAnnotations,
     upsertEdgeAnnotation: upsertEdgeAnnotationAction,
@@ -761,7 +746,6 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     setMode,
     setLinkLabelMode,
     toggleDummyLinks,
-    toggleEndpointLabelOffset,
     setEndpointLabelOffset,
     setEdgeAnnotations,
     upsertEdgeAnnotationAction,
@@ -815,9 +799,6 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     }
   );
   const actions = useActions(dispatch);
-  const endpointOffsetPersistRef = useRef<{ enabled: boolean; offset: number } | null>(null);
-  const skipEndpointOffsetPersistRef = useRef(true);
-  const initialOffsetEnabledDefinedRef = useRef(hasEndpointOffsetEnabledSetting(initialData));
 
   // Listen for messages from extension
   useEffect(() => {
@@ -836,29 +817,6 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     void saveEdgeAnnotations(state.edgeAnnotations);
   }, [state.edgeAnnotations]);
 
-  useEffect(() => {
-    const current = {
-      enabled: state.endpointLabelOffsetEnabled,
-      offset: state.endpointLabelOffset
-    };
-    if (skipEndpointOffsetPersistRef.current) {
-      skipEndpointOffsetPersistRef.current = false;
-      endpointOffsetPersistRef.current = current;
-      if (!initialOffsetEnabledDefinedRef.current) {
-        void saveViewerSettings({ endpointLabelOffsetEnabled: current.enabled });
-      }
-      return;
-    }
-    const previous = endpointOffsetPersistRef.current;
-    if (previous && previous.enabled === current.enabled && previous.offset === current.offset) {
-      return;
-    }
-    endpointOffsetPersistRef.current = current;
-    void saveViewerSettings({
-      endpointLabelOffsetEnabled: current.enabled,
-      endpointLabelOffset: current.offset
-    });
-  }, [state.endpointLabelOffsetEnabled, state.endpointLabelOffset]);
 
   // Track used custom icons and trigger reconciliation when usage changes
   const prevUsedIconsRef = useRef<string[]>([]);
@@ -886,9 +844,19 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     dispatch
   }), [state, dispatch]);
 
+  // Save endpoint offset - needs access to current state
+  const saveEndpointLabelOffset = useCallback(() => {
+    void saveViewerSettings({ endpointLabelOffset: state.endpointLabelOffset });
+  }, [state.endpointLabelOffset]);
+
+  const actionsValue = useMemo<TopoViewerActionsContextValue>(() => ({
+    ...actions,
+    saveEndpointLabelOffset
+  }), [actions, saveEndpointLabelOffset]);
+
   return (
     <TopoViewerStateContext.Provider value={stateValue}>
-      <TopoViewerActionsContext.Provider value={actions}>
+      <TopoViewerActionsContext.Provider value={actionsValue}>
         {children}
       </TopoViewerActionsContext.Provider>
     </TopoViewerStateContext.Provider>

@@ -262,7 +262,6 @@ export interface TopologyAnnotations {
   aliasEndpointAnnotations?: AliasEndpointAnnotation[];
   viewerSettings?: {
     gridLineWidth?: number;
-    endpointLabelOffsetEnabled?: boolean;
     endpointLabelOffset?: number;
   };
   [key: string]: unknown;
