@@ -4,12 +4,8 @@ import { test, expect } from '../fixtures/topoviewer';
 
 const SIMPLE_FILE = 'simple.clab.yml';
 
-const ENDPOINT_LABEL_MENU_TEXT = 'Adjust Endpoint Offset';
-const ARIA_CHECKED_ATTR = 'aria-checked';
-
 const SEL_LINK_LABELS_BTN = '[data-testid="navbar-link-labels"]';
-const SEL_LINK_LABELS_MENU = `.navbar-menu:has-text("${ENDPOINT_LABEL_MENU_TEXT}")`;
-const SEL_ENDPOINT_TOGGLE = `${SEL_LINK_LABELS_MENU} .navbar-menu-option:has-text("${ENDPOINT_LABEL_MENU_TEXT}")`;
+const SEL_LINK_LABELS_MENU = '.navbar-menu:has-text("Endpoint offset")';
 const SEL_ENDPOINT_SLIDER = `${SEL_LINK_LABELS_MENU} input[aria-label="Endpoint label offset"]`;
 const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
 const SEL_LINK_OFFSET_SLIDER = '#link-endpoint-offset';
@@ -52,63 +48,36 @@ test.describe('Endpoint Label Offset', () => {
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test('persists global endpoint label offset settings and restores on reload', async ({ page, topoViewerPage }) => {
-    await expect.poll(
-      async () => {
-        const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
-        return annotations.viewerSettings?.endpointLabelOffsetEnabled;
-      },
-      { timeout: 5000, message: 'default endpoint label offset should be persisted' }
-    ).toBe(true);
-
+  test('persists global endpoint label offset and restores on reload', async ({ page, topoViewerPage }) => {
     await openLinkLabelsMenu(page);
-    const toggle = page.locator(SEL_ENDPOINT_TOGGLE);
     const slider = page.locator(SEL_ENDPOINT_SLIDER);
 
-    await expect(toggle).toHaveAttribute(ARIA_CHECKED_ATTR, 'true');
+    // Slider should be enabled by default
     await expect(slider).toBeEnabled();
 
-    await toggle.click();
-    await expect(toggle).toHaveAttribute(ARIA_CHECKED_ATTR, 'false');
-    await expect(slider).toBeDisabled();
+    // Get initial value and set a new one
+    const initialValue = Number(await slider.inputValue());
+    const newValue = initialValue === 30 ? 40 : 30;
+
+    // Change the slider value and trigger commit via mouseup
+    await slider.fill(String(newValue));
+    await slider.dispatchEvent('mouseup');
+
+    // Verify the new value persists to the annotations file
     await expect.poll(
       async () => {
         const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
-        return annotations.viewerSettings?.endpointLabelOffsetEnabled;
+        return annotations.viewerSettings?.endpointLabelOffset;
       },
-      { timeout: 5000, message: 'endpoint label offset toggle should persist off' }
-    ).toBe(false);
+      { timeout: 5000, message: 'endpoint label offset should persist after slider change' }
+    ).toBe(newValue);
 
-    await toggle.click();
-    await expect(toggle).toHaveAttribute(ARIA_CHECKED_ATTR, 'true');
-    await expect(slider).toBeEnabled();
-    await expect.poll(
-      async () => {
-        const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
-        return annotations.viewerSettings?.endpointLabelOffsetEnabled;
-      },
-      { timeout: 5000, message: 'endpoint label offset toggle should persist on' }
-    ).toBe(true);
-
-    const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
-    const offsetValue = 28;
-    const nextAnnotations = {
-      ...annotations,
-      viewerSettings: {
-        ...(annotations.viewerSettings ?? {}),
-        endpointLabelOffsetEnabled: true,
-        endpointLabelOffset: offsetValue
-      }
-    };
-    await topoViewerPage.writeAnnotationsFile(SIMPLE_FILE, nextAnnotations);
-
+    // Reload and verify value is restored
     await topoViewerPage.gotoFile(SIMPLE_FILE);
     await topoViewerPage.waitForCanvasReady();
 
     await openLinkLabelsMenu(page);
-    await expect(page.locator(SEL_ENDPOINT_TOGGLE)).toHaveAttribute(ARIA_CHECKED_ATTR, 'true');
-    await expect(page.locator(SEL_ENDPOINT_SLIDER)).toBeEnabled();
-    await expect(page.locator(SEL_ENDPOINT_SLIDER)).toHaveValue(String(offsetValue));
+    await expect(page.locator(SEL_ENDPOINT_SLIDER)).toHaveValue(String(newValue));
   });
 
   test('undo/redo syncs per-link endpoint offset override', async ({ page, topoViewerPage }) => {

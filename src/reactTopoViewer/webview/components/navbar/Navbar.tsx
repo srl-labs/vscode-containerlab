@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 	isPartyMode = false
 }) => {
   const { state } = useTopoViewerState();
-  const { setLinkLabelMode, toggleDummyLinks, toggleEndpointLabelOffset, setEndpointLabelOffset } = useTopoViewerActions();
+  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset, saveEndpointLabelOffset } = useTopoViewerActions();
 
   const linkDropdown = useDropdown();
   const layoutDropdown = useDropdown();
@@ -209,12 +209,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             <LinkLabelMenu
               currentMode={state.linkLabelMode}
               showDummyLinks={state.showDummyLinks}
-              endpointLabelOffsetEnabled={state.endpointLabelOffsetEnabled}
               endpointLabelOffset={state.endpointLabelOffset}
+              isLocked={state.isLocked}
               onModeChange={handleLinkLabelModeChange}
               onToggleDummyLinks={toggleDummyLinks}
-              onToggleEndpointLabelOffset={toggleEndpointLabelOffset}
               onEndpointLabelOffsetChange={handleEndpointLabelOffsetChange}
+              onEndpointLabelOffsetCommit={saveEndpointLabelOffset}
             />
           )}
         </div>
@@ -276,12 +276,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 interface LinkLabelMenuProps {
   currentMode: LinkLabelMode;
   showDummyLinks: boolean;
-  endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
+  isLocked: boolean;
   onModeChange: (mode: LinkLabelMode) => void;
   onToggleDummyLinks: () => void;
-  onToggleEndpointLabelOffset: () => void;
   onEndpointLabelOffsetChange: (value: number) => void;
+  onEndpointLabelOffsetCommit: () => void;
 }
 
 const LINK_LABEL_MODES: { value: LinkLabelMode; label: string }[] = [
@@ -293,12 +293,12 @@ const LINK_LABEL_MODES: { value: LinkLabelMode; label: string }[] = [
 const LinkLabelMenu: React.FC<LinkLabelMenuProps> = ({
   currentMode,
   showDummyLinks,
-  endpointLabelOffsetEnabled,
   endpointLabelOffset,
+  isLocked,
   onModeChange,
   onToggleDummyLinks,
-  onToggleEndpointLabelOffset,
-  onEndpointLabelOffsetChange
+  onEndpointLabelOffsetChange,
+  onEndpointLabelOffsetCommit
 }) => {
   const handleEndpointOffsetChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     const next = parseFloat(evt.target.value);
@@ -336,18 +336,6 @@ const LinkLabelMenu: React.FC<LinkLabelMenuProps> = ({
         )}
       </button>
       <hr className="my-1 border-t border-default" />
-      <button
-        type="button"
-        className="navbar-menu-option"
-        onClick={onToggleEndpointLabelOffset}
-        role="menuitemcheckbox"
-        aria-checked={endpointLabelOffsetEnabled}
-      >
-        <span>Adjust Endpoint Offset</span>
-        {endpointLabelOffsetEnabled && (
-          <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
-        )}
-      </button>
       <div className="px-3 pb-2 pt-1">
         <div className="flex items-center gap-2 mb-2">
           <label className="text-2xs font-semibold text-default uppercase tracking-wide">Endpoint offset</label>
@@ -360,9 +348,11 @@ const LinkLabelMenu: React.FC<LinkLabelMenuProps> = ({
           step="1"
           value={endpointLabelOffset}
           onChange={handleEndpointOffsetChange}
+          onMouseUp={onEndpointLabelOffsetCommit}
+          onTouchEnd={onEndpointLabelOffsetCommit}
           className="grid-line-slider"
           aria-label="Endpoint label offset"
-          disabled={!endpointLabelOffsetEnabled}
+          disabled={isLocked}
         />
       </div>
     </div>
