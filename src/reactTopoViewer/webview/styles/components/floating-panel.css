@@ -198,6 +198,23 @@
     pointer-events: auto;
   }
 
+  /* Invisible hover bridge to maintain hover state across the gap */
+  .deploy-drawer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 12px;
+  }
+
+  .deploy-button-group.drawer-right .deploy-drawer::before {
+    right: 100%;
+  }
+
+  .deploy-button-group.drawer-left .deploy-drawer::before {
+    left: 100%;
+  }
+
   /* Floating Panel Dropdown Menu */
   .floating-panel-dropdown {
     position: relative;
