@@ -125,6 +125,42 @@ export function resolveInheritedConfig(
 }
 
 /**
+ * Sets a single property on a node map if the value is valid.
+ * Returns true if the property was set, false otherwise.
+ */
+function setNodeProperty(
+  doc: YAML.Document,
+  nodeMap: YAML.YAMLMap,
+  prop: string,
+  value: unknown
+): void {
+  // Skip undefined/null values
+  if (value === undefined || value === null) return;
+
+  // Handle string values - trim whitespace
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed) nodeMap.set(prop, doc.createNode(trimmed));
+    return;
+  }
+
+  // Handle arrays - set if non-empty
+  if (Array.isArray(value)) {
+    if (value.length > 0) setOrDelete(doc, nodeMap, prop, value);
+    return;
+  }
+
+  // Handle objects - set if non-empty
+  if (typeof value === 'object') {
+    if (Object.keys(value).length > 0) setOrDelete(doc, nodeMap, prop, value);
+    return;
+  }
+
+  // Handle other primitives (numbers, booleans)
+  setOrDelete(doc, nodeMap, prop, value);
+}
+
+/**
  * Creates a new node entry in the YAML document
  */
 function createNodeYaml(doc: YAML.Document, nodeData: NodeSaveData): YAML.YAMLMap {
@@ -137,18 +173,11 @@ function createNodeYaml(doc: YAML.Document, nodeData: NodeSaveData): YAML.YAMLMa
   const kind = extra.kind?.trim() || 'nokia_srlinux';
   nodeMap.set('kind', doc.createNode(kind));
 
-  // Set optional properties
-  if (extra.type?.trim()) {
-    nodeMap.set('type', doc.createNode(extra.type.trim()));
-  }
-  if (extra.image?.trim()) {
-    nodeMap.set('image', doc.createNode(extra.image.trim()));
-  }
-  if (extra.group?.trim()) {
-    nodeMap.set('group', doc.createNode(extra.group.trim()));
-  }
-  if (extra['mgmt-ipv4']?.trim()) {
-    nodeMap.set('mgmt-ipv4', doc.createNode(extra['mgmt-ipv4'].trim()));
+  // Set all other supported properties from NODE_YAML_PROPERTIES
+  for (const prop of NODE_YAML_PROPERTIES) {
+    if (prop !== 'kind') {
+      setNodeProperty(doc, nodeMap, prop, extra[prop]);
+    }
   }
 
   return nodeMap;
