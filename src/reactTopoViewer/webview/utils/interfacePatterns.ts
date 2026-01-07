@@ -44,7 +44,7 @@ export function parseInterfacePattern(pattern: string): ParsedInterfacePattern {
     return { prefix: pattern || 'eth', suffix: '', startIndex: 0 };
   }
   const [, prefix = '', startStr, suffix = ''] = match;
-  const startIndex = startStr ? parseInt(startStr, 10) : 0;
+  const startIndex = startStr ? parseInt(startStr, 10) : 1;
   return { prefix, suffix, startIndex };
 }
 
