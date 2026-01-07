@@ -13,6 +13,8 @@ interface PanelButtonProps {
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
   testId?: string;
+  /** When true, applies active/highlighted styling to indicate the tool is selected */
+  active?: boolean;
 }
 
 export const PanelButton: React.FC<PanelButtonProps> = ({
@@ -21,10 +23,12 @@ export const PanelButton: React.FC<PanelButtonProps> = ({
   onClick,
   disabled = false,
   variant = 'secondary',
-  testId
+  testId,
+  active = false
 }) => {
   const getClass = () => {
     if (disabled) return 'floating-panel-btn disabled';
+    if (active) return 'floating-panel-btn active';
     if (variant === 'primary') return 'floating-panel-btn primary';
     if (variant === 'danger') return 'floating-panel-btn danger';
     return 'floating-panel-btn';

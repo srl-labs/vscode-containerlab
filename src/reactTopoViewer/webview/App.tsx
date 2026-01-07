@@ -494,6 +494,8 @@ const AppContent: React.FC<{
           onEditCustomNode={customNodeCommands.onEditCustomNode}
           onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
           onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
+          isAddTextMode={annotations.isAddTextMode}
+          isAddShapeMode={annotations.isAddShapeMode}
         />
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
         <ContextMenu isVisible={menuState.isVisible} position={menuState.position} items={menuItems} onClose={closeMenu} />

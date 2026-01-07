@@ -76,6 +76,15 @@
     background-color: var(--vscode-button-hoverBackground);
   }
 
+  .floating-panel-btn.active {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+  }
+
+  .floating-panel-btn.active:hover:not(:disabled) {
+    background-color: var(--vscode-button-hoverBackground);
+  }
+
   .floating-panel-btn.danger {
     background-color: #ef4444;
     color: white;
