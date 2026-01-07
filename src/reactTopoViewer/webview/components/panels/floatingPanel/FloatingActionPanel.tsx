@@ -68,6 +68,10 @@ interface FloatingActionPanelProps {
   onEditCustomNode?: (nodeName: string) => void;
   onDeleteCustomNode?: (nodeName: string) => void;
   onSetDefaultCustomNode?: (nodeName: string) => void;
+  /** Whether Add Text mode is active (button should be highlighted) */
+  isAddTextMode?: boolean;
+  /** Whether Add Shape mode is active (button should be highlighted) */
+  isAddShapeMode?: boolean;
 }
 
 /** Imperative handle for FloatingActionPanel */
@@ -241,7 +245,9 @@ const PanelContent: React.FC<PanelContentProps> = ({
   onAddBulkLink,
   onEditCustomNode,
   onDeleteCustomNode,
-  onSetDefaultCustomNode
+  onSetDefaultCustomNode,
+  isAddTextMode = false,
+  isAddShapeMode = false
 }) => {
   const { state } = useTopoViewerState();
   const { setProcessing } = useTopoViewerActions();
@@ -337,11 +343,12 @@ const PanelContent: React.FC<PanelContentProps> = ({
         />
       )}
       <PanelButton icon="fa-layer-group" tooltip="Add Group" onClick={createLockAwareHandler(onAddGroup)} disabled={isLocked} testId="floating-panel-add-group-btn" />
-      <PanelButton icon="fa-font" tooltip="Add Text" onClick={createLockAwareHandler(onAddText)} disabled={isLocked} testId="floating-panel-add-text-btn" />
+      <PanelButton icon="fa-font" tooltip="Add Text" onClick={createLockAwareHandler(onAddText)} disabled={isLocked} active={isAddTextMode} testId="floating-panel-add-text-btn" />
       <PanelButtonWithDropdown
         icon="fa-shapes"
         tooltip="Add Shapes"
         disabled={isLocked}
+        active={isAddShapeMode}
         drawerSide={drawerSide}
         items={shapeMenuItems}
         filterPlaceholder="Filter shapes..."

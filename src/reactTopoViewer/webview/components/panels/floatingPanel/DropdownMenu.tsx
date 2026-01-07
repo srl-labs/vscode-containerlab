@@ -167,6 +167,8 @@ interface PanelButtonWithDropdownProps {
   testId?: string;
   /** If true, clicking button directly adds the default item (hover still shows dropdown) */
   clickAddsDefault?: boolean;
+  /** When true, applies active/highlighted styling to indicate the tool is selected */
+  active?: boolean;
 }
 
 export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = ({
@@ -180,7 +182,8 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   onLockedClick,
   customNodeActions,
   testId,
-  clickAddsDefault = false
+  clickAddsDefault = false,
+  active = false
 }) => {
   const {
     isOpen, filter, focusedIndex,
@@ -230,7 +233,7 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
       onMouseLeave={handleMouseLeave}
     >
       <button
-        className={`floating-panel-btn ${disabled ? 'disabled' : ''}`}
+        className={`floating-panel-btn ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`}
         title={tooltip}
         disabled={false}
         onClick={handleButtonClick}
