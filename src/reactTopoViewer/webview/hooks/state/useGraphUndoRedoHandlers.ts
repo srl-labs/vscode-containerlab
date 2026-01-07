@@ -567,14 +567,21 @@ function createEdgeCreatedHandler(
   };
 }
 
-/** Properties to merge from extraData with top-level fallback */
-const NODE_MERGE_PROPS = ['kind', 'type', 'image', 'group', 'topoViewerRole', 'iconColor', 'iconCornerRadius', 'interfacePattern'] as const;
+/** Properties that should fallback to top-level data if not in extraData */
+const NODE_FALLBACK_PROPS = ['kind', 'type', 'image', 'group', 'topoViewerRole', 'iconColor', 'iconCornerRadius', 'interfacePattern'] as const;
 
 function mergeNodeExtraData(data: NodeElementData): NodeSaveData['extraData'] {
   const ed = (data.extraData ?? {}) as Record<string, unknown>;
-  const result: Record<string, unknown> = {};
-  for (const key of NODE_MERGE_PROPS) {
-    result[key] = ed[key] ?? (data as Record<string, unknown>)[key];
+  // Start with all properties from extraData (preserves components, binds, env, etc.)
+  const result: Record<string, unknown> = { ...ed };
+  // Apply fallbacks for specific properties that might also be at top-level
+  for (const key of NODE_FALLBACK_PROPS) {
+    if (result[key] === undefined) {
+      const topLevelValue = (data as Record<string, unknown>)[key];
+      if (topLevelValue !== undefined) {
+        result[key] = topLevelValue;
+      }
+    }
   }
   return result;
 }
