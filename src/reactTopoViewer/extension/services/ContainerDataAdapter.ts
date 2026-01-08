@@ -10,22 +10,48 @@ import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from '../../
  * Adapts VS Code tree nodes to the ContainerDataProvider interface.
  */
 export class ContainerDataAdapter implements ContainerDataProvider {
-  private readonly labMap: Map<string, ClabLabTreeNode>;
+  /** Map from lab name to lab node (for quick lookup by name) */
+  private readonly labByName: Map<string, ClabLabTreeNode>;
+  /** Map from file path to lab node (original keys from discoverInspectLabs) */
+  private readonly labByPath: Map<string, ClabLabTreeNode>;
 
   constructor(clabTreeData: Record<string, ClabLabTreeNode> | undefined) {
-    this.labMap = new Map();
+    this.labByName = new Map();
+    this.labByPath = new Map();
     if (clabTreeData) {
-      for (const [labName, labNode] of Object.entries(clabTreeData)) {
-        this.labMap.set(labName, labNode);
+      for (const [pathKey, labNode] of Object.entries(clabTreeData)) {
+        // Store by path (the original key)
+        this.labByPath.set(pathKey, labNode);
+        // Also store by lab name for easier lookup
+        if (labNode.name) {
+          this.labByName.set(labNode.name, labNode);
+        }
       }
     }
+  }
+
+  /**
+   * Finds a lab node by name, trying name map first then falling back to path map.
+   */
+  private findLabNode(labName: string): ClabLabTreeNode | undefined {
+    // Try direct lookup by lab name first
+    const byName = this.labByName.get(labName);
+    if (byName) return byName;
+
+    // Fall back to searching all labs by their name property
+    for (const labNode of this.labByPath.values()) {
+      if (labNode.name === labName) {
+        return labNode;
+      }
+    }
+    return undefined;
   }
 
   /**
    * Finds a container tree node by name within a lab.
    */
   private findContainerNode(containerName: string, labName: string): ClabContainerTreeNode | undefined {
-    const labNode = this.labMap.get(labName);
+    const labNode = this.findLabNode(labName);
     if (!labNode?.containers) return undefined;
 
     return labNode.containers.find(
@@ -59,7 +85,7 @@ export class ContainerDataAdapter implements ContainerDataProvider {
    * Gets all containers in a lab.
    */
   getContainersForLab(labName: string): ContainerInfo[] {
-    const labNode = this.labMap.get(labName);
+    const labNode = this.findLabNode(labName);
     if (!labNode?.containers) return [];
 
     return labNode.containers.map((c) => this.toContainerInfo(c));
