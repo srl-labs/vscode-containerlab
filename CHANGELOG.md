@@ -1,4 +1,7 @@
 # Change Log
+## [0.22.1] - 2026-01-08
+- Fixes
+
 ## [0.22.0] - 2026-01-06
 - TopoViewer rewritten in React
 - TopoViewer/editor:
