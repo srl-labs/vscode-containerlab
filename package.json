@@ -1466,7 +1466,7 @@
     "eslint-plugin-unicorn": "^62.0.0",
     "fs-extra": "^11.3.3",
     "highlight.js": "^11.11.1",
-    "jscpd": "^4.0.5",
+    "jscpd": "^4.0.7",
     "jsdom": "^27.4.0",
     "madge": "^8.0.0",
     "maplibre-gl": "^5.15.0",
