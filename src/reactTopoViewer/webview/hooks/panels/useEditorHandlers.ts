@@ -190,11 +190,18 @@ function handleNodeUpdate(
   cyRef: React.RefObject<CytoscapeCanvasRef | null> | undefined,
   customIcons?: CustomIconInfo[]
 ): Record<string, unknown> | null {
+  const cy = cyRef?.current?.getCy();
+
   if (oldName && renameNode) {
+    // Update React state with the rename
     renameNode(oldName, data.name);
+    // Also update Cytoscape directly so the canvas reflects the change immediately.
+    // data.id is the OLD id, so we look up the node by old id and update its name.
+    if (cy) {
+      return updateCytoscapeNodeData(cy, data.id, data, customIcons);
+    }
     return null;
   } else {
-    const cy = cyRef?.current?.getCy();
     if (cy) {
       return updateCytoscapeNodeData(cy, data.id, data, customIcons);
     }
@@ -270,8 +277,10 @@ function persistNodeChanges(
   const newExtraData = handleNodeUpdate(data, oldName, renameNode, cyRef, customIcons);
   // Update React state with the SAME extraData that was set on Cytoscape
   // This prevents useElementsUpdate from overwriting Cytoscape with stale React state
+  // For renames, use data.name (new id) since React state was already updated via renameNode
   if (updateNodeData && newExtraData) {
-    updateNodeData(data.id, newExtraData);
+    const nodeIdForUpdate = oldName ? data.name : data.id;
+    updateNodeData(nodeIdForUpdate, newExtraData);
   }
   // Trigger editor data refresh so reopening the editor shows updated values
   refreshEditorData?.();
@@ -566,9 +575,13 @@ const HOST_INTERFACE_TYPES = new Set(['host', 'mgmt-net', 'macvlan']);
 /** Network types that are stored as link types (not YAML nodes) */
 const LINK_BASED_NETWORK_TYPES = new Set(['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy']);
 
+/** Bridge types that are stored as YAML nodes */
+const BRIDGE_NETWORK_TYPES = new Set(['bridge', 'ovs-bridge']);
+
 /**
  * Calculate the expected node ID based on network type and interface.
  * For host/mgmt-net/macvlan, the ID is `type:interface` (e.g., `host:eth0`, `macvlan:100`).
+ * For bridges, the ID is the interfaceName (which is the bridge name).
  */
 function calculateExpectedNodeId(data: NetworkEditorData): string {
   if (data.networkType === 'host') {
@@ -580,6 +593,10 @@ function calculateExpectedNodeId(data: NetworkEditorData): string {
   if (data.networkType === 'macvlan') {
     return `macvlan:${data.interfaceName || 'eth1'}`;
   }
+  // For bridges, the interfaceName IS the YAML node name
+  if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
+    return data.interfaceName || data.id;
+  }
   // For other types, the ID doesn't change based on interface
   return data.id;
 }
@@ -587,7 +604,7 @@ function calculateExpectedNodeId(data: NetworkEditorData): string {
 /**
  * Save network annotation label to the annotations file.
  * Also handles rename if interface changed (which changes the node ID).
- * When renamed, the label is automatically set to the new node ID.
+ * The user-provided label is always preserved.
  */
 function saveNetworkAnnotation(data: NetworkEditorData, newNodeId: string): void {
   if (!isServicesInitialized()) return;
@@ -599,26 +616,27 @@ function saveNetworkAnnotation(data: NetworkEditorData, newNodeId: string): void
 
   const oldId = data.id;
   const isRename = oldId !== newNodeId;
-  // When renamed, always use the new ID as label for consistency
-  const newLabel = isRename ? newNodeId : data.label;
+  // Always use the user-provided label; fall back to newNodeId if label is empty
+  const newLabel = data.label || newNodeId;
 
   void annotationsIO.modifyAnnotations(yamlPath, annotations => {
     if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
 
-    // Update nodeAnnotations
+    // Update nodeAnnotations - find by old ID for renames
     const existing = annotations.nodeAnnotations.find(n => n.id === oldId);
     if (existing) {
       if (isRename) existing.id = newNodeId;
       existing.label = newLabel;
-    } else if (!isRename) {
-      annotations.nodeAnnotations.push({ id: data.id, label: newLabel });
+    } else {
+      // Create new annotation entry
+      annotations.nodeAnnotations.push({ id: isRename ? newNodeId : oldId, label: newLabel });
     }
 
     // Also update networkNodeAnnotations if present
-    if (isRename && annotations.networkNodeAnnotations) {
+    if (annotations.networkNodeAnnotations) {
       const networkAnn = annotations.networkNodeAnnotations.find(n => n.id === oldId);
       if (networkAnn) {
-        networkAnn.id = newNodeId;
+        if (isRename) networkAnn.id = newNodeId;
         networkAnn.label = newLabel;
       }
     }
@@ -755,6 +773,56 @@ function saveNetworkLinkProperties(
 }
 
 /**
+ * Save bridge node changes to YAML and update canvas.
+ * Handles renaming the YAML node key and updating link endpoints.
+ */
+function saveBridgeNodeProperties(
+  data: NetworkEditorData,
+  newNodeId: string,
+  cy: CyCore | null
+): void {
+  if (!isServicesInitialized()) return;
+  if (!BRIDGE_NETWORK_TYPES.has(data.networkType)) return;
+
+  const oldId = data.id;
+  const isRename = oldId !== newNodeId;
+
+  // Build save data for the node
+  // For bridges, we use editNode to rename and update the YAML
+  const saveData = {
+    id: oldId,
+    name: newNodeId,
+    extraData: {
+      kind: data.networkType,
+    },
+  };
+
+  void editNodeService(saveData);
+
+  // Update Cytoscape if rename
+  if (isRename && cy) {
+    const bridgeNode = cy.getElementById(oldId);
+    if (!bridgeNode.empty()) {
+      // Update the node's displayed name
+      bridgeNode.data('name', data.label || newNodeId);
+      // Update connected edge references
+      const connectedEdges = bridgeNode.connectedEdges();
+      connectedEdges.forEach(edge => {
+        const edgeData = edge.data() as { source: string; target: string };
+        if (edgeData.source === oldId) edge.data('source', newNodeId);
+        if (edgeData.target === oldId) edge.data('target', newNodeId);
+      });
+    }
+  } else if (cy) {
+    // Even without rename, update the displayed name/label
+    const bridgeNode = cy.getElementById(oldId);
+    if (!bridgeNode.empty()) {
+      bridgeNode.data('name', data.label || newNodeId);
+    }
+  }
+}
+
+/**
  * Hook for network editor handlers
  */
 export function useNetworkEditorHandlers(
@@ -770,6 +838,7 @@ export function useNetworkEditorHandlers(
     const newNodeId = calculateExpectedNodeId(data);
     saveNetworkAnnotation(data, newNodeId);
     saveNetworkLinkProperties(data, newNodeId, cyInstance);
+    saveBridgeNodeProperties(data, newNodeId, cyInstance);
     editNetwork(null);
   }, [editNetwork, cyInstance]);
 
@@ -777,6 +846,7 @@ export function useNetworkEditorHandlers(
     const newNodeId = calculateExpectedNodeId(data);
     saveNetworkAnnotation(data, newNodeId);
     saveNetworkLinkProperties(data, newNodeId, cyInstance);
+    saveBridgeNodeProperties(data, newNodeId, cyInstance);
   }, [cyInstance]);
 
   return { handleClose, handleSave, handleApply };
