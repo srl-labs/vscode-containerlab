@@ -28,18 +28,20 @@ export interface UseAnnotationReparentReturn {
  * Hook for handling annotation reparenting via drag-drop.
  */
 export function useAnnotationReparent(options: UseAnnotationReparentOptions): UseAnnotationReparentReturn {
-  const { mode, isLocked, groups, onUpdateGroupId } = options;
+  const { isLocked, groups, onUpdateGroupId } = options;
 
   // Track the group the annotation was in when drag started
   const dragStartGroupRef = useRef<Map<string, string | undefined>>(new Map());
 
   const onDragStart = useCallback((annotationId: string, currentGroupId: string | undefined) => {
-    if (mode === 'view' || isLocked) return;
+    // Only check isLocked - allows reparenting in viewer mode when explicitly unlocked
+    if (isLocked) return;
     dragStartGroupRef.current.set(annotationId, currentGroupId);
-  }, [mode, isLocked]);
+  }, [isLocked]);
 
   const onDragEnd = useCallback((annotationId: string, finalPosition: { x: number; y: number }) => {
-    if (mode === 'view' || isLocked) return;
+    // Only check isLocked - allows reparenting in viewer mode when explicitly unlocked
+    if (isLocked) return;
 
     const oldGroupId = dragStartGroupRef.current.get(annotationId);
     dragStartGroupRef.current.delete(annotationId);
@@ -57,7 +59,7 @@ export function useAnnotationReparent(options: UseAnnotationReparentOptions): Us
         log.info(`[AnnotationReparent] Annotation ${annotationId} removed from group`);
       }
     }
-  }, [mode, isLocked, groups, onUpdateGroupId]);
+  }, [isLocked, groups, onUpdateGroupId]);
 
   return { onDragStart, onDragEnd };
 }

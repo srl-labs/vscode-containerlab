@@ -145,7 +145,8 @@ function useCreateGroup(
 
   return useCallback(
     (selectedNodeIds?: string[], parentId?: string | null): { groupId: string; group: GroupStyleAnnotation } | null => {
-      if (mode === 'view' || isLocked || !cy) {
+      // Only check isLocked - allows group creation in viewer mode when explicitly unlocked
+      if (isLocked || !cy) {
         if (isLocked) onLockedAction?.();
         return null;
       }
@@ -247,8 +248,9 @@ function useDeleteGroup(options: UseDeleteGroupOptions) {
   } = options;
   return useCallback(
     (groupId: string): void => {
-      if (mode === 'view' || isLocked) {
-        if (isLocked) onLockedAction?.();
+      // Only check isLocked - allows group deletion in viewer mode when explicitly unlocked
+      if (isLocked) {
+        onLockedAction?.();
         return;
       }
 
@@ -322,8 +324,9 @@ function useEditGroup(
 ) {
   return useCallback(
     (groupId: string): void => {
-      if (mode === 'view' || isLocked) {
-        if (isLocked) onLockedAction?.();
+      // Only check isLocked - allows group editing in viewer mode when explicitly unlocked
+      if (isLocked) {
+        onLockedAction?.();
         return;
       }
 
@@ -378,8 +381,9 @@ function useSaveGroup(options: SaveGroupOptions) {
   } = options;
   return useCallback(
     (data: GroupEditorData): void => {
-      if (mode === 'view' || isLocked) {
-        if (isLocked) onLockedAction?.();
+      // Only check isLocked - allows group saving in viewer mode when explicitly unlocked
+      if (isLocked) {
+        onLockedAction?.();
         return;
       }
 
@@ -464,7 +468,8 @@ function useUpdateGroup(
 ) {
   return useCallback(
     (groupId: string, updates: Partial<GroupStyleAnnotation>): void => {
-      if (mode === 'view' || isLocked) return;
+      // Only check isLocked - allows group updates in viewer mode when explicitly unlocked
+      if (isLocked) return;
 
       setGroups(prev => {
         const updated = updateGroupInList(prev, groupId, updates);
@@ -487,7 +492,8 @@ function useUpdateGroupPosition(
 ) {
   return useCallback(
     (groupId: string, position: { x: number; y: number }): void => {
-      if (mode === 'view' || isLocked) return;
+      // Only check isLocked - allows position updates in viewer mode when explicitly unlocked
+      if (isLocked) return;
 
       setGroups(prev => {
         const updated = updateGroupInList(prev, groupId, { position });
@@ -510,7 +516,8 @@ function useUpdateGroupSize(
 ) {
   return useCallback(
     (groupId: string, width: number, height: number): void => {
-      if (mode === 'view' || isLocked) return;
+      // Only check isLocked - allows size updates in viewer mode when explicitly unlocked
+      if (isLocked) return;
 
       setGroups(prev => {
         const updated = updateGroupInList(prev, groupId, { width, height });
@@ -574,7 +581,7 @@ function removeNodeFromGroupHelper(
  * Hook for managing node group membership.
  */
 function useNodeGroupMembership(
-  mode: 'edit' | 'view',
+  _mode: 'edit' | 'view',
   isLocked: boolean,
   groups: GroupStyleAnnotation[]
 ) {
@@ -617,11 +624,12 @@ function useNodeGroupMembership(
   const getNodeMembership = useCallback((nodeId: string): string | null => membershipRef.current.get(nodeId) ?? null, []);
 
   const addNodeToGroup = useCallback((nodeId: string, groupId: string): void => {
-    if (mode === 'view' || isLocked) return;
+    // Only check isLocked - allows membership changes in viewer mode when explicitly unlocked
+    if (isLocked) return;
     markMembershipDirty();
     const group = groups.find(g => g.id === groupId);
     addNodeToGroupHelper(membershipRef, nodeId, groupId, group);
-  }, [mode, isLocked, markMembershipDirty, groups]);
+  }, [isLocked, markMembershipDirty, groups]);
 
   /** Add node to group locally (in-memory only, no extension notification) */
   const addNodeToGroupLocal = useCallback((nodeId: string, groupId: string): void => {
@@ -630,10 +638,11 @@ function useNodeGroupMembership(
   }, [markMembershipDirty]);
 
   const removeNodeFromGroup = useCallback((nodeId: string): void => {
-    if (mode === 'view' || isLocked) return;
+    // Only check isLocked - allows membership changes in viewer mode when explicitly unlocked
+    if (isLocked) return;
     markMembershipDirty();
     removeNodeFromGroupHelper(membershipRef, nodeId);
-  }, [mode, isLocked, markMembershipDirty]);
+  }, [isLocked, markMembershipDirty]);
 
   /** Reassign all node memberships from one groupId to another (legacy migrations) */
   const migrateMemberships = useCallback((oldGroupId: string, newGroupId: string): void => {
@@ -799,7 +808,8 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   // Hierarchy methods
   const updateGroupParent = useCallback(
     (groupId: string, parentId: string | null): void => {
-      if (mode === 'view' || isLocked) return;
+      // Only check isLocked - allows hierarchy changes in viewer mode when explicitly unlocked
+      if (isLocked) return;
 
       // Validate no circular reference
       if (parentId && !validateNoCircularReference(groupId, parentId, groups)) {

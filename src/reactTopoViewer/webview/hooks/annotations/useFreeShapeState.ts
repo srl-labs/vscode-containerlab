@@ -104,21 +104,22 @@ export interface UseFreeShapeActionsReturn extends AnnotationSelectionActions {
 }
 
 function useModeActions(
-  mode: 'edit' | 'view',
+  _mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   setIsAddShapeMode: React.Dispatch<React.SetStateAction<boolean>>,
   setPendingShapeType: React.Dispatch<React.SetStateAction<FreeShapeAnnotation['shapeType']>>
 ) {
   const enableAddShapeMode = useCallback((shapeType?: FreeShapeAnnotation['shapeType']) => {
-    if (mode === 'view' || isLocked) {
-      if (isLocked) onLockedAction?.();
+    // Only check isLocked - allows adding shapes in viewer mode when explicitly unlocked
+    if (isLocked) {
+      onLockedAction?.();
       return;
     }
     setPendingShapeType(shapeType || 'rectangle');
     setIsAddShapeMode(true);
     log.info(`[FreeShape] Add shape mode enabled (${shapeType || 'rectangle'})`);
-  }, [mode, isLocked, onLockedAction, setPendingShapeType, setIsAddShapeMode]);
+  }, [isLocked, onLockedAction, setPendingShapeType, setIsAddShapeMode]);
 
   const disableAddShapeMode = useCallback(() => {
     setIsAddShapeMode(false);
