@@ -93,19 +93,20 @@ export interface UseFreeTextActionsReturn extends AnnotationActionMethods, Annot
 
 // Hook for mode toggle actions
 function useModeActions(
-  mode: 'edit' | 'view',
+  _mode: 'edit' | 'view',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   setIsAddTextMode: React.Dispatch<React.SetStateAction<boolean>>
 ) {
   const enableAddTextMode = useCallback(() => {
-    if (mode === 'view' || isLocked) {
-      if (isLocked) onLockedAction?.();
+    // Only check isLocked - allows adding text in viewer mode when explicitly unlocked
+    if (isLocked) {
+      onLockedAction?.();
       return;
     }
     setIsAddTextMode(true);
     log.info('[FreeText] Add text mode enabled');
-  }, [mode, isLocked, onLockedAction, setIsAddTextMode]);
+  }, [isLocked, onLockedAction, setIsAddTextMode]);
 
   const disableAddTextMode = useCallback(() => {
     setIsAddTextMode(false);

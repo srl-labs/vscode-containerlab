@@ -169,7 +169,7 @@ function refreshGeoCoordinates(cy: Core | null, position: NodePositionEntry): No
 /** Create flush handler for batched drags */
 function createFlushHandler(
   refs: DragBatchRefs,
-  mode: 'edit' | 'view',
+  _mode: 'edit' | 'view',
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
   onPositionsCommitted?: (positions: NodePositionEntry[]) => void,
   cy?: Core | null
@@ -185,10 +185,9 @@ function createFlushHandler(
 
     log.info(`[NodeDragging] Flushing batch of ${pending.length} node drag(s)`);
 
-    if (mode === 'edit') {
-      // Save positions asynchronously via TopologyIO
-      void savePositions(afterPositions);
-    }
+    // Save positions - lock state already prevents dragging, so if we get here, save is allowed
+    // This enables position saving in viewer mode when explicitly unlocked
+    void savePositions(afterPositions);
 
     onPositionsCommitted?.(afterPositions);
 

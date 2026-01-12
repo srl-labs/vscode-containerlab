@@ -124,7 +124,7 @@ export function duplicateAnnotations<T extends BaseAnnotation>(
  * @returns The edit annotation callback
  */
 export function createEditAnnotationCallback<T extends BaseAnnotation>(
-  mode: 'view' | 'edit',
+  _mode: 'view' | 'edit',
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   annotations: T[],
@@ -132,8 +132,9 @@ export function createEditAnnotationCallback<T extends BaseAnnotation>(
   logPrefix: string
 ): (id: string) => void {
   return (id: string) => {
-    if (mode === 'view' || isLocked) {
-      if (isLocked) onLockedAction?.();
+    // Only check isLocked - allows annotation editing in viewer mode when explicitly unlocked
+    if (isLocked) {
+      onLockedAction?.();
       return;
     }
     const annotation = annotations.find(a => a.id === id);
