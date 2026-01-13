@@ -149,7 +149,7 @@ type TopoViewerAction =
   | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null }
   | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } }
   | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] }
-  | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string } }
+  | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string; name?: string } }
   | { type: 'UPDATE_NODE_DATA'; payload: UpdateNodeDataPayload }
   | { type: 'UPDATE_NODE_POSITIONS'; payload: UpdateNodePositionsPayload }
   | { type: 'REFRESH_EDITOR_DATA' }
@@ -298,13 +298,14 @@ const reducerHandlers: ReducerHandlers = {
     return { ...state, elements: newElements };
   },
   RENAME_NODE: (state, action) => {
-    const { oldId, newId } = action.payload;
+    const { oldId, newId, name } = action.payload;
+    const nextName = name ?? newId;
     // Update node ID and name, and update edge references
     const elements = state.elements.map(el => {
       if (el.group === 'nodes' && (el.data as Record<string, unknown>)?.id === oldId) {
         return {
           ...el,
-          data: { ...el.data, id: newId, name: newId }
+          data: { ...el.data, id: newId, name: nextName }
         };
       }
       if (el.group === 'edges') {
@@ -566,9 +567,9 @@ function handleExtensionMessage(
       }
     },
     'node-renamed': () => {
-      const data = message.data as { oldId?: string; newId?: string } | undefined;
+      const data = message.data as { oldId?: string; newId?: string; name?: string } | undefined;
       if (data?.oldId && data?.newId) {
-        dispatch({ type: 'RENAME_NODE', payload: { oldId: data.oldId, newId: data.newId } });
+        dispatch({ type: 'RENAME_NODE', payload: { oldId: data.oldId, newId: data.newId, name: data.name } });
       }
     },
     'node-data-updated': () => {

@@ -105,8 +105,8 @@ const AppContent: React.FC<{
     enabled: state.mode === 'edit'
   });
 
-  const renameNodeInGraph = React.useCallback((oldId: string, newId: string) => {
-    dispatch({ type: 'RENAME_NODE', payload: { oldId, newId } });
+  const renameNodeInGraph = React.useCallback((oldId: string, newId: string, name?: string) => {
+    dispatch({ type: 'RENAME_NODE', payload: { oldId, newId, name } });
   }, [dispatch]);
 
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);
@@ -257,7 +257,7 @@ const AppContent: React.FC<{
       setEdgeAnnotations
     }
   );
-  const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData, cyInstance);
+  const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData, cyInstance, renameNodeInGraph);
 
   const recordGraphChanges = React.useCallback((before: GraphChange[], after: GraphChange[]) => {
     undoRedo.pushAction({ type: 'graph', before, after });
