@@ -294,6 +294,7 @@ const AppContent: React.FC<{
     handleNodeCreatedCallback,
     handleAddGroupWithUndo: annotations.handleAddGroupWithUndo,
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
+    editNetwork,
     groups: annotations.groups,
     elements: state.elements,
     setLayout: layoutControls.setLayout,

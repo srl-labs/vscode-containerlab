@@ -60,6 +60,8 @@ export interface DevModeInterface {
     position: { x: number; y: number },
     networkType: NetworkType
   ) => string | null;
+  /** Open or close the network editor panel */
+  openNetworkEditor?: (nodeId: string | null) => void;
   /** Get React groups state */
   getReactGroups?: () => GroupStyleAnnotation[];
   /** Current group count */

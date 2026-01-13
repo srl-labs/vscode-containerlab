@@ -5,6 +5,7 @@ import Ajv from 'ajv';
 import * as YAML from 'yaml';
 
 import { test, expect } from '../fixtures/topoviewer';
+import { openNetworkEditor } from '../helpers/cytoscape-helpers';
 
 /**
  * Network Nodes E2E Tests
@@ -30,6 +31,8 @@ const SCHEMA_ERRORS_LOG = 'Schema errors:';
 const VXLAN_ID_0 = 'vxlan:vxlan0';
 const VXLAN_ID_1 = 'vxlan:vxlan1';
 const VXLAN_STITCH_ID_0 = 'vxlan-stitch:vxlan0';
+const SEL_NETWORK_EDITOR = '[data-testid="network-editor"]';
+const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 
 // Network types to test - these are link types (single endpoint)
 const SINGLE_ENDPOINT_NETWORK_TYPES = ['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy'] as const;
@@ -91,6 +94,47 @@ function validateNetworkNodeAnnotation(
   expect(ann).toBeDefined();
   expect(ann?.type).toBe(networkType);
   expect(ann?.position).toBeDefined();
+}
+
+/**
+ * Collect endpoint strings from parsed topology links.
+ */
+function collectLinkEndpointStrings(parsed: unknown): string[] {
+  const topo = (parsed as { topology?: { links?: Array<Record<string, unknown>> } })?.topology;
+  const links = topo?.links ?? [];
+  const endpoints: string[] = [];
+
+  for (const link of links) {
+    const endpointsField = (link as { endpoints?: unknown }).endpoints;
+    if (Array.isArray(endpointsField)) {
+      for (const ep of endpointsField) {
+        if (typeof ep === 'string') {
+          endpoints.push(ep);
+          continue;
+        }
+        if (ep && typeof ep === 'object') {
+          const epObj = ep as { node?: unknown; interface?: unknown };
+          if (typeof epObj.node === 'string') {
+            const iface = typeof epObj.interface === 'string' ? epObj.interface : '';
+            endpoints.push(iface ? `${epObj.node}:${iface}` : epObj.node);
+          }
+        }
+      }
+    }
+
+    const endpointField = (link as { endpoint?: unknown }).endpoint;
+    if (endpointField && typeof endpointField === 'object' && !Array.isArray(endpointField)) {
+      const epObj = endpointField as { node?: unknown; interface?: unknown };
+      if (typeof epObj.node === 'string') {
+        const iface = typeof epObj.interface === 'string' ? epObj.interface : '';
+        endpoints.push(iface ? `${epObj.node}:${iface}` : epObj.node);
+      }
+    } else if (typeof endpointField === 'string') {
+      endpoints.push(endpointField);
+    }
+  }
+
+  return endpoints;
 }
 
 test.describe('Network Nodes E2E Tests', () => {
@@ -588,6 +632,91 @@ test.describe('Network Node Modification', () => {
     const validation = validateYamlAgainstSchema(yaml);
     expect(validation.valid).toBe(true);
   });
+});
+
+/**
+ * Bridge rename persistence tests
+ */
+test.describe('Bridge rename persistence', () => {
+  test.beforeEach(async ({ topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile(EMPTY_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+  });
+
+  for (const bridgeType of BRIDGE_TYPES) {
+    test(`renaming ${bridgeType} updates YAML endpoints and delete cleans YAML`, async ({ page, topoViewerPage }) => {
+      const routerId = 'router1';
+      const newBridgeId = bridgeType === 'bridge' ? 'br-main' : 'ovs-br-main';
+
+      await topoViewerPage.createNode(routerId, { x: 300, y: 200 }, KIND_NOKIA_SRLINUX);
+      await page.waitForTimeout(300);
+
+      const bridgeId = await topoViewerPage.createNetwork({ x: 100, y: 200 }, bridgeType);
+      if (!bridgeId) {
+        throw new Error(`Failed to create ${bridgeType} network node`);
+      }
+      await page.waitForTimeout(300);
+
+      await topoViewerPage.createLink(bridgeId, routerId, 'eth0', 'e1-1');
+      await page.waitForTimeout(500);
+
+      await openNetworkEditor(page, bridgeId);
+
+      const networkEditor = page.locator(SEL_NETWORK_EDITOR);
+      await expect(networkEditor).toBeVisible();
+
+      const interfaceInput = networkEditor.locator('#network-interface');
+      await expect(interfaceInput).toBeVisible();
+
+      const labelInput = networkEditor.locator('#network-label');
+      const originalLabel = await labelInput.inputValue();
+
+      await interfaceInput.fill(newBridgeId);
+      if (originalLabel) {
+        await labelInput.fill(originalLabel);
+      }
+
+      await networkEditor.locator(SEL_PANEL_OK_BTN).click();
+      await expect(networkEditor).toHaveCount(0);
+
+      await expect.poll(
+        async () => {
+          const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+          const parsed = YAML.parse(yaml);
+          return Object.keys(parsed?.topology?.nodes ?? {});
+        },
+        { timeout: 5000, message: 'Bridge rename should update YAML nodes' }
+      ).toContain(newBridgeId);
+
+      const yamlAfterRename = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+      const parsedAfterRename = YAML.parse(yamlAfterRename);
+      const nodeIdsAfterRename = Object.keys(parsedAfterRename?.topology?.nodes ?? {});
+      expect(nodeIdsAfterRename).toContain(newBridgeId);
+      expect(nodeIdsAfterRename).not.toContain(bridgeId);
+
+      const endpointsAfterRename = collectLinkEndpointStrings(parsedAfterRename);
+      expect(endpointsAfterRename.some(ep => ep.startsWith(`${newBridgeId}:`))).toBe(true);
+      expect(endpointsAfterRename.some(ep => ep.startsWith(`${bridgeId}:`))).toBe(false);
+
+      const graphNodeIds = await topoViewerPage.getNodeIds();
+      expect(graphNodeIds).toContain(newBridgeId);
+      expect(graphNodeIds).not.toContain(bridgeId);
+
+      await topoViewerPage.deleteNode(newBridgeId);
+      await page.waitForTimeout(500);
+
+      const yamlAfterDelete = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
+      const parsedAfterDelete = YAML.parse(yamlAfterDelete);
+      const nodeIdsAfterDelete = Object.keys(parsedAfterDelete?.topology?.nodes ?? {});
+      expect(nodeIdsAfterDelete).not.toContain(newBridgeId);
+
+      const endpointsAfterDelete = collectLinkEndpointStrings(parsedAfterDelete);
+      expect(endpointsAfterDelete.some(ep => ep.startsWith(`${newBridgeId}:`))).toBe(false);
+    });
+  }
 });
 
 /**

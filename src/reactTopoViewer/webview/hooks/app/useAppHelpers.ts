@@ -211,6 +211,7 @@ export interface E2ETestingConfig {
   handleNodeCreatedCallback: (nodeId: string, nodeElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: { x: number; y: number }; classes?: string }, position: { x: number; y: number }) => void;
   handleAddGroupWithUndo: () => void;
   createNetworkAtPosition: (position: { x: number; y: number }, networkType: NetworkType) => string | null;
+  editNetwork?: (nodeId: string | null) => void;
   groups: GroupStyleAnnotation[];
   elements: unknown[];
   /** Layout controls for E2E testing */
@@ -227,7 +228,7 @@ export interface E2ETestingConfig {
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
   const {
     cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback,
-    handleAddGroupWithUndo, createNetworkAtPosition, groups, elements,
+    handleAddGroupWithUndo, createNetworkAtPosition, editNetwork, groups, elements,
     setLayout, setGeoMode, isGeoLayout, geoMode
   } = config;
 
@@ -253,6 +254,15 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.createNetworkAtPosition = createNetworkAtPosition;
     }
   }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, createNetworkAtPosition]);
+
+  // Network editor E2E exposure
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.__DEV__ && editNetwork) {
+      window.__DEV__.openNetworkEditor = (nodeId: string | null) => {
+        editNetwork(nodeId);
+      };
+    }
+  }, [editNetwork]);
 
   // Groups E2E exposure
   React.useEffect(() => {
