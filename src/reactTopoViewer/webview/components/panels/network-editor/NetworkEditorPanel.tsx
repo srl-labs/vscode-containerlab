@@ -394,6 +394,7 @@ export const NetworkEditorPanel: React.FC<NetworkEditorPanelProps> = ({
       storageKey="network-editor"
       width={380}
       hasChanges={hasChanges}
+      testId="network-editor"
     >
       <NetworkEditorContent formData={formData} onChange={handleChange} />
     </EditorPanel>

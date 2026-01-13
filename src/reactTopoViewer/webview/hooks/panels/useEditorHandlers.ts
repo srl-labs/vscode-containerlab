@@ -61,7 +61,7 @@ export interface NodeCreationState {
 type Position = { x: number; y: number };
 
 /** Callback to rename a node in the graph state */
-type RenameNodeCallback = (oldId: string, newId: string) => void;
+type RenameNodeCallback = (oldId: string, newId: string, nameOverride?: string) => void;
 
 // ============================================================================
 // Shared Helper Functions
@@ -779,7 +779,8 @@ function saveNetworkLinkProperties(
 function saveBridgeNodeProperties(
   data: NetworkEditorData,
   newNodeId: string,
-  cy: CyCore | null
+  cy: CyCore | null,
+  renameNode?: RenameNodeCallback
 ): void {
   if (!isServicesInitialized()) return;
   if (!BRIDGE_NETWORK_TYPES.has(data.networkType)) return;
@@ -799,21 +800,29 @@ function saveBridgeNodeProperties(
 
   void editNodeService(saveData);
 
-  // Update Cytoscape if rename
-  if (isRename && cy) {
-    const bridgeNode = cy.getElementById(oldId);
-    if (!bridgeNode.empty()) {
-      // Update the node's displayed name
-      bridgeNode.data('name', data.label || newNodeId);
-      // Update connected edge references
-      const connectedEdges = bridgeNode.connectedEdges();
-      connectedEdges.forEach(edge => {
-        const edgeData = edge.data() as { source: string; target: string };
-        if (edgeData.source === oldId) edge.data('source', newNodeId);
-        if (edgeData.target === oldId) edge.data('target', newNodeId);
-      });
+  // Update graph state for renames (keeps label intact), fallback to Cytoscape-only updates when unavailable.
+  if (isRename) {
+    if (renameNode) {
+      renameNode(oldId, newNodeId, data.label || newNodeId);
+      return;
     }
-  } else if (cy) {
+    if (cy) {
+      const bridgeNode = cy.getElementById(oldId);
+      if (!bridgeNode.empty()) {
+        // Update the node's displayed name
+        bridgeNode.data('name', data.label || newNodeId);
+        // Update connected edge references
+        const connectedEdges = bridgeNode.connectedEdges();
+        connectedEdges.forEach(edge => {
+          const edgeData = edge.data() as { source: string; target: string };
+          if (edgeData.source === oldId) edge.data('source', newNodeId);
+          if (edgeData.target === oldId) edge.data('target', newNodeId);
+        });
+      }
+    }
+    return;
+  }
+  if (cy) {
     // Even without rename, update the displayed name/label
     const bridgeNode = cy.getElementById(oldId);
     if (!bridgeNode.empty()) {
@@ -828,7 +837,8 @@ function saveBridgeNodeProperties(
 export function useNetworkEditorHandlers(
   editNetwork: (id: string | null) => void,
   _editingNetworkData: NetworkEditorData | null,
-  cyInstance: CyCore | null
+  cyInstance: CyCore | null,
+  renameNode?: RenameNodeCallback
 ) {
   const handleClose = React.useCallback(() => {
     editNetwork(null);
@@ -838,16 +848,16 @@ export function useNetworkEditorHandlers(
     const newNodeId = calculateExpectedNodeId(data);
     saveNetworkAnnotation(data, newNodeId);
     saveNetworkLinkProperties(data, newNodeId, cyInstance);
-    saveBridgeNodeProperties(data, newNodeId, cyInstance);
+    saveBridgeNodeProperties(data, newNodeId, cyInstance, renameNode);
     editNetwork(null);
-  }, [editNetwork, cyInstance]);
+  }, [editNetwork, cyInstance, renameNode]);
 
   const handleApply = React.useCallback((data: NetworkEditorData) => {
     const newNodeId = calculateExpectedNodeId(data);
     saveNetworkAnnotation(data, newNodeId);
     saveNetworkLinkProperties(data, newNodeId, cyInstance);
-    saveBridgeNodeProperties(data, newNodeId, cyInstance);
-  }, [cyInstance]);
+    saveBridgeNodeProperties(data, newNodeId, cyInstance, renameNode);
+  }, [cyInstance, renameNode]);
 
   return { handleClose, handleSave, handleApply };
 }

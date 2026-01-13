@@ -223,6 +223,45 @@ export async function rightClick(page: Page, x: number, y: number): Promise<void
 }
 
 /**
+ * Emit a Cytoscape context menu event directly on a node.
+ * Useful when coordinate-based right-clicks are flaky for small nodes.
+ */
+export async function openNodeContextMenu(page: Page, nodeId: string): Promise<void> {
+  const coords = await page.evaluate((id) => {
+    const dev = (window as any).__DEV__;
+    const cy = dev?.cy;
+    if (!cy) return null;
+    const node = cy.getElementById(id);
+    if (!node || node.empty()) return null;
+    const pos = node.renderedPosition();
+    const rect = cy.container().getBoundingClientRect();
+    return { x: rect.left + pos.x, y: rect.top + pos.y };
+  }, nodeId);
+
+  if (!coords) {
+    throw new Error(`Failed to open context menu for node: ${nodeId}`);
+  }
+
+  await page.mouse.click(coords.x, coords.y, { button: 'right' });
+}
+
+/**
+ * Open the network editor panel for a given network node.
+ */
+export async function openNetworkEditor(page: Page, nodeId: string): Promise<void> {
+  const opened = await page.evaluate((id) => {
+    const dev = (window as any).__DEV__;
+    if (!dev?.openNetworkEditor) return false;
+    dev.openNetworkEditor(id);
+    return true;
+  }, nodeId);
+
+  if (!opened) {
+    throw new Error('openNetworkEditor is not available on window.__DEV__');
+  }
+}
+
+/**
  * Perform zoom via mouse wheel.
  */
 export async function mouseWheelZoom(
