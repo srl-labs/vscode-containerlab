@@ -96,6 +96,58 @@ function validateNetworkNodeAnnotation(
   expect(ann?.position).toBeDefined();
 }
 
+interface EndpointObj {
+  node?: unknown;
+  interface?: unknown;
+}
+
+/**
+ * Convert an endpoint object to a string format "node:interface" or just "node"
+ */
+function endpointObjToString(epObj: EndpointObj): string | null {
+  if (typeof epObj.node !== 'string') {
+    return null;
+  }
+  const iface = typeof epObj.interface === 'string' ? epObj.interface : '';
+  return iface ? `${epObj.node}:${iface}` : epObj.node;
+}
+
+/**
+ * Process a single endpoint value (string or object) and return its string representation
+ */
+function processEndpoint(ep: unknown): string | null {
+  if (typeof ep === 'string') {
+    return ep;
+  }
+  if (ep && typeof ep === 'object') {
+    return endpointObjToString(ep as EndpointObj);
+  }
+  return null;
+}
+
+/**
+ * Process the `endpoints` array field from a link
+ */
+function processEndpointsArray(endpointsField: unknown): string[] {
+  if (!Array.isArray(endpointsField)) {
+    return [];
+  }
+  return endpointsField.map(processEndpoint).filter((s): s is string => s !== null);
+}
+
+/**
+ * Process the singular `endpoint` field from a link
+ */
+function processSingularEndpoint(endpointField: unknown): string | null {
+  if (typeof endpointField === 'string') {
+    return endpointField;
+  }
+  if (endpointField && typeof endpointField === 'object' && !Array.isArray(endpointField)) {
+    return endpointObjToString(endpointField as EndpointObj);
+  }
+  return null;
+}
+
 /**
  * Collect endpoint strings from parsed topology links.
  */
@@ -106,31 +158,12 @@ function collectLinkEndpointStrings(parsed: unknown): string[] {
 
   for (const link of links) {
     const endpointsField = (link as { endpoints?: unknown }).endpoints;
-    if (Array.isArray(endpointsField)) {
-      for (const ep of endpointsField) {
-        if (typeof ep === 'string') {
-          endpoints.push(ep);
-          continue;
-        }
-        if (ep && typeof ep === 'object') {
-          const epObj = ep as { node?: unknown; interface?: unknown };
-          if (typeof epObj.node === 'string') {
-            const iface = typeof epObj.interface === 'string' ? epObj.interface : '';
-            endpoints.push(iface ? `${epObj.node}:${iface}` : epObj.node);
-          }
-        }
-      }
-    }
+    endpoints.push(...processEndpointsArray(endpointsField));
 
     const endpointField = (link as { endpoint?: unknown }).endpoint;
-    if (endpointField && typeof endpointField === 'object' && !Array.isArray(endpointField)) {
-      const epObj = endpointField as { node?: unknown; interface?: unknown };
-      if (typeof epObj.node === 'string') {
-        const iface = typeof epObj.interface === 'string' ? epObj.interface : '';
-        endpoints.push(iface ? `${epObj.node}:${iface}` : epObj.node);
-      }
-    } else if (typeof endpointField === 'string') {
-      endpoints.push(endpointField);
+    const singularEp = processSingularEndpoint(endpointField);
+    if (singularEp) {
+      endpoints.push(singularEp);
     }
   }
 
