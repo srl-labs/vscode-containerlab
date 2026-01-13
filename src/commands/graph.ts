@@ -8,6 +8,7 @@ import type { ClabLabTreeNode } from "../treeView/common";
 import type { ReactTopoViewer} from "../reactTopoViewer";
 import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
+import * as ins from "../treeView/inspector";
 
 import { ClabCommand } from "./clabCommand";
 
@@ -83,6 +84,30 @@ let currentTopoViewer: ReactTopoViewer | undefined;
 
 type LifecycleCommandType = 'deploy' | 'destroy' | 'redeploy';
 
+/**
+ * Check if a lab is running by looking up its path in the inspector data.
+ */
+function isLabRunning(labPath: string): boolean {
+  const inspectData = ins.rawInspectData;
+  if (!inspectData) {
+    return false;
+  }
+
+  // Check each lab's containers to see if any have a matching lab path
+  for (const labName in inspectData) {
+    const containers = inspectData[labName];
+    if (Array.isArray(containers) && containers.length > 0) {
+      // Check the first container's lab path (all containers in a lab share the same path)
+      const container = containers[0];
+      const containerLabPath = container.Labels?.['clab-topo-file'];
+      if (containerLabPath === labPath) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: boolean } | undefined {
   if (node && node.contextValue &&
       (node.contextValue === 'containerlabLabDeployed' ||
@@ -91,13 +116,17 @@ function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: 
   }
 
   if (node?.labPath?.absolute) {
-    return { labPath: node.labPath.absolute, isViewMode: false };
+    // Check if this lab is actually running
+    const isRunning = isLabRunning(node.labPath.absolute);
+    return { labPath: node.labPath.absolute, isViewMode: isRunning };
   }
 
   const editor = vscode.window.activeTextEditor;
   const topoFileRegex = /\.clab\.(yaml|yml)$/;
   if (editor && topoFileRegex.test(editor.document.uri.fsPath)) {
-    return { labPath: editor.document.uri.fsPath, isViewMode: false };
+    // Check if this lab is actually running
+    const isRunning = isLabRunning(editor.document.uri.fsPath);
+    return { labPath: editor.document.uri.fsPath, isViewMode: isRunning };
   }
 
   vscode.window.showErrorMessage('No lab node or topology file selected');
