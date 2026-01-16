@@ -4,7 +4,7 @@
  * Uses context-based architecture for undo/redo and annotations.
  */
 /* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
-import React from "react";
+import React, { useCallback } from "react";
 import type { Core as CyCore } from "cytoscape";
 
 import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
@@ -532,6 +532,13 @@ const AppContent: React.FC<{
     textLayerNode
   });
 
+  const errorToast = useCallback(
+    (error: string) => {
+      addToast(error, "error");
+    },
+    [addToast]
+  );
+
   return (
     <div className="topoviewer-app" data-testid="topoviewer-app">
       <Navbar
@@ -586,6 +593,9 @@ const AppContent: React.FC<{
           linkImpairment={{
             isVisible: !!state.editingImpairment && state.mode === "view",
             linkData: selectedLinkImpairmentData,
+            onError: errorToast,
+            onSave: () => {},
+            onApply: () => {},
             onClose: menuHandlers.handleCloseLinkImpairment
           }}
           shortcuts={{

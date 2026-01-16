@@ -2,7 +2,7 @@
  * Link Impairment Panel Component
  * Shows link impairment values for
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { LinkData } from "../../../hooks/useAppState";
 import type { TabDefinition } from "../../shared/editor";
@@ -18,17 +18,17 @@ interface NetemState {
   corruption?: string;
 }
 
-interface EndpointNetemData {
-  node: string;
-  interface: string;
-  netem: NetemState;
+interface EndpointWithNetem {
+  node?: string;
+  intf?: string;
+  netem?: NetemState;
 }
 
-type LinkImpairmentTabId = "a" | "b";
+type LinkImpairmentTabId = "source" | "target";
 
 type LinkImpairmentData = LinkData & {
-  endpointA?: EndpointNetemData;
-  endpointB?: EndpointNetemData;
+  sourceNetem?: NetemState;
+  targetNetem?: NetemState;
   extraData?: {
     clabSourceNetem?: NetemState;
     clabTargetNetem?: NetemState;
@@ -39,96 +39,71 @@ type LinkImpairmentData = LinkData & {
 interface LinkImpairmentPanelProps {
   isVisible: boolean;
   linkData: LinkImpairmentData | null;
+  onError: (error: string) => void;
+  onSave: (data: LinkImpairmentData) => void;
+  onApply: (data: LinkImpairmentData) => void;
   onClose: () => void;
 }
 
-function useLinkImpairmentForm(
-  netemData: {
-    a: EndpointNetemData;
-    b: EndpointNetemData;
-  } | null
-) {
-  const [activeTab, setActiveTab] = useState<LinkImpairmentTabId>("a");
-  const [formValues, setFormValues] = useState<Record<LinkImpairmentTabId, NetemState>>({
-    a: netemData?.a?.netem ?? {},
-    b: netemData?.b?.netem ?? {}
-  });
-  const [hasChanges, setHasChanges] = useState<boolean>(false);
+/**
+ * Custom hook to manage link impairment form state with change tracking
+ */
+function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
+  const [activeTab, setActiveTab] = useState<LinkImpairmentTabId>("source");
+  const [formData, setFormData] = useState<LinkImpairmentData | null>(null);
+  const [initialData, setInitialData] = useState<string | null>(null);
+  const initialDataRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    initialDataRef.current = initialData;
+  }, [initialData]);
+
+  useEffect(() => {
+    if (!netemData) return;
+    setFormData((prev) => {
+      const isNewLink = !prev || prev.id !== netemData.id;
+      const hasPendingChanges =
+        prev && initialDataRef.current ? JSON.stringify(prev) !== initialDataRef.current : false;
+      if (isNewLink || !hasPendingChanges) {
+        const serialized = JSON.stringify(netemData);
+        initialDataRef.current = serialized;
+        setInitialData(serialized);
+        if (isNewLink) {
+          setActiveTab("source");
+        }
+        return { ...netemData };
+      }
+      return prev;
+    });
+  }, [netemData]);
 
   const handleChange = useCallback(
     (updates: Partial<NetemState>) => {
-      setHasChanges(true);
-      setFormValues((prev) => {
+      setFormData((prev) => {
+        if (!prev) return prev;
         const newState = { ...prev };
-        newState[activeTab] = { ...newState[activeTab], ...updates };
+        if (activeTab === "source") {
+          newState.sourceNetem = { ...newState.sourceNetem, ...updates };
+        } else {
+          newState.targetNetem = { ...newState.targetNetem, ...updates };
+        }
         return newState;
       });
     },
     [activeTab]
   );
 
-  return { activeTab, setActiveTab, formValues, handleChange, hasChanges };
+  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
+
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges };
 }
-
-/**
- * Get endpoint data from link data, extracting stats from extraData
- */
-function getEndpoints(linkData: LinkImpairmentData | null): {
-  a: EndpointNetemData;
-  b: EndpointNetemData;
-} | null {
-  if (!linkData) return null;
-
-  const extraData = linkData.extraData || {};
-
-  const a: EndpointNetemData = linkData.endpointA || {
-    node: linkData.source,
-    interface: linkData.sourceEndpoint || "N/A",
-    netem: extraData.clabSourceNetem || {}
-  };
-
-  const b: EndpointNetemData = linkData.endpointB || {
-    node: linkData.target,
-    interface: linkData.targetEndpoint || "N/A",
-    netem: extraData.clabTargetNetem || {}
-  };
-
-  a.netem = { delay: "0ms" };
-  b.netem = { delay: "2ms", jitter: "5ms" };
-
-  return { a, b };
-}
-
-/**
- * Validation banner component
- */
-const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
-  if (errors.length === 0) return null;
-
-  return (
-    <div
-      className="mb-2 p-2 rounded-sm"
-      style={{
-        backgroundColor: "var(--vscode-inputValidation-errorBackground)",
-        border: "1px solid var(--vscode-inputValidation-errorBorder)"
-      }}
-    >
-      <div className="text-(--vscode-editorError-foreground) text-sm font-semibold">
-        Invalid link impairment configuration
-      </div>
-      <div className="text-(--vscode-editorError-foreground) text-xs mt-1">
-        {errors.map((error, i) => (
-          <div key={i}>{error}</div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 const validateLinkImpairmentData = (netemState: NetemState): string[] => {
   const errors: string[] = [];
-  if (netemState.jitter && !netemState.delay) {
-    errors.push("Cannot set jitter when delay is 0");
+  const delayVal = parseFloat(netemState.delay || "") || 0;
+  const jitterVal = parseFloat(netemState.jitter || "") || 0;
+  if (jitterVal > 0 && delayVal === 0) {
+    errors.push("cannot set jitter when delay is 0");
   }
   return errors;
 };
@@ -136,25 +111,54 @@ const validateLinkImpairmentData = (netemState: NetemState): string[] => {
 export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
   isVisible,
   linkData,
+  onError,
+  onSave,
+  onApply,
   onClose
 }) => {
-  const endpoints = getEndpoints(linkData);
-  const { activeTab, setActiveTab, formValues, handleChange, hasChanges } =
-    useLinkImpairmentForm(endpoints);
+  const { activeTab, setActiveTab, formData, handleChange, hasChanges } =
+    useLinkImpairmentForm(linkData);
 
   const validationErrors: string[] = useMemo(() => {
-    if (!formValues || !endpoints) return [];
-    return Object.keys(formValues).flatMap((k: string) => {
-      const errors = validateLinkImpairmentData(formValues[k as LinkImpairmentTabId]);
-      return errors.map((error) => `${endpoints[k as LinkImpairmentTabId].node}: ${error}`);
-    });
-  }, [endpoints, formValues]);
+    if (!formData) return [];
+    const endpoints: EndpointWithNetem[] = [
+      { node: formData.source, intf: formData.sourceEndpoint, netem: formData.sourceNetem },
+      { node: formData.target, intf: formData.targetEndpoint, netem: formData.targetNetem }
+    ];
 
-  if (!endpoints) return null;
+    return endpoints.flatMap((endpoint) => {
+      if (!endpoint.netem) return [];
+      const errors = validateLinkImpairmentData(endpoint.netem);
+      return errors.map((error) => `${endpoint.node}:${endpoint.intf} - ${error}`);
+    });
+  }, [formData]);
+
+  const handleSave = useCallback(() => {
+    if (!formData) return;
+
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(onError);
+      return;
+    }
+    onSave(formData);
+    onClose();
+  }, [formData, onClose, onError, onSave, validationErrors]);
+
+  const handleApply = useCallback(() => {
+    if (!formData) return;
+
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(onError);
+      return;
+    }
+    onApply(formData);
+  }, [formData, onApply, onError, validationErrors]);
+
+  if (!formData) return null;
 
   const tabs: TabDefinition[] = [
-    { id: "a", label: `${endpoints.a.node}:${endpoints.a.interface}` },
-    { id: "b", label: `${endpoints.b.node}:${endpoints.b.interface}` }
+    { id: "source", label: `${formData.source}:${formData.sourceEndpoint}` },
+    { id: "target", label: `${formData.target}:${formData.targetEndpoint}` }
   ];
 
   return (
@@ -162,8 +166,8 @@ export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
       title="Link Impairments"
       isVisible={isVisible}
       onClose={onClose}
-      onApply={() => {}}
-      onSave={() => {}}
+      onApply={handleApply}
+      onSave={handleSave}
       tabs={tabs}
       activeTab={activeTab}
       onTabChange={(id) => {
@@ -174,8 +178,11 @@ export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
       hasChanges={hasChanges}
       testId="link-impairment-panel"
     >
-      <ValidationBanner errors={validationErrors} />
-      <LinkImpairmentTab key={activeTab} data={formValues[activeTab]} onChange={handleChange} />
+      <LinkImpairmentTab
+        key={formData.id + activeTab}
+        data={activeTab === "source" ? (formData.sourceNetem ?? {}) : (formData.targetNetem ?? {})}
+        onChange={handleChange}
+      />
     </EditorPanel>
   );
 };

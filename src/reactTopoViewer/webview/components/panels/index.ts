@@ -1,6 +1,7 @@
 /**
  * Panel components barrel file
  */
+/* eslint-disable import-x/max-dependencies -- Barrel file aggregates exports from many modules */
 
 // Info panels
 export { NodeInfoPanel } from "./NodeInfoPanel";
