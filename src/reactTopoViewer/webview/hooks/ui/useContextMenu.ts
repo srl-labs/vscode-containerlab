@@ -30,6 +30,7 @@ export interface ContextMenuOptions {
   onDeleteLink?: (edgeId: string) => void;
   onShowNodeProperties?: (nodeId: string) => void;
   onShowLinkProperties?: (edgeId: string) => void;
+  onShowLinkImpairment?: (edgeId: string) => void;
 }
 
 /** Context menu state */
@@ -316,6 +317,17 @@ function buildEdgeViewMenuItems(
       }
     });
   }
+
+  // Add netem item
+  items.push({
+    id: "netem-edge",
+    label: "Link impairments",
+    icon: "fas fa-sliders",
+    onClick: () => {
+      log.info(`[ContextMenu] Show link impairment: ${edgeId}`);
+      options.onShowLinkImpairment?.(edgeId);
+    }
+  });
 
   // Add info item
   items.push({

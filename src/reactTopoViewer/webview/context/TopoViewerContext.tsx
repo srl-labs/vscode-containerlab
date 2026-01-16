@@ -62,6 +62,7 @@ export interface TopoViewerState {
   selectedEdge: string | null;
   editingNode: string | null;
   editingEdge: string | null;
+  editingImpairment: string | null;
   editingNetwork: string | null;
   isLocked: boolean;
   linkLabelMode: LinkLabelMode;
@@ -97,6 +98,7 @@ const initialState: TopoViewerState = {
   selectedEdge: null,
   editingNode: null,
   editingEdge: null,
+  editingImpairment: null,
   editingNetwork: null,
   isLocked: true,
   linkLabelMode: "show-all",
@@ -144,6 +146,7 @@ type TopoViewerAction =
   | { type: "SELECT_EDGE"; payload: string | null }
   | { type: "EDIT_NODE"; payload: string | null }
   | { type: "EDIT_EDGE"; payload: string | null }
+  | { type: "EDIT_IMPAIRMENT"; payload: string | null }
   | { type: "EDIT_NETWORK"; payload: string | null }
   | { type: "TOGGLE_LOCK" }
   | { type: "SET_LINK_LABEL_MODE"; payload: LinkLabelMode }
@@ -185,8 +188,24 @@ const reducerHandlers: ReducerHandlers = {
   SET_ELEMENTS: (state, action) => ({ ...state, elements: action.payload }),
   SET_MODE: (state, action) => ({ ...state, mode: action.payload }),
   SET_DEPLOYMENT_STATE: (state, action) => ({ ...state, deploymentState: action.payload }),
-  SELECT_NODE: (state, action) => ({ ...state, selectedNode: action.payload, selectedEdge: null }),
-  SELECT_EDGE: (state, action) => ({ ...state, selectedEdge: action.payload, selectedNode: null }),
+  SELECT_NODE: (state, action) => ({
+    ...state,
+    selectedNode: action.payload,
+    selectedEdge: null,
+    editingImpairment: null
+  }),
+  SELECT_EDGE: (state, action) => ({
+    ...state,
+    selectedEdge: action.payload,
+    selectedNode: null,
+    editingImpairment: null
+  }),
+  EDIT_IMPAIRMENT: (state, action) => ({
+    ...state,
+    selectedEdge: null,
+    selectedNode: null,
+    editingImpairment: action.payload
+  }),
   EDIT_NODE: (state, action) => ({
     ...state,
     editingNode: action.payload,
@@ -444,6 +463,7 @@ interface TopoViewerStateContextValue {
 interface TopoViewerActionsContextValue {
   selectNode: (nodeId: string | null) => void;
   selectEdge: (edgeId: string | null) => void;
+  editImpairment: (edgeId: string | null) => void;
   editNode: (nodeId: string | null) => void;
   editEdge: (edgeId: string | null) => void;
   editNetwork: (nodeId: string | null) => void;
@@ -722,6 +742,12 @@ function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
     },
     [dispatch]
   );
+  const editImpairment = useCallback(
+    (edgeId: string | null) => {
+      dispatch({ type: "EDIT_IMPAIRMENT", payload: edgeId });
+    },
+    [dispatch]
+  );
   const editNode = useCallback(
     (nodeId: string | null) => {
       dispatch({ type: "EDIT_NODE", payload: nodeId });
@@ -745,11 +771,12 @@ function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
     () => ({
       selectNode,
       selectEdge,
+      editImpairment,
       editNode,
       editEdge,
       editNetwork
     }),
-    [selectNode, selectEdge, editNode, editEdge, editNetwork]
+    [selectNode, selectEdge, editImpairment, editNode, editEdge, editNetwork]
   );
 }
 

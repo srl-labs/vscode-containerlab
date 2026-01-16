@@ -494,6 +494,7 @@ export function useLayoutControls(
 interface SelectionCallbacks {
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  editImpairment: (id: string | null) => void;
   editNode: (id: string | null) => void;
   editEdge: (id: string | null) => void;
   editNetwork: (id: string | null) => void;
@@ -510,8 +511,10 @@ interface ContextMenuHandlersResult {
   handleDeleteLink: (edgeId: string) => void;
   handleShowNodeProperties: (nodeId: string) => void;
   handleShowLinkProperties: (edgeId: string) => void;
+  handleShowLinkImpairment: (edgeId: string) => void;
   handleCloseNodePanel: () => void;
   handleCloseLinkPanel: () => void;
+  handleCloseLinkImpairment: () => void;
 }
 
 /**
@@ -524,6 +527,7 @@ export function useContextMenuHandlers(
   const {
     selectNode,
     selectEdge,
+    editImpairment,
     editNode,
     editEdge,
     editNetwork,
@@ -569,8 +573,17 @@ export function useContextMenuHandlers(
     },
     [editEdge]
   );
+
+  const handleShowLinkImpairment = useCallback(
+    (edgeId: string) => {
+      editImpairment(edgeId);
+    },
+    [editImpairment]
+  );
+
   const handleCloseNodePanel = useCallback(() => selectNode(null), [selectNode]);
   const handleCloseLinkPanel = useCallback(() => selectEdge(null), [selectEdge]);
+  const handleCloseLinkImpairment = useCallback(() => editImpairment(null), [editImpairment]);
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
@@ -613,7 +626,9 @@ export function useContextMenuHandlers(
     handleDeleteLink,
     handleShowNodeProperties,
     handleShowLinkProperties,
+    handleShowLinkImpairment,
     handleCloseNodePanel,
-    handleCloseLinkPanel
+    handleCloseLinkPanel,
+    handleCloseLinkImpairment
   };
 }

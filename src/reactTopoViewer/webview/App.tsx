@@ -103,6 +103,7 @@ const AppContent: React.FC<{
   const {
     selectNode,
     selectEdge,
+    editImpairment,
     editNode,
     editEdge,
     editNetwork,
@@ -205,6 +206,12 @@ const AppContent: React.FC<{
     null,
     state.editorDataVersion
   );
+  const { selectedLinkData: selectedLinkImpairmentData } = useSelectionData(
+    cytoscapeRef,
+    null,
+    state.editingImpairment,
+    state.editorDataVersion
+  );
   const { selectedLinkData: editingLinkRawData } = useSelectionData(
     cytoscapeRef,
     null,
@@ -273,6 +280,7 @@ const AppContent: React.FC<{
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, {
     selectNode,
     selectEdge,
+    editImpairment,
     editNode,
     editEdge,
     editNetwork,
@@ -419,7 +427,8 @@ const AppContent: React.FC<{
     onEditLink: menuHandlers.handleEditLink,
     onDeleteLink: handleDeleteLinkWithUndo,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
-    onShowLinkProperties: menuHandlers.handleShowLinkProperties
+    onShowLinkProperties: menuHandlers.handleShowLinkProperties,
+    onShowLinkImpairment: menuHandlers.handleShowLinkImpairment
   });
 
   // Node dragging
@@ -573,6 +582,11 @@ const AppContent: React.FC<{
             isVisible: !!state.selectedEdge && state.mode === "view",
             linkData: selectedLinkData,
             onClose: menuHandlers.handleCloseLinkPanel
+          }}
+          linkImpairment={{
+            isVisible: !!state.editingImpairment && state.mode === "view",
+            linkData: selectedLinkImpairmentData,
+            onClose: menuHandlers.handleCloseLinkImpairment
           }}
           shortcuts={{
             isVisible: panelVisibility.showShortcutsPanel,

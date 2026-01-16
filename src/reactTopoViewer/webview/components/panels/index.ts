@@ -6,6 +6,9 @@
 export { NodeInfoPanel } from "./NodeInfoPanel";
 export { LinkInfoPanel } from "./LinkInfoPanel";
 
+// Netem panel
+export { LinkImpairmentPanel } from "./link-impairment/LinkImpairmentPanel";
+
 // Node editor
 export { NodeEditorPanel, ComponentsTab, INTEGRATED_SROS_TYPES } from "./node-editor";
 export type {
