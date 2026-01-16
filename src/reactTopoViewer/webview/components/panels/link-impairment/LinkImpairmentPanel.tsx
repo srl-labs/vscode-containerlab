@@ -26,7 +26,7 @@ interface EndpointWithNetem {
 
 type LinkImpairmentTabId = "source" | "target";
 
-type LinkImpairmentData = LinkData & {
+export type LinkImpairmentData = LinkData & {
   sourceNetem?: NetemState;
   targetNetem?: NetemState;
   extraData?: {

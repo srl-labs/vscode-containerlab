@@ -8,6 +8,7 @@ import type { Core as CyCore, Core as CytoscapeCore, EdgeSingular } from "cytosc
 import type {
   NodeEditorData,
   LinkEditorData,
+  LinkImpairmentData,
   NetworkEditorData,
   FloatingActionPanelHandle
 } from "../../components/panels";
@@ -1058,4 +1059,35 @@ export function useMembershipCallbacks(
   );
 
   return { applyMembershipChange, onMembershipWillChange };
+}
+
+/**
+ * Hook for link impairment handlers
+ */
+export function useLinkImpairmentHandlers(editImpairment: (id: string | null) => void) {
+  const handleEditImpairment = React.useCallback(
+    (edgeId: string) => {
+      editImpairment(edgeId);
+    },
+    [editImpairment]
+  );
+
+  const handleClose = React.useCallback(() => {
+    editImpairment(null);
+  }, [editImpairment]);
+
+  const handleSave = (data: LinkImpairmentData) => {
+    console.log(data);
+  };
+
+  const handleApply = (data: LinkImpairmentData) => {
+    console.log(data);
+  };
+
+  return {
+    handleEditImpairment,
+    handleClose,
+    handleSave,
+    handleApply
+  };
 }

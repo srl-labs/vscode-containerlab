@@ -74,6 +74,7 @@ import { useAltClickDelete, useShiftClickEdgeCreation } from "./hooks/graph";
 import { convertToLinkEditorData } from "./utils/linkEditorConversions";
 import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "./utils/edgeAnnotations";
 import { parseEndpointLabelOffset } from "./utils/endpointLabelOffset";
+import { useLinkImpairmentHandlers } from "./hooks/panels/useEditorHandlers";
 
 /** Inner component that uses contexts */
 const AppContent: React.FC<{
@@ -206,6 +207,7 @@ const AppContent: React.FC<{
     null,
     state.editorDataVersion
   );
+  // FIXME: get actual data
   const { selectedLinkData: selectedLinkImpairmentData } = useSelectionData(
     cytoscapeRef,
     null,
@@ -280,7 +282,6 @@ const AppContent: React.FC<{
   const menuHandlers = useContextMenuHandlers(cytoscapeRef, {
     selectNode,
     selectEdge,
-    editImpairment,
     editNode,
     editEdge,
     editNetwork,
@@ -359,6 +360,7 @@ const AppContent: React.FC<{
     cyInstance,
     renameNodeInGraph
   );
+  const linkImpairmentHandlers = useLinkImpairmentHandlers(editImpairment);
 
   const recordGraphChanges = React.useCallback(
     (before: GraphChange[], after: GraphChange[]) => {
@@ -428,7 +430,7 @@ const AppContent: React.FC<{
     onDeleteLink: handleDeleteLinkWithUndo,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
     onShowLinkProperties: menuHandlers.handleShowLinkProperties,
-    onShowLinkImpairment: menuHandlers.handleShowLinkImpairment
+    onShowLinkImpairment: linkImpairmentHandlers.handleEditImpairment
   });
 
   // Node dragging
@@ -532,6 +534,7 @@ const AppContent: React.FC<{
     textLayerNode
   });
 
+  // toast for error
   const errorToast = useCallback(
     (error: string) => {
       addToast(error, "error");
@@ -594,9 +597,9 @@ const AppContent: React.FC<{
             isVisible: !!state.editingImpairment && state.mode === "view",
             linkData: selectedLinkImpairmentData,
             onError: errorToast,
-            onSave: () => {},
-            onApply: () => {},
-            onClose: menuHandlers.handleCloseLinkImpairment
+            onApply: linkImpairmentHandlers.handleApply,
+            onSave: linkImpairmentHandlers.handleSave,
+            onClose: linkImpairmentHandlers.handleClose
           }}
           shortcuts={{
             isVisible: panelVisibility.showShortcutsPanel,
