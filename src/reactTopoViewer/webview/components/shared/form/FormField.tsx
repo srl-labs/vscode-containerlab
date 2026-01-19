@@ -9,6 +9,7 @@ interface FormFieldProps {
   label: string;
   children: React.ReactNode;
   className?: string;
+  unit?: string;
   tooltip?: string;
   required?: boolean;
   /** When true, shows an "inherited" badge indicating the value comes from defaults/kinds/groups */
@@ -19,6 +20,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   label,
   children,
   className = "",
+  unit,
   tooltip,
   required,
   inherited
@@ -26,6 +28,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   <div className={`form-group ${className}`}>
     <label className="block field-label mb-1">
       {label}
+      {unit && <span className="ml-1 normal-case">({unit})</span>}
       {required && <span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>}
       {inherited && <InheritanceBadge />}
       {tooltip && <TooltipIcon tooltip={tooltip} label={label} />}

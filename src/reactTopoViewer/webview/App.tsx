@@ -359,7 +359,7 @@ const AppContent: React.FC<{
     cyInstance,
     renameNodeInGraph
   );
-  const linkImpairmentHandlers = useLinkImpairmentHandlers(editImpairment);
+  const linkImpairmentHandlers = useLinkImpairmentHandlers(editImpairment, cytoscapeRef);
 
   const recordGraphChanges = React.useCallback(
     (before: GraphChange[], after: GraphChange[]) => {

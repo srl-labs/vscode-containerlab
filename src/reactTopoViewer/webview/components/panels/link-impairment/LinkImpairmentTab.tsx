@@ -1,8 +1,7 @@
 import type React from "react";
 
 import { FormField, InputField } from "../../shared/form";
-
-import type { NetemState } from "./types";
+import type { NetemState } from "../../../../shared/parsing/types";
 
 interface LinkImpairmentTabProps {
   data: NetemState;
@@ -12,7 +11,7 @@ interface LinkImpairmentTabProps {
 export const LinkImpairmentTab: React.FC<LinkImpairmentTabProps> = ({ data, onChange }) => {
   return (
     <div className="space-y-3">
-      <FormField label="delay (ms/s/m)">
+      <FormField label="delay" unit="ms/s">
         <InputField
           id="delay"
           value={data.delay ?? ""}
@@ -20,7 +19,7 @@ export const LinkImpairmentTab: React.FC<LinkImpairmentTabProps> = ({ data, onCh
           placeholder="0ms"
         />
       </FormField>
-      <FormField label="jitter (ms/s)">
+      <FormField label="jitter" unit="ms/s">
         <InputField
           id="jitter"
           value={data.jitter ?? ""}
@@ -28,7 +27,7 @@ export const LinkImpairmentTab: React.FC<LinkImpairmentTabProps> = ({ data, onCh
           placeholder="0ms"
         />
       </FormField>
-      <FormField label="loss (%)">
+      <FormField label="loss" unit="%">
         <InputField
           id="loss"
           value={data.loss ?? ""}
@@ -36,7 +35,7 @@ export const LinkImpairmentTab: React.FC<LinkImpairmentTabProps> = ({ data, onCh
           placeholder="0"
         />
       </FormField>
-      <FormField label="rate limit (kb/s)">
+      <FormField label="rate limit" unit="kbps">
         <InputField
           id="rate"
           value={data.rate ?? ""}
@@ -44,7 +43,7 @@ export const LinkImpairmentTab: React.FC<LinkImpairmentTabProps> = ({ data, onCh
           placeholder="0"
         />
       </FormField>
-      <FormField label="corruption (%)">
+      <FormField label="corruption" unit="%">
         <InputField
           id="corruption"
           value={data.corruption ?? ""}
