@@ -151,7 +151,7 @@ export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<vo
       if (input.length === 0) {
         return ERR_EMPTY;
       }
-      const re = /^(?:[1-9]\d?|100)$/;
+      const re = /^(?:[1-9]\d?|100|0)$/;
       if (!re.test(input)) {
         return "Input should be a number between 0 and 100.";
       }
