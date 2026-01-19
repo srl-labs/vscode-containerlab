@@ -1429,7 +1429,7 @@
     "@types/chai": "^5.2.3",
     "@types/cytoscape-cxtmenu": "^3.4.5",
     "@types/cytoscape-edgehandles": "^4.0.5",
-    "@types/dockerode": "^3.3.47",
+    "@types/dockerode": "^4.0.0",
     "@types/jsdom": "^27.0.0",
     "@types/markdown-it": "^14.1.2",
     "@types/markdown-it-emoji": "^3.0.1",
