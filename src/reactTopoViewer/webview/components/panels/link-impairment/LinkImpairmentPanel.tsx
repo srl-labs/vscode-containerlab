@@ -7,16 +7,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { LinkData } from "../../../hooks/useAppState";
 import type { TabDefinition } from "../../shared/editor";
 import { EditorPanel } from "../../shared/editor";
+import type { NetemState } from "../../../../shared/parsing/types";
 
 import { LinkImpairmentTab } from "./LinkImpairmentTab";
-
-interface NetemState {
-  delay?: string;
-  jitter?: string;
-  loss?: string;
-  rate?: string;
-  corruption?: string;
-}
 
 interface EndpointWithNetem {
   node?: string;
@@ -62,6 +55,9 @@ function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
     if (!netemData) return;
     setFormData((prev) => {
       const isNewLink = !prev || prev.id !== netemData.id;
+      netemData.sourceNetem = netemData.extraData?.clabSourceNetem;
+      netemData.targetNetem = netemData.extraData?.clabTargetNetem;
+
       const hasPendingChanges =
         prev && initialDataRef.current ? JSON.stringify(prev) !== initialDataRef.current : false;
       if (isNewLink || !hasPendingChanges) {

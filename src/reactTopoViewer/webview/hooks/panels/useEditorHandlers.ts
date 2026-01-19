@@ -1061,6 +1061,10 @@ export function useMembershipCallbacks(
   return { applyMembershipChange, onMembershipWillChange };
 }
 
+// ============================================================================
+// useLinkImpairmentHandlers
+// ============================================================================
+
 /**
  * Hook for link impairment handlers
  */

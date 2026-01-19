@@ -207,7 +207,6 @@ const AppContent: React.FC<{
     null,
     state.editorDataVersion
   );
-  // FIXME: get actual data
   const { selectedLinkData: selectedLinkImpairmentData } = useSelectionData(
     cytoscapeRef,
     null,

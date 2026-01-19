@@ -1344,6 +1344,14 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
 
       const stats = this.extractInterfaceStats(intf);
 
+      const netemState = {
+        delay: intf.netemDelay,
+        jitter: intf.netemJitter,
+        loss: intf.netemLoss,
+        rate: intf.netemRate,
+        corruption: intf.netemCorruption
+      };
+
       const node = new c.ClabInterfaceTreeNode(
         label,
         vscode.TreeItemCollapsibleState.None,
@@ -1357,7 +1365,8 @@ export class RunningLabTreeDataProvider implements vscode.TreeDataProvider<
         intf.ifindex,
         intf.state,
         contextValue,
-        stats
+        stats,
+        netemState
       );
 
       // Note: Interface stats are not shown in tooltip because tooltips are

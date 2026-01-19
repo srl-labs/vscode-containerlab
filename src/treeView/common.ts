@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
 import type { ClabInterfaceStats } from "../types/containerlab";
+import type { NetemState } from "../reactTopoViewer/shared/parsing/types";
 
 // LabPath interface
 export interface LabPath {
@@ -175,6 +176,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
   public readonly ifIndex: number;
   public state: string; // Added state tracking
   public stats?: ClabInterfaceStats;
+  public netemState?: NetemState;
 
   // eslint-disable-next-line max-params -- TreeItem subclass with many interface properties
   constructor(
@@ -190,7 +192,8 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     ifIndex: number,
     state: string,
     contextValue?: string,
-    stats?: ClabInterfaceStats
+    stats?: ClabInterfaceStats,
+    netemState?: NetemState
   ) {
     super(label, collapsibleState);
     this.parentName = parentName;
@@ -204,6 +207,7 @@ export class ClabInterfaceTreeNode extends vscode.TreeItem {
     this.state = state;
     this.contextValue = contextValue;
     this.stats = stats;
+    this.netemState = netemState;
 
     // Set stable ID to help VS Code track this item across refreshes
     this.id = `interface:${cID}:${name}`;

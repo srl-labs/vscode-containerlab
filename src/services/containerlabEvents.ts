@@ -41,6 +41,11 @@ interface InterfaceRecord {
   txBytes?: number;
   txPackets?: number;
   statsIntervalSeconds?: number;
+  netemDelay?: string;
+  netemJitter?: string;
+  netemLoss?: string;
+  netemRate?: string;
+  netemCorruption?: string;
 }
 
 const INTERFACE_KEYS: (keyof InterfaceRecord)[] = [
@@ -59,7 +64,12 @@ const INTERFACE_KEYS: (keyof InterfaceRecord)[] = [
   "txPps",
   "txBytes",
   "txPackets",
-  "statsIntervalSeconds"
+  "statsIntervalSeconds",
+  "netemDelay",
+  "netemJitter",
+  "netemLoss",
+  "netemRate",
+  "netemCorruption"
 ];
 
 type MutableInterfaceRecord = InterfaceRecord & { [key: string]: unknown };
@@ -69,7 +79,12 @@ const STRING_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
   ["type", "type"],
   ["state", "state"],
   ["alias", "alias"],
-  ["mac", "mac"]
+  ["mac", "mac"],
+  ["netemDelay", "netem_delay"],
+  ["netemJitter", "netem_jitter"],
+  ["netemLoss", "netem_loss"],
+  ["netemRate", "netem_rate"],
+  ["netemCorruption", "netem_corruption"]
 ];
 
 const NUMERIC_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
@@ -186,7 +201,16 @@ function toInterfaceSnapshotEntry(iface: InterfaceRecord): ClabInterfaceSnapshot
     alias: iface.alias || "",
     mac: iface.mac || "",
     mtu: iface.mtu ?? 0,
+<<<<<<< HEAD
     ifindex: iface.ifindex ?? 0
+=======
+    ifindex: iface.ifindex ?? 0,
+    netemDelay: iface.netemDelay ?? "0ms",
+    netemJitter: iface.netemJitter ?? "0ms",
+    netemLoss: iface.netemLoss ?? "0.00%",
+    netemRate: iface.netemRate ?? "0",
+    netemCorruption: iface.netemCorruption ?? "0.00%"
+>>>>>>> bac108d0 (Consume netem from events)
   };
 
   assignSnapshotFields(entry, iface);
