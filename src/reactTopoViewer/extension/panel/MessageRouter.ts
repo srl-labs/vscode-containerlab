@@ -22,6 +22,7 @@ type WebviewMessage = Record<string, unknown> & {
   endpointName?: string;
 };
 
+// TODO: use enum
 const LIFECYCLE_COMMANDS = new Set([
   "deployLab",
   "destroyLab",

@@ -32,14 +32,14 @@ const NETEM_FIELDS = ["delay", "jitter", "loss", "rate", "corruption"];
  */
 export async function setImpairment(
   node: ClabInterfaceTreeNode,
-  impairment?: Record<string, string | undefined>
+  impairment?: Record<string, unknown>
 ): Promise<void> {
   if (!impairmentsAvailable() || !impairment) {
     return;
   }
 
   const impairmentFlag = Object.entries(impairment)
-    .filter(([key, value]) => NETEM_FIELDS.includes(key) && value !== undefined)
+    .filter(([key, value]) => NETEM_FIELDS.includes(key) && typeof value === "string")
     .map(([key, value]) => `--${key} ${value}`)
     .join(" ");
 

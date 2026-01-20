@@ -58,7 +58,11 @@ function stripNetemDataUnit(data?: NetemState): NetemState {
   };
 }
 
-function formatNetemData(data: LinkImpairmentData): LinkImpairmentData {
+/**
+ * Strip units for clab netem states. Assign source and target netem from clab state if absent.
+ * @param data raw link impairment data
+ */
+function formatNetemData(data: LinkImpairmentData): void {
   if (data.extraData?.clabSourceNetem) {
     data.extraData.clabSourceNetem = stripNetemDataUnit(data.extraData.clabSourceNetem);
   }
@@ -67,7 +71,6 @@ function formatNetemData(data: LinkImpairmentData): LinkImpairmentData {
   }
   data.sourceNetem = data.sourceNetem ?? data.extraData?.clabSourceNetem;
   data.targetNetem = data.targetNetem ?? data.extraData?.clabTargetNetem;
-  return data;
 }
 
 /**
@@ -169,22 +172,37 @@ const validateLinkImpairmentState = (netemState: NetemState): string[] => {
   return errors;
 };
 
+function extractChangedFields(newState: NetemState, oldState: NetemState = {}): NetemState {
+  const updates: NetemState = {};
+  (Object.entries(newState) as [keyof NetemState, string][]).forEach(([key, value]) => {
+    if (value !== oldState[key]) {
+      updates[key] = value;
+    }
+  });
+  return updates;
+}
+
 /**
- * Apply netem settings
+ * Apply netem settings.
  * @param data retrieved from link impairment panel
  */
 function applyNetemSettings(data: LinkImpairmentData): void {
-  if (JSON.stringify(data.sourceNetem) !== JSON.stringify(data.extraData?.clabSourceNetem))
+  if (!data.sourceNetem || !data.targetNetem) return;
+
+  const sourceUpdate = extractChangedFields(data.sourceNetem, data.extraData?.clabSourceNetem);
+  if (sourceUpdate)
     postCommand("clab-link-impairment", {
-      nodeName: data.extraData?.clabSourceLongName ?? data.source,
+      nodeName: data.extraData?.clabSourceLongName ?? data.source, // FIXME: Should it be done this way?
       interfaceName: data.sourceEndpoint,
-      data: data.sourceNetem
+      data: sourceUpdate
     });
+
+  const targetUpdate = extractChangedFields(data.targetNetem, data.extraData?.clabTargetNetem);
   if (JSON.stringify(data.targetNetem) !== JSON.stringify(data.extraData?.clabTargetNetem))
     postCommand("clab-link-impairment", {
       nodeName: data.extraData?.clabTargetLongName ?? data.target,
       interfaceName: data.targetEndpoint,
-      data: data.targetNetem
+      data: targetUpdate
     });
 }
 
