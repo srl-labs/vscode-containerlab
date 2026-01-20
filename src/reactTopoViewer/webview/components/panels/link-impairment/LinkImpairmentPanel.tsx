@@ -8,6 +8,7 @@ import type { LinkData } from "../../../hooks/useAppState";
 import type { TabDefinition } from "../../shared/editor";
 import { EditorPanel } from "../../shared/editor";
 import type { NetemState } from "../../../../shared/parsing/types";
+import { postCommand } from "../../../utils/extensionMessaging";
 
 import { LinkImpairmentTab } from "./LinkImpairmentTab";
 
@@ -24,7 +25,9 @@ export type LinkImpairmentData = LinkData & {
   targetNetem?: NetemState;
   extraData?: {
     clabSourceNetem?: NetemState;
+    clabSourceLongName?: string;
     clabTargetNetem?: NetemState;
+    clabTargetLongName?: string;
     [key: string]: unknown;
   };
 };
@@ -41,16 +44,30 @@ interface LinkImpairmentPanelProps {
 /**
  * Strips units for loss, rate, and corruption to match containerlab format.
  * @param data to normalize
- * @returns normalized values
+ * @returns formatted values
  */
-function normalizeNetemData(data?: NetemState): NetemState {
+function stripNetemDataUnit(data?: NetemState): NetemState {
   return {
     delay: data?.delay,
     jitter: data?.jitter,
-    loss: data?.loss ? Number(data?.loss).toString() : data?.loss,
-    rate: data?.rate ? Number(data?.rate).toString() : data?.rate,
-    corruption: data?.corruption ? Number(data?.corruption).toString() : data?.corruption
+    loss: data?.loss ? parseFloat(data?.loss.replace("%", "")).toString() : data?.loss,
+    rate: data?.rate ? parseFloat(data?.rate).toString() : data?.rate,
+    corruption: data?.corruption
+      ? parseFloat(data?.corruption.replace("%", "")).toString()
+      : data?.corruption
   };
+}
+
+function formatNetemData(data: LinkImpairmentData): LinkImpairmentData {
+  if (data.extraData?.clabSourceNetem) {
+    data.extraData.clabSourceNetem = stripNetemDataUnit(data.extraData.clabSourceNetem);
+  }
+  if (data.extraData?.clabTargetNetem) {
+    data.extraData.clabTargetNetem = stripNetemDataUnit(data.extraData.clabTargetNetem);
+  }
+  data.sourceNetem = data.sourceNetem ?? data.extraData?.clabSourceNetem;
+  data.targetNetem = data.targetNetem ?? data.extraData?.clabTargetNetem;
+  return data;
 }
 
 /**
@@ -73,11 +90,7 @@ function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
       // FIXME: potential getting out of sync if netem is changed externally
       // Probably should read always from extra data
       // Then we need to update/refresh after apply
-      netemData.sourceNetem =
-        netemData.sourceNetem ?? normalizeNetemData(netemData.extraData?.clabSourceNetem);
-      netemData.targetNetem =
-        netemData.targetNetem ?? normalizeNetemData(netemData.extraData?.clabTargetNetem);
-
+      formatNetemData(netemData);
       const hasPendingChanges =
         prev && initialDataRef.current ? JSON.stringify(prev) !== initialDataRef.current : false;
       if (isNewLink || !hasPendingChanges) {
@@ -156,6 +169,25 @@ const validateLinkImpairmentState = (netemState: NetemState): string[] => {
   return errors;
 };
 
+/**
+ * Apply netem settings
+ * @param data retrieved from link impairment panel
+ */
+function applyNetemSettings(data: LinkImpairmentData): void {
+  if (JSON.stringify(data.sourceNetem) !== JSON.stringify(data.extraData?.clabSourceNetem))
+    postCommand("clab-link-impairment", {
+      nodeName: data.extraData?.clabSourceLongName ?? data.source,
+      interfaceName: data.sourceEndpoint,
+      data: data.sourceNetem
+    });
+  if (JSON.stringify(data.targetNetem) !== JSON.stringify(data.extraData?.clabTargetNetem))
+    postCommand("clab-link-impairment", {
+      nodeName: data.extraData?.clabTargetLongName ?? data.target,
+      interfaceName: data.targetEndpoint,
+      data: data.targetNetem
+    });
+}
+
 export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
   isVisible,
   linkData,
@@ -188,6 +220,7 @@ export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
       validationErrors.forEach(onError);
       return;
     }
+    applyNetemSettings(formData);
     onSave(formData);
     onClose();
   }, [formData, onClose, onError, onSave, validationErrors]);

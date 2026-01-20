@@ -61,6 +61,7 @@ export {
   setLinkLoss,
   setLinkRate,
   setLinkCorruption,
+  setImpairment,
   getEdgesharkInstallCmd,
   getEdgesharkUninstallCmd,
   EDGESHARK_INSTALL_CMD,

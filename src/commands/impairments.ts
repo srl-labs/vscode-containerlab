@@ -22,21 +22,34 @@ function impairmentsAvailable(): boolean {
   return true;
 }
 
-async function setImpairment(
+// FIXME: Potential duplication with NetemState type
+const NETEM_FIELDS = ["delay", "jitter", "loss", "rate", "corruption"];
+
+/**
+ * Set impairment on an interface. Assumes impairment values are validated.
+ * @param node interface to set impairment on
+ * @param impairment object with impairment values to set
+ */
+export async function setImpairment(
   node: ClabInterfaceTreeNode,
-  impairment?: string,
-  value?: string
+  impairment?: Record<string, string | undefined>
 ): Promise<void> {
-  if (!impairmentsAvailable()) {
+  if (!impairmentsAvailable() || !impairment) {
     return;
   }
-  const impairmentFlag = impairment ? `--${impairment}` : undefined;
-  if (impairment && !value) {
+
+  const impairmentFlag = Object.entries(impairment)
+    .filter(([key, value]) => NETEM_FIELDS.includes(key) && value !== undefined)
+    .map(([key, value]) => `--${key} ${value}`)
+    .join(" ");
+
+  if (impairmentFlag === "") {
     return;
   }
-  const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`;
-  const msg = `set ${impairment} to ${value} for ${node.name} on ${node.parentName}.`;
+  const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag}`;
+  const msg = `set link impairment to ${JSON.stringify(impairment)} for ${node.name} on ${node.parentName}.`;
   vscode.window.showInformationMessage(`Attempting to ${msg}`);
+
   void execCommandInOutput(
     cmd,
     false,
@@ -64,7 +77,9 @@ async function promptImpairment(
     return;
   }
   const val = await vscode.window.showInputBox({ title, placeHolder, validateInput: validator });
-  void setImpairment(node, impairment, val);
+  const netemData: Record<string, string | undefined> = {};
+  netemData[impairment] = val;
+  void setImpairment(node, netemData);
 }
 
 export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {

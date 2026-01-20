@@ -1079,7 +1079,6 @@ function applyLinkImpairment(
   netemData: LinkImpairmentData,
   cyRef?: React.RefObject<CytoscapeCanvasRef | null>
 ) {
-  console.log(netemData);
   const cy = cyRef?.current?.getCy();
   if (cy) {
     updateCytoscapeNetemData(cy, netemData.id, netemData);

@@ -15,7 +15,8 @@ export {
   setLinkJitter,
   setLinkLoss,
   setLinkRate,
-  setLinkCorruption
+  setLinkCorruption,
+  setImpairment
 } from "../impairments";
 export {
   getEdgesharkInstallCmd,
