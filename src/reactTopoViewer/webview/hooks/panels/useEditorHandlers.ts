@@ -1065,24 +1065,16 @@ export function useMembershipCallbacks(
 // useLinkImpairmentHandlers
 // ============================================================================
 
-function updateCytoscapeNetemData(cy: CyCore | null, edgeId: string, data: LinkImpairmentData) {
-  if (!cy) return;
-
-  const edge = cy.getElementById(edgeId);
-  if (!edge || edge.empty()) return;
-
-  edge.data("sourceNetem", data.sourceNetem);
-  edge.data("targetNetem", data.targetNetem);
-}
-
-function applyLinkImpairment(
+function updateCytoscapeNetemData(
   netemData: LinkImpairmentData,
   cyRef?: React.RefObject<CytoscapeCanvasRef | null>
 ) {
   const cy = cyRef?.current?.getCy();
-  if (cy) {
-    updateCytoscapeNetemData(cy, netemData.id, netemData);
-  }
+  const edge = cy?.getElementById(netemData.id);
+  if (!edge || edge.empty()) return;
+
+  edge.data("sourceNetem", netemData.sourceNetem);
+  edge.data("targetNetem", netemData.targetNetem);
 }
 
 /**
@@ -1104,12 +1096,12 @@ export function useLinkImpairmentHandlers(
   }, [editImpairment]);
 
   const handleSave = React.useCallback((data: LinkImpairmentData) => {
-    applyLinkImpairment(data, cyRef);
+    updateCytoscapeNetemData(data, cyRef);
     editImpairment(null);
   }, []);
 
   const handleApply = React.useCallback((data: LinkImpairmentData) => {
-    applyLinkImpairment(data, cyRef);
+    updateCytoscapeNetemData(data, cyRef);
   }, []);
 
   return {

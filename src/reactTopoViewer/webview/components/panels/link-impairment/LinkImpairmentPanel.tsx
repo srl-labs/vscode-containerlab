@@ -42,19 +42,19 @@ interface LinkImpairmentPanelProps {
 }
 
 /**
- * Strips units for loss, rate, and corruption to match containerlab format.
+ * Strips units for loss, rate, and corruption from containerlab input.
  * @param data to normalize
  * @returns formatted values
  */
-function stripNetemDataUnit(data?: NetemState): NetemState {
+function stripNetemDataUnit(data: NetemState): NetemState {
   return {
-    delay: data?.delay,
-    jitter: data?.jitter,
-    loss: data?.loss ? parseFloat(data?.loss.replace("%", "")).toString() : data?.loss,
-    rate: data?.rate ? parseFloat(data?.rate).toString() : data?.rate,
-    corruption: data?.corruption
-      ? parseFloat(data?.corruption.replace("%", "")).toString()
-      : data?.corruption
+    delay: data.delay,
+    jitter: data.jitter,
+    loss: data.loss ? parseFloat(data.loss.replace("%", "")).toString() : data.loss,
+    rate: data.rate ? parseFloat(data.rate).toString() : data.rate,
+    corruption: data.corruption
+      ? parseFloat(data.corruption.replace("%", "")).toString()
+      : data.corruption
   };
 }
 
@@ -62,15 +62,21 @@ function stripNetemDataUnit(data?: NetemState): NetemState {
  * Strip units for clab netem states. Assign source and target netem from clab state if absent.
  * @param data raw link impairment data
  */
-function formatNetemData(data: LinkImpairmentData): void {
-  if (data.extraData?.clabSourceNetem) {
-    data.extraData.clabSourceNetem = stripNetemDataUnit(data.extraData.clabSourceNetem);
+function formatNetemData(data: LinkImpairmentData): LinkImpairmentData {
+  const formattedData: LinkImpairmentData = { ...data };
+  if (formattedData.extraData?.clabSourceNetem) {
+    formattedData.extraData.clabSourceNetem = stripNetemDataUnit(
+      formattedData.extraData?.clabSourceNetem
+    );
+    formattedData.sourceNetem = formattedData.extraData.clabSourceNetem;
   }
-  if (data.extraData?.clabTargetNetem) {
-    data.extraData.clabTargetNetem = stripNetemDataUnit(data.extraData.clabTargetNetem);
+  if (formattedData.extraData?.clabTargetNetem) {
+    formattedData.extraData.clabTargetNetem = stripNetemDataUnit(
+      formattedData.extraData?.clabTargetNetem
+    );
+    formattedData.targetNetem = formattedData.extraData.clabTargetNetem;
   }
-  data.sourceNetem = data.sourceNetem ?? data.extraData?.clabSourceNetem;
-  data.targetNetem = data.targetNetem ?? data.extraData?.clabTargetNetem;
+  return formattedData;
 }
 
 /**
@@ -78,7 +84,9 @@ function formatNetemData(data: LinkImpairmentData): void {
  */
 function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
   const [activeTab, setActiveTab] = useState<LinkImpairmentTabId>("source");
+  // current form value
   const [formData, setFormData] = useState<LinkImpairmentData | null>(null);
+  // initialBaseline, stores only the clab netem
   const [initialData, setInitialData] = useState<string | null>(null);
   const initialDataRef = useRef<string | null>(null);
 
@@ -86,28 +94,54 @@ function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
     initialDataRef.current = initialData;
   }, [initialData]);
 
+  // Compare with baseline
+  const hasChanges = useMemo(() => {
+    if (formData) {
+      const curr = {
+        source: formData.sourceNetem,
+        target: formData.targetNetem
+      };
+      const prev = {
+        source: formData.extraData?.clabSourceNetem,
+        target: formData.extraData?.clabTargetNetem
+      };
+      return JSON.stringify(curr) !== JSON.stringify(prev);
+    } else return false;
+  }, [formData]);
+
   useEffect(() => {
     if (!netemData) return;
     setFormData((prev) => {
       const isNewLink = !prev || prev.id !== netemData.id;
-      // FIXME: potential getting out of sync if netem is changed externally
-      // Probably should read always from extra data
-      // Then we need to update/refresh after apply
-      formatNetemData(netemData);
-      const hasPendingChanges =
-        prev && initialDataRef.current ? JSON.stringify(prev) !== initialDataRef.current : false;
-      if (isNewLink || !hasPendingChanges) {
-        const serialized = JSON.stringify(netemData);
-        initialDataRef.current = serialized;
+
+      // compare baseline
+      const currentBaseline = {
+        source: netemData.extraData?.clabSourceNetem,
+        target: netemData.extraData?.clabTargetNetem
+      };
+
+      console.log({ currentBaseline, initial: initialDataRef.current });
+
+      const isBaselineUpdated =
+        prev && initialDataRef.current
+          ? JSON.stringify(currentBaseline) !== initialDataRef.current
+          : true;
+
+      if (isNewLink || isBaselineUpdated) {
+        const formatted = formatNetemData(netemData);
+        const serialized = JSON.stringify({
+          source: formatted.extraData?.clabSourceNetem,
+          target: formatted.extraData?.clabTargetNetem
+        });
         setInitialData(serialized);
         if (isNewLink) {
           setActiveTab("source");
         }
-        return { ...netemData };
+        return { ...formatted };
       }
       return prev;
     });
-  }, [netemData]);
+  }, [hasChanges, netemData]);
 
   const handleChange = useCallback(
     (updates: Partial<NetemState>) => {
@@ -125,9 +159,20 @@ function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
     [activeTab]
   );
 
-  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
+  const resetAfterApply = useCallback(() => {
+    if (!formData) return;
+    const updated: LinkImpairmentData = {
+      ...formData,
+      extraData: {
+        ...formData.extraData,
+        clabSourceNetem: formData.sourceNetem,
+        clabTargetNetem: formData.targetNetem
+      }
+    };
+    setFormData(updated);
+  }, [formData]);
 
-  return { activeTab, setActiveTab, formData, handleChange, hasChanges };
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply };
 }
 
 // Field validations
@@ -139,12 +184,17 @@ const ERR_PERCENTAGE = "Input should be a number between 0 and 100.";
 const NUMBER_RE = /^\d+$/;
 const ERR_NUMBER = "Input should be a number.";
 
-const NETEM_FIELD_FORMAT: Record<keyof NetemState, [RegExp, string]> = {
-  delay: [TIME_UNIT_RE, ERR_TIME_UNIT],
-  jitter: [TIME_UNIT_RE, ERR_TIME_UNIT],
-  loss: [PERCENTAGE_RE, ERR_PERCENTAGE],
-  rate: [NUMBER_RE, ERR_NUMBER],
-  corruption: [PERCENTAGE_RE, ERR_PERCENTAGE]
+type FormatCheck = {
+  format: RegExp;
+  error: string;
+};
+
+const NETEM_FIELD_FORMAT: Record<keyof NetemState, FormatCheck> = {
+  delay: { format: TIME_UNIT_RE, error: ERR_TIME_UNIT },
+  jitter: { format: TIME_UNIT_RE, error: ERR_TIME_UNIT },
+  loss: { format: PERCENTAGE_RE, error: ERR_PERCENTAGE },
+  rate: { format: NUMBER_RE, error: ERR_NUMBER },
+  corruption: { format: PERCENTAGE_RE, error: ERR_PERCENTAGE }
 };
 
 /**
@@ -158,12 +208,12 @@ const validateLinkImpairmentState = (netemState: NetemState): string[] => {
   // Format check
   Object.keys(netemState).forEach((k) => {
     const key = k as keyof NetemState;
-    if (!NETEM_FIELD_FORMAT[key][0].test(netemState[key]!)) {
-      errors.push(`${key} - ${NETEM_FIELD_FORMAT[key][1]}`);
+    if (!NETEM_FIELD_FORMAT[key].format.test(netemState[key]!)) {
+      errors.push(`${key} - ${NETEM_FIELD_FORMAT[key].error}`);
     }
   });
 
-  // Multi-field validations
+  // Cross-field validations
   const delayVal = parseFloat(netemState.delay || "") || 0;
   const jitterVal = parseFloat(netemState.jitter || "") || 0;
   if (jitterVal > 0 && delayVal === 0) {
@@ -172,38 +222,26 @@ const validateLinkImpairmentState = (netemState: NetemState): string[] => {
   return errors;
 };
 
-function extractChangedFields(newState: NetemState, oldState: NetemState = {}): NetemState {
-  const updates: NetemState = {};
-  (Object.entries(newState) as [keyof NetemState, string][]).forEach(([key, value]) => {
-    if (value !== oldState[key]) {
-      updates[key] = value;
-    }
-  });
-  return updates;
-}
-
 /**
  * Apply netem settings.
  * @param data retrieved from link impairment panel
  */
 function applyNetemSettings(data: LinkImpairmentData): void {
-  if (!data.sourceNetem || !data.targetNetem) return;
-
-  const sourceUpdate = extractChangedFields(data.sourceNetem, data.extraData?.clabSourceNetem);
-  if (sourceUpdate)
+  if (JSON.stringify(data.sourceNetem) !== JSON.stringify(data.extraData?.clabSourceNetem)) {
     postCommand("clab-link-impairment", {
       nodeName: data.extraData?.clabSourceLongName ?? data.source, // FIXME: Should it be done this way?
       interfaceName: data.sourceEndpoint,
-      data: sourceUpdate
+      data: data.sourceNetem
     });
+  }
 
-  const targetUpdate = extractChangedFields(data.targetNetem, data.extraData?.clabTargetNetem);
-  if (JSON.stringify(data.targetNetem) !== JSON.stringify(data.extraData?.clabTargetNetem))
+  if (JSON.stringify(data.targetNetem) !== JSON.stringify(data.extraData?.clabTargetNetem)) {
     postCommand("clab-link-impairment", {
       nodeName: data.extraData?.clabTargetLongName ?? data.target,
       interfaceName: data.targetEndpoint,
-      data: targetUpdate
+      data: data.targetNetem
     });
+  }
 }
 
 export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
@@ -214,7 +252,8 @@ export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
   onApply,
   onClose
 }) => {
-  const { activeTab, setActiveTab, formData, handleChange, hasChanges } =
+  console.log(linkData);
+  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply } =
     useLinkImpairmentForm(linkData);
 
   const validationErrors: string[] = useMemo(() => {
@@ -233,11 +272,11 @@ export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
 
   const handleSave = useCallback(() => {
     if (!formData) return;
-
     if (validationErrors.length > 0) {
       validationErrors.forEach(onError);
       return;
     }
+
     applyNetemSettings(formData);
     onSave(formData);
     onClose();
@@ -245,13 +284,15 @@ export const LinkImpairmentPanel: React.FC<LinkImpairmentPanelProps> = ({
 
   const handleApply = useCallback(() => {
     if (!formData) return;
-
     if (validationErrors.length > 0) {
       validationErrors.forEach(onError);
       return;
     }
+
+    applyNetemSettings(formData);
     onApply(formData);
-  }, [formData, onApply, onError, validationErrors]);
+    resetAfterApply();
+  }, [formData, onApply, onError, resetAfterApply, validationErrors]);
 
   if (!formData) return null;
 

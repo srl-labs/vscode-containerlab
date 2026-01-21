@@ -79,12 +79,7 @@ const STRING_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
   ["type", "type"],
   ["state", "state"],
   ["alias", "alias"],
-  ["mac", "mac"],
-  ["netemDelay", "netem_delay"],
-  ["netemJitter", "netem_jitter"],
-  ["netemLoss", "netem_loss"],
-  ["netemRate", "netem_rate"],
-  ["netemCorruption", "netem_corruption"]
+  ["mac", "mac"]
 ];
 
 const NUMERIC_ATTRIBUTE_MAPPINGS: Array<[keyof InterfaceRecord, string]> = [
@@ -111,6 +106,16 @@ const SNAPSHOT_FIELD_MAPPINGS: Array<[keyof ClabInterfaceSnapshotEntry, keyof In
   ["txBytes", "txBytes"],
   ["txPackets", "txPackets"],
   ["statsIntervalSeconds", "statsIntervalSeconds"]
+];
+
+// Clab event doesn't pass default values.
+// Explicitly set to default value when absent for merging.
+const NETEM_FIELD_MAPPINGS: Array<[keyof InterfaceRecord, string, string]> = [
+  ["netemDelay", "netem_delay", "0ms"],
+  ["netemJitter", "netem_jitter", "0ms"],
+  ["netemLoss", "netem_loss", "0%"],
+  ["netemRate", "netem_rate", "0"],
+  ["netemCorruption", "netem_corruption", "0"]
 ];
 
 function parseNumericAttribute(value: unknown): number | undefined {
@@ -156,6 +161,16 @@ function assignNumericAttributes(
   }
 }
 
+function assignNetemAttributes(
+  record: MutableInterfaceRecord,
+  attributes: Record<string, unknown>,
+  mappings: Array<[keyof InterfaceRecord, string, string]>
+): void {
+  for (const [targetKey, attributeKey, defaultValue] of mappings) {
+    record[targetKey as string] = attributes[attributeKey] ?? defaultValue;
+  }
+}
+
 function buildUpdatedInterfaceRecord(
   ifaceName: string,
   attributes: Record<string, unknown>,
@@ -173,6 +188,7 @@ function buildUpdatedInterfaceRecord(
 
   assignStringAttributes(base, attributes, STRING_ATTRIBUTE_MAPPINGS);
   assignNumericAttributes(base, attributes, NUMERIC_ATTRIBUTE_MAPPINGS);
+  assignNetemAttributes(base, attributes, NETEM_FIELD_MAPPINGS);
 
   if (typeof base.type !== "string" || !base.type) {
     base.type = "";
@@ -201,16 +217,12 @@ function toInterfaceSnapshotEntry(iface: InterfaceRecord): ClabInterfaceSnapshot
     alias: iface.alias || "",
     mac: iface.mac || "",
     mtu: iface.mtu ?? 0,
-<<<<<<< HEAD
-    ifindex: iface.ifindex ?? 0
-=======
     ifindex: iface.ifindex ?? 0,
-    netemDelay: iface.netemDelay ?? "0ms",
-    netemJitter: iface.netemJitter ?? "0ms",
-    netemLoss: iface.netemLoss ?? "0.00%",
-    netemRate: iface.netemRate ?? "0",
-    netemCorruption: iface.netemCorruption ?? "0.00%"
->>>>>>> bac108d0 (Consume netem from events)
+    netemDelay: iface.netemDelay ?? "",
+    netemJitter: iface.netemJitter ?? "",
+    netemLoss: iface.netemLoss ?? "",
+    netemRate: iface.netemRate ?? "",
+    netemCorruption: iface.netemCorruption ?? ""
   };
 
   assignSnapshotFields(entry, iface);
