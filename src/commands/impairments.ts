@@ -11,6 +11,7 @@ const ERR_EMPTY = "Input should not be empty";
 const TIME_UNIT_RE = /^\d+(ms|s)$/;
 const ERR_TIME_UNIT =
   "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)";
+const NETEM_FIELDS = ["delay", "jitter", "loss", "rate", "corruption"];
 
 function impairmentsAvailable(): boolean {
   if (vscode.env.remoteName === "wsl") {
@@ -21,9 +22,6 @@ function impairmentsAvailable(): boolean {
   }
   return true;
 }
-
-// FIXME: Potential duplication with NetemState type
-const NETEM_FIELDS = ["delay", "jitter", "loss", "rate", "corruption"];
 
 /**
  * Set impairment on an interface. Assumes impairment values are validated.

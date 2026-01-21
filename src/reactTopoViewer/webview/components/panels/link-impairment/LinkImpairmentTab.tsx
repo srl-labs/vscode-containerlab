@@ -1,7 +1,8 @@
 import type React from "react";
 
 import { FormField, InputField } from "../../shared/form";
-import type { NetemState } from "../../../../shared/parsing/types";
+
+import type { NetemState } from "./types";
 
 interface LinkImpairmentTabProps {
   data: NetemState;
