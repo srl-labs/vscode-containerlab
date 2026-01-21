@@ -14,6 +14,11 @@ import type { SplitViewManager } from "../services/SplitViewManager";
 import { customNodeConfigManager } from "../services/CustomNodeConfigManager";
 import type { CustomNodeConfig } from "../services/CustomNodeConfigManager";
 import { iconService } from "../services/IconService";
+import {
+  MSG_CUSTOM_NODE_ERROR,
+  MSG_CUSTOM_NODE_UPDATED,
+  MSG_ICON_LIST_RESPONSE
+} from "../../shared/messages/webview";
 
 type WebviewMessage = Record<string, unknown> & {
   type?: string;
@@ -22,7 +27,6 @@ type WebviewMessage = Record<string, unknown> & {
   endpointName?: string;
 };
 
-// TODO: use enum
 const LIFECYCLE_COMMANDS = new Set([
   "deployLab",
   "destroyLab",
@@ -348,7 +352,7 @@ export class MessageRouter {
       log.error(`[MessageRouter] ${res.error}`);
       // Send error back to webview so user can see the failure
       panel.webview.postMessage({
-        type: "custom-node-error",
+        type: MSG_CUSTOM_NODE_ERROR,
         error: res.error
       });
       return;
@@ -360,7 +364,7 @@ export class MessageRouter {
       | undefined;
     if (payload?.customNodes) {
       panel.webview.postMessage({
-        type: "custom-nodes-updated",
+        type: MSG_CUSTOM_NODE_UPDATED,
         customNodes: payload.customNodes,
         defaultNode: payload.defaultNode ?? ""
       });
@@ -512,7 +516,7 @@ export class MessageRouter {
 
   private sendIconResponse(panel: vscode.WebviewPanel, icons: unknown[]): void {
     panel.webview.postMessage({
-      type: "icon-list-response",
+      type: MSG_ICON_LIST_RESPONSE,
       icons
     });
   }

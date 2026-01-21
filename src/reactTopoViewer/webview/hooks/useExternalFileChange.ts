@@ -7,6 +7,7 @@
 import { useEffect } from "react";
 
 import { subscribeToWebviewMessages } from "../utils/webviewMessageBus";
+import { MSG_EXTERNAL_FILE_CHANGE } from "../../shared/messages/webview";
 
 import type { UseUndoRedoReturn } from "./state/useUndoRedo";
 
@@ -30,7 +31,7 @@ export function useExternalFileChange({
     return subscribeToWebviewMessages(
       (event) => {
         const message = event.data;
-        if (message?.type === "external-file-change") {
+        if (message?.type === MSG_EXTERNAL_FILE_CHANGE) {
           // Only clear and notify if there was history to clear
           if (undoRedo.undoCount > 0 || undoRedo.redoCount > 0) {
             undoRedo.clearHistory();
@@ -38,7 +39,7 @@ export function useExternalFileChange({
           }
         }
       },
-      (event) => event.data?.type === "external-file-change"
+      (event) => event.data?.type === MSG_EXTERNAL_FILE_CHANGE
     );
   }, [undoRedo, addToast, enabled]);
 }

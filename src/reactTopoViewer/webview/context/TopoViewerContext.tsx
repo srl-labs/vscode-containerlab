@@ -32,6 +32,7 @@ import {
   saveEdgeAnnotations,
   saveViewerSettings
 } from "../services";
+import type { WebviewMessageType } from "../../shared/messages/webview";
 
 // CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
 
@@ -603,7 +604,7 @@ function handleExtensionMessage(
 ): void {
   if (!message.type) return;
 
-  const handlers: Record<string, () => void> = {
+  const handlers: Partial<Record<WebviewMessageType, () => void>> = {
     "topology-data": () => {
       // Elements can be at top level (message.elements) or in data (message.data.elements)
       const msg = message as unknown as {
@@ -723,7 +724,7 @@ function handleExtensionMessage(
     }
   };
 
-  handlers[message.type]?.();
+  handlers[message.type as WebviewMessageType]?.();
 }
 
 /**

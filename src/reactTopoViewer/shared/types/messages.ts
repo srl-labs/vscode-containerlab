@@ -3,7 +3,18 @@
  */
 
 // Re-export CyElement from topology.ts (single source of truth)
+
+import type {
+  MSG_EDGE_STATS_UPDATE,
+  MSG_EXTERNAL_FILE_CHANGE,
+  MSG_NODE_RENAMED,
+  MSG_TOPO_MODE_CHANGE,
+  MSG_TOPOLOGY_DATA
+} from "../messages/webview";
+import type { EdgeStatsUpdate } from "../../extension/services/EdgeStatsBuilder";
+
 import { CyElement, type TopologyAnnotations, type EdgeAnnotation } from "./topology";
+
 export { CyElement };
 
 /**
@@ -45,7 +56,7 @@ export interface PushMessage extends BaseMessage {
  * Topology data message
  */
 export interface TopologyDataMessage extends PushMessage {
-  type: "topology-data";
+  type: typeof MSG_TOPOLOGY_DATA;
   data: {
     elements: CyElement[];
     labName: string;
@@ -59,7 +70,7 @@ export interface TopologyDataMessage extends PushMessage {
  * Mode changed message
  */
 export interface ModeChangedMessage extends PushMessage {
-  type: "topo-mode-changed";
+  type: typeof MSG_TOPO_MODE_CHANGE;
   data: {
     mode: "editor" | "viewer";
     deploymentState: "deployed" | "undeployed" | "unknown";
@@ -67,10 +78,20 @@ export interface ModeChangedMessage extends PushMessage {
 }
 
 /**
+ * Edge stats update message
+ */
+export interface EdgeStatsUpdateMessage extends PushMessage {
+  type: typeof MSG_EDGE_STATS_UPDATE;
+  data: {
+    edgeUpdates: EdgeStatsUpdate[];
+  };
+}
+
+/**
  * Node renamed message - sent after a node is renamed to trigger in-place update
  */
 export interface NodeRenamedMessage extends PushMessage {
-  type: "node-renamed";
+  type: typeof MSG_NODE_RENAMED;
   data: {
     oldId: string;
     newId: string;
@@ -82,7 +103,7 @@ export interface NodeRenamedMessage extends PushMessage {
  * Used to notify webview to clear undo history
  */
 export interface ExternalFileChangeMessage extends PushMessage {
-  type: "external-file-change";
+  type: typeof MSG_EXTERNAL_FILE_CHANGE;
 }
 
 /**

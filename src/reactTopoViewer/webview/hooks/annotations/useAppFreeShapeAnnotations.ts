@@ -8,6 +8,7 @@ import type { FreeShapeAnnotation, GroupStyleAnnotation } from "../../../shared/
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
 import { log } from "../../utils/logger";
 import { findDeepestGroupAtPosition } from "../groups";
+import { MSG_TOPOLOGY_DATA } from "../../../shared/messages/webview";
 
 import { createDefaultAnnotation } from "./freeShape";
 import {
@@ -161,7 +162,7 @@ interface InitialData {
 }
 
 interface TopologyDataMessage {
-  type: "topology-data";
+  type: typeof MSG_TOPOLOGY_DATA;
   data: {
     freeShapeAnnotations?: FreeShapeAnnotation[];
   };
@@ -197,12 +198,12 @@ export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOp
 
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as TopologyDataMessage | undefined;
-      if (message?.type === "topology-data") {
+      if (message?.type === MSG_TOPOLOGY_DATA) {
         // Always load to clear old annotations if empty
         loadAnnotations(message.data?.freeShapeAnnotations || []);
       }
     };
-    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === MSG_TOPOLOGY_DATA);
   }, [loadAnnotations]);
 
   return freeShapeAnnotations;

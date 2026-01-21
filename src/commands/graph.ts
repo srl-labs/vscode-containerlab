@@ -8,6 +8,7 @@ import type { ReactTopoViewer } from "../reactTopoViewer";
 import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
 import * as ins from "../treeView/inspector";
+import { MSG_LAB_LIFECYCLE_STATUS } from "../reactTopoViewer/shared/messages/webview";
 
 import { ClabCommand } from "./clabCommand";
 
@@ -191,7 +192,7 @@ async function postLifecycleStatus(
 
   try {
     await currentTopoViewer.currentPanel.webview.postMessage({
-      type: "lab-lifecycle-status",
+      type: MSG_LAB_LIFECYCLE_STATUS,
       data: { commandType, status, errorMessage }
     });
   } catch (err) {
