@@ -125,7 +125,7 @@ function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
     return endpoints.flatMap((endpoint) => {
       if (!endpoint.netem) return [];
       const errors = validateLinkImpairmentState(endpoint.netem);
-      return errors.map((error) => `${endpoint.node}:${endpoint.iface} - ${error}`);
+      return errors.map((error) => `${endpoint.node}:${endpoint.iface} ${error}`);
     });
   }, [formData]);
 

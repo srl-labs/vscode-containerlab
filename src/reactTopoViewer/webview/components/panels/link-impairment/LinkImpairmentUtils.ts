@@ -37,7 +37,7 @@ export function validateLinkImpairmentState(netemState: NetemState): string[] {
   Object.keys(netemState).forEach((k) => {
     const key = k as keyof NetemState;
     if (!NETEM_FIELD_FORMAT[key].format.test(netemState[key]!)) {
-      errors.push(`${key} - ${NETEM_FIELD_FORMAT[key].error}`);
+      errors.push(`(${key}) - ${NETEM_FIELD_FORMAT[key].error}`);
     }
   });
 
