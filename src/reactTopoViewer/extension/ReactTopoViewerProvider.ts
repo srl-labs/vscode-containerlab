@@ -22,6 +22,12 @@ import {
   MSG_TOPO_MODE_CHANGE,
   MSG_TOPOLOGY_DATA
 } from "../shared/messages/webview";
+import type {
+  EdgeStatsUpdateMessage,
+  ExternalFileChangeMessage,
+  ModeChangedMessage,
+  TopologyDataMessage
+} from "../shared/types/messages";
 
 import { log } from "./services/logger";
 import { TopoViewerAdaptorClab } from "./services/TopologyAdapter";
@@ -37,11 +43,6 @@ import {
   WatcherManager,
   buildBootstrapData
 } from "./panel";
-import {
-  ExternalFileChangeMessage,
-  ModeChangedMessage,
-  TopologyDataMessage
-} from "../shared/types/messages";
 
 /**
  * React TopoViewer class that manages the webview panel
@@ -473,7 +474,7 @@ export class ReactTopoViewer {
         this.currentPanel.webview.postMessage({
           type: MSG_EDGE_STATS_UPDATE,
           data: { edgeUpdates }
-        });
+        } as EdgeStatsUpdateMessage);
       }
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh link states: ${err}`);

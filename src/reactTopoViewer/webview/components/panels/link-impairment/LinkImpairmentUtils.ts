@@ -50,15 +50,21 @@ export function validateLinkImpairmentState(netemState: NetemState): string[] {
   return errors;
 }
 
+function normalizePercentage(value?: string | number): string {
+  const string = value?.toString() ?? "";
+  if (string.endsWith("%")) {
+    return string.slice(0, -1);
+  }
+  return string;
+}
+
 function stripNetemDataUnit(data: NetemState): NetemState {
   return {
     delay: data.delay,
     jitter: data.jitter,
-    loss: data.loss ? parseFloat(data.loss.replace("%", "")).toString() : data.loss,
-    rate: data.rate ? parseFloat(data.rate).toString() : data.rate,
-    corruption: data.corruption
-      ? parseFloat(data.corruption.replace("%", "")).toString()
-      : data.corruption
+    loss: normalizePercentage(data.loss),
+    rate: data.rate,
+    corruption: normalizePercentage(data.corruption)
   };
 }
 
