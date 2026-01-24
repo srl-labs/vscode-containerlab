@@ -6,13 +6,12 @@ import type React from "react";
 
 import type { FreeTextAnnotation } from "../../../shared/types/topology";
 import type { MapLibreState } from "../canvas/maplibreUtils";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import { useAnnotationDrag } from "./useAnnotationDrag";
 import { useRotationDrag, useResizeDrag } from "./useAnnotationHandles";
 
 interface UseAnnotationInteractionsOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   annotation: FreeTextAnnotation;
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;

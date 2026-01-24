@@ -3,13 +3,9 @@
  *
  * Networks are external endpoints that connect to resources outside the containerlab topology.
  * They are rendered as "cloud" nodes with special styling and dashed link connections.
- *
- * NOTE: This hook uses the CyCompatCore compatibility layer for type consistency,
- * but does not actually use any Cytoscape/compatibility methods.
  */
 import { useCallback, useRef } from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import { log } from "../../utils/logger";
 import type { CyElement } from "../../../shared/types/messages";
 
@@ -229,13 +225,8 @@ function networkDataToCyElement(data: NetworkData, position: { x: number; y: num
 
 /**
  * Hook for creating network nodes
- *
- * NOTE: The cyCompat parameter is kept for API consistency but is not used.
  */
-export function useNetworkCreation(
-  cyCompat: CyCompatCore | null,
-  options: NetworkCreationOptions
-): {
+export function useNetworkCreation(options: NetworkCreationOptions): {
   createNetworkAtPosition: (
     position: { x: number; y: number },
     networkType: NetworkType
@@ -289,7 +280,7 @@ export function useNetworkCreation(
       onNetworkCreated(networkId, cyElement, position);
       return networkId;
     },
-    [cyCompat, onNetworkCreated]
+    [onNetworkCreated]
   );
 
   return { createNetworkAtPosition };

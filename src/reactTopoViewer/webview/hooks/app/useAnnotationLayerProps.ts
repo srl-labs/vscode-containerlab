@@ -8,7 +8,6 @@
  */
 import React from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import type { GroupLayer } from "../../components/annotations/GroupLayer";
 import type { FreeTextLayer } from "../../components/annotations/FreeTextLayer";
 import type { FreeShapeLayer } from "../../components/annotations/FreeShapeLayer";
@@ -112,7 +111,7 @@ interface AnnotationsSubset {
  * Configuration for useAnnotationLayerProps hook
  */
 export interface AnnotationLayerPropsConfig {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   annotations: AnnotationsSubset;
   state: {
     isLocked: boolean;
@@ -247,15 +246,10 @@ export function useAnnotationLayerProps(
       };
 
       // Accumulate node bounds
-      for (const nodeId of annotations.getGroupMembers(groupId)) {
-        const node = cyCompat?.getElementById(nodeId);
-        if (node && node.length > 0) {
-          // CyCompatCore's getElementById returns a CyCompatElement with position method
-          const pos = node.position();
-          // Approximate node bounds using position and default size
-          expandBoundsRect(bounds, pos.x, pos.y, 50, 50);
-        }
-      }
+      // Disabled during ReactFlow migration - node bounds from cyCompat not available
+      // TODO: Use ReactFlow's getNode() to get node positions
+      void cyCompat;
+      void annotations.getGroupMembers(groupId);
 
       // Accumulate text annotation bounds
       for (const text of annotations.textAnnotations) {

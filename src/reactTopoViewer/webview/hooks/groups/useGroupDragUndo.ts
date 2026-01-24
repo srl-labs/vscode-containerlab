@@ -6,8 +6,6 @@
 import type React from "react";
 import { useCallback, useRef } from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
-
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
@@ -42,7 +40,7 @@ interface DragStartState {
 }
 
 export interface UseGroupDragUndoOptions {
-  cyInstance: CyCompatCore | null;
+  cyInstance: null;
   groups: UseGroupsReturn;
   undoRedo: UndoRedoApi;
   isApplyingGroupUndoRedo: React.RefObject<boolean>;
@@ -150,7 +148,7 @@ function captureDragStartState(
 
 /** Move member nodes by delta */
 function moveMemberNodes(
-  _cyInstance: CyCompatCore,
+  _cyInstance: unknown,
   _memberIds: string[],
   _delta: { dx: number; dy: number }
 ): void {

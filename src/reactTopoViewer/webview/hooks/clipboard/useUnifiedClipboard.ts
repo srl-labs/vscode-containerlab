@@ -1,12 +1,14 @@
 /**
  * Unified clipboard system for copying/pasting groups, nodes, and annotations together.
  * Maintains group membership and relationships when pasting.
+ *
+ * NOTE: This file has been partially disabled during ReactFlow migration.
+ * Functions that require cyCompat return empty results when cyCompat is null.
  */
 
 import { useCallback, useRef } from "react";
 import type { RefObject } from "react";
 
-import type { CyCompatCore, CyCompatCollection, CyCompatElement } from "../useCytoCompatInstance";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
@@ -16,6 +18,36 @@ import type { CyElement } from "../../../shared/types/messages";
 import { log } from "../../utils/logger";
 import { beginBatch, endBatch } from "../../services";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
+
+// Stubbed types for Cytoscape compatibility layer (disabled during migration)
+interface CyNodeLike {
+  id(): string;
+  data(key?: string): unknown;
+  position(): { x: number; y: number };
+  length: number;
+}
+interface CyEdgeLike {
+  id(): string;
+  data(key?: string): unknown;
+}
+interface CyCollectionLike<T> {
+  forEach(fn: (item: T) => void): void;
+  filter(fn: (item: T) => boolean): CyCollectionLike<T>;
+  map<U>(fn: (item: T) => U): U[];
+}
+interface CyCompatLike {
+  nodes(selector?: string): CyCollectionLike<CyNodeLike>;
+  edges(): CyCollectionLike<CyEdgeLike>;
+  getElementById(id: string): CyNodeLike;
+  $id(selector: string): CyCollectionLike<CyNodeLike>;
+}
+
+// Empty collection for when cyCompat is null
+const emptyCollection: CyCollectionLike<CyNodeLike> = {
+  forEach: () => {},
+  filter: () => emptyCollection,
+  map: () => []
+};
 
 /** Node data stored in clipboard */
 interface ClipboardNode {
@@ -87,7 +119,7 @@ export interface PasteResult {
 
 export interface UseUnifiedClipboardOptions {
   /** Cytoscape-compatible instance */
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   /** All groups */
   groups: GroupStyleAnnotation[];
   /** All text annotations */
@@ -191,7 +223,7 @@ function getDescendantGroupIds(groupId: string, groups: GroupStyleAnnotation[]):
 /** Collect all group IDs to include in clipboard */
 function collectGroupIdsToInclude(
   selectedGroupIds: Set<string>,
-  selectedNodes: CyCompatCollection,
+  selectedNodes: CyCollectionLike<CyNodeLike>,
   groups: GroupStyleAnnotation[],
   getNodeMembership: (nodeId: string) => string | null
 ): Set<string> {
@@ -203,7 +235,7 @@ function collectGroupIdsToInclude(
     descendants.forEach((id) => groupIdsToInclude.add(id));
   }
 
-  selectedNodes.forEach((node) => {
+  selectedNodes.forEach((node: CyNodeLike) => {
     const groupId = getNodeMembership(node.id());
     if (groupId) {
       groupIdsToInclude.add(groupId);
@@ -215,12 +247,12 @@ function collectGroupIdsToInclude(
 
 /** Collect all node IDs to include in clipboard */
 function collectNodeIdsToInclude(
-  selectedNodes: CyCompatCollection,
+  selectedNodes: CyCollectionLike<CyNodeLike>,
   groupIdsToInclude: Set<string>,
   getGroupMembers: (groupId: string) => string[]
 ): Set<string> {
   const nodeIdsToInclude = new Set<string>();
-  selectedNodes.forEach((node) => {
+  selectedNodes.forEach((node: CyNodeLike) => {
     nodeIdsToInclude.add(node.id());
   });
 
@@ -235,14 +267,14 @@ function collectNodeIdsToInclude(
 /** Collect clipboard nodes from cytoscape-compatible instance */
 function collectClipboardNodes(
   nodeIdsToInclude: Set<string>,
-  cyCompat: CyCompatCore,
+  cyCompat: CyCompatLike,
   getNodeMembership: (nodeId: string) => string | null
 ): { nodes: ClipboardNode[]; positions: Array<{ x: number; y: number }> } {
   const clipboardNodes: ClipboardNode[] = [];
   const positions: Array<{ x: number; y: number }> = [];
 
   for (const nodeId of nodeIdsToInclude) {
-    const node = cyCompat.getElementById(nodeId) as CyCompatElement;
+    const node = cyCompat.getElementById(nodeId);
     if (node.length > 0) {
       const pos = node.position();
       positions.push(pos);
@@ -265,14 +297,14 @@ function collectClipboardNodes(
 
 /** Collect clipboard edges from cytoscape-compatible instance */
 function collectClipboardEdges(
-  cyCompat: CyCompatCore,
+  cyCompat: CyCompatLike,
   nodeIdsToInclude: Set<string>
 ): ClipboardEdge[] {
   const clipboardEdges: ClipboardEdge[] = [];
 
   // Include all edges between the nodes we're copying, even if the edges themselves
   // aren't explicitly selected (common UX expectation for copy/paste).
-  cyCompat.edges().forEach((edge) => {
+  cyCompat.edges().forEach((edge: CyEdgeLike) => {
     const edgeData = edge.data() as Record<string, unknown>;
     const sourceId = edgeData.source as string;
     const targetId = edgeData.target as string;
@@ -496,7 +528,7 @@ function pasteNodes(
   position: { x: number; y: number },
   offset: number,
   idMapping: Map<string, string>,
-  cyCompat: CyCompatCore,
+  cyCompat: CyCompatLike | null,
   onAddNodeToGroup: (nodeId: string, groupId: string) => void,
   onCreateNode?: (
     nodeId: string,
@@ -515,7 +547,11 @@ function pasteNodes(
 
   // Get existing node names to avoid duplicates
   const usedNames = new Set<string>(
-    cyCompat.nodes().map((node) => (node.data("name") as string | undefined) || node.id())
+    cyCompat
+      ? cyCompat
+          .nodes()
+          .map((node: CyNodeLike) => (node.data("name") as string | undefined) || node.id())
+      : []
   );
 
   for (const item of clipboardNodes) {
@@ -681,8 +717,8 @@ function pasteShapeAnnotations(
 
 const PASTE_SELECTION_RETRIES = 10;
 
-function selectPastedNodes(cyCompat: CyCompatCore, nodeIds: string[]): void {
-  if (nodeIds.length === 0) return;
+function selectPastedNodes(cyCompat: CyCompatLike | null, nodeIds: string[]): void {
+  if (nodeIds.length === 0 || !cyCompat) return;
 
   const attemptSelect = (attempt: number) => {
     let foundCount = 0;
@@ -738,11 +774,14 @@ export function useUnifiedClipboard(
 
   const copy = useCallback((): boolean => {
     if (!cyCompat) {
-      log.warn("[UnifiedClipboard] No cytoscape instance");
+      log.warn(
+        "[UnifiedClipboard] No cytoscape instance - clipboard disabled during ReactFlow migration"
+      );
       return false;
     }
 
-    const selectedNodes = cyCompat.nodes(":selected");
+    const cyCompatTyped = cyCompat as CyCompatLike;
+    const selectedNodes = cyCompatTyped.nodes(":selected");
 
     // Collect IDs
     const groupIdsToInclude = collectGroupIdsToInclude(
@@ -760,10 +799,10 @@ export function useUnifiedClipboard(
     // Collect all elements
     const { nodes: clipboardNodes, positions: nodePositions } = collectClipboardNodes(
       nodeIdsToInclude,
-      cyCompat,
+      cyCompatTyped,
       getNodeMembership
     );
-    const clipboardEdges = collectClipboardEdges(cyCompat, nodeIdsToInclude);
+    const clipboardEdges = collectClipboardEdges(cyCompatTyped, nodeIdsToInclude);
     const { groups: clipboardGroups, positions: groupPositions } = collectClipboardGroups(
       groupIdsToInclude,
       groups

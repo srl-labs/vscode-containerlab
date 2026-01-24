@@ -4,8 +4,6 @@
  */
 import { useEffect, useRef } from "react";
 
-import type { CyCompatCore, CyCompatElement } from "../useCytoCompatInstance";
-
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
 
@@ -31,8 +29,7 @@ export interface UseNodeReparentDeps {
 
 type MembershipActions = Pick<UseNodeReparentDeps, "addNodeToGroup" | "removeNodeFromGroup">;
 
-function canHaveGroupMembership(node: CyCompatElement): boolean {
-  const role = node.data("topoViewerRole") as string | undefined;
+function canHaveGroupMembership(role: string | undefined): boolean {
   return role !== "freeText" && role !== "freeShape";
 }
 
@@ -79,7 +76,7 @@ function handleMembershipChange(
 }
 
 export function useNodeReparent(
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   options: UseNodeReparentOptions,
   deps: UseNodeReparentDeps
 ): void {
@@ -106,27 +103,11 @@ export function useNodeReparent(
   }, [addNodeToGroup, removeNodeFromGroup, onMembershipWillChange]);
 
   useEffect(() => {
-    if (!cyCompat || mode !== "edit" || isLocked) return;
-
-    // Note: In ReactFlow, grab/dragfree events are handled differently
-    // This hook registers handlers via the compatibility layer's event system
-    // In practice, ReactFlow handles node drag events through its own mechanisms
-    const handleGrab = () => {
-      // Event handling stub - ReactFlow uses onNodeDragStart instead
-    };
-
-    const handleDragFree = () => {
-      // Event handling stub - ReactFlow uses onNodeDragStop instead
-    };
-
-    cyCompat.on("grab", "node", handleGrab);
-    cyCompat.on("dragfree", "node", handleDragFree);
-    log.info("[Reparent] Handlers registered");
-
-    return () => {
-      cyCompat.off("grab", "node", handleGrab);
-      cyCompat.off("dragfree", "node", handleDragFree);
-    };
+    // Disabled during ReactFlow migration
+    // ReactFlow handles node drag events through its own onNodeDragStart/onNodeDragStop props
+    void cyCompat;
+    void mode;
+    void isLocked;
   }, [cyCompat, mode, isLocked]);
 
   // Expose helper functions for external use (e.g., from ReactFlow event handlers)
@@ -137,8 +118,8 @@ export function useNodeReparent(
  * Check if a node can have group membership based on its role.
  * Exported for use in ReactFlow event handlers.
  */
-export function checkCanHaveGroupMembership(node: CyCompatElement): boolean {
-  return canHaveGroupMembership(node);
+export function checkCanHaveGroupMembership(role: string | undefined): boolean {
+  return canHaveGroupMembership(role);
 }
 
 /**

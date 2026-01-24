@@ -1,14 +1,13 @@
 /**
  * useNodeCreation - Hook for creating nodes via Shift+Click on canvas
  *
- * NOTE: This hook uses the CyCompatCore compatibility layer.
+ * NOTE: This hook uses the unknown compatibility layer.
  * The event handling is a stub - actual events should be handled via ReactFlow's
  * onPaneClick callback. This hook provides the node creation logic that can be
  * called from that handler.
  */
 import { useEffect, useCallback, useRef } from "react";
 
-import type { CyCompatCore, CyCompatEventObject } from "../useCytoCompatInstance";
 import { log } from "../../utils/logger";
 import type { CyElement } from "../../../shared/types/messages";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
@@ -216,34 +215,14 @@ function createNodeData(
 
 /**
  * Determine position for a new node
+ * Disabled during ReactFlow migration - use position directly from ReactFlow's onPaneClick event
  */
 function determinePosition(
-  cyCompat: CyCompatCore,
-  event: CyCompatEventObject
+  _cyCompat: null,
+  eventPosition?: { x: number; y: number }
 ): { x: number; y: number } {
-  const extent = cyCompat.extent();
-  let position = event.position;
-
-  if (
-    !position ||
-    position.x < extent.x1 ||
-    position.x > extent.x2 ||
-    position.y < extent.y1 ||
-    position.y > extent.y2
-  ) {
-    const viewportCenterX = (extent.x1 + extent.x2) / 2;
-    const viewportCenterY = (extent.y1 + extent.y2) / 2;
-    const viewportWidth = extent.x2 - extent.x1;
-    const viewportHeight = extent.y2 - extent.y1;
-    const maxOffsetX = viewportWidth * 0.3;
-    const maxOffsetY = viewportHeight * 0.3;
-    position = {
-      x: viewportCenterX + maxOffsetX * 0.1,
-      y: viewportCenterY + maxOffsetY * 0.1
-    };
-  }
-
-  return position;
+  // During migration, just return the event position or a default
+  return eventPosition ?? { x: 0, y: 0 };
 }
 
 /**
@@ -264,7 +243,7 @@ function nodeDataToCyElement(data: NodeData, position: { x: number; y: number })
  * For ReactFlow integration, use onPaneClick handler directly.
  */
 export function useNodeCreation(
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   options: NodeCreationOptions
 ): {
   createNodeAtPosition: (position: { x: number; y: number }, template?: CustomNodeTemplate) => void;
@@ -319,48 +298,11 @@ export function useNodeCreation(
   );
 
   useEffect(() => {
-    if (!cyCompat) return;
-
-    const handleCanvasTap = (event: CyCompatEventObject) => {
-      const { mode, isLocked, customNodes, defaultNode, onLockedClick } = optionsRef.current;
-
-      // Only handle in edit mode
-      if (mode !== "edit") return;
-
-      // Check if clicking on the canvas itself (not on an element)
-      if (event.target !== cyCompat) return;
-
-      const originalEvent = event.originalEvent as MouseEvent;
-
-      // Only handle Shift+Click
-      if (!originalEvent?.shiftKey) return;
-
-      // Check if locked
-      if (isLocked) {
-        log.debug("[NodeCreation] Canvas is locked, cannot create node");
-        onLockedClick?.();
-        return;
-      }
-
-      // Find the template to use
-      let template: CustomNodeTemplate | undefined;
-      if (defaultNode) {
-        template = customNodes.find((n) => n.name === defaultNode);
-      }
-
-      // Determine position
-      const position = determinePosition(cyCompat, event);
-
-      log.info(`[NodeCreation] Shift+Click on canvas at (${position.x}, ${position.y})`);
-
-      createNodeAtPosition(position, template);
-    };
-
-    cyCompat.on("tap", handleCanvasTap as unknown as () => void);
-
-    return () => {
-      cyCompat.off("tap", handleCanvasTap as unknown as () => void);
-    };
+    // Disabled during ReactFlow migration
+    // Shift+Click to create nodes should be handled via ReactFlow's onPaneClick callback
+    // with something like: if (event.shiftKey) createNodeAtPosition({ x: event.clientX, y: event.clientY })
+    void cyCompat;
+    void determinePosition;
   }, [cyCompat, createNodeAtPosition]);
 
   return { createNodeAtPosition };

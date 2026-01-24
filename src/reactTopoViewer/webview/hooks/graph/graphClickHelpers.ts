@@ -1,33 +1,29 @@
-import type {
-  CyCompatCore,
-  CyCompatEventObject,
-  CyCompatNodeElement,
-  CyCompatEdgeElement
-} from "../useCytoCompatInstance";
+/**
+ * Graph Click Helpers
+ * Utilities for handling modified click events (Alt+Click, Shift+Click)
+ *
+ * NOTE: These helpers are disabled during ReactFlow migration.
+ * Click handling should be done through ReactFlow callbacks.
+ */
 
 type ModifierKey = "alt" | "shift";
 
 const ANNOTATION_ROLES = new Set(["freeText", "freeShape", "group"]);
 
-export function getModifierTapTarget<T extends CyCompatNodeElement | CyCompatEdgeElement>(
-  evt: CyCompatEventObject,
-  cyCompat: CyCompatCore,
+/**
+ * Get the target element from a modifier+tap event.
+ * Returns null if conditions aren't met or if target is an annotation.
+ *
+ * NOTE: This function is disabled - always returns null.
+ * Use ReactFlow's onClick handlers instead.
+ */
+export function getModifierTapTarget<T>(
+  _evt: unknown,
+  _cyCompat: null,
   options: { mode: "edit" | "view"; isLocked: boolean; modifier: ModifierKey }
 ): T | null {
-  if (options.mode !== "edit" || options.isLocked) return null;
-
-  const originalEvent = evt.originalEvent as MouseEvent | undefined;
-  if (!originalEvent) return null;
-
-  if (options.modifier === "alt" && !originalEvent.altKey) return null;
-  if (options.modifier === "shift" && !originalEvent.shiftKey) return null;
-
-  const target = evt.target;
-  // Check if target is the core instance (canvas click, not element click)
-  if (target === cyCompat) return null;
-
-  const role = (target as T).data("topoViewerRole") as string | undefined;
-  if (role && ANNOTATION_ROLES.has(role)) return null;
-
-  return target as T;
+  // Disabled during ReactFlow migration
+  void options;
+  void ANNOTATION_ROLES;
+  return null;
 }

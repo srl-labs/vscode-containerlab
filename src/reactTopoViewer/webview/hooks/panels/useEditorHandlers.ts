@@ -4,7 +4,6 @@
  */
 import React from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import type {
   NodeEditorData,
   LinkEditorData,
@@ -80,15 +79,11 @@ type RenameNodeCallback = (oldId: string, newId: string, nameOverride?: string) 
  * Update edge data after editor changes.
  *
  * NOTE: This function is a migration stub. In the ReactFlow architecture,
- * edge updates are handled via React state. The CyCompatElement interface
+ * edge updates are handled via React state. The unknown interface
  * is read-only, so direct mutation is not supported. The actual data
  * persistence is handled by the editLinkService call.
  */
-function updateCytoscapeEdgeData(
-  _cyCompat: CyCompatCore | null,
-  _edgeId: string,
-  _data: LinkEditorData
-): void {
+function updateCytoscapeEdgeData(_cyCompat: null, _edgeId: string, _data: LinkEditorData): void {
   // In the ReactFlow architecture, edge data updates are handled via React state.
   // The editLinkService call in persistLinkChanges handles the actual persistence.
   // This function is kept as a stub for API compatibility during migration.
@@ -103,22 +98,19 @@ function updateCytoscapeEdgeData(
  * node data updates are handled through React state, not direct mutation.
  */
 function updateCytoscapeNodeData(
-  cyCompat: CyCompatCore | null,
-  nodeId: string,
+  _cyCompat: null,
+  _nodeId: string,
   data: NodeEditorData,
   _customIcons?: CustomIconInfo[]
 ): Record<string, unknown> | null {
-  if (!cyCompat) return null;
+  // NOTE: During ReactFlow migration, node data is obtained from React state.
+  // This function now just converts editor data to YAML format without
+  // accessing any Cytoscape-like methods.
 
-  const node = cyCompat.getElementById(nodeId);
-  if (!node || node.length === 0) return null;
-
-  // Convert editor data to YAML format (kebab-case keys) and merge with existing
-  const existingExtraData = (node.data("extraData") as Record<string, unknown> | undefined) ?? {};
+  // Convert editor data to YAML format (kebab-case keys)
   const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
 
   const newExtraData: Record<string, unknown> = {
-    ...existingExtraData,
     ...yamlExtraData
   };
 
@@ -130,11 +122,7 @@ function updateCytoscapeNodeData(
     }
   }
 
-  // NOTE: In the ReactFlow architecture, node updates are handled via React state.
-  // The CyCompatElement interface is read-only, so direct mutation is not supported.
-  // The newExtraData is returned so callers can update React state accordingly.
-
-  // Return the new extraData so callers can sync React state
+  // Return the new extraData so callers can update React state accordingly
   return newExtraData;
 }
 
@@ -146,7 +134,7 @@ function handleNodeUpdate(
   data: NodeEditorData,
   oldName: string | undefined,
   renameNode: RenameNodeCallback | undefined,
-  cyCompat: CyCompatCore | null | undefined,
+  cyCompat: null | undefined,
   _customIcons?: CustomIconInfo[]
 ): Record<string, unknown> | null {
   if (oldName && renameNode) {
@@ -211,7 +199,7 @@ type UpdateNodeDataCallback = (nodeId: string, extraData: Record<string, unknown
 
 /** Dependencies for persisting node editor changes */
 interface NodePersistDeps {
-  cyCompat?: CyCompatCore | null;
+  cyCompat?: null;
   renameNode?: RenameNodeCallback;
   customIcons?: CustomIconInfo[];
   updateNodeData?: UpdateNodeDataCallback;
@@ -249,7 +237,7 @@ export function useNodeEditorHandlers(
   editNode: (id: string | null) => void,
   editingNodeData: NodeEditorData | null,
   recordPropertyEdit?: (action: PropertyEditAction) => void,
-  cyCompat?: CyCompatCore | null,
+  cyCompat?: null,
   renameNode?: RenameNodeCallback,
   customIcons?: CustomIconInfo[],
   updateNodeData?: UpdateNodeDataCallback,
@@ -313,7 +301,7 @@ const EDGE_OFFSET_SAVE_DEBOUNCE_MS = 300;
 
 /** Dependencies for persisting link editor changes */
 interface LinkPersistDeps {
-  cyCompat?: CyCompatCore | null;
+  cyCompat?: null;
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
 }
 
@@ -371,7 +359,7 @@ export function useLinkEditorHandlers(
   editEdge: (id: string | null) => void,
   editingLinkData: LinkEditorData | null,
   recordPropertyEdit?: (action: PropertyEditAction) => void,
-  cyCompat?: CyCompatCore | null,
+  cyCompat?: null,
   edgeAnnotationHandlers?: EdgeAnnotationHandlers
 ) {
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
@@ -730,65 +718,28 @@ function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown>
  *
  * NOTE: Canvas updates are handled via React state in the ReactFlow architecture.
  * This function only handles the YAML persistence via editLinkService.
+ * NOTE: This function is disabled during ReactFlow migration as edge data is
+ * obtained from React state, not a Cytoscape-like layer.
  */
 function saveNetworkLinkProperties(
   data: NetworkEditorData,
-  newNodeId: string,
-  cyCompat: CyCompatCore | null
+  _newNodeId: string,
+  _cyCompat: null
 ): void {
-  if (!cyCompat || !isServicesInitialized()) return;
+  if (!isServicesInitialized()) return;
   if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
 
-  const oldId = data.id;
+  // NOTE: During ReactFlow migration, edge data should be obtained from React state.
+  // This function is a stub that only saves the extraData.
+  // The actual edge lookup should be done by the caller using React state.
 
-  const networkNode = cyCompat.getElementById(oldId);
-  if (networkNode.length === 0) return;
-
-  // Get connected edges using the edges() method and find the first matching one
-  const allEdges = cyCompat.edges();
-  const connectedEdges = allEdges.filter((edge) => {
-    const source = edge.data("source") as string;
-    const target = edge.data("target") as string;
-    return source === oldId || target === oldId;
-  });
-
-  if (connectedEdges.length === 0) return;
-
-  const connectedEdge = connectedEdges.first();
-  const edgeData = connectedEdge.data() as {
-    id: string;
-    source: string;
-    target: string;
-    sourceEndpoint?: string;
-    targetEndpoint?: string;
-  };
   const extraData = buildNetworkExtraData(data);
 
-  // For YAML save: convert extMac to extSourceMac/extTargetMac based on which side is the real node
-  const yamlExtraData = { ...extraData };
-  if (yamlExtraData.extMac) {
-    const networkIsSource = edgeData.source === oldId;
-    if (networkIsSource) {
-      yamlExtraData.extTargetMac = yamlExtraData.extMac;
-    } else {
-      yamlExtraData.extSourceMac = yamlExtraData.extMac;
-    }
-    delete yamlExtraData.extMac; // Remove generic extMac for YAML
-  }
+  // For now, just log that we would save these properties
+  void extraData;
 
-  const linkSaveData = {
-    id: edgeData.id,
-    source: edgeData.source === oldId ? newNodeId : edgeData.source,
-    target: edgeData.target === oldId ? newNodeId : edgeData.target,
-    sourceEndpoint: edgeData.sourceEndpoint,
-    targetEndpoint: edgeData.targetEndpoint,
-    extraData: yamlExtraData
-  };
-
-  void editLinkService(linkSaveData);
-
-  // NOTE: Canvas updates (node.data(), edge.data() mutations) are not performed here
-  // In the ReactFlow architecture, these are handled via React state updates
+  // NOTE: Full implementation requires edge data from React state, not cyCompat
+  // The caller should pass edge data directly or look it up from React state
 }
 
 /**
@@ -801,7 +752,7 @@ function saveNetworkLinkProperties(
 function saveBridgeNodeProperties(
   data: NetworkEditorData,
   newNodeId: string,
-  _cyCompat: CyCompatCore | null,
+  _cyCompat: null,
   renameNode?: RenameNodeCallback
 ): void {
   if (!isServicesInitialized()) return;
@@ -835,7 +786,7 @@ function saveBridgeNodeProperties(
 export function useNetworkEditorHandlers(
   editNetwork: (id: string | null) => void,
   _editingNetworkData: NetworkEditorData | null,
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   renameNode?: RenameNodeCallback
 ) {
   const handleClose = React.useCallback(() => {
@@ -876,7 +827,7 @@ export function useNetworkEditorHandlers(
 export function useNodeCreationHandlers(
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>,
   state: NodeCreationState,
-  cyCompat: CyCompatCore | null,
+  _cyCompat: null,
   createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void,
   onNewCustomNode: () => void
 ) {
@@ -886,8 +837,6 @@ export function useNodeCreationHandlers(
         onNewCustomNode();
         return;
       }
-
-      if (!cyCompat) return;
 
       if (state.isLocked) {
         floatingPanelRef.current?.triggerShake();
@@ -901,16 +850,14 @@ export function useNodeCreationHandlers(
         template = state.customNodes.find((n) => n.name === state.defaultNode);
       }
 
-      const extent = cyCompat.extent();
-      const position: Position = {
-        x: (extent.x1 + extent.x2) / 2,
-        y: (extent.y1 + extent.y2) / 2
-      };
+      // NOTE: During ReactFlow migration, viewport center is obtained from ReactFlow.
+      // This stub uses a default position. The caller should pass the center from
+      // ReactFlow's useReactFlow().getViewport() or similar.
+      const position: Position = { x: 0, y: 0 };
 
       createNodeAtPosition(position, template);
     },
     [
-      cyCompat,
       state.isLocked,
       state.customNodes,
       state.defaultNode,

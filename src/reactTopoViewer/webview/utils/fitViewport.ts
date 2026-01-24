@@ -3,7 +3,7 @@
  * Extends Cytoscape's native fit() to also consider text, shape, and group annotations.
  */
 
-import type { CyLike } from "../hooks/useAppState";
+import type { CyLike } from "../hooks/shared/cyCompatTypes";
 
 import type {
   FreeTextAnnotation,

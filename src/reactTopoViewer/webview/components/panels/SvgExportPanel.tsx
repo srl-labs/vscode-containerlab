@@ -15,12 +15,11 @@ import type {
 } from "../../../shared/types/topology";
 import { compositeAnnotationsIntoSvg, addBackgroundRect } from "../../utils/annotationsToSvg";
 import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../shared/form";
-import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 
 export interface SvgExportPanelProps {
   isVisible: boolean;
   onClose: () => void;
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   textAnnotations?: FreeTextAnnotation[];
   shapeAnnotations?: FreeShapeAnnotation[];
   groups?: GroupStyleAnnotation[];
@@ -118,7 +117,7 @@ function downloadSvg(content: string, filename: string): void {
 }
 
 /** Check if SVG export is available - stub for ReactFlow migration */
-async function ensureSvgExtension(_cyCompat: CyCompatCore): Promise<boolean> {
+async function ensureSvgExtension(_cyCompat: unknown): Promise<boolean> {
   // SVG export via cytoscape-svg is not available in ReactFlow mode
   // ReactFlow SVG export would need a different implementation
   return false;

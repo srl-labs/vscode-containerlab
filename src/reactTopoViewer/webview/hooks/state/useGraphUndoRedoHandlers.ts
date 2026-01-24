@@ -1061,7 +1061,6 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
   });
 
   const undoRedo = useUndoRedo({
-    cyCompat: cyInstance,
     enabled: mode === "edit",
     applyGraphChanges,
     applyPropertyEdit,

@@ -7,7 +7,6 @@
  */
 import React, { createContext, useContext, useEffect, useCallback, useMemo, useRef } from "react";
 
-import type { CyCompatCore } from "../hooks/useCytoCompatInstance";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
@@ -47,7 +46,7 @@ export interface PendingMembershipChange {
 
 /** Props for AnnotationProvider */
 interface AnnotationProviderProps {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;

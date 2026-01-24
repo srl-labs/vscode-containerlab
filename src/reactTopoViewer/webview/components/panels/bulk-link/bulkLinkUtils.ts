@@ -1,11 +1,11 @@
 /**
  * Utility functions for bulk link creation
+ * NOTE: Disabled during ReactFlow migration - cyCompat no longer available
  */
 import { FilterUtils } from "../../../../../helpers/filterUtils";
 import { isSpecialEndpointId } from "../../../../shared/utilities/LinkTypes";
 import type { CyElement } from "../../../../shared/types/messages";
 import type { GraphChange } from "../../../hooks/state/useUndoRedo";
-import type { CyCompatCore, CyCompatElement } from "../../../hooks/useCytoCompatInstance";
 import {
   type ParsedInterfacePattern,
   parseInterfacePattern,
@@ -21,18 +21,30 @@ type EndpointAllocator = {
   usedIndices: Set<number>;
 };
 
+// Stubbed types for disabled functionality
+interface NodeLike {
+  id(): string;
+  data(key: string): unknown;
+}
+
 function getOrCreateAllocator(
   allocators: Map<string, EndpointAllocator>,
-  cyCompat: CyCompatCore,
-  node: CyCompatElement
+  _cyCompat: null,
+  node: NodeLike
 ): EndpointAllocator {
   const nodeId = node.id();
   const cached = allocators.get(nodeId);
   if (cached) return cached;
 
-  const pattern = getNodeInterfacePattern(node);
+  // Extract extraData for getNodeInterfacePattern
+  const extraData = node.data("extraData") as
+    | { interfacePattern?: string; kind?: string }
+    | undefined;
+  const pattern = getNodeInterfacePattern(extraData);
   const parsed = parseInterfacePattern(pattern);
-  const usedIndices = collectUsedIndices(cyCompat, nodeId, parsed);
+  // Disabled - collectUsedIndices needs edges array
+  const usedIndices = new Set<number>();
+  void collectUsedIndices;
   const created = { parsed, usedIndices };
   allocators.set(nodeId, created);
   return created;
@@ -40,8 +52,8 @@ function getOrCreateAllocator(
 
 function allocateEndpoint(
   allocators: Map<string, EndpointAllocator>,
-  cyCompat: CyCompatCore,
-  node: CyCompatElement
+  cyCompat: null,
+  node: NodeLike
 ): string {
   if (isSpecialEndpointId(node.id())) return "";
 
@@ -99,72 +111,43 @@ function getSourceMatch(
   return fallbackFilter(name) ? null : undefined;
 }
 
-/** Check if an edge exists between two nodes */
-function hasEdgeBetween(cyCompat: CyCompatCore, sourceId: string, targetId: string): boolean {
-  const edges = cyCompat.edges();
-  let found = false;
-  edges.forEach((edge) => {
-    const src = edge.data("source") as string;
-    const tgt = edge.data("target") as string;
-    if ((src === sourceId && tgt === targetId) || (src === targetId && tgt === sourceId)) {
-      found = true;
-    }
-  });
-  return found;
+/** Check if an edge exists between two nodes - disabled during ReactFlow migration */
+function hasEdgeBetween(_cyCompat: null, _sourceId: string, _targetId: string): boolean {
+  // Disabled during ReactFlow migration
+  // TODO: Use ReactFlow state to check for existing edges
+  return false;
 }
 
 export function computeCandidates(
-  cyCompat: CyCompatCore,
-  sourceFilterText: string,
-  targetFilterText: string
+  _cyCompat: null,
+  _sourceFilterText: string,
+  _targetFilterText: string
 ): LinkCandidate[] {
-  const nodes = cyCompat.nodes('node[topoViewerRole != "freeText"]');
-  const candidates: LinkCandidate[] = [];
-
-  const sourceRegex = FilterUtils.tryCreateRegExp(sourceFilterText);
-  const sourceFallbackFilter = sourceRegex ? null : FilterUtils.createFilter(sourceFilterText);
-
-  nodes.forEach((sourceNode) => {
-    const sourceName = sourceNode.data("name") as string;
-    const match = getSourceMatch(sourceName, sourceRegex, sourceFallbackFilter);
-    if (match === undefined) return;
-
-    const substitutedTargetPattern = applyBackreferences(targetFilterText, match);
-    const targetFilter = FilterUtils.createFilter(substitutedTargetPattern);
-
-    nodes.forEach((targetNode) => {
-      if (sourceNode.id() === targetNode.id()) return;
-      if (!targetFilter(targetNode.data("name") as string)) return;
-      if (hasEdgeBetween(cyCompat, sourceNode.id(), targetNode.id())) return;
-
-      candidates.push({ sourceId: sourceNode.id(), targetId: targetNode.id() });
-    });
-  });
-
-  return candidates;
+  // Disabled during ReactFlow migration
+  // TODO: Use ReactFlow nodes/edges state for computing candidates
+  void FilterUtils;
+  void getSourceMatch;
+  void applyBackreferences;
+  void hasEdgeBetween;
+  return [];
 }
 
-export function buildBulkEdges(cyCompat: CyCompatCore, candidates: LinkCandidate[]): CyElement[] {
-  const allocators = new Map<string, EndpointAllocator>();
+export function buildBulkEdges(_cyCompat: null, candidates: LinkCandidate[]): CyElement[] {
+  // Disabled during ReactFlow migration - no cyCompat.getElementById available
+  // Return empty for now - proper implementation needs ReactFlow node access
+  void allocateEndpoint;
   const edges: CyElement[] = [];
 
   for (const { sourceId, targetId } of candidates) {
-    const sourceNode = cyCompat.getElementById(sourceId);
-    const targetNode = cyCompat.getElementById(targetId);
-    if (!sourceNode.length || !targetNode.length) continue;
-
-    const sourceEndpoint = allocateEndpoint(allocators, cyCompat, sourceNode);
-    const targetEndpoint = allocateEndpoint(allocators, cyCompat, targetNode);
     const edgeId = `${sourceId}-${targetId}`;
-
     edges.push({
       group: "edges",
       data: {
         id: edgeId,
         source: sourceId,
         target: targetId,
-        sourceEndpoint,
-        targetEndpoint,
+        sourceEndpoint: "",
+        targetEndpoint: "",
         editor: "true"
       },
       classes: isSpecialEndpointId(sourceId) || isSpecialEndpointId(targetId) ? "stub-link" : ""

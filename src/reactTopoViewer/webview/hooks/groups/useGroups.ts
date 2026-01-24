@@ -6,8 +6,6 @@
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
-
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
 import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from "../../services";
@@ -42,7 +40,7 @@ import {
 } from "./groupTypes";
 
 export interface UseGroupsHookOptions extends UseGroupsOptions {
-  cy: CyCompatCore | null;
+  cy: null;
 }
 
 /**
@@ -75,28 +73,22 @@ function saveBatchMemberships(memberships: MembershipUpdateEntry[]): void {
 
 /**
  * Get node positions from Cytoscape for selected nodes.
+ * NOTE: Disabled during ReactFlow migration - returns empty array.
  */
-function getNodePositions(cy: CyCompatCore, nodeIds: string[]): { x: number; y: number }[] {
-  return nodeIds
-    .map((id) => {
-      const node = cy.getElementById(id);
-      if (node.length > 0) {
-        return node.position();
-      }
-      return null;
-    })
-    .filter((pos): pos is { x: number; y: number } => pos !== null);
+function getNodePositions(_cy: null, _nodeIds: string[]): { x: number; y: number }[] {
+  // NOTE: This function is disabled during ReactFlow migration.
+  // In ReactFlow, node positions should be obtained from React state.
+  return [];
 }
 
 /**
  * Get the center of the viewport.
+ * NOTE: Disabled during ReactFlow migration - returns default center.
  */
-function getViewportCenter(cy: CyCompatCore): { x: number; y: number } {
-  const extent = cy.extent();
-  return {
-    x: (extent.x1 + extent.x2) / 2,
-    y: (extent.y1 + extent.y2) / 2
-  };
+function getViewportCenter(_cy: null): { x: number; y: number } {
+  // NOTE: This function is disabled during ReactFlow migration.
+  // In ReactFlow, viewport center is obtained via useReactFlow().getViewport()
+  return { x: 0, y: 0 };
 }
 
 /**
@@ -114,7 +106,7 @@ function getDefaultGroupName(groupId: string): string {
  * Hook for creating a new group.
  */
 function useCreateGroup(
-  cy: CyCompatCore | null,
+  cy: null,
   mode: "edit" | "view",
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
@@ -373,7 +365,7 @@ function useEditGroup(
  * Updates group styles and syncs member annotations when name/level changes.
  */
 interface SaveGroupOptions {
-  cy: CyCompatCore | null;
+  cy: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: (() => void) | undefined;
@@ -441,24 +433,9 @@ function useSaveGroup(options: SaveGroupOptions) {
           saveBatchMemberships(updates);
         }
 
-        if (cy) {
-          memberIds.forEach((nodeId) => {
-            const node = cy.getElementById(nodeId);
-            if (node.length > 0) {
-              const annotation = node.data("clabAnnotation") as
-                | { group?: string; level?: string; groupId?: string }
-                | undefined;
-              if (annotation) {
-                node.data("clabAnnotation", {
-                  ...annotation,
-                  groupId,
-                  group: data.name,
-                  level: data.level
-                });
-              }
-            }
-          });
-        }
+        // NOTE: Node data updates disabled during ReactFlow migration.
+        // In ReactFlow, node data is managed via React state.
+        void cy; // Suppress unused variable warning
       }
 
       setEditingGroup(null);

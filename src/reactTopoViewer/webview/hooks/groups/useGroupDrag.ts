@@ -4,8 +4,6 @@
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
-
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import { addMouseMoveUpListeners } from "../shared/dragHelpers";
 
@@ -55,7 +53,8 @@ interface DragState {
 }
 
 export interface UseGroupDragInteractionOptions {
-  cy: CyCompatCore;
+  /** Zoom factor for coordinate conversion (1.0 = no zoom) */
+  zoom?: number;
   groupId: string;
   isLocked: boolean;
   position: { x: number; y: number };
@@ -83,7 +82,7 @@ export interface UseGroupDragInteractionReturn {
  */
 interface GroupDragEventsOptions {
   isDragging: boolean;
-  cy: CyCompatCore;
+  zoom: number;
   groupId: string;
   dragRef: React.RefObject<DragState | null>;
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
@@ -102,7 +101,7 @@ interface GroupDragEventsOptions {
 function useGroupDragEvents(options: GroupDragEventsOptions): void {
   const {
     isDragging,
-    cy,
+    zoom,
     groupId,
     dragRef,
     setIsDragging,
@@ -119,7 +118,6 @@ function useGroupDragEvents(options: GroupDragEventsOptions): void {
     const handleMouseMove = (e: MouseEvent) => {
       const ref = dragRef.current;
       if (!ref) return;
-      const zoom = cy.zoom();
 
       const incrDx = (e.clientX - ref.lastX) / zoom;
       const incrDy = (e.clientY - ref.lastY) / zoom;
@@ -142,7 +140,6 @@ function useGroupDragEvents(options: GroupDragEventsOptions): void {
       // Treat a click (no meaningful movement) as NOT a drag.
       // Without this guard, a click on the draggable border can trigger unintended reparenting.
       if (movedPx >= 3) {
-        const zoom = cy.zoom();
         const dx = (e.clientX - ref.startX) / zoom;
         const dy = (e.clientY - ref.startY) / zoom;
         const finalPosition = { x: ref.modelX + dx, y: ref.modelY + dy };
@@ -158,7 +155,7 @@ function useGroupDragEvents(options: GroupDragEventsOptions): void {
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
   }, [
     isDragging,
-    cy,
+    zoom,
     groupId,
     dragRef,
     setIsDragging,
@@ -175,7 +172,7 @@ export function useGroupDragInteraction(
   options: UseGroupDragInteractionOptions
 ): UseGroupDragInteractionReturn {
   const {
-    cy,
+    zoom = 1,
     groupId,
     isLocked,
     position,
@@ -197,7 +194,7 @@ export function useGroupDragInteraction(
 
   useGroupDragEvents({
     isDragging,
-    cy,
+    zoom,
     groupId,
     dragRef,
     setIsDragging,
@@ -291,7 +288,7 @@ function computeResizeFromEvent(
  */
 function useGroupResizeEvents(
   isResizing: boolean,
-  cy: CyCompatCore,
+  zoom: number,
   groupId: string,
   dragRef: React.RefObject<ResizeState | null>,
   setIsResizing: React.Dispatch<React.SetStateAction<boolean>>,
@@ -313,14 +310,14 @@ function useGroupResizeEvents(
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return;
-      const { w, h, pos } = computeResizeFromEvent(e, dragRef.current, cy.zoom());
+      const { w, h, pos } = computeResizeFromEvent(e, dragRef.current, zoom);
       // Use onResizeMove for visual updates (no undo recording)
       onResizeMove(groupId, w, h, pos);
     };
 
     const handleMouseUp = (e: MouseEvent) => {
       if (dragRef.current) {
-        const { w, h, pos } = computeResizeFromEvent(e, dragRef.current, cy.zoom());
+        const { w, h, pos } = computeResizeFromEvent(e, dragRef.current, zoom);
         // Use onResizeEnd to record the undo action and final save
         onResizeEnd(groupId, w, h, pos);
       }
@@ -329,11 +326,11 @@ function useGroupResizeEvents(
     };
 
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
-  }, [isResizing, cy, groupId, dragRef, setIsResizing, onResizeMove, onResizeEnd]);
+  }, [isResizing, zoom, groupId, dragRef, setIsResizing, onResizeMove, onResizeEnd]);
 }
 
 export function useGroupResize(
-  cy: CyCompatCore,
+  zoom: number,
   group: GroupStyleAnnotation,
   groupId: string,
   isLocked: boolean,
@@ -355,7 +352,15 @@ export function useGroupResize(
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef<ResizeState | null>(null);
 
-  useGroupResizeEvents(isResizing, cy, groupId, dragRef, setIsResizing, onResizeMove, onResizeEnd);
+  useGroupResizeEvents(
+    isResizing,
+    zoom,
+    groupId,
+    dragRef,
+    setIsResizing,
+    onResizeMove,
+    onResizeEnd
+  );
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent, corner: ResizeCorner) => {

@@ -7,7 +7,6 @@
  */
 import React from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import { useKeyboardShortcuts } from "../ui/useKeyboardShortcuts";
 
 import type { ClipboardHandlersReturn } from "./useClipboardHandlers";
@@ -22,7 +21,7 @@ export interface AppKeyboardShortcutsConfig {
     selectedNode: string | null;
     selectedEdge: string | null;
   };
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   undoRedo: {
     undo: () => void;
     redo: () => void;

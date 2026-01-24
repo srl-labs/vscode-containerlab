@@ -6,7 +6,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 import type { MapLibreState } from "../canvas/maplibreUtils";
 import { unprojectToGeoCoords, calculateScale } from "../canvas/maplibreUtils";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import type { RenderedPosition } from "./freeText";
 import { modelToRendered, modelToRenderedGeo } from "./freeText";
@@ -19,7 +18,7 @@ interface DragStart {
 }
 
 interface UseAnnotationDragOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   modelPosition: { x: number; y: number };
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;
@@ -55,19 +54,14 @@ function calculateDelta(
 }
 
 // Get container-relative screen position
-function getContainerRelativePos(
-  cyCompat: CyCompatCore,
-  e: MouseEvent
-): { x: number; y: number } | null {
-  const container = cyCompat.container();
-  if (!container) return null;
-  const rect = container.getBoundingClientRect();
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+function getContainerRelativePos(_cyCompat: null, _e: MouseEvent): { x: number; y: number } | null {
+  // Disabled during ReactFlow migration - container access needs to use ViewportContext
+  return null;
 }
 
 // Handle geo mode mouse move - update rendered position to screen position
 function handleGeoModeMove(
-  cyCompat: CyCompatCore,
+  cyCompat: null,
   e: MouseEvent,
   setRenderedPos: React.Dispatch<React.SetStateAction<RenderedPosition>>
 ): void {
@@ -79,7 +73,7 @@ function handleGeoModeMove(
 
 // Handle non-geo mode mouse move - update rendered position via model transformation
 function handleNonGeoModeMove(
-  cyCompat: CyCompatCore,
+  cyCompat: null,
   dragStart: DragStart,
   deltaX: number,
   deltaY: number,
@@ -93,7 +87,7 @@ function handleNonGeoModeMove(
 
 // Finalize geo mode drag - convert screen to geo coords and call callback
 function finalizeGeoDrag(
-  cyCompat: CyCompatCore,
+  cyCompat: null,
   e: MouseEvent,
   mapLibreState: MapLibreState,
   onGeoPositionChange: (geoCoords: { lat: number; lng: number }) => void
@@ -109,13 +103,14 @@ function finalizeGeoDrag(
 
 // Finalize non-geo mode drag - update model position
 function finalizeNonGeoDrag(
-  cyCompat: CyCompatCore,
+  _cyCompat: null,
   e: MouseEvent,
   dragStart: DragStart,
   modelPosition: { x: number; y: number },
-  onPositionChange: (position: { x: number; y: number }) => void
+  onPositionChange: (position: { x: number; y: number }) => void,
+  zoom: number = 1
 ): void {
-  const { deltaX, deltaY } = calculateDelta(e, dragStart, cyCompat.zoom());
+  const { deltaX, deltaY } = calculateDelta(e, dragStart, zoom);
   const newModelX = Math.round(dragStart.modelX + deltaX);
   const newModelY = Math.round(dragStart.modelY + deltaY);
   if (newModelX !== modelPosition.x || newModelY !== modelPosition.y) {
@@ -125,7 +120,7 @@ function finalizeNonGeoDrag(
 
 // Hook for viewport position synchronization (geo-aware)
 function useViewportSync(
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   modelX: number,
   modelY: number,
   setRenderedPos: React.Dispatch<React.SetStateAction<RenderedPosition>>,
@@ -133,47 +128,44 @@ function useViewportSync(
   geoCoordinates?: { lat: number; lng: number }
 ): void {
   useEffect(() => {
-    if (!cyCompat) return;
+    // Disabled during ReactFlow migration - viewport sync should use ViewportContext
+    // Use geo-aware position calculation if in geo mode
+    if (mapLibreState?.isInitialized && geoCoordinates) {
+      const rendered = modelToRenderedGeo(mapLibreState, geoCoordinates, modelX, modelY);
+      setRenderedPos(rendered);
 
-    const updatePosition = () => {
-      // Use geo-aware position calculation if in geo mode
-      if (mapLibreState?.isInitialized && geoCoordinates) {
-        const rendered = modelToRenderedGeo(mapLibreState, geoCoordinates, modelX, modelY);
-        setRenderedPos(rendered);
-      } else {
-        const rendered = modelToRendered(cyCompat, modelX, modelY);
-        setRenderedPos({ x: rendered.x, y: rendered.y, zoom: cyCompat.zoom() });
+      // In geo mode, listen to map move events to update positions
+      if (mapLibreState.map) {
+        const updatePosition = () => {
+          const r = modelToRenderedGeo(mapLibreState, geoCoordinates, modelX, modelY);
+          setRenderedPos(r);
+        };
+        mapLibreState.map.on("move", updatePosition);
+        return () => {
+          mapLibreState.map?.off("move", updatePosition);
+        };
       }
-    };
-    updatePosition();
-
-    // In geo mode, listen to map move events to update positions
-    if (mapLibreState?.isInitialized && mapLibreState.map) {
-      mapLibreState.map.on("move", updatePosition);
-      return () => {
-        mapLibreState.map?.off("move", updatePosition);
-      };
+      return; // No cleanup needed when map is not available
     }
-
-    // In non-geo mode, listen to cyCompat pan/zoom events
-    cyCompat.on("pan zoom", updatePosition);
-    return () => {
-      cyCompat.off("pan zoom", updatePosition);
-    };
+    // Non-geo mode: set default position, viewport sync disabled
+    setRenderedPos({ x: modelX, y: modelY, zoom: 1 });
+    void cyCompat;
+    return; // No cleanup needed
   }, [cyCompat, modelX, modelY, setRenderedPos, mapLibreState, geoCoordinates]);
 }
 
 // Get zoom factor for drag calculations
-function getZoomFactor(cyCompat: CyCompatCore, mapLibreState?: MapLibreState | null): number {
+function getZoomFactor(_cyCompat: null, mapLibreState?: MapLibreState | null): number {
   if (mapLibreState?.isInitialized) {
     return calculateScale(mapLibreState);
   }
-  return cyCompat.zoom();
+  // Default zoom when cyCompat is not available - should use ViewportContext
+  return 1;
 }
 
 // Hook for drag event handlers (geo-aware)
 interface DragHandlersOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   isDragging: boolean;
   modelPosition: { x: number; y: number };
   dragStartRef: { current: DragStart | null };

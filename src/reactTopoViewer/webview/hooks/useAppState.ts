@@ -6,6 +6,11 @@ import type React from "react";
 import { useRef, useCallback, useEffect, useState } from "react";
 
 import { log } from "../utils/logger";
+import { deleteNode, deleteLink } from "../services";
+
+// Re-export CyLike types from shared location to avoid circular dependencies
+export type { CyLike, CyLikeElement, CyLikeCollection } from "./shared/cyCompatTypes";
+import type { CyLike } from "./shared/cyCompatTypes";
 
 /**
  * Canvas ref interface for layout controls and selection.
@@ -15,73 +20,6 @@ export interface CanvasRef {
   getCy(): CyLike | null;
   runLayout(name: string): void;
 }
-
-/**
- * Minimal element interface that works with both Cytoscape and the compatibility layer.
- * This is a subset of what both CyCompatElement and Cytoscape's NodeSingular/EdgeSingular provide.
- */
-export interface CyLikeElement {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data(key?: string): any;
-  position(): { x: number; y: number };
-  isNode(): boolean;
-  isEdge(): boolean;
-  empty(): boolean;
-  nonempty(): boolean;
-  id(): string;
-  length: number;
-}
-
-/**
- * Minimal collection interface that works with both Cytoscape and the compatibility layer.
- * Note: We use less restrictive types to allow compatibility with Cytoscape's collection types.
- */
-export interface CyLikeCollection {
-  length: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  forEach(fn: (ele: any) => void): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filter(fn: (ele: any) => boolean): any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  map<T>(fn: (ele: any) => T): T[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  first(): any;
-  empty(): boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  some(fn: (ele: any) => boolean): boolean;
-}
-
-/**
- * Minimal cytoscape-like interface that both Core and CyCompatCore satisfy.
- * This allows hooks to work with either the real Cytoscape or the compatibility layer.
- * Uses less restrictive types to enable compatibility with Cytoscape's Core type.
- */
-export interface CyLike {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getElementById(id: string): any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  edges(selector?: string): any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  nodes(selector?: string): any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  collection(): any;
-  pan(): { x: number; y: number };
-  zoom(): number;
-  container(): HTMLElement | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  on(events: string, selector: any, handler?: any): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  off(events: string, selector: any, handler?: any): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  one(events: string, handler: any): void;
-  scratch(key: string, value?: unknown): unknown;
-  fit(eles?: unknown, padding?: number): void;
-  autoungrabify(val?: boolean): boolean;
-  boxSelectionEnabled(val?: boolean): boolean;
-  batch(fn: () => void): void;
-  extent(): { x1: number; y1: number; x2: number; y2: number; w: number; h: number };
-}
-import { deleteNode, deleteLink } from "../services";
 
 /** Edge data interface for link operations */
 interface EdgeData {
@@ -465,50 +403,24 @@ function applyGridSettings(cy: CyLike | null, lineWidth: number): void {
 /**
  * Snap a position to the nearest grid cell center.
  * Grid lines are at 0, 14, 28, ... so cell centers are at 7, 21, 35, ...
+ * Exported for use by ReactFlow components.
  */
-function snapToGrid(value: number): number {
+export function snapToGrid(value: number): number {
   const halfSpacing = GRID_SPACING / 2;
   return Math.round((value - halfSpacing) / GRID_SPACING) * GRID_SPACING + halfSpacing;
 }
 
-/**
- * Event object interface for compatibility layer
- */
-interface CyCompatEventObject {
-  target: CyCompatNodeSingular;
-}
-
-/**
- * Node singular interface for compatibility layer
- */
-interface CyCompatNodeSingular {
-  data(key: string): unknown;
-  position(): { x: number; y: number };
-  position(pos: { x: number; y: number }): void;
-}
+// Note: CyCompatNodeSingular was used for per-node snapping but is
+// now handled through React state during the ReactFlow migration.
 
 /**
  * Setup per-node snapping that ONLY affects the individual node being dragged.
  * This is called once when cytoscape instance is available.
+ * NOTE: Disabled during ReactFlow migration - snapping handled via React state
  */
-function setupPerNodeSnapping(cy: CyLike): () => void {
-  const handleDragFree = (evt: CyCompatEventObject) => {
-    const node = evt.target;
-    // Skip special nodes (groups, annotations)
-    const role = node.data("topoViewerRole") as string | undefined;
-    if (role === "group" || role === "freeText" || role === "freeShape") return;
-
-    const pos = node.position();
-    const snappedX = snapToGrid(pos.x);
-    const snappedY = snapToGrid(pos.y);
-
-    if (snappedX !== pos.x || snappedY !== pos.y) {
-      node.position({ x: snappedX, y: snappedY });
-    }
-  };
-
-  cy.on("dragfree", "node", handleDragFree as () => void);
-  return () => cy.off("dragfree", "node", handleDragFree as () => void);
+function setupPerNodeSnapping(_cy: CyLike | null): () => void {
+  // Disabled during ReactFlow migration
+  return () => {};
 }
 
 export function useLayoutControls(

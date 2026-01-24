@@ -2,19 +2,18 @@
  * MapLibre GL Integration for React TopoViewer
  * Replaces Leaflet with MapLibre GL for smoother, WebGL-powered map rendering
  *
- * NOTE: This utility module is designed to work with the CyCompatCore compatibility
+ * NOTE: This utility module is designed to work with the unknown compatibility
  * layer that bridges ReactFlow to a Cytoscape-like API. The geo map functionality
  * requires deep integration with the graph library and may need reimplementation
  * for full ReactFlow support.
  */
 import maplibregl from "maplibre-gl";
 
-import type { CyCompatCore, CyCompatElement } from "../useCytoCompatInstance";
 import { log } from "../../utils/logger";
 
 /**
  * Node-like element interface for geo map functionality
- * Compatible with both Cytoscape nodes and CyCompatElement
+ * Compatible with both Cytoscape nodes and unknown
  */
 interface GeoNodeLike {
   id: () => string;
@@ -39,6 +38,34 @@ interface GeoEdgeLike {
   style?: (key: string, value?: unknown) => unknown;
   removeStyle?: (key: string) => void;
   removeData?: (key: string) => void;
+}
+
+/**
+ * Cytoscape-like collection interface for geo map operations
+ */
+interface GeoCollectionLike<T> {
+  forEach: (fn: (item: T) => void) => void;
+  filter: (fn: (item: T) => boolean) => GeoCollectionLike<T>;
+  map: <U>(fn: (item: T) => U) => U[];
+  length?: number;
+}
+
+/**
+ * Cytoscape-like core interface for geo map operations
+ * NOTE: Stubbed during ReactFlow migration - geo map functionality is limited
+ */
+interface GeoCyLike {
+  nodes: (selector?: string) => GeoCollectionLike<GeoNodeLike>;
+  edges: () => GeoCollectionLike<GeoEdgeLike>;
+  elements: () => GeoCollectionLike<GeoNodeLike | GeoEdgeLike>;
+  container: () => HTMLElement | null;
+  scratch: (key: string, value?: unknown) => unknown;
+  on: (event: string, handler: () => void) => void;
+  off: (event: string, handler: () => void) => void;
+  fit: (padding?: number) => void;
+  batch: (fn: () => void) => void;
+  zoom: () => number;
+  pan: () => { x: number; y: number };
 }
 
 // Constants
@@ -113,9 +140,10 @@ export function createInitialMapLibreState(): MapLibreState {
 /**
  * Assign missing lat/lng to nodes
  */
-export function assignMissingLatLng(cy: CyCompatCore): void {
-  const stats = computeLatLngStats(cy);
-  cy.nodes().forEach((node) => applyLatLngToNode(node as unknown as GeoNodeLike, stats));
+export function assignMissingLatLng(cy: GeoCyLike): void {
+  const cyTyped = cy as GeoCyLike;
+  const stats = computeLatLngStats(cyTyped);
+  cyTyped.nodes().forEach((node: GeoNodeLike) => applyLatLngToNode(node, stats));
 }
 
 interface LatLngStats {
@@ -125,7 +153,7 @@ interface LatLngStats {
   useDefaultLng: boolean;
 }
 
-function computeLatLngStats(cy: CyCompatCore): LatLngStats {
+function computeLatLngStats(cy: GeoCyLike): LatLngStats {
   const lats: number[] = [];
   const lngs: number[] = [];
 
@@ -192,7 +220,7 @@ export function showGridOverlay(container: Element | null): void {
 /**
  * Get node's LngLat position
  */
-function getNodeLngLat(node: GeoNodeLike | CyCompatElement): maplibregl.LngLat | null {
+function getNodeLngLat(node: GeoNodeLike): maplibregl.LngLat | null {
   const lat = parseFloat(String(node.data("lat")));
   const lng = parseFloat(String(node.data("lng")));
   if (isNaN(lat) || isNaN(lng)) return null;
@@ -335,7 +363,7 @@ export function assignMissingGeoCoordinatesToShapeAnnotations<T extends GeoCapab
 /**
  * Get bounds containing all nodes
  */
-function getNodeBounds(cy: CyCompatCore): maplibregl.LngLatBounds | null {
+function getNodeBounds(cy: GeoCyLike): maplibregl.LngLatBounds | null {
   const bounds = new maplibregl.LngLatBounds();
   let hasNodes = false;
 
@@ -356,7 +384,7 @@ function getNodeBounds(cy: CyCompatCore): maplibregl.LngLatBounds | null {
  * NOTE: In the CyCompat layer, node position updates are handled differently
  * than in native Cytoscape. This function is a stub for the ReactFlow migration.
  */
-function updateNodePositions(cy: CyCompatCore, state: MapLibreState): void {
+function updateNodePositions(cy: GeoCyLike, state: MapLibreState): void {
   if (!state.map) return;
 
   // In ReactFlow, node positions are managed by React state.
@@ -409,7 +437,7 @@ function cacheEdgeOriginalStyles(edge: GeoEdgeLike): void {
   setDefaultNumericData(edge, "_origArrow", STYLE_ARROW_SCALE, 1);
 }
 
-function ensureOriginalSizes(cy: CyCompatCore): void {
+function ensureOriginalSizes(cy: GeoCyLike): void {
   cy.nodes().forEach((n) => {
     cacheNodeOriginalStyles(n as unknown as GeoNodeLike);
   });
@@ -436,7 +464,7 @@ export function calculateScale(state: MapLibreState): number {
  * This function tracks state for scale calculations but actual styling
  * would need to be handled through React component props in ReactFlow.
  */
-export function applyScale(cy: CyCompatCore, state: MapLibreState, factor: number): void {
+export function applyScale(cy: GeoCyLike, state: MapLibreState, factor: number): void {
   // Skip if factor hasn't changed enough
   const threshold = 0.01;
   if (state.scaleApplied && Math.abs(factor - state.lastScale) < threshold) return;
@@ -458,7 +486,7 @@ export function applyScale(cy: CyCompatCore, state: MapLibreState, factor: numbe
  * NOTE: In the CyCompat layer, style operations are not supported.
  * This is a stub for the ReactFlow migration.
  */
-function resetStyles(cy: CyCompatCore): void {
+function resetStyles(cy: GeoCyLike): void {
   // In ReactFlow, styles are managed through component props.
   // This function is a stub that would need to trigger a re-render
   // with default styles through React state management.
@@ -507,7 +535,7 @@ export interface NodeDragEvent {
 }
 
 function cleanupMapInitializationFailure(
-  cy: CyCompatCore,
+  cy: GeoCyLike,
   state: MapLibreState,
   container: HTMLElement,
   onMove: () => void,
@@ -556,7 +584,7 @@ function cleanupMapInitializationFailure(
  * Initialize MapLibre GL map
  */
 export async function initializeMapLibre(
-  cy: CyCompatCore,
+  cy: GeoCyLike,
   state: MapLibreState,
   onMove: () => void,
   onDragFree: (event: NodeDragEvent) => void
@@ -708,7 +736,7 @@ export async function initializeMapLibre(
 /**
  * Handle map move event - update node positions and scale
  */
-export function handleMapMove(cy: CyCompatCore, state: MapLibreState): void {
+export function handleMapMove(cy: GeoCyLike, state: MapLibreState): void {
   if (!state.isInitialized || !state.map) return;
 
   updateNodePositions(cy, state);
@@ -764,7 +792,7 @@ function disableMapDrag(map: maplibregl.Map): void {
 /**
  * Switch to pan mode (map dragging enabled, node dragging disabled)
  */
-export function switchToPanMode(cy: CyCompatCore, state: MapLibreState): void {
+export function switchToPanMode(cy: GeoCyLike, state: MapLibreState): void {
   if (!state.map) return;
   const container = cy.container();
   if (container) {
@@ -784,7 +812,7 @@ export function switchToPanMode(cy: CyCompatCore, state: MapLibreState): void {
  * Switch to edit mode (node dragging enabled, map dragging disabled)
  * Scroll wheel events are forwarded to MapLibre for zooming
  */
-export function switchToEditMode(cy: CyCompatCore, state: MapLibreState): void {
+export function switchToEditMode(cy: GeoCyLike, state: MapLibreState): void {
   if (!state.map) return;
   const container = cy.container();
   if (container) {
@@ -834,11 +862,7 @@ export function switchToEditMode(cy: CyCompatCore, state: MapLibreState): void {
 /**
  * Handle geo mode change
  */
-export function handleGeoModeChange(
-  cy: CyCompatCore | null,
-  state: MapLibreState,
-  geoMode: "pan" | "edit"
-): void {
+export function handleGeoModeChange(cy: null, state: MapLibreState, geoMode: "pan" | "edit"): void {
   if (!state.isInitialized || !cy) return;
 
   if (geoMode === "pan") {
@@ -852,7 +876,7 @@ export function handleGeoModeChange(
  * Cleanup MapLibre state
  */
 export function cleanupMapLibreState(
-  cy: CyCompatCore | null,
+  cy: GeoCyLike | null,
   state: MapLibreState,
   onMove: () => void,
   onDragFree: (event: NodeDragEvent) => void
@@ -903,7 +927,7 @@ export function cleanupMapLibreState(
 
   // In CyCompat, viewport controls are handled differently
   // Fit the view to show all nodes after restoring positions
-  cy.fit(undefined, 50);
+  cy.fit(50);
 
   showGridOverlay(container);
 

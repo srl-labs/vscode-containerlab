@@ -5,8 +5,6 @@
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 
-import type { CyCompatCore, CyCompatElement } from "../useCytoCompatInstance";
-
 import type { GroupStyleAnnotation, NodeAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
@@ -119,15 +117,16 @@ function migrateLegacyGroups(
 }
 
 /**
- * Check if a node can be added to a group.
+ * Check if a node can be added to a group based on its role.
+ * NOTE: During ReactFlow migration, this function is not used.
+ * Selection filtering should be done at the React level.
  */
-function canBeGrouped(node: CyCompatElement): boolean {
-  const role = node.data("topoViewerRole") as string | undefined;
+function canBeGrouped(role: string | undefined): boolean {
   return role !== "freeText" && role !== "freeShape";
 }
 
 interface UseAppGroupsOptions {
-  cyInstance: CyCompatCore | null;
+  cyInstance: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
@@ -225,15 +224,13 @@ export function useAppGroups(options: UseAppGroupsOptions) {
   useGroupDataLoader(groupsHook.loadGroups, groupsHook.initializeMembership, currentGroupsRef);
 
   const handleAddGroup = useCallback(() => {
-    if (!cyInstance) return;
-    const selectedNodeIds = cyInstance
-      .nodes(":selected")
-      .filter((n) => canBeGrouped(n))
-      .map((n) => n.id());
-
-    const result = groupsHook.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);
+    // NOTE: During ReactFlow migration, selection state is managed by ReactFlow.
+    // This function now creates an empty group. Selection-based group creation
+    // should be handled by the component using ReactFlow's selection state.
+    void canBeGrouped; // Suppress unused warning
+    const result = groupsHook.createGroup();
     if (result) groupsHook.editGroup(result.groupId);
-  }, [cyInstance, groupsHook]);
+  }, [groupsHook]);
 
   return { groups: groupsHook, handleAddGroup };
 }

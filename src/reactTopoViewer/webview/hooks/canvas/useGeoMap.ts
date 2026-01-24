@@ -5,12 +5,11 @@
  * This replaces the previous Leaflet-based implementation with MapLibre GL
  * for smoother WebGL-powered animations that match Google Maps quality.
  *
- * NOTE: This hook is designed to work with the CyCompatCore compatibility layer
+ * NOTE: This hook is designed to work with the unknown compatibility layer
  * that bridges ReactFlow to a Cytoscape-like API for the geo map utilities.
  */
 import { useEffect, useRef, useCallback, useState } from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import type { MapLibreState, NodeDragEvent } from "./maplibreUtils";
 import {
   createInitialMapLibreState,
@@ -22,7 +21,7 @@ import {
 } from "./maplibreUtils";
 
 export interface UseGeoMapOptions {
-  cyInstance: CyCompatCore | null;
+  cyInstance: null;
   isGeoLayout: boolean;
   geoMode: "pan" | "edit";
   /** Callback fired when geomap is fully initialized */

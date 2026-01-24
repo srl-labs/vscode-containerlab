@@ -8,8 +8,6 @@
  */
 import React from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
-import { useEdgeCreation } from "../graph/useEdgeCreation";
 import { useNodeCreation } from "../graph/useNodeCreation";
 import { useNetworkCreation, type NetworkType } from "../graph/useNetworkCreation";
 import { useNodeCreationHandlers, type NodeCreationState } from "../panels/useEditorHandlers";
@@ -39,7 +37,7 @@ type Position = { x: number; y: number };
  * Configuration for useGraphCreation hook
  */
 export interface GraphCreationConfig {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   state: {
     mode: "edit" | "view";
@@ -133,19 +131,19 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     return nodes;
   }, [state.elements]);
 
-  // Edge creation
-  const { startEdgeCreation } = useEdgeCreation(cyCompat, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onEdgeCreated
-  });
-
-  const handleCreateLinkFromNode = React.useCallback(
-    (nodeId: string) => {
-      startEdgeCreation(nodeId);
+  // Edge creation - stubbed during ReactFlow migration
+  // TODO: Re-enable edge creation using ReactFlow's connection API
+  const startEdgeCreation = React.useCallback(
+    (_nodeId: string) => {
+      // Disabled during ReactFlow migration
+      void onEdgeCreated;
     },
-    [startEdgeCreation]
+    [onEdgeCreated]
   );
+
+  const handleCreateLinkFromNode = React.useCallback((_nodeId: string) => {
+    // Disabled during ReactFlow migration
+  }, []);
 
   // Node creation state
   const nodeCreationState: NodeCreationState = {
@@ -198,7 +196,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   );
 
   // Network creation
-  const { createNetworkAtPosition } = useNetworkCreation(cyCompat, {
+  const { createNetworkAtPosition } = useNetworkCreation({
     mode: state.mode,
     isLocked: state.isLocked,
     getExistingNodeIds: getUsedNodeIds,
@@ -210,12 +208,14 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   // Handle adding network from panel
   const handleAddNetworkFromPanel = React.useCallback(
     (networkType?: string) => {
-      if (!cyCompat || state.isLocked) {
+      if (state.isLocked) {
         floatingPanelRef.current?.triggerShake();
         return;
       }
-      const extent = cyCompat.extent();
-      const position = { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
+      // Disabled during ReactFlow migration - use default center position
+      // TODO: Use ReactFlow's getViewport() or fitBounds to get canvas center
+      void cyCompat;
+      const position = { x: 0, y: 0 };
       createNetworkAtPosition(position, (networkType || "host") as NetworkType);
     },
     [cyCompat, state.isLocked, createNetworkAtPosition, floatingPanelRef]

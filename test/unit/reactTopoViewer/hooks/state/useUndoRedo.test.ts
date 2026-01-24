@@ -72,8 +72,8 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Stack Correctness", () => {
     it("R-001: PUSH adds action to past stack", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       const action = createMoveAction();
       act(() => {
@@ -85,8 +85,8 @@ describe("useUndoRedo", () => {
     });
 
     it("R-002: PUSH clears future stack", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Push first action
       act(() => {
@@ -110,11 +110,11 @@ describe("useUndoRedo", () => {
     });
 
     it("R-003: UNDO moves last past to future", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 })
       ]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -134,11 +134,11 @@ describe("useUndoRedo", () => {
     });
 
     it("R-004: REDO moves first future to past", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 })
       ]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -160,8 +160,8 @@ describe("useUndoRedo", () => {
     });
 
     it("R-005: UNDO on empty past returns same state", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       expect(result.current.undoCount).to.equal(0);
 
@@ -174,8 +174,8 @@ describe("useUndoRedo", () => {
     });
 
     it("R-006: REDO on empty future returns same state", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -192,8 +192,8 @@ describe("useUndoRedo", () => {
     });
 
     it("R-007: CLEAR resets to initial state", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Add some history
       act(() => {
@@ -218,11 +218,11 @@ describe("useUndoRedo", () => {
     });
 
     it("R-008: Multiple PUSH/UNDO/REDO cycle works correctly", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 })
       ]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Push 3 actions
       act(() => {
@@ -291,8 +291,8 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("History Limits", () => {
     it("H-001: History limited to MAX_HISTORY_SIZE (50)", () => {
-      const cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Push 51 actions using for...of to avoid nested function depth
       const actions = createMultipleMoveActions(51);
@@ -304,8 +304,8 @@ describe("useUndoRedo", () => {
     });
 
     it("H-002: Oldest items removed on overflow (FIFO)", () => {
-      const cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Push 51 actions with distinct positions
       for (let i = 0; i < 51; i++) {
@@ -334,8 +334,8 @@ describe("useUndoRedo", () => {
     });
 
     it("H-003: Future stack not limited", () => {
-      const cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Push 50 actions (max history)
       for (let i = 0; i < 50; i++) {
@@ -361,8 +361,8 @@ describe("useUndoRedo", () => {
     });
 
     it("H-004: Boundary at exactly 50 items - no eviction", () => {
-      const cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node0", { x: 0, y: 0 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Push exactly 50 actions
       for (let i = 0; i < 50; i++) {
@@ -397,22 +397,22 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Return Value API", () => {
     it("A-001: Initial canUndo is false", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       expect(result.current.canUndo).to.be.false;
     });
 
     it("A-002: Initial canRedo is false", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       expect(result.current.canRedo).to.be.false;
     });
 
     it("A-003: canUndo true after pushAction", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -422,8 +422,8 @@ describe("useUndoRedo", () => {
     });
 
     it("A-004: canRedo true after undo", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -436,8 +436,8 @@ describe("useUndoRedo", () => {
     });
 
     it("A-005: undoCount matches past length", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       expect(result.current.undoCount).to.equal(0);
 
@@ -458,8 +458,8 @@ describe("useUndoRedo", () => {
     });
 
     it("A-006: redoCount matches future length", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -486,8 +486,8 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Disabled Mode", () => {
     it("D-001: pushAction no-ops when disabled", () => {
-      const cy = createMockCytoscape();
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: false }));
+      const _cy = createMockCytoscape();
+      const { result } = renderHook(() => useUndoRedo({ enabled: false }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -497,10 +497,10 @@ describe("useUndoRedo", () => {
     });
 
     it("D-002: undo no-ops when disabled", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
 
       // Start enabled, push an action
-      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ cy, enabled }), {
+      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ enabled }), {
         initialProps: { enabled: true }
       });
 
@@ -522,9 +522,9 @@ describe("useUndoRedo", () => {
     });
 
     it("D-003: redo no-ops when disabled", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
 
-      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ cy, enabled }), {
+      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ enabled }), {
         initialProps: { enabled: true }
       });
 
@@ -547,9 +547,9 @@ describe("useUndoRedo", () => {
     });
 
     it("D-004: canUndo false when disabled even with past items", () => {
-      const cy = createMockCytoscape();
+      const _cy = createMockCytoscape();
 
-      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ cy, enabled }), {
+      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ enabled }), {
         initialProps: { enabled: true }
       });
 
@@ -565,9 +565,9 @@ describe("useUndoRedo", () => {
     });
 
     it("D-005: canRedo false when disabled even with future items", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
 
-      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ cy, enabled }), {
+      const { result, rerender } = renderHook(({ enabled }) => useUndoRedo({ enabled }), {
         initialProps: { enabled: true }
       });
 
@@ -586,8 +586,8 @@ describe("useUndoRedo", () => {
     });
 
     it("D-006: recordMove no-ops when disabled", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: false }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: false }));
 
       const beforePositions = [{ id: "node1", position: { x: 100, y: 100 } }];
 
@@ -604,18 +604,20 @@ describe("useUndoRedo", () => {
 
   // ==========================================================================
   // Missing Cytoscape Tests
+  // NOTE: These tests have been updated for ReactFlow migration.
+  // The cy prop has been removed from useUndoRedo options.
   // ==========================================================================
-  describe("Missing Cytoscape", () => {
-    it("C-001: capturePositions returns empty with null cy", () => {
-      const { result } = renderHook(() => useUndoRedo({ cy: null, enabled: true }));
+  describe("Missing Cytoscape (ReactFlow migration)", () => {
+    it("C-001: capturePositions returns empty array", () => {
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       const positions = result.current.capturePositions(["node1", "node2"]);
 
       expect(positions).to.deep.equal([]);
     });
 
-    it("C-002: recordMove no-ops with null cy", () => {
-      const { result } = renderHook(() => useUndoRedo({ cy: null, enabled: true }));
+    it("C-002: recordMove no-ops without node positions", () => {
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.recordMove(["node1"], [{ id: "node1", position: { x: 100, y: 100 } }]);
@@ -624,40 +626,24 @@ describe("useUndoRedo", () => {
       expect(result.current.undoCount).to.equal(0);
     });
 
-    it("C-003: undo no-ops with null cy", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-
-      // Push an action while cy is available
-      const { result, rerender } = renderHook(
-        (props: { cy: ReturnType<typeof createMockCytoscape> | null }) =>
-          useUndoRedo({ cy: props.cy as ReturnType<typeof createMockCytoscape>, enabled: true }),
-        { initialProps: { cy: cy as ReturnType<typeof createMockCytoscape> | null } }
-      );
+    it("C-003: undo works with stack management", () => {
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
       });
 
-      // Set cy to null
-      rerender({ cy: null });
-
-      // Try to undo - should not throw, should no-op
+      // Try to undo
       act(() => {
         result.current.undo();
       });
 
-      // State should not have changed (undo requires cy)
-      expect(result.current.undoCount).to.equal(1);
+      // Undo count should decrease after undo
+      expect(result.current.undoCount).to.equal(0);
     });
 
-    it("C-004: redo no-ops with null cy", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-
-      const { result, rerender } = renderHook(
-        (props: { cy: ReturnType<typeof createMockCytoscape> | null }) =>
-          useUndoRedo({ cy: props.cy as ReturnType<typeof createMockCytoscape>, enabled: true }),
-        { initialProps: { cy: cy as ReturnType<typeof createMockCytoscape> | null } }
-      );
+    it("C-004: redo works with stack management", () => {
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(createMoveAction());
@@ -666,14 +652,14 @@ describe("useUndoRedo", () => {
         result.current.undo();
       });
 
-      rerender({ cy: null });
+      expect(result.current.redoCount).to.equal(1);
 
       act(() => {
         result.current.redo();
       });
 
-      // State should not have changed
-      expect(result.current.redoCount).to.equal(1);
+      // Redo count should decrease after redo
+      expect(result.current.redoCount).to.equal(0);
     });
   });
 
@@ -682,8 +668,8 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Move Actions", () => {
     it("M-001: recordMove creates move action with correct type", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       const beforePositions = [{ id: "node1", position: { x: 100, y: 100 } }];
 
@@ -698,7 +684,7 @@ describe("useUndoRedo", () => {
     });
 
     it("M-002: recordMove works with multi-node moves", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 })
       ]);
@@ -707,7 +693,7 @@ describe("useUndoRedo", () => {
       expect(cy.getElementById("node1").nonempty()).to.be.true;
       expect(cy.getElementById("node2").nonempty()).to.be.true;
 
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Provide before positions manually (simulating what drag start would capture)
       const beforePositions = [
@@ -736,8 +722,8 @@ describe("useUndoRedo", () => {
     });
 
     it("M-003: recordMove no-ops if positions unchanged", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       const beforePositions = [{ id: "node1", position: { x: 100, y: 100 } }];
 
@@ -750,8 +736,8 @@ describe("useUndoRedo", () => {
     });
 
     it("M-004: undo move restores before positions", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       // Move and record
       cy.getElementById("node1").position({ x: 200, y: 200 });
@@ -776,8 +762,8 @@ describe("useUndoRedo", () => {
     });
 
     it("M-005: redo move restores after positions", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(
@@ -800,8 +786,8 @@ describe("useUndoRedo", () => {
     });
 
     it("M-006: undo move calls saveNodePositions", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(
@@ -824,8 +810,8 @@ describe("useUndoRedo", () => {
     });
 
     it("M-007: redo move calls saveNodePositions", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(
@@ -851,8 +837,8 @@ describe("useUndoRedo", () => {
     });
 
     it("M-008: Move with membership changes records correctly", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       act(() => {
         result.current.pushAction(
@@ -869,7 +855,7 @@ describe("useUndoRedo", () => {
     });
 
     it("M-009: Undo restores membership via applyMembershipChange callback", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 })
       ]);
@@ -878,7 +864,7 @@ describe("useUndoRedo", () => {
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyMembershipChange
         })
@@ -904,7 +890,7 @@ describe("useUndoRedo", () => {
     });
 
     it("M-010: Redo restores membership via applyMembershipChange callback", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 })
       ]);
@@ -913,7 +899,7 @@ describe("useUndoRedo", () => {
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyMembershipChange
         })
@@ -944,12 +930,12 @@ describe("useUndoRedo", () => {
     });
 
     it("M-011: Multi-node move in single action", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 }),
         createTestNode("node3", { x: 300, y: 300 })
       ]);
-      const { result } = renderHook(() => useUndoRedo({ cy, enabled: true }));
+      const { result } = renderHook(() => useUndoRedo({ enabled: true }));
 
       const beforePositions = [
         { id: "node1", position: { x: 100, y: 100 } },
@@ -991,12 +977,12 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Graph Actions via Callbacks", () => {
     it("Graph actions call applyGraphChanges on undo", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
       const applyGraphChanges = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyGraphChanges
         })
@@ -1022,12 +1008,12 @@ describe("useUndoRedo", () => {
     });
 
     it("Graph actions call applyGraphChanges on redo", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
       const applyGraphChanges = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyGraphChanges
         })
@@ -1063,12 +1049,12 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Property Edit Actions", () => {
     it("Property edit calls applyPropertyEdit on undo", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
       const applyPropertyEdit = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyPropertyEdit
         })
@@ -1093,12 +1079,12 @@ describe("useUndoRedo", () => {
     });
 
     it("Property edit calls applyPropertyEdit on redo", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 100, y: 100 })]);
       const applyPropertyEdit = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyPropertyEdit
         })
@@ -1133,12 +1119,12 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Annotation Actions", () => {
     it("Annotation action calls applyAnnotationChange on undo", () => {
-      const cy = createMockCytoscape();
+      const _cy = createMockCytoscape();
       const applyAnnotationChange = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyAnnotationChange
         })
@@ -1162,12 +1148,12 @@ describe("useUndoRedo", () => {
     });
 
     it("Annotation action calls applyAnnotationChange on redo", () => {
-      const cy = createMockCytoscape();
+      const _cy = createMockCytoscape();
       const applyAnnotationChange = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyAnnotationChange
         })
@@ -1201,7 +1187,7 @@ describe("useUndoRedo", () => {
   // ==========================================================================
   describe("Group Move Actions", () => {
     it("Group move calls applyGroupMoveChange on undo", () => {
-      const cy = createMockCytoscape([
+      const _cy = createMockCytoscape([
         createTestNode("node1", { x: 100, y: 100 }),
         createTestNode("node2", { x: 200, y: 200 })
       ]);
@@ -1209,7 +1195,7 @@ describe("useUndoRedo", () => {
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyGroupMoveChange
         })
@@ -1234,12 +1220,12 @@ describe("useUndoRedo", () => {
     });
 
     it("Group move restores node positions on undo", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 200, y: 200 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 200, y: 200 })]);
       const applyGroupMoveChange = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyGroupMoveChange
         })
@@ -1266,12 +1252,12 @@ describe("useUndoRedo", () => {
     });
 
     it("Group move calls saveNodePositions on undo", () => {
-      const cy = createMockCytoscape([createTestNode("node1", { x: 200, y: 200 })]);
+      const _cy = createMockCytoscape([createTestNode("node1", { x: 200, y: 200 })]);
       const applyGroupMoveChange = sinon.stub();
 
       const { result } = renderHook(() =>
         useUndoRedo({
-          cy,
+          enabled: true,
           enabled: true,
           applyGroupMoveChange
         })

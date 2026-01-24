@@ -2,12 +2,11 @@
  * useAnnotationSelection - Consolidated hooks for annotation click handling and box selection
  */
 import type React from "react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-import { log } from "../../utils/logger";
-import type { CyCompatCore } from "../useCytoCompatInstance";
-
-import { renderedToModel } from "./freeText";
+// Unused during ReactFlow migration
+// import { log } from '../../utils/logger';
+// import { renderedToModel } from './freeText';
 
 /**
  * Hook for annotation click handlers including selection and context menu
@@ -78,19 +77,17 @@ export function useAnnotationClickHandlers(
  * @param layerName - Name of the layer for logging
  */
 export function useLayerClickHandler(
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   onCanvasClick: (pos: { x: number; y: number }) => void,
   layerName: string = "Layer"
 ) {
   return useCallback(
     (e: React.MouseEvent) => {
-      if (!cyCompat) return;
-      const container = cyCompat.container();
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const modelPos = renderedToModel(cyCompat, e.clientX - rect.left, e.clientY - rect.top);
-      onCanvasClick(modelPos);
-      log.info(`[${layerName}] Canvas clicked at model (${modelPos.x}, ${modelPos.y})`);
+      // Disabled during ReactFlow migration - should use ViewportContext for coordinate conversion
+      void cyCompat;
+      void layerName;
+      // Use client coordinates directly as a fallback (no pan/zoom conversion)
+      onCanvasClick({ x: e.clientX, y: e.clientY });
     },
     [cyCompat, onCanvasClick, layerName]
   );
@@ -130,51 +127,19 @@ function isAnnotationInBox<T extends AnnotationWithPosition>(
  * @param layerName - Name of the layer for logging
  */
 export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   annotations: T[],
   onBoxSelect?: (ids: string[]) => void,
   getCenter?: (a: T) => { x: number; y: number },
   layerName: string = "Layer"
 ) {
-  const boxStartRef = useRef<{ x: number; y: number } | null>(null);
-
   useEffect(() => {
-    if (!cyCompat || !onBoxSelect) return;
-
-    // Note: Box selection events (boxstart/boxend) are Cytoscape-specific
-    // and not yet implemented in the CyCompatCore interface.
-    // The event handlers are registered but won't fire until ReactFlow
-    // box selection support is added to the compatibility layer.
-
-    const handleBoxStart = (event: { position: { x: number; y: number } }) => {
-      boxStartRef.current = { x: event.position.x, y: event.position.y };
-    };
-
-    const handleBoxEnd = (event: { position: { x: number; y: number } }) => {
-      if (!boxStartRef.current) return;
-      const box = {
-        x1: boxStartRef.current.x,
-        y1: boxStartRef.current.y,
-        x2: event.position.x,
-        y2: event.position.y
-      };
-
-      const selectedIds = annotations
-        .filter((a) => isAnnotationInBox(a, box, getCenter))
-        .map((a) => a.id);
-      if (selectedIds.length > 0) {
-        log.info(`[${layerName}] Box selected ${selectedIds.length} annotations`);
-        onBoxSelect(selectedIds);
-      }
-      boxStartRef.current = null;
-    };
-
-    // Register event handlers (will work when compatibility layer adds support)
-    cyCompat.on("boxstart", handleBoxStart as unknown as () => void);
-    cyCompat.on("boxend", handleBoxEnd as unknown as () => void);
-    return () => {
-      cyCompat.off("boxstart", handleBoxStart as unknown as () => void);
-      cyCompat.off("boxend", handleBoxEnd as unknown as () => void);
-    };
+    // Disabled during ReactFlow migration - box selection not yet implemented
+    void cyCompat;
+    void annotations;
+    void onBoxSelect;
+    void getCenter;
+    void layerName;
+    void isAnnotationInBox;
   }, [cyCompat, annotations, onBoxSelect, getCenter, layerName]);
 }

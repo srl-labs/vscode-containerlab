@@ -39,9 +39,6 @@ import {
   // Canvas/App state
   useLayoutControls,
   useGeoMap,
-  // ReactFlow compatibility
-  useCyCompatInstance,
-  type CyCompatCore,
   // Panel handlers
   useNodeEditorHandlers,
   useLinkEditorHandlers,
@@ -59,7 +56,7 @@ import {
   useTextLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
-  // NEW: Composed hooks
+  // Composed hooks
   useAnnotationLayerProps,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
@@ -69,7 +66,6 @@ import {
   // Types
   type GraphChange
 } from "./hooks/internal";
-import { useAltClickDelete, useShiftClickEdgeCreation } from "./hooks/graph";
 import { convertToLinkEditorData } from "./utils/linkEditorConversions";
 import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "./utils/edgeAnnotations";
 import { parseEndpointLabelOffset } from "./utils/endpointLabelOffset";
@@ -80,7 +76,7 @@ const AppContent: React.FC<{
   pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   layoutControls: ReturnType<typeof useLayoutControls>;
   mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   shapeLayerNode: HTMLElement | null;
@@ -461,20 +457,8 @@ const AppContent: React.FC<{
     }
   });
 
-  // Alt+Click delete for nodes/edges - using cyCompat
-  useAltClickDelete(cyCompat, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    onDeleteNode: handleDeleteNodeWithUndo,
-    onDeleteEdge: handleDeleteLinkWithUndo
-  });
-
-  // Shift+Click on node to start link creation - using cyCompat
-  useShiftClickEdgeCreation(cyCompat, {
-    mode: state.mode,
-    isLocked: state.isLocked,
-    startEdgeCreation: graphCreation.startEdgeCreation
-  });
+  // Alt+Click delete and Shift+Click edge creation are now handled by ReactFlow callbacks
+  // in the ReactFlowCanvas component
 
   // shapeLayerNode is passed as prop from App wrapper
   const shortcutDisplay = useShortcutDisplay();
@@ -531,7 +515,7 @@ const AppContent: React.FC<{
     handleDeselectAll
   });
 
-  const easterEgg = useEasterEgg({ cyCompat });
+  const easterEgg = useEasterEgg({});
 
   // Annotation layer props - composed hook using cyCompat
   const { groupLayerProps, freeTextLayerProps, freeShapeLayerProps } = useAnnotationLayerProps({
@@ -723,7 +707,7 @@ const AppContent: React.FC<{
           items={menuItems}
           onClose={closeMenu}
         />
-        <EasterEggRenderer easterEgg={easterEgg} cyCompat={cyCompat} />
+        <EasterEggRenderer easterEgg={easterEgg} />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       </main>
     </div>
@@ -741,23 +725,24 @@ export const App: React.FC = () => {
   // Get ReactFlow instance from the canvas ref
   const rfInstance = reactFlowRef.current?.getReactFlowInstance() ?? null;
 
-  // Create Cytoscape compatibility layer
-  const { cyCompat } = useCyCompatInstance(reactFlowRef, rfInstance);
+  // cyCompat is no longer used - all hooks now work without it
+  // TODO: Remove cyCompat parameter from all hooks after ReactFlow integration is complete
+  const cyCompat = null;
 
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
 
-  // Shape and text layers use cyCompat for compatibility
+  // Shape and text layers - currently disabled without cyCompat
   const { shapeLayerNode } = useShapeLayer(cyCompat);
   const { textLayerNode } = useTextLayer(cyCompat);
 
   // Layout controls use reactFlowRef
   const layoutControls = useLayoutControls(
     reactFlowRef as unknown as React.RefObject<import("./hooks/useAppState").CanvasRef | null>,
-    cyCompat as unknown as import("./hooks/useAppState").CyLike | null
+    null
   );
 
-  // Geo map uses cyCompat
+  // Geo map - currently disabled without cyCompat
   const { mapLibreState } = useGeoMap({
     cyInstance: cyCompat,
     isGeoLayout: layoutControls.isGeoLayout,
@@ -766,7 +751,7 @@ export const App: React.FC = () => {
 
   return (
     <ViewportProvider rfInstance={rfInstance}>
-      <UndoRedoProvider cyCompat={cyCompat} enabled={state.mode === "edit"}>
+      <UndoRedoProvider enabled={state.mode === "edit"}>
         <AnnotationProvider
           cyCompat={cyCompat}
           mode={state.mode}

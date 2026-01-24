@@ -1,7 +1,6 @@
 /**
  * Shared utilities for interface pattern handling in edge/link creation
  */
-import type { CyCompatCore, CyCompatElement } from "../hooks/useCytoCompatInstance";
 
 import { DEFAULT_INTERFACE_PATTERNS } from "../../shared/constants/interfacePatterns";
 
@@ -76,18 +75,23 @@ export function extractInterfaceIndex(endpoint: string, parsed: ParsedInterfaceP
 // Node Interface Pattern
 // ============================================================================
 
+/** Node data shape for interface pattern resolution */
+export interface NodeExtraData {
+  interfacePattern?: string;
+  kind?: string;
+}
+
 /**
  * Get interface pattern for a node from its extraData or kind-based mapping
  * Priority: node.extraData.interfacePattern → kindMapping[kind] → DEFAULT
+ *
+ * NOTE: During ReactFlow migration, this function takes extraData directly
+ * instead of a node object with .data() method.
  */
 export function getNodeInterfacePattern(
-  node: CyCompatElement,
+  extraData: NodeExtraData | undefined,
   interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
 ): string {
-  const extraData = node.data("extraData") as
-    | { interfacePattern?: string; kind?: string }
-    | undefined;
-
   // Priority 1: Node-specific interface pattern (from template or annotation)
   if (extraData?.interfacePattern) {
     return extraData.interfacePattern;
@@ -107,59 +111,68 @@ export function getNodeInterfacePattern(
 // Used Indices Collection
 // ============================================================================
 
+/** Edge data shape for endpoint extraction */
+export interface EdgeData {
+  source: string;
+  target: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+}
+
 /**
  * Collect used interface indices for a node using its interface pattern
+ *
+ * NOTE: During ReactFlow migration, this function takes an array of edge data
+ * instead of using a Cytoscape-like query.
  */
 export function collectUsedIndices(
-  cyCompat: CyCompatCore | null,
+  edges: EdgeData[],
   nodeId: string,
   parsed: ParsedInterfacePattern
 ): Set<number> {
   const usedIndices = new Set<number>();
-  if (!cyCompat) return usedIndices;
 
-  const edges = cyCompat.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-
-  edges.forEach((edge) => {
-    const src = edge.data("source") as string;
-    const tgt = edge.data("target") as string;
-    const epSrc = edge.data("sourceEndpoint") as string | undefined;
-    const epTgt = edge.data("targetEndpoint") as string | undefined;
-
-    if (src === nodeId && epSrc) {
-      const idx = extractInterfaceIndex(epSrc, parsed);
+  for (const edge of edges) {
+    if (edge.source === nodeId && edge.sourceEndpoint) {
+      const idx = extractInterfaceIndex(edge.sourceEndpoint, parsed);
       if (idx >= 0) usedIndices.add(idx);
     }
-    if (tgt === nodeId && epTgt) {
-      const idx = extractInterfaceIndex(epTgt, parsed);
+    if (edge.target === nodeId && edge.targetEndpoint) {
+      const idx = extractInterfaceIndex(edge.targetEndpoint, parsed);
       if (idx >= 0) usedIndices.add(idx);
     }
-  });
+  }
 
   return usedIndices;
 }
 
 /**
  * Get the next available endpoint for a node using its interface pattern
- * @param cyCompat Cytoscape compatibility instance
- * @param node Node to get endpoint for
- * @param isNetworkNode Function to check if node is a network node (returns empty string for network nodes)
+ *
+ * NOTE: During ReactFlow migration, this function takes node data directly
+ * instead of using Cytoscape-like methods.
+ *
+ * @param edges Array of edges connected to the node
+ * @param nodeId ID of the node
+ * @param extraData Node's extra data containing interfacePattern and kind
+ * @param isNetworkNode Whether the node is a network node (returns empty string for network nodes)
  * @param interfacePatternMapping Optional custom interface pattern mapping
  */
 export function getNextEndpointForNode(
-  cyCompat: CyCompatCore | null,
-  node: CyCompatElement,
-  isNetworkNode?: (node: CyCompatElement) => boolean,
+  edges: EdgeData[],
+  nodeId: string,
+  extraData: NodeExtraData | undefined,
+  isNetworkNode: boolean = false,
   interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
 ): string {
   // Network nodes don't have interface endpoints
-  if (isNetworkNode && isNetworkNode(node)) {
+  if (isNetworkNode) {
     return "";
   }
 
-  const pattern = getNodeInterfacePattern(node, interfacePatternMapping);
+  const pattern = getNodeInterfacePattern(extraData, interfacePatternMapping);
   const parsed = parseInterfacePattern(pattern);
-  const usedIndices = collectUsedIndices(cyCompat, node.id(), parsed);
+  const usedIndices = collectUsedIndices(edges, nodeId, parsed);
 
   // Find next available index
   let nextIndex = 0;
@@ -173,20 +186,25 @@ export function getNextEndpointForNode(
 /**
  * Get the next available endpoint for a node, excluding specified endpoints.
  * Used for self-loops where we need two different endpoints on the same node.
- * @param cyCompat Cytoscape compatibility instance
- * @param node Node to get endpoint for
+ *
+ * NOTE: During ReactFlow migration, this function takes node data directly.
+ *
+ * @param edges Array of edges connected to the node
+ * @param nodeId ID of the node
+ * @param extraData Node's extra data containing interfacePattern and kind
  * @param interfacePatternMapping Custom interface pattern mapping
  * @param excludeEndpoints Endpoints to exclude from allocation
  */
 export function getNextEndpointForNodeExcluding(
-  cyCompat: CyCompatCore | null,
-  node: CyCompatElement,
+  edges: EdgeData[],
+  nodeId: string,
+  extraData: NodeExtraData | undefined,
   interfacePatternMapping: Record<string, string>,
   excludeEndpoints: string[]
 ): string {
-  const pattern = getNodeInterfacePattern(node, interfacePatternMapping);
+  const pattern = getNodeInterfacePattern(extraData, interfacePatternMapping);
   const parsed = parseInterfacePattern(pattern);
-  const usedIndices = collectUsedIndices(cyCompat, node.id(), parsed);
+  const usedIndices = collectUsedIndices(edges, nodeId, parsed);
 
   // Also exclude specified endpoints
   for (const ep of excludeEndpoints) {

@@ -7,7 +7,6 @@ import type React from "react";
 import type { FreeTextAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { MapLibreState } from "../canvas/maplibreUtils";
 import { projectAnnotationGeoCoords, calculateScale } from "../canvas/maplibreUtils";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import {
   generateAnnotationId as generateId,
@@ -36,7 +35,7 @@ export const DEFAULT_BACKGROUND_COLOR = "transparent";
 // ============================================================================
 
 export interface UseFreeTextAnnotationsOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
@@ -213,23 +212,23 @@ export function duplicateAnnotations(
 // ============================================================================
 
 export function modelToRendered(
-  cyCompat: CyCompatCore,
+  _cyCompat: null,
   modelX: number,
   modelY: number
 ): { x: number; y: number; zoom: number } {
-  const pan = cyCompat.pan();
-  const zoom = cyCompat.zoom();
-  return { x: modelX * zoom + pan.x, y: modelY * zoom + pan.y, zoom };
+  // Disabled during ReactFlow migration - returns model coords directly
+  // TODO: Use ViewportContext for proper coordinate transformation
+  return { x: modelX, y: modelY, zoom: 1 };
 }
 
 export function renderedToModel(
-  cyCompat: CyCompatCore,
+  _cyCompat: null,
   renderedX: number,
   renderedY: number
 ): { x: number; y: number } {
-  const pan = cyCompat.pan();
-  const zoom = cyCompat.zoom();
-  return { x: (renderedX - pan.x) / zoom, y: (renderedY - pan.y) / zoom };
+  // Disabled during ReactFlow migration - returns rendered coords directly
+  // TODO: Use ViewportContext for proper coordinate transformation
+  return { x: renderedX, y: renderedY };
 }
 
 /**

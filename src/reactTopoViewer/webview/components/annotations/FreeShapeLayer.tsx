@@ -5,7 +5,6 @@
 import React, { useRef, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 
-import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import {
   useAnnotationDrag,
@@ -44,7 +43,7 @@ import {
 // ============================================================================
 
 interface FreeShapeLayerProps extends GroupRelatedProps {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   annotations: FreeShapeAnnotation[];
   isLocked: boolean;
   isAddShapeMode: boolean;
@@ -250,7 +249,7 @@ const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({
 
 interface ShapeInteractionItemProps {
   annotation: FreeShapeAnnotation;
-  cyCompat: CyCompatCore;
+  cyCompat: null;
   isLocked: boolean;
   isSelected: boolean;
   onEdit: () => void;

@@ -6,7 +6,6 @@ import React from "react";
 import { BasePanel } from "../../shared/editor/BasePanel";
 import type { GraphChange } from "../../../hooks/state";
 import type { CyElement } from "../../../../shared/types/messages";
-import type { CyCompatCore } from "../../../hooks/useCytoCompatInstance";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -17,7 +16,7 @@ interface BulkLinkPanelProps {
   isVisible: boolean;
   mode: "edit" | "view";
   isLocked: boolean;
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   onClose: () => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
   addEdge?: (edge: CyElement) => void;

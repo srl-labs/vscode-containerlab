@@ -32,8 +32,6 @@ export interface EasterEggState {
 }
 
 export interface UseEasterEggOptions {
-  /** Cytoscape compatibility instance (passed to easter egg components) */
-  cyCompat: unknown;
   /** Callback when easter egg activates */
   onActivate?: () => void;
   /** Callback when easter egg ends */

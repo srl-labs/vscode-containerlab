@@ -5,7 +5,6 @@
 import React, { useEffect, useCallback, useState } from "react";
 
 import { log } from "../../utils/logger";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import type { ContextMenuItem } from "../../components/context-menu/ContextMenu";
 import { WiresharkIcon } from "../../components/context-menu/WiresharkIcon";
 
@@ -48,8 +47,8 @@ const INITIAL_STATE: ContextMenuState = {
   elementType: null
 };
 
-// Scratch key for context menu state (must match events.ts)
-const CONTEXT_MENU_SCRATCH_KEY = "_isContextMenuActive";
+// Note: CONTEXT_MENU_SCRATCH_KEY was used for Cytoscape scratch state
+// During ReactFlow migration, scratch state is not used
 
 // Icon constants for context menu items
 const ICON_EDIT = "fas fa-pen";
@@ -339,15 +338,15 @@ export interface UseContextMenuReturn {
 }
 
 /** Hook for managing menu state */
-function useMenuState(cyCompat: CyCompatCore | null) {
+function useMenuState(_cyCompat: null) {
   const [menuState, setMenuState] = useState<ContextMenuState>(INITIAL_STATE);
   const [nodeData, setNodeData] = useState<Record<string, unknown>>({});
   const [edgeData, setEdgeData] = useState<Record<string, unknown>>({});
 
   const closeMenu = useCallback(() => {
     setMenuState(INITIAL_STATE);
-    if (cyCompat) cyCompat.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
-  }, [cyCompat]);
+    // NOTE: Scratch state is not used during ReactFlow migration
+  }, []);
 
   const openNodeMenu = useCallback(
     (nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
@@ -370,35 +369,31 @@ function useMenuState(cyCompat: CyCompatCore | null) {
 
 /** Hook for setting up context menu events */
 function useMenuEvents(
-  cyCompat: CyCompatCore | null,
+  _cyCompat: null,
   options: ContextMenuOptions,
-  openNodeMenu: (
+  _openNodeMenu: (
     nodeId: string,
     data: Record<string, unknown>,
     position: { x: number; y: number }
   ) => void,
-  openEdgeMenu: (
+  _openEdgeMenu: (
     edgeId: string,
     data: Record<string, unknown>,
     position: { x: number; y: number }
   ) => void
 ) {
   useEffect(() => {
-    if (!cyCompat) return;
-
     log.info(
       `[ContextMenu] Setting up context menu listeners (mode: ${options.mode}, locked: ${options.isLocked})`
     );
 
     // Context menu events are handled via ReactFlow's onNodeContextMenu and onEdgeContextMenu
-    // This hook now only manages the scratch state for compatibility
-    // The actual event handlers are set up in the ReactFlowCanvas component
+    // This hook now only logs setup/cleanup - actual event handlers are in ReactFlowCanvas
 
     return () => {
-      cyCompat.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
       log.info("[ContextMenu] Context menu listeners cleaned up");
     };
-  }, [cyCompat, options.mode, options.isLocked, openNodeMenu, openEdgeMenu]);
+  }, [options.mode, options.isLocked]);
 }
 
 /** Build menu items based on state */
@@ -429,10 +424,7 @@ function buildMenuItems(
  * Hook to manage context menus for Cytoscape elements
  * Returns state and handlers for rendering a React-based context menu
  */
-export function useContextMenu(
-  cyCompat: CyCompatCore | null,
-  options: ContextMenuOptions
-): UseContextMenuReturn {
+export function useContextMenu(cyCompat: null, options: ContextMenuOptions): UseContextMenuReturn {
   const { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu } =
     useMenuState(cyCompat);
   useMenuEvents(cyCompat, options, openNodeMenu, openEdgeMenu);

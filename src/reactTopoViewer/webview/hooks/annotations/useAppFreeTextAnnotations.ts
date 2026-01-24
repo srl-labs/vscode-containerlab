@@ -7,7 +7,6 @@ import React, { useCallback, useMemo } from "react";
 import type { FreeTextAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import { findDeepestGroupAtPosition } from "../groups";
 
 import { createDefaultAnnotation } from "./freeText";
@@ -36,7 +35,7 @@ interface TopologyDataMessage {
 }
 
 interface UseAppFreeTextAnnotationsOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;

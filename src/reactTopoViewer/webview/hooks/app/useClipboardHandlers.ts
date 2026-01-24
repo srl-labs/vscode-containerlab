@@ -8,7 +8,6 @@
  */
 import React from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import {
   useUnifiedClipboard,
   type UseUnifiedClipboardOptions
@@ -47,7 +46,7 @@ const DEBOUNCE_MS = 50;
  * Configuration for useClipboardHandlers hook
  */
 export interface ClipboardHandlersConfig {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   annotations: AnnotationsClipboardSubset;
   undoRedo: {
     beginBatch: () => void;
@@ -83,9 +82,10 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
 
   // Viewport center for paste operations
   const getViewportCenter = React.useCallback(() => {
-    if (!cyCompat) return { x: 0, y: 0 };
-    const extent = cyCompat.extent();
-    return { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
+    // Disabled during ReactFlow migration - use default center
+    // TODO: Use ReactFlow's getViewport() for actual center
+    void cyCompat;
+    return { x: 0, y: 0 };
   }, [cyCompat]);
 
   // Unified clipboard hook
@@ -112,22 +112,13 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
 
   const getPasteAnchor = React.useCallback(() => {
     const viewportCenter = getViewportCenter();
-    if (!cyCompat) return viewportCenter;
+    // Disabled during ReactFlow migration - always use viewport center
+    void cyCompat;
     const clipboardData = unifiedClipboard.getClipboardData();
     if (!clipboardData) return viewportCenter;
 
-    const extent = cyCompat.extent();
-    const { origin } = clipboardData;
-    const originIsInView =
-      origin.x >= extent.x1 &&
-      origin.x <= extent.x2 &&
-      origin.y >= extent.y1 &&
-      origin.y <= extent.y2;
-
-    // Prefer pasting relative to the copied selection when it's visible, so a
-    // single copy+paste doesn't unexpectedly land far away (or overlap due to
-    // viewport centering).
-    return originIsInView ? origin : viewportCenter;
+    // For now, always prefer the origin when available since extent() isn't available
+    return clipboardData.origin ?? viewportCenter;
   }, [cyCompat, getViewportCenter, unifiedClipboard]);
 
   // Debounce refs

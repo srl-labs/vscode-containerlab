@@ -5,12 +5,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
 import { BasePanel } from "../shared/editor/BasePanel";
-import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 
 interface FindNodePanelProps {
   isVisible: boolean;
   onClose: () => void;
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
 }
 
 /** Creates a wildcard filter regex */
@@ -67,27 +66,12 @@ const SearchResultStatus: React.FC<{ count: number }> = ({ count }) => {
   );
 };
 
-interface NodeDataForSearch {
-  id?: string;
-  name?: string;
-  extraData?: { longname?: string };
-}
-
-/** Search nodes using CyCompatCore and return count */
-function searchNodes(cyCompat: CyCompatCore, searchTerm: string): number {
-  const filter = createFilter(searchTerm);
-  const matchingNodes = cyCompat.nodes().filter((node) => {
-    const data = node.data() as NodeDataForSearch;
-    const shortName = data.name ?? data.id ?? "";
-    const longName = data.extraData?.longname ?? "";
-    return filter(`${shortName} ${longName}`);
-  });
-
-  cyCompat.elements().unselect();
-  if (matchingNodes.length > 0) {
-    cyCompat.fit(matchingNodes, 50);
-  }
-  return matchingNodes.length;
+/** Search nodes - disabled during ReactFlow migration */
+function searchNodes(_cyCompat: null, _searchTerm: string): number {
+  // Disabled during ReactFlow migration
+  // TODO: Use ReactFlow's getNodes() for searching and fitBounds for centering
+  void createFilter;
+  return 0;
 }
 
 /** Hook for panel focus management */
@@ -103,7 +87,7 @@ function usePanelFocus(isVisible: boolean, inputRef: React.RefObject<HTMLInputEl
 }
 
 /** Hook for search state management */
-function useSearchState(cyCompat: CyCompatCore | null, isVisible: boolean) {
+function useSearchState(cyCompat: null, isVisible: boolean) {
   const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
@@ -122,7 +106,8 @@ function useSearchState(cyCompat: CyCompatCore | null, isVisible: boolean) {
   const handleClear = useCallback(() => {
     setSearchTerm("");
     setMatchCount(null);
-    cyCompat?.elements().unselect();
+    // Disabled during ReactFlow migration - clear selection handled elsewhere
+    void cyCompat;
   }, [cyCompat]);
 
   return { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear };

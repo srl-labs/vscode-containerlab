@@ -3,7 +3,6 @@
  */
 import React from "react";
 
-import type { CyCompatCore } from "../useCytoCompatInstance";
 import type {
   CustomNodeTemplate,
   CustomTemplateEditorData,
@@ -117,7 +116,7 @@ export interface UseShapeLayerReturn {
  * NOTE: This is a stub during the ReactFlow migration.
  * Shape annotations are now rendered as React components in the ReactFlow canvas.
  */
-export function useShapeLayer(_cyCompat: CyCompatCore | null): UseShapeLayerReturn {
+export function useShapeLayer(_cyCompat: null): UseShapeLayerReturn {
   const [shapeLayerNode] = React.useState<HTMLElement | null>(null);
 
   // Stub implementation - shapes are rendered via React components in ReactFlow
@@ -140,7 +139,7 @@ export interface UseTextLayerReturn {
  * NOTE: This is a stub during the ReactFlow migration.
  * Text annotations are now rendered as React components in the ReactFlow canvas.
  */
-export function useTextLayer(_cyCompat: CyCompatCore | null): UseTextLayerReturn {
+export function useTextLayer(_cyCompat: null): UseTextLayerReturn {
   const [textLayerNode] = React.useState<HTMLElement | null>(null);
 
   // Stub implementation - text annotations are rendered via React components in ReactFlow
@@ -154,7 +153,7 @@ export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical
  * E2E testing exposure configuration
  */
 export interface E2ETestingConfig {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   isLocked: boolean;
   mode: "edit" | "view";
   toggleLock: () => void;
@@ -221,7 +220,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
 
   // Core E2E exposure (cy, isLocked, mode, setLocked)
   // Note: E2E tests expect the full Cytoscape Core API. During ReactFlow migration,
-  // the CyCompatCore is cast to the expected type for backwards compatibility.
+  // the unknown is cast to the expected type for backwards compatibility.
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.__DEV__) {
       // Cast to 'unknown' first then to the expected type to satisfy TypeScript

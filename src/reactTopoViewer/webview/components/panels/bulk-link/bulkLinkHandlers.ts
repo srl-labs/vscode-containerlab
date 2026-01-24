@@ -4,7 +4,6 @@
 import type { GraphChange } from "../../../hooks/state/useUndoRedo";
 import type { CyElement } from "../../../../shared/types/messages";
 import { createLink, beginBatch, endBatch, type LinkSaveData } from "../../../services";
-import type { CyCompatCore } from "../../../hooks/useCytoCompatInstance";
 
 import {
   computeCandidates,
@@ -36,7 +35,7 @@ export async function sendBulkEdgesToExtension(edges: CyElement[]): Promise<void
 }
 
 export function computeAndValidateCandidates(
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   sourcePattern: string,
   targetPattern: string,
   setStatus: SetStatus,
@@ -62,7 +61,7 @@ export function computeAndValidateCandidates(
 }
 
 interface ConfirmCreateParams {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
   addEdge?: (edge: CyElement) => void;

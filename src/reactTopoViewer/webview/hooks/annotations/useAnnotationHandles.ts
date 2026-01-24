@@ -6,7 +6,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import { handleDragStart, addMouseMoveUpListeners } from "../shared/dragHelpers";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import type { RenderedPosition } from "./freeText";
 import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from "./freeShape";
@@ -16,7 +15,7 @@ import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from "./freeShape";
 // ============================================================================
 
 interface UseRotationDragOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   renderedPos: RenderedPosition;
   currentRotation: number;
   isLocked: boolean;
@@ -103,11 +102,10 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
   const handleRotationMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
-      if (!cyCompat) return;
 
       // Get the center of the annotation in screen coordinates
-      const container = cyCompat.container();
-      if (!container) return;
+      // Use the event target's parent as the container reference
+      const container = (e.target as HTMLElement).closest(".react-flow") ?? document.body;
       const rect = container.getBoundingClientRect();
       const centerX = rect.left + renderedPos.x;
       const centerY = rect.top + renderedPos.y;
@@ -123,6 +121,7 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
         startAngle,
         currentRotation
       };
+      void cyCompat;
     },
     [cyCompat, isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]
   );
@@ -303,7 +302,7 @@ export function useResizeDrag(options: UseResizeDragOptions): UseResizeDragRetur
 // ============================================================================
 
 interface UseLineResizeDragOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   annotation: FreeShapeAnnotation;
   isLocked: boolean;
   onEndPositionChange: (pos: { x: number; y: number }) => void;
@@ -329,11 +328,13 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
   const beforeStateRef = useRef<FreeShapeAnnotation | null>(null);
 
   useEffect(() => {
-    if (!isResizing || !cyCompat) return;
+    if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return;
-      const zoom = cyCompat.zoom();
+      // Use default zoom of 1 during ReactFlow migration
+      const zoom = 1;
+      void cyCompat;
       const dxClient = e.clientX - dragRef.current.startClientX;
       const dyClient = e.clientY - dragRef.current.startClientY;
 

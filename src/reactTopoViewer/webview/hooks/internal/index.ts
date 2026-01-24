@@ -21,7 +21,7 @@ export {
   useAppHandlers
 } from "../ui";
 export { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../panels";
-export { useEndpointLabelOffset, useLinkLabelVisibility, useGeoMap } from "../canvas";
+export { useGeoMap } from "../canvas";
 export {
   useCytoscapeInstance,
   useSelectionData,
@@ -30,8 +30,7 @@ export {
   useContextMenuHandlers
 } from "../useAppState";
 
-// ReactFlow compatibility layer
-export { useCyCompatInstance, type CyCompatCore } from "../useCytoCompatInstance";
+// App composition hooks
 export {
   useCustomNodeCommands,
   useNavbarCommands,

@@ -1,10 +1,12 @@
 /**
  * Undo/Redo Hook for Node Position History
  * Manages undo/redo stack for node drag operations
+ *
+ * NOTE: Position-based undo/redo is temporarily disabled during ReactFlow migration.
+ * Graph and annotation undo/redo continue to work.
  */
 import React, { useReducer, useCallback, useMemo } from "react";
 
-import type { CyLike } from "../useAppState";
 import type { CyElement } from "../../../shared/types/messages";
 import { log } from "../../utils/logger";
 import {
@@ -317,11 +319,11 @@ function applyCompoundRedo(
 /** Helper to undo a move action */
 function applyMoveUndo(
   action: UndoRedoActionMove,
-  cy: CyLike,
-  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
+  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined,
+  applyPositionChange: ((positions: NodePositionEntry[]) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Undoing move for ${action.before.length} node(s)`);
-  applyPositionsToGraph(cy, action.before);
+  applyPositionChange?.(action.before);
   sendPositionsToExtension(action.before);
   if (action.membershipBefore && action.membershipBefore.length > 0) {
     applyMembershipChange?.(action.membershipBefore);
@@ -332,11 +334,11 @@ function applyMoveUndo(
 /** Helper to redo a move action */
 function applyMoveRedo(
   action: UndoRedoActionMove,
-  cy: CyLike,
-  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
+  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined,
+  applyPositionChange: ((positions: NodePositionEntry[]) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Redoing move for ${action.after.length} node(s)`);
-  applyPositionsToGraph(cy, action.after);
+  applyPositionChange?.(action.after);
   sendPositionsToExtension(action.after);
   if (action.membershipAfter && action.membershipAfter.length > 0) {
     applyMembershipChange?.(action.membershipAfter);
@@ -347,24 +349,24 @@ function applyMoveRedo(
 /** Helper to undo a group-move action */
 function applyGroupMoveUndo(
   action: UndoRedoActionGroupMove,
-  cy: CyLike,
-  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
+  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined,
+  applyPositionChange: ((positions: NodePositionEntry[]) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Undoing group move with ${action.nodesBefore.length} node(s)`);
   applyGroupMoveChange?.(action, true);
-  applyPositionsToGraph(cy, action.nodesBefore);
+  applyPositionChange?.(action.nodesBefore);
   sendPositionsToExtension(action.nodesBefore);
 }
 
 /** Helper to redo a group-move action */
 function applyGroupMoveRedo(
   action: UndoRedoActionGroupMove,
-  cy: CyLike,
-  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
+  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined,
+  applyPositionChange: ((positions: NodePositionEntry[]) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Redoing group move with ${action.nodesAfter.length} node(s)`);
   applyGroupMoveChange?.(action, false);
-  applyPositionsToGraph(cy, action.nodesAfter);
+  applyPositionChange?.(action.nodesAfter);
   sendPositionsToExtension(action.nodesAfter);
 }
 
@@ -424,27 +426,27 @@ function applyAnnotationAction(
 function applyMoveAction(
   action: UndoRedoActionMove,
   isUndo: boolean,
-  cy: CyLike,
-  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
+  applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined,
+  applyPositionChange: ((positions: NodePositionEntry[]) => void) | undefined
 ): void {
   if (isUndo) {
-    applyMoveUndo(action, cy, applyMembershipChange);
+    applyMoveUndo(action, applyMembershipChange, applyPositionChange);
     return;
   }
-  applyMoveRedo(action, cy, applyMembershipChange);
+  applyMoveRedo(action, applyMembershipChange, applyPositionChange);
 }
 
 function applyGroupMoveAction(
   action: UndoRedoActionGroupMove,
   isUndo: boolean,
-  cy: CyLike,
-  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
+  applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined,
+  applyPositionChange: ((positions: NodePositionEntry[]) => void) | undefined
 ): void {
   if (isUndo) {
-    applyGroupMoveUndo(action, cy, applyGroupMoveChange);
+    applyGroupMoveUndo(action, applyGroupMoveChange, applyPositionChange);
     return;
   }
-  applyGroupMoveRedo(action, cy, applyGroupMoveChange);
+  applyGroupMoveRedo(action, applyGroupMoveChange, applyPositionChange);
 }
 
 function applyCompoundAction(
@@ -513,20 +515,6 @@ function undoRedoReducer(
 }
 
 /**
- * Apply positions to Cytoscape nodes
- */
-function applyPositionsToGraph(cy: CyLike, positions: NodePositionEntry[]): void {
-  cy.batch(() => {
-    for (const entry of positions) {
-      const node = cy.getElementById(entry.id);
-      if (node.length > 0 && node.isNode() && entry.position) {
-        node.position(entry.position);
-      }
-    }
-  });
-}
-
-/**
  * Save positions via TopologyIO service
  */
 function sendPositionsToExtension(positions: NodePositionEntry[]): void {
@@ -569,8 +557,6 @@ function sendMembershipToExtension(memberships: MembershipEntry[]): void {
  * Options for the useUndoRedo hook
  */
 export interface UseUndoRedoOptions {
-  /** Cytoscape compatibility instance */
-  cyCompat: CyLike | null;
   /** Whether undo/redo is enabled (typically only in edit mode) */
   enabled?: boolean;
   /** Apply graph changes for non-position actions (create/delete/update) */
@@ -594,6 +580,15 @@ export interface UseUndoRedoOptions {
    * @param memberships The membership entries to apply
    */
   applyMembershipChange?: (memberships: MembershipEntry[]) => void;
+  /** Apply position changes for undo/redo of node moves
+   * @param positions The position entries to apply
+   */
+  applyPositionChange?: (positions: NodePositionEntry[]) => void;
+  /** Capture current positions for specified nodes
+   * @param nodeIds The node IDs to capture positions for
+   * @returns The captured positions
+   */
+  capturePositions?: (nodeIds: string[]) => NodePositionEntry[];
 }
 
 /**
@@ -633,23 +628,16 @@ export interface UseUndoRedoReturn {
   isInBatch: () => boolean;
 }
 
-/** Helper hook for capturing node positions */
-function useCapturePositions(cyCompat: CyLike | null) {
+/** Helper hook for capturing node positions - uses callback provided by caller */
+function useCapturePositions(
+  capturePositionsCallback: ((nodeIds: string[]) => NodePositionEntry[]) | undefined
+) {
   return useCallback(
     (nodeIds: string[]): NodePositionEntry[] => {
-      if (!cyCompat) return [];
-      return nodeIds
-        .map((id) => {
-          const node = cyCompat.getElementById(id);
-          if (node.length > 0 && node.isNode()) {
-            const pos = node.position();
-            return { id, position: { x: Math.round(pos.x), y: Math.round(pos.y) } };
-          }
-          return { id, position: { x: 0, y: 0 } };
-        })
-        .filter((entry) => entry.position.x !== 0 || entry.position.y !== 0);
+      if (!capturePositionsCallback) return [];
+      return capturePositionsCallback(nodeIds);
     },
-    [cyCompat]
+    [capturePositionsCallback]
   );
 }
 
@@ -691,17 +679,17 @@ function usePushAction(
 /** Helper to apply an action (shared by undo and redo) */
 function applyAction(
   action: UndoRedoAction,
-  cy: CyLike,
   isUndo: boolean,
   applyGraphChanges?: (changes: GraphChange[]) => void,
   applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void,
   applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void,
-  applyMembershipChange?: (memberships: MembershipEntry[]) => void
+  applyMembershipChange?: (memberships: MembershipEntry[]) => void,
+  applyPositionChange?: (positions: NodePositionEntry[]) => void
 ): void {
   switch (action.type) {
     case "move":
-      applyMoveAction(action, isUndo, cy, applyMembershipChange);
+      applyMoveAction(action, isUndo, applyMembershipChange, applyPositionChange);
       break;
     case "graph":
       applyGraphAction(action, isUndo, applyGraphChanges);
@@ -713,7 +701,7 @@ function applyAction(
       applyAnnotationAction(action, isUndo, applyAnnotationChange, applyMembershipChange);
       break;
     case ACTION_TYPE_GROUP_MOVE:
-      applyGroupMoveAction(action, isUndo, cy, applyGroupMoveChange);
+      applyGroupMoveAction(action, isUndo, applyGroupMoveChange, applyPositionChange);
       break;
     case "compound":
       applyCompoundAction(action, isUndo, applyGraphChanges, applyAnnotationChange);
@@ -728,12 +716,12 @@ interface UndoRedoActionOptions {
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
   applyGroupMoveChange?: (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
   applyMembershipChange?: (memberships: MembershipEntry[]) => void;
+  applyPositionChange?: (positions: NodePositionEntry[]) => void;
 }
 
 /** Helper hook for undo/redo operations */
 function useUndoRedoAction(
   canExecute: boolean,
-  cyCompat: CyLike | null,
   stack: UndoRedoAction[],
   getAction: (stack: UndoRedoAction[]) => UndoRedoAction,
   isUndo: boolean,
@@ -746,25 +734,25 @@ function useUndoRedoAction(
     applyPropertyEdit,
     applyAnnotationChange,
     applyGroupMoveChange,
-    applyMembershipChange
+    applyMembershipChange,
+    applyPositionChange
   } = options;
   return useCallback(() => {
-    if (!canExecute || !cyCompat) return;
+    if (!canExecute) return;
     const action = getAction(stack);
     applyAction(
       action,
-      cyCompat,
       isUndo,
       applyGraphChanges,
       applyPropertyEdit,
       applyAnnotationChange,
       applyGroupMoveChange,
-      applyMembershipChange
+      applyMembershipChange,
+      applyPositionChange
     );
     dispatch({ type: dispatchType });
   }, [
     canExecute,
-    cyCompat,
     stack,
     getAction,
     isUndo,
@@ -774,21 +762,20 @@ function useUndoRedoAction(
     applyPropertyEdit,
     applyAnnotationChange,
     applyGroupMoveChange,
-    applyMembershipChange
+    applyMembershipChange,
+    applyPositionChange
   ]);
 }
 
 /** Helper hook for undo operation */
 function useUndoAction(
   canUndo: boolean,
-  cyCompat: CyLike | null,
   past: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   options: UndoRedoActionOptions
 ) {
   return useUndoRedoAction(
     canUndo,
-    cyCompat,
     past,
     (stack) => stack[stack.length - 1],
     true,
@@ -801,34 +788,25 @@ function useUndoAction(
 /** Helper hook for redo operation */
 function useRedoAction(
   canRedo: boolean,
-  cyCompat: CyLike | null,
   future: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   options: UndoRedoActionOptions
 ) {
-  return useUndoRedoAction(
-    canRedo,
-    cyCompat,
-    future,
-    (stack) => stack[0],
-    false,
-    "REDO",
-    dispatch,
-    options
-  );
+  return useUndoRedoAction(canRedo, future, (stack) => stack[0], false, "REDO", dispatch, options);
 }
 
 /**
  * Hook for managing undo/redo functionality for node positions
  */
 export function useUndoRedo({
-  cyCompat,
   enabled = true,
   applyGraphChanges,
   applyPropertyEdit,
   applyAnnotationChange,
   applyGroupMoveChange,
-  applyMembershipChange
+  applyMembershipChange,
+  applyPositionChange,
+  capturePositions: capturePositionsCallback
 }: UseUndoRedoOptions): UseUndoRedoReturn {
   const [state, dispatch] = useReducer(undoRedoReducer, initialState);
 
@@ -839,7 +817,7 @@ export function useUndoRedo({
   const canUndo = enabled && state.past.length > 0;
   const canRedo = enabled && state.future.length > 0;
 
-  const capturePositions = useCapturePositions(cyCompat);
+  const capturePositions = useCapturePositions(capturePositionsCallback);
   const pushAction = usePushAction(enabled, dispatch, batchActionsRef, isBatchingRef);
 
   const actionOptions: UndoRedoActionOptions = {
@@ -847,11 +825,12 @@ export function useUndoRedo({
     applyPropertyEdit,
     applyAnnotationChange,
     applyGroupMoveChange,
-    applyMembershipChange
+    applyMembershipChange,
+    applyPositionChange
   };
 
-  const undo = useUndoAction(canUndo, cyCompat, state.past, dispatch, actionOptions);
-  const redo = useRedoAction(canRedo, cyCompat, state.future, dispatch, actionOptions);
+  const undo = useUndoAction(canUndo, state.past, dispatch, actionOptions);
+  const redo = useRedoAction(canRedo, state.future, dispatch, actionOptions);
 
   const recordMove = useCallback(
     (
@@ -860,7 +839,7 @@ export function useUndoRedo({
       membershipBefore?: MembershipEntry[],
       membershipAfter?: MembershipEntry[]
     ) => {
-      if (!enabled || !cyCompat) return;
+      if (!enabled) return;
       const afterPositions = capturePositions(nodeIds);
       const hasChanged = beforePositions.some((before) => {
         const after = afterPositions.find((a) => a.id === before.id);
@@ -881,7 +860,7 @@ export function useUndoRedo({
         });
       }
     },
-    [enabled, cyCompat, capturePositions, pushAction]
+    [enabled, capturePositions, pushAction]
   );
 
   const clearHistory = useCallback(() => {

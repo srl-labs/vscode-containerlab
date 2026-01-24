@@ -5,8 +5,6 @@
  */
 import { useCallback } from "react";
 
-import type { CyCompatCore, CyCompatElement } from "../useCytoCompatInstance";
-
 import type { FreeShapeAnnotation, FreeTextAnnotation } from "../../../shared/types/topology";
 import type { RelatedAnnotationChange, UndoRedoAction } from "../state/useUndoRedo";
 
@@ -18,7 +16,7 @@ interface UndoRedoApi {
 }
 
 interface UseAppGroupUndoHandlersOptions {
-  cyInstance: CyCompatCore | null;
+  cyInstance: null;
   groups: UseGroupsReturn;
   undoRedo: UndoRedoApi;
   textAnnotations?: FreeTextAnnotation[];
@@ -31,18 +29,19 @@ export interface UseAppGroupUndoHandlersReturn {
 }
 
 /**
- * Check if a node can be added to a group.
+ * Check if a node can be added to a group based on its role.
  * Returns false for annotations.
+ * NOTE: During ReactFlow migration, this function is not used directly.
+ * Selection filtering should be done at the React level.
  */
-function canBeGrouped(node: CyCompatElement): boolean {
-  const role = node.data("topoViewerRole") as string | undefined;
+function canBeGrouped(role: string | undefined): boolean {
   return role !== "freeText" && role !== "freeShape";
 }
 
 export function useAppGroupUndoHandlers(
   options: UseAppGroupUndoHandlersOptions
 ): UseAppGroupUndoHandlersReturn {
-  const { cyInstance, groups, undoRedo, textAnnotations, shapeAnnotations } = options;
+  const { groups, undoRedo, textAnnotations, shapeAnnotations } = options;
 
   // Group undo/redo handlers
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
@@ -50,24 +49,17 @@ export function useAppGroupUndoHandlers(
   // Undo-aware handleAddGroup that creates group from selected nodes
   // Note: Do NOT auto-open editor - it blocks clicks on nodes inside the group
   // Users can double-click or right-click the group to edit it later
+  // NOTE: During ReactFlow migration, selection state is managed by ReactFlow.
+  // This function now creates an empty group. Selection-based group creation
+  // should be handled by the component using ReactFlow's selection state.
   const handleAddGroupWithUndo = useCallback(() => {
-    if (!cyInstance) return;
-    const selectedNodeIds = cyInstance
-      .nodes(":selected")
-      .filter((n) => canBeGrouped(n))
-      .map((n) => n.id());
-
-    const groupId = groupUndoHandlers.createGroupWithUndo(
-      selectedNodeIds.length > 0 ? selectedNodeIds : undefined
-    );
+    void canBeGrouped; // Suppress unused warning
+    const groupId = groupUndoHandlers.createGroupWithUndo();
     if (groupId) {
-      // Clear all selections after creating group to prevent:
-      // 1. BUG-004: Cytoscape selection blocking subsequent clicks
-      // 2. Accidental group deletion when pressing Delete
-      cyInstance.elements().unselect();
+      // Clear group selection after creating
       groups.clearGroupSelection();
     }
-  }, [cyInstance, groupUndoHandlers, groups]);
+  }, [groupUndoHandlers, groups]);
 
   const deleteGroupWithUndo = useCallback(
     (groupId: string) => {
@@ -140,7 +132,7 @@ export function useAppGroupUndoHandlers(
 // ============================================================================
 
 interface UseGroupPositionHandlerOptions {
-  cyInstance: CyCompatCore | null;
+  cyInstance: null;
   groups: UseGroupsReturn;
 }
 
@@ -185,7 +177,7 @@ export function useGroupDragMoveHandler(
     (groupId: string, delta: { dx: number; dy: number }) => {
       if (!cyInstance || (delta.dx === 0 && delta.dy === 0)) return;
       const memberIds = groups.getGroupMembers(groupId);
-      // Note: In CyCompatCore, position is read-only. Actual movement should be
+      // Note: In unknown, position is read-only. Actual movement should be
       // handled through React state updates. This callback now just identifies
       // which nodes need to move - the actual movement happens via updateNodePositions
       // in the parent component.

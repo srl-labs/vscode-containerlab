@@ -5,17 +5,16 @@ import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 
 import { log } from "../../utils/logger";
-import type { CyCompatCore, CyCompatElement } from "../useCytoCompatInstance";
 
 import type { FreeTextAnnotation } from "./freeText";
 
 // Event object type for compatibility layer events
 interface CompatEventObject {
-  target: CyCompatCore | CyCompatElement;
+  target: unknown;
 }
 
 // Node singular type for compatibility layer
-interface CompatNodeSingular extends CyCompatElement {
+interface CompatNodeSingular {
   position(): { x: number; y: number };
 }
 
@@ -24,7 +23,7 @@ interface CompatNodeSingular extends CyCompatElement {
 // ============================================================================
 
 interface UseAnnotationGroupMoveOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   annotations: FreeTextAnnotation[];
   selectedAnnotationIds: Set<string>;
   /** Update annotation position (called during drag for visual feedback) */
@@ -115,7 +114,7 @@ function createDragFreeHandler(refs: DragTrackingRefs) {
 /**
  * Hook that synchronizes annotation movement with node dragging.
  * Note: Node drag events (grab/drag/dragfree) are not yet implemented
- * in the CyCompatCore interface. This hook registers handlers that will
+ * in the unknown interface. This hook registers handlers that will
  * work when ReactFlow drag event support is added.
  */
 function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
@@ -145,18 +144,12 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
   const handleDragFree = useCallback(() => createDragFreeHandler(refs)(), []);
 
   useEffect(() => {
-    if (!cyCompat) return;
-    // Note: Node-specific events with selectors (e.g., 'grab', 'node') are
-    // Cytoscape-specific. The compatibility layer event handlers are registered
-    // but may not fire until ReactFlow drag support is added.
-    cyCompat.on("grab", "node", handleGrab as unknown as () => void);
-    cyCompat.on("drag", "node", handleDrag as unknown as () => void);
-    cyCompat.on("dragfree", "node", handleDragFree);
-    return () => {
-      cyCompat.off("grab", "node", handleGrab as unknown as () => void);
-      cyCompat.off("drag", "node", handleDrag as unknown as () => void);
-      cyCompat.off("dragfree", "node", handleDragFree);
-    };
+    // Disabled during ReactFlow migration
+    // Node drag events will be handled via ReactFlow's onNodeDrag callbacks
+    void cyCompat;
+    void handleGrab;
+    void handleDrag;
+    void handleDragFree;
   }, [cyCompat, handleGrab, handleDrag, handleDragFree]);
 }
 
@@ -165,7 +158,7 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
 // ============================================================================
 
 interface UseAnnotationBackgroundClearOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   selectedAnnotationIds: Set<string>;
   onClearSelection: () => void;
 }
@@ -193,18 +186,15 @@ function useAnnotationBackgroundClear(options: UseAnnotationBackgroundClearOptio
   );
 
   useEffect(() => {
-    if (!cyCompat) return;
-
-    cyCompat.on("tap", handleBackgroundTap as unknown as () => void);
-
-    return () => {
-      cyCompat.off("tap", handleBackgroundTap as unknown as () => void);
-    };
+    // Disabled during ReactFlow migration
+    // Background tap will be handled via ReactFlow's onPaneClick callback
+    void cyCompat;
+    void handleBackgroundTap;
   }, [cyCompat, handleBackgroundTap]);
 }
 
 interface AnnotationEffectsOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   isLocked: boolean;
   // Free text annotations
   freeTextAnnotations: FreeTextAnnotation[];

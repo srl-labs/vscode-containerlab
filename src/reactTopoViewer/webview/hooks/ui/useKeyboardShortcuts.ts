@@ -4,14 +4,13 @@
 import { useEffect, useCallback } from "react";
 
 import { log } from "../../utils/logger";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 
 interface KeyboardShortcutsOptions {
   mode: "edit" | "view";
   isLocked: boolean;
   selectedNode: string | null;
   selectedEdge: string | null;
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   onDeleteNode: (nodeId: string) => void;
   onDeleteEdge: (edgeId: string) => void;
   onDeselectAll: () => void;
@@ -105,7 +104,7 @@ function handleRedo(
  */
 function handleCopy(
   event: KeyboardEvent,
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   onCopy?: () => void,
   selectedAnnotationIds?: Set<string>,
   onCopyAnnotations?: () => void
@@ -183,7 +182,7 @@ function handleDuplicate(
   event: KeyboardEvent,
   mode: "edit" | "view",
   isLocked: boolean,
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   onDuplicate?: () => void,
   selectedAnnotationIds?: Set<string>,
   onDuplicateAnnotations?: () => void
@@ -225,7 +224,7 @@ function handleDuplicate(
 function handleCreateGroup(
   event: KeyboardEvent,
   mode: "edit" | "view",
-  cyCompat: CyCompatCore | null,
+  cyCompat: null,
   onCreateGroup?: () => void
 ): boolean {
   if (mode !== "edit") return false;
@@ -244,7 +243,7 @@ function handleCreateGroup(
  * Note: Selection is now handled by ReactFlow natively via its built-in select all
  * This stub returns false to allow the browser/ReactFlow to handle the event
  */
-function handleSelectAll(event: KeyboardEvent, cyCompat: CyCompatCore | null): boolean {
+function handleSelectAll(event: KeyboardEvent, cyCompat: null): boolean {
   if (!(event.ctrlKey || event.metaKey) || event.key !== "a") return false;
   if (!cyCompat) return false;
 
@@ -329,7 +328,7 @@ function handleDelete(
  */
 function handleEscape(
   event: KeyboardEvent,
-  cyCompat: CyCompatCore | null,
+  _cyCompat: null,
   selectedNode: string | null,
   selectedEdge: string | null,
   onDeselectAll: () => void,
@@ -346,9 +345,8 @@ function handleEscape(
     return true;
   }
 
-  if (cyCompat) {
-    cyCompat.elements().unselect();
-  }
+  // NOTE: Element deselection is handled via onDeselectAll callback
+  // ReactFlow manages selection state internally
   if (selectedNode || selectedEdge) {
     log.debug("[Keyboard] Deselecting all");
     onDeselectAll();

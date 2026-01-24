@@ -3,7 +3,6 @@
  * Consolidated from: freeShapeTypes.ts + freeShapeHelpers.ts
  */
 import type { FreeShapeAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
-import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import {
   generateAnnotationId as generateId,
@@ -40,7 +39,7 @@ export const MIN_SHAPE_SIZE = 5;
 // ============================================================================
 
 export interface UseFreeShapeAnnotationsOptions {
-  cyCompat: CyCompatCore | null;
+  cyCompat: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;

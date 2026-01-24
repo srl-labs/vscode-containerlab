@@ -6,7 +6,6 @@
  */
 import React, { createContext, useContext, useRef, useCallback, useMemo } from "react";
 
-import type { CyCompatCore } from "../hooks/useCytoCompatInstance";
 import {
   useUndoRedo,
   type UseUndoRedoReturn,
@@ -14,7 +13,8 @@ import {
   type UndoRedoActionPropertyEdit,
   type UndoRedoActionGroupMove,
   type GraphChange,
-  type MembershipEntry
+  type MembershipEntry,
+  type NodePositionEntry
 } from "../hooks/state/useUndoRedo";
 
 /** Handler types for undo/redo callbacks */
@@ -32,6 +32,8 @@ export type ApplyGroupMoveChangeHandler = (
   isUndo: boolean
 ) => void;
 export type ApplyMembershipChangeHandler = (memberships: MembershipEntry[]) => void;
+export type ApplyPositionChangeHandler = (positions: NodePositionEntry[]) => void;
+export type CapturePositionsHandler = (nodeIds: string[]) => NodePositionEntry[];
 
 /** Context value shape */
 interface UndoRedoContextValue {
@@ -47,29 +49,30 @@ interface UndoRedoContextValue {
   registerGroupMoveHandler: (handler: ApplyGroupMoveChangeHandler) => void;
   /** Register a membership change handler */
   registerMembershipHandler: (handler: ApplyMembershipChangeHandler) => void;
+  /** Register a position change handler */
+  registerPositionHandler: (handler: ApplyPositionChangeHandler) => void;
+  /** Register a capture positions handler */
+  registerCapturePositionsHandler: (handler: CapturePositionsHandler) => void;
 }
 
 const UndoRedoContext = createContext<UndoRedoContextValue | null>(null);
 
 /** Props for UndoRedoProvider */
 interface UndoRedoProviderProps {
-  cyCompat: CyCompatCore | null;
   enabled: boolean;
   children: React.ReactNode;
 }
 
 /** Provider component for undo/redo context */
-export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
-  cyCompat,
-  enabled,
-  children
-}) => {
+export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({ enabled, children }) => {
   // Refs to hold the registered handlers
   const graphHandlerRef = useRef<ApplyGraphChangesHandler | undefined>(undefined);
   const propertyEditHandlerRef = useRef<ApplyPropertyEditHandler | undefined>(undefined);
   const annotationHandlerRef = useRef<ApplyAnnotationChangeHandler | undefined>(undefined);
   const groupMoveHandlerRef = useRef<ApplyGroupMoveChangeHandler | undefined>(undefined);
   const membershipHandlerRef = useRef<ApplyMembershipChangeHandler | undefined>(undefined);
+  const positionHandlerRef = useRef<ApplyPositionChangeHandler | undefined>(undefined);
+  const capturePositionsHandlerRef = useRef<CapturePositionsHandler | undefined>(undefined);
 
   // Stable callbacks that delegate to the refs
   const applyGraphChanges = useCallback((changes: GraphChange[]) => {
@@ -92,15 +95,24 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
     membershipHandlerRef.current?.(memberships);
   }, []);
 
+  const applyPositionChange = useCallback((positions: NodePositionEntry[]) => {
+    positionHandlerRef.current?.(positions);
+  }, []);
+
+  const capturePositions = useCallback((nodeIds: string[]): NodePositionEntry[] => {
+    return capturePositionsHandlerRef.current?.(nodeIds) ?? [];
+  }, []);
+
   // Create the undo/redo hook with our delegating callbacks
   const undoRedo = useUndoRedo({
-    cyCompat,
     enabled,
     applyGraphChanges,
     applyPropertyEdit,
     applyAnnotationChange,
     applyGroupMoveChange,
-    applyMembershipChange
+    applyMembershipChange,
+    applyPositionChange,
+    capturePositions
   });
 
   // Registration functions
@@ -124,6 +136,14 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
     membershipHandlerRef.current = handler;
   }, []);
 
+  const registerPositionHandler = useCallback((handler: ApplyPositionChangeHandler) => {
+    positionHandlerRef.current = handler;
+  }, []);
+
+  const registerCapturePositionsHandler = useCallback((handler: CapturePositionsHandler) => {
+    capturePositionsHandlerRef.current = handler;
+  }, []);
+
   const value = useMemo<UndoRedoContextValue>(
     () => ({
       undoRedo,
@@ -131,7 +151,9 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
       registerPropertyEditHandler,
       registerAnnotationHandler,
       registerGroupMoveHandler,
-      registerMembershipHandler
+      registerMembershipHandler,
+      registerPositionHandler,
+      registerCapturePositionsHandler
     }),
     [
       undoRedo,
@@ -139,7 +161,9 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
       registerPropertyEditHandler,
       registerAnnotationHandler,
       registerGroupMoveHandler,
-      registerMembershipHandler
+      registerMembershipHandler,
+      registerPositionHandler,
+      registerCapturePositionsHandler
     ]
   );
 

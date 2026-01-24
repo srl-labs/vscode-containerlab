@@ -5,7 +5,6 @@
  */
 
 import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/topology";
-import type { CyCompatCore } from "../hooks/useCytoCompatInstance";
 import type { NetworkType } from "../../shared/types/editors";
 
 /** Layout option type */
@@ -17,7 +16,7 @@ type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "ge
  */
 export interface DevModeInterface {
   /** Cytoscape compatibility instance for graph manipulation */
-  cy?: CyCompatCore;
+  cy?: unknown;
   /** Check if topology is locked */
   isLocked?: () => boolean;
   /** Get current mode */

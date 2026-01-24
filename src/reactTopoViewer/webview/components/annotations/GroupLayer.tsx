@@ -5,7 +5,6 @@
  */
 import React, { useCallback, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import {
   getLabelPositionStyles,
@@ -25,13 +24,69 @@ import {
   calculateScale,
   unprojectToGeoCoords
 } from "../../hooks/canvas/maplibreUtils";
-import {
-  ensureCytoscapeLayersRegistered,
-  getCytoscapeLayers,
-  configureLayerNode,
-  type IHTMLLayer
-} from "../../hooks/shared/cytoscapeLayers";
 import { log } from "../../utils/logger";
+
+// ============================================================================
+// Stub types and functions for cytoscape-layers (to be replaced with ReactFlow integration)
+// ============================================================================
+
+/** HTML layer interface - stub for compatibility */
+interface IHTMLLayer {
+  readonly type: "html";
+  readonly node: HTMLElement;
+  remove(): void;
+  update(): void;
+}
+
+/** Stub - no longer needed with ReactFlow */
+function ensureCytoscapeLayersRegistered(): void {
+  // No-op
+}
+
+/** Stub - creates mock layer nodes for portal rendering */
+function getCytoscapeLayers(_cy: unknown): {
+  nodeLayer: { insertBefore: (type: "html") => IHTMLLayer };
+  append: (type: "html") => IHTMLLayer;
+} {
+  const createStubLayer = (): IHTMLLayer => {
+    const node = document.createElement("div");
+    node.style.position = "absolute";
+    node.style.top = "0";
+    node.style.left = "0";
+    node.style.width = "100%";
+    node.style.height = "100%";
+    node.style.pointerEvents = "none";
+    return {
+      type: "html" as const,
+      node,
+      remove: () => {
+        node.parentElement?.removeChild(node);
+      },
+      update: () => {
+        /* no-op */
+      }
+    };
+  };
+  return {
+    nodeLayer: { insertBefore: (_type: "html") => createStubLayer() },
+    append: (_type: "html") => createStubLayer()
+  };
+}
+
+/** Configure common layer node styles */
+function configureLayerNode(
+  node: HTMLElement,
+  pointerEvents: "auto" | "none",
+  className: string
+): void {
+  node.style.pointerEvents = pointerEvents;
+  node.style.overflow = "visible";
+  node.style.transformOrigin = "0 0";
+  node.classList.add(className);
+  if (pointerEvents === "none" && node.parentElement) {
+    node.parentElement.style.pointerEvents = "none";
+  }
+}
 
 import { HANDLE_SIZE, CENTER_TRANSLATE, CORNER_STYLES, applyAlphaToColor } from "./shared";
 import { AnnotationContextMenu } from "./shared/AnnotationContextMenu";
@@ -65,7 +120,8 @@ interface GroupDragResizeHandlers {
 }
 
 interface GroupLayerProps extends GroupDragResizeHandlers {
-  cyCompat: CyCompatCore | null;
+  /** Current zoom level for coordinate conversion */
+  zoom?: number;
   groups: GroupStyleAnnotation[];
   isLocked: boolean;
   onGroupEdit: (id: string) => void;
@@ -87,7 +143,8 @@ interface GroupLayerProps extends GroupDragResizeHandlers {
 
 interface GroupInteractionItemProps extends GroupDragResizeHandlers {
   group: GroupStyleAnnotation;
-  cyCompat: CyCompatCore;
+  /** Current zoom level for coordinate conversion */
+  zoom?: number;
   isLocked: boolean;
   isSelected: boolean;
   onGroupEdit: (id: string) => void;
@@ -154,7 +211,7 @@ interface UseGroupLayerReturn {
  * - Background layer below nodes (visual fill)
  * - Interaction layer above nodes (drag/resize handles)
  */
-function useGroupLayer(cyCompat: CyCompatCore | null): UseGroupLayerReturn {
+function useGroupLayer(cyCompat: null): UseGroupLayerReturn {
   const backgroundLayerRef = useRef<IHTMLLayer | null>(null);
   const interactionLayerRef = useRef<IHTMLLayer | null>(null);
   const [backgroundLayerNode, setBackgroundLayerNode] = useState<HTMLElement | null>(null);
@@ -405,7 +462,7 @@ const GroupBackgroundItem: React.FC<{
 const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
   const {
     group,
-    cyCompat,
+    zoom = 1,
     isLocked,
     isSelected,
     onGroupEdit,
@@ -430,7 +487,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
   const { isHovered, onEnter: handleMouseEnter, onLeave: handleMouseLeave } = useDelayedHover();
 
   const { isDragging, dragPos, handleMouseDown } = useGroupDragInteraction({
-    cy: cyCompat,
+    zoom,
     groupId: group.id,
     isLocked,
     position: group.position,
@@ -443,7 +500,7 @@ const GroupInteractionItem: React.FC<GroupInteractionItemProps> = (props) => {
   });
 
   const { isResizing, handleResizeMouseDown } = useGroupResize(
-    cyCompat,
+    zoom,
     group,
     group.id,
     isLocked,
@@ -634,7 +691,8 @@ const GroupBackgroundPortal: React.FC<{
 interface GroupInteractionPortalProps extends GroupDragResizeHandlers {
   layerNode: HTMLElement;
   groups: GroupStyleAnnotation[];
-  cyCompat: CyCompatCore;
+  /** Current zoom level for coordinate conversion */
+  zoom?: number;
   isLocked: boolean;
   selectedGroupIds: Set<string>;
   onGroupEdit: (id: string) => void;
@@ -653,7 +711,7 @@ interface GroupInteractionPortalProps extends GroupDragResizeHandlers {
 const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
   layerNode,
   groups,
-  cyCompat,
+  zoom,
   isLocked,
   selectedGroupIds,
   onGroupEdit,
@@ -683,7 +741,7 @@ const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
         <GroupInteractionItem
           key={group.id}
           group={group}
-          cyCompat={cyCompat}
+          zoom={zoom}
           isLocked={isLocked}
           isSelected={selectedGroupIds.has(group.id)}
           onGroupEdit={onGroupEdit}
@@ -710,7 +768,7 @@ const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
   );
 
 export const GroupLayer: React.FC<GroupLayerProps> = ({
-  cyCompat,
+  zoom = 1,
   groups,
   isLocked,
   onGroupEdit,
@@ -733,14 +791,14 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   getMinimumBounds
 }) => {
   // Create group background + interaction layers using cytoscape-layers
-  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(cyCompat);
+  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(null);
 
   // In geo pan mode, groups should not be interactive
   const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === "pan");
   const dragOverrides = useDragPositionOverrides();
 
   // Enable box selection of groups
-  useAnnotationBoxSelection(cyCompat, groups, onGroupBoxSelect, undefined, "GroupLayer");
+  useAnnotationBoxSelection(null, groups, onGroupBoxSelect, undefined, "GroupLayer");
 
   // Force re-render when map moves in geo mode so groups stay at their geo positions
   const [, setMapMoveCounter] = useState(0);
@@ -834,9 +892,8 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
     [groups, onGroupReparent]
   );
 
-  // Don't render if no cyCompat, no groups, or no layer nodes from cytoscape-layers
-  if (!cyCompat || groups.length === 0 || (!backgroundLayerNode && !interactionLayerNode))
-    return null;
+  // Don't render if no groups or no layer nodes from cytoscape-layers
+  if (groups.length === 0 || (!backgroundLayerNode && !interactionLayerNode)) return null;
 
   const sortedGroups = sortGroupsByDepthThenZIndex(groups);
 
@@ -855,7 +912,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
         <GroupInteractionPortal
           layerNode={interactionLayerNode}
           groups={sortedGroups}
-          cyCompat={cyCompat}
+          zoom={zoom}
           isLocked={effectivelyLocked}
           selectedGroupIds={selectedGroupIds}
           onGroupEdit={onGroupEdit}
