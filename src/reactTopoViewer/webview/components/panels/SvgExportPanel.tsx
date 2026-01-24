@@ -19,7 +19,6 @@ import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../shared/for
 export interface SvgExportPanelProps {
   isVisible: boolean;
   onClose: () => void;
-  cyCompat: null;
   textAnnotations?: FreeTextAnnotation[];
   shapeAnnotations?: FreeShapeAnnotation[];
   groups?: GroupStyleAnnotation[];
@@ -314,7 +313,6 @@ const TipsSection: React.FC = () => (
 export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   isVisible,
   onClose,
-  cyCompat,
   textAnnotations = [],
   shapeAnnotations = [],
   groups = []
@@ -331,6 +329,9 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
   const [filename, setFilename] = useState("topology");
 
+  // SVG export is disabled during ReactFlow migration
+  const isExportAvailable = false;
+
   const annotationCounts = {
     groups: groups.length,
     text: textAnnotations.length,
@@ -340,61 +341,34 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
     annotationCounts.groups + annotationCounts.text + annotationCounts.shapes;
 
   const handleExport = useCallback(async () => {
-    if (!cyCompat) {
-      setExportStatus({ type: "error", message: "Topology not available" });
-      return;
-    }
+    // SVG export requires Cytoscape - disabled during ReactFlow migration
+    setExportStatus({
+      type: "error",
+      message: "SVG export is temporarily unavailable during migration"
+    });
+    return;
 
-    setIsExporting(true);
-    setExportStatus(null);
-
-    try {
-      const extensionLoaded = await ensureSvgExtension(cyCompat);
-      if (!extensionLoaded) {
-        setExportStatus({ type: "error", message: "SVG extension not available" });
-        setIsExporting(false);
-        return;
-      }
-
-      const scale = (borderZoom / 100) * 3;
-      const cyWithSvg = cyCompat as unknown as {
-        svg: (opts: { scale: number; full: boolean }) => string;
-      };
-      const exported = cyWithSvg.svg({ scale, full: true });
-      let svgContent = replacePngWithSvg(exported);
-
-      if (includeAnnotations && totalAnnotations > 0) {
-        svgContent = compositeAnnotationsIntoSvg(
-          svgContent,
-          { groups, textAnnotations, shapeAnnotations },
-          scale
-        );
-      }
-
-      if (backgroundOption !== "transparent") {
-        const bgColor = backgroundOption === "white" ? "#ffffff" : customBackgroundColor;
-        svgContent = addBackgroundRect(svgContent, bgColor);
-      }
-
-      if (borderPadding > 0) {
-        svgContent = applyPadding(svgContent, borderPadding);
-      }
-
-      const exportFilename = `${filename.trim() || "topology"}.svg`;
-      downloadSvg(svgContent, exportFilename);
-      setExportStatus({ type: "success", message: `Exported ${exportFilename}` });
-      log.info(`Topology exported as SVG: ${exportFilename}`);
-    } catch (error) {
-      log.error(`Error exporting topology: ${error}`);
-      setExportStatus({
-        type: "error",
-        message: error instanceof Error ? error.message : "Export failed"
-      });
-    } finally {
-      setIsExporting(false);
-    }
+    // TODO: Re-implement SVG export for ReactFlow
+    // The code below was for Cytoscape export
+    void ensureSvgExtension;
+    void borderZoom;
+    void borderPadding;
+    void includeAnnotations;
+    void totalAnnotations;
+    void groups;
+    void textAnnotations;
+    void shapeAnnotations;
+    void backgroundOption;
+    void customBackgroundColor;
+    void filename;
+    void replacePngWithSvg;
+    void compositeAnnotationsIntoSvg;
+    void addBackgroundRect;
+    void applyPadding;
+    void downloadSvg;
+    void setIsExporting;
+    void log;
   }, [
-    cyCompat,
     borderZoom,
     borderPadding,
     includeAnnotations,
@@ -457,12 +431,12 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
         <button
           type="button"
           className={`w-full py-3 px-4 rounded-sm font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-            isExporting || !cyCompat
+            isExporting || !isExportAvailable
               ? "bg-white/5 text-[var(--vscode-descriptionForeground)] cursor-not-allowed"
               : "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:shadow-[var(--accent)]/30"
           }`}
           onClick={() => void handleExport()}
-          disabled={isExporting || !cyCompat}
+          disabled={isExporting || !isExportAvailable}
         >
           {isExporting ? (
             <>

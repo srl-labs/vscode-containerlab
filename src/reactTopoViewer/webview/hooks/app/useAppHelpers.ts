@@ -116,7 +116,7 @@ export interface UseShapeLayerReturn {
  * NOTE: This is a stub during the ReactFlow migration.
  * Shape annotations are now rendered as React components in the ReactFlow canvas.
  */
-export function useShapeLayer(_cyCompat: null): UseShapeLayerReturn {
+export function useShapeLayer(): UseShapeLayerReturn {
   const [shapeLayerNode] = React.useState<HTMLElement | null>(null);
 
   // Stub implementation - shapes are rendered via React components in ReactFlow
@@ -139,7 +139,7 @@ export interface UseTextLayerReturn {
  * NOTE: This is a stub during the ReactFlow migration.
  * Text annotations are now rendered as React components in the ReactFlow canvas.
  */
-export function useTextLayer(_cyCompat: null): UseTextLayerReturn {
+export function useTextLayer(): UseTextLayerReturn {
   const [textLayerNode] = React.useState<HTMLElement | null>(null);
 
   // Stub implementation - text annotations are rendered via React components in ReactFlow
@@ -153,7 +153,6 @@ export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical
  * E2E testing exposure configuration
  */
 export interface E2ETestingConfig {
-  cyCompat: null;
   isLocked: boolean;
   mode: "edit" | "view";
   toggleLock: () => void;
@@ -200,7 +199,6 @@ export interface E2ETestingConfig {
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
   const {
-    cyCompat,
     isLocked,
     mode,
     toggleLock,
@@ -218,21 +216,16 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     geoMode
   } = config;
 
-  // Core E2E exposure (cy, isLocked, mode, setLocked)
-  // Note: E2E tests expect the full Cytoscape Core API. During ReactFlow migration,
-  // the unknown is cast to the expected type for backwards compatibility.
+  // Core E2E exposure (isLocked, mode, setLocked)
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.__DEV__) {
-      // Cast to 'unknown' first then to the expected type to satisfy TypeScript
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (cyCompat) window.__DEV__.cy = cyCompat as any;
       window.__DEV__.isLocked = () => isLocked;
       window.__DEV__.mode = () => mode;
       window.__DEV__.setLocked = (locked: boolean) => {
         if (isLocked !== locked) toggleLock();
       };
     }
-  }, [cyCompat, isLocked, mode, toggleLock]);
+  }, [isLocked, mode, toggleLock]);
 
   // Undo/redo E2E exposure
   React.useEffect(() => {

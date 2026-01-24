@@ -798,7 +798,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   const dragOverrides = useDragPositionOverrides();
 
   // Enable box selection of groups
-  useAnnotationBoxSelection(null, groups, onGroupBoxSelect, undefined, "GroupLayer");
+  useAnnotationBoxSelection(groups, onGroupBoxSelect, undefined, "GroupLayer");
 
   // Force re-render when map moves in geo mode so groups stay at their geo positions
   const [, setMapMoveCounter] = useState(0);

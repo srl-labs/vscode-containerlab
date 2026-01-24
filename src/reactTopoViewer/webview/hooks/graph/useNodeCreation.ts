@@ -1,12 +1,11 @@
 /**
  * useNodeCreation - Hook for creating nodes via Shift+Click on canvas
  *
- * NOTE: This hook uses the unknown compatibility layer.
- * The event handling is a stub - actual events should be handled via ReactFlow's
- * onPaneClick callback. This hook provides the node creation logic that can be
- * called from that handler.
+ * Uses ReactFlow instance for viewport operations.
+ * The event handling should be integrated via ReactFlow's onPaneClick callback.
  */
 import { useEffect, useCallback, useRef } from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import { log } from "../../utils/logger";
 import type { CyElement } from "../../../shared/types/messages";
@@ -215,13 +214,9 @@ function createNodeData(
 
 /**
  * Determine position for a new node
- * Disabled during ReactFlow migration - use position directly from ReactFlow's onPaneClick event
+ * In ReactFlow, position comes directly from the pane click event
  */
-function determinePosition(
-  _cyCompat: null,
-  eventPosition?: { x: number; y: number }
-): { x: number; y: number } {
-  // During migration, just return the event position or a default
+function determinePosition(eventPosition?: { x: number; y: number }): { x: number; y: number } {
   return eventPosition ?? { x: 0, y: 0 };
 }
 
@@ -239,11 +234,11 @@ function nodeDataToCyElement(data: NodeData, position: { x: number; y: number })
 /**
  * Hook for handling node creation via Shift+Click on canvas
  *
- * NOTE: Event handling is stubbed in the compatibility layer.
- * For ReactFlow integration, use onPaneClick handler directly.
+ * For ReactFlow integration, use onPaneClick handler to call createNodeAtPosition
+ * when the user shift-clicks on the canvas.
  */
 export function useNodeCreation(
-  cyCompat: null,
+  _rfInstance: ReactFlowInstance | null,
   options: NodeCreationOptions
 ): {
   createNodeAtPosition: (position: { x: number; y: number }, template?: CustomNodeTemplate) => void;
@@ -273,8 +268,6 @@ export function useNodeCreation(
    */
   const createNodeAtPosition = useCallback(
     (position: { x: number; y: number }, template?: CustomNodeTemplate) => {
-      if (!cyCompat) return;
-
       initializeNodeCounter(getUsedIds());
 
       const generatedId = generateNodeId();
@@ -294,16 +287,14 @@ export function useNodeCreation(
       if (nodeName) reservedNamesRef.current.add(nodeName);
       onNodeCreated(nodeId, cyElement, position);
     },
-    [cyCompat, onNodeCreated]
+    [onNodeCreated]
   );
 
   useEffect(() => {
-    // Disabled during ReactFlow migration
     // Shift+Click to create nodes should be handled via ReactFlow's onPaneClick callback
-    // with something like: if (event.shiftKey) createNodeAtPosition({ x: event.clientX, y: event.clientY })
-    void cyCompat;
+    // with something like: if (event.shiftKey) createNodeAtPosition(screenToFlowPosition({ x, y }))
     void determinePosition;
-  }, [cyCompat, createNodeAtPosition]);
+  }, [createNodeAtPosition]);
 
   return { createNodeAtPosition };
 }

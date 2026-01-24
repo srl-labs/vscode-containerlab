@@ -126,7 +126,10 @@ function canBeGrouped(role: string | undefined): boolean {
 }
 
 interface UseAppGroupsOptions {
-  cyInstance: null;
+  /** React Flow nodes for position queries */
+  nodes: import("../../../shared/types/graph").TopoNode[];
+  /** React Flow instance for viewport queries */
+  rfInstance: import("@xyflow/react").ReactFlowInstance | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
@@ -200,7 +203,8 @@ function useGroupDataLoader(
 
 export function useAppGroups(options: UseAppGroupsOptions) {
   const {
-    cyInstance,
+    nodes,
+    rfInstance,
     mode,
     isLocked,
     onLockedAction,
@@ -209,7 +213,8 @@ export function useAppGroups(options: UseAppGroupsOptions) {
   } = options;
 
   const groupsHook = useGroups({
-    cy: cyInstance,
+    nodes,
+    rfInstance,
     mode,
     isLocked,
     onLockedAction,

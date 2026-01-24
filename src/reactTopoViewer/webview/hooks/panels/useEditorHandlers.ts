@@ -3,6 +3,7 @@
  * Extracted from App.tsx to reduce file size.
  */
 import React from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import type {
   NodeEditorData,
@@ -28,6 +29,7 @@ import {
   getTopologyIO
 } from "../../services";
 import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
+import { getViewportCenter } from "../shared/viewportUtils";
 
 /** Pending membership change during node drag */
 export interface PendingMembershipChange {
@@ -83,7 +85,7 @@ type RenameNodeCallback = (oldId: string, newId: string, nameOverride?: string) 
  * is read-only, so direct mutation is not supported. The actual data
  * persistence is handled by the editLinkService call.
  */
-function updateCytoscapeEdgeData(_cyCompat: null, _edgeId: string, _data: LinkEditorData): void {
+function updateEdgeData(_edgeId: string, _data: LinkEditorData): void {
   // In the ReactFlow architecture, edge data updates are handled via React state.
   // The editLinkService call in persistLinkChanges handles the actual persistence.
   // This function is kept as a stub for API compatibility during migration.
@@ -97,8 +99,7 @@ function updateCytoscapeEdgeData(_cyCompat: null, _edgeId: string, _data: LinkEd
  * NOTE: This function is a migration stub. In the ReactFlow architecture,
  * node data updates are handled through React state, not direct mutation.
  */
-function updateCytoscapeNodeData(
-  _cyCompat: null,
+function updateNodeExtraData(
   _nodeId: string,
   data: NodeEditorData,
   _customIcons?: CustomIconInfo[]
@@ -134,23 +135,14 @@ function handleNodeUpdate(
   data: NodeEditorData,
   oldName: string | undefined,
   renameNode: RenameNodeCallback | undefined,
-  cyCompat: null | undefined,
   _customIcons?: CustomIconInfo[]
 ): Record<string, unknown> | null {
   if (oldName && renameNode) {
     // Update React state with the rename
     renameNode(oldName, data.name);
-    // Also update via compat layer for data calculation
-    if (cyCompat) {
-      return updateCytoscapeNodeData(cyCompat, data.id, data);
-    }
-    return null;
-  } else {
-    if (cyCompat) {
-      return updateCytoscapeNodeData(cyCompat, data.id, data);
-    }
-    return null;
   }
+  // Calculate updated node data
+  return updateNodeExtraData(data.id, data);
 }
 
 /**
@@ -199,7 +191,6 @@ type UpdateNodeDataCallback = (nodeId: string, extraData: Record<string, unknown
 
 /** Dependencies for persisting node editor changes */
 interface NodePersistDeps {
-  cyCompat?: null;
   renameNode?: RenameNodeCallback;
   customIcons?: CustomIconInfo[];
   updateNodeData?: UpdateNodeDataCallback;
@@ -215,10 +206,10 @@ function persistNodeChanges(
   oldName: string | undefined,
   deps: NodePersistDeps
 ): void {
-  const { cyCompat, renameNode, customIcons, updateNodeData, refreshEditorData } = deps;
+  const { renameNode, customIcons, updateNodeData, refreshEditorData } = deps;
   const saveData = convertEditorDataToNodeSaveData(data, oldName);
   void editNodeService(saveData);
-  const newExtraData = handleNodeUpdate(data, oldName, renameNode, cyCompat, customIcons);
+  const newExtraData = handleNodeUpdate(data, oldName, renameNode, customIcons);
   // Update React state with the SAME extraData that was set on Cytoscape
   // This prevents useElementsUpdate from overwriting Cytoscape with stale React state
   // For renames, use data.name (new id) since React state was already updated via renameNode
@@ -237,7 +228,6 @@ export function useNodeEditorHandlers(
   editNode: (id: string | null) => void,
   editingNodeData: NodeEditorData | null,
   recordPropertyEdit?: (action: PropertyEditAction) => void,
-  cyCompat?: null,
   renameNode?: RenameNodeCallback,
   customIcons?: CustomIconInfo[],
   updateNodeData?: UpdateNodeDataCallback,
@@ -260,8 +250,8 @@ export function useNodeEditorHandlers(
 
   // Memoize dependencies for persistNodeChanges
   const persistDeps = React.useMemo<NodePersistDeps>(
-    () => ({ cyCompat, renameNode, customIcons, updateNodeData, refreshEditorData }),
-    [cyCompat, renameNode, customIcons, updateNodeData, refreshEditorData]
+    () => ({ renameNode, customIcons, updateNodeData, refreshEditorData }),
+    [renameNode, customIcons, updateNodeData, refreshEditorData]
   );
 
   const handleSave = React.useCallback(
@@ -301,7 +291,6 @@ const EDGE_OFFSET_SAVE_DEBOUNCE_MS = 300;
 
 /** Dependencies for persisting link editor changes */
 interface LinkPersistDeps {
-  cyCompat?: null;
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
 }
 
@@ -310,14 +299,12 @@ interface LinkPersistDeps {
  * Shared by both Save and Apply operations.
  */
 function persistLinkChanges(data: LinkEditorData, deps: LinkPersistDeps): void {
-  const { cyCompat, edgeAnnotationHandlers } = deps;
+  const { edgeAnnotationHandlers } = deps;
   const saveData = convertEditorDataToLinkSaveData(data);
   void editLinkService(saveData);
   persistEdgeLabelOffset(data, edgeAnnotationHandlers);
-  // Update edge data via compat layer (currently a stub in ReactFlow architecture)
-  if (cyCompat) {
-    updateCytoscapeEdgeData(cyCompat, data.id, data);
-  }
+  // Update edge data via React state - the service call handles persistence
+  updateEdgeData(data.id, data);
 }
 
 function enableLinkEndpointOffset(data: LinkEditorData): LinkEditorData {
@@ -359,7 +346,6 @@ export function useLinkEditorHandlers(
   editEdge: (id: string | null) => void,
   editingLinkData: LinkEditorData | null,
   recordPropertyEdit?: (action: PropertyEditAction) => void,
-  cyCompat?: null,
   edgeAnnotationHandlers?: EdgeAnnotationHandlers
 ) {
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
@@ -481,8 +467,8 @@ export function useLinkEditorHandlers(
 
   // Memoize dependencies for persistLinkChanges
   const persistDeps = React.useMemo<LinkPersistDeps>(
-    () => ({ cyCompat, edgeAnnotationHandlers }),
-    [cyCompat, edgeAnnotationHandlers]
+    () => ({ edgeAnnotationHandlers }),
+    [edgeAnnotationHandlers]
   );
 
   const handleSave = React.useCallback(
@@ -721,11 +707,7 @@ function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown>
  * NOTE: This function is disabled during ReactFlow migration as edge data is
  * obtained from React state, not a Cytoscape-like layer.
  */
-function saveNetworkLinkProperties(
-  data: NetworkEditorData,
-  _newNodeId: string,
-  _cyCompat: null
-): void {
+function saveNetworkLinkProperties(data: NetworkEditorData, _newNodeId: string): void {
   if (!isServicesInitialized()) return;
   if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
 
@@ -752,7 +734,6 @@ function saveNetworkLinkProperties(
 function saveBridgeNodeProperties(
   data: NetworkEditorData,
   newNodeId: string,
-  _cyCompat: null,
   renameNode?: RenameNodeCallback
 ): void {
   if (!isServicesInitialized()) return;
@@ -786,7 +767,6 @@ function saveBridgeNodeProperties(
 export function useNetworkEditorHandlers(
   editNetwork: (id: string | null) => void,
   _editingNetworkData: NetworkEditorData | null,
-  cyCompat: null,
   renameNode?: RenameNodeCallback
 ) {
   const handleClose = React.useCallback(() => {
@@ -797,21 +777,21 @@ export function useNetworkEditorHandlers(
     (data: NetworkEditorData) => {
       const newNodeId = calculateExpectedNodeId(data);
       saveNetworkAnnotation(data, newNodeId);
-      saveNetworkLinkProperties(data, newNodeId, cyCompat);
-      saveBridgeNodeProperties(data, newNodeId, cyCompat, renameNode);
+      saveNetworkLinkProperties(data, newNodeId);
+      saveBridgeNodeProperties(data, newNodeId, renameNode);
       editNetwork(null);
     },
-    [editNetwork, cyCompat, renameNode]
+    [editNetwork, renameNode]
   );
 
   const handleApply = React.useCallback(
     (data: NetworkEditorData) => {
       const newNodeId = calculateExpectedNodeId(data);
       saveNetworkAnnotation(data, newNodeId);
-      saveNetworkLinkProperties(data, newNodeId, cyCompat);
-      saveBridgeNodeProperties(data, newNodeId, cyCompat, renameNode);
+      saveNetworkLinkProperties(data, newNodeId);
+      saveBridgeNodeProperties(data, newNodeId, renameNode);
     },
-    [cyCompat, renameNode]
+    [renameNode]
   );
 
   return { handleClose, handleSave, handleApply };
@@ -827,7 +807,7 @@ export function useNetworkEditorHandlers(
 export function useNodeCreationHandlers(
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>,
   state: NodeCreationState,
-  _cyCompat: null,
+  rfInstance: ReactFlowInstance | null,
   createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void,
   onNewCustomNode: () => void
 ) {
@@ -850,10 +830,8 @@ export function useNodeCreationHandlers(
         template = state.customNodes.find((n) => n.name === state.defaultNode);
       }
 
-      // NOTE: During ReactFlow migration, viewport center is obtained from ReactFlow.
-      // This stub uses a default position. The caller should pass the center from
-      // ReactFlow's useReactFlow().getViewport() or similar.
-      const position: Position = { x: 0, y: 0 };
+      // Get viewport center from ReactFlow instance
+      const position = getViewportCenter(rfInstance);
 
       createNodeAtPosition(position, template);
     },
@@ -863,7 +841,8 @@ export function useNodeCreationHandlers(
       state.defaultNode,
       createNodeAtPosition,
       floatingPanelRef,
-      onNewCustomNode
+      onNewCustomNode,
+      rfInstance
     ]
   );
 

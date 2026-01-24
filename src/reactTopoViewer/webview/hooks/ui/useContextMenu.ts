@@ -338,7 +338,7 @@ export interface UseContextMenuReturn {
 }
 
 /** Hook for managing menu state */
-function useMenuState(_cyCompat: null) {
+function useMenuState() {
   const [menuState, setMenuState] = useState<ContextMenuState>(INITIAL_STATE);
   const [nodeData, setNodeData] = useState<Record<string, unknown>>({});
   const [edgeData, setEdgeData] = useState<Record<string, unknown>>({});
@@ -369,7 +369,6 @@ function useMenuState(_cyCompat: null) {
 
 /** Hook for setting up context menu events */
 function useMenuEvents(
-  _cyCompat: null,
   options: ContextMenuOptions,
   _openNodeMenu: (
     nodeId: string,
@@ -421,13 +420,12 @@ function buildMenuItems(
 }
 
 /**
- * Hook to manage context menus for Cytoscape elements
+ * Hook to manage context menus for graph elements
  * Returns state and handlers for rendering a React-based context menu
  */
-export function useContextMenu(cyCompat: null, options: ContextMenuOptions): UseContextMenuReturn {
-  const { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu } =
-    useMenuState(cyCompat);
-  useMenuEvents(cyCompat, options, openNodeMenu, openEdgeMenu);
+export function useContextMenu(options: ContextMenuOptions): UseContextMenuReturn {
+  const { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu } = useMenuState();
+  useMenuEvents(options, openNodeMenu, openEdgeMenu);
   const menuItems = buildMenuItems(menuState, nodeData, edgeData, options);
 
   return { menuState, menuItems, closeMenu };

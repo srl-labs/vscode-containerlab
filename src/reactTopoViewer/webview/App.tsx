@@ -76,7 +76,6 @@ const AppContent: React.FC<{
   pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
-  cyCompat: null;
   layoutControls: ReturnType<typeof useLayoutControls>;
   mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   shapeLayerNode: HTMLElement | null;
@@ -86,7 +85,6 @@ const AppContent: React.FC<{
   pendingMembershipChangesRef,
   reactFlowRef,
   rfInstance,
-  cyCompat,
   layoutControls,
   mapLibreState,
   shapeLayerNode,
@@ -313,7 +311,7 @@ const AppContent: React.FC<{
     handleDeleteLinkWithUndo,
     recordPropertyEdit
   } = useGraphHandlersWithContext({
-    cyInstance: cyCompat as unknown as import("./hooks/useAppState").CyLike | null,
+    cyInstance: null,
     addNode: addNodeDirect as (element: unknown) => void,
     addEdge: addEdgeDirect as (element: unknown) => void,
     menuHandlers,
@@ -347,31 +345,23 @@ const AppContent: React.FC<{
     [dispatch]
   );
 
-  // Editor handlers - using cyCompat for compatibility
+  // Editor handlers
   const nodeEditorHandlers = useNodeEditorHandlers(
     editNode,
     editingNodeData,
     recordPropertyEdit,
-    cyCompat,
     renameNodeInGraph,
     state.customIcons,
     updateNodeData,
     refreshEditorData
   );
-  const linkEditorHandlers = useLinkEditorHandlers(
-    editEdge,
-    editingLinkData,
-    recordPropertyEdit,
-    cyCompat,
-    {
-      edgeAnnotations: state.edgeAnnotations,
-      setEdgeAnnotations
-    }
-  );
+  const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit, {
+    edgeAnnotations: state.edgeAnnotations,
+    setEdgeAnnotations
+  });
   const networkEditorHandlers = useNetworkEditorHandlers(
     editNetwork,
     editingNetworkData,
-    cyCompat,
     renameNodeInGraph
   );
 
@@ -385,9 +375,9 @@ const AppContent: React.FC<{
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
 
-  // Graph creation (edge, node, network) - composed hook using cyCompat
+  // Graph creation (edge, node, network) - composed hook using rfInstance
   const graphCreation = useGraphCreation({
-    cyCompat,
+    rfInstance,
     floatingPanelRef,
     state: {
       mode: state.mode,
@@ -404,7 +394,6 @@ const AppContent: React.FC<{
 
   // E2E testing exposure (consolidated hook) - must be after graphCreation
   useE2ETestingExposure({
-    cyCompat,
     isLocked: state.isLocked,
     mode: state.mode,
     toggleLock,
@@ -431,8 +420,8 @@ const AppContent: React.FC<{
     pendingMembershipChangesRef
   });
 
-  // Context menus - using cyCompat for compatibility
-  const { menuState, menuItems, closeMenu } = useContextMenu(cyCompat, {
+  // Context menus
+  const { menuState, menuItems, closeMenu } = useContextMenu({
     mode: state.mode,
     isLocked: state.isLocked,
     onEditNode: menuHandlers.handleEditNode,
@@ -445,13 +434,13 @@ const AppContent: React.FC<{
     onShowLinkProperties: menuHandlers.handleShowLinkProperties
   });
 
-  // Node dragging - using cyCompat for compatibility
-  useNodeDragging(cyCompat, {
+  // Node dragging
+  useNodeDragging({
     mode: state.mode,
     isLocked: state.isLocked,
     onLockedDrag: handleLockedDrag,
     onMoveComplete: handleMoveComplete,
-    onPositionsCommitted: (positions) => {
+    onPositionsCommitted: (positions: import("./hooks/state/useUndoRedo").NodePositionEntry[]) => {
       const withPosition = filterEntriesWithPosition(positions);
       if (withPosition.length > 0) updateNodePositions(withPosition);
     }
@@ -465,9 +454,8 @@ const AppContent: React.FC<{
   const panelVisibility = usePanelVisibility();
   const [showBulkLinkPanel, setShowBulkLinkPanel] = React.useState(false);
 
-  // Clipboard handlers - composed hook using cyCompat
+  // Clipboard handlers
   const clipboardHandlers = useClipboardHandlers({
-    cyCompat,
     annotations,
     undoRedo: {
       beginBatch: undoRedo.beginBatch,
@@ -485,7 +473,7 @@ const AppContent: React.FC<{
     [annotations]
   );
 
-  // Keyboard shortcuts - composed hook using cyCompat
+  // Keyboard shortcuts
   useAppKeyboardShortcuts({
     state: {
       mode: state.mode,
@@ -493,7 +481,6 @@ const AppContent: React.FC<{
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge
     },
-    cyCompat,
     undoRedo: {
       undo: undoRedo.undo,
       redo: undoRedo.redo,
@@ -517,9 +504,8 @@ const AppContent: React.FC<{
 
   const easterEgg = useEasterEgg({});
 
-  // Annotation layer props - composed hook using cyCompat
+  // Annotation layer props
   const { groupLayerProps, freeTextLayerProps, freeShapeLayerProps } = useAnnotationLayerProps({
-    cyCompat,
     annotations,
     state: {
       isLocked: state.isLocked,
@@ -598,13 +584,11 @@ const AppContent: React.FC<{
           }}
           findNode={{
             isVisible: panelVisibility.showFindNodePanel,
-            onClose: panelVisibility.handleCloseFindNode,
-            cyCompat
+            onClose: panelVisibility.handleCloseFindNode
           }}
           svgExport={{
             isVisible: panelVisibility.showSvgExportPanel,
             onClose: panelVisibility.handleCloseSvgExport,
-            cyCompat,
             textAnnotations: annotations.textAnnotations,
             shapeAnnotations: annotations.shapeAnnotations,
             groups: annotations.groups
@@ -645,7 +629,6 @@ const AppContent: React.FC<{
             isVisible: showBulkLinkPanel,
             mode: state.mode,
             isLocked: state.isLocked,
-            cyCompat,
             onClose: () => setShowBulkLinkPanel(false),
             recordGraphChanges,
             addEdge: addEdgeDirect as (element: unknown) => void
@@ -725,16 +708,12 @@ export const App: React.FC = () => {
   // Get ReactFlow instance from the canvas ref
   const rfInstance = reactFlowRef.current?.getReactFlowInstance() ?? null;
 
-  // cyCompat is no longer used - all hooks now work without it
-  // TODO: Remove cyCompat parameter from all hooks after ReactFlow integration is complete
-  const cyCompat = null;
-
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
 
-  // Shape and text layers - currently disabled without cyCompat
-  const { shapeLayerNode } = useShapeLayer(cyCompat);
-  const { textLayerNode } = useTextLayer(cyCompat);
+  // Shape and text layers - stubs during ReactFlow migration
+  const { shapeLayerNode } = useShapeLayer();
+  const { textLayerNode } = useTextLayer();
 
   // Layout controls use reactFlowRef
   const layoutControls = useLayoutControls(
@@ -742,9 +721,8 @@ export const App: React.FC = () => {
     null
   );
 
-  // Geo map - currently disabled without cyCompat
+  // Geo map - currently disabled during ReactFlow migration
   const { mapLibreState } = useGeoMap({
-    cyInstance: cyCompat,
     isGeoLayout: layoutControls.isGeoLayout,
     geoMode: layoutControls.geoMode
   });
@@ -753,7 +731,8 @@ export const App: React.FC = () => {
     <ViewportProvider rfInstance={rfInstance}>
       <UndoRedoProvider enabled={state.mode === "edit"}>
         <AnnotationProvider
-          cyCompat={cyCompat}
+          nodes={state.nodes}
+          rfInstance={rfInstance}
           mode={state.mode}
           isLocked={state.isLocked}
           onLockedAction={() => floatingPanelRef.current?.triggerShake()}
@@ -765,7 +744,6 @@ export const App: React.FC = () => {
             pendingMembershipChangesRef={pendingMembershipChangesRef}
             reactFlowRef={reactFlowRef}
             rfInstance={rfInstance}
-            cyCompat={cyCompat}
             layoutControls={layoutControls}
             mapLibreState={mapLibreState}
             shapeLayerNode={shapeLayerNode}

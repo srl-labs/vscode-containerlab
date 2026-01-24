@@ -1,8 +1,10 @@
 /**
  * Handler functions for bulk link operations
+ * Uses React Flow nodes/edges arrays for graph queries.
  */
 import type { GraphChange } from "../../../hooks/state/useUndoRedo";
 import type { CyElement } from "../../../../shared/types/messages";
+import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import { createLink, beginBatch, endBatch, type LinkSaveData } from "../../../services";
 
 import {
@@ -35,13 +37,14 @@ export async function sendBulkEdgesToExtension(edges: CyElement[]): Promise<void
 }
 
 export function computeAndValidateCandidates(
-  cyCompat: null,
+  nodes: TopoNode[],
+  edges: TopoEdge[],
   sourcePattern: string,
   targetPattern: string,
   setStatus: SetStatus,
   setPendingCandidates: SetCandidates
 ): void {
-  if (!cyCompat) {
+  if (nodes.length === 0) {
     setStatus("Topology not ready yet.");
     return;
   }
@@ -50,7 +53,7 @@ export function computeAndValidateCandidates(
     return;
   }
 
-  const candidates = computeCandidates(cyCompat, sourcePattern.trim(), targetPattern.trim());
+  const candidates = computeCandidates(nodes, edges, sourcePattern.trim(), targetPattern.trim());
   if (candidates.length === 0) {
     setStatus("No new links would be created with the specified patterns.");
     return;
@@ -61,7 +64,8 @@ export function computeAndValidateCandidates(
 }
 
 interface ConfirmCreateParams {
-  cyCompat: null;
+  nodes: TopoNode[];
+  edges: TopoEdge[];
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
   addEdge?: (edge: CyElement) => void;
@@ -72,7 +76,8 @@ interface ConfirmCreateParams {
 }
 
 export async function confirmAndCreateLinks({
-  cyCompat,
+  nodes,
+  edges,
   pendingCandidates,
   canApply,
   addEdge,
@@ -81,25 +86,25 @@ export async function confirmAndCreateLinks({
   setPendingCandidates,
   onClose
 }: ConfirmCreateParams): Promise<void> {
-  if (!cyCompat || !pendingCandidates) return;
+  if (nodes.length === 0 || !pendingCandidates) return;
   if (!canApply) {
     setStatus("Unlock the lab to create links.");
     setPendingCandidates(null);
     return;
   }
 
-  const edges = buildBulkEdges(cyCompat, pendingCandidates);
-  if (edges.length === 0) {
+  const builtEdges = buildBulkEdges(nodes, edges, pendingCandidates);
+  if (builtEdges.length === 0) {
     setStatus("No new links to create.");
     setPendingCandidates(null);
     return;
   }
 
-  const { before, after } = buildUndoRedoEntries(edges);
+  const { before, after } = buildUndoRedoEntries(builtEdges);
   if (addEdge) {
-    edges.forEach((edge) => addEdge(edge));
+    builtEdges.forEach((edge) => addEdge(edge));
   }
-  await sendBulkEdgesToExtension(edges);
+  await sendBulkEdgesToExtension(builtEdges);
   recordGraphChanges?.(before, after);
 
   setPendingCandidates(null);

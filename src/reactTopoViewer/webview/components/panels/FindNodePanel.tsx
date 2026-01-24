@@ -1,15 +1,21 @@
 /**
  * FindNodePanel - Search/find nodes in the topology
- * Migrated from legacy TopoViewer viewport-drawer-topology-overview.html
+ * Uses React Flow state for searching and viewport operations.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
 import { BasePanel } from "../shared/editor/BasePanel";
+import { useTopoViewerState } from "../../context/TopoViewerContext";
+import { useViewport } from "../../context/ViewportContext";
+import {
+  searchNodes as searchNodesUtil,
+  getNodesBoundingBox
+} from "../../hooks/shared/graphQueryUtils";
+import type { TopoNode } from "../../../shared/types/graph";
 
 interface FindNodePanelProps {
   isVisible: boolean;
   onClose: () => void;
-  cyCompat: null;
 }
 
 /** Creates a wildcard filter regex */
@@ -66,12 +72,21 @@ const SearchResultStatus: React.FC<{ count: number }> = ({ count }) => {
   );
 };
 
-/** Search nodes - disabled during ReactFlow migration */
-function searchNodes(_cyCompat: null, _searchTerm: string): number {
-  // Disabled during ReactFlow migration
-  // TODO: Use ReactFlow's getNodes() for searching and fitBounds for centering
-  void createFilter;
-  return 0;
+/**
+ * Filter nodes using a custom filter function supporting wildcards
+ * and prefix matching
+ */
+function filterNodes(nodes: TopoNode[], searchTerm: string): TopoNode[] {
+  const filter = createFilter(searchTerm);
+  return nodes.filter((node) => {
+    // Check node ID
+    if (filter(node.id)) return true;
+    // Check label
+    const data = node.data as Record<string, unknown>;
+    const label = data.label;
+    if (typeof label === "string" && filter(label)) return true;
+    return false;
+  });
 }
 
 /** Hook for panel focus management */
@@ -87,7 +102,11 @@ function usePanelFocus(isVisible: boolean, inputRef: React.RefObject<HTMLInputEl
 }
 
 /** Hook for search state management */
-function useSearchState(cyCompat: null, isVisible: boolean) {
+function useSearchState(
+  nodes: TopoNode[],
+  rfInstance: ReturnType<typeof useViewport>["rfInstance"],
+  isVisible: boolean
+) {
   const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
@@ -96,28 +115,58 @@ function useSearchState(cyCompat: null, isVisible: boolean) {
   }, [isVisible]);
 
   const handleSearch = useCallback(() => {
-    if (!cyCompat || !searchTerm.trim()) {
+    if (!searchTerm.trim()) {
       setMatchCount(null);
       return;
     }
-    setMatchCount(searchNodes(cyCompat, searchTerm));
-  }, [cyCompat, searchTerm]);
+
+    // Search using the graph utility
+    const basicMatches = searchNodesUtil(nodes, searchTerm);
+
+    // Also search with wildcard filter for more flexibility
+    const filterMatches = filterNodes(nodes, searchTerm);
+
+    // Combine results (dedupe by ID)
+    const matchedIds = new Set<string>();
+    const combinedMatches: TopoNode[] = [];
+    for (const node of [...basicMatches, ...filterMatches]) {
+      if (!matchedIds.has(node.id)) {
+        matchedIds.add(node.id);
+        combinedMatches.push(node);
+      }
+    }
+
+    setMatchCount(combinedMatches.length);
+
+    // If matches found and we have rfInstance, fit view to show them
+    if (combinedMatches.length > 0 && rfInstance) {
+      const bounds = getNodesBoundingBox(combinedMatches);
+      if (bounds) {
+        // Add padding and fit to bounds
+        rfInstance.fitBounds(
+          { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+          { padding: 0.2, duration: 300 }
+        );
+      }
+    }
+  }, [nodes, searchTerm, rfInstance]);
 
   const handleClear = useCallback(() => {
     setSearchTerm("");
     setMatchCount(null);
-    // Disabled during ReactFlow migration - clear selection handled elsewhere
-    void cyCompat;
-  }, [cyCompat]);
+  }, []);
 
   return { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear };
 }
 
-export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, cyCompat }) => {
+export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose }) => {
+  const { state } = useTopoViewerState();
+  const { rfInstance } = useViewport();
   const inputRef = useRef<HTMLInputElement>(null);
   usePanelFocus(isVisible, inputRef);
   const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(
-    cyCompat,
+    state.nodes,
+    rfInstance,
     isVisible
   );
 

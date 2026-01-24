@@ -46,7 +46,10 @@ export interface PendingMembershipChange {
 
 /** Props for AnnotationProvider */
 interface AnnotationProviderProps {
-  cyCompat: null;
+  /** React Flow nodes for position queries */
+  nodes: import("../../shared/types/graph").TopoNode[];
+  /** React Flow instance for viewport queries */
+  rfInstance: import("@xyflow/react").ReactFlowInstance | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
@@ -186,7 +189,8 @@ const AnnotationActionsContext = createContext<AnnotationActionsContextValue | u
 
 /** Provider component for annotation context */
 export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
-  cyCompat,
+  nodes,
+  rfInstance,
   mode,
   isLocked,
   onLockedAction,
@@ -211,7 +215,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Groups
   const { groups: groupsHook } = useAppGroups({
-    cyInstance: cyCompat,
+    nodes,
+    rfInstance,
     mode,
     isLocked,
     onLockedAction,
@@ -221,7 +226,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Text annotations
   const freeTextAnnotations = useAppFreeTextAnnotations({
-    cyCompat,
+    rfInstance,
     mode,
     isLocked,
     onLockedAction,
@@ -230,7 +235,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Shape annotations
   const freeShapeAnnotations = useAppFreeShapeAnnotations({
-    cyCompat,
+    rfInstance,
     mode,
     isLocked,
     onLockedAction,
@@ -297,7 +302,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Group undo handlers
   const { handleAddGroupWithUndo, deleteGroupWithUndo } = useAppGroupUndoHandlers({
-    cyInstance: cyCompat,
+    nodes,
+    rfInstance,
     groups: groupsHook,
     undoRedo,
     textAnnotations: freeTextAnnotations.annotations,
@@ -308,7 +314,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Group drag undo
   const groupDragUndo = useGroupDragUndo({
-    cyInstance: cyCompat,
+    nodes,
+    rfInstance,
     groups: groupsHook,
     undoRedo,
     isApplyingGroupUndoRedo: groupUndoHandlers.isApplyingGroupUndoRedo,
@@ -345,7 +352,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Node reparent
   useNodeReparent(
-    cyCompat,
+    nodes,
     {
       mode,
       isLocked,
@@ -360,7 +367,6 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Annotation effects
   useAnnotationEffects({
-    cyCompat,
     isLocked,
     freeTextAnnotations: freeTextAnnotations.annotations,
     freeTextSelectedIds: freeTextAnnotations.selectedAnnotationIds,

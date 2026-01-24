@@ -23,7 +23,6 @@ interface CompatNodeSingular {
 // ============================================================================
 
 interface UseAnnotationGroupMoveOptions {
-  cyCompat: null;
   annotations: FreeTextAnnotation[];
   selectedAnnotationIds: Set<string>;
   /** Update annotation position (called during drag for visual feedback) */
@@ -113,12 +112,11 @@ function createDragFreeHandler(refs: DragTrackingRefs) {
 
 /**
  * Hook that synchronizes annotation movement with node dragging.
- * Note: Node drag events (grab/drag/dragfree) are not yet implemented
- * in the unknown interface. This hook registers handlers that will
- * work when ReactFlow drag event support is added.
+ * Note: In ReactFlow, this is handled via onNodeDrag callbacks.
+ * This hook sets up the infrastructure for future integration.
  */
 function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
-  const { cyCompat, annotations, selectedAnnotationIds, onPositionChange, isLocked } = options;
+  const { annotations, selectedAnnotationIds, onPositionChange, isLocked } = options;
 
   const startPositionsRef = useRef<AnnotationStartPosition[]>([]);
   const nodeStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -144,13 +142,12 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
   const handleDragFree = useCallback(() => createDragFreeHandler(refs)(), []);
 
   useEffect(() => {
-    // Disabled during ReactFlow migration
-    // Node drag events will be handled via ReactFlow's onNodeDrag callbacks
-    void cyCompat;
+    // Node drag events are handled via ReactFlow's onNodeDrag callbacks
+    // These handlers can be integrated when needed
     void handleGrab;
     void handleDrag;
     void handleDragFree;
-  }, [cyCompat, handleGrab, handleDrag, handleDragFree]);
+  }, [handleGrab, handleDrag, handleDragFree]);
 }
 
 // ============================================================================
@@ -158,43 +155,32 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
 // ============================================================================
 
 interface UseAnnotationBackgroundClearOptions {
-  cyCompat: null;
   selectedAnnotationIds: Set<string>;
   onClearSelection: () => void;
 }
 
 /**
  * Internal hook that clears annotation selection when clicking on the canvas background.
- * Note: The tap event is Cytoscape-specific. This hook registers handlers that will
- * work when ReactFlow tap/click support is added to the compatibility layer.
+ * In ReactFlow, this is handled via onPaneClick callback.
  */
 function useAnnotationBackgroundClear(options: UseAnnotationBackgroundClearOptions): void {
-  const { cyCompat, selectedAnnotationIds, onClearSelection } = options;
+  const { selectedAnnotationIds, onClearSelection } = options;
 
-  const handleBackgroundTap = useCallback(
-    (event: CompatEventObject) => {
-      // Only handle clicks directly on the canvas (not on nodes/edges)
-      if (event.target !== cyCompat) return;
-
-      // Only clear if there are selected annotations
-      if (selectedAnnotationIds.size > 0) {
-        log.info("[AnnotationBackgroundClear] Clearing annotation selection on background tap");
-        onClearSelection();
-      }
-    },
-    [cyCompat, selectedAnnotationIds, onClearSelection]
-  );
+  const handleBackgroundTap = useCallback(() => {
+    // Only clear if there are selected annotations
+    if (selectedAnnotationIds.size > 0) {
+      log.info("[AnnotationBackgroundClear] Clearing annotation selection on background tap");
+      onClearSelection();
+    }
+  }, [selectedAnnotationIds, onClearSelection]);
 
   useEffect(() => {
-    // Disabled during ReactFlow migration
-    // Background tap will be handled via ReactFlow's onPaneClick callback
-    void cyCompat;
+    // Background tap is handled via ReactFlow's onPaneClick callback
     void handleBackgroundTap;
-  }, [cyCompat, handleBackgroundTap]);
+  }, [handleBackgroundTap]);
 }
 
 interface AnnotationEffectsOptions {
-  cyCompat: null;
   isLocked: boolean;
   // Free text annotations
   freeTextAnnotations: FreeTextAnnotation[];
@@ -213,7 +199,6 @@ interface AnnotationEffectsOptions {
  * Combines annotation effects to reduce complexity in App.tsx
  */
 export function useAnnotationEffects({
-  cyCompat,
   isLocked,
   freeTextAnnotations,
   freeTextSelectedIds,
@@ -226,7 +211,6 @@ export function useAnnotationEffects({
 }: AnnotationEffectsOptions): void {
   // Enable synchronized movement of annotations with nodes during drag
   useAnnotationGroupMove({
-    cyCompat,
     annotations: freeTextAnnotations,
     selectedAnnotationIds: freeTextSelectedIds,
     onPositionChange: onFreeTextPositionChange,
@@ -235,21 +219,18 @@ export function useAnnotationEffects({
 
   // Clear free text annotation selection when clicking on canvas background
   useAnnotationBackgroundClear({
-    cyCompat,
     selectedAnnotationIds: freeTextSelectedIds,
     onClearSelection: onFreeTextClearSelection
   });
 
   // Clear free shape selection when clicking on canvas background
   useAnnotationBackgroundClear({
-    cyCompat,
     selectedAnnotationIds: freeShapeSelectedIds,
     onClearSelection: onFreeShapeClearSelection
   });
 
   // Clear group selection when clicking on canvas background
   useAnnotationBackgroundClear({
-    cyCompat,
     selectedAnnotationIds: groupSelectedIds ?? new Set(),
     onClearSelection: onGroupClearSelection ?? (() => {})
   });

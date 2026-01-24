@@ -118,8 +118,6 @@ export interface PasteResult {
 }
 
 export interface UseUnifiedClipboardOptions {
-  /** Cytoscape-compatible instance */
-  cyCompat: null;
   /** All groups */
   groups: GroupStyleAnnotation[];
   /** All text annotations */
@@ -749,7 +747,6 @@ export function useUnifiedClipboard(
   options: UseUnifiedClipboardOptions
 ): UseUnifiedClipboardReturn {
   const {
-    cyCompat,
     groups,
     textAnnotations,
     shapeAnnotations,
@@ -773,14 +770,14 @@ export function useUnifiedClipboard(
   const pasteCounterRef = useRef(0);
 
   const copy = useCallback((): boolean => {
-    if (!cyCompat) {
-      log.warn(
-        "[UnifiedClipboard] No cytoscape instance - clipboard disabled during ReactFlow migration"
-      );
-      return false;
-    }
+    // TODO: Re-enable with React Flow selection state
+    log.warn(
+      "[UnifiedClipboard] Clipboard disabled during ReactFlow migration - use React Flow selection"
+    );
+    return false;
 
-    const cyCompatTyped = cyCompat as CyCompatLike;
+    // The code below requires Cytoscape selection which is not available during migration
+    const cyCompatTyped = null as unknown as CyCompatLike;
     const selectedNodes = cyCompatTyped.nodes(":selected");
 
     // Collect IDs
@@ -863,7 +860,6 @@ export function useUnifiedClipboard(
 
     return true;
   }, [
-    cyCompat,
     groups,
     textAnnotations,
     shapeAnnotations,
@@ -876,102 +872,41 @@ export function useUnifiedClipboard(
 
   const paste = useCallback(
     (position: { x: number; y: number }): PasteResult | null => {
+      // Suppress unused parameter warning
+      void position;
+
       const clipboardData = clipboardRef.current;
       if (!clipboardData) {
         log.warn("[UnifiedClipboard] No clipboard data to paste");
         return null;
       }
 
-      if (!cyCompat) {
-        log.warn("[UnifiedClipboard] No cytoscape instance for paste");
-        return null;
-      }
+      // TODO: Re-enable with React Flow integration
+      log.warn("[UnifiedClipboard] Paste disabled during ReactFlow migration");
 
-      const idMapping = new Map<string, string>();
-      pasteCounterRef.current++;
-      const offset = pasteCounterRef.current * 20;
+      // Suppress unused variable warnings for code that will be restored post-migration
+      void onAddGroup;
+      void onAddTextAnnotation;
+      void onAddShapeAnnotation;
+      void onAddNodeToGroup;
+      void generateGroupId;
+      void onCreateNode;
+      void onCreateEdge;
+      void beginUndoBatch;
+      void endUndoBatch;
+      void pasteCounterRef;
+      void pasteGroups;
+      void pasteNodes;
+      void pasteEdges;
+      void pasteTextAnnotations;
+      void pasteShapeAnnotations;
+      void selectPastedNodes;
+      void beginBatch;
+      void endBatch;
 
-      // Determine if we have anything to paste that needs undo batching
-      const hasNodesToCreate = clipboardData.nodes.length > 0 && onCreateNode;
-      const hasEdgesToCreate = clipboardData.edges.length > 0 && onCreateEdge;
-      const hasGroupsToCreate = clipboardData.groups.length > 0;
-      const needsBatching = hasNodesToCreate || hasEdgesToCreate || hasGroupsToCreate;
-
-      // Begin undo batch BEFORE any paste operations to group everything into single undo entry
-      if (needsBatching && beginUndoBatch) {
-        beginUndoBatch();
-      }
-
-      // Begin batch to prevent race conditions when creating multiple nodes/edges
-      if (hasNodesToCreate || hasEdgesToCreate) {
-        beginBatch();
-      }
-
-      // Paste all elements using helper functions
-      const newGroupIds = pasteGroups(
-        clipboardData.groups,
-        position,
-        offset,
-        idMapping,
-        generateGroupId,
-        onAddGroup
-      );
-
-      const newNodeIds = pasteNodes(
-        clipboardData.nodes,
-        position,
-        offset,
-        idMapping,
-        cyCompat,
-        onAddNodeToGroup,
-        onCreateNode
-      );
-      pasteEdges(clipboardData.edges, idMapping, onCreateEdge);
-
-      // End batch to flush all changes at once
-      if (hasNodesToCreate || hasEdgesToCreate) {
-        void endBatch();
-      }
-
-      const newTextAnnotationIds = pasteTextAnnotations(
-        clipboardData.textAnnotations,
-        position,
-        offset,
-        idMapping,
-        onAddTextAnnotation
-      );
-      const newShapeAnnotationIds = pasteShapeAnnotations(
-        clipboardData.shapeAnnotations,
-        position,
-        offset,
-        idMapping,
-        onAddShapeAnnotation
-      );
-
-      // End undo batch - this commits all collected actions as a single undo entry
-      if (needsBatching && endUndoBatch) {
-        endUndoBatch();
-      }
-
-      selectPastedNodes(cyCompat, newNodeIds);
-
-      log.info(
-        `[UnifiedClipboard] Pasted ${newNodeIds.length} nodes, ` +
-          `${newGroupIds.length} groups, ` +
-          `${newTextAnnotationIds.length} texts, ` +
-          `${newShapeAnnotationIds.length} shapes`
-      );
-
-      return {
-        idMapping,
-        newGroupIds,
-        newNodeIds,
-        newTextAnnotationIds,
-        newShapeAnnotationIds
-      };
+      return null;
     },
     [
-      cyCompat,
       onAddGroup,
       onAddTextAnnotation,
       onAddShapeAnnotation,

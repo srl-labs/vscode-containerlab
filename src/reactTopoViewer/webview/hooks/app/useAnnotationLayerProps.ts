@@ -111,7 +111,6 @@ interface AnnotationsSubset {
  * Configuration for useAnnotationLayerProps hook
  */
 export interface AnnotationLayerPropsConfig {
-  cyCompat: null;
   annotations: AnnotationsSubset;
   state: {
     isLocked: boolean;
@@ -213,15 +212,8 @@ function processChildGroupBounds(bounds: BoundsAccumulator, group: GroupStyleAnn
 export function useAnnotationLayerProps(
   config: AnnotationLayerPropsConfig
 ): AnnotationLayerPropsReturn {
-  const {
-    cyCompat,
-    annotations,
-    state,
-    layoutControls,
-    mapLibreState,
-    shapeLayerNode,
-    textLayerNode
-  } = config;
+  const { annotations, state, layoutControls, mapLibreState, shapeLayerNode, textLayerNode } =
+    config;
 
   // Helper callbacks for updating group IDs
   const updateTextGroupId = React.useCallback(
@@ -245,10 +237,7 @@ export function useAnnotationLayerProps(
         hasContent: false
       };
 
-      // Accumulate node bounds
-      // Disabled during ReactFlow migration - node bounds from cyCompat not available
       // TODO: Use ReactFlow's getNode() to get node positions
-      void cyCompat;
       void annotations.getGroupMembers(groupId);
 
       // Accumulate text annotation bounds
@@ -281,7 +270,6 @@ export function useAnnotationLayerProps(
       };
     },
     [
-      cyCompat,
       annotations.getGroupMembers,
       annotations.textAnnotations,
       annotations.shapeAnnotations,
@@ -292,8 +280,6 @@ export function useAnnotationLayerProps(
   // GroupLayer props
   const groupLayerProps = React.useMemo(
     () => ({
-      cy: cyCompat,
-      cyCompat,
       groups: annotations.groups,
       isLocked: state.isLocked,
       onGroupEdit: annotations.editGroup,
@@ -317,7 +303,6 @@ export function useAnnotationLayerProps(
       getMinimumBounds
     }),
     [
-      cyCompat,
       annotations.groups,
       state.isLocked,
       annotations.editGroup,
@@ -344,8 +329,6 @@ export function useAnnotationLayerProps(
   // FreeTextLayer props
   const freeTextLayerProps = React.useMemo(
     () => ({
-      cy: cyCompat,
-      cyCompat,
       annotations: annotations.textAnnotations,
       isLocked: state.isLocked,
       isAddTextMode: annotations.isAddTextMode,
@@ -369,7 +352,6 @@ export function useAnnotationLayerProps(
       onUpdateGroupId: updateTextGroupId
     }),
     [
-      cyCompat,
       annotations.textAnnotations,
       state.isLocked,
       annotations.isAddTextMode,
@@ -397,8 +379,6 @@ export function useAnnotationLayerProps(
   // FreeShapeLayer props
   const freeShapeLayerProps = React.useMemo(
     () => ({
-      cy: cyCompat,
-      cyCompat,
       annotations: annotations.shapeAnnotations,
       isLocked: state.isLocked,
       isAddShapeMode: annotations.isAddShapeMode,
@@ -426,7 +406,6 @@ export function useAnnotationLayerProps(
       onUpdateGroupId: updateShapeGroupId
     }),
     [
-      cyCompat,
       annotations.shapeAnnotations,
       state.isLocked,
       annotations.isAddShapeMode,

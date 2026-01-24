@@ -72,24 +72,20 @@ export function useAnnotationClickHandlers(
 
 /**
  * Hook for canvas click handler in add-annotation mode
- * @param cyCompat - Cytoscape-compatible core instance
  * @param onCanvasClick - Handler for canvas click with model coordinates
  * @param layerName - Name of the layer for logging
  */
 export function useLayerClickHandler(
-  cyCompat: null,
   onCanvasClick: (pos: { x: number; y: number }) => void,
   layerName: string = "Layer"
 ) {
   return useCallback(
     (e: React.MouseEvent) => {
-      // Disabled during ReactFlow migration - should use ViewportContext for coordinate conversion
-      void cyCompat;
+      // Use client coordinates directly - coordinate conversion handled by caller if needed
       void layerName;
-      // Use client coordinates directly as a fallback (no pan/zoom conversion)
       onCanvasClick({ x: e.clientX, y: e.clientY });
     },
-    [cyCompat, onCanvasClick, layerName]
+    [onCanvasClick, layerName]
   );
 }
 
@@ -118,28 +114,25 @@ function isAnnotationInBox<T extends AnnotationWithPosition>(
 
 /**
  * Hook for box selection of annotations
- * Note: Box selection events are not yet implemented in the compatibility layer.
+ * Note: Box selection events are not yet implemented for annotations.
  * This hook is a stub that will need to be implemented when ReactFlow box selection is added.
- * @param cyCompat - Cytoscape-compatible core instance
  * @param annotations - Array of annotations
  * @param onBoxSelect - Handler called with selected annotation IDs
  * @param getCenter - Optional function to get the center position for selection calculation
  * @param layerName - Name of the layer for logging
  */
 export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
-  cyCompat: null,
   annotations: T[],
   onBoxSelect?: (ids: string[]) => void,
   getCenter?: (a: T) => { x: number; y: number },
   layerName: string = "Layer"
 ) {
   useEffect(() => {
-    // Disabled during ReactFlow migration - box selection not yet implemented
-    void cyCompat;
+    // Box selection not yet implemented for annotations
     void annotations;
     void onBoxSelect;
     void getCenter;
     void layerName;
     void isAnnotationInBox;
-  }, [cyCompat, annotations, onBoxSelect, getCenter, layerName]);
+  }, [annotations, onBoxSelect, getCenter, layerName]);
 }

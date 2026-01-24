@@ -35,7 +35,6 @@ export const DEFAULT_BACKGROUND_COLOR = "transparent";
 // ============================================================================
 
 export interface UseFreeTextAnnotationsOptions {
-  cyCompat: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
@@ -212,22 +211,15 @@ export function duplicateAnnotations(
 // ============================================================================
 
 export function modelToRendered(
-  _cyCompat: null,
   modelX: number,
   modelY: number
 ): { x: number; y: number; zoom: number } {
-  // Disabled during ReactFlow migration - returns model coords directly
-  // TODO: Use ViewportContext for proper coordinate transformation
+  // Returns model coords directly - transformation is handled by ViewportContext
   return { x: modelX, y: modelY, zoom: 1 };
 }
 
-export function renderedToModel(
-  _cyCompat: null,
-  renderedX: number,
-  renderedY: number
-): { x: number; y: number } {
-  // Disabled during ReactFlow migration - returns rendered coords directly
-  // TODO: Use ViewportContext for proper coordinate transformation
+export function renderedToModel(renderedX: number, renderedY: number): { x: number; y: number } {
+  // Returns rendered coords directly - transformation is handled by ViewportContext
   return { x: renderedX, y: renderedY };
 }
 

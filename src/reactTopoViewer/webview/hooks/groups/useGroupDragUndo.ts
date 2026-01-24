@@ -5,12 +5,14 @@
  */
 import type React from "react";
 import { useCallback, useRef } from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 import type {
   UndoRedoAction,
   UndoRedoActionGroupMove,
@@ -40,7 +42,10 @@ interface DragStartState {
 }
 
 export interface UseGroupDragUndoOptions {
-  cyInstance: null;
+  /** React Flow nodes for position queries */
+  nodes: TopoNode[];
+  /** React Flow instance for viewport queries */
+  rfInstance: ReactFlowInstance | null;
   groups: UseGroupsReturn;
   undoRedo: UndoRedoApi;
   isApplyingGroupUndoRedo: React.RefObject<boolean>;
@@ -311,7 +316,7 @@ function processDragEnd(
 
 export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDragUndoReturn {
   const {
-    cyInstance,
+    nodes,
     groups,
     undoRedo,
     isApplyingGroupUndoRedo,
@@ -325,7 +330,7 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
 
   const onGroupDragStart = useCallback(
     (groupId: string) => {
-      if (!cyInstance || isApplyingGroupUndoRedo.current) return;
+      if (nodes.length === 0 || isApplyingGroupUndoRedo.current) return;
       const group = groups.groups.find((g) => g.id === groupId);
       if (!group) return;
       const memberNodeIds = groups.getGroupMembers(groupId);
@@ -350,7 +355,7 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
           `${descendantCount} descendant groups, ${textCount} texts, ${shapeCount} shapes`
       );
     },
-    [cyInstance, groups, undoRedo, isApplyingGroupUndoRedo, textAnnotations, shapeAnnotations]
+    [nodes, groups, undoRedo, isApplyingGroupUndoRedo, textAnnotations, shapeAnnotations]
   );
 
   const onGroupDragEnd = useCallback(
@@ -359,7 +364,7 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
       finalPosition: { x: number; y: number },
       _delta: { dx: number; dy: number }
     ) => {
-      if (!cyInstance || isApplyingGroupUndoRedo.current) return;
+      if (nodes.length === 0 || isApplyingGroupUndoRedo.current) return;
       const startState = dragStartRef.current;
       if (!startState || startState.groupId !== groupId) {
         handleFallbackDragEnd(
@@ -402,7 +407,7 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
       dragStartRef.current = null;
     },
     [
-      cyInstance,
+      nodes,
       groups,
       undoRedo,
       isApplyingGroupUndoRedo,
@@ -414,18 +419,18 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
 
   const onGroupDragMove = useCallback(
     (groupId: string, delta: { dx: number; dy: number }) => {
-      if (!cyInstance || (delta.dx === 0 && delta.dy === 0)) return;
+      if (nodes.length === 0 || (delta.dx === 0 && delta.dy === 0)) return;
 
       const startState = dragStartRef.current;
       if (!startState) {
-        // Fallback: just move direct members
-        moveMemberNodes(cyInstance, groups.getGroupMembers(groupId), delta);
+        // Fallback: just move direct members (handled via React state)
+        moveMemberNodes(null, groups.getGroupMembers(groupId), delta);
         return;
       }
 
-      // Move all member nodes (including descendants)
+      // Move all member nodes (including descendants) - handled via React state
       const allNodeIds = [...startState.memberNodeIds, ...startState.descendantNodeIds];
-      moveMemberNodes(cyInstance, allNodeIds, delta);
+      moveMemberNodes(null, allNodeIds, delta);
 
       // Move descendant groups
       if (startState.descendantGroupsBefore.length > 0) {
@@ -454,7 +459,7 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
       }
     },
     [
-      cyInstance,
+      nodes,
       groups,
       textAnnotations,
       shapeAnnotations,

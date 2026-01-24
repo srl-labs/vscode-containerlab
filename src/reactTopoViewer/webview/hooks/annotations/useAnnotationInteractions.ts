@@ -11,7 +11,8 @@ import { useAnnotationDrag } from "./useAnnotationDrag";
 import { useRotationDrag, useResizeDrag } from "./useAnnotationHandles";
 
 interface UseAnnotationInteractionsOptions {
-  cyCompat: null;
+  pan: { x: number; y: number };
+  zoom: number;
   annotation: FreeTextAnnotation;
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;
@@ -33,7 +34,8 @@ interface UseAnnotationInteractionsOptions {
  */
 export function useAnnotationInteractions(options: UseAnnotationInteractionsOptions) {
   const {
-    cyCompat,
+    pan,
+    zoom,
     annotation,
     isLocked,
     onPositionChange,
@@ -49,7 +51,8 @@ export function useAnnotationInteractions(options: UseAnnotationInteractionsOpti
   } = options;
 
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
-    cyCompat,
+    pan,
+    zoom,
     modelPosition: annotation.position,
     isLocked,
     onPositionChange,
@@ -63,7 +66,8 @@ export function useAnnotationInteractions(options: UseAnnotationInteractionsOpti
   });
 
   const { isRotating, handleRotationMouseDown } = useRotationDrag({
-    cyCompat,
+    pan,
+    zoom,
     renderedPos,
     currentRotation: annotation.rotation || 0,
     isLocked,

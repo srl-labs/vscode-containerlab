@@ -19,7 +19,6 @@ const ANNOTATION_ROLES = new Set(["freeText", "freeShape", "group"]);
  */
 export function getModifierTapTarget<T>(
   _evt: unknown,
-  _cyCompat: null,
   options: { mode: "edit" | "view"; isLocked: boolean; modifier: ModifierKey }
 ): T | null {
   // Disabled during ReactFlow migration

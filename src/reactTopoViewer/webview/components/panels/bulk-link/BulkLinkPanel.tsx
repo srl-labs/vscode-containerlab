@@ -6,6 +6,8 @@ import React from "react";
 import { BasePanel } from "../../shared/editor/BasePanel";
 import type { GraphChange } from "../../../hooks/state";
 import type { CyElement } from "../../../../shared/types/messages";
+import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
+import { useTopoViewerState } from "../../../context/TopoViewerContext";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -16,7 +18,6 @@ interface BulkLinkPanelProps {
   isVisible: boolean;
   mode: "edit" | "view";
   isLocked: boolean;
-  cyCompat: null;
   onClose: () => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
   addEdge?: (edge: CyElement) => void;
@@ -84,11 +85,15 @@ function useBulkLinkPanel({
   isVisible,
   mode,
   isLocked,
-  cyCompat,
   onClose,
   recordGraphChanges,
   addEdge
 }: UseBulkLinkPanelOptions) {
+  // Get nodes and edges from context
+  const { state } = useTopoViewerState();
+  const nodes = state.nodes as TopoNode[];
+  const edges = state.edges as TopoEdge[];
+
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
   const [status, setStatus] = React.useState<string | null>(null);
@@ -113,17 +118,19 @@ function useBulkLinkPanel({
 
   const handleCompute = React.useCallback(() => {
     computeAndValidateCandidates(
-      cyCompat,
+      nodes,
+      edges,
       sourcePattern,
       targetPattern,
       setStatus,
       setPendingCandidates
     );
-  }, [cyCompat, sourcePattern, targetPattern]);
+  }, [nodes, edges, sourcePattern, targetPattern]);
 
   const handleConfirmCreate = React.useCallback(async () => {
     await confirmAndCreateLinks({
-      cyCompat,
+      nodes,
+      edges,
       pendingCandidates,
       canApply,
       addEdge,
@@ -132,7 +139,7 @@ function useBulkLinkPanel({
       setPendingCandidates,
       onClose
     });
-  }, [cyCompat, pendingCandidates, canApply, addEdge, recordGraphChanges, onClose]);
+  }, [nodes, edges, pendingCandidates, canApply, addEdge, recordGraphChanges, onClose]);
 
   const handleDismissConfirm = React.useCallback(() => {
     setPendingCandidates(null);
@@ -158,7 +165,6 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
   isVisible,
   mode,
   isLocked,
-  cyCompat,
   onClose,
   recordGraphChanges,
   addEdge,
@@ -177,15 +183,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
     handleCompute,
     handleConfirmCreate,
     handleDismissConfirm
-  } = useBulkLinkPanel({
-    isVisible,
-    mode,
-    isLocked,
-    cyCompat,
-    onClose,
-    recordGraphChanges,
-    addEdge
-  });
+  } = useBulkLinkPanel({ isVisible, mode, isLocked, onClose, recordGraphChanges, addEdge });
 
   return (
     <>

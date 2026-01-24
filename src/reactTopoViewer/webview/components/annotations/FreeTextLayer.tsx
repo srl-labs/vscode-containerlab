@@ -18,6 +18,7 @@ import {
 } from "../../hooks/annotations";
 import { renderMarkdown } from "../../utils/markdownRenderer";
 import type { MapLibreState } from "../../hooks/canvas/maplibreUtils";
+import { useViewportTransform } from "../../context/ViewportContext";
 
 import {
   HANDLE_SIZE,
@@ -36,7 +37,6 @@ import {
 // ============================================================================
 
 interface FreeTextLayerProps extends GroupRelatedProps {
-  cyCompat: null;
   annotations: FreeTextAnnotation[];
   isLocked: boolean;
   isAddTextMode: boolean;
@@ -58,24 +58,8 @@ interface FreeTextLayerProps extends GroupRelatedProps {
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
 
-// ============================================================================
-// Hook: Sync layer transform with Cytoscape viewport
-// ============================================================================
-
-interface ViewportTransform {
-  pan: { x: number; y: number };
-  zoom: number;
-}
-
 /** Stable dummy position for computeAnnotationStyle (only style props like color/border are used, not x/y/zoom) */
 const DUMMY_RENDERED_POS = { x: 0, y: 0, zoom: 1 } as const;
-
-function useViewportTransform(cyCompat: null): ViewportTransform {
-  // Disabled during ReactFlow migration - returns default transform
-  // TODO: Use ViewportContext for proper viewport sync
-  void cyCompat;
-  return { pan: { x: 0, y: 0 }, zoom: 1 };
-}
 
 // ============================================================================
 // Helper: Document mouse event listeners
@@ -98,16 +82,16 @@ function addMouseListeners(
 // ============================================================================
 
 interface UseDragOptions {
-  cyCompat: null;
   modelPosition: { x: number; y: number };
   isLocked: boolean;
+  zoom: number;
   onPositionChange: (position: { x: number; y: number }) => void;
   onDragStart?: () => void;
   onDragEnd?: (finalPosition: { x: number; y: number }) => void;
 }
 
 function useTextDrag(options: UseDragOptions) {
-  const { cyCompat, modelPosition, isLocked, onPositionChange, onDragStart, onDragEnd } = options;
+  const { modelPosition, isLocked, zoom, onPositionChange, onDragStart, onDragEnd } = options;
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number } | null>(null);
   const dragStartRef = useRef<{
@@ -119,12 +103,9 @@ function useTextDrag(options: UseDragOptions) {
 
   useEffect(() => {
     if (!isDragging) return;
-    void cyCompat;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
-      // Use default zoom of 1 during ReactFlow migration
-      const zoom = 1;
       const dx = (e.clientX - dragStartRef.current.mouseX) / zoom;
       const dy = (e.clientY - dragStartRef.current.mouseY) / zoom;
       setDragOffset({ dx, dy });
@@ -132,8 +113,6 @@ function useTextDrag(options: UseDragOptions) {
 
     const handleMouseUp = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
-      // Use default zoom of 1 during ReactFlow migration
-      const zoom = 1;
       const dx = (e.clientX - dragStartRef.current.mouseX) / zoom;
       const dy = (e.clientY - dragStartRef.current.mouseY) / zoom;
       const finalX = Math.round(dragStartRef.current.modelX + dx);
@@ -150,7 +129,7 @@ function useTextDrag(options: UseDragOptions) {
     };
 
     return addMouseListeners(handleMouseMove, handleMouseUp);
-  }, [isDragging, cyCompat, modelPosition, onPositionChange, onDragEnd]);
+  }, [isDragging, zoom, modelPosition, onPositionChange, onDragEnd]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -188,22 +167,19 @@ function useTextDrag(options: UseDragOptions) {
 // ============================================================================
 
 function useTextRotation(options: {
-  cyCompat: null;
   modelPosition: { x: number; y: number };
+  pan: { x: number; y: number };
+  zoom: number;
   isLocked: boolean;
   onRotationChange: (rotation: number) => void;
 }) {
-  const { cyCompat, modelPosition, isLocked, onRotationChange } = options;
+  const { modelPosition, pan, zoom, isLocked, onRotationChange } = options;
   const [isRotating, setIsRotating] = useState(false);
 
   useEffect(() => {
     if (!isRotating) return;
-    void cyCompat;
 
     const handleMouseMove = (e: MouseEvent) => {
-      // Disabled during ReactFlow migration - use default pan/zoom
-      const pan = { x: 0, y: 0 };
-      const zoom = 1;
       const centerX = modelPosition.x * zoom + pan.x;
       const centerY = modelPosition.y * zoom + pan.y;
 
@@ -223,7 +199,7 @@ function useTextRotation(options: {
     };
 
     return addMouseListeners(handleMouseMove, handleMouseUp);
-  }, [isRotating, cyCompat, modelPosition, onRotationChange]);
+  }, [isRotating, pan, zoom, modelPosition, onRotationChange]);
 
   const handleRotationMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -243,14 +219,14 @@ function useTextRotation(options: {
 // ============================================================================
 
 function useTextResize(options: {
-  cyCompat: null;
   currentWidth: number | undefined;
   currentHeight: number | undefined;
   contentRef: React.RefObject<HTMLDivElement | null>;
+  zoom: number;
   isLocked: boolean;
   onSizeChange: (width: number, height: number) => void;
 }) {
-  const { cyCompat, currentWidth, currentHeight, contentRef, isLocked, onSizeChange } = options;
+  const { currentWidth, currentHeight, contentRef, zoom, isLocked, onSizeChange } = options;
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef<{
     mouseX: number;
@@ -261,7 +237,6 @@ function useTextResize(options: {
 
   useEffect(() => {
     if (!isResizing) return;
-    void cyCompat;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizeStartRef.current) return;
@@ -283,7 +258,7 @@ function useTextResize(options: {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizing, cyCompat, onSizeChange]);
+  }, [isResizing, onSizeChange]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -291,8 +266,6 @@ function useTextResize(options: {
       e.preventDefault();
       e.stopPropagation();
 
-      // Use default zoom of 1 during ReactFlow migration
-      const zoom = 1;
       const rect = contentRef.current?.getBoundingClientRect();
       // Divide by zoom to convert screen-space to model-space dimensions
       const width = currentWidth || (rect ? rect.width / zoom : 100);
@@ -301,7 +274,7 @@ function useTextResize(options: {
       resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width, height };
       setIsResizing(true);
     },
-    [isLocked, currentWidth, currentHeight, contentRef]
+    [isLocked, currentWidth, currentHeight, contentRef, zoom]
   );
 
   return { isResizing, handleResizeMouseDown };
@@ -313,7 +286,8 @@ function useTextResize(options: {
 
 interface TextItemProps {
   annotation: FreeTextAnnotation;
-  cyCompat: null;
+  pan: { x: number; y: number };
+  zoom: number;
   isLocked: boolean;
   isSelected: boolean;
   isGeoMode?: boolean;
@@ -356,7 +330,8 @@ function calculateEffectivelyLocked(
 
 const TextItem: React.FC<TextItemProps> = ({
   annotation,
-  cyCompat,
+  pan,
+  zoom,
   isLocked,
   isSelected,
   isGeoMode,
@@ -379,9 +354,9 @@ const TextItem: React.FC<TextItemProps> = ({
 
   // Drag handling
   const { isDragging, currentPosition, handleMouseDown } = useTextDrag({
-    cyCompat,
     modelPosition: annotation.position,
     isLocked: effectivelyLocked,
+    zoom,
     onPositionChange,
     onDragStart,
     onDragEnd
@@ -389,18 +364,19 @@ const TextItem: React.FC<TextItemProps> = ({
 
   // Rotation handling
   const { isRotating, handleRotationMouseDown } = useTextRotation({
-    cyCompat,
     modelPosition: annotation.position,
+    pan,
+    zoom,
     isLocked: effectivelyLocked,
     onRotationChange
   });
 
   // Resize handling
   const { isResizing, handleResizeMouseDown } = useTextResize({
-    cyCompat,
     currentWidth: annotation.width,
     currentHeight: annotation.height,
     contentRef,
+    zoom,
     isLocked: effectivelyLocked,
     onSizeChange
   });
@@ -569,7 +545,6 @@ function createTextAnnotationCallbacks(
 // ============================================================================
 
 export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
-  cyCompat,
   annotations,
   isLocked,
   isAddTextMode,
@@ -594,7 +569,7 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
   const transformedLayerRef = useRef<HTMLDivElement>(null);
-  const handleLayerClick = useLayerClickHandler(cyCompat, onCanvasClick, "FreeTextLayer");
+  const handleLayerClick = useLayerClickHandler(onCanvasClick, "FreeTextLayer");
 
   // Context menu state - rendered outside transformed layer so position: fixed works
   const [contextMenu, setContextMenu] = useState<{
@@ -611,28 +586,17 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
     []
   );
 
-  // Get viewport transform from CyCompat
-  const { pan, zoom } = useViewportTransform(cyCompat);
+  // Get viewport transform from ViewportContext
+  const { pan, zoom } = useViewportTransform();
 
   // Sync transform to the layer via ref (avoids React re-render lag)
-  // Disabled during ReactFlow migration - transform sync handled differently
   useEffect(() => {
     if (transformedLayerRef.current) {
       transformedLayerRef.current.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
     }
-    void cyCompat;
-  }, [cyCompat, pan, zoom]);
+  }, [pan, zoom]);
 
-  // Transform sync via animation frames disabled during ReactFlow migration
-  // This was used for smoother updates during zoom but is now handled by ViewportContext
-
-  useAnnotationBoxSelection(
-    cyCompat,
-    annotations,
-    onAnnotationBoxSelect,
-    undefined,
-    "FreeTextLayer"
-  );
+  useAnnotationBoxSelection(annotations, onAnnotationBoxSelect, undefined, "FreeTextLayer");
 
   const reparent = useAnnotationReparent({
     mode,
@@ -650,8 +614,6 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
     [reparent]
   );
 
-  // During ReactFlow migration, render even without cyCompat but check for annotations
-  void cyCompat;
   if (annotations.length === 0 && !isAddTextMode) return null;
 
   const handlers = {
@@ -705,7 +667,8 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
             <TextItem
               key={annotation.id}
               annotation={annotation}
-              cyCompat={cyCompat}
+              pan={pan}
+              zoom={zoom}
               isLocked={isLocked}
               isSelected={selectedAnnotationIds.has(annotation.id)}
               isGeoMode={isGeoMode}

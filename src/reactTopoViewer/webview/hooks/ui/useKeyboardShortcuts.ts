@@ -10,7 +10,6 @@ interface KeyboardShortcutsOptions {
   isLocked: boolean;
   selectedNode: string | null;
   selectedEdge: string | null;
-  cyCompat: null;
   onDeleteNode: (nodeId: string) => void;
   onDeleteEdge: (edgeId: string) => void;
   onDeselectAll: () => void;
@@ -104,7 +103,6 @@ function handleRedo(
  */
 function handleCopy(
   event: KeyboardEvent,
-  cyCompat: null,
   onCopy?: () => void,
   selectedAnnotationIds?: Set<string>,
   onCopyAnnotations?: () => void
@@ -122,9 +120,9 @@ function handleCopy(
   }
 
   // Also copy graph elements if any are selected
-  // Note: Selection state is managed by ReactFlow, not tracked via CyCompat
+  // Note: Selection state is managed by ReactFlow
   // The onCopy handler should check selection state internally
-  if (onCopy && cyCompat) {
+  if (onCopy) {
     log.info("[Keyboard] Copy graph elements");
     onCopy();
     handled = true;
@@ -182,7 +180,6 @@ function handleDuplicate(
   event: KeyboardEvent,
   mode: "edit" | "view",
   isLocked: boolean,
-  cyCompat: null,
   onDuplicate?: () => void,
   selectedAnnotationIds?: Set<string>,
   onDuplicateAnnotations?: () => void
@@ -202,9 +199,9 @@ function handleDuplicate(
   }
 
   // Also duplicate graph elements if any are selected
-  // Note: Selection state is managed by ReactFlow, not tracked via CyCompat
+  // Note: Selection state is managed by ReactFlow
   // The onDuplicate handler should check selection state internally
-  if (onDuplicate && cyCompat) {
+  if (onDuplicate) {
     log.info("[Keyboard] Duplicate graph elements");
     onDuplicate();
     handled = true;
@@ -224,13 +221,12 @@ function handleDuplicate(
 function handleCreateGroup(
   event: KeyboardEvent,
   mode: "edit" | "view",
-  cyCompat: null,
   onCreateGroup?: () => void
 ): boolean {
   if (mode !== "edit") return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key.toLowerCase() !== "g") return false;
-  if (!onCreateGroup || !cyCompat) return false;
+  if (!onCreateGroup) return false;
 
   log.info("[Keyboard] Creating group from selected nodes");
   onCreateGroup();
@@ -243,9 +239,8 @@ function handleCreateGroup(
  * Note: Selection is now handled by ReactFlow natively via its built-in select all
  * This stub returns false to allow the browser/ReactFlow to handle the event
  */
-function handleSelectAll(event: KeyboardEvent, cyCompat: null): boolean {
+function handleSelectAll(event: KeyboardEvent): boolean {
   if (!(event.ctrlKey || event.metaKey) || event.key !== "a") return false;
-  if (!cyCompat) return false;
 
   // Let ReactFlow handle select all natively
   log.info("[Keyboard] Select all - delegating to ReactFlow");
@@ -328,7 +323,6 @@ function handleDelete(
  */
 function handleEscape(
   event: KeyboardEvent,
-  _cyCompat: null,
   selectedNode: string | null,
   selectedEdge: string | null,
   onDeselectAll: () => void,
@@ -365,7 +359,6 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     isLocked,
     selectedNode,
     selectedEdge,
-    cyCompat,
     onDeleteNode,
     onDeleteEdge,
     onDeselectAll,
@@ -394,7 +387,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       if (handleUndo(event, mode, canUndo, onUndo)) return;
       if (handleRedo(event, mode, canRedo, onRedo)) return;
       // Copy/Paste/Duplicate (with annotation support)
-      if (handleCopy(event, cyCompat, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
+      if (handleCopy(event, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
       if (handlePaste(event, mode, isLocked, onPaste, onPasteAnnotations, hasAnnotationClipboard))
         return;
       if (
@@ -402,7 +395,6 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
           event,
           mode,
           isLocked,
-          cyCompat,
           onDuplicate,
           selectedAnnotationIds,
           onDuplicateAnnotations
@@ -410,9 +402,9 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       )
         return;
       // Group shortcut (Ctrl+G)
-      if (handleCreateGroup(event, mode, cyCompat, onCreateGroup)) return;
+      if (handleCreateGroup(event, mode, onCreateGroup)) return;
       // Other shortcuts
-      if (handleSelectAll(event, cyCompat)) return;
+      if (handleSelectAll(event)) return;
       if (
         handleDelete(
           event,
@@ -429,7 +421,6 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
         return;
       handleEscape(
         event,
-        cyCompat,
         selectedNode,
         selectedEdge,
         onDeselectAll,
@@ -442,7 +433,6 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       isLocked,
       selectedNode,
       selectedEdge,
-      cyCompat,
       onDeleteNode,
       onDeleteEdge,
       onDeselectAll,

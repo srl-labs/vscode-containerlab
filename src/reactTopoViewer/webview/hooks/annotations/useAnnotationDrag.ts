@@ -18,7 +18,8 @@ interface DragStart {
 }
 
 interface UseAnnotationDragOptions {
-  cyCompat: null;
+  pan: { x: number; y: number };
+  zoom: number;
   modelPosition: { x: number; y: number };
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;
@@ -54,18 +55,19 @@ function calculateDelta(
 }
 
 // Get container-relative screen position
-function getContainerRelativePos(_cyCompat: null, _e: MouseEvent): { x: number; y: number } | null {
-  // Disabled during ReactFlow migration - container access needs to use ViewportContext
-  return null;
+function getContainerRelativePos(_e: MouseEvent): { x: number; y: number } | null {
+  const container = document.querySelector(".react-flow") as HTMLElement | null;
+  if (!container) return null;
+  const rect = container.getBoundingClientRect();
+  return { x: _e.clientX - rect.left, y: _e.clientY - rect.top };
 }
 
 // Handle geo mode mouse move - update rendered position to screen position
 function handleGeoModeMove(
-  cyCompat: null,
   e: MouseEvent,
   setRenderedPos: React.Dispatch<React.SetStateAction<RenderedPosition>>
 ): void {
-  const pos = getContainerRelativePos(cyCompat, e);
+  const pos = getContainerRelativePos(e);
   if (pos) {
     setRenderedPos((prev) => ({ ...prev, x: pos.x, y: pos.y }));
   }
@@ -73,7 +75,6 @@ function handleGeoModeMove(
 
 // Handle non-geo mode mouse move - update rendered position via model transformation
 function handleNonGeoModeMove(
-  cyCompat: null,
   dragStart: DragStart,
   deltaX: number,
   deltaY: number,
@@ -81,18 +82,17 @@ function handleNonGeoModeMove(
 ): void {
   const newModelX = dragStart.modelX + deltaX;
   const newModelY = dragStart.modelY + deltaY;
-  const rendered = modelToRendered(cyCompat, newModelX, newModelY);
+  const rendered = modelToRendered(newModelX, newModelY);
   setRenderedPos((prev) => ({ ...prev, x: rendered.x, y: rendered.y }));
 }
 
 // Finalize geo mode drag - convert screen to geo coords and call callback
 function finalizeGeoDrag(
-  cyCompat: null,
   e: MouseEvent,
   mapLibreState: MapLibreState,
   onGeoPositionChange: (geoCoords: { lat: number; lng: number }) => void
 ): void {
-  const pos = getContainerRelativePos(cyCompat, e);
+  const pos = getContainerRelativePos(e);
   if (pos) {
     const geoCoords = unprojectToGeoCoords(mapLibreState, pos);
     if (geoCoords) {
@@ -103,7 +103,6 @@ function finalizeGeoDrag(
 
 // Finalize non-geo mode drag - update model position
 function finalizeNonGeoDrag(
-  _cyCompat: null,
   e: MouseEvent,
   dragStart: DragStart,
   modelPosition: { x: number; y: number },
@@ -120,7 +119,7 @@ function finalizeNonGeoDrag(
 
 // Hook for viewport position synchronization (geo-aware)
 function useViewportSync(
-  cyCompat: null,
+  zoom: number,
   modelX: number,
   modelY: number,
   setRenderedPos: React.Dispatch<React.SetStateAction<RenderedPosition>>,
@@ -128,7 +127,6 @@ function useViewportSync(
   geoCoordinates?: { lat: number; lng: number }
 ): void {
   useEffect(() => {
-    // Disabled during ReactFlow migration - viewport sync should use ViewportContext
     // Use geo-aware position calculation if in geo mode
     if (mapLibreState?.isInitialized && geoCoordinates) {
       const rendered = modelToRenderedGeo(mapLibreState, geoCoordinates, modelX, modelY);
@@ -147,25 +145,23 @@ function useViewportSync(
       }
       return; // No cleanup needed when map is not available
     }
-    // Non-geo mode: set default position, viewport sync disabled
-    setRenderedPos({ x: modelX, y: modelY, zoom: 1 });
-    void cyCompat;
+    // Non-geo mode: set default position with current zoom
+    setRenderedPos({ x: modelX, y: modelY, zoom });
     return; // No cleanup needed
-  }, [cyCompat, modelX, modelY, setRenderedPos, mapLibreState, geoCoordinates]);
+  }, [zoom, modelX, modelY, setRenderedPos, mapLibreState, geoCoordinates]);
 }
 
 // Get zoom factor for drag calculations
-function getZoomFactor(_cyCompat: null, mapLibreState?: MapLibreState | null): number {
+function getZoomFactor(zoom: number, mapLibreState?: MapLibreState | null): number {
   if (mapLibreState?.isInitialized) {
     return calculateScale(mapLibreState);
   }
-  // Default zoom when cyCompat is not available - should use ViewportContext
-  return 1;
+  return zoom;
 }
 
 // Hook for drag event handlers (geo-aware)
 interface DragHandlersOptions {
-  cyCompat: null;
+  zoom: number;
   isDragging: boolean;
   modelPosition: { x: number; y: number };
   dragStartRef: { current: DragStart | null };
@@ -180,7 +176,7 @@ interface DragHandlersOptions {
 
 function useDragHandlers(options: DragHandlersOptions): void {
   const {
-    cyCompat,
+    zoom,
     isDragging,
     modelPosition,
     dragStartRef,
@@ -193,16 +189,16 @@ function useDragHandlers(options: DragHandlersOptions): void {
     onDragEnd
   } = options;
   useEffect(() => {
-    if (!isDragging || !cyCompat) return;
+    if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
       if (mapLibreState?.isInitialized) {
-        handleGeoModeMove(cyCompat, e, setRenderedPos);
+        handleGeoModeMove(e, setRenderedPos);
       } else {
-        const zoomFactor = getZoomFactor(cyCompat, mapLibreState);
+        const zoomFactor = getZoomFactor(zoom, mapLibreState);
         const { deltaX, deltaY } = calculateDelta(e, dragStartRef.current, zoomFactor);
-        handleNonGeoModeMove(cyCompat, dragStartRef.current, deltaX, deltaY, setRenderedPos);
+        handleNonGeoModeMove(dragStartRef.current, deltaX, deltaY, setRenderedPos);
         // Report model position during drag for background layer sync
         if (onDragMove) {
           const newModelX = dragStartRef.current.modelX + deltaX;
@@ -217,16 +213,16 @@ function useDragHandlers(options: DragHandlersOptions): void {
       setIsDragging(false);
 
       // Calculate final position
-      const zoomFactor = getZoomFactor(cyCompat, mapLibreState);
+      const zoomFactor = getZoomFactor(zoom, mapLibreState);
       const { deltaX, deltaY } = calculateDelta(e, dragStartRef.current, zoomFactor);
       const finalX = Math.round(dragStartRef.current.modelX + deltaX);
       const finalY = Math.round(dragStartRef.current.modelY + deltaY);
       const finalPosition = { x: finalX, y: finalY };
 
       if (mapLibreState?.isInitialized && onGeoPositionChange) {
-        finalizeGeoDrag(cyCompat, e, mapLibreState, onGeoPositionChange);
+        finalizeGeoDrag(e, mapLibreState, onGeoPositionChange);
       } else {
-        finalizeNonGeoDrag(cyCompat, e, dragStartRef.current, modelPosition, onPositionChange);
+        finalizeNonGeoDrag(e, dragStartRef.current, modelPosition, onPositionChange, zoomFactor);
       }
       dragStartRef.current = null;
       // Notify that drag ended with final position (for reparenting)
@@ -241,7 +237,7 @@ function useDragHandlers(options: DragHandlersOptions): void {
     };
   }, [
     isDragging,
-    cyCompat,
+    zoom,
     modelPosition.x,
     modelPosition.y,
     dragStartRef,
@@ -257,7 +253,8 @@ function useDragHandlers(options: DragHandlersOptions): void {
 
 export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotationDragReturn {
   const {
-    cyCompat,
+    pan,
+    zoom,
     modelPosition,
     isLocked,
     onPositionChange,
@@ -271,6 +268,9 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
     onGeoPositionChange
   } = options;
 
+  // Suppress unused warning - pan is available for future coordinate conversion
+  void pan;
+
   const [isDragging, setIsDragging] = useState(false);
   const [renderedPos, setRenderedPos] = useState<RenderedPosition>({ x: 0, y: 0, zoom: 1 });
   const dragStartRef = useRef<DragStart | null>(null);
@@ -279,7 +279,7 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
   const effectivelyLocked = isLocked || (isGeoMode && geoMode === "pan");
 
   useViewportSync(
-    cyCompat,
+    zoom,
     modelPosition.x,
     modelPosition.y,
     setRenderedPos,
@@ -287,7 +287,7 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
     geoCoordinates
   );
   useDragHandlers({
-    cyCompat,
+    zoom,
     isDragging,
     modelPosition,
     dragStartRef,

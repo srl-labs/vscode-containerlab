@@ -64,7 +64,7 @@ export function isNodeDraggable(role: string | undefined): boolean {
  * - saveNodePositions(positions) - Save positions to YAML
  * - isNodeDraggable(role) - Check if node can be dragged
  */
-export function useNodeDragging(_cyCompat: null, options: NodeDraggingOptions): void {
+export function useNodeDragging(options: NodeDraggingOptions): void {
   const { onPositionChange, onLockedDrag, onMoveComplete, onPositionsCommitted } = options;
 
   // These callbacks can be used by ReactFlow event handlers

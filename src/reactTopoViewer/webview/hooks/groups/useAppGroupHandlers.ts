@@ -4,8 +4,10 @@
  * Note: This hook must be called after useGraphUndoRedoHandlers since it needs undoRedo.
  */
 import { useCallback } from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { FreeShapeAnnotation, FreeTextAnnotation } from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 import type { RelatedAnnotationChange, UndoRedoAction } from "../state/useUndoRedo";
 
 import type { UseGroupsReturn } from "./groupTypes";
@@ -16,7 +18,10 @@ interface UndoRedoApi {
 }
 
 interface UseAppGroupUndoHandlersOptions {
-  cyInstance: null;
+  /** React Flow nodes for position queries */
+  nodes: TopoNode[];
+  /** React Flow instance for viewport queries */
+  rfInstance: ReactFlowInstance | null;
   groups: UseGroupsReturn;
   undoRedo: UndoRedoApi;
   textAnnotations?: FreeTextAnnotation[];
@@ -132,7 +137,6 @@ export function useAppGroupUndoHandlers(
 // ============================================================================
 
 interface UseGroupPositionHandlerOptions {
-  cyInstance: null;
   groups: UseGroupsReturn;
 }
 
@@ -165,24 +169,20 @@ export type GroupDragMoveHandler = (groupId: string, delta: { dx: number; dy: nu
 
 /**
  * Hook that creates a handler for real-time node movement during group drag.
- * Note: In the CyCompat layer, position updates are read-only.
- * Actual node position updates should be handled through React state in ReactFlow.
+ * Actual node position updates are handled through React state in ReactFlow.
  */
 export function useGroupDragMoveHandler(
   options: UseGroupPositionHandlerOptions
 ): GroupDragMoveHandler {
-  const { cyInstance, groups } = options;
+  const { groups } = options;
 
   return useCallback(
     (groupId: string, delta: { dx: number; dy: number }) => {
-      if (!cyInstance || (delta.dx === 0 && delta.dy === 0)) return;
+      if (delta.dx === 0 && delta.dy === 0) return;
       const memberIds = groups.getGroupMembers(groupId);
-      // Note: In unknown, position is read-only. Actual movement should be
-      // handled through React state updates. This callback now just identifies
-      // which nodes need to move - the actual movement happens via updateNodePositions
-      // in the parent component.
-      void memberIds; // Member IDs identified for movement
+      // Member IDs identified for movement - actual movement happens via updateNodePositions
+      void memberIds;
     },
-    [cyInstance, groups]
+    [groups]
   );
 }

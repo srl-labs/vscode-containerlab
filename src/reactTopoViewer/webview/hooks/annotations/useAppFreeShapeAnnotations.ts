@@ -167,7 +167,8 @@ interface TopologyDataMessage {
 }
 
 interface UseAppFreeShapeAnnotationsOptions {
-  cyCompat: null;
+  /** React Flow instance for viewport queries */
+  rfInstance: import("@xyflow/react").ReactFlowInstance | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
@@ -176,10 +177,9 @@ interface UseAppFreeShapeAnnotationsOptions {
 }
 
 export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOptions) {
-  const { cyCompat, mode, isLocked, onLockedAction, groups } = options;
+  const { mode, isLocked, onLockedAction, groups } = options;
 
   const freeShapeAnnotations = useFreeShapeAnnotations({
-    cyCompat,
     mode,
     isLocked,
     onLockedAction,

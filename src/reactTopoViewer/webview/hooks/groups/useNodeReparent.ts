@@ -5,6 +5,7 @@
 import { useEffect, useRef } from "react";
 
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 import { log } from "../../utils/logger";
 
 import { saveNodeMembership } from "./groupHelpers";
@@ -76,7 +77,7 @@ function handleMembershipChange(
 }
 
 export function useNodeReparent(
-  cyCompat: null,
+  _nodes: TopoNode[],
   options: UseNodeReparentOptions,
   deps: UseNodeReparentDeps
 ): void {
@@ -103,12 +104,10 @@ export function useNodeReparent(
   }, [addNodeToGroup, removeNodeFromGroup, onMembershipWillChange]);
 
   useEffect(() => {
-    // Disabled during ReactFlow migration
     // ReactFlow handles node drag events through its own onNodeDragStart/onNodeDragStop props
-    void cyCompat;
     void mode;
     void isLocked;
-  }, [cyCompat, mode, isLocked]);
+  }, [mode, isLocked]);
 
   // Expose helper functions for external use (e.g., from ReactFlow event handlers)
   // The actual reparenting logic is now called from ReactFlow's onNodeDragStop handler

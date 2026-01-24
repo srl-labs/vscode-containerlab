@@ -46,7 +46,6 @@ const DEBOUNCE_MS = 50;
  * Configuration for useClipboardHandlers hook
  */
 export interface ClipboardHandlersConfig {
-  cyCompat: null;
   annotations: AnnotationsClipboardSubset;
   undoRedo: {
     beginBatch: () => void;
@@ -78,19 +77,16 @@ export interface ClipboardHandlersReturn {
  * Consolidates ~70 lines of clipboard code from App.tsx into a single hook.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { cyCompat, annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } = config;
+  const { annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } = config;
 
   // Viewport center for paste operations
   const getViewportCenter = React.useCallback(() => {
-    // Disabled during ReactFlow migration - use default center
-    // TODO: Use ReactFlow's getViewport() for actual center
-    void cyCompat;
+    // TODO: Use ViewportContext's getViewportCenter() for actual center
     return { x: 0, y: 0 };
-  }, [cyCompat]);
+  }, []);
 
   // Unified clipboard hook
   const unifiedClipboard = useUnifiedClipboard({
-    cyCompat,
     groups: annotations.groups,
     textAnnotations: annotations.textAnnotations,
     shapeAnnotations: annotations.shapeAnnotations,
@@ -112,14 +108,12 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
 
   const getPasteAnchor = React.useCallback(() => {
     const viewportCenter = getViewportCenter();
-    // Disabled during ReactFlow migration - always use viewport center
-    void cyCompat;
     const clipboardData = unifiedClipboard.getClipboardData();
     if (!clipboardData) return viewportCenter;
 
-    // For now, always prefer the origin when available since extent() isn't available
+    // Prefer the origin when available
     return clipboardData.origin ?? viewportCenter;
-  }, [cyCompat, getViewportCenter, unifiedClipboard]);
+  }, [getViewportCenter, unifiedClipboard]);
 
   // Debounce refs
   const lastCopyTimeRef = React.useRef(0);

@@ -21,7 +21,6 @@ export interface AppKeyboardShortcutsConfig {
     selectedNode: string | null;
     selectedEdge: string | null;
   };
-  cyCompat: null;
   undoRedo: {
     undo: () => void;
     redo: () => void;
@@ -49,15 +48,8 @@ export interface AppKeyboardShortcutsConfig {
  * Simplifies the 20+ argument useKeyboardShortcuts call into a structured config.
  */
 export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): void {
-  const {
-    state,
-    cyCompat,
-    undoRedo,
-    annotations,
-    clipboardHandlers,
-    deleteHandlers,
-    handleDeselectAll
-  } = config;
+  const { state, undoRedo, annotations, clipboardHandlers, deleteHandlers, handleDeselectAll } =
+    config;
 
   // Combined selection IDs (text + shape + group annotations)
   const combinedSelectedAnnotationIds = React.useMemo(() => {
@@ -75,7 +67,6 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     isLocked: state.isLocked,
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
-    cyCompat,
     onDeleteNode: deleteHandlers.handleDeleteNodeWithUndo,
     onDeleteEdge: deleteHandlers.handleDeleteLinkWithUndo,
     onDeselectAll: handleDeselectAll,

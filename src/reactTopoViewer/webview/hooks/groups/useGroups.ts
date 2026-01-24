@@ -7,9 +7,13 @@ import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 import { log } from "../../utils/logger";
 import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from "../../services";
 import { applyMembershipUpdates, type MembershipUpdateEntry } from "../shared/membershipHelpers";
+import { getNodePositions as getNodePositionsUtil } from "../shared/graphQueryUtils";
+import { getViewportCenter as getViewportCenterUtil } from "../shared/viewportUtils";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import { useGroupState } from "./useGroupState";
 // Note: saveNodeMembership is imported from groupHelpers for single node membership updates
@@ -40,7 +44,10 @@ import {
 } from "./groupTypes";
 
 export interface UseGroupsHookOptions extends UseGroupsOptions {
-  cy: null;
+  /** React Flow nodes for position queries */
+  nodes: TopoNode[];
+  /** React Flow instance for viewport queries */
+  rfInstance: ReactFlowInstance | null;
 }
 
 /**
@@ -72,23 +79,18 @@ function saveBatchMemberships(memberships: MembershipUpdateEntry[]): void {
 }
 
 /**
- * Get node positions from Cytoscape for selected nodes.
- * NOTE: Disabled during ReactFlow migration - returns empty array.
+ * Get node positions from React Flow state for selected nodes.
  */
-function getNodePositions(_cy: null, _nodeIds: string[]): { x: number; y: number }[] {
-  // NOTE: This function is disabled during ReactFlow migration.
-  // In ReactFlow, node positions should be obtained from React state.
-  return [];
+function getNodePositions(nodes: TopoNode[], nodeIds: string[]): { x: number; y: number }[] {
+  const positions = getNodePositionsUtil(nodes, nodeIds);
+  return positions.map((p) => p.position);
 }
 
 /**
- * Get the center of the viewport.
- * NOTE: Disabled during ReactFlow migration - returns default center.
+ * Get the center of the viewport using React Flow instance.
  */
-function getViewportCenter(_cy: null): { x: number; y: number } {
-  // NOTE: This function is disabled during ReactFlow migration.
-  // In ReactFlow, viewport center is obtained via useReactFlow().getViewport()
-  return { x: 0, y: 0 };
+function getViewportCenter(rfInstance: ReactFlowInstance | null): { x: number; y: number } {
+  return getViewportCenterUtil(rfInstance);
 }
 
 /**
@@ -106,8 +108,8 @@ function getDefaultGroupName(groupId: string): string {
  * Hook for creating a new group.
  */
 function useCreateGroup(
-  cy: null,
-  mode: "edit" | "view",
+  topoNodes: TopoNode[],
+  rfInstance: ReactFlowInstance | null,
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   groups: GroupStyleAnnotation[],
@@ -149,8 +151,8 @@ function useCreateGroup(
       parentId?: string | null
     ): { groupId: string; group: GroupStyleAnnotation } | null => {
       // Only check isLocked - allows group creation in viewer mode when explicitly unlocked
-      if (isLocked || !cy) {
-        if (isLocked) onLockedAction?.();
+      if (isLocked) {
+        onLockedAction?.();
         return null;
       }
 
@@ -163,7 +165,7 @@ function useCreateGroup(
 
       if (selectedNodeIds && selectedNodeIds.length > 0) {
         // Calculate bounding box around selected nodes
-        const positions = getNodePositions(cy, selectedNodeIds);
+        const positions = getNodePositions(topoNodes, selectedNodeIds);
         const bounds = calculateBoundingBox(positions);
         position = bounds.position;
         width = bounds.width;
@@ -174,7 +176,7 @@ function useCreateGroup(
         });
       } else {
         // Create empty group at viewport center
-        position = getViewportCenter(cy);
+        position = getViewportCenter(rfInstance);
         width = DEFAULT_GROUP_WIDTH;
         height = DEFAULT_GROUP_HEIGHT;
       }
@@ -219,7 +221,16 @@ function useCreateGroup(
       log.info("[Groups] Created overlay group: " + groupId + parentInfo);
       return { groupId, group: newGroup };
     },
-    [cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef]
+    [
+      topoNodes,
+      rfInstance,
+      isLocked,
+      onLockedAction,
+      groups,
+      setGroups,
+      saveGroupsToExtension,
+      lastStyleRef
+    ]
   );
 }
 
@@ -365,8 +376,6 @@ function useEditGroup(
  * Updates group styles and syncs member annotations when name/level changes.
  */
 interface SaveGroupOptions {
-  cy: null;
-  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: (() => void) | undefined;
   groups: GroupStyleAnnotation[];
@@ -379,8 +388,6 @@ interface SaveGroupOptions {
 
 function useSaveGroup(options: SaveGroupOptions) {
   const {
-    cy,
-    mode,
     isLocked,
     onLockedAction,
     groups,
@@ -432,17 +439,11 @@ function useSaveGroup(options: SaveGroupOptions) {
           }));
           saveBatchMemberships(updates);
         }
-
-        // NOTE: Node data updates disabled during ReactFlow migration.
-        // In ReactFlow, node data is managed via React state.
-        void cy; // Suppress unused variable warning
       }
 
       setEditingGroup(null);
     },
     [
-      cy,
-      mode,
       isLocked,
       onLockedAction,
       groups,
@@ -690,7 +691,8 @@ function useNodeGroupMembership(
  */
 export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   const {
-    cy,
+    nodes,
+    rfInstance,
     mode,
     isLocked,
     onLockedAction,
@@ -717,8 +719,8 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   const membership = useNodeGroupMembership(mode, isLocked, groups);
 
   const createGroup = useCreateGroup(
-    cy,
-    mode,
+    nodes,
+    rfInstance,
     isLocked,
     onLockedAction,
     groups,
@@ -791,8 +793,6 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   );
 
   const saveGroup = useSaveGroup({
-    cy,
-    mode,
     isLocked,
     onLockedAction,
     groups,

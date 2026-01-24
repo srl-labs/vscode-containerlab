@@ -20,6 +20,7 @@ import {
 } from "../../hooks/annotations";
 import type { MapLibreState } from "../../hooks/canvas/maplibreUtils";
 import { projectAnnotationGeoCoords, calculateScale } from "../../hooks/canvas/maplibreUtils";
+import { useViewportTransform } from "../../context/ViewportContext";
 
 import { buildShapeSvg } from "./FreeShapeLayerHelpers";
 import {
@@ -43,7 +44,6 @@ import {
 // ============================================================================
 
 interface FreeShapeLayerProps extends GroupRelatedProps {
-  cyCompat: null;
   annotations: FreeShapeAnnotation[];
   isLocked: boolean;
   isAddShapeMode: boolean;
@@ -249,7 +249,8 @@ const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({
 
 interface ShapeInteractionItemProps {
   annotation: FreeShapeAnnotation;
-  cyCompat: null;
+  pan: { x: number; y: number };
+  zoom: number;
   isLocked: boolean;
   isSelected: boolean;
   onEdit: () => void;
@@ -280,7 +281,8 @@ interface ShapeInteractionItemProps {
 
 const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   annotation,
-  cyCompat,
+  pan,
+  zoom,
   isLocked,
   isSelected,
   onEdit,
@@ -320,7 +322,8 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   );
 
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
-    cyCompat: cyCompat,
+    pan,
+    zoom,
     modelPosition,
     isLocked: effectivelyLocked,
     onPositionChange,
@@ -335,7 +338,8 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   });
 
   const { isRotating, handleRotationMouseDown } = useRotationDrag({
-    cyCompat,
+    pan,
+    zoom,
     renderedPos,
     currentRotation: annotation.rotation ?? 0,
     isLocked: effectivelyLocked,
@@ -357,7 +361,7 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
 
   const { isResizing: isLineResizing, handleMouseDown: handleLineResizeMouseDown } =
     useLineResizeDrag({
-      cyCompat,
+      zoom,
       annotation,
       isLocked: effectivelyLocked,
       onEndPositionChange,
@@ -519,7 +523,6 @@ function createAnnotationCallbacks(
 // ============================================================================
 
 export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
-  cyCompat,
   annotations,
   isLocked,
   isAddShapeMode,
@@ -546,7 +549,10 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   groups = [],
   onUpdateGroupId
 }) => {
-  const handleLayerClick = useLayerClickHandler(cyCompat, onCanvasClick, "FreeShapeLayer");
+  const handleLayerClick = useLayerClickHandler(onCanvasClick, "FreeShapeLayer");
+
+  // Get viewport transform from ViewportContext
+  const { pan, zoom } = useViewportTransform();
 
   // Track drag positions for syncing background layer during drag
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -564,13 +570,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
     });
   }, []);
 
-  useAnnotationBoxSelection(
-    cyCompat,
-    annotations,
-    onAnnotationBoxSelect,
-    getShapeCenter,
-    "FreeShapeLayer"
-  );
+  useAnnotationBoxSelection(annotations, onAnnotationBoxSelect, getShapeCenter, "FreeShapeLayer");
 
   // Reparenting hook - allows dragging annotations into/out of groups
   const reparent = useAnnotationReparent({
@@ -590,7 +590,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
     [reparent]
   );
 
-  if (!cyCompat || (annotations.length === 0 && !isAddShapeMode)) return null;
+  if (annotations.length === 0 && !isAddShapeMode) return null;
 
   const handlers = {
     onAnnotationEdit,
@@ -641,7 +641,8 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
           <ShapeInteractionItem
             key={annotation.id}
             annotation={annotation}
-            cyCompat={cyCompat}
+            pan={pan}
+            zoom={zoom}
             isLocked={isLocked}
             isSelected={selectedAnnotationIds.has(annotation.id)}
             onVisualPositionChange={(pos) => setDragPosition(annotation.id, pos)}

@@ -39,7 +39,6 @@ export const MIN_SHAPE_SIZE = 5;
 // ============================================================================
 
 export interface UseFreeShapeAnnotationsOptions {
-  cyCompat: null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;

@@ -15,7 +15,8 @@ import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from "./freeShape";
 // ============================================================================
 
 interface UseRotationDragOptions {
-  cyCompat: null;
+  pan: { x: number; y: number };
+  zoom: number;
   renderedPos: RenderedPosition;
   currentRotation: number;
   isLocked: boolean;
@@ -51,7 +52,8 @@ function normalizeRotation(rotation: number): number {
 
 export function useRotationDrag(options: UseRotationDragOptions): UseRotationDragReturn {
   const {
-    cyCompat,
+    pan,
+    zoom,
     renderedPos,
     currentRotation,
     isLocked,
@@ -59,6 +61,10 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
     onDragStart,
     onDragEnd
   } = options;
+
+  // Suppress unused warnings - pan/zoom available for future coordinate conversion
+  void pan;
+  void zoom;
 
   const [isRotating, setIsRotating] = useState(false);
   const dragStartRef = useRef<RotationDragStart | null>(null);
@@ -121,9 +127,8 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
         startAngle,
         currentRotation
       };
-      void cyCompat;
     },
-    [cyCompat, isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]
+    [isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]
   );
 
   return { isRotating, handleRotationMouseDown };
@@ -302,7 +307,7 @@ export function useResizeDrag(options: UseResizeDragOptions): UseResizeDragRetur
 // ============================================================================
 
 interface UseLineResizeDragOptions {
-  cyCompat: null;
+  zoom: number;
   annotation: FreeShapeAnnotation;
   isLocked: boolean;
   onEndPositionChange: (pos: { x: number; y: number }) => void;
@@ -315,7 +320,7 @@ interface UseLineResizeDragOptions {
  * Hook for handling line endpoint resize drag operations
  */
 export function useLineResizeDrag(options: UseLineResizeDragOptions) {
-  const { cyCompat, annotation, isLocked, onEndPositionChange, onDragStart, onDragEnd } = options;
+  const { zoom, annotation, isLocked, onEndPositionChange, onDragStart, onDragEnd } = options;
 
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef<{
@@ -332,9 +337,6 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return;
-      // Use default zoom of 1 during ReactFlow migration
-      const zoom = 1;
-      void cyCompat;
       const dxClient = e.clientX - dragRef.current.startClientX;
       const dyClient = e.clientY - dragRef.current.startClientY;
 
@@ -375,7 +377,7 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
   }, [
     isResizing,
-    cyCompat,
+    zoom,
     annotation.position.x,
     annotation.position.y,
     onEndPositionChange,
