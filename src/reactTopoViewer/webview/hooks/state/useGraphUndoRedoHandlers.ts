@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { CyElement } from "../../../shared/types/messages";
+import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../shared/types/graph";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
 import {
   createNode,
@@ -27,9 +27,9 @@ import type {
 } from "./useUndoRedo";
 import { useUndoRedo } from "./useUndoRedo";
 
-// Type guards and helper interfaces for CyElement data
+// Type guards and helper interfaces for node data
 interface NodeElementData {
-  id: string;
+  label?: string;
   name?: string;
   kind?: string;
   type?: string;
@@ -52,15 +52,6 @@ interface NodeElementData {
   [key: string]: unknown;
 }
 
-interface EdgeElementData {
-  id: string;
-  source: string;
-  target: string;
-  sourceEndpoint?: string;
-  targetEndpoint?: string;
-  [key: string]: unknown;
-}
-
 interface MenuHandlers {
   handleDeleteNode: (id: string) => void;
   handleDeleteLink: (id: string) => void;
@@ -73,8 +64,8 @@ interface EdgeAnnotationHandlers {
 
 interface UseGraphUndoRedoHandlersParams {
   mode: "edit" | "view";
-  addNode: (node: CyElement) => void;
-  addEdge: (edge: CyElement) => void;
+  addNode: (node: TopoNode) => void;
+  addEdge: (edge: TopoEdge) => void;
   menuHandlers: MenuHandlers;
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
   applyAnnotationChange?: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
@@ -84,8 +75,8 @@ interface UseGraphUndoRedoHandlersParams {
 
 /** Parameters for context-based variant */
 interface UseGraphUndoRedoWithContextParams {
-  addNode: (node: CyElement) => void;
-  addEdge: (edge: CyElement) => void;
+  addNode: (node: TopoNode) => void;
+  addEdge: (edge: TopoEdge) => void;
   menuHandlers: MenuHandlers;
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
   /** External undoRedo instance from context */
@@ -113,7 +104,7 @@ interface GraphUndoRedoResult {
   ) => void;
   handleNodeCreatedCallback: (
     nodeId: string,
-    nodeElement: CyElement,
+    nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
   handleDeleteNodeWithUndo: (nodeId: string) => void;
@@ -122,13 +113,13 @@ interface GraphUndoRedoResult {
   recordPropertyEdit: (action: Omit<UndoRedoActionPropertyEdit, "type">) => void;
 }
 
-function buildNodeElement(_nodeId: string): CyElement | null {
+function buildNodeElement(_nodeId: string): TopoNode | null {
   // Disabled during ReactFlow migration
   // TODO: Get node element from React state
   return null;
 }
 
-function buildEdgeElement(_edgeId: string): CyElement | null {
+function buildEdgeElement(_edgeId: string): TopoEdge | null {
   // Disabled during ReactFlow migration
   // TODO: Get edge element from React state
   return null;
@@ -160,18 +151,25 @@ function toEdgeOffsetUpdateInput(data: Record<string, unknown>): EdgeOffsetUpdat
   };
 }
 
-function buildConnectedEdges(_nodeId: string): CyElement[] {
+function buildConnectedEdges(_nodeId: string): TopoEdge[] {
   // Disabled during ReactFlow migration
   // TODO: Get connected edges from React state
   return [];
 }
 
-function cloneElement(el: CyElement): CyElement {
+function cloneNode(node: TopoNode): TopoNode {
   return {
-    group: el.group,
-    data: { ...el.data },
-    position: el.position ? { ...el.position } : undefined
-  };
+    ...node,
+    data: { ...node.data },
+    position: node.position ? { ...node.position } : { x: 0, y: 0 }
+  } as TopoNode;
+}
+
+function cloneEdge(edge: TopoEdge): TopoEdge {
+  return {
+    ...edge,
+    data: edge.data ? { ...edge.data } : undefined
+  } as TopoEdge;
 }
 
 function stripLinkOffsetFields(data: Record<string, unknown>): Record<string, unknown> {
@@ -201,25 +199,38 @@ function getEdgeKeyFromData(data: Record<string, unknown>): string | null {
   return left < right ? `${left}--${right}` : `${right}--${left}`;
 }
 
-function getEdgeKeyFromElement(element: CyElement | null | undefined): string | null {
-  if (!element?.data) return null;
-  return getEdgeKeyFromData(element.data);
+function getEdgeKeyFromElement(element: TopoEdge | null | undefined): string | null {
+  if (!element) return null;
+  const data = element.data as TopologyEdgeData | undefined;
+  if (!data) {
+    // For edges without data, use source and target
+    return element.source && element.target ? `${element.source}--${element.target}` : null;
+  }
+  return getEdgeKeyFromData({
+    source: element.source,
+    target: element.target,
+    sourceEndpoint: data.sourceEndpoint,
+    targetEndpoint: data.targetEndpoint
+  });
 }
 
 /**
  * Check if a node element is a network/cloud node
  */
-function isNetworkNode(data: NodeElementData): boolean {
-  return data.topoViewerRole === "cloud";
+function isNetworkNode(data: Record<string, unknown>): boolean {
+  return data.topoViewerRole === "cloud" || data.role === "cloud";
 }
 
 /**
  * Get the network type from node data
  */
-function getNetworkType(data: NodeElementData): string | undefined {
+function getNetworkType(data: Record<string, unknown>): string | undefined {
   const kind = data.kind;
   if (typeof kind === "string") return kind;
-  const extraKind = data.extraData?.kind;
+  const nodeType = data.nodeType;
+  if (typeof nodeType === "string") return nodeType;
+  const extraData = data.extraData as Record<string, unknown> | undefined;
+  const extraKind = extraData?.kind;
   if (typeof extraKind === "string") return extraKind;
   return undefined;
 }
@@ -228,17 +239,17 @@ function getNetworkType(data: NodeElementData): string | undefined {
  * Add a network node (non-bridge type) to annotations
  */
 function addNetworkNodeWithPersistence(
-  addNode: (n: CyElement) => void,
-  element: CyElement,
+  addNode: (n: TopoNode) => void,
+  element: TopoNode,
   id: string,
   networkType: NonBridgeNetworkType,
   position: { x: number; y: number }
 ): void {
   addNode(element);
-  const data = element.data as NodeElementData;
+  const data = element.data as Record<string, unknown>;
   const networkData: NetworkNodeData = {
     id,
-    label: (data.name as string) || id,
+    label: (data.label as string) || id,
     type: networkType,
     position
   };
@@ -246,12 +257,12 @@ function addNetworkNodeWithPersistence(
 }
 
 function addNodeWithPersistence(
-  addNode: (n: CyElement) => void,
-  element: CyElement,
+  addNode: (n: TopoNode) => void,
+  element: TopoNode,
   id: string
 ): void {
   const pos = element.position || { x: 0, y: 0 };
-  const data = element.data as NodeElementData;
+  const data = element.data as Record<string, unknown>;
 
   // Check if this is a network node (cloud)
   if (isNetworkNode(data)) {
@@ -261,7 +272,7 @@ function addNodeWithPersistence(
       addNode(element);
       const nodeData: NodeSaveData = {
         id,
-        name: (data.name as string) || id,
+        name: (data.label as string) || id,
         position: pos,
         extraData: { kind: networkType }
       };
@@ -274,9 +285,9 @@ function addNodeWithPersistence(
       addNode(element);
       const nodeData: NodeSaveData = {
         id,
-        name: (data.name as string) || id,
+        name: (data.label as string) || id,
         position: pos,
-        extraData: mergeNodeExtraData(data)
+        extraData: mergeNodeExtraData(data as NodeElementData)
       };
       void createNode(nodeData);
     }
@@ -287,64 +298,59 @@ function addNodeWithPersistence(
   addNode(element);
   const nodeData: NodeSaveData = {
     id,
-    name: (data.name as string) || id,
+    name: (data.label as string) || id,
     position: pos,
-    extraData: mergeNodeExtraData(data)
+    extraData: mergeNodeExtraData(data as NodeElementData)
   };
   void createNode(nodeData);
 }
 
-function addEdgeWithPersistence(addEdge: (e: CyElement) => void, element: CyElement): void {
+function addEdgeWithPersistence(addEdge: (e: TopoEdge) => void, element: TopoEdge): void {
   // TODO: Check for duplicate edges using React state
   addEdge(element);
   // Create link via TopologyIO service
-  const data = element.data as EdgeElementData;
+  const data = element.data as TopologyEdgeData | undefined;
   // Include extraData if present (for special link types like host, vxlan, etc.)
-  const extraData = data.extraData as Record<string, unknown> | undefined;
+  const extraData = data?.extraData;
   const linkData: LinkSaveData = {
-    id: data.id,
-    source: data.source,
-    target: data.target,
-    sourceEndpoint: data.sourceEndpoint,
-    targetEndpoint: data.targetEndpoint,
+    id: element.id,
+    source: element.source,
+    target: element.target,
+    sourceEndpoint: data?.sourceEndpoint,
+    targetEndpoint: data?.targetEndpoint,
     ...(extraData && { extraData })
   };
   void createLink(linkData);
 }
 
-function deleteEdgeWithPersistence(
-  menuHandlers: MenuHandlers,
-  data: Record<string, unknown>
-): void {
-  const id = data.id as string | undefined;
-  if (id) {
-    menuHandlers.handleDeleteLink(id);
-  }
-  // TODO: Implement edge lookup by data using React state if id is not available
-}
-
 function processGraphChange(
   change: GraphChange,
   ctx: {
-    addNode: (n: CyElement) => void;
-    addEdge: (e: CyElement) => void;
+    addNode: (n: TopoNode) => void;
+    addEdge: (e: TopoEdge) => void;
     menuHandlers: MenuHandlers;
   }
 ): void {
   const element = change.after || change.before;
   if (!element) return;
-  const data = element.data as { id?: string };
-  const id = data.id;
+  const id = element.id;
   if (!id) return;
 
-  const handlers: Record<string, () => void> = {
-    "add:node": () => addNodeWithPersistence(ctx.addNode, element, id),
-    "add:edge": () => addEdgeWithPersistence(ctx.addEdge, element),
-    "delete:node": () => ctx.menuHandlers.handleDeleteNode(id),
-    "delete:edge": () => deleteEdgeWithPersistence(ctx.menuHandlers, element.data)
-  };
-
-  handlers[`${change.kind}:${change.entity}`]?.();
+  if (change.entity === "node") {
+    const nodeElement = element as TopoNode;
+    const handlers: Record<string, () => void> = {
+      add: () => addNodeWithPersistence(ctx.addNode, nodeElement, id),
+      delete: () => ctx.menuHandlers.handleDeleteNode(id)
+    };
+    handlers[change.kind]?.();
+  } else if (change.entity === "edge") {
+    const edgeElement = element as TopoEdge;
+    const handlers: Record<string, () => void> = {
+      add: () => addEdgeWithPersistence(ctx.addEdge, edgeElement),
+      delete: () => ctx.menuHandlers.handleDeleteLink(id)
+    };
+    handlers[change.kind]?.();
+  }
 }
 
 type GraphBuckets = {
@@ -361,8 +367,7 @@ function addNodeChangeToBucket(
   seenDeletes: Set<string>
 ): void {
   const element = change.after || change.before;
-  const data = element?.data as { id?: string } | undefined;
-  const id = data?.id;
+  const id = element?.id;
   if (!id) return;
   if (change.kind === "add") {
     if (seenAdds.has(id)) return;
@@ -384,7 +389,9 @@ function addEdgeChangeToBucket(
   seenDeletes: Set<string>
 ): void {
   const element = change.after || change.before;
-  const key = getEdgeKeyFromElement(element);
+  if (!element || change.entity !== "edge") return;
+  const edgeElement = element as TopoEdge;
+  const key = getEdgeKeyFromElement(edgeElement);
   if (!key) return;
   if (change.kind === "add") {
     if (seenAdds.has(key)) return;
@@ -428,8 +435,8 @@ function bucketGraphChanges(changes: GraphChange[]): GraphBuckets {
 function replayGraphChanges(
   changes: GraphChange[],
   ctx: {
-    addNode: (n: CyElement) => void;
-    addEdge: (e: CyElement) => void;
+    addNode: (n: TopoNode) => void;
+    addEdge: (e: TopoEdge) => void;
     menuHandlers: MenuHandlers;
   }
 ): void {
@@ -479,7 +486,7 @@ function detectLinkType(_sourceId: string, _targetId: string): LinkTypeDetection
 }
 
 function createEdgeCreatedHandler(
-  addEdge: (e: CyElement) => void,
+  addEdge: (e: TopoEdge) => void,
   undoRedo: ReturnType<typeof useUndoRedo>,
   isApplyingUndoRedo: React.RefObject<boolean>
 ) {
@@ -503,12 +510,12 @@ function createEdgeCreatedHandler(
     // TODO: Re-implement using React state instead of Cytoscape queries
 
     // Build edge element
-    const edgeEl = {
-      group: "edges" as const,
+    const edgeEl: TopoEdge = {
+      id: edgeData.id,
+      source: edgeData.source,
+      target: edgeData.target,
+      type: "topology-edge",
       data: {
-        id: edgeData.id,
-        source: edgeData.source,
-        target: edgeData.target,
         sourceEndpoint: edgeData.sourceEndpoint,
         targetEndpoint: edgeData.targetEndpoint
       }
@@ -528,8 +535,8 @@ function createEdgeCreatedHandler(
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
         type: "graph",
-        before: [{ entity: "edge", kind: "delete", before: cloneElement(edgeEl) }],
-        after: [{ entity: "edge", kind: "add", after: cloneElement(edgeEl) }]
+        before: [{ entity: "edge", kind: "delete", before: cloneEdge(edgeEl) }],
+        after: [{ entity: "edge", kind: "add", after: cloneEdge(edgeEl) }]
       });
     }
   };
@@ -565,15 +572,15 @@ function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
 
 function buildNodeSaveDataFromElement(
   nodeId: string,
-  nodeElement: CyElement,
+  nodeElement: TopoNode,
   position: { x: number; y: number }
 ): NodeSaveData {
-  const data = nodeElement.data as NodeElementData;
+  const data = nodeElement.data as Record<string, unknown>;
   return {
     id: nodeId,
-    name: (data.name as string) || nodeId,
+    name: (data.label as string) || nodeId,
     position,
-    extraData: mergeNodeExtraData(data)
+    extraData: mergeNodeExtraData(data as NodeElementData)
   };
 }
 
@@ -585,10 +592,10 @@ function buildNodeSaveDataFromElement(
  */
 function persistNewNode(
   nodeId: string,
-  nodeElement: CyElement,
+  nodeElement: TopoNode,
   position: { x: number; y: number }
 ): void {
-  const data = nodeElement.data as NodeElementData;
+  const data = nodeElement.data as Record<string, unknown>;
 
   // Check if this is a network node (cloud)
   if (isNetworkNode(data)) {
@@ -597,7 +604,7 @@ function persistNewNode(
     if (networkType && BRIDGE_NETWORK_TYPES.has(networkType)) {
       const nodeData: NodeSaveData = {
         id: nodeId,
-        name: (data.name as string) || nodeId,
+        name: (data.label as string) || nodeId,
         position,
         extraData: { kind: networkType }
       };
@@ -606,7 +613,7 @@ function persistNewNode(
       // Non-bridge network types go to networkNodeAnnotations only
       const networkData: NetworkNodeData = {
         id: nodeId,
-        label: (data.name as string) || nodeId,
+        label: (data.label as string) || nodeId,
         type: networkType as NonBridgeNetworkType,
         position
       };
@@ -625,21 +632,20 @@ function persistNewNode(
 }
 
 function createNodeCreatedHandler(
-  addNode: (n: CyElement) => void,
+  addNode: (n: TopoNode) => void,
   undoRedo: ReturnType<typeof useUndoRedo>,
   isApplyingUndoRedo: React.RefObject<boolean>
 ) {
-  return (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => {
+  return (nodeId: string, nodeElement: TopoNode, position: { x: number; y: number }) => {
     addNode(nodeElement);
     // Persist node based on its type (regular vs network/cloud)
     persistNewNode(nodeId, nodeElement, position);
     if (!isApplyingUndoRedo.current) {
+      const nodeWithPosition: TopoNode = { ...nodeElement, position };
       undoRedo.pushAction({
         type: "graph",
-        before: [
-          { entity: "node", kind: "delete", before: cloneElement({ ...nodeElement, position }) }
-        ],
-        after: [{ entity: "node", kind: "add", after: cloneElement({ ...nodeElement, position }) }]
+        before: [{ entity: "node", kind: "delete", before: cloneNode(nodeWithPosition) }],
+        after: [{ entity: "node", kind: "add", after: cloneNode(nodeWithPosition) }]
       });
     }
   };
@@ -767,8 +773,8 @@ function applyLinkPropertyEdit(
  * NOTE: Graph changes replay is disabled during ReactFlow migration.
  */
 function useApplyCallbacks(params: {
-  addNode: (n: CyElement) => void;
-  addEdge: (e: CyElement) => void;
+  addNode: (n: TopoNode) => void;
+  addEdge: (e: TopoEdge) => void;
   menuHandlers: MenuHandlers;
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
   isApplyingUndoRedo: React.RefObject<boolean>;
@@ -824,8 +830,8 @@ function useApplyCallbacks(params: {
  * Used by both useGraphUndoRedoCore and useGraphHandlersWithContext.
  */
 function useGraphMutationHandlers(params: {
-  addNode: (n: CyElement) => void;
-  addEdge: (e: CyElement) => void;
+  addNode: (n: TopoNode) => void;
+  addEdge: (e: TopoEdge) => void;
   menuHandlers: MenuHandlers;
   undoRedo: ReturnType<typeof useUndoRedo>;
   isApplyingUndoRedo: React.RefObject<boolean>;
@@ -934,7 +940,7 @@ interface GraphHandlersResult {
   ) => void;
   handleNodeCreatedCallback: (
     nodeId: string,
-    nodeElement: CyElement,
+    nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
   handleDeleteNodeWithUndo: (nodeId: string) => void;

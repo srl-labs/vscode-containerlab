@@ -6,6 +6,7 @@
 
 import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/topology";
 import type { NetworkType } from "../../shared/types/editors";
+import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 
 /** Layout option type */
 type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical";
@@ -41,12 +42,7 @@ export interface DevModeInterface {
   /** Handler for node creation with undo support */
   handleNodeCreatedCallback?: (
     nodeId: string,
-    nodeElement: {
-      group: "nodes" | "edges";
-      data: Record<string, unknown>;
-      position?: { x: number; y: number };
-      classes?: string;
-    },
+    nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
   /** Create group from selected nodes */
@@ -78,12 +74,8 @@ export interface DevModeInterface {
  * Initial data passed from extension to webview.
  */
 export interface WebviewInitialData {
-  elements?: Array<{
-    group: "nodes" | "edges";
-    data: Record<string, unknown>;
-    position?: { x: number; y: number };
-    classes?: string;
-  }>;
+  nodes?: TopoNode[];
+  edges?: TopoEdge[];
   schemaData?: Record<string, unknown>;
   dockerImages?: string[];
   annotations?: Record<string, unknown>;

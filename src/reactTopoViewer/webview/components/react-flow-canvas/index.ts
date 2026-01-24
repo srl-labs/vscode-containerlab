@@ -4,12 +4,12 @@
 export { ReactFlowCanvas } from "./ReactFlowCanvas";
 
 // Types
+// Note: Groups are rendered via GroupLayer, not as React Flow nodes
 export type {
   ReactFlowCanvasRef,
   ReactFlowCanvasProps,
   TopologyNodeData,
   CloudNodeData,
-  GroupNodeData,
   FreeTextNodeData,
   FreeShapeNodeData,
   TopologyEdgeData,
@@ -17,7 +17,6 @@ export type {
   RFNodeType,
   TopologyRFNode,
   CloudRFNode,
-  GroupRFNode,
   FreeTextRFNode,
   FreeShapeRFNode,
   TopologyRFEdge,

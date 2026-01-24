@@ -13,7 +13,7 @@ import { useNodeCreation } from "../graph/useNodeCreation";
 import { useNetworkCreation, type NetworkType } from "../graph/useNetworkCreation";
 import { useNodeCreationHandlers, type NodeCreationState } from "../panels/useEditorHandlers";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
-import type { CyElement } from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
 import { getViewportCenter } from "../shared/viewportUtils";
 
@@ -30,7 +30,11 @@ interface EdgeData {
 type EdgeCreatedCallback = (sourceId: string, targetId: string, edgeData: EdgeData) => void;
 
 /** Callback type for node creation */
-type NodeCreatedCallback = (nodeId: string, nodeElement: CyElement, position: Position) => void;
+export type NodeCreatedCallback = (
+  nodeId: string,
+  nodeElement: TopoNode,
+  position: Position
+) => void;
 
 /** Position type */
 type Position = { x: number; y: number };
@@ -47,19 +51,14 @@ export interface GraphCreationConfig {
     isLocked: boolean;
     customNodes: CustomNodeTemplate[];
     defaultNode: string;
-    elements: CyElement[];
+    nodes: TopoNode[];
   };
   /** Callback when an edge is created */
   onEdgeCreated: EdgeCreatedCallback;
   /** Callback when a node is created */
   onNodeCreated: NodeCreatedCallback;
   /** Callback to add a node element to state */
-  addNode: (element: {
-    group: "nodes" | "edges";
-    data: Record<string, unknown>;
-    position?: Position;
-    classes?: string;
-  }) => void;
+  addNode: (element: TopoNode) => void;
   /** Callback to open new custom node template editor */
   onNewCustomNode: () => void;
 }
@@ -101,38 +100,34 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
 
   const getUsedNodeIds = React.useCallback(() => {
     const ids = new Set<string>();
-    for (const el of state.elements) {
-      if (el.group !== "nodes") continue;
-      const id = (el.data as Record<string, unknown>)?.id;
-      if (typeof id === "string" && id) ids.add(id);
+    for (const node of state.nodes) {
+      if (node.id) ids.add(node.id);
     }
     return ids;
-  }, [state.elements]);
+  }, [state.nodes]);
 
   const getUsedNodeNames = React.useCallback(() => {
     const names = new Set<string>();
-    for (const el of state.elements) {
-      if (el.group !== "nodes") continue;
-      const name = (el.data as Record<string, unknown>)?.name;
+    for (const node of state.nodes) {
+      const data = node.data as Record<string, unknown>;
+      const name = data?.label || data?.name;
       if (typeof name === "string" && name) names.add(name);
     }
     return names;
-  }, [state.elements]);
+  }, [state.nodes]);
 
   const getExistingNetworkNodes = React.useCallback(() => {
     const nodes: Array<{ id: string; kind: NetworkType }> = [];
-    for (const el of state.elements) {
-      if (el.group !== "nodes") continue;
-      const data = el.data as Record<string, unknown>;
-      if (data.topoViewerRole !== "cloud") continue;
-      const id = data.id;
-      const kind = data.kind;
-      if (typeof id === "string" && typeof kind === "string") {
-        nodes.push({ id, kind: kind as NetworkType });
+    for (const node of state.nodes) {
+      const data = node.data as Record<string, unknown>;
+      if (data.role !== "cloud" && data.topoViewerRole !== "cloud") continue;
+      const kind = data.kind || data.nodeType;
+      if (typeof kind === "string") {
+        nodes.push({ id: node.id, kind: kind as NetworkType });
       }
     }
     return nodes;
-  }, [state.elements]);
+  }, [state.nodes]);
 
   // Edge creation - uses ReactFlow's connection API
   // Note: Edge creation is primarily handled through ReactFlow's onConnect callback
@@ -182,21 +177,12 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   // Network creation callback - uses the same handler as regular nodes (which has undo/redo support)
   // The persistence logic is handled in useGraphUndoRedoHandlers based on node type
   const handleNetworkCreatedCallback = React.useCallback(
-    (
-      networkId: string,
-      networkElement: {
-        group: "nodes" | "edges";
-        data: Record<string, unknown>;
-        position?: Position;
-        classes?: string;
-      },
-      position: Position
-    ) => {
+    (networkId: string, networkElement: TopoNode, position: Position) => {
       // Delegate to the node created handler which handles persistence and undo/redo
-      // The handler detects network nodes by topoViewerRole='cloud' and persists appropriately:
+      // The handler detects network nodes by role='cloud' and persists appropriately:
       // - Bridge types (bridge, ovs-bridge): saved to YAML nodes + nodeAnnotations
       // - Other network types (host, vxlan, etc.): saved to networkNodeAnnotations only
-      onNodeCreated(networkId, networkElement as CyElement, position);
+      onNodeCreated(networkId, networkElement, position);
     },
     [onNodeCreated]
   );

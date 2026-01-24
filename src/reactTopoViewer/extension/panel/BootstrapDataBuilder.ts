@@ -5,7 +5,6 @@
 import type * as vscode from "vscode";
 
 import type {
-  CyElement,
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation,
@@ -13,6 +12,7 @@ import type {
   EdgeAnnotation,
   TopologyAnnotations
 } from "../../shared/types/topology";
+import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import { getDockerImages } from "../../../utils/docker/images";
 import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
@@ -23,7 +23,8 @@ import { iconService } from "../services/IconService";
  * Bootstrap data sent to the webview on initialization
  */
 export interface BootstrapData {
-  elements: CyElement[];
+  nodes: TopoNode[];
+  edges: TopoEdge[];
   labName: string;
   mode: "view" | "edit";
   deploymentState: "deployed" | "undeployed" | "unknown";
@@ -45,7 +46,8 @@ export interface BootstrapData {
  * Input parameters for building bootstrap data
  */
 export interface BootstrapDataInput {
-  elements: CyElement[];
+  nodes: TopoNode[];
+  edges: TopoEdge[];
   labName: string;
   isViewMode: boolean;
   deploymentState: "deployed" | "undeployed" | "unknown";
@@ -64,7 +66,8 @@ export interface BootstrapDataInput {
  */
 export async function buildBootstrapData(input: BootstrapDataInput): Promise<BootstrapData> {
   const {
-    elements,
+    nodes,
+    edges,
     labName,
     isViewMode,
     deploymentState,
@@ -92,7 +95,8 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
   const customIcons = await iconService.loadAllIcons(yamlFilePath);
 
   return {
-    elements,
+    nodes,
+    edges,
     labName,
     mode: isViewMode ? "view" : "edit",
     deploymentState,

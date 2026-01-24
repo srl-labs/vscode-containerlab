@@ -5,55 +5,9 @@ import type React from "react";
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
-import type { CyElement } from "../../../shared/types/topology";
-import { convertElements } from "../../components/react-flow-canvas/conversion";
-import {
-  applyLayout,
-  hasPresetPositions,
-  type LayoutName
-} from "../../components/react-flow-canvas/layout";
+import { applyLayout, type LayoutName } from "../../components/react-flow-canvas/layout";
 import { sendCommandToExtension } from "../../utils/extensionMessaging";
 import { log } from "../../utils/logger";
-
-/**
- * Hook for managing element conversion from CyElements to React Flow nodes/edges
- * @deprecated Use nodes/edges props directly instead of converting from elements
- */
-export function useElementConversion(
-  elements: CyElement[] | undefined,
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
-  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>
-) {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const prevElementsRef = useRef<CyElement[]>([]);
-
-  useEffect(() => {
-    // Skip if elements is undefined (using direct nodes/edges mode)
-    if (elements === undefined) return;
-
-    if (!elements.length && isInitialized) {
-      setNodes([]);
-      setEdges([]);
-      return;
-    }
-
-    if (prevElementsRef.current === elements) return;
-    prevElementsRef.current = elements;
-
-    log.info(`[ReactFlowCanvas] Converting ${elements.length} elements`);
-    const { nodes: rfNodes, edges: rfEdges } = convertElements(elements);
-
-    if (!hasPresetPositions(rfNodes) && rfNodes.length > 0) {
-      log.info("[ReactFlowCanvas] Applying force layout (no preset positions)");
-      setNodes(applyLayout("force", rfNodes, rfEdges));
-    } else {
-      setNodes(rfNodes);
-    }
-
-    setEdges(rfEdges);
-    setIsInitialized(true);
-  }, [elements, setNodes, setEdges, isInitialized]);
-}
 
 /**
  * Hook for delete node/edge handlers

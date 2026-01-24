@@ -8,7 +8,7 @@ import { useEffect, useCallback, useRef } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { log } from "../../utils/logger";
-import type { CyElement } from "../../../shared/types/messages";
+import type { TopoNode, TopologyNodeData } from "../../../shared/types/graph";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
 import { convertEditorDataToYaml } from "../../../shared/utilities/nodeEditorConversions";
@@ -22,7 +22,7 @@ interface NodeCreationOptions {
   getUsedNodeIds: () => Set<string>;
   onNodeCreated: (
     nodeId: string,
-    nodeElement: CyElement,
+    nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
   onLockedClick?: () => void;
@@ -221,13 +221,24 @@ function determinePosition(eventPosition?: { x: number; y: number }): { x: numbe
 }
 
 /**
- * Convert NodeData to CyElement format
+ * Convert NodeData to TopoNode format
  */
-function nodeDataToCyElement(data: NodeData, position: { x: number; y: number }): CyElement {
+function nodeDataToTopoNode(data: NodeData, position: { x: number; y: number }): TopoNode {
+  const nodeData: TopologyNodeData = {
+    label: data.name,
+    role: data.topoViewerRole || "pe",
+    kind: data.extraData.kind,
+    image: data.extraData.image,
+    iconColor: data.iconColor,
+    iconCornerRadius: data.iconCornerRadius,
+    extraData: data.extraData
+  };
+
   return {
-    group: "nodes",
-    data: data as unknown as Record<string, unknown>,
-    position
+    id: data.id,
+    type: "topology-node",
+    position,
+    data: nodeData
   };
 }
 
@@ -278,14 +289,14 @@ export function useNodeCreation(
       const kind = template?.kind || "nokia_srlinux";
       const nodeData = createNodeData(nodeId, nodeName, template, kind);
 
-      // Create CyElement for state update
-      const cyElement = nodeDataToCyElement(nodeData, position);
+      // Create TopoNode for state update
+      const topoNode = nodeDataToTopoNode(nodeData, position);
 
       log.info(`[NodeCreation] Created node: ${nodeId} at (${position.x}, ${position.y})`);
 
       reservedIdsRef.current.add(nodeId);
       if (nodeName) reservedNamesRef.current.add(nodeName);
-      onNodeCreated(nodeId, cyElement, position);
+      onNodeCreated(nodeId, topoNode, position);
     },
     [onNodeCreated]
   );

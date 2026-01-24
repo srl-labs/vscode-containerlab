@@ -1,7 +1,7 @@
 /**
  * FreeTextLayer - HTML overlay layer for rendering free text annotations
  *
- * Uses Cytoscape's viewport transform applied to the layer container so text
+ * Uses ReactFlow's viewport transform applied to the layer container so text
  * moves in sync with the canvas (no drift). Text is positioned using model
  * coordinates and scales with zoom like nodes do.
  */

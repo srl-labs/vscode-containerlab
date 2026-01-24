@@ -5,7 +5,6 @@ import React from "react";
 
 import { BasePanel } from "../../shared/editor/BasePanel";
 import type { GraphChange } from "../../../hooks/state";
-import type { CyElement } from "../../../../shared/types/messages";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import { useTopoViewerState } from "../../../context/TopoViewerContext";
 
@@ -20,7 +19,7 @@ interface BulkLinkPanelProps {
   isLocked: boolean;
   onClose: () => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
-  addEdge?: (edge: CyElement) => void;
+  addEdge?: (edge: TopoEdge) => void;
   storageKey?: string;
 }
 

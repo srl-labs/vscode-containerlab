@@ -13,7 +13,8 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { nodeFsAdapter } from "../shared/io";
-import type { CyElement, ClabTopology } from "../shared/types/topology";
+import type { ClabTopology } from "../shared/types/topology";
+import type { TopoEdge } from "../shared/types/graph";
 import type { ClabLabTreeNode } from "../../treeView/common";
 import { runningLabsProvider } from "../../globals";
 
@@ -51,7 +52,7 @@ export class ReactTopoViewer {
   public isViewMode: boolean = false;
   public deploymentState: "deployed" | "undeployed" | "unknown" = "unknown";
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
-  private lastTopologyElements: CyElement[] = [];
+  private lastTopologyEdges: TopoEdge[] = [];
   private watcherManager: WatcherManager;
   private messageRouter: MessageRouter | undefined;
   private splitViewManager: SplitViewManager = new SplitViewManager();
@@ -173,19 +174,6 @@ export class ReactTopoViewer {
   }
 
   /**
-   * Load running lab data for view mode
-   */
-  private async loadRunningLabData(): Promise<void> {
-    try {
-      this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
-        | Record<string, ClabLabTreeNode>
-        | undefined;
-    } catch (err) {
-      log.warn(`Failed to load running lab data: ${err}`);
-    }
-  }
-
-  /**
    * Initialize the deployment state and lab data
    */
   private async initializeLabState(labName: string): Promise<void> {
@@ -197,7 +185,13 @@ export class ReactTopoViewer {
     }
 
     if (this.isViewMode) {
-      await this.loadRunningLabData();
+      try {
+        this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
+          | Record<string, ClabLabTreeNode>
+          | undefined;
+      } catch (err) {
+        log.warn(`Failed to load running lab data: ${err}`);
+      }
     }
   }
 
@@ -270,13 +264,13 @@ export class ReactTopoViewer {
    */
   private async loadTopologyData(): Promise<unknown> {
     if (!this.lastYamlFilePath) {
-      this.lastTopologyElements = [];
+      this.lastTopologyEdges = [];
       return null;
     }
 
     try {
       const yamlContent = await nodeFsAdapter.readFile(this.lastYamlFilePath);
-      let elements = await this.adaptor.clabYamlToCytoscapeElements(
+      let topologyData = await this.adaptor.parseTopology(
         yamlContent,
         this.cacheClabTreeDataToTopoviewer,
         this.lastYamlFilePath
@@ -285,13 +279,13 @@ export class ReactTopoViewer {
         this.adaptor.currentClabTopo
       );
       if (annotationsUpdated) {
-        elements = await this.adaptor.clabYamlToCytoscapeElements(
+        topologyData = await this.adaptor.parseTopology(
           yamlContent,
           this.cacheClabTreeDataToTopoviewer,
           this.lastYamlFilePath
         );
       }
-      this.lastTopologyElements = elements;
+      this.lastTopologyEdges = topologyData.edges;
       this.watcherManager.setLastYamlContent(yamlContent);
 
       // Load annotations (free text + free shapes + groups + nodes)
@@ -317,7 +311,8 @@ export class ReactTopoViewer {
 
       // Build and return bootstrap data for the webview
       return buildBootstrapData({
-        elements,
+        nodes: topologyData.nodes,
+        edges: topologyData.edges,
         labName: parsedLabName,
         isViewMode: this.isViewMode,
         deploymentState: this.deploymentState,
@@ -331,7 +326,7 @@ export class ReactTopoViewer {
         viewerSettings
       });
     } catch (err) {
-      this.lastTopologyElements = [];
+      this.lastTopologyEdges = [];
       log.error(`Error loading topology data: ${err}`);
       return null;
     }
@@ -394,7 +389,13 @@ export class ReactTopoViewer {
 
       // Reload running lab data if switching to view mode
       if (this.isViewMode) {
-        await this.loadRunningLabData();
+        try {
+          this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
+            | Record<string, ClabLabTreeNode>
+            | undefined;
+        } catch (err) {
+          log.warn(`Failed to load running lab data: ${err}`);
+        }
       } else {
         this.cacheClabTreeDataToTopoviewer = undefined;
       }
@@ -458,8 +459,8 @@ export class ReactTopoViewer {
       // Update cached labs data
       this.cacheClabTreeDataToTopoviewer = labsData;
 
-      // Build edge stats updates from cached elements using extracted builder
-      const edgeUpdates = buildEdgeStatsUpdates(this.lastTopologyElements, labsData, {
+      // Build edge stats updates from cached edges using extracted builder
+      const edgeUpdates = buildEdgeStatsUpdates(this.lastTopologyEdges, labsData, {
         currentLabName: this.currentLabName,
         topology: this.adaptor.currentClabTopo?.topology
       });

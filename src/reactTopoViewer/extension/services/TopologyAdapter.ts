@@ -1,11 +1,12 @@
 /**
- * Topology adapter for converting Containerlab YAML to Cytoscape elements.
+ * Topology adapter for converting Containerlab YAML to ReactFlow elements.
  * This is the VS Code integration layer that wraps the shared parser.
  */
 
 import * as YAML from "yaml";
 
-import type { ClabTopology, CyElement, TopologyAnnotations } from "../../shared/types/topology";
+import type { ClabTopology, TopologyAnnotations } from "../../shared/types/topology";
+import type { TopologyData } from "../../shared/types/graph";
 import type { ClabLabTreeNode } from "../../../treeView/common";
 import {
   TopologyParser,
@@ -31,7 +32,7 @@ const parserLogger: ParserLogger = {
 
 /**
  * TopoViewerAdaptorClab is responsible for adapting Containerlab YAML configurations
- * into a format compatible with TopoViewer's Cytoscape model.
+ * into a format compatible with TopoViewer's ReactFlow model.
  */
 export class TopoViewerAdaptorClab {
   public currentClabTopo: ClabTopology | undefined;
@@ -42,35 +43,35 @@ export class TopoViewerAdaptorClab {
   public allowedhostname: string | undefined;
 
   /**
-   * Transforms a Containerlab YAML string into Cytoscape elements compatible with TopoViewer.
+   * Transforms a Containerlab YAML string into ReactFlow topology data.
    */
-  public async clabYamlToCytoscapeElements(
+  public async parseTopology(
     yamlContent: string,
     clabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined,
     yamlFilePath?: string
-  ): Promise<CyElement[]> {
+  ): Promise<TopologyData> {
     const containerDataProvider = new ContainerDataAdapter(clabTreeDataToTopoviewer);
-    return this.parseYamlToElements(yamlContent, yamlFilePath, containerDataProvider);
+    return this.parseYamlToTopologyData(yamlContent, yamlFilePath, containerDataProvider);
   }
 
   /**
-   * Transforms a Containerlab YAML string into Cytoscape elements for EDITOR mode.
+   * Transforms a Containerlab YAML string into ReactFlow topology data for EDITOR mode.
    */
-  public async clabYamlToCytoscapeElementsEditor(
+  public async parseTopologyForEditor(
     yamlContent: string,
     yamlFilePath?: string
-  ): Promise<CyElement[]> {
-    return this.parseYamlToElements(yamlContent, yamlFilePath, undefined);
+  ): Promise<TopologyData> {
+    return this.parseYamlToTopologyData(yamlContent, yamlFilePath, undefined);
   }
 
   /**
-   * Shared implementation for parsing YAML to Cytoscape elements.
+   * Shared implementation for parsing YAML to ReactFlow topology data.
    */
-  private async parseYamlToElements(
+  private async parseYamlToTopologyData(
     yamlContent: string,
     yamlFilePath: string | undefined,
     containerDataProvider: ContainerDataAdapter | undefined
-  ): Promise<CyElement[]> {
+  ): Promise<TopologyData> {
     // Parse as document to preserve structure for editing
     this.currentClabDoc = YAML.parseDocument(yamlContent);
     const parsed = this.currentClabDoc.toJS() as ClabTopology;
@@ -81,14 +82,17 @@ export class TopoViewerAdaptorClab {
       ? await annotationsIO.loadAnnotations(yamlFilePath)
       : undefined;
 
-    // Parse with the shared parser (with or without container data)
+    // Parse with the shared parser to ReactFlow format (with or without container data)
     const result = containerDataProvider
-      ? TopologyParser.parse(yamlContent, {
+      ? TopologyParser.parseToReactFlow(yamlContent, {
           annotations: annotations as TopologyAnnotations | undefined,
           containerDataProvider,
           logger: parserLogger
         })
-      : TopologyParser.parseForEditor(yamlContent, annotations as TopologyAnnotations | undefined);
+      : TopologyParser.parseForEditorRF(
+          yamlContent,
+          annotations as TopologyAnnotations | undefined
+        );
 
     // Store state for external access
     this.currentIsPresetLayout = result.isPresetLayout;
@@ -111,7 +115,7 @@ export class TopoViewerAdaptorClab {
       });
     }
 
-    return result.elements;
+    return result.topology;
   }
 
   /**
@@ -162,11 +166,21 @@ export class TopoViewerAdaptorClab {
     annotations: Record<string, unknown> | undefined,
     migrations: GraphLabelMigration[]
   ): Promise<void> {
+    type NodeAnnotation = {
+      id: string;
+      position?: { x: number; y: number };
+      icon?: string;
+      group?: string;
+      level?: string;
+      groupLabelPos?: string;
+      geoCoordinates?: { lat: number; lng: number };
+    };
+
     const localAnnotations = (annotations ?? {
       freeTextAnnotations: [],
       groupStyleAnnotations: [],
       nodeAnnotations: []
-    }) as { nodeAnnotations: NodeAnnotationShape[] };
+    }) as { nodeAnnotations: NodeAnnotation[] };
     localAnnotations.nodeAnnotations = localAnnotations.nodeAnnotations ?? [];
 
     const existingIds = new Set(localAnnotations.nodeAnnotations.map((na) => na.id));
@@ -183,8 +197,10 @@ export class TopoViewerAdaptorClab {
   }
 }
 
-/** Node annotation shape used for graph label migration */
-interface NodeAnnotationShape {
+/**
+ * Builds a NodeAnnotation from a GraphLabelMigration.
+ */
+function buildAnnotationFromMigration(migration: GraphLabelMigration): {
   id: string;
   position?: { x: number; y: number };
   icon?: string;
@@ -192,13 +208,16 @@ interface NodeAnnotationShape {
   level?: string;
   groupLabelPos?: string;
   geoCoordinates?: { lat: number; lng: number };
-}
-
-/**
- * Builds a NodeAnnotation from a GraphLabelMigration.
- */
-function buildAnnotationFromMigration(migration: GraphLabelMigration): NodeAnnotationShape {
-  const annotation: NodeAnnotationShape = { id: migration.nodeId };
+} {
+  const annotation: {
+    id: string;
+    position?: { x: number; y: number };
+    icon?: string;
+    group?: string;
+    level?: string;
+    groupLabelPos?: string;
+    geoCoordinates?: { lat: number; lng: number };
+  } = { id: migration.nodeId };
   if (migration.position) annotation.position = migration.position;
   if (migration.icon) annotation.icon = migration.icon;
   if (migration.group) annotation.group = migration.group;

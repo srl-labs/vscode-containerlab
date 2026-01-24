@@ -5,7 +5,6 @@ import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import type { EdgeLabelMode } from "../../context/EdgeRenderConfigContext";
 import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
-import type { CyElement } from "../../../shared/types/topology";
 
 /**
  * Node data for topology nodes (routers, switches, etc.)
@@ -32,26 +31,6 @@ export interface CloudNodeData {
   label: string;
   nodeType: "host" | "mgmt-net" | "macvlan" | "vxlan" | "bridge";
   extraData?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-/**
- * Node data for group container nodes
- */
-export interface GroupNodeData {
-  label: string;
-  name: string;
-  level: string;
-  backgroundColor?: string;
-  backgroundOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dotted" | "dashed" | "double";
-  borderRadius?: number;
-  labelColor?: string;
-  labelPosition?: string;
-  width: number;
-  height: number;
   [key: string]: unknown;
 }
 
@@ -116,30 +95,21 @@ export interface TopologyEdgeData {
 
 /**
  * Union type for all node data types
+ * Note: Groups are rendered via GroupLayer, not as React Flow nodes
  */
-export type RFNodeData =
-  | TopologyNodeData
-  | CloudNodeData
-  | GroupNodeData
-  | FreeTextNodeData
-  | FreeShapeNodeData;
+export type RFNodeData = TopologyNodeData | CloudNodeData | FreeTextNodeData | FreeShapeNodeData;
 
 /**
  * Custom node types used in the topology viewer
+ * Note: Groups are rendered via GroupLayer, not as React Flow nodes
  */
-export type RFNodeType =
-  | "topology-node"
-  | "cloud-node"
-  | "group-node"
-  | "free-text-node"
-  | "free-shape-node";
+export type RFNodeType = "topology-node" | "cloud-node" | "free-text-node" | "free-shape-node";
 
 /**
  * React Flow node with topology data
  */
 export type TopologyRFNode = Node<TopologyNodeData, "topology-node">;
 export type CloudRFNode = Node<CloudNodeData, "cloud-node">;
-export type GroupRFNode = Node<GroupNodeData, "group-node">;
 export type FreeTextRFNode = Node<FreeTextNodeData, "free-text-node">;
 export type FreeShapeRFNode = Node<FreeShapeNodeData, "free-shape-node">;
 
@@ -224,12 +194,10 @@ export interface MovePositionEntry {
  * Props for ReactFlowCanvas component
  */
 export interface ReactFlowCanvasProps {
-  /** ReactFlow nodes (use this instead of elements for new code) */
+  /** ReactFlow nodes */
   nodes?: TopoNode[];
-  /** ReactFlow edges (use this instead of elements for new code) */
+  /** ReactFlow edges */
   edges?: TopoEdge[];
-  /** @deprecated Use nodes/edges instead. Legacy CyElement array for backwards compatibility */
-  elements?: CyElement[];
   /** Additional nodes to render (e.g., annotations) */
   annotationNodes?: Node[];
   /** Annotation add mode state */

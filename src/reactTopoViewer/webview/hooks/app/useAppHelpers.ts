@@ -8,6 +8,7 @@ import type {
   CustomTemplateEditorData,
   NetworkType
 } from "../../../shared/types/editors";
+import type { TopoNode } from "../../../shared/types/graph";
 import {
   createNewTemplateEditorData,
   convertTemplateToEditorData
@@ -170,12 +171,7 @@ export interface E2ETestingConfig {
   ) => void;
   handleNodeCreatedCallback: (
     nodeId: string,
-    nodeElement: {
-      group: "nodes" | "edges";
-      data: Record<string, unknown>;
-      position?: { x: number; y: number };
-      classes?: string;
-    },
+    nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
   handleAddGroupWithUndo: () => void;

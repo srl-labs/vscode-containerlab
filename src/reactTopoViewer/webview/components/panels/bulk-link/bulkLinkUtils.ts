@@ -4,7 +4,6 @@
  */
 import { FilterUtils } from "../../../../../helpers/filterUtils";
 import { isSpecialEndpointId } from "../../../../shared/utilities/LinkTypes";
-import type { CyElement } from "../../../../shared/types/messages";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import type { GraphChange } from "../../../hooks/state/useUndoRedo";
 import {
@@ -190,41 +189,45 @@ export function buildBulkEdges(
   nodes: TopoNode[],
   edges: TopoEdge[],
   candidates: LinkCandidate[]
-): CyElement[] {
+): TopoEdge[] {
   const allocators = new Map<string, EndpointAllocator>();
-  const result: CyElement[] = [];
+  const result: TopoEdge[] = [];
 
   for (const { sourceId, targetId } of candidates) {
     const sourceEndpoint = allocateEndpoint(allocators, nodes, edges, sourceId);
     const targetEndpoint = allocateEndpoint(allocators, nodes, edges, targetId);
 
     const edgeId = `${sourceId}:${sourceEndpoint}--${targetId}:${targetEndpoint}`;
+    const isSpecialLink = isSpecialEndpointId(sourceId) || isSpecialEndpointId(targetId);
     result.push({
-      group: "edges",
+      id: edgeId,
+      source: sourceId,
+      target: targetId,
+      type: "topology-edge",
       data: {
-        id: edgeId,
-        source: sourceId,
-        target: targetId,
         sourceEndpoint,
         targetEndpoint,
-        editor: "true"
-      },
-      classes: isSpecialEndpointId(sourceId) || isSpecialEndpointId(targetId) ? "stub-link" : ""
+        isSpecialLink
+      }
     });
   }
 
   return result;
 }
 
-export function buildUndoRedoEntries(edges: CyElement[]): {
+export function buildUndoRedoEntries(edges: TopoEdge[]): {
   before: GraphChange[];
   after: GraphChange[];
 } {
   const before: GraphChange[] = [];
   const after: GraphChange[] = [];
   for (const edge of edges) {
-    before.push({ entity: "edge", kind: "delete", before: { ...edge, data: { ...edge.data } } });
-    after.push({ entity: "edge", kind: "add", after: { ...edge, data: { ...edge.data } } });
+    const clonedEdge: TopoEdge = {
+      ...edge,
+      data: edge.data ? { ...edge.data } : undefined
+    };
+    before.push({ entity: "edge", kind: "delete", before: clonedEdge });
+    after.push({ entity: "edge", kind: "add", after: clonedEdge });
   }
   return { before, after };
 }

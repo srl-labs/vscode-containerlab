@@ -34,7 +34,6 @@ import { EdgeRenderConfigProvider } from "../../context/EdgeRenderConfigContext"
 import { NodeRenderConfigProvider } from "../../context/NodeRenderConfigContext";
 import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 import {
-  useElementConversion,
   useDeleteHandlers,
   useLinkCreation,
   useSourceNodePosition,
@@ -307,7 +306,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     {
       nodes: propNodes,
       edges: propEdges,
-      elements,
       annotationNodes,
       annotationMode,
       annotationHandlers,
@@ -345,24 +343,19 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onMoveComplete // Pass callback for undo/redo
     });
 
-    // Use direct nodes/edges if provided, otherwise convert from legacy elements
-    const useDirectNodesEdges = propNodes !== undefined && propEdges !== undefined;
-
-    // For new code: sync prop nodes/edges directly
+    // Sync prop nodes/edges to internal state
     useEffect(() => {
-      if (useDirectNodesEdges && propNodes) {
+      if (propNodes) {
         setNodes(propNodes as Node[]);
       }
-    }, [useDirectNodesEdges, propNodes, setNodes]);
+    }, [propNodes, setNodes]);
 
     useEffect(() => {
-      if (useDirectNodesEdges && propEdges) {
+      if (propEdges) {
         setEdges(propEdges as Edge[]);
       }
-    }, [useDirectNodesEdges, propEdges, setEdges]);
+    }, [propEdges, setEdges]);
 
-    // For legacy code: convert CyElements to ReactFlow format
-    useElementConversion(useDirectNodesEdges ? undefined : elements, setNodes, setEdges);
     useSyncAnnotationNodes(annotationNodes, setNodes);
 
     const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =

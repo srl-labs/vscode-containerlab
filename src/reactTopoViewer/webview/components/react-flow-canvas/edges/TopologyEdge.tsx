@@ -1,6 +1,6 @@
 /**
  * TopologyEdge - Custom React Flow edge with endpoint labels
- * Uses floating/straight edge style matching Cytoscape
+ * Uses floating/straight edge style for network topology visualization
  */
 import React, { memo, useMemo, useCallback } from "react";
 import { EdgeLabelRenderer, useStore, type EdgeProps } from "@xyflow/react";
@@ -10,7 +10,7 @@ import { SELECTION_COLOR } from "../types";
 import { useEdgeInfo } from "../../../context/EdgeInfoContext";
 import { useEdgeRenderConfig } from "../../../context/EdgeRenderConfigContext";
 
-// Edge style constants matching Cytoscape
+// Edge style constants
 const EDGE_COLOR_DEFAULT = "#969799";
 const EDGE_COLOR_UP = "#00df2b";
 const EDGE_COLOR_DOWN = "#df2b00";
@@ -19,7 +19,7 @@ const EDGE_WIDTH_SELECTED = 4;
 const EDGE_OPACITY_NORMAL = 0.5;
 const EDGE_OPACITY_SELECTED = 1;
 
-// Label style constants matching Cytoscape
+// Label style constants
 const LABEL_FONT_SIZE = "10px";
 const LABEL_BG_COLOR = "rgba(202, 203, 204, 0.5)";
 const LABEL_TEXT_COLOR = "rgba(0, 0, 0, 0.7)";

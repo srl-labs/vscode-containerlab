@@ -10,54 +10,51 @@ import type {
   UndoRedoActionAnnotation,
   UndoRedoActionGroupMove
 } from "../../../../src/reactTopoViewer/webview/hooks/state/useUndoRedo";
+import type { TopoNode, TopoEdge } from "../../../../src/reactTopoViewer/shared/types/graph";
 import type {
-  CyElement,
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../../../src/reactTopoViewer/shared/types/topology";
 
 // ============================================================================
-// Sample Cytoscape Elements
+// Sample ReactFlow Elements
 // ============================================================================
 
-export const sampleNodes: CyElement[] = [
+export const sampleNodes: TopoNode[] = [
   {
-    group: "nodes",
-    data: { id: "node1", label: "Router1", kind: "nokia_srlinux" },
-    position: { x: 100, y: 100 }
+    id: "node1",
+    type: "topology-node",
+    position: { x: 100, y: 100 },
+    data: { label: "Router1", role: "pe", kind: "nokia_srlinux" }
   },
   {
-    group: "nodes",
-    data: { id: "node2", label: "Router2", kind: "nokia_srlinux" },
-    position: { x: 200, y: 200 }
+    id: "node2",
+    type: "topology-node",
+    position: { x: 200, y: 200 },
+    data: { label: "Router2", role: "pe", kind: "nokia_srlinux" }
   },
   {
-    group: "nodes",
-    data: { id: "node3", label: "Client1", kind: "linux" },
-    position: { x: 300, y: 300 }
+    id: "node3",
+    type: "topology-node",
+    position: { x: 300, y: 300 },
+    data: { label: "Client1", role: "client", kind: "linux" }
   }
 ];
 
-export const sampleEdges: CyElement[] = [
+export const sampleEdges: TopoEdge[] = [
   {
-    group: "edges",
-    data: {
-      id: "e1",
-      source: "node1",
-      target: "node2",
-      sourceEndpoint: "e1-1",
-      targetEndpoint: "e1-1"
-    }
+    id: "e1",
+    source: "node1",
+    target: "node2",
+    type: "topology-edge",
+    data: { sourceEndpoint: "e1-1", targetEndpoint: "e1-1" }
   },
   {
-    group: "edges",
-    data: {
-      id: "e2",
-      source: "node2",
-      target: "node3",
-      sourceEndpoint: "e1-2",
-      targetEndpoint: "eth1"
-    }
+    id: "e2",
+    source: "node2",
+    target: "node3",
+    type: "topology-edge",
+    data: { sourceEndpoint: "e1-2", targetEndpoint: "eth1" }
   }
 ];
 
@@ -141,7 +138,7 @@ export function createMoveAction(
 /**
  * Creates a graph action for adding a node
  */
-export function createGraphAddNodeAction(node: CyElement): UndoRedoActionGraph {
+export function createGraphAddNodeAction(node: TopoNode): UndoRedoActionGraph {
   return {
     type: "graph",
     before: [{ entity: "node", kind: "delete", before: node }],
@@ -153,8 +150,8 @@ export function createGraphAddNodeAction(node: CyElement): UndoRedoActionGraph {
  * Creates a graph action for deleting a node (with connected edges)
  */
 export function createGraphDeleteNodeAction(
-  node: CyElement,
-  connectedEdges: CyElement[] = []
+  node: TopoNode,
+  connectedEdges: TopoEdge[] = []
 ): UndoRedoActionGraph {
   return {
     type: "graph",
@@ -169,7 +166,7 @@ export function createGraphDeleteNodeAction(
 /**
  * Creates a graph action for adding an edge
  */
-export function createGraphAddEdgeAction(edge: CyElement): UndoRedoActionGraph {
+export function createGraphAddEdgeAction(edge: TopoEdge): UndoRedoActionGraph {
   return {
     type: "graph",
     before: [{ entity: "edge", kind: "delete", before: edge }],
@@ -180,7 +177,7 @@ export function createGraphAddEdgeAction(edge: CyElement): UndoRedoActionGraph {
 /**
  * Creates a graph action for deleting an edge
  */
-export function createGraphDeleteEdgeAction(edge: CyElement): UndoRedoActionGraph {
+export function createGraphDeleteEdgeAction(edge: TopoEdge): UndoRedoActionGraph {
   return {
     type: "graph",
     before: [{ entity: "edge", kind: "add", after: edge }],

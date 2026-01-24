@@ -383,11 +383,11 @@ const AppContent: React.FC<{
       isLocked: state.isLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
-      elements: [] as import("../shared/types/topology").CyElement[] // Empty for now - will be fixed in Phase 2
+      nodes: (rfInstance?.getNodes() as import("../shared/types/graph").TopoNode[]) || []
     },
     onEdgeCreated: handleEdgeCreated,
     onNodeCreated: handleNodeCreatedCallback,
-    addNode: addNodeDirect as (element: unknown) => void,
+    addNode: addNodeDirect as (element: import("../shared/types/graph").TopoNode) => void,
     onNewCustomNode: customNodeCommands.onNewCustomNode
   });
 

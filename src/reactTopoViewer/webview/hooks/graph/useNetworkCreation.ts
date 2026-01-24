@@ -7,7 +7,7 @@
 import { useCallback, useRef } from "react";
 
 import { log } from "../../utils/logger";
-import type { CyElement } from "../../../shared/types/messages";
+import type { TopoNode, CloudNodeData } from "../../../shared/types/graph";
 
 /** Network type definitions */
 export type NetworkType =
@@ -27,7 +27,7 @@ interface NetworkCreationOptions {
   getExistingNetworkNodes: () => Array<{ id: string; kind: NetworkType }>;
   onNetworkCreated: (
     networkId: string,
-    networkElement: CyElement,
+    networkElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
   onLockedClick?: () => void;
@@ -212,14 +212,19 @@ function createNetworkData(networkId: string, networkType: NetworkType): Network
 }
 
 /**
- * Convert NetworkData to CyElement format
+ * Convert NetworkData to TopoNode format (CloudRFNode)
  */
-function networkDataToCyElement(data: NetworkData, position: { x: number; y: number }): CyElement {
+function networkDataToTopoNode(data: NetworkData, position: { x: number; y: number }): TopoNode {
+  const cloudData: CloudNodeData = {
+    label: data.name,
+    nodeType: data.kind,
+    extraData: data.extraData
+  };
   return {
-    group: "nodes",
-    data: data as unknown as Record<string, unknown>,
+    id: data.id,
+    type: "cloud-node",
     position,
-    classes: "special-endpoint"
+    data: cloudData
   };
 }
 
@@ -269,15 +274,15 @@ export function useNetworkCreation(options: NetworkCreationOptions): {
       const networkId = generateNetworkId(networkType, existingIds);
       const networkData = createNetworkData(networkId, networkType);
 
-      // Create CyElement for state update
-      const cyElement = networkDataToCyElement(networkData, position);
+      // Create TopoNode for state update
+      const topoNode = networkDataToTopoNode(networkData, position);
 
       log.info(
         `[NetworkCreation] Created network: ${networkId} (${networkType}) at (${position.x}, ${position.y})`
       );
 
       reservedIdsRef.current.add(networkId);
-      onNetworkCreated(networkId, cyElement, position);
+      onNetworkCreated(networkId, topoNode, position);
       return networkId;
     },
     [onNetworkCreated]

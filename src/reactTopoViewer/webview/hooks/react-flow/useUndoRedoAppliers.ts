@@ -6,7 +6,7 @@ import type React from "react";
 import { useMemo } from "react";
 import type { Node, Edge } from "@xyflow/react";
 
-import type { CyElement } from "../../../shared/types/messages";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import type {
   NodePositionEntry,
   GraphChange,
@@ -28,8 +28,8 @@ const ACTION_ANNOTATION = "annotation";
 
 /** Helper context for graph change handlers */
 interface ChangeContext {
-  addNode: (node: CyElement) => void;
-  addEdge: (edge: CyElement) => void;
+  addNode: (node: TopoNode) => void;
+  addEdge: (edge: TopoEdge) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
   updateNodes: (updater: (nodes: Node[]) => Node[]) => void;
@@ -37,21 +37,17 @@ interface ChangeContext {
 }
 
 /** Restore a deleted node (undo delete) */
-function restoreNode(element: CyElement, ctx: ChangeContext): void {
+function restoreNode(element: TopoNode, ctx: ChangeContext): void {
   const data = element.data as Record<string, unknown>;
-  const extraData = (data.extraData as Record<string, unknown>) || {};
-  const position = (extraData.position as { x: number; y: number }) || { x: 0, y: 0 };
-  log.info(`[UndoRedo] Restoring deleted node: ${data.id}`);
+  const position = element.position || { x: 0, y: 0 };
+  log.info(`[UndoRedo] Restoring deleted node: ${element.id}`);
   ctx.addNode(element);
-  ctx.updateNodes((nds) => [
-    ...nds,
-    { id: data.id as string, type: TOPOLOGY_NODE_TYPE, position, data }
-  ]);
+  ctx.updateNodes((nds) => [...nds, { id: element.id, type: TOPOLOGY_NODE_TYPE, position, data }]);
 }
 
 /** Re-delete a node (redo delete) */
-function reDeleteNode(element: CyElement, ctx: ChangeContext): void {
-  const nodeId = (element.data as Record<string, unknown>).id as string;
+function reDeleteNode(element: TopoNode, ctx: ChangeContext): void {
+  const nodeId = element.id;
   log.info(`[UndoRedo] Re-deleting node: ${nodeId}`);
   ctx.removeNodeAndEdges(nodeId);
   ctx.updateNodes((nds) => nds.filter((n) => n.id !== nodeId));
@@ -60,16 +56,16 @@ function reDeleteNode(element: CyElement, ctx: ChangeContext): void {
 }
 
 /** Restore a deleted edge (undo delete) */
-function restoreEdge(element: CyElement, ctx: ChangeContext): void {
+function restoreEdge(element: TopoEdge, ctx: ChangeContext): void {
   const data = element.data as Record<string, unknown>;
-  log.info(`[UndoRedo] Restoring deleted edge: ${data.id}`);
+  log.info(`[UndoRedo] Restoring deleted edge: ${element.id}`);
   ctx.addEdge(element);
   ctx.updateEdges((eds) => [
     ...eds,
     {
-      id: data.id as string,
-      source: data.source as string,
-      target: data.target as string,
+      id: element.id,
+      source: element.source,
+      target: element.target,
       type: TOPOLOGY_EDGE_TYPE,
       data
     }
@@ -77,8 +73,8 @@ function restoreEdge(element: CyElement, ctx: ChangeContext): void {
 }
 
 /** Re-delete an edge (redo delete) */
-function reDeleteEdge(element: CyElement, ctx: ChangeContext): void {
-  const edgeId = (element.data as Record<string, unknown>).id as string;
+function reDeleteEdge(element: TopoEdge, ctx: ChangeContext): void {
+  const edgeId = element.id;
   log.info(`[UndoRedo] Re-deleting edge: ${edgeId}`);
   ctx.removeEdge(edgeId);
   ctx.updateEdges((eds) => eds.filter((e) => e.id !== edgeId));
@@ -89,18 +85,18 @@ function applySingleChange(change: GraphChange, isUndo: boolean, ctx: ChangeCont
   if (change.kind !== "delete") return;
 
   if (change.entity === "node") {
-    if (isUndo && change.before) restoreNode(change.before, ctx);
-    else if (!isUndo && change.after) reDeleteNode(change.after, ctx);
+    if (isUndo && change.before) restoreNode(change.before as TopoNode, ctx);
+    else if (!isUndo && change.after) reDeleteNode(change.after as TopoNode, ctx);
   } else if (change.entity === "edge") {
-    if (isUndo && change.before) restoreEdge(change.before, ctx);
-    else if (!isUndo && change.after) reDeleteEdge(change.after, ctx);
+    if (isUndo && change.before) restoreEdge(change.before as TopoEdge, ctx);
+    else if (!isUndo && change.after) reDeleteEdge(change.after as TopoEdge, ctx);
   }
 }
 
 export interface UseUndoRedoAppliersOptions {
   setNodePositions: (positions: NodePositionEntry[]) => void;
-  addNode: (node: CyElement) => void;
-  addEdge: (edge: CyElement) => void;
+  addNode: (node: TopoNode) => void;
+  addEdge: (edge: TopoEdge) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
   updateNodes: (updater: (nodes: Node[]) => Node[]) => void;

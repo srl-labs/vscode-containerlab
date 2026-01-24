@@ -1,6 +1,6 @@
 /**
  * FreeShapeLayer - SVG overlay layer for rendering free shape annotations
- * Renders shape visuals below nodes (via cytoscape-layers) and interaction handles above nodes.
+ * Renders shape visuals below nodes (via HTML layers) and interaction handles above nodes.
  */
 import React, { useRef, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";

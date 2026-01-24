@@ -47,7 +47,7 @@ subscribeToWebviewMessages((event) => {
 
 // Log initial data
 log.info(
-  `[ReactTopoViewer] Initial data received, elements count: ${initialData?.elements?.length || 0}`
+  `[ReactTopoViewer] Initial data received, nodes: ${initialData?.nodes?.length || 0}, edges: ${initialData?.edges?.length || 0}`
 );
 
 /**

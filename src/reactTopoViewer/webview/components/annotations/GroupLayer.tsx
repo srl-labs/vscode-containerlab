@@ -1,11 +1,12 @@
 /**
- * GroupLayer - Renders group annotations using two Cytoscape HTML layers:
- * - Filled background below Cytoscape nodes
- * - Interaction overlay above Cytoscape nodes
+ * GroupLayer - Renders group annotations using two HTML layers:
+ * - Filled background below ReactFlow nodes
+ * - Interaction overlay above ReactFlow nodes
  */
 import React, { useCallback, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import { useViewportTransform } from "../../context/ViewportContext";
 import {
   getLabelPositionStyles,
   getGroupDepth,
@@ -106,7 +107,7 @@ interface GroupInteractionItemProps extends GroupDragResizeHandlers {
 // Constants
 // ============================================================================
 
-// Layer content styles (the layer container is managed by cytoscape-layers)
+// Layer content styles (the layer container is managed by useGroupLayer)
 const LAYER_CONTENT_STYLE: React.CSSProperties = {
   position: "absolute",
   top: 0,
@@ -743,8 +744,22 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   onGeoPositionChange,
   getMinimumBounds
 }) => {
-  // Create group background + interaction layers using cytoscape-layers
+  // Create group background + interaction layers
   const { backgroundLayerNode, interactionLayerNode } = useGroupLayer();
+
+  // Get viewport transform from ViewportContext and sync to layer nodes
+  const { pan, zoom: viewportZoom } = useViewportTransform();
+
+  // Sync viewport transform to layer nodes so groups pan/zoom with the canvas
+  useEffect(() => {
+    const transform = `translate(${pan.x}px, ${pan.y}px) scale(${viewportZoom})`;
+    if (backgroundLayerNode) {
+      backgroundLayerNode.style.transform = transform;
+    }
+    if (interactionLayerNode) {
+      interactionLayerNode.style.transform = transform;
+    }
+  }, [pan, viewportZoom, backgroundLayerNode, interactionLayerNode]);
 
   // In geo pan mode, groups should not be interactive
   const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === "pan");
@@ -845,7 +860,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
     [groups, onGroupReparent]
   );
 
-  // Don't render if no groups or no layer nodes from cytoscape-layers
+  // Don't render if no groups or no layer nodes
   if (groups.length === 0 || (!backgroundLayerNode && !interactionLayerNode)) return null;
 
   const sortedGroups = sortGroupsByDepthThenZIndex(groups);

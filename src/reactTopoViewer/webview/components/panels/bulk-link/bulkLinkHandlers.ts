@@ -3,8 +3,7 @@
  * Uses React Flow nodes/edges arrays for graph queries.
  */
 import type { GraphChange } from "../../../hooks/state/useUndoRedo";
-import type { CyElement } from "../../../../shared/types/messages";
-import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
+import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../../shared/types/graph";
 import { createLink, beginBatch, endBatch, type LinkSaveData } from "../../../services";
 
 import {
@@ -17,17 +16,17 @@ import {
 type SetStatus = (status: string | null) => void;
 type SetCandidates = (candidates: LinkCandidate[] | null) => void;
 
-export async function sendBulkEdgesToExtension(edges: CyElement[]): Promise<void> {
+export async function sendBulkEdgesToExtension(edges: TopoEdge[]): Promise<void> {
   beginBatch();
   try {
     for (const edge of edges) {
-      const data = edge.data as Record<string, unknown>;
+      const data = edge.data as TopologyEdgeData | undefined;
       const linkData: LinkSaveData = {
-        id: String(data.id || ""),
-        source: String(data.source || ""),
-        target: String(data.target || ""),
-        sourceEndpoint: String(data.sourceEndpoint || ""),
-        targetEndpoint: String(data.targetEndpoint || "")
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceEndpoint: data?.sourceEndpoint || "",
+        targetEndpoint: data?.targetEndpoint || ""
       };
       await createLink(linkData);
     }
@@ -68,7 +67,7 @@ interface ConfirmCreateParams {
   edges: TopoEdge[];
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
-  addEdge?: (edge: CyElement) => void;
+  addEdge?: (edge: TopoEdge) => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
   setStatus: SetStatus;
   setPendingCandidates: SetCandidates;

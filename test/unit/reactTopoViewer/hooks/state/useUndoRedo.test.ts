@@ -662,15 +662,17 @@ describe("useUndoRedo", () => {
         })
       );
 
+      const testNode = {
+        id: "newNode",
+        type: "topology-node" as const,
+        position: { x: 0, y: 0 },
+        data: { label: "newNode", role: "pe" }
+      };
       act(() => {
         result.current.pushAction({
           type: "graph",
-          before: [
-            { entity: "node", kind: "add", after: { group: "nodes", data: { id: "newNode" } } }
-          ],
-          after: [
-            { entity: "node", kind: "delete", before: { group: "nodes", data: { id: "newNode" } } }
-          ]
+          before: [{ entity: "node", kind: "add", after: testNode }],
+          after: [{ entity: "node", kind: "delete", before: testNode }]
         });
       });
 
@@ -691,15 +693,17 @@ describe("useUndoRedo", () => {
         })
       );
 
+      const testNode = {
+        id: "newNode",
+        type: "topology-node" as const,
+        position: { x: 0, y: 0 },
+        data: { label: "newNode", role: "pe" }
+      };
       act(() => {
         result.current.pushAction({
           type: "graph",
-          before: [
-            { entity: "node", kind: "add", after: { group: "nodes", data: { id: "newNode" } } }
-          ],
-          after: [
-            { entity: "node", kind: "delete", before: { group: "nodes", data: { id: "newNode" } } }
-          ]
+          before: [{ entity: "node", kind: "add", after: testNode }],
+          after: [{ entity: "node", kind: "delete", before: testNode }]
         });
       });
       act(() => {

@@ -8,7 +8,6 @@ import type { CyElement } from "../../../shared/types/topology";
 import type {
   TopologyNodeData,
   CloudNodeData,
-  GroupNodeData,
   FreeTextNodeData,
   FreeShapeNodeData,
   TopologyEdgeData,
@@ -18,7 +17,6 @@ import { DEFAULT_ICON_COLOR } from "./types";
 
 // Node type constants
 const NODE_TYPE_CLOUD = "cloud-node" as const;
-const NODE_TYPE_GROUP = "group-node" as const;
 const NODE_TYPE_FREE_TEXT = "free-text-node" as const;
 const NODE_TYPE_FREE_SHAPE = "free-shape-node" as const;
 const NODE_TYPE_TOPOLOGY = "topology-node" as const;
@@ -63,11 +61,11 @@ function getNodeRole(data: Record<string, unknown>): string | undefined {
 
 /**
  * Determine the React Flow node type from CyElement data
+ * Note: Groups are rendered via GroupLayer, not as React Flow nodes
  */
 function determineNodeType(data: Record<string, unknown>): RFNodeType {
   if (isCloudNode(data)) return NODE_TYPE_CLOUD;
   const role = getNodeRole(data);
-  if (role === "group") return NODE_TYPE_GROUP;
   if (role === "freeText") return NODE_TYPE_FREE_TEXT;
   if (role === "freeShape") return NODE_TYPE_FREE_SHAPE;
   return NODE_TYPE_TOPOLOGY;
@@ -121,35 +119,6 @@ function createCloudNode(base: BaseNodeFields, data: Record<string, unknown>): N
     selected: base.selected,
     type: NODE_TYPE_CLOUD,
     data: cloudData
-  };
-}
-
-function createGroupNode(base: BaseNodeFields, data: Record<string, unknown>): Node {
-  const groupData: GroupNodeData = {
-    label: base.label,
-    name: (data.name as string) || base.label,
-    level: (data.level as string) || "default",
-    backgroundColor: data.backgroundColor as string,
-    backgroundOpacity: data.backgroundOpacity as number,
-    borderColor: data.borderColor as string,
-    borderWidth: data.borderWidth as number,
-    borderStyle: data.borderStyle as "solid" | "dotted" | "dashed" | "double",
-    borderRadius: data.borderRadius as number,
-    labelColor: data.labelColor as string,
-    labelPosition: data.labelPosition as string,
-    width: (data.width as number) || 200,
-    height: (data.height as number) || 150
-  };
-  return {
-    id: base.id,
-    position: base.position,
-    parentId: base.parentId,
-    draggable: base.draggable,
-    selectable: base.selectable,
-    selected: base.selected,
-    type: NODE_TYPE_GROUP,
-    data: groupData,
-    style: { width: groupData.width, height: groupData.height }
   };
 }
 
@@ -251,8 +220,6 @@ export function cyElementToRFNode(element: CyElement): Node {
   switch (nodeType) {
     case NODE_TYPE_CLOUD:
       return createCloudNode(base, data);
-    case NODE_TYPE_GROUP:
-      return createGroupNode(base, data);
     case NODE_TYPE_FREE_TEXT:
       return createFreeTextNode(base, data);
     case NODE_TYPE_FREE_SHAPE:
@@ -331,12 +298,10 @@ export function rfNodeToCyElement(node: Node): CyElement {
   }
 
   // Determine topoViewerRole from node type
+  // Note: Groups are rendered via GroupLayer, not as React Flow nodes
   switch (node.type) {
     case NODE_TYPE_CLOUD:
       cyData.topoViewerRole = "cloud";
-      break;
-    case NODE_TYPE_GROUP:
-      cyData.topoViewerRole = "group";
       break;
     case NODE_TYPE_FREE_TEXT:
       cyData.topoViewerRole = "freeText";

@@ -1,5 +1,5 @@
 /**
- * Context Menu Hook for Cytoscape Elements
+ * Context Menu Hook for Graph Elements
  * Manages context menu state for nodes and edges using React-based menu
  */
 import React, { useEffect, useCallback, useState } from "react";

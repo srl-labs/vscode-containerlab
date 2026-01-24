@@ -5,7 +5,7 @@
 import { useCallback, useMemo } from "react";
 import type { Node, Edge } from "@xyflow/react";
 
-import type { CyElement } from "../../../shared/types/messages";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import type {
   NodePositionEntry,
   GraphChange,
@@ -26,8 +26,8 @@ export interface UseGraphUndoRedoHandlersOptions {
   getNodes: () => Node[];
   getEdges: () => Edge[];
   setNodePositions: (positions: NodePositionEntry[]) => void;
-  addNode: (node: CyElement) => void;
-  addEdge: (edge: CyElement) => void;
+  addNode: (node: TopoNode) => void;
+  addEdge: (edge: TopoEdge) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
   updateNodes: (updater: (nodes: Node[]) => Node[]) => void;

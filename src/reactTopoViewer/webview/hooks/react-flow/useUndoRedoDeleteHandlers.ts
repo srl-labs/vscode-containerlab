@@ -6,42 +6,19 @@ import type React from "react";
 import { useMemo } from "react";
 import type { Node, Edge } from "@xyflow/react";
 
-import type { CyElement } from "../../../shared/types/messages";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import type { GraphChange, UndoRedoAction } from "../state/useUndoRedo";
 import { sendCommandToExtension } from "../../utils/extensionMessaging";
 import { log } from "../../utils/logger";
 
-/** Convert React Flow node to CyElement format */
-function nodeToCyElement(node: Node): CyElement {
-  const data = node.data as Record<string, unknown>;
-  return {
-    group: "nodes",
-    data: {
-      id: node.id,
-      name: data.label || node.id,
-      ...data,
-      extraData: {
-        ...((data.extraData as Record<string, unknown>) || {}),
-        position: { x: node.position.x, y: node.position.y }
-      }
-    }
-  };
+/** Convert React Flow node to TopoNode format */
+function nodeToTopoNode(node: Node): TopoNode {
+  return node as TopoNode;
 }
 
-/** Convert React Flow edge to CyElement format */
-function edgeToCyElement(edge: Edge): CyElement {
-  const data = (edge.data as Record<string, unknown>) || {};
-  return {
-    group: "edges",
-    data: {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      sourceEndpoint: data.sourceEndpoint || "",
-      targetEndpoint: data.targetEndpoint || "",
-      ...data
-    }
-  };
+/** Convert React Flow edge to TopoEdge format */
+function edgeToTopoEdge(edge: Edge): TopoEdge {
+  return edge as TopoEdge;
 }
 
 /** Build graph changes for node deletion */
@@ -49,8 +26,8 @@ function buildNodeDeleteChanges(
   node: Node,
   connectedEdges: Edge[]
 ): { before: GraphChange[]; after: GraphChange[] } {
-  const nodeElement = nodeToCyElement(node);
-  const edgeElements = connectedEdges.map(edgeToCyElement);
+  const nodeElement = nodeToTopoNode(node);
+  const edgeElements = connectedEdges.map(edgeToTopoEdge);
   const beforeChanges: GraphChange[] = [
     { entity: "node", kind: "delete", before: nodeElement },
     ...edgeElements.map((e) => ({ entity: "edge" as const, kind: "delete" as const, before: e }))
@@ -64,7 +41,7 @@ function buildNodeDeleteChanges(
 
 /** Build graph changes for edge deletion */
 function buildEdgeDeleteChanges(edge: Edge): { before: GraphChange[]; after: GraphChange[] } {
-  const edgeElement = edgeToCyElement(edge);
+  const edgeElement = edgeToTopoEdge(edge);
   return {
     before: [{ entity: "edge", kind: "delete", before: edgeElement }],
     after: [{ entity: "edge", kind: "delete", after: edgeElement }]

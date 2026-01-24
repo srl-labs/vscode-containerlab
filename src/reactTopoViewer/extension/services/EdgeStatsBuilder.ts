@@ -3,7 +3,8 @@
  */
 
 import type { ClabLabTreeNode } from "../../../treeView/common";
-import type { CyElement, ClabTopology } from "../../shared/types/topology";
+import type { ClabTopology } from "../../shared/types/topology";
+import type { TopoEdge, TopologyEdgeData } from "../../shared/types/graph";
 import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from "../../shared/parsing";
 
 import { findInterfaceNode } from "./TreeUtils";
@@ -20,22 +21,21 @@ export interface EdgeStatsBuilderContext {
 }
 
 /**
- * Build edge stats updates from cached elements and fresh labs data.
+ * Build edge stats updates from cached edges and fresh labs data.
  */
 export function buildEdgeStatsUpdates(
-  elements: CyElement[],
+  edges: TopoEdge[],
   labs: Record<string, ClabLabTreeNode> | undefined,
   context: EdgeStatsBuilderContext
 ): EdgeStatsUpdate[] {
-  if (!labs || elements.length === 0) {
+  if (!labs || edges.length === 0) {
     return [];
   }
 
   const updates: EdgeStatsUpdate[] = [];
 
-  for (const el of elements) {
-    if (el.group !== "edges") continue;
-    const update = buildSingleEdgeUpdate(el, labs, context);
+  for (const edge of edges) {
+    const update = buildSingleEdgeUpdate(edge, labs, context);
     if (update) {
       updates.push(update);
     }
@@ -45,20 +45,20 @@ export function buildEdgeStatsUpdates(
 }
 
 /**
- * Build update for a single edge element.
+ * Build update for a single edge.
  */
 function buildSingleEdgeUpdate(
-  el: CyElement,
+  edge: TopoEdge,
   labs: Record<string, ClabLabTreeNode>,
   context: EdgeStatsBuilderContext
 ): EdgeStatsUpdate | null {
-  const data = el.data as Record<string, unknown>;
-  const edgeId = data.id as string;
-  const extraData = (data.extraData ?? {}) as Record<string, unknown>;
+  const edgeData = edge.data as TopologyEdgeData | undefined;
+  const extraData = (edgeData?.extraData ?? {}) as Record<string, unknown>;
 
   // Look up fresh interface data
   const { sourceIface, targetIface } = lookupEdgeInterfaces(
-    data,
+    edge,
+    edgeData,
     extraData,
     labs,
     context.currentLabName
@@ -71,7 +71,7 @@ function buildSingleEdgeUpdate(
   const edgeClass = computeEdgeClassForUpdate(
     context.topology,
     extraData,
-    data,
+    edge,
     sourceIface?.state,
     targetIface?.state
   );
@@ -81,14 +81,15 @@ function buildSingleEdgeUpdate(
     return null;
   }
 
-  return { id: edgeId, extraData: updatedExtraData, classes: edgeClass };
+  return { id: edge.id, extraData: updatedExtraData, classes: edgeClass };
 }
 
 /**
  * Look up source and target interfaces for an edge.
  */
 function lookupEdgeInterfaces(
-  data: Record<string, unknown>,
+  _edge: TopoEdge,
+  edgeData: TopologyEdgeData | undefined,
   extraData: Record<string, unknown>,
   labs: Record<string, ClabLabTreeNode>,
   currentLabName: string
@@ -96,8 +97,14 @@ function lookupEdgeInterfaces(
   sourceIface: ReturnType<typeof findInterfaceNode>;
   targetIface: ReturnType<typeof findInterfaceNode>;
 } {
-  const sourceIfaceName = normalizeInterfaceName(extraData.clabSourcePort, data.sourceEndpoint);
-  const targetIfaceName = normalizeInterfaceName(extraData.clabTargetPort, data.targetEndpoint);
+  const sourceIfaceName = normalizeInterfaceName(
+    extraData.clabSourcePort,
+    edgeData?.sourceEndpoint
+  );
+  const targetIfaceName = normalizeInterfaceName(
+    extraData.clabTargetPort,
+    edgeData?.targetEndpoint
+  );
 
   const sourceIface = findInterfaceNode(
     labs,
@@ -158,13 +165,13 @@ function applyInterfaceToExtraData(
 function computeEdgeClassForUpdate(
   topology: ClabTopology["topology"] | undefined,
   extraData: Record<string, unknown>,
-  data: Record<string, unknown>,
+  edge: TopoEdge,
   sourceState?: string,
   targetState?: string
 ): string | undefined {
   if (!topology) return undefined;
-  const sourceNodeId = (extraData.yamlSourceNodeId as string) || (data.source as string);
-  const targetNodeId = (extraData.yamlTargetNodeId as string) || (data.target as string);
+  const sourceNodeId = (extraData.yamlSourceNodeId as string) || edge.source;
+  const targetNodeId = (extraData.yamlTargetNodeId as string) || edge.target;
   return computeEdgeClassFromStates(topology, sourceNodeId, targetNodeId, sourceState, targetState);
 }
 

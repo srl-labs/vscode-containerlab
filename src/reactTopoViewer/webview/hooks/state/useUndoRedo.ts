@@ -7,7 +7,7 @@
  */
 import React, { useReducer, useCallback, useMemo } from "react";
 
-import type { CyElement } from "../../../shared/types/messages";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import { log } from "../../utils/logger";
 import {
   saveNodePositions,
@@ -59,8 +59,8 @@ type GraphChangeKind = "add" | "delete" | "update";
 export interface GraphChange {
   entity: GraphEntity;
   kind: GraphChangeKind;
-  before?: CyElement;
-  after?: CyElement;
+  before?: TopoNode | TopoEdge;
+  after?: TopoNode | TopoEdge;
 }
 
 export interface UndoRedoActionMove {
