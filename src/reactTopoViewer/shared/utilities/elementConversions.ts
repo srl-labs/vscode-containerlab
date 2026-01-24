@@ -1,9 +1,9 @@
 /**
- * Element conversion utilities for converting between CyElement and ReactFlow formats.
+ * Element conversion utilities for converting between ParsedElement and ReactFlow formats.
  * These are pure functions with no dependencies on React or VS Code.
  */
 
-import type { CyElement } from "../types/topology";
+import type { ParsedElement } from "../types/topology";
 import type {
   TopoNode,
   TopoEdge,
@@ -14,13 +14,13 @@ import type {
 } from "../types/graph";
 
 // ============================================================================
-// CyElement to ReactFlow Conversion
+// ParsedElement to ReactFlow Conversion
 // ============================================================================
 
 /**
- * Converts a CyElement node to a ReactFlow Node (TopoNode).
+ * Converts a ParsedElement node to a ReactFlow Node (TopoNode).
  */
-export function cyElementToTopoNode(element: CyElement): TopoNode {
+export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
   if (element.group !== "nodes") {
     throw new Error("Cannot convert edge element to node");
   }
@@ -79,9 +79,9 @@ export function cyElementToTopoNode(element: CyElement): TopoNode {
 }
 
 /**
- * Converts a CyElement edge to a ReactFlow Edge (TopoEdge).
+ * Converts a ParsedElement edge to a ReactFlow Edge (TopoEdge).
  */
-export function cyElementToTopoEdge(element: CyElement): TopoEdge {
+export function parsedElementToTopoEdge(element: ParsedElement): TopoEdge {
   if (element.group !== "edges") {
     throw new Error("Cannot convert node element to edge");
   }
@@ -114,17 +114,17 @@ export function cyElementToTopoEdge(element: CyElement): TopoEdge {
 }
 
 /**
- * Converts an array of CyElements to TopologyData (nodes and edges).
+ * Converts an array of ParsedElements to TopologyData (nodes and edges).
  */
-export function convertElementsToTopologyData(elements: CyElement[]): TopologyData {
+export function convertElementsToTopologyData(elements: ParsedElement[]): TopologyData {
   const nodes: TopoNode[] = [];
   const edges: TopoEdge[] = [];
 
   for (const element of elements) {
     if (element.group === "nodes") {
-      nodes.push(cyElementToTopoNode(element));
+      nodes.push(parsedElementToTopoNode(element));
     } else if (element.group === "edges") {
-      edges.push(cyElementToTopoEdge(element));
+      edges.push(parsedElementToTopoEdge(element));
     }
   }
 
@@ -132,13 +132,13 @@ export function convertElementsToTopologyData(elements: CyElement[]): TopologyDa
 }
 
 // ============================================================================
-// ReactFlow to CyElement Conversion (for backwards compatibility)
+// ReactFlow to ParsedElement Conversion (for backwards compatibility)
 // ============================================================================
 
 /**
- * Converts a TopoNode back to CyElement format.
+ * Converts a TopoNode back to ParsedElement format.
  */
-export function topoNodeToCyElement(node: TopoNode): CyElement {
+export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
   const data = node.data as Record<string, unknown>;
 
   return {
@@ -166,9 +166,9 @@ export function topoNodeToCyElement(node: TopoNode): CyElement {
 }
 
 /**
- * Converts a TopoEdge back to CyElement format.
+ * Converts a TopoEdge back to ParsedElement format.
  */
-export function topoEdgeToCyElement(edge: TopoEdge): CyElement {
+export function topoEdgeToParsedElement(edge: TopoEdge): ParsedElement {
   const data = edge.data as TopologyEdgeData | undefined;
   const linkStatus = data?.linkStatus;
   let classes = "";
@@ -203,17 +203,17 @@ export function topoEdgeToCyElement(edge: TopoEdge): CyElement {
 }
 
 /**
- * Converts TopologyData back to CyElement array.
+ * Converts TopologyData back to ParsedElement array.
  */
-export function convertTopologyDataToElements(data: TopologyData): CyElement[] {
-  const elements: CyElement[] = [];
+export function convertTopologyDataToElements(data: TopologyData): ParsedElement[] {
+  const elements: ParsedElement[] = [];
 
   for (const node of data.nodes) {
-    elements.push(topoNodeToCyElement(node));
+    elements.push(topoNodeToParsedElement(node));
   }
 
   for (const edge of data.edges) {
-    elements.push(topoEdgeToCyElement(edge));
+    elements.push(topoEdgeToParsedElement(edge));
   }
 
   return elements;

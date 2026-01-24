@@ -192,7 +192,7 @@ function parseComponentsProps(extra: Record<string, unknown>): { components?: Sr
 }
 
 /**
- * Converts raw node data (from Cytoscape/YAML) to NodeEditorData format
+ * Converts raw node data (from the graph/YAML) to NodeEditorData format
  * Maps from YAML kebab-case properties (in extraData) to camelCase NodeEditorData
  */
 export function convertToEditorData(

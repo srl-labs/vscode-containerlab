@@ -47,7 +47,7 @@ export const GroupEditorPanel: React.FC<GroupEditorPanelProps> = ({
     <K extends keyof GroupStyleAnnotation>(field: K, value: GroupStyleAnnotation[K]) => {
       setFormData((prev) => {
         if (!prev) return null;
-        // Apply live style change to Cytoscape node
+        // Apply live style change to the group
         if (onStyleChange) {
           onStyleChange(prev.id, { [field]: value });
         }

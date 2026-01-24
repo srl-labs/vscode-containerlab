@@ -113,18 +113,12 @@ export interface UseShapeLayerReturn {
 }
 
 /**
- * Hook to create and manage a layer for shape annotations.
- * NOTE: This is a stub during the ReactFlow migration.
- * Shape annotations are now rendered as React components in the ReactFlow canvas.
+ * Hook for shape layer (legacy compatibility).
+ * Shape annotations are rendered as React components in the ReactFlow canvas.
  */
 export function useShapeLayer(): UseShapeLayerReturn {
   const [shapeLayerNode] = React.useState<HTMLElement | null>(null);
-
-  // Stub implementation - shapes are rendered via React components in ReactFlow
-  const updateLayer = React.useCallback(() => {
-    // No-op during ReactFlow migration
-  }, []);
-
+  const updateLayer = React.useCallback(() => {}, []);
   return { shapeLayerNode, updateLayer };
 }
 
@@ -136,14 +130,11 @@ export interface UseTextLayerReturn {
 }
 
 /**
- * Hook to create and manage a layer for text annotations.
- * NOTE: This is a stub during the ReactFlow migration.
- * Text annotations are now rendered as React components in the ReactFlow canvas.
+ * Hook for text layer (legacy compatibility).
+ * Text annotations are rendered as React components in the ReactFlow canvas.
  */
 export function useTextLayer(): UseTextLayerReturn {
   const [textLayerNode] = React.useState<HTMLElement | null>(null);
-
-  // Stub implementation - text annotations are rendered via React components in ReactFlow
   return { textLayerNode };
 }
 

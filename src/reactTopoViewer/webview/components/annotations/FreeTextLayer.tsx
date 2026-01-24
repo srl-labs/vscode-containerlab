@@ -639,7 +639,7 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
     overflow: "hidden"
   };
 
-  // Transformed layer - applies Cytoscape's viewport transform
+  // Transformed layer - applies the viewport transform
   // Large explicit dimensions prevent CSS from constraining child widths based on position
   const transformedLayerStyle: React.CSSProperties = {
     position: "absolute",

@@ -35,9 +35,7 @@ export interface UseAppGroupUndoHandlersReturn {
 
 /**
  * Check if a node can be added to a group based on its role.
- * Returns false for annotations.
- * NOTE: During ReactFlow migration, this function is not used directly.
- * Selection filtering should be done at the React level.
+ * Returns false for annotations. Selection filtering is done at the React level.
  */
 function canBeGrouped(role: string | undefined): boolean {
   return role !== "freeText" && role !== "freeShape";
@@ -51,14 +49,12 @@ export function useAppGroupUndoHandlers(
   // Group undo/redo handlers
   const groupUndoHandlers = useGroupUndoRedoHandlers(groups, undoRedo);
 
-  // Undo-aware handleAddGroup that creates group from selected nodes
+  // Undo-aware handleAddGroup that creates an empty group.
   // Note: Do NOT auto-open editor - it blocks clicks on nodes inside the group
-  // Users can double-click or right-click the group to edit it later
-  // NOTE: During ReactFlow migration, selection state is managed by ReactFlow.
-  // This function now creates an empty group. Selection-based group creation
-  // should be handled by the component using ReactFlow's selection state.
+  // Users can double-click or right-click the group to edit it later.
+  // Selection-based group creation is handled by components using ReactFlow's selection state.
   const handleAddGroupWithUndo = useCallback(() => {
-    void canBeGrouped; // Suppress unused warning
+    void canBeGrouped;
     const groupId = groupUndoHandlers.createGroupWithUndo();
     if (groupId) {
       // Clear group selection after creating

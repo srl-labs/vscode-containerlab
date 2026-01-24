@@ -2,7 +2,7 @@
  * React TopoViewer Main Application Component
  *
  * Uses context-based architecture for undo/redo and annotations.
- * Now uses ReactFlow as the rendering layer instead of Cytoscape.
+ * Now uses ReactFlow as the rendering layer for rendering.
  */
 /* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
 import React from "react";
@@ -140,7 +140,7 @@ const AppContent: React.FC<{
     [dispatch]
   );
 
-  // Direct node/edge addition (no CyElement conversion needed)
+  // Direct node/edge addition (no ParsedElement conversion needed)
   const addNodeDirect = React.useCallback(
     (node: TopoNode) => {
       addNode(node);
@@ -157,7 +157,7 @@ const AppContent: React.FC<{
 
   // Link label visibility is now handled by EdgeRenderConfigContext in ReactFlowCanvas
   // useEndpointLabelOffset is also handled by the edge component
-  // These Cytoscape-specific hooks are no longer needed
+  // These hooks are for React state management
 
   const edgeAnnotationLookup = React.useMemo(
     () => buildEdgeAnnotationLookup(state.edgeAnnotations),
@@ -280,7 +280,7 @@ const AppContent: React.FC<{
 
   const navbarCommands = useNavbarCommands();
 
-  // Context menu handlers - simplified without Cytoscape ref
+  // Context menu handlers - simplified for context menu
   const menuHandlers = React.useMemo(
     () => ({
       handleEditNode: (nodeId: string) => editNode(nodeId),
@@ -305,7 +305,11 @@ const AppContent: React.FC<{
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
-  // Graph handlers using context - using cyCompat for compatibility
+  // Stable getters for ReactFlow state (used by undo/redo handlers)
+  const getNodes = React.useCallback(() => rfInstance?.getNodes() ?? [], [rfInstance]);
+  const getEdges = React.useCallback(() => rfInstance?.getEdges() ?? [], [rfInstance]);
+
+  // Graph handlers using context
   const {
     handleEdgeCreated,
     handleNodeCreatedCallback,
@@ -313,6 +317,8 @@ const AppContent: React.FC<{
     handleDeleteLinkWithUndo,
     recordPropertyEdit
   } = useGraphHandlersWithContext({
+    getNodes,
+    getEdges,
     addNode: addNodeDirect as (element: unknown) => void,
     addEdge: addEdgeDirect as (element: unknown) => void,
     menuHandlers,
@@ -725,17 +731,17 @@ export const App: React.FC = () => {
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
 
-  // Shape and text layers - stubs during ReactFlow migration
+  // Shape and text layers (legacy compatibility - rendered as React components)
   const { shapeLayerNode } = useShapeLayer();
   const { textLayerNode } = useTextLayer();
 
-  // Layout controls use reactFlowRef
+  // Layout controls
   const layoutControls = useLayoutControls(
     reactFlowRef as unknown as React.RefObject<import("./hooks/useAppState").CanvasRef | null>,
     null
   );
 
-  // Geo map - currently disabled during ReactFlow migration
+  // Geo map (disabled - requires full reimplementation)
   const { mapLibreState } = useGeoMap({
     isGeoLayout: layoutControls.isGeoLayout,
     geoMode: layoutControls.geoMode

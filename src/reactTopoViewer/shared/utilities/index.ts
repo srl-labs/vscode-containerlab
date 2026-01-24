@@ -67,12 +67,12 @@ export {
 export { applyInterfacePatternMigrations } from "./annotationMigrations";
 export type { InterfacePatternMigration } from "./annotationMigrations";
 
-// Element conversions (CyElement <-> ReactFlow)
+// Element conversions (ParsedElement <-> ReactFlow)
 export {
-  cyElementToTopoNode,
-  cyElementToTopoEdge,
+  parsedElementToTopoNode,
+  parsedElementToTopoEdge,
   convertElementsToTopologyData,
-  topoNodeToCyElement,
-  topoEdgeToCyElement,
+  topoNodeToParsedElement,
+  topoEdgeToParsedElement,
   convertTopologyDataToElements
 } from "./elementConversions";

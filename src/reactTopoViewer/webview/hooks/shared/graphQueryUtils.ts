@@ -1,7 +1,7 @@
 /**
  * Graph Query Utilities
  * Helper functions to query nodes and edges in React Flow graphs.
- * These replace Cytoscape-style queries like cy.getElementById(), cy.edges(), etc.
+ * These replace graph queries for nodes and edges.
  */
 import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 

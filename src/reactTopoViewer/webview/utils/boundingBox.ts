@@ -1,6 +1,6 @@
 /**
  * Bounding box calculation utilities for fit-to-viewport functionality.
- * These utilities calculate combined bounds that include Cytoscape elements
+ * These utilities calculate combined bounds that include graph elements
  * and all annotation types (text, shapes, groups).
  */
 
@@ -164,7 +164,7 @@ function collectAnnotationBounds(
 }
 
 /**
- * Calculate combined bounding box from Cytoscape extent and all annotations.
+ * Calculate combined bounding box from graph extent and all annotations.
  * Returns null if there are no valid bounds to fit.
  */
 export function getCombinedBounds(
@@ -173,7 +173,7 @@ export function getCombinedBounds(
   shapeAnnotations: FreeShapeAnnotation[],
   groups: GroupStyleAnnotation[]
 ): BoundingBox | null {
-  // Start with Cytoscape extent if valid
+  // Start with Graph extent if valid
   let result: BoundingBox | null = cyExtent && isValidBounds(cyExtent) ? { ...cyExtent } : null;
 
   // Collect and merge all annotation bounds

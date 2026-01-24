@@ -1,6 +1,6 @@
 /**
  * ReactFlow-native type definitions for the topology viewer.
- * These types replace CyElement with ReactFlow's Node/Edge types.
+ * These types replace ParsedElement with ReactFlow's Node/Edge types.
  */
 import type { Node, Edge } from "@xyflow/react";
 
@@ -185,7 +185,7 @@ export type TopoEdge = Edge<TopologyEdgeData>;
 // ============================================================================
 
 /**
- * Topology data structure (replaces CytoTopology)
+ * Topology data structure with ReactFlow nodes and edges.
  */
 export interface TopologyData {
   nodes: TopoNode[];

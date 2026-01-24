@@ -83,7 +83,7 @@ export function useNodeReparent(
 ): void {
   const { mode, isLocked, onMembershipWillChange } = options;
   const { groups, addNodeToGroup, removeNodeFromGroup } = deps;
-  // Note: nodeGroupRef was used for tracking node group state during Cytoscape drag events.
+  // Note: nodeGroupRef was used for tracking node group state during drag events.
   // It's kept for potential future use but currently unused as ReactFlow handles events differently.
   const _nodeGroupRef = useRef<Map<string, string | null>>(new Map());
 

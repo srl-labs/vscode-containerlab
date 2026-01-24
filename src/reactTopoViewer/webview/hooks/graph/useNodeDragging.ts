@@ -1,10 +1,7 @@
 /**
- * Node Dragging Hook
- * Manages node drag-and-drop functionality based on lock state
- *
- * NOTE: This hook is DISABLED during ReactFlow migration.
- * The event handling was Cytoscape-specific.
- * For ReactFlow integration, use onNodeDragStart/onNodeDragStop callbacks directly.
+ * Node Dragging Utilities
+ * Provides helper functions for node drag-and-drop operations.
+ * ReactFlow handles drag events through its own onNodeDragStart/onNodeDragStop props.
  */
 import { useCallback } from "react";
 
@@ -54,13 +51,10 @@ export function isNodeDraggable(role: string | undefined): boolean {
 }
 
 /**
- * Hook to manage node dragging based on lock state
+ * Hook to manage node dragging based on lock state.
+ * ReactFlow handles drag events through onNodeDragStart/onNodeDragStop handlers.
  *
- * NOTE: This hook is DISABLED during ReactFlow migration.
- * Event handling was Cytoscape-specific.
- * For ReactFlow integration, use onNodeDragStart/onNodeDragStop handlers directly.
- *
- * The following callbacks are available for use from ReactFlow handlers:
+ * The following exported functions are available for use:
  * - saveNodePositions(positions) - Save positions to YAML
  * - isNodeDraggable(role) - Check if node can be dragged
  */
@@ -95,7 +89,4 @@ export function useNodeDragging(options: NodeDraggingOptions): void {
   void handleLockedDrag;
   void handleMoveComplete;
   void handlePositionsCommitted;
-
-  // NOTE: All event handling is disabled during ReactFlow migration
-  // ReactFlow handles drag events through its own onNodeDragStart/onNodeDragStop props
 }

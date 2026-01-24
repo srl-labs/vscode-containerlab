@@ -6,7 +6,7 @@
 
 import type {
   ClabTopology,
-  CyElement,
+  ParsedElement,
   TopologyAnnotations,
   NodeAnnotation,
   InterfaceStatsPayload
@@ -14,7 +14,7 @@ import type {
 import type { TopologyData } from "../types/graph";
 
 // Re-export commonly used types for convenience
-export type { ClabTopology, CyElement, TopologyAnnotations, NodeAnnotation, TopologyData };
+export type { ClabTopology, ParsedElement, TopologyAnnotations, NodeAnnotation, TopologyData };
 
 // ============================================================================
 // Parser Options and Results
@@ -35,11 +35,12 @@ export interface ParseOptions {
 }
 
 /**
- * Result from parsing a topology (legacy CyElement format).
+ * Result from parsing a topology (internal ParsedElement format).
+ * @deprecated Use ParseResultRF with TopologyData (ReactFlow format) for new code.
  */
 export interface ParseResult {
-  /** Cytoscape elements (nodes and edges) */
-  elements: CyElement[];
+  /** Parsed elements (nodes and edges) */
+  elements: ParsedElement[];
   /** Lab name from topology */
   labName: string;
   /** Container name prefix (e.g., "clab-labname") */

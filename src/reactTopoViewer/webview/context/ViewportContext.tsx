@@ -1,7 +1,7 @@
 /**
  * Viewport Context
  * Provides viewport transform (pan/zoom) to annotation layers
- * Replaces the need for Cytoscape cy.pan()/cy.zoom() in annotation components
+ * Replaces the need for direct pan/zoom methods in annotation components
  */
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";

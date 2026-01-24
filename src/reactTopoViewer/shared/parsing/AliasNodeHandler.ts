@@ -4,7 +4,7 @@
  */
 
 import type {
-  CyElement,
+  ParsedElement,
   ClabTopology,
   TopologyAnnotations,
   NodeAnnotation
@@ -139,7 +139,7 @@ export function buildBridgeAliasElement(
   position: { x: number; y: number },
   yamlRefId: string,
   displayName: string
-): CyElement {
+): ParsedElement {
   return {
     group: "nodes",
     data: {
@@ -194,7 +194,7 @@ export function createAliasElement(
   aliasId: string,
   yamlRefId: string,
   nodeAnnById: Map<string, NodeAnnotation>
-): CyElement | null {
+): ParsedElement | null {
   const refNode = nodeMap[yamlRefId];
   if (!refNode || !isBridgeKind(refNode?.kind)) return null;
   const aliasAnn = nodeAnnById.get(aliasId);
@@ -219,8 +219,8 @@ export function createAliasElement(
 export function addAliasNodesFromAnnotations(
   parsed: ClabTopology,
   annotations?: TopologyAnnotations,
-  elements?: CyElement[]
-): CyElement[] {
+  elements?: ParsedElement[]
+): ParsedElement[] {
   const result = elements ?? [];
   const nodeMap = parsed.topology?.nodes || {};
   const nodeAnnById = buildNodeAnnotationIndex(annotations);
@@ -253,7 +253,7 @@ export function addAliasNodesFromAnnotations(
 /**
  * Rewires edges to use alias node IDs.
  */
-export function rewireEdges(elements: CyElement[], mapping: Map<string, string>): void {
+export function rewireEdges(elements: ParsedElement[], mapping: Map<string, string>): void {
   for (const el of elements) {
     if (el.group !== "edges") continue;
     const data = el.data as {
@@ -275,7 +275,7 @@ export function rewireEdges(elements: CyElement[], mapping: Map<string, string>)
  */
 export function applyAliasMappingsToEdges(
   annotations?: TopologyAnnotations,
-  elements?: CyElement[]
+  elements?: ParsedElement[]
 ): void {
   if (!elements) return;
   const aliasList = normalizeAliasList(annotations);
@@ -291,7 +291,7 @@ export function applyAliasMappingsToEdges(
 /**
  * Collects alias groups from elements.
  */
-export function collectAliasGroups(elements: CyElement[]): Map<string, string[]> {
+export function collectAliasGroups(elements: ParsedElement[]): Map<string, string[]> {
   const groups = new Map<string, string[]>();
   for (const el of elements) {
     if (el.group !== "nodes") continue;
@@ -312,7 +312,7 @@ export function collectAliasGroups(elements: CyElement[]): Map<string, string[]>
  * Collects base bridges that are still referenced by edges.
  */
 export function collectStillReferencedBaseBridges(
-  elements: CyElement[],
+  elements: ParsedElement[],
   aliasGroups: Map<string, string[]>
 ): Set<string> {
   const stillReferenced = new Set<string>();
@@ -330,7 +330,7 @@ export function collectStillReferencedBaseBridges(
 /**
  * Adds a class to a node element.
  */
-export function addClass(nodeEl: CyElement, className: string): void {
+export function addClass(nodeEl: ParsedElement, className: string): void {
   const existing = nodeEl.classes;
   if (!existing) {
     nodeEl.classes = className;
@@ -345,7 +345,7 @@ export function addClass(nodeEl: CyElement, className: string): void {
  * Hides base bridge nodes that have aliases.
  */
 export function hideBaseBridgeNodesWithAliases(
-  elements: CyElement[],
+  elements: ParsedElement[],
   loggedUnmappedBaseBridges: Set<string>,
   logger?: ParserLogger
 ): void {

@@ -1,6 +1,6 @@
 /**
  * Utility functions for converting between NetworkEditorData and
- * Cytoscape node data format for network nodes
+ * Node data format for network nodes
  */
 
 import type { NetworkEditorData, NetworkType } from "../types/editors";
@@ -100,7 +100,7 @@ function parseInterfaceName(
 }
 
 /**
- * Converts raw network node data (from Cytoscape) to NetworkEditorData format
+ * Converts raw network node data (from the graph) to NetworkEditorData format
  */
 export function convertToNetworkEditorData(
   rawData: Record<string, unknown> | null

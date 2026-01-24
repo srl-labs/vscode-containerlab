@@ -22,8 +22,8 @@
     overflow: hidden;
   }
 
-  /* Cytoscape container */
-  .cytoscape-container {
+  /* Graph canvas container */
+  .canvas-container {
     position: absolute;
     top: 0;
     left: 0;
@@ -32,7 +32,7 @@
     background-color: var(--vscode-editor-background);
   }
 
-  .cytoscape-container:focus {
+  .canvas-container:focus {
     outline: none;
   }
 

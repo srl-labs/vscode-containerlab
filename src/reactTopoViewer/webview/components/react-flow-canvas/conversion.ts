@@ -1,9 +1,9 @@
 /**
- * Conversion utilities between CyElement and React Flow Node/Edge formats
+ * Conversion utilities between ParsedElement and React Flow Node/Edge formats
  */
 import type { Node, Edge } from "@xyflow/react";
 
-import type { CyElement } from "../../../shared/types/topology";
+import type { ParsedElement } from "../../../shared/types/topology";
 
 import type {
   TopologyNodeData,
@@ -60,7 +60,7 @@ function getNodeRole(data: Record<string, unknown>): string | undefined {
 }
 
 /**
- * Determine the React Flow node type from CyElement data
+ * Determine the React Flow node type from ParsedElement data
  * Note: Groups are rendered via GroupLayer, not as React Flow nodes
  */
 function determineNodeType(data: Record<string, unknown>): RFNodeType {
@@ -81,7 +81,7 @@ interface BaseNodeFields {
   label: string;
 }
 
-function extractBaseNodeFields(element: CyElement): BaseNodeFields {
+function extractBaseNodeFields(element: ParsedElement): BaseNodeFields {
   const data = element.data;
   const id = data.id as string;
   const label = (data.name as string) || (data.label as string) || id;
@@ -210,9 +210,9 @@ function createTopologyNode(base: BaseNodeFields, data: Record<string, unknown>)
 }
 
 /**
- * Convert a CyElement node to a React Flow Node
+ * Convert a ParsedElement node to a React Flow Node
  */
-export function cyElementToRFNode(element: CyElement): Node {
+export function parsedElementToRFNode(element: ParsedElement): Node {
   const data = element.data;
   const nodeType = determineNodeType(data);
   const base = extractBaseNodeFields(element);
@@ -230,9 +230,9 @@ export function cyElementToRFNode(element: CyElement): Node {
 }
 
 /**
- * Convert a CyElement edge to a React Flow Edge
+ * Convert a ParsedElement edge to a React Flow Edge
  */
-export function cyElementToRFEdge(element: CyElement): Edge {
+export function parsedElementToRFEdge(element: ParsedElement): Edge {
   const data = element.data;
   const id = data.id as string;
   const source = data.source as string;
@@ -264,17 +264,17 @@ export function cyElementToRFEdge(element: CyElement): Edge {
 }
 
 /**
- * Convert an array of CyElements to React Flow nodes and edges
+ * Convert an array of ParsedElements to React Flow nodes and edges
  */
-export function convertElements(elements: CyElement[]): { nodes: Node[]; edges: Edge[] } {
+export function convertElements(elements: ParsedElement[]): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   for (const element of elements) {
     if (element.group === "nodes") {
-      nodes.push(cyElementToRFNode(element));
+      nodes.push(parsedElementToRFNode(element));
     } else if (element.group === "edges") {
-      edges.push(cyElementToRFEdge(element));
+      edges.push(parsedElementToRFEdge(element));
     }
   }
 
@@ -282,9 +282,9 @@ export function convertElements(elements: CyElement[]): { nodes: Node[]; edges: 
 }
 
 /**
- * Convert a React Flow Node back to CyElement format
+ * Convert a React Flow Node back to ParsedElement format
  */
-export function rfNodeToCyElement(node: Node): CyElement {
+export function rfNodeToParsedElement(node: Node): ParsedElement {
   const data = node.data as Record<string, unknown>;
 
   const cyData: Record<string, unknown> = {
@@ -322,9 +322,9 @@ export function rfNodeToCyElement(node: Node): CyElement {
 }
 
 /**
- * Convert a React Flow Edge back to CyElement format
+ * Convert a React Flow Edge back to ParsedElement format
  */
-export function rfEdgeToCyElement(edge: Edge): CyElement {
+export function rfEdgeToParsedElement(edge: Edge): ParsedElement {
   const data = edge.data as TopologyEdgeData | undefined;
 
   const cyData: Record<string, unknown> = {
@@ -352,17 +352,17 @@ export function rfEdgeToCyElement(edge: Edge): CyElement {
 }
 
 /**
- * Convert React Flow nodes and edges back to CyElement array
+ * Convert React Flow nodes and edges back to ParsedElement array
  */
-export function convertToElements(nodes: Node[], edges: Edge[]): CyElement[] {
-  const elements: CyElement[] = [];
+export function convertToElements(nodes: Node[], edges: Edge[]): ParsedElement[] {
+  const elements: ParsedElement[] = [];
 
   for (const node of nodes) {
-    elements.push(rfNodeToCyElement(node));
+    elements.push(rfNodeToParsedElement(node));
   }
 
   for (const edge of edges) {
-    elements.push(rfEdgeToCyElement(edge));
+    elements.push(rfEdgeToParsedElement(edge));
   }
 
   return elements;

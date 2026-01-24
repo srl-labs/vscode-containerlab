@@ -1,6 +1,6 @@
 /**
  * Types for group management in React TopoViewer.
- * Groups are rendered as overlay annotations (not Cytoscape nodes).
+ * Groups are rendered as overlay annotations (not graph nodes).
  * Groups support hierarchical nesting via parentId.
  */
 import type React from "react";

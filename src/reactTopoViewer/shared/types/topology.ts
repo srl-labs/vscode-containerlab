@@ -1,6 +1,6 @@
 /**
  * Topology-related type definitions for React TopoViewer.
- * These types define the structure for Containerlab topologies and Cytoscape elements.
+ * These types define the structure for Containerlab topologies and ReactFlow elements.
  */
 
 // ============================================================================
@@ -62,13 +62,14 @@ export interface ClabTopology {
 }
 
 // ============================================================================
-// Cytoscape Element Types
+// Parsed Element Types (Internal intermediate format)
 // ============================================================================
 
 /**
- * Represents a single Cytoscape element, either a node or an edge.
+ * Represents a parsed element (node or edge) from YAML parsing.
+ * This is an internal intermediate format that gets converted to ReactFlow types.
  */
-export interface CyElement {
+export interface ParsedElement {
   group: "nodes" | "edges";
   data: Record<string, unknown>;
   position?: { x: number; y: number };
@@ -82,9 +83,10 @@ export interface CyElement {
 }
 
 /**
- * Represents the overall Cytoscape topology as an array of elements.
+ * Array of parsed elements from topology parsing.
+ * @deprecated Use TopologyData (ReactFlow format) instead for new code.
  */
-export type CytoTopology = CyElement[];
+export type ParsedTopology = ParsedElement[];
 
 // ============================================================================
 // Annotation Types
@@ -143,7 +145,7 @@ export interface FreeShapeAnnotation {
 }
 
 /**
- * Group annotation for overlay groups (rendered as HTML/SVG, not Cytoscape nodes).
+ * Group annotation for overlay groups (rendered as HTML/SVG overlays).
  * Members are tracked via NodeAnnotation.groupId (preferred) and group/level for legacy display.
  * Groups can be nested via parentId for hierarchical organization.
  */

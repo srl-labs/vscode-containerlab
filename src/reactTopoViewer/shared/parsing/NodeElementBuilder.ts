@@ -1,11 +1,11 @@
 /**
- * Node element builder for creating Cytoscape node elements.
+ * Node element builder for creating parsed node elements.
  * Pure functions - no VS Code dependencies.
  */
 
 import type {
   ClabNode,
-  CyElement,
+  ParsedElement,
   ClabTopology,
   NodeAnnotation,
   TopologyAnnotations
@@ -221,7 +221,7 @@ export function createNodeExtraData(params: {
 
 /** Result of building a node element */
 interface NodeElementResult {
-  element: CyElement;
+  element: ParsedElement;
   /** If set, this node's interfacePattern needs to be migrated to annotations */
   migrationPattern?: string;
 }
@@ -282,7 +282,7 @@ export function buildNodeElement(params: {
       : "pe");
 
   const iconVisuals = extractIconVisuals(nodeAnn);
-  const element: CyElement = {
+  const element: ParsedElement = {
     group: "nodes",
     data: {
       id: nodeName,
@@ -316,7 +316,7 @@ export function addNodeElements(
   opts: NodeBuildOptions,
   fullPrefix: string,
   labName: string,
-  elements: CyElement[]
+  elements: ParsedElement[]
 ): InterfacePatternMigration[] {
   const migrations: InterfacePatternMigration[] = [];
   const topology = parsed.topology;

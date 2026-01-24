@@ -66,7 +66,7 @@ function useNodeEditorForm(nodeData: NodeEditorData | null) {
       setLoadedNodeId(nodeData.id);
       setActiveTab("basic");
     } else if (nodeData && nodeData.id === loadedNodeId) {
-      // Same node but data changed (e.g., after Apply updated Cytoscape)
+      // Same node but data changed (e.g., after Apply applied changes)
       // Sync formData with the updated nodeData to reflect saved changes
       setFormData({ ...nodeData });
       setLastAppliedData({ ...nodeData });

@@ -1,13 +1,13 @@
 /**
  * Viewport Utilities
  * Helper functions for viewport operations in React Flow.
- * These replace Cytoscape-style viewport methods like cy.pan(), cy.zoom(), cy.extent().
+ * These replace viewport operations like pan, zoom, and extent calculations.
  */
 import type { ReactFlowInstance, Viewport } from "@xyflow/react";
 
 /**
  * Get the center of the visible viewport in model (flow) coordinates
- * Replaces the Cytoscape pattern of using cy.extent() to get visible center
+ * Get the visible center of the viewport
  */
 export function getViewportCenter(rfInstance: ReactFlowInstance | null): { x: number; y: number } {
   if (!rfInstance) {

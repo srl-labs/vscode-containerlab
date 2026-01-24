@@ -1,6 +1,6 @@
 /**
  * Helper functions for overlay-based group management.
- * Groups are rendered as HTML/SVG overlays, not Cytoscape nodes.
+ * Groups are rendered as HTML/SVG overlays, not graph nodes.
  */
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";

@@ -118,8 +118,7 @@ function migrateLegacyGroups(
 
 /**
  * Check if a node can be added to a group based on its role.
- * NOTE: During ReactFlow migration, this function is not used.
- * Selection filtering should be done at the React level.
+ * Returns false for annotations. Selection filtering is done at the React level.
  */
 function canBeGrouped(role: string | undefined): boolean {
   return role !== "freeText" && role !== "freeShape";
@@ -229,10 +228,8 @@ export function useAppGroups(options: UseAppGroupsOptions) {
   useGroupDataLoader(groupsHook.loadGroups, groupsHook.initializeMembership, currentGroupsRef);
 
   const handleAddGroup = useCallback(() => {
-    // NOTE: During ReactFlow migration, selection state is managed by ReactFlow.
-    // This function now creates an empty group. Selection-based group creation
-    // should be handled by the component using ReactFlow's selection state.
-    void canBeGrouped; // Suppress unused warning
+    // Creates an empty group. Selection-based group creation is handled by components.
+    void canBeGrouped;
     const result = groupsHook.createGroup();
     if (result) groupsHook.editGroup(result.groupId);
   }, [groupsHook]);

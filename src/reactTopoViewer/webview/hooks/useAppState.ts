@@ -93,7 +93,7 @@ export function snapToGrid(value: number): number {
 }
 
 export function useLayoutControls(
-  cytoscapeRef: React.RefObject<CanvasRef | null>,
+  canvasRef: React.RefObject<CanvasRef | null>,
   _cyInstance: null
 ): {
   layout: LayoutOption;
@@ -117,19 +117,18 @@ export function useLayoutControls(
 
   const setGeoMode = useCallback((mode: "pan" | "edit") => {
     setGeoModeState(mode);
-    // Geo mode controls are disabled during ReactFlow migration
-    // TODO: Implement geo mode using ReactFlow
+    // Geo mode would require MapLibre integration
   }, []);
 
   const setLayout = useCallback(
     (nextLayout: LayoutOption) => {
       setLayoutState(nextLayout);
-      const cyApi = cytoscapeRef.current;
+      const cyApi = canvasRef.current;
       if (!cyApi) return;
       const normalized = normalizeLayoutName(nextLayout);
       cyApi.runLayout(normalized);
     },
-    [cytoscapeRef]
+    [canvasRef]
   );
 
   return {
@@ -137,7 +136,7 @@ export function useLayoutControls(
     setLayout,
     geoMode,
     setGeoMode,
-    isGeoLayout: false, // Geo layout not implemented in React Flow
+    isGeoLayout: false, // Geo layout requires MapLibre integration
     gridLineWidth,
     setGridLineWidth
   };
@@ -170,7 +169,7 @@ interface ContextMenuHandlersResult {
  * Hook for context menu handlers
  */
 export function useContextMenuHandlers(
-  _cytoscapeRef: React.RefObject<CanvasRef | null>,
+  _canvasRef: React.RefObject<CanvasRef | null>,
   callbacks: SelectionCallbacks
 ): ContextMenuHandlersResult {
   const {
@@ -235,7 +234,6 @@ export function useContextMenuHandlers(
 
   const handleDeleteLink = useCallback(
     (edgeId: string) => {
-      // Edge data should come from React state, not Cytoscape
       // The deleteLink service will be called by the TopoViewerContext
       removeEdge(edgeId);
       selectEdge(null);

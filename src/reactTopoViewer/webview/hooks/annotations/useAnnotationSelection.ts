@@ -4,10 +4,6 @@
 import type React from "react";
 import { useState, useEffect, useCallback } from "react";
 
-// Unused during ReactFlow migration
-// import { log } from '../../utils/logger';
-// import { renderedToModel } from './freeText';
-
 /**
  * Hook for annotation click handlers including selection and context menu
  * @param isLocked - Whether the annotation is locked

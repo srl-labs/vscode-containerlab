@@ -547,6 +547,6 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     </svg>`;
   }
 
-  // Encode the final selected SVG for Cytoscape.js
+  // Encode the final selected SVG for the graph
   return "data:image/svg+xml;utf8," + encodeURIComponent(svgString);
 }

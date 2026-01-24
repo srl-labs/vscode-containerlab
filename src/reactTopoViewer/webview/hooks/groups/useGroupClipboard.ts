@@ -210,7 +210,7 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
         const members = getGroupMembers(gId);
         for (const nodeId of members) {
           // Note: We don't have node positions here, so we store group-relative membership
-          // The actual node positions would need to be captured from cytoscape
+          // The actual node positions would need to be captured from the graph
           memberNodes.push({
             nodeId,
             groupId: gId,

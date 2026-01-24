@@ -47,8 +47,7 @@ const INITIAL_STATE: ContextMenuState = {
   elementType: null
 };
 
-// Note: CONTEXT_MENU_SCRATCH_KEY was used for Cytoscape scratch state
-// During ReactFlow migration, scratch state is not used
+// Note: Context menu state is managed via React useState
 
 // Icon constants for context menu items
 const ICON_EDIT = "fas fa-pen";
@@ -345,7 +344,6 @@ function useMenuState() {
 
   const closeMenu = useCallback(() => {
     setMenuState(INITIAL_STATE);
-    // NOTE: Scratch state is not used during ReactFlow migration
   }, []);
 
   const openNodeMenu = useCallback(

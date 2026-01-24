@@ -1,6 +1,6 @@
 /**
  * Main hook for overlay-based group management in React TopoViewer.
- * Groups are rendered as HTML overlays, not Cytoscape nodes.
+ * Groups are rendered as HTML overlays, not graph nodes.
  * Supports hierarchical nesting via parentId.
  */
 import type React from "react";

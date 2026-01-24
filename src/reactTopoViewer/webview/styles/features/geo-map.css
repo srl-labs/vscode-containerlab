@@ -15,11 +15,11 @@
   }
 
   /* When maplibre-active class is present, hide grid and make cytoscape transparent */
-  .cytoscape-container.maplibre-active {
+  .canvas-container.maplibre-active {
     background: transparent !important;
   }
 
-  .cytoscape-container.maplibre-active .react-topoviewer-grid-overlay {
+  .canvas-container.maplibre-active .react-topoviewer-grid-overlay {
     display: none !important;
   }
 

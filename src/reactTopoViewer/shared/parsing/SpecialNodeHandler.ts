@@ -3,12 +3,12 @@
  * Pure functions - no VS Code dependencies.
  */
 
+// eslint-disable-next-line sonarjs/deprecation
 import type {
   ClabNode,
-  CyElement,
+  ParsedElement,
   ClabTopology,
   NetworkNodeAnnotation,
-  // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
   CloudNodeAnnotation,
   TopologyAnnotations
 } from "../types/topology";
@@ -316,7 +316,7 @@ function createCloudNodeElement(
   nodeInfo: SpecialNodeInfo,
   placement: PlacementResult,
   extraProps: Record<string, unknown>
-): CyElement {
+): ParsedElement {
   const displayLabel = placement.label || nodeInfo.label || nodeId;
   return {
     group: "nodes",
@@ -381,7 +381,7 @@ function networkTypeToSpecialInfo(id: string, type: string, label?: string): Spe
  * This allows network nodes to persist even when their links are deleted.
  */
 function addOrphanedNetworkNodes(
-  result: CyElement[],
+  result: ParsedElement[],
   annotations?: TopologyAnnotations,
   specialNodes?: Map<string, SpecialNodeInfo>,
   specialNodeProps?: Map<string, Record<string, unknown>>
@@ -413,9 +413,9 @@ export function addCloudNodes(
   specialNodes: Map<string, SpecialNodeInfo>,
   specialNodeProps: Map<string, Record<string, unknown>>,
   annotations?: TopologyAnnotations,
-  elements?: CyElement[],
+  elements?: ParsedElement[],
   yamlNodeIds?: Set<string>
-): CyElement[] {
+): ParsedElement[] {
   const result = elements ?? [];
   for (const [nodeId, nodeInfo] of specialNodes) {
     if (shouldSkipCloudNode(nodeId, nodeInfo, yamlNodeIds)) continue;

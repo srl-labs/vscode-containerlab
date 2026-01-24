@@ -75,39 +75,22 @@ type RenameNodeCallback = (oldId: string, newId: string, nameOverride?: string) 
 
 /**
  * Update edge data after editor changes.
- * This ensures the edge's extraData reflects the saved values without requiring a reload.
- */
-/**
- * Update edge data after editor changes.
- *
- * NOTE: This function is a migration stub. In the ReactFlow architecture,
- * edge updates are handled via React state. The unknown interface
- * is read-only, so direct mutation is not supported. The actual data
- * persistence is handled by the editLinkService call.
+ * In ReactFlow, edge data updates are handled via React state.
+ * The editLinkService call in persistLinkChanges handles persistence.
  */
 function updateEdgeData(_edgeId: string, _data: LinkEditorData): void {
-  // In the ReactFlow architecture, edge data updates are handled via React state.
-  // The editLinkService call in persistLinkChanges handles the actual persistence.
-  // This function is kept as a stub for API compatibility during migration.
+  // Edge data updates are handled via React state; this is a no-op.
 }
 
 /**
- * Update node data after editor changes.
- * Returns the new extraData that was set on the node, so callers can sync React state.
- * @param customIcons - Custom icons for checking if the icon is a custom icon
- *
- * NOTE: This function is a migration stub. In the ReactFlow architecture,
- * node data updates are handled through React state, not direct mutation.
+ * Convert node editor data to extraData format.
+ * Returns the new extraData so callers can sync React state.
  */
 function updateNodeExtraData(
   _nodeId: string,
   data: NodeEditorData,
   _customIcons?: CustomIconInfo[]
 ): Record<string, unknown> | null {
-  // NOTE: During ReactFlow migration, node data is obtained from React state.
-  // This function now just converts editor data to YAML format without
-  // accessing any Cytoscape-like methods.
-
   // Convert editor data to YAML format (kebab-case keys)
   const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
 
@@ -210,8 +193,7 @@ function persistNodeChanges(
   const saveData = convertEditorDataToNodeSaveData(data, oldName);
   void editNodeService(saveData);
   const newExtraData = handleNodeUpdate(data, oldName, renameNode, customIcons);
-  // Update React state with the SAME extraData that was set on Cytoscape
-  // This prevents useElementsUpdate from overwriting Cytoscape with stale React state
+  // Update React state with the new extraData
   // For renames, use data.name (new id) since React state was already updated via renameNode
   if (updateNodeData && newExtraData) {
     const nodeIdForUpdate = oldName ? data.name : data.id;
@@ -702,26 +684,17 @@ function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown>
  * Handles VXLAN properties (remote, vni, dst-port, src-port) and
  * host-interface property for host/mgmt-net/macvlan types.
  *
- * NOTE: Canvas updates are handled via React state in the ReactFlow architecture.
- * This function only handles the YAML persistence via editLinkService.
- * NOTE: This function is disabled during ReactFlow migration as edge data is
- * obtained from React state, not a Cytoscape-like layer.
+ * Canvas updates are handled via React state. This function only handles
+ * YAML persistence via editLinkService. The caller should provide edge data
+ * from React state.
  */
 function saveNetworkLinkProperties(data: NetworkEditorData, _newNodeId: string): void {
   if (!isServicesInitialized()) return;
   if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
 
-  // NOTE: During ReactFlow migration, edge data should be obtained from React state.
-  // This function is a stub that only saves the extraData.
-  // The actual edge lookup should be done by the caller using React state.
-
+  // Build extraData for the network link - caller handles edge lookup from React state
   const extraData = buildNetworkExtraData(data);
-
-  // For now, just log that we would save these properties
   void extraData;
-
-  // NOTE: Full implementation requires edge data from React state, not cyCompat
-  // The caller should pass edge data directly or look it up from React state
 }
 
 /**

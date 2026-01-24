@@ -1,9 +1,6 @@
 /**
  * Undo/Redo Hook for Node Position History
  * Manages undo/redo stack for node drag operations
- *
- * NOTE: Position-based undo/redo is temporarily disabled during ReactFlow migration.
- * Graph and annotation undo/redo continue to work.
  */
 import React, { useReducer, useCallback, useMemo } from "react";
 

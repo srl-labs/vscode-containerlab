@@ -5,7 +5,7 @@
 
 import * as YAML from "yaml";
 
-import type { ClabTopology, CyElement, TopologyAnnotations } from "../types/topology";
+import type { ClabTopology, ParsedElement, TopologyAnnotations } from "../types/topology";
 
 import type {
   ParseOptions,
@@ -36,17 +36,17 @@ import { detectGraphLabelMigrations, applyGraphLabelMigrations } from "./GraphLa
 // ============================================================================
 
 /**
- * Topology parser for converting Containerlab YAML to Cytoscape elements.
+ * Topology parser for converting Containerlab YAML to ReactFlow elements.
  *
  * @example Basic usage (dev server)
  * ```typescript
- * const result = TopologyParser.parse(yamlContent, { annotations });
+ * const result = TopologyParser.parseToReactFlow(yamlContent, { annotations });
  * ```
  *
  * @example With container enrichment (VS Code extension)
  * ```typescript
  * const adapter = new ContainerDataAdapter(clabTreeData);
- * const result = TopologyParser.parse(yamlContent, {
+ * const result = TopologyParser.parseToReactFlow(yamlContent, {
  *   annotations,
  *   containerDataProvider: adapter,
  *   logger: vscodeLogger
@@ -55,7 +55,7 @@ import { detectGraphLabelMigrations, applyGraphLabelMigrations } from "./GraphLa
  */
 export class TopologyParser {
   /**
-   * Parses YAML content into Cytoscape elements.
+   * Parses YAML content into parsed elements (internal format).
    *
    * @param yamlContent - The YAML content to parse
    * @param options - Parse options including annotations and container data
@@ -165,7 +165,7 @@ export class TopologyParser {
   // ============================================================================
 
   /**
-   * Builds Cytoscape elements from parsed topology.
+   * Builds parsed elements from topology YAML.
    */
   private static buildElements(
     parsed: ClabTopology,
@@ -177,12 +177,12 @@ export class TopologyParser {
       prefix: string;
     }
   ): {
-    elements: CyElement[];
+    elements: ParsedElement[];
     isPresetLayout: boolean;
     interfacePatternMigrations: InterfacePatternMigration[];
   } {
     const log = options.logger ?? nullLogger;
-    const elements: CyElement[] = [];
+    const elements: ParsedElement[] = [];
 
     if (!parsed.topology) {
       log.warn("Parsed YAML does not contain 'topology' object.");
@@ -239,7 +239,7 @@ export class TopologyParser {
     // Hide base bridge nodes that have aliases
     hideBaseBridgeNodesWithAliases(elements, loggedUnmappedBaseBridges, options.logger);
 
-    log.info(`Transformed YAML to Cytoscape elements. Total elements: ${elements.length}`);
+    log.info(`Transformed YAML to graph elements. Total elements: ${elements.length}`);
 
     return {
       elements,

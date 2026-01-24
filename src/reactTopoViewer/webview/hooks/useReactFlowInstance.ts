@@ -1,6 +1,6 @@
 /**
  * React Flow Instance Hook
- * Manages ReactFlow instance and provides a compatibility interface for migration from Cytoscape
+ * Manages ReactFlow instance and provides canvas-level operations
  */
 import { useRef, useCallback, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
@@ -8,7 +8,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import type { ReactFlowCanvasRef } from "../components/react-flow-canvas/types";
 
 /**
- * Viewport transform interface (compatible with Cytoscape's pan/zoom)
+ * Viewport transform interface with pan and zoom values
  */
 export interface ViewportTransform {
   pan: { x: number; y: number };

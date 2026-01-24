@@ -59,7 +59,7 @@ interface FreeShapeLayerProps extends GroupRelatedProps {
   onAnnotationSelect?: (id: string) => void;
   onAnnotationToggleSelect?: (id: string) => void;
   onAnnotationBoxSelect?: (ids: string[]) => void;
-  // Cytoscape layer node for rendering below nodes
+  // Canvas layer node for rendering below nodes
   shapeLayerNode?: HTMLElement | null;
   // Geo mode props
   isGeoMode?: boolean;
@@ -169,7 +169,7 @@ function computeShowHandles(params: {
 
 /**
  * Compute rendered position for a shape in geo mode or standard mode.
- * Returns model position (for cytoscape-layer which handles transform).
+ * Returns model position (which handles transform).
  */
 function computeShapeRenderedPosition(
   annotation: FreeShapeAnnotation,
@@ -185,7 +185,7 @@ function computeShapeRenderedPosition(
       return { x: projected.x, y: projected.y, scale };
     }
   }
-  // Return model position with scale 1 (cytoscape-layer handles transform)
+  // Return model position with scale 1 (layer handles transform)
   return { x: modelPos.x, y: modelPos.y, scale: 1 };
 }
 
@@ -203,7 +203,7 @@ function applyGroupOffset(
 }
 
 // ============================================================================
-// Background Item (rendered in cytoscape-layer, below nodes)
+// Background Item (rendered in the background layer, below nodes)
 // ============================================================================
 
 interface ShapeBackgroundItemProps {
@@ -606,7 +606,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
     onFinalizeWithUndo
   };
 
-  // Background content: shape visuals rendered into cytoscape-layer (below nodes)
+  // Background content: shape visuals rendered into background layer (below nodes)
   const backgroundContent = shapeLayerNode && (
     <div className="free-shape-layer-background" style={PORTAL_CONTENT_STYLE}>
       {annotations.map((annotation) => {
@@ -661,7 +661,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
 
   return (
     <>
-      {/* Shape visuals rendered into cytoscape-layer (below nodes) */}
+      {/* Shape visuals rendered into background layer (below nodes) */}
       {shapeLayerNode && createPortal(backgroundContent, shapeLayerNode)}
       {/* Interaction layer (above nodes) */}
       {interactionContent}

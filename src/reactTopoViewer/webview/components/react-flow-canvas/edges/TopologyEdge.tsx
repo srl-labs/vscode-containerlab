@@ -131,7 +131,7 @@ function getNodeIntersection(
 }
 
 /**
- * Get edge connection points between two nodes (like Cytoscape)
+ * Get edge connection points between two nodes (between source and target nodes)
  */
 function getEdgePoints(
   sourceNode: { x: number; y: number; width: number; height: number },
@@ -501,7 +501,7 @@ function getStrokeStyle(linkStatus: string | undefined, selected: boolean) {
 }
 
 /**
- * TopologyEdge - Floating edge that connects nodes like Cytoscape
+ * TopologyEdge - Floating edge that connects nodes between source and target nodes
  * Supports bezier curves for parallel edges between the same node pair
  */
 const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, selected }) => {

@@ -82,11 +82,11 @@ export interface NodeExtraData {
 }
 
 /**
- * Get interface pattern for a node from its extraData or kind-based mapping
+ * Get interface pattern for a node from its extraData or kind-based mapping.
  * Priority: node.extraData.interfacePattern → kindMapping[kind] → DEFAULT
  *
- * NOTE: During ReactFlow migration, this function takes extraData directly
- * instead of a node object with .data() method.
+ * @param extraData - Node's extra data containing interfacePattern and kind
+ * @param interfacePatternMapping - Optional custom interface pattern mapping
  */
 export function getNodeInterfacePattern(
   extraData: NodeExtraData | undefined,
@@ -120,10 +120,11 @@ export interface EdgeData {
 }
 
 /**
- * Collect used interface indices for a node using its interface pattern
+ * Collect used interface indices for a node using its interface pattern.
  *
- * NOTE: During ReactFlow migration, this function takes an array of edge data
- * instead of using a Cytoscape-like query.
+ * @param edges - Array of edges to scan for used endpoints
+ * @param nodeId - ID of the node to collect indices for
+ * @param parsed - Parsed interface pattern
  */
 export function collectUsedIndices(
   edges: EdgeData[],
@@ -147,16 +148,13 @@ export function collectUsedIndices(
 }
 
 /**
- * Get the next available endpoint for a node using its interface pattern
+ * Get the next available endpoint for a node using its interface pattern.
  *
- * NOTE: During ReactFlow migration, this function takes node data directly
- * instead of using Cytoscape-like methods.
- *
- * @param edges Array of edges connected to the node
- * @param nodeId ID of the node
- * @param extraData Node's extra data containing interfacePattern and kind
- * @param isNetworkNode Whether the node is a network node (returns empty string for network nodes)
- * @param interfacePatternMapping Optional custom interface pattern mapping
+ * @param edges - Array of edges connected to the node
+ * @param nodeId - ID of the node
+ * @param extraData - Node's extra data containing interfacePattern and kind
+ * @param isNetworkNode - Whether the node is a network node (returns empty string for network nodes)
+ * @param interfacePatternMapping - Optional custom interface pattern mapping
  */
 export function getNextEndpointForNode(
   edges: EdgeData[],
@@ -187,13 +185,11 @@ export function getNextEndpointForNode(
  * Get the next available endpoint for a node, excluding specified endpoints.
  * Used for self-loops where we need two different endpoints on the same node.
  *
- * NOTE: During ReactFlow migration, this function takes node data directly.
- *
- * @param edges Array of edges connected to the node
- * @param nodeId ID of the node
- * @param extraData Node's extra data containing interfacePattern and kind
- * @param interfacePatternMapping Custom interface pattern mapping
- * @param excludeEndpoints Endpoints to exclude from allocation
+ * @param edges - Array of edges connected to the node
+ * @param nodeId - ID of the node
+ * @param extraData - Node's extra data containing interfacePattern and kind
+ * @param interfacePatternMapping - Custom interface pattern mapping
+ * @param excludeEndpoints - Endpoints to exclude from allocation
  */
 export function getNextEndpointForNodeExcluding(
   edges: EdgeData[],

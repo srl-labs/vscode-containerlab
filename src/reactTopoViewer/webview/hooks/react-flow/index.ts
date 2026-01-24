@@ -17,13 +17,6 @@ export {
   type DragPositionEntry
 } from "./useCanvasHandlers";
 
-// Graph undo/redo handlers for React Flow
-export {
-  useGraphUndoRedoHandlers,
-  type UseGraphUndoRedoHandlersOptions,
-  type UseGraphUndoRedoHandlersReturn
-} from "./useGraphUndoRedoHandlers";
-
 // Annotation nodes hook
 export { useAnnotationNodes, type AnnotationAddModeState } from "./useAnnotationNodes";
 

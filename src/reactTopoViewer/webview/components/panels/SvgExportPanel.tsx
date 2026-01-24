@@ -115,10 +115,9 @@ function downloadSvg(content: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-/** Check if SVG export is available - stub for ReactFlow migration */
-async function ensureSvgExtension(_cyCompat: unknown): Promise<boolean> {
-  // SVG export via cytoscape-svg is not available in ReactFlow mode
-  // ReactFlow SVG export would need a different implementation
+/** Check if SVG export is available */
+function isSvgExportAvailable(): boolean {
+  // SVG export requires implementation using ReactFlow's toObject() and custom SVG generation
   return false;
 }
 
@@ -329,8 +328,8 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   const [customBackgroundColor, setCustomBackgroundColor] = useState("#1e1e1e");
   const [filename, setFilename] = useState("topology");
 
-  // SVG export is disabled during ReactFlow migration
-  const isExportAvailable = false;
+  // SVG export is not yet implemented
+  const isExportAvailable = isSvgExportAvailable();
 
   const annotationCounts = {
     groups: groups.length,
@@ -341,34 +340,59 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
     annotationCounts.groups + annotationCounts.text + annotationCounts.shapes;
 
   const handleExport = useCallback(async () => {
-    // SVG export requires Cytoscape - disabled during ReactFlow migration
-    setExportStatus({
-      type: "error",
-      message: "SVG export is temporarily unavailable during migration"
-    });
-    return;
+    if (!isExportAvailable) {
+      setExportStatus({ type: "error", message: "SVG export is not yet available" });
+      return;
+    }
 
-    // TODO: Re-implement SVG export for ReactFlow
-    // The code below was for Cytoscape export
-    void ensureSvgExtension;
-    void borderZoom;
-    void borderPadding;
-    void includeAnnotations;
-    void totalAnnotations;
-    void groups;
-    void textAnnotations;
-    void shapeAnnotations;
-    void backgroundOption;
-    void customBackgroundColor;
-    void filename;
-    void replacePngWithSvg;
-    void compositeAnnotationsIntoSvg;
-    void addBackgroundRect;
-    void applyPadding;
-    void downloadSvg;
-    void setIsExporting;
-    void log;
+    setIsExporting(true);
+    setExportStatus(null);
+
+    try {
+      // Future implementation would:
+      // 1. Generate SVG from ReactFlow using toObject()
+      // 2. Apply zoom/padding settings
+      // 3. Composite annotations if enabled
+      // 4. Add background color if selected
+      // 5. Download the result
+      log.info(`[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`);
+
+      const svgContent = "<svg>Not implemented</svg>";
+      let finalSvg = svgContent;
+
+      // Apply padding
+      if (borderPadding > 0) {
+        finalSvg = applyPadding(finalSvg, borderPadding);
+      }
+
+      // Replace PNG icons with SVG
+      finalSvg = replacePngWithSvg(finalSvg);
+
+      // Add annotations if enabled
+      if (includeAnnotations && totalAnnotations > 0) {
+        finalSvg = compositeAnnotationsIntoSvg(
+          finalSvg,
+          { groups, textAnnotations, shapeAnnotations },
+          borderZoom / 100
+        );
+      }
+
+      // Add background
+      if (backgroundOption !== "transparent") {
+        const bgColor = backgroundOption === "white" ? "#ffffff" : customBackgroundColor;
+        finalSvg = addBackgroundRect(finalSvg, bgColor);
+      }
+
+      downloadSvg(finalSvg, `${filename || "topology"}.svg`);
+      setExportStatus({ type: "success", message: "SVG exported successfully" });
+    } catch (error) {
+      log.error(`[SvgExport] Export failed: ${error}`);
+      setExportStatus({ type: "error", message: `Export failed: ${error}` });
+    } finally {
+      setIsExporting(false);
+    }
   }, [
+    isExportAvailable,
     borderZoom,
     borderPadding,
     includeAnnotations,

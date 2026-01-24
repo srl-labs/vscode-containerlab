@@ -2,9 +2,7 @@
  * Shared message types between extension and webview
  */
 
-// Re-export CyElement from topology.ts (for backwards compatibility)
-import { CyElement, type TopologyAnnotations, type EdgeAnnotation } from "./topology";
-export { CyElement };
+import type { TopologyAnnotations, EdgeAnnotation } from "./topology";
 
 // Re-export ReactFlow types from graph.ts (new format)
 import type { TopoNode, TopoEdge, TopologyData } from "./graph";
@@ -91,7 +89,7 @@ export interface ExternalFileChangeMessage extends PushMessage {
 }
 
 /**
- * Node data for Cytoscape nodes
+ * Node data for graph nodes
  */
 export interface NodeData {
   id: string;
@@ -104,7 +102,7 @@ export interface NodeData {
 }
 
 /**
- * Edge data for Cytoscape edges
+ * Edge data for graph edges
  */
 export interface EdgeData {
   id: string;

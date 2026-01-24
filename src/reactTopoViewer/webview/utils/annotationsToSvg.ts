@@ -565,16 +565,16 @@ function parseAndImportElement(doc: Document, parser: DOMParser, svgStr: string)
 }
 
 /**
- * Extract the full transform attribute from a cytoscape SVG's main group.
+ * Extract the full transform attribute from the SVG's main group.
  * Returns the complete transform string including all translates and scale.
  */
-function extractCytoscapeTransform(svgEl: Element): string {
-  // Find the main content group with transform (should have scale for cytoscape exports)
+function extractGraphTransform(svgEl: Element): string {
+  // Find the main content group with transform (should have scale for exports)
   const groups = svgEl.querySelectorAll("g[transform]");
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i];
     const transform = group.getAttribute("transform") || "";
-    // Look for the cytoscape main group which has scale in its transform
+    // Look for the main group which has scale in its transform
     if (transform.includes("scale(")) {
       return transform;
     }
@@ -732,7 +732,7 @@ function shiftBackgroundRect(
 
 /**
  * Expand SVG dimensions to include annotation bounds.
- * @param transform - The full transform string from cytoscape
+ * @param transform - The full transform string from the graph
  */
 function expandSvgBounds(svgEl: Element, annotationBounds: BoundingBox, transform: string): void {
   const currentWidth = parseFloat(svgEl.getAttribute("width") || "0");
@@ -778,13 +778,13 @@ function expandSvgBounds(svgEl: Element, annotationBounds: BoundingBox, transfor
 }
 
 /**
- * Composite annotations into an existing Cytoscape SVG.
+ * Composite annotations into an existing graph SVG.
  * Annotations are inserted in z-order: groups (background), shapes, text (foreground).
- * The cytoscape transform is extracted and applied to annotation layers so they
- * use the same coordinate system as the cytoscape graph (model coordinates).
+ * The graph transform is extracted and applied to annotation layers so they
+ * use the same coordinate system as the graph nodes (model coordinates).
  */
 export function compositeAnnotationsIntoSvg(
-  cytoscapeSvg: string,
+  graphSvg: string,
   annotations: AnnotationData,
   _scale: number // Kept for API compatibility but not used - scale comes from transform
 ): string {
@@ -792,18 +792,18 @@ export function compositeAnnotationsIntoSvg(
 
   // Skip if no annotations
   if (groups.length === 0 && textAnnotations.length === 0 && shapeAnnotations.length === 0) {
-    return cytoscapeSvg;
+    return graphSvg;
   }
 
   const parser = new DOMParser();
-  const doc = parser.parseFromString(cytoscapeSvg, SVG_MIME_TYPE);
+  const doc = parser.parseFromString(graphSvg, SVG_MIME_TYPE);
   const svgEl = doc.documentElement;
 
-  // Extract the FULL transform from cytoscape content (including all translates and scale)
-  // This ensures annotations use the exact same coordinate system as cytoscape nodes
-  const transform = extractCytoscapeTransform(svgEl);
+  // Extract the FULL transform from graph content (including all translates and scale)
+  // This ensures annotations use the exact same coordinate system as graph nodes
+  const transform = extractGraphTransform(svgEl);
 
-  // Create annotation layer groups with the SAME transform as cytoscape content
+  // Create annotation layer groups with the SAME transform as graph content
   const groupsLayer = doc.createElementNS(SVG_NS, "g");
   groupsLayer.setAttribute("class", ANNOTATION_GROUPS_LAYER);
   groupsLayer.setAttribute("transform", transform);
@@ -840,9 +840,9 @@ export function compositeAnnotationsIntoSvg(
   }
 
   // Insert layers in z-order
-  // Groups go at the beginning (behind cytoscape content)
+  // Groups go at the beginning (behind graph content)
   svgEl.insertBefore(groupsLayer, svgEl.firstChild);
-  // Shapes and text go at the end (in front of cytoscape content)
+  // Shapes and text go at the end (in front of graph content)
   svgEl.appendChild(shapesLayer);
   svgEl.appendChild(textLayer);
 

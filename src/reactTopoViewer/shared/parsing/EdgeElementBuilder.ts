@@ -1,9 +1,9 @@
 /**
- * Edge element builder for creating Cytoscape edge elements.
+ * Edge element builder for creating parsed edge elements.
  * Pure functions - no VS Code dependencies.
  */
 
-import type { ClabNode, CyElement, ClabTopology, TopologyAnnotations } from "../types/topology";
+import type { ClabNode, ParsedElement, ClabTopology, TopologyAnnotations } from "../types/topology";
 
 import { resolveNodeConfig } from "./NodeConfigResolver";
 import {
@@ -553,7 +553,7 @@ export function buildEdgeElement(params: {
   edgeId: string;
   edgeClass: string;
   specialNodes: Map<string, SpecialNodeInfo>;
-}): CyElement {
+}): ParsedElement {
   const {
     linkObj,
     endA,
@@ -629,7 +629,7 @@ export function addEdgeElements(
   labName: string,
   specialNodes: Map<string, SpecialNodeInfo>,
   ctx: DummyContext,
-  elements: CyElement[]
+  elements: ParsedElement[]
 ): void {
   const log = opts.logger ?? nullLogger;
   const topology = parsed.topology;

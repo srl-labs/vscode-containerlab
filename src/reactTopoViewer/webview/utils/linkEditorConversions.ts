@@ -45,7 +45,7 @@ function getMap(
 }
 
 /**
- * Converts raw Cytoscape edge data to LinkEditorData.
+ * Converts raw Edge data to LinkEditorData.
  */
 export function convertToLinkEditorData(
   rawData: Record<string, unknown> | null

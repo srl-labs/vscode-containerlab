@@ -29,11 +29,11 @@ export { SELECTION_COLOR, DEFAULT_ICON_COLOR } from "./types";
 // Conversion utilities
 export {
   ROLE_SVG_MAP,
-  cyElementToRFNode,
-  cyElementToRFEdge,
+  parsedElementToRFNode,
+  parsedElementToRFEdge,
   convertElements,
-  rfNodeToCyElement,
-  rfEdgeToCyElement,
+  rfNodeToParsedElement,
+  rfEdgeToParsedElement,
   convertToElements
 } from "./conversion";
 
