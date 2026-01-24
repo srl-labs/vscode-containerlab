@@ -1,4 +1,5 @@
-import type { CyElement, EdgeAnnotation } from "../../shared/types/topology";
+import type { EdgeAnnotation } from "../../shared/types/topology";
+import type { TopoEdge } from "../../shared/types/graph";
 
 import { DEFAULT_ENDPOINT_LABEL_OFFSET, parseEndpointLabelOffset } from "./endpointLabelOffset";
 
@@ -27,16 +28,15 @@ function buildEdgeKey(identity: EdgeIdentity): string | null {
   return `${identity.source}|${sourceEndpoint}|${identity.target}|${targetEndpoint}`;
 }
 
-function getEdgeIdentityFromElement(element: CyElement): EdgeIdentity | null {
-  if (element.group !== "edges") return null;
-  const data = element.data as Record<string, unknown>;
-  const id = typeof data.id === "string" ? data.id : undefined;
-  const source = typeof data.source === "string" ? data.source : undefined;
-  const target = typeof data.target === "string" ? data.target : undefined;
-  const sourceEndpoint = typeof data.sourceEndpoint === "string" ? data.sourceEndpoint : undefined;
-  const targetEndpoint = typeof data.targetEndpoint === "string" ? data.targetEndpoint : undefined;
-  if (!id && !source && !target) return null;
-  return { id, source, target, sourceEndpoint, targetEndpoint };
+/**
+ * Extract edge identity from a ReactFlow edge
+ */
+function getEdgeIdentityFromEdge(edge: TopoEdge): EdgeIdentity | null {
+  const data = edge.data as Record<string, unknown> | undefined;
+  const sourceEndpoint = typeof data?.sourceEndpoint === "string" ? data.sourceEndpoint : undefined;
+  const targetEndpoint = typeof data?.targetEndpoint === "string" ? data.targetEndpoint : undefined;
+  if (!edge.id && !edge.source && !edge.target) return null;
+  return { id: edge.id, source: edge.source, target: edge.target, sourceEndpoint, targetEndpoint };
 }
 
 export function buildEdgeAnnotationLookup(
@@ -60,15 +60,15 @@ export function buildEdgeAnnotationLookup(
 
 export function pruneEdgeAnnotations(
   annotations: EdgeAnnotation[] | undefined,
-  elements: CyElement[] | undefined
+  edges: TopoEdge[] | undefined
 ): EdgeAnnotation[] {
   if (!annotations || annotations.length === 0) return [];
-  if (!elements) return annotations;
+  if (!edges) return annotations;
   const edgeKeys = new Set<string>();
   const edgeIds = new Set<string>();
 
-  elements.forEach((element) => {
-    const identity = getEdgeIdentityFromElement(element);
+  edges.forEach((edge) => {
+    const identity = getEdgeIdentityFromEdge(edge);
     if (!identity) return;
     if (identity.id) edgeIds.add(identity.id);
     const key = buildEdgeKey(identity);

@@ -10,14 +10,14 @@
  * Clipboard is handled locally by useUnifiedClipboard (React refs).
  */
 
-import type { CustomNodeTemplate } from '../../src/reactTopoViewer/webview/context/TopoViewerContext';
+import type { CustomNodeTemplate } from "../../src/reactTopoViewer/webview/context/TopoViewerContext";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type TopoMode = 'edit' | 'view';
-export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
+export type TopoMode = "edit" | "view";
+export type DeploymentState = "deployed" | "undeployed" | "unknown";
 
 export interface DevState {
   /** Currently loaded topology file path */
@@ -57,8 +57,8 @@ export class DevStateManager {
     this.state = {
       currentFilePath: null,
       customNodes: [],
-      mode: 'edit',
-      deploymentState: 'undeployed',
+      mode: "edit",
+      deploymentState: "undeployed",
       ...initialState
     };
   }
@@ -81,8 +81,8 @@ export class DevStateManager {
 
   /** Get default custom node name (from node with setDefault: true) */
   getDefaultCustomNode(): string {
-    const defaultNode = this.state.customNodes.find(n => n.setDefault === true);
-    return defaultNode?.name || '';
+    const defaultNode = this.state.customNodes.find((n) => n.setDefault === true);
+    return defaultNode?.name || "";
   }
 
   getMode(): TopoMode {
@@ -127,7 +127,7 @@ export class DevStateManager {
 
     // If setDefault is true, clear setDefault on all other nodes first
     if (data.setDefault) {
-      nodes = nodes.map(n => ({ ...n, setDefault: false }));
+      nodes = nodes.map((n) => ({ ...n, setDefault: false }));
     }
 
     // Remove oldName from data before storing
@@ -135,7 +135,7 @@ export class DevStateManager {
 
     if (oldName) {
       // Update existing node (find by oldName)
-      const idx = nodes.findIndex(n => n.name === oldName);
+      const idx = nodes.findIndex((n) => n.name === oldName);
       if (idx >= 0) {
         nodes[idx] = nodeData;
       } else {
@@ -143,7 +143,7 @@ export class DevStateManager {
       }
     } else {
       // Add new or update existing (find by name)
-      const idx = nodes.findIndex(n => n.name === data.name);
+      const idx = nodes.findIndex((n) => n.name === data.name);
       if (idx >= 0) {
         nodes[idx] = nodeData;
       } else {
@@ -157,7 +157,7 @@ export class DevStateManager {
 
   /** Set a node as default (updates setDefault flag on all nodes) */
   setDefaultCustomNodeByName(name: string): void {
-    const nodes = this.state.customNodes.map(n => ({
+    const nodes = this.state.customNodes.map((n) => ({
       ...n,
       setDefault: n.name === name
     }));
@@ -167,7 +167,7 @@ export class DevStateManager {
 
   /** Delete a custom node template by name */
   deleteCustomNode(name: string): void {
-    const nodes = this.state.customNodes.filter(n => n.name !== name);
+    const nodes = this.state.customNodes.filter((n) => n.name !== name);
     this.state = { ...this.state, customNodes: nodes };
     this.notify();
   }
@@ -206,8 +206,8 @@ export class DevStateManager {
     this.state = {
       currentFilePath: null,
       customNodes: [],
-      mode: 'edit',
-      deploymentState: 'undeployed'
+      mode: "edit",
+      deploymentState: "undeployed"
     };
     this.notify();
   }

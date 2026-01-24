@@ -8,8 +8,14 @@ import React from "react";
 import type { Core as CyCore } from "cytoscape";
 
 import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
+import type { CyElement } from "../shared/types/topology";
 
 import type { CytoscapeCanvasRef } from "./components/canvas/CytoscapeCanvas";
+import {
+  convertToElements,
+  cyElementToRFNode,
+  cyElementToRFEdge
+} from "./components/react-flow-canvas/conversion";
 import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
 import { UndoRedoProvider, useUndoRedoContext } from "./context/UndoRedoContext";
 import {
@@ -147,6 +153,26 @@ const AppContent: React.FC<{
     [dispatch]
   );
 
+  // Adapter functions to bridge CyElement-based hooks with TopoNode/TopoEdge actions
+  // These convert CyElement to ReactFlow format before calling the action
+  const addNodeFromCyElement = React.useCallback(
+    (element: CyElement) => {
+      if (element.group !== "nodes") return;
+      const rfNode = cyElementToRFNode(element);
+      addNode(rfNode as import("../shared/types/graph").TopoNode);
+    },
+    [addNode]
+  );
+
+  const addEdgeFromCyElement = React.useCallback(
+    (element: CyElement) => {
+      if (element.group !== "edges") return;
+      const rfEdge = cyElementToRFEdge(element);
+      addEdge(rfEdge as import("../shared/types/graph").TopoEdge);
+    },
+    [addEdge]
+  );
+
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);
   useEndpointLabelOffset(cyInstance, {
     globalEnabled: state.endpointLabelOffsetEnabled,
@@ -159,22 +185,33 @@ const AppContent: React.FC<{
     [state.edgeAnnotations]
   );
 
+  // Convert nodes/edges to CyElement format for CytoscapeCanvas
+  // This is a bridge during the migration from Cytoscape to ReactFlow
+  const elements = React.useMemo((): CyElement[] => {
+    return convertToElements(
+      state.nodes as import("@xyflow/react").Node[],
+      state.edges as import("@xyflow/react").Edge[]
+    );
+  }, [state.nodes, state.edges]);
+
   // Filter elements based on showDummyLinks setting
   // When disabled, hide nodes starting with "dummy" and edges connected to them
   const filteredElements = React.useMemo(() => {
     if (state.showDummyLinks) {
-      return state.elements;
+      return elements;
     }
 
     // Identify dummy nodes (IDs starting with "dummy")
     const dummyNodeIds = new Set(
-      state.elements
-        .filter((el) => el.group === "nodes" && (el.data?.id as string)?.startsWith("dummy"))
-        .map((el) => el.data?.id as string)
+      elements
+        .filter(
+          (el: CyElement) => el.group === "nodes" && (el.data?.id as string)?.startsWith("dummy")
+        )
+        .map((el: CyElement) => el.data?.id as string)
     );
 
     // Filter out dummy nodes and edges connected to them
-    return state.elements.filter((el) => {
+    return elements.filter((el: CyElement) => {
       if (el.group === "nodes") {
         return !dummyNodeIds.has(el.data?.id as string);
       }
@@ -184,14 +221,14 @@ const AppContent: React.FC<{
       }
       return true;
     });
-  }, [state.elements, state.showDummyLinks]);
+  }, [elements, state.showDummyLinks]);
 
   // Selection and editing data
   const { selectedNodeData, selectedLinkData } = useSelectionData(
     cytoscapeRef,
     state.selectedNode,
     state.selectedEdge,
-    state.elements
+    elements
   );
   const { selectedNodeData: editingNodeRawData } = useSelectionData(
     cytoscapeRef,
@@ -291,8 +328,8 @@ const AppContent: React.FC<{
     recordPropertyEdit
   } = useGraphHandlersWithContext({
     cyInstance,
-    addNode,
-    addEdge,
+    addNode: addNodeFromCyElement,
+    addEdge: addEdgeFromCyElement,
     menuHandlers,
     edgeAnnotationHandlers: {
       edgeAnnotations: state.edgeAnnotations,
@@ -371,11 +408,11 @@ const AppContent: React.FC<{
       isLocked: state.isLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
-      elements: state.elements
+      elements
     },
     onEdgeCreated: handleEdgeCreated,
     onNodeCreated: handleNodeCreatedCallback,
-    addNode,
+    addNode: addNodeFromCyElement,
     onNewCustomNode: customNodeCommands.onNewCustomNode
   });
 
@@ -392,7 +429,7 @@ const AppContent: React.FC<{
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
     editNetwork,
     groups: annotations.groups,
-    elements: state.elements,
+    elements,
     setLayout: layoutControls.setLayout,
     setGeoMode: layoutControls.setGeoMode,
     isGeoLayout: layoutControls.isGeoLayout,
@@ -634,7 +671,7 @@ const AppContent: React.FC<{
             cy: cyInstance,
             onClose: () => setShowBulkLinkPanel(false),
             recordGraphChanges,
-            addEdge
+            addEdge: addEdgeFromCyElement
           }}
           freeTextEditor={{
             isVisible: !!annotations.editingTextAnnotation,

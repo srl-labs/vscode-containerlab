@@ -2,9 +2,13 @@
  * Shared message types between extension and webview
  */
 
-// Re-export CyElement from topology.ts (single source of truth)
+// Re-export CyElement from topology.ts (for backwards compatibility)
 import { CyElement, type TopologyAnnotations, type EdgeAnnotation } from "./topology";
 export { CyElement };
+
+// Re-export ReactFlow types from graph.ts (new format)
+import type { TopoNode, TopoEdge, TopologyData } from "./graph";
+export type { TopoNode, TopoEdge, TopologyData };
 
 /**
  * Base message interface for all messages
@@ -47,7 +51,8 @@ export interface PushMessage extends BaseMessage {
 export interface TopologyDataMessage extends PushMessage {
   type: "topology-data";
   data: {
-    elements: CyElement[];
+    nodes: TopoNode[];
+    edges: TopoEdge[];
     labName: string;
     mode: "edit" | "view";
     viewerSettings?: TopologyAnnotations["viewerSettings"];

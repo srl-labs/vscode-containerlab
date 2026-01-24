@@ -9,14 +9,14 @@
 // Types
 // ============================================================================
 
-export type LatencyProfile = 'instant' | 'fast' | 'normal' | 'slow';
+export type LatencyProfile = "instant" | "fast" | "normal" | "slow";
 
 export type OperationType =
-  | 'request'      // POST/RESPONSE async requests
-  | 'command'      // Fire-and-forget commands
-  | 'lifecycle'    // Deploy/destroy operations
-  | 'editor'       // Node/link editor saves
-  | 'annotation';  // Annotation saves
+  | "request" // POST/RESPONSE async requests
+  | "command" // Fire-and-forget commands
+  | "lifecycle" // Deploy/destroy operations
+  | "editor" // Node/link editor saves
+  | "annotation"; // Annotation saves
 
 interface LatencyConfig {
   request: number;
@@ -77,7 +77,7 @@ export class LatencySimulator {
   private listeners: Set<(profile: LatencyProfile) => void> = new Set();
 
   constructor(config: LatencySimulatorConfig = {}) {
-    this.profile = config.profile ?? 'fast';
+    this.profile = config.profile ?? "fast";
     this.jitter = config.jitter ?? 0.2;
     this.verbose = config.verbose ?? false;
   }
@@ -96,7 +96,7 @@ export class LatencySimulator {
     this.profile = profile;
     this.notifyListeners();
     if (this.verbose) {
-      console.log(`%c[Latency] Profile set to: ${profile}`, 'color: #9C27B0;');
+      console.log(`%c[Latency] Profile set to: ${profile}`, "color: #9C27B0;");
     }
   }
 
@@ -145,22 +145,16 @@ export class LatencySimulator {
     if (ms === 0) return;
 
     if (this.verbose) {
-      console.log(
-        `%c[Latency] Simulating ${ms}ms delay for: ${operation}`,
-        'color: #9C27B0;'
-      );
+      console.log(`%c[Latency] Simulating ${ms}ms delay for: ${operation}`, "color: #9C27B0;");
     }
 
-    await new Promise(resolve => setTimeout(resolve, ms));
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
    * Wrap a function with simulated latency
    */
-  async simulate<T>(
-    operation: OperationType,
-    fn: () => T | Promise<T>
-  ): Promise<T> {
+  async simulate<T>(operation: OperationType, fn: () => T | Promise<T>): Promise<T> {
     await this.delay(operation);
     return fn();
   }
@@ -169,10 +163,7 @@ export class LatencySimulator {
    * Wrap a callback with simulated latency
    * Useful for setTimeout-style patterns
    */
-  simulateCallback(
-    operation: OperationType,
-    callback: () => void
-  ): void {
+  simulateCallback(operation: OperationType, callback: () => void): void {
     const delay = this.getDelay(operation);
     setTimeout(callback, delay);
   }
@@ -193,7 +184,7 @@ export class LatencySimulator {
 
   /** Get all profile names */
   static getProfiles(): LatencyProfile[] {
-    return ['instant', 'fast', 'normal', 'slow'];
+    return ["instant", "fast", "normal", "slow"];
   }
 
   /** Get config for a profile */

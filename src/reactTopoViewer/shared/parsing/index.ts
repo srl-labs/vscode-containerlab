@@ -36,12 +36,19 @@
  */
 
 // Main parser API
-export { TopologyParser, parseTopology, parseTopologyForEditor } from "./TopologyParser";
+export {
+  TopologyParser,
+  parseTopology,
+  parseTopologyForEditor,
+  parseTopologyToReactFlow,
+  parseTopologyForEditorRF
+} from "./TopologyParser";
 
 // Core types
 export type {
   ParseOptions,
   ParseResult,
+  ParseResultRF,
   ContainerDataProvider,
   ContainerInfo,
   InterfaceInfo,
@@ -50,7 +57,8 @@ export type {
   GraphLabelMigration,
   NodeBuildContext,
   EdgeBuildContext,
-  NodeRole
+  NodeRole,
+  TopologyData
 } from "./types";
 
 // Re-export topology types for convenience

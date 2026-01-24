@@ -13,32 +13,36 @@
  * - Loads default topology BEFORE React renders (no placeholder state)
  * - Switching topologies triggers a FULL re-render for clean state reset
  */
-import { createRoot, type Root as ReactRoot } from 'react-dom/client';
-import { App } from '@webview/App';
-import { TopoViewerProvider } from '@webview/context/TopoViewerContext';
-import type { CustomNodeTemplate } from '@shared/types/editors';
-import '@webview/styles/tailwind.css';
+import { createRoot, type Root as ReactRoot } from "react-dom/client";
+import { App } from "@webview/App";
+import { TopoViewerProvider } from "@webview/context/TopoViewerContext";
+import type { CustomNodeTemplate } from "@shared/types/editors";
+import "@webview/styles/tailwind.css";
 
 // File system adapter for dev server
-import { HttpFsAdapter } from '../src/reactTopoViewer/webview/adapters/HttpFsAdapter';
-import { initializeServices, getTopologyIO, getAnnotationsIO } from '../src/reactTopoViewer/webview/services';
-import { TopologyParser } from '../src/reactTopoViewer/shared/parsing';
-import type { TopologyAnnotations } from '../src/reactTopoViewer/shared/types/topology';
+import { HttpFsAdapter } from "../src/reactTopoViewer/webview/adapters/HttpFsAdapter";
+import {
+  initializeServices,
+  getTopologyIO,
+  getAnnotationsIO
+} from "../src/reactTopoViewer/webview/services";
+import { TopologyParser, parseTopologyToReactFlow } from "../src/reactTopoViewer/shared/parsing";
+import type { TopologyAnnotations } from "../src/reactTopoViewer/shared/types/topology";
 
 // Mock state for mode/deployment (not file-based)
-import { DevStateManager } from './mock/DevState';
-import { LatencySimulator } from './mock/LatencySimulator';
+import { DevStateManager } from "./mock/DevState";
+import { LatencySimulator } from "./mock/LatencySimulator";
 
 // Mock data for initial state
-import { sampleCustomNodes, sampleCustomIcons } from './mockData';
-import type { CustomIconInfo } from '@shared/types/icons';
+import { sampleCustomNodes, sampleCustomIcons } from "./mockData";
+import type { CustomIconInfo } from "@shared/types/icons";
 
 // Schema parsing - import JSON directly and use shared parser
-import clabSchema from '../schema/clab.schema.json';
-import { parseSchemaData } from '@shared/schema';
+import clabSchema from "../schema/clab.schema.json";
+import { parseSchemaData } from "@shared/schema";
 
 // Types
-import type { SchemaData } from '@shared/schema';
+import type { SchemaData } from "@shared/schema";
 
 // ============================================================================
 // Session Management
@@ -49,13 +53,13 @@ import type { SchemaData } from '@shared/schema';
  */
 function getSessionId(): string | null {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('sessionId');
+  return urlParams.get("sessionId");
 }
 
 // Initialize session ID early
 const sessionId = getSessionId();
 if (sessionId) {
-  console.log(`%c[Dev] Session ID: ${sessionId}`, 'color: #9C27B0;');
+  console.log(`%c[Dev] Session ID: ${sessionId}`, "color: #9C27B0;");
 }
 
 // ============================================================================
@@ -90,7 +94,10 @@ function isInternalUpdate(filename: string): boolean {
 
   const elapsed = Date.now() - writeTime;
   if (elapsed < INTERNAL_UPDATE_WINDOW_MS) {
-    console.log(`%c[Dev] Ignoring internal update for ${filename} (wrote ${elapsed}ms ago)`, 'color: #9E9E9E;');
+    console.log(
+      `%c[Dev] Ignoring internal update for ${filename} (wrote ${elapsed}ms ago)`,
+      "color: #9E9E9E;"
+    );
     return true;
   }
   return false;
@@ -101,7 +108,7 @@ function isInternalUpdate(filename: string): boolean {
 // ============================================================================
 
 // Create file system adapter for dev server
-const baseFsAdapter = new HttpFsAdapter('', sessionId);
+const baseFsAdapter = new HttpFsAdapter("", sessionId);
 
 // Wrap the fsAdapter to track internal writes (for live update filtering)
 const fsAdapter = {
@@ -109,7 +116,7 @@ const fsAdapter = {
   readFile: baseFsAdapter.readFile.bind(baseFsAdapter),
   writeFile: async (filePath: string, content: string): Promise<void> => {
     // Mark this file as an internal write before writing
-    const filename = filePath.split('/').pop() || '';
+    const filename = filePath.split("/").pop() || "";
     markFileAsInternalWrite(filename);
     return baseFsAdapter.writeFile(filePath, content);
   },
@@ -118,7 +125,7 @@ const fsAdapter = {
   dirname: baseFsAdapter.dirname,
   basename: baseFsAdapter.basename,
   join: baseFsAdapter.join,
-  subscribeToChanges: baseFsAdapter.subscribeToChanges.bind(baseFsAdapter),
+  subscribeToChanges: baseFsAdapter.subscribeToChanges.bind(baseFsAdapter)
 };
 
 // Initialize the I/O services (TopologyIO, AnnotationsIO)
@@ -129,13 +136,13 @@ initializeServices(fsAdapter as HttpFsAdapter, { verbose: true });
 // ============================================================================
 
 const stateManager = new DevStateManager({
-  mode: 'edit',
-  deploymentState: 'undeployed',
-  customNodes: sampleCustomNodes,
+  mode: "edit",
+  deploymentState: "undeployed",
+  customNodes: sampleCustomNodes
 });
 
 const latencySimulator = new LatencySimulator({
-  profile: 'fast',
+  profile: "fast",
   jitter: 0.2,
   verbose: false
 });
@@ -151,14 +158,14 @@ const schemaData = parseSchemaData(clabSchema as Record<string, unknown>);
 
 // Docker images for dropdowns
 const dockerImages = [
-  'ghcr.io/nokia/srlinux:latest',
-  'ghcr.io/nokia/srlinux:24.10.1',
-  'alpine:latest',
-  'ubuntu:latest'
+  "ghcr.io/nokia/srlinux:latest",
+  "ghcr.io/nokia/srlinux:24.10.1",
+  "alpine:latest",
+  "ubuntu:latest"
 ];
 
 // Default topology path
-const TOPOLOGIES_DIR = './dev/topologies';
+const TOPOLOGIES_DIR = "./dev/topologies";
 const DEFAULT_TOPOLOGY = `${TOPOLOGIES_DIR}/simple.clab.yml`;
 
 // ============================================================================
@@ -166,9 +173,10 @@ const DEFAULT_TOPOLOGY = `${TOPOLOGIES_DIR}/simple.clab.yml`;
 // ============================================================================
 
 interface InitialData {
-  elements: unknown[];
+  nodes: unknown[];
+  edges: unknown[];
   labName: string;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   deploymentState: string;
   isLocked: boolean;
   yamlFilePath: string;
@@ -183,8 +191,8 @@ interface InitialData {
   nodeAnnotations: unknown[];
   cloudNodeAnnotations: unknown[];
   networkNodeAnnotations: unknown[];
-  edgeAnnotations?: TopologyAnnotations['edgeAnnotations'];
-  viewerSettings?: TopologyAnnotations['viewerSettings'];
+  edgeAnnotations?: TopologyAnnotations["edgeAnnotations"];
+  viewerSettings?: TopologyAnnotations["viewerSettings"];
 }
 
 // ============================================================================
@@ -202,8 +210,8 @@ async function buildInitialData(filePath: string): Promise<InitialData> {
   const annotationsIO = getAnnotationsIO();
   const annotations = await annotationsIO.loadAnnotations(filePath);
 
-  // Parse YAML → Cytoscape elements
-  const parseResult = TopologyParser.parse(yamlContent, {
+  // Parse YAML → ReactFlow nodes/edges
+  const parseResult = parseTopologyToReactFlow(yamlContent, {
     annotations: annotations as TopologyAnnotations
   });
 
@@ -216,10 +224,11 @@ async function buildInitialData(filePath: string): Promise<InitialData> {
   stateManager.setCurrentFilePath(filePath);
 
   return {
-    elements: parseResult.elements,
+    nodes: parseResult.topology.nodes,
+    edges: parseResult.topology.edges,
     labName: parseResult.labName,
-    mode: 'edit',
-    deploymentState: 'undeployed',
+    mode: "edit",
+    deploymentState: "undeployed",
     isLocked: false,
     yamlFilePath: filePath,
     schemaData,
@@ -255,9 +264,9 @@ function renderApp(initialData: InitialData): void {
   (window as unknown as Record<string, unknown>).__SCHEMA_DATA__ = initialData.schemaData;
   (window as unknown as Record<string, unknown>).__DOCKER_IMAGES__ = initialData.dockerImages;
 
-  const container = document.getElementById('root');
+  const container = document.getElementById("root");
   if (!container) {
-    throw new Error('Root element not found');
+    throw new Error("Root element not found");
   }
 
   // Create root only once
@@ -284,19 +293,19 @@ function renderApp(initialData: InitialData): void {
  * Load a topology file and fully re-initialize React (clean state)
  */
 async function loadTopologyFile(filePath: string): Promise<void> {
-  console.log(`%c[Dev] Loading topology: ${filePath}`, 'color: #2196F3;');
+  console.log(`%c[Dev] Loading topology: ${filePath}`, "color: #2196F3;");
 
   try {
     const initialData = await buildInitialData(filePath);
     renderApp(initialData);
 
     console.log(
-      `%c[Dev] Loaded ${initialData.labName}: ${initialData.elements.length} elements`,
-      'color: #4CAF50;'
+      `%c[Dev] Loaded ${initialData.labName}: ${initialData.nodes.length} nodes, ${initialData.edges.length} edges`,
+      "color: #4CAF50;"
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`%c[Dev] Failed to load topology: ${message}`, 'color: #f44336;');
+    console.error(`%c[Dev] Failed to load topology: ${message}`, "color: #f44336;");
     throw error;
   }
 }
@@ -304,12 +313,14 @@ async function loadTopologyFile(filePath: string): Promise<void> {
 /**
  * List available topology files
  */
-async function listTopologyFiles(): Promise<Array<{ filename: string; path: string; hasAnnotations: boolean }>> {
+async function listTopologyFiles(): Promise<
+  Array<{ filename: string; path: string; hasAnnotations: boolean }>
+> {
   try {
-    const response = await fetch(sessionId ? `/files?sessionId=${sessionId}` : '/files');
+    const response = await fetch(sessionId ? `/files?sessionId=${sessionId}` : "/files");
     return await response.json();
   } catch (error) {
-    console.error('[Dev] Failed to list topology files:', error);
+    console.error("[Dev] Failed to list topology files:", error);
     return [];
   }
 }
@@ -318,17 +329,17 @@ async function listTopologyFiles(): Promise<Array<{ filename: string; path: stri
  * Reset files to original state
  */
 async function resetFiles(): Promise<void> {
-  console.log('%c[Dev] Resetting files...', 'color: #f44336;');
+  console.log("%c[Dev] Resetting files...", "color: #f44336;");
 
-  const url = sessionId ? `/api/reset?sessionId=${sessionId}` : '/api/reset';
-  const response = await fetch(url, { method: 'POST' });
+  const url = sessionId ? `/api/reset?sessionId=${sessionId}` : "/api/reset";
+  const response = await fetch(url, { method: "POST" });
   const result = await response.json();
 
   if (!result.success) {
-    throw new Error(result.error || 'Failed to reset files');
+    throw new Error(result.error || "Failed to reset files");
   }
 
-  console.log('%c[Dev] Files reset successfully', 'color: #4CAF50;');
+  console.log("%c[Dev] Files reset successfully", "color: #4CAF50;");
 
   // Reload current file if one is loaded
   if (currentFilePath) {
@@ -344,8 +355,8 @@ async function resetFiles(): Promise<void> {
 let splitViewPollInterval: ReturnType<typeof setInterval> | null = null;
 
 // Cache for change detection
-let lastYamlContent = '';
-let lastAnnotationsContent = '';
+let lastYamlContent = "";
+let lastAnnotationsContent = "";
 
 /**
  * Refresh split view content (called by polling)
@@ -353,8 +364,8 @@ let lastAnnotationsContent = '';
 async function refreshSplitViewContent(): Promise<void> {
   if (!currentFilePath) return;
 
-  const yamlContentEl = document.getElementById('yamlContent');
-  const annotationsContentEl = document.getElementById('annotationsContent');
+  const yamlContentEl = document.getElementById("yamlContent");
+  const annotationsContentEl = document.getElementById("annotationsContent");
 
   if (!yamlContentEl || !annotationsContentEl) return;
 
@@ -364,11 +375,11 @@ async function refreshSplitViewContent(): Promise<void> {
 
     // Load annotations content
     const annotationsPath = `${currentFilePath}.annotations.json`;
-    let annotationsContent = '{}';
+    let annotationsContent = "{}";
     try {
       annotationsContent = await fsAdapter.readFile(annotationsPath);
     } catch {
-      annotationsContent = '// No annotations file found';
+      annotationsContent = "// No annotations file found";
     }
 
     // Only update DOM if content changed (avoids flickering)
@@ -381,7 +392,7 @@ async function refreshSplitViewContent(): Promise<void> {
       lastAnnotationsContent = annotationsContent;
     }
   } catch (error) {
-    console.error('%c[Dev] Failed to refresh split view:', 'color: #f44336;', error);
+    console.error("%c[Dev] Failed to refresh split view:", "color: #f44336;", error);
   }
 }
 
@@ -389,22 +400,22 @@ async function refreshSplitViewContent(): Promise<void> {
  * Toggle the split view panel showing YAML and annotations files
  */
 async function toggleSplitView(): Promise<void> {
-  const panel = document.getElementById('splitViewPanel');
-  const root = document.getElementById('root');
-  const yamlContentEl = document.getElementById('yamlContent');
-  const annotationsContentEl = document.getElementById('annotationsContent');
-  const yamlLabelEl = document.getElementById('splitViewYamlLabel');
-  const annotLabelEl = document.getElementById('splitViewAnnotLabel');
-  const filePathEl = document.getElementById('splitViewFilePath');
+  const panel = document.getElementById("splitViewPanel");
+  const root = document.getElementById("root");
+  const yamlContentEl = document.getElementById("yamlContent");
+  const annotationsContentEl = document.getElementById("annotationsContent");
+  const yamlLabelEl = document.getElementById("splitViewYamlLabel");
+  const annotLabelEl = document.getElementById("splitViewAnnotLabel");
+  const filePathEl = document.getElementById("splitViewFilePath");
 
   if (!panel || !root) return;
 
-  const isOpen = panel.classList.contains('open');
+  const isOpen = panel.classList.contains("open");
 
   if (isOpen) {
     // Close split view
-    panel.classList.remove('open');
-    root.classList.remove('split-view-active');
+    panel.classList.remove("open");
+    root.classList.remove("split-view-active");
 
     // Stop polling
     if (splitViewPollInterval) {
@@ -412,11 +423,11 @@ async function toggleSplitView(): Promise<void> {
       splitViewPollInterval = null;
     }
 
-    console.log('%c[Dev] Split view closed', 'color: #9C27B0;');
+    console.log("%c[Dev] Split view closed", "color: #9C27B0;");
   } else {
     // Open split view and load files
     if (!currentFilePath) {
-      console.warn('%c[Dev] No file loaded, cannot open split view', 'color: #f44336;');
+      console.warn("%c[Dev] No file loaded, cannot open split view", "color: #f44336;");
       return;
     }
 
@@ -426,18 +437,21 @@ async function toggleSplitView(): Promise<void> {
 
       // Load annotations content
       const annotationsPath = `${currentFilePath}.annotations.json`;
-      let annotationsContent = '{}';
+      let annotationsContent = "{}";
       try {
         annotationsContent = await fsAdapter.readFile(annotationsPath);
       } catch {
-        annotationsContent = '// No annotations file found';
+        annotationsContent = "// No annotations file found";
       }
 
       // Update UI
       if (yamlContentEl) yamlContentEl.textContent = yamlContent;
       if (annotationsContentEl) annotationsContentEl.textContent = annotationsContent;
-      if (yamlLabelEl) yamlLabelEl.textContent = currentFilePath.split('/').pop() || 'topology.clab.yml';
-      if (annotLabelEl) annotLabelEl.textContent = (currentFilePath.split('/').pop() || 'topology') + '.annotations.json';
+      if (yamlLabelEl)
+        yamlLabelEl.textContent = currentFilePath.split("/").pop() || "topology.clab.yml";
+      if (annotLabelEl)
+        annotLabelEl.textContent =
+          (currentFilePath.split("/").pop() || "topology") + ".annotations.json";
       if (filePathEl) filePathEl.textContent = currentFilePath;
 
       // Cache for change detection
@@ -445,15 +459,15 @@ async function toggleSplitView(): Promise<void> {
       lastAnnotationsContent = annotationsContent;
 
       // Show split view
-      panel.classList.add('open');
-      root.classList.add('split-view-active');
+      panel.classList.add("open");
+      root.classList.add("split-view-active");
 
       // Start polling for live updates (every 500ms)
       splitViewPollInterval = setInterval(refreshSplitViewContent, 500);
 
-      console.log('%c[Dev] Split view opened (live updating)', 'color: #4CAF50;');
+      console.log("%c[Dev] Split view opened (live updating)", "color: #4CAF50;");
     } catch (error) {
-      console.error('%c[Dev] Failed to load files for split view:', 'color: #f44336;', error);
+      console.error("%c[Dev] Failed to load files for split view:", "color: #f44336;", error);
     }
   }
 }
@@ -466,111 +480,125 @@ async function toggleSplitView(): Promise<void> {
  * Broadcast custom nodes update to webview (matches production message format)
  */
 function broadcastCustomNodesUpdate(): void {
-  window.postMessage({
-    type: 'custom-nodes-updated',
-    customNodes: stateManager.getCustomNodes(),
-    defaultNode: stateManager.getDefaultCustomNode()
-  }, '*');
+  window.postMessage(
+    {
+      type: "custom-nodes-updated",
+      customNodes: stateManager.getCustomNodes(),
+      defaultNode: stateManager.getDefaultCustomNode()
+    },
+    "*"
+  );
 }
 
 // Minimal VS Code API mock for mode switching and custom nodes
 window.vscode = {
   postMessage: (data: unknown) => {
     const msg = data as Record<string, unknown>;
-    console.log('%c[vscode.postMessage]', 'color: #9C27B0;', msg.type || msg.command, msg);
+    console.log("%c[vscode.postMessage]", "color: #9C27B0;", msg.type || msg.command, msg);
 
     // Handle mode changes
-    if (msg.type === 'topo-switch-mode') {
+    if (msg.type === "topo-switch-mode") {
       const payload = msg.payload as { mode?: string; deploymentState?: string } | undefined;
       if (payload?.mode) {
-        stateManager.setMode(payload.mode as 'edit' | 'view');
+        stateManager.setMode(payload.mode as "edit" | "view");
       }
       if (payload?.deploymentState) {
-        stateManager.setDeploymentState(payload.deploymentState as 'deployed' | 'undeployed' | 'unknown');
+        stateManager.setDeploymentState(
+          payload.deploymentState as "deployed" | "undeployed" | "unknown"
+        );
       }
 
       // Broadcast mode change
-      window.postMessage({
-        type: 'topo-mode-changed',
-        data: {
-          mode: stateManager.getMode(),
-          deploymentState: stateManager.getDeploymentState()
-        }
-      }, '*');
+      window.postMessage(
+        {
+          type: "topo-mode-changed",
+          data: {
+            mode: stateManager.getMode(),
+            deploymentState: stateManager.getDeploymentState()
+          }
+        },
+        "*"
+      );
     }
 
     // Handle lifecycle commands (mock)
-    if (msg.type === 'POST') {
+    if (msg.type === "POST") {
       const endpointName = msg.endpointName as string;
-      if (endpointName?.includes('deploy') || endpointName?.includes('destroy')) {
-        console.log(`%c[Mock] Lifecycle: ${endpointName}`, 'color: #FF9800;');
+      if (endpointName?.includes("deploy") || endpointName?.includes("destroy")) {
+        console.log(`%c[Mock] Lifecycle: ${endpointName}`, "color: #FF9800;");
 
         // Simulate deployment state change
-        latencySimulator.simulateCallback('lifecycle', () => {
-          const newState = endpointName.includes('destroy') ? 'undeployed' : 'deployed';
-          const newMode = newState === 'deployed' ? 'view' : 'edit';
+        latencySimulator.simulateCallback("lifecycle", () => {
+          const newState = endpointName.includes("destroy") ? "undeployed" : "deployed";
+          const newMode = newState === "deployed" ? "view" : "edit";
 
           stateManager.setDeploymentState(newState);
           stateManager.setMode(newMode);
 
-          window.postMessage({
-            type: 'topo-mode-changed',
-            data: {
-              mode: newMode,
-              deploymentState: newState
-            }
-          }, '*');
+          window.postMessage(
+            {
+              type: "topo-mode-changed",
+              data: {
+                mode: newMode,
+                deploymentState: newState
+              }
+            },
+            "*"
+          );
         });
       }
     }
 
     // Handle custom node commands (matches production behavior)
-    if (msg.command === 'save-custom-node') {
+    if (msg.command === "save-custom-node") {
       if (msg.name) {
         stateManager.saveCustomNode(msg as CustomNodeTemplate & { oldName?: string });
         broadcastCustomNodesUpdate();
-        console.log(`%c[Mock] Custom node saved: ${msg.name}`, 'color: #4CAF50;');
+        console.log(`%c[Mock] Custom node saved: ${msg.name}`, "color: #4CAF50;");
       }
     }
 
-    if (msg.command === 'delete-custom-node') {
+    if (msg.command === "delete-custom-node") {
       const name = msg.name as string;
       if (name) {
         stateManager.deleteCustomNode(name);
         broadcastCustomNodesUpdate();
-        console.log(`%c[Mock] Custom node deleted: ${name}`, 'color: #f44336;');
+        console.log(`%c[Mock] Custom node deleted: ${name}`, "color: #f44336;");
       }
     }
 
-    if (msg.command === 'set-default-custom-node') {
+    if (msg.command === "set-default-custom-node") {
       const name = msg.name as string;
       if (name) {
         stateManager.setDefaultCustomNodeByName(name);
         broadcastCustomNodesUpdate();
-        console.log(`%c[Mock] Custom node set as default: ${name}`, 'color: #2196F3;');
+        console.log(`%c[Mock] Custom node set as default: ${name}`, "color: #2196F3;");
       }
     }
 
     // Handle split view toggle from navbar
-    if (msg.command === 'topo-toggle-split-view') {
+    if (msg.command === "topo-toggle-split-view") {
       toggleSplitView();
     }
 
     // Handle icon commands (mock - icons are in-memory only)
-    if (msg.command === 'icon-upload') {
-      console.log('%c[Mock] Icon upload triggered (no-op in dev mode)', 'color: #FF9800;');
+    if (msg.command === "icon-upload") {
+      console.log("%c[Mock] Icon upload triggered (no-op in dev mode)", "color: #FF9800;");
       // In dev mode, icons are static from mockData
     }
 
-    if (msg.command === 'icon-delete') {
+    if (msg.command === "icon-delete") {
       const iconName = msg.iconName as string;
-      console.log(`%c[Mock] Icon delete: ${iconName} (no-op in dev mode)`, 'color: #FF9800;');
+      console.log(`%c[Mock] Icon delete: ${iconName} (no-op in dev mode)`, "color: #FF9800;");
       // In dev mode, icons are static from mockData
     }
 
-    if (msg.command === 'icon-reconcile') {
+    if (msg.command === "icon-reconcile") {
       const usedIcons = msg.usedIcons as string[];
-      console.log(`%c[Mock] Icon reconcile: ${usedIcons?.length || 0} icons in use`, 'color: #9E9E9E;');
+      console.log(
+        `%c[Mock] Icon reconcile: ${usedIcons?.length || 0} icons in use`,
+        "color: #9E9E9E;"
+      );
       // In dev mode, reconciliation is a no-op
     }
   }
@@ -585,14 +613,16 @@ window.vscode = {
 interface DevServerInterface {
   // File operations
   loadTopologyFile: (filePath: string) => Promise<void>;
-  listTopologyFiles: () => Promise<Array<{ filename: string; path: string; hasAnnotations: boolean }>>;
+  listTopologyFiles: () => Promise<
+    Array<{ filename: string; path: string; hasAnnotations: boolean }>
+  >;
   resetFiles: () => Promise<void>;
   getCurrentFile: () => string | null;
 
   // Mode and state
-  setMode: (mode: 'edit' | 'view') => void;
-  setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => void;
-  setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => void;
+  setMode: (mode: "edit" | "view") => void;
+  setDeploymentState: (state: "deployed" | "undeployed" | "unknown") => void;
+  setLatencyProfile: (profile: "instant" | "fast" | "normal" | "slow") => void;
 
   // Split view
   toggleSplitView: () => Promise<void>;
@@ -627,33 +657,39 @@ declare global {
   getCurrentFile: () => currentFilePath,
 
   // Mode and state
-  setMode: (mode: 'edit' | 'view') => {
+  setMode: (mode: "edit" | "view") => {
     stateManager.setMode(mode);
-    window.postMessage({
-      type: 'topo-mode-changed',
-      data: {
-        mode: mode,
-        deploymentState: stateManager.getDeploymentState()
-      }
-    }, '*');
-    console.log(`%c[Dev] Switched to ${mode} mode`, 'color: #2196F3;');
+    window.postMessage(
+      {
+        type: "topo-mode-changed",
+        data: {
+          mode: mode,
+          deploymentState: stateManager.getDeploymentState()
+        }
+      },
+      "*"
+    );
+    console.log(`%c[Dev] Switched to ${mode} mode`, "color: #2196F3;");
   },
 
-  setDeploymentState: (state: 'deployed' | 'undeployed' | 'unknown') => {
+  setDeploymentState: (state: "deployed" | "undeployed" | "unknown") => {
     stateManager.setDeploymentState(state);
-    window.postMessage({
-      type: 'topo-mode-changed',
-      data: {
-        mode: stateManager.getMode(),
-        deploymentState: state
-      }
-    }, '*');
-    console.log(`%c[Dev] Set deployment state to ${state}`, 'color: #2196F3;');
+    window.postMessage(
+      {
+        type: "topo-mode-changed",
+        data: {
+          mode: stateManager.getMode(),
+          deploymentState: state
+        }
+      },
+      "*"
+    );
+    console.log(`%c[Dev] Set deployment state to ${state}`, "color: #2196F3;");
   },
 
-  setLatencyProfile: (profile: 'instant' | 'fast' | 'normal' | 'slow') => {
+  setLatencyProfile: (profile: "instant" | "fast" | "normal" | "slow") => {
     latencySimulator.setProfile(profile);
-    console.log(`%c[Dev] Set latency profile to ${profile}`, 'color: #9C27B0;');
+    console.log(`%c[Dev] Set latency profile to ${profile}`, "color: #9C27B0;");
   },
 
   // Split view toggle
@@ -672,24 +708,24 @@ declare global {
 // ============================================================================
 
 console.log(
-  '%c[React TopoViewer - Dev Mode]',
-  'color: #E91E63; font-weight: bold; font-size: 14px;'
+  "%c[React TopoViewer - Dev Mode]",
+  "color: #E91E63; font-weight: bold; font-size: 14px;"
 );
-console.log('%cFile operations:', 'color: #4CAF50; font-weight: bold;');
+console.log("%cFile operations:", "color: #4CAF50; font-weight: bold;");
 console.log('  __DEV__.loadTopologyFile("/path/to/file.clab.yml")');
-console.log('  __DEV__.listTopologyFiles()');
-console.log('  __DEV__.resetFiles()');
-console.log('  __DEV__.getCurrentFile()');
-console.log('');
-console.log('%cMode and state:', 'color: #2196F3; font-weight: bold;');
+console.log("  __DEV__.listTopologyFiles()");
+console.log("  __DEV__.resetFiles()");
+console.log("  __DEV__.getCurrentFile()");
+console.log("");
+console.log("%cMode and state:", "color: #2196F3; font-weight: bold;");
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed")');
 console.log('  __DEV__.setLatencyProfile("instant" | "fast" | "normal" | "slow")');
-console.log('');
-console.log('%cServices (for debugging):', 'color: #9C27B0; font-weight: bold;');
-console.log('  __DEV__.getTopologyIO() - TopologyIO instance');
-console.log('  __DEV__.getAnnotationsIO() - AnnotationsIO instance');
-console.log('  __DEV__.fsAdapter - HttpFsAdapter instance');
+console.log("");
+console.log("%cServices (for debugging):", "color: #9C27B0; font-weight: bold;");
+console.log("  __DEV__.getTopologyIO() - TopologyIO instance");
+console.log("  __DEV__.getAnnotationsIO() - AnnotationsIO instance");
+console.log("  __DEV__.fsAdapter - HttpFsAdapter instance");
 
 // ============================================================================
 // Live File Updates (SSE-based)
@@ -711,14 +747,14 @@ function handleFileChange(changedPath: string): void {
   }
 
   // Only react to .clab.yml changes (not annotations)
-  if (!changedPath.endsWith('.clab.yml')) {
+  if (!changedPath.endsWith(".clab.yml")) {
     return;
   }
 
   // Check if the change affects our current file
-  const currentFilename = currentFilePath.split('/').pop() || '';
+  const currentFilename = currentFilePath.split("/").pop() || "";
   if (changedPath !== currentFilename) {
-    console.log(`%c[Dev] Ignoring change to different file: ${changedPath}`, 'color: #9E9E9E;');
+    console.log(`%c[Dev] Ignoring change to different file: ${changedPath}`, "color: #9E9E9E;");
     return;
   }
 
@@ -732,17 +768,17 @@ function handleFileChange(changedPath: string): void {
     if (isInternalUpdate(changedPath)) {
       return;
     }
-    console.log(`%c[Dev] Live update: reloading ${currentFilename}`, 'color: #FF9800;');
+    console.log(`%c[Dev] Live update: reloading ${currentFilename}`, "color: #FF9800;");
 
     // Notify webview of external file change (to clear undo history)
     // This mirrors what ReactTopoViewerProvider does in VS Code
-    window.postMessage({ type: 'external-file-change' }, '*');
+    window.postMessage({ type: "external-file-change" }, "*");
 
     try {
       await loadTopologyFile(currentFilePath!);
-      console.log('%c[Dev] Live update complete', 'color: #4CAF50;');
+      console.log("%c[Dev] Live update complete", "color: #4CAF50;");
     } catch (error) {
-      console.error('%c[Dev] Live update failed:', 'color: #f44336;', error);
+      console.error("%c[Dev] Live update failed:", "color: #f44336;", error);
     }
   }, FILE_CHANGE_DEBOUNCE_MS);
 }
@@ -754,7 +790,7 @@ function subscribeToFileChanges(): () => void {
   // Subscribe to SSE - works with or without sessionId
   // - With sessionId: receives test-specific file changes
   // - Without sessionId: receives disk file changes (dev mode)
-  console.log('%c[Dev] Subscribing to file changes via SSE...', 'color: #2196F3;');
+  console.log("%c[Dev] Subscribing to file changes via SSE...", "color: #2196F3;");
   return fsAdapter.subscribeToChanges(handleFileChange);
 }
 
@@ -771,20 +807,20 @@ function subscribeToFileChanges(): () => void {
  * This ensures the app starts with real data (not placeholders)
  */
 async function bootstrap(): Promise<void> {
-  console.log(`%c[Dev] Bootstrapping with: ${DEFAULT_TOPOLOGY}`, 'color: #9C27B0;');
+  console.log(`%c[Dev] Bootstrapping with: ${DEFAULT_TOPOLOGY}`, "color: #9C27B0;");
 
   try {
     const initialData = await buildInitialData(DEFAULT_TOPOLOGY);
     renderApp(initialData);
-    console.log(`%c[Dev] Ready: ${initialData.labName}`, 'color: #4CAF50;');
+    console.log(`%c[Dev] Ready: ${initialData.labName}`, "color: #4CAF50;");
 
     // Subscribe to file changes for live updates
     subscribeToFileChanges();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`%c[Dev] Bootstrap failed: ${message}`, 'color: #f44336;');
+    console.error(`%c[Dev] Bootstrap failed: ${message}`, "color: #f44336;");
     // Show error in UI
-    const container = document.getElementById('root');
+    const container = document.getElementById("root");
     if (container) {
       container.innerHTML = `<div style="color: red; padding: 20px;">
         <h2>Failed to load topology</h2>

@@ -10,9 +10,9 @@
  * - Falls back to disk for files not yet in session
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { FileSystemAdapter } from '../../src/reactTopoViewer/shared/io/types';
+import * as fs from "fs";
+import * as path from "path";
+import { FileSystemAdapter } from "../../src/reactTopoViewer/shared/io/types";
 
 /** Session storage maps */
 export interface SessionMaps {
@@ -32,11 +32,7 @@ export class SessionFsAdapter implements FileSystemAdapter {
   private diskBasePath: string;
   private sessionId: string;
 
-  constructor(
-    sessionId: string,
-    sessionMaps: SessionMaps,
-    diskBasePath: string
-  ) {
+  constructor(sessionId: string, sessionMaps: SessionMaps, diskBasePath: string) {
     this.sessionId = sessionId;
     this.diskBasePath = diskBasePath;
 
@@ -63,7 +59,7 @@ export class SessionFsAdapter implements FileSystemAdapter {
    * Check if path is an annotations file
    */
   private isAnnotationsFile(filePath: string): boolean {
-    return filePath.endsWith('.annotations.json');
+    return filePath.endsWith(".annotations.json");
   }
 
   /**
@@ -71,7 +67,7 @@ export class SessionFsAdapter implements FileSystemAdapter {
    */
   private getYamlFilename(annotationsPath: string): string {
     const filename = path.basename(annotationsPath);
-    return filename.replace('.annotations.json', '');
+    return filename.replace(".annotations.json", "");
   }
 
   async readFile(filePath: string): Promise<string> {
@@ -93,7 +89,7 @@ export class SessionFsAdapter implements FileSystemAdapter {
       // Try to load from disk into session
       const diskPath = path.join(this.diskBasePath, filename);
       try {
-        const content = await fs.promises.readFile(diskPath, 'utf8');
+        const content = await fs.promises.readFile(diskPath, "utf8");
         this.annotationsStorage.set(yamlFilename, content);
         return content;
       } catch {
@@ -109,7 +105,7 @@ export class SessionFsAdapter implements FileSystemAdapter {
       // Try to load from disk into session
       const diskPath = path.join(this.diskBasePath, filename);
       try {
-        const content = await fs.promises.readFile(diskPath, 'utf8');
+        const content = await fs.promises.readFile(diskPath, "utf8");
         this.yamlStorage.set(filename, content);
         return content;
       } catch {
@@ -221,18 +217,18 @@ export async function resetSession(
   // Copy disk files to session
   try {
     const files = await fs.promises.readdir(diskBasePath);
-    const yamlFiles = files.filter(f => f.endsWith('.clab.yml'));
+    const yamlFiles = files.filter((f) => f.endsWith(".clab.yml"));
 
     for (const filename of yamlFiles) {
       // Read YAML
       const yamlPath = path.join(diskBasePath, filename);
-      const yamlContent = await fs.promises.readFile(yamlPath, 'utf8');
+      const yamlContent = await fs.promises.readFile(yamlPath, "utf8");
       yamlMap.set(filename, yamlContent);
 
       // Read annotations if they exist
       const annotPath = path.join(diskBasePath, `${filename}.annotations.json`);
       try {
-        const annotContent = await fs.promises.readFile(annotPath, 'utf8');
+        const annotContent = await fs.promises.readFile(annotPath, "utf8");
         annotMap.set(filename, annotContent);
       } catch {
         // No annotations file - that's fine
@@ -252,6 +248,6 @@ export async function resetSession(
 export function createSessionMaps(): SessionMaps {
   return {
     yamlFiles: new Map(),
-    annotationFiles: new Map(),
+    annotationFiles: new Map()
   };
 }

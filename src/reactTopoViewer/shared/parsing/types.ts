@@ -11,9 +11,10 @@ import type {
   NodeAnnotation,
   InterfaceStatsPayload
 } from "../types/topology";
+import type { TopologyData } from "../types/graph";
 
 // Re-export commonly used types for convenience
-export type { ClabTopology, CyElement, TopologyAnnotations, NodeAnnotation };
+export type { ClabTopology, CyElement, TopologyAnnotations, NodeAnnotation, TopologyData };
 
 // ============================================================================
 // Parser Options and Results
@@ -34,11 +35,30 @@ export interface ParseOptions {
 }
 
 /**
- * Result from parsing a topology.
+ * Result from parsing a topology (legacy CyElement format).
  */
 export interface ParseResult {
   /** Cytoscape elements (nodes and edges) */
   elements: CyElement[];
+  /** Lab name from topology */
+  labName: string;
+  /** Container name prefix (e.g., "clab-labname") */
+  prefix: string;
+  /** Whether all nodes have preset positions from annotations */
+  isPresetLayout: boolean;
+  /** Interface pattern migrations that need to be persisted */
+  pendingMigrations: InterfacePatternMigration[];
+  /** Graph-label migrations detected (need YAML modification) */
+  graphLabelMigrations: GraphLabelMigration[];
+}
+
+/**
+ * Result from parsing a topology (ReactFlow format).
+ * Use this for new code instead of ParseResult.
+ */
+export interface ParseResultRF {
+  /** Topology data with nodes and edges in ReactFlow format */
+  topology: TopologyData;
   /** Lab name from topology */
   labName: string;
   /** Container name prefix (e.g., "clab-labname") */

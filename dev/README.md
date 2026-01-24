@@ -21,12 +21,12 @@ This opens `http://localhost:5173` in your browser with the React TopoViewer run
 
 Click the **⚙ gear button** (bottom-right) to open the settings panel:
 
-| Setting | Options | Description |
-|---------|---------|-------------|
-| **Topology** | Sample, Empty, Large (25), Large (100), Massive (1000) | Load different test topologies |
-| **Mode** | Edit, View | Switch between editor and viewer modes |
-| **Deployment State** | Deployed, Undeployed, Unknown | Simulate lab deployment status |
-| **Light Theme** | Toggle switch | Switch between dark/light themes |
+| Setting              | Options                                                | Description                            |
+| -------------------- | ------------------------------------------------------ | -------------------------------------- |
+| **Topology**         | Sample, Empty, Large (25), Large (100), Massive (1000) | Load different test topologies         |
+| **Mode**             | Edit, View                                             | Switch between editor and viewer modes |
+| **Deployment State** | Deployed, Undeployed, Unknown                          | Simulate lab deployment status         |
+| **Light Theme**      | Toggle switch                                          | Switch between dark/light themes       |
 
 The panel closes when clicking outside of it.
 
@@ -35,18 +35,18 @@ The panel closes when clicking outside of it.
 The same utilities are also available in the browser console:
 
 ```javascript
-__DEV__.loadTopology('sample')        // spine-leaf topology (6 nodes)
-__DEV__.loadTopology('empty')         // empty canvas
-__DEV__.loadTopology('large')         // 25-node grid
-__DEV__.loadTopology('large100')      // 100-node grid
-__DEV__.loadTopology('large1000')     // 1000-node grid
+__DEV__.loadTopology("sample"); // spine-leaf topology (6 nodes)
+__DEV__.loadTopology("empty"); // empty canvas
+__DEV__.loadTopology("large"); // 25-node grid
+__DEV__.loadTopology("large100"); // 100-node grid
+__DEV__.loadTopology("large1000"); // 1000-node grid
 
-__DEV__.setMode('edit')               // editor mode
-__DEV__.setMode('view')               // view-only mode
+__DEV__.setMode("edit"); // editor mode
+__DEV__.setMode("view"); // view-only mode
 
-__DEV__.setDeploymentState('deployed')
-__DEV__.setDeploymentState('undeployed')
-__DEV__.setDeploymentState('unknown')
+__DEV__.setDeploymentState("deployed");
+__DEV__.setDeploymentState("undeployed");
+__DEV__.setDeploymentState("unknown");
 ```
 
 ## UI Indicators
@@ -84,16 +84,20 @@ dev/
 ## Troubleshooting
 
 ### Blank screen with console errors
+
 Clear Vite cache and restart:
+
 ```bash
 rm -rf node_modules/.vite
 npm run dev
 ```
 
 ### Styles not updating
+
 Hard refresh: `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac)
 
 ### Mock API not receiving messages
+
 Check browser console - all `postMessage` calls are logged with green `[postMessage to Extension]` prefix.
 
 ## Notes
