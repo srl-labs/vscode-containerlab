@@ -80,6 +80,7 @@ const AppContent: React.FC<{
   mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   shapeLayerNode: HTMLElement | null;
   textLayerNode: HTMLElement | null;
+  onInit: (instance: ReactFlowInstance) => void;
 }> = ({
   floatingPanelRef,
   pendingMembershipChangesRef,
@@ -88,7 +89,8 @@ const AppContent: React.FC<{
   layoutControls,
   mapLibreState,
   shapeLayerNode,
-  textLayerNode
+  textLayerNode,
+  onInit
 }) => {
   const { state, dispatch } = useTopoViewerState();
   const {
@@ -503,6 +505,14 @@ const AppContent: React.FC<{
 
   const easterEgg = useEasterEgg({});
 
+  // Annotation handlers for ReactFlowCanvas (node-to-group reparenting)
+  const canvasAnnotationHandlers = React.useMemo(
+    () => ({
+      onNodeDropped: annotations.onNodeDropped
+    }),
+    [annotations.onNodeDropped]
+  );
+
   // Annotation layer props
   const { groupLayerProps, freeTextLayerProps, freeShapeLayerProps } = useAnnotationLayerProps({
     annotations,
@@ -556,6 +566,10 @@ const AppContent: React.FC<{
           onMoveComplete={(before, after) => {
             undoRedo.pushAction({ type: "move", before, after });
           }}
+          onInit={onInit}
+          annotationHandlers={
+            canvasAnnotationHandlers as import("./components/react-flow-canvas/types").AnnotationHandlers
+          }
         />
         <AnnotationLayers
           groupLayerProps={groupLayerProps}
@@ -704,8 +718,9 @@ export const App: React.FC = () => {
   // ReactFlow canvas ref and instance
   const reactFlowRef = React.useRef<ReactFlowCanvasRef>(null);
 
-  // Get ReactFlow instance from the canvas ref
-  const rfInstance = reactFlowRef.current?.getReactFlowInstance() ?? null;
+  // Track ReactFlow instance in state so updates trigger re-renders
+  // This ensures ViewportProvider gets the instance after initialization
+  const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance | null>(null);
 
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
@@ -747,6 +762,7 @@ export const App: React.FC = () => {
             mapLibreState={mapLibreState}
             shapeLayerNode={shapeLayerNode}
             textLayerNode={textLayerNode}
+            onInit={setRfInstance}
           />
         </AnnotationProvider>
       </UndoRedoProvider>

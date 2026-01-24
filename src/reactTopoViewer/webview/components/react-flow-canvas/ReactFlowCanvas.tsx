@@ -312,7 +312,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onNodeDelete,
       onEdgeDelete,
       onMoveComplete,
-      linkLabelMode = "show-all"
+      linkLabelMode = "show-all",
+      onInit: onInitProp
     },
     ref
   ) => {
@@ -475,6 +476,15 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       [isLowDetail]
     );
 
+    // Wrap internal onInit to also call the prop callback
+    const wrappedOnInit = useCallback(
+      (instance: ReactFlowInstance) => {
+        handlers.onInit(instance);
+        onInitProp?.(instance);
+      },
+      [handlers.onInit, onInitProp]
+    );
+
     return (
       <div style={canvasStyle} className="react-flow-canvas">
         <NodeRenderConfigProvider value={nodeRenderConfig}>
@@ -489,7 +499,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
                     edgeTypes={edgeTypes}
                     onNodesChange={handlers.handleNodesChange}
                     onEdgesChange={onEdgesChange}
-                    onInit={handlers.onInit}
+                    onInit={wrappedOnInit}
                     onNodeClick={wrappedOnNodeClick}
                     onNodeDoubleClick={wrappedOnNodeDoubleClick}
                     onNodeDragStart={handleNodeDragStart}

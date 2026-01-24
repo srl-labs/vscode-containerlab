@@ -59,8 +59,6 @@ interface GroupDragResizeHandlers {
 }
 
 interface GroupLayerProps extends GroupDragResizeHandlers {
-  /** Current zoom level for coordinate conversion */
-  zoom?: number;
   groups: GroupStyleAnnotation[];
   isLocked: boolean;
   onGroupEdit: (id: string) => void;
@@ -148,7 +146,11 @@ interface UseGroupLayerReturn {
 /**
  * Creates a layer node for portal rendering.
  */
-function createLayerNode(pointerEvents: "auto" | "none", className: string): HTMLElement {
+function createLayerNode(
+  pointerEvents: "auto" | "none",
+  className: string,
+  zIndex: number
+): HTMLElement {
   const node = document.createElement("div");
   node.style.position = "absolute";
   node.style.top = "0";
@@ -158,6 +160,7 @@ function createLayerNode(pointerEvents: "auto" | "none", className: string): HTM
   node.style.pointerEvents = pointerEvents;
   node.style.overflow = "visible";
   node.style.transformOrigin = "0 0";
+  node.style.zIndex = String(zIndex);
   node.classList.add(className);
   return node;
 }
@@ -185,12 +188,14 @@ function useGroupLayer(): UseGroupLayerReturn {
 
     log.info("[GroupLayer] Creating background + interaction layers");
 
-    // Create background layer (rendered below nodes)
-    const backgroundLayer = createLayerNode("none", "group-background-layer-container");
+    // Create background layer (rendered below nodes, z-index -1 to be behind ReactFlow viewport)
+    const backgroundLayer = createLayerNode("none", "group-background-layer-container", -1);
     backgroundLayerRef.current = backgroundLayer;
 
-    // Create interaction layer (rendered above nodes)
-    const interactionLayer = createLayerNode("auto", "group-interaction-layer-container");
+    // Create interaction layer (rendered above nodes, z-index 1000)
+    // Layer itself has pointerEvents: 'none' to allow canvas interactions to pass through
+    // Individual interactive elements (label, handles) set their own pointerEvents: 'auto'
+    const interactionLayer = createLayerNode("none", "group-interaction-layer-container", 1000);
     interactionLayerRef.current = interactionLayer;
 
     // Append layers to the ReactFlow container
@@ -722,7 +727,6 @@ const GroupInteractionPortal: React.FC<GroupInteractionPortalProps> = ({
   );
 
 export const GroupLayer: React.FC<GroupLayerProps> = ({
-  zoom = 1,
   groups,
   isLocked,
   onGroupEdit,
@@ -880,7 +884,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
         <GroupInteractionPortal
           layerNode={interactionLayerNode}
           groups={sortedGroups}
-          zoom={zoom}
+          zoom={viewportZoom}
           isLocked={effectivelyLocked}
           selectedGroupIds={selectedGroupIds}
           onGroupEdit={onGroupEdit}

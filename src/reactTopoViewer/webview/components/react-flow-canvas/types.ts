@@ -182,6 +182,8 @@ export interface AnnotationHandlers {
   disableAddTextMode: () => void;
   /** Disable add shape mode (e.g., on Escape) */
   disableAddShapeMode: () => void;
+  /** Handle node dropped - check for group membership changes */
+  onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
 }
 
 /** Position entry for undo/redo move tracking */
@@ -215,6 +217,8 @@ export interface ReactFlowCanvasProps {
   onPaneClick?: () => void;
   /** Callback when a node move is complete (for undo/redo) */
   onMoveComplete?: (before: MovePositionEntry[], after: MovePositionEntry[]) => void;
+  /** Callback when ReactFlow instance is initialized */
+  onInit?: (instance: ReactFlowInstance) => void;
 }
 
 /**

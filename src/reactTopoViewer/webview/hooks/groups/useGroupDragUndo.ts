@@ -56,6 +56,8 @@ export interface UseGroupDragUndoOptions {
   onUpdateShapeAnnotation?: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
   /** Callback to sync committed positions into React state (prevents position drift on next reconcile) */
   onPositionsCommitted?: (positions: NodePositionEntry[]) => void;
+  /** Callback to move nodes during group drag (real-time updates) */
+  onMoveNodes?: (positions: Array<{ id: string; position: { x: number; y: number } }>) => void;
 }
 
 export interface UseGroupDragUndoReturn {
@@ -151,16 +153,31 @@ function captureDragStartState(
   };
 }
 
-/** Move member nodes by delta */
-function moveMemberNodes(
-  _cyInstance: unknown,
-  _memberIds: string[],
-  _delta: { dx: number; dy: number }
+/** Move member nodes using original positions + cumulative delta */
+function moveMemberNodesFromOriginal(
+  originalPositions: NodePositionEntry[],
+  cumulativeDelta: { dx: number; dy: number },
+  onMoveNodes?: (positions: Array<{ id: string; position: { x: number; y: number } }>) => void
 ): void {
-  // Note: In the compatibility layer, position updates are read-only.
-  // Actual position updates in ReactFlow are handled through React state.
-  // This function is kept for API compatibility but the actual node movement
-  // is handled by the ReactFlow onNodeDrag handlers.
+  if (!onMoveNodes || originalPositions.length === 0) return;
+
+  // Filter to only entries with defined position and calculate new positions
+  const newPositions: Array<{ id: string; position: { x: number; y: number } }> = [];
+  for (const entry of originalPositions) {
+    if (entry.position) {
+      newPositions.push({
+        id: entry.id,
+        position: {
+          x: entry.position.x + cumulativeDelta.dx,
+          y: entry.position.y + cumulativeDelta.dy
+        }
+      });
+    }
+  }
+
+  if (newPositions.length > 0) {
+    onMoveNodes(newPositions);
+  }
 }
 
 /** Move descendant groups by delta */
@@ -324,9 +341,11 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
     shapeAnnotations = [],
     onUpdateTextAnnotation,
     onUpdateShapeAnnotation,
-    onPositionsCommitted
+    onPositionsCommitted,
+    onMoveNodes
   } = options;
   const dragStartRef = useRef<DragStartState | null>(null);
+  const cumulativeDeltaRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
 
   const onGroupDragStart = useCallback(
     (groupId: string) => {
@@ -334,6 +353,9 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
       const group = groups.groups.find((g) => g.id === groupId);
       if (!group) return;
       const memberNodeIds = groups.getGroupMembers(groupId);
+
+      // Reset cumulative delta at drag start
+      cumulativeDeltaRef.current = { dx: 0, dy: 0 };
 
       // Capture full hierarchical state
       dragStartRef.current = captureDragStartState(
@@ -423,14 +445,20 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
 
       const startState = dragStartRef.current;
       if (!startState) {
-        // Fallback: just move direct members (handled via React state)
-        moveMemberNodes(null, groups.getGroupMembers(groupId), delta);
+        // No start state - can't move nodes without original positions
+        log.warn(`[GroupDragUndo] No start state for group ${groupId} during drag move`);
         return;
       }
 
-      // Move all member nodes (including descendants) - handled via React state
-      const allNodeIds = [...startState.memberNodeIds, ...startState.descendantNodeIds];
-      moveMemberNodes(null, allNodeIds, delta);
+      // Accumulate incremental delta into cumulative delta
+      cumulativeDeltaRef.current = {
+        dx: cumulativeDeltaRef.current.dx + delta.dx,
+        dy: cumulativeDeltaRef.current.dy + delta.dy
+      };
+
+      // Move all member nodes using original positions + cumulative delta
+      // This prevents drift from accumulating floating point errors
+      moveMemberNodesFromOriginal(startState.nodesBefore, cumulativeDeltaRef.current, onMoveNodes);
 
       // Move descendant groups
       if (startState.descendantGroupsBefore.length > 0) {
@@ -464,7 +492,8 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions): UseGroupDrag
       textAnnotations,
       shapeAnnotations,
       onUpdateTextAnnotation,
-      onUpdateShapeAnnotation
+      onUpdateShapeAnnotation,
+      onMoveNodes
     ]
   );
 

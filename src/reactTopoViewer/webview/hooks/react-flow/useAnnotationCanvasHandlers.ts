@@ -175,6 +175,12 @@ function useWrappedNodeDragStop(
         return;
       }
 
+      // For regular topology nodes, check for group membership changes
+      if (annotationHandlers?.onNodeDropped) {
+        const snappedPosition = snapToGrid(node.position);
+        annotationHandlers.onNodeDropped(node.id, snappedPosition);
+      }
+
       baseOnNodeDragStop(event, node);
     },
     [mode, annotationHandlers, baseOnNodeDragStop]

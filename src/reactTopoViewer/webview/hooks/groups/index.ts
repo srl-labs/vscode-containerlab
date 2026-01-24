@@ -51,7 +51,11 @@ export type { UseGroupHierarchyOptions, UseGroupHierarchyReturn } from "./useGro
 // ============================================================================
 export { useGroupClipboard } from "./useGroupClipboard";
 export type { UseGroupClipboardOptions, UseGroupClipboardReturn } from "./useGroupClipboard";
-export { useNodeReparent } from "./useNodeReparent";
+export {
+  useNodeReparent,
+  findGroupForNodeAtPosition,
+  handleNodeMembershipChange
+} from "./useNodeReparent";
 export type { UseNodeReparentOptions, UseNodeReparentDeps } from "./useNodeReparent";
 export { useGroupDragInteraction, useDragPositionOverrides, useGroupResize } from "./useGroupDrag";
 export type {

@@ -32,6 +32,8 @@ import {
   useGroupResizeUndo,
   useGroupUndoRedoHandlers,
   useNodeReparent,
+  findGroupForNodeAtPosition,
+  handleNodeMembershipChange,
   generateGroupId
 } from "../hooks/groups";
 
@@ -174,6 +176,8 @@ interface AnnotationActionsContextValue {
     oldGroupId: string | null,
     newGroupId: string | null
   ) => void;
+  /** Handle node dropped - check for group membership changes */
+  onNodeDropped: (nodeId: string, position: { x: number; y: number }) => void;
 
   // Utilities
   clearAllSelections: () => void;
@@ -202,7 +206,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     undoRedo,
     registerAnnotationHandler,
     registerGroupMoveHandler,
-    registerMembershipHandler
+    registerMembershipHandler,
+    registerCapturePositionsHandler
   } = useUndoRedoContext();
 
   // Refs for late-bound migration callbacks
@@ -295,10 +300,59 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     [pendingMembershipChangesRef]
   );
 
+  // Handle node dropped - check for group membership changes
+  const onNodeDropped = useCallback(
+    (nodeId: string, position: { x: number; y: number }) => {
+      // Find current group membership
+      const currentGroupId = groupsHook.getNodeMembership(nodeId);
+
+      // Find group at the new position
+      const targetGroup = findGroupForNodeAtPosition(position, groupsHook.groups);
+      const targetGroupId = targetGroup?.id ?? null;
+
+      // Only process if membership actually changes
+      if (currentGroupId === targetGroupId) return;
+
+      // Apply the membership change
+      handleNodeMembershipChange(
+        nodeId,
+        currentGroupId,
+        targetGroupId,
+        targetGroup,
+        {
+          addNodeToGroup: groupsHook.addNodeToGroup,
+          removeNodeFromGroup: groupsHook.removeNodeFromGroup
+        },
+        onMembershipWillChange
+      );
+    },
+    [groupsHook, onMembershipWillChange]
+  );
+
   // Register membership handler
   useEffect(() => {
     registerMembershipHandler(applyMembershipChange);
   }, [registerMembershipHandler, applyMembershipChange]);
+
+  // Capture positions handler - captures node positions from React state for undo/redo
+  const capturePositions = useCallback(
+    (nodeIds: string[]): import("../hooks/state/useUndoRedo").NodePositionEntry[] => {
+      const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+      return nodeIds.map((id) => {
+        const node = nodeMap.get(id);
+        return {
+          id,
+          position: node?.position ? { x: node.position.x, y: node.position.y } : undefined
+        };
+      });
+    },
+    [nodes]
+  );
+
+  // Register capture positions handler
+  useEffect(() => {
+    registerCapturePositionsHandler(capturePositions);
+  }, [registerCapturePositionsHandler, capturePositions]);
 
   // Group undo handlers
   const { handleAddGroupWithUndo, deleteGroupWithUndo } = useAppGroupUndoHandlers({
@@ -326,7 +380,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     onPositionsCommitted: (positions) => {
       const withPosition = filterEntriesWithPosition(positions);
       if (withPosition.length > 0) updateNodePositions(withPosition);
-    }
+    },
+    onMoveNodes: updateNodePositions
   });
 
   // Group resize undo (separate from drag to avoid undo spam during resize)
@@ -522,6 +577,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       // Membership callbacks
       applyMembershipChange,
       onMembershipWillChange,
+      onNodeDropped,
 
       // Utilities
       clearAllSelections,
@@ -596,6 +652,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       freeShapeAnnotations.migrateGroupId,
       applyMembershipChange,
       onMembershipWillChange,
+      onNodeDropped,
       clearAllSelections,
       deleteAllSelected
     ]

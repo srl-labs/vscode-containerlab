@@ -36,6 +36,8 @@ interface FreeShapeAnnotationsAPI {
 interface UseAnnotationCanvasPropsOptions {
   freeTextAnnotations: FreeTextAnnotationsAPI;
   freeShapeAnnotations: FreeShapeAnnotationsAPI;
+  /** Handler for when a node is dropped (for group membership) */
+  onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
 }
 
 interface UseAnnotationCanvasPropsReturn {
@@ -49,7 +51,7 @@ interface UseAnnotationCanvasPropsReturn {
 export function useAnnotationCanvasProps(
   options: UseAnnotationCanvasPropsOptions
 ): UseAnnotationCanvasPropsReturn {
-  const { freeTextAnnotations, freeShapeAnnotations } = options;
+  const { freeTextAnnotations, freeShapeAnnotations, onNodeDropped } = options;
 
   const annotationMode = useMemo<AnnotationModeState>(
     () => ({
@@ -81,9 +83,10 @@ export function useAnnotationCanvasProps(
       onUpdateFreeShapeEndPosition: freeShapeAnnotations.updateEndPosition,
       onUpdateFreeShapeStartPosition: freeShapeAnnotations.updateStartPosition,
       disableAddTextMode: freeTextAnnotations.disableAddTextMode,
-      disableAddShapeMode: freeShapeAnnotations.disableAddShapeMode
+      disableAddShapeMode: freeShapeAnnotations.disableAddShapeMode,
+      onNodeDropped
     }),
-    [freeTextAnnotations, freeShapeAnnotations]
+    [freeTextAnnotations, freeShapeAnnotations, onNodeDropped]
   );
 
   return { annotationMode, annotationHandlers };
