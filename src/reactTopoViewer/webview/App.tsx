@@ -311,7 +311,6 @@ const AppContent: React.FC<{
     handleDeleteLinkWithUndo,
     recordPropertyEdit
   } = useGraphHandlersWithContext({
-    cyInstance: null,
     addNode: addNodeDirect as (element: unknown) => void,
     addEdge: addEdgeDirect as (element: unknown) => void,
     menuHandlers,

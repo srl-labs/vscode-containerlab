@@ -19,34 +19,28 @@ import { log } from "../../utils/logger";
 import { beginBatch, endBatch } from "../../services";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
 
-// Stubbed types for Cytoscape compatibility layer (disabled during migration)
-interface CyNodeLike {
+// NOTE: Cytoscape compatibility layer has been removed during ReactFlow migration.
+// Clipboard operations that depended on Cytoscape queries are disabled.
+// TODO: Re-implement clipboard using React state instead of Cytoscape queries.
+
+// Minimal stub types for compilation (all functions return empty results)
+type CyNodeLike = {
   id(): string;
   data(key?: string): unknown;
   position(): { x: number; y: number };
   length: number;
-}
-interface CyEdgeLike {
-  id(): string;
-  data(key?: string): unknown;
-}
-interface CyCollectionLike<T> {
+};
+type CyEdgeLike = { id(): string; data(key?: string): unknown };
+type CyCollectionLike<T> = {
   forEach(fn: (item: T) => void): void;
   filter(fn: (item: T) => boolean): CyCollectionLike<T>;
   map<U>(fn: (item: T) => U): U[];
-}
-interface CyCompatLike {
+};
+type CyCompatLike = {
   nodes(selector?: string): CyCollectionLike<CyNodeLike>;
   edges(): CyCollectionLike<CyEdgeLike>;
   getElementById(id: string): CyNodeLike;
   $id(selector: string): CyCollectionLike<CyNodeLike>;
-}
-
-// Empty collection for when cyCompat is null
-const emptyCollection: CyCollectionLike<CyNodeLike> = {
-  forEach: () => {},
-  filter: () => emptyCollection,
-  map: () => []
 };
 
 /** Node data stored in clipboard */

@@ -1,6 +1,5 @@
 import React from "react";
 
-import type { CyLike as CyCore } from "../useAppState";
 import type { CyElement } from "../../../shared/types/messages";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
 import {
@@ -10,15 +9,10 @@ import {
   editLink,
   createNetworkNode,
   saveEdgeAnnotations,
-  saveNodePositions,
-  beginBatch,
-  endBatch,
   type NodeSaveData,
   type LinkSaveData,
   type NetworkNodeData
 } from "../../services";
-import { generateEncodedSVG, type NodeType } from "../../utils/SvgGenerator";
-import { ROLE_SVG_MAP } from "../../components/react-flow-canvas";
 import {
   upsertEdgeLabelOffsetAnnotation,
   type EdgeOffsetUpdateInput
@@ -78,7 +72,6 @@ interface EdgeAnnotationHandlers {
 }
 
 interface UseGraphUndoRedoHandlersParams {
-  cyInstance: CyCore | null;
   mode: "edit" | "view";
   addNode: (node: CyElement) => void;
   addEdge: (edge: CyElement) => void;
@@ -91,7 +84,6 @@ interface UseGraphUndoRedoHandlersParams {
 
 /** Parameters for context-based variant */
 interface UseGraphUndoRedoWithContextParams {
-  cyInstance: CyCore | null;
   addNode: (node: CyElement) => void;
   addEdge: (edge: CyElement) => void;
   menuHandlers: MenuHandlers;
@@ -130,26 +122,16 @@ interface GraphUndoRedoResult {
   recordPropertyEdit: (action: Omit<UndoRedoActionPropertyEdit, "type">) => void;
 }
 
-function buildNodeElement(cy: CyCore | null, nodeId: string): CyElement | null {
-  if (!cy) return null;
-  const node = cy.getElementById(nodeId);
-  if (!node || node.empty() || !node.isNode()) return null;
-  const pos = node.position();
-  return {
-    group: "nodes",
-    data: node.data() as Record<string, unknown>,
-    position: { x: Math.round(pos.x), y: Math.round(pos.y) }
-  };
+function buildNodeElement(_nodeId: string): CyElement | null {
+  // Disabled during ReactFlow migration
+  // TODO: Get node element from React state
+  return null;
 }
 
-function buildEdgeElement(cy: CyCore | null, edgeId: string): CyElement | null {
-  if (!cy) return null;
-  const edge = cy.getElementById(edgeId);
-  if (!edge || edge.empty() || !edge.isEdge()) return null;
-  return {
-    group: "edges",
-    data: edge.data() as Record<string, unknown>
-  };
+function buildEdgeElement(_edgeId: string): CyElement | null {
+  // Disabled during ReactFlow migration
+  // TODO: Get edge element from React state
+  return null;
 }
 
 function toEdgeOffsetUpdateInput(data: Record<string, unknown>): EdgeOffsetUpdateInput | null {
@@ -178,14 +160,10 @@ function toEdgeOffsetUpdateInput(data: Record<string, unknown>): EdgeOffsetUpdat
   };
 }
 
-function buildConnectedEdges(cy: CyCore | null, nodeId: string): CyElement[] {
-  if (!cy) return [];
-  const edges = cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return edges.map((e: any) => ({
-    group: "edges" as const,
-    data: e.data() as Record<string, unknown>
-  }));
+function buildConnectedEdges(_nodeId: string): CyElement[] {
+  // Disabled during ReactFlow migration
+  // TODO: Get connected edges from React state
+  return [];
 }
 
 function cloneElement(el: CyElement): CyElement {
@@ -228,19 +206,6 @@ function getEdgeKeyFromElement(element: CyElement | null | undefined): string | 
   return getEdgeKeyFromData(element.data);
 }
 
-function findEdgeByData(cy: CyCore, data: Record<string, unknown>) {
-  const id = data.id as string | undefined;
-  const byId = id ? cy.getElementById(id) : null;
-  if (byId && byId.nonempty()) return byId;
-  const targetKey = getEdgeKeyFromData(data);
-  if (!targetKey) return cy.collection();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return cy
-    .edges()
-    .filter((e: any) => getEdgeKeyFromData(e.data()) === targetKey)
-    .first();
-}
-
 /**
  * Check if a node element is a network/cloud node
  */
@@ -281,79 +246,56 @@ function addNetworkNodeWithPersistence(
 }
 
 function addNodeWithPersistence(
-  cy: CyCore | null,
   addNode: (n: CyElement) => void,
   element: CyElement,
   id: string
 ): void {
   const pos = element.position || { x: 0, y: 0 };
-  const exists = cy?.getElementById(id)?.nonempty();
-  if (!exists) {
-    const data = element.data as NodeElementData;
+  const data = element.data as NodeElementData;
 
-    // Check if this is a network node (cloud)
-    if (isNetworkNode(data)) {
-      const networkType = getNetworkType(data);
-      // Bridge types are stored as YAML nodes
-      if (networkType && BRIDGE_NETWORK_TYPES.has(networkType)) {
-        addNode(element);
-        const nodeData: NodeSaveData = {
-          id,
-          name: (data.name as string) || id,
-          position: pos,
-          extraData: { kind: networkType }
-        };
-        void createNode(nodeData);
-      } else if (networkType && SPECIAL_NETWORK_TYPES.has(networkType)) {
-        // Non-bridge network types go to networkNodeAnnotations only
-        addNetworkNodeWithPersistence(
-          addNode,
-          element,
-          id,
-          networkType as NonBridgeNetworkType,
-          pos
-        );
-      } else {
-        // Unknown network type, treat as regular node
-        addNode(element);
-        const nodeData: NodeSaveData = {
-          id,
-          name: (data.name as string) || id,
-          position: pos,
-          extraData: mergeNodeExtraData(data)
-        };
-        void createNode(nodeData);
-      }
-      return;
+  // Check if this is a network node (cloud)
+  if (isNetworkNode(data)) {
+    const networkType = getNetworkType(data);
+    // Bridge types are stored as YAML nodes
+    if (networkType && BRIDGE_NETWORK_TYPES.has(networkType)) {
+      addNode(element);
+      const nodeData: NodeSaveData = {
+        id,
+        name: (data.name as string) || id,
+        position: pos,
+        extraData: { kind: networkType }
+      };
+      void createNode(nodeData);
+    } else if (networkType && SPECIAL_NETWORK_TYPES.has(networkType)) {
+      // Non-bridge network types go to networkNodeAnnotations only
+      addNetworkNodeWithPersistence(addNode, element, id, networkType as NonBridgeNetworkType, pos);
+    } else {
+      // Unknown network type, treat as regular node
+      addNode(element);
+      const nodeData: NodeSaveData = {
+        id,
+        name: (data.name as string) || id,
+        position: pos,
+        extraData: mergeNodeExtraData(data)
+      };
+      void createNode(nodeData);
     }
-
-    // Regular node - use standard path
-    addNode(element);
-    // Create node via TopologyIO service
-    // Note: TopologyParser stores properties in data.extraData, so we need to merge them
-    const nodeData: NodeSaveData = {
-      id,
-      name: (data.name as string) || id,
-      position: pos,
-      extraData: mergeNodeExtraData(data)
-    };
-    void createNode(nodeData);
-  } else {
-    // Only save position if node already exists (undo/redo case)
-    void saveNodePositions([{ id, position: pos }]);
+    return;
   }
+
+  // Regular node - use standard path
+  addNode(element);
+  const nodeData: NodeSaveData = {
+    id,
+    name: (data.name as string) || id,
+    position: pos,
+    extraData: mergeNodeExtraData(data)
+  };
+  void createNode(nodeData);
 }
 
-function addEdgeWithPersistence(
-  cy: CyCore | null,
-  addEdge: (e: CyElement) => void,
-  element: CyElement
-): void {
-  const targetKey = getEdgeKeyFromElement(element);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hasExisting =
-    targetKey && cy?.edges().some((e: any) => getEdgeKeyFromData(e.data()) === targetKey);
-  if (hasExisting) return;
+function addEdgeWithPersistence(addEdge: (e: CyElement) => void, element: CyElement): void {
+  // TODO: Check for duplicate edges using React state
   addEdge(element);
   // Create link via TopologyIO service
   const data = element.data as EdgeElementData;
@@ -371,28 +313,19 @@ function addEdgeWithPersistence(
 }
 
 function deleteEdgeWithPersistence(
-  cy: CyCore | null,
   menuHandlers: MenuHandlers,
   data: Record<string, unknown>
 ): void {
   const id = data.id as string | undefined;
-  const byId = id && cy?.getElementById(id);
-  if (byId && byId.nonempty()) {
+  if (id) {
     menuHandlers.handleDeleteLink(id);
-    return;
   }
-  if (cy) {
-    const match = findEdgeByData(cy, data);
-    if (match && match.nonempty()) {
-      menuHandlers.handleDeleteLink(match.id());
-    }
-  }
+  // TODO: Implement edge lookup by data using React state if id is not available
 }
 
 function processGraphChange(
   change: GraphChange,
   ctx: {
-    cy: CyCore | null;
     addNode: (n: CyElement) => void;
     addEdge: (e: CyElement) => void;
     menuHandlers: MenuHandlers;
@@ -405,14 +338,10 @@ function processGraphChange(
   if (!id) return;
 
   const handlers: Record<string, () => void> = {
-    "add:node": () => addNodeWithPersistence(ctx.cy, ctx.addNode, element, id),
-    "add:edge": () => {
-      const existing = ctx.cy ? findEdgeByData(ctx.cy, element.data) : null;
-      if (existing && existing.nonempty()) return;
-      addEdgeWithPersistence(ctx.cy, ctx.addEdge, element);
-    },
+    "add:node": () => addNodeWithPersistence(ctx.addNode, element, id),
+    "add:edge": () => addEdgeWithPersistence(ctx.addEdge, element),
     "delete:node": () => ctx.menuHandlers.handleDeleteNode(id),
-    "delete:edge": () => deleteEdgeWithPersistence(ctx.cy, ctx.menuHandlers, element.data)
+    "delete:edge": () => deleteEdgeWithPersistence(ctx.menuHandlers, element.data)
   };
 
   handlers[`${change.kind}:${change.entity}`]?.();
@@ -499,7 +428,6 @@ function bucketGraphChanges(changes: GraphChange[]): GraphBuckets {
 function replayGraphChanges(
   changes: GraphChange[],
   ctx: {
-    cy: CyCore | null;
     addNode: (n: CyElement) => void;
     addEdge: (e: CyElement) => void;
     menuHandlers: MenuHandlers;
@@ -544,46 +472,22 @@ interface LinkTypeDetectionResult {
  * Detect the link type based on source/target nodes.
  * Returns the network kind and cloud node ID if either endpoint is a special network node.
  */
-function detectLinkType(
-  cy: CyCore | null,
-  sourceId: string,
-  targetId: string
-): LinkTypeDetectionResult | undefined {
-  if (!cy) return undefined;
-
-  // Check source node
-  const sourceNode = cy.getElementById(sourceId);
-  if (!sourceNode.empty()) {
-    const sourceRole = sourceNode.data("topoViewerRole") as string | undefined;
-    if (sourceRole === "cloud") {
-      const sourceKind = (sourceNode.data("extraData") as { kind?: string } | undefined)?.kind;
-      if (sourceKind && SPECIAL_NETWORK_TYPES.has(sourceKind)) {
-        return { linkType: sourceKind, cloudNodeId: sourceId };
-      }
-    }
-  }
-
-  // Check target node
-  const targetNode = cy.getElementById(targetId);
-  if (!targetNode.empty()) {
-    const targetRole = targetNode.data("topoViewerRole") as string | undefined;
-    if (targetRole === "cloud") {
-      const targetKind = (targetNode.data("extraData") as { kind?: string } | undefined)?.kind;
-      if (targetKind && SPECIAL_NETWORK_TYPES.has(targetKind)) {
-        return { linkType: targetKind, cloudNodeId: targetId };
-      }
-    }
-  }
-
+function detectLinkType(_sourceId: string, _targetId: string): LinkTypeDetectionResult | undefined {
+  // Disabled during ReactFlow migration
+  // TODO: Detect link type using React state
   return undefined;
 }
 
 function createEdgeCreatedHandler(
   addEdge: (e: CyElement) => void,
   undoRedo: ReturnType<typeof useUndoRedo>,
-  isApplyingUndoRedo: React.RefObject<boolean>,
-  cyInstance: CyCore | null
+  isApplyingUndoRedo: React.RefObject<boolean>
 ) {
+  // Suppress unused function warning
+  void detectLinkType;
+  void VXLAN_TYPES;
+  void VXLAN_DEFAULTS;
+
   return (
     _sourceId: string,
     _targetId: string,
@@ -595,11 +499,10 @@ function createEdgeCreatedHandler(
       targetEndpoint: string;
     }
   ) => {
-    // Detect if this is a special network link type
-    const detection = detectLinkType(cyInstance, edgeData.source, edgeData.target);
-    const linkType = detection?.linkType;
+    // Link type detection disabled during ReactFlow migration
+    // TODO: Re-implement using React state instead of Cytoscape queries
 
-    // Build edge element - include extraData for special link types so it's stored in undo action
+    // Build edge element
     const edgeEl = {
       group: "edges" as const,
       data: {
@@ -607,8 +510,7 @@ function createEdgeCreatedHandler(
         source: edgeData.source,
         target: edgeData.target,
         sourceEndpoint: edgeData.sourceEndpoint,
-        targetEndpoint: edgeData.targetEndpoint,
-        ...(linkType && { extraData: { extType: linkType } })
+        targetEndpoint: edgeData.targetEndpoint
       }
     };
     addEdge(edgeEl);
@@ -619,28 +521,9 @@ function createEdgeCreatedHandler(
       source: edgeData.source,
       target: edgeData.target,
       sourceEndpoint: edgeData.sourceEndpoint,
-      targetEndpoint: edgeData.targetEndpoint,
-      ...(linkType && { extraData: { extType: linkType } })
+      targetEndpoint: edgeData.targetEndpoint
     };
     void createLink(linkData);
-
-    // For VXLAN types, update the cloud node's extraData with default properties
-    // so they're immediately available in the network editor without requiring reload
-    if (detection && VXLAN_TYPES.has(detection.linkType) && cyInstance) {
-      const cloudNode = cyInstance.getElementById(detection.cloudNodeId);
-      if (!cloudNode.empty()) {
-        const existingExtraData =
-          (cloudNode.data("extraData") as Record<string, unknown> | undefined) ?? {};
-        // Only set defaults if properties aren't already set
-        const newExtraData = {
-          ...existingExtraData,
-          extRemote: existingExtraData.extRemote ?? VXLAN_DEFAULTS.extRemote,
-          extVni: existingExtraData.extVni ?? VXLAN_DEFAULTS.extVni,
-          extDstPort: existingExtraData.extDstPort ?? VXLAN_DEFAULTS.extDstPort
-        };
-        cloudNode.data("extraData", newExtraData);
-      }
-    }
 
     if (!isApplyingUndoRedo.current) {
       undoRedo.pushAction({
@@ -763,89 +646,47 @@ function createNodeCreatedHandler(
 }
 
 function createDeleteNodeHandler(
-  cyInstance: CyCore | null,
   menuHandlers: MenuHandlers,
   undoRedo: ReturnType<typeof useUndoRedo>,
   isApplyingUndoRedo: React.RefObject<boolean>
 ) {
+  // Suppress unused function warnings
+  void buildNodeElement;
+  void buildConnectedEdges;
+  void undoRedo;
+  void isApplyingUndoRedo;
+
   return (nodeId: string) => {
-    const nodeEl = buildNodeElement(cyInstance, nodeId);
-    const edgeEls = buildConnectedEdges(cyInstance, nodeId);
+    // Undo recording disabled during ReactFlow migration
+    // TODO: Get node element from React state instead of Cytoscape
     menuHandlers.handleDeleteNode(nodeId);
-    if (!isApplyingUndoRedo.current && nodeEl) {
-      undoRedo.pushAction({
-        type: "graph",
-        before: [
-          { entity: "node", kind: "add", after: cloneElement(nodeEl) },
-          ...edgeEls.map((el) => ({
-            entity: "edge" as const,
-            kind: "add" as const,
-            after: cloneElement(el)
-          }))
-        ],
-        after: [{ entity: "node", kind: "delete", before: cloneElement(nodeEl) }]
-      });
-    }
   };
 }
 
 function createDeleteLinkHandler(
-  cyInstance: CyCore | null,
   menuHandlers: MenuHandlers,
   undoRedo: ReturnType<typeof useUndoRedo>,
   isApplyingUndoRedo: React.RefObject<boolean>
 ) {
+  // Suppress unused function warnings
+  void buildEdgeElement;
+  void undoRedo;
+  void isApplyingUndoRedo;
+
   return (edgeId: string) => {
-    const edgeEl = buildEdgeElement(cyInstance, edgeId);
+    // Undo recording disabled during ReactFlow migration
+    // TODO: Get edge element from React state instead of Cytoscape
     menuHandlers.handleDeleteLink(edgeId);
-    if (!isApplyingUndoRedo.current && edgeEl) {
-      undoRedo.pushAction({
-        type: "graph",
-        before: [{ entity: "edge", kind: "add", after: cloneElement(edgeEl) }],
-        after: [{ entity: "edge", kind: "delete", before: cloneElement(edgeEl) }]
-      });
-    }
   };
 }
 
-/** Default icon color used when no custom color is set */
-const DEFAULT_ICON_COLOR = "#005aff";
-
 /**
- * Update Cytoscape node visuals after undo/redo property edit
+ * Update node visuals after undo/redo property edit
  */
-function updateCytoscapeNodeVisuals(
-  cy: CyCore | null,
-  nodeId: string,
-  data: Record<string, unknown>
-): void {
-  if (!cy) return;
-
-  const node = cy.getElementById(nodeId);
-  if (!node || node.empty()) return;
-
-  // Update node data
-  node.data("name", data.name);
-  node.data("topoViewerRole", data.icon);
-  node.data("iconColor", data.iconColor);
-  node.data("iconCornerRadius", data.iconCornerRadius);
-
-  // Update background-image style for iconColor
-  const role = (data.icon as string) || "default";
-  const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
-  if (svgType) {
-    const color = (data.iconColor as string) || DEFAULT_ICON_COLOR;
-    node.style("background-image", generateEncodedSVG(svgType, color));
-  }
-
-  // Update shape/corner-radius
-  const cornerRadius = data.iconCornerRadius as number | undefined;
-  if (cornerRadius !== undefined && cornerRadius > 0) {
-    node.style("shape", "round-rectangle");
-    node.style("corner-radius", cornerRadius);
-  } else {
-    node.style("shape", "rectangle");
-  }
+function updateNodeVisuals(_nodeId: string, _data: Record<string, unknown>): void {
+  // Disabled during ReactFlow migration
+  // TODO: Update node visuals using React state
+  // ReactFlow updates visuals automatically when node data changes
 }
 
 /**
@@ -853,7 +694,6 @@ function updateCytoscapeNodeVisuals(
  * For renames, uses editNode with the current name as id.
  */
 function applyNodePropertyEdit(
-  cy: CyCore | null,
   before: Record<string, unknown>,
   after: Record<string, unknown>,
   isUndo: boolean
@@ -883,9 +723,9 @@ function applyNodePropertyEdit(
   };
   void editNode(nodeData);
 
-  // Update Cytoscape canvas visuals
+  // Update node visuals
   const nodeIdForVisuals = isRename ? targetNodeName : currentNodeName;
-  updateCytoscapeNodeVisuals(cy, nodeIdForVisuals, dataToApply);
+  updateNodeVisuals(nodeIdForVisuals, dataToApply);
 }
 
 /**
@@ -923,39 +763,35 @@ function applyLinkPropertyEdit(
 /**
  * Shared helper hook to create applyGraphChanges and applyPropertyEdit callbacks.
  * Used by both useGraphUndoRedoCore and useGraphHandlersWithContext.
+ *
+ * NOTE: Graph changes replay is disabled during ReactFlow migration.
  */
 function useApplyCallbacks(params: {
-  cyInstance: CyCore | null;
   addNode: (n: CyElement) => void;
   addEdge: (e: CyElement) => void;
   menuHandlers: MenuHandlers;
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
   isApplyingUndoRedo: React.RefObject<boolean>;
 }) {
-  const { cyInstance, addNode, addEdge, menuHandlers, edgeAnnotationHandlers, isApplyingUndoRedo } =
-    params;
+  const { addNode, addEdge, menuHandlers, edgeAnnotationHandlers, isApplyingUndoRedo } = params;
 
-  const applyGraphChanges = React.useCallback(
-    (changes: GraphChange[]) => {
-      if (!cyInstance) return;
-      isApplyingUndoRedo.current = true;
-      beginBatch();
-      try {
-        replayGraphChanges(changes, { cy: cyInstance, addNode, addEdge, menuHandlers });
-      } finally {
-        void endBatch();
-        isApplyingUndoRedo.current = false;
-      }
-    },
-    [cyInstance, addNode, addEdge, menuHandlers, isApplyingUndoRedo]
-  );
+  // Suppress unused warnings - these will be used when ReactFlow undo/redo is implemented
+  void addNode;
+  void addEdge;
+  void menuHandlers;
+  void replayGraphChanges;
+
+  const applyGraphChanges = React.useCallback((_changes: GraphChange[]) => {
+    // Disabled during ReactFlow migration - graph replay requires Cytoscape
+    // TODO: Implement graph changes replay using ReactFlow state
+  }, []);
 
   const applyPropertyEdit = React.useCallback(
     (action: UndoRedoActionPropertyEdit, isUndo: boolean) => {
       isApplyingUndoRedo.current = true;
       try {
         if (action.entityType === "node") {
-          applyNodePropertyEdit(cyInstance, action.before, action.after, isUndo);
+          applyNodePropertyEdit(action.before, action.after, isUndo);
         } else {
           applyLinkPropertyEdit(action.before, action.after, isUndo);
           if (edgeAnnotationHandlers) {
@@ -977,7 +813,7 @@ function useApplyCallbacks(params: {
         isApplyingUndoRedo.current = false;
       }
     },
-    [cyInstance, edgeAnnotationHandlers, isApplyingUndoRedo]
+    [edgeAnnotationHandlers, isApplyingUndoRedo]
   );
 
   return { applyGraphChanges, applyPropertyEdit };
@@ -988,18 +824,17 @@ function useApplyCallbacks(params: {
  * Used by both useGraphUndoRedoCore and useGraphHandlersWithContext.
  */
 function useGraphMutationHandlers(params: {
-  cyInstance: CyCore | null;
   addNode: (n: CyElement) => void;
   addEdge: (e: CyElement) => void;
   menuHandlers: MenuHandlers;
   undoRedo: ReturnType<typeof useUndoRedo>;
   isApplyingUndoRedo: React.RefObject<boolean>;
 }) {
-  const { cyInstance, addNode, addEdge, menuHandlers, undoRedo, isApplyingUndoRedo } = params;
+  const { addNode, addEdge, menuHandlers, undoRedo, isApplyingUndoRedo } = params;
 
   const handleEdgeCreated = React.useMemo(
-    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo, cyInstance),
-    [addEdge, undoRedo, isApplyingUndoRedo, cyInstance]
+    () => createEdgeCreatedHandler(addEdge, undoRedo, isApplyingUndoRedo),
+    [addEdge, undoRedo, isApplyingUndoRedo]
   );
 
   const handleNodeCreatedCallback = React.useMemo(
@@ -1008,13 +843,13 @@ function useGraphMutationHandlers(params: {
   );
 
   const handleDeleteNodeWithUndo = React.useMemo(
-    () => createDeleteNodeHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
-    [cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo]
+    () => createDeleteNodeHandler(menuHandlers, undoRedo, isApplyingUndoRedo),
+    [menuHandlers, undoRedo, isApplyingUndoRedo]
   );
 
   const handleDeleteLinkWithUndo = React.useMemo(
-    () => createDeleteLinkHandler(cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo),
-    [cyInstance, menuHandlers, undoRedo, isApplyingUndoRedo]
+    () => createDeleteLinkHandler(menuHandlers, undoRedo, isApplyingUndoRedo),
+    [menuHandlers, undoRedo, isApplyingUndoRedo]
   );
 
   const recordPropertyEdit = React.useCallback(
@@ -1039,7 +874,6 @@ function useGraphMutationHandlers(params: {
 
 function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
   const {
-    cyInstance,
     mode,
     addNode,
     addEdge,
@@ -1052,7 +886,6 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
   const isApplyingUndoRedo = React.useRef(false);
 
   const { applyGraphChanges, applyPropertyEdit } = useApplyCallbacks({
-    cyInstance,
     addNode,
     addEdge,
     menuHandlers,
@@ -1070,7 +903,6 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
   });
 
   const handlers = useGraphMutationHandlers({
-    cyInstance,
     addNode,
     addEdge,
     menuHandlers,
@@ -1118,7 +950,6 @@ export function useGraphHandlersWithContext(
   params: UseGraphUndoRedoWithContextParams
 ): GraphHandlersResult {
   const {
-    cyInstance,
     addNode,
     addEdge,
     menuHandlers,
@@ -1130,7 +961,6 @@ export function useGraphHandlersWithContext(
   const isApplyingUndoRedo = React.useRef(false);
 
   const { applyGraphChanges, applyPropertyEdit } = useApplyCallbacks({
-    cyInstance,
     addNode,
     addEdge,
     menuHandlers,
@@ -1148,7 +978,6 @@ export function useGraphHandlersWithContext(
   }, [registerPropertyEditHandler, applyPropertyEdit]);
 
   return useGraphMutationHandlers({
-    cyInstance,
     addNode,
     addEdge,
     menuHandlers,

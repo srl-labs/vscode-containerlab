@@ -54,69 +54,6 @@ export function useReactFlowInstance(): {
 }
 
 /**
- * Compatibility interface that mimics Cytoscape Core for annotation layers
- * This is a temporary bridge during migration - will be removed once all
- * annotation layers are updated to use ReactFlow directly
- */
-export interface CyCompatInterface {
-  pan: () => { x: number; y: number };
-  zoom: () => number;
-  container: () => HTMLElement | null;
-  on: (events: string, handler: () => void) => void;
-  off: (events: string, handler: () => void) => void;
-  scratch: (key: string, value?: unknown) => unknown;
-}
-
-/**
- * Create a Cytoscape-compatible interface from ReactFlow instance
- * This allows existing annotation layers to work without modification
- */
-export function createCyCompatInterface(
-  rfInstance: ReactFlowInstance | null
-): CyCompatInterface | null {
-  if (!rfInstance) return null;
-
-  const scratchData: Record<string, unknown> = {};
-  const eventHandlers: Map<string, Set<() => void>> = new Map();
-
-  return {
-    pan: () => {
-      const viewport = rfInstance.getViewport();
-      return { x: viewport.x, y: viewport.y };
-    },
-    zoom: () => {
-      return rfInstance.getViewport().zoom;
-    },
-    container: () => {
-      return document.querySelector(".react-flow") as HTMLElement | null;
-    },
-    on: (events: string, handler: () => void) => {
-      // For now, we don't need to actually bind events since ReactFlow
-      // handles viewport changes differently. This is a no-op stub.
-      const eventList = events.split(" ");
-      eventList.forEach((event) => {
-        if (!eventHandlers.has(event)) {
-          eventHandlers.set(event, new Set());
-        }
-        eventHandlers.get(event)!.add(handler);
-      });
-    },
-    off: (events: string, handler: () => void) => {
-      const eventList = events.split(" ");
-      eventList.forEach((event) => {
-        eventHandlers.get(event)?.delete(handler);
-      });
-    },
-    scratch: (key: string, value?: unknown) => {
-      if (value !== undefined) {
-        scratchData[key] = value;
-      }
-      return scratchData[key];
-    }
-  };
-}
-
-/**
  * Hook for selection data using ReactFlow state
  */
 export function useReactFlowSelectionData(
