@@ -147,7 +147,7 @@ export function useTextLayer(): UseTextLayerReturn {
 }
 
 /** Layout option type for E2E testing */
-export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
+export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical";
 
 /**
  * E2E testing exposure configuration

@@ -26,68 +26,6 @@ import {
 } from "../../hooks/canvas/maplibreUtils";
 import { log } from "../../utils/logger";
 
-// ============================================================================
-// Stub types and functions for cytoscape-layers (to be replaced with ReactFlow integration)
-// ============================================================================
-
-/** HTML layer interface - stub for compatibility */
-interface IHTMLLayer {
-  readonly type: "html";
-  readonly node: HTMLElement;
-  remove(): void;
-  update(): void;
-}
-
-/** Stub - no longer needed with ReactFlow */
-function ensureCytoscapeLayersRegistered(): void {
-  // No-op
-}
-
-/** Stub - creates mock layer nodes for portal rendering */
-function getCytoscapeLayers(_cy: unknown): {
-  nodeLayer: { insertBefore: (type: "html") => IHTMLLayer };
-  append: (type: "html") => IHTMLLayer;
-} {
-  const createStubLayer = (): IHTMLLayer => {
-    const node = document.createElement("div");
-    node.style.position = "absolute";
-    node.style.top = "0";
-    node.style.left = "0";
-    node.style.width = "100%";
-    node.style.height = "100%";
-    node.style.pointerEvents = "none";
-    return {
-      type: "html" as const,
-      node,
-      remove: () => {
-        node.parentElement?.removeChild(node);
-      },
-      update: () => {
-        /* no-op */
-      }
-    };
-  };
-  return {
-    nodeLayer: { insertBefore: (_type: "html") => createStubLayer() },
-    append: (_type: "html") => createStubLayer()
-  };
-}
-
-/** Configure common layer node styles */
-function configureLayerNode(
-  node: HTMLElement,
-  pointerEvents: "auto" | "none",
-  className: string
-): void {
-  node.style.pointerEvents = pointerEvents;
-  node.style.overflow = "visible";
-  node.style.transformOrigin = "0 0";
-  node.classList.add(className);
-  if (pointerEvents === "none" && node.parentElement) {
-    node.parentElement.style.pointerEvents = "none";
-  }
-}
-
 import { HANDLE_SIZE, CENTER_TRANSLATE, CORNER_STYLES, applyAlphaToColor } from "./shared";
 import { AnnotationContextMenu } from "./shared/AnnotationContextMenu";
 
@@ -207,44 +145,60 @@ interface UseGroupLayerReturn {
 }
 
 /**
- * Creates two HTML layers:
- * - Background layer below nodes (visual fill)
- * - Interaction layer above nodes (drag/resize handles)
+ * Creates a layer node for portal rendering.
  */
-function useGroupLayer(cyCompat: null): UseGroupLayerReturn {
-  const backgroundLayerRef = useRef<IHTMLLayer | null>(null);
-  const interactionLayerRef = useRef<IHTMLLayer | null>(null);
+function createLayerNode(pointerEvents: "auto" | "none", className: string): HTMLElement {
+  const node = document.createElement("div");
+  node.style.position = "absolute";
+  node.style.top = "0";
+  node.style.left = "0";
+  node.style.width = "100%";
+  node.style.height = "100%";
+  node.style.pointerEvents = pointerEvents;
+  node.style.overflow = "visible";
+  node.style.transformOrigin = "0 0";
+  node.classList.add(className);
+  return node;
+}
+
+/**
+ * Creates two HTML layers for group rendering:
+ * - Background layer (visual fill, below nodes)
+ * - Interaction layer (drag/resize handles, above nodes)
+ *
+ * These layers are rendered via React portals in the main canvas area.
+ */
+function useGroupLayer(): UseGroupLayerReturn {
+  const backgroundLayerRef = useRef<HTMLElement | null>(null);
+  const interactionLayerRef = useRef<HTMLElement | null>(null);
   const [backgroundLayerNode, setBackgroundLayerNode] = useState<HTMLElement | null>(null);
   const [interactionLayerNode, setInteractionLayerNode] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!cyCompat) return;
-
-    ensureCytoscapeLayersRegistered();
-
-    try {
-      const layers = getCytoscapeLayers(cyCompat);
-      log.info("[GroupLayer] Creating background + interaction layers");
-
-      // Visual fill layer BELOW the node layer
-      const backgroundLayer = layers.nodeLayer.insertBefore("html");
-      backgroundLayerRef.current = backgroundLayer;
-
-      // Interactive handles layer at the TOP of all layers (above selectBoxLayer)
-      // Using append() ensures it's on top of all Cytoscape canvas layers
-      const interactionLayer = layers.append("html");
-      interactionLayerRef.current = interactionLayer;
-
-      // Configure layer nodes
-      configureLayerNode(backgroundLayer.node, "none", "group-background-layer-container");
-      configureLayerNode(interactionLayer.node, "auto", "group-interaction-layer-container");
-
-      log.info("[GroupLayer] Layers created");
-      setBackgroundLayerNode(backgroundLayer.node);
-      setInteractionLayerNode(interactionLayer.node);
-    } catch (err) {
-      log.error(`[GroupLayer] Failed to create layer: ${err}`);
+    // Find the ReactFlow container to append layers
+    const container = document.querySelector(".react-flow");
+    if (!container) {
+      log.info("[GroupLayer] ReactFlow container not found, waiting...");
+      return;
     }
+
+    log.info("[GroupLayer] Creating background + interaction layers");
+
+    // Create background layer (rendered below nodes)
+    const backgroundLayer = createLayerNode("none", "group-background-layer-container");
+    backgroundLayerRef.current = backgroundLayer;
+
+    // Create interaction layer (rendered above nodes)
+    const interactionLayer = createLayerNode("auto", "group-interaction-layer-container");
+    interactionLayerRef.current = interactionLayer;
+
+    // Append layers to the ReactFlow container
+    container.appendChild(backgroundLayer);
+    container.appendChild(interactionLayer);
+
+    log.info("[GroupLayer] Layers created");
+    setBackgroundLayerNode(backgroundLayer);
+    setInteractionLayerNode(interactionLayer);
 
     return () => {
       backgroundLayerRef.current?.remove();
@@ -254,12 +208,11 @@ function useGroupLayer(cyCompat: null): UseGroupLayerReturn {
       setBackgroundLayerNode(null);
       setInteractionLayerNode(null);
     };
-  }, [cyCompat]);
+  }, []);
 
-  const updateLayers = () => {
-    backgroundLayerRef.current?.update();
-    interactionLayerRef.current?.update();
-  };
+  const updateLayers = useCallback(() => {
+    // No-op - layers update automatically via React portals
+  }, []);
 
   return { backgroundLayerNode, interactionLayerNode, updateLayers };
 }
@@ -791,7 +744,7 @@ export const GroupLayer: React.FC<GroupLayerProps> = ({
   getMinimumBounds
 }) => {
   // Create group background + interaction layers using cytoscape-layers
-  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer(null);
+  const { backgroundLayerNode, interactionLayerNode } = useGroupLayer();
 
   // In geo pan mode, groups should not be interactive
   const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === "pan");

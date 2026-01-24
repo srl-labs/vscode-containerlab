@@ -1,9 +1,9 @@
 /**
  * App State Hook
- * Manages layout controls and selection data for React TopoViewer
+ * Manages layout controls and context menu handlers for React TopoViewer
  */
 import type React from "react";
-import { useRef, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { deleteNode } from "../services";
 
@@ -14,15 +14,12 @@ export interface CanvasRef {
   runLayout(name: string): void;
 }
 
-import type {
-  FreeTextAnnotation,
-  FreeShapeAnnotation,
-  GroupStyleAnnotation
-} from "../../shared/types/topology";
-
-export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose" | "geo";
+export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose";
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
 
+/**
+ * Node data interface for info panels
+ */
 export interface NodeData {
   id: string;
   label?: string;
@@ -36,6 +33,9 @@ export interface NodeData {
   [key: string]: unknown;
 }
 
+/**
+ * Link data interface for info panels
+ */
 export interface LinkData {
   id: string;
   source: string;
@@ -45,78 +45,9 @@ export interface LinkData {
   [key: string]: unknown;
 }
 
-/**
- * Hook for managing canvas ref (deprecated - use ViewportContext instead)
- * @deprecated This hook is kept for API compatibility only
- */
-export function useCytoscapeInstance(): {
-  cytoscapeRef: React.RefObject<CanvasRef | null>;
-  cyInstance: null;
-  onCyReady: () => void;
-  onCyDestroyed: () => void;
-} {
-  const cytoscapeRef = useRef<CanvasRef>(null);
-  const onCyReady = useCallback(() => {
-    // Disabled during ReactFlow migration
-  }, []);
-  const onCyDestroyed = useCallback(() => {
-    // Disabled during ReactFlow migration
-  }, []);
-  return { cytoscapeRef, cyInstance: null, onCyReady, onCyDestroyed };
-}
-
-/**
- * Hook for selection data (deprecated - use TopoViewerContext instead)
- * @deprecated This hook is kept for API compatibility only
- */
-export function useSelectionData(
-  _cytoscapeRef: React.RefObject<CanvasRef | null>,
-  _selectedNode: string | null,
-  _selectedEdge: string | null,
-  _refreshTrigger?: unknown
-): { selectedNodeData: NodeData | null; selectedLinkData: LinkData | null } {
-  // Disabled during ReactFlow migration
-  // Selection data should come from TopoViewerContext
-  return { selectedNodeData: null, selectedLinkData: null };
-}
-
-/**
- * Annotation data for fit-to-viewport calculations
- */
-export interface AnnotationData {
-  textAnnotations: FreeTextAnnotation[];
-  shapeAnnotations: FreeShapeAnnotation[];
-  groups: GroupStyleAnnotation[];
-}
-
-/**
- * Hook for navbar actions (deprecated - use ViewportContext instead)
- * @deprecated This hook is kept for API compatibility only
- */
-export function useNavbarActions(
-  cytoscapeRef: React.RefObject<CanvasRef | null>,
-  _annotations?: AnnotationData
-): {
-  handleZoomToFit: () => void;
-  handleToggleLayout: () => void;
-} {
-  // Disabled during ReactFlow migration
-  // Use ViewportContext for zoom/fit operations
-  const handleZoomToFit = useCallback(() => {
-    // Zoom to fit is handled via ViewportContext.rfInstance.fitView()
-  }, []);
-
-  const handleToggleLayout = useCallback(
-    () => cytoscapeRef.current?.runLayout("cose"),
-    [cytoscapeRef]
-  );
-  return { handleZoomToFit, handleToggleLayout };
-}
-
 function normalizeLayoutName(option: LayoutOption): string {
   if (option === "radial") return "concentric";
   if (option === "hierarchical") return "breadthfirst";
-  if (option === "geo") return "preset";
   return option;
 }
 
@@ -195,10 +126,6 @@ export function useLayoutControls(
       setLayoutState(nextLayout);
       const cyApi = cytoscapeRef.current;
       if (!cyApi) return;
-      if (nextLayout === "geo") {
-        // Geo layout disabled during ReactFlow migration
-        return;
-      }
       const normalized = normalizeLayoutName(nextLayout);
       cyApi.runLayout(normalized);
     },
@@ -210,7 +137,7 @@ export function useLayoutControls(
     setLayout,
     geoMode,
     setGeoMode,
-    isGeoLayout: layout === "geo",
+    isGeoLayout: false, // Geo layout not implemented in React Flow
     gridLineWidth,
     setGridLineWidth
   };

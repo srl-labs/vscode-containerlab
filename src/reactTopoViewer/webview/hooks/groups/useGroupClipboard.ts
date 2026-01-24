@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useRef } from "react";
+import type { RefObject } from "react";
 
 import type {
   GroupStyleAnnotation,
@@ -11,8 +12,31 @@ import type {
   FreeShapeAnnotation
 } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
-import { createHasClipboardData, createClearClipboard } from "../clipboard/useUnifiedClipboard";
 import { generateAnnotationId } from "../annotations/sharedAnnotationHelpers";
+
+/**
+ * Creates a hasClipboardData callback for clipboard hooks.
+ */
+function createHasClipboardData<T>(clipboardRef: RefObject<T | null>) {
+  return useCallback((): boolean => {
+    return clipboardRef.current !== null;
+  }, [clipboardRef]);
+}
+
+/**
+ * Creates a clearClipboard callback for clipboard hooks.
+ */
+function createClearClipboard<T>(
+  clipboardRef: RefObject<T | null>,
+  pasteCounterRef: RefObject<number>,
+  logPrefix: string
+) {
+  return useCallback((): void => {
+    clipboardRef.current = null;
+    pasteCounterRef.current = 0;
+    log.info(`[${logPrefix}] Clipboard cleared`);
+  }, [clipboardRef, pasteCounterRef, logPrefix]);
+}
 
 import type { GroupClipboardData, PastedGroupResult } from "./groupTypes";
 import {

@@ -8,14 +8,9 @@ import { log } from "../../utils/logger";
 
 import type { FreeTextAnnotation } from "./freeText";
 
-// Event object type for compatibility layer events
-interface CompatEventObject {
-  target: unknown;
-}
-
-// Node singular type for compatibility layer
-interface CompatNodeSingular {
-  position(): { x: number; y: number };
+/** Node drag event data passed from ReactFlow */
+interface NodeDragEvent {
+  position: { x: number; y: number };
 }
 
 // ============================================================================
@@ -50,10 +45,9 @@ function createGrabHandler(
   getSelectedAnnotations: () => FreeTextAnnotation[],
   isLocked: boolean
 ) {
-  return (event: CompatEventObject) => {
+  return (event: NodeDragEvent) => {
     if (isLocked) return;
 
-    const node = event.target as CompatNodeSingular;
     const selectedAnnotations = getSelectedAnnotations();
 
     if (selectedAnnotations.length === 0) {
@@ -62,8 +56,7 @@ function createGrabHandler(
       return;
     }
 
-    const nodePos = node.position();
-    refs.nodeStartPos.current = { x: nodePos.x, y: nodePos.y };
+    refs.nodeStartPos.current = { x: event.position.x, y: event.position.y };
     refs.startPositions.current = selectedAnnotations.map((a) => ({
       id: a.id,
       x: a.position.x,
@@ -82,14 +75,12 @@ function createDragHandler(
   onPositionChange: (id: string, position: { x: number; y: number }) => void,
   isLocked: boolean
 ) {
-  return (event: CompatEventObject) => {
+  return (event: NodeDragEvent) => {
     if (isLocked) return;
     if (refs.startPositions.current.length === 0 || !refs.nodeStartPos.current) return;
 
-    const node = event.target as CompatNodeSingular;
-    const currentNodePos = node.position();
-    const deltaX = currentNodePos.x - refs.nodeStartPos.current.x;
-    const deltaY = currentNodePos.y - refs.nodeStartPos.current.y;
+    const deltaX = event.position.x - refs.nodeStartPos.current.x;
+    const deltaY = event.position.y - refs.nodeStartPos.current.y;
 
     for (const startPos of refs.startPositions.current) {
       onPositionChange(startPos.id, { x: startPos.x + deltaX, y: startPos.y + deltaY });
@@ -130,12 +121,12 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
   }, [annotations, selectedAnnotationIds]);
 
   const handleGrab = useCallback(
-    (event: CompatEventObject) => createGrabHandler(refs, getSelectedAnnotations, isLocked)(event),
+    (event: NodeDragEvent) => createGrabHandler(refs, getSelectedAnnotations, isLocked)(event),
     [isLocked, getSelectedAnnotations]
   );
 
   const handleDrag = useCallback(
-    (event: CompatEventObject) => createDragHandler(refs, onPositionChange, isLocked)(event),
+    (event: NodeDragEvent) => createDragHandler(refs, onPositionChange, isLocked)(event),
     [isLocked, onPositionChange]
   );
 

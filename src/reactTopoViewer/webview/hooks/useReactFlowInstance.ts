@@ -17,7 +17,6 @@ export interface ViewportTransform {
 
 /**
  * Hook for managing ReactFlow canvas instance
- * Provides a similar interface to useCytoscapeInstance for migration compatibility
  */
 export function useReactFlowInstance(): {
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;

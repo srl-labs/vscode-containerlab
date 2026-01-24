@@ -22,13 +22,7 @@ export {
 } from "../ui";
 export { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../panels";
 export { useGeoMap } from "../canvas";
-export {
-  useCytoscapeInstance,
-  useSelectionData,
-  useNavbarActions,
-  useLayoutControls,
-  useContextMenuHandlers
-} from "../useAppState";
+export { useLayoutControls, useContextMenuHandlers } from "../useAppState";
 
 // App composition hooks
 export {

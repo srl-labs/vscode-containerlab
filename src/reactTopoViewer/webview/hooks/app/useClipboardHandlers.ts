@@ -1,17 +1,12 @@
 /**
  * useClipboardHandlers - Unified clipboard operations with debouncing
  *
- * Extracts clipboard handling from App.tsx:
- * - useUnifiedClipboard call
- * - Debounced copy/paste/duplicate/delete handlers
- * - Viewport center calculation
+ * Provides debounced copy/paste/duplicate/delete handlers
+ * using the React Flow clipboard hook.
  */
 import React from "react";
 
-import {
-  useUnifiedClipboard,
-  type UseUnifiedClipboardOptions
-} from "../clipboard/useUnifiedClipboard";
+import { useClipboard } from "../clipboard";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
@@ -51,8 +46,8 @@ export interface ClipboardHandlersConfig {
     beginBatch: () => void;
     endBatch: () => void;
   };
-  handleNodeCreatedCallback: UseUnifiedClipboardOptions["onCreateNode"];
-  handleEdgeCreated: UseUnifiedClipboardOptions["onCreateEdge"];
+  handleNodeCreatedCallback?: unknown;
+  handleEdgeCreated?: unknown;
 }
 
 /**
@@ -67,53 +62,31 @@ export interface ClipboardHandlersReturn {
   handleUnifiedDuplicate: () => void;
   /** Delete selected elements (graph + annotations) */
   handleUnifiedDelete: () => void;
-  /** Check if clipboard has data */
+  /** Check if clipboard has data (async) */
   hasClipboardData: () => boolean;
 }
 
 /**
  * Hook that provides debounced clipboard operations.
- *
- * Consolidates ~70 lines of clipboard code from App.tsx into a single hook.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } = config;
+  const { annotations } = config;
 
-  // Viewport center for paste operations
-  const getViewportCenter = React.useCallback(() => {
-    // TODO: Use ViewportContext's getViewportCenter() for actual center
-    return { x: 0, y: 0 };
-  }, []);
+  // Use the new React Flow clipboard hook
+  const clipboard = useClipboard();
 
-  // Unified clipboard hook
-  const unifiedClipboard = useUnifiedClipboard({
-    groups: annotations.groups,
-    textAnnotations: annotations.textAnnotations,
-    shapeAnnotations: annotations.shapeAnnotations,
-    getNodeMembership: annotations.getNodeMembership,
-    getGroupMembers: annotations.getGroupMembers,
-    selectedGroupIds: annotations.selectedGroupIds,
-    selectedTextAnnotationIds: annotations.selectedTextIds,
-    selectedShapeAnnotationIds: annotations.selectedShapeIds,
-    onAddGroup: annotations.addGroupWithUndo,
-    onAddTextAnnotation: annotations.saveTextAnnotation,
-    onAddShapeAnnotation: annotations.saveShapeAnnotation,
-    onAddNodeToGroup: annotations.addNodeToGroup,
-    generateGroupId: annotations.generateGroupId,
-    onCreateNode: handleNodeCreatedCallback,
-    onCreateEdge: handleEdgeCreated,
-    beginUndoBatch: undoRedo.beginBatch,
-    endUndoBatch: undoRedo.endBatch
-  });
+  // Track if clipboard has data (synced periodically)
+  const [hasData, setHasData] = React.useState(false);
 
-  const getPasteAnchor = React.useCallback(() => {
-    const viewportCenter = getViewportCenter();
-    const clipboardData = unifiedClipboard.getClipboardData();
-    if (!clipboardData) return viewportCenter;
+  // Check clipboard on mount and after operations
+  const checkClipboard = React.useCallback(async () => {
+    const has = await clipboard.hasClipboardData();
+    setHasData(has);
+  }, [clipboard]);
 
-    // Prefer the origin when available
-    return clipboardData.origin ?? viewportCenter;
-  }, [getViewportCenter, unifiedClipboard]);
+  React.useEffect(() => {
+    void checkClipboard();
+  }, [checkClipboard]);
 
   // Debounce refs
   const lastCopyTimeRef = React.useRef(0);
@@ -125,37 +98,42 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     const now = Date.now();
     if (now - lastCopyTimeRef.current < DEBOUNCE_MS) return;
     lastCopyTimeRef.current = now;
-    unifiedClipboard.copy();
-  }, [unifiedClipboard]);
+    void clipboard.copy().then(() => checkClipboard());
+  }, [clipboard, checkClipboard]);
 
   // Debounced paste
   const handleUnifiedPaste = React.useCallback(() => {
     const now = Date.now();
     if (now - lastPasteTimeRef.current < DEBOUNCE_MS) return;
     lastPasteTimeRef.current = now;
-    unifiedClipboard.paste(getPasteAnchor());
-  }, [unifiedClipboard, getPasteAnchor]);
+    void clipboard.paste();
+  }, [clipboard]);
 
-  // Debounced duplicate
+  // Debounced duplicate (copy + paste)
   const handleUnifiedDuplicate = React.useCallback(() => {
     const now = Date.now();
     if (now - lastDuplicateTimeRef.current < DEBOUNCE_MS) return;
     lastDuplicateTimeRef.current = now;
-    if (unifiedClipboard.copy()) unifiedClipboard.paste(getPasteAnchor());
-  }, [unifiedClipboard, getPasteAnchor]);
+    void clipboard.copy().then(async (success) => {
+      if (success) {
+        await clipboard.paste();
+      }
+    });
+  }, [clipboard]);
 
   // Delete handler (graph elements + annotations)
   const handleUnifiedDelete = React.useCallback(() => {
-    // Graph deletion is handled by keyboard/context-menu handlers that go through
-    // state + persistence. This unified delete is for annotations only.
     annotations.deleteAllSelected();
   }, [annotations]);
+
+  // Synchronous check (uses cached state)
+  const hasClipboardData = React.useCallback(() => hasData, [hasData]);
 
   return {
     handleUnifiedCopy,
     handleUnifiedPaste,
     handleUnifiedDuplicate,
     handleUnifiedDelete,
-    hasClipboardData: unifiedClipboard.hasClipboardData
+    hasClipboardData
   };
 }

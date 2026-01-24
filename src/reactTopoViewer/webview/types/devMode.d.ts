@@ -8,15 +8,13 @@ import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/to
 import type { NetworkType } from "../../shared/types/editors";
 
 /** Layout option type */
-type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
+type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical";
 
 /**
  * Development mode interface for E2E testing and debugging.
  * Exposed on window.__DEV__ only in development builds.
  */
 export interface DevModeInterface {
-  /** Cytoscape compatibility instance for graph manipulation */
-  cy?: unknown;
   /** Check if topology is locked */
   isLocked?: () => boolean;
   /** Get current mode */

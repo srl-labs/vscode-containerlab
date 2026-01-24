@@ -356,8 +356,7 @@ const LAYOUT_OPTIONS: { value: LayoutOption; label: string }[] = [
   { value: "cose", label: "Force-Directed (COSE)" },
   { value: "cola", label: "Cola" },
   { value: "radial", label: "Radial" },
-  { value: "hierarchical", label: "Hierarchical" },
-  { value: "geo", label: "Geo Map" }
+  { value: "hierarchical", label: "Hierarchical" }
 ];
 
 function getLayoutLabel(option: LayoutOption): string {
