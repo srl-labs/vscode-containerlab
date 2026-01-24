@@ -2,11 +2,11 @@
  * Hook for integrating free shape annotations into App.tsx
  */
 import React, { useCallback, useMemo } from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import type { FreeShapeAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
 import { log } from "../../utils/logger";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import { findDeepestGroupAtPosition } from "../groups";
 
 import { createDefaultAnnotation } from "./freeShape";
@@ -168,7 +168,7 @@ interface TopologyDataMessage {
 }
 
 interface UseAppFreeShapeAnnotationsOptions {
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
@@ -177,10 +177,10 @@ interface UseAppFreeShapeAnnotationsOptions {
 }
 
 export function useAppFreeShapeAnnotations(options: UseAppFreeShapeAnnotationsOptions) {
-  const { cyInstance, mode, isLocked, onLockedAction, groups } = options;
+  const { cyCompat, mode, isLocked, onLockedAction, groups } = options;
 
   const freeShapeAnnotations = useFreeShapeAnnotations({
-    cy: cyInstance,
+    cyCompat,
     mode,
     isLocked,
     onLockedAction,

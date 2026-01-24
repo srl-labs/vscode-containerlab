@@ -6,8 +6,8 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import { useVaporwaveAudio } from "../audio";
 import {
   BTN_VISIBLE,
@@ -25,7 +25,7 @@ interface VaporwaveModeProps {
   onClose?: () => void;
   onSwitchMode?: () => void;
   modeName?: string;
-  cyInstance?: CyCore | null;
+  cyCompat?: CyCompatCore | null;
 }
 
 /** Button border */
@@ -463,7 +463,7 @@ function drawFloatingShapes(
  * Hook to apply vaporwave glow to nodes
  */
 function useVaporwaveNodeGlow(
-  cyInstance: CyCore | null | undefined,
+  cyCompat: CyCompatCore | null | undefined,
   isActive: boolean,
   getCurrentSection: () => string
 ): void {
@@ -471,23 +471,23 @@ function useVaporwaveNodeGlow(
   const animationRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
+    if (!isActive || !cyCompat) return undefined;
 
     // Capture ref value at effect run time for cleanup
     const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
+    const nodes = cyCompat.nodes();
 
-    // Store original styles
+    // Store original styles (for compatibility)
     nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
+        "background-color": "",
+        "border-color": "",
+        "border-width": ""
       });
     });
 
-    const cy = cyInstance;
+    const cy = cyCompat;
     let t = 0;
 
     const animate = (): void => {
@@ -508,7 +508,7 @@ function useVaporwaveNodeGlow(
       cy.batch(() => restoreNodeStyles(cy, styles));
       styles.clear();
     };
-  }, [isActive, cyInstance, getCurrentSection]);
+  }, [isActive, cyCompat, getCurrentSection]);
 }
 
 /**
@@ -519,13 +519,13 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance
+  cyCompat
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useVaporwaveAudio();
 
   // Apply vaporwave glow to nodes
-  useVaporwaveNodeGlow(cyInstance, isActive, audio.getCurrentSection);
+  useVaporwaveNodeGlow(cyCompat, isActive, audio.getCurrentSection);
 
   // Start audio when activated
   useEffect(() => {

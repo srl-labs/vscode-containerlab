@@ -7,8 +7,8 @@
  * - Network creation (useNetworkCreation + handleNetworkCreatedCallback + handleAddNetworkFromPanel)
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import { useEdgeCreation } from "../graph/useEdgeCreation";
 import { useNodeCreation } from "../graph/useNodeCreation";
 import { useNetworkCreation, type NetworkType } from "../graph/useNetworkCreation";
@@ -39,7 +39,7 @@ type Position = { x: number; y: number };
  * Configuration for useGraphCreation hook
  */
 export interface GraphCreationConfig {
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   state: {
     mode: "edit" | "view";
@@ -88,7 +88,7 @@ export interface GraphCreationReturn {
  */
 export function useGraphCreation(config: GraphCreationConfig): GraphCreationReturn {
   const {
-    cyInstance,
+    cyCompat,
     floatingPanelRef,
     state,
     onEdgeCreated,
@@ -134,7 +134,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   }, [state.elements]);
 
   // Edge creation
-  const { startEdgeCreation } = useEdgeCreation(cyInstance, {
+  const { startEdgeCreation } = useEdgeCreation(cyCompat, {
     mode: state.mode,
     isLocked: state.isLocked,
     onEdgeCreated
@@ -155,7 +155,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   };
 
   // Node creation
-  const { createNodeAtPosition } = useNodeCreation(cyInstance, {
+  const { createNodeAtPosition } = useNodeCreation(cyCompat, {
     mode: state.mode,
     isLocked: state.isLocked,
     customNodes: state.customNodes,
@@ -170,7 +170,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   const { handleAddNodeFromPanel } = useNodeCreationHandlers(
     floatingPanelRef,
     nodeCreationState,
-    cyInstance,
+    cyCompat,
     createNodeAtPosition,
     onNewCustomNode
   );
@@ -198,7 +198,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   );
 
   // Network creation
-  const { createNetworkAtPosition } = useNetworkCreation(cyInstance, {
+  const { createNetworkAtPosition } = useNetworkCreation(cyCompat, {
     mode: state.mode,
     isLocked: state.isLocked,
     getExistingNodeIds: getUsedNodeIds,
@@ -210,15 +210,15 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   // Handle adding network from panel
   const handleAddNetworkFromPanel = React.useCallback(
     (networkType?: string) => {
-      if (!cyInstance || state.isLocked) {
+      if (!cyCompat || state.isLocked) {
         floatingPanelRef.current?.triggerShake();
         return;
       }
-      const extent = cyInstance.extent();
+      const extent = cyCompat.extent();
       const position = { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
       createNetworkAtPosition(position, (networkType || "host") as NetworkType);
     },
-    [cyInstance, state.isLocked, createNetworkAtPosition, floatingPanelRef]
+    [cyCompat, state.isLocked, createNetworkAtPosition, floatingPanelRef]
   );
 
   return {

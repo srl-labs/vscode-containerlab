@@ -5,8 +5,8 @@
  * Handlers are registered via refs to avoid circular dependencies.
  */
 import React, { createContext, useContext, useRef, useCallback, useMemo } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../hooks/useCytoCompatInstance";
 import {
   useUndoRedo,
   type UseUndoRedoReturn,
@@ -53,13 +53,17 @@ const UndoRedoContext = createContext<UndoRedoContextValue | null>(null);
 
 /** Props for UndoRedoProvider */
 interface UndoRedoProviderProps {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   enabled: boolean;
   children: React.ReactNode;
 }
 
 /** Provider component for undo/redo context */
-export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({ cy, enabled, children }) => {
+export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
+  cyCompat,
+  enabled,
+  children
+}) => {
   // Refs to hold the registered handlers
   const graphHandlerRef = useRef<ApplyGraphChangesHandler | undefined>(undefined);
   const propertyEditHandlerRef = useRef<ApplyPropertyEditHandler | undefined>(undefined);
@@ -90,7 +94,7 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({ cy, enabled,
 
   // Create the undo/redo hook with our delegating callbacks
   const undoRedo = useUndoRedo({
-    cy,
+    cyCompat,
     enabled,
     applyGraphChanges,
     applyPropertyEdit,

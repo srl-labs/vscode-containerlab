@@ -1,9 +1,7 @@
 /**
- * Canvas (Cytoscape) related hooks
+ * Canvas related hooks (ReactFlow-based)
  */
 
-export { useElementsUpdate, collectNodePositions } from "./useElementsUpdate";
-export type { NodePositions } from "./useElementsUpdate";
 export { useEndpointLabelOffset } from "./useEndpointLabelOffset";
 export { useLinkLabelVisibility } from "./useLinkLabelVisibility";
 export { useGeoMap } from "./useGeoMap";

@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 /**
  * GeoMap E2E Tests
@@ -8,30 +8,32 @@ import { test, expect } from '../fixtures/topoviewer';
  * - Node geo coordinate assignment
  * - Dragging nodes in geo mode updates their lat/lng
  */
-const TEST_FILE = 'simple.clab.yml';
+const TEST_FILE = "simple.clab.yml";
 
-test.describe('GeoMap Layout', () => {
+test.describe("GeoMap Layout", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.gotoFile(TEST_FILE);
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test('switching to geo layout initializes map and assigns geo coordinates', async ({ page, topoViewerPage }) => {
+  test("switching to geo layout initializes map and assigns geo coordinates", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Enable geo layout
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       if (dev?.setLayout) {
-        dev.setLayout('geo');
+        dev.setLayout("geo");
       } else {
-        throw new Error('setLayout not available');
+        throw new Error("setLayout not available");
       }
     });
 
     // Wait for geo map to initialize (map loads asynchronously)
-    await page.waitForFunction(
-      () => (window as any).__DEV__?.isGeoLayout?.() === true,
-      { timeout: 15000 }
-    );
+    await page.waitForFunction(() => (window as any).__DEV__?.isGeoLayout?.() === true, {
+      timeout: 15000
+    });
 
     // Wait for MapLibre to load (it has a timeout of 10 seconds)
     await page.waitForTimeout(2000);
@@ -54,8 +56,8 @@ test.describe('GeoMap Layout', () => {
       if (!node || node.empty()) return null;
       return {
         id: nodeId,
-        lat: node.data('lat'),
-        lng: node.data('lng')
+        lat: node.data("lat"),
+        lng: node.data("lng")
       };
     }, nodeIds[0]);
 
@@ -67,33 +69,41 @@ test.describe('GeoMap Layout', () => {
     expect(parseFloat(nodeWithGeo!.lng)).not.toBeNaN();
   });
 
-  test('dragging node in geo edit mode updates geo coordinates and persists to file', async ({ page, topoViewerPage }) => {
+  test("dragging node in geo edit mode updates geo coordinates and persists to file", async ({
+    page,
+    topoViewerPage
+  }) => {
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
     // Use specific known node ID (simple.clab.yml has srl1 and srl2)
-    const testNodeId = 'srl2';
+    const testNodeId = "srl2";
 
     // Get original annotation position BEFORE enabling geo layout
     // This is the preset position that should NOT change when dragging in geo mode
     const originalAnnotations = await topoViewerPage.getAnnotationsFromFile(TEST_FILE);
     const originalNodeAnnotation = originalAnnotations.nodeAnnotations?.find(
       (ann: { id: string }) => ann.id === testNodeId
-    ) as { id: string; position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } } | undefined;
+    ) as
+      | {
+          id: string;
+          position?: { x: number; y: number };
+          geoCoordinates?: { lat: number; lng: number };
+        }
+      | undefined;
     const originalPosition = originalNodeAnnotation?.position;
     console.log(`[DEBUG] Original annotation position: ${JSON.stringify(originalPosition)}`);
 
     // Enable geo layout
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      dev?.setLayout?.('geo');
+      dev?.setLayout?.("geo");
     });
 
     // Wait for geo map to initialize
-    await page.waitForFunction(
-      () => (window as any).__DEV__?.isGeoLayout?.() === true,
-      { timeout: 15000 }
-    );
+    await page.waitForFunction(() => (window as any).__DEV__?.isGeoLayout?.() === true, {
+      timeout: 15000
+    });
 
     // Wait for MapLibre to fully load
     await page.waitForTimeout(3000);
@@ -101,7 +111,7 @@ test.describe('GeoMap Layout', () => {
     // Switch to edit mode for geo (allows node dragging)
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      dev?.setGeoMode?.('edit');
+      dev?.setGeoMode?.("edit");
     });
 
     // Wait for mode to be applied
@@ -125,8 +135,8 @@ test.describe('GeoMap Layout', () => {
       const node = cy.getElementById(nodeId);
       if (!node || node.empty()) return null;
       return {
-        lat: parseFloat(node.data('lat')),
-        lng: parseFloat(node.data('lng')),
+        lat: parseFloat(node.data("lat")),
+        lng: parseFloat(node.data("lng")),
         position: node.position()
       };
     }, testNodeId);
@@ -137,8 +147,8 @@ test.describe('GeoMap Layout', () => {
 
     // Capture console errors during drag
     const consoleErrors: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
         consoleErrors.push(msg.text());
       }
     });
@@ -150,9 +160,10 @@ test.describe('GeoMap Layout', () => {
     await page.waitForTimeout(1500);
 
     // Check for errors - specifically the "Cannot read properties of undefined (reading 'group')" error
-    const relevantErrors = consoleErrors.filter(err =>
-      err.includes("Cannot read properties of undefined (reading 'group')") ||
-      err.includes('isNode')
+    const relevantErrors = consoleErrors.filter(
+      (err) =>
+        err.includes("Cannot read properties of undefined (reading 'group')") ||
+        err.includes("isNode")
     );
     expect(relevantErrors).toHaveLength(0);
 
@@ -164,8 +175,8 @@ test.describe('GeoMap Layout', () => {
       const node = cy.getElementById(nodeId);
       if (!node || node.empty()) return null;
       return {
-        lat: parseFloat(node.data('lat')),
-        lng: parseFloat(node.data('lng')),
+        lat: parseFloat(node.data("lat")),
+        lng: parseFloat(node.data("lng")),
         position: node.position()
       };
     }, testNodeId);
@@ -197,7 +208,13 @@ test.describe('GeoMap Layout', () => {
     // Find the annotation for the dragged node
     const nodeAnnotation = annotations.nodeAnnotations!.find(
       (ann: { id: string }) => ann.id === testNodeId
-    ) as { id: string; position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } } | undefined;
+    ) as
+      | {
+          id: string;
+          position?: { x: number; y: number };
+          geoCoordinates?: { lat: number; lng: number };
+        }
+      | undefined;
 
     console.log(`[DEBUG] Annotation for ${testNodeId}: ${JSON.stringify(nodeAnnotation)}`);
 
@@ -225,18 +242,17 @@ test.describe('GeoMap Layout', () => {
     }
   });
 
-  test('geo mode toggle works correctly', async ({ page, topoViewerPage }) => {
+  test("geo mode toggle works correctly", async ({ page, topoViewerPage }) => {
     // Enable geo layout
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      dev?.setLayout?.('geo');
+      dev?.setLayout?.("geo");
     });
 
     // Wait for geo map to initialize
-    await page.waitForFunction(
-      () => (window as any).__DEV__?.isGeoLayout?.() === true,
-      { timeout: 15000 }
-    );
+    await page.waitForFunction(() => (window as any).__DEV__?.isGeoLayout?.() === true, {
+      timeout: 15000
+    });
 
     await page.waitForTimeout(2000);
 
@@ -244,12 +260,12 @@ test.describe('GeoMap Layout', () => {
     const initialMode = await page.evaluate(() => {
       return (window as any).__DEV__?.geoMode?.();
     });
-    expect(initialMode).toBe('pan');
+    expect(initialMode).toBe("pan");
 
     // Switch to edit mode
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      dev?.setGeoMode?.('edit');
+      dev?.setGeoMode?.("edit");
     });
 
     await page.waitForTimeout(200);
@@ -257,12 +273,12 @@ test.describe('GeoMap Layout', () => {
     const editMode = await page.evaluate(() => {
       return (window as any).__DEV__?.geoMode?.();
     });
-    expect(editMode).toBe('edit');
+    expect(editMode).toBe("edit");
 
     // Switch back to pan mode
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      dev?.setGeoMode?.('pan');
+      dev?.setGeoMode?.("pan");
     });
 
     await page.waitForTimeout(200);
@@ -270,21 +286,20 @@ test.describe('GeoMap Layout', () => {
     const panMode = await page.evaluate(() => {
       return (window as any).__DEV__?.geoMode?.();
     });
-    expect(panMode).toBe('pan');
+    expect(panMode).toBe("pan");
   });
 
-  test('disabling geo layout restores normal view', async ({ page, topoViewerPage }) => {
+  test("disabling geo layout restores normal view", async ({ page, topoViewerPage }) => {
     // Enable geo layout
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      dev?.setLayout?.('geo');
+      dev?.setLayout?.("geo");
     });
 
     // Wait for geo map to initialize
-    await page.waitForFunction(
-      () => (window as any).__DEV__?.isGeoLayout?.() === true,
-      { timeout: 15000 }
-    );
+    await page.waitForFunction(() => (window as any).__DEV__?.isGeoLayout?.() === true, {
+      timeout: 15000
+    });
 
     await page.waitForTimeout(2000);
 
@@ -297,7 +312,7 @@ test.describe('GeoMap Layout', () => {
     // Switch back to preset layout
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      dev?.setLayout?.('preset');
+      dev?.setLayout?.("preset");
     });
 
     await page.waitForTimeout(1000);

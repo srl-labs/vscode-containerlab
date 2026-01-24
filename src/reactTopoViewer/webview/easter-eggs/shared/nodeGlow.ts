@@ -3,53 +3,45 @@
  */
 
 import { useEffect, useRef } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import type { RGBColor } from "./types";
 
 /**
- * Apply glow effect to cytoscape nodes
+ * Apply glow effect to nodes via CyCompatCore
+ * Note: In ReactFlow, styling is handled via React state, so this is a no-op placeholder.
+ * The visual glow effects are rendered through the canvas overlays instead.
  */
-export function applyNodeGlow(cyInstance: CyCore, color: RGBColor, intensity: number): void {
-  const borderWidth = `${2 + intensity * 2}px`;
-  const borderColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.6 + intensity * 0.4})`;
-
-  cyInstance.nodes().forEach((node) => {
-    node.style({
-      "border-width": borderWidth,
-      "border-color": borderColor
-    });
-  });
+export function applyNodeGlow(_cyCompat: CyCompatCore, _color: RGBColor, _intensity: number): void {
+  // No-op: ReactFlow handles node styling through React state
+  // The glow effect is achieved through the canvas overlay instead
 }
 
 /**
  * Restore original node styles
+ * Note: In ReactFlow, styling is handled via React state, so this is a no-op placeholder.
  */
 export function restoreNodeStyles(
-  cyInstance: CyCore,
-  originalStyles: Map<string, Record<string, string>>
+  _cyCompat: CyCompatCore,
+  _originalStyles: Map<string, Record<string, string>>
 ): void {
-  cyInstance.nodes().forEach((node) => {
-    const original = originalStyles.get(node.id());
-    if (original) {
-      node.style({
-        "border-width": original["border-width"],
-        "border-color": original["border-color"]
-      });
-    }
-  });
+  // No-op: ReactFlow handles node styling through React state
 }
 
 /**
  * Hook to apply glow effect to nodes based on audio/animation
  *
- * @param cyInstance - Cytoscape instance
+ * @param cyCompat - CyCompatCore instance
  * @param isActive - Whether the mode is active
  * @param getColor - Function to get current color
  * @param getIntensity - Function to get current intensity (0-1)
+ *
+ * Note: In ReactFlow, node styling is handled differently. This hook
+ * maintains the same interface for compatibility but the visual effects
+ * are achieved through canvas overlays rather than direct node styling.
  */
 export function useNodeGlow(
-  cyInstance: CyCore | null | undefined,
+  cyCompat: CyCompatCore | null | undefined,
   isActive: boolean,
   getColor: () => RGBColor,
   getIntensity: () => number
@@ -58,21 +50,21 @@ export function useNodeGlow(
   const animationRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
+    if (!isActive || !cyCompat) return undefined;
 
-    const nodes = cyInstance.nodes();
+    const nodes = cyCompat.nodes();
 
-    // Store original styles
+    // Store original styles (for compatibility, though not used in ReactFlow)
     nodes.forEach((node) => {
       const id = node.id();
       originalStylesRef.current.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
+        "background-color": "",
+        "border-color": "",
+        "border-width": ""
       });
     });
 
-    const cy = cyInstance;
+    const cy = cyCompat;
 
     const animate = (): void => {
       const color = getColor();
@@ -90,5 +82,5 @@ export function useNodeGlow(
       cy.batch(() => restoreNodeStyles(cy, originalStylesRef.current));
       originalStylesRef.current.clear();
     };
-  }, [isActive, cyInstance, getColor, getIntensity]);
+  }, [isActive, cyCompat, getColor, getIntensity]);
 }

@@ -1,9 +1,19 @@
 /**
  * useAltClickDelete - Hook for deleting nodes/edges via Alt+Click
+ *
+ * NOTE: This hook uses the CyCompatCore compatibility layer.
+ * The event handling is a stub - actual events should be handled via ReactFlow's
+ * onNodeClick/onEdgeClick callbacks. This hook provides the deletion logic
+ * that can be called from those handlers.
  */
 import { useEffect } from "react";
-import type { Core, EventObject, NodeSingular, EdgeSingular } from "cytoscape";
 
+import type {
+  CyCompatCore,
+  CyCompatEventObject,
+  CyCompatNodeElement,
+  CyCompatEdgeElement
+} from "../useCytoCompatInstance";
 import { log } from "../../utils/logger";
 
 import { getModifierTapTarget } from "./graphClickHelpers";
@@ -18,19 +28,29 @@ interface AltClickDeleteOptions {
 /**
  * Hook that enables Alt+Click to delete nodes and edges
  * Only active in edit mode when not locked
+ *
+ * NOTE: Event handling is stubbed in the compatibility layer.
+ * For ReactFlow integration, use onNodeClick/onEdgeClick handlers directly.
  */
-export function useAltClickDelete(cy: Core | null, options: AltClickDeleteOptions): void {
+export function useAltClickDelete(
+  cyCompat: CyCompatCore | null,
+  options: AltClickDeleteOptions
+): void {
   const { mode, isLocked, onDeleteNode, onDeleteEdge } = options;
 
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
 
-    const handleTap = (evt: EventObject) => {
-      const element = getModifierTapTarget<NodeSingular | EdgeSingular>(evt, cy, {
-        mode,
-        isLocked,
-        modifier: "alt"
-      });
+    const handleTap = (evt: CyCompatEventObject) => {
+      const element = getModifierTapTarget<CyCompatNodeElement | CyCompatEdgeElement>(
+        evt,
+        cyCompat,
+        {
+          mode,
+          isLocked,
+          modifier: "alt"
+        }
+      );
       if (!element) return;
 
       if (element.isNode()) {
@@ -42,9 +62,9 @@ export function useAltClickDelete(cy: Core | null, options: AltClickDeleteOption
       }
     };
 
-    cy.on("tap", "node, edge", handleTap);
+    cyCompat.on("tap", "node, edge", handleTap as unknown as () => void);
     return () => {
-      cy.off("tap", "node, edge", handleTap);
+      cyCompat.off("tap", "node, edge", handleTap as unknown as () => void);
     };
-  }, [cy, mode, isLocked, onDeleteNode, onDeleteEdge]);
+  }, [cyCompat, mode, isLocked, onDeleteNode, onDeleteEdge]);
 }

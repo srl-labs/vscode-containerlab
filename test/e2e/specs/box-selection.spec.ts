@@ -1,9 +1,9 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { drag, boxSelect } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { drag, boxSelect } from "../helpers/cytoscape-helpers";
 
-const SIMPLE_FILE = 'simple.clab.yml';
+const SIMPLE_FILE = "simple.clab.yml";
 
-test.describe('Box Selection', () => {
+test.describe("Box Selection", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SIMPLE_FILE);
@@ -12,7 +12,7 @@ test.describe('Box Selection', () => {
     await topoViewerPage.unlock();
   });
 
-  test('drag on canvas creates selection box', async ({ page, topoViewerPage }) => {
+  test("drag on canvas creates selection box", async ({ page, topoViewerPage }) => {
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
     // Define box selection area in empty canvas region
@@ -35,7 +35,10 @@ test.describe('Box Selection', () => {
     expect(Array.isArray(selectedIds)).toBe(true);
   });
 
-  test('box selection selects nodes inside the box but not outside', async ({ page, topoViewerPage }) => {
+  test("box selection selects nodes inside the box but not outside", async ({
+    page,
+    topoViewerPage
+  }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -61,7 +64,7 @@ test.describe('Box Selection', () => {
     expect(selectedIds).toContain(nodeIds[1]);
 
     // Clear selection
-    await page.keyboard.press('Escape');
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
     // Test 2: Create a small box that only contains the first node
@@ -84,7 +87,7 @@ test.describe('Box Selection', () => {
     expect(selectedIds).not.toContain(nodeIds[1]);
   });
 
-  test('box selection with Ctrl adds to existing selection', async ({ page, topoViewerPage }) => {
+  test("box selection with Ctrl adds to existing selection", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -109,11 +112,11 @@ test.describe('Box Selection', () => {
     };
 
     // Perform Ctrl+Shift+drag for additive box selection
-    await page.keyboard.down('Control');
-    await page.keyboard.down('Shift');
+    await page.keyboard.down("Control");
+    await page.keyboard.down("Shift");
     await drag(page, from, to, { steps: 5 });
-    await page.keyboard.up('Shift');
-    await page.keyboard.up('Control');
+    await page.keyboard.up("Shift");
+    await page.keyboard.up("Control");
     await page.waitForTimeout(300);
 
     // Both nodes should now be selected
@@ -124,7 +127,10 @@ test.describe('Box Selection', () => {
   });
 
   // Note: Selection is a read operation and is allowed when locked or in view mode.
-  test('box selection works when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {
+  test("box selection works when canvas is locked or in view mode", async ({
+    page,
+    topoViewerPage
+  }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -155,7 +161,7 @@ test.describe('Box Selection', () => {
 
     // Unlock and clear selection
     await topoViewerPage.unlock();
-    await page.keyboard.press('Escape');
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
     // Test view mode
@@ -166,8 +172,10 @@ test.describe('Box Selection', () => {
     const node2BoxView = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
     const minXView = Math.min(node1BoxView!.x, node2BoxView!.x) - 20;
     const minYView = Math.min(node1BoxView!.y, node2BoxView!.y) - 20;
-    const maxXView = Math.max(node1BoxView!.x + node1BoxView!.width, node2BoxView!.x + node2BoxView!.width) + 20;
-    const maxYView = Math.max(node1BoxView!.y + node1BoxView!.height, node2BoxView!.y + node2BoxView!.height) + 20;
+    const maxXView =
+      Math.max(node1BoxView!.x + node1BoxView!.width, node2BoxView!.x + node2BoxView!.width) + 20;
+    const maxYView =
+      Math.max(node1BoxView!.y + node1BoxView!.height, node2BoxView!.y + node2BoxView!.height) + 20;
 
     await boxSelect(page, { x: minXView, y: minYView }, { x: maxXView, y: maxYView });
     await page.waitForTimeout(300);
@@ -178,7 +186,10 @@ test.describe('Box Selection', () => {
     expect(selectedIds).toContain(nodeIds[1]);
   });
 
-  test('empty box selection preserves existing selection (additive mode)', async ({ page, topoViewerPage }) => {
+  test("empty box selection preserves existing selection (additive mode)", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Note: Cytoscape is configured with selectionType: 'additive'
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(1);
@@ -210,7 +221,7 @@ test.describe('Box Selection', () => {
     expect(selectedIds).toContain(nodeIds[0]);
   });
 
-  test('box selection works after zoom and pan', async ({ page, topoViewerPage }) => {
+  test("box selection works after zoom and pan", async ({ page, topoViewerPage }) => {
     // Zoom in
     await topoViewerPage.setZoom(1.5);
     await page.waitForTimeout(200);
@@ -238,7 +249,7 @@ test.describe('Box Selection', () => {
     expect(selectedIds.length).toBe(2);
 
     // Clear selection and test pan
-    await page.keyboard.press('Escape');
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
     // Pan the canvas by dragging with mouse
@@ -266,7 +277,7 @@ test.describe('Box Selection', () => {
     expect(selectedIds.length).toBe(2);
   });
 
-  test('box selection from bottom-right to top-left works', async ({ page, topoViewerPage }) => {
+  test("box selection from bottom-right to top-left works", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -293,7 +304,10 @@ test.describe('Box Selection', () => {
     expect(selectedIds).toContain(nodeIds[1]);
   });
 
-  test('box selection adds to selection without Ctrl (additive mode)', async ({ page, topoViewerPage }) => {
+  test("box selection adds to selection without Ctrl (additive mode)", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Note: Cytoscape is configured with selectionType: 'additive'
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);

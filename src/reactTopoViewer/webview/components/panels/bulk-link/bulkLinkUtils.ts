@@ -1,12 +1,11 @@
 /**
  * Utility functions for bulk link creation
  */
-import type { Core as CyCore, NodeSingular } from "cytoscape";
-
 import { FilterUtils } from "../../../../../helpers/filterUtils";
 import { isSpecialEndpointId } from "../../../../shared/utilities/LinkTypes";
 import type { CyElement } from "../../../../shared/types/messages";
 import type { GraphChange } from "../../../hooks/state/useUndoRedo";
+import type { CyCompatCore, CyCompatElement } from "../../../hooks/useCytoCompatInstance";
 import {
   type ParsedInterfacePattern,
   parseInterfacePattern,
@@ -24,8 +23,8 @@ type EndpointAllocator = {
 
 function getOrCreateAllocator(
   allocators: Map<string, EndpointAllocator>,
-  cy: CyCore,
-  node: NodeSingular
+  cyCompat: CyCompatCore,
+  node: CyCompatElement
 ): EndpointAllocator {
   const nodeId = node.id();
   const cached = allocators.get(nodeId);
@@ -33,7 +32,7 @@ function getOrCreateAllocator(
 
   const pattern = getNodeInterfacePattern(node);
   const parsed = parseInterfacePattern(pattern);
-  const usedIndices = collectUsedIndices(cy, nodeId, parsed);
+  const usedIndices = collectUsedIndices(cyCompat, nodeId, parsed);
   const created = { parsed, usedIndices };
   allocators.set(nodeId, created);
   return created;
@@ -41,12 +40,12 @@ function getOrCreateAllocator(
 
 function allocateEndpoint(
   allocators: Map<string, EndpointAllocator>,
-  cy: CyCore,
-  node: NodeSingular
+  cyCompat: CyCompatCore,
+  node: CyCompatElement
 ): string {
   if (isSpecialEndpointId(node.id())) return "";
 
-  const allocator = getOrCreateAllocator(allocators, cy, node);
+  const allocator = getOrCreateAllocator(allocators, cyCompat, node);
   let nextIndex = 0;
   while (allocator.usedIndices.has(nextIndex)) nextIndex++;
   allocator.usedIndices.add(nextIndex);
@@ -100,12 +99,26 @@ function getSourceMatch(
   return fallbackFilter(name) ? null : undefined;
 }
 
+/** Check if an edge exists between two nodes */
+function hasEdgeBetween(cyCompat: CyCompatCore, sourceId: string, targetId: string): boolean {
+  const edges = cyCompat.edges();
+  let found = false;
+  edges.forEach((edge) => {
+    const src = edge.data("source") as string;
+    const tgt = edge.data("target") as string;
+    if ((src === sourceId && tgt === targetId) || (src === targetId && tgt === sourceId)) {
+      found = true;
+    }
+  });
+  return found;
+}
+
 export function computeCandidates(
-  cy: CyCore,
+  cyCompat: CyCompatCore,
   sourceFilterText: string,
   targetFilterText: string
 ): LinkCandidate[] {
-  const nodes = cy.nodes('node[topoViewerRole != "freeText"]');
+  const nodes = cyCompat.nodes('node[topoViewerRole != "freeText"]');
   const candidates: LinkCandidate[] = [];
 
   const sourceRegex = FilterUtils.tryCreateRegExp(sourceFilterText);
@@ -122,7 +135,7 @@ export function computeCandidates(
     nodes.forEach((targetNode) => {
       if (sourceNode.id() === targetNode.id()) return;
       if (!targetFilter(targetNode.data("name") as string)) return;
-      if (sourceNode.edgesWith(targetNode).nonempty()) return;
+      if (hasEdgeBetween(cyCompat, sourceNode.id(), targetNode.id())) return;
 
       candidates.push({ sourceId: sourceNode.id(), targetId: targetNode.id() });
     });
@@ -131,17 +144,17 @@ export function computeCandidates(
   return candidates;
 }
 
-export function buildBulkEdges(cy: CyCore, candidates: LinkCandidate[]): CyElement[] {
+export function buildBulkEdges(cyCompat: CyCompatCore, candidates: LinkCandidate[]): CyElement[] {
   const allocators = new Map<string, EndpointAllocator>();
   const edges: CyElement[] = [];
 
   for (const { sourceId, targetId } of candidates) {
-    const sourceNode = cy.getElementById(sourceId) as unknown as NodeSingular;
-    const targetNode = cy.getElementById(targetId) as unknown as NodeSingular;
-    if (!sourceNode || !targetNode) continue;
+    const sourceNode = cyCompat.getElementById(sourceId);
+    const targetNode = cyCompat.getElementById(targetId);
+    if (!sourceNode.length || !targetNode.length) continue;
 
-    const sourceEndpoint = allocateEndpoint(allocators, cy, sourceNode);
-    const targetEndpoint = allocateEndpoint(allocators, cy, targetNode);
+    const sourceEndpoint = allocateEndpoint(allocators, cyCompat, sourceNode);
+    const targetEndpoint = allocateEndpoint(allocators, cyCompat, targetNode);
     const edgeId = `${sourceId}-${targetId}`;
 
     edges.push({

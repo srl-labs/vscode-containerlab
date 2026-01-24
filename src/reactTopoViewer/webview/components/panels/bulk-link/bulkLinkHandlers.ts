@@ -1,11 +1,10 @@
 /**
  * Handler functions for bulk link operations
  */
-import type { Core as CyCore } from "cytoscape";
-
 import type { GraphChange } from "../../../hooks/state/useUndoRedo";
 import type { CyElement } from "../../../../shared/types/messages";
 import { createLink, beginBatch, endBatch, type LinkSaveData } from "../../../services";
+import type { CyCompatCore } from "../../../hooks/useCytoCompatInstance";
 
 import {
   computeCandidates,
@@ -37,13 +36,13 @@ export async function sendBulkEdgesToExtension(edges: CyElement[]): Promise<void
 }
 
 export function computeAndValidateCandidates(
-  cy: CyCore | null,
+  cyCompat: CyCompatCore | null,
   sourcePattern: string,
   targetPattern: string,
   setStatus: SetStatus,
   setPendingCandidates: SetCandidates
 ): void {
-  if (!cy) {
+  if (!cyCompat) {
     setStatus("Topology not ready yet.");
     return;
   }
@@ -52,7 +51,7 @@ export function computeAndValidateCandidates(
     return;
   }
 
-  const candidates = computeCandidates(cy, sourcePattern.trim(), targetPattern.trim());
+  const candidates = computeCandidates(cyCompat, sourcePattern.trim(), targetPattern.trim());
   if (candidates.length === 0) {
     setStatus("No new links would be created with the specified patterns.");
     return;
@@ -63,7 +62,7 @@ export function computeAndValidateCandidates(
 }
 
 interface ConfirmCreateParams {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
   addEdge?: (edge: CyElement) => void;
@@ -74,7 +73,7 @@ interface ConfirmCreateParams {
 }
 
 export async function confirmAndCreateLinks({
-  cy,
+  cyCompat,
   pendingCandidates,
   canApply,
   addEdge,
@@ -83,14 +82,14 @@ export async function confirmAndCreateLinks({
   setPendingCandidates,
   onClose
 }: ConfirmCreateParams): Promise<void> {
-  if (!cy || !pendingCandidates) return;
+  if (!cyCompat || !pendingCandidates) return;
   if (!canApply) {
     setStatus("Unlock the lab to create links.");
     setPendingCandidates(null);
     return;
   }
 
-  const edges = buildBulkEdges(cy, pendingCandidates);
+  const edges = buildBulkEdges(cyCompat, pendingCandidates);
   if (edges.length === 0) {
     setStatus("No new links to create.");
     setPendingCandidates(null);

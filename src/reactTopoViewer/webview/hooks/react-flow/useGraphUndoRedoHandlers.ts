@@ -2,27 +2,27 @@
  * Graph Undo/Redo Handlers for React Flow
  * Composes smaller hooks to provide complete undo/redo functionality
  */
-import { useCallback, useMemo } from 'react';
-import type { Node, Edge } from '@xyflow/react';
+import { useCallback, useMemo } from "react";
+import type { Node, Edge } from "@xyflow/react";
 
-import type { CyElement } from '../../../shared/types/messages';
+import type { CyElement } from "../../../shared/types/messages";
 import type {
   NodePositionEntry,
   GraphChange,
   UndoRedoActionAnnotation,
   UndoRedoAction
-} from '../state/useUndoRedo';
-import { log } from '../../utils/logger';
+} from "../state/useUndoRedo";
+import { log } from "../../utils/logger";
 
-import { useUndoRedoState } from './useUndoRedoState';
-import { useUndoRedoAppliers } from './useUndoRedoAppliers';
-import { useUndoRedoDeleteHandlers } from './useUndoRedoDeleteHandlers';
+import { useUndoRedoState } from "./useUndoRedoState";
+import { useUndoRedoAppliers } from "./useUndoRedoAppliers";
+import { useUndoRedoDeleteHandlers } from "./useUndoRedoDeleteHandlers";
 
 /**
  * Options for the useGraphUndoRedoHandlers hook
  */
 export interface UseGraphUndoRedoHandlersOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   getNodes: () => Node[];
   getEdges: () => Edge[];
   setNodePositions: (positions: NodePositionEntry[]) => void;
@@ -53,7 +53,7 @@ export interface UseGraphUndoRedoHandlersReturn {
   handleDeleteNodeWithUndo: (nodeId: string) => void;
   handleDeleteLinkWithUndo: (edgeId: string) => void;
   recordPropertyEdit: (action: {
-    entityType: 'node' | 'link';
+    entityType: "node" | "link";
     entityId: string;
     before: Record<string, unknown>;
     after: Record<string, unknown>;
@@ -63,19 +63,49 @@ export interface UseGraphUndoRedoHandlersReturn {
 /**
  * Hook for graph undo/redo handlers with React Flow integration
  */
-export function useGraphUndoRedoHandlers(options: UseGraphUndoRedoHandlersOptions): UseGraphUndoRedoHandlersReturn {
+export function useGraphUndoRedoHandlers(
+  options: UseGraphUndoRedoHandlersOptions
+): UseGraphUndoRedoHandlersReturn {
   const {
-    mode, getNodes, getEdges, setNodePositions, addNode, addEdge,
-    removeNodeAndEdges, removeEdge, updateNodes, updateEdges, applyAnnotationChange
+    mode,
+    getNodes,
+    getEdges,
+    setNodePositions,
+    addNode,
+    addEdge,
+    removeNodeAndEdges,
+    removeEdge,
+    updateNodes,
+    updateEdges,
+    applyAnnotationChange
   } = options;
 
-  const isEnabled = mode === 'edit';
+  const isEnabled = mode === "edit";
 
   // Get appliers first (needs isApplyingRef from state)
-  const appliersOptions = useMemo(() => ({
-    setNodePositions, addNode, addEdge, removeNodeAndEdges, removeEdge,
-    updateNodes, updateEdges, applyAnnotationChange, isApplyingRef: { current: false }
-  }), [setNodePositions, addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodes, updateEdges, applyAnnotationChange]);
+  const appliersOptions = useMemo(
+    () => ({
+      setNodePositions,
+      addNode,
+      addEdge,
+      removeNodeAndEdges,
+      removeEdge,
+      updateNodes,
+      updateEdges,
+      applyAnnotationChange,
+      isApplyingRef: { current: false }
+    }),
+    [
+      setNodePositions,
+      addNode,
+      addEdge,
+      removeNodeAndEdges,
+      removeEdge,
+      updateNodes,
+      updateEdges,
+      applyAnnotationChange
+    ]
+  );
 
   const { applyAction } = useUndoRedoAppliers(appliersOptions);
 
@@ -92,51 +122,63 @@ export function useGraphUndoRedoHandlers(options: UseGraphUndoRedoHandlersOption
   const { handleDeleteNodeWithUndo, handleDeleteLinkWithUndo } = useUndoRedoDeleteHandlers({
     isEnabled,
     isApplyingRef: undoRedoState.isApplyingRef,
-    getNodes, getEdges,
-    removeNodeAndEdges, removeEdge,
-    updateNodes, updateEdges,
+    getNodes,
+    getEdges,
+    removeNodeAndEdges,
+    removeEdge,
+    updateNodes,
+    updateEdges,
     pushAction: undoRedoState.pushAction
   });
 
   // Property edit recording
-  const recordPropertyEdit = useCallback((action: {
-    entityType: 'node' | 'link';
-    entityId: string;
-    before: Record<string, unknown>;
-    after: Record<string, unknown>;
-  }) => {
-    if (!isEnabled || undoRedoState.isApplyingRef.current) return;
+  const recordPropertyEdit = useCallback(
+    (action: {
+      entityType: "node" | "link";
+      entityId: string;
+      before: Record<string, unknown>;
+      after: Record<string, unknown>;
+    }) => {
+      if (!isEnabled || undoRedoState.isApplyingRef.current) return;
 
-    undoRedoState.pushAction({
-      type: 'property-edit',
-      entityType: action.entityType,
-      entityId: action.entityId,
-      before: action.before,
-      after: action.after
-    });
+      undoRedoState.pushAction({
+        type: "property-edit",
+        entityType: action.entityType,
+        entityId: action.entityId,
+        before: action.before,
+        after: action.after
+      });
 
-    log.info(`[UndoRedo] Recorded property edit for ${action.entityType} ${action.entityId}`);
-  }, [isEnabled, undoRedoState]);
+      log.info(`[UndoRedo] Recorded property edit for ${action.entityType} ${action.entityId}`);
+    },
+    [isEnabled, undoRedoState]
+  );
 
   // Compose the undoRedo object
-  const undoRedo = useMemo(() => ({
-    canUndo: undoRedoState.canUndo,
-    canRedo: undoRedoState.canRedo,
-    undoCount: undoRedoState.undoCount,
-    redoCount: undoRedoState.redoCount,
-    undo: undoRedoState.undo,
-    redo: undoRedoState.redo,
-    pushAction: undoRedoState.pushAction,
-    recordMove: undoRedoState.recordMove,
-    clearHistory: undoRedoState.clearHistory
-  }), [undoRedoState]);
+  const undoRedo = useMemo(
+    () => ({
+      canUndo: undoRedoState.canUndo,
+      canRedo: undoRedoState.canRedo,
+      undoCount: undoRedoState.undoCount,
+      redoCount: undoRedoState.redoCount,
+      undo: undoRedoState.undo,
+      redo: undoRedoState.redo,
+      pushAction: undoRedoState.pushAction,
+      recordMove: undoRedoState.recordMove,
+      clearHistory: undoRedoState.clearHistory
+    }),
+    [undoRedoState]
+  );
 
-  return useMemo(() => ({
-    undoRedo,
-    handleDeleteNodeWithUndo,
-    handleDeleteLinkWithUndo,
-    recordPropertyEdit
-  }), [undoRedo, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo, recordPropertyEdit]);
+  return useMemo(
+    () => ({
+      undoRedo,
+      handleDeleteNodeWithUndo,
+      handleDeleteLinkWithUndo,
+      recordPropertyEdit
+    }),
+    [undoRedo, handleDeleteNodeWithUndo, handleDeleteLinkWithUndo, recordPropertyEdit]
+  );
 }
 
 // Re-export types for convenience

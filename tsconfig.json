@@ -21,10 +21,7 @@
     "strictFunctionTypes": true,
     "strictNullChecks": true,
     "target": "ES2024",
-    "typeRoots": [
-        "src/topoViewer/common/types",
-      "./node_modules/@types"
-    ],
+    "typeRoots": ["src/topoViewer/common/types", "./node_modules/@types"],
     "types": ["mocha", "node"]
   },
   "exclude": [

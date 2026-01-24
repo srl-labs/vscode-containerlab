@@ -1,13 +1,13 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
-const EMPTY_FILE = 'empty.clab.yml';
+const EMPTY_FILE = "empty.clab.yml";
 
 const SEL_ADD_SHAPES_BTN = '[data-testid="floating-panel-add-shapes-btn"]';
 const SEL_FREE_SHAPE_EDITOR = '[data-testid="free-shape-editor"]';
 const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 
-test.describe('Free Shape Annotations', () => {
-  test('can create rectangle and persist to annotations file', async ({ page, topoViewerPage }) => {
+test.describe("Free Shape Annotations", () => {
+  test("can create rectangle and persist to annotations file", async ({ page, topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(EMPTY_FILE);
     await topoViewerPage.waitForCanvasReady();
@@ -19,7 +19,7 @@ test.describe('Free Shape Annotations', () => {
 
     await page.locator(SEL_ADD_SHAPES_BTN).click();
     await page.waitForTimeout(200);
-    await page.locator('text=Rectangle').click();
+    await page.locator("text=Rectangle").click();
     await page.waitForTimeout(200);
 
     const canvasCenter = await topoViewerPage.getCanvasCenter();
@@ -32,17 +32,18 @@ test.describe('Free Shape Annotations', () => {
       await page.waitForTimeout(200);
     }
 
-    await expect.poll(
-      async () => {
-        const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-        return after.freeShapeAnnotations?.length ?? 0;
-      },
-      { timeout: 5000, message: 'Expected rectangle shape annotation to be persisted' }
-    ).toBe(beforeCount + 1);
+    await expect
+      .poll(
+        async () => {
+          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+          return after.freeShapeAnnotations?.length ?? 0;
+        },
+        { timeout: 5000, message: "Expected rectangle shape annotation to be persisted" }
+      )
+      .toBe(beforeCount + 1);
 
     const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-    const rectangle = after.freeShapeAnnotations?.find(s => s.shapeType === 'rectangle');
+    const rectangle = after.freeShapeAnnotations?.find((s) => s.shapeType === "rectangle");
     expect(rectangle).toBeDefined();
   });
 });
-

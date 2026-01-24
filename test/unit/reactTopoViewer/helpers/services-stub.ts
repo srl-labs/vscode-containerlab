@@ -8,10 +8,10 @@
  * because ES module re-exports don't work well with sinon.stub().
  */
 
-import sinon from 'sinon';
+import sinon from "sinon";
 
-import * as services from '../../../../src/reactTopoViewer/webview/services';
-import type { FileSystemAdapter } from '../../../../src/reactTopoViewer/shared/io/types';
+import * as services from "../../../../src/reactTopoViewer/webview/services";
+import type { FileSystemAdapter } from "../../../../src/reactTopoViewer/shared/io/types";
 
 // Track all service calls for assertions
 export interface ServiceCall {
@@ -32,7 +32,7 @@ class MockFileSystemAdapter implements FileSystemAdapter {
     const content = this.files.get(filePath);
     if (content === undefined) {
       // Return empty YAML structure for any file
-      return 'name: test\ntopology:\n  nodes: {}\n  links: []\n';
+      return "name: test\ntopology:\n  nodes: {}\n  links: []\n";
     }
     return content;
   }
@@ -50,19 +50,19 @@ class MockFileSystemAdapter implements FileSystemAdapter {
   }
 
   dirname(filePath: string): string {
-    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-    if (lastSlash === -1) return '.';
-    if (lastSlash === 0) return '/';
+    const lastSlash = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+    if (lastSlash === -1) return ".";
+    if (lastSlash === 0) return "/";
     return filePath.substring(0, lastSlash);
   }
 
   basename(filePath: string): string {
-    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+    const lastSlash = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
     return filePath.substring(lastSlash + 1);
   }
 
   join(...segments: string[]): string {
-    return segments.join('/').replace(/\/+/g, '/');
+    return segments.join("/").replace(/\/+/g, "/");
   }
 
   // Test utility: set file content
@@ -86,7 +86,9 @@ export function setupServiceStubs(): void {
   mockAdapter = new MockFileSystemAdapter();
 
   // Set up a basic topology file
-  mockAdapter.setFile('/test/lab.clab.yml', `name: test
+  mockAdapter.setFile(
+    "/test/lab.clab.yml",
+    `name: test
 topology:
   nodes:
     node1:
@@ -95,7 +97,8 @@ topology:
       kind: linux
   links:
     - endpoints: ["node1:e1-1", "node2:e1-1"]
-`);
+`
+  );
 
   // Initialize services with mock adapter
   services.resetServices();
@@ -107,56 +110,56 @@ topology:
 
   // Stub addNode (called by createNode)
   const originalAddNode = topologyIO.addNode.bind(topologyIO);
-  const addNodeStub = sinon.stub(topologyIO, 'addNode').callsFake(async (data) => {
-    serviceCalls.push({ method: 'createNode', args: [data] });
+  const addNodeStub = sinon.stub(topologyIO, "addNode").callsFake(async (data) => {
+    serviceCalls.push({ method: "createNode", args: [data] });
     return originalAddNode(data);
   });
   stubs.push(addNodeStub);
 
   // Stub editNode
   const originalEditNode = topologyIO.editNode.bind(topologyIO);
-  const editNodeStub = sinon.stub(topologyIO, 'editNode').callsFake(async (data) => {
-    serviceCalls.push({ method: 'editNode', args: [data] });
+  const editNodeStub = sinon.stub(topologyIO, "editNode").callsFake(async (data) => {
+    serviceCalls.push({ method: "editNode", args: [data] });
     return originalEditNode(data);
   });
   stubs.push(editNodeStub);
 
   // Stub addLink (called by createLink)
   const originalAddLink = topologyIO.addLink.bind(topologyIO);
-  const addLinkStub = sinon.stub(topologyIO, 'addLink').callsFake(async (data) => {
-    serviceCalls.push({ method: 'createLink', args: [data] });
+  const addLinkStub = sinon.stub(topologyIO, "addLink").callsFake(async (data) => {
+    serviceCalls.push({ method: "createLink", args: [data] });
     return originalAddLink(data);
   });
   stubs.push(addLinkStub);
 
   // Stub editLink
   const originalEditLink = topologyIO.editLink.bind(topologyIO);
-  const editLinkStub = sinon.stub(topologyIO, 'editLink').callsFake(async (data) => {
-    serviceCalls.push({ method: 'editLink', args: [data] });
+  const editLinkStub = sinon.stub(topologyIO, "editLink").callsFake(async (data) => {
+    serviceCalls.push({ method: "editLink", args: [data] });
     return originalEditLink(data);
   });
   stubs.push(editLinkStub);
 
   // Stub savePositions
   const originalSavePositions = topologyIO.savePositions.bind(topologyIO);
-  const savePositionsStub = sinon.stub(topologyIO, 'savePositions').callsFake(async (positions) => {
-    serviceCalls.push({ method: 'saveNodePositions', args: [positions] });
+  const savePositionsStub = sinon.stub(topologyIO, "savePositions").callsFake(async (positions) => {
+    serviceCalls.push({ method: "saveNodePositions", args: [positions] });
     return originalSavePositions(positions);
   });
   stubs.push(savePositionsStub);
 
   // Stub beginBatch
   const originalBeginBatch = topologyIO.beginBatch.bind(topologyIO);
-  const beginBatchStub = sinon.stub(topologyIO, 'beginBatch').callsFake(() => {
-    serviceCalls.push({ method: 'beginBatch', args: [] });
+  const beginBatchStub = sinon.stub(topologyIO, "beginBatch").callsFake(() => {
+    serviceCalls.push({ method: "beginBatch", args: [] });
     return originalBeginBatch();
   });
   stubs.push(beginBatchStub);
 
   // Stub endBatch
   const originalEndBatch = topologyIO.endBatch.bind(topologyIO);
-  const endBatchStub = sinon.stub(topologyIO, 'endBatch').callsFake(async () => {
-    serviceCalls.push({ method: 'endBatch', args: [] });
+  const endBatchStub = sinon.stub(topologyIO, "endBatch").callsFake(async () => {
+    serviceCalls.push({ method: "endBatch", args: [] });
     return originalEndBatch();
   });
   stubs.push(endBatchStub);
@@ -190,7 +193,7 @@ export function getServiceCalls(): ServiceCall[] {
  * Gets service calls by method name.
  */
 export function getServiceCallsByMethod(method: string): ServiceCall[] {
-  return serviceCalls.filter(c => c.method === method);
+  return serviceCalls.filter((c) => c.method === method);
 }
 
 /**

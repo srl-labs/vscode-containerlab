@@ -1,4 +1,4 @@
-import type { Page, Locator } from '@playwright/test';
+import type { Page, Locator } from "@playwright/test";
 
 /**
  * Convert Cytoscape model coordinates to page/screen coordinates.
@@ -99,8 +99,8 @@ export async function getAllNodeIds(page: Page): Promise<string[]> {
     return cy
       .nodes()
       .filter((n: any) => {
-        const role = n.data('topoViewerRole');
-        return role && role !== 'freeText' && role !== 'freeShape';
+        const role = n.data("topoViewerRole");
+        return role && role !== "freeText" && role !== "freeShape";
       })
       .map((n: any) => n.id());
   });
@@ -159,20 +159,20 @@ export async function drag(
  * Uses a delay to ensure Shift key is registered before click.
  */
 export async function shiftClick(page: Page, x: number, y: number): Promise<void> {
-  await page.keyboard.down('Shift');
+  await page.keyboard.down("Shift");
   // Delay to ensure Shift key state is registered before the click event
   await page.waitForTimeout(100);
   await page.mouse.click(x, y);
-  await page.keyboard.up('Shift');
+  await page.keyboard.up("Shift");
 }
 
 /**
  * Perform a Ctrl+Click (or Cmd+Click on Mac) at the specified position.
  */
 export async function ctrlClick(page: Page, x: number, y: number): Promise<void> {
-  await page.keyboard.down('Control');
+  await page.keyboard.down("Control");
   await page.mouse.click(x, y);
-  await page.keyboard.up('Control');
+  await page.keyboard.up("Control");
 }
 
 /**
@@ -180,11 +180,11 @@ export async function ctrlClick(page: Page, x: number, y: number): Promise<void>
  * Used for deleting elements (nodes, edges, annotations, groups).
  */
 export async function altClick(page: Page, x: number, y: number): Promise<void> {
-  await page.keyboard.down('Alt');
+  await page.keyboard.down("Alt");
   // Small delay to ensure Alt key state is registered
   await page.waitForTimeout(50);
   await page.mouse.click(x, y);
-  await page.keyboard.up('Alt');
+  await page.keyboard.up("Alt");
 }
 
 /**
@@ -195,10 +195,10 @@ export async function altClick(page: Page, x: number, y: number): Promise<void> 
  */
 export async function altClickElement(page: Page, locator: Locator): Promise<void> {
   const handle = await locator.elementHandle();
-  if (!handle) throw new Error('Element not found');
+  if (!handle) throw new Error("Element not found");
 
   await page.evaluate((el) => {
-    const clickEvent = new MouseEvent('click', {
+    const clickEvent = new MouseEvent("click", {
       bubbles: true,
       cancelable: true,
       view: window,
@@ -219,7 +219,7 @@ export async function doubleClick(page: Page, x: number, y: number): Promise<voi
  * Perform a right-click at the specified position.
  */
 export async function rightClick(page: Page, x: number, y: number): Promise<void> {
-  await page.mouse.click(x, y, { button: 'right' });
+  await page.mouse.click(x, y, { button: "right" });
 }
 
 /**
@@ -242,7 +242,7 @@ export async function openNodeContextMenu(page: Page, nodeId: string): Promise<v
     throw new Error(`Failed to open context menu for node: ${nodeId}`);
   }
 
-  await page.mouse.click(coords.x, coords.y, { button: 'right' });
+  await page.mouse.click(coords.x, coords.y, { button: "right" });
 }
 
 /**
@@ -257,7 +257,7 @@ export async function openNetworkEditor(page: Page, nodeId: string): Promise<voi
   }, nodeId);
 
   if (!opened) {
-    throw new Error('openNetworkEditor is not available on window.__DEV__');
+    throw new Error("openNetworkEditor is not available on window.__DEV__");
   }
 }
 
@@ -282,7 +282,7 @@ export async function getSelectedNodeCount(page: Page): Promise<number> {
     const dev = (window as any).__DEV__;
     const cy = dev?.cy;
     if (!cy) return 0;
-    return cy.nodes(':selected').length;
+    return cy.nodes(":selected").length;
   });
 }
 
@@ -294,7 +294,7 @@ export async function getSelectedNodeIds(page: Page): Promise<string[]> {
     const dev = (window as any).__DEV__;
     const cy = dev?.cy;
     if (!cy) return [];
-    return cy.nodes(':selected').map((n: any) => n.id());
+    return cy.nodes(":selected").map((n: any) => n.id());
   });
 }
 
@@ -306,7 +306,7 @@ export async function getSelectedEdgeCount(page: Page): Promise<number> {
     const dev = (window as any).__DEV__;
     const cy = dev?.cy;
     if (!cy) return 0;
-    return cy.edges(':selected').length;
+    return cy.edges(":selected").length;
   });
 }
 
@@ -318,7 +318,7 @@ export async function getSelectedEdgeIds(page: Page): Promise<string[]> {
     const dev = (window as any).__DEV__;
     const cy = dev?.cy;
     if (!cy) return [];
-    return cy.edges(':selected').map((e: any) => e.id());
+    return cy.edges(":selected").map((e: any) => e.id());
   });
 }
 
@@ -415,17 +415,17 @@ export async function pressShortcut(
   key: string,
   modifiers: { ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean } = {}
 ): Promise<void> {
-  if (modifiers.ctrl) await page.keyboard.down('Control');
-  if (modifiers.shift) await page.keyboard.down('Shift');
-  if (modifiers.alt) await page.keyboard.down('Alt');
-  if (modifiers.meta) await page.keyboard.down('Meta');
+  if (modifiers.ctrl) await page.keyboard.down("Control");
+  if (modifiers.shift) await page.keyboard.down("Shift");
+  if (modifiers.alt) await page.keyboard.down("Alt");
+  if (modifiers.meta) await page.keyboard.down("Meta");
 
   await page.keyboard.press(key);
 
-  if (modifiers.meta) await page.keyboard.up('Meta');
-  if (modifiers.alt) await page.keyboard.up('Alt');
-  if (modifiers.shift) await page.keyboard.up('Shift');
-  if (modifiers.ctrl) await page.keyboard.up('Control');
+  if (modifiers.meta) await page.keyboard.up("Meta");
+  if (modifiers.alt) await page.keyboard.up("Alt");
+  if (modifiers.shift) await page.keyboard.up("Shift");
+  if (modifiers.ctrl) await page.keyboard.up("Control");
 }
 
 /**
@@ -437,9 +437,9 @@ export async function boxSelect(
   from: { x: number; y: number },
   to: { x: number; y: number }
 ): Promise<void> {
-  await page.keyboard.down('Shift');
+  await page.keyboard.down("Shift");
   // Delay to ensure Shift key state is registered before the drag (same as shiftClick)
   await page.waitForTimeout(100);
   await drag(page, from, to, { steps: 5 });
-  await page.keyboard.up('Shift');
+  await page.keyboard.up("Shift");
 }

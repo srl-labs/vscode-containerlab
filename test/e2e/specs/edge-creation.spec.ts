@@ -1,8 +1,8 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 // Test file names for file-based tests
-const SIMPLE_FILE = 'simple.clab.yml';
-const EMPTY_FILE = 'empty.clab.yml';
+const SIMPLE_FILE = "simple.clab.yml";
+const EMPTY_FILE = "empty.clab.yml";
 
 /**
  * Edge Creation E2E Tests
@@ -16,7 +16,7 @@ const EMPTY_FILE = 'empty.clab.yml';
  * - Multi-edge scenarios
  * - Cascade deletion
  */
-test.describe('Edge Creation', () => {
+test.describe("Edge Creation", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SIMPLE_FILE);
@@ -25,20 +25,23 @@ test.describe('Edge Creation', () => {
     await topoViewerPage.unlock();
   });
 
-  test('creates edge between two nodes with correct endpoints and persists to YAML', async ({ page, topoViewerPage }) => {
+  test("creates edge between two nodes with correct endpoints and persists to YAML", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Get initial edge count - simple.clab.yml has 1 edge
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     expect(initialEdgeCount).toBe(1);
 
     // Get node IDs - simple.clab.yml has srl1 and srl2
     const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds).toContain('srl1');
-    expect(nodeIds).toContain('srl2');
+    expect(nodeIds).toContain("srl1");
+    expect(nodeIds).toContain("srl2");
 
     // Create a new link with specific endpoints
-    const sourceEndpoint = 'e1-4';
-    const targetEndpoint = 'e1-5';
-    await topoViewerPage.createLink('srl1', 'srl2', sourceEndpoint, targetEndpoint);
+    const sourceEndpoint = "e1-4";
+    const targetEndpoint = "e1-5";
+    await topoViewerPage.createLink("srl1", "srl2", sourceEndpoint, targetEndpoint);
 
     // Wait for edge to be created and saved
     await page.waitForTimeout(1000);
@@ -66,23 +69,23 @@ test.describe('Edge Creation', () => {
       return {
         source: edge.source().id(),
         target: edge.target().id(),
-        sourceEndpoint: edge.data('sourceEndpoint'),
-        targetEndpoint: edge.data('targetEndpoint')
+        sourceEndpoint: edge.data("sourceEndpoint"),
+        targetEndpoint: edge.data("targetEndpoint")
       };
     }, `srl1:${sourceEndpoint}-srl2:${targetEndpoint}`);
 
     expect(edgeData).not.toBeNull();
-    expect(edgeData?.source).toBe('srl1');
-    expect(edgeData?.target).toBe('srl2');
+    expect(edgeData?.source).toBe("srl1");
+    expect(edgeData?.target).toBe("srl2");
     expect(edgeData?.sourceEndpoint).toBe(sourceEndpoint);
     expect(edgeData?.targetEndpoint).toBe(targetEndpoint);
   });
 
-  test('can create self-loop edge (hairpin)', async ({ page, topoViewerPage }) => {
+  test("can create self-loop edge (hairpin)", async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
 
     // Create a self-loop/hairpin (edge from node to itself with different endpoints)
-    await topoViewerPage.createLink('srl1', 'srl1', 'e1-6', 'e1-7');
+    await topoViewerPage.createLink("srl1", "srl1", "e1-6", "e1-7");
 
     // Edge count should increase by 1
     const newEdgeCount = await topoViewerPage.getEdgeCount();
@@ -101,8 +104,8 @@ test.describe('Edge Creation', () => {
           return {
             source: edge.source().id(),
             target: edge.target().id(),
-            sourceEndpoint: edge.data('sourceEndpoint'),
-            targetEndpoint: edge.data('targetEndpoint')
+            sourceEndpoint: edge.data("sourceEndpoint"),
+            targetEndpoint: edge.data("targetEndpoint")
           };
         }
       }
@@ -110,18 +113,21 @@ test.describe('Edge Creation', () => {
     });
 
     expect(selfLoopData).not.toBeNull();
-    expect(selfLoopData?.source).toBe('srl1');
-    expect(selfLoopData?.target).toBe('srl1');
-    expect(selfLoopData?.sourceEndpoint).toBe('e1-6');
-    expect(selfLoopData?.targetEndpoint).toBe('e1-7');
+    expect(selfLoopData?.source).toBe("srl1");
+    expect(selfLoopData?.target).toBe("srl1");
+    expect(selfLoopData?.sourceEndpoint).toBe("e1-6");
+    expect(selfLoopData?.targetEndpoint).toBe("e1-7");
   });
 
-  test('edge creation blocked when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {
+  test("edge creation blocked when canvas is locked or in view mode", async ({
+    page,
+    topoViewerPage
+  }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
 
     // Test locked state
     await topoViewerPage.lock();
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-8', 'e1-8');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-8", "e1-8");
     await page.waitForTimeout(500);
 
     let newEdgeCount = await topoViewerPage.getEdgeCount();
@@ -132,24 +138,27 @@ test.describe('Edge Creation', () => {
 
     // Test view mode
     await topoViewerPage.setViewMode();
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-9', 'e1-9');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-9", "e1-9");
     await page.waitForTimeout(500);
 
     newEdgeCount = await topoViewerPage.getEdgeCount();
     expect(newEdgeCount).toBe(initialEdgeCount);
   });
 
-  test('creates multiple edges between same nodes with different endpoints', async ({ page, topoViewerPage }) => {
+  test("creates multiple edges between same nodes with different endpoints", async ({
+    page,
+    topoViewerPage
+  }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
 
     // Create three additional edges
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-10', 'e1-10');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-10", "e1-10");
     await page.waitForTimeout(300);
 
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-11', 'e1-11');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-11", "e1-11");
     await page.waitForTimeout(300);
 
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-12', 'e1-12');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-12", "e1-12");
     await page.waitForTimeout(500);
 
     // Verify all edges were created
@@ -166,28 +175,28 @@ test.describe('Edge Creation', () => {
       return edges.map((e: any) => ({
         source: e.source().id(),
         target: e.target().id(),
-        sourceEndpoint: e.data('sourceEndpoint'),
-        targetEndpoint: e.data('targetEndpoint')
+        sourceEndpoint: e.data("sourceEndpoint"),
+        targetEndpoint: e.data("targetEndpoint")
       }));
     });
 
     // Count edges between srl1 and srl2
     const srl1Srl2Edges = edgeConnections.filter(
-      (e: any) => (e.source === 'srl1' && e.target === 'srl2') ||
-                  (e.source === 'srl2' && e.target === 'srl1')
+      (e: any) =>
+        (e.source === "srl1" && e.target === "srl2") || (e.source === "srl2" && e.target === "srl1")
     );
     expect(srl1Srl2Edges.length).toBeGreaterThanOrEqual(4);
   });
 
-  test('deleting node removes connected edges', async ({ page, topoViewerPage }) => {
+  test("deleting node removes connected edges", async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     expect(initialEdgeCount).toBe(1);
 
     // Create additional edge to srl1
-    await topoViewerPage.createNode('srl3', { x: 300, y: 300 }, 'nokia_srlinux');
+    await topoViewerPage.createNode("srl3", { x: 300, y: 300 }, "nokia_srlinux");
     await page.waitForTimeout(300);
 
-    await topoViewerPage.createLink('srl1', 'srl3', 'e1-13', 'e1-13');
+    await topoViewerPage.createLink("srl1", "srl3", "e1-13", "e1-13");
     await page.waitForTimeout(500);
 
     // Verify we now have 2 edges
@@ -195,7 +204,7 @@ test.describe('Edge Creation', () => {
     expect(edgeCount).toBe(2);
 
     // Delete srl1 node
-    await topoViewerPage.deleteNode('srl1');
+    await topoViewerPage.deleteNode("srl1");
     await page.waitForTimeout(500);
 
     // Both edges connected to srl1 should be deleted
@@ -213,7 +222,7 @@ test.describe('Edge Creation', () => {
  *
  * Tests that verify edge creation properly persists to YAML files
  */
-test.describe('Edge Creation - File Persistence', () => {
+test.describe("Edge Creation - File Persistence", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(EMPTY_FILE);
@@ -222,15 +231,18 @@ test.describe('Edge Creation - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('created edge persists after reload with correct endpoints', async ({ page, topoViewerPage }) => {
+  test("created edge persists after reload with correct endpoints", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Create two nodes and a link
-    await topoViewerPage.createNode('node1', { x: 200, y: 200 }, 'nokia_srlinux');
-    await topoViewerPage.createNode('node2', { x: 400, y: 200 }, 'nokia_srlinux');
+    await topoViewerPage.createNode("node1", { x: 200, y: 200 }, "nokia_srlinux");
+    await topoViewerPage.createNode("node2", { x: 400, y: 200 }, "nokia_srlinux");
     await page.waitForTimeout(500);
 
-    const sourceEndpoint = 'eth10';
-    const targetEndpoint = 'eth20';
-    await topoViewerPage.createLink('node1', 'node2', sourceEndpoint, targetEndpoint);
+    const sourceEndpoint = "eth10";
+    const targetEndpoint = "eth20";
+    await topoViewerPage.createLink("node1", "node2", sourceEndpoint, targetEndpoint);
 
     // Wait for save to complete
     await page.waitForTimeout(1000);
@@ -241,7 +253,9 @@ test.describe('Edge Creation - File Persistence', () => {
     expect(yaml).toContain(`node2:${targetEndpoint}`);
 
     // Verify the endpoint appears in a proper endpoints array format
-    expect(yaml).toMatch(new RegExp(`endpoints:\\s*\\[.*node1:${sourceEndpoint}.*node2:${targetEndpoint}.*\\]`, 's'));
+    expect(yaml).toMatch(
+      new RegExp(`endpoints:\\s*\\[.*node1:${sourceEndpoint}.*node2:${targetEndpoint}.*\\]`, "s")
+    );
 
     // Reload the file
     await topoViewerPage.gotoFile(EMPTY_FILE);
@@ -264,37 +278,37 @@ test.describe('Edge Creation - File Persistence', () => {
       };
     });
     expect(edgeData).not.toBeNull();
-    expect([edgeData!.source, edgeData!.target].sort()).toEqual(['node1', 'node2']);
+    expect([edgeData!.source, edgeData!.target].sort()).toEqual(["node1", "node2"]);
   });
 
-  test('multiple created edges persist to YAML correctly', async ({ page, topoViewerPage }) => {
+  test("multiple created edges persist to YAML correctly", async ({ page, topoViewerPage }) => {
     // Create three nodes
-    await topoViewerPage.createNode('router1', { x: 200, y: 100 }, 'nokia_srlinux');
-    await topoViewerPage.createNode('router2', { x: 100, y: 300 }, 'nokia_srlinux');
-    await topoViewerPage.createNode('router3', { x: 300, y: 300 }, 'nokia_srlinux');
+    await topoViewerPage.createNode("router1", { x: 200, y: 100 }, "nokia_srlinux");
+    await topoViewerPage.createNode("router2", { x: 100, y: 300 }, "nokia_srlinux");
+    await topoViewerPage.createNode("router3", { x: 300, y: 300 }, "nokia_srlinux");
     await page.waitForTimeout(500);
 
     // Create links in a triangle topology
-    await topoViewerPage.createLink('router1', 'router2', 'e1-1', 'e1-1');
+    await topoViewerPage.createLink("router1", "router2", "e1-1", "e1-1");
     await page.waitForTimeout(200);
-    await topoViewerPage.createLink('router2', 'router3', 'e1-1', 'e1-1');
+    await topoViewerPage.createLink("router2", "router3", "e1-1", "e1-1");
     await page.waitForTimeout(200);
-    await topoViewerPage.createLink('router3', 'router1', 'e1-1', 'e1-1');
+    await topoViewerPage.createLink("router3", "router1", "e1-1", "e1-1");
     await page.waitForTimeout(1000);
 
     // Verify YAML has all links
     const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
-    expect(yaml).toContain('router1:e1-1');
-    expect(yaml).toContain('router2:e1-1');
-    expect(yaml).toContain('router3:e1-1');
+    expect(yaml).toContain("router1:e1-1");
+    expect(yaml).toContain("router2:e1-1");
+    expect(yaml).toContain("router3:e1-1");
 
     // Count links in YAML
     const endpointsCount = (yaml.match(/endpoints:/g) || []).length;
     expect(endpointsCount).toBe(3);
 
     // Verify YAML has proper structure
-    expect(yaml).toContain('links:');
-    expect(yaml).toContain('endpoints:');
+    expect(yaml).toContain("links:");
+    expect(yaml).toContain("endpoints:");
 
     const structureRegex = /topology:\s*nodes:[\s\S]*links:[\s\S]*endpoints:/;
     const hasProperStructure = structureRegex.exec(yaml);
@@ -307,7 +321,7 @@ test.describe('Edge Creation - File Persistence', () => {
  *
  * Tests undo/redo functionality for edge creation
  */
-test.describe('Edge Creation - Undo/Redo', () => {
+test.describe("Edge Creation - Undo/Redo", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SIMPLE_FILE);
@@ -316,11 +330,11 @@ test.describe('Edge Creation - Undo/Redo', () => {
     await topoViewerPage.unlock();
   });
 
-  test('can undo and redo edge creation', async ({ page, topoViewerPage }) => {
+  test("can undo and redo edge creation", async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
 
     // Create a new edge
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-14', 'e1-14');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-14", "e1-14");
     await page.waitForTimeout(500);
 
     // Verify edge was created
@@ -345,18 +359,18 @@ test.describe('Edge Creation - Undo/Redo', () => {
 
     // Verify edge exists
     const edgeIds = await topoViewerPage.getEdgeIds();
-    expect(edgeIds).toContain('srl1:e1-14-srl2:e1-14');
+    expect(edgeIds).toContain("srl1:e1-14-srl2:e1-14");
   });
 
-  test('undo multiple edge creations in reverse order', async ({ page, topoViewerPage }) => {
+  test("undo multiple edge creations in reverse order", async ({ page, topoViewerPage }) => {
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
 
     // Create three edges
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-16', 'e1-16');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-16", "e1-16");
     await page.waitForTimeout(200);
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-17', 'e1-17');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-17", "e1-17");
     await page.waitForTimeout(200);
-    await topoViewerPage.createLink('srl1', 'srl2', 'e1-18', 'e1-18');
+    await topoViewerPage.createLink("srl1", "srl2", "e1-18", "e1-18");
     await page.waitForTimeout(500);
 
     // Verify all created

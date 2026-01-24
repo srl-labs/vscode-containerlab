@@ -2,20 +2,16 @@
  * React TopoViewer Main Application Component
  *
  * Uses context-based architecture for undo/redo and annotations.
+ * Now uses ReactFlow as the rendering layer instead of Cytoscape.
  */
 /* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
+import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
 import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
-import type { CyElement } from "../shared/types/topology";
+import type { TopoNode, TopoEdge } from "../shared/types/graph";
 
-import type { CytoscapeCanvasRef } from "./components/canvas/CytoscapeCanvas";
-import {
-  convertToElements,
-  cyElementToRFNode,
-  cyElementToRFEdge
-} from "./components/react-flow-canvas/conversion";
+import { ReactFlowCanvas, type ReactFlowCanvasRef } from "./components/react-flow-canvas";
 import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
 import { UndoRedoProvider, useUndoRedoContext } from "./context/UndoRedoContext";
 import {
@@ -23,8 +19,8 @@ import {
   useAnnotations,
   type PendingMembershipChange
 } from "./context/AnnotationContext";
+import { ViewportProvider } from "./context/ViewportContext";
 import { Navbar } from "./components/navbar/Navbar";
-import { CytoscapeCanvas } from "./components/canvas/CytoscapeCanvas";
 import { ShortcutDisplay } from "./components/ShortcutDisplay";
 import { ContextMenu } from "./components/context-menu/ContextMenu";
 import { FloatingActionPanel, type FloatingActionPanelHandle } from "./components/panels";
@@ -41,14 +37,11 @@ import {
   useCustomTemplateEditor,
   filterEntriesWithPosition,
   // Canvas/App state
-  useCytoscapeInstance,
-  useSelectionData,
-  useNavbarActions,
-  useContextMenuHandlers,
   useLayoutControls,
-  useEndpointLabelOffset,
-  useLinkLabelVisibility,
   useGeoMap,
+  // ReactFlow compatibility
+  useCyCompatInstance,
+  type CyCompatCore,
   // Panel handlers
   useNodeEditorHandlers,
   useLinkEditorHandlers,
@@ -85,10 +78,9 @@ import { parseEndpointLabelOffset } from "./utils/endpointLabelOffset";
 const AppContent: React.FC<{
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
-  cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>;
-  cyInstance: CyCore | null;
-  onCyReady: (cy: CyCore) => void;
-  onCyDestroyed: () => void;
+  reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
+  rfInstance: ReactFlowInstance | null;
+  cyCompat: CyCompatCore | null;
   layoutControls: ReturnType<typeof useLayoutControls>;
   mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   shapeLayerNode: HTMLElement | null;
@@ -96,10 +88,9 @@ const AppContent: React.FC<{
 }> = ({
   floatingPanelRef,
   pendingMembershipChangesRef,
-  cytoscapeRef,
-  cyInstance,
-  onCyReady,
-  onCyDestroyed,
+  reactFlowRef,
+  rfInstance,
+  cyCompat,
   layoutControls,
   mapLibreState,
   shapeLayerNode,
@@ -153,101 +144,94 @@ const AppContent: React.FC<{
     [dispatch]
   );
 
-  // Adapter functions to bridge CyElement-based hooks with TopoNode/TopoEdge actions
-  // These convert CyElement to ReactFlow format before calling the action
-  const addNodeFromCyElement = React.useCallback(
-    (element: CyElement) => {
-      if (element.group !== "nodes") return;
-      const rfNode = cyElementToRFNode(element);
-      addNode(rfNode as import("../shared/types/graph").TopoNode);
+  // Direct node/edge addition (no CyElement conversion needed)
+  const addNodeDirect = React.useCallback(
+    (node: TopoNode) => {
+      addNode(node);
     },
     [addNode]
   );
 
-  const addEdgeFromCyElement = React.useCallback(
-    (element: CyElement) => {
-      if (element.group !== "edges") return;
-      const rfEdge = cyElementToRFEdge(element);
-      addEdge(rfEdge as import("../shared/types/graph").TopoEdge);
+  const addEdgeDirect = React.useCallback(
+    (edge: TopoEdge) => {
+      addEdge(edge);
     },
     [addEdge]
   );
 
-  useLinkLabelVisibility(cyInstance, state.linkLabelMode);
-  useEndpointLabelOffset(cyInstance, {
-    globalEnabled: state.endpointLabelOffsetEnabled,
-    globalOffset: state.endpointLabelOffset,
-    edgeAnnotations: state.edgeAnnotations
-  });
+  // Link label visibility is now handled by EdgeRenderConfigContext in ReactFlowCanvas
+  // useEndpointLabelOffset is also handled by the edge component
+  // These Cytoscape-specific hooks are no longer needed
 
   const edgeAnnotationLookup = React.useMemo(
     () => buildEdgeAnnotationLookup(state.edgeAnnotations),
     [state.edgeAnnotations]
   );
 
-  // Convert nodes/edges to CyElement format for CytoscapeCanvas
-  // This is a bridge during the migration from Cytoscape to ReactFlow
-  const elements = React.useMemo((): CyElement[] => {
-    return convertToElements(
-      state.nodes as import("@xyflow/react").Node[],
-      state.edges as import("@xyflow/react").Edge[]
-    );
-  }, [state.nodes, state.edges]);
-
-  // Filter elements based on showDummyLinks setting
+  // Filter nodes/edges based on showDummyLinks setting
   // When disabled, hide nodes starting with "dummy" and edges connected to them
-  const filteredElements = React.useMemo(() => {
+  const filteredNodes = React.useMemo(() => {
     if (state.showDummyLinks) {
-      return elements;
+      return state.nodes;
     }
+    return (state.nodes as Node[]).filter((node) => !node.id.startsWith("dummy"));
+  }, [state.nodes, state.showDummyLinks]);
 
-    // Identify dummy nodes (IDs starting with "dummy")
+  const filteredEdges = React.useMemo(() => {
+    if (state.showDummyLinks) {
+      return state.edges;
+    }
     const dummyNodeIds = new Set(
-      elements
-        .filter(
-          (el: CyElement) => el.group === "nodes" && (el.data?.id as string)?.startsWith("dummy")
-        )
-        .map((el: CyElement) => el.data?.id as string)
+      (state.nodes as Node[]).filter((node) => node.id.startsWith("dummy")).map((node) => node.id)
     );
+    return (state.edges as Edge[]).filter(
+      (edge) => !dummyNodeIds.has(edge.source) && !dummyNodeIds.has(edge.target)
+    );
+  }, [state.nodes, state.edges, state.showDummyLinks]);
 
-    // Filter out dummy nodes and edges connected to them
-    return elements.filter((el: CyElement) => {
-      if (el.group === "nodes") {
-        return !dummyNodeIds.has(el.data?.id as string);
-      }
-      if (el.group === "edges") {
-        const data = el.data as { source?: string; target?: string };
-        return !dummyNodeIds.has(data.source ?? "") && !dummyNodeIds.has(data.target ?? "");
-      }
-      return true;
-    });
-  }, [elements, state.showDummyLinks]);
+  // Selection and editing data - now using ReactFlow state directly
+  const selectedNodeData = React.useMemo(() => {
+    if (!state.selectedNode) return null;
+    const node = (state.nodes as Node[]).find((n) => n.id === state.selectedNode);
+    if (!node) return null;
+    return { id: node.id, ...(node.data as Record<string, unknown>) };
+  }, [state.selectedNode, state.nodes]);
 
-  // Selection and editing data
-  const { selectedNodeData, selectedLinkData } = useSelectionData(
-    cytoscapeRef,
-    state.selectedNode,
-    state.selectedEdge,
-    elements
-  );
-  const { selectedNodeData: editingNodeRawData } = useSelectionData(
-    cytoscapeRef,
-    state.editingNode,
-    null,
-    state.editorDataVersion
-  );
-  const { selectedNodeData: editingNetworkRawData } = useSelectionData(
-    cytoscapeRef,
-    state.editingNetwork,
-    null,
-    state.editorDataVersion
-  );
-  const { selectedLinkData: editingLinkRawData } = useSelectionData(
-    cytoscapeRef,
-    null,
-    state.editingEdge,
-    state.editorDataVersion
-  );
+  const selectedLinkData = React.useMemo(() => {
+    if (!state.selectedEdge) return null;
+    const edge = (state.edges as Edge[]).find((e) => e.id === state.selectedEdge);
+    if (!edge) return null;
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      ...(edge.data as Record<string, unknown>)
+    };
+  }, [state.selectedEdge, state.edges]);
+
+  const editingNodeRawData = React.useMemo(() => {
+    if (!state.editingNode) return null;
+    const node = (state.nodes as Node[]).find((n) => n.id === state.editingNode);
+    return node?.data as Record<string, unknown> | null;
+  }, [state.editingNode, state.nodes, state.editorDataVersion]);
+
+  const editingNetworkRawData = React.useMemo(() => {
+    if (!state.editingNetwork) return null;
+    const node = (state.nodes as Node[]).find((n) => n.id === state.editingNetwork);
+    return node?.data as Record<string, unknown> | null;
+  }, [state.editingNetwork, state.nodes, state.editorDataVersion]);
+
+  const editingLinkRawData = React.useMemo(() => {
+    if (!state.editingEdge) return null;
+    const edge = (state.edges as Edge[]).find((e) => e.id === state.editingEdge);
+    if (!edge) return null;
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      ...(edge.data as Record<string, unknown>)
+    };
+  }, [state.editingEdge, state.edges, state.editorDataVersion]);
   const editingNodeData = React.useMemo(
     () => convertToEditorData(editingNodeRawData),
     [editingNodeRawData]
@@ -285,41 +269,47 @@ const AppContent: React.FC<{
     };
   }, [editingLinkRawData, edgeAnnotationLookup, state.endpointLabelOffset]);
 
-  // Navbar and menu handlers
-  const { handleZoomToFit } = useNavbarActions(cytoscapeRef, {
-    textAnnotations: annotations.textAnnotations,
-    shapeAnnotations: annotations.shapeAnnotations,
-    groups: annotations.groups
-  });
+  // Navbar and menu handlers - using ReactFlow fitView
+  const handleZoomToFit = React.useCallback(() => {
+    rfInstance?.fitView({ padding: 0.1 });
+  }, [rfInstance]);
 
-  // Fit viewport to include annotations on initial load
+  // Fit viewport on initial load
   const initialFitDoneRef = React.useRef(false);
   React.useEffect(() => {
-    if (!cyInstance || initialFitDoneRef.current) return;
-
-    // Check if initial layout is done
-    const layoutDone = cyInstance.scratch("initialLayoutDone") as boolean | undefined;
-    if (!layoutDone) return;
-
-    // Do the fit with annotations
-    handleZoomToFit();
+    if (!rfInstance || initialFitDoneRef.current) return;
+    // ReactFlow handles initial fit via fitView prop
     initialFitDoneRef.current = true;
-  }, [cyInstance, handleZoomToFit]);
+  }, [rfInstance]);
 
   const navbarCommands = useNavbarCommands();
-  const menuHandlers = useContextMenuHandlers(cytoscapeRef, {
-    selectNode,
-    selectEdge,
-    editNode,
-    editEdge,
-    editNetwork,
-    removeNodeAndEdges,
-    removeEdge
-  });
+
+  // Context menu handlers - simplified without Cytoscape ref
+  const menuHandlers = React.useMemo(
+    () => ({
+      handleEditNode: (nodeId: string) => editNode(nodeId),
+      handleEditNetwork: (nodeId: string) => editNetwork(nodeId),
+      handleDeleteNode: (nodeId: string) => {
+        removeNodeAndEdges(nodeId);
+        selectNode(null);
+      },
+      handleCreateLinkFromNode: (_nodeId: string) => {},
+      handleEditLink: (edgeId: string) => editEdge(edgeId),
+      handleDeleteLink: (edgeId: string) => {
+        removeEdge(edgeId);
+        selectEdge(null);
+      },
+      handleShowNodeProperties: (nodeId: string) => selectNode(nodeId),
+      handleShowLinkProperties: (edgeId: string) => selectEdge(edgeId),
+      handleCloseNodePanel: () => selectNode(null),
+      handleCloseLinkPanel: () => selectEdge(null)
+    }),
+    [editNode, editNetwork, editEdge, removeNodeAndEdges, removeEdge, selectNode, selectEdge]
+  );
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
-  // Graph handlers using context
+  // Graph handlers using context - using cyCompat for compatibility
   const {
     handleEdgeCreated,
     handleNodeCreatedCallback,
@@ -327,9 +317,9 @@ const AppContent: React.FC<{
     handleDeleteLinkWithUndo,
     recordPropertyEdit
   } = useGraphHandlersWithContext({
-    cyInstance,
-    addNode: addNodeFromCyElement,
-    addEdge: addEdgeFromCyElement,
+    cyInstance: cyCompat as unknown as import("./hooks/useAppState").CyLike | null,
+    addNode: addNodeDirect as (element: unknown) => void,
+    addEdge: addEdgeDirect as (element: unknown) => void,
     menuHandlers,
     edgeAnnotationHandlers: {
       edgeAnnotations: state.edgeAnnotations,
@@ -361,12 +351,12 @@ const AppContent: React.FC<{
     [dispatch]
   );
 
-  // Editor handlers
+  // Editor handlers - using cyCompat for compatibility
   const nodeEditorHandlers = useNodeEditorHandlers(
     editNode,
     editingNodeData,
     recordPropertyEdit,
-    cytoscapeRef,
+    cyCompat,
     renameNodeInGraph,
     state.customIcons,
     updateNodeData,
@@ -376,7 +366,7 @@ const AppContent: React.FC<{
     editEdge,
     editingLinkData,
     recordPropertyEdit,
-    cytoscapeRef,
+    cyCompat,
     {
       edgeAnnotations: state.edgeAnnotations,
       setEdgeAnnotations
@@ -385,7 +375,7 @@ const AppContent: React.FC<{
   const networkEditorHandlers = useNetworkEditorHandlers(
     editNetwork,
     editingNetworkData,
-    cyInstance,
+    cyCompat,
     renameNodeInGraph
   );
 
@@ -399,26 +389,26 @@ const AppContent: React.FC<{
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
 
-  // Graph creation (edge, node, network) - composed hook
+  // Graph creation (edge, node, network) - composed hook using cyCompat
   const graphCreation = useGraphCreation({
-    cyInstance,
+    cyCompat,
     floatingPanelRef,
     state: {
       mode: state.mode,
       isLocked: state.isLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
-      elements
+      elements: [] as import("../shared/types/topology").CyElement[] // Empty for now - will be fixed in Phase 2
     },
     onEdgeCreated: handleEdgeCreated,
     onNodeCreated: handleNodeCreatedCallback,
-    addNode: addNodeFromCyElement,
+    addNode: addNodeDirect as (element: unknown) => void,
     onNewCustomNode: customNodeCommands.onNewCustomNode
   });
 
   // E2E testing exposure (consolidated hook) - must be after graphCreation
   useE2ETestingExposure({
-    cyInstance,
+    cyCompat,
     isLocked: state.isLocked,
     mode: state.mode,
     toggleLock,
@@ -429,7 +419,7 @@ const AppContent: React.FC<{
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
     editNetwork,
     groups: annotations.groups,
-    elements,
+    elements: [], // Empty for now - will be fixed in Phase 2
     setLayout: layoutControls.setLayout,
     setGeoMode: layoutControls.setGeoMode,
     isGeoLayout: layoutControls.isGeoLayout,
@@ -445,8 +435,8 @@ const AppContent: React.FC<{
     pendingMembershipChangesRef
   });
 
-  // Context menus
-  const { menuState, menuItems, closeMenu } = useContextMenu(cyInstance, {
+  // Context menus - using cyCompat for compatibility
+  const { menuState, menuItems, closeMenu } = useContextMenu(cyCompat, {
     mode: state.mode,
     isLocked: state.isLocked,
     onEditNode: menuHandlers.handleEditNode,
@@ -459,8 +449,8 @@ const AppContent: React.FC<{
     onShowLinkProperties: menuHandlers.handleShowLinkProperties
   });
 
-  // Node dragging
-  useNodeDragging(cyInstance, {
+  // Node dragging - using cyCompat for compatibility
+  useNodeDragging(cyCompat, {
     mode: state.mode,
     isLocked: state.isLocked,
     onLockedDrag: handleLockedDrag,
@@ -471,16 +461,16 @@ const AppContent: React.FC<{
     }
   });
 
-  // Alt+Click delete for nodes/edges
-  useAltClickDelete(cyInstance, {
+  // Alt+Click delete for nodes/edges - using cyCompat
+  useAltClickDelete(cyCompat, {
     mode: state.mode,
     isLocked: state.isLocked,
     onDeleteNode: handleDeleteNodeWithUndo,
     onDeleteEdge: handleDeleteLinkWithUndo
   });
 
-  // Shift+Click on node to start link creation
-  useShiftClickEdgeCreation(cyInstance, {
+  // Shift+Click on node to start link creation - using cyCompat
+  useShiftClickEdgeCreation(cyCompat, {
     mode: state.mode,
     isLocked: state.isLocked,
     startEdgeCreation: graphCreation.startEdgeCreation
@@ -491,9 +481,9 @@ const AppContent: React.FC<{
   const panelVisibility = usePanelVisibility();
   const [showBulkLinkPanel, setShowBulkLinkPanel] = React.useState(false);
 
-  // Clipboard handlers - composed hook
+  // Clipboard handlers - composed hook using cyCompat
   const clipboardHandlers = useClipboardHandlers({
-    cyInstance,
+    cyCompat,
     annotations,
     undoRedo: {
       beginBatch: undoRedo.beginBatch,
@@ -511,7 +501,7 @@ const AppContent: React.FC<{
     [annotations]
   );
 
-  // Keyboard shortcuts - composed hook
+  // Keyboard shortcuts - composed hook using cyCompat
   useAppKeyboardShortcuts({
     state: {
       mode: state.mode,
@@ -519,7 +509,7 @@ const AppContent: React.FC<{
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge
     },
-    cyInstance,
+    cyCompat,
     undoRedo: {
       undo: undoRedo.undo,
       redo: undoRedo.redo,
@@ -541,11 +531,11 @@ const AppContent: React.FC<{
     handleDeselectAll
   });
 
-  const easterEgg = useEasterEgg({ cyInstance });
+  const easterEgg = useEasterEgg({ cyCompat });
 
-  // Annotation layer props - composed hook
+  // Annotation layer props - composed hook using cyCompat
   const { groupLayerProps, freeTextLayerProps, freeShapeLayerProps } = useAnnotationLayerProps({
-    cyInstance,
+    cyCompat,
     annotations,
     state: {
       isLocked: state.isLocked,
@@ -589,11 +579,14 @@ const AppContent: React.FC<{
         isPartyMode={easterEgg.state.isPartyMode}
       />
       <main className="topoviewer-main">
-        <CytoscapeCanvas
-          ref={cytoscapeRef}
-          elements={filteredElements}
-          onCyReady={onCyReady}
-          onCyDestroyed={onCyDestroyed}
+        <ReactFlowCanvas
+          ref={reactFlowRef}
+          nodes={filteredNodes as TopoNode[]}
+          edges={filteredEdges as TopoEdge[]}
+          linkLabelMode={state.linkLabelMode}
+          onMoveComplete={(before, after) => {
+            undoRedo.pushAction({ type: "move", before, after });
+          }}
         />
         <AnnotationLayers
           groupLayerProps={groupLayerProps}
@@ -622,12 +615,12 @@ const AppContent: React.FC<{
           findNode={{
             isVisible: panelVisibility.showFindNodePanel,
             onClose: panelVisibility.handleCloseFindNode,
-            cy: cyInstance
+            cyCompat
           }}
           svgExport={{
             isVisible: panelVisibility.showSvgExportPanel,
             onClose: panelVisibility.handleCloseSvgExport,
-            cy: cyInstance,
+            cyCompat,
             textAnnotations: annotations.textAnnotations,
             shapeAnnotations: annotations.shapeAnnotations,
             groups: annotations.groups
@@ -668,10 +661,10 @@ const AppContent: React.FC<{
             isVisible: showBulkLinkPanel,
             mode: state.mode,
             isLocked: state.isLocked,
-            cy: cyInstance,
+            cyCompat,
             onClose: () => setShowBulkLinkPanel(false),
             recordGraphChanges,
-            addEdge: addEdgeFromCyElement
+            addEdge: addEdgeDirect as (element: unknown) => void
           }}
           freeTextEditor={{
             isVisible: !!annotations.editingTextAnnotation,
@@ -730,7 +723,7 @@ const AppContent: React.FC<{
           items={menuItems}
           onClose={closeMenu}
         />
-        <EasterEggRenderer easterEgg={easterEgg} cyInstance={cyInstance} />
+        <EasterEggRenderer easterEgg={easterEgg} cyCompat={cyCompat} />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       </main>
     </div>
@@ -741,41 +734,60 @@ const AppContent: React.FC<{
 export const App: React.FC = () => {
   const { state } = useTopoViewerState();
   const { updateNodePositions } = useTopoViewerActions();
-  const { cytoscapeRef, cyInstance, onCyReady, onCyDestroyed } = useCytoscapeInstance();
+
+  // ReactFlow canvas ref and instance
+  const reactFlowRef = React.useRef<ReactFlowCanvasRef>(null);
+
+  // Get ReactFlow instance from the canvas ref
+  const rfInstance = reactFlowRef.current?.getReactFlowInstance() ?? null;
+
+  // Create Cytoscape compatibility layer
+  const { cyCompat } = useCyCompatInstance(reactFlowRef, rfInstance);
+
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
-  const { shapeLayerNode } = useShapeLayer(cyInstance);
-  const { textLayerNode } = useTextLayer(cyInstance);
-  const layoutControls = useLayoutControls(cytoscapeRef, cyInstance);
+
+  // Shape and text layers use cyCompat for compatibility
+  const { shapeLayerNode } = useShapeLayer(cyCompat);
+  const { textLayerNode } = useTextLayer(cyCompat);
+
+  // Layout controls use reactFlowRef
+  const layoutControls = useLayoutControls(
+    reactFlowRef as unknown as React.RefObject<import("./hooks/useAppState").CanvasRef | null>,
+    cyCompat as unknown as import("./hooks/useAppState").CyLike | null
+  );
+
+  // Geo map uses cyCompat
   const { mapLibreState } = useGeoMap({
-    cyInstance,
+    cyInstance: cyCompat,
     isGeoLayout: layoutControls.isGeoLayout,
     geoMode: layoutControls.geoMode
   });
 
   return (
-    <UndoRedoProvider cy={cyInstance} enabled={state.mode === "edit"}>
-      <AnnotationProvider
-        cy={cyInstance}
-        mode={state.mode}
-        isLocked={state.isLocked}
-        onLockedAction={() => floatingPanelRef.current?.triggerShake()}
-        pendingMembershipChangesRef={pendingMembershipChangesRef}
-        updateNodePositions={updateNodePositions}
-      >
-        <AppContent
-          floatingPanelRef={floatingPanelRef}
+    <ViewportProvider rfInstance={rfInstance}>
+      <UndoRedoProvider cyCompat={cyCompat} enabled={state.mode === "edit"}>
+        <AnnotationProvider
+          cyCompat={cyCompat}
+          mode={state.mode}
+          isLocked={state.isLocked}
+          onLockedAction={() => floatingPanelRef.current?.triggerShake()}
           pendingMembershipChangesRef={pendingMembershipChangesRef}
-          cytoscapeRef={cytoscapeRef}
-          cyInstance={cyInstance}
-          onCyReady={onCyReady}
-          onCyDestroyed={onCyDestroyed}
-          layoutControls={layoutControls}
-          mapLibreState={mapLibreState}
-          shapeLayerNode={shapeLayerNode}
-          textLayerNode={textLayerNode}
-        />
-      </AnnotationProvider>
-    </UndoRedoProvider>
+          updateNodePositions={updateNodePositions}
+        >
+          <AppContent
+            floatingPanelRef={floatingPanelRef}
+            pendingMembershipChangesRef={pendingMembershipChangesRef}
+            reactFlowRef={reactFlowRef}
+            rfInstance={rfInstance}
+            cyCompat={cyCompat}
+            layoutControls={layoutControls}
+            mapLibreState={mapLibreState}
+            shapeLayerNode={shapeLayerNode}
+            textLayerNode={textLayerNode}
+          />
+        </AnnotationProvider>
+      </UndoRedoProvider>
+    </ViewportProvider>
   );
 };

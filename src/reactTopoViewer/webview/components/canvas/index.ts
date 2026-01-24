@@ -1,23 +1,11 @@
 /**
- * Canvas module exports
+ * Canvas module - DEPRECATED
+ *
+ * This module previously contained the Cytoscape-based canvas implementation.
+ * The application now uses ReactFlowCanvas from ./react-flow-canvas instead.
+ *
+ * This file is kept temporarily for backwards compatibility but will be removed.
  */
-export { CytoscapeCanvas } from "./CytoscapeCanvas";
-export type { CytoscapeCanvasRef } from "./CytoscapeCanvas";
-export { cytoscapeStyles, generateRoleStyles, ROLE_SVG_MAP } from "./styles";
-export {
-  ensureColaRegistered,
-  hasPresetPositions,
-  getLayoutOptions,
-  createCytoscapeConfig,
-  updateCytoscapeElements,
-  handleCytoscapeReady,
-  applyStubLinkClasses
-} from "./init";
-export {
-  isCreatingEdge,
-  isContextMenuActive,
-  isRightClick,
-  setupEventHandlers,
-  createCustomWheelHandler,
-  attachCustomWheelZoom
-} from "./events";
+
+// Re-export from react-flow-canvas for backwards compatibility
+export { ROLE_SVG_MAP } from "../react-flow-canvas";

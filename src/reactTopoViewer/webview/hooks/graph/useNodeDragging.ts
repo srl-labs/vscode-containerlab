@@ -1,10 +1,15 @@
 /**
  * Node Dragging Hook
  * Manages node drag-and-drop functionality based on lock state
+ *
+ * NOTE: This hook uses the CyCompatCore compatibility layer.
+ * The event handling is a stub - actual drag events should be handled via ReactFlow's
+ * onNodeDragStart/onNodeDragStop callbacks. This hook provides the position saving logic
+ * and undo/redo integration that can be called from those handlers.
  */
 import { useEffect, useCallback, useRef } from "react";
-import type { Core, NodeSingular, EventObject } from "cytoscape";
 
+import type { CyCompatCore, CyCompatElement, CyCompatEventObject } from "../useCytoCompatInstance";
 import { log } from "../../utils/logger";
 import type { NodePositionEntry } from "../state/useUndoRedo";
 import { getTopologyIO } from "../../services";
@@ -44,7 +49,7 @@ async function savePositions(positions: NodePositionEntry[]): Promise<void> {
 /**
  * Extract position data from a node, including geo coordinates if available
  */
-function getNodePosition(node: NodeSingular): NodePositionEntry {
+function getNodePosition(node: CyCompatElement): NodePositionEntry {
   const pos = node.position();
   const entry: NodePositionEntry = {
     id: node.id(),
@@ -71,44 +76,44 @@ function getNodePosition(node: NodeSingular): NodePositionEntry {
 /**
  * Lock all nodes (disable dragging)
  */
-function lockNodes(cy: Core): void {
-  cy.nodes().lock();
+function lockNodes(cyCompat: CyCompatCore): void {
+  cyCompat.nodes().lock();
   log.info("[NodeDragging] Nodes locked");
 }
 
 /**
  * Unlock all nodes (enable dragging)
  */
-function unlockNodes(cy: Core): void {
-  cy.nodes().unlock();
+function unlockNodes(cyCompat: CyCompatCore): void {
+  cyCompat.nodes().unlock();
   log.info("[NodeDragging] Nodes unlocked");
 }
 
 /**
  * Check if a node is a regular draggable node (not an annotation)
  */
-function isDraggableNode(node: NodeSingular): boolean {
+function isDraggableNode(node: CyCompatElement): boolean {
   const role = node.data("topoViewerRole") as string | undefined;
   return role !== "freeText" && role !== "freeShape";
 }
 
 /** Hook to apply lock state to nodes */
-function useLockState(cy: Core | null, isLocked: boolean): void {
+function useLockState(cyCompat: CyCompatCore | null, isLocked: boolean): void {
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
 
     // Don't lock nodes until initial layout is done
     // Otherwise COSE layout can't move nodes
-    const layoutDone = cy.scratch("initialLayoutDone") as boolean | undefined;
+    const layoutDone = cyCompat.scratch("initialLayoutDone") as boolean | undefined;
     if (!layoutDone) {
       // Wait for layout to complete before applying lock state
       const checkLayout = () => {
-        const done = cy.scratch("initialLayoutDone") as boolean | undefined;
+        const done = cyCompat.scratch("initialLayoutDone") as boolean | undefined;
         if (done) {
           if (isLocked) {
-            lockNodes(cy);
+            lockNodes(cyCompat);
           } else {
-            unlockNodes(cy);
+            unlockNodes(cyCompat);
           }
         } else {
           // Check again after a short delay
@@ -120,11 +125,11 @@ function useLockState(cy: Core | null, isLocked: boolean): void {
     }
 
     if (isLocked) {
-      lockNodes(cy);
+      lockNodes(cyCompat);
     } else {
-      unlockNodes(cy);
+      unlockNodes(cyCompat);
     }
-  }, [cy, isLocked]);
+  }, [cyCompat, isLocked]);
 }
 
 /** Batching timeout for grouping multi-node drag completions */
@@ -145,17 +150,20 @@ interface DragBatchRefs {
 }
 
 /**
- * Re-read geo coordinates from a Cytoscape node and build the position entry.
+ * Re-read geo coordinates from a node and build the position entry.
  * In GeoMap mode (geoMapActive=true), only returns geo coordinates - position is omitted
  * so that the preset position in annotations is not overwritten.
  */
-function refreshGeoCoordinates(cy: Core | null, position: NodePositionEntry): NodePositionEntry {
-  if (!cy) return position;
-  const node = cy.getElementById(position.id);
+function refreshGeoCoordinates(
+  cyCompat: CyCompatCore | null,
+  position: NodePositionEntry
+): NodePositionEntry {
+  if (!cyCompat) return position;
+  const node = cyCompat.getElementById(position.id);
   if (!node || node.empty() || !node.isNode()) return position;
 
   // Check if GeoMap is active
-  const isGeoMapActive = cy.scratch("geoMapActive") === true;
+  const isGeoMapActive = cyCompat.scratch("geoMapActive") === true;
 
   // Re-read lat/lng from node data (may have been updated by useGeoMap after drag)
   const lat = node.data("lat") as string | undefined;
@@ -180,7 +188,7 @@ function createFlushHandler(
   _mode: "edit" | "view",
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
   onPositionsCommitted?: (positions: NodePositionEntry[]) => void,
-  cy?: Core | null
+  cyCompat?: CyCompatCore | null
 ): () => void {
   return () => {
     const pending = refs.pendingDrags.current;
@@ -189,7 +197,7 @@ function createFlushHandler(
     const nodeIds = pending.map((p) => p.nodeId);
     const beforePositions = pending.map((p) => p.before);
     // Re-read geo coordinates at flush time to capture updates from useGeoMap
-    const afterPositions = pending.map((p) => refreshGeoCoordinates(cy ?? null, p.after));
+    const afterPositions = pending.map((p) => refreshGeoCoordinates(cyCompat ?? null, p.after));
 
     log.info(`[NodeDragging] Flushing batch of ${pending.length} node drag(s)`);
 
@@ -211,9 +219,9 @@ function createFlushHandler(
 /** Create drag start handler */
 function createDragStartHandler(dragStartPositions: {
   current: Map<string, NodePositionEntry>;
-}): (event: EventObject) => void {
-  return (event: EventObject) => {
-    const node = event.target as NodeSingular;
+}): (event: CyCompatEventObject) => void {
+  return (event: CyCompatEventObject) => {
+    const node = event.target as CyCompatElement;
 
     if (!isDraggableNode(node)) return;
 
@@ -230,9 +238,9 @@ function createDragFreeHandler(
   refs: DragBatchRefs,
   flushPendingDrags: () => void,
   onPositionChange?: () => void
-): (event: EventObject) => void {
-  return (event: EventObject) => {
-    const node = event.target as NodeSingular;
+): (event: CyCompatEventObject) => void {
+  return (event: CyCompatEventObject) => {
+    const node = event.target as CyCompatElement;
 
     if (!isDraggableNode(node)) return;
 
@@ -264,9 +272,14 @@ function createDragFreeHandler(
   };
 }
 
-/** Hook for drag start/completion event handling with undo/redo support */
+/**
+ * Hook for drag start/completion event handling with undo/redo support
+ *
+ * NOTE: Event handling is stubbed in the compatibility layer.
+ * For ReactFlow integration, use onNodeDragStart/onNodeDragStop handlers directly.
+ */
 function useDragHandlers(
-  cy: Core | null,
+  cyCompat: CyCompatCore | null,
   mode: "edit" | "view",
   onPositionChange?: () => void,
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
@@ -283,14 +296,15 @@ function useDragHandlers(
   };
 
   const flushPendingDrags = useCallback(
-    () => createFlushHandler(refs, mode, onMoveComplete, onPositionsCommitted, cy)(),
-    [cy, mode, onMoveComplete, onPositionsCommitted]
+    () => createFlushHandler(refs, mode, onMoveComplete, onPositionsCommitted, cyCompat)(),
+    [cyCompat, mode, onMoveComplete, onPositionsCommitted]
   );
 
   const handleDragStart = useCallback(createDragStartHandler(dragStartPositionsRef), []);
 
   const handleDragFree = useCallback(
-    (event: EventObject) => createDragFreeHandler(refs, flushPendingDrags, onPositionChange)(event),
+    (event: CyCompatEventObject) =>
+      createDragFreeHandler(refs, flushPendingDrags, onPositionChange)(event),
     [flushPendingDrags, onPositionChange]
   );
 
@@ -301,39 +315,52 @@ function useDragHandlers(
   }, []);
 
   useEffect(() => {
-    if (!cy) return;
-    cy.on("grab", "node", handleDragStart);
-    cy.on("dragfree", "node", handleDragFree);
+    if (!cyCompat) return;
+    cyCompat.on("grab", "node", handleDragStart as unknown as () => void);
+    cyCompat.on("dragfree", "node", handleDragFree as unknown as () => void);
     return () => {
-      cy.off("grab", "node", handleDragStart);
-      cy.off("dragfree", "node", handleDragFree);
+      cyCompat.off("grab", "node", handleDragStart as unknown as () => void);
+      cyCompat.off("dragfree", "node", handleDragFree as unknown as () => void);
     };
-  }, [cy, handleDragStart, handleDragFree]);
+  }, [cyCompat, handleDragStart, handleDragFree]);
 }
 
-/** Hook for detecting locked node grab attempts */
-function useLockedGrabHandler(cy: Core | null, isLocked: boolean, onLockedDrag?: () => void): void {
+/**
+ * Hook for detecting locked node grab attempts
+ *
+ * NOTE: Event handling is stubbed in the compatibility layer.
+ * For ReactFlow integration, check lock state in onNodeDragStart handler.
+ */
+function useLockedGrabHandler(
+  cyCompat: CyCompatCore | null,
+  isLocked: boolean,
+  onLockedDrag?: () => void
+): void {
   const handleLockedGrab = useCallback(() => {
     onLockedDrag?.();
   }, [onLockedDrag]);
 
   useEffect(() => {
-    if (!cy || !isLocked) return;
-    cy.on("tapstart", "node", handleLockedGrab);
+    if (!cyCompat || !isLocked) return;
+    cyCompat.on("tapstart", "node", handleLockedGrab);
     return () => {
-      cy.off("tapstart", "node", handleLockedGrab);
+      cyCompat.off("tapstart", "node", handleLockedGrab);
     };
-  }, [cy, isLocked, handleLockedGrab]);
+  }, [cyCompat, isLocked, handleLockedGrab]);
 }
 
 /**
  * Hook to manage node dragging based on lock state
+ *
+ * NOTE: This hook uses the CyCompatCore compatibility layer.
+ * Event handling is stubbed - for full ReactFlow integration,
+ * use onNodeDragStart/onNodeDragStop handlers directly.
  */
-export function useNodeDragging(cy: Core | null, options: NodeDraggingOptions): void {
+export function useNodeDragging(cyCompat: CyCompatCore | null, options: NodeDraggingOptions): void {
   const { isLocked, mode, onPositionChange, onLockedDrag, onMoveComplete, onPositionsCommitted } =
     options;
 
-  useLockState(cy, isLocked);
-  useDragHandlers(cy, mode, onPositionChange, onMoveComplete, onPositionsCommitted);
-  useLockedGrabHandler(cy, isLocked, onLockedDrag);
+  useLockState(cyCompat, isLocked);
+  useDragHandlers(cyCompat, mode, onPositionChange, onMoveComplete, onPositionsCommitted);
+  useLockedGrabHandler(cyCompat, isLocked, onLockedDrag);
 }

@@ -1,11 +1,11 @@
 /* global describe, it, before, after, beforeEach, afterEach */
-import Module from 'module';
-import path from 'path';
+import Module from "module";
+import path from "path";
 
-import { expect } from 'chai';
-import sinon from 'sinon';
+import { expect } from "chai";
+import sinon from "sinon";
 
-describe('refreshSshxSessions', () => {
+describe("refreshSshxSessions", () => {
   const originalResolve = (Module as any)._resolveFilename;
   let refreshSshxSessions: () => Promise<void>;
   let sshxSessions: Map<string, string>;
@@ -15,8 +15,8 @@ describe('refreshSshxSessions', () => {
 
   // Helper to clear module cache for all vscode-containerlab modules
   function clearModuleCache() {
-    Object.keys(require.cache).forEach(key => {
-      if (key.includes('vscode-containerlab') && !key.includes('node_modules')) {
+    Object.keys(require.cache).forEach((key) => {
+      if (key.includes("vscode-containerlab") && !key.includes("node_modules")) {
         delete require.cache[key];
       }
     });
@@ -27,24 +27,29 @@ describe('refreshSshxSessions', () => {
     clearModuleCache();
 
     // Set up module resolution intercepts
-    (Module as any)._resolveFilename = function(request: string, parent: any, isMain: boolean, options: any) {
-      if (request === 'vscode') {
-        return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
+    (Module as any)._resolveFilename = function (
+      request: string,
+      parent: any,
+      isMain: boolean,
+      options: any
+    ) {
+      if (request === "vscode") {
+        return path.join(__dirname, "..", "..", "helpers", "vscode-stub.js");
       }
-      if (request.includes('utils') && !request.includes('stub')) {
-        return path.join(__dirname, '..', '..', 'helpers', 'utils-stub.js');
+      if (request.includes("utils") && !request.includes("stub")) {
+        return path.join(__dirname, "..", "..", "helpers", "utils-stub.js");
       }
-      if (request === 'dockerode') {
-        return path.join(__dirname, '..', '..', 'helpers', 'dockerode-stub.js');
+      if (request === "dockerode") {
+        return path.join(__dirname, "..", "..", "helpers", "dockerode-stub.js");
       }
       return originalResolve.call(this, request, parent, isMain, options);
     };
 
     // Now require the modules fresh
-    vscodeStub = require('../../helpers/vscode-stub');
-    utilsStub = require('../../helpers/utils-stub');
-    globals = require('../../../src/globals');
-    const sessionRefresh = require('../../../src/services/sessionRefresh');
+    vscodeStub = require("../../helpers/vscode-stub");
+    utilsStub = require("../../helpers/utils-stub");
+    globals = require("../../../src/globals");
+    const sessionRefresh = require("../../../src/services/sessionRefresh");
     refreshSshxSessions = sessionRefresh.refreshSshxSessions;
     sshxSessions = globals.sshxSessions;
   });
@@ -56,38 +61,38 @@ describe('refreshSshxSessions', () => {
 
   beforeEach(() => {
     utilsStub.calls.length = 0;
-    utilsStub.setOutput('');
+    utilsStub.setOutput("");
     sshxSessions.clear();
-    globals.outputChannel = vscodeStub.window.createOutputChannel('test', { log: true });
+    globals.outputChannel = vscodeStub.window.createOutputChannel("test", { log: true });
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
-  it('parses sessions from container name when network lacks prefix', async () => {
+  it("parses sessions from container name when network lacks prefix", async () => {
     const sample = JSON.stringify([
       {
-        "name": "clab-atest-sshx",
-        "network": "clab",
-        "state": "running",
-        "ipv4_address": "172.20.20.4",
-        "link": "https://sshx.io/s/QfCkbDXUnk#FINGn1xZar19RC",
-        "owner": "tester"
+        name: "clab-atest-sshx",
+        network: "clab",
+        state: "running",
+        ipv4_address: "172.20.20.4",
+        link: "https://sshx.io/s/QfCkbDXUnk#FINGn1xZar19RC",
+        owner: "tester"
       },
       {
-        "name": "sshx-clab",
-        "network": "clab",
-        "state": "exited",
-        "ipv4_address": "",
-        "link": "N/A",
-        "owner": "tester"
+        name: "sshx-clab",
+        network: "clab",
+        state: "exited",
+        ipv4_address: "",
+        link: "N/A",
+        owner: "tester"
       }
     ]);
     utilsStub.setOutput(sample);
     await refreshSshxSessions();
-    expect(utilsStub.calls[0]).to.contain('containerlab tools sshx list -f json');
+    expect(utilsStub.calls[0]).to.contain("containerlab tools sshx list -f json");
     expect(sshxSessions.size).to.equal(1);
-    expect(sshxSessions.get('atest')).to.equal('https://sshx.io/s/QfCkbDXUnk#FINGn1xZar19RC');
+    expect(sshxSessions.get("atest")).to.equal("https://sshx.io/s/QfCkbDXUnk#FINGn1xZar19RC");
   });
 });

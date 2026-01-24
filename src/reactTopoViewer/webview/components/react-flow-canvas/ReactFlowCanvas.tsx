@@ -10,9 +10,10 @@ import React, {
   useMemo,
   useEffect,
   useState
-} from 'react';
+} from "react";
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   useNodesState,
   useEdgesState,
@@ -20,18 +21,18 @@ import {
   SelectionMode,
   ConnectionMode,
   useStore
-} from '@xyflow/react';
-import type { Node, Edge, ReactFlowInstance, ConnectionLineComponentProps } from '@xyflow/react';
+} from "@xyflow/react";
+import type { Node, Edge, ReactFlowInstance, ConnectionLineComponentProps } from "@xyflow/react";
 
-import '@xyflow/react/dist/style.css';
+import "@xyflow/react/dist/style.css";
 
-import { useTopoViewer } from '../../context/TopoViewerContext';
-import { LinkCreationProvider } from '../../context/LinkCreationContext';
-import { AnnotationHandlersProvider } from '../../context/AnnotationHandlersContext';
-import { EdgeInfoProvider } from '../../context/EdgeInfoContext';
-import { EdgeRenderConfigProvider } from '../../context/EdgeRenderConfigContext';
-import { NodeRenderConfigProvider } from '../../context/NodeRenderConfigContext';
-import { ContextMenu, type ContextMenuItem } from '../context-menu/ContextMenu';
+import { useTopoViewer } from "../../context/TopoViewerContext";
+import { LinkCreationProvider } from "../../context/LinkCreationContext";
+import { AnnotationHandlersProvider } from "../../context/AnnotationHandlersContext";
+import { EdgeInfoProvider } from "../../context/EdgeInfoContext";
+import { EdgeRenderConfigProvider } from "../../context/EdgeRenderConfigContext";
+import { NodeRenderConfigProvider } from "../../context/NodeRenderConfigContext";
+import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 import {
   useElementConversion,
   useDeleteHandlers,
@@ -42,14 +43,18 @@ import {
   useCanvasHandlers,
   useAnnotationCanvasHandlers,
   GRID_SIZE
-} from '../../hooks/react-flow';
-import { rafThrottle } from '../../utils/throttle';
+} from "../../hooks/react-flow";
+import { rafThrottle } from "../../utils/throttle";
 
-import { buildNodeContextMenu, buildEdgeContextMenu, buildPaneContextMenu } from './contextMenuBuilders';
-import { isLineHandleActive } from './nodes/AnnotationHandles';
-import { edgeTypes } from './edges';
-import { nodeTypes } from './nodes';
-import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from './types';
+import {
+  buildNodeContextMenu,
+  buildEdgeContextMenu,
+  buildPaneContextMenu
+} from "./contextMenuBuilders";
+import { isLineHandleActive } from "./nodes/AnnotationHandles";
+import { edgeTypes } from "./edges";
+import { nodeTypes } from "./nodes";
+import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from "./types";
 
 /**
  * Hook for building context menu items.
@@ -57,7 +62,7 @@ import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from './types';
  */
 function useContextMenuItems(
   handlers: ReturnType<typeof useCanvasHandlers>,
-  state: { mode: 'view' | 'edit'; isLocked: boolean },
+  state: { mode: "view" | "edit"; isLocked: boolean },
   editNode: (id: string | null) => void,
   editEdge: (id: string | null) => void,
   handleDeleteNode: (nodeId: string) => void,
@@ -68,74 +73,113 @@ function useContextMenuItems(
   linkSourceNode: string | null,
   startLinkCreation: (nodeId: string) => void,
   cancelLinkCreation: () => void,
-  annotationHandlers?: import('./types').AnnotationHandlers
+  annotationHandlers?: import("./types").AnnotationHandlers
 ): ContextMenuItem[] {
   // Only recalculate when context menu state changes, not on every node position update
   const { type, targetId } = handlers.contextMenu;
 
   return useMemo(() => {
-    const isEditMode = state.mode === 'edit';
+    const isEditMode = state.mode === "edit";
     const isLocked = state.isLocked;
     const nodes = nodesRef.current ?? [];
     const edges = edgesRef.current ?? [];
 
-    if (type === 'node' && targetId) {
-      const targetNode = nodes.find(n => n.id === targetId);
+    if (type === "node" && targetId) {
+      const targetNode = nodes.find((n) => n.id === targetId);
       const targetNodeType = targetNode?.type;
 
       return buildNodeContextMenu({
-        targetId, targetNodeType, isEditMode, isLocked, closeContextMenu: handlers.closeContextMenu, editNode, handleDeleteNode,
-        linkSourceNode, startLinkCreation, cancelLinkCreation,
+        targetId,
+        targetNodeType,
+        isEditMode,
+        isLocked,
+        closeContextMenu: handlers.closeContextMenu,
+        editNode,
+        handleDeleteNode,
+        linkSourceNode,
+        startLinkCreation,
+        cancelLinkCreation,
         editFreeText: annotationHandlers?.onEditFreeText,
         editFreeShape: annotationHandlers?.onEditFreeShape,
         deleteFreeText: annotationHandlers?.onDeleteFreeText,
         deleteFreeShape: annotationHandlers?.onDeleteFreeShape
       });
     }
-    if (type === 'edge' && targetId) {
+    if (type === "edge" && targetId) {
       return buildEdgeContextMenu({
-        targetId, isEditMode, isLocked, closeContextMenu: handlers.closeContextMenu, editEdge, handleDeleteEdge
+        targetId,
+        isEditMode,
+        isLocked,
+        closeContextMenu: handlers.closeContextMenu,
+        editEdge,
+        handleDeleteEdge
       });
     }
-    if (type === 'pane') {
+    if (type === "pane") {
       return buildPaneContextMenu({
-        isEditMode, isLocked, closeContextMenu: handlers.closeContextMenu,
-        reactFlowInstance: handlers.reactFlowInstance, nodes, edges, setNodes
+        isEditMode,
+        isLocked,
+        closeContextMenu: handlers.closeContextMenu,
+        reactFlowInstance: handlers.reactFlowInstance,
+        nodes,
+        edges,
+        setNodes
       });
     }
     return [];
-  }, [type, targetId, state.mode, state.isLocked, handlers.closeContextMenu, handlers.reactFlowInstance, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodesRef, edgesRef, setNodes, linkSourceNode, startLinkCreation, cancelLinkCreation, annotationHandlers]);
+  }, [
+    type,
+    targetId,
+    state.mode,
+    state.isLocked,
+    handlers.closeContextMenu,
+    handlers.reactFlowInstance,
+    editNode,
+    editEdge,
+    handleDeleteNode,
+    handleDeleteEdge,
+    nodesRef,
+    edgesRef,
+    setNodes,
+    linkSourceNode,
+    startLinkCreation,
+    cancelLinkCreation,
+    annotationHandlers
+  ]);
 }
 
 /** Hook for wrapped node click handling */
 function useWrappedNodeClick(
   linkSourceNode: string | null,
   completeLinkCreation: (nodeId: string) => void,
-  onNodeClick: ReturnType<typeof useCanvasHandlers>['onNodeClick']
+  onNodeClick: ReturnType<typeof useCanvasHandlers>["onNodeClick"]
 ) {
-  return useCallback((event: React.MouseEvent, node: { id: string; type?: string }) => {
-    // When in link creation mode, complete the link
-    if (linkSourceNode) {
-      // Prevent loop links on cloud nodes
-      const isLoopLink = linkSourceNode === node.id;
-      const isCloudNode = node.type === 'cloud-node';
-      if (isLoopLink && isCloudNode) {
-        // Don't complete - cloud nodes don't support loop links
+  return useCallback(
+    (event: React.MouseEvent, node: { id: string; type?: string }) => {
+      // When in link creation mode, complete the link
+      if (linkSourceNode) {
+        // Prevent loop links on cloud nodes
+        const isLoopLink = linkSourceNode === node.id;
+        const isCloudNode = node.type === "cloud-node";
+        if (isLoopLink && isCloudNode) {
+          // Don't complete - cloud nodes don't support loop links
+          return;
+        }
+        event.stopPropagation();
+        completeLinkCreation(node.id);
         return;
       }
-      event.stopPropagation();
-      completeLinkCreation(node.id);
-      return;
-    }
-    onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
-  }, [linkSourceNode, completeLinkCreation, onNodeClick]);
+      onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
+    },
+    [linkSourceNode, completeLinkCreation, onNodeClick]
+  );
 }
 
 /** CSS styles for the canvas */
 const canvasStyle: React.CSSProperties = {
-  width: '100%',
-  height: '100%',
-  position: 'absolute',
+  width: "100%",
+  height: "100%",
+  position: "absolute",
   top: 0,
   left: 0,
   right: 0,
@@ -163,13 +207,7 @@ const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
         strokeWidth={2}
         strokeDasharray="5,5"
       />
-      <circle
-        cx={toX}
-        cy={toY}
-        r={6}
-        fill="#007acc"
-        opacity={0.7}
-      />
+      <circle cx={toX} cy={toY} r={6} fill="#007acc" opacity={0.7} />
     </g>
   );
 };
@@ -192,7 +230,7 @@ const LARGE_GRAPH_EDGE_THRESHOLD = 900;
  * ReactFlowCanvas component
  */
 /** Node type constants */
-const ANNOTATION_NODE_TYPES_SET = new Set(['free-text-node', 'free-shape-node']);
+const ANNOTATION_NODE_TYPES_SET = new Set(["free-text-node", "free-shape-node"]);
 
 /**
  * Hook to sync annotation nodes into the React Flow nodes state.
@@ -208,7 +246,7 @@ function useSyncAnnotationNodes(
   useEffect(() => {
     if (!annotationNodes) return;
 
-    setNodes(currentNodes => {
+    setNodes((currentNodes) => {
       const incomingById = new Map<string, Node>();
       for (const node of annotationNodes) {
         incomingById.set(node.id, node);
@@ -218,7 +256,7 @@ function useSyncAnnotationNodes(
 
       // Update existing nodes in-place (preserve React Flow internals like `selected`)
       for (const currentNode of currentNodes) {
-        const isAnnotation = ANNOTATION_NODE_TYPES_SET.has(currentNode.type || '');
+        const isAnnotation = ANNOTATION_NODE_TYPES_SET.has(currentNode.type || "");
         if (!isAnnotation) {
           nextNodes.push(currentNode);
           continue;
@@ -234,8 +272,9 @@ function useSyncAnnotationNodes(
         // When a line handle is being dragged, use the incoming position
         // (computed from annotation data) to properly update the node's visual position.
         // Otherwise, preserve React Flow's position to avoid jitter during node dragging.
-        const isLineNode = currentNode.type === 'free-shape-node' &&
-          (incoming.data as { shapeType?: string })?.shapeType === 'line';
+        const isLineNode =
+          currentNode.type === "free-shape-node" &&
+          (incoming.data as { shapeType?: string })?.shapeType === "line";
         const useIncomingPosition = isLineNode && isLineHandleActive();
 
         nextNodes.push({
@@ -260,8 +299,25 @@ function useSyncAnnotationNodes(
   }, [annotationNodes, setNodes]);
 }
 
-const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
-  ({ nodes: propNodes, edges: propEdges, elements, annotationNodes, annotationMode, annotationHandlers, onNodeDelete, onEdgeDelete, onMoveComplete, linkLabelMode = 'show-all' }, ref) => {
+/**
+ * Inner component that uses useStore (requires ReactFlowProvider ancestor)
+ */
+const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
+  (
+    {
+      nodes: propNodes,
+      edges: propEdges,
+      elements,
+      annotationNodes,
+      annotationMode,
+      annotationHandlers,
+      onNodeDelete,
+      onEdgeDelete,
+      onMoveComplete,
+      linkLabelMode = "show-all"
+    },
+    ref
+  ) => {
     const { state, selectNode, selectEdge, editNode, editEdge } = useTopoViewer();
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -275,10 +331,16 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
     edgesRef.current = edges;
 
     const handlers = useCanvasHandlers({
-      selectNode, selectEdge, editNode, editEdge,
-      mode: state.mode, isLocked: state.isLocked,
-      onNodesChangeBase: onNodesChange, onEdgesChangeBase: onEdgesChange,
-      setEdges, onLockedAction: () => floatingPanelRef.current?.triggerShake(),
+      selectNode,
+      selectEdge,
+      editNode,
+      editEdge,
+      mode: state.mode,
+      isLocked: state.isLocked,
+      onNodesChangeBase: onNodesChange,
+      onEdgesChangeBase: onEdgesChange,
+      setEdges,
+      onLockedAction: () => floatingPanelRef.current?.triggerShake(),
       nodes, // Pass nodes for position tracking
       onMoveComplete // Pass callback for undo/redo
     });
@@ -303,54 +365,122 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
     useElementConversion(useDirectNodesEdges ? undefined : elements, setNodes, setEdges);
     useSyncAnnotationNodes(annotationNodes, setNodes);
 
-    const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } = useLinkCreation(setEdges);
-    const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(edges, setNodes, setEdges, selectNode, selectEdge, handlers.closeContextMenu, onNodeDelete, onEdgeDelete);
+    const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =
+      useLinkCreation(setEdges);
+    const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
+      edges,
+      setNodes,
+      setEdges,
+      selectNode,
+      selectEdge,
+      handlers.closeContextMenu,
+      onNodeDelete,
+      onEdgeDelete
+    );
     const sourceNodePosition = useSourceNodePosition(linkSourceNode, nodes);
 
-    const isLargeGraph = nodes.length >= LARGE_GRAPH_NODE_THRESHOLD || edges.length >= LARGE_GRAPH_EDGE_THRESHOLD;
+    const isLargeGraph =
+      nodes.length >= LARGE_GRAPH_NODE_THRESHOLD || edges.length >= LARGE_GRAPH_EDGE_THRESHOLD;
     const isLowDetail = useStore(
-      useCallback((store) => {
-        const zoom = store.transform[2];
-        return isLargeGraph && zoom <= LOW_DETAIL_ZOOM_THRESHOLD;
-      }, [isLargeGraph]),
+      useCallback(
+        (store) => {
+          const zoom = store.transform[2];
+          return isLargeGraph && zoom <= LOW_DETAIL_ZOOM_THRESHOLD;
+        },
+        [isLargeGraph]
+      ),
       (left, right) => left === right
     );
 
-    useKeyboardDeleteHandlers(state.mode, state.isLocked, state.selectedNode, state.selectedEdge, handleDeleteNode, handleDeleteEdge);
+    useKeyboardDeleteHandlers(
+      state.mode,
+      state.isLocked,
+      state.selectedNode,
+      state.selectedEdge,
+      handleDeleteNode,
+      handleDeleteEdge
+    );
 
-    const refMethods = useCanvasRefMethods(handlers.reactFlowInstance, nodes, edges, setNodes, setEdges);
+    const refMethods = useCanvasRefMethods(
+      handlers.reactFlowInstance,
+      nodes,
+      edges,
+      setNodes,
+      setEdges
+    );
     useImperativeHandle(ref, () => refMethods, [refMethods]);
 
-    const wrappedOnNodeClick = useWrappedNodeClick(linkSourceNode, completeLinkCreation, handlers.onNodeClick);
+    const wrappedOnNodeClick = useWrappedNodeClick(
+      linkSourceNode,
+      completeLinkCreation,
+      handlers.onNodeClick
+    );
     // Use refs to avoid re-computing context menu on every position change
-    const contextMenuItems = useContextMenuItems(handlers, state, editNode, editEdge, handleDeleteNode, handleDeleteEdge, nodesRef, edgesRef, setNodes, linkSourceNode, startLinkCreation, cancelLinkCreation, annotationHandlers);
+    const contextMenuItems = useContextMenuItems(
+      handlers,
+      state,
+      editNode,
+      editEdge,
+      handleDeleteNode,
+      handleDeleteEdge,
+      nodesRef,
+      edgesRef,
+      setNodes,
+      linkSourceNode,
+      startLinkCreation,
+      cancelLinkCreation,
+      annotationHandlers
+    );
 
     // Use annotation canvas handlers hook for annotation-related interactions
-    const { wrappedOnPaneClick, wrappedOnNodeDoubleClick, wrappedOnNodeDragStop, isInAddMode, addModeMessage } = useAnnotationCanvasHandlers({
-      mode: state.mode, isLocked: state.isLocked, annotationMode, annotationHandlers,
+    const {
+      wrappedOnPaneClick,
+      wrappedOnNodeDoubleClick,
+      wrappedOnNodeDragStop,
+      isInAddMode,
+      addModeMessage
+    } = useAnnotationCanvasHandlers({
+      mode: state.mode,
+      isLocked: state.isLocked,
+      annotationMode,
+      annotationHandlers,
       reactFlowInstanceRef: handlers.reactFlowInstance,
-      baseOnPaneClick: handlers.onPaneClick, baseOnNodeDoubleClick: handlers.onNodeDoubleClick, baseOnNodeDragStop: handlers.onNodeDragStop
+      baseOnPaneClick: handlers.onPaneClick,
+      baseOnNodeDoubleClick: handlers.onNodeDoubleClick,
+      baseOnNodeDragStop: handlers.onNodeDragStop
     });
 
-    const handleNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
-      setIsNodeDragging(true);
-      handlers.onNodeDragStart(event, node);
-    }, [handlers.onNodeDragStart]);
+    const handleNodeDragStart = useCallback(
+      (event: React.MouseEvent, node: Node) => {
+        setIsNodeDragging(true);
+        handlers.onNodeDragStart(event, node);
+      },
+      [handlers.onNodeDragStart]
+    );
 
-    const handleNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
-      wrappedOnNodeDragStop(event, node);
-      setIsNodeDragging(false);
-    }, [wrappedOnNodeDragStop]);
+    const handleNodeDragStop = useCallback(
+      (event: React.MouseEvent, node: Node) => {
+        wrappedOnNodeDragStop(event, node);
+        setIsNodeDragging(false);
+      },
+      [wrappedOnNodeDragStop]
+    );
 
-    const edgeRenderConfig = useMemo(() => ({
-      labelMode: linkLabelMode,
-      suppressLabels: isNodeDragging || isLowDetail,
-      suppressHitArea: isLowDetail
-    }), [linkLabelMode, isNodeDragging, isLowDetail]);
+    const edgeRenderConfig = useMemo(
+      () => ({
+        labelMode: linkLabelMode,
+        suppressLabels: isNodeDragging || isLowDetail,
+        suppressHitArea: isLowDetail
+      }),
+      [linkLabelMode, isNodeDragging, isLowDetail]
+    );
 
-    const nodeRenderConfig = useMemo(() => ({
-      suppressLabels: isLowDetail
-    }), [isLowDetail]);
+    const nodeRenderConfig = useMemo(
+      () => ({
+        suppressLabels: isLowDetail
+      }),
+      [isLowDetail]
+    );
 
     return (
       <div style={canvasStyle} className="react-flow-canvas">
@@ -360,46 +490,51 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
               <AnnotationHandlersProvider handlers={annotationHandlers}>
                 <LinkCreationProvider linkSourceNode={linkSourceNode}>
                   <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={handlers.handleNodesChange}
-            onEdgesChange={onEdgesChange}
-            onInit={handlers.onInit}
-            onNodeClick={wrappedOnNodeClick}
-            onNodeDoubleClick={wrappedOnNodeDoubleClick}
-            onNodeDragStart={handleNodeDragStart}
-            onNodeDragStop={handleNodeDragStop}
-            onNodeContextMenu={handlers.onNodeContextMenu}
-            onEdgeClick={handlers.onEdgeClick}
-            onEdgeDoubleClick={handlers.onEdgeDoubleClick}
-            onEdgeContextMenu={handlers.onEdgeContextMenu}
-            onPaneClick={wrappedOnPaneClick}
-            onPaneContextMenu={handlers.onPaneContextMenu}
-            onConnect={handlers.onConnect}
-            connectionLineComponent={CustomConnectionLine}
-            fitView
-            fitViewOptions={fitViewOptions}
-            defaultViewport={defaultViewport}
-            minZoom={0.1}
-            maxZoom={Infinity}
-            onlyRenderVisibleElements={!isLowDetail}
-            selectionMode={SelectionMode.Partial}
-            selectNodesOnDrag={false}
-            panOnDrag={!isInAddMode}
-            selectionOnDrag={false}
-            selectionKeyCode="Shift"
-            connectionMode={ConnectionMode.Loose}
-            proOptions={proOptions}
-            deleteKeyCode={null}
-            multiSelectionKeyCode="Shift"
-            nodesDraggable={state.mode === 'edit' && !state.isLocked}
-            nodesConnectable={state.mode === 'edit' && !state.isLocked}
-            elementsSelectable
+                    nodes={nodes}
+                    edges={edges}
+                    nodeTypes={nodeTypes}
+                    edgeTypes={edgeTypes}
+                    onNodesChange={handlers.handleNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onInit={handlers.onInit}
+                    onNodeClick={wrappedOnNodeClick}
+                    onNodeDoubleClick={wrappedOnNodeDoubleClick}
+                    onNodeDragStart={handleNodeDragStart}
+                    onNodeDragStop={handleNodeDragStop}
+                    onNodeContextMenu={handlers.onNodeContextMenu}
+                    onEdgeClick={handlers.onEdgeClick}
+                    onEdgeDoubleClick={handlers.onEdgeDoubleClick}
+                    onEdgeContextMenu={handlers.onEdgeContextMenu}
+                    onPaneClick={wrappedOnPaneClick}
+                    onPaneContextMenu={handlers.onPaneContextMenu}
+                    onConnect={handlers.onConnect}
+                    connectionLineComponent={CustomConnectionLine}
+                    fitView
+                    fitViewOptions={fitViewOptions}
+                    defaultViewport={defaultViewport}
+                    minZoom={0.1}
+                    maxZoom={Infinity}
+                    onlyRenderVisibleElements={!isLowDetail}
+                    selectionMode={SelectionMode.Partial}
+                    selectNodesOnDrag={false}
+                    panOnDrag={!isInAddMode}
+                    selectionOnDrag={false}
+                    selectionKeyCode="Shift"
+                    connectionMode={ConnectionMode.Loose}
+                    proOptions={proOptions}
+                    deleteKeyCode={null}
+                    multiSelectionKeyCode="Shift"
+                    nodesDraggable={state.mode === "edit" && !state.isLocked}
+                    nodesConnectable={state.mode === "edit" && !state.isLocked}
+                    elementsSelectable
                   >
                     {!isLowDetail && (
-                      <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
+                      <Background
+                        variant={BackgroundVariant.Dots}
+                        gap={GRID_SIZE}
+                        size={1}
+                        color="#555"
+                      />
                     )}
                   </ReactFlow>
                 </LinkCreationProvider>
@@ -422,13 +557,9 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
           />
         )}
 
-        {linkSourceNode && (
-          <LinkCreationIndicator linkSourceNode={linkSourceNode} />
-        )}
+        {linkSourceNode && <LinkCreationIndicator linkSourceNode={linkSourceNode} />}
 
-        {isInAddMode && addModeMessage && (
-          <AnnotationModeIndicator message={addModeMessage} />
-        )}
+        {isInAddMode && addModeMessage && <AnnotationModeIndicator message={addModeMessage} />}
       </div>
     );
   }
@@ -438,18 +569,18 @@ const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasP
 const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
   <div
     style={{
-      position: 'absolute',
+      position: "absolute",
       top: 10,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: 'var(--vscode-editor-background, #1e1e1e)',
-      border: '1px solid var(--vscode-charts-green, #4ec9b0)',
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "var(--vscode-editor-background, #1e1e1e)",
+      border: "1px solid var(--vscode-charts-green, #4ec9b0)",
       borderRadius: 4,
-      padding: '6px 12px',
+      padding: "6px 12px",
       fontSize: 12,
-      color: 'var(--vscode-editor-foreground, #cccccc)',
+      color: "var(--vscode-editor-foreground, #cccccc)",
       zIndex: 1000,
-      pointerEvents: 'none'
+      pointerEvents: "none"
     }}
   >
     {message}
@@ -460,21 +591,22 @@ const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => 
 const LinkCreationIndicator: React.FC<{ linkSourceNode: string }> = ({ linkSourceNode }) => (
   <div
     style={{
-      position: 'absolute',
+      position: "absolute",
       top: 10,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: 'var(--vscode-editor-background, #1e1e1e)',
-      border: '1px solid var(--vscode-focusBorder, #007acc)',
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "var(--vscode-editor-background, #1e1e1e)",
+      border: "1px solid var(--vscode-focusBorder, #007acc)",
       borderRadius: 4,
-      padding: '6px 12px',
+      padding: "6px 12px",
       fontSize: 12,
-      color: 'var(--vscode-editor-foreground, #cccccc)',
+      color: "var(--vscode-editor-foreground, #cccccc)",
       zIndex: 1000,
-      pointerEvents: 'none'
+      pointerEvents: "none"
     }}
   >
-    Creating link from <strong>{linkSourceNode}</strong> — Click on target node or press Escape to cancel
+    Creating link from <strong>{linkSourceNode}</strong> — Click on target node or press Escape to
+    cancel
   </div>
 );
 
@@ -486,12 +618,12 @@ interface LinkCreationLineProps {
 
 // Constant SVG style to avoid object recreation
 const LINK_LINE_SVG_STYLE: React.CSSProperties = {
-  position: 'absolute',
+  position: "absolute",
   top: 0,
   left: 0,
-  width: '100%',
-  height: '100%',
-  pointerEvents: 'none',
+  width: "100%",
+  height: "100%",
+  pointerEvents: "none",
   zIndex: 999
 };
 
@@ -505,62 +637,75 @@ function getContainerBounds(): DOMRect | null {
   if (cachedContainerBounds && now - boundsLastUpdated < BOUNDS_CACHE_DURATION) {
     return cachedContainerBounds;
   }
-  const container = document.querySelector('.react-flow-canvas');
+  const container = document.querySelector(".react-flow-canvas");
   if (!container) return null;
   cachedContainerBounds = container.getBoundingClientRect();
   boundsLastUpdated = now;
   return cachedContainerBounds;
 }
 
-const LinkCreationLine = React.memo<LinkCreationLineProps>(({
-  sourcePosition,
-  reactFlowInstance
-}) => {
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+const LinkCreationLine = React.memo<LinkCreationLineProps>(
+  ({ sourcePosition, reactFlowInstance }) => {
+    const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
 
-  useEffect(() => {
-    const throttledSetPosition = rafThrottle((x: number, y: number) => {
-      setMousePosition({ x, y });
-    });
+    useEffect(() => {
+      const throttledSetPosition = rafThrottle((x: number, y: number) => {
+        setMousePosition({ x, y });
+      });
 
-    const handleMouseMove = (e: MouseEvent) => {
-      throttledSetPosition(e.clientX, e.clientY);
-    };
+      const handleMouseMove = (e: MouseEvent) => {
+        throttledSetPosition(e.clientX, e.clientY);
+      };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      throttledSetPosition.cancel();
-    };
-  }, []);
+      window.addEventListener("mousemove", handleMouseMove);
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        throttledSetPosition.cancel();
+      };
+    }, []);
 
-  if (!mousePosition) return null;
+    if (!mousePosition) return null;
 
-  const viewport = reactFlowInstance.getViewport();
-  const screenSourceX = sourcePosition.x * viewport.zoom + viewport.x;
-  const screenSourceY = sourcePosition.y * viewport.zoom + viewport.y;
+    const viewport = reactFlowInstance.getViewport();
+    const screenSourceX = sourcePosition.x * viewport.zoom + viewport.x;
+    const screenSourceY = sourcePosition.y * viewport.zoom + viewport.y;
 
-  const bounds = getContainerBounds();
-  if (!bounds) return null;
-  const relativeMouseX = mousePosition.x - bounds.left;
-  const relativeMouseY = mousePosition.y - bounds.top;
+    const bounds = getContainerBounds();
+    if (!bounds) return null;
+    const relativeMouseX = mousePosition.x - bounds.left;
+    const relativeMouseY = mousePosition.y - bounds.top;
 
-  return (
-    <svg style={LINK_LINE_SVG_STYLE}>
-      <line
-        x1={screenSourceX}
-        y1={screenSourceY}
-        x2={relativeMouseX}
-        y2={relativeMouseY}
-        stroke="#007acc"
-        strokeWidth={2}
-        strokeDasharray="5,5"
-      />
-      <circle cx={relativeMouseX} cy={relativeMouseY} r={6} fill="#007acc" opacity={0.7} />
-    </svg>
-  );
-});
+    return (
+      <svg style={LINK_LINE_SVG_STYLE}>
+        <line
+          x1={screenSourceX}
+          y1={screenSourceY}
+          x2={relativeMouseX}
+          y2={relativeMouseY}
+          stroke="#007acc"
+          strokeWidth={2}
+          strokeDasharray="5,5"
+        />
+        <circle cx={relativeMouseX} cy={relativeMouseY} r={6} fill="#007acc" opacity={0.7} />
+      </svg>
+    );
+  }
+);
 
-ReactFlowCanvasComponent.displayName = 'ReactFlowCanvas';
+ReactFlowCanvasInner.displayName = "ReactFlowCanvasInner";
+
+/**
+ * Outer wrapper that provides ReactFlowProvider context.
+ * useStore hook in the inner component requires this provider to be an ancestor.
+ */
+const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
+  (props, ref) => (
+    <ReactFlowProvider>
+      <ReactFlowCanvasInner ref={ref} {...props} />
+    </ReactFlowProvider>
+  )
+);
+
+ReactFlowCanvasComponent.displayName = "ReactFlowCanvas";
 
 export const ReactFlowCanvas = ReactFlowCanvasComponent;

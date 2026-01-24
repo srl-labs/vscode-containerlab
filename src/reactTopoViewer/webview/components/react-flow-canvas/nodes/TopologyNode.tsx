@@ -2,15 +2,15 @@
  * TopologyNode - Custom React Flow node for network devices (router, switch, etc.)
  * Performance optimized: CSS hover, reduced handles, memoized styles
  */
-import React, { useMemo, memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import React, { useMemo, memo } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 
-import type { TopologyNodeData } from '../types';
-import { SELECTION_COLOR, DEFAULT_ICON_COLOR } from '../types';
-import { generateEncodedSVG, type NodeType } from '../../../utils/SvgGenerator';
-import { ROLE_SVG_MAP } from '../conversion';
-import { useLinkCreationContext } from '../../../context/LinkCreationContext';
-import { useNodeRenderConfig } from '../../../context/NodeRenderConfigContext';
+import type { TopologyNodeData } from "../types";
+import { SELECTION_COLOR, DEFAULT_ICON_COLOR } from "../types";
+import { generateEncodedSVG, type NodeType } from "../../../utils/SvgGenerator";
+import { ROLE_SVG_MAP } from "../conversion";
+import { useLinkCreationContext } from "../../../context/LinkCreationContext";
+import { useNodeRenderConfig } from "../../../context/NodeRenderConfigContext";
 
 /**
  * Map role to SVG node type
@@ -18,43 +18,43 @@ import { useNodeRenderConfig } from '../../../context/NodeRenderConfigContext';
 function getRoleSvgType(role: string): NodeType {
   const mapped = ROLE_SVG_MAP[role];
   if (mapped) return mapped as NodeType;
-  return 'pe'; // Default to PE router icon
+  return "pe"; // Default to PE router icon
 }
 
 // Constant styles extracted outside component to avoid recreation on every render
 const CONTAINER_STYLE_BASE: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  position: 'relative'
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  position: "relative"
 };
 
 const CONTAINER_STYLE_LINK_TARGET: React.CSSProperties = {
   ...CONTAINER_STYLE_BASE,
-  cursor: 'crosshair'
+  cursor: "crosshair"
 };
 
 const LABEL_STYLE: React.CSSProperties = {
   marginTop: -2,
-  fontSize: '0.7rem',
+  fontSize: "0.7rem",
   fontWeight: 500,
-  color: '#F5F5F5',
-  textAlign: 'center',
-  textShadow: '0 0 3px #3C3E41',
-  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  padding: '1px 4px',
+  color: "#F5F5F5",
+  textAlign: "center",
+  textShadow: "0 0 3px #3C3E41",
+  backgroundColor: "rgba(0, 0, 0, 0.7)",
+  padding: "1px 4px",
   borderRadius: 3,
   maxWidth: 80,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap'
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap"
 };
 
 // Hidden handle style - only need one source and one target handle
 // The floating edge calculates its own connection points
 const HIDDEN_HANDLE_STYLE: React.CSSProperties = {
   opacity: 0,
-  pointerEvents: 'none',
+  pointerEvents: "none",
   width: 1,
   height: 1
 };
@@ -64,10 +64,10 @@ const ICON_SIZE = 40;
 const ICON_STYLE_BASE: React.CSSProperties = {
   width: ICON_SIZE,
   height: ICON_SIZE,
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
-  backgroundRepeat: 'no-repeat',
-  transition: 'border 0.15s ease, box-shadow 0.15s ease'
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+  transition: "border 0.15s ease, box-shadow 0.15s ease"
 };
 
 // Selection styles
@@ -106,8 +106,8 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
       style.border = SELECTED_BORDER;
       style.boxShadow = SELECTED_BOX_SHADOW;
     } else {
-      style.border = 'none';
-      style.boxShadow = 'none';
+      style.border = "none";
+      style.boxShadow = "none";
     }
 
     return style;
@@ -117,9 +117,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const containerStyle = isLinkTarget ? CONTAINER_STYLE_LINK_TARGET : CONTAINER_STYLE_BASE;
 
   // Build class names for CSS-based hover effects
-  const iconClassName = isLinkTarget
-    ? 'topology-node-icon link-target'
-    : 'topology-node-icon';
+  const iconClassName = isLinkTarget ? "topology-node-icon link-target" : "topology-node-icon";
 
   return (
     <div style={containerStyle} className="topology-node">
@@ -154,10 +152,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   );
 };
 
-function areTopologyNodePropsEqual(
-  prev: NodeProps,
-  next: NodeProps
-): boolean {
+function areTopologyNodePropsEqual(prev: NodeProps, next: NodeProps): boolean {
   return prev.data === next.data && prev.selected === next.selected;
 }
 

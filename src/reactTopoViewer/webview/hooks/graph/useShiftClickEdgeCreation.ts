@@ -1,9 +1,18 @@
 /**
  * useShiftClickEdgeCreation - Hook for starting edge creation via Shift+Click on node
+ *
+ * NOTE: This hook uses the CyCompatCore compatibility layer.
+ * The event handling is a stub - actual events should be handled via ReactFlow's
+ * onNodeClick callback. This hook provides the edge creation trigger logic
+ * that can be called from that handler.
  */
 import { useEffect } from "react";
-import type { Core, EventObject, NodeSingular } from "cytoscape";
 
+import type {
+  CyCompatCore,
+  CyCompatEventObject,
+  CyCompatNodeElement
+} from "../useCytoCompatInstance";
 import { log } from "../../utils/logger";
 
 import { getModifierTapTarget } from "./graphClickHelpers";
@@ -17,18 +26,21 @@ interface ShiftClickEdgeCreationOptions {
 /**
  * Hook that enables Shift+Click on a node to start edge/link creation
  * Only active in edit mode when not locked
+ *
+ * NOTE: Event handling is stubbed in the compatibility layer.
+ * For ReactFlow integration, use onNodeClick handler directly.
  */
 export function useShiftClickEdgeCreation(
-  cy: Core | null,
+  cyCompat: CyCompatCore | null,
   options: ShiftClickEdgeCreationOptions
 ): void {
   const { mode, isLocked, startEdgeCreation } = options;
 
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
 
-    const handleTap = (evt: EventObject) => {
-      const node = getModifierTapTarget<NodeSingular>(evt, cy, {
+    const handleTap = (evt: CyCompatEventObject) => {
+      const node = getModifierTapTarget<CyCompatNodeElement>(evt, cyCompat, {
         mode,
         isLocked,
         modifier: "shift"
@@ -39,9 +51,9 @@ export function useShiftClickEdgeCreation(
       startEdgeCreation(node.id());
     };
 
-    cy.on("tap", "node", handleTap);
+    cyCompat.on("tap", "node", handleTap as unknown as () => void);
     return () => {
-      cy.off("tap", "node", handleTap);
+      cyCompat.off("tap", "node", handleTap as unknown as () => void);
     };
-  }, [cy, mode, isLocked, startEdgeCreation]);
+  }, [cyCompat, mode, isLocked, startEdgeCreation]);
 }

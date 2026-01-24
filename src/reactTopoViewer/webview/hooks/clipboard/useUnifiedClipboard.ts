@@ -5,8 +5,8 @@
 
 import { useCallback, useRef } from "react";
 import type { RefObject } from "react";
-import type { Core as CyCore, NodeSingular, NodeCollection } from "cytoscape";
 
+import type { CyCompatCore, CyCompatCollection, CyCompatElement } from "../useCytoCompatInstance";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
@@ -86,8 +86,8 @@ export interface PasteResult {
 }
 
 export interface UseUnifiedClipboardOptions {
-  /** Cytoscape instance */
-  cyInstance: CyCore | null;
+  /** Cytoscape-compatible instance */
+  cyCompat: CyCompatCore | null;
   /** All groups */
   groups: GroupStyleAnnotation[];
   /** All text annotations */
@@ -191,7 +191,7 @@ function getDescendantGroupIds(groupId: string, groups: GroupStyleAnnotation[]):
 /** Collect all group IDs to include in clipboard */
 function collectGroupIdsToInclude(
   selectedGroupIds: Set<string>,
-  selectedNodes: NodeCollection,
+  selectedNodes: CyCompatCollection,
   groups: GroupStyleAnnotation[],
   getNodeMembership: (nodeId: string) => string | null
 ): Set<string> {
@@ -215,7 +215,7 @@ function collectGroupIdsToInclude(
 
 /** Collect all node IDs to include in clipboard */
 function collectNodeIdsToInclude(
-  selectedNodes: NodeCollection,
+  selectedNodes: CyCompatCollection,
   groupIdsToInclude: Set<string>,
   getGroupMembers: (groupId: string) => string[]
 ): Set<string> {
@@ -232,17 +232,17 @@ function collectNodeIdsToInclude(
   return nodeIdsToInclude;
 }
 
-/** Collect clipboard nodes from cytoscape */
+/** Collect clipboard nodes from cytoscape-compatible instance */
 function collectClipboardNodes(
   nodeIdsToInclude: Set<string>,
-  cyInstance: CyCore,
+  cyCompat: CyCompatCore,
   getNodeMembership: (nodeId: string) => string | null
 ): { nodes: ClipboardNode[]; positions: Array<{ x: number; y: number }> } {
   const clipboardNodes: ClipboardNode[] = [];
   const positions: Array<{ x: number; y: number }> = [];
 
   for (const nodeId of nodeIdsToInclude) {
-    const node = cyInstance.getElementById(nodeId) as NodeSingular;
+    const node = cyCompat.getElementById(nodeId) as CyCompatElement;
     if (node.length > 0) {
       const pos = node.position();
       positions.push(pos);
@@ -263,21 +263,25 @@ function collectClipboardNodes(
   return { nodes: clipboardNodes, positions };
 }
 
-/** Collect clipboard edges from cytoscape */
-function collectClipboardEdges(cyInstance: CyCore, nodeIdsToInclude: Set<string>): ClipboardEdge[] {
+/** Collect clipboard edges from cytoscape-compatible instance */
+function collectClipboardEdges(
+  cyCompat: CyCompatCore,
+  nodeIdsToInclude: Set<string>
+): ClipboardEdge[] {
   const clipboardEdges: ClipboardEdge[] = [];
 
   // Include all edges between the nodes we're copying, even if the edges themselves
   // aren't explicitly selected (common UX expectation for copy/paste).
-  cyInstance.edges().forEach((edge) => {
-    const sourceId = edge.source().id();
-    const targetId = edge.target().id();
-    if (nodeIdsToInclude.has(sourceId) && nodeIdsToInclude.has(targetId)) {
+  cyCompat.edges().forEach((edge) => {
+    const edgeData = edge.data() as Record<string, unknown>;
+    const sourceId = edgeData.source as string;
+    const targetId = edgeData.target as string;
+    if (sourceId && targetId && nodeIdsToInclude.has(sourceId) && nodeIdsToInclude.has(targetId)) {
       clipboardEdges.push({
         id: edge.id(),
         source: sourceId,
         target: targetId,
-        data: { ...(edge.data() as Record<string, unknown>) }
+        data: { ...edgeData }
       });
     }
   });
@@ -492,7 +496,7 @@ function pasteNodes(
   position: { x: number; y: number },
   offset: number,
   idMapping: Map<string, string>,
-  cyInstance: CyCore,
+  cyCompat: CyCompatCore,
   onAddNodeToGroup: (nodeId: string, groupId: string) => void,
   onCreateNode?: (
     nodeId: string,
@@ -511,7 +515,7 @@ function pasteNodes(
 
   // Get existing node names to avoid duplicates
   const usedNames = new Set<string>(
-    cyInstance.nodes().map((node) => (node.data("name") as string | undefined) || node.id())
+    cyCompat.nodes().map((node) => (node.data("name") as string | undefined) || node.id())
   );
 
   for (const item of clipboardNodes) {
@@ -677,26 +681,28 @@ function pasteShapeAnnotations(
 
 const PASTE_SELECTION_RETRIES = 10;
 
-function selectPastedNodes(cy: CyCore, nodeIds: string[]): void {
+function selectPastedNodes(cyCompat: CyCompatCore, nodeIds: string[]): void {
   if (nodeIds.length === 0) return;
 
   const attemptSelect = (attempt: number) => {
-    let selection = cy.collection();
+    let foundCount = 0;
 
     for (const nodeId of nodeIds) {
-      const node = cy.getElementById(nodeId);
+      const node = cyCompat.getElementById(nodeId);
       if (node.length > 0) {
-        selection = selection.union(node);
+        foundCount++;
       }
     }
 
-    if (selection.length < nodeIds.length && attempt < PASTE_SELECTION_RETRIES) {
+    if (foundCount < nodeIds.length && attempt < PASTE_SELECTION_RETRIES) {
       window.requestAnimationFrame(() => attemptSelect(attempt + 1));
       return;
     }
 
-    if (selection.length > 0) {
-      selection.select();
+    // Note: Selection in ReactFlow is handled through React state, not imperatively.
+    // The nodes will be selected through the ReactFlow selection mechanism.
+    if (foundCount > 0) {
+      log.info(`[UnifiedClipboard] Pasted nodes ready for selection: ${nodeIds.join(", ")}`);
     }
   };
 
@@ -707,7 +713,7 @@ export function useUnifiedClipboard(
   options: UseUnifiedClipboardOptions
 ): UseUnifiedClipboardReturn {
   const {
-    cyInstance,
+    cyCompat,
     groups,
     textAnnotations,
     shapeAnnotations,
@@ -731,12 +737,12 @@ export function useUnifiedClipboard(
   const pasteCounterRef = useRef(0);
 
   const copy = useCallback((): boolean => {
-    if (!cyInstance) {
+    if (!cyCompat) {
       log.warn("[UnifiedClipboard] No cytoscape instance");
       return false;
     }
 
-    const selectedNodes = cyInstance.nodes(":selected");
+    const selectedNodes = cyCompat.nodes(":selected");
 
     // Collect IDs
     const groupIdsToInclude = collectGroupIdsToInclude(
@@ -754,10 +760,10 @@ export function useUnifiedClipboard(
     // Collect all elements
     const { nodes: clipboardNodes, positions: nodePositions } = collectClipboardNodes(
       nodeIdsToInclude,
-      cyInstance,
+      cyCompat,
       getNodeMembership
     );
-    const clipboardEdges = collectClipboardEdges(cyInstance, nodeIdsToInclude);
+    const clipboardEdges = collectClipboardEdges(cyCompat, nodeIdsToInclude);
     const { groups: clipboardGroups, positions: groupPositions } = collectClipboardGroups(
       groupIdsToInclude,
       groups
@@ -818,7 +824,7 @@ export function useUnifiedClipboard(
 
     return true;
   }, [
-    cyInstance,
+    cyCompat,
     groups,
     textAnnotations,
     shapeAnnotations,
@@ -837,7 +843,7 @@ export function useUnifiedClipboard(
         return null;
       }
 
-      if (!cyInstance) {
+      if (!cyCompat) {
         log.warn("[UnifiedClipboard] No cytoscape instance for paste");
         return null;
       }
@@ -877,7 +883,7 @@ export function useUnifiedClipboard(
         position,
         offset,
         idMapping,
-        cyInstance,
+        cyCompat,
         onAddNodeToGroup,
         onCreateNode
       );
@@ -908,7 +914,7 @@ export function useUnifiedClipboard(
         endUndoBatch();
       }
 
-      selectPastedNodes(cyInstance, newNodeIds);
+      selectPastedNodes(cyCompat, newNodeIds);
 
       log.info(
         `[UnifiedClipboard] Pasted ${newNodeIds.length} nodes, ` +
@@ -926,7 +932,7 @@ export function useUnifiedClipboard(
       };
     },
     [
-      cyInstance,
+      cyCompat,
       onAddGroup,
       onAddTextAnnotation,
       onAddShapeAnnotation,

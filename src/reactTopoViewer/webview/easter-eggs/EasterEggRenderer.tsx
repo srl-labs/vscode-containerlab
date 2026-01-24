@@ -4,8 +4,8 @@
  */
 
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../hooks/useCytoCompatInstance";
 import type { UseEasterEggReturn } from "./useEasterEgg";
 import {
   NightcallMode,
@@ -17,14 +17,14 @@ import {
 
 interface EasterEggRendererProps {
   easterEgg: UseEasterEggReturn;
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
 }
 
 /**
  * Renders the appropriate easter egg mode based on current state.
  * All modes receive identical props, so we use a switch for cleaner code.
  */
-export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg, cyInstance }) => {
+export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg, cyCompat }) => {
   const { state, endPartyMode, nextMode, getModeName } = easterEgg;
 
   const commonProps = {
@@ -32,7 +32,7 @@ export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg,
     onClose: endPartyMode,
     onSwitchMode: nextMode,
     modeName: getModeName(),
-    cyInstance
+    cyCompat
   };
 
   switch (state.easterEggMode) {

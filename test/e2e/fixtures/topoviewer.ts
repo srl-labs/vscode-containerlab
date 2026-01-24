@@ -1,16 +1,16 @@
-import { randomUUID } from 'crypto';
-import { writeFileSync } from 'fs';
-import * as path from 'path';
+import { randomUUID } from "crypto";
+import { writeFileSync } from "fs";
+import * as path from "path";
 
-import type { Locator, TestInfo } from '@playwright/test';
-import { test as base } from '@playwright/test';
+import type { Locator, TestInfo } from "@playwright/test";
+import { test as base } from "@playwright/test";
 
 // Test selectors
 const CANVAS_SELECTOR = '[data-testid="cytoscape-canvas"]';
 const APP_SELECTOR = '[data-testid="topoviewer-app"]';
 
 // Topologies directory path (must match dev server config)
-const TOPOLOGIES_DIR = path.resolve(__dirname, '../../../dev/topologies');
+const TOPOLOGIES_DIR = path.resolve(__dirname, "../../../dev/topologies");
 
 /**
  * Generate a unique session ID for test isolation
@@ -53,7 +53,7 @@ function browserCreateGroup(): CreateGroupResult {
   // Inline helper: get selected node IDs
   const getSelectedNodeIds = (c: any): string[] => {
     if (!c) return [];
-    return c.nodes(':selected').map((n: any) => n.id());
+    return c.nodes(":selected").map((n: any) => n.id());
   };
 
   // Inline helper: get state manager group count
@@ -65,13 +65,13 @@ function browserCreateGroup(): CreateGroupResult {
   // Inline helper: get react group count
   const getReactGroupCount = (d: any): number | string => {
     const groups = d?.getReactGroups?.();
-    return groups?.length ?? 'undefined';
+    return groups?.length ?? "undefined";
   };
 
   // Inline helper: dispatch keyboard event
   const dispatchGroupKeyboardEvent = (): void => {
-    const event = new KeyboardEvent('keydown', {
-      key: 'g',
+    const event = new KeyboardEvent("keydown", {
+      key: "g",
       ctrlKey: true,
       bubbles: true,
       cancelable: true
@@ -87,12 +87,20 @@ function browserCreateGroup(): CreateGroupResult {
 
   if (!dev?.createGroupFromSelected) {
     dispatchGroupKeyboardEvent();
-    return { method: 'keyboard', selectedBefore, mode, isLocked, groupsBefore, groupsAfter: null, reactGroupsBefore };
+    return {
+      method: "keyboard",
+      selectedBefore,
+      mode,
+      isLocked,
+      groupsBefore,
+      groupsAfter: null,
+      reactGroupsBefore
+    };
   }
 
   dev.createGroupFromSelected();
   return {
-    method: 'direct',
+    method: "direct",
     selectedBefore,
     selectedAfter: getSelectedNodeIds(cy),
     mode,
@@ -119,7 +127,7 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
 
   return {
     reactGroupCount: reactGroups.length,
-    reactGroupsDirectCount: dev?.groupsCount ?? 'undefined',
+    reactGroupsDirectCount: dev?.groupsCount ?? "undefined",
     stateManagerGroupCount: stateManagerGroups.length,
     reactGroupIds: getGroupIds(reactGroups),
     stateManagerGroupIds: getGroupIds(stateManagerGroups)
@@ -130,22 +138,36 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
  * Topology files available in dev/topologies/ (file-based)
  */
 type TopologyFileName =
-  | 'simple.clab.yml'
-  | 'spine-leaf.clab.yml'
-  | 'datacenter.clab.yml'
-  | 'network.clab.yml'
-  | 'empty.clab.yml'
+  | "simple.clab.yml"
+  | "spine-leaf.clab.yml"
+  | "datacenter.clab.yml"
+  | "network.clab.yml"
+  | "empty.clab.yml"
   | string; // Allow any filename for dynamic tests
 
 /**
  * Annotations structure from file API
  */
 interface TopologyAnnotations {
-  nodeAnnotations?: Array<{ id: string; position?: { x: number; y: number }; group?: string; level?: string }>;
+  nodeAnnotations?: Array<{
+    id: string;
+    position?: { x: number; y: number };
+    group?: string;
+    level?: string;
+  }>;
   freeTextAnnotations?: Array<{ id: string; text: string; position: { x: number; y: number } }>;
-  freeShapeAnnotations?: Array<{ id: string; shapeType: string; position: { x: number; y: number } }>;
+  freeShapeAnnotations?: Array<{
+    id: string;
+    shapeType: string;
+    position: { x: number; y: number };
+  }>;
   groupStyleAnnotations?: Array<{ id: string; name: string; parentId?: string }>;
-  networkNodeAnnotations?: Array<{ id: string; type: string; label: string; position: { x: number; y: number } }>;
+  networkNodeAnnotations?: Array<{
+    id: string;
+    type: string;
+    label: string;
+    position: { x: number; y: number };
+  }>;
   edgeAnnotations?: Array<{
     id?: string;
     source?: string;
@@ -286,7 +308,12 @@ interface TopoViewerPage {
   createNetwork(position: { x: number; y: number }, networkType: string): Promise<string | null>;
 
   /** Create a link between two nodes */
-  createLink(sourceId: string, targetId: string, sourceEndpoint?: string, targetEndpoint?: string): Promise<void>;
+  createLink(
+    sourceId: string,
+    targetId: string,
+    sourceEndpoint?: string,
+    targetEndpoint?: string
+  ): Promise<void>;
 
   /** Get all network node IDs (nodes with topoViewerRole='cloud') */
   getNetworkNodeIds(): Promise<string[]>;
@@ -313,7 +340,11 @@ interface TopoViewerPage {
   createGroup(): Promise<void>;
 
   /** Resize a group by dragging a resize handle */
-  resizeGroup(groupId: string, corner: 'nw' | 'ne' | 'sw' | 'se', delta: { x: number; y: number }): Promise<void>;
+  resizeGroup(
+    groupId: string,
+    corner: "nw" | "ne" | "sw" | "se",
+    delta: { x: number; y: number }
+  ): Promise<void>;
 
   /** Delete a node by ID */
   deleteNode(nodeId: string): Promise<void>;
@@ -335,7 +366,7 @@ interface TopoViewerPage {
  * Extended test fixture with TopoViewer helpers
  */
 // Base URL for API requests (must be absolute since page hasn't navigated yet)
-const API_BASE_URL = 'http://localhost:5173';
+const API_BASE_URL = "http://localhost:5173";
 
 export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
   topoViewerPage: async ({ page, request }, use, testInfo: TestInfo) => {
@@ -344,7 +375,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     // Capture browser console logs for debugging on failure
     const consoleLogs: string[] = [];
-    page.on('console', (msg) => {
+    page.on("console", (msg) => {
       const timestamp = new Date().toISOString();
       const type = msg.type().toUpperCase().padEnd(7);
       consoleLogs.push(`[${timestamp}] [${type}] ${msg.text()}`);
@@ -352,12 +383,12 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     // Helper to add session ID to API URLs (uses absolute URL for API calls)
     const withSession = (url: string) => {
-      const separator = url.includes('?') ? '&' : '?';
+      const separator = url.includes("?") ? "&" : "?";
       return `${API_BASE_URL}${url}${separator}sessionId=${sessionId}`;
     };
 
     // Initialize session with default files using request fixture
-    await request.post(withSession('/api/reset'));
+    await request.post(withSession("/api/reset"));
 
     const topoViewerPage: TopoViewerPage = {
       gotoFile: async (filename: string) => {
@@ -366,10 +397,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
 
         // Wait for the page to be ready (including auto-load of default topology)
-        await page.waitForFunction(
-          () => (window as any).__DEV__?.cy !== undefined,
-          { timeout: 15000 }
-        );
+        await page.waitForFunction(() => (window as any).__DEV__?.cy !== undefined, {
+          timeout: 15000
+        });
 
         // Wait a bit for any auto-load to settle
         await page.waitForTimeout(300);
@@ -380,14 +410,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             // Load the file
-            const loadResult = await page.evaluate(async ({ file, sid }) => {
-              try {
-                await (window as any).__DEV__.loadTopologyFile(file, sid);
-                return { success: true };
-              } catch (e: any) {
-                return { success: false, error: e?.message || String(e) };
-              }
-            }, { file: filename, sid: sessionId });
+            const loadResult = await page.evaluate(
+              async ({ file, sid }) => {
+                try {
+                  await (window as any).__DEV__.loadTopologyFile(file, sid);
+                  return { success: true };
+                } catch (e: any) {
+                  return { success: false, error: e?.message || String(e) };
+                }
+              },
+              { file: filename, sid: sessionId }
+            );
 
             if (!loadResult.success) {
               throw new Error(`loadTopologyFile failed: ${loadResult.error}`);
@@ -404,15 +437,15 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             );
 
             // Verify nodes are actually loaded if this is not empty.clab.yml
-            if (filename === 'simple.clab.yml') {
+            if (filename === "simple.clab.yml") {
               await page.waitForFunction(
                 () => {
                   const dev = (window as any).__DEV__;
                   const cy = dev?.cy;
                   if (!cy) return false;
                   const nodes = cy.nodes().filter((n: any) => {
-                    const role = n.data('topoViewerRole');
-                    return role && role !== 'freeText' && role !== 'freeShape';
+                    const role = n.data("topoViewerRole");
+                    return role && role !== "freeText" && role !== "freeShape";
                   });
                   return nodes.length >= 2;
                 },
@@ -427,7 +460,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
                 const dev = (window as any).__DEV__;
                 const cy = dev?.cy;
                 if (!cy) return false;
-                return cy.scratch?.('initialLayoutDone') === true;
+                return cy.scratch?.("initialLayoutDone") === true;
               },
               { timeout: 10000, polling: 100 }
             );
@@ -456,7 +489,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getAnnotationsFromFile: async (filename: string) => {
         // Build full path to annotations file
         const annotationsPath = path.join(TOPOLOGIES_DIR, `${filename}.annotations.json`);
-        const response = await page.request.get(withSession(`/file/${encodeURIComponent(annotationsPath)}`));
+        const response = await page.request.get(
+          withSession(`/file/${encodeURIComponent(annotationsPath)}`)
+        );
         if (!response.ok()) {
           if (response.status() === 404) {
             // Return empty annotations if file doesn't exist
@@ -478,7 +513,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getYamlFromFile: async (filename: string) => {
         // Build full path to YAML file
         const yamlPath = path.join(TOPOLOGIES_DIR, filename);
-        const response = await page.request.get(withSession(`/file/${encodeURIComponent(yamlPath)}`));
+        const response = await page.request.get(
+          withSession(`/file/${encodeURIComponent(yamlPath)}`)
+        );
         if (!response.ok()) {
           throw new Error(`Failed to read YAML: ${response.statusText()}`);
         }
@@ -486,7 +523,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       listTopologyFiles: async () => {
-        const response = await page.request.get(withSession('/files'));
+        const response = await page.request.get(withSession("/files"));
         if (!response.ok()) {
           throw new Error(`Failed to list files: ${response.statusText()}`);
         }
@@ -513,7 +550,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             const dev = (window as any).__DEV__;
             const cy = dev?.cy;
             if (!cy) return false;
-            return cy.scratch?.('initialLayoutDone') === true;
+            return cy.scratch?.("initialLayoutDone") === true;
           },
           { timeout: 15000, polling: 200 }
         );
@@ -522,7 +559,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getCanvasCenter: async () => {
         const canvas = page.locator(CANVAS_SELECTOR);
         const box = await canvas.boundingBox();
-        if (!box) throw new Error('Canvas not found');
+        if (!box) throw new Error("Canvas not found");
         return {
           x: box.x + box.width / 2,
           y: box.y + box.height / 2
@@ -536,8 +573,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           if (!cy) return 0;
           // Filter out non-topology nodes (annotations, etc.)
           return cy.nodes().filter((n: any) => {
-            const role = n.data('topoViewerRole');
-            return role && role !== 'freeText' && role !== 'freeShape';
+            const role = n.data("topoViewerRole");
+            return role && role !== "freeText" && role !== "freeShape";
           }).length;
         });
       },
@@ -578,14 +615,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       setEditMode: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setMode('edit');
+          (window as any).__DEV__.setMode("edit");
         });
         await page.waitForTimeout(100);
       },
 
       setViewMode: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setMode('view');
+          (window as any).__DEV__.setMode("view");
         });
         await page.waitForTimeout(100);
       },
@@ -618,8 +655,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           return cy
             .nodes()
             .filter((n: any) => {
-              const role = n.data('topoViewerRole');
-              return role && role !== 'freeText' && role !== 'freeShape';
+              const role = n.data("topoViewerRole");
+              return role && role !== "freeText" && role !== "freeShape";
             })
             .map((n: any) => n.id());
         });
@@ -638,7 +675,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const dev = (window as any).__DEV__;
           // Try React state first
           const reactGroups = dev?.getReactGroups?.();
-          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
+          const stateManagerGroups =
+            dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
 
           // If React has groups, use React count
           if (reactGroups && reactGroups.length > 0) {
@@ -658,7 +696,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const dev = (window as any).__DEV__;
           // Try React state first
           const reactGroups = dev?.getReactGroups?.();
-          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
+          const stateManagerGroups =
+            dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
 
           // If React has groups, use React IDs
           if (reactGroups && reactGroups.length > 0) {
@@ -736,10 +775,13 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       setPan: async (x: number, y: number) => {
-        await page.evaluate(({ px, py }) => {
-          const dev = (window as any).__DEV__;
-          dev?.cy?.pan({ x: px, y: py });
-        }, { px: x, py: y });
+        await page.evaluate(
+          ({ px, py }) => {
+            const dev = (window as any).__DEV__;
+            dev?.cy?.pan({ x: px, y: py });
+          },
+          { px: x, py: y }
+        );
         await page.waitForTimeout(100);
       },
 
@@ -756,7 +798,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const dev = (window as any).__DEV__;
           const cy = dev?.cy;
           if (!cy) return [];
-          return cy.nodes(':selected').map((n: any) => n.id());
+          return cy.nodes(":selected").map((n: any) => n.id());
         });
       },
 
@@ -765,7 +807,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const dev = (window as any).__DEV__;
           const cy = dev?.cy;
           if (!cy) return [];
-          return cy.edges(':selected').map((e: any) => e.id());
+          return cy.edges(":selected").map((e: any) => e.id());
         });
       },
 
@@ -778,23 +820,23 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       deleteSelected: async () => {
-        await page.keyboard.press('Delete');
+        await page.keyboard.press("Delete");
         await page.waitForTimeout(200);
       },
 
       undo: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('z');
-        await page.keyboard.up('Control');
+        await page.keyboard.down("Control");
+        await page.keyboard.press("z");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(200);
       },
 
       redo: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('z');
-        await page.keyboard.up('Shift');
-        await page.keyboard.up('Control');
+        await page.keyboard.down("Control");
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("z");
+        await page.keyboard.up("Shift");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(200);
       },
 
@@ -812,7 +854,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         });
       },
 
-      createNode: async (nodeId: string, position: { x: number; y: number }, kind = 'nokia_srlinux') => {
+      createNode: async (
+        nodeId: string,
+        position: { x: number; y: number },
+        kind = "nokia_srlinux"
+      ) => {
         // Wait for handleNodeCreatedCallback to be available (exposed via __DEV__)
         await page.waitForFunction(
           () => (window as any).__DEV__?.handleNodeCreatedCallback !== undefined,
@@ -823,25 +869,25 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           ({ nodeId, position, kind }) => {
             const dev = (window as any).__DEV__;
             if (!dev?.handleNodeCreatedCallback) {
-              throw new Error('handleNodeCreatedCallback not available');
+              throw new Error("handleNodeCreatedCallback not available");
             }
 
             // Create node data matching the structure expected by the handler
             const nodeData = {
               id: nodeId,
               name: nodeId,
-              topoViewerRole: 'pe',
+              topoViewerRole: "pe",
               extraData: {
                 kind,
-                image: 'ghcr.io/nokia/srlinux:latest',
-                longname: '',
-                mgmtIpv4Address: ''
+                image: "ghcr.io/nokia/srlinux:latest",
+                longname: "",
+                mgmtIpv4Address: ""
               }
             };
 
             // Create the node element
             const nodeElement = {
-              group: 'nodes' as const,
+              group: "nodes" as const,
               data: nodeData,
               position
             };
@@ -872,21 +918,20 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       createLink: async (
         sourceId: string,
         targetId: string,
-        sourceEndpoint = 'eth1',
-        targetEndpoint = 'eth1'
+        sourceEndpoint = "eth1",
+        targetEndpoint = "eth1"
       ) => {
         // Wait for handleEdgeCreated to be available (exposed via __DEV__)
-        await page.waitForFunction(
-          () => (window as any).__DEV__?.handleEdgeCreated !== undefined,
-          { timeout: 10000 }
-        );
+        await page.waitForFunction(() => (window as any).__DEV__?.handleEdgeCreated !== undefined, {
+          timeout: 10000
+        });
 
         // Check lock state and mode before proceeding (respects UI restrictions)
         const canCreate = await page.evaluate(() => {
           const dev = (window as any).__DEV__;
           // Block if locked (isLocked is a function) or not in edit mode
-          if (typeof dev?.isLocked === 'function' && dev.isLocked() === true) return false;
-          if (typeof dev?.mode === 'function' && dev.mode() !== 'edit') return false;
+          if (typeof dev?.isLocked === "function" && dev.isLocked() === true) return false;
+          if (typeof dev?.mode === "function" && dev.mode() !== "edit") return false;
           return true;
         });
 
@@ -900,7 +945,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
             const dev = (window as any).__DEV__;
             if (!dev?.handleEdgeCreated) {
-              throw new Error('handleEdgeCreated not available');
+              throw new Error("handleEdgeCreated not available");
             }
 
             // Include endpoints in ID to allow multiple edges between same nodes
@@ -937,7 +982,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         );
       },
 
-      createNetwork: async (position: { x: number; y: number }, networkType: string): Promise<string | null> => {
+      createNetwork: async (
+        position: { x: number; y: number },
+        networkType: string
+      ): Promise<string | null> => {
         // Wait for createNetworkAtPosition to be available
         await page.waitForFunction(
           () => (window as any).__DEV__?.createNetworkAtPosition !== undefined,
@@ -947,8 +995,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Check lock state and mode before proceeding
         const canCreate = await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          if (typeof dev?.isLocked === 'function' && dev.isLocked() === true) return false;
-          if (dev?.stateManager?.getMode?.() !== 'edit') return false;
+          if (typeof dev?.isLocked === "function" && dev.isLocked() === true) return false;
+          if (dev?.stateManager?.getMode?.() !== "edit") return false;
           return true;
         });
 
@@ -961,7 +1009,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           ({ pos, type }) => {
             const dev = (window as any).__DEV__;
             if (!dev?.createNetworkAtPosition) {
-              throw new Error('createNetworkAtPosition not available');
+              throw new Error("createNetworkAtPosition not available");
             }
             return dev.createNetworkAtPosition(pos, type);
           },
@@ -993,7 +1041,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           if (!cy) return [];
           return cy
             .nodes()
-            .filter((n: any) => n.data('topoViewerRole') === 'cloud')
+            .filter((n: any) => n.data("topoViewerRole") === "cloud")
             .map((n: any) => n.id());
         });
       },
@@ -1021,10 +1069,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       resetFiles: async () => {
-        const response = await request.post(withSession('/api/reset'));
+        const response = await request.post(withSession("/api/reset"));
         const result = await response.json();
         if (!result.success) {
-          throw new Error(result.error || 'Failed to reset files');
+          throw new Error(result.error || "Failed to reset files");
         }
         // Wait for session reset to settle
         await page.waitForTimeout(100);
@@ -1048,45 +1096,56 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const annotations = dev?.stateManager?.getAnnotations?.();
           if (!annotations?.nodeAnnotations) return [];
           return annotations.nodeAnnotations
-            .filter((n: { id: string; group?: string }) => n.group === id || n.group?.startsWith(id.split('__')[0]))
+            .filter(
+              (n: { id: string; group?: string }) =>
+                n.group === id || n.group?.startsWith(id.split("__")[0])
+            )
             .map((n: { id: string; group?: string }) => n.id);
         }, groupId);
       },
 
       copy: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('c');
-        await page.keyboard.up('Control');
+        await page.keyboard.down("Control");
+        await page.keyboard.press("c");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(200);
       },
 
       paste: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('v');
-        await page.keyboard.up('Control');
+        await page.keyboard.down("Control");
+        await page.keyboard.press("v");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(300);
       },
 
       createGroup: async () => {
         // Use direct API call instead of keyboard events for reliability
         const result = await page.evaluate(browserCreateGroup);
-        console.log(`[DEBUG] createGroup: method=${result.method}, hasCy=${result.hasCy}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`);
+        console.log(
+          `[DEBUG] createGroup: method=${result.method}, hasCy=${result.hasCy}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`
+        );
         // Wait for debounced save (300ms) plus processing time
         await page.waitForTimeout(1000);
         // Check again after wait - both React state and stateManager
         const debugInfo = await page.evaluate(browserGetGroupDebugInfo);
-        console.log(`[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`);
+        console.log(
+          `[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`
+        );
       },
 
-      resizeGroup: async (groupId: string, corner: 'nw' | 'ne' | 'sw' | 'se', delta: { x: number; y: number }) => {
+      resizeGroup: async (
+        groupId: string,
+        corner: "nw" | "ne" | "sw" | "se",
+        delta: { x: number; y: number }
+      ) => {
         // Click the group label to ensure resize handles are rendered (selection/hover-driven UI)
         const label = page.locator(`[data-testid="group-label-${groupId}"]`);
-        await label.waitFor({ state: 'visible', timeout: 5000 });
+        await label.waitFor({ state: "visible", timeout: 5000 });
         await label.click();
         await page.waitForTimeout(200);
 
         const handle = page.locator(`[data-testid="resize-${corner}-${groupId}"]`);
-        await handle.waitFor({ state: 'visible', timeout: 5000 });
+        await handle.waitFor({ state: "visible", timeout: 5000 });
         const box = await handle.boundingBox();
         if (!box) throw new Error(`Resize handle not found for group ${groupId} (${corner})`);
 
@@ -1117,7 +1176,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // Press Escape to deselect anything and ensure focus is on canvas
-        await page.keyboard.press('Escape');
+        await page.keyboard.press("Escape");
         await page.waitForTimeout(100);
 
         // Select the node programmatically via Cytoscape
@@ -1138,7 +1197,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // Press Delete key
-        await page.keyboard.press('Delete');
+        await page.keyboard.press("Delete");
         await page.waitForTimeout(500);
       },
 
@@ -1146,13 +1205,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Close any open editor panel first to ensure Delete key goes to the canvas
         const nodeEditor = page.locator('[data-testid="node-editor"]');
         if (await nodeEditor.isVisible()) {
-          const closeBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-close-btn"]');
+          const closeBtn = page.locator(
+            '[data-testid="node-editor"] [data-testid="panel-close-btn"]'
+          );
           await closeBtn.click();
           await page.waitForTimeout(200);
         }
         const edgeEditor = page.locator('[data-testid="edge-editor"]');
         if (await edgeEditor.isVisible()) {
-          const closeBtn = page.locator('[data-testid="edge-editor"] [data-testid="panel-close-btn"]');
+          const closeBtn = page.locator(
+            '[data-testid="edge-editor"] [data-testid="panel-close-btn"]'
+          );
           await closeBtn.click();
           await page.waitForTimeout(200);
         }
@@ -1162,7 +1225,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForTimeout(100);
 
         await topoViewerPage.selectEdge(edgeId);
-        await page.keyboard.press('Delete');
+        await page.keyboard.press("Delete");
         await page.waitForTimeout(300);
       },
 
@@ -1171,7 +1234,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         const yamlPath = path.join(TOPOLOGIES_DIR, filename);
         const response = await request.put(withSession(`/file/${encodeURIComponent(yamlPath)}`), {
           data: content,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
         });
         if (!response.ok()) {
           throw new Error(`Failed to write YAML: ${response.statusText()}`);
@@ -1181,10 +1244,13 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       writeAnnotationsFile: async (filename: string, content: object) => {
         // Build full path to annotations file
         const annotationsPath = path.join(TOPOLOGIES_DIR, `${filename}.annotations.json`);
-        const response = await request.put(withSession(`/file/${encodeURIComponent(annotationsPath)}`), {
-          data: JSON.stringify(content, null, 2),
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-        });
+        const response = await request.put(
+          withSession(`/file/${encodeURIComponent(annotationsPath)}`),
+          {
+            data: JSON.stringify(content, null, 2),
+            headers: { "Content-Type": "text/plain; charset=utf-8" }
+          }
+        );
         if (!response.ok()) {
           throw new Error(`Failed to write annotations: ${response.statusText()}`);
         }
@@ -1205,19 +1271,19 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     // Save browser console logs on test failure for debugging
     if (testInfo.status !== testInfo.expectedStatus && consoleLogs.length > 0) {
-      const logsContent = consoleLogs.join('\n');
+      const logsContent = consoleLogs.join("\n");
 
       // Write to file in test-results folder
-      const logFilePath = testInfo.outputPath('browser-console-logs.txt');
+      const logFilePath = testInfo.outputPath("browser-console-logs.txt");
       writeFileSync(logFilePath, logsContent);
 
       // Also attach to HTML report
-      await testInfo.attach('browser-console-logs', {
+      await testInfo.attach("browser-console-logs", {
         body: logsContent,
-        contentType: 'text/plain',
+        contentType: "text/plain"
       });
     }
   }
 });
 
-export { expect } from '@playwright/test';
+export { expect } from "@playwright/test";

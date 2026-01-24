@@ -2,9 +2,9 @@
  * EdgeRenderConfigContext - Controls edge label rendering behavior without
  * forcing edges to subscribe to unrelated state updates.
  */
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from "react";
 
-export type EdgeLabelMode = 'show-all' | 'on-select' | 'hide';
+export type EdgeLabelMode = "show-all" | "on-select" | "hide";
 
 interface EdgeRenderConfig {
   labelMode: EdgeLabelMode;
@@ -13,7 +13,7 @@ interface EdgeRenderConfig {
 }
 
 const EdgeRenderConfigContext = createContext<EdgeRenderConfig>({
-  labelMode: 'show-all',
+  labelMode: "show-all",
   suppressLabels: false,
   suppressHitArea: false
 });

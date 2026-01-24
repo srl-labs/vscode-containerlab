@@ -2,8 +2,8 @@
  * LinkCreationContext - Context for link creation state
  * Used to share link creation state with node components for hover highlighting
  */
-import type { ReactNode } from 'react';
-import React, { createContext, useContext, useMemo } from 'react';
+import type { ReactNode } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 
 interface LinkCreationContextValue {
   /** The node ID where link creation started, null if not in link creation mode */
@@ -29,15 +29,11 @@ export const LinkCreationProvider: React.FC<LinkCreationProviderProps> = ({
 }) => {
   // Memoize to prevent new object reference on every parent render
   const value = useMemo(() => {
-    console.log('[LinkCreationContext] value created, linkSourceNode:', linkSourceNode);
+    console.log("[LinkCreationContext] value created, linkSourceNode:", linkSourceNode);
     return { linkSourceNode };
   }, [linkSourceNode]);
 
-  return (
-    <LinkCreationContext.Provider value={value}>
-      {children}
-    </LinkCreationContext.Provider>
-  );
+  return <LinkCreationContext.Provider value={value}>{children}</LinkCreationContext.Provider>;
 };
 
 /**

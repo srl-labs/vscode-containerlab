@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 /**
  * Show Dummy Links E2E Tests
@@ -13,34 +13,37 @@ import { test, expect } from '../fixtures/topoviewer';
  */
 
 const SEL_NAVBAR_LINK_LABELS = '[data-testid="navbar-link-labels"]';
-const SEL_NAVBAR_MENU = '.navbar-menu';
+const SEL_NAVBAR_MENU = ".navbar-menu";
 const SEL_SHOW_DUMMY_LINKS = '.navbar-menu-option:has-text("Show Dummy Links")';
 
-test.describe('Show Dummy Links Toggle', () => {
+test.describe("Show Dummy Links Toggle", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('network.clab.yml');
+    await topoViewerPage.gotoFile("network.clab.yml");
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test('network.clab.yml has dummy link visible by default', async ({ page, topoViewerPage }) => {
+  test("network.clab.yml has dummy link visible by default", async ({ page, topoViewerPage }) => {
     // Get initial node count - should include dummy nodes
     const nodeIds = await topoViewerPage.getNodeIds();
-    console.log('[DEBUG] Initial nodes:', nodeIds);
+    console.log("[DEBUG] Initial nodes:", nodeIds);
 
     // Verify dummy node exists (created from the dummy link in rnet.clab.yml)
-    const dummyNodes = nodeIds.filter((id: string) => id.startsWith('dummy'));
-    console.log('[DEBUG] Dummy nodes:', dummyNodes);
+    const dummyNodes = nodeIds.filter((id: string) => id.startsWith("dummy"));
+    console.log("[DEBUG] Dummy nodes:", dummyNodes);
     expect(dummyNodes.length).toBeGreaterThan(0);
 
     // Get edge count - edges connected to dummy nodes are present
     // Note: Edge IDs use "Clab-LinkX" format, not "dummy" in the ID
     const edgeCount = await topoViewerPage.getEdgeCount();
-    console.log('[DEBUG] Initial edge count:', edgeCount);
+    console.log("[DEBUG] Initial edge count:", edgeCount);
     expect(edgeCount).toBeGreaterThan(0);
   });
 
-  test('toggling Show Dummy Links hides and shows dummy nodes and edges', async ({ page, topoViewerPage }) => {
+  test("toggling Show Dummy Links hides and shows dummy nodes and edges", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Get initial counts
     const initialNodeIds = await topoViewerPage.getNodeIds();
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
@@ -49,7 +52,7 @@ test.describe('Show Dummy Links Toggle', () => {
     console.log(`[DEBUG] Initial state: ${initialNodeCount} nodes, ${initialEdgeCount} edges`);
 
     // Count dummy nodes
-    const initialDummyNodes = initialNodeIds.filter((id: string) => id.startsWith('dummy'));
+    const initialDummyNodes = initialNodeIds.filter((id: string) => id.startsWith("dummy"));
     console.log(`[DEBUG] Dummy nodes: ${initialDummyNodes.length}`);
 
     expect(initialDummyNodes.length).toBeGreaterThan(0);
@@ -68,7 +71,7 @@ test.describe('Show Dummy Links Toggle', () => {
     await expect(dummyLinksOption).toBeVisible();
 
     // Verify it's currently checked (enabled by default)
-    const checkmarkBefore = dummyLinksOption.locator('.fa-check');
+    const checkmarkBefore = dummyLinksOption.locator(".fa-check");
     await expect(checkmarkBefore).toBeVisible();
 
     // Click to disable
@@ -79,10 +82,12 @@ test.describe('Show Dummy Links Toggle', () => {
     const afterHideNodeIds = await topoViewerPage.getNodeIds();
     const afterHideEdgeCount = await topoViewerPage.getEdgeCount();
 
-    console.log(`[DEBUG] After hide: ${afterHideNodeIds.length} nodes, ${afterHideEdgeCount} edges`);
+    console.log(
+      `[DEBUG] After hide: ${afterHideNodeIds.length} nodes, ${afterHideEdgeCount} edges`
+    );
 
     // Dummy nodes should be gone
-    const afterHideDummyNodes = afterHideNodeIds.filter((id: string) => id.startsWith('dummy'));
+    const afterHideDummyNodes = afterHideNodeIds.filter((id: string) => id.startsWith("dummy"));
     expect(afterHideDummyNodes.length).toBe(0);
 
     // Node count should decrease by the number of dummy nodes
@@ -108,15 +113,20 @@ test.describe('Show Dummy Links Toggle', () => {
     const afterShowNodeIds = await topoViewerPage.getNodeIds();
     const afterShowEdgeCount = await topoViewerPage.getEdgeCount();
 
-    console.log(`[DEBUG] After show: ${afterShowNodeIds.length} nodes, ${afterShowEdgeCount} edges`);
+    console.log(
+      `[DEBUG] After show: ${afterShowNodeIds.length} nodes, ${afterShowEdgeCount} edges`
+    );
 
-    const afterShowDummyNodes = afterShowNodeIds.filter((id: string) => id.startsWith('dummy'));
+    const afterShowDummyNodes = afterShowNodeIds.filter((id: string) => id.startsWith("dummy"));
     expect(afterShowDummyNodes.length).toBe(initialDummyNodes.length);
     expect(afterShowNodeIds.length).toBe(initialNodeCount);
     expect(afterShowEdgeCount).toBe(initialEdgeCount);
   });
 
-  test('Show Dummy Links state persists through menu reopening', async ({ page, topoViewerPage }) => {
+  test("Show Dummy Links state persists through menu reopening", async ({
+    page,
+    topoViewerPage
+  }) => {
     const linkLabelsBtn = page.locator(SEL_NAVBAR_LINK_LABELS);
 
     // Open menu
@@ -129,7 +139,7 @@ test.describe('Show Dummy Links Toggle', () => {
 
     // Verify dummy nodes are hidden
     const nodeIds = await topoViewerPage.getNodeIds();
-    const dummyNodes = nodeIds.filter((id: string) => id.startsWith('dummy'));
+    const dummyNodes = nodeIds.filter((id: string) => id.startsWith("dummy"));
     expect(dummyNodes.length).toBe(0);
 
     // Open menu again
@@ -147,7 +157,7 @@ test.describe('Show Dummy Links Toggle', () => {
 
     // Verify dummy nodes are still hidden
     const nodeIdsAfter = await topoViewerPage.getNodeIds();
-    const dummyNodesAfter = nodeIdsAfter.filter((id: string) => id.startsWith('dummy'));
+    const dummyNodesAfter = nodeIdsAfter.filter((id: string) => id.startsWith("dummy"));
     expect(dummyNodesAfter.length).toBe(0);
   });
 });

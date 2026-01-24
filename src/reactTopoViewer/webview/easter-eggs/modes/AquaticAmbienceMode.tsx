@@ -6,8 +6,8 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import { useAquaticAmbienceAudio } from "../audio";
 import {
   BTN_VISIBLE,
@@ -24,7 +24,7 @@ interface AquaticAmbienceModeProps {
   onClose?: () => void;
   onSwitchMode?: () => void;
   modeName?: string;
-  cyInstance?: CyCore | null;
+  cyCompat?: CyCompatCore | null;
 }
 
 /** Underwater color palette */
@@ -411,7 +411,7 @@ function drawBubbles(
  * Hook to apply aquatic glow to nodes (section-based coloring)
  */
 function useAquaticNodeGlow(
-  cyInstance: CyCore | null | undefined,
+  cyCompat: CyCompatCore | null | undefined,
   isActive: boolean,
   getBeatIntensity: () => number,
   getCurrentSection: () => number
@@ -420,23 +420,23 @@ function useAquaticNodeGlow(
   const animationRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
+    if (!isActive || !cyCompat) return undefined;
 
     // Capture ref value at effect run time for cleanup
     const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
+    const nodes = cyCompat.nodes();
 
-    // Store original styles
+    // Store original styles (for compatibility)
     nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
+        "background-color": "",
+        "border-color": "",
+        "border-width": ""
       });
     });
 
-    const cy = cyInstance;
+    const cy = cyCompat;
 
     const animate = (): void => {
       const beatIntensity = getBeatIntensity();
@@ -455,7 +455,7 @@ function useAquaticNodeGlow(
       cy.batch(() => restoreNodeStyles(cy, styles));
       styles.clear();
     };
-  }, [isActive, cyInstance, getBeatIntensity, getCurrentSection]);
+  }, [isActive, cyCompat, getBeatIntensity, getCurrentSection]);
 }
 
 /**
@@ -466,13 +466,13 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance
+  cyCompat
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useAquaticAmbienceAudio();
 
   // Apply aquatic glow to nodes
-  useAquaticNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentSection);
+  useAquaticNodeGlow(cyCompat, isActive, audio.getBeatIntensity, audio.getCurrentSection);
 
   // Start audio when activated
   useEffect(() => {

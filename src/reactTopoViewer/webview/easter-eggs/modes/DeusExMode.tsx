@@ -3,12 +3,12 @@
  *
  * Silent easter egg with 3D rotating containerlab logo.
  * Inspired by the iconic Deus Ex main menu logo animation.
- * Renders behind nodes by inserting canvas into cytoscape container.
+ * Renders behind nodes by inserting canvas into ReactFlow container.
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import { lerpColor, applyNodeGlow, restoreNodeStyles } from "../shared";
 import type { RGBColor } from "../shared";
 
@@ -17,7 +17,7 @@ interface DeusExModeProps {
   onClose?: () => void;
   onSwitchMode?: () => void;
   modeName?: string;
-  cyInstance?: CyCore | null;
+  cyCompat?: CyCompatCore | null;
 }
 
 /** Deus Ex color palette with neon accents */
@@ -45,11 +45,11 @@ const CONTAINERLAB_SVG_CONTENT = `<?xml version="1.0" encoding="utf-8"?>
 const CONTAINERLAB_SVG = "data:image/svg+xml," + encodeURIComponent(CONTAINERLAB_SVG_CONTENT);
 
 /**
- * Hook to create a canvas layer below cytoscape nodes for the rotating logo.
- * Inserts canvas as first child of cytoscape container so it renders behind.
+ * Hook to create a canvas layer below nodes for the rotating logo.
+ * Inserts canvas as first child of ReactFlow container so it renders behind.
  */
 function useDeusExLayer(
-  cy: CyCore | null | undefined,
+  cyCompat: CyCompatCore | null | undefined,
   isActive: boolean,
   getRotationAngle: () => number
 ): void {
@@ -58,10 +58,10 @@ function useDeusExLayer(
   const logoRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    if (!cy || !isActive) return undefined;
+    if (!cyCompat || !isActive) return undefined;
 
-    // Get cytoscape container
-    const container = cy.container();
+    // Get ReactFlow container
+    const container = cyCompat.container();
     if (!container) return undefined;
 
     // Create canvas element and insert as first child (behind cytoscape canvases)
@@ -140,7 +140,7 @@ function useDeusExLayer(
       }
       canvasRef.current = null;
     };
-  }, [cy, isActive, getRotationAngle]);
+  }, [cyCompat, isActive, getRotationAngle]);
 }
 
 /**
@@ -247,7 +247,7 @@ function drawLogoGlow(
  * Hook to apply cycling neon glow to nodes
  */
 function useDeusExNodeGlow(
-  cyInstance: CyCore | null | undefined,
+  cyCompat: CyCompatCore | null | undefined,
   isActive: boolean,
   getRotationAngle: () => number
 ): void {
@@ -255,23 +255,23 @@ function useDeusExNodeGlow(
   const animationRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
+    if (!isActive || !cyCompat) return undefined;
 
     // Capture ref value at effect run time for cleanup
     const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
+    const nodes = cyCompat.nodes();
 
-    // Store original styles
+    // Store original styles (for compatibility)
     nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
+        "background-color": "",
+        "border-color": "",
+        "border-width": ""
       });
     });
 
-    const cy = cyInstance;
+    const cy = cyCompat;
 
     const animate = (): void => {
       const angle = getRotationAngle();
@@ -294,7 +294,7 @@ function useDeusExNodeGlow(
       cy.batch(() => restoreNodeStyles(cy, styles));
       styles.clear();
     };
-  }, [isActive, cyInstance, getRotationAngle]);
+  }, [isActive, cyCompat, getRotationAngle]);
 }
 
 /**
@@ -305,7 +305,7 @@ export const DeusExMode: React.FC<DeusExModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance
+  cyCompat
 }) => {
   const [visible, setVisible] = useState(false);
   const timeRef = useRef<number>(0);
@@ -317,10 +317,10 @@ export const DeusExMode: React.FC<DeusExModeProps> = ({
   };
 
   // Apply gold glow to nodes
-  useDeusExNodeGlow(cyInstance, isActive, getRotationAngle);
+  useDeusExNodeGlow(cyCompat, isActive, getRotationAngle);
 
-  // Create cytoscape layer for rotating logo (behind nodes)
-  useDeusExLayer(cyInstance, isActive, getRotationAngle);
+  // Create canvas layer for rotating logo (behind nodes)
+  useDeusExLayer(cyCompat, isActive, getRotationAngle);
 
   // Manage animation time
   useEffect(() => {

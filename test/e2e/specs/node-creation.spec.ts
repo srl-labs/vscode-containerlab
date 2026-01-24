@@ -1,13 +1,13 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { shiftClick } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { shiftClick } from "../helpers/cytoscape-helpers";
 
 // Test file names for file-based tests
-const SIMPLE_FILE = 'simple.clab.yml';
-const EMPTY_FILE = 'empty.clab.yml';
-const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
-const PERSISTENT_NODE_ID = 'persistent-test-node';
+const SIMPLE_FILE = "simple.clab.yml";
+const EMPTY_FILE = "empty.clab.yml";
+const KIND_NOKIA_SRLINUX = "nokia_srlinux";
+const PERSISTENT_NODE_ID = "persistent-test-node";
 
-test.describe('Node Creation', () => {
+test.describe("Node Creation", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SIMPLE_FILE);
@@ -16,7 +16,7 @@ test.describe('Node Creation', () => {
     await topoViewerPage.unlock();
   });
 
-  test('creates node via Shift+Click at clicked position', async ({ page, topoViewerPage }) => {
+  test("creates node via Shift+Click at clicked position", async ({ page, topoViewerPage }) => {
     // Verify initial state - simple.clab.yml should have 2 nodes
     const initialNodeCount = await topoViewerPage.getNodeCount();
     expect(initialNodeCount).toBe(2);
@@ -37,22 +37,24 @@ test.describe('Node Creation', () => {
     await shiftClick(page, clickX, clickY);
 
     // Wait for node to be created (use polling to handle timing variations)
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      { timeout: 5000, message: 'Expected node to be created via Shift+Click' }
-    ).toBe(initialNodeCount + 1);
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
+        timeout: 5000,
+        message: "Expected node to be created via Shift+Click"
+      })
+      .toBe(initialNodeCount + 1);
 
     // Get node IDs after creation and find the new node
     const nodeIdsAfter = await topoViewerPage.getNodeIds();
-    const newNodeId = nodeIdsAfter.find(id => !nodeIdsBefore.includes(id));
+    const newNodeId = nodeIdsAfter.find((id) => !nodeIdsBefore.includes(id));
     expect(newNodeId).toBeDefined();
 
     // Verify the new node has a valid position (not default 0,0)
     const nodePosition = await topoViewerPage.getNodePosition(newNodeId!);
-    expect(nodePosition).toHaveProperty('x');
-    expect(nodePosition).toHaveProperty('y');
-    expect(typeof nodePosition.x).toBe('number');
-    expect(typeof nodePosition.y).toBe('number');
+    expect(nodePosition).toHaveProperty("x");
+    expect(nodePosition).toHaveProperty("y");
+    expect(typeof nodePosition.x).toBe("number");
+    expect(typeof nodePosition.y).toBe("number");
 
     // Verify the node's rendered bounding box is near the click location
     const boundingBox = await topoViewerPage.getNodeBoundingBox(newNodeId!);
@@ -65,7 +67,10 @@ test.describe('Node Creation', () => {
     expect(Math.abs(nodeScreenY - clickY)).toBeLessThan(150);
   });
 
-  test('does not create node when canvas is locked or in view mode', async ({ page, topoViewerPage }) => {
+  test("does not create node when canvas is locked or in view mode", async ({
+    page,
+    topoViewerPage
+  }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
@@ -89,7 +94,7 @@ test.describe('Node Creation', () => {
     expect(newNodeCount).toBe(initialNodeCount);
   });
 
-  test('creates multiple nodes with sequential Shift+Clicks', async ({ page, topoViewerPage }) => {
+  test("creates multiple nodes with sequential Shift+Clicks", async ({ page, topoViewerPage }) => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
     const nodeIdsBefore = await topoViewerPage.getNodeIds();
@@ -105,13 +110,15 @@ test.describe('Node Creation', () => {
     await page.waitForTimeout(300);
 
     // Wait for all 3 nodes to appear (shift-click can be timing-sensitive under load)
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      { timeout: 5000, message: 'Expected 3 nodes to be created via sequential Shift+Clicks' }
-    ).toBe(initialNodeCount + 3);
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
+        timeout: 5000,
+        message: "Expected 3 nodes to be created via sequential Shift+Clicks"
+      })
+      .toBe(initialNodeCount + 3);
 
     const nodeIdsAfter = await topoViewerPage.getNodeIds();
-    const createdIds = nodeIdsAfter.filter(id => !nodeIdsBefore.includes(id));
+    const createdIds = nodeIdsAfter.filter((id) => !nodeIdsBefore.includes(id));
     expect(createdIds.length).toBe(3);
   });
 });
@@ -123,7 +130,7 @@ test.describe('Node Creation', () => {
  * - .clab.yml file (adds node with kind and image)
  * - .clab.yml.annotations.json file (saves node position)
  */
-test.describe('Node Creation - File Persistence', () => {
+test.describe("Node Creation - File Persistence", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(EMPTY_FILE);
@@ -132,14 +139,17 @@ test.describe('Node Creation - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('created node appears in YAML file with position in annotations', async ({ page, topoViewerPage }) => {
+  test("created node appears in YAML file with position in annotations", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Get initial YAML
     const initialYaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
-    expect(initialYaml).not.toContain('test-node1:');
+    expect(initialYaml).not.toContain("test-node1:");
 
     // Create a node at a specific position
     const targetPosition = { x: 300, y: 250 };
-    await topoViewerPage.createNode('test-node1', targetPosition, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("test-node1", targetPosition, KIND_NOKIA_SRLINUX);
 
     // Wait for save to complete
     await page.waitForTimeout(1000);
@@ -148,15 +158,15 @@ test.describe('Node Creation - File Persistence', () => {
     const updatedYaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
 
     // Node should be in the YAML with proper structure
-    expect(updatedYaml).toContain('test-node1:');
+    expect(updatedYaml).toContain("test-node1:");
     expect(updatedYaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
-    expect(updatedYaml).toContain('image:');
+    expect(updatedYaml).toContain("image:");
 
     // Read annotations
     const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
 
     // Find the node annotation
-    const nodeAnnotation = annotations.nodeAnnotations?.find(n => n.id === 'test-node1');
+    const nodeAnnotation = annotations.nodeAnnotations?.find((n) => n.id === "test-node1");
     expect(nodeAnnotation).toBeDefined();
     expect(nodeAnnotation?.position).toBeDefined();
 
@@ -165,30 +175,33 @@ test.describe('Node Creation - File Persistence', () => {
     expect(Math.abs(nodeAnnotation!.position!.y - targetPosition.y)).toBeLessThan(20);
   });
 
-  test('multiple created nodes appear in YAML and annotations', async ({ page, topoViewerPage }) => {
+  test("multiple created nodes appear in YAML and annotations", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Create 3 nodes
-    await topoViewerPage.createNode('router1', { x: 200, y: 100 }, KIND_NOKIA_SRLINUX);
-    await topoViewerPage.createNode('router2', { x: 100, y: 300 }, KIND_NOKIA_SRLINUX);
-    await topoViewerPage.createNode('router3', { x: 300, y: 300 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("router1", { x: 200, y: 100 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("router2", { x: 100, y: 300 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("router3", { x: 300, y: 300 }, KIND_NOKIA_SRLINUX);
 
     // Wait for saves to complete
     await page.waitForTimeout(1000);
 
     // Verify YAML
     const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
-    expect(yaml).toContain('router1:');
-    expect(yaml).toContain('router2:');
-    expect(yaml).toContain('router3:');
+    expect(yaml).toContain("router1:");
+    expect(yaml).toContain("router2:");
+    expect(yaml).toContain("router3:");
 
     // Verify annotations
     const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
     expect(annotations.nodeAnnotations?.length).toBe(3);
 
-    const nodeIds = annotations.nodeAnnotations?.map(n => n.id).sort();
-    expect(nodeIds).toEqual(['router1', 'router2', 'router3']);
+    const nodeIds = annotations.nodeAnnotations?.map((n) => n.id).sort();
+    expect(nodeIds).toEqual(["router1", "router2", "router3"]);
   });
 
-  test('created node persists after reload', async ({ page, topoViewerPage }) => {
+  test("created node persists after reload", async ({ page, topoViewerPage }) => {
     // Create a node
     const targetPosition = { x: 400, y: 200 };
     await topoViewerPage.createNode(PERSISTENT_NODE_ID, targetPosition, KIND_NOKIA_SRLINUX);

@@ -1,16 +1,16 @@
 /**
  * Context menu item builders for ReactFlowCanvas
  */
-import type React from 'react';
-import type { Node, Edge, ReactFlowInstance } from '@xyflow/react';
+import type React from "react";
+import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
-import type { ContextMenuItem } from '../context-menu/ContextMenu';
+import type { ContextMenuItem } from "../context-menu/ContextMenu";
 
-import { applyLayout } from './layout';
+import { applyLayout } from "./layout";
 
 /** Annotation node type constants */
-const FREE_TEXT_NODE_TYPE = 'free-text-node';
-const FREE_SHAPE_NODE_TYPE = 'free-shape-node';
+const FREE_TEXT_NODE_TYPE = "free-text-node";
+const FREE_SHAPE_NODE_TYPE = "free-shape-node";
 
 interface MenuBuilderContext {
   targetId: string;
@@ -63,18 +63,18 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
 
   return [
     {
-      id: 'edit-text',
-      label: 'Edit Text',
+      id: "edit-text",
+      label: "Edit Text",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         editFreeText?.(targetId);
         closeContextMenu();
       }
     },
-    { id: 'divider-1', label: '', divider: true },
+    { id: "divider-1", label: "", divider: true },
     {
-      id: 'delete-text',
-      label: 'Delete Text',
+      id: "delete-text",
+      label: "Delete Text",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         deleteFreeText?.(targetId);
@@ -92,18 +92,18 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
 
   return [
     {
-      id: 'edit-shape',
-      label: 'Edit Shape',
+      id: "edit-shape",
+      label: "Edit Shape",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         editFreeShape?.(targetId);
         closeContextMenu();
       }
     },
-    { id: 'divider-1', label: '', divider: true },
+    { id: "divider-1", label: "", divider: true },
     {
-      id: 'delete-shape',
-      label: 'Delete Shape',
+      id: "delete-shape",
+      label: "Delete Shape",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         deleteFreeShape?.(targetId);
@@ -118,8 +118,16 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
  */
 export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
   const {
-    targetId, targetNodeType, isEditMode, isLocked, closeContextMenu, editNode, handleDeleteNode,
-    linkSourceNode, startLinkCreation, cancelLinkCreation
+    targetId,
+    targetNodeType,
+    isEditMode,
+    isLocked,
+    closeContextMenu,
+    editNode,
+    handleDeleteNode,
+    linkSourceNode,
+    startLinkCreation,
+    cancelLinkCreation
   } = ctx;
 
   // Handle annotation nodes with specific menus
@@ -135,19 +143,19 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   // If in link creation mode, show cancel option
   if (linkSourceNode) {
     items.push({
-      id: 'cancel-link',
-      label: 'Cancel Link Creation',
+      id: "cancel-link",
+      label: "Cancel Link Creation",
       onClick: () => {
         cancelLinkCreation?.();
         closeContextMenu();
       }
     });
-    items.push({ id: 'divider-link', label: '', divider: true });
+    items.push({ id: "divider-link", label: "", divider: true });
   }
 
   items.push({
-    id: 'edit-node',
-    label: 'Edit Node',
+    id: "edit-node",
+    label: "Edit Node",
     disabled: !isEditMode || isLocked,
     onClick: () => {
       editNode(targetId);
@@ -158,8 +166,8 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   // Show "Create Link" if not already in link creation mode
   if (!linkSourceNode) {
     items.push({
-      id: 'create-link',
-      label: 'Create Link',
+      id: "create-link",
+      label: "Create Link",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         startLinkCreation?.(targetId);
@@ -168,10 +176,10 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     });
   }
 
-  items.push({ id: 'divider-1', label: '', divider: true });
+  items.push({ id: "divider-1", label: "", divider: true });
   items.push({
-    id: 'delete-node',
-    label: 'Delete Node',
+    id: "delete-node",
+    label: "Delete Node",
     disabled: !isEditMode || isLocked,
     onClick: () => handleDeleteNode(targetId)
   });
@@ -186,18 +194,18 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
   const { targetId, isEditMode, isLocked, closeContextMenu, editEdge, handleDeleteEdge } = ctx;
   return [
     {
-      id: 'edit-edge',
-      label: 'Edit Link',
+      id: "edit-edge",
+      label: "Edit Link",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         editEdge(targetId);
         closeContextMenu();
       }
     },
-    { id: 'divider-1', label: '', divider: true },
+    { id: "divider-1", label: "", divider: true },
     {
-      id: 'delete-edge',
-      label: 'Delete Link',
+      id: "delete-edge",
+      label: "Delete Link",
       disabled: !isEditMode || isLocked,
       onClick: () => handleDeleteEdge(targetId)
     }
@@ -214,25 +222,25 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
   const { isEditMode, isLocked, closeContextMenu, reactFlowInstance, nodes, edges, setNodes } = ctx;
   return [
     {
-      id: 'add-node',
-      label: 'Add Node (Shift+Click)',
+      id: "add-node",
+      label: "Add Node (Shift+Click)",
       disabled: !isEditMode || isLocked,
       onClick: () => closeContextMenu()
     },
-    { id: 'divider-1', label: '', divider: true },
+    { id: "divider-1", label: "", divider: true },
     {
-      id: 'fit-view',
-      label: 'Fit View',
+      id: "fit-view",
+      label: "Fit View",
       onClick: () => {
         void reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS);
         closeContextMenu();
       }
     },
     {
-      id: 'reset-layout',
-      label: 'Reset Layout',
+      id: "reset-layout",
+      label: "Reset Layout",
       onClick: () => {
-        const newNodes = applyLayout('force', nodes, edges);
+        const newNodes = applyLayout("force", nodes, edges);
         setNodes(newNodes);
         setTimeout(() => {
           void reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS);

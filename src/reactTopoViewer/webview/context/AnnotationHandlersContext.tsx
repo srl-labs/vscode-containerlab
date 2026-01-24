@@ -2,9 +2,9 @@
  * Context for annotation handlers in React Flow
  * Allows annotation nodes to access handlers for resize, position updates, etc.
  */
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext } from "react";
 
-import type { AnnotationHandlers } from '../components/react-flow-canvas/types';
+import type { AnnotationHandlers } from "../components/react-flow-canvas/types";
 
 const AnnotationHandlersContext = createContext<AnnotationHandlers | null>(null);
 

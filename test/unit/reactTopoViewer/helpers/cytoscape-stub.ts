@@ -1,8 +1,8 @@
 /**
  * Cytoscape stub/mock utilities for testing React TopoViewer hooks
  */
-import type { Core, ElementDefinition } from 'cytoscape';
-import cytoscape from 'cytoscape';
+import type { Core, ElementDefinition } from "cytoscape";
+import cytoscape from "cytoscape";
 
 /**
  * Creates a headless Cytoscape instance for integration testing.
@@ -24,7 +24,7 @@ export function createTestNode(
   extraData: Record<string, unknown> = {}
 ): ElementDefinition {
   return {
-    group: 'nodes',
+    group: "nodes",
     data: { id, label: id, ...extraData },
     position
   };
@@ -37,12 +37,12 @@ export function createTestEdge(
   id: string,
   source: string,
   target: string,
-  sourceEndpoint: string = 'e1-1',
-  targetEndpoint: string = 'e1-1',
+  sourceEndpoint: string = "e1-1",
+  targetEndpoint: string = "e1-1",
   extraData: Record<string, unknown> = {}
 ): ElementDefinition {
   return {
-    group: 'edges',
+    group: "edges",
     data: { id, source, target, sourceEndpoint, targetEndpoint, ...extraData }
   };
 }
@@ -53,12 +53,12 @@ export function createTestEdge(
  */
 export function createSimpleTopology(): Core {
   return createMockCytoscape([
-    createTestNode('node1', { x: 100, y: 100 }),
-    createTestNode('node2', { x: 200, y: 100 }),
-    createTestNode('node3', { x: 150, y: 200 }),
-    createTestEdge('e1', 'node1', 'node2', 'e1-1', 'e1-1'),
-    createTestEdge('e2', 'node2', 'node3', 'e1-2', 'e1-1'),
-    createTestEdge('e3', 'node1', 'node3', 'e1-2', 'e1-2')
+    createTestNode("node1", { x: 100, y: 100 }),
+    createTestNode("node2", { x: 200, y: 100 }),
+    createTestNode("node3", { x: 150, y: 200 }),
+    createTestEdge("e1", "node1", "node2", "e1-1", "e1-1"),
+    createTestEdge("e2", "node2", "node3", "e1-2", "e1-1"),
+    createTestEdge("e3", "node1", "node3", "e1-2", "e1-2")
   ]);
 }
 
@@ -67,7 +67,7 @@ export function createSimpleTopology(): Core {
  */
 export function getNodePositions(cy: Core): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
-  cy.nodes().forEach(node => {
+  cy.nodes().forEach((node) => {
     const pos = node.position();
     positions.set(node.id(), { x: Math.round(pos.x), y: Math.round(pos.y) });
   });

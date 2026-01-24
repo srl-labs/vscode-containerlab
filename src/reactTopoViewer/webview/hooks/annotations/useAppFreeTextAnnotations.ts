@@ -3,11 +3,11 @@
  * Handles loading, state management, and callbacks for the App component
  */
 import React, { useCallback, useMemo } from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import type { FreeTextAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import { findDeepestGroupAtPosition } from "../groups";
 
 import { createDefaultAnnotation } from "./freeText";
@@ -36,7 +36,7 @@ interface TopologyDataMessage {
 }
 
 interface UseAppFreeTextAnnotationsOptions {
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
@@ -172,10 +172,10 @@ function useFreeTextAnnotations(
 export function useAppFreeTextAnnotations(
   options: UseAppFreeTextAnnotationsOptions
 ): UseAppFreeTextAnnotationsReturn {
-  const { cyInstance, mode, isLocked, onLockedAction, groups } = options;
+  const { cyCompat, mode, isLocked, onLockedAction, groups } = options;
 
   const freeTextAnnotations = useFreeTextAnnotations({
-    cy: cyInstance,
+    cyCompat,
     mode,
     isLocked,
     onLockedAction,

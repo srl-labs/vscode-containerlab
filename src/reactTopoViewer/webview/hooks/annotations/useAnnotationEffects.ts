@@ -3,18 +3,28 @@
  */
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
-import type { Core as CyCore, EventObject, NodeSingular } from "cytoscape";
 
 import { log } from "../../utils/logger";
+import type { CyCompatCore, CyCompatElement } from "../useCytoCompatInstance";
 
 import type { FreeTextAnnotation } from "./freeText";
+
+// Event object type for compatibility layer events
+interface CompatEventObject {
+  target: CyCompatCore | CyCompatElement;
+}
+
+// Node singular type for compatibility layer
+interface CompatNodeSingular extends CyCompatElement {
+  position(): { x: number; y: number };
+}
 
 // ============================================================================
 // Annotation Group Move (internal)
 // ============================================================================
 
 interface UseAnnotationGroupMoveOptions {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   annotations: FreeTextAnnotation[];
   selectedAnnotationIds: Set<string>;
   /** Update annotation position (called during drag for visual feedback) */
@@ -42,10 +52,10 @@ function createGrabHandler(
   getSelectedAnnotations: () => FreeTextAnnotation[],
   isLocked: boolean
 ) {
-  return (event: EventObject) => {
+  return (event: CompatEventObject) => {
     if (isLocked) return;
 
-    const node = event.target as NodeSingular;
+    const node = event.target as CompatNodeSingular;
     const selectedAnnotations = getSelectedAnnotations();
 
     if (selectedAnnotations.length === 0) {
@@ -74,11 +84,11 @@ function createDragHandler(
   onPositionChange: (id: string, position: { x: number; y: number }) => void,
   isLocked: boolean
 ) {
-  return (event: EventObject) => {
+  return (event: CompatEventObject) => {
     if (isLocked) return;
     if (refs.startPositions.current.length === 0 || !refs.nodeStartPos.current) return;
 
-    const node = event.target as NodeSingular;
+    const node = event.target as CompatNodeSingular;
     const currentNodePos = node.position();
     const deltaX = currentNodePos.x - refs.nodeStartPos.current.x;
     const deltaY = currentNodePos.y - refs.nodeStartPos.current.y;
@@ -103,10 +113,13 @@ function createDragFreeHandler(refs: DragTrackingRefs) {
 }
 
 /**
- * Hook that synchronizes annotation movement with Cytoscape node dragging
+ * Hook that synchronizes annotation movement with node dragging.
+ * Note: Node drag events (grab/drag/dragfree) are not yet implemented
+ * in the CyCompatCore interface. This hook registers handlers that will
+ * work when ReactFlow drag event support is added.
  */
 function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
-  const { cy, annotations, selectedAnnotationIds, onPositionChange, isLocked } = options;
+  const { cyCompat, annotations, selectedAnnotationIds, onPositionChange, isLocked } = options;
 
   const startPositionsRef = useRef<AnnotationStartPosition[]>([]);
   const nodeStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -120,28 +133,31 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
   }, [annotations, selectedAnnotationIds]);
 
   const handleGrab = useCallback(
-    (event: EventObject) => createGrabHandler(refs, getSelectedAnnotations, isLocked)(event),
+    (event: CompatEventObject) => createGrabHandler(refs, getSelectedAnnotations, isLocked)(event),
     [isLocked, getSelectedAnnotations]
   );
 
   const handleDrag = useCallback(
-    (event: EventObject) => createDragHandler(refs, onPositionChange, isLocked)(event),
+    (event: CompatEventObject) => createDragHandler(refs, onPositionChange, isLocked)(event),
     [isLocked, onPositionChange]
   );
 
   const handleDragFree = useCallback(() => createDragFreeHandler(refs)(), []);
 
   useEffect(() => {
-    if (!cy) return;
-    cy.on("grab", "node", handleGrab);
-    cy.on("drag", "node", handleDrag);
-    cy.on("dragfree", "node", handleDragFree);
+    if (!cyCompat) return;
+    // Note: Node-specific events with selectors (e.g., 'grab', 'node') are
+    // Cytoscape-specific. The compatibility layer event handlers are registered
+    // but may not fire until ReactFlow drag support is added.
+    cyCompat.on("grab", "node", handleGrab as unknown as () => void);
+    cyCompat.on("drag", "node", handleDrag as unknown as () => void);
+    cyCompat.on("dragfree", "node", handleDragFree);
     return () => {
-      cy.off("grab", "node", handleGrab);
-      cy.off("drag", "node", handleDrag);
-      cy.off("dragfree", "node", handleDragFree);
+      cyCompat.off("grab", "node", handleGrab as unknown as () => void);
+      cyCompat.off("drag", "node", handleDrag as unknown as () => void);
+      cyCompat.off("dragfree", "node", handleDragFree);
     };
-  }, [cy, handleGrab, handleDrag, handleDragFree]);
+  }, [cyCompat, handleGrab, handleDrag, handleDragFree]);
 }
 
 // ============================================================================
@@ -149,21 +165,23 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
 // ============================================================================
 
 interface UseAnnotationBackgroundClearOptions {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   selectedAnnotationIds: Set<string>;
   onClearSelection: () => void;
 }
 
 /**
- * Internal hook that clears annotation selection when clicking on the canvas background
+ * Internal hook that clears annotation selection when clicking on the canvas background.
+ * Note: The tap event is Cytoscape-specific. This hook registers handlers that will
+ * work when ReactFlow tap/click support is added to the compatibility layer.
  */
 function useAnnotationBackgroundClear(options: UseAnnotationBackgroundClearOptions): void {
-  const { cy, selectedAnnotationIds, onClearSelection } = options;
+  const { cyCompat, selectedAnnotationIds, onClearSelection } = options;
 
   const handleBackgroundTap = useCallback(
-    (event: EventObject) => {
-      // Only handle clicks directly on the cytoscape canvas (not on nodes/edges)
-      if (event.target !== cy) return;
+    (event: CompatEventObject) => {
+      // Only handle clicks directly on the canvas (not on nodes/edges)
+      if (event.target !== cyCompat) return;
 
       // Only clear if there are selected annotations
       if (selectedAnnotationIds.size > 0) {
@@ -171,22 +189,22 @@ function useAnnotationBackgroundClear(options: UseAnnotationBackgroundClearOptio
         onClearSelection();
       }
     },
-    [cy, selectedAnnotationIds, onClearSelection]
+    [cyCompat, selectedAnnotationIds, onClearSelection]
   );
 
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
 
-    cy.on("tap", handleBackgroundTap);
+    cyCompat.on("tap", handleBackgroundTap as unknown as () => void);
 
     return () => {
-      cy.off("tap", handleBackgroundTap);
+      cyCompat.off("tap", handleBackgroundTap as unknown as () => void);
     };
-  }, [cy, handleBackgroundTap]);
+  }, [cyCompat, handleBackgroundTap]);
 }
 
 interface AnnotationEffectsOptions {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   isLocked: boolean;
   // Free text annotations
   freeTextAnnotations: FreeTextAnnotation[];
@@ -205,7 +223,7 @@ interface AnnotationEffectsOptions {
  * Combines annotation effects to reduce complexity in App.tsx
  */
 export function useAnnotationEffects({
-  cy,
+  cyCompat,
   isLocked,
   freeTextAnnotations,
   freeTextSelectedIds,
@@ -218,7 +236,7 @@ export function useAnnotationEffects({
 }: AnnotationEffectsOptions): void {
   // Enable synchronized movement of annotations with nodes during drag
   useAnnotationGroupMove({
-    cy,
+    cyCompat,
     annotations: freeTextAnnotations,
     selectedAnnotationIds: freeTextSelectedIds,
     onPositionChange: onFreeTextPositionChange,
@@ -227,21 +245,21 @@ export function useAnnotationEffects({
 
   // Clear free text annotation selection when clicking on canvas background
   useAnnotationBackgroundClear({
-    cy,
+    cyCompat,
     selectedAnnotationIds: freeTextSelectedIds,
     onClearSelection: onFreeTextClearSelection
   });
 
   // Clear free shape selection when clicking on canvas background
   useAnnotationBackgroundClear({
-    cy,
+    cyCompat,
     selectedAnnotationIds: freeShapeSelectedIds,
     onClearSelection: onFreeShapeClearSelection
   });
 
   // Clear group selection when clicking on canvas background
   useAnnotationBackgroundClear({
-    cy,
+    cyCompat,
     selectedAnnotationIds: groupSelectedIds ?? new Set(),
     onClearSelection: onGroupClearSelection ?? (() => {})
   });

@@ -6,8 +6,8 @@
  * - useKeyboardShortcuts call with all 20+ arguments
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import { useKeyboardShortcuts } from "../ui/useKeyboardShortcuts";
 
 import type { ClipboardHandlersReturn } from "./useClipboardHandlers";
@@ -22,7 +22,7 @@ export interface AppKeyboardShortcutsConfig {
     selectedNode: string | null;
     selectedEdge: string | null;
   };
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
   undoRedo: {
     undo: () => void;
     redo: () => void;
@@ -52,7 +52,7 @@ export interface AppKeyboardShortcutsConfig {
 export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): void {
   const {
     state,
-    cyInstance,
+    cyCompat,
     undoRedo,
     annotations,
     clipboardHandlers,
@@ -76,7 +76,7 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     isLocked: state.isLocked,
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
-    cyInstance,
+    cyCompat,
     onDeleteNode: deleteHandlers.handleDeleteNodeWithUndo,
     onDeleteEdge: deleteHandlers.handleDeleteLinkWithUndo,
     onDeselectAll: handleDeselectAll,

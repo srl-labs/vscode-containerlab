@@ -1,15 +1,19 @@
 /**
  * Custom hooks extracted from ReactFlowCanvas to reduce complexity
  */
-import type React from 'react';
-import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
-import type { Node, Edge, ReactFlowInstance } from '@xyflow/react';
+import type React from "react";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
+import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
-import type { CyElement } from '../../../shared/types/topology';
-import { convertElements } from '../../components/react-flow-canvas/conversion';
-import { applyLayout, hasPresetPositions, type LayoutName } from '../../components/react-flow-canvas/layout';
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
-import { log } from '../../utils/logger';
+import type { CyElement } from "../../../shared/types/topology";
+import { convertElements } from "../../components/react-flow-canvas/conversion";
+import {
+  applyLayout,
+  hasPresetPositions,
+  type LayoutName
+} from "../../components/react-flow-canvas/layout";
+import { sendCommandToExtension } from "../../utils/extensionMessaging";
+import { log } from "../../utils/logger";
 
 /**
  * Hook for managing element conversion from CyElements to React Flow nodes/edges
@@ -40,8 +44,8 @@ export function useElementConversion(
     const { nodes: rfNodes, edges: rfEdges } = convertElements(elements);
 
     if (!hasPresetPositions(rfNodes) && rfNodes.length > 0) {
-      log.info('[ReactFlowCanvas] Applying force layout (no preset positions)');
-      setNodes(applyLayout('force', rfNodes, rfEdges));
+      log.info("[ReactFlowCanvas] Applying force layout (no preset positions)");
+      setNodes(applyLayout("force", rfNodes, rfEdges));
     } else {
       setNodes(rfNodes);
     }
@@ -64,37 +68,43 @@ export function useDeleteHandlers(
   onNodeDelete?: (nodeId: string) => void,
   onEdgeDelete?: (edgeId: string) => void
 ) {
-  const handleDeleteNode = useCallback((nodeId: string) => {
-    log.info(`[ReactFlowCanvas] Deleting node: ${nodeId}`);
-    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
-    sendCommandToExtension('panel-delete-node', { nodeId });
-    onNodeDelete?.(nodeId);
-    selectNode(null);
-    closeContextMenu();
-  }, [setNodes, setEdges, selectNode, onNodeDelete, closeContextMenu]);
+  const handleDeleteNode = useCallback(
+    (nodeId: string) => {
+      log.info(`[ReactFlowCanvas] Deleting node: ${nodeId}`);
+      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+      setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+      sendCommandToExtension("panel-delete-node", { nodeId });
+      onNodeDelete?.(nodeId);
+      selectNode(null);
+      closeContextMenu();
+    },
+    [setNodes, setEdges, selectNode, onNodeDelete, closeContextMenu]
+  );
 
-  const handleDeleteEdge = useCallback((edgeId: string) => {
-    log.info(`[ReactFlowCanvas] Deleting edge: ${edgeId}`);
-    const edge = edges.find((e) => e.id === edgeId);
-    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+  const handleDeleteEdge = useCallback(
+    (edgeId: string) => {
+      log.info(`[ReactFlowCanvas] Deleting edge: ${edgeId}`);
+      const edge = edges.find((e) => e.id === edgeId);
+      setEdges((eds) => eds.filter((e) => e.id !== edgeId));
 
-    if (edge) {
-      const edgeData = edge.data as Record<string, unknown> | undefined;
-      sendCommandToExtension('panel-delete-link', {
-        edgeId,
-        linkData: {
-          source: edge.source,
-          target: edge.target,
-          sourceEndpoint: edgeData?.sourceEndpoint || '',
-          targetEndpoint: edgeData?.targetEndpoint || ''
-        }
-      });
-    }
-    onEdgeDelete?.(edgeId);
-    selectEdge(null);
-    closeContextMenu();
-  }, [edges, setEdges, selectEdge, onEdgeDelete, closeContextMenu]);
+      if (edge) {
+        const edgeData = edge.data as Record<string, unknown> | undefined;
+        sendCommandToExtension("panel-delete-link", {
+          edgeId,
+          linkData: {
+            source: edge.source,
+            target: edge.target,
+            sourceEndpoint: edgeData?.sourceEndpoint || "",
+            targetEndpoint: edgeData?.targetEndpoint || ""
+          }
+        });
+      }
+      onEdgeDelete?.(edgeId);
+      selectEdge(null);
+      closeContextMenu();
+    },
+    [edges, setEdges, selectEdge, onEdgeDelete, closeContextMenu]
+  );
 
   return { handleDeleteNode, handleDeleteEdge };
 }
@@ -102,9 +112,7 @@ export function useDeleteHandlers(
 /**
  * Hook for link creation mode
  */
-export function useLinkCreation(
-  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>
-) {
+export function useLinkCreation(setEdges: React.Dispatch<React.SetStateAction<Edge[]>>) {
   const [linkSourceNode, setLinkSourceNode] = useState<string | null>(null);
 
   const startLinkCreation = useCallback((nodeId: string) => {
@@ -113,46 +121,51 @@ export function useLinkCreation(
   }, []);
 
   const cancelLinkCreation = useCallback(() => {
-    log.info('[ReactFlowCanvas] Cancelling link creation');
+    log.info("[ReactFlowCanvas] Cancelling link creation");
     setLinkSourceNode(null);
   }, []);
 
-  const completeLinkCreation = useCallback((targetNodeId: string) => {
-    if (!linkSourceNode) return;
+  const completeLinkCreation = useCallback(
+    (targetNodeId: string) => {
+      if (!linkSourceNode) return;
 
-    const isLoopLink = linkSourceNode === targetNodeId;
-    log.info(`[ReactFlowCanvas] Completing ${isLoopLink ? 'loop ' : ''}link: ${linkSourceNode} -> ${targetNodeId}`);
-    const edgeId = `${linkSourceNode}-${targetNodeId}-${Date.now()}`;
+      const isLoopLink = linkSourceNode === targetNodeId;
+      log.info(
+        `[ReactFlowCanvas] Completing ${isLoopLink ? "loop " : ""}link: ${linkSourceNode} -> ${targetNodeId}`
+      );
+      const edgeId = `${linkSourceNode}-${targetNodeId}-${Date.now()}`;
 
-    sendCommandToExtension('create-link', {
-      linkData: {
+      sendCommandToExtension("create-link", {
+        linkData: {
+          id: edgeId,
+          source: linkSourceNode,
+          target: targetNodeId,
+          sourceEndpoint: "eth1",
+          targetEndpoint: "eth1"
+        }
+      });
+
+      const newEdge = {
         id: edgeId,
         source: linkSourceNode,
         target: targetNodeId,
-        sourceEndpoint: 'eth1',
-        targetEndpoint: 'eth1'
-      }
-    });
+        type: "topology-edge",
+        data: { sourceEndpoint: "eth1", targetEndpoint: "eth1", linkStatus: "unknown" }
+      };
 
-    const newEdge = {
-      id: edgeId,
-      source: linkSourceNode,
-      target: targetNodeId,
-      type: 'topology-edge',
-      data: { sourceEndpoint: 'eth1', targetEndpoint: 'eth1', linkStatus: 'unknown' }
-    };
-
-    setEdges((eds) => [...eds, newEdge]);
-    setLinkSourceNode(null);
-  }, [linkSourceNode, setEdges]);
+      setEdges((eds) => [...eds, newEdge]);
+      setLinkSourceNode(null);
+    },
+    [linkSourceNode, setEdges]
+  );
 
   useEffect(() => {
     if (!linkSourceNode) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') cancelLinkCreation();
+      if (e.key === "Escape") cancelLinkCreation();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [linkSourceNode, cancelLinkCreation]);
 
   return {
@@ -179,7 +192,7 @@ export function useSourceNodePosition(linkSourceNode: string | null, nodes: Node
     if (!linkSourceNode) {
       positionRef.current = null;
     } else {
-      const node = nodes.find(n => n.id === linkSourceNode);
+      const node = nodes.find((n) => n.id === linkSourceNode);
       if (node) {
         const nodeWidth = 60;
         const nodeHeight = 60;
@@ -198,7 +211,7 @@ export function useSourceNodePosition(linkSourceNode: string | null, nodes: Node
  * Hook for keyboard delete handlers
  */
 export function useKeyboardDeleteHandlers(
-  mode: 'view' | 'edit',
+  mode: "view" | "edit",
   isLocked: boolean,
   selectedNode: string | null,
   selectedEdge: string | null,
@@ -207,18 +220,18 @@ export function useKeyboardDeleteHandlers(
 ) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
-      if (mode !== 'edit' || isLocked) return;
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      if (mode !== "edit" || isLocked) return;
 
       const tagName = (event.target as HTMLElement).tagName;
-      if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
+      if (tagName === "INPUT" || tagName === "TEXTAREA") return;
 
       if (selectedNode) handleDeleteNode(selectedNode);
       else if (selectedEdge) handleDeleteEdge(selectedEdge);
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [mode, isLocked, selectedNode, selectedEdge, handleDeleteNode, handleDeleteEdge]);
 }
 
@@ -230,13 +243,13 @@ interface PositionEntry {
 
 /** Apply position update to a single node */
 function applyPositionToNode(node: Node, positions: PositionEntry[]): Node {
-  const posEntry = positions.find(p => p.id === node.id);
+  const posEntry = positions.find((p) => p.id === node.id);
   return posEntry ? { ...node, position: posEntry.position } : node;
 }
 
 /** Create node updater function for position changes */
 function createPositionUpdater(positions: PositionEntry[]) {
-  return (currentNodes: Node[]) => currentNodes.map(node => applyPositionToNode(node, positions));
+  return (currentNodes: Node[]) => currentNodes.map((node) => applyPositionToNode(node, positions));
 }
 
 /**
@@ -249,20 +262,25 @@ export function useCanvasRefMethods(
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>
 ) {
-  return useMemo(() => ({
-    fit: () => reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }),
-    runLayout: (layoutName: string) => {
-      setNodes(applyLayout(layoutName as LayoutName, nodes, edges));
-      setTimeout(() => { void reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }); }, 100);
-    },
-    getReactFlowInstance: () => reactFlowInstanceRef.current,
-    getNodes: () => nodes,
-    getEdges: () => edges,
-    setNodePositions: (positions: PositionEntry[]) => {
-      setNodes(createPositionUpdater(positions));
-      sendCommandToExtension('save-node-positions', { positions });
-    },
-    updateNodes: (updater: (nodes: Node[]) => Node[]) => setNodes(updater),
-    updateEdges: (updater: (edges: Edge[]) => Edge[]) => setEdges(updater)
-  }), [nodes, edges, setNodes, setEdges, reactFlowInstanceRef]);
+  return useMemo(
+    () => ({
+      fit: () => reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }),
+      runLayout: (layoutName: string) => {
+        setNodes(applyLayout(layoutName as LayoutName, nodes, edges));
+        setTimeout(() => {
+          void reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 });
+        }, 100);
+      },
+      getReactFlowInstance: () => reactFlowInstanceRef.current,
+      getNodes: () => nodes,
+      getEdges: () => edges,
+      setNodePositions: (positions: PositionEntry[]) => {
+        setNodes(createPositionUpdater(positions));
+        sendCommandToExtension("save-node-positions", { positions });
+      },
+      updateNodes: (updater: (nodes: Node[]) => Node[]) => setNodes(updater),
+      updateEdges: (updater: (edges: Edge[]) => Edge[]) => setEdges(updater)
+    }),
+    [nodes, edges, setNodes, setEdges, reactFlowInstanceRef]
+  );
 }

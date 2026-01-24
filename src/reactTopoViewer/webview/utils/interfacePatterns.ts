@@ -1,7 +1,7 @@
 /**
  * Shared utilities for interface pattern handling in edge/link creation
  */
-import type { Core as CyCore, NodeSingular } from "cytoscape";
+import type { CyCompatCore, CyCompatElement } from "../hooks/useCytoCompatInstance";
 
 import { DEFAULT_INTERFACE_PATTERNS } from "../../shared/constants/interfacePatterns";
 
@@ -81,7 +81,7 @@ export function extractInterfaceIndex(endpoint: string, parsed: ParsedInterfaceP
  * Priority: node.extraData.interfacePattern → kindMapping[kind] → DEFAULT
  */
 export function getNodeInterfacePattern(
-  node: NodeSingular,
+  node: CyCompatElement,
   interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
 ): string {
   const extraData = node.data("extraData") as
@@ -111,12 +111,14 @@ export function getNodeInterfacePattern(
  * Collect used interface indices for a node using its interface pattern
  */
 export function collectUsedIndices(
-  cy: CyCore,
+  cyCompat: CyCompatCore | null,
   nodeId: string,
   parsed: ParsedInterfacePattern
 ): Set<number> {
   const usedIndices = new Set<number>();
-  const edges = cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
+  if (!cyCompat) return usedIndices;
+
+  const edges = cyCompat.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
 
   edges.forEach((edge) => {
     const src = edge.data("source") as string;
@@ -139,15 +141,15 @@ export function collectUsedIndices(
 
 /**
  * Get the next available endpoint for a node using its interface pattern
- * @param cy Cytoscape instance
+ * @param cyCompat Cytoscape compatibility instance
  * @param node Node to get endpoint for
  * @param isNetworkNode Function to check if node is a network node (returns empty string for network nodes)
  * @param interfacePatternMapping Optional custom interface pattern mapping
  */
 export function getNextEndpointForNode(
-  cy: CyCore,
-  node: NodeSingular,
-  isNetworkNode?: (node: NodeSingular) => boolean,
+  cyCompat: CyCompatCore | null,
+  node: CyCompatElement,
+  isNetworkNode?: (node: CyCompatElement) => boolean,
   interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
 ): string {
   // Network nodes don't have interface endpoints
@@ -157,7 +159,7 @@ export function getNextEndpointForNode(
 
   const pattern = getNodeInterfacePattern(node, interfacePatternMapping);
   const parsed = parseInterfacePattern(pattern);
-  const usedIndices = collectUsedIndices(cy, node.id(), parsed);
+  const usedIndices = collectUsedIndices(cyCompat, node.id(), parsed);
 
   // Find next available index
   let nextIndex = 0;
@@ -171,20 +173,20 @@ export function getNextEndpointForNode(
 /**
  * Get the next available endpoint for a node, excluding specified endpoints.
  * Used for self-loops where we need two different endpoints on the same node.
- * @param cy Cytoscape instance
+ * @param cyCompat Cytoscape compatibility instance
  * @param node Node to get endpoint for
  * @param interfacePatternMapping Custom interface pattern mapping
  * @param excludeEndpoints Endpoints to exclude from allocation
  */
 export function getNextEndpointForNodeExcluding(
-  cy: CyCore,
-  node: NodeSingular,
+  cyCompat: CyCompatCore | null,
+  node: CyCompatElement,
   interfacePatternMapping: Record<string, string>,
   excludeEndpoints: string[]
 ): string {
   const pattern = getNodeInterfacePattern(node, interfacePatternMapping);
   const parsed = parseInterfacePattern(pattern);
-  const usedIndices = collectUsedIndices(cy, node.id(), parsed);
+  const usedIndices = collectUsedIndices(cyCompat, node.id(), parsed);
 
   // Also exclude specified endpoints
   for (const ep of excludeEndpoints) {

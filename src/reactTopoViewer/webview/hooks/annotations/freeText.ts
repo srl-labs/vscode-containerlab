@@ -2,12 +2,12 @@
  * Free text annotation types and helpers
  * Consolidated from: freeTextTypes.ts + freeTextHelpers.ts + freeTextLayerHelpers.ts
  */
-import type { Core as CyCore } from "cytoscape";
 import type React from "react";
 
 import type { FreeTextAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { MapLibreState } from "../canvas/maplibreUtils";
 import { projectAnnotationGeoCoords, calculateScale } from "../canvas/maplibreUtils";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import {
   generateAnnotationId as generateId,
@@ -36,7 +36,7 @@ export const DEFAULT_BACKGROUND_COLOR = "transparent";
 // ============================================================================
 
 export interface UseFreeTextAnnotationsOptions {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
@@ -213,22 +213,22 @@ export function duplicateAnnotations(
 // ============================================================================
 
 export function modelToRendered(
-  cy: CyCore,
+  cyCompat: CyCompatCore,
   modelX: number,
   modelY: number
 ): { x: number; y: number; zoom: number } {
-  const pan = cy.pan();
-  const zoom = cy.zoom();
+  const pan = cyCompat.pan();
+  const zoom = cyCompat.zoom();
   return { x: modelX * zoom + pan.x, y: modelY * zoom + pan.y, zoom };
 }
 
 export function renderedToModel(
-  cy: CyCore,
+  cyCompat: CyCompatCore,
   renderedX: number,
   renderedY: number
 ): { x: number; y: number } {
-  const pan = cy.pan();
-  const zoom = cy.zoom();
+  const pan = cyCompat.pan();
+  const zoom = cyCompat.zoom();
   return { x: (renderedX - pan.x) / zoom, y: (renderedY - pan.y) / zoom };
 }
 

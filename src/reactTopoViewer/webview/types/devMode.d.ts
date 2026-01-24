@@ -4,9 +4,8 @@
  * to support E2E testing and debugging.
  */
 
-import type { Core as CyCore } from "cytoscape";
-
 import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/topology";
+import type { CyCompatCore } from "../hooks/useCytoCompatInstance";
 import type { NetworkType } from "../../shared/types/editors";
 
 /** Layout option type */
@@ -17,8 +16,8 @@ type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "ge
  * Exposed on window.__DEV__ only in development builds.
  */
 export interface DevModeInterface {
-  /** Cytoscape instance for graph manipulation */
-  cy?: CyCore;
+  /** Cytoscape compatibility instance for graph manipulation */
+  cy?: CyCompatCore;
   /** Check if topology is locked */
   isLocked?: () => boolean;
   /** Get current mode */

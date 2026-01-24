@@ -1,9 +1,9 @@
 /**
  * Conversion utilities between CyElement and React Flow Node/Edge formats
  */
-import type { Node, Edge } from '@xyflow/react';
+import type { Node, Edge } from "@xyflow/react";
 
-import type { CyElement } from '../../../shared/types/topology';
+import type { CyElement } from "../../../shared/types/topology";
 
 import type {
   TopologyNodeData,
@@ -13,37 +13,37 @@ import type {
   FreeShapeNodeData,
   TopologyEdgeData,
   RFNodeType
-} from './types';
-import { DEFAULT_ICON_COLOR } from './types';
+} from "./types";
+import { DEFAULT_ICON_COLOR } from "./types";
 
 // Node type constants
-const NODE_TYPE_CLOUD = 'cloud-node' as const;
-const NODE_TYPE_GROUP = 'group-node' as const;
-const NODE_TYPE_FREE_TEXT = 'free-text-node' as const;
-const NODE_TYPE_FREE_SHAPE = 'free-shape-node' as const;
-const NODE_TYPE_TOPOLOGY = 'topology-node' as const;
+const NODE_TYPE_CLOUD = "cloud-node" as const;
+const NODE_TYPE_GROUP = "group-node" as const;
+const NODE_TYPE_FREE_TEXT = "free-text-node" as const;
+const NODE_TYPE_FREE_SHAPE = "free-shape-node" as const;
+const NODE_TYPE_TOPOLOGY = "topology-node" as const;
 
 /**
  * Role to SVG node type mapping
  */
 export const ROLE_SVG_MAP: Record<string, string> = {
-  router: 'pe',
-  default: 'pe',
-  pe: 'pe',
-  p: 'pe',
-  controller: 'controller',
-  pon: 'pon',
-  dcgw: 'dcgw',
-  leaf: 'leaf',
-  switch: 'switch',
-  rgw: 'rgw',
-  'super-spine': 'super-spine',
-  spine: 'spine',
-  server: 'server',
-  bridge: 'bridge',
-  ue: 'ue',
-  cloud: 'cloud',
-  client: 'client'
+  router: "pe",
+  default: "pe",
+  pe: "pe",
+  p: "pe",
+  controller: "controller",
+  pon: "pon",
+  dcgw: "dcgw",
+  leaf: "leaf",
+  switch: "switch",
+  rgw: "rgw",
+  "super-spine": "super-spine",
+  spine: "spine",
+  server: "server",
+  bridge: "bridge",
+  ue: "ue",
+  cloud: "cloud",
+  client: "client"
 };
 
 /**
@@ -51,8 +51,10 @@ export const ROLE_SVG_MAP: Record<string, string> = {
  */
 function isCloudNode(data: Record<string, unknown>): boolean {
   const role = data.topoViewerRole as string | undefined;
-  return role === 'cloud' ||
-    (data.extraData as Record<string, unknown> | undefined)?.clabNodeType === 'cloud';
+  return (
+    role === "cloud" ||
+    (data.extraData as Record<string, unknown> | undefined)?.clabNodeType === "cloud"
+  );
 }
 
 function getNodeRole(data: Record<string, unknown>): string | undefined {
@@ -65,9 +67,9 @@ function getNodeRole(data: Record<string, unknown>): string | undefined {
 function determineNodeType(data: Record<string, unknown>): RFNodeType {
   if (isCloudNode(data)) return NODE_TYPE_CLOUD;
   const role = getNodeRole(data);
-  if (role === 'group') return NODE_TYPE_GROUP;
-  if (role === 'freeText') return NODE_TYPE_FREE_TEXT;
-  if (role === 'freeShape') return NODE_TYPE_FREE_SHAPE;
+  if (role === "group") return NODE_TYPE_GROUP;
+  if (role === "freeText") return NODE_TYPE_FREE_TEXT;
+  if (role === "freeShape") return NODE_TYPE_FREE_SHAPE;
   return NODE_TYPE_TOPOLOGY;
 }
 
@@ -91,7 +93,7 @@ function extractBaseNodeFields(element: CyElement): BaseNodeFields {
     id,
     label,
     position: element.position ?? { x: 0, y: 0 },
-    parentId: parent && parent !== '' ? parent : undefined,
+    parentId: parent && parent !== "" ? parent : undefined,
     draggable: true,
     selectable: true,
     selected: element.selected ?? false
@@ -101,7 +103,13 @@ function extractBaseNodeFields(element: CyElement): BaseNodeFields {
 function createCloudNode(base: BaseNodeFields, data: Record<string, unknown>): Node {
   const cloudData: CloudNodeData = {
     label: base.label,
-    nodeType: (data.extraData as Record<string, unknown>)?.clabNodeType as 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'bridge' ?? 'host',
+    nodeType:
+      ((data.extraData as Record<string, unknown>)?.clabNodeType as
+        | "host"
+        | "mgmt-net"
+        | "macvlan"
+        | "vxlan"
+        | "bridge") ?? "host",
     extraData: data.extraData as Record<string, unknown>
   };
   return {
@@ -120,12 +128,12 @@ function createGroupNode(base: BaseNodeFields, data: Record<string, unknown>): N
   const groupData: GroupNodeData = {
     label: base.label,
     name: (data.name as string) || base.label,
-    level: (data.level as string) || 'default',
+    level: (data.level as string) || "default",
     backgroundColor: data.backgroundColor as string,
     backgroundOpacity: data.backgroundOpacity as number,
     borderColor: data.borderColor as string,
     borderWidth: data.borderWidth as number,
-    borderStyle: data.borderStyle as 'solid' | 'dotted' | 'dashed' | 'double',
+    borderStyle: data.borderStyle as "solid" | "dotted" | "dashed" | "double",
     borderRadius: data.borderRadius as number,
     labelColor: data.labelColor as string,
     labelPosition: data.labelPosition as string,
@@ -151,10 +159,10 @@ function createFreeTextNode(base: BaseNodeFields, data: Record<string, unknown>)
     fontSize: data.fontSize as number,
     fontColor: data.fontColor as string,
     backgroundColor: data.backgroundColor as string,
-    fontWeight: data.fontWeight as 'normal' | 'bold',
-    fontStyle: data.fontStyle as 'normal' | 'italic',
-    textDecoration: data.textDecoration as 'none' | 'underline',
-    textAlign: data.textAlign as 'left' | 'center' | 'right',
+    fontWeight: data.fontWeight as "normal" | "bold",
+    fontStyle: data.fontStyle as "normal" | "italic",
+    textDecoration: data.textDecoration as "none" | "underline",
+    textAlign: data.textAlign as "left" | "center" | "right",
     fontFamily: data.fontFamily as string,
     rotation: data.rotation as number,
     width: data.width as number,
@@ -175,7 +183,7 @@ function createFreeTextNode(base: BaseNodeFields, data: Record<string, unknown>)
 
 function createFreeShapeNode(base: BaseNodeFields, data: Record<string, unknown>): Node {
   const shapeData: FreeShapeNodeData = {
-    shapeType: (data.shapeType as 'rectangle' | 'circle' | 'line') || 'rectangle',
+    shapeType: (data.shapeType as "rectangle" | "circle" | "line") || "rectangle",
     width: data.width as number,
     height: data.height as number,
     endPosition: data.endPosition as { x: number; y: number },
@@ -183,7 +191,7 @@ function createFreeShapeNode(base: BaseNodeFields, data: Record<string, unknown>
     fillOpacity: data.fillOpacity as number,
     borderColor: data.borderColor as string,
     borderWidth: data.borderWidth as number,
-    borderStyle: data.borderStyle as 'solid' | 'dashed' | 'dotted',
+    borderStyle: data.borderStyle as "solid" | "dashed" | "dotted",
     rotation: data.rotation as number,
     lineStartArrow: data.lineStartArrow as boolean,
     lineEndArrow: data.lineEndArrow as boolean,
@@ -204,7 +212,7 @@ function createFreeShapeNode(base: BaseNodeFields, data: Record<string, unknown>
 
 // eslint-disable-next-line complexity
 function createTopologyNode(base: BaseNodeFields, data: Record<string, unknown>): Node {
-  const role = (data.topoViewerRole as string) || 'default';
+  const role = (data.topoViewerRole as string) || "default";
   const extraData = data.extraData as Record<string, unknown> | undefined;
 
   const topoData: TopologyNodeData = {
@@ -264,16 +272,16 @@ export function cyElementToRFEdge(element: CyElement): Edge {
   const target = data.target as string;
 
   // Determine link status from classes
-  let linkStatus: 'up' | 'down' | 'unknown' = 'unknown';
-  if (element.classes?.includes('link-up')) {
-    linkStatus = 'up';
-  } else if (element.classes?.includes('link-down')) {
-    linkStatus = 'down';
+  let linkStatus: "up" | "down" | "unknown" = "unknown";
+  if (element.classes?.includes("link-up")) {
+    linkStatus = "up";
+  } else if (element.classes?.includes("link-down")) {
+    linkStatus = "down";
   }
 
   const edgeData: TopologyEdgeData = {
-    sourceEndpoint: (data.sourceEndpoint as string) || '',
-    targetEndpoint: (data.targetEndpoint as string) || '',
+    sourceEndpoint: (data.sourceEndpoint as string) || "",
+    targetEndpoint: (data.targetEndpoint as string) || "",
     linkStatus,
     extraData: data.extraData as Record<string, unknown>
   };
@@ -282,7 +290,7 @@ export function cyElementToRFEdge(element: CyElement): Edge {
     id,
     source,
     target,
-    type: 'topology-edge',
+    type: "topology-edge",
     data: edgeData,
     selected: element.selected ?? false
   };
@@ -296,9 +304,9 @@ export function convertElements(elements: CyElement[]): { nodes: Node[]; edges: 
   const edges: Edge[] = [];
 
   for (const element of elements) {
-    if (element.group === 'nodes') {
+    if (element.group === "nodes") {
       nodes.push(cyElementToRFNode(element));
-    } else if (element.group === 'edges') {
+    } else if (element.group === "edges") {
       edges.push(cyElementToRFEdge(element));
     }
   }
@@ -325,23 +333,23 @@ export function rfNodeToCyElement(node: Node): CyElement {
   // Determine topoViewerRole from node type
   switch (node.type) {
     case NODE_TYPE_CLOUD:
-      cyData.topoViewerRole = 'cloud';
+      cyData.topoViewerRole = "cloud";
       break;
     case NODE_TYPE_GROUP:
-      cyData.topoViewerRole = 'group';
+      cyData.topoViewerRole = "group";
       break;
     case NODE_TYPE_FREE_TEXT:
-      cyData.topoViewerRole = 'freeText';
+      cyData.topoViewerRole = "freeText";
       break;
     case NODE_TYPE_FREE_SHAPE:
-      cyData.topoViewerRole = 'freeShape';
+      cyData.topoViewerRole = "freeShape";
       break;
     default:
-      cyData.topoViewerRole = (data as TopologyNodeData).role || 'default';
+      cyData.topoViewerRole = (data as TopologyNodeData).role || "default";
   }
 
   return {
-    group: 'nodes',
+    group: "nodes",
     data: cyData,
     position: node.position,
     selected: node.selected
@@ -358,20 +366,20 @@ export function rfEdgeToCyElement(edge: Edge): CyElement {
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    sourceEndpoint: data?.sourceEndpoint ?? '',
-    targetEndpoint: data?.targetEndpoint ?? '',
+    sourceEndpoint: data?.sourceEndpoint ?? "",
+    targetEndpoint: data?.targetEndpoint ?? "",
     ...(data?.extraData ?? {})
   };
 
-  let classes = '';
-  if (data?.linkStatus === 'up') {
-    classes = 'link-up';
-  } else if (data?.linkStatus === 'down') {
-    classes = 'link-down';
+  let classes = "";
+  if (data?.linkStatus === "up") {
+    classes = "link-up";
+  } else if (data?.linkStatus === "down") {
+    classes = "link-down";
   }
 
   return {
-    group: 'edges',
+    group: "edges",
     data: cyData,
     classes: classes || undefined,
     selected: edge.selected

@@ -4,7 +4,8 @@
  */
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
-import type { Core as CyCore, NodeSingular } from "cytoscape";
+
+import type { CyCompatCore, CyCompatElement } from "../useCytoCompatInstance";
 
 import type { GroupStyleAnnotation, NodeAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
@@ -120,13 +121,13 @@ function migrateLegacyGroups(
 /**
  * Check if a node can be added to a group.
  */
-function canBeGrouped(node: NodeSingular): boolean {
+function canBeGrouped(node: CyCompatElement): boolean {
   const role = node.data("topoViewerRole") as string | undefined;
   return role !== "freeText" && role !== "freeShape";
 }
 
 interface UseAppGroupsOptions {
-  cyInstance: CyCore | null;
+  cyInstance: CyCompatCore | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
@@ -227,7 +228,7 @@ export function useAppGroups(options: UseAppGroupsOptions) {
     if (!cyInstance) return;
     const selectedNodeIds = cyInstance
       .nodes(":selected")
-      .filter((n) => canBeGrouped(n as NodeSingular))
+      .filter((n) => canBeGrouped(n))
       .map((n) => n.id());
 
     const result = groupsHook.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);

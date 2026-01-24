@@ -5,9 +5,9 @@
  * Regression test for the bug where clearing labels/env/binds/etc would not
  * remove them from the YAML file.
  */
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
@@ -17,16 +17,16 @@ const SEL_DELETE_BTN = '[data-testid="node-editor"] .dynamic-delete-btn';
 
 // Tab identifiers
 const TAB = {
-  BASIC: 'basic',
-  CONFIG: 'config',
-  RUNTIME: 'runtime',
-  NETWORK: 'network',
-  ADVANCED: 'advanced',
+  BASIC: "basic",
+  CONFIG: "config",
+  RUNTIME: "runtime",
+  NETWORK: "network",
+  ADVANCED: "advanced"
 } as const;
 
 type TabName = (typeof TAB)[keyof typeof TAB];
 
-const TEST_TOPOLOGY = 'simple.clab.yml';
+const TEST_TOPOLOGY = "simple.clab.yml";
 
 /**
  * Helper to reliably open node editor via double-click on a specific node
@@ -69,7 +69,9 @@ async function openNodeEditorByNodeId(page: Page, nodeId: string, maxRetries = 3
       return;
     } catch {
       if (attempt === maxRetries) {
-        throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
+        throw new Error(
+          `Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`
+        );
       }
       await page.waitForTimeout(300);
     }
@@ -88,12 +90,12 @@ async function navigateToTab(page: Page, tabName: TabName): Promise<void> {
 /**
  * Field Deletion Tests
  */
-test.describe('Field Deletion from YAML', () => {
+test.describe("Field Deletion from YAML", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
   });
 
-  test('deleting labels removes them from YAML', async ({ page, topoViewerPage }) => {
+  test("deleting labels removes them from YAML", async ({ page, topoViewerPage }) => {
     // Write a topology with labels already set
     const yamlWithLabels = `name: simple
 topology:
@@ -121,12 +123,12 @@ topology:
 
     // Verify initial YAML contains labels
     let yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('labels:');
-    expect(yamlContent).toContain('env: production');
-    expect(yamlContent).toContain('team: network');
+    expect(yamlContent).toContain("labels:");
+    expect(yamlContent).toContain("env: production");
+    expect(yamlContent).toContain("team: network");
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.CONFIG);
 
     // Delete all labels by clicking the delete buttons
@@ -152,13 +154,13 @@ topology:
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     // The YAML should not have 'labels:' under srl1 anymore
     // Use a more specific check - labels should not appear in srl1's section
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('labels:');
-    expect(srl1Section).not.toContain('env: production');
-    expect(srl1Section).not.toContain('team: network');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("labels:");
+    expect(srl1Section).not.toContain("env: production");
+    expect(srl1Section).not.toContain("team: network");
   });
 
-  test('deleting env variables removes them from YAML', async ({ page, topoViewerPage }) => {
+  test("deleting env variables removes them from YAML", async ({ page, topoViewerPage }) => {
     // Write a topology with env already set
     const yamlWithEnv = `name: simple
 topology:
@@ -186,11 +188,11 @@ topology:
 
     // Verify initial YAML contains env
     let yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('env:');
-    expect(yamlContent).toContain('MY_VAR');
+    expect(yamlContent).toContain("env:");
+    expect(yamlContent).toContain("MY_VAR");
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.CONFIG);
 
     // Delete all env variables by clicking the delete buttons
@@ -214,12 +216,12 @@ topology:
 
     // Verify YAML no longer contains env for srl1
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('env:');
-    expect(srl1Section).not.toContain('MY_VAR');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("env:");
+    expect(srl1Section).not.toContain("MY_VAR");
   });
 
-  test('clearing string field removes it from YAML', async ({ page, topoViewerPage }) => {
+  test("clearing string field removes it from YAML", async ({ page, topoViewerPage }) => {
     // Write a topology with user already set
     const yamlWithUser = `name: simple
 topology:
@@ -245,14 +247,14 @@ topology:
 
     // Verify initial YAML contains user
     let yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('user: testuser');
+    expect(yamlContent).toContain("user: testuser");
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.RUNTIME);
 
     // Clear the user field
-    const userField = page.locator('#node-user');
+    const userField = page.locator("#node-user");
     await userField.clear();
     await userField.blur();
     await page.waitForTimeout(200);
@@ -267,11 +269,11 @@ topology:
 
     // Verify YAML no longer contains user for srl1
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('user:');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("user:");
   });
 
-  test('deleting binds removes them from YAML', async ({ page, topoViewerPage }) => {
+  test("deleting binds removes them from YAML", async ({ page, topoViewerPage }) => {
     // Write a topology with binds already set
     const yamlWithBinds = `name: simple
 topology:
@@ -299,10 +301,10 @@ topology:
 
     // Verify initial YAML contains binds
     let yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('binds:');
+    expect(yamlContent).toContain("binds:");
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.CONFIG);
 
     // Delete all binds by clicking the delete buttons
@@ -326,11 +328,11 @@ topology:
 
     // Verify YAML no longer contains binds for srl1
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('binds:');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("binds:");
   });
 
-  test('clearing mgmt-ipv4 removes it from YAML', async ({ page, topoViewerPage }) => {
+  test("clearing mgmt-ipv4 removes it from YAML", async ({ page, topoViewerPage }) => {
     // Write a topology with mgmt-ipv4 already set
     const yamlWithMgmt = `name: simple
 topology:
@@ -356,14 +358,14 @@ topology:
 
     // Verify initial YAML contains mgmt-ipv4
     let yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('mgmt-ipv4: 172.20.20.10');
+    expect(yamlContent).toContain("mgmt-ipv4: 172.20.20.10");
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.NETWORK);
 
     // Clear the mgmt-ipv4 field
-    const mgmtField = page.locator('#node-mgmt-ipv4');
+    const mgmtField = page.locator("#node-mgmt-ipv4");
     await mgmtField.clear();
     await mgmtField.blur();
     await page.waitForTimeout(200);
@@ -378,11 +380,14 @@ topology:
 
     // Verify YAML no longer contains mgmt-ipv4 for srl1
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('mgmt-ipv4:');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("mgmt-ipv4:");
   });
 
-  test('UI updates immediately after Apply without requiring reload', async ({ page, topoViewerPage }) => {
+  test("UI updates immediately after Apply without requiring reload", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Regression test: UI should reflect deleted fields immediately after Apply
     // without needing to close/reopen the editor or reload the page
     const yamlWithEnv = `name: simple
@@ -409,7 +414,7 @@ topology:
     await topoViewerPage.fit();
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.CONFIG);
 
     // Verify initial UI shows the env var (should have exactly 1 delete button)
@@ -434,12 +439,12 @@ topology:
 
     // Also verify YAML was properly updated
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('env:');
-    expect(srl1Section).not.toContain('TEST_VAR');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("env:");
+    expect(srl1Section).not.toContain("TEST_VAR");
   });
 
-  test('unchecking auto-remove checkbox removes it from YAML', async ({ page, topoViewerPage }) => {
+  test("unchecking auto-remove checkbox removes it from YAML", async ({ page, topoViewerPage }) => {
     // Test for boolean field deletion - user reported that unchecking doesn't delete from YAML
     const yamlWithAutoRemove = `name: simple
 topology:
@@ -458,7 +463,7 @@ topology:
 
     // Verify initial YAML
     let yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('auto-remove: false');
+    expect(yamlContent).toContain("auto-remove: false");
 
     // Load the topology
     await topoViewerPage.gotoFile(TEST_TOPOLOGY);
@@ -468,11 +473,11 @@ topology:
     await topoViewerPage.fit();
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.RUNTIME);
 
     // Find the auto-remove checkbox
-    const autoRemoveCheckbox = page.locator('#node-auto-remove');
+    const autoRemoveCheckbox = page.locator("#node-auto-remove");
     await expect(autoRemoveCheckbox).toBeVisible();
 
     // The checkbox should be unchecked (auto-remove: false in YAML)
@@ -486,11 +491,14 @@ topology:
 
     // Verify auto-remove was removed from YAML
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('auto-remove');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("auto-remove");
   });
 
-  test('clearing startup-delay number field removes it from YAML', async ({ page, topoViewerPage }) => {
+  test("clearing startup-delay number field removes it from YAML", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Test for number field deletion
     const yamlWithDelay = `name: simple
 topology:
@@ -509,7 +517,7 @@ topology:
 
     // Verify initial YAML
     let yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('startup-delay: 10');
+    expect(yamlContent).toContain("startup-delay: 10");
 
     // Load the topology
     await topoViewerPage.gotoFile(TEST_TOPOLOGY);
@@ -519,14 +527,14 @@ topology:
     await topoViewerPage.fit();
 
     // Open editor for srl1
-    await openNodeEditorByNodeId(page, 'srl1');
+    await openNodeEditorByNodeId(page, "srl1");
     await navigateToTab(page, TAB.RUNTIME);
 
     // Find and clear the startup-delay field
-    const delayInput = page.locator('#node-startup-delay');
+    const delayInput = page.locator("#node-startup-delay");
     await expect(delayInput).toBeVisible();
     await delayInput.click();
-    await delayInput.fill('');
+    await delayInput.fill("");
     await page.waitForTimeout(100);
 
     // Apply
@@ -535,7 +543,7 @@ topology:
 
     // Verify startup-delay was removed from YAML
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    const srl1Section = yamlContent.split('srl2:')[0];
-    expect(srl1Section).not.toContain('startup-delay');
+    const srl1Section = yamlContent.split("srl2:")[0];
+    expect(srl1Section).not.toContain("startup-delay");
   });
 });

@@ -1,9 +1,14 @@
 /**
  * useNodeCreation - Hook for creating nodes via Shift+Click on canvas
+ *
+ * NOTE: This hook uses the CyCompatCore compatibility layer.
+ * The event handling is a stub - actual events should be handled via ReactFlow's
+ * onPaneClick callback. This hook provides the node creation logic that can be
+ * called from that handler.
  */
 import { useEffect, useCallback, useRef } from "react";
-import type { Core, EventObject } from "cytoscape";
 
+import type { CyCompatCore, CyCompatEventObject } from "../useCytoCompatInstance";
 import { log } from "../../utils/logger";
 import type { CyElement } from "../../../shared/types/messages";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
@@ -212,8 +217,11 @@ function createNodeData(
 /**
  * Determine position for a new node
  */
-function determinePosition(cy: Core, event: EventObject): { x: number; y: number } {
-  const extent = cy.extent();
+function determinePosition(
+  cyCompat: CyCompatCore,
+  event: CyCompatEventObject
+): { x: number; y: number } {
+  const extent = cyCompat.extent();
   let position = event.position;
 
   if (
@@ -251,9 +259,12 @@ function nodeDataToCyElement(data: NodeData, position: { x: number; y: number })
 
 /**
  * Hook for handling node creation via Shift+Click on canvas
+ *
+ * NOTE: Event handling is stubbed in the compatibility layer.
+ * For ReactFlow integration, use onPaneClick handler directly.
  */
 export function useNodeCreation(
-  cy: Core | null,
+  cyCompat: CyCompatCore | null,
   options: NodeCreationOptions
 ): {
   createNodeAtPosition: (position: { x: number; y: number }, template?: CustomNodeTemplate) => void;
@@ -283,7 +294,7 @@ export function useNodeCreation(
    */
   const createNodeAtPosition = useCallback(
     (position: { x: number; y: number }, template?: CustomNodeTemplate) => {
-      if (!cy) return;
+      if (!cyCompat) return;
 
       initializeNodeCounter(getUsedIds());
 
@@ -304,20 +315,20 @@ export function useNodeCreation(
       if (nodeName) reservedNamesRef.current.add(nodeName);
       onNodeCreated(nodeId, cyElement, position);
     },
-    [cy, onNodeCreated]
+    [cyCompat, onNodeCreated]
   );
 
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
 
-    const handleCanvasTap = (event: EventObject) => {
+    const handleCanvasTap = (event: CyCompatEventObject) => {
       const { mode, isLocked, customNodes, defaultNode, onLockedClick } = optionsRef.current;
 
       // Only handle in edit mode
       if (mode !== "edit") return;
 
       // Check if clicking on the canvas itself (not on an element)
-      if (event.target !== cy) return;
+      if (event.target !== cyCompat) return;
 
       const originalEvent = event.originalEvent as MouseEvent;
 
@@ -338,19 +349,19 @@ export function useNodeCreation(
       }
 
       // Determine position
-      const position = determinePosition(cy, event);
+      const position = determinePosition(cyCompat, event);
 
       log.info(`[NodeCreation] Shift+Click on canvas at (${position.x}, ${position.y})`);
 
       createNodeAtPosition(position, template);
     };
 
-    cy.on("tap", handleCanvasTap);
+    cyCompat.on("tap", handleCanvasTap as unknown as () => void);
 
     return () => {
-      cy.off("tap", handleCanvasTap);
+      cyCompat.off("tap", handleCanvasTap as unknown as () => void);
     };
-  }, [cy, createNodeAtPosition]);
+  }, [cyCompat, createNodeAtPosition]);
 
   return { createNodeAtPosition };
 }

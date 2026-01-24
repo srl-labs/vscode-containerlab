@@ -2,11 +2,11 @@
  * Hook to convert annotation state to React Flow nodes
  * Bridges the annotation hooks with the React Flow canvas
  */
-import { useMemo, useCallback } from 'react';
-import type { Node } from '@xyflow/react';
+import { useMemo, useCallback } from "react";
+import type { Node } from "@xyflow/react";
 
-import type { FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
-import type { FreeTextNodeData, FreeShapeNodeData } from '../../components/react-flow-canvas/types';
+import type { FreeTextAnnotation, FreeShapeAnnotation } from "../../../shared/types/topology";
+import type { FreeTextNodeData, FreeShapeNodeData } from "../../components/react-flow-canvas/types";
 
 /**
  * Convert a FreeTextAnnotation to a React Flow Node
@@ -14,7 +14,7 @@ import type { FreeTextNodeData, FreeShapeNodeData } from '../../components/react
 function freeTextToNode(annotation: FreeTextAnnotation): Node<FreeTextNodeData> {
   return {
     id: annotation.id,
-    type: 'free-text-node',
+    type: "free-text-node",
     position: annotation.position,
     draggable: true,
     selectable: true,
@@ -53,7 +53,7 @@ function computeLineBounds(annotation: FreeShapeAnnotation): {
 } {
   const startX = annotation.position.x;
   const startY = annotation.position.y;
-  const endX = annotation.endPosition?.x ?? (startX + DEFAULT_LINE_LENGTH);
+  const endX = annotation.endPosition?.x ?? startX + DEFAULT_LINE_LENGTH;
   const endY = annotation.endPosition?.y ?? startY;
 
   // Compute bounding box with padding
@@ -75,7 +75,7 @@ function computeLineBounds(annotation: FreeShapeAnnotation): {
  * For lines, the node is positioned at the bounding box top-left
  */
 function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShapeNodeData> {
-  const isLine = annotation.shapeType === 'line';
+  const isLine = annotation.shapeType === "line";
 
   if (isLine) {
     const { nodePosition, width, height, relativeEndPosition } = computeLineBounds(annotation);
@@ -88,14 +88,14 @@ function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShapeNodeDat
 
     return {
       id: annotation.id,
-      type: 'free-shape-node',
+      type: "free-shape-node",
       position: nodePosition,
       width,
       height,
       draggable: true,
       selectable: true,
       data: {
-        shapeType: 'line',
+        shapeType: "line",
         width,
         height,
         endPosition: annotation.endPosition,
@@ -119,7 +119,7 @@ function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShapeNodeDat
   // Non-line shapes (rectangle, circle)
   return {
     id: annotation.id,
-    type: 'free-shape-node',
+    type: "free-shape-node",
     position: annotation.position,
     width: annotation.width ?? 100,
     height: annotation.height ?? 100,
@@ -148,7 +148,7 @@ interface UseAnnotationNodesOptions {
 interface AnnotationAddModeState {
   isAddTextMode: boolean;
   isAddShapeMode: boolean;
-  pendingShapeType?: 'rectangle' | 'circle' | 'line';
+  pendingShapeType?: "rectangle" | "circle" | "line";
 }
 
 interface UseAnnotationNodesReturn {
@@ -157,7 +157,7 @@ interface UseAnnotationNodesReturn {
   /** Check if a node ID is an annotation */
   isAnnotationNode: (nodeId: string) => boolean;
   /** Get annotation type for a node ID */
-  getAnnotationType: (nodeId: string) => 'freeText' | 'freeShape' | null;
+  getAnnotationType: (nodeId: string) => "freeText" | "freeShape" | null;
 }
 
 /**
@@ -168,12 +168,12 @@ export function useAnnotationNodes(options: UseAnnotationNodesOptions): UseAnnot
 
   // Create a set of annotation IDs for quick lookup
   const annotationIds = useMemo(() => {
-    const ids = new Map<string, 'freeText' | 'freeShape'>();
+    const ids = new Map<string, "freeText" | "freeShape">();
     for (const ann of freeTextAnnotations) {
-      ids.set(ann.id, 'freeText');
+      ids.set(ann.id, "freeText");
     }
     for (const ann of freeShapeAnnotations) {
-      ids.set(ann.id, 'freeShape');
+      ids.set(ann.id, "freeShape");
     }
     return ids;
   }, [freeTextAnnotations, freeShapeAnnotations]);
@@ -195,13 +195,19 @@ export function useAnnotationNodes(options: UseAnnotationNodesOptions): UseAnnot
     return nodes;
   }, [freeTextAnnotations, freeShapeAnnotations]);
 
-  const isAnnotationNode = useCallback((nodeId: string) => {
-    return annotationIds.has(nodeId);
-  }, [annotationIds]);
+  const isAnnotationNode = useCallback(
+    (nodeId: string) => {
+      return annotationIds.has(nodeId);
+    },
+    [annotationIds]
+  );
 
-  const getAnnotationType = useCallback((nodeId: string) => {
-    return annotationIds.get(nodeId) ?? null;
-  }, [annotationIds]);
+  const getAnnotationType = useCallback(
+    (nodeId: string) => {
+      return annotationIds.get(nodeId) ?? null;
+    },
+    [annotationIds]
+  );
 
   return {
     annotationNodes,

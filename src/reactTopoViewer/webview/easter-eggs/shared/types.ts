@@ -2,7 +2,7 @@
  * Shared types for Easter Egg modes
  */
 
-import type { Core as CyCore } from "cytoscape";
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 
 /** RGB color type */
 export interface RGBColor {
@@ -17,7 +17,7 @@ export interface BaseModeProps {
   onClose?: () => void;
   onSwitchMode?: () => void;
   modeName?: string;
-  cyInstance?: CyCore | null;
+  cyCompat?: CyCompatCore | null;
 }
 
 /** Base return type for audio hooks */

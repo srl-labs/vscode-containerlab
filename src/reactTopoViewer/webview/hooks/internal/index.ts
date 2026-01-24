@@ -29,6 +29,9 @@ export {
   useLayoutControls,
   useContextMenuHandlers
 } from "../useAppState";
+
+// ReactFlow compatibility layer
+export { useCyCompatInstance, type CyCompatCore } from "../useCytoCompatInstance";
 export {
   useCustomNodeCommands,
   useNavbarCommands,

@@ -1,18 +1,18 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { drag, mouseWheelZoom } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { drag, mouseWheelZoom } from "../helpers/cytoscape-helpers";
 
-test.describe('Zoom and Pan', () => {
+test.describe("Zoom and Pan", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test('gets initial zoom level', async ({ topoViewerPage }) => {
+  test("gets initial zoom level", async ({ topoViewerPage }) => {
     const zoom = await topoViewerPage.getZoom();
     expect(zoom).toBeGreaterThan(0);
   });
 
-  test('sets zoom level programmatically', async ({ topoViewerPage }) => {
+  test("sets zoom level programmatically", async ({ topoViewerPage }) => {
     const initialZoom = await topoViewerPage.getZoom();
 
     // Set a specific zoom level
@@ -23,7 +23,7 @@ test.describe('Zoom and Pan', () => {
     expect(newZoom).not.toBeCloseTo(initialZoom, 1);
   });
 
-  test('zooms in with mouse wheel (negative delta)', async ({ page, topoViewerPage }) => {
+  test("zooms in with mouse wheel (negative delta)", async ({ page, topoViewerPage }) => {
     const initialZoom = await topoViewerPage.getZoom();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
@@ -35,7 +35,7 @@ test.describe('Zoom and Pan', () => {
     expect(newZoom).toBeGreaterThan(initialZoom);
   });
 
-  test('zooms out with mouse wheel (positive delta)', async ({ page, topoViewerPage }) => {
+  test("zooms out with mouse wheel (positive delta)", async ({ page, topoViewerPage }) => {
     // First zoom in a bit so we have room to zoom out
     await topoViewerPage.setZoom(2.0);
     const initialZoom = await topoViewerPage.getZoom();
@@ -49,13 +49,13 @@ test.describe('Zoom and Pan', () => {
     expect(newZoom).toBeLessThan(initialZoom);
   });
 
-  test('gets initial pan position', async ({ topoViewerPage }) => {
+  test("gets initial pan position", async ({ topoViewerPage }) => {
     const pan = await topoViewerPage.getPan();
-    expect(pan).toHaveProperty('x');
-    expect(pan).toHaveProperty('y');
+    expect(pan).toHaveProperty("x");
+    expect(pan).toHaveProperty("y");
   });
 
-  test('sets pan position programmatically', async ({ topoViewerPage }) => {
+  test("sets pan position programmatically", async ({ topoViewerPage }) => {
     const targetPan = { x: 100, y: 150 };
 
     await topoViewerPage.setPan(targetPan.x, targetPan.y);
@@ -65,7 +65,7 @@ test.describe('Zoom and Pan', () => {
     expect(newPan.y).toBeCloseTo(targetPan.y, 0);
   });
 
-  test('pans canvas with mouse drag', async ({ page, topoViewerPage }) => {
+  test("pans canvas with mouse drag", async ({ page, topoViewerPage }) => {
     const initialPan = await topoViewerPage.getPan();
     const canvasCenter = await topoViewerPage.getCanvasCenter();
 
@@ -91,7 +91,7 @@ test.describe('Zoom and Pan', () => {
     expect(panDeltaY).toBeGreaterThan(dragDistance * 0.5);
   });
 
-  test('fit to viewport centers and scales graph', async ({ topoViewerPage }) => {
+  test("fit to viewport centers and scales graph", async ({ topoViewerPage }) => {
     // First set an extreme zoom and pan
     await topoViewerPage.setZoom(5.0);
     await topoViewerPage.setPan(500, 500);
@@ -110,12 +110,13 @@ test.describe('Zoom and Pan', () => {
 
     // Pan should have changed from the extreme offset (500, 500) toward center
     const panAfterFit = await topoViewerPage.getPan();
-    const panMoved = Math.abs(panAfterFit.x - panBeforeFit.x) > 50 ||
-                     Math.abs(panAfterFit.y - panBeforeFit.y) > 50;
+    const panMoved =
+      Math.abs(panAfterFit.x - panBeforeFit.x) > 50 ||
+      Math.abs(panAfterFit.y - panBeforeFit.y) > 50;
     expect(panMoved).toBe(true);
   });
 
-  test('zoom can be set to extreme values', async ({ topoViewerPage }) => {
+  test("zoom can be set to extreme values", async ({ topoViewerPage }) => {
     // Set zoom to very small value
     await topoViewerPage.setZoom(0.1);
     const smallZoom = await topoViewerPage.getZoom();

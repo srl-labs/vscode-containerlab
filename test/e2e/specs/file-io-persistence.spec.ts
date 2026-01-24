@@ -1,18 +1,20 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { drag } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { drag } from "../helpers/cytoscape-helpers";
 
 // Test file names
-const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
-const DATACENTER_FILE = 'datacenter.clab.yml';
-const SIMPLE_FILE = 'simple.clab.yml';
-const NETWORK_FILE = 'network.clab.yml';
+const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
+const DATACENTER_FILE = "datacenter.clab.yml";
+const SIMPLE_FILE = "simple.clab.yml";
+const NETWORK_FILE = "network.clab.yml";
 
 // File modification tests must run serially to avoid conflicts
 // Use test.describe.serial to run all tests in this file sequentially
-test.describe.serial('File I/O Persistence', () => {
-
-  test.describe('Node Position Persistence', () => {
-    test('moving node updates annotations file with new position', async ({ page, topoViewerPage }) => {
+test.describe.serial("File I/O Persistence", () => {
+  test.describe("Node Position Persistence", () => {
+    test("moving node updates annotations file with new position", async ({
+      page,
+      topoViewerPage
+    }) => {
       // Reset files to ensure clean state
       await topoViewerPage.resetFiles();
 
@@ -24,7 +26,7 @@ test.describe.serial('File I/O Persistence', () => {
 
       // Get initial annotations from file
       const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-      const spine1Initial = initialAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
+      const spine1Initial = initialAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
       expect(spine1Initial).toBeDefined();
       expect(spine1Initial?.position).toBeDefined();
 
@@ -32,7 +34,7 @@ test.describe.serial('File I/O Persistence', () => {
       const initialY = spine1Initial!.position!.y;
 
       // Get node bounding box for dragging
-      const nodeBox = await topoViewerPage.getNodeBoundingBox('spine1');
+      const nodeBox = await topoViewerPage.getNodeBoundingBox("spine1");
       expect(nodeBox).not.toBeNull();
 
       const startX = nodeBox!.x + nodeBox!.width / 2;
@@ -52,7 +54,7 @@ test.describe.serial('File I/O Persistence', () => {
 
       // Read annotations from file again
       const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-      const spine1Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
+      const spine1Updated = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
       expect(spine1Updated).toBeDefined();
       expect(spine1Updated?.position).toBeDefined();
 
@@ -64,18 +66,21 @@ test.describe.serial('File I/O Persistence', () => {
       expect(deltaX + deltaY).toBeGreaterThan(20);
     });
 
-    test('moving multiple nodes updates all positions in file', async ({ page, topoViewerPage }) => {
+    test("moving multiple nodes updates all positions in file", async ({
+      page,
+      topoViewerPage
+    }) => {
       await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
 
       // Get initial positions from Cytoscape
-      const spine1InitialCy = await topoViewerPage.getNodePosition('spine1');
-      const spine2InitialCy = await topoViewerPage.getNodePosition('spine2');
+      const spine1InitialCy = await topoViewerPage.getNodePosition("spine1");
+      const spine2InitialCy = await topoViewerPage.getNodePosition("spine2");
 
       // Drag spine1
-      const box1 = await topoViewerPage.getNodeBoundingBox('spine1');
+      const box1 = await topoViewerPage.getNodeBoundingBox("spine1");
       expect(box1).not.toBeNull();
       await drag(
         page,
@@ -86,11 +91,11 @@ test.describe.serial('File I/O Persistence', () => {
       await page.waitForTimeout(500);
 
       // Verify spine1 moved in Cytoscape memory
-      const spine1AfterDrag1 = await topoViewerPage.getNodePosition('spine1');
+      const spine1AfterDrag1 = await topoViewerPage.getNodePosition("spine1");
       expect(spine1AfterDrag1.x).not.toBe(spine1InitialCy.x);
 
       // Drag spine2
-      const box2 = await topoViewerPage.getNodeBoundingBox('spine2');
+      const box2 = await topoViewerPage.getNodeBoundingBox("spine2");
       expect(box2).not.toBeNull();
       await drag(
         page,
@@ -101,7 +106,7 @@ test.describe.serial('File I/O Persistence', () => {
       await page.waitForTimeout(500);
 
       // Verify spine2 moved in Cytoscape memory
-      const spine2AfterDrag2 = await topoViewerPage.getNodePosition('spine2');
+      const spine2AfterDrag2 = await topoViewerPage.getNodePosition("spine2");
       expect(spine2AfterDrag2.x).not.toBe(spine2InitialCy.x);
 
       // Wait for file saves to complete
@@ -109,8 +114,8 @@ test.describe.serial('File I/O Persistence', () => {
 
       // Read updated annotations from file
       const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-      const spine1Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
-      const spine2Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine2');
+      const spine1Updated = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
+      const spine2Updated = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine2");
 
       // Both positions in file should match Cytoscape positions (with some tolerance)
       expect(Math.abs(spine1Updated!.position!.x - spine1AfterDrag1.x)).toBeLessThan(5);
@@ -118,8 +123,8 @@ test.describe.serial('File I/O Persistence', () => {
     });
   });
 
-  test.describe('Node Deletion Persistence', () => {
-    test('deleting node removes it from YAML file', async ({ page, topoViewerPage }) => {
+  test.describe("Node Deletion Persistence", () => {
+    test("deleting node removes it from YAML file", async ({ page, topoViewerPage }) => {
       // Reset files to ensure clean state
       await topoViewerPage.resetFiles();
 
@@ -130,15 +135,15 @@ test.describe.serial('File I/O Persistence', () => {
 
       // Get initial YAML
       const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
-      expect(initialYaml).toContain('client1');
-      expect(initialYaml).toContain('client2');
+      expect(initialYaml).toContain("client1");
+      expect(initialYaml).toContain("client2");
 
       // Get initial node count
       const initialNodeCount = await topoViewerPage.getNodeCount();
 
       // Select and delete client2
-      await topoViewerPage.selectNode('client2');
-      await page.keyboard.press('Delete');
+      await topoViewerPage.selectNode("client2");
+      await page.keyboard.press("Delete");
       await page.waitForTimeout(500);
 
       // Verify node was removed from UI
@@ -149,11 +154,11 @@ test.describe.serial('File I/O Persistence', () => {
       const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
 
       // client2 should be removed from YAML
-      expect(updatedYaml).toContain('client1');
-      expect(updatedYaml).not.toContain('client2:');
+      expect(updatedYaml).toContain("client1");
+      expect(updatedYaml).not.toContain("client2:");
     });
 
-    test('deleting node removes it from annotations file', async ({ page, topoViewerPage }) => {
+    test("deleting node removes it from annotations file", async ({ page, topoViewerPage }) => {
       await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
@@ -161,23 +166,28 @@ test.describe.serial('File I/O Persistence', () => {
 
       // Get initial annotations
       const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-      const client1Exists = initialAnnotations.nodeAnnotations?.some(n => n.id === 'client1');
+      const client1Exists = initialAnnotations.nodeAnnotations?.some((n) => n.id === "client1");
       expect(client1Exists).toBe(true);
 
       // Delete client1
-      await topoViewerPage.selectNode('client1');
-      await page.keyboard.press('Delete');
+      await topoViewerPage.selectNode("client1");
+      await page.keyboard.press("Delete");
       await page.waitForTimeout(500);
 
       // Read annotations from file
       const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-      const client1StillExists = updatedAnnotations.nodeAnnotations?.some(n => n.id === 'client1');
+      const client1StillExists = updatedAnnotations.nodeAnnotations?.some(
+        (n) => n.id === "client1"
+      );
 
       // client1 should be removed from annotations
       expect(client1StillExists).toBe(false);
     });
 
-    test('deleting node also removes connected links from YAML', async ({ page, topoViewerPage }) => {
+    test("deleting node also removes connected links from YAML", async ({
+      page,
+      topoViewerPage
+    }) => {
       await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
@@ -187,31 +197,31 @@ test.describe.serial('File I/O Persistence', () => {
       const initialYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
 
       // Ensure leaf1 has links in the fixture (otherwise this test is meaningless)
-      expect(initialYaml).toContain('leaf1:e1-49');
-      expect(initialYaml).toContain('leaf1:e1-50');
-      expect(initialYaml).toContain('leaf1:e1-1');
+      expect(initialYaml).toContain("leaf1:e1-49");
+      expect(initialYaml).toContain("leaf1:e1-50");
+      expect(initialYaml).toContain("leaf1:e1-1");
 
       // Delete leaf1
-      await topoViewerPage.selectNode('leaf1');
-      await page.keyboard.press('Delete');
+      await topoViewerPage.selectNode("leaf1");
+      await page.keyboard.press("Delete");
       await page.waitForTimeout(500);
 
       // Read updated YAML
       const updatedYaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
 
       // leaf1 node definition should be gone
-      expect(updatedYaml).not.toContain('leaf1:');
-      expect(updatedYaml).not.toContain('leaf1:e1-49');
-      expect(updatedYaml).not.toContain('leaf1:e1-50');
-      expect(updatedYaml).not.toContain('leaf1:e1-1');
+      expect(updatedYaml).not.toContain("leaf1:");
+      expect(updatedYaml).not.toContain("leaf1:e1-49");
+      expect(updatedYaml).not.toContain("leaf1:e1-50");
+      expect(updatedYaml).not.toContain("leaf1:e1-1");
 
       // Sanity: other parts of the topology should remain
-      expect(updatedYaml).toContain('leaf2:');
+      expect(updatedYaml).toContain("leaf2:");
     });
   });
 
-  test.describe('Annotations Persistence', () => {
-    test('datacenter topology preserves groups, text, and shapes', async ({ topoViewerPage }) => {
+  test.describe("Annotations Persistence", () => {
+    test("datacenter topology preserves groups, text, and shapes", async ({ topoViewerPage }) => {
       await topoViewerPage.gotoFile(DATACENTER_FILE);
       await topoViewerPage.waitForCanvasReady();
 
@@ -220,25 +230,25 @@ test.describe.serial('File I/O Persistence', () => {
 
       // Should have groups
       expect(annotations.groupStyleAnnotations?.length).toBeGreaterThan(0);
-      const groupNames = annotations.groupStyleAnnotations?.map(g => g.name);
-      expect(groupNames).toContain('Border');
-      expect(groupNames).toContain('Spine');
+      const groupNames = annotations.groupStyleAnnotations?.map((g) => g.name);
+      expect(groupNames).toContain("Border");
+      expect(groupNames).toContain("Spine");
 
       // Should have text annotations
       expect(annotations.freeTextAnnotations?.length).toBeGreaterThan(0);
-      const textLabels = annotations.freeTextAnnotations?.map(t => t.text);
-      expect(textLabels).toContain('Data Center West');
-      expect(textLabels).toContain('Border Layer');
+      const textLabels = annotations.freeTextAnnotations?.map((t) => t.text);
+      expect(textLabels).toContain("Data Center West");
+      expect(textLabels).toContain("Border Layer");
 
       // Should have shape annotations
       expect(annotations.freeShapeAnnotations?.length).toBeGreaterThan(0);
 
       // Should have node annotations with group membership
-      const nodesWithGroups = annotations.nodeAnnotations?.filter(n => n.group);
+      const nodesWithGroups = annotations.nodeAnnotations?.filter((n) => n.group);
       expect(nodesWithGroups?.length).toBeGreaterThan(0);
     });
 
-    test('network topology preserves network node annotations', async ({ topoViewerPage }) => {
+    test("network topology preserves network node annotations", async ({ topoViewerPage }) => {
       await topoViewerPage.gotoFile(NETWORK_FILE);
       await topoViewerPage.waitForCanvasReady();
 
@@ -249,12 +259,15 @@ test.describe.serial('File I/O Persistence', () => {
       expect(annotations.networkNodeAnnotations?.length).toBeGreaterThan(0);
 
       // Check for different network types
-      const types = annotations.networkNodeAnnotations?.map(n => n.type);
-      expect(types).toContain('host');
-      expect(types).toContain('bridge');
+      const types = annotations.networkNodeAnnotations?.map((n) => n.type);
+      expect(types).toContain("host");
+      expect(types).toContain("bridge");
     });
 
-    test('moving node in datacenter preserves other annotations', async ({ page, topoViewerPage }) => {
+    test("moving node in datacenter preserves other annotations", async ({
+      page,
+      topoViewerPage
+    }) => {
       await topoViewerPage.gotoFile(DATACENTER_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
@@ -267,7 +280,7 @@ test.describe.serial('File I/O Persistence', () => {
       const initialShapeCount = initialAnnotations.freeShapeAnnotations?.length || 0;
 
       // Move a node
-      const box = await topoViewerPage.getNodeBoundingBox('spine1');
+      const box = await topoViewerPage.getNodeBoundingBox("spine1");
       expect(box).not.toBeNull();
 
       await drag(
@@ -288,8 +301,8 @@ test.describe.serial('File I/O Persistence', () => {
     });
   });
 
-  test.describe('File Loading', () => {
-    test('lists available topology files', async ({ topoViewerPage }) => {
+  test.describe("File Loading", () => {
+    test("lists available topology files", async ({ topoViewerPage }) => {
       await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
 
@@ -297,28 +310,28 @@ test.describe.serial('File I/O Persistence', () => {
 
       expect(files.length).toBeGreaterThan(0);
 
-      const filenames = files.map(f => f.filename);
+      const filenames = files.map((f) => f.filename);
       expect(filenames).toContain(SIMPLE_FILE);
       expect(filenames).toContain(SPINE_LEAF_FILE);
       expect(filenames).toContain(DATACENTER_FILE);
     });
 
-    test('tracks which files have annotations', async ({ topoViewerPage }) => {
+    test("tracks which files have annotations", async ({ topoViewerPage }) => {
       await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
 
       const files = await topoViewerPage.listTopologyFiles();
 
       // spine-leaf should have annotations
-      const spineLeaf = files.find(f => f.filename === SPINE_LEAF_FILE);
+      const spineLeaf = files.find((f) => f.filename === SPINE_LEAF_FILE);
       expect(spineLeaf?.hasAnnotations).toBe(true);
 
       // datacenter should have annotations
-      const datacenter = files.find(f => f.filename === DATACENTER_FILE);
+      const datacenter = files.find((f) => f.filename === DATACENTER_FILE);
       expect(datacenter?.hasAnnotations).toBe(true);
     });
 
-    test('loading file updates current file path', async ({ topoViewerPage }) => {
+    test("loading file updates current file path", async ({ topoViewerPage }) => {
       await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
       await topoViewerPage.waitForCanvasReady();
 
@@ -326,7 +339,7 @@ test.describe.serial('File I/O Persistence', () => {
       expect(currentFile).toBe(SPINE_LEAF_FILE);
     });
 
-    test('switching between files works correctly', async ({ topoViewerPage }) => {
+    test("switching between files works correctly", async ({ topoViewerPage }) => {
       // Reset files to ensure clean state
       await topoViewerPage.resetFiles();
 
@@ -349,8 +362,11 @@ test.describe.serial('File I/O Persistence', () => {
     });
   });
 
-  test.describe('Empty Topology', () => {
-    test('simple topology without annotations creates annotations on move', async ({ page, topoViewerPage }) => {
+  test.describe("Empty Topology", () => {
+    test("simple topology without annotations creates annotations on move", async ({
+      page,
+      topoViewerPage
+    }) => {
       await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setEditMode();
@@ -358,7 +374,7 @@ test.describe.serial('File I/O Persistence', () => {
 
       // Initially simple.clab.yml has no annotations file
       // Get node and move it
-      const box = await topoViewerPage.getNodeBoundingBox('srl1');
+      const box = await topoViewerPage.getNodeBoundingBox("srl1");
       expect(box).not.toBeNull();
 
       await drag(
@@ -373,7 +389,7 @@ test.describe.serial('File I/O Persistence', () => {
       const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
       expect(annotations.nodeAnnotations?.length).toBeGreaterThan(0);
 
-      const srl1Annotation = annotations.nodeAnnotations?.find(n => n.id === 'srl1');
+      const srl1Annotation = annotations.nodeAnnotations?.find((n) => n.id === "srl1");
       expect(srl1Annotation).toBeDefined();
       expect(srl1Annotation?.position).toBeDefined();
     });

@@ -1,6 +1,6 @@
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
@@ -13,7 +13,7 @@ async function getNodeIcon(page: Page, nodeId: string): Promise<string | undefin
     const dev = (window as any).__DEV__;
     const cy = dev?.cy;
     const node = cy?.getElementById(id);
-    return node?.data('topoViewerRole');
+    return node?.data("topoViewerRole");
   }, nodeId);
 }
 
@@ -23,11 +23,7 @@ async function getNodeIcon(page: Page, nodeId: string): Promise<string | undefin
  * to avoid stale position issues from animations.
  * Includes retry logic to handle flaky double-click detection under load.
  */
-async function openNodeEditorByNodeId(
-  page: Page,
-  nodeId: string,
-  maxRetries = 3
-): Promise<void> {
+async function openNodeEditorByNodeId(page: Page, nodeId: string, maxRetries = 3): Promise<void> {
   const editorPanel = page.locator(SEL_NODE_EDITOR);
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -71,7 +67,9 @@ async function openNodeEditorByNodeId(
     } catch {
       if (attempt === maxRetries) {
         // Final attempt failed - throw with context
-        throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
+        throw new Error(
+          `Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`
+        );
       }
       // Wait before retrying
       await page.waitForTimeout(300);
@@ -80,7 +78,7 @@ async function openNodeEditorByNodeId(
 }
 
 // Test topology file
-const TEST_TOPOLOGY = 'simple.clab.yml';
+const TEST_TOPOLOGY = "simple.clab.yml";
 
 /**
  * Node Icon Change E2E Tests
@@ -88,7 +86,7 @@ const TEST_TOPOLOGY = 'simple.clab.yml';
  * Tests the persistence of node icon changes from the node editor panel.
  * Verifies that icon changes are saved both to the canvas and the annotations file.
  */
-test.describe('Node Icon Changes', () => {
+test.describe("Node Icon Changes", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(TEST_TOPOLOGY);
@@ -106,7 +104,10 @@ test.describe('Node Icon Changes', () => {
     await topoViewerPage.fit();
   });
 
-  test('changing node icon persists to canvas and annotations file', async ({ page, topoViewerPage }) => {
+  test("changing node icon persists to canvas and annotations file", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Wait extra time for the page to fully stabilize after beforeEach
     await page.waitForTimeout(300);
 
@@ -117,25 +118,29 @@ test.describe('Node Icon Changes', () => {
     // 1. Get initial state from BOTH canvas and annotations
     const initialCanvasIcon = await getNodeIcon(page, nodeId);
     const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(TEST_TOPOLOGY);
-    const initialNodeAnn = initialAnnotations.nodeAnnotations?.find((n: { id: string }) => n.id === nodeId);
+    const initialNodeAnn = initialAnnotations.nodeAnnotations?.find(
+      (n: { id: string }) => n.id === nodeId
+    );
     const initialAnnIcon = initialNodeAnn?.icon;
 
-    console.log(`[DEBUG] Initial state - Canvas: ${initialCanvasIcon}, Annotations: ${initialAnnIcon}`);
+    console.log(
+      `[DEBUG] Initial state - Canvas: ${initialCanvasIcon}, Annotations: ${initialAnnIcon}`
+    );
 
     // 2. Open node editor by double-clicking
     await openNodeEditorByNodeId(page, nodeId);
 
     // 3. Change icon using the dropdown (select "Leaf" to avoid "Super Spine" conflict)
-    const iconDropdown = page.locator('#node-icon');
+    const iconDropdown = page.locator("#node-icon");
     await iconDropdown.click();
     await page.waitForTimeout(200);
 
     // Type to filter and select the option
-    await iconDropdown.fill('Leaf');
+    await iconDropdown.fill("Leaf");
     await page.waitForTimeout(200);
 
     // Click the dropdown item - use exact text match
-    const leafOption = page.locator('[data-dropdown-item]').filter({ hasText: /^Leaf$/ });
+    const leafOption = page.locator("[data-dropdown-item]").filter({ hasText: /^Leaf$/ });
     await expect(leafOption).toBeVisible({ timeout: 3000 });
     await leafOption.click();
     await page.waitForTimeout(200);
@@ -149,12 +154,14 @@ test.describe('Node Icon Changes', () => {
     // 5. Verify icon changed on CANVAS
     const updatedCanvasIcon = await getNodeIcon(page, nodeId);
     console.log(`[DEBUG] After apply - Canvas icon: ${updatedCanvasIcon}`);
-    expect(updatedCanvasIcon, 'Canvas icon should update to leaf').toBe('leaf');
+    expect(updatedCanvasIcon, "Canvas icon should update to leaf").toBe("leaf");
 
     // 6. Verify icon was saved to ANNOTATIONS file
     const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(TEST_TOPOLOGY);
-    const updatedNodeAnn = updatedAnnotations.nodeAnnotations?.find((n: { id: string }) => n.id === nodeId);
+    const updatedNodeAnn = updatedAnnotations.nodeAnnotations?.find(
+      (n: { id: string }) => n.id === nodeId
+    );
     console.log(`[DEBUG] After apply - Annotations icon: ${updatedNodeAnn?.icon}`);
-    expect(updatedNodeAnn?.icon, 'Annotations icon should be saved to file').toBe('leaf');
+    expect(updatedNodeAnn?.icon, "Annotations icon should be saved to file").toBe("leaf");
   });
 });

@@ -6,8 +6,8 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import { useNightcallAudio } from "../audio";
 import {
   BTN_VISIBLE,
@@ -25,7 +25,7 @@ interface NightcallModeProps {
   onClose?: () => void;
   onSwitchMode?: () => void;
   modeName?: string;
-  cyInstance?: CyCore | null;
+  cyCompat?: CyCompatCore | null;
 }
 
 /** Retro synthwave color palette */
@@ -378,7 +378,7 @@ function drawFloatingParticles(
  * Hook to apply synthwave glow to nodes
  */
 function useNightcallNodeGlow(
-  cyInstance: CyCore | null | undefined,
+  cyCompat: CyCompatCore | null | undefined,
   isActive: boolean,
   getBeatIntensity: () => number,
   getCurrentChord: () => string
@@ -387,23 +387,23 @@ function useNightcallNodeGlow(
   const animationRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
+    if (!isActive || !cyCompat) return undefined;
 
     // Capture ref value at effect run time for cleanup
     const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
+    const nodes = cyCompat.nodes();
 
-    // Store original styles
+    // Store original styles (for compatibility)
     nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
+        "background-color": "",
+        "border-color": "",
+        "border-width": ""
       });
     });
 
-    const cy = cyInstance;
+    const cy = cyCompat;
 
     const animate = (): void => {
       const beatIntensity = getBeatIntensity();
@@ -423,7 +423,7 @@ function useNightcallNodeGlow(
       cy.batch(() => restoreNodeStyles(cy, styles));
       styles.clear();
     };
-  }, [isActive, cyInstance, getBeatIntensity, getCurrentChord]);
+  }, [isActive, cyCompat, getBeatIntensity, getCurrentChord]);
 }
 
 /**
@@ -434,13 +434,13 @@ export const NightcallMode: React.FC<NightcallModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance
+  cyCompat
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useNightcallAudio();
 
   // Apply synthwave glow to nodes
-  useNightcallNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentChord);
+  useNightcallNodeGlow(cyCompat, isActive, audio.getBeatIntensity, audio.getCurrentChord);
 
   // Start audio when activated
   useEffect(() => {

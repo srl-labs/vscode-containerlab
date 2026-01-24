@@ -2,15 +2,15 @@
  * FreeShapeNode - Custom React Flow node for free shape annotations
  * Supports rectangle, circle, and line shapes with resize and rotation handles
  */
-import React, { memo, useCallback } from 'react';
-import { type NodeProps, NodeResizer, type ResizeParams } from '@xyflow/react';
+import React, { memo, useCallback } from "react";
+import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
-import type { FreeShapeNodeData } from '../types';
-import { SELECTION_COLOR } from '../types';
-import { useTopoViewer } from '../../../context/TopoViewerContext';
-import { useAnnotationHandlers } from '../../../context/AnnotationHandlersContext';
+import type { FreeShapeNodeData } from "../types";
+import { SELECTION_COLOR } from "../types";
+import { useTopoViewer } from "../../../context/TopoViewerContext";
+import { useAnnotationHandlers } from "../../../context/AnnotationHandlersContext";
 
-import { RotationHandle, LineEndHandle, LineStartHandle } from './AnnotationHandles';
+import { RotationHandle, LineEndHandle, LineStartHandle } from "./AnnotationHandles";
 
 // ============================================================================
 // Constants
@@ -26,15 +26,17 @@ const DEFAULT_LINE_LENGTH = 150;
 
 /** Convert border style to SVG dash array */
 function getStrokeDasharray(borderStyle: string): string | undefined {
-  if (borderStyle === 'dashed') return '8,4';
-  if (borderStyle === 'dotted') return '2,2';
+  if (borderStyle === "dashed") return "8,4";
+  if (borderStyle === "dotted") return "2,2";
   return undefined;
 }
 
 /** Convert fill color with opacity */
 function getBackgroundColor(fillColor: string, fillOpacity: number): string {
-  if (fillColor.startsWith('rgba')) return fillColor;
-  const opacityHex = Math.round(fillOpacity * 255).toString(16).padStart(2, '0');
+  if (fillColor.startsWith("rgba")) return fillColor;
+  const opacityHex = Math.round(fillOpacity * 255)
+    .toString(16)
+    .padStart(2, "0");
   return `${fillColor}${opacityHex}`;
 }
 
@@ -64,15 +66,16 @@ interface RectangleProps {
 }
 
 function RectangleShape(props: RectangleProps): React.ReactElement {
-  const { fillColor, fillOpacity, borderWidth, borderStyle, borderColor, cornerRadius, selected } = props;
+  const { fillColor, fillOpacity, borderWidth, borderStyle, borderColor, cornerRadius, selected } =
+    props;
   const style: React.CSSProperties = {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     backgroundColor: getBackgroundColor(fillColor, fillOpacity),
     border: getShapeBorder(selected, borderWidth, borderStyle, borderColor),
     borderRadius: cornerRadius,
-    boxShadow: selected ? `0 0 0 3px ${SELECTION_COLOR}33` : 'none',
-    transition: 'border 0.15s ease, box-shadow 0.15s ease'
+    boxShadow: selected ? `0 0 0 3px ${SELECTION_COLOR}33` : "none",
+    transition: "border 0.15s ease, box-shadow 0.15s ease"
   };
   return <div style={style} className="free-shape-rectangle" />;
 }
@@ -89,13 +92,13 @@ interface CircleProps {
 function CircleShape(props: CircleProps): React.ReactElement {
   const { fillColor, fillOpacity, borderWidth, borderStyle, borderColor, selected } = props;
   const style: React.CSSProperties = {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     backgroundColor: getBackgroundColor(fillColor, fillOpacity),
     border: getShapeBorder(selected, borderWidth, borderStyle, borderColor),
-    borderRadius: '50%',
-    boxShadow: selected ? `0 0 0 3px ${SELECTION_COLOR}33` : 'none',
-    transition: 'border 0.15s ease, box-shadow 0.15s ease'
+    borderRadius: "50%",
+    boxShadow: selected ? `0 0 0 3px ${SELECTION_COLOR}33` : "none",
+    transition: "border 0.15s ease, box-shadow 0.15s ease"
   };
   return <div style={style} className="free-shape-circle" />;
 }
@@ -153,9 +156,18 @@ interface LineShapeProps {
 
 function LineShape(props: LineShapeProps): React.ReactElement {
   const {
-    startX, startY, relativeEndX, relativeEndY,
-    borderColor, borderWidth, borderStyle,
-    lineStartArrow, lineEndArrow, lineArrowSize, selected, nodeId
+    startX,
+    startY,
+    relativeEndX,
+    relativeEndY,
+    borderColor,
+    borderWidth,
+    borderStyle,
+    lineStartArrow,
+    lineEndArrow,
+    lineArrowSize,
+    selected,
+    nodeId
   } = props;
 
   // Calculate line endpoints within SVG
@@ -173,16 +185,20 @@ function LineShape(props: LineShapeProps): React.ReactElement {
       width="100%"
       height="100%"
       style={{
-        position: 'absolute',
+        position: "absolute",
         left: 0,
         top: 0,
-        overflow: 'visible'
+        overflow: "visible"
       }}
       className="free-shape-line"
     >
       <defs>
-        {lineStartArrow && <ArrowMarker id={startMarkerId} size={lineArrowSize} reversed color={borderColor} />}
-        {lineEndArrow && <ArrowMarker id={endMarkerId} size={lineArrowSize} reversed={false} color={borderColor} />}
+        {lineStartArrow && (
+          <ArrowMarker id={startMarkerId} size={lineArrowSize} reversed color={borderColor} />
+        )}
+        {lineEndArrow && (
+          <ArrowMarker id={endMarkerId} size={lineArrowSize} reversed={false} color={borderColor} />
+        )}
       </defs>
       <line
         x1={x1}
@@ -194,7 +210,7 @@ function LineShape(props: LineShapeProps): React.ReactElement {
         strokeDasharray={getStrokeDasharray(borderStyle)}
         markerStart={lineStartArrow ? `url(#${startMarkerId})` : undefined}
         markerEnd={lineEndArrow ? `url(#${endMarkerId})` : undefined}
-        style={{ pointerEvents: 'stroke', cursor: 'move' }}
+        style={{ pointerEvents: "stroke", cursor: "move" }}
       />
     </svg>
   );
@@ -207,26 +223,26 @@ function LineShape(props: LineShapeProps): React.ReactElement {
 /** Build wrapper style for rectangle/circle */
 function buildBoxWrapperStyle(rotation: number): React.CSSProperties {
   return {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
+    position: "relative",
+    width: "100%",
+    height: "100%",
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
-    cursor: 'move',
+    cursor: "move",
     transform: rotation ? `rotate(${rotation}deg)` : undefined,
-    transformOrigin: 'center center'
+    transformOrigin: "center center"
   };
 }
 
 /** Build container style for line - uses 100% to fill the bounding box */
 function buildLineContainerStyle(rotation: number): React.CSSProperties {
   return {
-    position: 'relative',
-    cursor: 'move',
-    width: '100%',
-    height: '100%',
+    position: "relative",
+    cursor: "move",
+    width: "100%",
+    height: "100%",
     transform: rotation ? `rotate(${rotation}deg)` : undefined,
-    transformOrigin: 'center center'
+    transformOrigin: "center center"
   };
 }
 
@@ -273,16 +289,22 @@ function getLineStyleProps(data: FreeShapeNodeData): {
   lineArrowSize: number;
 } {
   return {
-    borderColor: data.borderColor ?? '#666',
+    borderColor: data.borderColor ?? "#666",
     borderWidth: data.borderWidth ?? 2,
-    borderStyle: data.borderStyle ?? 'solid',
+    borderStyle: data.borderStyle ?? "solid",
     lineStartArrow: data.lineStartArrow ?? false,
     lineEndArrow: data.lineEndArrow ?? true,
     lineArrowSize: data.lineArrowSize ?? 10
   };
 }
 
-function LineNode({ id, data, isSelected, showHandles, annotationHandlers }: LineNodeProps): React.ReactElement {
+function LineNode({
+  id,
+  data,
+  isSelected,
+  showHandles,
+  annotationHandlers
+}: LineNodeProps): React.ReactElement {
   const { relativeEnd, startPosition, endPosition, lineStartInNode } = getLinePositions(data);
   const styleProps = getLineStyleProps(data);
   const rotation = data.rotation ?? 0;
@@ -342,16 +364,23 @@ interface BoxNodeProps {
   readonly onResizeEnd: (_event: unknown, params: ResizeParams) => void;
 }
 
-function BoxNode({ id, data, isSelected, showHandles, annotationHandlers, onResizeEnd }: BoxNodeProps): React.ReactElement {
+function BoxNode({
+  id,
+  data,
+  isSelected,
+  showHandles,
+  annotationHandlers,
+  onResizeEnd
+}: BoxNodeProps): React.ReactElement {
   const rotation = data.rotation ?? 0;
   const wrapperStyle = buildBoxWrapperStyle(rotation);
 
   const shapeProps = {
-    fillColor: data.fillColor ?? 'rgba(100, 100, 100, 0.2)',
+    fillColor: data.fillColor ?? "rgba(100, 100, 100, 0.2)",
     fillOpacity: data.fillOpacity ?? 0.2,
     borderWidth: data.borderWidth ?? 2,
-    borderStyle: data.borderStyle ?? 'solid',
-    borderColor: data.borderColor ?? '#666',
+    borderStyle: data.borderStyle ?? "solid",
+    borderColor: data.borderColor ?? "#666",
     selected: isSelected
   };
 
@@ -364,7 +393,7 @@ function BoxNode({ id, data, isSelected, showHandles, annotationHandlers, onResi
         lineClassName="nodrag"
         handleClassName="nodrag"
         color={SELECTION_COLOR}
-        keepAspectRatio={data.shapeType === 'circle'}
+        keepAspectRatio={data.shapeType === "circle"}
         onResizeEnd={onResizeEnd}
       />
       {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (
@@ -374,7 +403,7 @@ function BoxNode({ id, data, isSelected, showHandles, annotationHandlers, onResi
           onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
         />
       )}
-      {data.shapeType === 'rectangle' ? (
+      {data.shapeType === "rectangle" ? (
         <RectangleShape {...shapeProps} cornerRadius={data.cornerRadius ?? 0} />
       ) : (
         <CircleShape {...shapeProps} />
@@ -391,19 +420,39 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
   const nodeData = data as FreeShapeNodeData;
   const { state } = useTopoViewer();
   const annotationHandlers = useAnnotationHandlers();
-  const isEditMode = state.mode === 'edit' && !state.isLocked;
+  const isEditMode = state.mode === "edit" && !state.isLocked;
   const isSelected = selected ?? false;
   const showHandles = isSelected && isEditMode;
 
-  const handleResizeEnd = useCallback((_event: unknown, params: ResizeParams) => {
-    annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
-  }, [id, annotationHandlers]);
+  const handleResizeEnd = useCallback(
+    (_event: unknown, params: ResizeParams) => {
+      annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
+    },
+    [id, annotationHandlers]
+  );
 
-  if (nodeData.shapeType === 'line') {
-    return <LineNode id={id} data={nodeData} isSelected={isSelected} showHandles={showHandles} annotationHandlers={annotationHandlers} />;
+  if (nodeData.shapeType === "line") {
+    return (
+      <LineNode
+        id={id}
+        data={nodeData}
+        isSelected={isSelected}
+        showHandles={showHandles}
+        annotationHandlers={annotationHandlers}
+      />
+    );
   }
 
-  return <BoxNode id={id} data={nodeData} isSelected={isSelected} showHandles={showHandles} annotationHandlers={annotationHandlers} onResizeEnd={handleResizeEnd} />;
+  return (
+    <BoxNode
+      id={id}
+      data={nodeData}
+      isSelected={isSelected}
+      showHandles={showHandles}
+      annotationHandlers={annotationHandlers}
+      onResizeEnd={handleResizeEnd}
+    />
+  );
 };
 
 export const FreeShapeNode = memo(FreeShapeNodeComponent);

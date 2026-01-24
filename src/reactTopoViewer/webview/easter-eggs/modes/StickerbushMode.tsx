@@ -6,8 +6,8 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import { useStickerbushAudio } from "../audio";
 import {
   BTN_VISIBLE,
@@ -25,7 +25,7 @@ interface StickerbushModeProps {
   onClose?: () => void;
   onSwitchMode?: () => void;
   modeName?: string;
-  cyInstance?: CyCore | null;
+  cyCompat?: CyCompatCore | null;
 }
 
 /** Forest/bramble color palette */
@@ -364,7 +364,7 @@ function drawFireflies(
  * Hook to apply forest glow to nodes
  */
 function useStickerbushNodeGlow(
-  cyInstance: CyCore | null | undefined,
+  cyCompat: CyCompatCore | null | undefined,
   isActive: boolean,
   getBeatIntensity: () => number,
   getCurrentSection: () => number
@@ -373,23 +373,23 @@ function useStickerbushNodeGlow(
   const animationRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
+    if (!isActive || !cyCompat) return undefined;
 
     // Capture ref value at effect run time for cleanup
     const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
+    const nodes = cyCompat.nodes();
 
-    // Store original styles
+    // Store original styles (for compatibility)
     nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
+        "background-color": "",
+        "border-color": "",
+        "border-width": ""
       });
     });
 
-    const cy = cyInstance;
+    const cy = cyCompat;
 
     const animate = (): void => {
       const beatIntensity = getBeatIntensity();
@@ -409,7 +409,7 @@ function useStickerbushNodeGlow(
       cy.batch(() => restoreNodeStyles(cy, styles));
       styles.clear();
     };
-  }, [isActive, cyInstance, getBeatIntensity, getCurrentSection]);
+  }, [isActive, cyCompat, getBeatIntensity, getCurrentSection]);
 }
 
 /**
@@ -420,13 +420,13 @@ export const StickerbushMode: React.FC<StickerbushModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance
+  cyCompat
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useStickerbushAudio();
 
   // Apply forest glow to nodes
-  useStickerbushNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentSection);
+  useStickerbushNodeGlow(cyCompat, isActive, audio.getBeatIntensity, audio.getCurrentSection);
 
   // Start audio when activated
   useEffect(() => {

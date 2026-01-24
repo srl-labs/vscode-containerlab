@@ -3,9 +3,9 @@
  * Manages context menu state for nodes and edges using React-based menu
  */
 import React, { useEffect, useCallback, useState } from "react";
-import type { Core, EventObject, NodeSingular, EdgeSingular } from "cytoscape";
 
 import { log } from "../../utils/logger";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import type { ContextMenuItem } from "../../components/context-menu/ContextMenu";
 import { WiresharkIcon } from "../../components/context-menu/WiresharkIcon";
 
@@ -338,21 +338,16 @@ export interface UseContextMenuReturn {
   closeMenu: () => void;
 }
 
-/** Extract position from event */
-function getEventPosition(evt: EventObject): { x: number; y: number } {
-  return { x: evt.originalEvent?.clientX ?? 0, y: evt.originalEvent?.clientY ?? 0 };
-}
-
 /** Hook for managing menu state */
-function useMenuState(cy: Core | null) {
+function useMenuState(cyCompat: CyCompatCore | null) {
   const [menuState, setMenuState] = useState<ContextMenuState>(INITIAL_STATE);
   const [nodeData, setNodeData] = useState<Record<string, unknown>>({});
   const [edgeData, setEdgeData] = useState<Record<string, unknown>>({});
 
   const closeMenu = useCallback(() => {
     setMenuState(INITIAL_STATE);
-    if (cy) cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
-  }, [cy]);
+    if (cyCompat) cyCompat.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
+  }, [cyCompat]);
 
   const openNodeMenu = useCallback(
     (nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
@@ -375,7 +370,7 @@ function useMenuState(cy: Core | null) {
 
 /** Hook for setting up context menu events */
 function useMenuEvents(
-  cy: Core | null,
+  cyCompat: CyCompatCore | null,
   options: ContextMenuOptions,
   openNodeMenu: (
     nodeId: string,
@@ -389,47 +384,21 @@ function useMenuEvents(
   ) => void
 ) {
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
 
     log.info(
       `[ContextMenu] Setting up context menu listeners (mode: ${options.mode}, locked: ${options.isLocked})`
     );
 
-    const handleNodeContextMenu = (evt: EventObject) => {
-      const node = evt.target as NodeSingular;
-      const role = node.data("topoViewerRole") as string | undefined;
-      if (role === "freeText" || role === "freeShape") return;
-
-      // Network nodes have no context menu in view mode
-      if (role === "cloud" && options.mode === "view") {
-        return;
-      }
-
-      evt.originalEvent?.preventDefault();
-      openNodeMenu(node.id(), node.data() as Record<string, unknown>, getEventPosition(evt));
-      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
-      log.info(`[ContextMenu] Node context menu opened for: ${node.id()}`);
-    };
-
-    const handleEdgeContextMenu = (evt: EventObject) => {
-      evt.originalEvent?.preventDefault();
-      const edge = evt.target as EdgeSingular;
-      const edgeId = edge.id();
-      openEdgeMenu(edgeId, edge.data() as Record<string, unknown>, getEventPosition(evt));
-      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, true);
-      log.info(`[ContextMenu] Edge context menu opened for: ${edgeId}`);
-    };
-
-    cy.on("cxttap", "node", handleNodeContextMenu);
-    cy.on("cxttap", "edge", handleEdgeContextMenu);
+    // Context menu events are handled via ReactFlow's onNodeContextMenu and onEdgeContextMenu
+    // This hook now only manages the scratch state for compatibility
+    // The actual event handlers are set up in the ReactFlowCanvas component
 
     return () => {
-      cy.off("cxttap", "node", handleNodeContextMenu);
-      cy.off("cxttap", "edge", handleEdgeContextMenu);
-      cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
+      cyCompat.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
       log.info("[ContextMenu] Context menu listeners cleaned up");
     };
-  }, [cy, options.mode, options.isLocked, openNodeMenu, openEdgeMenu]);
+  }, [cyCompat, options.mode, options.isLocked, openNodeMenu, openEdgeMenu]);
 }
 
 /** Build menu items based on state */
@@ -460,9 +429,13 @@ function buildMenuItems(
  * Hook to manage context menus for Cytoscape elements
  * Returns state and handlers for rendering a React-based context menu
  */
-export function useContextMenu(cy: Core | null, options: ContextMenuOptions): UseContextMenuReturn {
-  const { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu } = useMenuState(cy);
-  useMenuEvents(cy, options, openNodeMenu, openEdgeMenu);
+export function useContextMenu(
+  cyCompat: CyCompatCore | null,
+  options: ContextMenuOptions
+): UseContextMenuReturn {
+  const { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu } =
+    useMenuState(cyCompat);
+  useMenuEvents(cyCompat, options, openNodeMenu, openEdgeMenu);
   const menuItems = buildMenuItems(menuState, nodeData, edgeData, options);
 
   return { menuState, menuItems, closeMenu };

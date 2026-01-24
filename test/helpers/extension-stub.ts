@@ -1,1 +1,1 @@
-export const execCmdMapping = { nokia_srlinux: 'sr_cli' };
+export const execCmdMapping = { nokia_srlinux: "sr_cli" };

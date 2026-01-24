@@ -7,10 +7,7 @@
  * per specified time period. Uses requestAnimationFrame for smooth updates.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function throttle<T extends (...args: any[]) => void>(
-  func: T,
-  limit: number
-): T {
+export function throttle<T extends (...args: any[]) => void>(func: T, limit: number): T {
   let inThrottle = false;
   let lastArgs: Parameters<T> | null = null;
 

@@ -3,10 +3,10 @@
  */
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import { handleDragStart, addMouseMoveUpListeners } from "../shared/dragHelpers";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import type { RenderedPosition } from "./freeText";
 import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from "./freeShape";
@@ -16,7 +16,7 @@ import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from "./freeShape";
 // ============================================================================
 
 interface UseRotationDragOptions {
-  cy: CyCore;
+  cyCompat: CyCompatCore | null;
   renderedPos: RenderedPosition;
   currentRotation: number;
   isLocked: boolean;
@@ -51,8 +51,15 @@ function normalizeRotation(rotation: number): number {
 }
 
 export function useRotationDrag(options: UseRotationDragOptions): UseRotationDragReturn {
-  const { cy, renderedPos, currentRotation, isLocked, onRotationChange, onDragStart, onDragEnd } =
-    options;
+  const {
+    cyCompat,
+    renderedPos,
+    currentRotation,
+    isLocked,
+    onRotationChange,
+    onDragStart,
+    onDragEnd
+  } = options;
 
   const [isRotating, setIsRotating] = useState(false);
   const dragStartRef = useRef<RotationDragStart | null>(null);
@@ -96,9 +103,10 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
   const handleRotationMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
+      if (!cyCompat) return;
 
       // Get the center of the annotation in screen coordinates
-      const container = cy.container();
+      const container = cyCompat.container();
       if (!container) return;
       const rect = container.getBoundingClientRect();
       const centerX = rect.left + renderedPos.x;
@@ -116,7 +124,7 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
         currentRotation
       };
     },
-    [cy, isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]
+    [cyCompat, isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]
   );
 
   return { isRotating, handleRotationMouseDown };
@@ -295,7 +303,7 @@ export function useResizeDrag(options: UseResizeDragOptions): UseResizeDragRetur
 // ============================================================================
 
 interface UseLineResizeDragOptions {
-  cy: CyCore;
+  cyCompat: CyCompatCore | null;
   annotation: FreeShapeAnnotation;
   isLocked: boolean;
   onEndPositionChange: (pos: { x: number; y: number }) => void;
@@ -308,7 +316,7 @@ interface UseLineResizeDragOptions {
  * Hook for handling line endpoint resize drag operations
  */
 export function useLineResizeDrag(options: UseLineResizeDragOptions) {
-  const { cy, annotation, isLocked, onEndPositionChange, onDragStart, onDragEnd } = options;
+  const { cyCompat, annotation, isLocked, onEndPositionChange, onDragStart, onDragEnd } = options;
 
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef<{
@@ -321,11 +329,11 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
   const beforeStateRef = useRef<FreeShapeAnnotation | null>(null);
 
   useEffect(() => {
-    if (!isResizing) return;
+    if (!isResizing || !cyCompat) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return;
-      const zoom = cy.zoom();
+      const zoom = cyCompat.zoom();
       const dxClient = e.clientX - dragRef.current.startClientX;
       const dyClient = e.clientY - dragRef.current.startClientY;
 
@@ -366,7 +374,7 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
   }, [
     isResizing,
-    cy,
+    cyCompat,
     annotation.position.x,
     annotation.position.y,
     onEndPositionChange,

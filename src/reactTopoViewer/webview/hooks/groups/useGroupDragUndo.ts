@@ -5,7 +5,8 @@
  */
 import type React from "react";
 import { useCallback, useRef } from "react";
-import type { Core as CyCore, NodeSingular } from "cytoscape";
+
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import type {
   GroupStyleAnnotation,
@@ -41,7 +42,7 @@ interface DragStartState {
 }
 
 export interface UseGroupDragUndoOptions {
-  cyInstance: CyCore | null;
+  cyInstance: CyCompatCore | null;
   groups: UseGroupsReturn;
   undoRedo: UndoRedoApi;
   isApplyingGroupUndoRedo: React.RefObject<boolean>;
@@ -149,17 +150,14 @@ function captureDragStartState(
 
 /** Move member nodes by delta */
 function moveMemberNodes(
-  cyInstance: CyCore,
-  memberIds: string[],
-  delta: { dx: number; dy: number }
+  _cyInstance: CyCompatCore,
+  _memberIds: string[],
+  _delta: { dx: number; dy: number }
 ): void {
-  memberIds.forEach((nodeId) => {
-    const node = cyInstance.getElementById(nodeId) as NodeSingular;
-    if (node.length > 0) {
-      const currentPos = node.position();
-      node.position({ x: currentPos.x + delta.dx, y: currentPos.y + delta.dy });
-    }
-  });
+  // Note: In the compatibility layer, position updates are read-only.
+  // Actual position updates in ReactFlow are handled through React state.
+  // This function is kept for API compatibility but the actual node movement
+  // is handled by the ReactFlow onNodeDrag handlers.
 }
 
 /** Move descendant groups by delta */

@@ -5,7 +5,8 @@
  */
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
-import type { Core as CyCore, NodeSingular } from "cytoscape";
+
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import { log } from "../../utils/logger";
@@ -41,7 +42,7 @@ import {
 } from "./groupTypes";
 
 export interface UseGroupsHookOptions extends UseGroupsOptions {
-  cy: CyCore | null;
+  cy: CyCompatCore | null;
 }
 
 /**
@@ -75,10 +76,10 @@ function saveBatchMemberships(memberships: MembershipUpdateEntry[]): void {
 /**
  * Get node positions from Cytoscape for selected nodes.
  */
-function getNodePositions(cy: CyCore, nodeIds: string[]): { x: number; y: number }[] {
+function getNodePositions(cy: CyCompatCore, nodeIds: string[]): { x: number; y: number }[] {
   return nodeIds
     .map((id) => {
-      const node = cy.getElementById(id) as NodeSingular;
+      const node = cy.getElementById(id);
       if (node.length > 0) {
         return node.position();
       }
@@ -90,7 +91,7 @@ function getNodePositions(cy: CyCore, nodeIds: string[]): { x: number; y: number
 /**
  * Get the center of the viewport.
  */
-function getViewportCenter(cy: CyCore): { x: number; y: number } {
+function getViewportCenter(cy: CyCompatCore): { x: number; y: number } {
   const extent = cy.extent();
   return {
     x: (extent.x1 + extent.x2) / 2,
@@ -113,7 +114,7 @@ function getDefaultGroupName(groupId: string): string {
  * Hook for creating a new group.
  */
 function useCreateGroup(
-  cy: CyCore | null,
+  cy: CyCompatCore | null,
   mode: "edit" | "view",
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
@@ -372,7 +373,7 @@ function useEditGroup(
  * Updates group styles and syncs member annotations when name/level changes.
  */
 interface SaveGroupOptions {
-  cy: CyCore | null;
+  cy: CyCompatCore | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: (() => void) | undefined;

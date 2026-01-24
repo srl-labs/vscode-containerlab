@@ -2,11 +2,11 @@
  * Core Undo/Redo State Hook
  * Manages the undo/redo stack with a reducer pattern
  */
-import type React from 'react';
-import { useCallback, useMemo, useRef, useReducer } from 'react';
+import type React from "react";
+import { useCallback, useMemo, useRef, useReducer } from "react";
 
-import type { UndoRedoAction, NodePositionEntry } from '../state/useUndoRedo';
-import { log } from '../../utils/logger';
+import type { UndoRedoAction, NodePositionEntry } from "../state/useUndoRedo";
+import { log } from "../../utils/logger";
 
 const MAX_HISTORY_SIZE = 50;
 
@@ -17,27 +17,33 @@ interface UndoRedoState {
 }
 
 type UndoRedoReducerAction =
-  | { type: 'PUSH'; action: UndoRedoAction }
-  | { type: 'UNDO' }
-  | { type: 'REDO' }
-  | { type: 'CLEAR' };
+  | { type: "PUSH"; action: UndoRedoAction }
+  | { type: "UNDO" }
+  | { type: "REDO" }
+  | { type: "CLEAR" };
 
-function undoRedoReducer(state: UndoRedoState, reducerAction: UndoRedoReducerAction): UndoRedoState {
+function undoRedoReducer(
+  state: UndoRedoState,
+  reducerAction: UndoRedoReducerAction
+): UndoRedoState {
   switch (reducerAction.type) {
-    case 'PUSH': {
+    case "PUSH": {
       const newPast = [...state.past, reducerAction.action];
       if (newPast.length > MAX_HISTORY_SIZE) newPast.shift();
       return { past: newPast, future: [] };
     }
-    case 'UNDO': {
+    case "UNDO": {
       if (state.past.length === 0) return state;
-      return { past: state.past.slice(0, -1), future: [state.past[state.past.length - 1], ...state.future] };
+      return {
+        past: state.past.slice(0, -1),
+        future: [state.past[state.past.length - 1], ...state.future]
+      };
     }
-    case 'REDO': {
+    case "REDO": {
       if (state.future.length === 0) return state;
       return { past: [...state.past, state.future[0]], future: state.future.slice(1) };
     }
-    case 'CLEAR':
+    case "CLEAR":
       return { past: [], future: [] };
     default:
       return state;
@@ -83,10 +89,11 @@ function createUndoRedoCallbacks(
   const canRedo = isEnabled && state.future.length > 0;
 
   return {
-    canUndo, canRedo,
+    canUndo,
+    canRedo,
     pushAction: (action: UndoRedoAction) => {
       if (!isEnabled || isApplyingRef.current) return;
-      dispatch({ type: 'PUSH', action });
+      dispatch({ type: "PUSH", action });
       log.info(`[UndoRedo] Pushed action: ${action.type}`);
     },
     undo: () => {
@@ -94,18 +101,18 @@ function createUndoRedoCallbacks(
       const lastAction = state.past[state.past.length - 1];
       log.info(`[UndoRedo] Undoing action: ${lastAction.type}`);
       onApplyAction(lastAction, true);
-      dispatch({ type: 'UNDO' });
+      dispatch({ type: "UNDO" });
     },
     redo: () => {
       if (!canRedo) return;
       const nextAction = state.future[0];
       log.info(`[UndoRedo] Redoing action: ${nextAction.type}`);
       onApplyAction(nextAction, false);
-      dispatch({ type: 'REDO' });
+      dispatch({ type: "REDO" });
     },
     clearHistory: () => {
-      dispatch({ type: 'CLEAR' });
-      log.info('[UndoRedo] History cleared');
+      dispatch({ type: "CLEAR" });
+      log.info("[UndoRedo] History cleared");
     }
   };
 }
@@ -123,15 +130,22 @@ export function useUndoRedoState(options: UseUndoRedoStateOptions): UseUndoRedoS
     [isEnabled, state, onApplyAction]
   );
 
-  const recordMove = useCallback((before: NodePositionEntry[], after: NodePositionEntry[]) => {
-    if (!isEnabled || isApplyingRef.current) return;
-    if (hasPositionChanges(before, after)) callbacks.pushAction({ type: 'move', before, after });
-  }, [isEnabled, callbacks]);
+  const recordMove = useCallback(
+    (before: NodePositionEntry[], after: NodePositionEntry[]) => {
+      if (!isEnabled || isApplyingRef.current) return;
+      if (hasPositionChanges(before, after)) callbacks.pushAction({ type: "move", before, after });
+    },
+    [isEnabled, callbacks]
+  );
 
-  return useMemo(() => ({
-    ...callbacks,
-    undoCount: state.past.length,
-    redoCount: state.future.length,
-    recordMove, isApplyingRef
-  }), [callbacks, state.past.length, state.future.length, recordMove]);
+  return useMemo(
+    () => ({
+      ...callbacks,
+      undoCount: state.past.length,
+      redoCount: state.future.length,
+      recordMove,
+      isApplyingRef
+    }),
+    [callbacks, state.past.length, state.future.length, recordMove]
+  );
 }

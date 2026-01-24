@@ -3,9 +3,9 @@
  */
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import { log } from "../../utils/logger";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import { renderedToModel } from "./freeText";
 
@@ -73,26 +73,26 @@ export function useAnnotationClickHandlers(
 
 /**
  * Hook for canvas click handler in add-annotation mode
- * @param cy - Cytoscape core instance
+ * @param cyCompat - Cytoscape-compatible core instance
  * @param onCanvasClick - Handler for canvas click with model coordinates
  * @param layerName - Name of the layer for logging
  */
 export function useLayerClickHandler(
-  cy: CyCore | null,
+  cyCompat: CyCompatCore | null,
   onCanvasClick: (pos: { x: number; y: number }) => void,
   layerName: string = "Layer"
 ) {
   return useCallback(
     (e: React.MouseEvent) => {
-      if (!cy) return;
-      const container = cy.container();
+      if (!cyCompat) return;
+      const container = cyCompat.container();
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const modelPos = renderedToModel(cy, e.clientX - rect.left, e.clientY - rect.top);
+      const modelPos = renderedToModel(cyCompat, e.clientX - rect.left, e.clientY - rect.top);
       onCanvasClick(modelPos);
       log.info(`[${layerName}] Canvas clicked at model (${modelPos.x}, ${modelPos.y})`);
     },
-    [cy, onCanvasClick, layerName]
+    [cyCompat, onCanvasClick, layerName]
   );
 }
 
@@ -121,14 +121,16 @@ function isAnnotationInBox<T extends AnnotationWithPosition>(
 
 /**
  * Hook for box selection of annotations
- * @param cy - Cytoscape core instance
+ * Note: Box selection events are not yet implemented in the compatibility layer.
+ * This hook is a stub that will need to be implemented when ReactFlow box selection is added.
+ * @param cyCompat - Cytoscape-compatible core instance
  * @param annotations - Array of annotations
  * @param onBoxSelect - Handler called with selected annotation IDs
  * @param getCenter - Optional function to get the center position for selection calculation
  * @param layerName - Name of the layer for logging
  */
 export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
-  cy: CyCore | null,
+  cyCompat: CyCompatCore | null,
   annotations: T[],
   onBoxSelect?: (ids: string[]) => void,
   getCenter?: (a: T) => { x: number; y: number },
@@ -137,7 +139,12 @@ export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
   const boxStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    if (!cy || !onBoxSelect) return;
+    if (!cyCompat || !onBoxSelect) return;
+
+    // Note: Box selection events (boxstart/boxend) are Cytoscape-specific
+    // and not yet implemented in the CyCompatCore interface.
+    // The event handlers are registered but won't fire until ReactFlow
+    // box selection support is added to the compatibility layer.
 
     const handleBoxStart = (event: { position: { x: number; y: number } }) => {
       boxStartRef.current = { x: event.position.x, y: event.position.y };
@@ -162,11 +169,12 @@ export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
       boxStartRef.current = null;
     };
 
-    cy.on("boxstart", handleBoxStart);
-    cy.on("boxend", handleBoxEnd);
+    // Register event handlers (will work when compatibility layer adds support)
+    cyCompat.on("boxstart", handleBoxStart as unknown as () => void);
+    cyCompat.on("boxend", handleBoxEnd as unknown as () => void);
     return () => {
-      cy.off("boxstart", handleBoxStart);
-      cy.off("boxend", handleBoxEnd);
+      cyCompat.off("boxstart", handleBoxStart as unknown as () => void);
+      cyCompat.off("boxend", handleBoxEnd as unknown as () => void);
     };
-  }, [cy, annotations, onBoxSelect, getCenter, layerName]);
+  }, [cyCompat, annotations, onBoxSelect, getCenter, layerName]);
 }

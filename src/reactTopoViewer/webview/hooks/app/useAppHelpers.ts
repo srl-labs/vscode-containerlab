@@ -2,8 +2,8 @@
  * App helper hooks - extracted from App.tsx to reduce file size
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import type {
   CustomNodeTemplate,
   CustomTemplateEditorData,
@@ -13,13 +13,6 @@ import {
   createNewTemplateEditorData,
   convertTemplateToEditorData
 } from "../../../shared/utilities/customNodeConversions";
-import {
-  ensureCytoscapeLayersRegistered,
-  getCytoscapeLayers,
-  configureLayerNode,
-  type IHTMLLayer
-} from "../shared/cytoscapeLayers";
-import { log } from "../../utils/logger";
 import {
   sendDeleteCustomNode,
   sendSetDefaultCustomNode,
@@ -120,46 +113,17 @@ export interface UseShapeLayerReturn {
 }
 
 /**
- * Hook to create and manage a Cytoscape layer for shape annotations.
- * Uses cytoscape-layers to render shapes BELOW the node layer but above the grid.
+ * Hook to create and manage a layer for shape annotations.
+ * NOTE: This is a stub during the ReactFlow migration.
+ * Shape annotations are now rendered as React components in the ReactFlow canvas.
  */
-export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
-  const layerRef = React.useRef<IHTMLLayer | null>(null);
-  const [shapeLayerNode, setShapeLayerNode] = React.useState<HTMLElement | null>(null);
+export function useShapeLayer(_cyCompat: CyCompatCore | null): UseShapeLayerReturn {
+  const [shapeLayerNode] = React.useState<HTMLElement | null>(null);
 
-  React.useEffect(() => {
-    if (!cy) return;
-
-    ensureCytoscapeLayersRegistered();
-
-    try {
-      const layers = getCytoscapeLayers(cy);
-      log.info("[ShapeLayer] Creating shape layer below nodes");
-
-      // Create layer BELOW the node layer
-      const shapeLayer = layers.nodeLayer.insertBefore("html");
-      layerRef.current = shapeLayer;
-
-      // Configure the layer node - pointer events NONE on container so clicks pass through
-      // to layers below (like GroupLayer). Individual shape items set pointerEvents: 'auto'.
-      configureLayerNode(shapeLayer.node, "none", "shape-layer-container");
-
-      log.info("[ShapeLayer] Shape layer created");
-      setShapeLayerNode(shapeLayer.node);
-    } catch (err) {
-      log.error(`[ShapeLayer] Failed to create layer: ${err}`);
-    }
-
-    return () => {
-      layerRef.current?.remove();
-      layerRef.current = null;
-      setShapeLayerNode(null);
-    };
-  }, [cy]);
-
-  const updateLayer = () => {
-    layerRef.current?.update();
-  };
+  // Stub implementation - shapes are rendered via React components in ReactFlow
+  const updateLayer = React.useCallback(() => {
+    // No-op during ReactFlow migration
+  }, []);
 
   return { shapeLayerNode, updateLayer };
 }
@@ -172,44 +136,14 @@ export interface UseTextLayerReturn {
 }
 
 /**
- * Hook to create and manage a Cytoscape layer for text annotations.
- * Uses cytoscape-layers to render text ABOVE nodes for visibility.
- * The layer automatically applies Cytoscape's pan/zoom transform.
+ * Hook to create and manage a layer for text annotations.
+ * NOTE: This is a stub during the ReactFlow migration.
+ * Text annotations are now rendered as React components in the ReactFlow canvas.
  */
-export function useTextLayer(cy: CyCore | null): UseTextLayerReturn {
-  const layerRef = React.useRef<IHTMLLayer | null>(null);
-  const [textLayerNode, setTextLayerNode] = React.useState<HTMLElement | null>(null);
+export function useTextLayer(_cyCompat: CyCompatCore | null): UseTextLayerReturn {
+  const [textLayerNode] = React.useState<HTMLElement | null>(null);
 
-  React.useEffect(() => {
-    if (!cy) return;
-
-    ensureCytoscapeLayersRegistered();
-
-    try {
-      const layers = getCytoscapeLayers(cy);
-      log.info("[TextLayer] Creating text layer above nodes");
-
-      // Create layer ABOVE all other layers (on top)
-      const textLayer = layers.append("html");
-      layerRef.current = textLayer;
-
-      // Configure the layer node - pointer events NONE on container so clicks pass through
-      // to layers below (like GroupLayer). Individual text items set pointerEvents: 'auto'.
-      configureLayerNode(textLayer.node, "none", "text-layer-container");
-
-      log.info("[TextLayer] Text layer created");
-      setTextLayerNode(textLayer.node);
-    } catch (err) {
-      log.error(`[TextLayer] Failed to create layer: ${err}`);
-    }
-
-    return () => {
-      layerRef.current?.remove();
-      layerRef.current = null;
-      setTextLayerNode(null);
-    };
-  }, [cy]);
-
+  // Stub implementation - text annotations are rendered via React components in ReactFlow
   return { textLayerNode };
 }
 
@@ -220,7 +154,7 @@ export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical
  * E2E testing exposure configuration
  */
 export interface E2ETestingConfig {
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
   isLocked: boolean;
   mode: "edit" | "view";
   toggleLock: () => void;
@@ -267,7 +201,7 @@ export interface E2ETestingConfig {
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
   const {
-    cyInstance,
+    cyCompat,
     isLocked,
     mode,
     toggleLock,
@@ -286,16 +220,20 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
   } = config;
 
   // Core E2E exposure (cy, isLocked, mode, setLocked)
+  // Note: E2E tests expect the full Cytoscape Core API. During ReactFlow migration,
+  // the CyCompatCore is cast to the expected type for backwards compatibility.
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.__DEV__) {
-      if (cyInstance) window.__DEV__.cy = cyInstance;
+      // Cast to 'unknown' first then to the expected type to satisfy TypeScript
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (cyCompat) window.__DEV__.cy = cyCompat as any;
       window.__DEV__.isLocked = () => isLocked;
       window.__DEV__.mode = () => mode;
       window.__DEV__.setLocked = (locked: boolean) => {
         if (isLocked !== locked) toggleLock();
       };
     }
-  }, [cyInstance, isLocked, mode, toggleLock]);
+  }, [cyCompat, isLocked, mode, toggleLock]);
 
   // Undo/redo E2E exposure
   React.useEffect(() => {

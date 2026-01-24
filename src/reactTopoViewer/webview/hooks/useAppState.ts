@@ -4,12 +4,94 @@
  */
 import type React from "react";
 import { useRef, useCallback, useEffect, useState } from "react";
-import type { Core, EventObject, NodeSingular } from "cytoscape";
 
-import type { CytoscapeCanvasRef } from "../components/canvas/CytoscapeCanvas";
 import { log } from "../utils/logger";
+
+/**
+ * Canvas ref interface for layout controls and selection.
+ * Compatible with both CytoscapeCanvas and ReactFlowCanvas refs.
+ */
+export interface CanvasRef {
+  getCy(): CyLike | null;
+  runLayout(name: string): void;
+}
+
+/**
+ * Minimal element interface that works with both Cytoscape and the compatibility layer.
+ * This is a subset of what both CyCompatElement and Cytoscape's NodeSingular/EdgeSingular provide.
+ */
+export interface CyLikeElement {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data(key?: string): any;
+  position(): { x: number; y: number };
+  isNode(): boolean;
+  isEdge(): boolean;
+  empty(): boolean;
+  nonempty(): boolean;
+  id(): string;
+  length: number;
+}
+
+/**
+ * Minimal collection interface that works with both Cytoscape and the compatibility layer.
+ * Note: We use less restrictive types to allow compatibility with Cytoscape's collection types.
+ */
+export interface CyLikeCollection {
+  length: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  forEach(fn: (ele: any) => void): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filter(fn: (ele: any) => boolean): any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  map<T>(fn: (ele: any) => T): T[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  first(): any;
+  empty(): boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  some(fn: (ele: any) => boolean): boolean;
+}
+
+/**
+ * Minimal cytoscape-like interface that both Core and CyCompatCore satisfy.
+ * This allows hooks to work with either the real Cytoscape or the compatibility layer.
+ * Uses less restrictive types to enable compatibility with Cytoscape's Core type.
+ */
+export interface CyLike {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getElementById(id: string): any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  edges(selector?: string): any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nodes(selector?: string): any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  collection(): any;
+  pan(): { x: number; y: number };
+  zoom(): number;
+  container(): HTMLElement | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(events: string, selector: any, handler?: any): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  off(events: string, selector: any, handler?: any): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  one(events: string, handler: any): void;
+  scratch(key: string, value?: unknown): unknown;
+  fit(eles?: unknown, padding?: number): void;
+  autoungrabify(val?: boolean): boolean;
+  boxSelectionEnabled(val?: boolean): boolean;
+  batch(fn: () => void): void;
+  extent(): { x1: number; y1: number; x2: number; y2: number; w: number; h: number };
+}
 import { deleteNode, deleteLink } from "../services";
-import type { CyEdgeData } from "../utils/cytoscapeHelpers";
+
+/** Edge data interface for link operations */
+interface EdgeData {
+  id: string;
+  source: string;
+  target: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  [key: string]: unknown;
+}
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
@@ -26,12 +108,11 @@ interface GridOverlayHandleType {
 }
 
 /**
- * Extend Cytoscape Core interface to include custom properties
+ * Augmented CyLike with grid overlay property
+ * Note: This is a type extension for the compatibility layer
  */
-declare module "cytoscape" {
-  interface Core {
-    __reactGridOverlay?: GridOverlayHandleType;
-  }
+interface CyLikeWithGrid extends CyLike {
+  __reactGridOverlay?: GridOverlayHandleType;
 }
 
 export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose" | "geo";
@@ -62,7 +143,7 @@ export interface LinkData {
 /**
  * Extract node data from cytoscape instance
  */
-function getNodeDataFromCy(cy: Core | null, nodeId: string | null): NodeData | null {
+function getNodeDataFromCy(cy: CyLike | null, nodeId: string | null): NodeData | null {
   if (!cy || !nodeId) return null;
   const node = cy.getElementById(nodeId);
   return node.length > 0 ? (node.data() as NodeData) : null;
@@ -71,12 +152,12 @@ function getNodeDataFromCy(cy: Core | null, nodeId: string | null): NodeData | n
 /**
  * Extract link data from cytoscape instance
  */
-function getLinkDataFromCy(cy: Core | null, edgeId: string | null): LinkData | null {
+function getLinkDataFromCy(cy: CyLike | null, edgeId: string | null): LinkData | null {
   if (!cy || !edgeId) return null;
   const edge = cy.getElementById(edgeId);
   if (edge.length === 0) return null;
 
-  const data = edge.data() as CyEdgeData;
+  const data = edge.data() as EdgeData;
   return {
     ...data,
     id: data.id,
@@ -92,18 +173,18 @@ function getLinkDataFromCy(cy: Core | null, edgeId: string | null): LinkData | n
 }
 
 /**
- * Hook for managing cytoscape instance
+ * Hook for managing cytoscape-compatible instance
  */
 export function useCytoscapeInstance(): {
-  cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>;
-  cyInstance: Core | null;
-  onCyReady: (cy: Core) => void;
+  cytoscapeRef: React.RefObject<CanvasRef | null>;
+  cyInstance: CyLike | null;
+  onCyReady: (cy: CyLike) => void;
   onCyDestroyed: () => void;
 } {
-  const cytoscapeRef = useRef<CytoscapeCanvasRef>(null);
-  const [cyInstance, setCyInstance] = useState<Core | null>(null);
+  const cytoscapeRef = useRef<CanvasRef>(null);
+  const [cyInstance, setCyInstance] = useState<CyLike | null>(null);
 
-  const onCyReady = useCallback((cy: Core) => {
+  const onCyReady = useCallback((cy: CyLike) => {
     setCyInstance(cy);
   }, []);
 
@@ -119,7 +200,7 @@ export function useCytoscapeInstance(): {
  * @param refreshTrigger - Optional value that triggers re-fetch when changed (e.g., elements array for stats updates)
  */
 export function useSelectionData(
-  cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
+  cytoscapeRef: React.RefObject<CanvasRef | null>,
   selectedNode: string | null,
   selectedEdge: string | null,
   refreshTrigger?: unknown
@@ -149,7 +230,7 @@ export interface AnnotationData {
  * Hook for navbar actions
  */
 export function useNavbarActions(
-  cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
+  cytoscapeRef: React.RefObject<CanvasRef | null>,
   annotations?: AnnotationData
 ): {
   handleZoomToFit: () => void;
@@ -269,7 +350,7 @@ function resizeGridCanvas(
 }
 
 function drawGridOverlay(
-  cy: Core,
+  cy: CyLike,
   container: HTMLElement,
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
@@ -315,9 +396,10 @@ function createGridRedraw(drawFn: () => void): () => void {
   };
 }
 
-function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandle | null {
+function ensureGridOverlay(cy: CyLike | null, lineWidth: number): GridOverlayHandle | null {
   if (!cy) return null;
-  const existing = cy.__reactGridOverlay;
+  const cyWithGrid = cy as CyLikeWithGrid;
+  const existing = cyWithGrid.__reactGridOverlay;
   if (existing) {
     existing.setLineWidth(lineWidth);
     return existing;
@@ -357,7 +439,7 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
     if (canvas.parentElement) {
       canvas.parentElement.removeChild(canvas);
     }
-    cy.__reactGridOverlay = undefined;
+    cyWithGrid.__reactGridOverlay = undefined;
   };
 
   cy.one("destroy", cleanup);
@@ -368,14 +450,14 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
       requestRedraw();
     }
   };
-  cy.__reactGridOverlay = handle;
+  cyWithGrid.__reactGridOverlay = handle;
   return handle;
 }
 
 /**
  * Apply grid settings - sets up the custom grid overlay
  */
-function applyGridSettings(cy: Core | null, lineWidth: number): void {
+function applyGridSettings(cy: CyLike | null, lineWidth: number): void {
   if (!cy) return;
   ensureGridOverlay(cy, lineWidth);
 }
@@ -390,12 +472,28 @@ function snapToGrid(value: number): number {
 }
 
 /**
+ * Event object interface for compatibility layer
+ */
+interface CyCompatEventObject {
+  target: CyCompatNodeSingular;
+}
+
+/**
+ * Node singular interface for compatibility layer
+ */
+interface CyCompatNodeSingular {
+  data(key: string): unknown;
+  position(): { x: number; y: number };
+  position(pos: { x: number; y: number }): void;
+}
+
+/**
  * Setup per-node snapping that ONLY affects the individual node being dragged.
  * This is called once when cytoscape instance is available.
  */
-function setupPerNodeSnapping(cy: Core): () => void {
-  const handleDragFree = (evt: EventObject) => {
-    const node = evt.target as NodeSingular;
+function setupPerNodeSnapping(cy: CyLike): () => void {
+  const handleDragFree = (evt: CyCompatEventObject) => {
+    const node = evt.target;
     // Skip special nodes (groups, annotations)
     const role = node.data("topoViewerRole") as string | undefined;
     if (role === "group" || role === "freeText" || role === "freeShape") return;
@@ -409,13 +507,13 @@ function setupPerNodeSnapping(cy: Core): () => void {
     }
   };
 
-  cy.on("dragfree", "node", handleDragFree);
-  return () => cy.off("dragfree", "node", handleDragFree);
+  cy.on("dragfree", "node", handleDragFree as () => void);
+  return () => cy.off("dragfree", "node", handleDragFree as () => void);
 }
 
 export function useLayoutControls(
-  cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
-  cyInstance: Core | null
+  cytoscapeRef: React.RefObject<CanvasRef | null>,
+  cyInstance: CyLike | null
 ): {
   layout: LayoutOption;
   setLayout: (layout: LayoutOption) => void;
@@ -518,7 +616,7 @@ interface ContextMenuHandlersResult {
  * Hook for context menu handlers
  */
 export function useContextMenuHandlers(
-  cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
+  cytoscapeRef: React.RefObject<CanvasRef | null>,
   callbacks: SelectionCallbacks
 ): ContextMenuHandlersResult {
   const {
@@ -587,7 +685,7 @@ export function useContextMenuHandlers(
       if (cy) {
         const edge = cy.getElementById(edgeId);
         if (edge.length > 0) {
-          const edgeData = edge.data() as CyEdgeData;
+          const edgeData = edge.data() as EdgeData;
           void deleteLink({
             // Persist to YAML
             id: edgeId,

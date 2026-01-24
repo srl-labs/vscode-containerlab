@@ -7,8 +7,8 @@
  * - FreeShapeLayer
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import type { GroupLayer } from "../../components/annotations/GroupLayer";
 import type { FreeTextLayer } from "../../components/annotations/FreeTextLayer";
 import type { FreeShapeLayer } from "../../components/annotations/FreeShapeLayer";
@@ -112,7 +112,7 @@ interface AnnotationsSubset {
  * Configuration for useAnnotationLayerProps hook
  */
 export interface AnnotationLayerPropsConfig {
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
   annotations: AnnotationsSubset;
   state: {
     isLocked: boolean;
@@ -179,18 +179,6 @@ function expandBoundsLine(
   bounds.hasContent = true;
 }
 
-/** Expand bounds to include a bounding box */
-function expandBoundsBB(
-  bounds: BoundsAccumulator,
-  bb: { x1: number; x2: number; y1: number; y2: number }
-): void {
-  bounds.minX = Math.min(bounds.minX, bb.x1);
-  bounds.maxX = Math.max(bounds.maxX, bb.x2);
-  bounds.minY = Math.min(bounds.minY, bb.y1);
-  bounds.maxY = Math.max(bounds.maxY, bb.y2);
-  bounds.hasContent = true;
-}
-
 /** Process a shape annotation and expand bounds accordingly */
 function processShapeBounds(bounds: BoundsAccumulator, shape: FreeShapeAnnotation): void {
   if (shape.shapeType === "line" && shape.endPosition) {
@@ -227,7 +215,7 @@ export function useAnnotationLayerProps(
   config: AnnotationLayerPropsConfig
 ): AnnotationLayerPropsReturn {
   const {
-    cyInstance,
+    cyCompat,
     annotations,
     state,
     layoutControls,
@@ -260,8 +248,13 @@ export function useAnnotationLayerProps(
 
       // Accumulate node bounds
       for (const nodeId of annotations.getGroupMembers(groupId)) {
-        const node = cyInstance?.getElementById(nodeId);
-        if (node && !node.empty()) expandBoundsBB(bounds, node.boundingBox());
+        const node = cyCompat?.getElementById(nodeId);
+        if (node && node.length > 0) {
+          // CyCompatCore's getElementById returns a CyCompatElement with position method
+          const pos = node.position();
+          // Approximate node bounds using position and default size
+          expandBoundsRect(bounds, pos.x, pos.y, 50, 50);
+        }
       }
 
       // Accumulate text annotation bounds
@@ -294,7 +287,7 @@ export function useAnnotationLayerProps(
       };
     },
     [
-      cyInstance,
+      cyCompat,
       annotations.getGroupMembers,
       annotations.textAnnotations,
       annotations.shapeAnnotations,
@@ -305,7 +298,8 @@ export function useAnnotationLayerProps(
   // GroupLayer props
   const groupLayerProps = React.useMemo(
     () => ({
-      cy: cyInstance,
+      cy: cyCompat,
+      cyCompat,
       groups: annotations.groups,
       isLocked: state.isLocked,
       onGroupEdit: annotations.editGroup,
@@ -329,7 +323,7 @@ export function useAnnotationLayerProps(
       getMinimumBounds
     }),
     [
-      cyInstance,
+      cyCompat,
       annotations.groups,
       state.isLocked,
       annotations.editGroup,
@@ -356,7 +350,8 @@ export function useAnnotationLayerProps(
   // FreeTextLayer props
   const freeTextLayerProps = React.useMemo(
     () => ({
-      cy: cyInstance,
+      cy: cyCompat,
+      cyCompat,
       annotations: annotations.textAnnotations,
       isLocked: state.isLocked,
       isAddTextMode: annotations.isAddTextMode,
@@ -380,7 +375,7 @@ export function useAnnotationLayerProps(
       onUpdateGroupId: updateTextGroupId
     }),
     [
-      cyInstance,
+      cyCompat,
       annotations.textAnnotations,
       state.isLocked,
       annotations.isAddTextMode,
@@ -408,7 +403,8 @@ export function useAnnotationLayerProps(
   // FreeShapeLayer props
   const freeShapeLayerProps = React.useMemo(
     () => ({
-      cy: cyInstance,
+      cy: cyCompat,
+      cyCompat,
       annotations: annotations.shapeAnnotations,
       isLocked: state.isLocked,
       isAddShapeMode: annotations.isAddShapeMode,
@@ -436,7 +432,7 @@ export function useAnnotationLayerProps(
       onUpdateGroupId: updateShapeGroupId
     }),
     [
-      cyInstance,
+      cyCompat,
       annotations.shapeAnnotations,
       state.isLocked,
       annotations.isAddShapeMode,

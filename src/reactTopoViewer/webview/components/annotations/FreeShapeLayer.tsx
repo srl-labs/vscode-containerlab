@@ -4,8 +4,8 @@
  */
 import React, { useRef, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import {
   useAnnotationDrag,
@@ -44,7 +44,7 @@ import {
 // ============================================================================
 
 interface FreeShapeLayerProps extends GroupRelatedProps {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   annotations: FreeShapeAnnotation[];
   isLocked: boolean;
   isAddShapeMode: boolean;
@@ -250,7 +250,7 @@ const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({
 
 interface ShapeInteractionItemProps {
   annotation: FreeShapeAnnotation;
-  cy: CyCore;
+  cyCompat: CyCompatCore;
   isLocked: boolean;
   isSelected: boolean;
   onEdit: () => void;
@@ -281,7 +281,7 @@ interface ShapeInteractionItemProps {
 
 const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   annotation,
-  cy,
+  cyCompat,
   isLocked,
   isSelected,
   onEdit,
@@ -321,7 +321,7 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   );
 
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
-    cy,
+    cyCompat: cyCompat,
     modelPosition,
     isLocked: effectivelyLocked,
     onPositionChange,
@@ -336,7 +336,7 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   });
 
   const { isRotating, handleRotationMouseDown } = useRotationDrag({
-    cy,
+    cyCompat,
     renderedPos,
     currentRotation: annotation.rotation ?? 0,
     isLocked: effectivelyLocked,
@@ -358,7 +358,7 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
 
   const { isResizing: isLineResizing, handleMouseDown: handleLineResizeMouseDown } =
     useLineResizeDrag({
-      cy,
+      cyCompat,
       annotation,
       isLocked: effectivelyLocked,
       onEndPositionChange,
@@ -520,7 +520,7 @@ function createAnnotationCallbacks(
 // ============================================================================
 
 export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
-  cy,
+  cyCompat,
   annotations,
   isLocked,
   isAddShapeMode,
@@ -547,7 +547,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   groups = [],
   onUpdateGroupId
 }) => {
-  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, "FreeShapeLayer");
+  const handleLayerClick = useLayerClickHandler(cyCompat, onCanvasClick, "FreeShapeLayer");
 
   // Track drag positions for syncing background layer during drag
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -566,7 +566,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   }, []);
 
   useAnnotationBoxSelection(
-    cy,
+    cyCompat,
     annotations,
     onAnnotationBoxSelect,
     getShapeCenter,
@@ -591,7 +591,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
     [reparent]
   );
 
-  if (!cy || (annotations.length === 0 && !isAddShapeMode)) return null;
+  if (!cyCompat || (annotations.length === 0 && !isAddShapeMode)) return null;
 
   const handlers = {
     onAnnotationEdit,
@@ -642,7 +642,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
           <ShapeInteractionItem
             key={annotation.id}
             annotation={annotation}
-            cy={cy}
+            cyCompat={cyCompat}
             isLocked={isLocked}
             isSelected={selectedAnnotationIds.has(annotation.id)}
             onVisualPositionChange={(pos) => setDragPosition(annotation.id, pos)}

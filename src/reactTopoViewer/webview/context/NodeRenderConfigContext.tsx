@@ -1,7 +1,7 @@
 /**
  * NodeRenderConfigContext - Controls node rendering detail level.
  */
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from "react";
 
 interface NodeRenderConfig {
   suppressLabels: boolean;
@@ -20,13 +20,10 @@ export const NodeRenderConfigProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ value, children }) => {
   // Memoize based on individual properties to ensure stable reference
-  const memoizedValue = useMemo(
-    () => {
-      console.log('[NodeRenderConfigContext] value created, suppressLabels:', value.suppressLabels);
-      return { suppressLabels: value.suppressLabels };
-    },
-    [value.suppressLabels]
-  );
+  const memoizedValue = useMemo(() => {
+    console.log("[NodeRenderConfigContext] value created, suppressLabels:", value.suppressLabels);
+    return { suppressLabels: value.suppressLabels };
+  }, [value.suppressLabels]);
 
   return (
     <NodeRenderConfigContext.Provider value={memoizedValue}>

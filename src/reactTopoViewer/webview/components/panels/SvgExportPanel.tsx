@@ -3,7 +3,6 @@
  * Modern, sleek design matching other annotation editors
  */
 import React, { useState, useCallback } from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import { BasePanel } from "../shared/editor/BasePanel";
 import { log } from "../../utils/logger";
@@ -16,11 +15,12 @@ import type {
 } from "../../../shared/types/topology";
 import { compositeAnnotationsIntoSvg, addBackgroundRect } from "../../utils/annotationsToSvg";
 import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../shared/form";
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 
 export interface SvgExportPanelProps {
   isVisible: boolean;
   onClose: () => void;
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   textAnnotations?: FreeTextAnnotation[];
   shapeAnnotations?: FreeShapeAnnotation[];
   groups?: GroupStyleAnnotation[];
@@ -117,23 +117,11 @@ function downloadSvg(content: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-/** Load cytoscape-svg extension if needed */
-async function ensureSvgExtension(cy: CyCore): Promise<boolean> {
-  const cyWithSvg = cy as unknown as { svg?: () => string };
-  if (typeof cyWithSvg.svg === "function") return true;
-
-  try {
-    const cytoscapeSvg = (await import("cytoscape-svg")) as {
-      default: (cytoscape: unknown) => void;
-    };
-    const cytoscape = (await import("cytoscape")) as {
-      default: { use: (ext: (cy: unknown) => void) => void };
-    };
-    cytoscape.default.use(cytoscapeSvg.default);
-    return true;
-  } catch {
-    return false;
-  }
+/** Check if SVG export is available - stub for ReactFlow migration */
+async function ensureSvgExtension(_cyCompat: CyCompatCore): Promise<boolean> {
+  // SVG export via cytoscape-svg is not available in ReactFlow mode
+  // ReactFlow SVG export would need a different implementation
+  return false;
 }
 
 type BackgroundOption = "transparent" | "white" | "custom";
@@ -327,7 +315,7 @@ const TipsSection: React.FC = () => (
 export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   isVisible,
   onClose,
-  cy,
+  cyCompat,
   textAnnotations = [],
   shapeAnnotations = [],
   groups = []
@@ -353,8 +341,8 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
     annotationCounts.groups + annotationCounts.text + annotationCounts.shapes;
 
   const handleExport = useCallback(async () => {
-    if (!cy) {
-      setExportStatus({ type: "error", message: "Cytoscape not available" });
+    if (!cyCompat) {
+      setExportStatus({ type: "error", message: "Topology not available" });
       return;
     }
 
@@ -362,7 +350,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
     setExportStatus(null);
 
     try {
-      const extensionLoaded = await ensureSvgExtension(cy);
+      const extensionLoaded = await ensureSvgExtension(cyCompat);
       if (!extensionLoaded) {
         setExportStatus({ type: "error", message: "SVG extension not available" });
         setIsExporting(false);
@@ -370,7 +358,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
       }
 
       const scale = (borderZoom / 100) * 3;
-      const cyWithSvg = cy as unknown as {
+      const cyWithSvg = cyCompat as unknown as {
         svg: (opts: { scale: number; full: boolean }) => string;
       };
       const exported = cyWithSvg.svg({ scale, full: true });
@@ -407,7 +395,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
       setIsExporting(false);
     }
   }, [
-    cy,
+    cyCompat,
     borderZoom,
     borderPadding,
     includeAnnotations,
@@ -470,12 +458,12 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
         <button
           type="button"
           className={`w-full py-3 px-4 rounded-sm font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-            isExporting || !cy
+            isExporting || !cyCompat
               ? "bg-white/5 text-[var(--vscode-descriptionForeground)] cursor-not-allowed"
               : "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:shadow-[var(--accent)]/30"
           }`}
           onClick={() => void handleExport()}
-          disabled={isExporting || !cy}
+          disabled={isExporting || !cyCompat}
         >
           {isExporting ? (
             <>

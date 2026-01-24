@@ -2,9 +2,8 @@
  * Free shape annotation types and helpers
  * Consolidated from: freeShapeTypes.ts + freeShapeHelpers.ts
  */
-import type { Core as CyCore } from "cytoscape";
-
 import type { FreeShapeAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import {
   generateAnnotationId as generateId,
@@ -41,7 +40,7 @@ export const MIN_SHAPE_SIZE = 5;
 // ============================================================================
 
 export interface UseFreeShapeAnnotationsOptions {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;

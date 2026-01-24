@@ -3,14 +3,14 @@
  * Migrated from legacy TopoViewer viewport-drawer-topology-overview.html
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import { BasePanel } from "../shared/editor/BasePanel";
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 
 interface FindNodePanelProps {
   isVisible: boolean;
   onClose: () => void;
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
 }
 
 /** Creates a wildcard filter regex */
@@ -73,20 +73,19 @@ interface NodeDataForSearch {
   extraData?: { longname?: string };
 }
 
-/** Search nodes in cytoscape and return count */
-function searchNodes(cy: CyCore, searchTerm: string): number {
+/** Search nodes using CyCompatCore and return count */
+function searchNodes(cyCompat: CyCompatCore, searchTerm: string): number {
   const filter = createFilter(searchTerm);
-  const matchingNodes = cy.nodes().filter((node) => {
+  const matchingNodes = cyCompat.nodes().filter((node) => {
     const data = node.data() as NodeDataForSearch;
     const shortName = data.name ?? data.id ?? "";
     const longName = data.extraData?.longname ?? "";
     return filter(`${shortName} ${longName}`);
   });
 
-  cy.elements().unselect();
+  cyCompat.elements().unselect();
   if (matchingNodes.length > 0) {
-    matchingNodes.select();
-    cy.fit(matchingNodes, 50);
+    cyCompat.fit(matchingNodes, 50);
   }
   return matchingNodes.length;
 }
@@ -104,7 +103,7 @@ function usePanelFocus(isVisible: boolean, inputRef: React.RefObject<HTMLInputEl
 }
 
 /** Hook for search state management */
-function useSearchState(cy: CyCore | null, isVisible: boolean) {
+function useSearchState(cyCompat: CyCompatCore | null, isVisible: boolean) {
   const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
@@ -113,27 +112,27 @@ function useSearchState(cy: CyCore | null, isVisible: boolean) {
   }, [isVisible]);
 
   const handleSearch = useCallback(() => {
-    if (!cy || !searchTerm.trim()) {
+    if (!cyCompat || !searchTerm.trim()) {
       setMatchCount(null);
       return;
     }
-    setMatchCount(searchNodes(cy, searchTerm));
-  }, [cy, searchTerm]);
+    setMatchCount(searchNodes(cyCompat, searchTerm));
+  }, [cyCompat, searchTerm]);
 
   const handleClear = useCallback(() => {
     setSearchTerm("");
     setMatchCount(null);
-    cy?.elements().unselect();
-  }, [cy]);
+    cyCompat?.elements().unselect();
+  }, [cyCompat]);
 
   return { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear };
 }
 
-export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, cy }) => {
+export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, cyCompat }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   usePanelFocus(isVisible, inputRef);
   const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(
-    cy,
+    cyCompat,
     isVisible
   );
 

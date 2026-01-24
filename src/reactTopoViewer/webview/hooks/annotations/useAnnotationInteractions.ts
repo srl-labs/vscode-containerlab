@@ -3,16 +3,16 @@
  * Wraps drag, rotation, and resize hooks for cleaner component code
  */
 import type React from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import type { FreeTextAnnotation } from "../../../shared/types/topology";
 import type { MapLibreState } from "../canvas/maplibreUtils";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 import { useAnnotationDrag } from "./useAnnotationDrag";
 import { useRotationDrag, useResizeDrag } from "./useAnnotationHandles";
 
 interface UseAnnotationInteractionsOptions {
-  cy: CyCore;
+  cyCompat: CyCompatCore | null;
   annotation: FreeTextAnnotation;
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;
@@ -34,7 +34,7 @@ interface UseAnnotationInteractionsOptions {
  */
 export function useAnnotationInteractions(options: UseAnnotationInteractionsOptions) {
   const {
-    cy,
+    cyCompat,
     annotation,
     isLocked,
     onPositionChange,
@@ -50,7 +50,7 @@ export function useAnnotationInteractions(options: UseAnnotationInteractionsOpti
   } = options;
 
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
-    cy,
+    cyCompat,
     modelPosition: annotation.position,
     isLocked,
     onPositionChange,
@@ -64,7 +64,7 @@ export function useAnnotationInteractions(options: UseAnnotationInteractionsOpti
   });
 
   const { isRotating, handleRotationMouseDown } = useRotationDrag({
-    cy,
+    cyCompat,
     renderedPos,
     currentRotation: annotation.rotation || 0,
     isLocked,

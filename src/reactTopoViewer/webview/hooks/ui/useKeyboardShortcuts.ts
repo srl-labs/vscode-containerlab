@@ -2,16 +2,16 @@
  * useKeyboardShortcuts - Hook for keyboard shortcuts
  */
 import { useEffect, useCallback } from "react";
-import type { Core } from "cytoscape";
 
 import { log } from "../../utils/logger";
+import type { CyCompatCore } from "../useCytoCompatInstance";
 
 interface KeyboardShortcutsOptions {
   mode: "edit" | "view";
   isLocked: boolean;
   selectedNode: string | null;
   selectedEdge: string | null;
-  cyInstance: Core | null;
+  cyCompat: CyCompatCore | null;
   onDeleteNode: (nodeId: string) => void;
   onDeleteEdge: (edgeId: string) => void;
   onDeselectAll: () => void;
@@ -105,7 +105,7 @@ function handleRedo(
  */
 function handleCopy(
   event: KeyboardEvent,
-  cyInstance: Core | null,
+  cyCompat: CyCompatCore | null,
   onCopy?: () => void,
   selectedAnnotationIds?: Set<string>,
   onCopyAnnotations?: () => void
@@ -123,7 +123,9 @@ function handleCopy(
   }
 
   // Also copy graph elements if any are selected
-  if (onCopy && cyInstance && !cyInstance.$(":selected").empty()) {
+  // Note: Selection state is managed by ReactFlow, not tracked via CyCompat
+  // The onCopy handler should check selection state internally
+  if (onCopy && cyCompat) {
     log.info("[Keyboard] Copy graph elements");
     onCopy();
     handled = true;
@@ -181,7 +183,7 @@ function handleDuplicate(
   event: KeyboardEvent,
   mode: "edit" | "view",
   isLocked: boolean,
-  cyInstance: Core | null,
+  cyCompat: CyCompatCore | null,
   onDuplicate?: () => void,
   selectedAnnotationIds?: Set<string>,
   onDuplicateAnnotations?: () => void
@@ -201,7 +203,9 @@ function handleDuplicate(
   }
 
   // Also duplicate graph elements if any are selected
-  if (onDuplicate && cyInstance && !cyInstance.$(":selected").empty()) {
+  // Note: Selection state is managed by ReactFlow, not tracked via CyCompat
+  // The onDuplicate handler should check selection state internally
+  if (onDuplicate && cyCompat) {
     log.info("[Keyboard] Duplicate graph elements");
     onDuplicate();
     handled = true;
@@ -215,32 +219,21 @@ function handleDuplicate(
 
 /**
  * Handle Ctrl+G: Create group from selected nodes
+ * Note: Selection state and node filtering is handled by the onCreateGroup callback
+ * since ReactFlow manages selection state directly
  */
 function handleCreateGroup(
   event: KeyboardEvent,
   mode: "edit" | "view",
-  cyInstance: Core | null,
+  cyCompat: CyCompatCore | null,
   onCreateGroup?: () => void
 ): boolean {
   if (mode !== "edit") return false;
   if (!(event.ctrlKey || event.metaKey)) return false;
   if (event.key.toLowerCase() !== "g") return false;
-  if (!onCreateGroup) return false;
+  if (!onCreateGroup || !cyCompat) return false;
 
-  // Only create group if groupable nodes are selected
-  if (!cyInstance) return false;
-  const selectedNodes = cyInstance.nodes(":selected").filter((n) => {
-    const role = n.data("topoViewerRole") as string | undefined;
-    // Exclude annotations
-    return role !== "freeText" && role !== "freeShape";
-  });
-
-  if (selectedNodes.length === 0) {
-    log.info("[Keyboard] No nodes selected for grouping");
-    return false;
-  }
-
-  log.info(`[Keyboard] Creating group from ${selectedNodes.length} selected nodes`);
+  log.info("[Keyboard] Creating group from selected nodes");
   onCreateGroup();
   event.preventDefault();
   return true;
@@ -248,15 +241,17 @@ function handleCreateGroup(
 
 /**
  * Handle Ctrl+A: Select all nodes
+ * Note: Selection is now handled by ReactFlow natively via its built-in select all
+ * This stub returns false to allow the browser/ReactFlow to handle the event
  */
-function handleSelectAll(event: KeyboardEvent, cyInstance: Core | null): boolean {
+function handleSelectAll(event: KeyboardEvent, cyCompat: CyCompatCore | null): boolean {
   if (!(event.ctrlKey || event.metaKey) || event.key !== "a") return false;
-  if (!cyInstance) return false;
+  if (!cyCompat) return false;
 
-  log.info("[Keyboard] Selecting all nodes");
-  cyInstance.nodes().select();
-  event.preventDefault();
-  return true;
+  // Let ReactFlow handle select all natively
+  log.info("[Keyboard] Select all - delegating to ReactFlow");
+  // Don't prevent default - let ReactFlow handle it
+  return false;
 }
 
 /**
@@ -274,30 +269,29 @@ function deleteSelectedAnnotations(
 }
 
 /**
- * Delete selected cytoscape elements (nodes and edges).
+ * Delete selected elements (nodes and edges).
+ * Note: Selection state is now managed by ReactFlow.
+ * This function uses the selectedNode/selectedEdge params passed from the parent.
  */
-function deleteCytoscapeElements(
-  cyInstance: Core,
+function deleteSelectedElements(
+  selectedNode: string | null,
+  selectedEdge: string | null,
   onDeleteNode: (nodeId: string) => void,
   onDeleteEdge: (edgeId: string) => void
 ): boolean {
   let handled = false;
-  const selectedNodes = cyInstance.nodes(":selected");
-  log.info(
-    `[Keyboard] Delete pressed - ${selectedNodes.length} nodes selected: ${selectedNodes.map((n) => n.id()).join(", ")}`
-  );
-  selectedNodes.forEach((node) => {
-    log.info(`[Keyboard] Deleting node: ${node.id()}`);
-    onDeleteNode(node.id());
-  });
-  if (selectedNodes.length > 0) handled = true;
 
-  const selectedEdges = cyInstance.edges(":selected");
-  selectedEdges.forEach((edge) => {
-    log.info(`[Keyboard] Deleting edge: ${edge.id()}`);
-    onDeleteEdge(edge.id());
-  });
-  if (selectedEdges.length > 0) handled = true;
+  if (selectedNode) {
+    log.info(`[Keyboard] Deleting node: ${selectedNode}`);
+    onDeleteNode(selectedNode);
+    handled = true;
+  }
+
+  if (selectedEdge) {
+    log.info(`[Keyboard] Deleting edge: ${selectedEdge}`);
+    onDeleteEdge(selectedEdge);
+    handled = true;
+  }
 
   return handled;
 }
@@ -313,7 +307,6 @@ function handleDelete(
   selectedEdge: string | null,
   onDeleteNode: (nodeId: string) => void,
   onDeleteEdge: (edgeId: string) => void,
-  cyInstance: Core | null,
   selectedAnnotationIds?: Set<string>,
   onDeleteAnnotations?: () => void
 ): boolean {
@@ -322,20 +315,9 @@ function handleDelete(
 
   let handled = deleteSelectedAnnotations(selectedAnnotationIds, onDeleteAnnotations);
 
-  if (cyInstance) {
-    if (deleteCytoscapeElements(cyInstance, onDeleteNode, onDeleteEdge)) handled = true;
-  } else {
-    // Fallback to single selection if no cyInstance
-    if (selectedNode) {
-      log.info(`[Keyboard] Deleting node: ${selectedNode}`);
-      onDeleteNode(selectedNode);
-      handled = true;
-    }
-    if (selectedEdge) {
-      log.info(`[Keyboard] Deleting edge: ${selectedEdge}`);
-      onDeleteEdge(selectedEdge);
-      handled = true;
-    }
+  // Delete selected graph elements
+  if (deleteSelectedElements(selectedNode, selectedEdge, onDeleteNode, onDeleteEdge)) {
+    handled = true;
   }
 
   if (handled) event.preventDefault();
@@ -347,7 +329,7 @@ function handleDelete(
  */
 function handleEscape(
   event: KeyboardEvent,
-  cyInstance: Core | null,
+  cyCompat: CyCompatCore | null,
   selectedNode: string | null,
   selectedEdge: string | null,
   onDeselectAll: () => void,
@@ -364,8 +346,8 @@ function handleEscape(
     return true;
   }
 
-  if (cyInstance) {
-    cyInstance.elements().unselect();
+  if (cyCompat) {
+    cyCompat.elements().unselect();
   }
   if (selectedNode || selectedEdge) {
     log.debug("[Keyboard] Deselecting all");
@@ -385,7 +367,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     isLocked,
     selectedNode,
     selectedEdge,
-    cyInstance,
+    cyCompat,
     onDeleteNode,
     onDeleteEdge,
     onDeselectAll,
@@ -414,7 +396,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       if (handleUndo(event, mode, canUndo, onUndo)) return;
       if (handleRedo(event, mode, canRedo, onRedo)) return;
       // Copy/Paste/Duplicate (with annotation support)
-      if (handleCopy(event, cyInstance, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
+      if (handleCopy(event, cyCompat, onCopy, selectedAnnotationIds, onCopyAnnotations)) return;
       if (handlePaste(event, mode, isLocked, onPaste, onPasteAnnotations, hasAnnotationClipboard))
         return;
       if (
@@ -422,7 +404,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
           event,
           mode,
           isLocked,
-          cyInstance,
+          cyCompat,
           onDuplicate,
           selectedAnnotationIds,
           onDuplicateAnnotations
@@ -430,9 +412,9 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       )
         return;
       // Group shortcut (Ctrl+G)
-      if (handleCreateGroup(event, mode, cyInstance, onCreateGroup)) return;
+      if (handleCreateGroup(event, mode, cyCompat, onCreateGroup)) return;
       // Other shortcuts
-      if (handleSelectAll(event, cyInstance)) return;
+      if (handleSelectAll(event, cyCompat)) return;
       if (
         handleDelete(
           event,
@@ -442,7 +424,6 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
           selectedEdge,
           onDeleteNode,
           onDeleteEdge,
-          cyInstance,
           selectedAnnotationIds,
           onDeleteAnnotations
         )
@@ -450,7 +431,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
         return;
       handleEscape(
         event,
-        cyInstance,
+        cyCompat,
         selectedNode,
         selectedEdge,
         onDeselectAll,
@@ -463,7 +444,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       isLocked,
       selectedNode,
       selectedEdge,
-      cyInstance,
+      cyCompat,
       onDeleteNode,
       onDeleteEdge,
       onDeselectAll,

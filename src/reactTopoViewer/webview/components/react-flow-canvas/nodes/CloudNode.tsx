@@ -1,32 +1,32 @@
 /**
  * CloudNode - Custom React Flow node for cloud/external endpoint nodes
  */
-import React, { useMemo, memo, useState } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import React, { useMemo, memo, useState } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 
-import type { CloudNodeData } from '../types';
-import { SELECTION_COLOR } from '../types';
-import { generateEncodedSVG } from '../../../utils/SvgGenerator';
-import { useLinkCreationContext } from '../../../context/LinkCreationContext';
-import { useNodeRenderConfig } from '../../../context/NodeRenderConfigContext';
+import type { CloudNodeData } from "../types";
+import { SELECTION_COLOR } from "../types";
+import { generateEncodedSVG } from "../../../utils/SvgGenerator";
+import { useLinkCreationContext } from "../../../context/LinkCreationContext";
+import { useNodeRenderConfig } from "../../../context/NodeRenderConfigContext";
 
 /**
  * Get icon color based on node type
  */
 function getNodeTypeColor(nodeType: string): string {
   switch (nodeType) {
-    case 'host':
-      return '#6B7280'; // Gray
-    case 'mgmt-net':
-      return '#3B82F6'; // Blue
-    case 'macvlan':
-      return '#10B981'; // Green
-    case 'vxlan':
-      return '#8B5CF6'; // Purple
-    case 'bridge':
-      return '#F59E0B'; // Amber
+    case "host":
+      return "#6B7280"; // Gray
+    case "mgmt-net":
+      return "#3B82F6"; // Blue
+    case "macvlan":
+      return "#10B981"; // Green
+    case "vxlan":
+      return "#8B5CF6"; // Purple
+    case "bridge":
+      return "#F59E0B"; // Amber
     default:
-      return '#6B7280'; // Gray
+      return "#6B7280"; // Gray
   }
 }
 
@@ -48,16 +48,16 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   // Generate the SVG icon URL (cloud icon for all external nodes)
   const svgUrl = useMemo(() => {
     const color = getNodeTypeColor(nodeType);
-    return generateEncodedSVG('cloud', color);
+    return generateEncodedSVG("cloud", color);
   }, [nodeType]);
 
   // Node container styles
   const containerStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    position: 'relative',
-    cursor: isLinkTarget ? 'crosshair' : undefined
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    position: "relative",
+    cursor: isLinkTarget ? "crosshair" : undefined
   };
 
   // Determine border and shadow based on state
@@ -75,8 +75,8 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       };
     }
     return {
-      border: '1px solid #969799',
-      boxShadow: 'none'
+      border: "1px solid #969799",
+      boxShadow: "none"
     };
   };
 
@@ -87,37 +87,37 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     width: 40,
     height: 40,
     backgroundImage: `url(${svgUrl})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    backgroundColor: '#E8E8E8',
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundColor: "#E8E8E8",
     borderRadius: 4,
     border,
     boxShadow,
-    transition: 'border 0.15s ease, box-shadow 0.15s ease'
+    transition: "border 0.15s ease, box-shadow 0.15s ease"
   };
 
   // Label styles
   const labelStyle: React.CSSProperties = {
     marginTop: 4,
-    fontSize: '0.65rem',
+    fontSize: "0.65rem",
     fontWeight: 500,
-    color: '#F5F5F5',
-    textAlign: 'center',
-    textShadow: '0 0 3px #3C3E41',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: '1px 4px',
+    color: "#F5F5F5",
+    textAlign: "center",
+    textShadow: "0 0 3px #3C3E41",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    padding: "1px 4px",
     borderRadius: 3,
     maxWidth: 80,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
   };
 
   // Hidden handle style - needed for edge connections but not interactive
   const hiddenHandleStyle: React.CSSProperties = {
     opacity: 0,
-    pointerEvents: 'none',
+    pointerEvents: "none",
     width: 1,
     height: 1
   };
@@ -130,14 +130,62 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Hidden handles for edge connections - not interactive */}
-      <Handle type="source" position={Position.Top} id="top" style={hiddenHandleStyle} isConnectable={false} />
-      <Handle type="source" position={Position.Right} id="right" style={hiddenHandleStyle} isConnectable={false} />
-      <Handle type="source" position={Position.Bottom} id="bottom" style={hiddenHandleStyle} isConnectable={false} />
-      <Handle type="source" position={Position.Left} id="left" style={hiddenHandleStyle} isConnectable={false} />
-      <Handle type="target" position={Position.Top} id="top-target" style={hiddenHandleStyle} isConnectable={false} />
-      <Handle type="target" position={Position.Right} id="right-target" style={hiddenHandleStyle} isConnectable={false} />
-      <Handle type="target" position={Position.Bottom} id="bottom-target" style={hiddenHandleStyle} isConnectable={false} />
-      <Handle type="target" position={Position.Left} id="left-target" style={hiddenHandleStyle} isConnectable={false} />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top-target"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right-target"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-target"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-target"
+        style={hiddenHandleStyle}
+        isConnectable={false}
+      />
 
       {/* Node icon */}
       <div style={iconStyle} className="cloud-node-icon" />
@@ -152,10 +200,7 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   );
 };
 
-function areCloudNodePropsEqual(
-  prev: NodeProps,
-  next: NodeProps
-): boolean {
+function areCloudNodePropsEqual(prev: NodeProps, next: NodeProps): boolean {
   return prev.data === next.data && prev.selected === next.selected;
 }
 

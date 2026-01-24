@@ -2,11 +2,11 @@
  * BulkLinkPanel - Create multiple links based on name patterns
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import { BasePanel } from "../../shared/editor/BasePanel";
 import type { GraphChange } from "../../../hooks/state";
 import type { CyElement } from "../../../../shared/types/messages";
+import type { CyCompatCore } from "../../../hooks/useCytoCompatInstance";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -17,7 +17,7 @@ interface BulkLinkPanelProps {
   isVisible: boolean;
   mode: "edit" | "view";
   isLocked: boolean;
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   onClose: () => void;
   recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
   addEdge?: (edge: CyElement) => void;
@@ -85,7 +85,7 @@ function useBulkLinkPanel({
   isVisible,
   mode,
   isLocked,
-  cy,
+  cyCompat,
   onClose,
   recordGraphChanges,
   addEdge
@@ -113,12 +113,18 @@ function useBulkLinkPanel({
   }, [onClose]);
 
   const handleCompute = React.useCallback(() => {
-    computeAndValidateCandidates(cy, sourcePattern, targetPattern, setStatus, setPendingCandidates);
-  }, [cy, sourcePattern, targetPattern]);
+    computeAndValidateCandidates(
+      cyCompat,
+      sourcePattern,
+      targetPattern,
+      setStatus,
+      setPendingCandidates
+    );
+  }, [cyCompat, sourcePattern, targetPattern]);
 
   const handleConfirmCreate = React.useCallback(async () => {
     await confirmAndCreateLinks({
-      cy,
+      cyCompat,
       pendingCandidates,
       canApply,
       addEdge,
@@ -127,7 +133,7 @@ function useBulkLinkPanel({
       setPendingCandidates,
       onClose
     });
-  }, [cy, pendingCandidates, canApply, addEdge, recordGraphChanges, onClose]);
+  }, [cyCompat, pendingCandidates, canApply, addEdge, recordGraphChanges, onClose]);
 
   const handleDismissConfirm = React.useCallback(() => {
     setPendingCandidates(null);
@@ -153,7 +159,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
   isVisible,
   mode,
   isLocked,
-  cy,
+  cyCompat,
   onClose,
   recordGraphChanges,
   addEdge,
@@ -172,7 +178,15 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
     handleCompute,
     handleConfirmCreate,
     handleDismissConfirm
-  } = useBulkLinkPanel({ isVisible, mode, isLocked, cy, onClose, recordGraphChanges, addEdge });
+  } = useBulkLinkPanel({
+    isVisible,
+    mode,
+    isLocked,
+    cyCompat,
+    onClose,
+    recordGraphChanges,
+    addEdge
+  });
 
   return (
     <>

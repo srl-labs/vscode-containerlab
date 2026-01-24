@@ -3,8 +3,8 @@
  * Manages undo/redo stack for node drag operations
  */
 import React, { useReducer, useCallback, useMemo } from "react";
-import type { Core } from "cytoscape";
 
+import type { CyLike } from "../useAppState";
 import type { CyElement } from "../../../shared/types/messages";
 import { log } from "../../utils/logger";
 import {
@@ -317,7 +317,7 @@ function applyCompoundRedo(
 /** Helper to undo a move action */
 function applyMoveUndo(
   action: UndoRedoActionMove,
-  cy: Core,
+  cy: CyLike,
   applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Undoing move for ${action.before.length} node(s)`);
@@ -332,7 +332,7 @@ function applyMoveUndo(
 /** Helper to redo a move action */
 function applyMoveRedo(
   action: UndoRedoActionMove,
-  cy: Core,
+  cy: CyLike,
   applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Redoing move for ${action.after.length} node(s)`);
@@ -347,7 +347,7 @@ function applyMoveRedo(
 /** Helper to undo a group-move action */
 function applyGroupMoveUndo(
   action: UndoRedoActionGroupMove,
-  cy: Core,
+  cy: CyLike,
   applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Undoing group move with ${action.nodesBefore.length} node(s)`);
@@ -359,7 +359,7 @@ function applyGroupMoveUndo(
 /** Helper to redo a group-move action */
 function applyGroupMoveRedo(
   action: UndoRedoActionGroupMove,
-  cy: Core,
+  cy: CyLike,
   applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
 ): void {
   log.info(`[UndoRedo] Redoing group move with ${action.nodesAfter.length} node(s)`);
@@ -424,7 +424,7 @@ function applyAnnotationAction(
 function applyMoveAction(
   action: UndoRedoActionMove,
   isUndo: boolean,
-  cy: Core,
+  cy: CyLike,
   applyMembershipChange: ((memberships: MembershipEntry[]) => void) | undefined
 ): void {
   if (isUndo) {
@@ -437,7 +437,7 @@ function applyMoveAction(
 function applyGroupMoveAction(
   action: UndoRedoActionGroupMove,
   isUndo: boolean,
-  cy: Core,
+  cy: CyLike,
   applyGroupMoveChange: ((action: UndoRedoActionGroupMove, isUndo: boolean) => void) | undefined
 ): void {
   if (isUndo) {
@@ -515,7 +515,7 @@ function undoRedoReducer(
 /**
  * Apply positions to Cytoscape nodes
  */
-function applyPositionsToGraph(cy: Core, positions: NodePositionEntry[]): void {
+function applyPositionsToGraph(cy: CyLike, positions: NodePositionEntry[]): void {
   cy.batch(() => {
     for (const entry of positions) {
       const node = cy.getElementById(entry.id);
@@ -569,8 +569,8 @@ function sendMembershipToExtension(memberships: MembershipEntry[]): void {
  * Options for the useUndoRedo hook
  */
 export interface UseUndoRedoOptions {
-  /** Cytoscape instance */
-  cy: Core | null;
+  /** Cytoscape compatibility instance */
+  cyCompat: CyLike | null;
   /** Whether undo/redo is enabled (typically only in edit mode) */
   enabled?: boolean;
   /** Apply graph changes for non-position actions (create/delete/update) */
@@ -634,13 +634,13 @@ export interface UseUndoRedoReturn {
 }
 
 /** Helper hook for capturing node positions */
-function useCapturePositions(cy: Core | null) {
+function useCapturePositions(cyCompat: CyLike | null) {
   return useCallback(
     (nodeIds: string[]): NodePositionEntry[] => {
-      if (!cy) return [];
+      if (!cyCompat) return [];
       return nodeIds
         .map((id) => {
-          const node = cy.getElementById(id);
+          const node = cyCompat.getElementById(id);
           if (node.length > 0 && node.isNode()) {
             const pos = node.position();
             return { id, position: { x: Math.round(pos.x), y: Math.round(pos.y) } };
@@ -649,7 +649,7 @@ function useCapturePositions(cy: Core | null) {
         })
         .filter((entry) => entry.position.x !== 0 || entry.position.y !== 0);
     },
-    [cy]
+    [cyCompat]
   );
 }
 
@@ -691,7 +691,7 @@ function usePushAction(
 /** Helper to apply an action (shared by undo and redo) */
 function applyAction(
   action: UndoRedoAction,
-  cy: Core,
+  cy: CyLike,
   isUndo: boolean,
   applyGraphChanges?: (changes: GraphChange[]) => void,
   applyPropertyEdit?: (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void,
@@ -733,7 +733,7 @@ interface UndoRedoActionOptions {
 /** Helper hook for undo/redo operations */
 function useUndoRedoAction(
   canExecute: boolean,
-  cy: Core | null,
+  cyCompat: CyLike | null,
   stack: UndoRedoAction[],
   getAction: (stack: UndoRedoAction[]) => UndoRedoAction,
   isUndo: boolean,
@@ -749,11 +749,11 @@ function useUndoRedoAction(
     applyMembershipChange
   } = options;
   return useCallback(() => {
-    if (!canExecute || !cy) return;
+    if (!canExecute || !cyCompat) return;
     const action = getAction(stack);
     applyAction(
       action,
-      cy,
+      cyCompat,
       isUndo,
       applyGraphChanges,
       applyPropertyEdit,
@@ -764,7 +764,7 @@ function useUndoRedoAction(
     dispatch({ type: dispatchType });
   }, [
     canExecute,
-    cy,
+    cyCompat,
     stack,
     getAction,
     isUndo,
@@ -781,14 +781,14 @@ function useUndoRedoAction(
 /** Helper hook for undo operation */
 function useUndoAction(
   canUndo: boolean,
-  cy: Core | null,
+  cyCompat: CyLike | null,
   past: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   options: UndoRedoActionOptions
 ) {
   return useUndoRedoAction(
     canUndo,
-    cy,
+    cyCompat,
     past,
     (stack) => stack[stack.length - 1],
     true,
@@ -801,14 +801,14 @@ function useUndoAction(
 /** Helper hook for redo operation */
 function useRedoAction(
   canRedo: boolean,
-  cy: Core | null,
+  cyCompat: CyLike | null,
   future: UndoRedoAction[],
   dispatch: React.Dispatch<UndoRedoReducerAction>,
   options: UndoRedoActionOptions
 ) {
   return useUndoRedoAction(
     canRedo,
-    cy,
+    cyCompat,
     future,
     (stack) => stack[0],
     false,
@@ -822,7 +822,7 @@ function useRedoAction(
  * Hook for managing undo/redo functionality for node positions
  */
 export function useUndoRedo({
-  cy,
+  cyCompat,
   enabled = true,
   applyGraphChanges,
   applyPropertyEdit,
@@ -839,7 +839,7 @@ export function useUndoRedo({
   const canUndo = enabled && state.past.length > 0;
   const canRedo = enabled && state.future.length > 0;
 
-  const capturePositions = useCapturePositions(cy);
+  const capturePositions = useCapturePositions(cyCompat);
   const pushAction = usePushAction(enabled, dispatch, batchActionsRef, isBatchingRef);
 
   const actionOptions: UndoRedoActionOptions = {
@@ -850,8 +850,8 @@ export function useUndoRedo({
     applyMembershipChange
   };
 
-  const undo = useUndoAction(canUndo, cy, state.past, dispatch, actionOptions);
-  const redo = useRedoAction(canRedo, cy, state.future, dispatch, actionOptions);
+  const undo = useUndoAction(canUndo, cyCompat, state.past, dispatch, actionOptions);
+  const redo = useRedoAction(canRedo, cyCompat, state.future, dispatch, actionOptions);
 
   const recordMove = useCallback(
     (
@@ -860,7 +860,7 @@ export function useUndoRedo({
       membershipBefore?: MembershipEntry[],
       membershipAfter?: MembershipEntry[]
     ) => {
-      if (!enabled || !cy) return;
+      if (!enabled || !cyCompat) return;
       const afterPositions = capturePositions(nodeIds);
       const hasChanged = beforePositions.some((before) => {
         const after = afterPositions.find((a) => a.id === before.id);
@@ -881,7 +881,7 @@ export function useUndoRedo({
         });
       }
     },
-    [enabled, cy, capturePositions, pushAction]
+    [enabled, cyCompat, capturePositions, pushAction]
   );
 
   const clearHistory = useCallback(() => {

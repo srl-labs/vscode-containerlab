@@ -1,12 +1,12 @@
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
-import { test, expect } from '../fixtures/topoviewer';
-import { ctrlClick, rightClick } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { ctrlClick, rightClick } from "../helpers/cytoscape-helpers";
 
 // Test file names for file-based tests
-const TOPOLOGY_FILE = 'empty.clab.yml';
-const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
-const DATACENTER_FILE = 'datacenter.clab.yml';
+const TOPOLOGY_FILE = "empty.clab.yml";
+const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
+const DATACENTER_FILE = "datacenter.clab.yml";
 
 const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 
@@ -42,17 +42,22 @@ type AnnotationsApi = {
   }>;
 };
 
-type TopoViewerPage = GroupCreationApi & AnnotationsApi & {
-  resetFiles: () => Promise<void>;
-  gotoFile: (filename: string) => Promise<void>;
-  waitForCanvasReady: () => Promise<void>;
-  setEditMode: () => Promise<void>;
-  unlock: () => Promise<void>;
-  createNode: (nodeId: string, position: { x: number; y: number }, kind?: string) => Promise<void>;
-  fit: () => Promise<void>;
-  undo: () => Promise<void>;
-  writeAnnotationsFile: (filename: string, content: object) => Promise<void>;
-};
+type TopoViewerPage = GroupCreationApi &
+  AnnotationsApi & {
+    resetFiles: () => Promise<void>;
+    gotoFile: (filename: string) => Promise<void>;
+    waitForCanvasReady: () => Promise<void>;
+    setEditMode: () => Promise<void>;
+    unlock: () => Promise<void>;
+    createNode: (
+      nodeId: string,
+      position: { x: number; y: number },
+      kind?: string
+    ) => Promise<void>;
+    fit: () => Promise<void>;
+    undo: () => Promise<void>;
+    writeAnnotationsFile: (filename: string, content: object) => Promise<void>;
+  };
 
 async function selectNodes(
   page: Page,
@@ -78,27 +83,29 @@ async function createGroupFromNodes(
   await selectNodes(page, topoViewerPage, nodeIds);
   await topoViewerPage.createGroup();
 
-  await expect.poll(
-    () => topoViewerPage.getGroupCount(),
-    { timeout: 5000, message: 'Expected group count to increase' }
-  ).toBe(groupIdsBefore.length + 1);
+  await expect
+    .poll(() => topoViewerPage.getGroupCount(), {
+      timeout: 5000,
+      message: "Expected group count to increase"
+    })
+    .toBe(groupIdsBefore.length + 1);
 
   const groupIdsAfter = await topoViewerPage.getGroupIds();
-  const newGroupId = groupIdsAfter.find(id => !groupIdsBefore.includes(id));
+  const newGroupId = groupIdsAfter.find((id) => !groupIdsBefore.includes(id));
   expect(newGroupId).toBeDefined();
   return newGroupId!;
 }
 
 async function openGroupContextMenu(page: Page, groupId: string): Promise<void> {
   const label = page.locator(`[data-testid="group-label-${groupId}"]`);
-  await label.waitFor({ state: 'visible', timeout: 5000 });
+  await label.waitFor({ state: "visible", timeout: 5000 });
   const box = await label.boundingBox();
   expect(box).not.toBeNull();
   await rightClick(page, box!.x + box!.width / 2, box!.y + box!.height / 2);
 }
 
 function findById<T extends { id: string }>(items: T[], id: string): T | undefined {
-  return items.find(item => item.id === id);
+  return items.find((item) => item.id === id);
 }
 
 async function getGroupPromotionSnapshot(
@@ -117,31 +124,31 @@ async function getGroupPromotionSnapshot(
   const shapes = annotations.freeShapeAnnotations ?? [];
 
   return {
-    innerExists: groups.some(group => group.id === ids.innerGroupId),
+    innerExists: groups.some((group) => group.id === ids.innerGroupId),
     childParent: findById(groups, ids.childGroupId)?.parentId ?? null,
-    nodeCGroup: findById(nodes, 'node-c')?.groupId ?? null,
-    nodeDGroup: findById(nodes, 'node-d')?.groupId ?? null,
+    nodeCGroup: findById(nodes, "node-c")?.groupId ?? null,
+    nodeDGroup: findById(nodes, "node-d")?.groupId ?? null,
     textGroup: findById(texts, ids.textAnnotationId)?.groupId ?? null,
     shapeGroup: findById(shapes, ids.shapeAnnotationId)?.groupId ?? null
   };
 }
 
-test.describe('Group Operations', () => {
+test.describe("Group Operations", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
   });
 
-  test('gets group IDs', async ({ topoViewerPage }) => {
+  test("gets group IDs", async ({ topoViewerPage }) => {
     const groupIds = await topoViewerPage.getGroupIds();
     const groupCount = await topoViewerPage.getGroupCount();
     expect(groupIds.length).toBe(groupCount);
   });
 
-  test('creates group via Ctrl+G with selected nodes', async ({ page, topoViewerPage }) => {
+  test("creates group via Ctrl+G with selected nodes", async ({ page, topoViewerPage }) => {
     const initialGroupCount = await topoViewerPage.getGroupCount();
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
@@ -153,16 +160,16 @@ test.describe('Group Operations', () => {
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
     expect(secondNodeBox).not.toBeNull();
 
-    await page.keyboard.down('Control');
+    await page.keyboard.down("Control");
     await page.mouse.click(
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up('Control');
+    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     const selectedIds = await topoViewerPage.getSelectedNodeIds();
-    console.log(`[DEBUG] Selected IDs: ${selectedIds.join(', ')}`);
+    console.log(`[DEBUG] Selected IDs: ${selectedIds.join(", ")}`);
     console.log(`[DEBUG] Initial group count: ${initialGroupCount}`);
     expect(selectedIds.length).toBe(2);
 
@@ -174,7 +181,7 @@ test.describe('Group Operations', () => {
     expect(newGroupCount).toBe(initialGroupCount + 1);
   });
 
-  test('group persists after all members are deleted', async ({ page, topoViewerPage }) => {
+  test("group persists after all members are deleted", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -185,12 +192,12 @@ test.describe('Group Operations', () => {
     // Select two nodes
     await topoViewerPage.selectNode(node1);
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(node2);
-    await page.keyboard.down('Control');
+    await page.keyboard.down("Control");
     await page.mouse.click(
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up('Control');
+    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     // Create group using the fixture helper
@@ -201,12 +208,12 @@ test.describe('Group Operations', () => {
 
     // Delete first node
     await topoViewerPage.selectNode(node1);
-    await page.keyboard.press('Delete');
+    await page.keyboard.press("Delete");
     await page.waitForTimeout(300);
 
     // Delete second node
     await topoViewerPage.selectNode(node2);
-    await page.keyboard.press('Delete');
+    await page.keyboard.press("Delete");
     await page.waitForTimeout(300);
 
     // Group should persist even after all members are deleted (intended behavior)
@@ -215,7 +222,7 @@ test.describe('Group Operations', () => {
   });
 });
 
-test.describe('Group Operations - Membership promotions', () => {
+test.describe("Group Operations - Membership promotions", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     const api = topoViewerPage as TopoViewerPage;
     await api.resetFiles();
@@ -225,13 +232,16 @@ test.describe('Group Operations - Membership promotions', () => {
     await api.unlock();
   });
 
-  test('deleting a nested group promotes members, child groups, and annotations', async ({ page, topoViewerPage }) => {
+  test("deleting a nested group promotes members, child groups, and annotations", async ({
+    page,
+    topoViewerPage
+  }) => {
     const api = topoViewerPage as TopoViewerPage;
     const nodes = [
-      { id: 'node-a', position: { x: 100, y: 100 } },
-      { id: 'node-b', position: { x: 500, y: 400 } },
-      { id: 'node-c', position: { x: 200, y: 200 } },
-      { id: 'node-d', position: { x: 420, y: 320 } }
+      { id: "node-a", position: { x: 100, y: 100 } },
+      { id: "node-b", position: { x: 500, y: 400 } },
+      { id: "node-c", position: { x: 200, y: 200 } },
+      { id: "node-d", position: { x: 420, y: 320 } }
     ];
 
     for (const node of nodes) {
@@ -239,23 +249,29 @@ test.describe('Group Operations - Membership promotions', () => {
     }
     await api.fit();
 
-    const outerGroupId = await createGroupFromNodes(page, api, ['node-a', 'node-b']);
-    const innerGroupId = await createGroupFromNodes(page, api, ['node-c', 'node-d']);
+    const outerGroupId = await createGroupFromNodes(page, api, ["node-a", "node-b"]);
+    const innerGroupId = await createGroupFromNodes(page, api, ["node-c", "node-d"]);
 
-    await expect.poll(
-      async () => {
-        const annotations = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
-        return annotations.groupStyleAnnotations?.find(g => g.id === innerGroupId)?.parentId ?? null;
-      },
-      { timeout: 5000, message: 'Expected inner group to be nested under outer group' }
-    ).toBe(outerGroupId);
+    await expect
+      .poll(
+        async () => {
+          const annotations = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
+          return (
+            annotations.groupStyleAnnotations?.find((g) => g.id === innerGroupId)?.parentId ?? null
+          );
+        },
+        { timeout: 5000, message: "Expected inner group to be nested under outer group" }
+      )
+      .toBe(outerGroupId);
 
     const annotationsBeforeWrite = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
-    const innerGroup = annotationsBeforeWrite.groupStyleAnnotations?.find(group => group.id === innerGroupId);
+    const innerGroup = annotationsBeforeWrite.groupStyleAnnotations?.find(
+      (group) => group.id === innerGroupId
+    );
     expect(innerGroup).toBeDefined();
     const nodeAnnotations = [...(annotationsBeforeWrite.nodeAnnotations ?? [])];
     const ensureNodeMembership = (nodeId: string): void => {
-      const existing = nodeAnnotations.find(node => node.id === nodeId);
+      const existing = nodeAnnotations.find((node) => node.id === nodeId);
       if (existing) {
         existing.groupId = innerGroupId;
         existing.group = innerGroup!.name;
@@ -269,8 +285,8 @@ test.describe('Group Operations - Membership promotions', () => {
         level: innerGroup!.level
       });
     };
-    ensureNodeMembership('node-c');
-    ensureNodeMembership('node-d');
+    ensureNodeMembership("node-c");
+    ensureNodeMembership("node-d");
     const childGroupId = `group-${Date.now()}`;
     const childGroup = {
       ...innerGroup!,
@@ -287,15 +303,12 @@ test.describe('Group Operations - Membership promotions', () => {
     const updatedAnnotations = {
       ...annotationsBeforeWrite,
       nodeAnnotations,
-      groupStyleAnnotations: [
-        ...(annotationsBeforeWrite.groupStyleAnnotations ?? []),
-        childGroup
-      ],
+      groupStyleAnnotations: [...(annotationsBeforeWrite.groupStyleAnnotations ?? []), childGroup],
       freeTextAnnotations: [
         ...(annotationsBeforeWrite.freeTextAnnotations ?? []),
         {
           id: textAnnotationId,
-          text: 'Inner note',
+          text: "Inner note",
           position: { x: 260, y: 180 },
           groupId: innerGroupId
         }
@@ -304,7 +317,7 @@ test.describe('Group Operations - Membership promotions', () => {
         ...(annotationsBeforeWrite.freeShapeAnnotations ?? []),
         {
           id: shapeAnnotationId,
-          shapeType: 'rectangle',
+          shapeType: "rectangle",
           position: { x: 260, y: 200 },
           width: 80,
           height: 50,
@@ -320,72 +333,88 @@ test.describe('Group Operations - Membership promotions', () => {
     await api.unlock();
     await api.fit();
 
-    await expect.poll(
-      () => api.getGroupIds(),
-      { timeout: 5000, message: 'Expected groups to load after reload' }
-    ).toEqual(expect.arrayContaining([outerGroupId, innerGroupId, childGroupId]));
+    await expect
+      .poll(() => api.getGroupIds(), {
+        timeout: 5000,
+        message: "Expected groups to load after reload"
+      })
+      .toEqual(expect.arrayContaining([outerGroupId, innerGroupId, childGroupId]));
 
     const annotationsAfterReload = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
-    const textAnnotation = annotationsAfterReload.freeTextAnnotations?.find(a => a.id === textAnnotationId);
-    const shapeAnnotation = annotationsAfterReload.freeShapeAnnotations?.find(a => a.id === shapeAnnotationId);
+    const textAnnotation = annotationsAfterReload.freeTextAnnotations?.find(
+      (a) => a.id === textAnnotationId
+    );
+    const shapeAnnotation = annotationsAfterReload.freeShapeAnnotations?.find(
+      (a) => a.id === shapeAnnotationId
+    );
     expect(textAnnotation?.groupId).toBe(innerGroupId);
     expect(shapeAnnotation?.groupId).toBe(innerGroupId);
 
-    await expect.poll(
-      async () => {
-        const annotations = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
-        return annotations.groupStyleAnnotations?.find(g => g.id === childGroupId)?.parentId ?? null;
-      },
-      { timeout: 5000, message: 'Expected child group to be nested under inner group' }
-    ).toBe(innerGroupId);
+    await expect
+      .poll(
+        async () => {
+          const annotations = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
+          return (
+            annotations.groupStyleAnnotations?.find((g) => g.id === childGroupId)?.parentId ?? null
+          );
+        },
+        { timeout: 5000, message: "Expected child group to be nested under inner group" }
+      )
+      .toBe(innerGroupId);
 
     await openGroupContextMenu(page, innerGroupId);
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.getByRole("button", { name: "Delete" }).click();
 
-    await expect.poll(
-      () => getGroupPromotionSnapshot(api, {
-        innerGroupId,
-        childGroupId,
-        textAnnotationId,
-        shapeAnnotationId
-      }),
-      { timeout: 5000, message: 'Expected promotions after group delete' }
-    ).toEqual({
-      innerExists: false,
-      childParent: outerGroupId,
-      nodeCGroup: outerGroupId,
-      nodeDGroup: outerGroupId,
-      textGroup: outerGroupId,
-      shapeGroup: outerGroupId
-    });
+    await expect
+      .poll(
+        () =>
+          getGroupPromotionSnapshot(api, {
+            innerGroupId,
+            childGroupId,
+            textAnnotationId,
+            shapeAnnotationId
+          }),
+        { timeout: 5000, message: "Expected promotions after group delete" }
+      )
+      .toEqual({
+        innerExists: false,
+        childParent: outerGroupId,
+        nodeCGroup: outerGroupId,
+        nodeDGroup: outerGroupId,
+        textGroup: outerGroupId,
+        shapeGroup: outerGroupId
+      });
 
     await api.undo();
 
-    await expect.poll(
-      () => getGroupPromotionSnapshot(api, {
-        innerGroupId,
-        childGroupId,
-        textAnnotationId,
-        shapeAnnotationId
-      }),
-      { timeout: 5000, message: 'Expected undo to restore nested memberships' }
-    ).toEqual({
-      innerExists: true,
-      childParent: innerGroupId,
-      nodeCGroup: innerGroupId,
-      nodeDGroup: innerGroupId,
-      textGroup: innerGroupId,
-      shapeGroup: innerGroupId
-    });
+    await expect
+      .poll(
+        () =>
+          getGroupPromotionSnapshot(api, {
+            innerGroupId,
+            childGroupId,
+            textAnnotationId,
+            shapeAnnotationId
+          }),
+        { timeout: 5000, message: "Expected undo to restore nested memberships" }
+      )
+      .toEqual({
+        innerExists: true,
+        childParent: innerGroupId,
+        nodeCGroup: innerGroupId,
+        nodeDGroup: innerGroupId,
+        textGroup: innerGroupId,
+        shapeGroup: innerGroupId
+      });
   });
 
-  test('allows duplicate group names with distinct ids', async ({ page, topoViewerPage }) => {
+  test("allows duplicate group names with distinct ids", async ({ page, topoViewerPage }) => {
     const api = topoViewerPage as TopoViewerPage;
     const nodes = [
-      { id: 'dup-a', position: { x: 100, y: 100 } },
-      { id: 'dup-b', position: { x: 180, y: 100 } },
-      { id: 'dup-c', position: { x: 500, y: 400 } },
-      { id: 'dup-d', position: { x: 580, y: 400 } }
+      { id: "dup-a", position: { x: 100, y: 100 } },
+      { id: "dup-b", position: { x: 180, y: 100 } },
+      { id: "dup-c", position: { x: 500, y: 400 } },
+      { id: "dup-d", position: { x: 580, y: 400 } }
     ];
 
     for (const node of nodes) {
@@ -393,17 +422,17 @@ test.describe('Group Operations - Membership promotions', () => {
     }
     await api.fit();
 
-    const firstGroupId = await createGroupFromNodes(page, api, ['dup-a', 'dup-b']);
-    const secondGroupId = await createGroupFromNodes(page, api, ['dup-c', 'dup-d']);
+    const firstGroupId = await createGroupFromNodes(page, api, ["dup-a", "dup-b"]);
+    const secondGroupId = await createGroupFromNodes(page, api, ["dup-c", "dup-d"]);
 
     const annotations = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
-    const firstGroup = annotations.groupStyleAnnotations?.find(g => g.id === firstGroupId);
-    const secondGroup = annotations.groupStyleAnnotations?.find(g => g.id === secondGroupId);
+    const firstGroup = annotations.groupStyleAnnotations?.find((g) => g.id === firstGroupId);
+    const secondGroup = annotations.groupStyleAnnotations?.find((g) => g.id === secondGroupId);
     expect(firstGroup).toBeDefined();
     expect(secondGroup).toBeDefined();
 
     await openGroupContextMenu(page, secondGroupId);
-    await page.getByRole('button', { name: 'Edit' }).first().click();
+    await page.getByRole("button", { name: "Edit" }).first().click();
 
     const groupEditor = page.locator('[data-testid="group-editor"]');
     await expect(groupEditor).toBeVisible({ timeout: 3000 });
@@ -411,13 +440,19 @@ test.describe('Group Operations - Membership promotions', () => {
     await nameInput.fill(firstGroup!.name);
     await groupEditor.locator(SEL_PANEL_OK_BTN).click();
 
-    await expect.poll(
-      async () => {
-        const updated = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
-        return updated.groupStyleAnnotations?.filter(g => g.name === firstGroup!.name).map(g => g.id) ?? [];
-      },
-      { timeout: 5000, message: 'Expected duplicate group names to be persisted' }
-    ).toEqual(expect.arrayContaining([firstGroupId, secondGroupId]));
+    await expect
+      .poll(
+        async () => {
+          const updated = await api.getAnnotationsFromFile(TOPOLOGY_FILE);
+          return (
+            updated.groupStyleAnnotations
+              ?.filter((g) => g.name === firstGroup!.name)
+              .map((g) => g.id) ?? []
+          );
+        },
+        { timeout: 5000, message: "Expected duplicate group names to be persisted" }
+      )
+      .toEqual(expect.arrayContaining([firstGroupId, secondGroupId]));
   });
 });
 
@@ -427,7 +462,7 @@ test.describe('Group Operations - Membership promotions', () => {
  * These tests verify that group operations properly update:
  * - .clab.yml.annotations.json file (saves group definitions and membership)
  */
-test.describe('Group Operations - File Persistence', () => {
+test.describe("Group Operations - File Persistence", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
@@ -436,7 +471,7 @@ test.describe('Group Operations - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('created group appears in annotations file', async ({ page, topoViewerPage }) => {
+  test("created group appears in annotations file", async ({ page, topoViewerPage }) => {
     // Get initial annotations
     const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
     const initialGroupCount = initialAnnotations.groupStyleAnnotations?.length || 0;
@@ -447,12 +482,12 @@ test.describe('Group Operations - File Persistence', () => {
     // Select two nodes
     await topoViewerPage.selectNode(nodeIds[0]);
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    await page.keyboard.down('Control');
+    await page.keyboard.down("Control");
     await page.mouse.click(
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up('Control');
+    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     // Create group with Ctrl+G using fixture helper
@@ -475,7 +510,7 @@ test.describe('Group Operations - File Persistence', () => {
     expect(newGroups[0].name).toBeDefined();
   });
 
-  test('datacenter topology has groups in annotations file', async ({ topoViewerPage }) => {
+  test("datacenter topology has groups in annotations file", async ({ topoViewerPage }) => {
     // Load datacenter topology which has pre-defined groups
     await topoViewerPage.gotoFile(DATACENTER_FILE);
     await topoViewerPage.waitForCanvasReady();
@@ -487,24 +522,24 @@ test.describe('Group Operations - File Persistence', () => {
     expect(annotations.groupStyleAnnotations?.length).toBeGreaterThan(0);
 
     // Check for expected group names
-    const groupNames = annotations.groupStyleAnnotations?.map(g => g.name);
-    expect(groupNames).toContain('Border');
-    expect(groupNames).toContain('Spine');
+    const groupNames = annotations.groupStyleAnnotations?.map((g) => g.name);
+    expect(groupNames).toContain("Border");
+    expect(groupNames).toContain("Spine");
   });
 
-  test('group persists after reload', async ({ page, topoViewerPage }) => {
+  test("group persists after reload", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
     // Select two nodes and create a group
     await topoViewerPage.selectNode(nodeIds[0]);
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    await page.keyboard.down('Control');
+    await page.keyboard.down("Control");
     await page.mouse.click(
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up('Control');
+    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     // Create group using fixture helper

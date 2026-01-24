@@ -7,8 +7,8 @@
  * - Viewport center calculation
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../useCytoCompatInstance";
 import {
   useUnifiedClipboard,
   type UseUnifiedClipboardOptions
@@ -47,7 +47,7 @@ const DEBOUNCE_MS = 50;
  * Configuration for useClipboardHandlers hook
  */
 export interface ClipboardHandlersConfig {
-  cyInstance: CyCore | null;
+  cyCompat: CyCompatCore | null;
   annotations: AnnotationsClipboardSubset;
   undoRedo: {
     beginBatch: () => void;
@@ -79,19 +79,18 @@ export interface ClipboardHandlersReturn {
  * Consolidates ~70 lines of clipboard code from App.tsx into a single hook.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { cyInstance, annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } =
-    config;
+  const { cyCompat, annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } = config;
 
   // Viewport center for paste operations
   const getViewportCenter = React.useCallback(() => {
-    if (!cyInstance) return { x: 0, y: 0 };
-    const extent = cyInstance.extent();
+    if (!cyCompat) return { x: 0, y: 0 };
+    const extent = cyCompat.extent();
     return { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
-  }, [cyInstance]);
+  }, [cyCompat]);
 
   // Unified clipboard hook
   const unifiedClipboard = useUnifiedClipboard({
-    cyInstance,
+    cyCompat,
     groups: annotations.groups,
     textAnnotations: annotations.textAnnotations,
     shapeAnnotations: annotations.shapeAnnotations,
@@ -113,11 +112,11 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
 
   const getPasteAnchor = React.useCallback(() => {
     const viewportCenter = getViewportCenter();
-    if (!cyInstance) return viewportCenter;
+    if (!cyCompat) return viewportCenter;
     const clipboardData = unifiedClipboard.getClipboardData();
     if (!clipboardData) return viewportCenter;
 
-    const extent = cyInstance.extent();
+    const extent = cyCompat.extent();
     const { origin } = clipboardData;
     const originIsInView =
       origin.x >= extent.x1 &&
@@ -129,7 +128,7 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     // single copy+paste doesn't unexpectedly land far away (or overlap due to
     // viewport centering).
     return originIsInView ? origin : viewportCenter;
-  }, [cyInstance, getViewportCenter, unifiedClipboard]);
+  }, [cyCompat, getViewportCenter, unifiedClipboard]);
 
   // Debounce refs
   const lastCopyTimeRef = React.useRef(0);
@@ -165,7 +164,7 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     // Graph deletion is handled by keyboard/context-menu handlers that go through
     // state + persistence. This unified delete is for annotations only.
     annotations.deleteAllSelected();
-  }, [cyInstance, annotations]);
+  }, [annotations]);
 
   return {
     handleUnifiedCopy,

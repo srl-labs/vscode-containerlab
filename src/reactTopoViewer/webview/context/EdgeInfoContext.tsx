@@ -5,9 +5,9 @@
  * and their ordering, so individual edge components don't need to filter through
  * all edges (avoiding O(n²) complexity).
  */
-import type { ReactNode } from 'react';
-import React, { createContext, useContext, useMemo } from 'react';
-import { useEdges, type Edge } from '@xyflow/react';
+import type { ReactNode } from "react";
+import React, { createContext, useContext, useMemo } from "react";
+import { useEdges, type Edge } from "@xyflow/react";
 
 /**
  * Information about a parallel edge group
@@ -58,9 +58,10 @@ function groupEdges(edges: Edge[]) {
       loopEdgesByNode.set(edge.source, loops);
     } else {
       // Regular edge - use canonical key (sorted node IDs)
-      const [nodeA, nodeB] = edge.source.localeCompare(edge.target) <= 0
-        ? [edge.source, edge.target]
-        : [edge.target, edge.source];
+      const [nodeA, nodeB] =
+        edge.source.localeCompare(edge.target) <= 0
+          ? [edge.source, edge.target]
+          : [edge.target, edge.source];
       const pairKey = `${nodeA}|||${nodeB}`;
 
       const group = edgesByPair.get(pairKey) || [];
@@ -127,11 +128,7 @@ export const EdgeInfoProvider: React.FC<EdgeInfoProviderProps> = ({ children }) 
     };
   }, [edges]);
 
-  return (
-    <EdgeInfoContext.Provider value={value}>
-      {children}
-    </EdgeInfoContext.Provider>
-  );
+  return <EdgeInfoContext.Provider value={value}>{children}</EdgeInfoContext.Provider>;
 };
 
 /**

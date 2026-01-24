@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors
 const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
@@ -12,16 +12,16 @@ const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
  * - Panel close behavior
  * - Apply/OK button interactions
  */
-test.describe('Link Editor Panel', () => {
+test.describe("Link Editor Panel", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
   });
 
-  test('opens link editor panel on double-click on edge', async ({ page, topoViewerPage }) => {
+  test("opens link editor panel on double-click on edge", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(edgeIds.length).toBeGreaterThan(0);
 
@@ -53,7 +53,7 @@ test.describe('Link Editor Panel', () => {
     await expect(editorPanel).toBeVisible();
   });
 
-  test('link editor panel has correct title', async ({ page, topoViewerPage }) => {
+  test("link editor panel has correct title", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
     const midpoint = await page.evaluate((id) => {
@@ -77,10 +77,10 @@ test.describe('Link Editor Panel', () => {
 
     const title = page.locator('[data-testid="link-editor"] [data-testid="panel-title"]');
     await expect(title).toBeVisible();
-    await expect(title).toHaveText('Link Editor');
+    await expect(title).toHaveText("Link Editor");
   });
 
-  test('link editor panel has Basic tab selected by default', async ({ page, topoViewerPage }) => {
+  test("link editor panel has Basic tab selected by default", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
     const midpoint = await page.evaluate((id) => {
@@ -108,7 +108,7 @@ test.describe('Link Editor Panel', () => {
     await expect(basicTab).toHaveClass(/tab-active/);
   });
 
-  test('closes link editor panel with close button', async ({ page, topoViewerPage }) => {
+  test("closes link editor panel with close button", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
     const midpoint = await page.evaluate((id) => {
@@ -142,7 +142,7 @@ test.describe('Link Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('closes link editor panel with OK button', async ({ page, topoViewerPage }) => {
+  test("closes link editor panel with OK button", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
     const midpoint = await page.evaluate((id) => {
@@ -176,7 +176,7 @@ test.describe('Link Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('link editor panel does not open in view mode', async ({ page, topoViewerPage }) => {
+  test("link editor panel does not open in view mode", async ({ page, topoViewerPage }) => {
     // Switch to view mode
     await topoViewerPage.setViewMode();
 
@@ -206,7 +206,10 @@ test.describe('Link Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('link editor panel does not open when canvas is locked', async ({ page, topoViewerPage }) => {
+  test("link editor panel does not open when canvas is locked", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Lock the canvas
     await topoViewerPage.lock();
 
@@ -236,7 +239,7 @@ test.describe('Link Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('Apply button exists in link editor panel', async ({ page, topoViewerPage }) => {
+  test("Apply button exists in link editor panel", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
     const midpoint = await page.evaluate((id) => {
@@ -261,10 +264,10 @@ test.describe('Link Editor Panel', () => {
     // Apply button should exist
     const applyBtn = page.locator('[data-testid="link-editor"] [data-testid="panel-apply-btn"]');
     await expect(applyBtn).toBeVisible();
-    await expect(applyBtn).toHaveText('Apply');
+    await expect(applyBtn).toHaveText("Apply");
   });
 
-  test('veth link has Extended tab available', async ({ page, topoViewerPage }) => {
+  test("veth link has Extended tab available", async ({ page, topoViewerPage }) => {
     // Need to find a veth link (between two regular nodes)
     const edgeIds = await topoViewerPage.getEdgeIds();
 
@@ -288,7 +291,9 @@ test.describe('Link Editor Panel', () => {
     await page.waitForTimeout(500);
 
     // Check if Extended tab exists (for veth links)
-    const extendedTab = page.locator('[data-testid="link-editor"] [data-testid="panel-tab-extended"]');
+    const extendedTab = page.locator(
+      '[data-testid="link-editor"] [data-testid="panel-tab-extended"]'
+    );
     // Note: This tab may or may not exist depending on link type
     // For sample topology with regular nodes, it should exist
     const tabCount = await extendedTab.count();

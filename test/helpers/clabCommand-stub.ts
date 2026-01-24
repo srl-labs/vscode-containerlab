@@ -10,8 +10,9 @@ export class ClabCommand {
     this.action = action;
     this.node = node;
     this.spinnerMessages = spinnerMessages || {
-      progressMsg: action === 'deploy' ? 'Deploying Lab... ' : `${action}ing Lab... `,
-      successMsg: action === 'deploy' ? 'Lab deployed successfully!' : `Lab ${action}ed successfully!`
+      progressMsg: action === "deploy" ? "Deploying Lab... " : `${action}ing Lab... `,
+      successMsg:
+        action === "deploy" ? "Lab deployed successfully!" : `Lab ${action}ed successfully!`
     };
     instances.push(this);
   }

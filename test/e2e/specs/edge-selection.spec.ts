@@ -1,16 +1,19 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { ctrlClick } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { ctrlClick } from "../helpers/cytoscape-helpers";
 
-test.describe('Edge Selection', () => {
+test.describe("Edge Selection", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
   });
 
-  test('selects single edge on click and multiple with Ctrl+Click', async ({ page, topoViewerPage }) => {
+  test("selects single edge on click and multiple with Ctrl+Click", async ({
+    page,
+    topoViewerPage
+  }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(edgeIds.length).toBeGreaterThan(0);
 
@@ -52,7 +55,7 @@ test.describe('Edge Selection', () => {
     }
   });
 
-  test('clears edge selection with Escape key', async ({ page, topoViewerPage }) => {
+  test("clears edge selection with Escape key", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(edgeIds.length).toBeGreaterThan(0);
 
@@ -62,14 +65,14 @@ test.describe('Edge Selection', () => {
     expect(selectedIds.length).toBeGreaterThan(0);
 
     // Press Escape
-    await page.keyboard.press('Escape');
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
     selectedIds = await topoViewerPage.getSelectedEdgeIds();
     expect(selectedIds.length).toBe(0);
   });
 
-  test('selecting node does not select edges and vice versa', async ({ topoViewerPage }) => {
+  test("selecting node does not select edges and vice versa", async ({ topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(nodeIds.length).toBeGreaterThan(0);

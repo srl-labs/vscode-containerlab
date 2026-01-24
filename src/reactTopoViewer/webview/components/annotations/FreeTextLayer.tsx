@@ -6,8 +6,8 @@
  * coordinates and scales with zoom like nodes do.
  */
 import React, { useRef, useState, useMemo, useCallback, useEffect } from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyCompatCore } from "../../hooks/useCytoCompatInstance";
 import type { FreeTextAnnotation } from "../../../shared/types/topology";
 import {
   computeAnnotationStyle,
@@ -37,7 +37,7 @@ import {
 // ============================================================================
 
 interface FreeTextLayerProps extends GroupRelatedProps {
-  cy: CyCore | null;
+  cyCompat: CyCompatCore | null;
   annotations: FreeTextAnnotation[];
   isLocked: boolean;
   isAddTextMode: boolean;
@@ -71,22 +71,22 @@ interface ViewportTransform {
 /** Stable dummy position for computeAnnotationStyle (only style props like color/border are used, not x/y/zoom) */
 const DUMMY_RENDERED_POS = { x: 0, y: 0, zoom: 1 } as const;
 
-function useViewportTransform(cy: CyCore | null): ViewportTransform {
+function useViewportTransform(cyCompat: CyCompatCore | null): ViewportTransform {
   const [transform, setTransform] = useState<ViewportTransform>({ pan: { x: 0, y: 0 }, zoom: 1 });
 
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
 
     const updateTransform = () => {
-      setTransform({ pan: cy.pan(), zoom: cy.zoom() });
+      setTransform({ pan: cyCompat.pan(), zoom: cyCompat.zoom() });
     };
 
     updateTransform();
-    cy.on("pan zoom viewport", updateTransform);
+    cyCompat.on("pan zoom viewport", updateTransform);
     return () => {
-      cy.off("pan zoom viewport", updateTransform);
+      cyCompat.off("pan zoom viewport", updateTransform);
     };
-  }, [cy]);
+  }, [cyCompat]);
 
   return transform;
 }
@@ -112,7 +112,7 @@ function addMouseListeners(
 // ============================================================================
 
 interface UseDragOptions {
-  cy: CyCore;
+  cyCompat: CyCompatCore;
   modelPosition: { x: number; y: number };
   isLocked: boolean;
   onPositionChange: (position: { x: number; y: number }) => void;
@@ -121,7 +121,7 @@ interface UseDragOptions {
 }
 
 function useTextDrag(options: UseDragOptions) {
-  const { cy, modelPosition, isLocked, onPositionChange, onDragStart, onDragEnd } = options;
+  const { cyCompat, modelPosition, isLocked, onPositionChange, onDragStart, onDragEnd } = options;
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number } | null>(null);
   const dragStartRef = useRef<{
@@ -136,7 +136,7 @@ function useTextDrag(options: UseDragOptions) {
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
-      const zoom = cy.zoom();
+      const zoom = cyCompat.zoom();
       const dx = (e.clientX - dragStartRef.current.mouseX) / zoom;
       const dy = (e.clientY - dragStartRef.current.mouseY) / zoom;
       setDragOffset({ dx, dy });
@@ -144,7 +144,7 @@ function useTextDrag(options: UseDragOptions) {
 
     const handleMouseUp = (e: MouseEvent) => {
       if (!dragStartRef.current) return;
-      const zoom = cy.zoom();
+      const zoom = cyCompat.zoom();
       const dx = (e.clientX - dragStartRef.current.mouseX) / zoom;
       const dy = (e.clientY - dragStartRef.current.mouseY) / zoom;
       const finalX = Math.round(dragStartRef.current.modelX + dx);
@@ -161,7 +161,7 @@ function useTextDrag(options: UseDragOptions) {
     };
 
     return addMouseListeners(handleMouseMove, handleMouseUp);
-  }, [isDragging, cy, modelPosition, onPositionChange, onDragEnd]);
+  }, [isDragging, cyCompat, modelPosition, onPositionChange, onDragEnd]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -199,24 +199,24 @@ function useTextDrag(options: UseDragOptions) {
 // ============================================================================
 
 function useTextRotation(options: {
-  cy: CyCore;
+  cyCompat: CyCompatCore;
   modelPosition: { x: number; y: number };
   isLocked: boolean;
   onRotationChange: (rotation: number) => void;
 }) {
-  const { cy, modelPosition, isLocked, onRotationChange } = options;
+  const { cyCompat, modelPosition, isLocked, onRotationChange } = options;
   const [isRotating, setIsRotating] = useState(false);
 
   useEffect(() => {
     if (!isRotating) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const pan = cy.pan();
-      const zoom = cy.zoom();
+      const pan = cyCompat.pan();
+      const zoom = cyCompat.zoom();
       const centerX = modelPosition.x * zoom + pan.x;
       const centerY = modelPosition.y * zoom + pan.y;
 
-      const container = cy.container();
+      const container = cyCompat.container();
       if (!container) return;
       const rect = container.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -231,7 +231,7 @@ function useTextRotation(options: {
     };
 
     return addMouseListeners(handleMouseMove, handleMouseUp);
-  }, [isRotating, cy, modelPosition, onRotationChange]);
+  }, [isRotating, cyCompat, modelPosition, onRotationChange]);
 
   const handleRotationMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -251,14 +251,14 @@ function useTextRotation(options: {
 // ============================================================================
 
 function useTextResize(options: {
-  cy: CyCore;
+  cyCompat: CyCompatCore;
   currentWidth: number | undefined;
   currentHeight: number | undefined;
   contentRef: React.RefObject<HTMLDivElement | null>;
   isLocked: boolean;
   onSizeChange: (width: number, height: number) => void;
 }) {
-  const { cy, currentWidth, currentHeight, contentRef, isLocked, onSizeChange } = options;
+  const { cyCompat, currentWidth, currentHeight, contentRef, isLocked, onSizeChange } = options;
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartRef = useRef<{
     mouseX: number;
@@ -298,7 +298,7 @@ function useTextResize(options: {
       e.preventDefault();
       e.stopPropagation();
 
-      const zoom = cy.zoom();
+      const zoom = cyCompat.zoom();
       const rect = contentRef.current?.getBoundingClientRect();
       // Divide by zoom to convert screen-space to model-space dimensions
       const width = currentWidth || (rect ? rect.width / zoom : 100);
@@ -307,7 +307,7 @@ function useTextResize(options: {
       resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width, height };
       setIsResizing(true);
     },
-    [isLocked, cy, currentWidth, currentHeight, contentRef]
+    [isLocked, cyCompat, currentWidth, currentHeight, contentRef]
   );
 
   return { isResizing, handleResizeMouseDown };
@@ -319,7 +319,7 @@ function useTextResize(options: {
 
 interface TextItemProps {
   annotation: FreeTextAnnotation;
-  cy: CyCore;
+  cyCompat: CyCompatCore;
   isLocked: boolean;
   isSelected: boolean;
   isGeoMode?: boolean;
@@ -362,7 +362,7 @@ function calculateEffectivelyLocked(
 
 const TextItem: React.FC<TextItemProps> = ({
   annotation,
-  cy,
+  cyCompat,
   isLocked,
   isSelected,
   isGeoMode,
@@ -385,7 +385,7 @@ const TextItem: React.FC<TextItemProps> = ({
 
   // Drag handling
   const { isDragging, currentPosition, handleMouseDown } = useTextDrag({
-    cy,
+    cyCompat,
     modelPosition: annotation.position,
     isLocked: effectivelyLocked,
     onPositionChange,
@@ -395,7 +395,7 @@ const TextItem: React.FC<TextItemProps> = ({
 
   // Rotation handling
   const { isRotating, handleRotationMouseDown } = useTextRotation({
-    cy,
+    cyCompat,
     modelPosition: annotation.position,
     isLocked: effectivelyLocked,
     onRotationChange
@@ -403,7 +403,7 @@ const TextItem: React.FC<TextItemProps> = ({
 
   // Resize handling
   const { isResizing, handleResizeMouseDown } = useTextResize({
-    cy,
+    cyCompat,
     currentWidth: annotation.width,
     currentHeight: annotation.height,
     contentRef,
@@ -575,7 +575,7 @@ function createTextAnnotationCallbacks(
 // ============================================================================
 
 export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
-  cy,
+  cyCompat,
   annotations,
   isLocked,
   isAddTextMode,
@@ -600,7 +600,7 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
   const transformedLayerRef = useRef<HTMLDivElement>(null);
-  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, "FreeTextLayer");
+  const handleLayerClick = useLayerClickHandler(cyCompat, onCanvasClick, "FreeTextLayer");
 
   // Context menu state - rendered outside transformed layer so position: fixed works
   const [contextMenu, setContextMenu] = useState<{
@@ -617,27 +617,27 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
     []
   );
 
-  // Get viewport transform from Cytoscape
-  const { pan, zoom } = useViewportTransform(cy);
+  // Get viewport transform from CyCompat
+  const { pan, zoom } = useViewportTransform(cyCompat);
 
   // Sync transform to the layer via ref (avoids React re-render lag)
   useEffect(() => {
-    if (transformedLayerRef.current && cy) {
-      const p = cy.pan();
-      const z = cy.zoom();
+    if (transformedLayerRef.current && cyCompat) {
+      const p = cyCompat.pan();
+      const z = cyCompat.zoom();
       transformedLayerRef.current.style.transform = `translate(${p.x}px, ${p.y}px) scale(${z})`;
     }
-  }, [cy, pan, zoom]);
+  }, [cyCompat, pan, zoom]);
 
   // Also sync on animation frames for smoother updates during zoom
   useEffect(() => {
-    if (!cy) return;
+    if (!cyCompat) return;
     let animationId: number;
 
     const syncTransform = () => {
       if (transformedLayerRef.current) {
-        const p = cy.pan();
-        const z = cy.zoom();
+        const p = cyCompat.pan();
+        const z = cyCompat.zoom();
         transformedLayerRef.current.style.transform = `translate(${p.x}px, ${p.y}px) scale(${z})`;
       }
       animationId = window.requestAnimationFrame(syncTransform);
@@ -645,9 +645,15 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
 
     animationId = window.requestAnimationFrame(syncTransform);
     return () => window.cancelAnimationFrame(animationId);
-  }, [cy]);
+  }, [cyCompat]);
 
-  useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, undefined, "FreeTextLayer");
+  useAnnotationBoxSelection(
+    cyCompat,
+    annotations,
+    onAnnotationBoxSelect,
+    undefined,
+    "FreeTextLayer"
+  );
 
   const reparent = useAnnotationReparent({
     mode,
@@ -665,7 +671,7 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
     [reparent]
   );
 
-  if (!cy || (annotations.length === 0 && !isAddTextMode)) return null;
+  if (!cyCompat || (annotations.length === 0 && !isAddTextMode)) return null;
 
   const handlers = {
     onAnnotationDoubleClick,
@@ -718,7 +724,7 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
             <TextItem
               key={annotation.id}
               annotation={annotation}
-              cy={cy}
+              cyCompat={cyCompat}
               isLocked={isLocked}
               isSelected={selectedAnnotationIds.has(annotation.id)}
               isGeoMode={isGeoMode}

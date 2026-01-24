@@ -1,16 +1,16 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { ctrlClick } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { ctrlClick } from "../helpers/cytoscape-helpers";
 
-test.describe('Node Selection', () => {
+test.describe("Node Selection", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
   });
 
-  test('selects single node on click', async ({ topoViewerPage }) => {
+  test("selects single node on click", async ({ topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -22,7 +22,7 @@ test.describe('Node Selection', () => {
     expect(selectedIds.length).toBe(1);
   });
 
-  test('selects multiple nodes with Ctrl+Click', async ({ page, topoViewerPage }) => {
+  test("selects multiple nodes with Ctrl+Click", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(1);
 
@@ -45,7 +45,7 @@ test.describe('Node Selection', () => {
     expect(selectedIds).toContain(nodeIds[1]);
   });
 
-  test('clicking different node replaces selection', async ({ topoViewerPage }) => {
+  test("clicking different node replaces selection", async ({ topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(1);
 
@@ -65,7 +65,7 @@ test.describe('Node Selection', () => {
     expect(selectedIds).not.toContain(nodeIds[0]);
   });
 
-  test('clears selection with Escape key', async ({ page, topoViewerPage }) => {
+  test("clears selection with Escape key", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -75,14 +75,14 @@ test.describe('Node Selection', () => {
     expect(selectedIds.length).toBe(1);
 
     // Press Escape
-    await page.keyboard.press('Escape');
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
     selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(0);
   });
 
-  test('programmatic clear selection works', async ({ topoViewerPage }) => {
+  test("programmatic clear selection works", async ({ topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 

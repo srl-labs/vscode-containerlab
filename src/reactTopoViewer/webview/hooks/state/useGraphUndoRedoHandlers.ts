@@ -1,6 +1,6 @@
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
+import type { CyLike as CyCore } from "../useAppState";
 import type { CyElement } from "../../../shared/types/messages";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
 import {
@@ -18,7 +18,7 @@ import {
   type NetworkNodeData
 } from "../../services";
 import { generateEncodedSVG, type NodeType } from "../../utils/SvgGenerator";
-import { ROLE_SVG_MAP } from "../../components/canvas/styles";
+import { ROLE_SVG_MAP } from "../../components/react-flow-canvas";
 import {
   upsertEdgeLabelOffsetAnnotation,
   type EdgeOffsetUpdateInput
@@ -181,7 +181,11 @@ function toEdgeOffsetUpdateInput(data: Record<string, unknown>): EdgeOffsetUpdat
 function buildConnectedEdges(cy: CyCore | null, nodeId: string): CyElement[] {
   if (!cy) return [];
   const edges = cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
-  return edges.map((e) => ({ group: "edges" as const, data: e.data() as Record<string, unknown> }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return edges.map((e: any) => ({
+    group: "edges" as const,
+    data: e.data() as Record<string, unknown>
+  }));
 }
 
 function cloneElement(el: CyElement): CyElement {
@@ -230,9 +234,10 @@ function findEdgeByData(cy: CyCore, data: Record<string, unknown>) {
   if (byId && byId.nonempty()) return byId;
   const targetKey = getEdgeKeyFromData(data);
   if (!targetKey) return cy.collection();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return cy
     .edges()
-    .filter((e) => getEdgeKeyFromData(e.data()) === targetKey)
+    .filter((e: any) => getEdgeKeyFromData(e.data()) === targetKey)
     .first();
 }
 
@@ -345,8 +350,9 @@ function addEdgeWithPersistence(
   element: CyElement
 ): void {
   const targetKey = getEdgeKeyFromElement(element);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hasExisting =
-    targetKey && cy?.edges().some((e) => getEdgeKeyFromData(e.data()) === targetKey);
+    targetKey && cy?.edges().some((e: any) => getEdgeKeyFromData(e.data()) === targetKey);
   if (hasExisting) return;
   addEdge(element);
   // Create link via TopologyIO service
@@ -1055,7 +1061,7 @@ function useGraphUndoRedoCore(params: UseGraphUndoRedoHandlersParams) {
   });
 
   const undoRedo = useUndoRedo({
-    cy: cyInstance,
+    cyCompat: cyInstance,
     enabled: mode === "edit",
     applyGraphChanges,
     applyPropertyEdit,

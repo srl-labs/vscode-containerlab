@@ -1,11 +1,11 @@
 /**
  * TypeScript types for React Flow canvas components
  */
-import type { Node, Edge, ReactFlowInstance } from '@xyflow/react';
+import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
-import type { EdgeLabelMode } from '../../context/EdgeRenderConfigContext';
-import type { TopoNode, TopoEdge } from '../../../shared/types/graph';
-import type { CyElement } from '../../../shared/types/topology';
+import type { EdgeLabelMode } from "../../context/EdgeRenderConfigContext";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
+import type { CyElement } from "../../../shared/types/topology";
 
 /**
  * Node data for topology nodes (routers, switches, etc.)
@@ -30,7 +30,7 @@ export interface TopologyNodeData {
  */
 export interface CloudNodeData {
   label: string;
-  nodeType: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'bridge';
+  nodeType: "host" | "mgmt-net" | "macvlan" | "vxlan" | "bridge";
   extraData?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -46,7 +46,7 @@ export interface GroupNodeData {
   backgroundOpacity?: number;
   borderColor?: string;
   borderWidth?: number;
-  borderStyle?: 'solid' | 'dotted' | 'dashed' | 'double';
+  borderStyle?: "solid" | "dotted" | "dashed" | "double";
   borderRadius?: number;
   labelColor?: string;
   labelPosition?: string;
@@ -63,10 +63,10 @@ export interface FreeTextNodeData {
   fontSize?: number;
   fontColor?: string;
   backgroundColor?: string;
-  fontWeight?: 'normal' | 'bold';
-  fontStyle?: 'normal' | 'italic';
-  textDecoration?: 'none' | 'underline';
-  textAlign?: 'left' | 'center' | 'right';
+  fontWeight?: "normal" | "bold";
+  fontStyle?: "normal" | "italic";
+  textDecoration?: "none" | "underline";
+  textAlign?: "left" | "center" | "right";
   fontFamily?: string;
   rotation?: number;
   width?: number;
@@ -79,7 +79,7 @@ export interface FreeTextNodeData {
  * Node data for free shape annotations
  */
 export interface FreeShapeNodeData {
-  shapeType: 'rectangle' | 'circle' | 'line';
+  shapeType: "rectangle" | "circle" | "line";
   width?: number;
   height?: number;
   /** Absolute end position for lines (for updating annotation state) */
@@ -94,7 +94,7 @@ export interface FreeShapeNodeData {
   fillOpacity?: number;
   borderColor?: string;
   borderWidth?: number;
-  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  borderStyle?: "solid" | "dashed" | "dotted";
   rotation?: number;
   lineStartArrow?: boolean;
   lineEndArrow?: boolean;
@@ -109,7 +109,7 @@ export interface FreeShapeNodeData {
 export interface TopologyEdgeData {
   sourceEndpoint: string;
   targetEndpoint: string;
-  linkStatus?: 'up' | 'down' | 'unknown';
+  linkStatus?: "up" | "down" | "unknown";
   extraData?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -117,21 +117,31 @@ export interface TopologyEdgeData {
 /**
  * Union type for all node data types
  */
-export type RFNodeData = TopologyNodeData | CloudNodeData | GroupNodeData | FreeTextNodeData | FreeShapeNodeData;
+export type RFNodeData =
+  | TopologyNodeData
+  | CloudNodeData
+  | GroupNodeData
+  | FreeTextNodeData
+  | FreeShapeNodeData;
 
 /**
  * Custom node types used in the topology viewer
  */
-export type RFNodeType = 'topology-node' | 'cloud-node' | 'group-node' | 'free-text-node' | 'free-shape-node';
+export type RFNodeType =
+  | "topology-node"
+  | "cloud-node"
+  | "group-node"
+  | "free-text-node"
+  | "free-shape-node";
 
 /**
  * React Flow node with topology data
  */
-export type TopologyRFNode = Node<TopologyNodeData, 'topology-node'>;
-export type CloudRFNode = Node<CloudNodeData, 'cloud-node'>;
-export type GroupRFNode = Node<GroupNodeData, 'group-node'>;
-export type FreeTextRFNode = Node<FreeTextNodeData, 'free-text-node'>;
-export type FreeShapeRFNode = Node<FreeShapeNodeData, 'free-shape-node'>;
+export type TopologyRFNode = Node<TopologyNodeData, "topology-node">;
+export type CloudRFNode = Node<CloudNodeData, "cloud-node">;
+export type GroupRFNode = Node<GroupNodeData, "group-node">;
+export type FreeTextRFNode = Node<FreeTextNodeData, "free-text-node">;
+export type FreeShapeRFNode = Node<FreeShapeNodeData, "free-shape-node">;
 
 /**
  * React Flow edge with topology data
@@ -163,7 +173,7 @@ export interface ReactFlowCanvasRef {
 export interface AnnotationModeState {
   isAddTextMode: boolean;
   isAddShapeMode: boolean;
-  pendingShapeType?: 'rectangle' | 'circle' | 'line';
+  pendingShapeType?: "rectangle" | "circle" | "line";
 }
 
 /**
@@ -242,9 +252,9 @@ export interface ReactFlowCanvasProps {
 /**
  * Selection color constant (VS Code focus border)
  */
-export const SELECTION_COLOR = 'var(--vscode-focusBorder, #007ACC)';
+export const SELECTION_COLOR = "var(--vscode-focusBorder, #007ACC)";
 
 /**
  * Default node icon color
  */
-export const DEFAULT_ICON_COLOR = '#005aff';
+export const DEFAULT_ICON_COLOR = "#005aff";

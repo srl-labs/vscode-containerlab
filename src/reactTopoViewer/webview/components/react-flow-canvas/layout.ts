@@ -1,7 +1,7 @@
 /**
  * Layout algorithms for React Flow topology viewer
  */
-import type { Node, Edge } from '@xyflow/react';
+import type { Node, Edge } from "@xyflow/react";
 import {
   forceSimulation,
   forceLink,
@@ -10,24 +10,24 @@ import {
   forceCollide,
   type SimulationNodeDatum,
   type SimulationLinkDatum
-} from 'd3-force';
+} from "d3-force";
 
 /**
  * Node types that participate in layout algorithms
  */
-const LAYOUTABLE_NODE_TYPES = ['topology-node', 'cloud-node'];
+const LAYOUTABLE_NODE_TYPES = ["topology-node", "cloud-node"];
 
 /**
  * Check if a node should be included in layout
  */
 function isLayoutableNode(node: Node): boolean {
-  return LAYOUTABLE_NODE_TYPES.includes(node.type || '');
+  return LAYOUTABLE_NODE_TYPES.includes(node.type || "");
 }
 
 /**
  * Available layout types
  */
-export type LayoutName = 'preset' | 'force' | 'grid' | 'circle' | 'cola';
+export type LayoutName = "preset" | "force" | "grid" | "circle" | "cola";
 
 /**
  * Layout options
@@ -61,10 +61,7 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
  * Check if nodes have preset positions (non-zero coordinates)
  */
 export function hasPresetPositions(nodes: Node[]): boolean {
-  return nodes.some(node =>
-    node.position &&
-    (node.position.x !== 0 || node.position.y !== 0)
-  );
+  return nodes.some((node) => node.position && (node.position.x !== 0 || node.position.y !== 0));
 }
 
 /**
@@ -75,10 +72,7 @@ export function applyForceLayout(
   edges: Edge[],
   options: LayoutOptions = {}
 ): Node[] {
-  const {
-    padding = 50,
-    nodeSpacing = 100
-  } = options;
+  const { padding = 50, nodeSpacing = 100 } = options;
 
   if (nodes.length === 0) return nodes;
 
@@ -97,10 +91,10 @@ export function applyForceLayout(
   }));
 
   // Create simulation links
-  const nodeIds = new Set(simNodes.map(n => n.id));
+  const nodeIds = new Set(simNodes.map((n) => n.id));
   const simLinks: SimLink[] = edges
-    .filter(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target))
-    .map(edge => ({
+    .filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
+    .map((edge) => ({
       source: edge.source,
       target: edge.target
     }));
@@ -111,19 +105,25 @@ export function applyForceLayout(
 
   // Create force simulation
   const simulation = forceSimulation<SimNode>(simNodes)
-    .force('link', forceLink<SimNode, SimLink>(simLinks)
-      .id(d => d.id)
-      .distance(nodeSpacing * 1.5)
-      .strength(0.5)
+    .force(
+      "link",
+      forceLink<SimNode, SimLink>(simLinks)
+        .id((d) => d.id)
+        .distance(nodeSpacing * 1.5)
+        .strength(0.5)
     )
-    .force('charge', forceManyBody<SimNode>()
-      .strength(-300)
-      .distanceMax(nodeSpacing * 5)
+    .force(
+      "charge",
+      forceManyBody<SimNode>()
+        .strength(-300)
+        .distanceMax(nodeSpacing * 5)
     )
-    .force('center', forceCenter<SimNode>(centerX, centerY))
-    .force('collision', forceCollide<SimNode>()
-      .radius(nodeSpacing / 2)
-      .strength(0.7)
+    .force("center", forceCenter<SimNode>(centerX, centerY))
+    .force(
+      "collision",
+      forceCollide<SimNode>()
+        .radius(nodeSpacing / 2)
+        .strength(0.7)
     )
     .stop();
 
@@ -143,7 +143,7 @@ export function applyForceLayout(
   }
 
   // Return nodes with updated positions
-  return nodes.map(node => {
+  return nodes.map((node) => {
     const newPos = nodePositions.get(node.id);
     if (newPos) {
       return {
@@ -158,14 +158,8 @@ export function applyForceLayout(
 /**
  * Apply grid layout
  */
-export function applyGridLayout(
-  nodes: Node[],
-  options: LayoutOptions = {}
-): Node[] {
-  const {
-    padding = 50,
-    nodeSpacing = 120
-  } = options;
+export function applyGridLayout(nodes: Node[], options: LayoutOptions = {}): Node[] {
+  const { padding = 50, nodeSpacing = 120 } = options;
 
   if (nodes.length === 0) return nodes;
 
@@ -190,7 +184,7 @@ export function applyGridLayout(
   });
 
   // Return nodes with updated positions
-  return nodes.map(node => {
+  return nodes.map((node) => {
     const newPos = nodePositions.get(node.id);
     if (newPos) {
       return {
@@ -205,13 +199,8 @@ export function applyGridLayout(
 /**
  * Apply circle layout
  */
-export function applyCircleLayout(
-  nodes: Node[],
-  options: LayoutOptions = {}
-): Node[] {
-  const {
-    padding = 100
-  } = options;
+export function applyCircleLayout(nodes: Node[], options: LayoutOptions = {}): Node[] {
+  const { padding = 100 } = options;
 
   if (nodes.length === 0) return nodes;
 
@@ -238,7 +227,7 @@ export function applyCircleLayout(
   });
 
   // Return nodes with updated positions
-  return nodes.map(node => {
+  return nodes.map((node) => {
     const newPos = nodePositions.get(node.id);
     if (newPos) {
       return {
@@ -260,14 +249,14 @@ export function applyLayout(
   options: LayoutOptions = {}
 ): Node[] {
   switch (layoutName) {
-    case 'force':
-    case 'cola': // Cola layout uses d3-force as fallback
+    case "force":
+    case "cola": // Cola layout uses d3-force as fallback
       return applyForceLayout(nodes, edges, options);
-    case 'grid':
+    case "grid":
       return applyGridLayout(nodes, options);
-    case 'circle':
+    case "circle":
       return applyCircleLayout(nodes, options);
-    case 'preset':
+    case "preset":
     default:
       // Preset layout uses existing positions
       return nodes;

@@ -2,33 +2,29 @@
  * TopologyEdge - Custom React Flow edge with endpoint labels
  * Uses floating/straight edge style matching Cytoscape
  */
-import React, { memo, useMemo, useCallback } from 'react';
-import {
-  EdgeLabelRenderer,
-  useStore,
-  type EdgeProps
-} from '@xyflow/react';
+import React, { memo, useMemo, useCallback } from "react";
+import { EdgeLabelRenderer, useStore, type EdgeProps } from "@xyflow/react";
 
-import type { TopologyEdgeData } from '../types';
-import { SELECTION_COLOR } from '../types';
-import { useEdgeInfo } from '../../../context/EdgeInfoContext';
-import { useEdgeRenderConfig } from '../../../context/EdgeRenderConfigContext';
+import type { TopologyEdgeData } from "../types";
+import { SELECTION_COLOR } from "../types";
+import { useEdgeInfo } from "../../../context/EdgeInfoContext";
+import { useEdgeRenderConfig } from "../../../context/EdgeRenderConfigContext";
 
 // Edge style constants matching Cytoscape
-const EDGE_COLOR_DEFAULT = '#969799';
-const EDGE_COLOR_UP = '#00df2b';
-const EDGE_COLOR_DOWN = '#df2b00';
+const EDGE_COLOR_DEFAULT = "#969799";
+const EDGE_COLOR_UP = "#00df2b";
+const EDGE_COLOR_DOWN = "#df2b00";
 const EDGE_WIDTH_NORMAL = 2.5;
 const EDGE_WIDTH_SELECTED = 4;
 const EDGE_OPACITY_NORMAL = 0.5;
 const EDGE_OPACITY_SELECTED = 1;
 
 // Label style constants matching Cytoscape
-const LABEL_FONT_SIZE = '10px';
-const LABEL_BG_COLOR = 'rgba(202, 203, 204, 0.5)';
-const LABEL_TEXT_COLOR = 'rgba(0, 0, 0, 0.7)';
-const LABEL_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.7)';
-const LABEL_PADDING = '0px 2px';
+const LABEL_FONT_SIZE = "10px";
+const LABEL_BG_COLOR = "rgba(202, 203, 204, 0.5)";
+const LABEL_TEXT_COLOR = "rgba(0, 0, 0, 0.7)";
+const LABEL_OUTLINE_COLOR = "rgba(255, 255, 255, 0.7)";
+const LABEL_PADDING = "0px 2px";
 const LABEL_OFFSET = 30; // Pixels from node edge
 
 // Bezier curve constants for parallel edges
@@ -50,24 +46,29 @@ interface NodeGeometry {
 function areNodeGeometriesEqual(left: NodeGeometry | null, right: NodeGeometry | null): boolean {
   if (left === right) return true;
   if (!left || !right) return false;
-  return left.position.x === right.position.x &&
+  return (
+    left.position.x === right.position.x &&
     left.position.y === right.position.y &&
     left.width === right.width &&
-    left.height === right.height;
+    left.height === right.height
+  );
 }
 
 function useNodeGeometry(nodeId: string): NodeGeometry | null {
   return useStore(
-    useCallback((state) => {
-      const node = state.nodeLookup.get(nodeId);
-      if (!node) return null;
-      const position = node.internals.positionAbsolute;
-      return {
-        position: { x: position.x, y: position.y },
-        width: node.measured?.width ?? NODE_ICON_SIZE,
-        height: node.measured?.height ?? NODE_ICON_SIZE
-      };
-    }, [nodeId]),
+    useCallback(
+      (state) => {
+        const node = state.nodeLookup.get(nodeId);
+        if (!node) return null;
+        const position = node.internals.positionAbsolute;
+        return {
+          position: { x: position.x, y: position.y },
+          width: node.measured?.width ?? NODE_ICON_SIZE,
+          height: node.measured?.height ?? NODE_ICON_SIZE
+        };
+      },
+      [nodeId]
+    ),
     areNodeGeometriesEqual
   );
 }
@@ -78,9 +79,9 @@ function useNodeGeometry(nodeId: string): NodeGeometry | null {
 function getStrokeColor(linkStatus: string | undefined, selected: boolean): string {
   if (selected) return SELECTION_COLOR;
   switch (linkStatus) {
-    case 'up':
+    case "up":
       return EDGE_COLOR_UP;
-    case 'down':
+    case "down":
       return EDGE_COLOR_DOWN;
     default:
       return EDGE_COLOR_DEFAULT;
@@ -321,15 +322,15 @@ function calculateLoopEdgeGeometry(
 
 // Constant label style (extracted for performance - avoids object creation per render)
 const LABEL_STYLE_BASE: React.CSSProperties = {
-  position: 'absolute',
+  position: "absolute",
   fontSize: LABEL_FONT_SIZE,
   fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
   color: LABEL_TEXT_COLOR,
   backgroundColor: LABEL_BG_COLOR,
   padding: LABEL_PADDING,
   borderRadius: 4,
-  pointerEvents: 'none',
-  whiteSpace: 'nowrap',
+  pointerEvents: "none",
+  whiteSpace: "nowrap",
   textShadow: `0 0 2px ${LABEL_OUTLINE_COLOR}, 0 0 2px ${LABEL_OUTLINE_COLOR}, 0 0 3px ${LABEL_OUTLINE_COLOR}`,
   lineHeight: 1.2,
   zIndex: 1
@@ -339,12 +340,19 @@ const LABEL_STYLE_BASE: React.CSSProperties = {
  * Label component for endpoint text
  * Uses CSS transform for positioning (only dynamic part)
  */
-const EndpointLabel = memo(function EndpointLabel({ text, x, y }: Readonly<{ text: string; x: number; y: number }>) {
+const EndpointLabel = memo(function EndpointLabel({
+  text,
+  x,
+  y
+}: Readonly<{ text: string; x: number; y: number }>) {
   // Only the transform is dynamic, base style is constant
-  const style = useMemo((): React.CSSProperties => ({
-    ...LABEL_STYLE_BASE,
-    transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
-  }), [x, y]);
+  const style = useMemo(
+    (): React.CSSProperties => ({
+      ...LABEL_STYLE_BASE,
+      transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
+    }),
+    [x, y]
+  );
 
   return (
     <div style={style} className="topology-edge-label nodrag nopan">
@@ -393,15 +401,33 @@ function computeRegularGeometry(
   parallelInfo: { index: number; total: number; isCanonicalDirection: boolean } | null
 ): EdgeGeometry {
   const points = getEdgePoints(
-    { x: sourcePos.x + (sourceNodeWidth - NODE_ICON_SIZE) / 2, y: sourcePos.y, width: NODE_ICON_SIZE, height: NODE_ICON_SIZE },
-    { x: targetPos.x + (targetNodeWidth - NODE_ICON_SIZE) / 2, y: targetPos.y, width: NODE_ICON_SIZE, height: NODE_ICON_SIZE }
+    {
+      x: sourcePos.x + (sourceNodeWidth - NODE_ICON_SIZE) / 2,
+      y: sourcePos.y,
+      width: NODE_ICON_SIZE,
+      height: NODE_ICON_SIZE
+    },
+    {
+      x: targetPos.x + (targetNodeWidth - NODE_ICON_SIZE) / 2,
+      y: targetPos.y,
+      width: NODE_ICON_SIZE,
+      height: NODE_ICON_SIZE
+    }
   );
 
   const index = parallelInfo?.index ?? 0;
   const total = parallelInfo?.total ?? 1;
   const isCanonicalDirection = parallelInfo?.isCanonicalDirection ?? true;
 
-  const controlPoint = calculateControlPoint(points.sx, points.sy, points.tx, points.ty, index, total, isCanonicalDirection);
+  const controlPoint = calculateControlPoint(
+    points.sx,
+    points.sy,
+    points.tx,
+    points.ty,
+    index,
+    total,
+    isCanonicalDirection
+  );
 
   const path = controlPoint
     ? `M ${points.sx} ${points.sy} Q ${controlPoint.x} ${controlPoint.y} ${points.tx} ${points.ty}`
@@ -411,8 +437,22 @@ function computeRegularGeometry(
     points,
     path,
     controlPoint,
-    sourceLabelPos: getLabelPosition(points.sx, points.sy, points.tx, points.ty, LABEL_OFFSET, controlPoint ?? undefined),
-    targetLabelPos: getLabelPosition(points.tx, points.ty, points.sx, points.sy, LABEL_OFFSET, controlPoint ?? undefined)
+    sourceLabelPos: getLabelPosition(
+      points.sx,
+      points.sy,
+      points.tx,
+      points.ty,
+      LABEL_OFFSET,
+      controlPoint ?? undefined
+    ),
+    targetLabelPos: getLabelPosition(
+      points.tx,
+      points.ty,
+      points.sx,
+      points.sy,
+      LABEL_OFFSET,
+      controlPoint ?? undefined
+    )
   };
 }
 
@@ -441,7 +481,13 @@ function useEdgeGeometry(edgeId: string, source: string, target: string) {
     const targetPos = targetNode.position;
     const targetNodeWidth = targetNode.width;
 
-    return computeRegularGeometry(sourcePos, targetPos, sourceNodeWidth, targetNodeWidth, parallelInfo);
+    return computeRegularGeometry(
+      sourcePos,
+      targetPos,
+      sourceNodeWidth,
+      targetNodeWidth,
+      parallelInfo
+    );
   }, [sourceNode, targetNode, parallelInfo, loopInfo, source, target]);
 }
 
@@ -464,25 +510,50 @@ const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, 
   const { labelMode, suppressLabels, suppressHitArea } = useEdgeRenderConfig();
 
   if (!geometry) return null;
-  const shouldRenderLabels = !suppressLabels && (
-    labelMode === 'show-all' || (labelMode === 'on-select' && !!selected)
-  );
+  const shouldRenderLabels =
+    !suppressLabels && (labelMode === "show-all" || (labelMode === "on-select" && !!selected));
 
   const stroke = getStrokeStyle(edgeData?.linkStatus, selected ?? false);
 
   return (
     <>
       {!suppressHitArea && (
-        <path id={`${id}-interaction`} d={geometry.path} fill="none" stroke="transparent" strokeWidth={20} style={{ cursor: 'pointer' }} />
+        <path
+          id={`${id}-interaction`}
+          d={geometry.path}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={20}
+          style={{ cursor: "pointer" }}
+        />
       )}
-      <path id={id} d={geometry.path} fill="none" style={{ cursor: 'pointer', opacity: stroke.opacity, strokeWidth: stroke.width, stroke: stroke.color }} className="react-flow__edge-path" />
+      <path
+        id={id}
+        d={geometry.path}
+        fill="none"
+        style={{
+          cursor: "pointer",
+          opacity: stroke.opacity,
+          strokeWidth: stroke.width,
+          stroke: stroke.color
+        }}
+        className="react-flow__edge-path"
+      />
       {shouldRenderLabels && (
         <EdgeLabelRenderer>
           {edgeData?.sourceEndpoint && (
-            <EndpointLabel text={edgeData.sourceEndpoint} x={geometry.sourceLabelPos.x} y={geometry.sourceLabelPos.y} />
+            <EndpointLabel
+              text={edgeData.sourceEndpoint}
+              x={geometry.sourceLabelPos.x}
+              y={geometry.sourceLabelPos.y}
+            />
           )}
           {edgeData?.targetEndpoint && (
-            <EndpointLabel text={edgeData.targetEndpoint} x={geometry.targetLabelPos.x} y={geometry.targetLabelPos.y} />
+            <EndpointLabel
+              text={edgeData.targetEndpoint}
+              x={geometry.targetLabelPos.x}
+              y={geometry.targetLabelPos.y}
+            />
           )}
         </EdgeLabelRenderer>
       )}
