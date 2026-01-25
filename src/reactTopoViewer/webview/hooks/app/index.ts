@@ -29,9 +29,7 @@ export {
   useCustomNodeCommands,
   useNavbarCommands,
   useE2ETestingExposure,
-  useGeoCoordinateSync,
   type CustomNodeCommands,
   type NavbarCommands,
-  type E2ETestingConfig,
-  type GeoCoordinateSyncConfig
+  type E2ETestingConfig
 } from "./useAppHelpers";

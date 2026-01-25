@@ -9,7 +9,6 @@ export {
   useCustomNodeCommands,
   useNavbarCommands,
   useE2ETestingExposure,
-  useGeoCoordinateSync,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
   useGraphCreation
@@ -18,7 +17,6 @@ export type {
   CustomNodeCommands,
   NavbarCommands,
   E2ETestingConfig,
-  GeoCoordinateSyncConfig,
   ClipboardHandlersConfig,
   ClipboardHandlersReturn,
   AppKeyboardShortcutsConfig,

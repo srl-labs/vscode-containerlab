@@ -40,7 +40,6 @@ import {
   useCustomTemplateEditor,
   // Canvas/App state
   useLayoutControls,
-  useGeoMap,
   // Panel handlers
   useNodeEditorHandlers,
   useLinkEditorHandlers,
@@ -54,7 +53,6 @@ import {
   useCustomNodeCommands,
   useNavbarCommands,
   useE2ETestingExposure,
-  useGeoCoordinateSync,
   // Composed hooks
   useClipboardHandlers,
   useAppKeyboardShortcuts,
@@ -78,7 +76,6 @@ const AppContent: React.FC<{
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
   layoutControls: ReturnType<typeof useLayoutControls>;
-  mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   onInit: (instance: ReactFlowInstance) => void;
 }> = ({
   floatingPanelRef,
@@ -86,7 +83,6 @@ const AppContent: React.FC<{
   reactFlowRef,
   rfInstance,
   layoutControls,
-  mapLibreState,
   onInit
 }) => {
   const { state } = useTopoViewerState();
@@ -353,19 +349,6 @@ const AppContent: React.FC<{
     undoRedo,
     registerGraphHandler,
     registerPropertyEditHandler
-  });
-
-  // Geo coordinate sync
-  useGeoCoordinateSync({
-    mapLibreState,
-    isGeoLayout: layoutControls.isGeoLayout,
-    textAnnotations: annotations.textAnnotations,
-    shapeAnnotations: annotations.shapeAnnotations,
-    groups: annotations.groups,
-    updateTextGeoPosition: annotations.updateTextGeoPosition,
-    updateShapeGeoPosition: annotations.updateShapeGeoPosition,
-    updateShapeEndGeoPosition: annotations.updateShapeEndGeoPosition,
-    updateGroupGeoPosition: annotations.updateGroupGeoPosition
   });
 
   // Callback to update node data
@@ -818,12 +801,6 @@ export const App: React.FC = () => {
     null
   );
 
-  // Geo map (disabled)
-  const { mapLibreState } = useGeoMap({
-    isGeoLayout: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode
-  });
-
   // Handle edge annotations update from GraphContext
   const handleEdgeAnnotationsUpdate = React.useCallback(
     (annotations: import("../shared/types/topology").EdgeAnnotation[]) => {
@@ -845,7 +822,6 @@ export const App: React.FC = () => {
         floatingPanelRef={floatingPanelRef}
         pendingMembershipChangesRef={pendingMembershipChangesRef}
         layoutControls={layoutControls}
-        mapLibreState={mapLibreState}
         reactFlowRef={reactFlowRef}
       />
     </GraphProvider>
@@ -860,7 +836,6 @@ const GraphProviderConsumer: React.FC<{
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   pendingMembershipChangesRef: React.MutableRefObject<Map<string, PendingMembershipChange>>;
   layoutControls: ReturnType<typeof useLayoutControls>;
-  mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
 }> = ({
   state,
@@ -869,7 +844,6 @@ const GraphProviderConsumer: React.FC<{
   floatingPanelRef,
   pendingMembershipChangesRef,
   layoutControls,
-  mapLibreState,
   reactFlowRef
 }) => {
   const { nodes } = useGraph();
@@ -893,7 +867,6 @@ const GraphProviderConsumer: React.FC<{
             reactFlowRef={reactFlowRef}
             rfInstance={rfInstance}
             layoutControls={layoutControls}
-            mapLibreState={mapLibreState}
             onInit={setRfInstance}
           />
         </AnnotationProvider>

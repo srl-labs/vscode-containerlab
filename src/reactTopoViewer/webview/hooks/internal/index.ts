@@ -15,7 +15,6 @@ export {
   useAppHandlers
 } from "../ui";
 export { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../panels";
-export { useGeoMap } from "../canvas";
 export { useLayoutControls, useContextMenuHandlers } from "../useAppState";
 
 // App composition hooks
@@ -23,7 +22,6 @@ export {
   useCustomNodeCommands,
   useNavbarCommands,
   useE2ETestingExposure,
-  useGeoCoordinateSync,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
   useGraphCreation

@@ -19,16 +19,7 @@ import {
   sendCommandToExtension
 } from "../../utils/extensionMessaging";
 import type { UseUndoRedoReturn } from "../state/useUndoRedo";
-import type {
-  FreeTextAnnotation,
-  FreeShapeAnnotation,
-  GroupStyleAnnotation
-} from "../../../shared/types/topology";
-import type { MapLibreState } from "../canvas/maplibreUtils";
-import {
-  assignMissingGeoCoordinatesToAnnotations,
-  assignMissingGeoCoordinatesToShapeAnnotations
-} from "../canvas/maplibreUtils";
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 
 /**
  * Custom node template UI commands interface
@@ -268,85 +259,4 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       if (selectEdge) window.__DEV__.selectEdge = selectEdge;
     }
   }, [selectNode, selectEdge]); // Only re-create functions when actions change, not on every selection change
-}
-
-/**
- * Geo coordinate sync configuration
- */
-export interface GeoCoordinateSyncConfig {
-  mapLibreState: MapLibreState | null;
-  isGeoLayout: boolean;
-  textAnnotations: FreeTextAnnotation[];
-  shapeAnnotations: FreeShapeAnnotation[];
-  groups: GroupStyleAnnotation[];
-  updateTextGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-  updateShapeGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-  updateShapeEndGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-  updateGroupGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-}
-
-/**
- * Hook to sync missing geo coordinates when switching to geo layout.
- * Automatically assigns geo coordinates to annotations that don't have them.
- */
-export function useGeoCoordinateSync(config: GeoCoordinateSyncConfig): void {
-  const {
-    mapLibreState,
-    isGeoLayout,
-    textAnnotations,
-    shapeAnnotations,
-    groups,
-    updateTextGeoPosition,
-    updateShapeGeoPosition,
-    updateShapeEndGeoPosition,
-    updateGroupGeoPosition
-  } = config;
-
-  const geoAssignedRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (!mapLibreState?.isInitialized || !isGeoLayout) {
-      geoAssignedRef.current = false;
-      return;
-    }
-    if (geoAssignedRef.current) return;
-    geoAssignedRef.current = true;
-
-    const textResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, textAnnotations);
-    if (textResult.hasChanges) {
-      textResult.updated.forEach((ann: FreeTextAnnotation) => {
-        if (ann.geoCoordinates) updateTextGeoPosition(ann.id, ann.geoCoordinates);
-      });
-    }
-
-    const shapeResult = assignMissingGeoCoordinatesToShapeAnnotations(
-      mapLibreState,
-      shapeAnnotations
-    );
-    if (shapeResult.hasChanges) {
-      shapeResult.updated.forEach((ann: FreeShapeAnnotation) => {
-        if (ann.geoCoordinates) updateShapeGeoPosition(ann.id, ann.geoCoordinates);
-        if ("endGeoCoordinates" in ann && ann.endGeoCoordinates) {
-          updateShapeEndGeoPosition(ann.id, ann.endGeoCoordinates);
-        }
-      });
-    }
-
-    const groupResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, groups);
-    if (groupResult.hasChanges) {
-      groupResult.updated.forEach((grp: GroupStyleAnnotation) => {
-        if (grp.geoCoordinates) updateGroupGeoPosition(grp.id, grp.geoCoordinates);
-      });
-    }
-  }, [
-    mapLibreState,
-    isGeoLayout,
-    textAnnotations,
-    shapeAnnotations,
-    groups,
-    updateTextGeoPosition,
-    updateShapeGeoPosition,
-    updateShapeEndGeoPosition,
-    updateGroupGeoPosition
-  ]);
 }
