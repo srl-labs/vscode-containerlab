@@ -420,6 +420,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
                     onPaneClick={wrappedOnPaneClick}
                     onPaneContextMenu={handlers.onPaneContextMenu}
                     onConnect={handlers.onConnect}
+                    onSelectionChange={handlers.onSelectionChange}
                     connectionLineComponent={CustomConnectionLine}
                     fitView
                     fitViewOptions={fitViewOptions}
@@ -430,7 +431,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
                     selectionMode={SelectionMode.Partial}
                     selectNodesOnDrag={false}
                     panOnDrag={!isInAddMode}
-                    selectionOnDrag={false}
+                    selectionOnDrag={!isInAddMode}
                     selectionKeyCode="Shift"
                     connectionMode={ConnectionMode.Loose}
                     proOptions={proOptions}

@@ -10,6 +10,7 @@ import {
   type NodeMouseHandler,
   type EdgeMouseHandler,
   type OnConnect,
+  type OnSelectionChangeFunc,
   type Connection,
   type Node,
   type Edge,
@@ -93,6 +94,7 @@ interface CanvasHandlers {
   onPaneClick: (event: React.MouseEvent) => void;
   onConnect: OnConnect;
   handleNodesChange: OnNodesChange;
+  onSelectionChange: OnSelectionChangeFunc;
   onNodeContextMenu: (event: React.MouseEvent, node: Node) => void;
   onEdgeContextMenu: (event: React.MouseEvent, edge: Edge) => void;
   onPaneContextMenu: (event: MouseEvent | React.MouseEvent) => void;
@@ -533,6 +535,50 @@ function useConnectionHandler(
   );
 }
 
+/** Node types that can be selected via box selection and synced to context */
+const SELECTABLE_NODE_TYPES = ["topology-node", "cloud-node"];
+
+/** Hook for selection change handler (box selection support) */
+function useSelectionChangeHandler(
+  selectNode: (id: string | null) => void,
+  selectEdge: (id: string | null) => void,
+  closeContextMenu: () => void
+): OnSelectionChangeFunc {
+  return useCallback(
+    ({ nodes, edges }) => {
+      closeContextMenu();
+
+      // Filter to only topology/cloud nodes (ignore annotation nodes for context selection)
+      const selectableNodes = nodes.filter((n) => SELECTABLE_NODE_TYPES.includes(n.type || ""));
+
+      // If exactly one selectable node is selected, sync to context
+      if (selectableNodes.length === 1 && edges.length === 0) {
+        selectNode(selectableNodes[0].id);
+        return;
+      }
+
+      // If exactly one edge is selected and no nodes, sync to context
+      if (edges.length === 1 && selectableNodes.length === 0) {
+        selectEdge(edges[0].id);
+        return;
+      }
+
+      // Multiple items selected or no selectable items - clear context selection
+      // (React Flow manages the visual selection via node.selected property)
+      if (
+        selectableNodes.length > 1 ||
+        edges.length > 1 ||
+        (selectableNodes.length > 0 && edges.length > 0)
+      ) {
+        selectNode(null);
+        selectEdge(null);
+        log.info(`[ReactFlowCanvas] Box selection: ${nodes.length} nodes, ${edges.length} edges`);
+      }
+    },
+    [selectNode, selectEdge, closeContextMenu]
+  );
+}
+
 /**
  * Hook for canvas event handlers
  */
@@ -630,6 +676,9 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     openPaneMenu
   );
 
+  // Selection change handler (for box selection)
+  const onSelectionChange = useSelectionChangeHandler(selectNode, selectEdge, closeContextMenu);
+
   return {
     reactFlowInstance,
     onInit,
@@ -640,6 +689,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     onPaneClick,
     onConnect,
     handleNodesChange,
+    onSelectionChange,
     onNodeContextMenu,
     onEdgeContextMenu,
     onPaneContextMenu,
