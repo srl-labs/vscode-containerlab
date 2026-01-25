@@ -104,7 +104,16 @@ interface UseGroupDragUndoOptions {
 }
 
 export function useGroupDragUndo(options: UseGroupDragUndoOptions) {
-  const { groups, undoRedo } = options;
+  const {
+    nodes,
+    groups,
+    undoRedo,
+    textAnnotations,
+    shapeAnnotations,
+    onUpdateTextAnnotation,
+    onUpdateShapeAnnotation,
+    onMoveNodes
+  } = options;
   const dragStartRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const onGroupDragStart = useCallback(
@@ -121,12 +130,65 @@ export function useGroupDragUndo(options: UseGroupDragUndoOptions) {
     (groupId: string, delta: { dx: number; dy: number }) => {
       const group = groups.groups.find((g) => g.id === groupId);
       if (group) {
+        // Update group position
         groups.updateGroup(groupId, {
           position: { x: group.position.x + delta.dx, y: group.position.y + delta.dy }
         });
+
+        // Move topology nodes that are members of this group
+        const memberNodeIds = groups.getGroupMembers(groupId);
+        if (memberNodeIds.length > 0) {
+          const nodePositions: Array<{ id: string; position: { x: number; y: number } }> = [];
+          for (const nodeId of memberNodeIds) {
+            const node = nodes.find((n) => n.id === nodeId);
+            if (node) {
+              nodePositions.push({
+                id: nodeId,
+                position: { x: node.position.x + delta.dx, y: node.position.y + delta.dy }
+              });
+            }
+          }
+          if (nodePositions.length > 0) {
+            onMoveNodes(nodePositions);
+          }
+        }
+
+        // Move text annotations that belong to this group
+        for (const textAnn of textAnnotations) {
+          if (textAnn.groupId === groupId) {
+            onUpdateTextAnnotation(textAnn.id, {
+              position: { x: textAnn.position.x + delta.dx, y: textAnn.position.y + delta.dy }
+            });
+          }
+        }
+
+        // Move shape annotations that belong to this group
+        for (const shapeAnn of shapeAnnotations) {
+          if (shapeAnn.groupId === groupId) {
+            const updates: Partial<FreeShapeAnnotation> = {
+              position: { x: shapeAnn.position.x + delta.dx, y: shapeAnn.position.y + delta.dy }
+            };
+            // For lines, also move the end position
+            if (shapeAnn.shapeType === "line" && shapeAnn.endPosition) {
+              updates.endPosition = {
+                x: shapeAnn.endPosition.x + delta.dx,
+                y: shapeAnn.endPosition.y + delta.dy
+              };
+            }
+            onUpdateShapeAnnotation(shapeAnn.id, updates);
+          }
+        }
       }
     },
-    [groups]
+    [
+      nodes,
+      groups,
+      textAnnotations,
+      shapeAnnotations,
+      onUpdateTextAnnotation,
+      onUpdateShapeAnnotation,
+      onMoveNodes
+    ]
   );
 
   const onGroupDragEnd = useCallback(

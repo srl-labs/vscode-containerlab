@@ -217,28 +217,62 @@ const ANNOTATION_NODE_TYPES_SET = new Set(["free-text-node", "free-shape-node", 
 /**
  * Hook to sync annotation nodes into the nodes array.
  * Merges annotation nodes with topology nodes, applying selection state.
+ *
+ * Note: annotationNodes already have stable object references from useAnnotationNodes,
+ * so we just need to apply selection state and merge with topology nodes.
  */
 function useMergedNodes(
   propNodes: Node[] | undefined,
   annotationNodes: Node[] | undefined,
   annotationSelection: Map<string, boolean>
 ): Node[] {
+  // Cache for annotation nodes with selection applied
+  // Stores: sourceNode (original), resultNode (with selection), selected state
+  const annotationCacheRef = useRef<
+    Map<string, { sourceNode: Node; resultNode: Node; selected: boolean }>
+  >(new Map());
+
+  // Apply selection to annotation nodes, reusing objects when possible
+  const annotationNodesWithSelection = useMemo(() => {
+    if (!annotationNodes || annotationNodes.length === 0) {
+      return [];
+    }
+
+    const cache = annotationCacheRef.current;
+    const result: Node[] = [];
+
+    for (const node of annotationNodes) {
+      const isSelected = annotationSelection.get(node.id) ?? false;
+      const cached = cache.get(node.id);
+
+      // Reuse cached result if same source node and same selection state
+      if (cached && cached.sourceNode === node && cached.selected === isSelected) {
+        result.push(cached.resultNode);
+      } else {
+        // Create new node with selection applied
+        const nodeWithSelection = { ...node, selected: isSelected };
+        cache.set(node.id, {
+          sourceNode: node,
+          resultNode: nodeWithSelection,
+          selected: isSelected
+        });
+        result.push(nodeWithSelection);
+      }
+    }
+
+    return result;
+  }, [annotationNodes, annotationSelection]);
+
   return useMemo(() => {
     const baseNodes = propNodes ?? [];
-    if (!annotationNodes || annotationNodes.length === 0) {
+    if (annotationNodesWithSelection.length === 0) {
       return baseNodes;
     }
     // Filter out any annotation nodes from propNodes (shouldn't be there, but be safe)
     const topologyNodes = baseNodes.filter((n) => !ANNOTATION_NODE_TYPES_SET.has(n.type || ""));
 
-    // Merge annotation nodes with selection state
-    const mergedAnnotationNodes = annotationNodes.map((node) => {
-      const isSelected = annotationSelection.get(node.id) ?? false;
-      return { ...node, selected: isSelected };
-    });
-
-    return [...topologyNodes, ...mergedAnnotationNodes];
-  }, [propNodes, annotationNodes, annotationSelection]);
+    return [...topologyNodes, ...annotationNodesWithSelection];
+  }, [propNodes, annotationNodesWithSelection]);
 }
 
 /**

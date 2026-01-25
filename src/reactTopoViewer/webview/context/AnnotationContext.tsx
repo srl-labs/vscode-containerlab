@@ -213,6 +213,11 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     registerCapturePositionsHandler
   } = useUndoRedoContext();
 
+  // Use ref for nodes to avoid re-renders when nodes change during drag
+  // The ref is updated synchronously so it's always current when needed
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
   // Refs for late-bound migration callbacks
   const migrateTextAnnotationsRef = useRef<
     ((oldGroupId: string, newGroupId: string | null) => void) | undefined
@@ -221,9 +226,9 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     ((oldGroupId: string, newGroupId: string | null) => void) | undefined
   >(undefined);
 
-  // Groups
+  // Groups - use empty array to avoid re-renders, actual nodes accessed via ref when needed
   const { groups: groupsHook } = useAppGroups({
-    nodes,
+    nodes: [],
     rfInstance,
     mode,
     isLocked,
@@ -304,26 +309,32 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   );
 
   // Handle node dropped - check for group membership changes
+  // Handles topology nodes (via membership map) and annotations (via groupId field)
   const onNodeDropped = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
+      // Skip group nodes - groups can't be members of other groups
+      if (nodeId.startsWith("group-")) {
+        return;
+      }
+
       // Find group at the new position
       const targetGroup = findGroupForNodeAtPosition(position, groupsHook.groups);
       const targetGroupId = targetGroup?.id ?? null;
 
-      // Check if this is a text annotation
-      const textAnnotation = freeTextAnnotations.annotations.find((t) => t.id === nodeId);
-      if (textAnnotation) {
-        const currentGroupId = textAnnotation.groupId ?? null;
+      // Handle text annotations - update their groupId field
+      if (nodeId.startsWith("freeText_")) {
+        const textAnnotation = freeTextAnnotations.annotations.find((a) => a.id === nodeId);
+        const currentGroupId = textAnnotation?.groupId ?? null;
         if (currentGroupId !== targetGroupId) {
           freeTextAnnotations.updateAnnotation(nodeId, { groupId: targetGroupId ?? undefined });
         }
         return;
       }
 
-      // Check if this is a shape annotation
-      const shapeAnnotation = freeShapeAnnotations.annotations.find((s) => s.id === nodeId);
-      if (shapeAnnotation) {
-        const currentGroupId = shapeAnnotation.groupId ?? null;
+      // Handle shape annotations - update their groupId field
+      if (nodeId.startsWith("freeShape_")) {
+        const shapeAnnotation = freeShapeAnnotations.annotations.find((a) => a.id === nodeId);
+        const currentGroupId = shapeAnnotation?.groupId ?? null;
         if (currentGroupId !== targetGroupId) {
           freeShapeAnnotations.updateAnnotation(nodeId, { groupId: targetGroupId ?? undefined });
         }
@@ -349,7 +360,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
         onMembershipWillChange
       );
     },
-    [groupsHook, freeTextAnnotations, freeShapeAnnotations, onMembershipWillChange]
+    [groupsHook, onMembershipWillChange, freeTextAnnotations, freeShapeAnnotations]
   );
 
   // Register membership handler
@@ -358,9 +369,11 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   }, [registerMembershipHandler, applyMembershipChange]);
 
   // Capture positions handler - captures node positions from React state for undo/redo
+  // Uses nodesRef to avoid dependency on nodes prop which changes during drag
   const capturePositions = useCallback(
     (nodeIds: string[]): import("../hooks/state/useUndoRedo").NodePositionEntry[] => {
-      const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+      const currentNodes = nodesRef.current;
+      const nodeMap = new Map(currentNodes.map((n) => [n.id, n]));
       return nodeIds.map((id) => {
         const node = nodeMap.get(id);
         return {
@@ -369,7 +382,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
         };
       });
     },
-    [nodes]
+    []
   );
 
   // Register capture positions handler
@@ -377,9 +390,9 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     registerCapturePositionsHandler(capturePositions);
   }, [registerCapturePositionsHandler, capturePositions]);
 
-  // Group undo handlers
+  // Group undo handlers - use empty array, actual nodes accessed via ref when needed
   const { handleAddGroupWithUndo, deleteGroupWithUndo } = useAppGroupUndoHandlers({
-    nodes,
+    nodes: [],
     rfInstance,
     groups: groupsHook,
     undoRedo,
@@ -389,7 +402,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   const groupUndoHandlers = useGroupUndoRedoHandlers(groupsHook, undoRedo);
 
-  // Group drag undo
+  // Group drag undo - needs actual nodes for sticky member movement
   const groupDragUndo = useGroupDragUndo({
     nodes,
     rfInstance,
@@ -428,9 +441,9 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     isApplyingShapeUndoRedo
   );
 
-  // Node reparent
+  // Node reparent - currently a no-op, but pass empty array to avoid re-renders
   useNodeReparent(
-    nodes,
+    [],
     {
       mode,
       isLocked,
@@ -467,34 +480,6 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   const generateGroupIdCallback = useCallback(() => {
     return generateGroupId(groupsHook.groups);
   }, [groupsHook.groups]);
-
-  // Combined getGroupMembers that includes topology nodes, text, and shape annotations
-  const getGroupMembersCombined = useCallback(
-    (groupId: string): string[] => {
-      const members: string[] = [];
-
-      // Get topology nodes from membership map
-      const nodeMembers = groupsHook.getGroupMembers(groupId);
-      members.push(...nodeMembers);
-
-      // Get text annotations with this groupId
-      for (const textAnn of freeTextAnnotations.annotations) {
-        if (textAnn.groupId === groupId) {
-          members.push(textAnn.id);
-        }
-      }
-
-      // Get shape annotations with this groupId
-      for (const shapeAnn of freeShapeAnnotations.annotations) {
-        if (shapeAnn.groupId === groupId) {
-          members.push(shapeAnn.id);
-        }
-      }
-
-      return members;
-    },
-    [groupsHook, freeTextAnnotations.annotations, freeShapeAnnotations.annotations]
-  );
 
   // Add group with undo recording (for paste operations)
   const addGroupWithUndo = useCallback(
@@ -569,7 +554,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       updateGroupGeoPosition: groupsHook.updateGroupGeoPosition,
       addNodeToGroup: groupsHook.addNodeToGroup,
       getNodeMembership: groupsHook.getNodeMembership,
-      getGroupMembers: getGroupMembersCombined,
+      getGroupMembers: groupsHook.getGroupMembers,
       handleAddGroupWithUndo,
       deleteGroupWithUndo,
       generateGroupId: generateGroupIdCallback,
@@ -652,7 +637,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       groupsHook.updateGroupGeoPosition,
       groupsHook.addNodeToGroup,
       groupsHook.getNodeMembership,
-      getGroupMembersCombined,
+      groupsHook.getGroupMembers,
       handleAddGroupWithUndo,
       deleteGroupWithUndo,
       generateGroupIdCallback,

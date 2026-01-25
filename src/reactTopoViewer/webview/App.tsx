@@ -67,6 +67,7 @@ import {
   type GraphChange
 } from "./hooks/internal";
 import { convertToLinkEditorData } from "./utils/linkEditorConversions";
+import { saveNodePositions } from "./services";
 import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "./utils/edgeAnnotations";
 import { parseEndpointLabelOffset } from "./utils/endpointLabelOffset";
 
@@ -610,61 +611,71 @@ const AppContent: React.FC<{
         // If no movement, nothing more to do
         if (dx === 0 && dy === 0) return;
 
-        // Move all member nodes, texts, and shapes
-        const memberIds = annotations.getGroupMembers(id);
+        // Move all member topology nodes (tracked via membership map)
+        const memberNodeIds = annotations.getGroupMembers(id);
         const nodePositionUpdates: Array<{ id: string; position: { x: number; y: number } }> = [];
 
-        for (const memberId of memberIds) {
-          // Check if it's a topology node
+        for (const memberId of memberNodeIds) {
           const node = nodes.find((n) => n.id === memberId);
           if (node) {
             nodePositionUpdates.push({
               id: memberId,
               position: { x: node.position.x + dx, y: node.position.y + dy }
             });
-            continue;
-          }
-
-          // Check if it's a text annotation
-          const textAnnotation = annotations.textAnnotations.find((t) => t.id === memberId);
-          if (textAnnotation) {
-            annotations.updateTextAnnotation(memberId, {
-              position: { x: textAnnotation.position.x + dx, y: textAnnotation.position.y + dy }
-            });
-            continue;
-          }
-
-          // Check if it's a shape annotation
-          const shapeAnnotation = annotations.shapeAnnotations.find((s) => s.id === memberId);
-          if (shapeAnnotation) {
-            const newShapePos = {
-              x: shapeAnnotation.position.x + dx,
-              y: shapeAnnotation.position.y + dy
-            };
-            // For lines, also move the end position
-            if (shapeAnnotation.endPosition) {
-              annotations.updateShapeAnnotation(memberId, {
-                position: newShapePos,
-                endPosition: {
-                  x: shapeAnnotation.endPosition.x + dx,
-                  y: shapeAnnotation.endPosition.y + dy
-                }
-              });
-            } else {
-              annotations.updateShapeAnnotation(memberId, { position: newShapePos });
-            }
           }
         }
 
-        // Batch update all topology node positions
+        // Batch update all topology node positions (React state only - persist happens on drag end)
         if (nodePositionUpdates.length > 0) {
           updateNodePositions(nodePositionUpdates);
+        }
+
+        // Move text annotations that belong to this group (tracked via groupId field)
+        for (const textAnn of annotations.textAnnotations) {
+          if (textAnn.groupId === id) {
+            annotations.updateTextAnnotation(textAnn.id, {
+              position: { x: textAnn.position.x + dx, y: textAnn.position.y + dy }
+            });
+          }
+        }
+
+        // Move shape annotations that belong to this group (tracked via groupId field)
+        for (const shapeAnn of annotations.shapeAnnotations) {
+          if (shapeAnn.groupId === id) {
+            const newShapePos = { x: shapeAnn.position.x + dx, y: shapeAnn.position.y + dy };
+            // For lines, also move the end position
+            if (shapeAnn.endPosition) {
+              annotations.updateShapeAnnotation(shapeAnn.id, {
+                position: newShapePos,
+                endPosition: { x: shapeAnn.endPosition.x + dx, y: shapeAnn.endPosition.y + dy }
+              });
+            } else {
+              annotations.updateShapeAnnotation(shapeAnn.id, { position: newShapePos });
+            }
+          }
+        }
+      },
+      onGroupDragEnd: (groupId: string) => {
+        // Save member topology node positions to file on drag end
+        const memberNodeIds = annotations.getGroupMembers(groupId);
+        if (memberNodeIds.length === 0) return;
+
+        const nodePositionsToSave: Array<{ id: string; position: { x: number; y: number } }> = [];
+        for (const memberId of memberNodeIds) {
+          const node = nodes.find((n) => n.id === memberId);
+          if (node) {
+            nodePositionsToSave.push({ id: memberId, position: node.position });
+          }
+        }
+
+        if (nodePositionsToSave.length > 0) {
+          void saveNodePositions(nodePositionsToSave);
         }
       },
       onEditGroup: annotations.editGroup,
       onDeleteGroup: annotations.deleteGroupWithUndo
     }),
-    [annotations]
+    [annotations, nodes]
   );
 
   return (

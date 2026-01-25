@@ -2,7 +2,7 @@
  * Hook to convert annotation state to React Flow nodes
  * Bridges the annotation hooks with the React Flow canvas
  */
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef } from "react";
 import type { Node } from "@xyflow/react";
 
 import type {
@@ -210,6 +210,7 @@ interface UseAnnotationNodesReturn {
 
 /**
  * Hook that converts annotations to React Flow nodes
+ * Uses stable object references to prevent unnecessary re-renders
  */
 export function useAnnotationNodes(options: UseAnnotationNodesOptions): UseAnnotationNodesReturn {
   const { freeTextAnnotations, freeShapeAnnotations, groups = [] } = options;
@@ -229,24 +230,65 @@ export function useAnnotationNodes(options: UseAnnotationNodesOptions): UseAnnot
     return ids;
   }, [freeTextAnnotations, freeShapeAnnotations, groups]);
 
-  // Convert annotations to React Flow nodes
+  // Cache previous nodes to maintain stable references
+  const prevNodesRef = useRef<Map<string, Node>>(new Map());
+
+  // Convert annotations to React Flow nodes with stable references
   const annotationNodes = useMemo(() => {
     const nodes: Node[] = [];
+    const prevNodes = prevNodesRef.current;
+    const newNodesMap = new Map<string, Node>();
+
+    // Helper to get or create a stable node reference
+    const getStableNode = (id: string, createNode: () => Node): Node => {
+      const newNode = createNode();
+      const prevNode = prevNodes.get(id);
+
+      // If previous node exists and has same position/data, reuse it
+      if (
+        prevNode &&
+        prevNode.position.x === newNode.position.x &&
+        prevNode.position.y === newNode.position.y &&
+        prevNode.width === newNode.width &&
+        prevNode.height === newNode.height
+      ) {
+        // Check if data has changed (shallow compare)
+        const prevData = prevNode.data as Record<string, unknown>;
+        const newData = newNode.data as Record<string, unknown>;
+        let dataChanged = false;
+        for (const key of Object.keys(newData)) {
+          if (prevData[key] !== newData[key]) {
+            dataChanged = true;
+            break;
+          }
+        }
+        if (!dataChanged) {
+          newNodesMap.set(id, prevNode);
+          return prevNode;
+        }
+      }
+
+      newNodesMap.set(id, newNode);
+      return newNode;
+    };
 
     // Add group nodes first (they render behind due to zIndex: -1)
     for (const group of groups) {
-      nodes.push(groupToNode(group));
+      nodes.push(getStableNode(group.id, () => groupToNode(group)));
     }
 
     // Add free text nodes
     for (const annotation of freeTextAnnotations) {
-      nodes.push(freeTextToNode(annotation));
+      nodes.push(getStableNode(annotation.id, () => freeTextToNode(annotation)));
     }
 
     // Add free shape nodes
     for (const annotation of freeShapeAnnotations) {
-      nodes.push(freeShapeToNode(annotation));
+      nodes.push(getStableNode(annotation.id, () => freeShapeToNode(annotation)));
     }
+
+    // Update cache
+    prevNodesRef.current = newNodesMap;
 
     return nodes;
   }, [freeTextAnnotations, freeShapeAnnotations, groups]);

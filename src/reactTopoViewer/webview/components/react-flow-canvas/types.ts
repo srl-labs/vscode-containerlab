@@ -218,8 +218,10 @@ export interface AnnotationHandlers {
   onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
   /** Update group size after resize */
   onUpdateGroupSize?: (id: string, width: number, height: number) => void;
-  /** Update group position after drag */
+  /** Update group position during drag (for live rendering) */
   onUpdateGroupPosition?: (id: string, position: { x: number; y: number }) => void;
+  /** Called when group drag ends - saves member positions to file */
+  onGroupDragEnd?: (groupId: string) => void;
   /** Edit a group annotation */
   onEditGroup?: (id: string) => void;
   /** Delete a group annotation */

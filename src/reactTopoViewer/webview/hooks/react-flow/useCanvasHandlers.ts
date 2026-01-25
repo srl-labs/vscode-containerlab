@@ -535,9 +535,13 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
 
         if (isAnnotationNode && nodeId) {
           // Handle position changes for annotation nodes
+          // Update position during drag for live rendering (caching in useAnnotationNodes prevents flickering)
           if (change.type === "position" && "position" in change && change.position) {
             const nodeType = node.type;
-            if (
+
+            if (nodeType === "group-node" && annotationPositionHandlers?.onUpdateGroupPosition) {
+              annotationPositionHandlers.onUpdateGroupPosition(nodeId, change.position);
+            } else if (
               nodeType === "free-text-node" &&
               annotationPositionHandlers?.onUpdateFreeTextPosition
             ) {
@@ -547,11 +551,6 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
               annotationPositionHandlers?.onUpdateFreeShapePosition
             ) {
               annotationPositionHandlers.onUpdateFreeShapePosition(nodeId, change.position);
-            } else if (
-              nodeType === "group-node" &&
-              annotationPositionHandlers?.onUpdateGroupPosition
-            ) {
-              annotationPositionHandlers.onUpdateGroupPosition(nodeId, change.position);
             }
           }
 
