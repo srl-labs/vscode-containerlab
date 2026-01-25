@@ -6,7 +6,6 @@ import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import { applyLayout, type LayoutName } from "../../components/react-flow-canvas/layout";
-import { sendCommandToExtension } from "../../utils/extensionMessaging";
 import { log } from "../../utils/logger";
 import {
   saveNodePositions as saveNodePositionsService,
@@ -34,8 +33,6 @@ export function useDeleteHandlers(
       setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
       // Persist deletion to YAML and annotations via TopologyIO service
       void deleteNodeService(nodeId);
-      // Also notify extension for undo/redo and other side effects
-      sendCommandToExtension("panel-delete-node", { nodeId });
       onNodeDelete?.(nodeId);
       selectNode(null);
       closeContextMenu();
@@ -60,8 +57,6 @@ export function useDeleteHandlers(
         };
         // Persist deletion to YAML via TopologyIO service
         void deleteLinkService(linkData);
-        // Also notify extension for undo/redo and other side effects
-        sendCommandToExtension("panel-delete-link", { edgeId, linkData });
       }
       onEdgeDelete?.(edgeId);
       selectEdge(null);

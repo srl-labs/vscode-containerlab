@@ -6,15 +6,9 @@
  */
 
 // Used by App.tsx wiring
-export { useNodeDragging } from "../graph";
 export type { GraphChange } from "../state";
+export { useGraphHandlersWithContext, useCustomTemplateEditor } from "../state";
 export {
-  useGraphHandlersWithContext,
-  useCustomTemplateEditor,
-  filterEntriesWithPosition
-} from "../state";
-export {
-  useContextMenu,
   useFloatingPanelCommands,
   usePanelVisibility,
   useShortcutDisplay,
@@ -35,19 +29,7 @@ export {
   useGraphCreation
 } from "../app";
 
-// Used by AnnotationContext.tsx wiring
-export {
-  useAppFreeTextAnnotations,
-  useAppFreeShapeAnnotations,
-  useFreeTextAnnotationApplier,
-  useFreeShapeAnnotationApplier,
-  useFreeTextUndoRedoHandlers,
-  useFreeShapeUndoRedoHandlers,
-  useAnnotationEffects,
-  useAddShapesHandler
-} from "../annotations";
-
-export { useAppGroups } from "../groups";
+// Annotation hooks removed during ReactFlow migration cleanup
 
 // External file change handling
 export { useExternalFileChange } from "../useExternalFileChange";

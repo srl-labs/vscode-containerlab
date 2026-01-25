@@ -35,7 +35,7 @@ interface UseAppHandlersOptions {
   undoRedo: UndoRedoRecorder;
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   isLocked: boolean;
-  /** Ref holding pending membership changes from useNodeReparent */
+  /** Ref holding pending membership changes from drag handlers */
   pendingMembershipChangesRef?: React.RefObject<Map<string, PendingMembershipChange>>;
 }
 

@@ -18,7 +18,6 @@ import {
 } from "@xyflow/react";
 
 import { log } from "../../utils/logger";
-import { sendCommandToExtension } from "../../utils/extensionMessaging";
 import { saveNodePositions as saveNodePositionsService } from "../../services";
 
 // Grid size for snapping
@@ -106,12 +105,6 @@ interface CanvasHandlers {
 
 const ANNOTATION_NODE_TYPES = ["group-node", "free-text-node", "free-shape-node"];
 const EDITABLE_NODE_TYPES = ["topology-node", "cloud-node"];
-
-let nodeIdCounter = 0;
-function generateNodeId(): string {
-  nodeIdCounter += 1;
-  return `node-${Date.now()}-${nodeIdCounter}`;
-}
 
 function generateEdgeId(source: string, target: string): string {
   return `${source}-${target}-${Date.now()}`;
@@ -221,27 +214,29 @@ function useNodeDragHandlers(
     (_event, node) => {
       if (modeRef.current !== "edit") return;
 
-      const snappedPosition = snapToGrid(node.position);
-      const positionsToSave: DragPositionEntry[] = [{ id: node.id, position: snappedPosition }];
+      const isGroupNode = node.type === "group-node";
+      const finalPosition = isGroupNode ? node.position : snapToGrid(node.position);
+      const positionsToSave: DragPositionEntry[] = [{ id: node.id, position: finalPosition }];
       const changes: NodeChange[] = [
-        { type: "position", id: node.id, position: snappedPosition, dragging: false }
+        { type: "position", id: node.id, position: finalPosition, dragging: false }
       ];
+      const overridePositions = new Map<string, XYPosition>();
 
-      // For group nodes, also snap member positions
-      if (node.type === "group-node") {
+      // For group nodes, do not snap the group or its members
+      if (isGroupNode) {
         const memberIds = groupMembersRef.current.get(node.id) ?? [];
 
         for (const memberId of memberIds) {
           const memberNode = nodes?.find((n) => n.id === memberId);
           if (memberNode) {
-            const memberSnapped = snapToGrid(memberNode.position);
+            overridePositions.set(memberId, memberNode.position);
             changes.push({
               type: "position",
               id: memberId,
-              position: memberSnapped,
+              position: memberNode.position,
               dragging: false
             });
-            positionsToSave.push({ id: memberId, position: memberSnapped });
+            positionsToSave.push({ id: memberId, position: memberNode.position });
           }
         }
 
@@ -251,9 +246,7 @@ function useNodeDragHandlers(
       }
 
       onNodesChangeBase(changes);
-      log.info(
-        `[ReactFlowCanvas] Node ${node.id} snapped to ${snappedPosition.x}, ${snappedPosition.y}`
-      );
+      log.info(`[ReactFlowCanvas] Node ${node.id} moved to ${finalPosition.x}, ${finalPosition.y}`);
 
       // Save all positions to annotations file via TopologyIO service
       void saveNodePositionsService(positionsToSave);
@@ -263,7 +256,9 @@ function useNodeDragHandlers(
           dragStartPositionsRef.current,
           nodes,
           node,
-          snappedPosition
+          finalPosition,
+          overridePositions,
+          isGroupNode
         );
         const hasChanged = checkPositionsChanged(dragStartPositionsRef.current, afterPositions);
         if (hasChanged) {
@@ -286,12 +281,23 @@ function computeAfterPositions(
   before: DragPositionEntry[],
   nodes: Node[] | undefined,
   draggedNode: Node,
-  snappedPos: XYPosition
+  finalPos: XYPosition,
+  overrides?: Map<string, XYPosition>,
+  skipSnapForMembers: boolean = false
 ): DragPositionEntry[] {
   return before.map((b) => {
-    if (b.id === draggedNode.id) return { id: b.id, position: snappedPos };
+    if (b.id === draggedNode.id) return { id: b.id, position: finalPos };
+    const override = overrides?.get(b.id);
+    if (override) return { id: b.id, position: override };
     const currentNode = nodes?.find((n) => n.id === b.id);
-    return { id: b.id, position: currentNode ? snapToGrid(currentNode.position) : b.position };
+    return {
+      id: b.id,
+      position: currentNode
+        ? skipSnapForMembers
+          ? currentNode.position
+          : snapToGrid(currentNode.position)
+        : b.position
+    };
   });
 }
 
@@ -460,31 +466,6 @@ function usePaneClickHandler(
   return useCallback(
     (event: React.MouseEvent) => {
       closeContextMenu();
-
-      if (event.shiftKey && modeRef.current === "edit") {
-        if (isLockedRef.current) {
-          onLockedAction?.();
-          return;
-        }
-        const rfInstance = reactFlowInstance.current;
-        if (!rfInstance) return;
-
-        const bounds = (event.target as HTMLElement).getBoundingClientRect();
-        const position = rfInstance.screenToFlowPosition({
-          x: event.clientX - bounds.left,
-          y: event.clientY - bounds.top
-        });
-        const snappedPosition = snapToGrid(position);
-        const nodeId = generateNodeId();
-        log.info(`[ReactFlowCanvas] Creating node at ${snappedPosition.x}, ${snappedPosition.y}`);
-
-        sendCommandToExtension("create-node", {
-          nodeId,
-          position: snappedPosition,
-          nodeData: { name: nodeId, topoViewerRole: "default" }
-        });
-        return;
-      }
 
       selectNode(null);
       selectEdge(null);

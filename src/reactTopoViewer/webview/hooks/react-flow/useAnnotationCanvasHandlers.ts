@@ -194,9 +194,10 @@ function useWrappedNodeDragStop(
       }
 
       if (node.type === GROUP_NODE_TYPE && annotationHandlers) {
-        const snappedPosition = snapToGrid(node.position);
+        // Groups should not snap; preserve exact drag position
+        const position = node.position;
         log.info(`[ReactFlowCanvas] Updated group position: ${node.id}`);
-        annotationHandlers.onUpdateGroupPosition?.(node.id, snappedPosition);
+        annotationHandlers.onUpdateGroupPosition?.(node.id, position);
         // Save member positions to file on drag end
         annotationHandlers.onGroupDragEnd?.(node.id);
         return;

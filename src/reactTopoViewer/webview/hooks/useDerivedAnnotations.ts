@@ -31,6 +31,7 @@ import {
   groupToNode
 } from "../utils/annotationNodeConverters";
 import { saveAllNodeGroupMemberships } from "../services";
+import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
 
 /** Node annotation from JSON file */
 interface NodeAnnotation {
@@ -43,6 +44,36 @@ interface NodeAnnotation {
 interface InitialData {
   nodeAnnotations?: NodeAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
+}
+
+function buildMembershipMap(
+  groups: GroupStyleAnnotation[],
+  nodeAnnotations?: NodeAnnotation[]
+): Map<string, string> {
+  const map = new Map<string, string>();
+  const groupNameToId = new Map<string, string>();
+  const groupIds = new Set<string>();
+
+  for (const group of groups) {
+    groupNameToId.set(group.name, group.id);
+    groupIds.add(group.id);
+  }
+
+  for (const annotation of nodeAnnotations ?? []) {
+    if (annotation.groupId) {
+      map.set(annotation.id, annotation.groupId);
+      continue;
+    }
+    if (annotation.group) {
+      const legacy = annotation.group;
+      const groupId = groupIds.has(legacy) ? legacy : (groupNameToId.get(legacy) ?? null);
+      if (groupId) {
+        map.set(annotation.id, groupId);
+      }
+    }
+  }
+
+  return map;
 }
 
 /**
@@ -105,33 +136,26 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   // Membership map: nodeId -> groupId
   // This is maintained separately from node data and loaded from nodeAnnotations JSON
   const [membershipMap, setMembershipMap] = useState<Map<string, string>>(() => {
-    const map = new Map<string, string>();
-
     // Load initial membership from window.__INITIAL_DATA__.nodeAnnotations
     const initialData = (window as { __INITIAL_DATA__?: InitialData }).__INITIAL_DATA__;
-    const nodeAnnotations = initialData?.nodeAnnotations ?? [];
-    const groups = initialData?.groupStyleAnnotations ?? [];
-
-    // Build a map of group name -> group id for lookup
-    const groupNameToId = new Map<string, string>();
-    for (const group of groups) {
-      groupNameToId.set(group.name, group.id);
-    }
-
-    // Load membership from nodeAnnotations
-    // The 'group' field contains the group NAME, we need to convert to group ID
-    for (const annotation of nodeAnnotations) {
-      if (annotation.group) {
-        const groupId = groupNameToId.get(annotation.group) ?? annotation.group;
-        map.set(annotation.id, groupId);
-      } else if (annotation.groupId) {
-        // Some annotations may already have groupId
-        map.set(annotation.id, annotation.groupId);
-      }
-    }
-
-    return map;
+    return buildMembershipMap(
+      initialData?.groupStyleAnnotations ?? [],
+      initialData?.nodeAnnotations
+    );
   });
+
+  // Sync membership map on topology-data refreshes (external file edits)
+  useEffect(() => {
+    const handleMessage = (event: TypedMessageEvent) => {
+      const message = event.data as { type?: string; data?: InitialData } | undefined;
+      if (message?.type !== "topology-data") return;
+      const data = message.data;
+      if (!data) return;
+      setMembershipMap(buildMembershipMap(data.groupStyleAnnotations ?? [], data.nodeAnnotations));
+    };
+
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
+  }, []);
 
   // Track if membership has changed for persistence
   const membershipChangedRef = useRef(false);
@@ -323,20 +347,11 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     if (!membershipChangedRef.current) return;
     membershipChangedRef.current = false;
 
-    // Convert membership map to nodeAnnotations array
-    // We need to use the group NAME not ID for persistence
-    const nodeAnnotations: Array<{ id: string; group?: string }> = [];
-
-    // Build group ID -> name map for reverse lookup
-    const groupIdToName = new Map<string, string>();
-    for (const group of groups) {
-      groupIdToName.set(group.id, group.name);
-    }
+    // Convert membership map to nodeAnnotations array (store groupId)
+    const nodeAnnotations: Array<{ id: string; groupId?: string }> = [];
 
     for (const [nodeId, groupId] of membershipMap) {
-      // Convert groupId to group name for storage
-      const groupName = groupIdToName.get(groupId) ?? groupId;
-      nodeAnnotations.push({ id: nodeId, group: groupName });
+      nodeAnnotations.push({ id: nodeId, groupId });
     }
 
     // Save to JSON file

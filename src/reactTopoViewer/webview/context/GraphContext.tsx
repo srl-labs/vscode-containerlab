@@ -12,6 +12,7 @@ import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 import type { EdgeAnnotation } from "../../shared/types/topology";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
 import { pruneEdgeAnnotations } from "../utils/edgeAnnotations";
+import { annotationsToNodes } from "../utils/annotationNodeConverters";
 import { isServicesInitialized, getTopologyIO } from "../services";
 
 /**
@@ -74,6 +75,9 @@ interface TopologyDataMessage {
     nodes?: TopoNode[];
     edges?: TopoEdge[];
     edgeAnnotations?: EdgeAnnotation[];
+    freeTextAnnotations?: import("../../shared/types/topology").FreeTextAnnotation[];
+    freeShapeAnnotations?: import("../../shared/types/topology").FreeShapeAnnotation[];
+    groupStyleAnnotations?: import("../../shared/types/topology").GroupStyleAnnotation[];
   };
 }
 
@@ -275,7 +279,16 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
         const rawEdgeAnnotations = msg.data?.edgeAnnotations;
 
         if (newNodes && newEdges) {
-          setNodes(newNodes as Node[]);
+          const annotationNodes = annotationsToNodes(
+            msg.data?.freeTextAnnotations ?? [],
+            msg.data?.freeShapeAnnotations ?? [],
+            msg.data?.groupStyleAnnotations ?? []
+          );
+          const mergedNodes = [...(newNodes as Node[]), ...(annotationNodes as Node[])];
+          // Deduplicate by id in case annotations are already included
+          const uniqueNodes = Array.from(new Map(mergedNodes.map((n) => [n.id, n])).values());
+
+          setNodes(uniqueNodes);
           setEdges(newEdges as Edge[]);
 
           // Reinitialize TopologyIO for external file changes

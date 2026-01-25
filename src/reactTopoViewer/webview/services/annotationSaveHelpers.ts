@@ -89,7 +89,7 @@ export async function saveViewerSettings(
 
 /**
  * Update node group membership via AnnotationsIO.
- * Updates the `group` field on nodeAnnotations.
+ * Updates the `groupId` field on nodeAnnotations.
  */
 export async function saveNodeGroupMembership(
   nodeId: string,
@@ -103,15 +103,15 @@ export async function saveNodeGroupMembership(
       // Update existing annotation
       const existing = nodeAnnotations[existingIndex];
       if (groupId) {
-        nodeAnnotations[existingIndex] = { ...existing, group: groupId };
+        nodeAnnotations[existingIndex] = { ...existing, groupId };
       } else {
-        // Remove group field
+        // Remove group fields
         const { group: _removed, groupId: _removedId, ...rest } = existing;
         nodeAnnotations[existingIndex] = rest as typeof existing;
       }
     } else if (groupId) {
       // Create new annotation with group membership
-      nodeAnnotations.push({ id: nodeId, group: groupId });
+      nodeAnnotations.push({ id: nodeId, groupId });
     }
 
     return { ...current, nodeAnnotations };
@@ -123,27 +123,30 @@ export async function saveNodeGroupMembership(
  * Replaces the entire nodeAnnotations array with the provided memberships.
  */
 export async function saveAllNodeGroupMemberships(
-  memberships: Array<{ id: string; group?: string }>
+  memberships: Array<{ id: string; groupId?: string }>
 ): Promise<void> {
   await saveAnnotationsGeneric((current) => {
     // Build map of new memberships
-    const membershipMap = new Map(memberships.filter((m) => m.group).map((m) => [m.id, m.group!]));
+    const membershipMap = new Map(
+      memberships.filter((m) => m.groupId).map((m) => [m.id, m.groupId!])
+    );
 
-    // Preserve existing nodeAnnotations but update group field
+    // Preserve existing nodeAnnotations but update groupId field
     const existingAnnotations = current.nodeAnnotations ?? [];
     const existingMap = new Map(existingAnnotations.map((a) => [a.id, a]));
 
     // Merge: update existing, add new
-    const result: Array<{ id: string; group?: string }> = [];
+    const result: Array<{ id: string; groupId?: string }> = [];
 
     // Process memberships
-    for (const [nodeId, groupName] of membershipMap) {
+    for (const [nodeId, groupId] of membershipMap) {
       const existing = existingMap.get(nodeId);
       if (existing) {
-        result.push({ ...existing, group: groupName });
+        const { group: _removed, ...rest } = existing;
+        result.push({ ...rest, groupId });
         existingMap.delete(nodeId);
       } else {
-        result.push({ id: nodeId, group: groupName });
+        result.push({ id: nodeId, groupId });
       }
     }
 
@@ -151,7 +154,7 @@ export async function saveAllNodeGroupMemberships(
     // but keep them without group field
     for (const [nodeId, annotation] of existingMap) {
       if (!membershipMap.has(nodeId)) {
-        // Remove group field if node is no longer in any group
+        // Remove group fields if node is no longer in any group
         const { group: _removed, groupId: _removedId, ...rest } = annotation;
         if (Object.keys(rest).length > 1 || (Object.keys(rest).length === 1 && rest.id)) {
           result.push(rest as typeof annotation);

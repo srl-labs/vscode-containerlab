@@ -234,8 +234,13 @@ export class ReactTopoViewer {
       splitViewManager: this.splitViewManager,
       setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
       onInternalFileWritten: (filePath: string, content: string) => {
-        if (path.resolve(filePath) === path.resolve(this.lastYamlFilePath)) {
+        const resolved = path.resolve(filePath);
+        const resolvedYaml = path.resolve(this.lastYamlFilePath);
+        const resolvedAnnotations = path.resolve(`${this.lastYamlFilePath}.annotations.json`);
+        if (resolved === resolvedYaml) {
           this.watcherManager.setLastYamlContent(content);
+        } else if (resolved === resolvedAnnotations) {
+          this.watcherManager.setLastAnnotationsContent(content);
         }
       }
     });
@@ -296,6 +301,14 @@ export class ReactTopoViewer {
       const nodeAnnotations = annotations.nodeAnnotations || [];
       const edgeAnnotations = annotations.edgeAnnotations || [];
       const viewerSettings = annotations.viewerSettings;
+      // Track annotations file content for external change detection
+      try {
+        const annotationsPath = `${this.lastYamlFilePath}.annotations.json`;
+        const annotationsContent = await nodeFsAdapter.readFile(annotationsPath);
+        this.watcherManager.setLastAnnotationsContent(annotationsContent);
+      } catch {
+        this.watcherManager.setLastAnnotationsContent("");
+      }
 
       // Use lab name from parsed YAML (source of truth), fallback to stored name
       const parsedLabName = this.adaptor.currentClabName || this.currentLabName;

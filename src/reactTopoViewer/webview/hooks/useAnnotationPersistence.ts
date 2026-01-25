@@ -45,17 +45,11 @@ export function useAnnotationPersistence(): void {
     const { freeTextAnnotations, freeShapeAnnotations, groups } =
       nodesToAnnotations(annotationNodes);
 
-    // Save all annotation types
+    // Save all annotation types (including empty arrays to allow cleanup)
     // Note: These are fire-and-forget async saves
-    if (freeTextAnnotations.length > 0) {
-      void saveFreeTextAnnotations(freeTextAnnotations);
-    }
-    if (freeShapeAnnotations.length > 0) {
-      void saveFreeShapeAnnotations(freeShapeAnnotations);
-    }
-    if (groups.length > 0) {
-      void saveGroupStyleAnnotations(groups);
-    }
+    void saveFreeTextAnnotations(freeTextAnnotations);
+    void saveFreeShapeAnnotations(freeShapeAnnotations);
+    void saveGroupStyleAnnotations(groups);
 
     log.info(
       `[useAnnotationPersistence] Saved ${freeTextAnnotations.length} text, ${freeShapeAnnotations.length} shape, ${groups.length} group annotations`

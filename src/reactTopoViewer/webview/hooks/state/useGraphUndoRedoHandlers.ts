@@ -11,6 +11,7 @@ import type { EdgeAnnotation } from "../../../shared/types/topology";
 import {
   createNode,
   createLink,
+  deleteNode,
   deleteLink,
   editNode,
   editLink,
@@ -24,7 +25,6 @@ import {
   upsertEdgeLabelOffsetAnnotation,
   type EdgeOffsetUpdateInput
 } from "../../utils/edgeAnnotations";
-import { sendCommandToExtension } from "../../utils/extensionMessaging";
 import { log } from "../../utils/logger";
 
 import type { GraphChange, UndoRedoActionPropertyEdit } from "./useUndoRedo";
@@ -380,6 +380,7 @@ function processGraphChange(
       const pos = nodeElement.position || { x: 0, y: 0 };
       persistNewNode(id, nodeElement, pos);
     } else if (change.kind === "delete") {
+      void deleteNode(id);
       ctx.menuHandlers.handleDeleteNode(id);
     }
   } else if (change.entity === "edge") {
@@ -603,7 +604,7 @@ function useGraphMutationHandlers(params: {
 
       log.info(`[UndoRedo] Deleting node ${nodeId} with ${connectedEdges.length} connected edges`);
       menuHandlers.handleDeleteNode(nodeId);
-      sendCommandToExtension("panel-delete-node", { nodeId });
+      void deleteNode(nodeId);
     },
     [getNodes, getEdges, menuHandlers, undoRedo, isApplyingUndoRedo]
   );
@@ -637,15 +638,14 @@ function useGraphMutationHandlers(params: {
       menuHandlers.handleDeleteLink(edgeId);
 
       const edgeData = edge.data as Record<string, unknown> | undefined;
-      sendCommandToExtension("panel-delete-link", {
-        edgeId,
-        linkData: {
-          source: edge.source,
-          target: edge.target,
-          sourceEndpoint: edgeData?.sourceEndpoint || "",
-          targetEndpoint: edgeData?.targetEndpoint || ""
-        }
-      });
+      const linkData: LinkSaveData = {
+        id: edgeId,
+        source: edge.source,
+        target: edge.target,
+        sourceEndpoint: edgeData?.sourceEndpoint || "",
+        targetEndpoint: edgeData?.targetEndpoint || ""
+      };
+      void deleteLink(linkData);
     },
     [getEdges, menuHandlers, undoRedo, isApplyingUndoRedo]
   );

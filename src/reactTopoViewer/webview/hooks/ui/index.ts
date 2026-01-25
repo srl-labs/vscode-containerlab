@@ -4,10 +4,8 @@
  */
 
 // ============================================================================
-// Context Menu & Commands
+// Commands
 // ============================================================================
-export { useContextMenu } from "./useContextMenu";
-export type { ContextMenuOptions, ContextMenuState, UseContextMenuReturn } from "./useContextMenu";
 export {
   useDeploymentCommands,
   useEditorPanelCommands,

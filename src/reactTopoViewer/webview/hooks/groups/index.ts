@@ -15,15 +15,4 @@ export {
   isPositionInsideGroup
 } from "./groupUtils";
 
-// Hooks
-export { useAppGroups } from "./useAppGroups";
-
-export {
-  useAppGroupUndoHandlers,
-  useGroupUndoRedoHandlers,
-  useGroupDragUndo,
-  useGroupResizeUndo
-} from "./useGroupUndoHandlers";
-
-export { useCombinedAnnotationApplier } from "./useCombinedAnnotationApplier";
-export { useNodeReparent } from "./useNodeReparent";
+// Legacy group hooks removed during ReactFlow migration cleanup
