@@ -38,7 +38,6 @@ import {
   useDeleteHandlers,
   useLinkCreation,
   useSourceNodePosition,
-  useKeyboardDeleteHandlers,
   useCanvasRefMethods,
   useCanvasHandlers,
   useAnnotationCanvasHandlers,
@@ -230,7 +229,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onMoveComplete,
       linkLabelMode = "show-all",
       onInit: onInitProp,
-      onEdgeCreated
+      onEdgeCreated,
+      onShiftClickCreate
     },
     ref
   ) => {
@@ -296,14 +296,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       (left, right) => left === right
     );
 
-    useKeyboardDeleteHandlers(
-      state.mode,
-      state.isLocked,
-      state.selectedNode,
-      state.selectedEdge,
-      handleDeleteNode,
-      handleDeleteEdge
-    );
+    // Note: Keyboard delete handling is done by useAppKeyboardShortcuts in App.tsx
+    // which uses handleDeleteNodeWithUndo for proper undo/redo support.
+    // Do NOT add useKeyboardDeleteHandlers here as it bypasses the undo system.
 
     const refMethods = useCanvasRefMethods(
       handlers.reactFlowInstance,
@@ -349,7 +344,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       reactFlowInstanceRef: handlers.reactFlowInstance,
       baseOnPaneClick: handlers.onPaneClick,
       baseOnNodeDoubleClick: handlers.onNodeDoubleClick,
-      baseOnNodeDragStop: handlers.onNodeDragStop
+      baseOnNodeDragStop: handlers.onNodeDragStop,
+      onShiftClickCreate
     });
 
     const handleNodeDragStart = useCallback(

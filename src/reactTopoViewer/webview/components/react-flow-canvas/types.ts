@@ -273,6 +273,8 @@ export interface ReactFlowCanvasProps {
       targetEndpoint: string;
     }
   ) => void;
+  /** Callback for shift+click node creation */
+  onShiftClickCreate?: (position: { x: number; y: number }) => void;
 }
 
 /**

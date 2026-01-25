@@ -30,6 +30,8 @@ interface UseAnnotationCanvasHandlersOptions {
   baseOnPaneClick: (event: React.MouseEvent) => void;
   baseOnNodeDoubleClick: (event: React.MouseEvent, node: Node) => void;
   baseOnNodeDragStop: (event: React.MouseEvent, node: Node) => void;
+  /** Callback for shift+click node creation */
+  onShiftClickCreate?: (position: { x: number; y: number }) => void;
 }
 
 interface UseAnnotationCanvasHandlersReturn {
@@ -65,16 +67,31 @@ function useEscapeToCancelAddMode(
  * Hook for wrapping pane click handler for annotations
  */
 function useWrappedPaneClick(
+  mode: "view" | "edit",
+  isLocked: boolean,
   annotationMode: AnnotationModeState | undefined,
   annotationHandlers: AnnotationHandlers | undefined,
   reactFlowInstanceRef: RefObject<ReactFlowInstance | null>,
-  baseOnPaneClick: (event: React.MouseEvent) => void
+  baseOnPaneClick: (event: React.MouseEvent) => void,
+  onShiftClickCreate?: (position: { x: number; y: number }) => void
 ) {
   return useCallback(
     (event: React.MouseEvent) => {
       const rfInstance = reactFlowInstanceRef.current;
       if (!rfInstance) {
         baseOnPaneClick(event);
+        return;
+      }
+
+      // Handle Shift+Click for node creation in edit mode
+      if (event.shiftKey && mode === "edit" && !isLocked && onShiftClickCreate) {
+        const bounds = (event.target as HTMLElement).getBoundingClientRect();
+        const position = rfInstance.screenToFlowPosition({
+          x: event.clientX - bounds.left,
+          y: event.clientY - bounds.top
+        });
+        log.info(`[ReactFlowCanvas] Shift+Click: Creating node at (${position.x}, ${position.y})`);
+        onShiftClickCreate(snapToGrid(position));
         return;
       }
 
@@ -110,7 +127,15 @@ function useWrappedPaneClick(
 
       baseOnPaneClick(event);
     },
-    [annotationMode, annotationHandlers, reactFlowInstanceRef, baseOnPaneClick]
+    [
+      mode,
+      isLocked,
+      annotationMode,
+      annotationHandlers,
+      reactFlowInstanceRef,
+      baseOnPaneClick,
+      onShiftClickCreate
+    ]
   );
 }
 
@@ -253,7 +278,8 @@ export function useAnnotationCanvasHandlers(
     reactFlowInstanceRef,
     baseOnPaneClick,
     baseOnNodeDoubleClick,
-    baseOnNodeDragStop
+    baseOnNodeDragStop,
+    onShiftClickCreate
   } = options;
 
   // Escape key to cancel add modes
@@ -261,10 +287,13 @@ export function useAnnotationCanvasHandlers(
 
   // Wrapped handlers
   const wrappedOnPaneClick = useWrappedPaneClick(
+    mode,
+    isLocked,
     annotationMode,
     annotationHandlers,
     reactFlowInstanceRef,
-    baseOnPaneClick
+    baseOnPaneClick,
+    onShiftClickCreate
   );
   const wrappedOnNodeDoubleClick = useWrappedNodeDoubleClick(
     mode,

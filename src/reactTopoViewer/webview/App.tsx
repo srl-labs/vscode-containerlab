@@ -103,15 +103,38 @@ const AppContent: React.FC<{
 
   // Graph state from GraphContext (React Flow is source of truth)
   const { nodes, edges } = useGraph();
-  const { addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodeData, renameNode } =
-    useGraphActions();
+  const {
+    addNode,
+    addEdge,
+    removeNodeAndEdges,
+    removeEdge,
+    updateNodeData,
+    updateNodePositions,
+    renameNode
+  } = useGraphActions();
 
-  const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
+  const { undoRedo, registerGraphHandler, registerPropertyEditHandler, registerPositionHandler } =
+    useUndoRedoContext();
   const annotations = useAnnotations();
 
   // Persist annotation node changes to JSON file
   // This watches GraphContext for annotation node changes and saves them
   useAnnotationPersistence();
+
+  // Register position handler for undo/redo of node moves
+  React.useEffect(() => {
+    registerPositionHandler((positions) => {
+      // Filter to only entries with defined positions and update canvas
+      const validPositions = positions
+        .filter(
+          (p): p is { id: string; position: { x: number; y: number } } => p.position !== undefined
+        )
+        .map((p) => ({ id: p.id, position: p.position }));
+      if (validPositions.length > 0) {
+        updateNodePositions(validPositions);
+      }
+    });
+  }, [registerPositionHandler, updateNodePositions]);
 
   // Toast notifications
   const { toasts, addToast, dismissToast } = useToasts();
@@ -616,6 +639,7 @@ const AppContent: React.FC<{
           }}
           onInit={onInit}
           onEdgeCreated={handleEdgeCreated}
+          onShiftClickCreate={graphCreation.createNodeAtPosition}
         />
         <ViewPanels
           nodeInfo={{
