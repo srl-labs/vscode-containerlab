@@ -4,17 +4,17 @@
  */
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import type {
-  ReactFlowInstance,
-  OnNodesChange,
-  NodeMouseHandler,
-  EdgeMouseHandler,
-  OnConnect,
-  Connection,
-  Node,
-  Edge,
-  NodeChange,
-  XYPosition
+import {
+  type ReactFlowInstance,
+  type OnNodesChange,
+  type NodeMouseHandler,
+  type EdgeMouseHandler,
+  type OnConnect,
+  type Connection,
+  type Node,
+  type Edge,
+  type NodeChange,
+  type XYPosition
 } from "@xyflow/react";
 
 import { log } from "../../utils/logger";
@@ -36,6 +36,19 @@ export function snapToGrid(position: XYPosition): XYPosition {
 export interface DragPositionEntry {
   id: string;
   position: { x: number; y: number };
+}
+
+/** Handlers for annotation position changes during drag */
+export interface AnnotationPositionHandlers {
+  onUpdateFreeTextPosition?: (id: string, position: { x: number; y: number }) => void;
+  onUpdateFreeShapePosition?: (id: string, position: { x: number; y: number }) => void;
+  onUpdateGroupPosition?: (id: string, position: { x: number; y: number }) => void;
+}
+
+/** Handlers for annotation selection changes */
+export interface AnnotationSelectionHandlers {
+  onUpdateAnnotationSelection: (nodeId: string, selected: boolean) => void;
+  onClearAnnotationSelection: () => void;
 }
 
 interface CanvasHandlersConfig {
@@ -66,6 +79,10 @@ interface CanvasHandlersConfig {
       targetEndpoint: string;
     }
   ) => void;
+  /** Handlers for annotation position updates (for live drag rendering) */
+  annotationPositionHandlers?: AnnotationPositionHandlers;
+  /** Handlers for annotation selection changes */
+  annotationSelectionHandlers?: AnnotationSelectionHandlers;
 }
 
 interface ContextMenuState {
@@ -452,7 +469,9 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     onLockedAction,
     nodes,
     onMoveComplete,
-    onEdgeCreated
+    onEdgeCreated,
+    annotationPositionHandlers,
+    annotationSelectionHandlers
   } = config;
 
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
@@ -504,10 +523,54 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   );
   const onConnect = useConnectionHandler(modeRef, isLockedRef, onLockedAction, onEdgeCreated);
 
-  // Node changes handler
+  // Node changes handler - handles annotation and topology node changes
   const handleNodesChange: OnNodesChange = useCallback(
-    (changes: NodeChange[]) => onNodesChangeBase(changes),
-    [onNodesChangeBase]
+    (changes: NodeChange[]) => {
+      const regularChanges: NodeChange[] = [];
+
+      for (const change of changes) {
+        const nodeId = "id" in change ? change.id : undefined;
+        const node = nodeId ? nodes?.find((n) => n.id === nodeId) : undefined;
+        const isAnnotationNode = node && ANNOTATION_NODE_TYPES.includes(node.type || "");
+
+        if (isAnnotationNode && nodeId) {
+          // Handle position changes for annotation nodes
+          if (change.type === "position" && "position" in change && change.position) {
+            const nodeType = node.type;
+            if (
+              nodeType === "free-text-node" &&
+              annotationPositionHandlers?.onUpdateFreeTextPosition
+            ) {
+              annotationPositionHandlers.onUpdateFreeTextPosition(nodeId, change.position);
+            } else if (
+              nodeType === "free-shape-node" &&
+              annotationPositionHandlers?.onUpdateFreeShapePosition
+            ) {
+              annotationPositionHandlers.onUpdateFreeShapePosition(nodeId, change.position);
+            } else if (
+              nodeType === "group-node" &&
+              annotationPositionHandlers?.onUpdateGroupPosition
+            ) {
+              annotationPositionHandlers.onUpdateGroupPosition(nodeId, change.position);
+            }
+          }
+
+          // Handle selection changes for annotation nodes
+          if (change.type === "select" && annotationSelectionHandlers) {
+            annotationSelectionHandlers.onUpdateAnnotationSelection(nodeId, change.selected);
+          }
+        } else {
+          // Regular topology node changes go to GraphContext
+          regularChanges.push(change);
+        }
+      }
+
+      // Pass regular topology node changes to GraphContext
+      if (regularChanges.length > 0) {
+        onNodesChangeBase(regularChanges);
+      }
+    },
+    [onNodesChangeBase, nodes, annotationPositionHandlers, annotationSelectionHandlers]
   );
 
   // Drag handlers (extracted hook)

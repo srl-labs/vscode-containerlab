@@ -19,6 +19,7 @@ import { snapToGrid } from "./useCanvasHandlers";
 /** Node type constants */
 const FREE_TEXT_NODE_TYPE = "free-text-node";
 const FREE_SHAPE_NODE_TYPE = "free-shape-node";
+const GROUP_NODE_TYPE = "group-node";
 
 interface UseAnnotationCanvasHandlersOptions {
   mode: "view" | "edit";
@@ -99,6 +100,14 @@ function useWrappedPaneClick(
         return;
       }
 
+      // Explicitly deselect all nodes when clicking on the pane
+      // This ensures annotation nodes are properly deselected
+      const nodes = rfInstance.getNodes();
+      const hasSelectedNodes = nodes.some((n) => n.selected);
+      if (hasSelectedNodes) {
+        rfInstance.setNodes(nodes.map((n) => ({ ...n, selected: false })));
+      }
+
       baseOnPaneClick(event);
     },
     [annotationMode, annotationHandlers, reactFlowInstanceRef, baseOnPaneClick]
@@ -133,6 +142,12 @@ function useWrappedNodeDoubleClick(
         return;
       }
 
+      if (node.type === GROUP_NODE_TYPE) {
+        log.info(`[ReactFlowCanvas] Editing group: ${node.id}`);
+        annotationHandlers.onEditGroup?.(node.id);
+        return;
+      }
+
       baseOnNodeDoubleClick(event, node);
     },
     [mode, isLocked, annotationHandlers, baseOnNodeDoubleClick]
@@ -152,12 +167,13 @@ function useWrappedNodeDragStop(
     (event: React.MouseEvent, node: Node) => {
       if (mode !== "edit") return;
 
-      // For annotation nodes, just update the annotation state
-      // React Flow handles the visual position during drag
+      // For annotation nodes, update position and check for group membership
       if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers) {
         const snappedPosition = snapToGrid(node.position);
         log.info(`[ReactFlowCanvas] Updated free text position: ${node.id}`);
         annotationHandlers.onUpdateFreeTextPosition(node.id, snappedPosition);
+        // Check for group membership changes
+        annotationHandlers.onNodeDropped?.(node.id, snappedPosition);
         return;
       }
 
@@ -172,6 +188,15 @@ function useWrappedNodeDragStop(
         const snappedPosition = snapToGrid(node.position);
         log.info(`[ReactFlowCanvas] Updated free shape position: ${node.id}`);
         annotationHandlers.onUpdateFreeShapePosition(node.id, snappedPosition);
+        // Check for group membership changes
+        annotationHandlers.onNodeDropped?.(node.id, snappedPosition);
+        return;
+      }
+
+      if (node.type === GROUP_NODE_TYPE && annotationHandlers) {
+        const snappedPosition = snapToGrid(node.position);
+        log.info(`[ReactFlowCanvas] Updated group position: ${node.id}`);
+        annotationHandlers.onUpdateGroupPosition?.(node.id, snappedPosition);
         return;
       }
 

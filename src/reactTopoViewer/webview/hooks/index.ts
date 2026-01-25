@@ -8,11 +8,8 @@
 export {
   useCustomNodeCommands,
   useNavbarCommands,
-  useShapeLayer,
-  useTextLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
-  useAnnotationLayerProps,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
   useGraphCreation
@@ -20,12 +17,8 @@ export {
 export type {
   CustomNodeCommands,
   NavbarCommands,
-  UseShapeLayerReturn,
-  UseTextLayerReturn,
   E2ETestingConfig,
   GeoCoordinateSyncConfig,
-  AnnotationLayerPropsConfig,
-  AnnotationLayerPropsReturn,
   ClipboardHandlersConfig,
   ClipboardHandlersReturn,
   AppKeyboardShortcutsConfig,

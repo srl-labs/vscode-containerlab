@@ -86,3 +86,34 @@ export async function saveViewerSettings(
     }
   }));
 }
+
+/**
+ * Update node group membership via AnnotationsIO.
+ * Updates the `group` field on nodeAnnotations.
+ */
+export async function saveNodeGroupMembership(
+  nodeId: string,
+  groupId: string | null
+): Promise<void> {
+  await saveAnnotationsGeneric((current) => {
+    const nodeAnnotations = current.nodeAnnotations ? [...current.nodeAnnotations] : [];
+
+    const existingIndex = nodeAnnotations.findIndex((n) => n.id === nodeId);
+    if (existingIndex >= 0) {
+      // Update existing annotation
+      const existing = nodeAnnotations[existingIndex];
+      if (groupId) {
+        nodeAnnotations[existingIndex] = { ...existing, group: groupId };
+      } else {
+        // Remove group field
+        const { group: _removed, groupId: _removedId, ...rest } = existing;
+        nodeAnnotations[existingIndex] = rest as typeof existing;
+      }
+    } else if (groupId) {
+      // Create new annotation with group membership
+      nodeAnnotations.push({ id: nodeId, group: groupId });
+    }
+
+    return { ...current, nodeAnnotations };
+  });
+}

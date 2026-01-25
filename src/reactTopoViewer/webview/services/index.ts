@@ -23,7 +23,8 @@ export {
   saveFreeShapeAnnotations,
   saveGroupStyleAnnotations,
   saveEdgeAnnotations,
-  saveViewerSettings
+  saveViewerSettings,
+  saveNodeGroupMembership
 } from "./annotationSaveHelpers";
 
 // Re-export topology CRUD helpers

@@ -99,7 +99,9 @@ function useContextMenuItems(
         editFreeText: annotationHandlers?.onEditFreeText,
         editFreeShape: annotationHandlers?.onEditFreeShape,
         deleteFreeText: annotationHandlers?.onDeleteFreeText,
-        deleteFreeShape: annotationHandlers?.onDeleteFreeShape
+        deleteFreeShape: annotationHandlers?.onDeleteFreeShape,
+        editGroup: annotationHandlers?.onEditGroup,
+        deleteGroup: annotationHandlers?.onDeleteGroup
       });
     }
     if (type === "edge" && targetId) {
@@ -210,15 +212,16 @@ const fitViewOptions = { padding: 0.2 };
 const LOW_DETAIL_ZOOM_THRESHOLD = 0.5;
 const LARGE_GRAPH_NODE_THRESHOLD = 600;
 const LARGE_GRAPH_EDGE_THRESHOLD = 900;
-const ANNOTATION_NODE_TYPES_SET = new Set(["free-text-node", "free-shape-node"]);
+const ANNOTATION_NODE_TYPES_SET = new Set(["free-text-node", "free-shape-node", "group-node"]);
 
 /**
  * Hook to sync annotation nodes into the nodes array.
- * Merges annotation nodes with topology nodes.
+ * Merges annotation nodes with topology nodes, applying selection state.
  */
 function useMergedNodes(
   propNodes: Node[] | undefined,
-  annotationNodes: Node[] | undefined
+  annotationNodes: Node[] | undefined,
+  annotationSelection: Map<string, boolean>
 ): Node[] {
   return useMemo(() => {
     const baseNodes = propNodes ?? [];
@@ -227,8 +230,15 @@ function useMergedNodes(
     }
     // Filter out any annotation nodes from propNodes (shouldn't be there, but be safe)
     const topologyNodes = baseNodes.filter((n) => !ANNOTATION_NODE_TYPES_SET.has(n.type || ""));
-    return [...topologyNodes, ...annotationNodes];
-  }, [propNodes, annotationNodes]);
+
+    // Merge annotation nodes with selection state
+    const mergedAnnotationNodes = annotationNodes.map((node) => {
+      const isSelected = annotationSelection.get(node.id) ?? false;
+      return { ...node, selected: isSelected };
+    });
+
+    return [...topologyNodes, ...mergedAnnotationNodes];
+  }, [propNodes, annotationNodes, annotationSelection]);
 }
 
 /**
@@ -258,10 +268,32 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraph();
 
     const floatingPanelRef = useRef<{ triggerShake: () => void } | null>(null);
-    const [isNodeDragging, setIsNodeDragging] = useState(false);
 
-    // Merge topology nodes with annotation nodes
-    const mergedNodes = useMergedNodes(propNodes as Node[], annotationNodes);
+    // Track annotation node selection state locally
+    const [annotationSelection, setAnnotationSelection] = useState<Map<string, boolean>>(
+      () => new Map()
+    );
+
+    // Callback to update annotation selection from node changes
+    const updateAnnotationSelection = useCallback((nodeId: string, selected: boolean) => {
+      setAnnotationSelection((prev) => {
+        const next = new Map(prev);
+        if (selected) {
+          next.set(nodeId, true);
+        } else {
+          next.delete(nodeId);
+        }
+        return next;
+      });
+    }, []);
+
+    // Clear all annotation selections
+    const clearAnnotationSelection = useCallback(() => {
+      setAnnotationSelection(new Map());
+    }, []);
+
+    // Merge topology nodes with annotation nodes, applying selection state
+    const mergedNodes = useMergedNodes(propNodes as Node[], annotationNodes, annotationSelection);
 
     // Refs for context menu (to avoid re-renders)
     const nodesRef = useRef<Node[]>(mergedNodes);
@@ -280,7 +312,16 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onLockedAction: () => floatingPanelRef.current?.triggerShake(),
       nodes: mergedNodes,
       onMoveComplete,
-      onEdgeCreated
+      onEdgeCreated,
+      annotationPositionHandlers: {
+        onUpdateFreeTextPosition: annotationHandlers?.onUpdateFreeTextPosition,
+        onUpdateFreeShapePosition: annotationHandlers?.onUpdateFreeShapePosition,
+        onUpdateGroupPosition: annotationHandlers?.onUpdateGroupPosition
+      },
+      annotationSelectionHandlers: {
+        onUpdateAnnotationSelection: updateAnnotationSelection,
+        onClearAnnotationSelection: clearAnnotationSelection
+      }
     });
 
     const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =
@@ -369,7 +410,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const handleNodeDragStart = useCallback(
       (event: React.MouseEvent, node: Node) => {
-        setIsNodeDragging(true);
         handlers.onNodeDragStart(event, node);
       },
       [handlers.onNodeDragStart]
@@ -378,7 +418,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const handleNodeDragStop = useCallback(
       (event: React.MouseEvent, node: Node) => {
         wrappedOnNodeDragStop(event, node);
-        setIsNodeDragging(false);
       },
       [wrappedOnNodeDragStop]
     );
@@ -386,10 +425,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const edgeRenderConfig = useMemo(
       () => ({
         labelMode: linkLabelMode,
-        suppressLabels: isNodeDragging || isLowDetail,
+        suppressLabels: isLowDetail,
         suppressHitArea: isLowDetail
       }),
-      [linkLabelMode, isNodeDragging, isLowDetail]
+      [linkLabelMode, isLowDetail]
     );
 
     const nodeRenderConfig = useMemo(

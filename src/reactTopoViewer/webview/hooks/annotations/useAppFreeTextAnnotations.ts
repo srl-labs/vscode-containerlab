@@ -50,6 +50,7 @@ export interface UseAppFreeTextAnnotationsReturn
   editingAnnotation: FreeTextAnnotation | null;
   isAddTextMode: boolean;
   handleAddText: () => void;
+  disableAddTextMode: () => void;
   handleCanvasClick: (position: { x: number; y: number }) => void;
   editAnnotation: (id: string) => void;
 }
@@ -217,6 +218,7 @@ export function useAppFreeTextAnnotations(
     editingAnnotation: freeTextAnnotations.editingAnnotation,
     isAddTextMode: freeTextAnnotations.isAddTextMode,
     handleAddText,
+    disableAddTextMode: freeTextAnnotations.disableAddTextMode,
     handleCanvasClick: freeTextAnnotations.handleCanvasClick,
     editAnnotation: freeTextAnnotations.editAnnotation,
     closeEditor: freeTextAnnotations.closeEditor,

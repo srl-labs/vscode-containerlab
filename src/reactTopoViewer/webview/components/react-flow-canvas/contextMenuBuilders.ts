@@ -11,6 +11,7 @@ import { applyLayout } from "./layout";
 /** Annotation node type constants */
 const FREE_TEXT_NODE_TYPE = "free-text-node";
 const FREE_SHAPE_NODE_TYPE = "free-shape-node";
+const GROUP_NODE_TYPE = "group-node";
 
 interface MenuBuilderContext {
   targetId: string;
@@ -34,6 +35,10 @@ interface MenuBuilderContext {
   deleteFreeText?: (id: string) => void;
   /** Delete free shape annotation */
   deleteFreeShape?: (id: string) => void;
+  /** Edit group annotation */
+  editGroup?: (id: string) => void;
+  /** Delete group annotation */
+  deleteGroup?: (id: string) => void;
 }
 
 interface EdgeMenuBuilderContext {
@@ -114,6 +119,35 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
 }
 
 /**
+ * Build context menu for group annotations
+ */
+function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
+  const { targetId, isEditMode, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
+
+  return [
+    {
+      id: "edit-group",
+      label: "Edit Group",
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        editGroup?.(targetId);
+        closeContextMenu();
+      }
+    },
+    { id: "divider-1", label: "", divider: true },
+    {
+      id: "delete-group",
+      label: "Delete Group",
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        deleteGroup?.(targetId);
+        closeContextMenu();
+      }
+    }
+  ];
+}
+
+/**
  * Build node context menu items
  */
 export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
@@ -136,6 +170,9 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   }
   if (targetNodeType === FREE_SHAPE_NODE_TYPE) {
     return buildFreeShapeContextMenu(ctx);
+  }
+  if (targetNodeType === GROUP_NODE_TYPE) {
+    return buildGroupContextMenu(ctx);
   }
 
   const items: ContextMenuItem[] = [];

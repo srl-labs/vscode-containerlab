@@ -60,27 +60,25 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     cursor: isLinkTarget ? "crosshair" : undefined
   };
 
-  // Determine border and shadow based on state
-  const getBorderAndShadow = () => {
+  // Determine outline based on state - use outline to avoid layout shift
+  const getOutlineStyle = (): React.CSSProperties => {
     if (showLinkTargetHighlight) {
       return {
-        border: `3px solid ${SELECTION_COLOR}`,
+        outline: `2px solid ${SELECTION_COLOR}`,
+        outlineOffset: 1,
         boxShadow: `0 0 12px 4px ${SELECTION_COLOR}88`
       };
     }
     if (selected) {
       return {
-        border: `3px solid ${SELECTION_COLOR}`,
-        boxShadow: `0 0 0 3px ${SELECTION_COLOR}33`
+        outline: `2px solid ${SELECTION_COLOR}`,
+        outlineOffset: 1
       };
     }
     return {
-      border: "1px solid #969799",
-      boxShadow: "none"
+      outline: "none"
     };
   };
-
-  const { border, boxShadow } = getBorderAndShadow();
 
   // Icon styles
   const iconStyle: React.CSSProperties = {
@@ -92,9 +90,8 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     backgroundRepeat: "no-repeat",
     backgroundColor: "#E8E8E8",
     borderRadius: 4,
-    border,
-    boxShadow,
-    transition: "border 0.15s ease, box-shadow 0.15s ease"
+    border: "1px solid #969799",
+    ...getOutlineStyle()
   };
 
   // Label styles

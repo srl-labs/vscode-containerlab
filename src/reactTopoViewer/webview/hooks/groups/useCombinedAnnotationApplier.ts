@@ -1,247 +1,78 @@
 /**
- * Hook that combines freeShape and group annotation appliers.
- * Extracted from App.tsx to reduce complexity.
- *
- * This file also includes the group annotation applier functionality
- * (previously in useGroupAnnotationApplier.ts).
+ * Combined annotation applier for undo/redo
  */
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 
-import type { UndoRedoActionAnnotation, UndoRedoActionGroupMove } from "../state/useUndoRedo";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from "../../../shared/types/topology";
-import { log } from "../../utils/logger";
+import type { UndoRedoActionAnnotation, UndoRedoActionGroupMove } from "../state/useUndoRedo";
 
-import type { UseGroupsReturn } from "./groupTypes";
-import { createGroupInserter, createGroupRemover, createGroupUpserter } from "./groupHelpers";
+import type { useAppGroups } from "./useAppGroups";
 
-// ============================================================================
-// Group Annotation Applier Types and Functions
-// ============================================================================
+type GroupsHook = ReturnType<typeof useAppGroups>["groups"];
 
-export interface UseGroupAnnotationApplierReturn {
-  isApplyingGroupUndoRedo: React.RefObject<boolean>;
-  applyGroupAnnotationChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
+interface UseCombinedAnnotationApplierOptions {
+  groups: GroupsHook;
+  /** Apply free shape annotation change (from useFreeShapeAnnotationApplier) */
+  applyFreeShapeChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
+  /** Apply free text annotation change (from useFreeTextAnnotationApplier) */
+  applyFreeTextChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
+  onUpdateTextAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
+  onUpdateShapeAnnotation: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
 }
 
-type GroupsApi = Pick<UseGroupsReturn, "loadGroups" | "groups" | "deleteGroup">;
+export function useCombinedAnnotationApplier(options: UseCombinedAnnotationApplierOptions) {
+  const { groups, applyFreeShapeChange, applyFreeTextChange } = options;
 
-/** Log the current state for debugging */
-function logGroupUndoState(
-  isUndo: boolean,
-  groups: GroupStyleAnnotation[],
-  target: GroupStyleAnnotation | null,
-  opposite: GroupStyleAnnotation | null
-): void {
-  const action = isUndo ? "UNDO" : "REDO";
-  const targetLabel = isUndo ? "before" : "after";
-  const oppositeLabel = isUndo ? "after" : "before";
-  log.info(`[GroupUndo] ${action} group annotation`);
-  log.info(`[GroupUndo] Current groups: ${groups.map((g) => g.id).join(", ")}`);
-  log.info(`[GroupUndo] Target (${targetLabel}): ${target?.id ?? "null"}`);
-  log.info(`[GroupUndo] Opposite (${oppositeLabel}): ${opposite?.id ?? "null"}`);
-}
+  const applyAnnotationChange = useCallback(
+    (action: UndoRedoActionAnnotation, isUndo: boolean) => {
+      const { annotationType } = action;
 
-/** Restore a deleted group */
-function restoreGroup(target: GroupStyleAnnotation, groupsApi: GroupsApi): void {
-  log.info(`[GroupUndo] Restoring deleted group: ${target.id}`);
-  groupsApi.loadGroups(createGroupInserter(target));
-}
+      if (annotationType === "freeText") {
+        applyFreeTextChange(action, isUndo);
+      } else if (annotationType === "freeShape") {
+        applyFreeShapeChange(action, isUndo);
+      } else if (annotationType === "group") {
+        const { before, after } = action;
+        const [from, to] = isUndo ? [after, before] : [before, after];
+        const fromGroup = from as GroupStyleAnnotation | null;
+        const toGroup = to as GroupStyleAnnotation | null;
 
-/** Delete a group via loadGroups to bypass mode checks */
-function removeGroup(opposite: GroupStyleAnnotation, groupsApi: GroupsApi): void {
-  log.info(`[GroupUndo] Deleting group: ${opposite.id}`);
-  groupsApi.loadGroups(createGroupRemover(opposite.id));
-}
-
-/** Update an existing group */
-function updateGroup(target: GroupStyleAnnotation, groupsApi: GroupsApi): void {
-  log.info(`[GroupUndo] Updating group: ${target.id}`);
-  groupsApi.loadGroups(createGroupUpserter(target));
-}
-
-function applyGroupAnnotationChangeInternal(
-  action: UndoRedoActionAnnotation,
-  isUndo: boolean,
-  groupsApi: GroupsApi,
-  isApplyingRef: React.RefObject<boolean>
-): void {
-  if (action.annotationType !== "group") return;
-  const target = (isUndo ? action.before : action.after) as GroupStyleAnnotation | null;
-  const opposite = (isUndo ? action.after : action.before) as GroupStyleAnnotation | null;
-
-  logGroupUndoState(isUndo, groupsApi.groups, target, opposite);
-
-  isApplyingRef.current = true;
-  try {
-    if (target && !opposite) {
-      restoreGroup(target, groupsApi);
-    } else if (!target && opposite) {
-      removeGroup(opposite, groupsApi);
-    } else if (target && opposite) {
-      updateGroup(target, groupsApi);
-    }
-  } finally {
-    isApplyingRef.current = false;
-  }
-}
-
-export function useGroupAnnotationApplier(
-  groupsApi: UseGroupsReturn
-): UseGroupAnnotationApplierReturn {
-  const isApplyingGroupUndoRedo = React.useRef(false);
-
-  const applyGroupAnnotationChange = React.useCallback(
-    (action: UndoRedoActionAnnotation, isUndo: boolean): void => {
-      applyGroupAnnotationChangeInternal(action, isUndo, groupsApi, isApplyingGroupUndoRedo);
+        if (!fromGroup && toGroup) {
+          // Add
+          groups.addGroup(toGroup);
+        } else if (fromGroup && !toGroup) {
+          // Delete
+          groups.deleteGroup(fromGroup.id);
+        } else if (fromGroup && toGroup) {
+          // Update
+          groups.updateGroup(toGroup.id, toGroup);
+        }
+      }
     },
-    [groupsApi]
+    [groups, applyFreeShapeChange, applyFreeTextChange]
+  );
+
+  const applyGroupMoveChange = useCallback(
+    (action: UndoRedoActionGroupMove, isUndo: boolean) => {
+      const target = isUndo ? action.groupBefore : action.groupAfter;
+      const targetGroup = target as GroupStyleAnnotation;
+      if (targetGroup?.id) {
+        groups.updateGroup(targetGroup.id, {
+          position: targetGroup.position,
+          width: targetGroup.width,
+          height: targetGroup.height
+        });
+      }
+    },
+    [groups]
   );
 
   return {
-    isApplyingGroupUndoRedo,
-    applyGroupAnnotationChange
+    applyAnnotationChange,
+    applyGroupMoveChange
   };
-}
-
-// ============================================================================
-// Combined Annotation Applier
-// ============================================================================
-
-interface UseCombinedAnnotationApplierOptions {
-  groups: UseGroupsReturn;
-  applyFreeShapeChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
-  applyFreeTextChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
-  /** Callback to update text annotation position (for group move undo/redo) */
-  onUpdateTextAnnotation?: (id: string, updates: Partial<FreeTextAnnotation>) => void;
-  /** Callback to update shape annotation position (for group move undo/redo) */
-  onUpdateShapeAnnotation?: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
-}
-
-/** Restore descendant groups from undo/redo action */
-function restoreDescendantGroups(
-  action: UndoRedoActionGroupMove,
-  isUndo: boolean,
-  currentGroups: GroupStyleAnnotation[]
-): GroupStyleAnnotation[] {
-  const descendantGroups = (
-    isUndo ? action.descendantGroupsBefore : action.descendantGroupsAfter
-  ) as GroupStyleAnnotation[] | undefined;
-
-  if (!descendantGroups || descendantGroups.length === 0) {
-    return currentGroups;
-  }
-
-  let updatedGroups = currentGroups;
-  for (const dg of descendantGroups) {
-    updatedGroups = updatedGroups.map((g) => (g.id === dg.id ? dg : g));
-  }
-  log.info(`[CombinedApplier] Restored ${descendantGroups.length} descendant groups`);
-  return updatedGroups;
-}
-
-/** Restore text annotations from undo/redo action */
-function restoreTextAnnotations(
-  action: UndoRedoActionGroupMove,
-  isUndo: boolean,
-  onUpdate?: (id: string, updates: Partial<FreeTextAnnotation>) => void
-): void {
-  if (!onUpdate) return;
-
-  const textAnnotations = (isUndo ? action.textAnnotationsBefore : action.textAnnotationsAfter) as
-    | FreeTextAnnotation[]
-    | undefined;
-
-  if (!textAnnotations || textAnnotations.length === 0) return;
-
-  for (const ta of textAnnotations) {
-    onUpdate(ta.id, { position: { ...ta.position } });
-  }
-  log.info(`[CombinedApplier] Restored ${textAnnotations.length} text annotations`);
-}
-
-/** Restore shape annotations from undo/redo action */
-function restoreShapeAnnotations(
-  action: UndoRedoActionGroupMove,
-  isUndo: boolean,
-  onUpdate?: (id: string, updates: Partial<FreeShapeAnnotation>) => void
-): void {
-  if (!onUpdate) return;
-
-  const shapeAnnotations = (
-    isUndo ? action.shapeAnnotationsBefore : action.shapeAnnotationsAfter
-  ) as FreeShapeAnnotation[] | undefined;
-
-  if (!shapeAnnotations || shapeAnnotations.length === 0) return;
-
-  for (const sa of shapeAnnotations) {
-    const updates: Partial<FreeShapeAnnotation> = { position: { ...sa.position } };
-    if (sa.endPosition) {
-      updates.endPosition = { ...sa.endPosition };
-    }
-    onUpdate(sa.id, updates);
-  }
-  log.info(`[CombinedApplier] Restored ${shapeAnnotations.length} shape annotations`);
-}
-
-export interface UseCombinedAnnotationApplierReturn {
-  applyAnnotationChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
-  applyGroupMoveChange: (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
-}
-
-export function useCombinedAnnotationApplier(
-  options: UseCombinedAnnotationApplierOptions
-): UseCombinedAnnotationApplierReturn {
-  const {
-    groups,
-    applyFreeShapeChange,
-    applyFreeTextChange,
-    onUpdateTextAnnotation,
-    onUpdateShapeAnnotation
-  } = options;
-
-  // Group annotation applier for undo/redo
-  const { applyGroupAnnotationChange } = useGroupAnnotationApplier(groups);
-
-  // Combined annotation change handler for undo/redo
-  const applyAnnotationChange = useCallback(
-    (action: UndoRedoActionAnnotation, isUndo: boolean) => {
-      if (action.annotationType === "freeShape") {
-        applyFreeShapeChange(action, isUndo);
-      } else if (action.annotationType === "freeText") {
-        applyFreeTextChange(action, isUndo);
-      } else if (action.annotationType === "group") {
-        applyGroupAnnotationChange(action, isUndo);
-      }
-    },
-    [applyFreeShapeChange, applyFreeTextChange, applyGroupAnnotationChange]
-  );
-
-  // Group move change handler for undo/redo (group + member nodes + descendant groups + annotations)
-  const applyGroupMoveChange = useCallback(
-    (action: UndoRedoActionGroupMove, isUndo: boolean) => {
-      const targetGroup = (isUndo ? action.groupBefore : action.groupAfter) as GroupStyleAnnotation;
-
-      // 1. Restore parent group position
-      let updatedGroups = groups.groups.map((g) => (g.id === targetGroup.id ? targetGroup : g));
-
-      // 2. Restore descendant group positions
-      updatedGroups = restoreDescendantGroups(action, isUndo, updatedGroups);
-      groups.loadGroups(updatedGroups);
-
-      // 3. Restore annotation positions
-      restoreTextAnnotations(action, isUndo, onUpdateTextAnnotation);
-      restoreShapeAnnotations(action, isUndo, onUpdateShapeAnnotation);
-
-      log.info(
-        `[CombinedApplier] Applied group move ${isUndo ? "undo" : "redo"} for ${targetGroup.id}`
-      );
-    },
-    [groups, onUpdateTextAnnotation, onUpdateShapeAnnotation]
-  );
-
-  return { applyAnnotationChange, applyGroupMoveChange };
 }

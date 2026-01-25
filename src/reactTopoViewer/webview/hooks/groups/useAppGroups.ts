@@ -1,20 +1,34 @@
 /**
- * App-level hook for group management.
- * Provides handlers for group operations with UI integration.
+ * Hook for managing group annotations
+ * Provides state and actions for groups
  */
-import type React from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { GroupStyleAnnotation, NodeAnnotation } from "../../../shared/types/topology";
-import { log } from "../../utils/logger";
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
+import { saveGroupStyleAnnotations, saveNodeGroupMembership } from "../../services";
+import { useDebouncedSave, SAVE_DEBOUNCE_MS } from "../annotations/sharedAnnotationHelpers";
 
-import { useGroups } from "./useGroups";
-import { buildGroupId, parseGroupId, calculateBoundingBox } from "./groupHelpers";
+import type { GroupEditorData } from "./groupTypes";
+import { groupToEditorData, editorDataToGroup } from "./groupTypes";
+import { generateGroupId } from "./groupUtils";
 
-interface InitialData {
-  groupStyleAnnotations?: unknown[];
-  nodeAnnotations?: NodeAnnotation[];
+interface UseAppGroupsOptions {
+  nodes: TopoNode[];
+  rfInstance: ReactFlowInstance | null;
+  mode: "edit" | "view";
+  isLocked: boolean;
+  onLockedAction: () => void;
+  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
+  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
+}
+
+interface NodeAnnotation {
+  id: string;
+  group?: string;
+  groupId?: string;
 }
 
 interface TopologyDataMessage {
@@ -25,214 +39,259 @@ interface TopologyDataMessage {
   };
 }
 
-type MembershipEntry = { nodeId: string; groupId: string };
-
-/**
- * Extract group memberships from node annotations.
- */
-function extractMemberships(
-  nodeAnnotations: NodeAnnotation[] | undefined,
-  groups: GroupStyleAnnotation[] | undefined
-): MembershipEntry[] {
-  if (!nodeAnnotations) return [];
-
-  const groupKeyToIds = new Map<string, string[]>();
-  (groups ?? []).forEach((group) => {
-    const key = buildGroupId(group.name, group.level);
-    const list = groupKeyToIds.get(key) ?? [];
-    list.push(group.id);
-    groupKeyToIds.set(key, list);
-  });
-
-  const memberships: MembershipEntry[] = [];
-  for (const ann of nodeAnnotations) {
-    if (ann.groupId) {
-      memberships.push({ nodeId: ann.id, groupId: ann.groupId });
-      continue;
-    }
-    if (ann.group && ann.level) {
-      const key = buildGroupId(ann.group, ann.level);
-      const ids = groupKeyToIds.get(key) ?? [];
-      if (ids.length > 1) {
-        log.warn(
-          `[Groups] Ambiguous membership for ${ann.id}: ${key} maps to ${ids.length} groups`
-        );
-      }
-      if (ids.length > 0) {
-        memberships.push({ nodeId: ann.id, groupId: ids[0] });
-      } else {
-        log.warn(`[Groups] No group match for membership ${ann.id}: ${key}`);
-      }
-    }
-  }
-
-  return memberships;
-}
-
-/**
- * Migrate legacy groups that are missing geometry fields.
- * Legacy TopoViewer stored only styling (colors, borders) without position/width/height.
- * This function computes geometry from member node positions in nodeAnnotations.
- */
-function migrateLegacyGroups(
-  groups: GroupStyleAnnotation[] | undefined,
-  nodeAnnotations: NodeAnnotation[] | undefined
-): GroupStyleAnnotation[] {
-  if (!groups?.length) return [];
-
-  return groups.map((group) => {
-    const labelColor = group.labelColor ?? group.color;
-
-    // Already has geometry - just ensure name/level exist
-    if (group.position && group.width && group.height) {
-      if (!group.name || !group.level) {
-        const { name, level } = parseGroupId(group.id);
-        const updated = { ...group, name, level };
-        return labelColor !== undefined ? { ...updated, labelColor } : updated;
-      }
-      return labelColor !== undefined ? { ...group, labelColor } : group;
-    }
-
-    // Legacy group - compute geometry from member node positions
-    const { name, level } = parseGroupId(group.id);
-
-    // Find member nodes with positions
-    const memberPositions = (nodeAnnotations || [])
-      .filter((ann) => ann.group === name && ann.level === level && ann.position)
-      .map((ann) => ann.position!);
-
-    // Calculate bounding box from positions
-    const bounds = calculateBoundingBox(memberPositions);
-
-    const updated = {
-      ...group,
-      name,
-      level,
-      position: bounds.position,
-      width: bounds.width,
-      height: bounds.height
-    };
-    return labelColor !== undefined ? { ...updated, labelColor } : updated;
-  });
-}
-
-/**
- * Check if a node can be added to a group based on its role.
- * Returns false for annotations. Selection filtering is done at the React level.
- */
-function canBeGrouped(role: string | undefined): boolean {
-  return role !== "freeText" && role !== "freeShape";
-}
-
-interface UseAppGroupsOptions {
-  /** React Flow nodes for position queries */
-  nodes: import("../../../shared/types/graph").TopoNode[];
-  /** React Flow instance for viewport queries */
-  rfInstance: import("@xyflow/react").ReactFlowInstance | null;
-  mode: "edit" | "view";
-  isLocked: boolean;
-  onLockedAction?: () => void;
-  /** Callback to reassign text annotations when group membership changes */
-  onMigrateTextAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
-  /** Callback to reassign shape annotations when group membership changes */
-  onMigrateShapeAnnotations?: (oldGroupId: string, newGroupId: string | null) => void;
-}
-
-/**
- * Hook for loading groups and memberships from initial data.
- * Handles migration of legacy groups that are missing geometry fields.
- */
-function useGroupDataLoader(
-  loadGroups: (
-    groups: GroupStyleAnnotation[] | ((prev: GroupStyleAnnotation[]) => GroupStyleAnnotation[]),
-    persistToExtension?: boolean
-  ) => void,
-  initializeMembership: (memberships: MembershipEntry[]) => void,
-  currentGroupsRef: React.RefObject<GroupStyleAnnotation[]>
-): void {
-  useEffect(() => {
-    const initialData = (window as unknown as { __INITIAL_DATA__?: InitialData }).__INITIAL_DATA__;
-    const nodeAnnotations = initialData?.nodeAnnotations;
-
-    // Migrate legacy groups and load
-    const rawGroups = initialData?.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
-    const migratedGroups = migrateLegacyGroups(rawGroups, nodeAnnotations);
-    if (migratedGroups.length) loadGroups(migratedGroups, false);
-
-    // Extract memberships after group migration so we can resolve group IDs
-    const memberships = extractMemberships(nodeAnnotations, migratedGroups);
-    if (memberships.length) initializeMembership(memberships);
-
-    const handleMessage = (event: TypedMessageEvent) => {
-      const message = event.data as TopologyDataMessage | undefined;
-      if (!message || message.type !== "topology-data" || !message.data) return;
-      const data = message.data;
-
-      // Extract memberships for migration - always update from topology refresh
-      // as this syncs with the YAML file
-      const msgNodeAnnotations = data.nodeAnnotations;
-      // Only update membership when nodeAnnotations are present in the message.
-      // Some topology refreshes omit nodeAnnotations; in that case we keep local membership state.
-      const msgGroups = data.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
-      const membershipGroups =
-        msgGroups && msgGroups.length > 0 ? msgGroups : currentGroupsRef.current;
-      if (msgNodeAnnotations) {
-        initializeMembership(extractMemberships(msgNodeAnnotations, membershipGroups));
-      }
-
-      // Group reload logic:
-      // - Normally we DON'T reload groups from topology-refresh to avoid race conditions
-      //   during undo/redo where stale data could overwrite in-flight changes
-      // - HOWEVER, if React has no groups but the file has groups, this indicates
-      //   the topology was reloaded from file and we should sync the state
-      // This handles the "reload from file" case (BUG-NESTED-GROUP-CREATE-001)
-      const hasMessageGroups = msgGroups && msgGroups.length > 0;
-      const hasNoLocalGroups = currentGroupsRef.current.length === 0;
-
-      if (hasMessageGroups && hasNoLocalGroups) {
-        const migratedGroups = migrateLegacyGroups(msgGroups, msgNodeAnnotations);
-        if (migratedGroups.length) {
-          loadGroups(migratedGroups, false);
-        }
-      }
-    };
-    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
-  }, [loadGroups, initializeMembership, currentGroupsRef]);
+interface InitialData {
+  groupStyleAnnotations?: GroupStyleAnnotation[];
+  nodeAnnotations?: NodeAnnotation[];
 }
 
 export function useAppGroups(options: UseAppGroupsOptions) {
-  const {
-    nodes,
-    rfInstance,
-    mode,
-    isLocked,
-    onLockedAction,
-    onMigrateTextAnnotations,
-    onMigrateShapeAnnotations
-  } = options;
+  const { mode, isLocked, onLockedAction } = options;
 
-  const groupsHook = useGroups({
-    nodes,
-    rfInstance,
-    mode,
-    isLocked,
-    onLockedAction,
-    onMigrateTextAnnotations,
-    onMigrateShapeAnnotations
-  });
+  const [groups, setGroups] = useState<GroupStyleAnnotation[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  const [editingGroup, setEditingGroup] = useState<GroupEditorData | null>(null);
 
-  // Keep a ref to current groups for race condition handling
-  const currentGroupsRef = useRef<GroupStyleAnnotation[]>([]);
-  currentGroupsRef.current = groupsHook.groups;
+  // Debounced save for persistence
+  const { saveDebounced: saveGroupsToExtension } = useDebouncedSave(
+    saveGroupStyleAnnotations,
+    "Groups",
+    SAVE_DEBOUNCE_MS
+  );
 
-  useGroupDataLoader(groupsHook.loadGroups, groupsHook.initializeMembership, currentGroupsRef);
+  // Track if we're loading from initial data (skip save during load)
+  const isLoadingRef = useRef(true);
 
-  const handleAddGroup = useCallback(() => {
-    // Creates an empty group. Selection-based group creation is handled by components.
-    void canBeGrouped;
-    const result = groupsHook.createGroup();
-    if (result) groupsHook.editGroup(result.groupId);
-  }, [groupsHook]);
+  // Auto-save groups when they change (after initial load)
+  useEffect(() => {
+    if (isLoadingRef.current) return;
+    saveGroupsToExtension(groups);
+  }, [groups, saveGroupsToExtension]);
 
-  return { groups: groupsHook, handleAddGroup };
+  // Membership tracking: nodeId -> groupId
+  const membershipMapRef = useRef<Map<string, string>>(new Map());
+
+  // Helper to build membership map from nodeAnnotations (old format only)
+  // Membership is stored on nodeAnnotations[].group or nodeAnnotations[].groupId
+  const buildMembershipMap = (
+    groups: GroupStyleAnnotation[],
+    nodeAnnotations?: NodeAnnotation[]
+  ): Map<string, string> => {
+    const newMap = new Map<string, string>();
+
+    if (nodeAnnotations) {
+      for (const nodeAnn of nodeAnnotations) {
+        const groupRef = nodeAnn.groupId || nodeAnn.group;
+        if (groupRef) {
+          // Verify the group exists
+          const groupExists = groups.some((g) => g.id === groupRef);
+          if (groupExists) {
+            newMap.set(nodeAnn.id, groupRef);
+          }
+        }
+      }
+    }
+
+    return newMap;
+  };
+
+  // Load groups from initial data
+  useEffect(() => {
+    const initialData = (window as { __INITIAL_DATA__?: InitialData }).__INITIAL_DATA__;
+
+    if (initialData?.groupStyleAnnotations?.length) {
+      setGroups(initialData.groupStyleAnnotations);
+      membershipMapRef.current = buildMembershipMap(
+        initialData.groupStyleAnnotations,
+        initialData.nodeAnnotations
+      );
+    }
+    // Mark loading complete after initial setup
+    setTimeout(() => {
+      isLoadingRef.current = false;
+    }, 0);
+
+    const handleMessage = (event: TypedMessageEvent) => {
+      const message = event.data as TopologyDataMessage | undefined;
+      if (message?.type === "topology-data") {
+        const newGroups = message.data?.groupStyleAnnotations || [];
+        setGroups(newGroups);
+        membershipMapRef.current = buildMembershipMap(newGroups, message.data?.nodeAnnotations);
+      }
+    };
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
+  }, []);
+
+  // Selection actions
+  const selectGroup = useCallback((id: string) => {
+    setSelectedGroupIds(new Set([id]));
+  }, []);
+
+  const toggleGroupSelection = useCallback((id: string) => {
+    setSelectedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const boxSelectGroups = useCallback((ids: string[]) => {
+    setSelectedGroupIds(new Set(ids));
+  }, []);
+
+  const clearGroupSelection = useCallback(() => {
+    setSelectedGroupIds(new Set());
+  }, []);
+
+  // Editor actions
+  const editGroup = useCallback(
+    (id: string) => {
+      if (mode === "edit" && isLocked) {
+        onLockedAction();
+        return;
+      }
+      const group = groups.find((g) => g.id === id);
+      if (group) {
+        setEditingGroup(groupToEditorData(group));
+      }
+    },
+    [groups, mode, isLocked, onLockedAction]
+  );
+
+  const closeEditor = useCallback(() => {
+    setEditingGroup(null);
+  }, []);
+
+  const saveGroup = useCallback((data: GroupEditorData) => {
+    const updated = editorDataToGroup(data);
+    setGroups((prev) => {
+      const idx = prev.findIndex((g) => g.id === data.id);
+      if (idx >= 0) {
+        const newGroups = [...prev];
+        newGroups[idx] = updated;
+        return newGroups;
+      }
+      return [...prev, updated];
+    });
+    setEditingGroup(null);
+  }, []);
+
+  const addGroup = useCallback((group: GroupStyleAnnotation) => {
+    setGroups((prev) => [...prev, group]);
+  }, []);
+
+  const deleteGroup = useCallback((id: string) => {
+    setGroups((prev) => prev.filter((g) => g.id !== id));
+    // Clear membership for nodes that were in this group
+    membershipMapRef.current.forEach((groupId, nodeId) => {
+      if (groupId === id) {
+        membershipMapRef.current.delete(nodeId);
+      }
+    });
+  }, []);
+
+  const updateGroup = useCallback((id: string, updates: Partial<GroupStyleAnnotation>) => {
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
+  }, []);
+
+  const updateGroupParent = useCallback((id: string, parentId: string | null) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, parentId: parentId ?? undefined } : g))
+    );
+  }, []);
+
+  const updateGroupGeoPosition = useCallback((id: string, coords: { lat: number; lng: number }) => {
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, geoCoordinates: coords } : g)));
+  }, []);
+
+  // Membership actions - uses old format (stored on nodeAnnotations.group)
+  const addNodeToGroup = useCallback((nodeId: string, groupId: string) => {
+    membershipMapRef.current.set(nodeId, groupId);
+    // Save to nodeAnnotations (old format)
+    void saveNodeGroupMembership(nodeId, groupId);
+  }, []);
+
+  const removeNodeFromGroup = useCallback((nodeId: string) => {
+    membershipMapRef.current.delete(nodeId);
+    // Save to nodeAnnotations (old format) - null removes the group field
+    void saveNodeGroupMembership(nodeId, null);
+  }, []);
+
+  const getNodeMembership = useCallback((nodeId: string): string | null => {
+    return membershipMapRef.current.get(nodeId) ?? null;
+  }, []);
+
+  const getGroupMembers = useCallback((groupId: string): string[] => {
+    // Read from membership map (old format - stored on nodeAnnotations)
+    const members: string[] = [];
+    membershipMapRef.current.forEach((gId, nodeId) => {
+      if (gId === groupId) {
+        members.push(nodeId);
+      }
+    });
+    return members;
+  }, []);
+
+  const getUndoRedoAction = useCallback(
+    (before: GroupStyleAnnotation | null, after: GroupStyleAnnotation | null) => ({
+      type: "annotation" as const,
+      annotationType: "group" as const,
+      before,
+      after
+    }),
+    []
+  );
+
+  return {
+    groups: useMemo(
+      () => ({
+        groups,
+        selectedGroupIds,
+        editingGroup,
+        selectGroup,
+        toggleGroupSelection,
+        boxSelectGroups,
+        clearGroupSelection,
+        editGroup,
+        closeEditor,
+        saveGroup,
+        addGroup,
+        deleteGroup,
+        updateGroup,
+        updateGroupParent,
+        updateGroupGeoPosition,
+        addNodeToGroup,
+        removeNodeFromGroup,
+        getNodeMembership,
+        getGroupMembers,
+        getUndoRedoAction,
+        generateGroupId: () => generateGroupId(groups)
+      }),
+      [
+        groups,
+        selectedGroupIds,
+        editingGroup,
+        selectGroup,
+        toggleGroupSelection,
+        boxSelectGroups,
+        clearGroupSelection,
+        editGroup,
+        closeEditor,
+        saveGroup,
+        addGroup,
+        deleteGroup,
+        updateGroup,
+        updateGroupParent,
+        updateGroupGeoPosition,
+        addNodeToGroup,
+        removeNodeFromGroup,
+        getNodeMembership,
+        getGroupMembers,
+        getUndoRedoAction
+      ]
+    )
+  };
 }

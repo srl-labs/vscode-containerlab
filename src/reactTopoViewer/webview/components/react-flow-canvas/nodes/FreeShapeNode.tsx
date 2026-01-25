@@ -40,14 +40,8 @@ function getBackgroundColor(fillColor: string, fillOpacity: number): string {
   return `${fillColor}${opacityHex}`;
 }
 
-/** Get border style for shapes */
-function getShapeBorder(
-  selected: boolean,
-  borderWidth: number,
-  borderStyle: string,
-  borderColor: string
-): string {
-  if (selected) return `3px solid ${SELECTION_COLOR}`;
+/** Get border style for shapes - consistent width regardless of selection */
+function getShapeBorder(borderWidth: number, borderStyle: string, borderColor: string): string {
   return `${borderWidth}px ${borderStyle} ${borderColor}`;
 }
 
@@ -72,10 +66,11 @@ function RectangleShape(props: RectangleProps): React.ReactElement {
     width: "100%",
     height: "100%",
     backgroundColor: getBackgroundColor(fillColor, fillOpacity),
-    border: getShapeBorder(selected, borderWidth, borderStyle, borderColor),
+    border: getShapeBorder(borderWidth, borderStyle, borderColor),
     borderRadius: cornerRadius,
-    boxShadow: selected ? `0 0 0 3px ${SELECTION_COLOR}33` : "none",
-    transition: "border 0.15s ease, box-shadow 0.15s ease"
+    // Use outline for selection - doesn't affect layout
+    outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
+    outlineOffset: 1
   };
   return <div style={style} className="free-shape-rectangle" />;
 }
@@ -95,10 +90,11 @@ function CircleShape(props: CircleProps): React.ReactElement {
     width: "100%",
     height: "100%",
     backgroundColor: getBackgroundColor(fillColor, fillOpacity),
-    border: getShapeBorder(selected, borderWidth, borderStyle, borderColor),
+    border: getShapeBorder(borderWidth, borderStyle, borderColor),
     borderRadius: "50%",
-    boxShadow: selected ? `0 0 0 3px ${SELECTION_COLOR}33` : "none",
-    transition: "border 0.15s ease, box-shadow 0.15s ease"
+    // Use outline for selection - doesn't affect layout
+    outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
+    outlineOffset: 1
   };
   return <div style={style} className="free-shape-circle" />;
 }
@@ -361,6 +357,7 @@ interface BoxNodeProps {
   readonly isSelected: boolean;
   readonly showHandles: boolean;
   readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
+  readonly onResize: (_event: unknown, params: ResizeParams) => void;
   readonly onResizeEnd: (_event: unknown, params: ResizeParams) => void;
 }
 
@@ -370,6 +367,7 @@ function BoxNode({
   isSelected,
   showHandles,
   annotationHandlers,
+  onResize,
   onResizeEnd
 }: BoxNodeProps): React.ReactElement {
   const rotation = data.rotation ?? 0;
@@ -394,6 +392,7 @@ function BoxNode({
         handleClassName="nodrag"
         color={SELECTION_COLOR}
         keepAspectRatio={data.shapeType === "circle"}
+        onResize={onResize}
         onResizeEnd={onResizeEnd}
       />
       {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (
@@ -424,6 +423,14 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
   const isSelected = selected ?? false;
   const showHandles = isSelected && isEditMode;
 
+  // Live resize handler - updates annotation state during resize for visual feedback
+  const handleResize = useCallback(
+    (_event: unknown, params: ResizeParams) => {
+      annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
+    },
+    [id, annotationHandlers]
+  );
+
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
       annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
@@ -450,6 +457,7 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
       isSelected={isSelected}
       showHandles={showHandles}
       annotationHandlers={annotationHandlers}
+      onResize={handleResize}
       onResizeEnd={handleResizeEnd}
     />
   );

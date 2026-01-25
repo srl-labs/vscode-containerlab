@@ -1,6 +1,8 @@
 /**
  * Annotation components for React TopoViewer
+ *
+ * Note: Layer components have been removed. Annotations are now rendered
+ * as React Flow nodes (FreeTextNode, FreeShapeNode, GroupNode).
  */
-export { FreeTextLayer } from "./FreeTextLayer";
-export { FreeShapeLayer } from "./FreeShapeLayer";
-export { GroupLayer } from "./GroupLayer";
+
+// Layer components removed - annotations now render as React Flow nodes

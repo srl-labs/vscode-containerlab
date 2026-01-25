@@ -80,6 +80,7 @@ interface AnnotationStateContextValue {
   selectedShapeIds: Set<string>;
   editingShapeAnnotation: FreeShapeAnnotation | null;
   isAddShapeMode: boolean;
+  pendingShapeType: "rectangle" | "circle" | "line";
 }
 
 interface AnnotationActionsContextValue {
@@ -127,6 +128,7 @@ interface AnnotationActionsContextValue {
   ) => void;
 
   handleAddText: () => void;
+  disableAddTextMode: () => void;
   selectTextAnnotation: (id: string) => void;
   toggleTextAnnotationSelection: (id: string) => void;
   boxSelectTextAnnotations: (ids: string[]) => void;
@@ -147,6 +149,7 @@ interface AnnotationActionsContextValue {
   migrateTextAnnotationsGroupId: (oldGroupId: string, newGroupId: string | null) => void;
 
   handleAddShapes: (shapeType?: string) => void;
+  disableAddShapeMode: () => void;
   selectShapeAnnotation: (id: string) => void;
   toggleShapeAnnotationSelection: (id: string) => void;
   boxSelectShapeAnnotations: (ids: string[]) => void;
@@ -303,12 +306,32 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   // Handle node dropped - check for group membership changes
   const onNodeDropped = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
-      // Find current group membership
-      const currentGroupId = groupsHook.getNodeMembership(nodeId);
-
       // Find group at the new position
       const targetGroup = findGroupForNodeAtPosition(position, groupsHook.groups);
       const targetGroupId = targetGroup?.id ?? null;
+
+      // Check if this is a text annotation
+      const textAnnotation = freeTextAnnotations.annotations.find((t) => t.id === nodeId);
+      if (textAnnotation) {
+        const currentGroupId = textAnnotation.groupId ?? null;
+        if (currentGroupId !== targetGroupId) {
+          freeTextAnnotations.updateAnnotation(nodeId, { groupId: targetGroupId ?? undefined });
+        }
+        return;
+      }
+
+      // Check if this is a shape annotation
+      const shapeAnnotation = freeShapeAnnotations.annotations.find((s) => s.id === nodeId);
+      if (shapeAnnotation) {
+        const currentGroupId = shapeAnnotation.groupId ?? null;
+        if (currentGroupId !== targetGroupId) {
+          freeShapeAnnotations.updateAnnotation(nodeId, { groupId: targetGroupId ?? undefined });
+        }
+        return;
+      }
+
+      // For topology nodes, use the membership map
+      const currentGroupId = groupsHook.getNodeMembership(nodeId);
 
       // Only process if membership actually changes
       if (currentGroupId === targetGroupId) return;
@@ -326,7 +349,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
         onMembershipWillChange
       );
     },
-    [groupsHook, onMembershipWillChange]
+    [groupsHook, freeTextAnnotations, freeShapeAnnotations, onMembershipWillChange]
   );
 
   // Register membership handler
@@ -445,6 +468,34 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     return generateGroupId(groupsHook.groups);
   }, [groupsHook.groups]);
 
+  // Combined getGroupMembers that includes topology nodes, text, and shape annotations
+  const getGroupMembersCombined = useCallback(
+    (groupId: string): string[] => {
+      const members: string[] = [];
+
+      // Get topology nodes from membership map
+      const nodeMembers = groupsHook.getGroupMembers(groupId);
+      members.push(...nodeMembers);
+
+      // Get text annotations with this groupId
+      for (const textAnn of freeTextAnnotations.annotations) {
+        if (textAnn.groupId === groupId) {
+          members.push(textAnn.id);
+        }
+      }
+
+      // Get shape annotations with this groupId
+      for (const shapeAnn of freeShapeAnnotations.annotations) {
+        if (shapeAnn.groupId === groupId) {
+          members.push(shapeAnn.id);
+        }
+      }
+
+      return members;
+    },
+    [groupsHook, freeTextAnnotations.annotations, freeShapeAnnotations.annotations]
+  );
+
   // Add group with undo recording (for paste operations)
   const addGroupWithUndo = useCallback(
     (group: GroupStyleAnnotation) => {
@@ -483,7 +534,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       shapeAnnotations: freeShapeAnnotations.annotations,
       selectedShapeIds: freeShapeAnnotations.selectedAnnotationIds,
       editingShapeAnnotation: freeShapeAnnotations.editingAnnotation,
-      isAddShapeMode: freeShapeAnnotations.isAddShapeMode
+      isAddShapeMode: freeShapeAnnotations.isAddShapeMode,
+      pendingShapeType: freeShapeAnnotations.pendingShapeType
     }),
     [
       groupsHook.groups,
@@ -496,7 +548,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       freeShapeAnnotations.annotations,
       freeShapeAnnotations.selectedAnnotationIds,
       freeShapeAnnotations.editingAnnotation,
-      freeShapeAnnotations.isAddShapeMode
+      freeShapeAnnotations.isAddShapeMode,
+      freeShapeAnnotations.pendingShapeType
     ]
   );
 
@@ -516,7 +569,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       updateGroupGeoPosition: groupsHook.updateGroupGeoPosition,
       addNodeToGroup: groupsHook.addNodeToGroup,
       getNodeMembership: groupsHook.getNodeMembership,
-      getGroupMembers: groupsHook.getGroupMembers,
+      getGroupMembers: getGroupMembersCombined,
       handleAddGroupWithUndo,
       deleteGroupWithUndo,
       generateGroupId: generateGroupIdCallback,
@@ -531,6 +584,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
       // Text annotations
       handleAddText: freeTextAnnotations.handleAddText,
+      disableAddTextMode: freeTextAnnotations.disableAddTextMode,
       selectTextAnnotation: freeTextAnnotations.selectAnnotation,
       toggleTextAnnotationSelection: freeTextAnnotations.toggleAnnotationSelection,
       boxSelectTextAnnotations: freeTextAnnotations.boxSelectAnnotations,
@@ -552,6 +606,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
       // Shape annotations
       handleAddShapes,
+      disableAddShapeMode: freeShapeAnnotations.disableAddShapeMode,
       selectShapeAnnotation: freeShapeAnnotations.selectAnnotation,
       toggleShapeAnnotationSelection: freeShapeAnnotations.toggleAnnotationSelection,
       boxSelectShapeAnnotations: freeShapeAnnotations.boxSelectAnnotations,
@@ -597,7 +652,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       groupsHook.updateGroupGeoPosition,
       groupsHook.addNodeToGroup,
       groupsHook.getNodeMembership,
-      groupsHook.getGroupMembers,
+      getGroupMembersCombined,
       handleAddGroupWithUndo,
       deleteGroupWithUndo,
       generateGroupIdCallback,

@@ -5,8 +5,16 @@
 import { useMemo, useCallback } from "react";
 import type { Node } from "@xyflow/react";
 
-import type { FreeTextAnnotation, FreeShapeAnnotation } from "../../../shared/types/topology";
-import type { FreeTextNodeData, FreeShapeNodeData } from "../../components/react-flow-canvas/types";
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation
+} from "../../../shared/types/topology";
+import type {
+  FreeTextNodeData,
+  FreeShapeNodeData,
+  GroupNodeData
+} from "../../components/react-flow-canvas/types";
 
 /**
  * Convert a FreeTextAnnotation to a React Flow Node
@@ -16,6 +24,9 @@ function freeTextToNode(annotation: FreeTextAnnotation): Node<FreeTextNodeData> 
     id: annotation.id,
     type: "free-text-node",
     position: annotation.position,
+    // Width/height at top level for React Flow's NodeResizer compatibility
+    width: annotation.width,
+    height: annotation.height,
     draggable: true,
     selectable: true,
     data: {
@@ -140,9 +151,46 @@ function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShapeNodeDat
   };
 }
 
+/**
+ * Convert a GroupStyleAnnotation to a React Flow Node
+ * Groups are rendered with zIndex: -1 so they appear behind topology nodes
+ */
+function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
+  return {
+    id: group.id,
+    type: "group-node",
+    position: group.position,
+    // Width/height at top level for React Flow's NodeResizer compatibility
+    width: group.width ?? 200,
+    height: group.height ?? 150,
+    // Groups render behind topology nodes
+    zIndex: group.zIndex ?? -1,
+    draggable: true,
+    selectable: true,
+    data: {
+      name: group.name,
+      label: group.name,
+      level: group.level,
+      width: group.width,
+      height: group.height,
+      backgroundColor: group.backgroundColor,
+      backgroundOpacity: group.backgroundOpacity,
+      borderColor: group.borderColor,
+      borderWidth: group.borderWidth,
+      borderStyle: group.borderStyle,
+      borderRadius: group.borderRadius,
+      labelColor: group.labelColor,
+      labelPosition: group.labelPosition,
+      parentId: group.parentId,
+      zIndex: group.zIndex
+    }
+  };
+}
+
 interface UseAnnotationNodesOptions {
   freeTextAnnotations: FreeTextAnnotation[];
   freeShapeAnnotations: FreeShapeAnnotation[];
+  groups?: GroupStyleAnnotation[];
 }
 
 interface AnnotationAddModeState {
@@ -157,30 +205,38 @@ interface UseAnnotationNodesReturn {
   /** Check if a node ID is an annotation */
   isAnnotationNode: (nodeId: string) => boolean;
   /** Get annotation type for a node ID */
-  getAnnotationType: (nodeId: string) => "freeText" | "freeShape" | null;
+  getAnnotationType: (nodeId: string) => "freeText" | "freeShape" | "group" | null;
 }
 
 /**
  * Hook that converts annotations to React Flow nodes
  */
 export function useAnnotationNodes(options: UseAnnotationNodesOptions): UseAnnotationNodesReturn {
-  const { freeTextAnnotations, freeShapeAnnotations } = options;
+  const { freeTextAnnotations, freeShapeAnnotations, groups = [] } = options;
 
   // Create a set of annotation IDs for quick lookup
   const annotationIds = useMemo(() => {
-    const ids = new Map<string, "freeText" | "freeShape">();
+    const ids = new Map<string, "freeText" | "freeShape" | "group">();
     for (const ann of freeTextAnnotations) {
       ids.set(ann.id, "freeText");
     }
     for (const ann of freeShapeAnnotations) {
       ids.set(ann.id, "freeShape");
     }
+    for (const grp of groups) {
+      ids.set(grp.id, "group");
+    }
     return ids;
-  }, [freeTextAnnotations, freeShapeAnnotations]);
+  }, [freeTextAnnotations, freeShapeAnnotations, groups]);
 
   // Convert annotations to React Flow nodes
   const annotationNodes = useMemo(() => {
     const nodes: Node[] = [];
+
+    // Add group nodes first (they render behind due to zIndex: -1)
+    for (const group of groups) {
+      nodes.push(groupToNode(group));
+    }
 
     // Add free text nodes
     for (const annotation of freeTextAnnotations) {
@@ -193,7 +249,7 @@ export function useAnnotationNodes(options: UseAnnotationNodesOptions): UseAnnot
     }
 
     return nodes;
-  }, [freeTextAnnotations, freeShapeAnnotations]);
+  }, [freeTextAnnotations, freeShapeAnnotations, groups]);
 
   const isAnnotationNode = useCallback(
     (nodeId: string) => {

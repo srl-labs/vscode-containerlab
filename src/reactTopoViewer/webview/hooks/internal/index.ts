@@ -28,11 +28,8 @@ export { useLayoutControls, useContextMenuHandlers } from "../useAppState";
 export {
   useCustomNodeCommands,
   useNavbarCommands,
-  useShapeLayer,
-  useTextLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
-  useAnnotationLayerProps,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
   useGraphCreation
@@ -54,3 +51,6 @@ export { useAppGroups } from "../groups";
 
 // External file change handling
 export { useExternalFileChange } from "../useExternalFileChange";
+
+// React Flow annotation nodes conversion
+export { useAnnotationNodes } from "../react-flow";

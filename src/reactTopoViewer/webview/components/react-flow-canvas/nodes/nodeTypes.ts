@@ -7,14 +7,15 @@ import { TopologyNode } from "./TopologyNode";
 import { CloudNode } from "./CloudNode";
 import { FreeTextNode } from "./FreeTextNode";
 import { FreeShapeNode } from "./FreeShapeNode";
+import { GroupNode } from "./GroupNode";
 
 /**
  * Registry of all custom node types for React Flow
- * Note: Groups are rendered via GroupLayer, not as React Flow nodes
  */
 export const nodeTypes: NodeTypes = {
   "topology-node": TopologyNode,
   "cloud-node": CloudNode,
   "free-text-node": FreeTextNode,
-  "free-shape-node": FreeShapeNode
+  "free-shape-node": FreeShapeNode,
+  "group-node": GroupNode
 };

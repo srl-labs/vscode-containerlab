@@ -83,6 +83,29 @@ export interface FreeShapeNodeData {
 }
 
 /**
+ * Node data for group annotations
+ */
+export interface GroupNodeData {
+  name: string;
+  label?: string;
+  level?: string;
+  width?: number;
+  height?: number;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: "solid" | "dashed" | "dotted" | "double";
+  borderRadius?: number;
+  labelColor?: string;
+  labelPosition?: string;
+  members?: string[];
+  parentId?: string;
+  zIndex?: number;
+  [key: string]: unknown;
+}
+
+/**
  * Edge data for topology edges (links)
  */
 export interface TopologyEdgeData {
@@ -95,15 +118,23 @@ export interface TopologyEdgeData {
 
 /**
  * Union type for all node data types
- * Note: Groups are rendered via GroupLayer, not as React Flow nodes
  */
-export type RFNodeData = TopologyNodeData | CloudNodeData | FreeTextNodeData | FreeShapeNodeData;
+export type RFNodeData =
+  | TopologyNodeData
+  | CloudNodeData
+  | FreeTextNodeData
+  | FreeShapeNodeData
+  | GroupNodeData;
 
 /**
  * Custom node types used in the topology viewer
- * Note: Groups are rendered via GroupLayer, not as React Flow nodes
  */
-export type RFNodeType = "topology-node" | "cloud-node" | "free-text-node" | "free-shape-node";
+export type RFNodeType =
+  | "topology-node"
+  | "cloud-node"
+  | "free-text-node"
+  | "free-shape-node"
+  | "group-node";
 
 /**
  * React Flow node with topology data
@@ -112,6 +143,7 @@ export type TopologyRFNode = Node<TopologyNodeData, "topology-node">;
 export type CloudRFNode = Node<CloudNodeData, "cloud-node">;
 export type FreeTextRFNode = Node<FreeTextNodeData, "free-text-node">;
 export type FreeShapeRFNode = Node<FreeShapeNodeData, "free-shape-node">;
+export type GroupRFNode = Node<GroupNodeData, "group-node">;
 
 /**
  * React Flow edge with topology data
@@ -184,6 +216,14 @@ export interface AnnotationHandlers {
   disableAddShapeMode: () => void;
   /** Handle node dropped - check for group membership changes */
   onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
+  /** Update group size after resize */
+  onUpdateGroupSize?: (id: string, width: number, height: number) => void;
+  /** Update group position after drag */
+  onUpdateGroupPosition?: (id: string, position: { x: number; y: number }) => void;
+  /** Edit a group annotation */
+  onEditGroup?: (id: string) => void;
+  /** Delete a group annotation */
+  onDeleteGroup?: (id: string) => void;
 }
 
 /** Position entry for undo/redo move tracking */

@@ -104,40 +104,6 @@ export function useNavbarCommands(): NavbarCommands {
   };
 }
 
-/**
- * Return type for useShapeLayer hook
- */
-export interface UseShapeLayerReturn {
-  shapeLayerNode: HTMLElement | null;
-  updateLayer: () => void;
-}
-
-/**
- * Hook for shape layer (legacy compatibility).
- * Shape annotations are rendered as React components in the ReactFlow canvas.
- */
-export function useShapeLayer(): UseShapeLayerReturn {
-  const [shapeLayerNode] = React.useState<HTMLElement | null>(null);
-  const updateLayer = React.useCallback(() => {}, []);
-  return { shapeLayerNode, updateLayer };
-}
-
-/**
- * Return type for useTextLayer hook
- */
-export interface UseTextLayerReturn {
-  textLayerNode: HTMLElement | null;
-}
-
-/**
- * Hook for text layer (legacy compatibility).
- * Text annotations are rendered as React components in the ReactFlow canvas.
- */
-export function useTextLayer(): UseTextLayerReturn {
-  const [textLayerNode] = React.useState<HTMLElement | null>(null);
-  return { textLayerNode };
-}
-
 /** Layout option type for E2E testing */
 export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical";
 

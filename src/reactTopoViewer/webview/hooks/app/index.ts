@@ -4,13 +4,6 @@
  * All hooks extracted from App.tsx to reduce complexity.
  */
 
-// Annotation layer props
-export {
-  useAnnotationLayerProps,
-  type AnnotationLayerPropsConfig,
-  type AnnotationLayerPropsReturn
-} from "./useAnnotationLayerProps";
-
 // Clipboard handlers
 export {
   useClipboardHandlers,
@@ -35,14 +28,10 @@ export {
 export {
   useCustomNodeCommands,
   useNavbarCommands,
-  useShapeLayer,
-  useTextLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
   type CustomNodeCommands,
   type NavbarCommands,
-  type UseShapeLayerReturn,
-  type UseTextLayerReturn,
   type E2ETestingConfig,
   type GeoCoordinateSyncConfig
 } from "./useAppHelpers";

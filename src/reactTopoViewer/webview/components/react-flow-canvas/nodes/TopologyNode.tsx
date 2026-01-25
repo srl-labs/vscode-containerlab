@@ -66,13 +66,11 @@ const ICON_STYLE_BASE: React.CSSProperties = {
   height: ICON_SIZE,
   backgroundSize: "cover",
   backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-  transition: "border 0.15s ease, box-shadow 0.15s ease"
+  backgroundRepeat: "no-repeat"
 };
 
-// Selection styles
-const SELECTED_BORDER = `3px solid ${SELECTION_COLOR}`;
-const SELECTED_BOX_SHADOW = `0 0 0 3px ${SELECTION_COLOR}33`;
+// Selection styles - use outline to avoid layout shift
+const SELECTED_OUTLINE = `2px solid ${SELECTION_COLOR}`;
 // Hover highlight for link creation uses CSS :hover (see topology-node-icon.link-target:hover in CSS)
 
 /**
@@ -99,16 +97,11 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     const style: React.CSSProperties = {
       ...ICON_STYLE_BASE,
       backgroundImage: `url(${svgUrl})`,
-      borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 0
+      borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 0,
+      // Use outline for selection - doesn't affect layout
+      outline: selected ? SELECTED_OUTLINE : "none",
+      outlineOffset: 1
     };
-
-    if (selected) {
-      style.border = SELECTED_BORDER;
-      style.boxShadow = SELECTED_BOX_SHADOW;
-    } else {
-      style.border = "none";
-      style.boxShadow = "none";
-    }
 
     return style;
   }, [svgUrl, iconCornerRadius, selected]);

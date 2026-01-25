@@ -26,7 +26,6 @@ import { Navbar } from "./components/navbar/Navbar";
 import { ShortcutDisplay } from "./components/ShortcutDisplay";
 import { ContextMenu } from "./components/context-menu/ContextMenu";
 import { FloatingActionPanel, type FloatingActionPanelHandle } from "./components/panels";
-import { AnnotationLayers } from "./components/AnnotationLayers";
 import { EditorPanels } from "./components/EditorPanels";
 import { ViewPanels } from "./components/ViewPanels";
 import { ToastContainer, useToasts } from "./components/Toast";
@@ -54,17 +53,16 @@ import {
   // App helper hooks
   useCustomNodeCommands,
   useNavbarCommands,
-  useShapeLayer,
-  useTextLayer,
   useE2ETestingExposure,
   useGeoCoordinateSync,
   // Composed hooks
-  useAnnotationLayerProps,
   useClipboardHandlers,
   useAppKeyboardShortcuts,
   useGraphCreation,
   // External file change
   useExternalFileChange,
+  // React Flow annotation nodes
+  useAnnotationNodes,
   // Types
   type GraphChange
 } from "./hooks/internal";
@@ -80,8 +78,6 @@ const AppContent: React.FC<{
   rfInstance: ReactFlowInstance | null;
   layoutControls: ReturnType<typeof useLayoutControls>;
   mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
-  shapeLayerNode: HTMLElement | null;
-  textLayerNode: HTMLElement | null;
   onInit: (instance: ReactFlowInstance) => void;
 }> = ({
   floatingPanelRef,
@@ -90,8 +86,6 @@ const AppContent: React.FC<{
   rfInstance,
   layoutControls,
   mapLibreState,
-  shapeLayerNode,
-  textLayerNode,
   onInit
 }) => {
   const { state } = useTopoViewerState();
@@ -124,6 +118,13 @@ const AppContent: React.FC<{
 
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
+
+  // Convert annotations to React Flow nodes
+  const { annotationNodes } = useAnnotationNodes({
+    freeTextAnnotations: annotations.textAnnotations,
+    freeShapeAnnotations: annotations.shapeAnnotations,
+    groups: annotations.groups
+  });
 
   // Toast notifications
   const { toasts, addToast, dismissToast } = useToasts();
@@ -537,29 +538,134 @@ const AppContent: React.FC<{
 
   const easterEgg = useEasterEgg({});
 
+  // Annotation mode state for ReactFlowCanvas
+  const annotationMode = React.useMemo(
+    () => ({
+      isAddTextMode: annotations.isAddTextMode,
+      isAddShapeMode: annotations.isAddShapeMode,
+      pendingShapeType: annotations.isAddShapeMode ? annotations.pendingShapeType : undefined
+    }),
+    [annotations.isAddTextMode, annotations.isAddShapeMode, annotations.pendingShapeType]
+  );
+
   // Annotation handlers for ReactFlowCanvas
   const canvasAnnotationHandlers = React.useMemo(
     () => ({
-      onNodeDropped: annotations.onNodeDropped
-    }),
-    [annotations.onNodeDropped]
-  );
+      // Add mode handlers
+      onAddTextClick: annotations.handleTextCanvasClick,
+      onAddShapeClick: annotations.handleShapeCanvasClickWithUndo,
+      disableAddTextMode: annotations.disableAddTextMode,
+      disableAddShapeMode: annotations.disableAddShapeMode,
+      // Edit handlers
+      onEditFreeText: annotations.editTextAnnotation,
+      onEditFreeShape: annotations.editShapeAnnotation,
+      // Delete handlers
+      onDeleteFreeText: annotations.deleteTextAnnotationWithUndo,
+      onDeleteFreeShape: annotations.deleteShapeAnnotationWithUndo,
+      // Position update handlers (for drag) - use direct update without undo spam
+      onUpdateFreeTextPosition: (id: string, position: { x: number; y: number }) => {
+        // Use direct update for live rendering, undo is handled separately on drag end
+        annotations.updateTextAnnotation(id, { position });
+      },
+      onUpdateFreeShapePosition: (id: string, position: { x: number; y: number }) => {
+        // Use direct update for live rendering, undo is handled separately on drag end
+        annotations.updateShapeAnnotation(id, { position });
+      },
+      // Size update handlers (for resize)
+      onUpdateFreeTextSize: annotations.updateTextSize,
+      onUpdateFreeShapeSize: annotations.updateShapeSize,
+      // Rotation handlers
+      onUpdateFreeTextRotation: annotations.updateTextRotation,
+      onUpdateFreeShapeRotation: annotations.updateShapeRotation,
+      // Line-specific handlers
+      onUpdateFreeShapeEndPosition: annotations.updateShapeEndPosition,
+      onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => {
+        // Update both position and recalculate end position
+        const shape = annotations.shapeAnnotations.find((s) => s.id === id);
+        if (shape && shape.endPosition) {
+          const dx = startPosition.x - shape.position.x;
+          const dy = startPosition.y - shape.position.y;
+          annotations.updateShapeAnnotation(id, {
+            position: startPosition,
+            endPosition: { x: shape.endPosition.x + dx, y: shape.endPosition.y + dy }
+          });
+        }
+      },
+      // Node dropped handler (for group membership)
+      onNodeDropped: annotations.onNodeDropped,
+      // Group handlers
+      onUpdateGroupSize: annotations.updateGroupSizeWithUndo,
+      onUpdateGroupPosition: (id: string, newPosition: { x: number; y: number }) => {
+        // Find the group to get its current position
+        const group = annotations.groups.find((g) => g.id === id);
+        if (!group) return;
 
-  // Annotation layer props
-  const { groupLayerProps, freeTextLayerProps, freeShapeLayerProps } = useAnnotationLayerProps({
-    annotations,
-    state: {
-      isLocked: state.isLocked,
-      mode: state.mode
-    },
-    layoutControls: {
-      isGeoLayout: layoutControls.isGeoLayout,
-      geoMode: layoutControls.geoMode
-    },
-    mapLibreState,
-    shapeLayerNode,
-    textLayerNode
-  });
+        // Calculate the delta
+        const dx = newPosition.x - group.position.x;
+        const dy = newPosition.y - group.position.y;
+
+        // Update the group position
+        annotations.updateGroup(id, { position: newPosition });
+
+        // If no movement, nothing more to do
+        if (dx === 0 && dy === 0) return;
+
+        // Move all member nodes, texts, and shapes
+        const memberIds = annotations.getGroupMembers(id);
+        const nodePositionUpdates: Array<{ id: string; position: { x: number; y: number } }> = [];
+
+        for (const memberId of memberIds) {
+          // Check if it's a topology node
+          const node = nodes.find((n) => n.id === memberId);
+          if (node) {
+            nodePositionUpdates.push({
+              id: memberId,
+              position: { x: node.position.x + dx, y: node.position.y + dy }
+            });
+            continue;
+          }
+
+          // Check if it's a text annotation
+          const textAnnotation = annotations.textAnnotations.find((t) => t.id === memberId);
+          if (textAnnotation) {
+            annotations.updateTextAnnotation(memberId, {
+              position: { x: textAnnotation.position.x + dx, y: textAnnotation.position.y + dy }
+            });
+            continue;
+          }
+
+          // Check if it's a shape annotation
+          const shapeAnnotation = annotations.shapeAnnotations.find((s) => s.id === memberId);
+          if (shapeAnnotation) {
+            const newShapePos = {
+              x: shapeAnnotation.position.x + dx,
+              y: shapeAnnotation.position.y + dy
+            };
+            // For lines, also move the end position
+            if (shapeAnnotation.endPosition) {
+              annotations.updateShapeAnnotation(memberId, {
+                position: newShapePos,
+                endPosition: {
+                  x: shapeAnnotation.endPosition.x + dx,
+                  y: shapeAnnotation.endPosition.y + dy
+                }
+              });
+            } else {
+              annotations.updateShapeAnnotation(memberId, { position: newShapePos });
+            }
+          }
+        }
+
+        // Batch update all topology node positions
+        if (nodePositionUpdates.length > 0) {
+          updateNodePositions(nodePositionUpdates);
+        }
+      },
+      onEditGroup: annotations.editGroup,
+      onDeleteGroup: annotations.deleteGroupWithUndo
+    }),
+    [annotations]
+  );
 
   return (
     <div className="topoviewer-app" data-testid="topoviewer-app">
@@ -594,20 +700,17 @@ const AppContent: React.FC<{
           ref={reactFlowRef}
           nodes={filteredNodes as TopoNode[]}
           edges={filteredEdges as TopoEdge[]}
+          annotationNodes={annotationNodes}
+          annotationMode={annotationMode}
+          annotationHandlers={
+            canvasAnnotationHandlers as import("./components/react-flow-canvas/types").AnnotationHandlers
+          }
           linkLabelMode={state.linkLabelMode}
           onMoveComplete={(before, after) => {
             undoRedo.pushAction({ type: "move", before, after });
           }}
           onInit={onInit}
           onEdgeCreated={handleEdgeCreated}
-          annotationHandlers={
-            canvasAnnotationHandlers as import("./components/react-flow-canvas/types").AnnotationHandlers
-          }
-        />
-        <AnnotationLayers
-          groupLayerProps={groupLayerProps}
-          freeTextLayerProps={freeTextLayerProps}
-          freeShapeLayerProps={freeShapeLayerProps}
         />
         <ViewPanels
           nodeInfo={{
@@ -761,10 +864,6 @@ export const App: React.FC = () => {
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
 
-  // Shape and text layers
-  const { shapeLayerNode } = useShapeLayer();
-  const { textLayerNode } = useTextLayer();
-
   // Layout controls
   const layoutControls = useLayoutControls(
     reactFlowRef as unknown as React.RefObject<import("./hooks/useAppState").CanvasRef | null>,
@@ -797,8 +896,6 @@ export const App: React.FC = () => {
         setRfInstance={setRfInstance}
         floatingPanelRef={floatingPanelRef}
         pendingMembershipChangesRef={pendingMembershipChangesRef}
-        shapeLayerNode={shapeLayerNode}
-        textLayerNode={textLayerNode}
         layoutControls={layoutControls}
         mapLibreState={mapLibreState}
         reactFlowRef={reactFlowRef}
@@ -814,8 +911,6 @@ const GraphProviderConsumer: React.FC<{
   setRfInstance: (instance: ReactFlowInstance) => void;
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   pendingMembershipChangesRef: React.MutableRefObject<Map<string, PendingMembershipChange>>;
-  shapeLayerNode: HTMLElement | null;
-  textLayerNode: HTMLElement | null;
   layoutControls: ReturnType<typeof useLayoutControls>;
   mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
@@ -825,8 +920,6 @@ const GraphProviderConsumer: React.FC<{
   setRfInstance,
   floatingPanelRef,
   pendingMembershipChangesRef,
-  shapeLayerNode,
-  textLayerNode,
   layoutControls,
   mapLibreState,
   reactFlowRef
@@ -853,8 +946,6 @@ const GraphProviderConsumer: React.FC<{
             rfInstance={rfInstance}
             layoutControls={layoutControls}
             mapLibreState={mapLibreState}
-            shapeLayerNode={shapeLayerNode}
-            textLayerNode={textLayerNode}
             onInit={setRfInstance}
           />
         </AnnotationProvider>
