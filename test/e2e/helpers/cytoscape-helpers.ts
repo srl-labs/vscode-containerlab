@@ -1,7 +1,7 @@
 import type { Page, Locator } from "@playwright/test";
 
 /**
- * Convert Cytoscape model coordinates to page/screen coordinates.
+ * Convert React Flow model coordinates to page/screen coordinates.
  * This accounts for pan, zoom, and container position.
  */
 export async function modelToPageCoords(
@@ -12,17 +12,16 @@ export async function modelToPageCoords(
   return await page.evaluate(
     ({ mx, my }) => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.stateManager?.cy;
-      if (!cy) return { x: 0, y: 0 };
+      const rf = dev?.rfInstance;
+      if (!rf) return { x: 0, y: 0 };
 
-      const pan = cy.pan();
-      const zoom = cy.zoom();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
+      const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+      const container = document.querySelector(".react-flow");
+      const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
       return {
-        x: rect.left + mx * zoom + pan.x,
-        y: rect.top + my * zoom + pan.y
+        x: rect.left + mx * viewport.zoom + viewport.x,
+        y: rect.top + my * viewport.zoom + viewport.y
       };
     },
     { mx: modelX, my: modelY }
@@ -30,7 +29,7 @@ export async function modelToPageCoords(
 }
 
 /**
- * Convert page/screen coordinates to Cytoscape model coordinates.
+ * Convert page/screen coordinates to React Flow model coordinates.
  */
 export async function pageToModelCoords(
   page: Page,
@@ -40,17 +39,16 @@ export async function pageToModelCoords(
   return await page.evaluate(
     ({ px, py }) => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.stateManager?.cy;
-      if (!cy) return { x: 0, y: 0 };
+      const rf = dev?.rfInstance;
+      if (!rf) return { x: 0, y: 0 };
 
-      const pan = cy.pan();
-      const zoom = cy.zoom();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
+      const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+      const container = document.querySelector(".react-flow");
+      const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
       return {
-        x: (px - rect.left - pan.x) / zoom,
-        y: (py - rect.top - pan.y) / zoom
+        x: (px - rect.left - viewport.x) / viewport.zoom,
+        y: (py - rect.top - viewport.y) / viewport.zoom
       };
     },
     { px: pageX, py: pageY }
@@ -58,22 +56,25 @@ export async function pageToModelCoords(
 }
 
 /**
- * Get the current zoom level of the Cytoscape canvas.
+ * Get the current zoom level of the React Flow canvas.
  */
 export async function getZoom(page: Page): Promise<number> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    return dev?.stateManager?.cy?.zoom() ?? 1;
+    const rf = dev?.rfInstance;
+    return rf?.getViewport?.()?.zoom ?? 1;
   });
 }
 
 /**
- * Get the current pan position of the Cytoscape canvas.
+ * Get the current pan position of the React Flow canvas.
  */
 export async function getPan(page: Page): Promise<{ x: number; y: number }> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    return dev?.stateManager?.cy?.pan() ?? { x: 0, y: 0 };
+    const rf = dev?.rfInstance;
+    const viewport = rf?.getViewport?.() ?? { x: 0, y: 0 };
+    return { x: viewport.x, y: viewport.y };
   });
 }
 
@@ -83,7 +84,7 @@ export async function getPan(page: Page): Promise<{ x: number; y: number }> {
 export async function fitGraph(page: Page): Promise<void> {
   await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    dev?.stateManager?.cy?.fit();
+    dev?.rfInstance?.fitView?.({ padding: 0.1 });
   });
   await page.waitForTimeout(300);
 }
@@ -94,15 +95,12 @@ export async function fitGraph(page: Page): Promise<void> {
 export async function getAllNodeIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.stateManager?.cy;
-    if (!cy) return [];
-    return cy
-      .nodes()
-      .filter((n: any) => {
-        const role = n.data("topoViewerRole");
-        return role && role !== "freeText" && role !== "freeShape";
-      })
-      .map((n: any) => n.id());
+    const rf = dev?.rfInstance;
+    if (!rf) return [];
+    const nodes = rf.getNodes?.() ?? [];
+    return nodes
+      .filter((n: any) => n.type === "topology-node" || n.type === "cloud-node")
+      .map((n: any) => n.id);
   });
 }
 
@@ -112,9 +110,10 @@ export async function getAllNodeIds(page: Page): Promise<string[]> {
 export async function getAllEdgeIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.stateManager?.cy;
-    if (!cy) return [];
-    return cy.edges().map((e: any) => e.id());
+    const rf = dev?.rfInstance;
+    if (!rf) return [];
+    const edges = rf.getEdges?.() ?? [];
+    return edges.map((e: any) => e.id);
   });
 }
 
@@ -124,9 +123,11 @@ export async function getAllEdgeIds(page: Page): Promise<string[]> {
 export async function isNodeSelected(page: Page, nodeId: string): Promise<boolean> {
   return await page.evaluate((id) => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.stateManager?.cy;
-    const node = cy?.getElementById(id);
-    return node?.selected() ?? false;
+    const rf = dev?.rfInstance;
+    if (!rf) return false;
+    const nodes = rf.getNodes?.() ?? [];
+    const node = nodes.find((n: any) => n.id === id);
+    return node?.selected ?? false;
   }, nodeId);
 }
 
@@ -223,19 +224,32 @@ export async function rightClick(page: Page, x: number, y: number): Promise<void
 }
 
 /**
- * Emit a Cytoscape context menu event directly on a node.
- * Useful when coordinate-based right-clicks are flaky for small nodes.
+ * Open context menu for a node by calculating its position.
  */
 export async function openNodeContextMenu(page: Page, nodeId: string): Promise<void> {
   const coords = await page.evaluate((id) => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (!cy) return null;
-    const node = cy.getElementById(id);
-    if (!node || node.empty()) return null;
-    const pos = node.renderedPosition();
-    const rect = cy.container().getBoundingClientRect();
-    return { x: rect.left + pos.x, y: rect.top + pos.y };
+    const rf = dev?.rfInstance;
+    if (!rf) return null;
+
+    const nodes = rf.getNodes?.() ?? [];
+    const node = nodes.find((n: any) => n.id === id);
+    if (!node) return null;
+
+    const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+    const container = document.querySelector(".react-flow");
+    const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+
+    // Node center (assuming 60x60 node size)
+    const nodeCenter = {
+      x: node.position.x + 30,
+      y: node.position.y + 30
+    };
+
+    return {
+      x: rect.left + nodeCenter.x * viewport.zoom + viewport.x,
+      y: rect.top + nodeCenter.y * viewport.zoom + viewport.y
+    };
   }, nodeId);
 
   if (!coords) {
@@ -280,9 +294,10 @@ export async function mouseWheelZoom(
 export async function getSelectedNodeCount(page: Page): Promise<number> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (!cy) return 0;
-    return cy.nodes(":selected").length;
+    const rf = dev?.rfInstance;
+    if (!rf) return 0;
+    const nodes = rf.getNodes?.() ?? [];
+    return nodes.filter((n: any) => n.selected).length;
   });
 }
 
@@ -292,9 +307,10 @@ export async function getSelectedNodeCount(page: Page): Promise<number> {
 export async function getSelectedNodeIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (!cy) return [];
-    return cy.nodes(":selected").map((n: any) => n.id());
+    const rf = dev?.rfInstance;
+    if (!rf) return [];
+    const nodes = rf.getNodes?.() ?? [];
+    return nodes.filter((n: any) => n.selected).map((n: any) => n.id);
   });
 }
 
@@ -304,9 +320,10 @@ export async function getSelectedNodeIds(page: Page): Promise<string[]> {
 export async function getSelectedEdgeCount(page: Page): Promise<number> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (!cy) return 0;
-    return cy.edges(":selected").length;
+    const rf = dev?.rfInstance;
+    if (!rf) return 0;
+    const edges = rf.getEdges?.() ?? [];
+    return edges.filter((e: any) => e.selected).length;
   });
 }
 
@@ -316,9 +333,10 @@ export async function getSelectedEdgeCount(page: Page): Promise<number> {
 export async function getSelectedEdgeIds(page: Page): Promise<string[]> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (!cy) return [];
-    return cy.edges(":selected").map((e: any) => e.id());
+    const rf = dev?.rfInstance;
+    if (!rf) return [];
+    const edges = rf.getEdges?.() ?? [];
+    return edges.filter((e: any) => e.selected).map((e: any) => e.id);
   });
 }
 
@@ -326,13 +344,8 @@ export async function getSelectedEdgeIds(page: Page): Promise<string[]> {
  * Clear all selections in the graph.
  */
 export async function clearSelection(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (cy) {
-      cy.elements().unselect();
-    }
-  });
+  // Press Escape to clear selection
+  await page.keyboard.press("Escape");
 }
 
 /**
@@ -341,9 +354,10 @@ export async function clearSelection(page: Page): Promise<void> {
 export async function getEdgeCount(page: Page): Promise<number> {
   return await page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (!cy) return 0;
-    return cy.edges().length;
+    const rf = dev?.rfInstance;
+    if (!rf) return 0;
+    const edges = rf.getEdges?.() ?? [];
+    return edges.length;
   });
 }
 
@@ -356,27 +370,40 @@ export async function getEdgeBoundingBox(
 ): Promise<{ x: number; y: number; width: number; height: number } | null> {
   return await page.evaluate((id) => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    const edge = cy?.getElementById(id);
-    if (!edge || edge.empty()) return null;
+    const rf = dev?.rfInstance;
+    if (!rf) return null;
 
-    const bb = edge.renderedBoundingBox();
-    const container = cy.container();
-    const rect = container.getBoundingClientRect();
+    const edges = rf.getEdges?.() ?? [];
+    const edge = edges.find((e: any) => e.id === id);
+    if (!edge) return null;
+
+    const nodes = rf.getNodes?.() ?? [];
+    const sourceNode = nodes.find((n: any) => n.id === edge.source);
+    const targetNode = nodes.find((n: any) => n.id === edge.target);
+    if (!sourceNode || !targetNode) return null;
+
+    const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+    const container = document.querySelector(".react-flow");
+    const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+
+    // Calculate bounding box from source and target positions
+    const minX = Math.min(sourceNode.position.x, targetNode.position.x);
+    const minY = Math.min(sourceNode.position.y, targetNode.position.y);
+    const maxX = Math.max(sourceNode.position.x, targetNode.position.x) + 60; // Add node width
+    const maxY = Math.max(sourceNode.position.y, targetNode.position.y) + 60;
 
     return {
-      x: rect.left + bb.x1,
-      y: rect.top + bb.y1,
-      width: bb.w,
-      height: bb.h
+      x: rect.left + minX * viewport.zoom + viewport.x,
+      y: rect.top + minY * viewport.zoom + viewport.y,
+      width: (maxX - minX) * viewport.zoom,
+      height: (maxY - minY) * viewport.zoom
     };
   }, edgeId);
 }
 
 /**
  * Get the midpoint of an edge line in page coordinates.
- * Uses the geometric midpoint between source and target nodes,
- * NOT the bounding box center (which can overlap with nodes).
+ * Uses the geometric midpoint between source and target nodes.
  */
 export async function getEdgeMidpoint(
   page: Page,
@@ -384,25 +411,29 @@ export async function getEdgeMidpoint(
 ): Promise<{ x: number; y: number } | null> {
   return await page.evaluate((id) => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    const edge = cy?.getElementById(id);
-    if (!edge || edge.empty()) return null;
+    const rf = dev?.rfInstance;
+    if (!rf) return null;
 
-    // Get actual source and target node positions
-    const source = edge.source();
-    const target = edge.target();
-    if (!source || !target) return null;
+    const edges = rf.getEdges?.() ?? [];
+    const edge = edges.find((e: any) => e.id === id);
+    if (!edge) return null;
 
-    const srcPos = source.renderedPosition();
-    const tgtPos = target.renderedPosition();
+    const nodes = rf.getNodes?.() ?? [];
+    const sourceNode = nodes.find((n: any) => n.id === edge.source);
+    const targetNode = nodes.find((n: any) => n.id === edge.target);
+    if (!sourceNode || !targetNode) return null;
 
-    // Calculate geometric midpoint of the edge line
-    const container = cy.container();
-    const rect = container.getBoundingClientRect();
+    const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+    const container = document.querySelector(".react-flow");
+    const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+
+    // Calculate geometric midpoint (adding 30 for node center offset)
+    const midX = (sourceNode.position.x + targetNode.position.x) / 2 + 30;
+    const midY = (sourceNode.position.y + targetNode.position.y) / 2 + 30;
 
     return {
-      x: rect.left + (srcPos.x + tgtPos.x) / 2,
-      y: rect.top + (srcPos.y + tgtPos.y) / 2
+      x: rect.left + midX * viewport.zoom + viewport.x,
+      y: rect.top + midY * viewport.zoom + viewport.y
     };
   }, edgeId);
 }

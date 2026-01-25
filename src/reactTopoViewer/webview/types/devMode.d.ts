@@ -4,6 +4,8 @@
  * to support E2E testing and debugging.
  */
 
+import type { ReactFlowInstance } from "@xyflow/react";
+
 import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/topology";
 import type { NetworkType } from "../../shared/types/editors";
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
@@ -68,6 +70,16 @@ export interface DevModeInterface {
   isGeoLayout?: () => boolean;
   /** Get current geo mode */
   geoMode?: () => "pan" | "edit";
+  /** React Flow instance for E2E testing (replaces Cytoscape cy) */
+  rfInstance?: ReactFlowInstance;
+  /** Get current selected node ID */
+  selectedNode?: () => string | null;
+  /** Get current selected edge ID */
+  selectedEdge?: () => string | null;
+  /** Select a node by ID (for E2E testing) */
+  selectNode?: (nodeId: string | null) => void;
+  /** Select an edge by ID (for E2E testing) */
+  selectEdge?: (edgeId: string | null) => void;
 }
 
 /**

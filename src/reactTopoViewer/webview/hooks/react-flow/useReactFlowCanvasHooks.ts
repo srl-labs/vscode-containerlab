@@ -8,6 +8,12 @@ import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 import { applyLayout, type LayoutName } from "../../components/react-flow-canvas/layout";
 import { sendCommandToExtension } from "../../utils/extensionMessaging";
 import { log } from "../../utils/logger";
+import {
+  saveNodePositions as saveNodePositionsService,
+  deleteNode as deleteNodeService,
+  deleteLink as deleteLinkService,
+  createLink as createLinkService
+} from "../../services";
 
 /**
  * Hook for delete node/edge handlers
@@ -27,6 +33,9 @@ export function useDeleteHandlers(
       log.info(`[ReactFlowCanvas] Deleting node: ${nodeId}`);
       setNodes((nds) => nds.filter((n) => n.id !== nodeId));
       setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+      // Persist deletion to YAML and annotations via TopologyIO service
+      void deleteNodeService(nodeId);
+      // Also notify extension for undo/redo and other side effects
       sendCommandToExtension("panel-delete-node", { nodeId });
       onNodeDelete?.(nodeId);
       selectNode(null);
@@ -43,15 +52,16 @@ export function useDeleteHandlers(
 
       if (edge) {
         const edgeData = edge.data as Record<string, unknown> | undefined;
-        sendCommandToExtension("panel-delete-link", {
-          edgeId,
-          linkData: {
-            source: edge.source,
-            target: edge.target,
-            sourceEndpoint: edgeData?.sourceEndpoint || "",
-            targetEndpoint: edgeData?.targetEndpoint || ""
-          }
-        });
+        const linkData = {
+          source: edge.source,
+          target: edge.target,
+          sourceEndpoint: (edgeData?.sourceEndpoint as string) || "",
+          targetEndpoint: (edgeData?.targetEndpoint as string) || ""
+        };
+        // Persist deletion to YAML via TopologyIO service
+        void deleteLinkService(linkData);
+        // Also notify extension for undo/redo and other side effects
+        sendCommandToExtension("panel-delete-link", { edgeId, linkData });
       }
       onEdgeDelete?.(edgeId);
       selectEdge(null);
@@ -66,7 +76,19 @@ export function useDeleteHandlers(
 /**
  * Hook for link creation mode
  */
-export function useLinkCreation(setEdges: React.Dispatch<React.SetStateAction<Edge[]>>) {
+export function useLinkCreation(
+  onEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void
+) {
   const [linkSourceNode, setLinkSourceNode] = useState<string | null>(null);
 
   const startLinkCreation = useCallback((nodeId: string) => {
@@ -87,30 +109,27 @@ export function useLinkCreation(setEdges: React.Dispatch<React.SetStateAction<Ed
       log.info(
         `[ReactFlowCanvas] Completing ${isLoopLink ? "loop " : ""}link: ${linkSourceNode} -> ${targetNodeId}`
       );
-      const edgeId = `${linkSourceNode}-${targetNodeId}-${Date.now()}`;
+      const edgeId = `${linkSourceNode}:eth1-${targetNodeId}:eth1`;
 
-      sendCommandToExtension("create-link", {
-        linkData: {
-          id: edgeId,
-          source: linkSourceNode,
-          target: targetNodeId,
-          sourceEndpoint: "eth1",
-          targetEndpoint: "eth1"
-        }
-      });
-
-      const newEdge = {
+      const edgeData = {
         id: edgeId,
         source: linkSourceNode,
         target: targetNodeId,
-        type: "topology-edge",
-        data: { sourceEndpoint: "eth1", targetEndpoint: "eth1", linkStatus: "unknown" }
+        sourceEndpoint: "eth1",
+        targetEndpoint: "eth1"
       };
 
-      setEdges((eds) => [...eds, newEdge]);
+      // Use the unified callback which handles:
+      // 1. Adding edge to React state
+      // 2. Persisting to YAML via TopologyIO
+      // 3. Undo/redo support
+      if (onEdgeCreated) {
+        onEdgeCreated(linkSourceNode, targetNodeId, edgeData);
+      }
+
       setLinkSourceNode(null);
     },
-    [linkSourceNode, setEdges]
+    [linkSourceNode, onEdgeCreated]
   );
 
   useEffect(() => {
@@ -230,7 +249,8 @@ export function useCanvasRefMethods(
       getEdges: () => edges,
       setNodePositions: (positions: PositionEntry[]) => {
         setNodes(createPositionUpdater(positions));
-        sendCommandToExtension("save-node-positions", { positions });
+        // Save positions to annotations file via TopologyIO service
+        void saveNodePositionsService(positions);
       },
       updateNodes: (updater: (nodes: Node[]) => Node[]) => setNodes(updater),
       updateEdges: (updater: (edges: Edge[]) => Edge[]) => setEdges(updater)

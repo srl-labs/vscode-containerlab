@@ -313,7 +313,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onEdgeDelete,
       onMoveComplete,
       linkLabelMode = "show-all",
-      onInit: onInitProp
+      onInit: onInitProp,
+      onEdgeCreated
     },
     ref
   ) => {
@@ -337,11 +338,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       mode: state.mode,
       isLocked: state.isLocked,
       onNodesChangeBase: onNodesChange,
-      onEdgesChangeBase: onEdgesChange,
-      setEdges,
       onLockedAction: () => floatingPanelRef.current?.triggerShake(),
       nodes, // Pass nodes for position tracking
-      onMoveComplete // Pass callback for undo/redo
+      onMoveComplete, // Pass callback for undo/redo
+      onEdgeCreated // Pass unified edge creation callback
     });
 
     // Sync prop nodes/edges to internal state
@@ -360,7 +360,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     useSyncAnnotationNodes(annotationNodes, setNodes);
 
     const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =
-      useLinkCreation(setEdges);
+      useLinkCreation(onEdgeCreated);
     const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
       edges,
       setNodes,

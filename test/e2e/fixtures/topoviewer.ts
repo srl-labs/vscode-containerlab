@@ -6,7 +6,7 @@ import type { Locator, TestInfo } from "@playwright/test";
 import { test as base } from "@playwright/test";
 
 // Test selectors
-const CANVAS_SELECTOR = '[data-testid="cytoscape-canvas"]';
+const CANVAS_SELECTOR = ".react-flow";
 const APP_SELECTOR = '[data-testid="topoviewer-app"]';
 
 // Topologies directory path (must match dev server config)
@@ -48,18 +48,13 @@ interface GroupDebugInfo {
  */
 function browserCreateGroup(): CreateGroupResult {
   const dev = (window as any).__DEV__;
-  const cy = dev?.cy;
+  const rf = dev?.rfInstance;
 
-  // Inline helper: get selected node IDs
-  const getSelectedNodeIds = (c: any): string[] => {
-    if (!c) return [];
-    return c.nodes(":selected").map((n: any) => n.id());
-  };
-
-  // Inline helper: get state manager group count
-  const getStateManagerGroupCount = (d: any): number => {
-    const annotations = d?.stateManager?.getAnnotations?.();
-    return annotations?.groupStyleAnnotations?.length ?? 0;
+  // Inline helper: get selected node IDs (React Flow version)
+  const getSelectedNodeIds = (rfInstance: any): string[] => {
+    if (!rfInstance) return [];
+    const nodes = rfInstance.getNodes?.() ?? [];
+    return nodes.filter((n: any) => n.selected).map((n: any) => n.id);
   };
 
   // Inline helper: get react group count
@@ -79,10 +74,10 @@ function browserCreateGroup(): CreateGroupResult {
     window.dispatchEvent(event);
   };
 
-  const selectedBefore = getSelectedNodeIds(cy);
-  const mode = dev?.stateManager?.getMode?.();
+  const selectedBefore = getSelectedNodeIds(rf);
+  const mode = dev?.mode?.();
   const isLocked = dev?.isLocked?.();
-  const groupsBefore = getStateManagerGroupCount(dev);
+  const groupsBefore = dev?.getReactGroups?.()?.length ?? 0;
   const reactGroupsBefore = getReactGroupCount(dev);
 
   if (!dev?.createGroupFromSelected) {
@@ -102,14 +97,14 @@ function browserCreateGroup(): CreateGroupResult {
   return {
     method: "direct",
     selectedBefore,
-    selectedAfter: getSelectedNodeIds(cy),
+    selectedAfter: getSelectedNodeIds(rf),
     mode,
     isLocked,
     groupsBefore,
-    groupsAfter: getStateManagerGroupCount(dev),
+    groupsAfter: dev?.getReactGroups?.()?.length ?? 0,
     reactGroupsBefore,
     reactGroupsAfter: getReactGroupCount(dev),
-    hasCy: !!cy
+    hasCy: !!rf
   };
 }
 
@@ -120,7 +115,6 @@ function browserCreateGroup(): CreateGroupResult {
 function browserGetGroupDebugInfo(): GroupDebugInfo {
   const dev = (window as any).__DEV__;
   const reactGroups = dev?.getReactGroups?.() ?? [];
-  const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
 
   // Inline helper: get group IDs
   const getGroupIds = (groups: any[]): string[] => groups.map((g: any) => g.id);
@@ -128,9 +122,9 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
   return {
     reactGroupCount: reactGroups.length,
     reactGroupsDirectCount: dev?.groupsCount ?? "undefined",
-    stateManagerGroupCount: stateManagerGroups.length,
+    stateManagerGroupCount: reactGroups.length, // Same as React groups now
     reactGroupIds: getGroupIds(reactGroups),
-    stateManagerGroupIds: getGroupIds(stateManagerGroups)
+    stateManagerGroupIds: getGroupIds(reactGroups) // Same as React groups now
   };
 }
 
@@ -397,7 +391,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
 
         // Wait for the page to be ready (including auto-load of default topology)
-        await page.waitForFunction(() => (window as any).__DEV__?.cy !== undefined, {
+        // Wait for React Flow instance instead of Cytoscape
+        await page.waitForFunction(() => (window as any).__DEV__?.rfInstance !== undefined, {
           timeout: 15000
         });
 
@@ -441,26 +436,26 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               await page.waitForFunction(
                 () => {
                   const dev = (window as any).__DEV__;
-                  const cy = dev?.cy;
-                  if (!cy) return false;
-                  const nodes = cy.nodes().filter((n: any) => {
-                    const role = n.data("topoViewerRole");
-                    return role && role !== "freeText" && role !== "freeShape";
-                  });
-                  return nodes.length >= 2;
+                  const rf = dev?.rfInstance;
+                  if (!rf) return false;
+                  const nodes = rf.getNodes?.() ?? [];
+                  // Filter to topology nodes only (exclude annotations)
+                  const topoNodes = nodes.filter(
+                    (n: any) => n.type === "topology-node" || n.type === "cloud-node"
+                  );
+                  return topoNodes.length >= 2;
                 },
                 { timeout: 5000 }
               );
             }
 
-            // Wait for the layout to complete (initialLayoutDone is set after layout animation)
-            // This is critical to avoid race conditions with fitViewportToAll
+            // Wait for React Flow to be fully initialized
+            // React Flow doesn't have a scratch system like Cytoscape, so we just wait for instance
             await page.waitForFunction(
               () => {
                 const dev = (window as any).__DEV__;
-                const cy = dev?.cy;
-                if (!cy) return false;
-                return cy.scratch?.("initialLayoutDone") === true;
+                const rf = dev?.rfInstance;
+                return rf !== undefined && rf !== null;
               },
               { timeout: 10000, polling: 100 }
             );
@@ -534,26 +529,60 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for canvas container
         await page.waitForSelector(CANVAS_SELECTOR, { timeout: 10000 });
 
-        // Wait for Cytoscape instance to be exposed via __DEV__.cy
+        // Wait for React Flow instance to be exposed via __DEV__.rfInstance
         await page.waitForFunction(
           () => {
             const dev = (window as any).__DEV__;
-            return dev?.cy !== undefined;
+            return dev?.rfInstance !== undefined;
           },
           { timeout: 15000 }
         );
 
-        // Wait for the initial layout to complete (or be skipped for preset layouts).
-        // This is set by `useElementsUpdate` via `cy.scratch('initialLayoutDone', true)`.
+        // Wait for nodes to be loaded
         await page.waitForFunction(
           () => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            return cy.scratch?.("initialLayoutDone") === true;
+            const rf = dev?.rfInstance;
+            return rf !== undefined && rf !== null;
           },
           { timeout: 15000, polling: 200 }
         );
+
+        // Check if nodes need layout (all at 0,0)
+        const needsLayout = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          const rf = dev?.rfInstance;
+          if (!rf) return false;
+          const nodes = rf.getNodes?.() ?? [];
+          if (nodes.length <= 1) return false; // 1 or no nodes don't need layout
+
+          // Check if all nodes are at the same position
+          const firstPos = nodes[0]?.position;
+          if (!firstPos) return false;
+          return nodes.every(
+            (n: any) =>
+              Math.abs(n.position.x - firstPos.x) < 1 && Math.abs(n.position.y - firstPos.y) < 1
+          );
+        });
+
+        // Run force layout if nodes are overlapping
+        if (needsLayout) {
+          await page.evaluate(() => {
+            const dev = (window as any).__DEV__;
+            dev?.setLayout?.("force");
+          });
+          // Wait for layout animation
+          await page.waitForTimeout(500);
+        }
+
+        // Call fitView to ensure proper viewport
+        await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          dev?.rfInstance?.fitView?.({ padding: 0.2 });
+        });
+
+        // Wait for fitView animation
+        await page.waitForTimeout(300);
       },
 
       getCanvasCenter: async () => {
@@ -569,42 +598,98 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getNodeCount: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return 0;
+          const rf = dev?.rfInstance;
+          if (!rf) return 0;
+          const nodes = rf.getNodes?.() ?? [];
           // Filter out non-topology nodes (annotations, etc.)
-          return cy.nodes().filter((n: any) => {
-            const role = n.data("topoViewerRole");
-            return role && role !== "freeText" && role !== "freeShape";
-          }).length;
+          return nodes.filter((n: any) => n.type === "topology-node" || n.type === "cloud-node")
+            .length;
         });
       },
 
       getNodePosition: async (nodeId: string) => {
         return await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          const node = cy?.getElementById(id);
-          if (!node || node.empty()) return { x: 0, y: 0 };
-          return node.position();
+          const rf = dev?.rfInstance;
+          if (!rf) return { x: 0, y: 0 };
+          const nodes = rf.getNodes?.() ?? [];
+          const node = nodes.find((n: any) => n.id === id);
+          if (!node) return { x: 0, y: 0 };
+          return node.position;
         }, nodeId);
       },
 
       getNodeBoundingBox: async (nodeId: string) => {
         return await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          const node = cy?.getElementById(id);
-          if (!node || node.empty()) return null;
+          // First try to get the DOM element directly - most reliable method
+          const nodeElement = document.querySelector(`[data-id="${id}"]`);
+          if (nodeElement) {
+            const rect = nodeElement.getBoundingClientRect();
+            return {
+              x: rect.left,
+              y: rect.top,
+              width: rect.width,
+              height: rect.height
+            };
+          }
 
-          const bb = node.renderedBoundingBox();
-          const container = cy.container();
-          const rect = container.getBoundingClientRect();
+          // Fallback to React Flow instance calculation
+          const dev = (window as any).__DEV__;
+          const rf = dev?.rfInstance;
+          if (!rf) return null;
+
+          // Use React Flow's internal node which has computed dimensions
+          const internalNode = rf.getInternalNode?.(id);
+          if (!internalNode) {
+            // Fallback to basic node lookup
+            const nodes = rf.getNodes?.() ?? [];
+            const node = nodes.find((n: any) => n.id === id);
+            if (!node) return null;
+
+            // Get viewport transform
+            const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+
+            // Calculate rendered position
+            const renderedX = node.position.x * viewport.zoom + viewport.x;
+            const renderedY = node.position.y * viewport.zoom + viewport.y;
+
+            // Get container position
+            const container = document.querySelector(".react-flow");
+            const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+
+            // Default node size (topology nodes are 60x60)
+            const nodeWidth = 60 * viewport.zoom;
+            const nodeHeight = 60 * viewport.zoom;
+
+            return {
+              x: rect.left + renderedX,
+              y: rect.top + renderedY,
+              width: nodeWidth,
+              height: nodeHeight
+            };
+          }
+
+          // Get computed position and dimensions from internal node
+          const computed = internalNode.internals?.positionAbsolute ?? internalNode.position;
+          const width = internalNode.measured?.width ?? internalNode.width ?? 60;
+          const height = internalNode.measured?.height ?? internalNode.height ?? 60;
+
+          // Get viewport transform
+          const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+
+          // Calculate rendered position
+          const renderedX = computed.x * viewport.zoom + viewport.x;
+          const renderedY = computed.y * viewport.zoom + viewport.y;
+
+          // Get container position
+          const container = document.querySelector(".react-flow");
+          const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
           return {
-            x: rect.left + bb.x1,
-            y: rect.top + bb.y1,
-            width: bb.w,
-            height: bb.h
+            x: rect.left + renderedX,
+            y: rect.top + renderedY,
+            width: width * viewport.zoom,
+            height: height * viewport.zoom
           };
         }, nodeId);
       },
@@ -650,126 +735,122 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getNodeIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy
-            .nodes()
-            .filter((n: any) => {
-              const role = n.data("topoViewerRole");
-              return role && role !== "freeText" && role !== "freeShape";
-            })
-            .map((n: any) => n.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const nodes = rf.getNodes?.() ?? [];
+          return nodes
+            .filter((n: any) => n.type === "topology-node" || n.type === "cloud-node")
+            .map((n: any) => n.id);
         });
       },
 
       selectNode: async (nodeId: string) => {
-        const box = await topoViewerPage.getNodeBoundingBox(nodeId);
-        if (!box) throw new Error(`Node ${nodeId} not found`);
+        // Use programmatic selection only - clicking can trigger paneClick which clears selection
+        await page.evaluate((id) => {
+          const dev = (window as any).__DEV__;
+          if (dev?.selectNode) {
+            dev.selectNode(id);
+          }
+        }, nodeId);
 
-        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        // Wait for React state to propagate
         await page.waitForTimeout(100);
+
+        // Verify selection was set
+        const selectedId = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          return dev?.selectedNode?.() ?? null;
+        });
+
+        if (selectedId !== nodeId) {
+          console.warn(`Selection verification failed: expected ${nodeId}, got ${selectedId}`);
+        }
       },
 
       getGroupCount: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          // Try React state first
-          const reactGroups = dev?.getReactGroups?.();
-          const stateManagerGroups =
-            dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
-
-          // If React has groups, use React count
-          if (reactGroups && reactGroups.length > 0) {
-            return reactGroups.length;
-          }
-          // If React is empty but stateManager has groups (initial load scenario), use stateManager
-          if (stateManagerGroups.length > 0) {
-            return stateManagerGroups.length;
-          }
-          // Both empty
-          return reactGroups?.length ?? 0;
+          const reactGroups = dev?.getReactGroups?.() ?? [];
+          return reactGroups.length;
         });
       },
 
       getGroupIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          // Try React state first
-          const reactGroups = dev?.getReactGroups?.();
-          const stateManagerGroups =
-            dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
-
-          // If React has groups, use React IDs
-          if (reactGroups && reactGroups.length > 0) {
-            return reactGroups.map((g: any) => g.id);
-          }
-          // If React is empty but stateManager has groups (initial load scenario), use stateManager
-          if (stateManagerGroups.length > 0) {
-            return stateManagerGroups.map((g: any) => g.id);
-          }
-          // Both empty
-          return [];
+          const reactGroups = dev?.getReactGroups?.() ?? [];
+          return reactGroups.map((g: any) => g.id);
         });
       },
 
       getEdgeIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy.edges().map((e: any) => e.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const edges = rf.getEdges?.() ?? [];
+          return edges.map((e: any) => e.id);
         });
       },
 
       getEdgeCount: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return 0;
-          return cy.edges().length;
+          const rf = dev?.rfInstance;
+          if (!rf) return 0;
+          const edges = rf.getEdges?.() ?? [];
+          return edges.length;
         });
       },
 
       selectEdge: async (edgeId: string) => {
-        const midpoint = await page.evaluate((id) => {
+        // Use programmatic selection via __DEV__.selectEdge (avoids click conflicts)
+        await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          const edge = cy?.getElementById(id);
-          if (!edge || edge.empty()) return null;
-
-          const bb = edge.renderedBoundingBox();
-          const container = cy.container();
-          const rect = container.getBoundingClientRect();
-
-          return {
-            x: rect.left + bb.x1 + bb.w / 2,
-            y: rect.top + bb.y1 + bb.h / 2
-          };
+          if (dev?.selectEdge) {
+            dev.selectEdge(id);
+          }
         }, edgeId);
 
-        if (!midpoint) throw new Error(`Edge ${edgeId} not found`);
-        await page.mouse.click(midpoint.x, midpoint.y);
+        // Wait for React state to propagate
         await page.waitForTimeout(100);
+
+        // Verify selection was set
+        const selectedId = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          return dev?.selectedEdge?.() ?? null;
+        });
+
+        if (selectedId !== edgeId) {
+          console.warn(`Edge selection verification failed: expected ${edgeId}, got ${selectedId}`);
+        }
       },
 
       getZoom: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          return dev?.cy?.zoom() ?? 1;
+          const rf = dev?.rfInstance;
+          return rf?.getViewport?.()?.zoom ?? 1;
         });
       },
 
       getPan: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          return dev?.cy?.pan() ?? { x: 0, y: 0 };
+          const rf = dev?.rfInstance;
+          const viewport = rf?.getViewport?.() ?? { x: 0, y: 0 };
+          return { x: viewport.x, y: viewport.y };
         });
       },
 
       setZoom: async (zoom: number) => {
         await page.evaluate((z) => {
           const dev = (window as any).__DEV__;
-          dev?.cy?.zoom(z);
+          const rf = dev?.rfInstance;
+          if (rf?.setViewport) {
+            const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+            rf.setViewport({ ...viewport, zoom: z });
+          }
         }, zoom);
         await page.waitForTimeout(100);
       },
@@ -778,7 +859,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.evaluate(
           ({ px, py }) => {
             const dev = (window as any).__DEV__;
-            dev?.cy?.pan({ x: px, y: py });
+            const rf = dev?.rfInstance;
+            if (rf?.setViewport) {
+              const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+              rf.setViewport({ x: px, y: py, zoom: viewport.zoom });
+            }
           },
           { px: x, py: y }
         );
@@ -788,7 +873,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       fit: async () => {
         await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          dev?.cy?.fit();
+          dev?.rfInstance?.fitView?.({ padding: 0.1 });
         });
         await page.waitForTimeout(300);
       },
@@ -796,26 +881,26 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getSelectedNodeIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy.nodes(":selected").map((n: any) => n.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const nodes = rf.getNodes?.() ?? [];
+          return nodes.filter((n: any) => n.selected).map((n: any) => n.id);
         });
       },
 
       getSelectedEdgeIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy.edges(":selected").map((e: any) => e.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const edges = rf.getEdges?.() ?? [];
+          return edges.filter((e: any) => e.selected).map((e: any) => e.id);
         });
       },
 
       clearSelection: async () => {
-        await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          dev?.cy?.elements().unselect();
-        });
+        // Click on empty canvas area to clear selection
+        await page.keyboard.press("Escape");
         await page.waitForTimeout(100);
       },
 
@@ -872,43 +957,44 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               throw new Error("handleNodeCreatedCallback not available");
             }
 
-            // Create node data matching the structure expected by the handler
-            const nodeData = {
+            // Create node element in React Flow format (not Cytoscape format)
+            const nodeElement = {
               id: nodeId,
-              name: nodeId,
-              topoViewerRole: "pe",
-              extraData: {
+              type: "topology-node",
+              position,
+              data: {
+                label: nodeId,
+                name: nodeId,
+                role: "pe",
+                topoViewerRole: "pe",
                 kind,
                 image: "ghcr.io/nokia/srlinux:latest",
-                longname: "",
-                mgmtIpv4Address: ""
+                extraData: {
+                  kind,
+                  image: "ghcr.io/nokia/srlinux:latest",
+                  longname: "",
+                  mgmtIpv4Address: ""
+                }
               }
-            };
-
-            // Create the node element
-            const nodeElement = {
-              group: "nodes" as const,
-              data: nodeData,
-              position
             };
 
             // Call handleNodeCreatedCallback which:
             // 1. Adds the node to React state
-            // 2. Sends create-node to extension
+            // 2. Persists to YAML via TopologyIO
             // 3. Pushes undo action
             dev.handleNodeCreatedCallback(nodeId, nodeElement, position);
           },
           { nodeId, position, kind }
         );
 
-        // Wait for the node to appear in Cytoscape (state-driven sync)
+        // Wait for the node to appear in React Flow
         await page.waitForFunction(
           (id) => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            const el = cy.getElementById(id);
-            return el && el.length > 0;
+            const rf = dev?.rfInstance;
+            if (!rf) return false;
+            const nodes = rf.getNodes?.() ?? [];
+            return nodes.some((n: any) => n.id === id);
           },
           nodeId,
           { timeout: 5000 }
@@ -972,10 +1058,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForFunction(
           (id) => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            const el = cy.getElementById(id);
-            return el && el.length > 0;
+            const rf = dev?.rfInstance;
+            if (!rf) return false;
+            const edges = rf.getEdges?.() ?? [];
+            return edges.some((e: any) => e.id === id);
           },
           linkId,
           { timeout: 5000 }
@@ -996,7 +1082,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         const canCreate = await page.evaluate(() => {
           const dev = (window as any).__DEV__;
           if (typeof dev?.isLocked === "function" && dev.isLocked() === true) return false;
-          if (dev?.stateManager?.getMode?.() !== "edit") return false;
+          if (typeof dev?.mode === "function" && dev.mode() !== "edit") return false;
           return true;
         });
 
@@ -1018,14 +1104,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         if (!networkId) return null;
 
-        // Wait for the network node to appear in Cytoscape
+        // Wait for the network node to appear in React Flow
         await page.waitForFunction(
           (id) => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            const el = cy.getElementById(id);
-            return el && el.length > 0;
+            const rf = dev?.rfInstance;
+            if (!rf) return false;
+            const nodes = rf.getNodes?.() ?? [];
+            return nodes.some((n: any) => n.id === id);
           },
           networkId,
           { timeout: 5000 }
@@ -1037,12 +1123,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getNetworkNodeIds: async (): Promise<string[]> => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy
-            .nodes()
-            .filter((n: any) => n.data("topoViewerRole") === "cloud")
-            .map((n: any) => n.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const nodes = rf.getNodes?.() ?? [];
+          return nodes.filter((n: any) => n.type === "cloud-node").map((n: any) => n.id);
         });
       },
 
@@ -1179,17 +1263,21 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.keyboard.press("Escape");
         await page.waitForTimeout(100);
 
-        // Select the node programmatically via Cytoscape
+        // Select the node programmatically via __DEV__.selectNode (React Flow)
+        await page.evaluate((id) => {
+          const dev = (window as any).__DEV__;
+          if (dev?.selectNode) {
+            dev.selectNode(id);
+          }
+        }, nodeId);
+
+        // Wait for selection state to propagate
+        await page.waitForTimeout(100);
+
+        // Verify selection was set
         const selected = await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return false;
-          cy.nodes().unselect();
-          cy.edges().unselect();
-          const node = cy.getElementById(id);
-          if (!node || node.empty()) return false;
-          node.select();
-          return node.selected();
+          return dev?.selectedNode?.() === id;
         }, nodeId);
 
         if (!selected) {

@@ -11,6 +11,7 @@ import type { EdgeAnnotation } from "../../../shared/types/topology";
 import {
   createNode,
   createLink,
+  deleteLink,
   editNode,
   editLink,
   createNetworkNode,
@@ -383,19 +384,20 @@ function processGraphChange(
     }
   } else if (change.entity === "edge") {
     const edgeElement = element as TopoEdge;
+    const data = edgeElement.data as TopologyEdgeData | undefined;
+    const linkData: LinkSaveData = {
+      id: edgeElement.id,
+      source: edgeElement.source,
+      target: edgeElement.target,
+      sourceEndpoint: data?.sourceEndpoint,
+      targetEndpoint: data?.targetEndpoint,
+      ...(data?.extraData && { extraData: data.extraData })
+    };
     if (change.kind === "add") {
       ctx.addEdge(edgeElement);
-      const data = edgeElement.data as TopologyEdgeData | undefined;
-      const linkData: LinkSaveData = {
-        id: edgeElement.id,
-        source: edgeElement.source,
-        target: edgeElement.target,
-        sourceEndpoint: data?.sourceEndpoint,
-        targetEndpoint: data?.targetEndpoint,
-        ...(data?.extraData && { extraData: data.extraData })
-      };
       void createLink(linkData);
     } else if (change.kind === "delete") {
+      void deleteLink(linkData);
       ctx.menuHandlers.handleDeleteLink(id);
     }
   }

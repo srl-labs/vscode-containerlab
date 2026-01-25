@@ -7,7 +7,6 @@ import { useCallback, useRef, useState } from "react";
 import type {
   ReactFlowInstance,
   OnNodesChange,
-  OnEdgesChange,
   NodeMouseHandler,
   EdgeMouseHandler,
   OnConnect,
@@ -20,6 +19,7 @@ import type {
 
 import { log } from "../../utils/logger";
 import { sendCommandToExtension } from "../../utils/extensionMessaging";
+import { saveNodePositions as saveNodePositionsService } from "../../services";
 
 // Grid size for snapping
 export const GRID_SIZE = 20;
@@ -46,8 +46,6 @@ interface CanvasHandlersConfig {
   mode: "view" | "edit";
   isLocked: boolean;
   onNodesChangeBase: OnNodesChange;
-  onEdgesChangeBase: OnEdgesChange;
-  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   onLockedAction?: () => void;
   /** Current nodes (needed for position tracking) */
   nodes?: Node[];
@@ -55,6 +53,18 @@ interface CanvasHandlersConfig {
   onMoveComplete?: (
     beforePositions: DragPositionEntry[],
     afterPositions: DragPositionEntry[]
+  ) => void;
+  /** Callback when an edge is created via drag-to-connect */
+  onEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
   ) => void;
 }
 
@@ -130,9 +140,8 @@ function useNodeDragHandlers(
       log.info(
         `[ReactFlowCanvas] Node ${node.id} snapped to ${snappedPosition.x}, ${snappedPosition.y}`
       );
-      sendCommandToExtension("save-node-positions", {
-        positions: [{ id: node.id, position: snappedPosition }]
-      });
+      // Save position to annotations file via TopologyIO service
+      void saveNodePositionsService([{ id: node.id, position: snappedPosition }]);
 
       if (onMoveComplete && dragStartPositionsRef.current.length > 0) {
         const afterPositions = computeAfterPositions(
@@ -379,10 +388,20 @@ function usePaneClickHandler(
 
 /** Hook for connection handler */
 function useConnectionHandler(
-  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>,
   modeRef: React.RefObject<"view" | "edit">,
   isLockedRef: React.RefObject<boolean>,
-  onLockedAction?: () => void
+  onLockedAction?: () => void,
+  onEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void
 ) {
   return useCallback(
     (connection: Connection) => {
@@ -393,30 +412,28 @@ function useConnectionHandler(
       }
       if (!connection.source || !connection.target) return;
 
-      log.info(`[ReactFlowCanvas] Creating edge: ${connection.source} -> ${connection.target}`);
+      log.info(
+        `[ReactFlowCanvas] Creating edge via drag-connect: ${connection.source} -> ${connection.target}`
+      );
       const edgeId = generateEdgeId(connection.source, connection.target);
 
-      sendCommandToExtension("create-link", {
-        linkData: {
-          id: edgeId,
-          source: connection.source,
-          target: connection.target,
-          sourceEndpoint: "eth1",
-          targetEndpoint: "eth1"
-        }
-      });
-
-      const newEdge: Edge = {
+      const edgeData = {
         id: edgeId,
         source: connection.source,
         target: connection.target,
-        type: "topology-edge",
-        data: { sourceEndpoint: "eth1", targetEndpoint: "eth1", linkStatus: "unknown" }
+        sourceEndpoint: "eth1",
+        targetEndpoint: "eth1"
       };
 
-      setEdges((edges) => [...edges, newEdge]);
+      // Use unified callback which handles:
+      // 1. Adding edge to React state
+      // 2. Persisting to YAML via TopologyIO
+      // 3. Undo/redo support
+      if (onEdgeCreated) {
+        onEdgeCreated(connection.source, connection.target, edgeData);
+      }
     },
-    [setEdges, onLockedAction, modeRef, isLockedRef]
+    [onLockedAction, modeRef, isLockedRef, onEdgeCreated]
   );
 }
 
@@ -432,10 +449,10 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     mode,
     isLocked,
     onNodesChangeBase,
-    setEdges,
     onLockedAction,
     nodes,
-    onMoveComplete
+    onMoveComplete,
+    onEdgeCreated
   } = config;
 
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
@@ -485,7 +502,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     isLockedRef,
     onLockedAction
   );
-  const onConnect = useConnectionHandler(setEdges, modeRef, isLockedRef, onLockedAction);
+  const onConnect = useConnectionHandler(modeRef, isLockedRef, onLockedAction, onEdgeCreated);
 
   // Node changes handler
   const handleNodesChange: OnNodesChange = useCallback(

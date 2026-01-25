@@ -415,7 +415,12 @@ const AppContent: React.FC<{
     setLayout: layoutControls.setLayout,
     setGeoMode: layoutControls.setGeoMode,
     isGeoLayout: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode
+    geoMode: layoutControls.geoMode,
+    rfInstance,
+    selectedNode: state.selectedNode,
+    selectedEdge: state.selectedEdge,
+    selectNode,
+    selectEdge
   });
 
   // App-level handlers
@@ -573,6 +578,7 @@ const AppContent: React.FC<{
             undoRedo.pushAction({ type: "move", before, after });
           }}
           onInit={onInit}
+          onEdgeCreated={handleEdgeCreated}
           annotationHandlers={
             canvasAnnotationHandlers as import("./components/react-flow-canvas/types").AnnotationHandlers
           }

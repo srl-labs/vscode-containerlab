@@ -178,6 +178,14 @@ export interface E2ETestingConfig {
   setGeoMode?: (mode: "pan" | "edit") => void;
   isGeoLayout?: boolean;
   geoMode?: "pan" | "edit";
+  /** React Flow instance for E2E testing */
+  rfInstance?: import("@xyflow/react").ReactFlowInstance | null;
+  /** Selection state for E2E testing */
+  selectedNode?: string | null;
+  selectedEdge?: string | null;
+  /** Selection actions for E2E testing */
+  selectNode?: (nodeId: string | null) => void;
+  selectEdge?: (edgeId: string | null) => void;
 }
 
 /**
@@ -200,7 +208,12 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     setLayout,
     setGeoMode,
     isGeoLayout,
-    geoMode
+    geoMode,
+    rfInstance,
+    selectedNode,
+    selectedEdge,
+    selectNode,
+    selectEdge
   } = config;
 
   // Core E2E exposure (isLocked, mode, setLocked)
@@ -265,6 +278,30 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.geoMode = () => geoMode ?? "pan";
     }
   }, [setLayout, setGeoMode, isGeoLayout, geoMode]);
+
+  // React Flow instance E2E exposure (replaces Cytoscape cy)
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.__DEV__) {
+      window.__DEV__.rfInstance = rfInstance ?? undefined;
+    }
+  }, [rfInstance]);
+
+  // Selection state and actions E2E exposure
+  // Use refs to ensure the exposed functions always return the latest value
+  const selectedNodeRef = React.useRef(selectedNode);
+  const selectedEdgeRef = React.useRef(selectedEdge);
+  selectedNodeRef.current = selectedNode;
+  selectedEdgeRef.current = selectedEdge;
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.__DEV__) {
+      // Use ref.current to always get the latest value
+      window.__DEV__.selectedNode = () => selectedNodeRef.current ?? null;
+      window.__DEV__.selectedEdge = () => selectedEdgeRef.current ?? null;
+      if (selectNode) window.__DEV__.selectNode = selectNode;
+      if (selectEdge) window.__DEV__.selectEdge = selectEdge;
+    }
+  }, [selectNode, selectEdge]); // Only re-create functions when actions change, not on every selection change
 }
 
 /**

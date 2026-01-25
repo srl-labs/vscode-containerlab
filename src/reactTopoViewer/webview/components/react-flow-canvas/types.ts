@@ -219,6 +219,18 @@ export interface ReactFlowCanvasProps {
   onMoveComplete?: (before: MovePositionEntry[], after: MovePositionEntry[]) => void;
   /** Callback when ReactFlow instance is initialized */
   onInit?: (instance: ReactFlowInstance) => void;
+  /** Callback when an edge is created via UI link creation mode */
+  onEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void;
 }
 
 /**

@@ -59,18 +59,21 @@ test.describe("Edge Creation", () => {
     expect(yaml).toContain(`srl1:${sourceEndpoint}`);
     expect(yaml).toContain(`srl2:${targetEndpoint}`);
 
-    // Verify via browser-side API
+    // Verify via browser-side API (using React Flow instead of Cytoscape)
     const edgeData = await page.evaluate((expectedId) => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(expectedId);
-      if (!edge || edge.empty()) return null;
+      const rf = dev?.rfInstance;
+      if (!rf) return null;
+
+      const edges = rf.getEdges?.() ?? [];
+      const edge = edges.find((e: any) => e.id === expectedId);
+      if (!edge) return null;
 
       return {
-        source: edge.source().id(),
-        target: edge.target().id(),
-        sourceEndpoint: edge.data("sourceEndpoint"),
-        targetEndpoint: edge.data("targetEndpoint")
+        source: edge.source,
+        target: edge.target,
+        sourceEndpoint: edge.data?.sourceEndpoint,
+        targetEndpoint: edge.data?.targetEndpoint
       };
     }, `srl1:${sourceEndpoint}-srl2:${targetEndpoint}`);
 
@@ -91,21 +94,20 @@ test.describe("Edge Creation", () => {
     const newEdgeCount = await topoViewerPage.getEdgeCount();
     expect(newEdgeCount).toBe(initialEdgeCount + 1);
 
-    // Verify self-loop edge exists
+    // Verify self-loop edge exists (using React Flow instead of Cytoscape)
     const selfLoopData = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return null;
+      const rf = dev?.rfInstance;
+      if (!rf) return null;
 
-      const edges = cy.edges();
-      for (let i = 0; i < edges.length; i++) {
-        const edge = edges[i];
-        if (edge.source().id() === edge.target().id()) {
+      const edges = rf.getEdges?.() ?? [];
+      for (const edge of edges) {
+        if (edge.source === edge.target) {
           return {
-            source: edge.source().id(),
-            target: edge.target().id(),
-            sourceEndpoint: edge.data("sourceEndpoint"),
-            targetEndpoint: edge.data("targetEndpoint")
+            source: edge.source,
+            target: edge.target,
+            sourceEndpoint: edge.data?.sourceEndpoint,
+            targetEndpoint: edge.data?.targetEndpoint
           };
         }
       }
@@ -165,18 +167,18 @@ test.describe("Edge Creation", () => {
     const newEdgeCount = await topoViewerPage.getEdgeCount();
     expect(newEdgeCount).toBe(initialEdgeCount + 3);
 
-    // Verify all edges are between the same two nodes
+    // Verify all edges are between the same two nodes (using React Flow instead of Cytoscape)
     const edgeConnections = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return [];
+      const rf = dev?.rfInstance;
+      if (!rf) return [];
 
-      const edges = cy.edges();
+      const edges = rf.getEdges?.() ?? [];
       return edges.map((e: any) => ({
-        source: e.source().id(),
-        target: e.target().id(),
-        sourceEndpoint: e.data("sourceEndpoint"),
-        targetEndpoint: e.data("targetEndpoint")
+        source: e.source,
+        target: e.target,
+        sourceEndpoint: e.data?.sourceEndpoint,
+        targetEndpoint: e.data?.targetEndpoint
       }));
     });
 
@@ -265,16 +267,16 @@ test.describe("Edge Creation - File Persistence", () => {
     const edgeCount = await topoViewerPage.getEdgeCount();
     expect(edgeCount).toBe(1);
 
-    // Verify the edge connects the right nodes
+    // Verify the edge connects the right nodes (using React Flow instead of Cytoscape)
     const edgeData = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edges = cy?.edges();
-      if (!edges || edges.length === 0) return null;
+      const rf = dev?.rfInstance;
+      const edges = rf?.getEdges?.() ?? [];
+      if (edges.length === 0) return null;
       const edge = edges[0];
       return {
-        source: edge.source().id(),
-        target: edge.target().id()
+        source: edge.source,
+        target: edge.target
       };
     });
     expect(edgeData).not.toBeNull();
@@ -388,5 +390,41 @@ test.describe("Edge Creation - Undo/Redo", () => {
     // Should be back to initial count
     edgeCount = await topoViewerPage.getEdgeCount();
     expect(edgeCount).toBe(initialEdgeCount);
+  });
+
+  test("undo edge creation removes edge from YAML file", async ({ page, topoViewerPage }) => {
+    // Get initial YAML
+    const initialYaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
+    const initialLinkCount = (initialYaml.match(/endpoints:/g) || []).length;
+
+    // Create a new edge
+    await topoViewerPage.createLink("srl1", "srl2", "e1-20", "e1-20");
+    await page.waitForTimeout(500);
+
+    // Verify edge was added to YAML
+    let yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
+    expect(yaml).toContain("e1-20");
+    let linkCount = (yaml.match(/endpoints:/g) || []).length;
+    expect(linkCount).toBe(initialLinkCount + 1);
+
+    // Undo
+    await topoViewerPage.undo();
+    await page.waitForTimeout(500);
+
+    // Verify edge was removed from YAML
+    yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
+    expect(yaml).not.toContain("e1-20");
+    linkCount = (yaml.match(/endpoints:/g) || []).length;
+    expect(linkCount).toBe(initialLinkCount);
+
+    // Redo
+    await topoViewerPage.redo();
+    await page.waitForTimeout(500);
+
+    // Verify edge is back in YAML
+    yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
+    expect(yaml).toContain("e1-20");
+    linkCount = (yaml.match(/endpoints:/g) || []).length;
+    expect(linkCount).toBe(initialLinkCount + 1);
   });
 });
