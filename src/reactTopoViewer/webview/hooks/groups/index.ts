@@ -10,8 +10,10 @@ export { groupToEditorData, editorDataToGroup, GROUP_LABEL_POSITIONS } from "./g
 export {
   findDeepestGroupAtPosition,
   findGroupForNodeAtPosition,
+  findParentGroupForBounds,
   generateGroupId,
   handleNodeMembershipChange,
+  isGroupInsideGroup,
   isPositionInsideGroup
 } from "./groupUtils";
 

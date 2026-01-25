@@ -9,7 +9,15 @@
  * - All mutations go through GraphContext (via useDerivedAnnotations)
  * - Only UI state (selection, editing, add mode) is managed locally
  */
-import React, { createContext, useContext, useCallback, useMemo, useState, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+  useState,
+  useRef,
+  useEffect
+} from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import type {
@@ -21,7 +29,12 @@ import type { GroupEditorData } from "../hooks/groups/groupTypes";
 import type { TopoNode } from "../../shared/types/graph";
 import { useDerivedAnnotations } from "../hooks/useDerivedAnnotations";
 import { useUndoRedoContext } from "./UndoRedoContext";
-import { findDeepestGroupAtPosition, generateGroupId } from "../hooks/groups";
+import type { UndoRedoActionAnnotation } from "../hooks/state/useUndoRedo";
+import {
+  findDeepestGroupAtPosition,
+  findParentGroupForBounds,
+  generateGroupId
+} from "../hooks/groups";
 import { log } from "../utils/logger";
 
 /** Pending membership change during node drag */
@@ -181,12 +194,42 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   updateNodePositions,
   children
 }) => {
-  // Note: undoRedo can be re-enabled later for undo/redo support
-  // const { undoRedo } = useUndoRedoContext();
-  useUndoRedoContext(); // Keep provider dependency
+  // Access undo/redo context for annotation undo support
+  const { undoRedo, registerAnnotationHandler } = useUndoRedoContext();
 
   // Get derived annotation data and mutation functions from GraphContext
   const derived = useDerivedAnnotations();
+
+  // Register annotation handler for undo/redo
+  useEffect(() => {
+    registerAnnotationHandler((action: UndoRedoActionAnnotation, isUndo: boolean) => {
+      if (action.annotationType !== "group") {
+        // TODO: Handle text and shape annotations
+        return;
+      }
+
+      // Determine target state based on undo/redo direction
+      const targetState = isUndo ? action.before : action.after;
+      const currentState = isUndo ? action.after : action.before;
+
+      if (targetState === null && currentState !== null) {
+        // Delete the group (going from existing to not existing)
+        const groupId = (currentState as GroupStyleAnnotation).id;
+        derived.deleteGroup(groupId);
+        setSelectedGroupIds((prev) => {
+          const next = new Set(prev);
+          next.delete(groupId);
+          return next;
+        });
+        log.info(`[AnnotationUndo] Deleted group ${groupId}`);
+      } else if (targetState !== null && currentState === null) {
+        // Add the group back (going from not existing to existing)
+        const group = targetState as GroupStyleAnnotation;
+        derived.addGroup(group);
+        log.info(`[AnnotationUndo] Restored group ${group.id}`);
+      }
+    });
+  }, [registerAnnotationHandler, derived]);
 
   // ============================================================================
   // Local UI State (not stored in GraphContext)
@@ -346,40 +389,110 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       return;
     }
     const viewport = rfInstance?.getViewport() ?? { x: 0, y: 0, zoom: 1 };
+    const newGroupId = generateGroupId(derived.groups);
+
+    // Get selected nodes from React Flow to create group around them
+    const rfNodes = rfInstance?.getNodes() ?? [];
+    const selectedNodes = rfNodes.filter((n) => n.selected && n.type !== "group");
+
+    let position: { x: number; y: number };
+    let width: number;
+    let height: number;
+    const members: string[] = [];
+    const PADDING = 40; // Padding around nodes
+
+    if (selectedNodes.length > 0) {
+      // Calculate bounding box of selected nodes
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const node of selectedNodes) {
+        const nodeWidth = node.measured?.width ?? 100;
+        const nodeHeight = node.measured?.height ?? 100;
+        minX = Math.min(minX, node.position.x);
+        minY = Math.min(minY, node.position.y);
+        maxX = Math.max(maxX, node.position.x + nodeWidth);
+        maxY = Math.max(maxY, node.position.y + nodeHeight);
+        members.push(node.id);
+      }
+      position = { x: minX - PADDING, y: minY - PADDING };
+      width = maxX - minX + PADDING * 2;
+      height = maxY - minY + PADDING * 2;
+    } else {
+      // No selection - create at viewport position
+      position = { x: -viewport.x / viewport.zoom + 200, y: -viewport.y / viewport.zoom + 200 };
+      width = 300;
+      height = 200;
+    }
+
+    // Find the parent group (smallest existing group that contains this new group)
+    const parentGroup = findParentGroupForBounds(
+      { x: position.x, y: position.y, width, height },
+      derived.groups,
+      newGroupId
+    );
+
     const newGroup: GroupStyleAnnotation = {
-      id: generateGroupId(derived.groups),
+      id: newGroupId,
       name: "New Group",
       level: "1",
-      position: { x: -viewport.x / viewport.zoom + 200, y: -viewport.y / viewport.zoom + 200 },
-      width: 300,
-      height: 200,
+      position,
+      width,
+      height,
       backgroundColor: "rgba(100, 100, 255, 0.1)",
       borderColor: "#666",
       borderWidth: 2,
       borderStyle: "dashed",
       borderRadius: 8,
-      members: []
+      members,
+      ...(parentGroup ? { parentId: parentGroup.id } : {})
     };
     derived.addGroup(newGroup);
-  }, [mode, isLocked, onLockedAction, rfInstance, derived]);
+    // Push undo action: before=null (didn't exist), after=newGroup (created)
+    undoRedo.pushAction({
+      type: "annotation",
+      annotationType: "group",
+      before: null,
+      after: newGroup as unknown as Record<string, unknown>
+    });
+  }, [mode, isLocked, onLockedAction, rfInstance, derived, undoRedo]);
 
   const deleteGroupWithUndo = useCallback(
     (id: string) => {
+      // Capture group state before deletion for undo
+      const group = derived.groups.find((g) => g.id === id);
       derived.deleteGroup(id);
       setSelectedGroupIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
+      // Push undo action: before=group (existed), after=null (deleted)
+      if (group) {
+        undoRedo.pushAction({
+          type: "annotation",
+          annotationType: "group",
+          before: group as unknown as Record<string, unknown>,
+          after: null
+        });
+      }
     },
-    [derived]
+    [derived, undoRedo]
   );
 
   const addGroupWithUndo = useCallback(
     (group: GroupStyleAnnotation) => {
       derived.addGroup(group);
+      // Push undo action: before=null (didn't exist), after=group (created)
+      undoRedo.pushAction({
+        type: "annotation",
+        annotationType: "group",
+        before: null,
+        after: group as unknown as Record<string, unknown>
+      });
     },
-    [derived]
+    [derived, undoRedo]
   );
 
   // Group drag handlers

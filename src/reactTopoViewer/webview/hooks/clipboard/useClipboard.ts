@@ -47,6 +47,28 @@ interface ClipboardData {
   timestamp: number;
 }
 
+/** Options for useClipboard hook */
+export interface UseClipboardOptions {
+  /** Custom node creation callback (includes YAML persistence) */
+  onNodeCreated?: (
+    nodeId: string,
+    nodeElement: TopoNode,
+    position: { x: number; y: number }
+  ) => void;
+  /** Custom edge creation callback (includes YAML persistence) */
+  onEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void;
+}
+
 /** Return type for useClipboard hook */
 export interface UseClipboardReturn {
   /** Copy selected nodes and edges to clipboard */
@@ -76,8 +98,11 @@ let pasteCounter = 0;
 /**
  * Hook that provides clipboard operations for nodes and edges.
  * Uses the browser's clipboard API for persistence.
+ *
+ * @param options - Optional callbacks for node/edge creation that include persistence
  */
-export function useClipboard(): UseClipboardReturn {
+export function useClipboard(options: UseClipboardOptions = {}): UseClipboardReturn {
+  const { onNodeCreated, onEdgeCreated } = options;
   const { nodes, addNode, addEdge } = useGraph();
   const { rfInstance } = useViewport();
   const { undoRedo } = useUndoRedoContext();
@@ -95,12 +120,19 @@ export function useClipboard(): UseClipboardReturn {
 
     const instance = rfInstance;
     const allNodes = instance.getNodes();
-    const selectedNodes = allNodes.filter((n: { selected?: boolean }) => n.selected);
+    // Filter selected nodes, excluding group nodes (they are annotation overlays, not topology elements)
+    const selectedNodes = allNodes.filter(
+      (n: { selected?: boolean; type?: string }) => n.selected && n.type !== "group"
+    );
 
     if (selectedNodes.length === 0) {
       log.info("[Clipboard] No nodes selected to copy");
       return false;
     }
+
+    log.info(
+      `[Clipboard] Selected ${selectedNodes.length} nodes for copy: ${selectedNodes.map((n: { id: string }) => n.id).join(", ")}`
+    );
 
     const selectedNodeIds = new Set(selectedNodes.map((n: { id: string }) => n.id));
 
@@ -201,12 +233,30 @@ export function useClipboard(): UseClipboardReturn {
       pasteCounter++;
       const offset = pasteCounter * 20;
 
-      const usedNames = new Set<string>(nodes.map((n) => n.id));
+      // Get fresh nodes from React Flow instance to ensure we have the latest state
+      // This avoids stale closure issues where `nodes` from useGraph() might be outdated
+      const currentNodes = rfInstance?.getNodes() ?? nodes;
+      const usedNames = new Set<string>(currentNodes.map((n: { id: string }) => n.id));
+
+      // Direct console.log for debugging (bypasses VS Code message bridge)
+      console.log(
+        `[Clipboard] Building unique IDs from ${usedNames.size} existing nodes:`,
+        Array.from(usedNames)
+      );
+      log.info(
+        `[Clipboard] Building unique IDs from ${usedNames.size} existing nodes: ${Array.from(usedNames).join(", ")}`
+      );
+
       const idMapping = new Map<string, string>();
 
       for (const node of clipboardData.nodes) {
         const originalName = (node.data.name as string) || node.id;
+        console.log(
+          `[Clipboard] Generating ID for originalName="${originalName}", node.id="${node.id}"`
+        );
         const newId = getUniqueId(originalName, usedNames);
+        console.log(`[Clipboard] Generated unique ID: ${originalName} -> ${newId}`);
+        log.info(`[Clipboard] Generated unique ID: ${originalName} -> ${newId}`);
         usedNames.add(newId);
         idMapping.set(node.id, newId);
       }
@@ -229,11 +279,18 @@ export function useClipboard(): UseClipboardReturn {
               ...node.data,
               id: newId,
               name: newId,
-              label: (node.data.label as string) || newId,
+              label: newId, // Always use the new unique ID as the label
               role: (node.data.role as string) || "node"
             } as TopologyNodeData
           };
-          addNode(newNode);
+
+          // Use onNodeCreated callback if provided (includes YAML persistence)
+          // Otherwise fall back to addNode (React Flow state only)
+          if (onNodeCreated) {
+            onNodeCreated(newId, newNode, newPosition);
+          } else {
+            addNode(newNode);
+          }
         }
 
         let edgeCount = 0;
@@ -247,17 +304,29 @@ export function useClipboard(): UseClipboardReturn {
           const targetEndpoint = (edge.data.targetEndpoint as string) || "eth1";
           const newId = `${newSource}:${sourceEndpoint}--${newTarget}:${targetEndpoint}`;
 
-          const newEdge: TopoEdge = {
-            id: newId,
-            source: newSource,
-            target: newTarget,
-            data: {
-              ...edge.data,
+          // Use onEdgeCreated callback if provided (includes YAML persistence)
+          // Otherwise fall back to addEdge (React Flow state only)
+          if (onEdgeCreated) {
+            onEdgeCreated(newSource, newTarget, {
+              id: newId,
+              source: newSource,
+              target: newTarget,
               sourceEndpoint,
               targetEndpoint
-            } as TopologyEdgeData
-          };
-          addEdge(newEdge);
+            });
+          } else {
+            const newEdge: TopoEdge = {
+              id: newId,
+              source: newSource,
+              target: newTarget,
+              data: {
+                ...edge.data,
+                sourceEndpoint,
+                targetEndpoint
+              } as TopologyEdgeData
+            };
+            addEdge(newEdge);
+          }
           edgeCount++;
         }
 
@@ -268,7 +337,7 @@ export function useClipboard(): UseClipboardReturn {
 
       return true;
     },
-    [rfInstance, nodes, addNode, addEdge, undoRedo]
+    [rfInstance, nodes, addNode, addEdge, undoRedo, onNodeCreated, onEdgeCreated]
   );
 
   /**

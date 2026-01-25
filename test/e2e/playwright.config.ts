@@ -32,7 +32,11 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] }
+      use: {
+        ...devices["Desktop Chrome"],
+        // Grant clipboard permissions for copy/paste tests
+        permissions: ["clipboard-read", "clipboard-write"]
+      }
     }
   ],
   webServer: {

@@ -6,12 +6,13 @@
  */
 import React from "react";
 
-import { useClipboard } from "../clipboard";
+import { useClipboard, type UseClipboardOptions } from "../clipboard";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 
 /**
  * Annotations interface subset for clipboard operations
@@ -46,8 +47,24 @@ export interface ClipboardHandlersConfig {
     beginBatch: () => void;
     endBatch: () => void;
   };
-  handleNodeCreatedCallback?: unknown;
-  handleEdgeCreated?: unknown;
+  /** Callback for node creation (includes YAML persistence and undo) */
+  handleNodeCreatedCallback?: (
+    nodeId: string,
+    nodeElement: TopoNode,
+    position: { x: number; y: number }
+  ) => void;
+  /** Callback for edge creation (includes YAML persistence and undo) */
+  handleEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void;
 }
 
 /**
@@ -70,10 +87,19 @@ export interface ClipboardHandlersReturn {
  * Hook that provides debounced clipboard operations.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { annotations } = config;
+  const { annotations, handleNodeCreatedCallback, handleEdgeCreated } = config;
 
-  // Use the new React Flow clipboard hook
-  const clipboard = useClipboard();
+  // Build clipboard options with persistence callbacks
+  const clipboardOptions: UseClipboardOptions = React.useMemo(
+    () => ({
+      onNodeCreated: handleNodeCreatedCallback,
+      onEdgeCreated: handleEdgeCreated
+    }),
+    [handleNodeCreatedCallback, handleEdgeCreated]
+  );
+
+  // Use the React Flow clipboard hook with persistence callbacks
+  const clipboard = useClipboard(clipboardOptions);
 
   // Track if clipboard has data (synced periodically)
   const [hasData, setHasData] = React.useState(false);

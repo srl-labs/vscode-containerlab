@@ -745,9 +745,15 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       selectNode: async (nodeId: string) => {
-        // Use programmatic selection only - clicking can trigger paneClick which clears selection
+        // Use React Flow selection for proper clipboard support
+        // This sets node.selected = true which is what clipboard copy checks
         await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
+          // Use selectNodesForClipboard for React Flow selection
+          if (dev?.selectNodesForClipboard) {
+            dev.selectNodesForClipboard([id]);
+          }
+          // Also update TopoViewerContext state for UI sync
           if (dev?.selectNode) {
             dev.selectNode(id);
           }
@@ -756,14 +762,20 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for React state to propagate
         await page.waitForTimeout(100);
 
-        // Verify selection was set
-        const selectedId = await page.evaluate(() => {
+        // Verify React Flow selection was set
+        const selectedIds = await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          return dev?.selectedNode?.() ?? null;
+          if (!dev?.rfInstance) return [];
+          const nodes = dev.rfInstance.getNodes();
+          return nodes
+            .filter((n: { selected?: boolean }) => n.selected)
+            .map((n: { id: string }) => n.id);
         });
 
-        if (selectedId !== nodeId) {
-          console.warn(`Selection verification failed: expected ${nodeId}, got ${selectedId}`);
+        if (!selectedIds.includes(nodeId)) {
+          console.warn(
+            `Selection verification failed: expected ${nodeId} in ${selectedIds.join(", ")}`
+          );
         }
       },
 

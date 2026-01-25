@@ -257,6 +257,30 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.selectedEdge = () => selectedEdgeRef.current ?? null;
       if (selectNode) window.__DEV__.selectNode = selectNode;
       if (selectEdge) window.__DEV__.selectEdge = selectEdge;
+
+      // React Flow node selection for clipboard operations
+      // This updates the React Flow nodes' `selected` property directly
+      window.__DEV__.selectNodesForClipboard = (nodeIds: string[]) => {
+        if (!rfInstance) return;
+        const nodeIdSet = new Set(nodeIds);
+        const nodes = rfInstance.getNodes();
+        const updatedNodes = nodes.map((node) => ({
+          ...node,
+          selected: nodeIdSet.has(node.id)
+        }));
+        rfInstance.setNodes(updatedNodes);
+      };
+
+      // Clear all React Flow node selections
+      window.__DEV__.clearNodeSelection = () => {
+        if (!rfInstance) return;
+        const nodes = rfInstance.getNodes();
+        const updatedNodes = nodes.map((node) => ({
+          ...node,
+          selected: false
+        }));
+        rfInstance.setNodes(updatedNodes);
+      };
     }
-  }, [selectNode, selectEdge]); // Only re-create functions when actions change, not on every selection change
+  }, [selectNode, selectEdge, rfInstance]); // Include rfInstance in dependencies
 }

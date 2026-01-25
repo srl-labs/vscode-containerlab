@@ -237,13 +237,15 @@ const AppContent: React.FC<{
   const editingNodeRawData = React.useMemo(() => {
     if (!state.editingNode) return null;
     const node = nodes.find((n) => n.id === state.editingNode);
-    return node?.data as Record<string, unknown> | null;
+    if (!node) return null;
+    return { id: node.id, ...(node.data as Record<string, unknown>) };
   }, [state.editingNode, nodes, state.editorDataVersion]);
 
   const editingNetworkRawData = React.useMemo(() => {
     if (!state.editingNetwork) return null;
     const node = nodes.find((n) => n.id === state.editingNetwork);
-    return node?.data as Record<string, unknown> | null;
+    if (!node) return null;
+    return { id: node.id, ...(node.data as Record<string, unknown>) };
   }, [state.editingNetwork, nodes, state.editorDataVersion]);
 
   const editingLinkRawData = React.useMemo(() => {
