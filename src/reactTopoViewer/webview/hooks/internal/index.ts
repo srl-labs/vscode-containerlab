@@ -15,7 +15,7 @@ export {
   useAppHandlers
 } from "../ui";
 export { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../panels";
-export { useLayoutControls, useContextMenuHandlers } from "../useAppState";
+export { useLayoutControls, useContextMenuHandlers } from "../ui/useAppState";
 
 // App composition hooks
 export {

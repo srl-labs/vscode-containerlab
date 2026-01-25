@@ -43,7 +43,7 @@ import {
   useCanvasHandlers,
   useAnnotationCanvasHandlers,
   GRID_SIZE
-} from "../../hooks/react-flow";
+} from "../../hooks/canvas";
 import { rafThrottle } from "../../utils/throttle";
 
 import {

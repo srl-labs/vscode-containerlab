@@ -5,7 +5,7 @@
 import type React from "react";
 import { useCallback, useState } from "react";
 
-import { deleteNode } from "../services";
+import { deleteNode } from "../../services";
 
 /**
  * Canvas ref interface for layout controls.
@@ -92,10 +92,7 @@ export function snapToGrid(value: number): number {
   return Math.round((value - halfSpacing) / GRID_SPACING) * GRID_SPACING + halfSpacing;
 }
 
-export function useLayoutControls(
-  canvasRef: React.RefObject<CanvasRef | null>,
-  _cyInstance: null
-): {
+export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>): {
   layout: LayoutOption;
   setLayout: (layout: LayoutOption) => void;
   geoMode: "pan" | "edit";

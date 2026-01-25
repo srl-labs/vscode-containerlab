@@ -6,9 +6,8 @@ import React from "react";
 
 import type { LinkLabelMode } from "../../context/TopoViewerContext";
 import { useTopoViewerActions, useTopoViewerState } from "../../context/TopoViewerContext";
-import { DEFAULT_GRID_LINE_WIDTH } from "../../hooks/useAppState";
-import type { LayoutOption } from "../../hooks/useAppState";
-import { useDropdown } from "../../hooks/ui/useDropdown";
+import { DEFAULT_GRID_LINE_WIDTH, useDropdown } from "../../hooks/ui";
+import type { LayoutOption } from "../../hooks/ui";
 import {
   ENDPOINT_LABEL_OFFSET_MAX,
   ENDPOINT_LABEL_OFFSET_MIN

@@ -4,7 +4,7 @@
  */
 import React, { useCallback } from "react";
 
-import type { NodeData } from "../../hooks/useAppState";
+import type { NodeData } from "../../hooks/ui";
 
 import { FloatingPanel } from "./InfoFloatingPanel";
 

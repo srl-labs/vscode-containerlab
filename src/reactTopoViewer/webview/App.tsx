@@ -103,15 +103,8 @@ const AppContent: React.FC<{
 
   // Graph state from GraphContext (React Flow is source of truth)
   const { nodes, edges } = useGraph();
-  const {
-    addNode,
-    addEdge,
-    removeNodeAndEdges,
-    removeEdge,
-    updateNodePositions,
-    updateNodeData,
-    renameNode
-  } = useGraphActions();
+  const { addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodeData, renameNode } =
+    useGraphActions();
 
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
@@ -431,7 +424,7 @@ const AppContent: React.FC<{
   });
 
   // App-level handlers
-  const { handleMoveComplete, handleDeselectAll } = useAppHandlers({
+  const { handleDeselectAll } = useAppHandlers({
     selectionCallbacks: { selectNode, selectEdge, editNode, editEdge },
     undoRedo,
     floatingPanelRef,
@@ -797,8 +790,7 @@ export const App: React.FC = () => {
 
   // Layout controls
   const layoutControls = useLayoutControls(
-    reactFlowRef as unknown as React.RefObject<import("./hooks/useAppState").CanvasRef | null>,
-    null
+    reactFlowRef as unknown as React.RefObject<import("./hooks/ui/useAppState").CanvasRef | null>
   );
 
   // Handle edge annotations update from GraphContext

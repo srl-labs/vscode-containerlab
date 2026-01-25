@@ -1,5 +1,5 @@
 /**
- * React Flow related hooks
+ * Canvas interaction hooks (React Flow integration)
  */
 export {
   useDeleteHandlers,

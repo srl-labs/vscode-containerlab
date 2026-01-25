@@ -70,3 +70,14 @@ export type {
   FilterableDropdownOption,
   UseFilterableDropdownReturn
 } from "./useFilterableDropdown";
+
+// ============================================================================
+// App State (Layout & Context Menu)
+// ============================================================================
+export {
+  useLayoutControls,
+  useContextMenuHandlers,
+  snapToGrid,
+  DEFAULT_GRID_LINE_WIDTH
+} from "./useAppState";
+export type { CanvasRef, LayoutOption, NodeData, LinkData } from "./useAppState";

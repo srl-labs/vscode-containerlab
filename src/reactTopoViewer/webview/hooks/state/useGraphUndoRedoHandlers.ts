@@ -642,8 +642,8 @@ function useGraphMutationHandlers(params: {
         id: edgeId,
         source: edge.source,
         target: edge.target,
-        sourceEndpoint: edgeData?.sourceEndpoint || "",
-        targetEndpoint: edgeData?.targetEndpoint || ""
+        sourceEndpoint: (edgeData?.sourceEndpoint as string) || "",
+        targetEndpoint: (edgeData?.targetEndpoint as string) || ""
       };
       void deleteLink(linkData);
     },

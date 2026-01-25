@@ -464,7 +464,7 @@ function usePaneClickHandler(
   onLockedAction?: () => void
 ) {
   return useCallback(
-    (event: React.MouseEvent) => {
+    (_event: React.MouseEvent) => {
       closeContextMenu();
 
       selectNode(null);
