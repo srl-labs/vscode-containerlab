@@ -11,6 +11,11 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
 import type { TopoNode, TopoEdge } from "../shared/types/graph";
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation
+} from "../shared/types/topology";
 
 import { ReactFlowCanvas, type ReactFlowCanvasRef } from "./components/react-flow-canvas";
 import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
@@ -61,11 +66,11 @@ import {
   useGraphCreation,
   // External file change
   useExternalFileChange,
-  // React Flow annotation nodes
-  useAnnotationNodes,
   // Types
   type GraphChange
 } from "./hooks/internal";
+import { annotationsToNodes } from "./utils/annotationNodeConverters";
+import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
 import { convertToLinkEditorData } from "./utils/linkEditorConversions";
 import { saveNodePositions } from "./services";
 import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "./utils/edgeAnnotations";
@@ -120,12 +125,9 @@ const AppContent: React.FC<{
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
 
-  // Convert annotations to React Flow nodes
-  const { annotationNodes } = useAnnotationNodes({
-    freeTextAnnotations: annotations.textAnnotations,
-    freeShapeAnnotations: annotations.shapeAnnotations,
-    groups: annotations.groups
-  });
+  // Persist annotation node changes to JSON file
+  // This watches GraphContext for annotation node changes and saves them
+  useAnnotationPersistence();
 
   // Toast notifications
   const { toasts, addToast, dismissToast } = useToasts();
@@ -597,63 +599,9 @@ const AppContent: React.FC<{
       // Group handlers
       onUpdateGroupSize: annotations.updateGroupSizeWithUndo,
       onUpdateGroupPosition: (id: string, newPosition: { x: number; y: number }) => {
-        // Find the group to get its current position
-        const group = annotations.groups.find((g) => g.id === id);
-        if (!group) return;
-
-        // Calculate the delta
-        const dx = newPosition.x - group.position.x;
-        const dy = newPosition.y - group.position.y;
-
-        // Update the group position
+        // Only update the group position - member movement is handled by onNodeDrag in useCanvasHandlers
+        // This avoids double-updates that cause React Flow "node not initialized" warnings
         annotations.updateGroup(id, { position: newPosition });
-
-        // If no movement, nothing more to do
-        if (dx === 0 && dy === 0) return;
-
-        // Move all member topology nodes (tracked via membership map)
-        const memberNodeIds = annotations.getGroupMembers(id);
-        const nodePositionUpdates: Array<{ id: string; position: { x: number; y: number } }> = [];
-
-        for (const memberId of memberNodeIds) {
-          const node = nodes.find((n) => n.id === memberId);
-          if (node) {
-            nodePositionUpdates.push({
-              id: memberId,
-              position: { x: node.position.x + dx, y: node.position.y + dy }
-            });
-          }
-        }
-
-        // Batch update all topology node positions (React state only - persist happens on drag end)
-        if (nodePositionUpdates.length > 0) {
-          updateNodePositions(nodePositionUpdates);
-        }
-
-        // Move text annotations that belong to this group (tracked via groupId field)
-        for (const textAnn of annotations.textAnnotations) {
-          if (textAnn.groupId === id) {
-            annotations.updateTextAnnotation(textAnn.id, {
-              position: { x: textAnn.position.x + dx, y: textAnn.position.y + dy }
-            });
-          }
-        }
-
-        // Move shape annotations that belong to this group (tracked via groupId field)
-        for (const shapeAnn of annotations.shapeAnnotations) {
-          if (shapeAnn.groupId === id) {
-            const newShapePos = { x: shapeAnn.position.x + dx, y: shapeAnn.position.y + dy };
-            // For lines, also move the end position
-            if (shapeAnn.endPosition) {
-              annotations.updateShapeAnnotation(shapeAnn.id, {
-                position: newShapePos,
-                endPosition: { x: shapeAnn.endPosition.x + dx, y: shapeAnn.endPosition.y + dy }
-              });
-            } else {
-              annotations.updateShapeAnnotation(shapeAnn.id, { position: newShapePos });
-            }
-          }
-        }
       },
       onGroupDragEnd: (groupId: string) => {
         // Save member topology node positions to file on drag end
@@ -673,7 +621,9 @@ const AppContent: React.FC<{
         }
       },
       onEditGroup: annotations.editGroup,
-      onDeleteGroup: annotations.deleteGroupWithUndo
+      onDeleteGroup: annotations.deleteGroupWithUndo,
+      // Get group members (for group dragging)
+      getGroupMembers: annotations.getGroupMembers
     }),
     [annotations, nodes]
   );
@@ -711,7 +661,6 @@ const AppContent: React.FC<{
           ref={reactFlowRef}
           nodes={filteredNodes as TopoNode[]}
           edges={filteredEdges as TopoEdge[]}
-          annotationNodes={annotationNodes}
           annotationMode={annotationMode}
           annotationHandlers={
             canvasAnnotationHandlers as import("./components/react-flow-canvas/types").AnnotationHandlers
@@ -862,10 +811,35 @@ export const App: React.FC = () => {
   const { state } = useTopoViewerState();
   const { setEdgeAnnotations } = useTopoViewerActions();
 
-  // Get initial data
-  const initialData = (window as { __INITIAL_DATA__?: { nodes?: TopoNode[]; edges?: TopoEdge[] } })
-    .__INITIAL_DATA__;
-  const initialNodes = initialData?.nodes ?? [];
+  // Get initial data including annotations
+  const initialData = (
+    window as {
+      __INITIAL_DATA__?: {
+        nodes?: TopoNode[];
+        edges?: TopoEdge[];
+        freeTextAnnotations?: FreeTextAnnotation[];
+        freeShapeAnnotations?: FreeShapeAnnotation[];
+        groupStyleAnnotations?: GroupStyleAnnotation[];
+      };
+    }
+  ).__INITIAL_DATA__;
+
+  // Convert annotation arrays to React Flow nodes and combine with topology nodes
+  const initialNodes = React.useMemo((): TopoNode[] => {
+    const topoNodes = initialData?.nodes ?? [];
+    const annotationNodes = annotationsToNodes(
+      initialData?.freeTextAnnotations ?? [],
+      initialData?.freeShapeAnnotations ?? [],
+      initialData?.groupStyleAnnotations ?? []
+    ) as TopoNode[];
+    return [...topoNodes, ...annotationNodes];
+  }, [
+    initialData?.nodes,
+    initialData?.freeTextAnnotations,
+    initialData?.freeShapeAnnotations,
+    initialData?.groupStyleAnnotations
+  ]);
+
   const initialEdges = initialData?.edges ?? [];
 
   // ReactFlow canvas ref and instance

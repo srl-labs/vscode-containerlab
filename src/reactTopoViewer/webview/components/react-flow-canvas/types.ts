@@ -226,6 +226,8 @@ export interface AnnotationHandlers {
   onEditGroup?: (id: string) => void;
   /** Delete a group annotation */
   onDeleteGroup?: (id: string) => void;
+  /** Get members of a group (for group dragging) */
+  getGroupMembers?: (groupId: string) => string[];
 }
 
 /** Position entry for undo/redo move tracking */
@@ -238,12 +240,10 @@ export interface MovePositionEntry {
  * Props for ReactFlowCanvas component
  */
 export interface ReactFlowCanvasProps {
-  /** ReactFlow nodes */
+  /** ReactFlow nodes (includes both topology and annotation nodes) */
   nodes?: TopoNode[];
   /** ReactFlow edges */
   edges?: TopoEdge[];
-  /** Additional nodes to render (e.g., annotations) */
-  annotationNodes?: Node[];
   /** Annotation add mode state */
   annotationMode?: AnnotationModeState;
   /** Annotation event handlers */

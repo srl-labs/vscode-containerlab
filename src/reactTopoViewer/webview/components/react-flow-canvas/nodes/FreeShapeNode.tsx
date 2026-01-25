@@ -254,7 +254,7 @@ interface LineNodeProps {
   readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
 }
 
-/** Line padding constant (must match useAnnotationNodes.ts) */
+/** Line padding constant (must match annotationNodeConverters.ts) */
 const LINE_PADDING = 20;
 
 /** Extract line positions from data with defaults */

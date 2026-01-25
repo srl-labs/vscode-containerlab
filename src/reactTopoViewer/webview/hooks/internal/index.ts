@@ -51,6 +51,3 @@ export { useAppGroups } from "../groups";
 
 // External file change handling
 export { useExternalFileChange } from "../useExternalFileChange";
-
-// React Flow annotation nodes conversion
-export { useAnnotationNodes } from "../react-flow";

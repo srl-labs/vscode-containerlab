@@ -17,9 +17,6 @@ export {
   type DragPositionEntry
 } from "./useCanvasHandlers";
 
-// Annotation nodes hook
-export { useAnnotationNodes, type AnnotationAddModeState } from "./useAnnotationNodes";
-
 // Annotation canvas handlers hook
 export { useAnnotationCanvasHandlers } from "./useAnnotationCanvasHandlers";
 

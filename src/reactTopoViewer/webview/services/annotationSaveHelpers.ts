@@ -117,3 +117,48 @@ export async function saveNodeGroupMembership(
     return { ...current, nodeAnnotations };
   });
 }
+
+/**
+ * Save all node group memberships at once via AnnotationsIO.
+ * Replaces the entire nodeAnnotations array with the provided memberships.
+ */
+export async function saveAllNodeGroupMemberships(
+  memberships: Array<{ id: string; group?: string }>
+): Promise<void> {
+  await saveAnnotationsGeneric((current) => {
+    // Build map of new memberships
+    const membershipMap = new Map(memberships.filter((m) => m.group).map((m) => [m.id, m.group!]));
+
+    // Preserve existing nodeAnnotations but update group field
+    const existingAnnotations = current.nodeAnnotations ?? [];
+    const existingMap = new Map(existingAnnotations.map((a) => [a.id, a]));
+
+    // Merge: update existing, add new
+    const result: Array<{ id: string; group?: string }> = [];
+
+    // Process memberships
+    for (const [nodeId, groupName] of membershipMap) {
+      const existing = existingMap.get(nodeId);
+      if (existing) {
+        result.push({ ...existing, group: groupName });
+        existingMap.delete(nodeId);
+      } else {
+        result.push({ id: nodeId, group: groupName });
+      }
+    }
+
+    // Add remaining existing annotations that have no membership update
+    // but keep them without group field
+    for (const [nodeId, annotation] of existingMap) {
+      if (!membershipMap.has(nodeId)) {
+        // Remove group field if node is no longer in any group
+        const { group: _removed, groupId: _removedId, ...rest } = annotation;
+        if (Object.keys(rest).length > 1 || (Object.keys(rest).length === 1 && rest.id)) {
+          result.push(rest as typeof annotation);
+        }
+      }
+    }
+
+    return { ...current, nodeAnnotations: result };
+  });
+}

@@ -40,6 +40,10 @@ export interface GraphActions {
   ) => void;
   updateNodeData: (nodeId: string, data: Partial<Record<string, unknown>>) => void;
   renameNode: (oldId: string, newId: string, name?: string) => void;
+  /** Update any node properties (position, dimensions, data) */
+  updateNode: (nodeId: string, updates: Partial<Node>) => void;
+  /** Replace a node entirely (for annotation updates) */
+  replaceNode: (nodeId: string, newNode: Node) => void;
 }
 
 /**
@@ -235,6 +239,29 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
     [setNodes, setEdges]
   );
 
+  // Update any node properties (for annotation nodes)
+  const updateNode = useCallback(
+    (nodeId: string, updates: Partial<Node>) => {
+      setNodes((current) =>
+        current.map((node) => {
+          if (node.id !== nodeId) return node;
+          // Merge data if provided
+          const mergedData = updates.data ? { ...node.data, ...updates.data } : node.data;
+          return { ...node, ...updates, data: mergedData };
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  // Replace a node entirely
+  const replaceNode = useCallback(
+    (nodeId: string, newNode: Node) => {
+      setNodes((current) => current.map((node) => (node.id === nodeId ? newNode : node)));
+    },
+    [setNodes]
+  );
+
   // Handle extension messages
   useEffect(() => {
     const handleMessage = (event: TypedMessageEvent) => {
@@ -329,7 +356,9 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
       removeNodeAndEdges,
       updateNodePositions,
       updateNodeData,
-      renameNode
+      renameNode,
+      updateNode,
+      replaceNode
     }),
     [
       nodes,
@@ -345,7 +374,9 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
       removeNodeAndEdges,
       updateNodePositions,
       updateNodeData,
-      renameNode
+      renameNode,
+      updateNode,
+      replaceNode
     ]
   );
 
@@ -389,7 +420,9 @@ export function useGraphActions(): GraphActions {
       removeNodeAndEdges: context.removeNodeAndEdges,
       updateNodePositions: context.updateNodePositions,
       updateNodeData: context.updateNodeData,
-      renameNode: context.renameNode
+      renameNode: context.renameNode,
+      updateNode: context.updateNode,
+      replaceNode: context.replaceNode
     }),
     [context]
   );

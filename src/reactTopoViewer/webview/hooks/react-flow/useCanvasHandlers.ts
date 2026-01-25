@@ -38,17 +38,10 @@ export interface DragPositionEntry {
   position: { x: number; y: number };
 }
 
-/** Handlers for annotation position changes during drag */
-export interface AnnotationPositionHandlers {
-  onUpdateFreeTextPosition?: (id: string, position: { x: number; y: number }) => void;
-  onUpdateFreeShapePosition?: (id: string, position: { x: number; y: number }) => void;
-  onUpdateGroupPosition?: (id: string, position: { x: number; y: number }) => void;
-}
-
-/** Handlers for annotation selection changes */
-export interface AnnotationSelectionHandlers {
-  onUpdateAnnotationSelection: (nodeId: string, selected: boolean) => void;
-  onClearAnnotationSelection: () => void;
+/** Handlers for group member movement during drag */
+export interface GroupMemberHandlers {
+  /** Get member node IDs for a group */
+  getGroupMembers?: (groupId: string) => string[];
 }
 
 interface CanvasHandlersConfig {
@@ -62,6 +55,8 @@ interface CanvasHandlersConfig {
   onLockedAction?: () => void;
   /** Current nodes (needed for position tracking) */
   nodes?: Node[];
+  /** Direct setNodes for member node updates (bypasses React Flow drag tracking) */
+  setNodes?: React.Dispatch<React.SetStateAction<Node[]>>;
   /** Callback when a move is complete (for undo/redo) */
   onMoveComplete?: (
     beforePositions: DragPositionEntry[],
@@ -79,10 +74,8 @@ interface CanvasHandlersConfig {
       targetEndpoint: string;
     }
   ) => void;
-  /** Handlers for annotation position updates (for live drag rendering) */
-  annotationPositionHandlers?: AnnotationPositionHandlers;
-  /** Handlers for annotation selection changes */
-  annotationSelectionHandlers?: AnnotationSelectionHandlers;
+  /** Handlers for group member movement */
+  groupMemberHandlers?: GroupMemberHandlers;
 }
 
 interface ContextMenuState {
@@ -105,6 +98,7 @@ interface CanvasHandlers {
   onEdgeContextMenu: (event: React.MouseEvent, edge: Edge) => void;
   onPaneContextMenu: (event: MouseEvent | React.MouseEvent) => void;
   onNodeDragStart: NodeMouseHandler;
+  onNodeDrag: NodeMouseHandler;
   onNodeDragStop: NodeMouseHandler;
   contextMenu: ContextMenuState;
   closeContextMenu: () => void;
@@ -123,42 +117,146 @@ function generateEdgeId(source: string, target: string): string {
   return `${source}-${target}-${Date.now()}`;
 }
 
-/** Hook for node drag handlers with undo/redo support */
+/** Hook for node drag handlers with undo/redo support and group member movement */
 function useNodeDragHandlers(
   modeRef: React.RefObject<"view" | "edit">,
   nodes: Node[] | undefined,
   onNodesChangeBase: OnNodesChange,
-  onMoveComplete?: (before: DragPositionEntry[], after: DragPositionEntry[]) => void
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
+  onMoveComplete?: (before: DragPositionEntry[], after: DragPositionEntry[]) => void,
+  groupMemberHandlers?: GroupMemberHandlers
 ) {
   const dragStartPositionsRef = useRef<DragPositionEntry[]>([]);
+  // Track the last position of a dragging group to compute delta
+  const groupLastPositionRef = useRef<Map<string, XYPosition>>(new Map());
+  // Track member IDs that are being moved with a group
+  const groupMembersRef = useRef<Map<string, string[]>>(new Map());
 
   const onNodeDragStart: NodeMouseHandler = useCallback(
     (_event, node) => {
       if (modeRef.current !== "edit" || !nodes) return;
+
+      // Capture initial positions for all selected nodes
       const nodesToCapture = nodes.filter((n) => n.selected || n.id === node.id);
       dragStartPositionsRef.current = nodesToCapture.map((n) => ({
         id: n.id,
         position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }
       }));
+
+      // If dragging a group node, capture members and their initial positions
+      if (node.type === "group-node" && groupMemberHandlers?.getGroupMembers) {
+        const memberIds = groupMemberHandlers.getGroupMembers(node.id);
+        groupMembersRef.current.set(node.id, memberIds);
+        groupLastPositionRef.current.set(node.id, { ...node.position });
+
+        // Add member nodes to the capture list if not already there
+        for (const memberId of memberIds) {
+          if (!dragStartPositionsRef.current.some((p) => p.id === memberId)) {
+            const memberNode = nodes.find((n) => n.id === memberId);
+            if (memberNode) {
+              dragStartPositionsRef.current.push({
+                id: memberId,
+                position: {
+                  x: Math.round(memberNode.position.x),
+                  y: Math.round(memberNode.position.y)
+                }
+              });
+            }
+          }
+        }
+      }
+
       log.info(
         `[ReactFlowCanvas] Drag started for ${dragStartPositionsRef.current.length} node(s)`
       );
     },
-    [modeRef, nodes]
+    [modeRef, nodes, groupMemberHandlers]
+  );
+
+  // Called during drag - moves members with group using direct state update
+  const onNodeDrag: NodeMouseHandler = useCallback(
+    (_event, node) => {
+      if (modeRef.current !== "edit" || !setNodes) return;
+
+      // Handle group member movement during drag
+      if (node.type === "group-node") {
+        const lastPos = groupLastPositionRef.current.get(node.id);
+        const memberIds = groupMembersRef.current.get(node.id);
+
+        if (lastPos && memberIds && memberIds.length > 0) {
+          // Calculate delta
+          const dx = node.position.x - lastPos.x;
+          const dy = node.position.y - lastPos.y;
+
+          if (dx !== 0 || dy !== 0) {
+            // Build a set for fast lookup
+            const memberIdSet = new Set(memberIds);
+
+            // Update member positions directly via setNodes (bypasses React Flow drag tracking)
+            setNodes((currentNodes) =>
+              currentNodes.map((n) => {
+                if (memberIdSet.has(n.id)) {
+                  return {
+                    ...n,
+                    position: {
+                      x: n.position.x + dx,
+                      y: n.position.y + dy
+                    }
+                  };
+                }
+                return n;
+              })
+            );
+          }
+        }
+
+        // Update last position for next delta calculation
+        groupLastPositionRef.current.set(node.id, { ...node.position });
+      }
+    },
+    [modeRef, setNodes]
   );
 
   const onNodeDragStop: NodeMouseHandler = useCallback(
     (_event, node) => {
       if (modeRef.current !== "edit") return;
+
       const snappedPosition = snapToGrid(node.position);
-      onNodesChangeBase([
+      const positionsToSave: DragPositionEntry[] = [{ id: node.id, position: snappedPosition }];
+      const changes: NodeChange[] = [
         { type: "position", id: node.id, position: snappedPosition, dragging: false }
-      ]);
+      ];
+
+      // For group nodes, also snap member positions
+      if (node.type === "group-node") {
+        const memberIds = groupMembersRef.current.get(node.id) ?? [];
+
+        for (const memberId of memberIds) {
+          const memberNode = nodes?.find((n) => n.id === memberId);
+          if (memberNode) {
+            const memberSnapped = snapToGrid(memberNode.position);
+            changes.push({
+              type: "position",
+              id: memberId,
+              position: memberSnapped,
+              dragging: false
+            });
+            positionsToSave.push({ id: memberId, position: memberSnapped });
+          }
+        }
+
+        // Clean up refs
+        groupMembersRef.current.delete(node.id);
+        groupLastPositionRef.current.delete(node.id);
+      }
+
+      onNodesChangeBase(changes);
       log.info(
         `[ReactFlowCanvas] Node ${node.id} snapped to ${snappedPosition.x}, ${snappedPosition.y}`
       );
-      // Save position to annotations file via TopologyIO service
-      void saveNodePositionsService([{ id: node.id, position: snappedPosition }]);
+
+      // Save all positions to annotations file via TopologyIO service
+      void saveNodePositionsService(positionsToSave);
 
       if (onMoveComplete && dragStartPositionsRef.current.length > 0) {
         const afterPositions = computeAfterPositions(
@@ -180,7 +278,7 @@ function useNodeDragHandlers(
     [modeRef, nodes, onNodesChangeBase, onMoveComplete]
   );
 
-  return { onNodeDragStart, onNodeDragStop };
+  return { onNodeDragStart, onNodeDrag, onNodeDragStop };
 }
 
 /** Compute after positions for undo/redo */
@@ -468,10 +566,10 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     onNodesChangeBase,
     onLockedAction,
     nodes,
+    setNodes,
     onMoveComplete,
     onEdgeCreated,
-    annotationPositionHandlers,
-    annotationSelectionHandlers
+    groupMemberHandlers
   } = config;
 
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
@@ -523,61 +621,23 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   );
   const onConnect = useConnectionHandler(modeRef, isLockedRef, onLockedAction, onEdgeCreated);
 
-  // Node changes handler - handles annotation and topology node changes
+  // Node changes handler - all nodes (topology + annotation) are in GraphContext
+  // GraphContext is now the single source of truth, so we just pass changes through directly
   const handleNodesChange: OnNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const regularChanges: NodeChange[] = [];
-
-      for (const change of changes) {
-        const nodeId = "id" in change ? change.id : undefined;
-        const node = nodeId ? nodes?.find((n) => n.id === nodeId) : undefined;
-        const isAnnotationNode = node && ANNOTATION_NODE_TYPES.includes(node.type || "");
-
-        if (isAnnotationNode && nodeId) {
-          // Handle position changes for annotation nodes
-          // Update position during drag for live rendering (caching in useAnnotationNodes prevents flickering)
-          if (change.type === "position" && "position" in change && change.position) {
-            const nodeType = node.type;
-
-            if (nodeType === "group-node" && annotationPositionHandlers?.onUpdateGroupPosition) {
-              annotationPositionHandlers.onUpdateGroupPosition(nodeId, change.position);
-            } else if (
-              nodeType === "free-text-node" &&
-              annotationPositionHandlers?.onUpdateFreeTextPosition
-            ) {
-              annotationPositionHandlers.onUpdateFreeTextPosition(nodeId, change.position);
-            } else if (
-              nodeType === "free-shape-node" &&
-              annotationPositionHandlers?.onUpdateFreeShapePosition
-            ) {
-              annotationPositionHandlers.onUpdateFreeShapePosition(nodeId, change.position);
-            }
-          }
-
-          // Handle selection changes for annotation nodes
-          if (change.type === "select" && annotationSelectionHandlers) {
-            annotationSelectionHandlers.onUpdateAnnotationSelection(nodeId, change.selected);
-          }
-        } else {
-          // Regular topology node changes go to GraphContext
-          regularChanges.push(change);
-        }
-      }
-
-      // Pass regular topology node changes to GraphContext
-      if (regularChanges.length > 0) {
-        onNodesChangeBase(regularChanges);
-      }
+      onNodesChangeBase(changes);
     },
-    [onNodesChangeBase, nodes, annotationPositionHandlers, annotationSelectionHandlers]
+    [onNodesChangeBase]
   );
 
   // Drag handlers (extracted hook)
-  const { onNodeDragStart, onNodeDragStop } = useNodeDragHandlers(
+  const { onNodeDragStart, onNodeDrag, onNodeDragStop } = useNodeDragHandlers(
     modeRef,
     nodes,
     onNodesChangeBase,
-    onMoveComplete
+    setNodes,
+    onMoveComplete,
+    groupMemberHandlers
   );
 
   // Context menu handlers (extracted hook)
@@ -603,6 +663,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     onEdgeContextMenu,
     onPaneContextMenu,
     onNodeDragStart,
+    onNodeDrag,
     onNodeDragStop,
     contextMenu,
     closeContextMenu

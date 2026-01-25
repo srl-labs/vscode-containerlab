@@ -212,79 +212,17 @@ const fitViewOptions = { padding: 0.2 };
 const LOW_DETAIL_ZOOM_THRESHOLD = 0.5;
 const LARGE_GRAPH_NODE_THRESHOLD = 600;
 const LARGE_GRAPH_EDGE_THRESHOLD = 900;
-const ANNOTATION_NODE_TYPES_SET = new Set(["free-text-node", "free-shape-node", "group-node"]);
-
-/**
- * Hook to sync annotation nodes into the nodes array.
- * Merges annotation nodes with topology nodes, applying selection state.
- *
- * Note: annotationNodes already have stable object references from useAnnotationNodes,
- * so we just need to apply selection state and merge with topology nodes.
- */
-function useMergedNodes(
-  propNodes: Node[] | undefined,
-  annotationNodes: Node[] | undefined,
-  annotationSelection: Map<string, boolean>
-): Node[] {
-  // Cache for annotation nodes with selection applied
-  // Stores: sourceNode (original), resultNode (with selection), selected state
-  const annotationCacheRef = useRef<
-    Map<string, { sourceNode: Node; resultNode: Node; selected: boolean }>
-  >(new Map());
-
-  // Apply selection to annotation nodes, reusing objects when possible
-  const annotationNodesWithSelection = useMemo(() => {
-    if (!annotationNodes || annotationNodes.length === 0) {
-      return [];
-    }
-
-    const cache = annotationCacheRef.current;
-    const result: Node[] = [];
-
-    for (const node of annotationNodes) {
-      const isSelected = annotationSelection.get(node.id) ?? false;
-      const cached = cache.get(node.id);
-
-      // Reuse cached result if same source node and same selection state
-      if (cached && cached.sourceNode === node && cached.selected === isSelected) {
-        result.push(cached.resultNode);
-      } else {
-        // Create new node with selection applied
-        const nodeWithSelection = { ...node, selected: isSelected };
-        cache.set(node.id, {
-          sourceNode: node,
-          resultNode: nodeWithSelection,
-          selected: isSelected
-        });
-        result.push(nodeWithSelection);
-      }
-    }
-
-    return result;
-  }, [annotationNodes, annotationSelection]);
-
-  return useMemo(() => {
-    const baseNodes = propNodes ?? [];
-    if (annotationNodesWithSelection.length === 0) {
-      return baseNodes;
-    }
-    // Filter out any annotation nodes from propNodes (shouldn't be there, but be safe)
-    const topologyNodes = baseNodes.filter((n) => !ANNOTATION_NODE_TYPES_SET.has(n.type || ""));
-
-    return [...topologyNodes, ...annotationNodesWithSelection];
-  }, [propNodes, annotationNodesWithSelection]);
-}
 
 /**
  * Inner component that uses useStore (requires ReactFlowProvider ancestor)
- * Now fully controlled - no internal useNodesState/useEdgesState
+ * Now fully controlled - nodes/edges come from GraphContext (unified source of truth).
+ * All nodes (topology + annotation) are in the same array.
  */
 const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
   (
     {
       nodes: propNodes,
       edges: propEdges,
-      annotationNodes,
       annotationMode,
       annotationHandlers,
       onNodeDelete,
@@ -303,36 +241,13 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const floatingPanelRef = useRef<{ triggerShake: () => void } | null>(null);
 
-    // Track annotation node selection state locally
-    const [annotationSelection, setAnnotationSelection] = useState<Map<string, boolean>>(
-      () => new Map()
-    );
-
-    // Callback to update annotation selection from node changes
-    const updateAnnotationSelection = useCallback((nodeId: string, selected: boolean) => {
-      setAnnotationSelection((prev) => {
-        const next = new Map(prev);
-        if (selected) {
-          next.set(nodeId, true);
-        } else {
-          next.delete(nodeId);
-        }
-        return next;
-      });
-    }, []);
-
-    // Clear all annotation selections
-    const clearAnnotationSelection = useCallback(() => {
-      setAnnotationSelection(new Map());
-    }, []);
-
-    // Merge topology nodes with annotation nodes, applying selection state
-    const mergedNodes = useMergedNodes(propNodes as Node[], annotationNodes, annotationSelection);
+    // All nodes (topology + annotation) are now unified in propNodes
+    const allNodes = (propNodes as Node[]) ?? [];
 
     // Refs for context menu (to avoid re-renders)
-    const nodesRef = useRef<Node[]>(mergedNodes);
+    const nodesRef = useRef<Node[]>(allNodes);
     const edgesRef = useRef<Edge[]>((propEdges as Edge[]) ?? []);
-    nodesRef.current = mergedNodes;
+    nodesRef.current = allNodes;
     edgesRef.current = (propEdges as Edge[]) ?? [];
 
     const handlers = useCanvasHandlers({
@@ -344,17 +259,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isLocked: state.isLocked,
       onNodesChangeBase: onNodesChange,
       onLockedAction: () => floatingPanelRef.current?.triggerShake(),
-      nodes: mergedNodes,
+      nodes: allNodes,
+      setNodes,
       onMoveComplete,
       onEdgeCreated,
-      annotationPositionHandlers: {
-        onUpdateFreeTextPosition: annotationHandlers?.onUpdateFreeTextPosition,
-        onUpdateFreeShapePosition: annotationHandlers?.onUpdateFreeShapePosition,
-        onUpdateGroupPosition: annotationHandlers?.onUpdateGroupPosition
-      },
-      annotationSelectionHandlers: {
-        onUpdateAnnotationSelection: updateAnnotationSelection,
-        onClearAnnotationSelection: clearAnnotationSelection
+      groupMemberHandlers: {
+        getGroupMembers: annotationHandlers?.getGroupMembers
       }
     });
 
@@ -370,10 +280,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onNodeDelete,
       onEdgeDelete
     );
-    const sourceNodePosition = useSourceNodePosition(linkSourceNode, mergedNodes);
+    const sourceNodePosition = useSourceNodePosition(linkSourceNode, allNodes);
 
     const isLargeGraph =
-      mergedNodes.length >= LARGE_GRAPH_NODE_THRESHOLD ||
+      allNodes.length >= LARGE_GRAPH_NODE_THRESHOLD ||
       (propEdges?.length ?? 0) >= LARGE_GRAPH_EDGE_THRESHOLD;
     const isLowDetail = useStore(
       useCallback(
@@ -397,7 +307,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const refMethods = useCanvasRefMethods(
       handlers.reactFlowInstance,
-      mergedNodes,
+      allNodes,
       (propEdges as Edge[]) ?? [],
       setNodes,
       setEdges
@@ -449,6 +359,13 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       [handlers.onNodeDragStart]
     );
 
+    const handleNodeDrag = useCallback(
+      (event: React.MouseEvent, node: Node) => {
+        handlers.onNodeDrag(event, node);
+      },
+      [handlers.onNodeDrag]
+    );
+
     const handleNodeDragStop = useCallback(
       (event: React.MouseEvent, node: Node) => {
         wrappedOnNodeDragStop(event, node);
@@ -488,7 +405,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
               <AnnotationHandlersProvider handlers={annotationHandlers}>
                 <LinkCreationProvider linkSourceNode={linkSourceNode}>
                   <ReactFlow
-                    nodes={mergedNodes}
+                    nodes={allNodes}
                     edges={(propEdges as Edge[]) ?? []}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
@@ -498,6 +415,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
                     onNodeClick={wrappedOnNodeClick}
                     onNodeDoubleClick={wrappedOnNodeDoubleClick}
                     onNodeDragStart={handleNodeDragStart}
+                    onNodeDrag={handleNodeDrag}
                     onNodeDragStop={handleNodeDragStop}
                     onNodeContextMenu={handlers.onNodeContextMenu}
                     onEdgeClick={handlers.onEdgeClick}
