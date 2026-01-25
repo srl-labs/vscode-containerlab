@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { test, expect } from "../fixtures/topoviewer";
-import { ctrlClick, rightClick } from "../helpers/cytoscape-helpers";
+import { shiftClick, rightClick } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
 const TOPOLOGY_FILE = "empty.clab.yml";
@@ -69,7 +69,8 @@ async function selectNodes(
   for (const nodeId of nodeIds.slice(1)) {
     const box = await topoViewerPage.getNodeBoundingBox(nodeId);
     expect(box).not.toBeNull();
-    await ctrlClick(page, box!.x + box!.width / 2, box!.y + box!.height / 2);
+    // React Flow uses Shift for multi-select
+    await shiftClick(page, box!.x + box!.width / 2, box!.y + box!.height / 2);
   }
   await page.waitForTimeout(200);
 }

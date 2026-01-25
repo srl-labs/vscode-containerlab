@@ -6,7 +6,7 @@ import { test, expect } from "../fixtures/topoviewer";
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
 
 /**
- * Helper to get node's topoViewerRole (icon) from Cytoscape canvas
+ * Helper to get node's topoViewerRole (icon) from React Flow canvas
  */
 async function getNodeIcon(page: Page, nodeId: string): Promise<string | undefined> {
   return page.evaluate((id) => {

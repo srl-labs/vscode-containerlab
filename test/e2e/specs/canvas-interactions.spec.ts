@@ -6,8 +6,8 @@ test.describe("Canvas Interactions", () => {
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test("canvas is visible and has correct test id", async ({ page }) => {
-    const canvas = page.locator('[data-testid="cytoscape-canvas"]');
+  test("canvas is visible and has correct selector", async ({ page }) => {
+    const canvas = page.locator(".react-flow");
     await expect(canvas).toBeVisible();
   });
 

@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { ctrlClick } from "../helpers/cytoscape-helpers";
+import { shiftClick } from "../helpers/react-flow-helpers";
 
 test.describe("Node Selection", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
@@ -22,17 +22,17 @@ test.describe("Node Selection", () => {
     expect(selectedIds.length).toBe(1);
   });
 
-  test("selects multiple nodes with Ctrl+Click", async ({ page, topoViewerPage }) => {
+  test("selects multiple nodes with Shift+Click", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(1);
 
     // Select first node normally
     await topoViewerPage.selectNode(nodeIds[0]);
 
-    // Ctrl+Click second node
+    // Shift+Click second node (React Flow uses Shift for multi-select)
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
     expect(secondNodeBox).not.toBeNull();
-    await ctrlClick(
+    await shiftClick(
       page,
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
@@ -65,7 +65,7 @@ test.describe("Node Selection", () => {
     expect(selectedIds).not.toContain(nodeIds[0]);
   });
 
-  test("clears selection with Escape key", async ({ page, topoViewerPage }) => {
+  test("clears selection with Escape key", async ({ topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -74,9 +74,8 @@ test.describe("Node Selection", () => {
     let selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(1);
 
-    // Press Escape
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(200);
+    // Use clearSelection which presses Escape and also clears React Flow selection
+    await topoViewerPage.clearSelection();
 
     selectedIds = await topoViewerPage.getSelectedNodeIds();
     expect(selectedIds.length).toBe(0);

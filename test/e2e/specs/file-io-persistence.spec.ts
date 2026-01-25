@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { drag } from "../helpers/cytoscape-helpers";
+import { drag } from "../helpers/react-flow-helpers";
 
 // Test file names
 const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
@@ -75,7 +75,7 @@ test.describe.serial("File I/O Persistence", () => {
       await topoViewerPage.setEditMode();
       await topoViewerPage.unlock();
 
-      // Get initial positions from Cytoscape
+      // Get initial positions from React Flow
       const spine1InitialCy = await topoViewerPage.getNodePosition("spine1");
       const spine2InitialCy = await topoViewerPage.getNodePosition("spine2");
 
@@ -90,7 +90,7 @@ test.describe.serial("File I/O Persistence", () => {
       );
       await page.waitForTimeout(500);
 
-      // Verify spine1 moved in Cytoscape memory
+      // Verify spine1 moved in React Flow state
       const spine1AfterDrag1 = await topoViewerPage.getNodePosition("spine1");
       expect(spine1AfterDrag1.x).not.toBe(spine1InitialCy.x);
 
@@ -105,7 +105,7 @@ test.describe.serial("File I/O Persistence", () => {
       );
       await page.waitForTimeout(500);
 
-      // Verify spine2 moved in Cytoscape memory
+      // Verify spine2 moved in React Flow state
       const spine2AfterDrag2 = await topoViewerPage.getNodePosition("spine2");
       expect(spine2AfterDrag2.x).not.toBe(spine2InitialCy.x);
 
@@ -117,7 +117,7 @@ test.describe.serial("File I/O Persistence", () => {
       const spine1Updated = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
       const spine2Updated = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine2");
 
-      // Both positions in file should match Cytoscape positions (with some tolerance)
+      // Both positions in file should match React Flow positions (with some tolerance)
       expect(Math.abs(spine1Updated!.position!.x - spine1AfterDrag1.x)).toBeLessThan(5);
       expect(Math.abs(spine2Updated!.position!.x - spine2AfterDrag2.x)).toBeLessThan(5);
     });

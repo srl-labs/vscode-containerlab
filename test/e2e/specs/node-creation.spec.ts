@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { shiftClick } from "../helpers/cytoscape-helpers";
+import { shiftClick } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
 const SIMPLE_FILE = "simple.clab.yml";

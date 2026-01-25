@@ -1,13 +1,13 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { altClick, altClickElement, getEdgeMidpoint } from "../helpers/cytoscape-helpers";
+import { altClick, altClickElement, getEdgeMidpoint } from "../helpers/react-flow-helpers";
 
 const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
 const DATACENTER_FILE = "datacenter.clab.yml";
 
 /**
  * Tests for Alt+Click delete functionality across all element types:
- * - Nodes (Cytoscape elements)
- * - Edges (Cytoscape elements)
+ * - Nodes (React Flow elements)
+ * - Edges (React Flow elements)
  * - Groups (HTML overlays)
  * - Free Text annotations (HTML overlays)
  * - Free Shape annotations (HTML overlays)

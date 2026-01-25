@@ -152,7 +152,7 @@ test.describe("SVG Export", () => {
     expect(svgString).toContain("Data Center West"); // Title text
     expect(svgString).toContain("Border Layer"); // Layer label
 
-    // Verify transform is applied to annotation layers (matching cytoscape transform)
+    // Verify transform is applied to annotation layers (matching React Flow transform)
     expect(svgString).toMatch(new RegExp(`${LAYER_GROUPS}.*transform="translate\\(`, "s"));
 
     // Log text layer content
@@ -237,7 +237,7 @@ test.describe("SVG Export", () => {
     await page.waitForTimeout(500);
 
     // Take a screenshot of the canvas for visual comparison
-    const canvasScreenshot = await page.locator('[data-testid="cytoscape-canvas"]').screenshot();
+    const canvasScreenshot = await page.locator(".react-flow").screenshot();
     await testInfo.attach("canvas-screenshot", {
       body: canvasScreenshot,
       contentType: "image/png"
@@ -246,13 +246,14 @@ test.describe("SVG Export", () => {
     // Get node positions from canvas for reference
     const nodePositions = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return {};
+      const rf = dev?.rfInstance;
+      if (!rf) return {};
       const positions: Record<string, { x: number; y: number }> = {};
-      cy.nodes().forEach((n: any) => {
-        const role = n.data("topoViewerRole");
+      const nodes = rf.getNodes?.() ?? [];
+      nodes.forEach((n: any) => {
+        const role = n.data?.topoViewerRole;
         if (role && role !== "freeText" && role !== "freeShape") {
-          positions[n.id()] = n.position();
+          positions[n.id] = n.position;
         }
       });
       return positions;
@@ -288,15 +289,16 @@ test.describe("SVG Export", () => {
       )
     );
 
-    // Get the cytoscape transform (pan and zoom)
-    const cyTransform = await page.evaluate(() => {
+    // Get the React Flow transform (pan and zoom)
+    const rfTransform = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return { pan: { x: 0, y: 0 }, zoom: 1 };
-      return { pan: cy.pan(), zoom: cy.zoom() };
+      const rf = dev?.rfInstance;
+      if (!rf) return { pan: { x: 0, y: 0 }, zoom: 1 };
+      const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+      return { pan: { x: viewport.x, y: viewport.y }, zoom: viewport.zoom };
     });
-    console.log("=== Cytoscape transform ===");
-    console.log(JSON.stringify(cyTransform, null, 2));
+    console.log("=== React Flow transform ===");
+    console.log(JSON.stringify(rfTransform, null, 2));
 
     // Open export panel
     await page.locator(SEL_NAVBAR_CAPTURE).click();
@@ -335,10 +337,10 @@ test.describe("SVG Export", () => {
       console.log("Text layer transform:", textLayerMatch[1]);
     }
 
-    // Extract the cytoscape main group transform
+    // Extract the React Flow main group transform
     const mainGroupMatch = /<g transform="(translate[^"]+scale\([^"]+)"/.exec(svgString);
     if (mainGroupMatch) {
-      console.log("Cytoscape main group transform:", mainGroupMatch[1]);
+      console.log("React Flow main group transform:", mainGroupMatch[1]);
     }
 
     // Extract group positions from SVG
@@ -363,14 +365,14 @@ test.describe("SVG Export", () => {
     expect(textLayerMatch).not.toBeNull();
     expect(mainGroupMatch).not.toBeNull();
 
-    // The annotation layer transforms should match the cytoscape transform exactly
-    // This ensures annotations are in the same coordinate space as cytoscape nodes
+    // The annotation layer transforms should match the React Flow transform exactly
+    // This ensures annotations are in the same coordinate space as React Flow nodes
     if (groupsLayerMatch && mainGroupMatch) {
       console.log("=== Transform comparison ===");
       console.log(`Annotation layer: ${groupsLayerMatch[1]}`);
-      console.log(`Cytoscape layer: ${mainGroupMatch[1]}`);
+      console.log(`React Flow layer: ${mainGroupMatch[1]}`);
 
-      // They should be equal (annotations use the same transform as cytoscape content)
+      // They should be equal (annotations use the same transform as React Flow content)
       expect(groupsLayerMatch[1]).toBe(mainGroupMatch[1]);
       expect(textLayerMatch![1]).toBe(mainGroupMatch[1]);
     }

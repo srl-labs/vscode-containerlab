@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { rightClick, getEdgeMidpoint } from "../helpers/cytoscape-helpers";
+import { rightClick, getEdgeMidpoint } from "../helpers/react-flow-helpers";
 
 // Test file name
 const SIMPLE_FILE = "simple.clab.yml";

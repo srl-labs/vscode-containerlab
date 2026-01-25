@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { drag, boxSelect } from "../helpers/cytoscape-helpers";
+import { drag, boxSelect } from "../helpers/react-flow-helpers";
 
 const SIMPLE_FILE = "simple.clab.yml";
 
@@ -190,7 +190,7 @@ test.describe("Box Selection", () => {
     page,
     topoViewerPage
   }) => {
-    // Note: Cytoscape is configured with selectionType: 'additive'
+    // Note: React Flow is configured with selectionType: 'additive'
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(1);
 
@@ -308,7 +308,7 @@ test.describe("Box Selection", () => {
     page,
     topoViewerPage
   }) => {
-    // Note: Cytoscape is configured with selectionType: 'additive'
+    // Note: React Flow is configured with selectionType: 'additive'
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 

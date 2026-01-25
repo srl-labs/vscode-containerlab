@@ -30,7 +30,7 @@ interface CreateGroupResult {
   groupsAfter: number | null;
   reactGroupsBefore: number | string;
   reactGroupsAfter?: number | string;
-  hasCy?: boolean;
+  hasRf?: boolean;
 }
 
 interface GroupDebugInfo {
@@ -104,7 +104,7 @@ function browserCreateGroup(): CreateGroupResult {
     groupsAfter: dev?.getReactGroups?.()?.length ?? 0,
     reactGroupsBefore,
     reactGroupsAfter: getReactGroupCount(dev),
-    hasCy: !!rf
+    hasRf: !!rf
   };
 }
 
@@ -391,7 +391,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
 
         // Wait for the page to be ready (including auto-load of default topology)
-        // Wait for React Flow instance instead of Cytoscape
+        // Wait for React Flow instance to be ready
         await page.waitForFunction(() => (window as any).__DEV__?.rfInstance !== undefined, {
           timeout: 15000
         });
@@ -450,7 +450,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             }
 
             // Wait for React Flow to be fully initialized
-            // React Flow doesn't have a scratch system like Cytoscape, so we just wait for instance
+            // Wait for React Flow instance to be initialized
             await page.waitForFunction(
               () => {
                 const dev = (window as any).__DEV__;
@@ -816,11 +816,22 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       selectEdge: async (edgeId: string) => {
-        // Use programmatic selection via __DEV__.selectEdge (avoids click conflicts)
+        // Use programmatic selection via __DEV__.selectEdge and also set React Flow edge.selected
         await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
+          // Update context state
           if (dev?.selectEdge) {
             dev.selectEdge(id);
+          }
+          // Also set React Flow edge.selected property
+          const rf = dev?.rfInstance;
+          if (rf) {
+            const edges = rf.getEdges?.() ?? [];
+            const updatedEdges = edges.map((e: any) => ({
+              ...e,
+              selected: e.id === id
+            }));
+            rf.setEdges(updatedEdges);
           }
         }, edgeId);
 
@@ -911,9 +922,25 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       clearSelection: async () => {
-        // Click on empty canvas area to clear selection
+        // Press Escape to clear context selection, then clear React Flow selection
         await page.keyboard.press("Escape");
         await page.waitForTimeout(100);
+        // Also clear React Flow node.selected and edge.selected properties
+        await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          dev?.clearNodeSelection?.();
+          // Clear edge selection too
+          const rf = dev?.rfInstance;
+          if (rf) {
+            const edges = rf.getEdges?.() ?? [];
+            const updatedEdges = edges.map((e: any) => ({
+              ...e,
+              selected: false
+            }));
+            rf.setEdges(updatedEdges);
+          }
+        });
+        await page.waitForTimeout(50);
       },
 
       deleteSelected: async () => {
@@ -969,7 +996,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               throw new Error("handleNodeCreatedCallback not available");
             }
 
-            // Create node element in React Flow format (not Cytoscape format)
+            // Create node element in React Flow format
             const nodeElement = {
               id: nodeId,
               type: "topology-node",
@@ -1218,7 +1245,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Use direct API call instead of keyboard events for reliability
         const result = await page.evaluate(browserCreateGroup);
         console.log(
-          `[DEBUG] createGroup: method=${result.method}, hasCy=${result.hasCy}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`
+          `[DEBUG] createGroup: method=${result.method}, hasRf=${result.hasRf}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`
         );
         // Wait for debounced save (300ms) plus processing time
         await page.waitForTimeout(1000);

@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { shiftClick, drag } from "../helpers/cytoscape-helpers";
+import { shiftClick, drag } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
 const SPINE_LEAF_FILE = "spine-leaf.clab.yml";

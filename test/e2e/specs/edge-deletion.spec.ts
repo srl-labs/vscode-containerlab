@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { ctrlClick } from "../helpers/cytoscape-helpers";
+import { shiftClick, getEdgeMidpoint } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
 const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
@@ -78,25 +78,11 @@ test.describe("Edge Deletion", () => {
     await topoViewerPage.selectEdge(edgeIds[0]);
     await page.waitForTimeout(100);
 
-    // Ctrl+click to select second edge
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[1]);
+    // Shift+click to select second edge (React Flow uses Shift for multi-select)
+    const midpoint = await getEdgeMidpoint(page, edgeIds[1]);
 
     expect(midpoint).not.toBeNull();
-    await ctrlClick(page, midpoint!.x, midpoint!.y);
+    await shiftClick(page, midpoint!.x, midpoint!.y);
     await page.waitForTimeout(200);
 
     // Verify both are selected
@@ -262,26 +248,12 @@ test.describe("Edge Deletion - File Persistence", () => {
     await topoViewerPage.selectEdge(remainingEdgeIds[0]);
     await page.waitForTimeout(100);
 
-    // Ctrl+click to select another edge if available
+    // Shift+click to select another edge if available (React Flow uses Shift for multi-select)
     if (remainingEdgeIds.length >= 2) {
-      const midpoint = await page.evaluate((id) => {
-        const dev = (window as any).__DEV__;
-        const cy = dev?.cy;
-        const edge = cy?.getElementById(id);
-        if (!edge || edge.empty()) return null;
-
-        const bb = edge.renderedBoundingBox();
-        const container = cy.container();
-        const rect = container.getBoundingClientRect();
-
-        return {
-          x: rect.left + bb.x1 + bb.w / 2,
-          y: rect.top + bb.y1 + bb.h / 2
-        };
-      }, remainingEdgeIds[1]);
+      const midpoint = await getEdgeMidpoint(page, remainingEdgeIds[1]);
 
       if (midpoint) {
-        await ctrlClick(page, midpoint.x, midpoint.y);
+        await shiftClick(page, midpoint.x, midpoint.y);
         await page.waitForTimeout(200);
       }
     }

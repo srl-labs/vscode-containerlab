@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { drag, mouseWheelZoom } from "../helpers/cytoscape-helpers";
+import { drag, mouseWheelZoom } from "../helpers/react-flow-helpers";
 
 test.describe("Zoom and Pan", () => {
   test.beforeEach(async ({ topoViewerPage }) => {

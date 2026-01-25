@@ -5,7 +5,7 @@ import Ajv from "ajv";
 import * as YAML from "yaml";
 
 import { test, expect } from "../fixtures/topoviewer";
-import { openNetworkEditor } from "../helpers/cytoscape-helpers";
+import { openNetworkEditor } from "../helpers/react-flow-helpers";
 
 /**
  * Network Nodes E2E Tests
@@ -1133,12 +1133,13 @@ test.describe("Network Node Undo/Redo", () => {
     console.log(`[DEBUG] Edge count after link creation: ${edgeCount}`);
     expect(edgeCount).toBe(2); // original link + mgmt-net link
 
-    // Get edge data from Cytoscape to verify extraData
+    // Get edge data from React Flow to verify extraData
     const allEdgeData = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return [];
-      return cy.edges().map((e: any) => e.data());
+      const rf = dev?.rfInstance;
+      if (!rf) return [];
+      const edges = rf.getEdges?.() ?? [];
+      return edges.map((e: any) => e.data);
     });
     console.log("[DEBUG] All edge data before undo:", JSON.stringify(allEdgeData, null, 2));
 
@@ -1348,7 +1349,7 @@ test.describe("Network Node Undo/Redo", () => {
     expect(selectedEdges).toContain(edgeToDelete);
 
     // Focus canvas and delete edge
-    await page.locator('[data-testid="cytoscape-canvas"]').click();
+    await page.locator(".react-flow").click();
     await page.waitForTimeout(100);
     await page.keyboard.press("Delete");
     await page.waitForTimeout(500);

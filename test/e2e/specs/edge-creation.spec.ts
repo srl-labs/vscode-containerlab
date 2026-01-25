@@ -59,7 +59,7 @@ test.describe("Edge Creation", () => {
     expect(yaml).toContain(`srl1:${sourceEndpoint}`);
     expect(yaml).toContain(`srl2:${targetEndpoint}`);
 
-    // Verify via browser-side API (using React Flow instead of Cytoscape)
+    // Verify via browser-side API (via React Flow API)
     const edgeData = await page.evaluate((expectedId) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
@@ -94,7 +94,7 @@ test.describe("Edge Creation", () => {
     const newEdgeCount = await topoViewerPage.getEdgeCount();
     expect(newEdgeCount).toBe(initialEdgeCount + 1);
 
-    // Verify self-loop edge exists (using React Flow instead of Cytoscape)
+    // Verify self-loop edge exists (via React Flow API)
     const selfLoopData = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
@@ -167,7 +167,7 @@ test.describe("Edge Creation", () => {
     const newEdgeCount = await topoViewerPage.getEdgeCount();
     expect(newEdgeCount).toBe(initialEdgeCount + 3);
 
-    // Verify all edges are between the same two nodes (using React Flow instead of Cytoscape)
+    // Verify all edges are between the same two nodes (via React Flow API)
     const edgeConnections = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
@@ -267,7 +267,7 @@ test.describe("Edge Creation - File Persistence", () => {
     const edgeCount = await topoViewerPage.getEdgeCount();
     expect(edgeCount).toBe(1);
 
-    // Verify the edge connects the right nodes (using React Flow instead of Cytoscape)
+    // Verify the edge connects the right nodes (via React Flow API)
     const edgeData = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;

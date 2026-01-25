@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { ctrlClick } from "../helpers/cytoscape-helpers";
+import { shiftClick } from "../helpers/react-flow-helpers";
 
 /**
  * Copy, Paste, and Cut Operations E2E Tests
@@ -221,7 +221,7 @@ test.describe("Copy, Paste, and Cut Operations", () => {
 
     const srl2Box = await topoViewerPage.getNodeBoundingBox("srl2");
     expect(srl2Box).not.toBeNull();
-    await ctrlClick(page, srl2Box!.x + srl2Box!.width / 2, srl2Box!.y + srl2Box!.height / 2);
+    await shiftClick(page, srl2Box!.x + srl2Box!.width / 2, srl2Box!.y + srl2Box!.height / 2);
     await page.waitForTimeout(200);
 
     // Verify both selected
@@ -270,7 +270,7 @@ test.describe("Copy, Paste, and Cut Operations", () => {
     await page.waitForTimeout(100);
 
     const srl2Box = await topoViewerPage.getNodeBoundingBox("srl2");
-    await ctrlClick(page, srl2Box!.x + srl2Box!.width / 2, srl2Box!.y + srl2Box!.height / 2);
+    await shiftClick(page, srl2Box!.x + srl2Box!.width / 2, srl2Box!.y + srl2Box!.height / 2);
     await page.waitForTimeout(200);
 
     // Copy and paste
@@ -405,7 +405,7 @@ test.describe("Copy, Paste, and Cut Operations", () => {
     await page.waitForTimeout(100);
 
     const srl2Box = await topoViewerPage.getNodeBoundingBox("srl2");
-    await ctrlClick(page, srl2Box!.x + srl2Box!.width / 2, srl2Box!.y + srl2Box!.height / 2);
+    await shiftClick(page, srl2Box!.x + srl2Box!.width / 2, srl2Box!.y + srl2Box!.height / 2);
     await page.waitForTimeout(200);
 
     // Copy and paste

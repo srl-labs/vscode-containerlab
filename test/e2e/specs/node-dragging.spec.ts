@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { drag } from "../helpers/cytoscape-helpers";
+import { drag } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
 const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
@@ -202,7 +202,7 @@ test.describe("Node Dragging - File Persistence", () => {
     // Wait for saves to complete
     await page.waitForTimeout(1000);
 
-    // Get updated Cytoscape positions
+    // Get updated React Flow positions
     const spine1AfterCy = await topoViewerPage.getNodePosition("spine1");
     const spine2AfterCy = await topoViewerPage.getNodePosition("spine2");
 
@@ -211,7 +211,7 @@ test.describe("Node Dragging - File Persistence", () => {
     const spine1File = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
     const spine2File = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine2");
 
-    // Both positions in file should match Cytoscape positions (with some tolerance)
+    // Both positions in file should match React Flow positions (with some tolerance)
     expect(Math.abs(spine1File!.position!.x - spine1AfterCy.x)).toBeLessThan(10);
     expect(Math.abs(spine2File!.position!.x - spine2AfterCy.x)).toBeLessThan(10);
   });

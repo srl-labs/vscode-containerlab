@@ -13,19 +13,19 @@ const POSITION_TOLERANCE = 50;
 // Type for position records
 type PositionMap = Record<string, { x: number; y: number }>;
 
-/** Get node positions from Cytoscape */
-async function getCytoscapePositions(page: Page): Promise<PositionMap> {
+/** Get node positions from React Flow */
+async function getReactFlowPositions(page: Page): Promise<PositionMap> {
   return page.evaluate(() => {
     const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    if (!cy) return {};
+    const rf = dev?.rfInstance;
+    if (!rf) return {};
 
     const positions: Record<string, { x: number; y: number }> = {};
-    cy.nodes().forEach((n: any) => {
-      const role = n.data("topoViewerRole");
+    const nodes = rf.getNodes?.() ?? [];
+    nodes.forEach((n: any) => {
+      const role = n.data?.topoViewerRole;
       if (role && role !== "freeText" && role !== "freeShape" && role !== "group") {
-        const pos = n.position();
-        positions[n.id()] = { x: Math.round(pos.x), y: Math.round(pos.y) };
+        positions[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
       }
     });
     return positions;
@@ -44,12 +44,12 @@ async function pollNodePosition(
   for (let i = 0; i < iterations; i++) {
     const pos = await page.evaluate((id) => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return null;
-      const node = cy.getElementById(id);
-      if (node.empty()) return null;
-      const p = node.position();
-      return { x: Math.round(p.x), y: Math.round(p.y) };
+      const rf = dev?.rfInstance;
+      if (!rf) return null;
+      const nodes = rf.getNodes?.() ?? [];
+      const node = nodes.find((n: any) => n.id === id);
+      if (!node) return null;
+      return { x: Math.round(node.position.x), y: Math.round(node.position.y) };
     }, nodeId);
 
     if (pos) {
@@ -97,12 +97,12 @@ function detectDrift(
       driftDetected = true;
     }
 
-    // Check if React state differs from Cytoscape
+    // Check if React state differs from React Flow instance
     if (inReact) {
-      const deltaReactCy = Math.abs(atT2.x - inReact.x) + Math.abs(atT2.y - inReact.y);
-      if (deltaReactCy > 5) {
+      const deltaReactRf = Math.abs(atT2.x - inReact.x) + Math.abs(atT2.y - inReact.y);
+      if (deltaReactRf > 5) {
         console.log(
-          `[REACT VS CY] ${nodeId}: React=(${inReact.x}, ${inReact.y}), Cy=(${atT2.x}, ${atT2.y})`
+          `[REACT VS RF] ${nodeId}: React=(${inReact.x}, ${inReact.y}), RF=(${atT2.x}, ${atT2.y})`
         );
       }
     }
@@ -131,7 +131,7 @@ test.describe("Node Position Initialization", () => {
     // Get expected positions from annotations file
     const annotations = await topoViewerPage.getAnnotationsFromFile(DATACENTER_TOPOLOGY);
 
-    // Get actual positions from Cytoscape
+    // Get actual positions from React Flow
     const spine1Actual = await topoViewerPage.getNodePosition("spine1");
     const border1Actual = await topoViewerPage.getNodePosition("border1");
     const leaf1Actual = await topoViewerPage.getNodePosition("leaf1");
@@ -256,7 +256,7 @@ test.describe("Node Position Initialization", () => {
 
   test("rapid file switch does not cause position drift", async ({ topoViewerPage }) => {
     // This test simulates rapid file switching which might expose race conditions
-    // between initCytoscape and useElementsUpdate
+    // between initialization and useElementsUpdate
 
     // Load simple file first
     await topoViewerPage.gotoFile(SIMPLE_TOPOLOGY);
@@ -294,23 +294,23 @@ test.describe("Node Position Initialization", () => {
     // Get detailed initialization info from the browser
     const initInfo = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return { error: "No Cytoscape instance" };
+      const rf = dev?.rfInstance;
+      if (!rf) return { error: "No React Flow instance" };
 
-      const nodes = cy.nodes().filter((n: any) => {
-        const role = n.data("topoViewerRole");
+      const allNodes = rf.getNodes?.() ?? [];
+      const nodes = allNodes.filter((n: any) => {
+        const role = n.data?.topoViewerRole;
         return role && role !== "freeText" && role !== "freeShape" && role !== "group";
       });
 
       const positions: Record<string, { x: number; y: number }> = {};
       nodes.forEach((n: any) => {
-        const pos = n.position();
-        positions[n.id()] = { x: Math.round(pos.x), y: Math.round(pos.y) };
+        positions[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
       });
 
       return {
         nodeCount: nodes.length,
-        initialLayoutDone: cy.scratch("initialLayoutDone"),
+        initialLayoutDone: true, // React Flow doesn't use scratch for this
         positions
       };
     });
@@ -343,18 +343,18 @@ test.describe("Node Position Initialization", () => {
     expect(driftDetected, "Position drift detected - see logs for details").toBe(false);
   });
 
-  test("delayed position drift - React state vs annotations vs Cytoscape", async ({
+  test("delayed position drift - React state vs annotations vs React Flow", async ({
     page,
     topoViewerPage
   }) => {
     // This test checks for DELAYED drift - positions might be correct initially
-    // but then change after COSE layout runs asynchronously
+    // but then change after force layout runs asynchronously
 
     await topoViewerPage.gotoFile(DATACENTER_TOPOLOGY);
     await topoViewerPage.waitForCanvasReady();
 
     // Get positions IMMEDIATELY after canvas ready
-    const positionsT0 = await getCytoscapePositions(page);
+    const positionsT0 = await getReactFlowPositions(page);
     console.log(
       "[T0] Positions immediately after canvas ready:",
       JSON.stringify(positionsT0, null, 2)
@@ -398,7 +398,7 @@ test.describe("Node Position Initialization", () => {
     console.log("[POLL] Position history:", JSON.stringify(positionHistory));
 
     // Get positions AFTER 2 seconds
-    const positionsT2 = await getCytoscapePositions(page);
+    const positionsT2 = await getReactFlowPositions(page);
     console.log("[T2] Positions after 2 seconds:", JSON.stringify(positionsT2, null, 2));
 
     // Compare T0 vs T2 - did positions change?

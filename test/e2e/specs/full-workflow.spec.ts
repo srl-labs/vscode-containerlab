@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { drag, shiftClick } from "../helpers/cytoscape-helpers";
+import { drag, shiftClick } from "../helpers/react-flow-helpers";
 
 /**
  * Full Workflow E2E Test
