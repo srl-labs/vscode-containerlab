@@ -2,11 +2,11 @@
  * React Flow Clipboard Hook
  *
  * Provides copy/paste functionality using the browser's clipboard API
- * and React Flow's node/edge state.
+ * and React Flow's node/edge state via GraphContext.
  */
 import { useCallback, useRef } from "react";
 
-import { useTopoViewerState, useTopoViewerActions } from "../../context/TopoViewerContext";
+import { useGraph } from "../../context/GraphContext";
 import { useViewport } from "../../context/ViewportContext";
 import { useUndoRedoContext } from "../../context/UndoRedoContext";
 import { log } from "../../utils/logger";
@@ -78,8 +78,7 @@ let pasteCounter = 0;
  * Uses the browser's clipboard API for persistence.
  */
 export function useClipboard(): UseClipboardReturn {
-  const { state } = useTopoViewerState();
-  const actions = useTopoViewerActions();
+  const { nodes, addNode, addEdge } = useGraph();
   const { rfInstance } = useViewport();
   const { undoRedo } = useUndoRedoContext();
 
@@ -94,7 +93,6 @@ export function useClipboard(): UseClipboardReturn {
       return false;
     }
 
-    // Get selected nodes - type assertion since we've checked rfInstance exists
     const instance = rfInstance;
     const allNodes = instance.getNodes();
     const selectedNodes = allNodes.filter((n: { selected?: boolean }) => n.selected);
@@ -106,18 +104,15 @@ export function useClipboard(): UseClipboardReturn {
 
     const selectedNodeIds = new Set(selectedNodes.map((n: { id: string }) => n.id));
 
-    // Get edges where both source and target are in selection
     const allEdges = instance.getEdges();
     const selectedEdges = allEdges.filter(
       (e: { source: string; target: string }) =>
         selectedNodeIds.has(e.source) && selectedNodeIds.has(e.target)
     );
 
-    // Calculate origin (center of selection)
     const positions = selectedNodes.map((n: { position: { x: number; y: number } }) => n.position);
     const origin = calculateCenter(positions);
 
-    // Serialize nodes
     const serializedNodes: SerializedNode[] = selectedNodes.map(
       (node: { id: string; data: unknown; position: { x: number; y: number }; type?: string }) => ({
         id: node.id,
@@ -131,7 +126,6 @@ export function useClipboard(): UseClipboardReturn {
       })
     );
 
-    // Serialize edges
     const serializedEdges: SerializedEdge[] = selectedEdges.map(
       (edge: { id: string; source: string; target: string; data?: unknown }) => ({
         id: edge.id,
@@ -166,7 +160,6 @@ export function useClipboard(): UseClipboardReturn {
    */
   const paste = useCallback(
     async (position?: { x: number; y: number }): Promise<boolean> => {
-      // Debounce rapid paste calls
       const now = Date.now();
       if (now - lastPasteTimeRef.current < 100) return false;
       lastPasteTimeRef.current = now;
@@ -191,14 +184,12 @@ export function useClipboard(): UseClipboardReturn {
         return false;
       }
 
-      // Determine paste position
       let pastePosition = position;
       if (!pastePosition && rfInstance) {
         const viewport = rfInstance.getViewport();
         const container = document.querySelector(".react-flow");
         if (container) {
           const rect = container.getBoundingClientRect();
-          // Calculate center of viewport in graph coordinates
           pastePosition = {
             x: (rect.width / 2 - viewport.x) / viewport.zoom,
             y: (rect.height / 2 - viewport.y) / viewport.zoom
@@ -207,12 +198,10 @@ export function useClipboard(): UseClipboardReturn {
       }
       pastePosition = pastePosition ?? { x: 0, y: 0 };
 
-      // Offset for multiple pastes at same location
       pasteCounter++;
       const offset = pasteCounter * 20;
 
-      // Build ID mapping (old ID -> new ID)
-      const usedNames = new Set<string>((state.nodes as TopoNode[]).map((n) => n.id));
+      const usedNames = new Set<string>(nodes.map((n) => n.id));
       const idMapping = new Map<string, string>();
 
       for (const node of clipboardData.nodes) {
@@ -222,11 +211,9 @@ export function useClipboard(): UseClipboardReturn {
         idMapping.set(node.id, newId);
       }
 
-      // Begin undo batch
       undoRedo.beginBatch();
 
       try {
-        // Create new nodes
         for (const node of clipboardData.nodes) {
           const newId = idMapping.get(node.id)!;
           const newPosition = {
@@ -246,10 +233,9 @@ export function useClipboard(): UseClipboardReturn {
               role: (node.data.role as string) || "node"
             } as TopologyNodeData
           };
-          actions.addNode(newNode);
+          addNode(newNode);
         }
 
-        // Create new edges with remapped IDs
         let edgeCount = 0;
         for (const edge of clipboardData.edges) {
           const newSource = idMapping.get(edge.source);
@@ -271,7 +257,7 @@ export function useClipboard(): UseClipboardReturn {
               targetEndpoint
             } as TopologyEdgeData
           };
-          actions.addEdge(newEdge);
+          addEdge(newEdge);
           edgeCount++;
         }
 
@@ -282,7 +268,7 @@ export function useClipboard(): UseClipboardReturn {
 
       return true;
     },
-    [rfInstance, state.nodes, actions, undoRedo]
+    [rfInstance, nodes, addNode, addEdge, undoRedo]
   );
 
   /**

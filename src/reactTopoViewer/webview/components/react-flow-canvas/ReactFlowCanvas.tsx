@@ -1,6 +1,8 @@
 /**
  * ReactFlowCanvas - Main React Flow canvas component for topology visualization
- * Full-featured canvas with grid snapping, node creation, edge creation, context menus
+ *
+ * This is now a fully controlled component - nodes/edges come from GraphContext.
+ * No internal state duplication.
  */
 import React, {
   useRef,
@@ -15,8 +17,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   Background,
-  useNodesState,
-  useEdgesState,
   BackgroundVariant,
   SelectionMode,
   ConnectionMode,
@@ -27,6 +27,7 @@ import type { Node, Edge, ReactFlowInstance, ConnectionLineComponentProps } from
 import "@xyflow/react/dist/style.css";
 
 import { useTopoViewer } from "../../context/TopoViewerContext";
+import { useGraph } from "../../context/GraphContext";
 import { LinkCreationProvider } from "../../context/LinkCreationContext";
 import { AnnotationHandlersProvider } from "../../context/AnnotationHandlersContext";
 import { EdgeInfoProvider } from "../../context/EdgeInfoContext";
@@ -50,14 +51,12 @@ import {
   buildEdgeContextMenu,
   buildPaneContextMenu
 } from "./contextMenuBuilders";
-import { isLineHandleActive } from "./nodes/AnnotationHandles";
 import { edgeTypes } from "./edges";
 import { nodeTypes } from "./nodes";
 import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from "./types";
 
 /**
  * Hook for building context menu items.
- * Uses refs to access nodes/edges without causing re-renders during drag.
  */
 function useContextMenuItems(
   handlers: ReturnType<typeof useCanvasHandlers>,
@@ -74,7 +73,6 @@ function useContextMenuItems(
   cancelLinkCreation: () => void,
   annotationHandlers?: import("./types").AnnotationHandlers
 ): ContextMenuItem[] {
-  // Only recalculate when context menu state changes, not on every node position update
   const { type, targetId } = handlers.contextMenu;
 
   return useMemo(() => {
@@ -155,13 +153,10 @@ function useWrappedNodeClick(
 ) {
   return useCallback(
     (event: React.MouseEvent, node: { id: string; type?: string }) => {
-      // When in link creation mode, complete the link
       if (linkSourceNode) {
-        // Prevent loop links on cloud nodes
         const isLoopLink = linkSourceNode === node.id;
         const isCloudNode = node.type === "cloud-node";
         if (isLoopLink && isCloudNode) {
-          // Don't complete - cloud nodes don't support loop links
           return;
         }
         event.stopPropagation();
@@ -186,120 +181,59 @@ const canvasStyle: React.CSSProperties = {
 };
 
 /**
- * Custom connection line component - matches the context menu link creation style
- * Shows a dashed blue line with a circle at the cursor position
+ * Custom connection line component
  */
 const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
   fromX,
   fromY,
   toX,
   toY
-}) => {
-  return (
-    <g>
-      <line
-        x1={fromX}
-        y1={fromY}
-        x2={toX}
-        y2={toY}
-        stroke="#007acc"
-        strokeWidth={2}
-        strokeDasharray="5,5"
-      />
-      <circle cx={toX} cy={toY} r={6} fill="#007acc" opacity={0.7} />
-    </g>
-  );
-};
+}) => (
+  <g>
+    <line
+      x1={fromX}
+      y1={fromY}
+      x2={toX}
+      y2={toY}
+      stroke="#007acc"
+      strokeWidth={2}
+      strokeDasharray="5,5"
+    />
+    <circle cx={toX} cy={toY} r={6} fill="#007acc" opacity={0.7} />
+  </g>
+);
 
-// Pro options (disable attribution)
+// Constants
 const proOptions = { hideAttribution: true };
-
-// Default viewport
 const defaultViewport = { x: 0, y: 0, zoom: 1 };
-
-// Fit view options
 const fitViewOptions = { padding: 0.2 };
-
-// Low-detail rendering thresholds
 const LOW_DETAIL_ZOOM_THRESHOLD = 0.5;
 const LARGE_GRAPH_NODE_THRESHOLD = 600;
 const LARGE_GRAPH_EDGE_THRESHOLD = 900;
-
-/**
- * ReactFlowCanvas component
- */
-/** Node type constants */
 const ANNOTATION_NODE_TYPES_SET = new Set(["free-text-node", "free-shape-node"]);
 
 /**
- * Hook to sync annotation nodes into the React Flow nodes state.
- * This ensures React Flow can update annotation node positions during drag.
- * - Adds new annotation nodes to nodes state
- * - Updates data for existing annotation nodes (preserving React Flow's position)
- * - Removes annotation nodes that no longer exist in annotationNodes
+ * Hook to sync annotation nodes into the nodes array.
+ * Merges annotation nodes with topology nodes.
  */
-function useSyncAnnotationNodes(
-  annotationNodes: Node[] | undefined,
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>
-) {
-  useEffect(() => {
-    if (!annotationNodes) return;
-
-    setNodes((currentNodes) => {
-      const incomingById = new Map<string, Node>();
-      for (const node of annotationNodes) {
-        incomingById.set(node.id, node);
-      }
-
-      const nextNodes: Node[] = [];
-
-      // Update existing nodes in-place (preserve React Flow internals like `selected`)
-      for (const currentNode of currentNodes) {
-        const isAnnotation = ANNOTATION_NODE_TYPES_SET.has(currentNode.type || "");
-        if (!isAnnotation) {
-          nextNodes.push(currentNode);
-          continue;
-        }
-
-        const incoming = incomingById.get(currentNode.id);
-        if (!incoming) {
-          // Annotation was removed
-          continue;
-        }
-        incomingById.delete(currentNode.id);
-
-        // When a line handle is being dragged, use the incoming position
-        // (computed from annotation data) to properly update the node's visual position.
-        // Otherwise, preserve React Flow's position to avoid jitter during node dragging.
-        const isLineNode =
-          currentNode.type === "free-shape-node" &&
-          (incoming.data as { shapeType?: string })?.shapeType === "line";
-        const useIncomingPosition = isLineNode && isLineHandleActive();
-
-        nextNodes.push({
-          ...currentNode,
-          ...incoming,
-          position: useIncomingPosition ? incoming.position : currentNode.position,
-          // Always update to the latest annotation data.
-          data: incoming.data,
-          // Preserve selection/dragging state managed by React Flow.
-          selected: currentNode.selected,
-          dragging: currentNode.dragging
-        });
-      }
-
-      // Add any new annotation nodes that weren't in the current state yet
-      for (const node of incomingById.values()) {
-        nextNodes.push(node);
-      }
-
-      return nextNodes;
-    });
-  }, [annotationNodes, setNodes]);
+function useMergedNodes(
+  propNodes: Node[] | undefined,
+  annotationNodes: Node[] | undefined
+): Node[] {
+  return useMemo(() => {
+    const baseNodes = propNodes ?? [];
+    if (!annotationNodes || annotationNodes.length === 0) {
+      return baseNodes;
+    }
+    // Filter out any annotation nodes from propNodes (shouldn't be there, but be safe)
+    const topologyNodes = baseNodes.filter((n) => !ANNOTATION_NODE_TYPES_SET.has(n.type || ""));
+    return [...topologyNodes, ...annotationNodes];
+  }, [propNodes, annotationNodes]);
 }
 
 /**
  * Inner component that uses useStore (requires ReactFlowProvider ancestor)
+ * Now fully controlled - no internal useNodesState/useEdgesState
  */
 const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
   (
@@ -319,16 +253,21 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     ref
   ) => {
     const { state, selectNode, selectEdge, editNode, editEdge } = useTopoViewer();
-    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+    // Get setters from GraphContext - these update the single source of truth
+    const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraph();
+
     const floatingPanelRef = useRef<{ triggerShake: () => void } | null>(null);
     const [isNodeDragging, setIsNodeDragging] = useState(false);
 
-    // Refs to access latest nodes/edges without causing re-renders in context menu
-    const nodesRef = useRef<Node[]>(nodes);
-    const edgesRef = useRef<Edge[]>(edges);
-    nodesRef.current = nodes;
-    edgesRef.current = edges;
+    // Merge topology nodes with annotation nodes
+    const mergedNodes = useMergedNodes(propNodes as Node[], annotationNodes);
+
+    // Refs for context menu (to avoid re-renders)
+    const nodesRef = useRef<Node[]>(mergedNodes);
+    const edgesRef = useRef<Edge[]>((propEdges as Edge[]) ?? []);
+    nodesRef.current = mergedNodes;
+    edgesRef.current = (propEdges as Edge[]) ?? [];
 
     const handlers = useCanvasHandlers({
       selectNode,
@@ -339,30 +278,15 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isLocked: state.isLocked,
       onNodesChangeBase: onNodesChange,
       onLockedAction: () => floatingPanelRef.current?.triggerShake(),
-      nodes, // Pass nodes for position tracking
-      onMoveComplete, // Pass callback for undo/redo
-      onEdgeCreated // Pass unified edge creation callback
+      nodes: mergedNodes,
+      onMoveComplete,
+      onEdgeCreated
     });
-
-    // Sync prop nodes/edges to internal state
-    useEffect(() => {
-      if (propNodes) {
-        setNodes(propNodes as Node[]);
-      }
-    }, [propNodes, setNodes]);
-
-    useEffect(() => {
-      if (propEdges) {
-        setEdges(propEdges as Edge[]);
-      }
-    }, [propEdges, setEdges]);
-
-    useSyncAnnotationNodes(annotationNodes, setNodes);
 
     const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =
       useLinkCreation(onEdgeCreated);
     const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
-      edges,
+      (propEdges as Edge[]) ?? [],
       setNodes,
       setEdges,
       selectNode,
@@ -371,10 +295,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onNodeDelete,
       onEdgeDelete
     );
-    const sourceNodePosition = useSourceNodePosition(linkSourceNode, nodes);
+    const sourceNodePosition = useSourceNodePosition(linkSourceNode, mergedNodes);
 
     const isLargeGraph =
-      nodes.length >= LARGE_GRAPH_NODE_THRESHOLD || edges.length >= LARGE_GRAPH_EDGE_THRESHOLD;
+      mergedNodes.length >= LARGE_GRAPH_NODE_THRESHOLD ||
+      (propEdges?.length ?? 0) >= LARGE_GRAPH_EDGE_THRESHOLD;
     const isLowDetail = useStore(
       useCallback(
         (store) => {
@@ -397,8 +322,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const refMethods = useCanvasRefMethods(
       handlers.reactFlowInstance,
-      nodes,
-      edges,
+      mergedNodes,
+      (propEdges as Edge[]) ?? [],
       setNodes,
       setEdges
     );
@@ -409,7 +334,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       completeLinkCreation,
       handlers.onNodeClick
     );
-    // Use refs to avoid re-computing context menu on every position change
     const contextMenuItems = useContextMenuItems(
       handlers,
       state,
@@ -426,7 +350,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       annotationHandlers
     );
 
-    // Use annotation canvas handlers hook for annotation-related interactions
     const {
       wrappedOnPaneClick,
       wrappedOnNodeDoubleClick,
@@ -476,7 +399,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       [isLowDetail]
     );
 
-    // Wrap internal onInit to also call the prop callback
     const wrappedOnInit = useCallback(
       (instance: ReactFlowInstance) => {
         handlers.onInit(instance);
@@ -493,8 +415,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
               <AnnotationHandlersProvider handlers={annotationHandlers}>
                 <LinkCreationProvider linkSourceNode={linkSourceNode}>
                   <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
+                    nodes={mergedNodes}
+                    edges={(propEdges as Edge[]) ?? []}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
                     onNodesChange={handlers.handleNodesChange}
@@ -613,13 +535,12 @@ const LinkCreationIndicator: React.FC<{ linkSourceNode: string }> = ({ linkSourc
   </div>
 );
 
-/** Visual line component for link creation mode - memoized for performance */
+/** Visual line component for link creation mode */
 interface LinkCreationLineProps {
   sourcePosition: { x: number; y: number };
   reactFlowInstance: ReactFlowInstance;
 }
 
-// Constant SVG style to avoid object recreation
 const LINK_LINE_SVG_STYLE: React.CSSProperties = {
   position: "absolute",
   top: 0,
@@ -630,10 +551,9 @@ const LINK_LINE_SVG_STYLE: React.CSSProperties = {
   zIndex: 999
 };
 
-// Cache container bounds to avoid getBoundingClientRect on every frame
 let cachedContainerBounds: DOMRect | null = null;
 let boundsLastUpdated = 0;
-const BOUNDS_CACHE_DURATION = 100; // ms
+const BOUNDS_CACHE_DURATION = 100;
 
 function getContainerBounds(): DOMRect | null {
   const now = Date.now();
@@ -699,7 +619,6 @@ ReactFlowCanvasInner.displayName = "ReactFlowCanvasInner";
 
 /**
  * Outer wrapper that provides ReactFlowProvider context.
- * useStore hook in the inner component requires this provider to be an ancestor.
  */
 const ReactFlowCanvasComponent = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
   (props, ref) => (

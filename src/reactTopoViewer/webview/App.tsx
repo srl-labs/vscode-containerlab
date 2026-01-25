@@ -3,16 +3,18 @@
  *
  * Uses context-based architecture for undo/redo and annotations.
  * Now uses ReactFlow as the rendering layer for rendering.
+ * Graph state is managed by GraphContext (React Flow is source of truth).
  */
 /* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
 import React from "react";
-import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
 import type { TopoNode, TopoEdge } from "../shared/types/graph";
 
 import { ReactFlowCanvas, type ReactFlowCanvasRef } from "./components/react-flow-canvas";
 import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
+import { GraphProvider, useGraph, useGraphActions } from "./context/GraphContext";
 import { UndoRedoProvider, useUndoRedoContext } from "./context/UndoRedoContext";
 import {
   AnnotationProvider,
@@ -92,24 +94,34 @@ const AppContent: React.FC<{
   textLayerNode,
   onInit
 }) => {
-  const { state, dispatch } = useTopoViewerState();
+  const { state } = useTopoViewerState();
   const {
     selectNode,
     selectEdge,
     editNode,
     editEdge,
     editNetwork,
+    editCustomTemplate,
+    setEdgeAnnotations,
+    toggleLock,
+    refreshEditorData,
+    clearCustomNodeError,
+    clearSelectionForDeletedNode,
+    clearSelectionForDeletedEdge
+  } = useTopoViewerActions();
+
+  // Graph state from GraphContext (React Flow is source of truth)
+  const { nodes, edges } = useGraph();
+  const {
     addNode,
     addEdge,
     removeNodeAndEdges,
     removeEdge,
     updateNodePositions,
-    editCustomTemplate,
-    setEdgeAnnotations,
-    toggleLock,
-    refreshEditorData,
-    clearCustomNodeError
-  } = useTopoViewerActions();
+    updateNodeData,
+    renameNode
+  } = useGraphActions();
+
   const { undoRedo, registerGraphHandler, registerPropertyEditHandler } = useUndoRedoContext();
   const annotations = useAnnotations();
 
@@ -135,12 +147,12 @@ const AppContent: React.FC<{
 
   const renameNodeInGraph = React.useCallback(
     (oldId: string, newId: string, name?: string) => {
-      dispatch({ type: "RENAME_NODE", payload: { oldId, newId, name } });
+      renameNode(oldId, newId, name);
     },
-    [dispatch]
+    [renameNode]
   );
 
-  // Direct node/edge addition (no ParsedElement conversion needed)
+  // Direct node/edge addition
   const addNodeDirect = React.useCallback(
     (node: TopoNode) => {
       addNode(node);
@@ -155,9 +167,22 @@ const AppContent: React.FC<{
     [addEdge]
   );
 
-  // Link label visibility is now handled by EdgeRenderConfigContext in ReactFlowCanvas
-  // useEndpointLabelOffset is also handled by the edge component
-  // These hooks are for React state management
+  // Remove handlers that also clear UI state
+  const removeNodeAndEdgesWithCleanup = React.useCallback(
+    (nodeId: string) => {
+      removeNodeAndEdges(nodeId);
+      clearSelectionForDeletedNode(nodeId);
+    },
+    [removeNodeAndEdges, clearSelectionForDeletedNode]
+  );
+
+  const removeEdgeWithCleanup = React.useCallback(
+    (edgeId: string) => {
+      removeEdge(edgeId);
+      clearSelectionForDeletedEdge(edgeId);
+    },
+    [removeEdge, clearSelectionForDeletedEdge]
+  );
 
   const edgeAnnotationLookup = React.useMemo(
     () => buildEdgeAnnotationLookup(state.edgeAnnotations),
@@ -165,37 +190,30 @@ const AppContent: React.FC<{
   );
 
   // Filter nodes/edges based on showDummyLinks setting
-  // When disabled, hide nodes starting with "dummy" and edges connected to them
   const filteredNodes = React.useMemo(() => {
-    if (state.showDummyLinks) {
-      return state.nodes;
-    }
-    return (state.nodes as Node[]).filter((node) => !node.id.startsWith("dummy"));
-  }, [state.nodes, state.showDummyLinks]);
+    if (state.showDummyLinks) return nodes;
+    return nodes.filter((node) => !node.id.startsWith("dummy"));
+  }, [nodes, state.showDummyLinks]);
 
   const filteredEdges = React.useMemo(() => {
-    if (state.showDummyLinks) {
-      return state.edges;
-    }
+    if (state.showDummyLinks) return edges;
     const dummyNodeIds = new Set(
-      (state.nodes as Node[]).filter((node) => node.id.startsWith("dummy")).map((node) => node.id)
+      nodes.filter((node) => node.id.startsWith("dummy")).map((node) => node.id)
     );
-    return (state.edges as Edge[]).filter(
-      (edge) => !dummyNodeIds.has(edge.source) && !dummyNodeIds.has(edge.target)
-    );
-  }, [state.nodes, state.edges, state.showDummyLinks]);
+    return edges.filter((edge) => !dummyNodeIds.has(edge.source) && !dummyNodeIds.has(edge.target));
+  }, [nodes, edges, state.showDummyLinks]);
 
-  // Selection and editing data - now using ReactFlow state directly
+  // Selection and editing data
   const selectedNodeData = React.useMemo(() => {
     if (!state.selectedNode) return null;
-    const node = (state.nodes as Node[]).find((n) => n.id === state.selectedNode);
+    const node = nodes.find((n) => n.id === state.selectedNode);
     if (!node) return null;
     return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.selectedNode, state.nodes]);
+  }, [state.selectedNode, nodes]);
 
   const selectedLinkData = React.useMemo(() => {
     if (!state.selectedEdge) return null;
-    const edge = (state.edges as Edge[]).find((e) => e.id === state.selectedEdge);
+    const edge = edges.find((e) => e.id === state.selectedEdge);
     if (!edge) return null;
     return {
       id: edge.id,
@@ -203,23 +221,23 @@ const AppContent: React.FC<{
       target: edge.target,
       ...(edge.data as Record<string, unknown>)
     };
-  }, [state.selectedEdge, state.edges]);
+  }, [state.selectedEdge, edges]);
 
   const editingNodeRawData = React.useMemo(() => {
     if (!state.editingNode) return null;
-    const node = (state.nodes as Node[]).find((n) => n.id === state.editingNode);
+    const node = nodes.find((n) => n.id === state.editingNode);
     return node?.data as Record<string, unknown> | null;
-  }, [state.editingNode, state.nodes, state.editorDataVersion]);
+  }, [state.editingNode, nodes, state.editorDataVersion]);
 
   const editingNetworkRawData = React.useMemo(() => {
     if (!state.editingNetwork) return null;
-    const node = (state.nodes as Node[]).find((n) => n.id === state.editingNetwork);
+    const node = nodes.find((n) => n.id === state.editingNetwork);
     return node?.data as Record<string, unknown> | null;
-  }, [state.editingNetwork, state.nodes, state.editorDataVersion]);
+  }, [state.editingNetwork, nodes, state.editorDataVersion]);
 
   const editingLinkRawData = React.useMemo(() => {
     if (!state.editingEdge) return null;
-    const edge = (state.edges as Edge[]).find((e) => e.id === state.editingEdge);
+    const edge = edges.find((e) => e.id === state.editingEdge);
     if (!edge) return null;
     return {
       id: edge.id,
@@ -227,7 +245,8 @@ const AppContent: React.FC<{
       target: edge.target,
       ...(edge.data as Record<string, unknown>)
     };
-  }, [state.editingEdge, state.edges, state.editorDataVersion]);
+  }, [state.editingEdge, edges, state.editorDataVersion]);
+
   const editingNodeData = React.useMemo(
     () => convertToEditorData(editingNodeRawData),
     [editingNodeRawData]
@@ -265,7 +284,7 @@ const AppContent: React.FC<{
     };
   }, [editingLinkRawData, edgeAnnotationLookup, state.endpointLabelOffset]);
 
-  // Navbar and menu handlers - using ReactFlow fitView
+  // Navbar and menu handlers
   const handleZoomToFit = React.useCallback(() => {
     rfInstance?.fitView({ padding: 0.1 });
   }, [rfInstance]);
@@ -274,38 +293,44 @@ const AppContent: React.FC<{
   const initialFitDoneRef = React.useRef(false);
   React.useEffect(() => {
     if (!rfInstance || initialFitDoneRef.current) return;
-    // ReactFlow handles initial fit via fitView prop
     initialFitDoneRef.current = true;
   }, [rfInstance]);
 
   const navbarCommands = useNavbarCommands();
 
-  // Context menu handlers - simplified for context menu
+  // Context menu handlers
   const menuHandlers = React.useMemo(
     () => ({
       handleEditNode: (nodeId: string) => editNode(nodeId),
       handleEditNetwork: (nodeId: string) => editNetwork(nodeId),
       handleDeleteNode: (nodeId: string) => {
-        removeNodeAndEdges(nodeId);
-        selectNode(null);
+        removeNodeAndEdgesWithCleanup(nodeId);
       },
       handleCreateLinkFromNode: (_nodeId: string) => {},
       handleEditLink: (edgeId: string) => editEdge(edgeId),
       handleDeleteLink: (edgeId: string) => {
-        removeEdge(edgeId);
-        selectEdge(null);
+        removeEdgeWithCleanup(edgeId);
       },
       handleShowNodeProperties: (nodeId: string) => selectNode(nodeId),
       handleShowLinkProperties: (edgeId: string) => selectEdge(edgeId),
       handleCloseNodePanel: () => selectNode(null),
       handleCloseLinkPanel: () => selectEdge(null)
     }),
-    [editNode, editNetwork, editEdge, removeNodeAndEdges, removeEdge, selectNode, selectEdge]
+    [
+      editNode,
+      editNetwork,
+      editEdge,
+      removeNodeAndEdgesWithCleanup,
+      removeEdgeWithCleanup,
+      selectNode,
+      selectEdge
+    ]
   );
+
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
-  // Stable getters for ReactFlow state (used by undo/redo handlers)
+  // Stable getters for ReactFlow state
   const getNodes = React.useCallback(() => rfInstance?.getNodes() ?? [], [rfInstance]);
   const getEdges = React.useCallback(() => rfInstance?.getEdges() ?? [], [rfInstance]);
 
@@ -331,7 +356,7 @@ const AppContent: React.FC<{
     registerPropertyEditHandler
   });
 
-  // Geo coordinate sync (consolidated hook)
+  // Geo coordinate sync
   useGeoCoordinateSync({
     mapLibreState,
     isGeoLayout: layoutControls.isGeoLayout,
@@ -344,12 +369,12 @@ const AppContent: React.FC<{
     updateGroupGeoPosition: annotations.updateGroupGeoPosition
   });
 
-  // Callback to update node data in React state (triggers icon reconciliation)
-  const updateNodeData = React.useCallback(
+  // Callback to update node data
+  const handleUpdateNodeData = React.useCallback(
     (nodeId: string, extraData: Record<string, unknown>) => {
-      dispatch({ type: "UPDATE_NODE_DATA", payload: { nodeId, extraData } });
+      updateNodeData(nodeId, extraData);
     },
-    [dispatch]
+    [updateNodeData]
   );
 
   // Editor handlers
@@ -359,7 +384,7 @@ const AppContent: React.FC<{
     recordPropertyEdit,
     renameNodeInGraph,
     state.customIcons,
-    updateNodeData,
+    handleUpdateNodeData,
     refreshEditorData
   );
   const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit, {
@@ -382,7 +407,7 @@ const AppContent: React.FC<{
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
 
-  // Graph creation (edge, node, network) - composed hook using rfInstance
+  // Graph creation
   const graphCreation = useGraphCreation({
     rfInstance,
     floatingPanelRef,
@@ -391,15 +416,15 @@ const AppContent: React.FC<{
       isLocked: state.isLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
-      nodes: (rfInstance?.getNodes() as import("../shared/types/graph").TopoNode[]) || []
+      nodes: nodes as TopoNode[]
     },
     onEdgeCreated: handleEdgeCreated,
     onNodeCreated: handleNodeCreatedCallback,
-    addNode: addNodeDirect as (element: import("../shared/types/graph").TopoNode) => void,
+    addNode: addNodeDirect,
     onNewCustomNode: customNodeCommands.onNewCustomNode
   });
 
-  // E2E testing exposure (consolidated hook) - must be after graphCreation
+  // E2E testing exposure
   useE2ETestingExposure({
     isLocked: state.isLocked,
     mode: state.mode,
@@ -411,7 +436,7 @@ const AppContent: React.FC<{
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
     editNetwork,
     groups: annotations.groups,
-    elements: [], // Empty for now - will be fixed in Phase 2
+    elements: [],
     setLayout: layoutControls.setLayout,
     setGeoMode: layoutControls.setGeoMode,
     isGeoLayout: layoutControls.isGeoLayout,
@@ -458,10 +483,6 @@ const AppContent: React.FC<{
     }
   });
 
-  // Alt+Click delete and Shift+Click edge creation are now handled by ReactFlow callbacks
-  // in the ReactFlowCanvas component
-
-  // shapeLayerNode is passed as prop from App wrapper
   const shortcutDisplay = useShortcutDisplay();
   const panelVisibility = usePanelVisibility();
   const [showBulkLinkPanel, setShowBulkLinkPanel] = React.useState(false);
@@ -516,7 +537,7 @@ const AppContent: React.FC<{
 
   const easterEgg = useEasterEgg({});
 
-  // Annotation handlers for ReactFlowCanvas (node-to-group reparenting)
+  // Annotation handlers for ReactFlowCanvas
   const canvasAnnotationHandlers = React.useMemo(
     () => ({
       onNodeDropped: annotations.onNodeDropped
@@ -725,19 +746,22 @@ const AppContent: React.FC<{
 /** Main App component with providers */
 export const App: React.FC = () => {
   const { state } = useTopoViewerState();
-  const { updateNodePositions } = useTopoViewerActions();
+  const { setEdgeAnnotations } = useTopoViewerActions();
+
+  // Get initial data
+  const initialData = (window as { __INITIAL_DATA__?: { nodes?: TopoNode[]; edges?: TopoEdge[] } })
+    .__INITIAL_DATA__;
+  const initialNodes = initialData?.nodes ?? [];
+  const initialEdges = initialData?.edges ?? [];
 
   // ReactFlow canvas ref and instance
   const reactFlowRef = React.useRef<ReactFlowCanvasRef>(null);
-
-  // Track ReactFlow instance in state so updates trigger re-renders
-  // This ensures ViewportProvider gets the instance after initialization
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance | null>(null);
 
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
 
-  // Shape and text layers (legacy compatibility - rendered as React components)
+  // Shape and text layers
   const { shapeLayerNode } = useShapeLayer();
   const { textLayerNode } = useTextLayer();
 
@@ -747,17 +771,74 @@ export const App: React.FC = () => {
     null
   );
 
-  // Geo map (disabled - requires full reimplementation)
+  // Geo map (disabled)
   const { mapLibreState } = useGeoMap({
     isGeoLayout: layoutControls.isGeoLayout,
     geoMode: layoutControls.geoMode
   });
 
+  // Handle edge annotations update from GraphContext
+  const handleEdgeAnnotationsUpdate = React.useCallback(
+    (annotations: import("../shared/types/topology").EdgeAnnotation[]) => {
+      setEdgeAnnotations(annotations);
+    },
+    [setEdgeAnnotations]
+  );
+
+  return (
+    <GraphProvider
+      initialNodes={initialNodes}
+      initialEdges={initialEdges}
+      onEdgeAnnotationsUpdate={handleEdgeAnnotationsUpdate}
+    >
+      <GraphProviderConsumer
+        state={state}
+        rfInstance={rfInstance}
+        setRfInstance={setRfInstance}
+        floatingPanelRef={floatingPanelRef}
+        pendingMembershipChangesRef={pendingMembershipChangesRef}
+        shapeLayerNode={shapeLayerNode}
+        textLayerNode={textLayerNode}
+        layoutControls={layoutControls}
+        mapLibreState={mapLibreState}
+        reactFlowRef={reactFlowRef}
+      />
+    </GraphProvider>
+  );
+};
+
+/** Intermediate component to access GraphContext for AnnotationProvider */
+const GraphProviderConsumer: React.FC<{
+  state: import("./context/TopoViewerContext").TopoViewerState;
+  rfInstance: ReactFlowInstance | null;
+  setRfInstance: (instance: ReactFlowInstance) => void;
+  floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
+  pendingMembershipChangesRef: React.MutableRefObject<Map<string, PendingMembershipChange>>;
+  shapeLayerNode: HTMLElement | null;
+  textLayerNode: HTMLElement | null;
+  layoutControls: ReturnType<typeof useLayoutControls>;
+  mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
+  reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
+}> = ({
+  state,
+  rfInstance,
+  setRfInstance,
+  floatingPanelRef,
+  pendingMembershipChangesRef,
+  shapeLayerNode,
+  textLayerNode,
+  layoutControls,
+  mapLibreState,
+  reactFlowRef
+}) => {
+  const { nodes } = useGraph();
+  const { updateNodePositions } = useGraphActions();
+
   return (
     <ViewportProvider rfInstance={rfInstance}>
       <UndoRedoProvider enabled={state.mode === "edit"}>
         <AnnotationProvider
-          nodes={state.nodes}
+          nodes={nodes as TopoNode[]}
           rfInstance={rfInstance}
           mode={state.mode}
           isLocked={state.isLocked}

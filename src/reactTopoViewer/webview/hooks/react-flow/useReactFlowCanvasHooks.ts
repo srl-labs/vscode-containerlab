@@ -11,8 +11,7 @@ import { log } from "../../utils/logger";
 import {
   saveNodePositions as saveNodePositionsService,
   deleteNode as deleteNodeService,
-  deleteLink as deleteLinkService,
-  createLink as createLinkService
+  deleteLink as deleteLinkService
 } from "../../services";
 
 /**
@@ -53,6 +52,7 @@ export function useDeleteHandlers(
       if (edge) {
         const edgeData = edge.data as Record<string, unknown> | undefined;
         const linkData = {
+          id: edgeId,
           source: edge.source,
           target: edge.target,
           sourceEndpoint: (edgeData?.sourceEndpoint as string) || "",

@@ -1,5 +1,8 @@
 /**
- * TopoViewer Context - Global state management for React TopoViewer
+ * TopoViewer Context - UI state management for React TopoViewer
+ *
+ * NOTE: Graph data (nodes/edges) has been moved to GraphContext.
+ * This context now only handles UI state, selections, and editing state.
  */
 import type { ReactNode } from "react";
 import React, {
@@ -14,25 +17,15 @@ import React, {
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/types/editors";
 import type { EdgeAnnotation } from "../../shared/types/topology";
-import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 import type { CustomIconInfo } from "../../shared/types/icons";
-import { extractUsedCustomIcons } from "../../shared/types/icons";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
-import { postCommand } from "../utils/extensionMessaging";
-import { pruneEdgeAnnotations, upsertEdgeAnnotation } from "../utils/edgeAnnotations";
+import { upsertEdgeAnnotation } from "../utils/edgeAnnotations";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset,
   parseEndpointLabelOffset
 } from "../utils/endpointLabelOffset";
-import {
-  isServicesInitialized,
-  getTopologyIO,
-  saveEdgeAnnotations,
-  saveViewerSettings
-} from "../services";
-
-// CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
+import { saveEdgeAnnotations, saveViewerSettings } from "../services";
 
 /**
  * Deployment state type alias
@@ -50,13 +43,9 @@ export type LinkLabelMode = "show-all" | "on-select" | "hide";
 export type ProcessingMode = "deploy" | "destroy" | null;
 
 /**
- * TopoViewer State Interface
+ * TopoViewer State Interface - UI state only (no graph data)
  */
 export interface TopoViewerState {
-  /** ReactFlow nodes array */
-  nodes: TopoNode[];
-  /** ReactFlow edges array */
-  edges: TopoEdge[];
   labName: string;
   mode: "edit" | "view";
   deploymentState: DeploymentState;
@@ -73,17 +62,11 @@ export interface TopoViewerState {
   edgeAnnotations: EdgeAnnotation[];
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
-  /** Custom icons loaded from workspace and global directories */
   customIcons: CustomIconInfo[];
-  /** Custom template being edited (not a graph node) */
   editingCustomTemplate: CustomTemplateEditorData | null;
-  /** Whether a lifecycle operation is in progress */
   isProcessing: boolean;
-  /** Current processing mode for visual feedback */
   processingMode: ProcessingMode;
-  /** Counter to trigger editor data refresh after Apply */
   editorDataVersion: number;
-  /** Error message from custom node operations (shown as toast) */
   customNodeError: string | null;
 }
 
@@ -91,8 +74,6 @@ export interface TopoViewerState {
  * Initial state
  */
 const initialState: TopoViewerState = {
-  nodes: [],
-  edges: [],
   labName: "",
   mode: "edit",
   deploymentState: "unknown",
@@ -118,31 +99,9 @@ const initialState: TopoViewerState = {
 };
 
 /**
- * Action types
+ * Action types - UI actions only (no graph manipulation)
  */
-/**
- * Edge stats update payload for incremental updates
- */
-interface EdgeStatsUpdate {
-  id: string;
-  extraData: Record<string, unknown>;
-  classes?: string;
-}
-
-/** Payload for updating node data after save */
-interface UpdateNodeDataPayload {
-  nodeId: string;
-  extraData: Record<string, unknown>;
-}
-
-interface UpdateNodePositionsPayload {
-  positions: Array<{ id: string; position: { x: number; y: number } }>;
-}
-
 type TopoViewerAction =
-  | { type: "SET_NODES"; payload: TopoNode[] }
-  | { type: "SET_EDGES"; payload: TopoEdge[] }
-  | { type: "SET_TOPOLOGY"; payload: { nodes: TopoNode[]; edges: TopoEdge[] } }
   | { type: "SET_MODE"; payload: "edit" | "view" }
   | { type: "SET_DEPLOYMENT_STATE"; payload: DeploymentState }
   | { type: "SELECT_NODE"; payload: string | null }
@@ -158,10 +117,6 @@ type TopoViewerAction =
   | { type: "SET_EDGE_ANNOTATIONS"; payload: EdgeAnnotation[] }
   | { type: "UPSERT_EDGE_ANNOTATION"; payload: EdgeAnnotation }
   | { type: "SET_INITIAL_DATA"; payload: Partial<TopoViewerState> }
-  | { type: "ADD_NODE"; payload: TopoNode }
-  | { type: "ADD_EDGE"; payload: TopoEdge }
-  | { type: "REMOVE_NODE_AND_EDGES"; payload: string }
-  | { type: "REMOVE_EDGE"; payload: string }
   | {
       type: "SET_CUSTOM_NODES";
       payload: { customNodes: CustomNodeTemplate[]; defaultNode: string };
@@ -169,15 +124,13 @@ type TopoViewerAction =
   | { type: "SET_CUSTOM_ICONS"; payload: CustomIconInfo[] }
   | { type: "EDIT_CUSTOM_TEMPLATE"; payload: CustomTemplateEditorData | null }
   | { type: "SET_PROCESSING"; payload: { isProcessing: boolean; mode: ProcessingMode } }
-  | { type: "UPDATE_EDGE_STATS"; payload: EdgeStatsUpdate[] }
-  | { type: "RENAME_NODE"; payload: { oldId: string; newId: string; name?: string } }
-  | { type: "UPDATE_NODE_DATA"; payload: UpdateNodeDataPayload }
-  | { type: "UPDATE_NODE_POSITIONS"; payload: UpdateNodePositionsPayload }
   | { type: "REFRESH_EDITOR_DATA" }
-  | { type: "SET_CUSTOM_NODE_ERROR"; payload: string | null };
+  | { type: "SET_CUSTOM_NODE_ERROR"; payload: string | null }
+  | { type: "CLEAR_SELECTION_FOR_DELETED_NODE"; payload: string }
+  | { type: "CLEAR_SELECTION_FOR_DELETED_EDGE"; payload: string };
 
 /**
- * Reducer function
+ * Reducer handlers
  */
 type ReducerHandlers = {
   [K in TopoViewerAction["type"]]?: (
@@ -187,13 +140,6 @@ type ReducerHandlers = {
 };
 
 const reducerHandlers: ReducerHandlers = {
-  SET_NODES: (state, action) => ({ ...state, nodes: action.payload }),
-  SET_EDGES: (state, action) => ({ ...state, edges: action.payload }),
-  SET_TOPOLOGY: (state, action) => ({
-    ...state,
-    nodes: action.payload.nodes,
-    edges: action.payload.edges
-  }),
   SET_MODE: (state, action) => ({ ...state, mode: action.payload }),
   SET_DEPLOYMENT_STATE: (state, action) => ({ ...state, deploymentState: action.payload }),
   SELECT_NODE: (state, action) => ({ ...state, selectedNode: action.payload, selectedEdge: null }),
@@ -236,55 +182,10 @@ const reducerHandlers: ReducerHandlers = {
     edgeAnnotations: upsertEdgeAnnotation(state.edgeAnnotations, action.payload)
   }),
   SET_INITIAL_DATA: (state, action) => ({ ...state, ...action.payload }),
-  ADD_NODE: (state, action) => ({
-    ...state,
-    nodes: (() => {
-      const nodeId = action.payload.id;
-      if (!nodeId) return state.nodes;
-      const exists = state.nodes.some((n) => n.id === nodeId);
-      return exists ? state.nodes : [...state.nodes, action.payload];
-    })()
-  }),
-  ADD_EDGE: (state, action) => {
-    const edge = action.payload;
-    const edgeId = edge.id;
-    const exists = state.edges.some((e) => e.id === edgeId);
-    if (exists) return state;
-    return {
-      ...state,
-      edges: [...state.edges, edge]
-    };
-  },
-  REMOVE_NODE_AND_EDGES: (state, action) => {
-    const nodeId = action.payload;
-    // Filter out the node
-    const filteredNodes = state.nodes.filter((n) => n.id !== nodeId);
-    // Filter out edges connected to the node
-    const filteredEdges = state.edges.filter((e) => e.source !== nodeId && e.target !== nodeId);
-    const selectedEdgeStillExists =
-      state.selectedEdge !== null ? filteredEdges.some((e) => e.id === state.selectedEdge) : false;
-    return {
-      ...state,
-      nodes: filteredNodes,
-      edges: filteredEdges,
-      selectedNode: state.selectedNode === nodeId ? null : state.selectedNode,
-      selectedEdge: selectedEdgeStillExists ? state.selectedEdge : null
-    };
-  },
-  REMOVE_EDGE: (state, action) => {
-    const edgeId = action.payload;
-    const filteredEdges = state.edges.filter((e) => e.id !== edgeId);
-    return {
-      ...state,
-      edges: filteredEdges,
-      selectedEdge: state.selectedEdge === edgeId ? null : state.selectedEdge
-    };
-  },
   SET_CUSTOM_NODES: (state, action) => ({
     ...state,
     customNodes: action.payload.customNodes,
     defaultNode: action.payload.defaultNode,
-    // Clear any pending error when we get a successful update
     customNodeError: null
   }),
   SET_CUSTOM_NODE_ERROR: (state, action) => ({
@@ -298,7 +199,6 @@ const reducerHandlers: ReducerHandlers = {
   EDIT_CUSTOM_TEMPLATE: (state, action) => ({
     ...state,
     editingCustomTemplate: action.payload,
-    // Clear other editing states when opening custom template editor
     editingNode: action.payload ? null : state.editingNode,
     editingEdge: action.payload ? null : state.editingEdge,
     editingNetwork: action.payload ? null : state.editingNetwork,
@@ -310,105 +210,18 @@ const reducerHandlers: ReducerHandlers = {
     isProcessing: action.payload.isProcessing,
     processingMode: action.payload.mode
   }),
-  UPDATE_EDGE_STATS: (state, action) => {
-    const updates = action.payload;
-    if (!updates || updates.length === 0) return state;
-
-    // Create a map for O(1) lookup
-    const updateMap = new Map(updates.map((u) => [u.id, u]));
-
-    // Update only the edges that have updates
-    const newEdges = state.edges.map((edge) => {
-      const update = updateMap.get(edge.id);
-      if (!update) return edge;
-
-      // Merge extraData into edge data
-      const oldExtraData = ((edge.data as Record<string, unknown>)?.extraData ?? {}) as Record<
-        string,
-        unknown
-      >;
-      const newExtraData = { ...oldExtraData, ...update.extraData };
-
-      return {
-        ...edge,
-        data: { ...edge.data, extraData: newExtraData },
-        className: update.classes ?? edge.className
-      } as TopoEdge;
-    });
-
-    return { ...state, edges: newEdges };
-  },
-  RENAME_NODE: (state, action) => {
-    const { oldId, newId, name } = action.payload;
-    const nextName = name ?? newId;
-    // Update node ID and name
-    const nodes = state.nodes.map((node) => {
-      if (node.id === oldId) {
-        return {
-          ...node,
-          id: newId,
-          data: { ...node.data, label: nextName }
-        } as TopoNode;
-      }
-      return node;
-    });
-    // Update edge references
-    const edges = state.edges.map((edge) => {
-      if (edge.source === oldId || edge.target === oldId) {
-        return {
-          ...edge,
-          source: edge.source === oldId ? newId : edge.source,
-          target: edge.target === oldId ? newId : edge.target
-        } as TopoEdge;
-      }
-      return edge;
-    });
-    return { ...state, nodes, edges };
-  },
-  UPDATE_NODE_DATA: (state, action) => {
-    const { nodeId, extraData } = action.payload;
-    // Update the node's data properties
-    // IMPORTANT: We REPLACE extraData entirely (not merge) so deleted fields stay deleted
-    const nodes = state.nodes.map((node) => {
-      if (node.id === nodeId) {
-        const currentData = node.data as Record<string, unknown>;
-
-        // Build updated data with visual properties
-        const updatedData: Record<string, unknown> = {
-          ...currentData,
-          extraData: extraData
-        };
-
-        // Also update top-level visual properties for ReactFlow node rendering
-        if (extraData.topoViewerRole !== undefined) {
-          updatedData.role = extraData.topoViewerRole;
-        }
-        if (extraData.iconColor !== undefined) {
-          updatedData.iconColor = extraData.iconColor;
-        }
-        if (extraData.iconCornerRadius !== undefined) {
-          updatedData.iconCornerRadius = extraData.iconCornerRadius;
-        }
-
-        return { ...node, data: updatedData } as TopoNode;
-      }
-      return node;
-    });
-    return { ...state, nodes };
-  },
-  UPDATE_NODE_POSITIONS: (state, action) => {
-    const updates = new Map(action.payload.positions.map((p) => [p.id, p.position]));
-    if (updates.size === 0) return state;
-
-    const nextNodes = state.nodes.map((node) => {
-      const nextPos = updates.get(node.id);
-      if (!nextPos) return node;
-      return { ...node, position: { x: nextPos.x, y: nextPos.y } };
-    });
-
-    return { ...state, nodes: nextNodes };
-  },
-  REFRESH_EDITOR_DATA: (state) => ({ ...state, editorDataVersion: state.editorDataVersion + 1 })
+  REFRESH_EDITOR_DATA: (state) => ({ ...state, editorDataVersion: state.editorDataVersion + 1 }),
+  CLEAR_SELECTION_FOR_DELETED_NODE: (state, action) => ({
+    ...state,
+    selectedNode: state.selectedNode === action.payload ? null : state.selectedNode,
+    editingNode: state.editingNode === action.payload ? null : state.editingNode,
+    editingNetwork: state.editingNetwork === action.payload ? null : state.editingNetwork
+  }),
+  CLEAR_SELECTION_FOR_DELETED_EDGE: (state, action) => ({
+    ...state,
+    selectedEdge: state.selectedEdge === action.payload ? null : state.selectedEdge,
+    editingEdge: state.editingEdge === action.payload ? null : state.editingEdge
+  })
 };
 
 function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): TopoViewerState {
@@ -420,7 +233,7 @@ function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): To
 }
 
 /**
- * Context value interface
+ * Context value interfaces
  */
 interface TopoViewerStateContextValue {
   state: TopoViewerState;
@@ -441,47 +254,32 @@ interface TopoViewerActionsContextValue {
   saveEndpointLabelOffset: () => void;
   setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
   upsertEdgeAnnotation: (annotation: EdgeAnnotation) => void;
-  addNode: (node: TopoNode) => void;
-  addEdge: (edge: TopoEdge) => void;
-  removeNodeAndEdges: (nodeId: string) => void;
-  removeEdge: (edgeId: string) => void;
-  updateNodePositions: (
-    positions: Array<{ id: string; position: { x: number; y: number } }>
-  ) => void;
   setCustomNodes: (customNodes: CustomNodeTemplate[], defaultNode: string) => void;
   editCustomTemplate: (data: CustomTemplateEditorData | null) => void;
   setProcessing: (isProcessing: boolean, mode?: "deploy" | "destroy") => void;
   refreshEditorData: () => void;
   clearCustomNodeError: () => void;
+  clearSelectionForDeletedNode: (nodeId: string) => void;
+  clearSelectionForDeletedEdge: (edgeId: string) => void;
 }
 
-/**
- * Create context
- */
 const TopoViewerStateContext = createContext<TopoViewerStateContextValue | undefined>(undefined);
 const TopoViewerActionsContext = createContext<TopoViewerActionsContextValue | undefined>(
   undefined
 );
 
-/**
- * Provider props
- */
 interface TopoViewerProviderProps {
   children: ReactNode;
   initialData?: unknown;
 }
 
 /**
- * Parse initial data from extension
+ * Parse initial data from extension (UI state only)
  */
 function parseInitialData(data: unknown): Partial<TopoViewerState> {
-  if (!data || typeof data !== "object") {
-    return {};
-  }
+  if (!data || typeof data !== "object") return {};
   const obj = data as Record<string, unknown>;
   const result: Partial<TopoViewerState> = {
-    nodes: (obj.nodes as TopoNode[]) || [],
-    edges: (obj.edges as TopoEdge[]) || [],
     labName: (obj.labName as string) || "",
     mode: (obj.mode as "edit" | "view") || "edit",
     deploymentState: (obj.deploymentState as DeploymentState) || "unknown",
@@ -489,32 +287,24 @@ function parseInitialData(data: unknown): Partial<TopoViewerState> {
     defaultNode: (obj.defaultNode as string) || "",
     customIcons: (obj.customIcons as CustomIconInfo[]) || []
   };
-  // Only set isLocked if explicitly provided (allows dev mode to override default)
   if (typeof obj.isLocked === "boolean") {
     result.isLocked = obj.isLocked;
   }
   const viewerSettings = obj.viewerSettings as Record<string, unknown> | undefined;
-  Object.assign(result, extractEndpointLabelSettings(viewerSettings));
+  if (viewerSettings) {
+    const offset = parseEndpointLabelOffset(viewerSettings.endpointLabelOffset);
+    if (offset !== null) {
+      result.endpointLabelOffset = offset;
+    }
+  }
   if (Array.isArray(obj.edgeAnnotations)) {
     result.edgeAnnotations = obj.edgeAnnotations as EdgeAnnotation[];
   }
   return result;
 }
 
-function extractEndpointLabelSettings(
-  viewerSettings: Record<string, unknown> | undefined
-): Partial<TopoViewerState> {
-  if (!viewerSettings) return {};
-  const result: Partial<TopoViewerState> = {};
-  const offset = parseEndpointLabelOffset(viewerSettings.endpointLabelOffset);
-  if (offset !== null) {
-    result.endpointLabelOffset = offset;
-  }
-  return result;
-}
-
 /**
- * Handle incoming extension messages
+ * Handle incoming extension messages (UI-related only)
  */
 type ExtensionMessage = {
   type?: string;
@@ -533,16 +323,6 @@ function handlePanelAction(
   const edgeId = message.edgeId as string | undefined;
   if (!action) return;
 
-  if (action === "delete-node" && nodeId) {
-    dispatch({ type: "REMOVE_NODE_AND_EDGES", payload: nodeId });
-    return;
-  }
-  if (action === "delete-link" && edgeId) {
-    dispatch({ type: "REMOVE_EDGE", payload: edgeId });
-    return;
-  }
-
-  // Edit actions trigger the editor panel
   if (action === "edit-node" && nodeId) {
     dispatch({ type: "EDIT_NODE", payload: nodeId });
     return;
@@ -551,15 +331,11 @@ function handlePanelAction(
     dispatch({ type: "EDIT_EDGE", payload: edgeId });
     return;
   }
-
-  const nodeSelectActions = new Set(["node-info"]);
-  const edgeSelectActions = new Set(["link-info"]);
-
-  if (nodeSelectActions.has(action) && nodeId) {
+  if (action === "node-info" && nodeId) {
     dispatch({ type: "SELECT_NODE", payload: nodeId });
     return;
   }
-  if (edgeSelectActions.has(action) && edgeId) {
+  if (action === "link-info" && edgeId) {
     dispatch({ type: "SELECT_EDGE", payload: edgeId });
   }
 }
@@ -571,87 +347,8 @@ function handleExtensionMessage(
   if (!message.type) return;
 
   const handlers: Record<string, () => void> = {
-    "topology-data": () => {
-      // Topology data comes as nodes/edges arrays
-      const msg = message as unknown as {
-        nodes?: TopoNode[];
-        edges?: TopoEdge[];
-        data?: {
-          nodes?: TopoNode[];
-          edges?: TopoEdge[];
-          viewerSettings?: Record<string, unknown>;
-          edgeAnnotations?: EdgeAnnotation[];
-        };
-      };
-      const nodes = msg.nodes || msg.data?.nodes;
-      const edges = msg.edges || msg.data?.edges;
-      const rawEdgeAnnotations = msg.data?.edgeAnnotations;
-      const cleanedEdgeAnnotations =
-        Array.isArray(rawEdgeAnnotations) && Array.isArray(edges)
-          ? pruneEdgeAnnotations(rawEdgeAnnotations, edges)
-          : rawEdgeAnnotations;
-      if (nodes && edges) {
-        dispatch({ type: "SET_TOPOLOGY", payload: { nodes, edges } });
-
-        // Re-initialize TopologyIO to sync with the new YAML file content
-        // This is critical for node deletion to work after external file changes
-        const yamlFilePath = (window as { __INITIAL_DATA__?: { yamlFilePath?: string } })
-          .__INITIAL_DATA__?.yamlFilePath;
-        if (yamlFilePath && isServicesInitialized()) {
-          const topologyIO = getTopologyIO();
-          void topologyIO.initializeFromFile(yamlFilePath).then((result) => {
-            if (!result.success) {
-              console.error(
-                `[TopoViewerContext] Failed to reinitialize TopologyIO: ${result.error}`
-              );
-            }
-          });
-        }
-      }
-
-      const viewerSettings = extractEndpointLabelSettings(msg.data?.viewerSettings);
-      if (Object.keys(viewerSettings).length > 0) {
-        dispatch({ type: "SET_INITIAL_DATA", payload: viewerSettings });
-      }
-      if (Array.isArray(cleanedEdgeAnnotations)) {
-        if (
-          Array.isArray(rawEdgeAnnotations) &&
-          cleanedEdgeAnnotations.length !== rawEdgeAnnotations.length
-        ) {
-          void saveEdgeAnnotations(cleanedEdgeAnnotations);
-        }
-        dispatch({ type: "SET_EDGE_ANNOTATIONS", payload: cleanedEdgeAnnotations });
-      }
-    },
-    "node-renamed": () => {
-      const data = message.data as { oldId?: string; newId?: string; name?: string } | undefined;
-      if (data?.oldId && data?.newId) {
-        dispatch({
-          type: "RENAME_NODE",
-          payload: { oldId: data.oldId, newId: data.newId, name: data.name }
-        });
-      }
-    },
-    "node-data-updated": () => {
-      const data = message.data as
-        | { nodeId?: string; extraData?: Record<string, unknown> }
-        | undefined;
-      if (data?.nodeId && data?.extraData) {
-        dispatch({
-          type: "UPDATE_NODE_DATA",
-          payload: { nodeId: data.nodeId, extraData: data.extraData }
-        });
-      }
-    },
-    "edge-stats-update": () => {
-      const edgeUpdates = message.data?.edgeUpdates as EdgeStatsUpdate[] | undefined;
-      if (edgeUpdates && edgeUpdates.length > 0) {
-        dispatch({ type: "UPDATE_EDGE_STATS", payload: edgeUpdates });
-      }
-    },
     "topo-mode-changed": () => {
       if (message.data?.mode) {
-        // Support both old format ('viewer'/'editor') and new format ('view'/'edit')
         const modeValue = message.data.mode;
         const normalizedMode = modeValue === "viewer" || modeValue === "view" ? "view" : "edit";
         dispatch({ type: "SET_MODE", payload: normalizedMode });
@@ -688,7 +385,6 @@ function handleExtensionMessage(
       }
     },
     "lab-lifecycle-status": () => {
-      // Lifecycle operation completed - clear processing state
       dispatch({ type: "SET_PROCESSING", payload: { isProcessing: false, mode: null } });
     }
   };
@@ -697,7 +393,7 @@ function handleExtensionMessage(
 }
 
 /**
- * Custom hook for selection-related action creators
+ * Selection action creators
  */
 function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const selectNode = useCallback(
@@ -744,54 +440,7 @@ function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
 }
 
 /**
- * Custom hook for graph element action creators
- */
-function useGraphElementActions(dispatch: React.Dispatch<TopoViewerAction>) {
-  const addNode = useCallback(
-    (node: TopoNode) => {
-      dispatch({ type: "ADD_NODE", payload: node });
-    },
-    [dispatch]
-  );
-  const addEdge = useCallback(
-    (edge: TopoEdge) => {
-      dispatch({ type: "ADD_EDGE", payload: edge });
-    },
-    [dispatch]
-  );
-  const removeNodeAndEdges = useCallback(
-    (nodeId: string) => {
-      dispatch({ type: "REMOVE_NODE_AND_EDGES", payload: nodeId });
-    },
-    [dispatch]
-  );
-  const removeEdge = useCallback(
-    (edgeId: string) => {
-      dispatch({ type: "REMOVE_EDGE", payload: edgeId });
-    },
-    [dispatch]
-  );
-  const updateNodePositions = useCallback(
-    (positions: Array<{ id: string; position: { x: number; y: number } }>) => {
-      dispatch({ type: "UPDATE_NODE_POSITIONS", payload: { positions } });
-    },
-    [dispatch]
-  );
-
-  return useMemo(
-    () => ({
-      addNode,
-      addEdge,
-      removeNodeAndEdges,
-      removeEdge,
-      updateNodePositions
-    }),
-    [addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodePositions]
-  );
-}
-
-/**
- * Custom hook for UI state action creators
+ * UI state action creators
  */
 function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const toggleLock = useCallback(() => {
@@ -851,14 +500,24 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
     },
     [dispatch]
   );
-
   const refreshEditorData = useCallback(() => {
     dispatch({ type: "REFRESH_EDITOR_DATA" });
   }, [dispatch]);
-
   const clearCustomNodeError = useCallback(() => {
     dispatch({ type: "SET_CUSTOM_NODE_ERROR", payload: null });
   }, [dispatch]);
+  const clearSelectionForDeletedNode = useCallback(
+    (nodeId: string) => {
+      dispatch({ type: "CLEAR_SELECTION_FOR_DELETED_NODE", payload: nodeId });
+    },
+    [dispatch]
+  );
+  const clearSelectionForDeletedEdge = useCallback(
+    (edgeId: string) => {
+      dispatch({ type: "CLEAR_SELECTION_FOR_DELETED_EDGE", payload: edgeId });
+    },
+    [dispatch]
+  );
 
   return useMemo(
     () => ({
@@ -873,7 +532,9 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
       editCustomTemplate,
       setProcessing,
       refreshEditorData,
-      clearCustomNodeError
+      clearCustomNodeError,
+      clearSelectionForDeletedNode,
+      clearSelectionForDeletedEdge
     }),
     [
       toggleLock,
@@ -887,26 +548,26 @@ function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
       editCustomTemplate,
       setProcessing,
       refreshEditorData,
-      clearCustomNodeError
+      clearCustomNodeError,
+      clearSelectionForDeletedNode,
+      clearSelectionForDeletedEdge
     ]
   );
 }
 
 /**
- * Custom hook for action creators - combines all action hooks
+ * Combined action creators
  */
 function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const selectionActions = useSelectionActions(dispatch);
-  const graphElementActions = useGraphElementActions(dispatch);
   const uiStateActions = useUIStateActions(dispatch);
 
   return useMemo(
     () => ({
       ...selectionActions,
-      ...graphElementActions,
       ...uiStateActions
     }),
-    [selectionActions, graphElementActions, uiStateActions]
+    [selectionActions, uiStateActions]
   );
 }
 
@@ -917,19 +578,10 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
   children,
   initialData
 }) => {
-  // Initialize reducer with parsed initial data to avoid race conditions
-  // where state.defaultNode would be empty on first render
   const initialEdgeAnnotationCleanupRef = useRef(false);
   const [state, dispatch] = useReducer(topoViewerReducer, initialData, (initial) => {
     try {
       const parsed = parseInitialData(initial);
-      if (parsed.edgeAnnotations && parsed.edges) {
-        const cleaned = pruneEdgeAnnotations(parsed.edgeAnnotations, parsed.edges);
-        if (cleaned.length !== parsed.edgeAnnotations.length) {
-          initialEdgeAnnotationCleanupRef.current = true;
-          parsed.edgeAnnotations = cleaned;
-        }
-      }
       return { ...initialState, ...parsed };
     } catch {
       return initialState;
@@ -937,7 +589,7 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
   });
   const actions = useActions(dispatch);
 
-  // Listen for messages from extension
+  // Listen for UI-related messages from extension
   useEffect(() => {
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as ExtensionMessage | undefined;
@@ -954,32 +606,6 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
     void saveEdgeAnnotations(state.edgeAnnotations);
   }, [state.edgeAnnotations]);
 
-  // Track used custom icons and trigger reconciliation when usage changes
-  const prevUsedIconsRef = useRef<string[]>([]);
-  useEffect(() => {
-    // Extract custom icons currently used by nodes
-    // Map nodes to format expected by extractUsedCustomIcons (data.topoViewerRole)
-    const nodesForIconExtraction = state.nodes.map((node) => ({
-      data: { topoViewerRole: (node.data as Record<string, unknown>).role as string | undefined }
-    }));
-    const usedIcons = extractUsedCustomIcons(nodesForIconExtraction);
-    const prevUsedIcons = prevUsedIconsRef.current;
-
-    // Check if the set of used icons has changed
-    const usedSet = new Set(usedIcons);
-    const prevSet = new Set(prevUsedIcons);
-    const hasChanged =
-      usedIcons.length !== prevUsedIcons.length ||
-      usedIcons.some((icon) => !prevSet.has(icon)) ||
-      prevUsedIcons.some((icon) => !usedSet.has(icon));
-
-    if (hasChanged && state.nodes.length > 0) {
-      prevUsedIconsRef.current = usedIcons;
-      // Trigger icon reconciliation on extension side
-      postCommand("icon-reconcile", { usedIcons });
-    }
-  }, [state.nodes]);
-
   const stateValue = useMemo<TopoViewerStateContextValue>(
     () => ({
       state,
@@ -988,7 +614,6 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
     [state, dispatch]
   );
 
-  // Save endpoint offset - needs access to current state
   const saveEndpointLabelOffset = useCallback(() => {
     void saveViewerSettings({ endpointLabelOffset: state.endpointLabelOffset });
   }, [state.endpointLabelOffset]);
@@ -1033,7 +658,7 @@ export const useTopoViewerActions = (): TopoViewerActionsContextValue => {
 };
 
 /**
- * Legacy combined hook (prefer useTopoViewerState/useTopoViewerActions)
+ * Legacy combined hook
  */
 export const useTopoViewer = (): TopoViewerStateContextValue & TopoViewerActionsContextValue => {
   const stateContext = useTopoViewerState();

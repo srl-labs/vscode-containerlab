@@ -6,7 +6,7 @@ import React from "react";
 import { BasePanel } from "../../shared/editor/BasePanel";
 import type { GraphChange } from "../../../hooks/state";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import { useTopoViewerState } from "../../../context/TopoViewerContext";
+import { useGraph } from "../../../context/GraphContext";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -88,10 +88,8 @@ function useBulkLinkPanel({
   recordGraphChanges,
   addEdge
 }: UseBulkLinkPanelOptions) {
-  // Get nodes and edges from context
-  const { state } = useTopoViewerState();
-  const nodes = state.nodes as TopoNode[];
-  const edges = state.edges as TopoEdge[];
+  // Get nodes and edges from GraphContext
+  const { nodes, edges } = useGraph();
 
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
@@ -117,8 +115,8 @@ function useBulkLinkPanel({
 
   const handleCompute = React.useCallback(() => {
     computeAndValidateCandidates(
-      nodes,
-      edges,
+      nodes as TopoNode[],
+      edges as TopoEdge[],
       sourcePattern,
       targetPattern,
       setStatus,
@@ -128,8 +126,8 @@ function useBulkLinkPanel({
 
   const handleConfirmCreate = React.useCallback(async () => {
     await confirmAndCreateLinks({
-      nodes,
-      edges,
+      nodes: nodes as TopoNode[],
+      edges: edges as TopoEdge[],
       pendingCandidates,
       canApply,
       addEdge,

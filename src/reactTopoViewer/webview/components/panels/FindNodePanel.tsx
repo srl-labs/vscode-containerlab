@@ -1,11 +1,11 @@
 /**
  * FindNodePanel - Search/find nodes in the topology
- * Uses React Flow state for searching and viewport operations.
+ * Uses GraphContext for node data and viewport operations.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
 import { BasePanel } from "../shared/editor/BasePanel";
-import { useTopoViewerState } from "../../context/TopoViewerContext";
+import { useGraph } from "../../context/GraphContext";
 import { useViewport } from "../../context/ViewportContext";
 import {
   searchNodes as searchNodesUtil,
@@ -45,7 +45,6 @@ function createContainsFilter(lower: string): (value: string) => boolean {
 
 /**
  * Creates a filter function for flexible string matching
- * Supports wildcards (*), prefix matching (+), and case-insensitive search
  */
 function createFilter(pattern: string): (value: string) => boolean {
   const trimmed = pattern.trim();
@@ -73,15 +72,12 @@ const SearchResultStatus: React.FC<{ count: number }> = ({ count }) => {
 };
 
 /**
- * Filter nodes using a custom filter function supporting wildcards
- * and prefix matching
+ * Filter nodes using a custom filter function
  */
 function filterNodes(nodes: TopoNode[], searchTerm: string): TopoNode[] {
   const filter = createFilter(searchTerm);
   return nodes.filter((node) => {
-    // Check node ID
     if (filter(node.id)) return true;
-    // Check label
     const data = node.data as Record<string, unknown>;
     const label = data.label;
     if (typeof label === "string" && filter(label)) return true;
@@ -120,13 +116,9 @@ function useSearchState(
       return;
     }
 
-    // Search using the graph utility
     const basicMatches = searchNodesUtil(nodes, searchTerm);
-
-    // Also search with wildcard filter for more flexibility
     const filterMatches = filterNodes(nodes, searchTerm);
 
-    // Combine results (dedupe by ID)
     const matchedIds = new Set<string>();
     const combinedMatches: TopoNode[] = [];
     for (const node of [...basicMatches, ...filterMatches]) {
@@ -138,11 +130,9 @@ function useSearchState(
 
     setMatchCount(combinedMatches.length);
 
-    // If matches found and we have rfInstance, fit view to show them
     if (combinedMatches.length > 0 && rfInstance) {
       const bounds = getNodesBoundingBox(combinedMatches);
       if (bounds) {
-        // Add padding and fit to bounds
         rfInstance.fitBounds(
           { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
           { padding: 0.2, duration: 300 }
@@ -160,12 +150,12 @@ function useSearchState(
 }
 
 export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose }) => {
-  const { state } = useTopoViewerState();
+  const { nodes } = useGraph();
   const { rfInstance } = useViewport();
   const inputRef = useRef<HTMLInputElement>(null);
   usePanelFocus(isVisible, inputRef);
   const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(
-    state.nodes,
+    nodes as TopoNode[],
     rfInstance,
     isVisible
   );
