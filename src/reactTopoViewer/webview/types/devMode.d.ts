@@ -80,6 +80,10 @@ export interface DevModeInterface {
   selectNode?: (nodeId: string | null) => void;
   /** Select an edge by ID (for E2E testing) */
   selectEdge?: (edgeId: string | null) => void;
+  /** Select multiple nodes for clipboard operations (for E2E testing) */
+  selectNodesForClipboard?: (nodeIds: string[]) => void;
+  /** Clear all node selections (for E2E testing) */
+  clearNodeSelection?: () => void;
 }
 
 /**

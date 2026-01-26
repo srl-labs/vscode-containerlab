@@ -265,7 +265,9 @@ const AppContent: React.FC<{
     [editingNodeRawData]
   );
   const editingNodeInheritedProps = React.useMemo(() => {
-    const extra = editingNodeRawData?.extraData as Record<string, unknown> | undefined;
+    const extra = (editingNodeRawData as Record<string, unknown> | null)?.extraData as
+      | Record<string, unknown>
+      | undefined;
     const inherited = extra?.inherited;
     return Array.isArray(inherited)
       ? inherited.filter((p): p is string => typeof p === "string")

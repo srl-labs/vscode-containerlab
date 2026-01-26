@@ -53,7 +53,7 @@ export function normalizeShapeAnnotationColors(
   annotation: FreeShapeAnnotation
 ): FreeShapeAnnotation {
   const hasFillColor = annotation.fillColor !== undefined;
-  const fill = hasFillColor ? parseRgb(annotation.fillColor) : null;
+  const fill = hasFillColor && annotation.fillColor ? parseRgb(annotation.fillColor) : null;
   const fillColor = hasFillColor
     ? normalizeHexColor(annotation.fillColor, "#ffffff")
     : annotation.fillColor;
