@@ -333,6 +333,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const {
       wrappedOnPaneClick,
       wrappedOnNodeDoubleClick,
+      wrappedOnNodeDragStart,
       wrappedOnNodeDragStop,
       isInAddMode,
       addModeMessage
@@ -344,15 +345,16 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       reactFlowInstanceRef: handlers.reactFlowInstance,
       baseOnPaneClick: handlers.onPaneClick,
       baseOnNodeDoubleClick: handlers.onNodeDoubleClick,
+      baseOnNodeDragStart: handlers.onNodeDragStart,
       baseOnNodeDragStop: handlers.onNodeDragStop,
       onShiftClickCreate
     });
 
     const handleNodeDragStart = useCallback(
       (event: React.MouseEvent, node: Node) => {
-        handlers.onNodeDragStart(event, node);
+        wrappedOnNodeDragStart(event, node);
       },
-      [handlers.onNodeDragStart]
+      [wrappedOnNodeDragStart]
     );
 
     const handleNodeDrag = useCallback(

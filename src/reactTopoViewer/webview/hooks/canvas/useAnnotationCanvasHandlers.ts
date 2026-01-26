@@ -29,6 +29,7 @@ interface UseAnnotationCanvasHandlersOptions {
   reactFlowInstanceRef: RefObject<ReactFlowInstance | null>;
   baseOnPaneClick: (event: React.MouseEvent) => void;
   baseOnNodeDoubleClick: (event: React.MouseEvent, node: Node) => void;
+  baseOnNodeDragStart: (event: React.MouseEvent, node: Node) => void;
   baseOnNodeDragStop: (event: React.MouseEvent, node: Node) => void;
   /** Callback for shift+click node creation */
   onShiftClickCreate?: (position: { x: number; y: number }) => void;
@@ -37,6 +38,7 @@ interface UseAnnotationCanvasHandlersOptions {
 interface UseAnnotationCanvasHandlersReturn {
   wrappedOnPaneClick: (event: React.MouseEvent) => void;
   wrappedOnNodeDoubleClick: (event: React.MouseEvent, node: Node) => void;
+  wrappedOnNodeDragStart: (event: React.MouseEvent, node: Node) => void;
   wrappedOnNodeDragStop: (event: React.MouseEvent, node: Node) => void;
   isInAddMode: boolean;
   addModeMessage: string | null;
@@ -180,6 +182,33 @@ function useWrappedNodeDoubleClick(
 }
 
 /**
+ * Hook for wrapping node drag start handler for annotations
+ * Captures "before" state for undo support
+ */
+function useWrappedNodeDragStart(
+  mode: "view" | "edit",
+  annotationHandlers: AnnotationHandlers | undefined,
+  baseOnNodeDragStart: (event: React.MouseEvent, node: Node) => void
+) {
+  return useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      // Always call base handler first to capture positions for all nodes
+      baseOnNodeDragStart(event, node);
+
+      if (mode !== "edit") return;
+
+      // For annotation nodes, capture "before" state for undo
+      if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onFreeTextDragStart) {
+        annotationHandlers.onFreeTextDragStart(node.id);
+      } else if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onFreeShapeDragStart) {
+        annotationHandlers.onFreeShapeDragStart(node.id);
+      }
+    },
+    [mode, annotationHandlers, baseOnNodeDragStart]
+  );
+}
+
+/**
  * Hook for wrapping node drag stop handler for annotations
  * Only updates the annotation state - React Flow handles the visual position
  */
@@ -197,6 +226,8 @@ function useWrappedNodeDragStop(
         const snappedPosition = snapToGrid(node.position);
         log.info(`[ReactFlowCanvas] Updated free text position: ${node.id}`);
         annotationHandlers.onUpdateFreeTextPosition(node.id, snappedPosition);
+        // Finalize drag with undo support
+        annotationHandlers.onFreeTextDragEnd?.(node.id, snappedPosition);
         // Check for group membership changes
         annotationHandlers.onNodeDropped?.(node.id, snappedPosition);
         return;
@@ -213,6 +244,8 @@ function useWrappedNodeDragStop(
         const snappedPosition = snapToGrid(node.position);
         log.info(`[ReactFlowCanvas] Updated free shape position: ${node.id}`);
         annotationHandlers.onUpdateFreeShapePosition(node.id, snappedPosition);
+        // Finalize drag with undo support
+        annotationHandlers.onFreeShapeDragEnd?.(node.id, snappedPosition);
         // Check for group membership changes
         annotationHandlers.onNodeDropped?.(node.id, snappedPosition);
         return;
@@ -278,6 +311,7 @@ export function useAnnotationCanvasHandlers(
     reactFlowInstanceRef,
     baseOnPaneClick,
     baseOnNodeDoubleClick,
+    baseOnNodeDragStart,
     baseOnNodeDragStop,
     onShiftClickCreate
   } = options;
@@ -301,6 +335,11 @@ export function useAnnotationCanvasHandlers(
     annotationHandlers,
     baseOnNodeDoubleClick
   );
+  const wrappedOnNodeDragStart = useWrappedNodeDragStart(
+    mode,
+    annotationHandlers,
+    baseOnNodeDragStart
+  );
   const wrappedOnNodeDragStop = useWrappedNodeDragStop(
     mode,
     annotationHandlers,
@@ -313,6 +352,7 @@ export function useAnnotationCanvasHandlers(
   return {
     wrappedOnPaneClick,
     wrappedOnNodeDoubleClick,
+    wrappedOnNodeDragStart,
     wrappedOnNodeDragStop,
     isInAddMode,
     addModeMessage

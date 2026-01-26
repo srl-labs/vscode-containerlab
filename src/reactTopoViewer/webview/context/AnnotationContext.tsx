@@ -169,6 +169,10 @@ interface AnnotationActionsContextValue {
   captureShapeAnnotationBefore: (id: string) => FreeShapeAnnotation | null;
   finalizeShapeWithUndo: (before: FreeShapeAnnotation | null, id: string) => void;
   migrateShapeAnnotationsGroupId: (oldGroupId: string, newGroupId: string | null) => void;
+  onFreeShapeDragStart: (id: string) => void;
+  onFreeShapeDragEnd: (id: string, position: { x: number; y: number }) => void;
+  onFreeTextDragStart: (id: string) => void;
+  onFreeTextDragEnd: (id: string, position: { x: number; y: number }) => void;
 
   // Membership
   applyMembershipChange: (memberships: { nodeId: string; groupId: string | null }[]) => void;
@@ -208,20 +212,67 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   // Get derived annotation data and mutation functions from GraphContext
   const derived = useDerivedAnnotations();
 
-  // Register annotation handler for undo/redo
-  useEffect(() => {
-    registerAnnotationHandler((action: UndoRedoActionAnnotation, isUndo: boolean) => {
-      if (action.annotationType !== "group") {
-        // TODO: Handle text and shape annotations
-        return;
-      }
+  // Shape UI state - needs to be declared before useEffect for refs
+  const [selectedShapeIds, setSelectedShapeIds] = useState<Set<string>>(new Set());
 
-      // Determine target state based on undo/redo direction
-      const targetState = isUndo ? action.before : action.after;
-      const currentState = isUndo ? action.after : action.before;
+  // Text UI state - needs to be declared before useEffect for refs
+  const [selectedTextIds, setSelectedTextIds] = useState<Set<string>>(new Set());
 
+  // Group UI state - needs to be declared before useEffect for refs
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+
+  // Helper functions for undo/redo handlers (defined outside useEffect for stability)
+  const handleShapeUndoRedo = useCallback(
+    (targetState: Record<string, unknown> | null, currentState: Record<string, unknown> | null) => {
       if (targetState === null && currentState !== null) {
-        // Delete the group (going from existing to not existing)
+        const shapeId = (currentState as FreeShapeAnnotation).id;
+        derived.deleteShapeAnnotation(shapeId);
+        setSelectedShapeIds((prev) => {
+          const next = new Set(prev);
+          next.delete(shapeId);
+          return next;
+        });
+        log.info(`[AnnotationUndo] Deleted shape ${shapeId}`);
+      } else if (targetState !== null && currentState === null) {
+        const shape = targetState as FreeShapeAnnotation;
+        derived.addShapeAnnotation(shape);
+        log.info(`[AnnotationUndo] Restored shape ${shape.id}`);
+      } else if (targetState !== null && currentState !== null) {
+        const shape = targetState as FreeShapeAnnotation;
+        derived.updateShapeAnnotation(shape.id, shape);
+        log.info(`[AnnotationUndo] Updated shape ${shape.id}`);
+      }
+    },
+    [derived]
+  );
+
+  const handleTextUndoRedo = useCallback(
+    (targetState: Record<string, unknown> | null, currentState: Record<string, unknown> | null) => {
+      if (targetState === null && currentState !== null) {
+        const textId = (currentState as FreeTextAnnotation).id;
+        derived.deleteTextAnnotation(textId);
+        setSelectedTextIds((prev) => {
+          const next = new Set(prev);
+          next.delete(textId);
+          return next;
+        });
+        log.info(`[AnnotationUndo] Deleted text ${textId}`);
+      } else if (targetState !== null && currentState === null) {
+        const text = targetState as FreeTextAnnotation;
+        derived.addTextAnnotation(text);
+        log.info(`[AnnotationUndo] Restored text ${text.id}`);
+      } else if (targetState !== null && currentState !== null) {
+        const text = targetState as FreeTextAnnotation;
+        derived.updateTextAnnotation(text.id, text);
+        log.info(`[AnnotationUndo] Updated text ${text.id}`);
+      }
+    },
+    [derived]
+  );
+
+  const handleGroupUndoRedo = useCallback(
+    (targetState: Record<string, unknown> | null, currentState: Record<string, unknown> | null) => {
+      if (targetState === null && currentState !== null) {
         const groupId = (currentState as GroupStyleAnnotation).id;
         derived.deleteGroup(groupId);
         setSelectedGroupIds((prev) => {
@@ -231,32 +282,45 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
         });
         log.info(`[AnnotationUndo] Deleted group ${groupId}`);
       } else if (targetState !== null && currentState === null) {
-        // Add the group back (going from not existing to existing)
         const group = targetState as GroupStyleAnnotation;
         derived.addGroup(group);
         log.info(`[AnnotationUndo] Restored group ${group.id}`);
       }
+    },
+    [derived]
+  );
+
+  // Register annotation handler for undo/redo
+  useEffect(() => {
+    registerAnnotationHandler((action: UndoRedoActionAnnotation, isUndo: boolean) => {
+      const targetState = isUndo ? action.before : action.after;
+      const currentState = isUndo ? action.after : action.before;
+
+      if (action.annotationType === "freeShape") {
+        handleShapeUndoRedo(targetState, currentState);
+      } else if (action.annotationType === "freeText") {
+        handleTextUndoRedo(targetState, currentState);
+      } else if (action.annotationType === "group") {
+        handleGroupUndoRedo(targetState, currentState);
+      }
     });
-  }, [registerAnnotationHandler, derived]);
+  }, [registerAnnotationHandler, handleShapeUndoRedo, handleTextUndoRedo, handleGroupUndoRedo]);
 
   // ============================================================================
   // Local UI State (not stored in GraphContext)
   // ============================================================================
 
-  // Group UI state
-  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  // Group UI state (selectedGroupIds declared earlier for undo/redo)
   const [editingGroup, setEditingGroup] = useState<GroupEditorData | null>(null);
 
-  // Text UI state
-  const [selectedTextIds, setSelectedTextIds] = useState<Set<string>>(new Set());
+  // Text UI state (selectedTextIds declared earlier for undo/redo)
   const [editingTextAnnotation, setEditingTextAnnotation] = useState<FreeTextAnnotation | null>(
     null
   );
   const [isAddTextMode, setIsAddTextMode] = useState(false);
   const lastTextStyleRef = useRef<Partial<FreeTextAnnotation>>({});
 
-  // Shape UI state
-  const [selectedShapeIds, setSelectedShapeIds] = useState<Set<string>>(new Set());
+  // Shape UI state (selectedShapeIds declared earlier for undo/redo)
   const [editingShapeAnnotation, setEditingShapeAnnotation] = useState<FreeShapeAnnotation | null>(
     null
   );
@@ -955,8 +1019,16 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       derived.addShapeAnnotation(newAnnotation);
       setIsAddShapeMode(false);
       log.info(`[FreeShape] Creating ${pendingShapeType} at (${position.x}, ${position.y})`);
+
+      // Push undo action for shape creation
+      undoRedo.pushAction({
+        type: "annotation",
+        annotationType: "freeShape",
+        before: null,
+        after: { ...newAnnotation }
+      });
     },
-    [isAddShapeMode, pendingShapeType, derived]
+    [isAddShapeMode, pendingShapeType, derived, undoRedo]
   );
 
   const captureShapeAnnotationBefore = useCallback(
@@ -969,6 +1041,100 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   const finalizeShapeWithUndo = useCallback((_before: FreeShapeAnnotation | null, _id: string) => {
     // No-op for now, undo/redo simplified
   }, []);
+
+  // Refs to store "before" state for drag operations (for undo support)
+  const shapeDragBeforeRef = useRef<Map<string, FreeShapeAnnotation>>(new Map());
+  const textDragBeforeRef = useRef<Map<string, FreeTextAnnotation>>(new Map());
+
+  // Shape drag handlers for undo support
+  const onFreeShapeDragStart = useCallback(
+    (id: string) => {
+      const shape = derived.shapeAnnotations.find((a) => a.id === id);
+      if (shape) {
+        shapeDragBeforeRef.current.set(id, { ...shape });
+        log.info(`[FreeShape] Drag started for ${id}, captured before state`);
+      }
+    },
+    [derived.shapeAnnotations]
+  );
+
+  const onFreeShapeDragEnd = useCallback(
+    (id: string, position: { x: number; y: number }) => {
+      const before = shapeDragBeforeRef.current.get(id);
+      shapeDragBeforeRef.current.delete(id);
+
+      if (!before) {
+        log.warn(`[FreeShape] No before state for drag end: ${id}`);
+        return;
+      }
+
+      // Check if position actually changed
+      if (before.position.x === position.x && before.position.y === position.y) {
+        log.info(`[FreeShape] Position unchanged for ${id}, skipping undo`);
+        return;
+      }
+
+      const after = derived.shapeAnnotations.find((a) => a.id === id);
+      if (!after) {
+        log.warn(`[FreeShape] Shape not found for drag end: ${id}`);
+        return;
+      }
+
+      log.info(`[FreeShape] Drag ended for ${id}, pushing undo action`);
+      undoRedo.pushAction({
+        type: "annotation",
+        annotationType: "freeShape",
+        before: { ...before },
+        after: { ...after }
+      });
+    },
+    [derived.shapeAnnotations, undoRedo]
+  );
+
+  // Text drag handlers for undo support
+  const onFreeTextDragStart = useCallback(
+    (id: string) => {
+      const text = derived.textAnnotations.find((a) => a.id === id);
+      if (text) {
+        textDragBeforeRef.current.set(id, { ...text });
+        log.info(`[FreeText] Drag started for ${id}, captured before state`);
+      }
+    },
+    [derived.textAnnotations]
+  );
+
+  const onFreeTextDragEnd = useCallback(
+    (id: string, position: { x: number; y: number }) => {
+      const before = textDragBeforeRef.current.get(id);
+      textDragBeforeRef.current.delete(id);
+
+      if (!before) {
+        log.warn(`[FreeText] No before state for drag end: ${id}`);
+        return;
+      }
+
+      // Check if position actually changed
+      if (before.position.x === position.x && before.position.y === position.y) {
+        log.info(`[FreeText] Position unchanged for ${id}, skipping undo`);
+        return;
+      }
+
+      const after = derived.textAnnotations.find((a) => a.id === id);
+      if (!after) {
+        log.warn(`[FreeText] Text not found for drag end: ${id}`);
+        return;
+      }
+
+      log.info(`[FreeText] Drag ended for ${id}, pushing undo action`);
+      undoRedo.pushAction({
+        type: "annotation",
+        annotationType: "freeText",
+        before: { ...before },
+        after: { ...after }
+      });
+    },
+    [derived.textAnnotations, undoRedo]
+  );
 
   const migrateShapeAnnotationsGroupId = useCallback(
     (oldGroupId: string, newGroupId: string | null) => {
@@ -1168,6 +1334,10 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       captureShapeAnnotationBefore,
       finalizeShapeWithUndo,
       migrateShapeAnnotationsGroupId,
+      onFreeShapeDragStart,
+      onFreeShapeDragEnd,
+      onFreeTextDragStart,
+      onFreeTextDragEnd,
       applyMembershipChange,
       onMembershipWillChange,
       onNodeDropped,
@@ -1243,6 +1413,10 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       captureShapeAnnotationBefore,
       finalizeShapeWithUndo,
       migrateShapeAnnotationsGroupId,
+      onFreeShapeDragStart,
+      onFreeShapeDragEnd,
+      onFreeTextDragStart,
+      onFreeTextDragEnd,
       applyMembershipChange,
       onMembershipWillChange,
       onNodeDropped,

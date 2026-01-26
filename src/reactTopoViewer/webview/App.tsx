@@ -597,7 +597,12 @@ const AppContent: React.FC<{
       onEditGroup: annotations.editGroup,
       onDeleteGroup: annotations.deleteGroupWithUndo,
       // Get group members (for group dragging)
-      getGroupMembers: annotations.getGroupMembers
+      getGroupMembers: annotations.getGroupMembers,
+      // Drag start/end handlers for undo support
+      onFreeTextDragStart: annotations.onFreeTextDragStart,
+      onFreeTextDragEnd: annotations.onFreeTextDragEnd,
+      onFreeShapeDragStart: annotations.onFreeShapeDragStart,
+      onFreeShapeDragEnd: annotations.onFreeShapeDragEnd
     }),
     [annotations, nodes]
   );

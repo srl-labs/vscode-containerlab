@@ -210,6 +210,14 @@ export interface AnnotationHandlers {
   onUpdateFreeShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   /** Update line start position after resize */
   onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => void;
+  /** Called when free text drag starts (capture before state for undo) */
+  onFreeTextDragStart?: (id: string) => void;
+  /** Called when free text drag ends (finalize undo action) */
+  onFreeTextDragEnd?: (id: string, position: { x: number; y: number }) => void;
+  /** Called when free shape drag starts (capture before state for undo) */
+  onFreeShapeDragStart?: (id: string) => void;
+  /** Called when free shape drag ends (finalize undo action) */
+  onFreeShapeDragEnd?: (id: string, position: { x: number; y: number }) => void;
   /** Disable add text mode (e.g., on Escape) */
   disableAddTextMode: () => void;
   /** Disable add shape mode (e.g., on Escape) */
