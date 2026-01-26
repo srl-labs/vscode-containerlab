@@ -13,11 +13,10 @@ import type { NodeType } from "../../../utils/SvgGenerator";
 import { generateEncodedSVG } from "../../../utils/SvgGenerator";
 import { useSchema, useDockerImages } from "../../../hooks/data";
 import { useTopoViewerState } from "../../../context/TopoViewerContext";
+import { DEFAULT_ICON_COLOR } from "../../react-flow-canvas/types";
 
 import type { TabProps } from "./types";
 import { CustomNodeTemplateFields } from "./CustomNodeTemplateFields";
-
-const DEFAULT_ICON_COLOR = "#1a73e8";
 
 // Icon options for dropdown (static, defined outside component)
 const ICON_OPTIONS = [

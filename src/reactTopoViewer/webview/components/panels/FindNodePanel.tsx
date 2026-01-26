@@ -7,10 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BasePanel } from "../shared/editor/BasePanel";
 import { useGraph } from "../../context/GraphContext";
 import { useViewport } from "../../context/ViewportContext";
-import {
-  searchNodes as searchNodesUtil,
-  getNodesBoundingBox
-} from "../../hooks/shared/graphQueryUtils";
+import { searchNodes as searchNodesUtil, getNodesBoundingBox } from "../../utils/graphQueryUtils";
 import type { TopoNode } from "../../../shared/types/graph";
 
 interface FindNodePanelProps {

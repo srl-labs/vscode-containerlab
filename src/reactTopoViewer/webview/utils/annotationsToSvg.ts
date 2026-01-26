@@ -15,8 +15,8 @@ import {
   DEFAULT_BORDER_STYLE,
   DEFAULT_ARROW_SIZE,
   DEFAULT_LINE_LENGTH
-} from "../hooks/annotations/freeShape";
-import { applyAlphaToColor } from "../components/annotations/shared/colorUtils";
+} from "./annotations/constants";
+import { applyAlphaToColor } from "./color";
 
 import { renderMarkdown } from "./markdownRenderer";
 

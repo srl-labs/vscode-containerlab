@@ -1,5 +1,5 @@
 /**
- * Helper utilities for FreeShapeLayer rendering (JSX helpers)
+ * Helper utilities for free shape SVG rendering (JSX helpers).
  */
 import type { ReactElement } from "react";
 
@@ -13,9 +13,9 @@ import {
   MIN_SHAPE_SIZE,
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY
-} from "../../hooks/annotations/freeShape";
+} from "./constants";
 
-import { applyAlphaToColor } from "./shared";
+import { applyAlphaToColor } from "../color";
 
 export interface LineGeometry {
   dx: number;

@@ -4,7 +4,13 @@
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import type { EdgeLabelMode } from "../../context/EdgeRenderConfigContext";
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
+import {
+  type TopoNode,
+  type TopoEdge,
+  SELECTION_COLOR,
+  DEFAULT_ICON_COLOR,
+  ROLE_SVG_MAP
+} from "../../../shared/types/graph";
 
 /**
  * Node data for topology nodes (routers, switches, etc.)
@@ -267,12 +273,4 @@ export interface ReactFlowCanvasProps {
   onShiftClickCreate?: (position: { x: number; y: number }) => void;
 }
 
-/**
- * Selection color constant (VS Code focus border)
- */
-export const SELECTION_COLOR = "var(--vscode-focusBorder, #007ACC)";
-
-/**
- * Default node icon color
- */
-export const DEFAULT_ICON_COLOR = "#005aff";
+export { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP };

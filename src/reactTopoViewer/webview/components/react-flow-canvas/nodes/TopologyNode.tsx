@@ -6,9 +6,8 @@ import React, { useMemo, memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import type { TopologyNodeData } from "../types";
-import { SELECTION_COLOR, DEFAULT_ICON_COLOR } from "../types";
+import { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../types";
 import { generateEncodedSVG, type NodeType } from "../../../utils/SvgGenerator";
-import { ROLE_SVG_MAP } from "../conversion";
 import { useLinkCreationContext } from "../../../context/LinkCreationContext";
 import { useNodeRenderConfig } from "../../../context/NodeRenderConfigContext";
 

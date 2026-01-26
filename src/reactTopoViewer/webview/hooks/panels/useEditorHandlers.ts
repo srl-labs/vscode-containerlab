@@ -25,7 +25,7 @@ import {
   getTopologyIO
 } from "../../services";
 import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
-import { getViewportCenter } from "../shared/viewportUtils";
+import { getViewportCenter } from "../../utils/viewportUtils";
 import { useUndoRedoContext } from "../../context/UndoRedoContext";
 
 // Pending membership tracking moved to drag handler

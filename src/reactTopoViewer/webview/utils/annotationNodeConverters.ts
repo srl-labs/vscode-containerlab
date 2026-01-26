@@ -22,6 +22,7 @@ import type {
   FreeShapeNodeData,
   GroupNodeData
 } from "../components/react-flow-canvas/types";
+import { DEFAULT_LINE_LENGTH } from "./annotations/constants";
 
 // ============================================================================
 // Constants
@@ -29,9 +30,6 @@ import type {
 
 /** Set of annotation node types for quick lookup */
 export const ANNOTATION_NODE_TYPES = new Set(["free-text-node", "free-shape-node", "group-node"]);
-
-/** Default line length when endPosition is missing */
-const DEFAULT_LINE_LENGTH = 150;
 
 /** Padding for line bounding box to accommodate arrows and stroke */
 const LINE_PADDING = 20;

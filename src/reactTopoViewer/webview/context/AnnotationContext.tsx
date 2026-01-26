@@ -31,7 +31,7 @@ import {
   DEFAULT_BORDER_COLOR,
   DEFAULT_BORDER_WIDTH,
   DEFAULT_BORDER_STYLE
-} from "../hooks/annotations/freeShape";
+} from "../utils/annotations/constants";
 import { normalizeShapeAnnotationColors } from "../utils/color";
 import { freeTextToNode, freeShapeToNode, groupToNode } from "../utils/annotationNodeConverters";
 import { log } from "../utils/logger";

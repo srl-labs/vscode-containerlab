@@ -3,7 +3,7 @@
  * Helper functions to query nodes and edges in React Flow graphs.
  * These replace graph queries for nodes and edges.
  */
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
+import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 
 /**
  * Get a node by its ID

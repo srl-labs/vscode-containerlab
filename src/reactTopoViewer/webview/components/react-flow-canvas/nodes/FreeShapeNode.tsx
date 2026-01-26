@@ -7,6 +7,7 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import type { FreeShapeNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
+import { DEFAULT_LINE_LENGTH } from "../../../utils/annotations/constants";
 import { useTopoViewer } from "../../../context/TopoViewerContext";
 import { useAnnotationHandlers } from "../../../context/AnnotationHandlersContext";
 
@@ -18,7 +19,6 @@ import { RotationHandle, LineEndHandle, LineStartHandle } from "./AnnotationHand
 
 const MIN_WIDTH = 20;
 const MIN_HEIGHT = 20;
-const DEFAULT_LINE_LENGTH = 150;
 
 // ============================================================================
 // Helper Functions

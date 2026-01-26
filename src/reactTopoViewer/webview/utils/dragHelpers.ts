@@ -3,7 +3,7 @@
  */
 import type React from "react";
 
-import type { FreeShapeAnnotation } from "../../../shared/types/topology";
+import type { FreeShapeAnnotation } from "../../shared/types/topology";
 
 /**
  * Handle common drag start logic:

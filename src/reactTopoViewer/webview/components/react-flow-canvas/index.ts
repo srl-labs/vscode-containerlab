@@ -24,18 +24,7 @@ export type {
   AnnotationHandlers,
   MovePositionEntry
 } from "./types";
-export { SELECTION_COLOR, DEFAULT_ICON_COLOR } from "./types";
-
-// Conversion utilities
-export {
-  ROLE_SVG_MAP,
-  parsedElementToRFNode,
-  parsedElementToRFEdge,
-  convertElements,
-  rfNodeToParsedElement,
-  rfEdgeToParsedElement,
-  convertToElements
-} from "./conversion";
+export { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "./types";
 
 // Layout utilities
 export type { LayoutName, LayoutOptions } from "./layout";

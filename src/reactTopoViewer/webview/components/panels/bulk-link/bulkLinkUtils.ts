@@ -16,7 +16,7 @@ import {
   hasEdgeBetween as hasEdgeBetweenUtil,
   getNodeById,
   getConnectedEdges
-} from "../../../hooks/shared/graphQueryUtils";
+} from "../../../utils/graphQueryUtils";
 
 export type LinkCandidate = { sourceId: string; targetId: string };
 

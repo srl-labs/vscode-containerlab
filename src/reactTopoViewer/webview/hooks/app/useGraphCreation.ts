@@ -15,7 +15,7 @@ import { useNodeCreationHandlers, type NodeCreationState } from "../panels/useEd
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { TopoNode } from "../../../shared/types/graph";
 import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
-import { getViewportCenter } from "../shared/viewportUtils";
+import { getViewportCenter } from "../../utils/viewportUtils";
 
 /** Edge data structure for edge creation callback */
 interface EdgeData {
