@@ -496,6 +496,7 @@ const AppContent: React.FC<{
       // Size update handlers (for resize)
       onUpdateFreeTextSize: annotations.updateTextSize,
       onUpdateFreeShapeSize: annotations.updateShapeSize,
+      onUpdateFreeShapeSizeWithUndo: annotations.updateShapeSizeWithUndo,
       // Rotation handlers
       onUpdateFreeTextRotation: annotations.updateTextRotation,
       onUpdateFreeShapeRotation: annotations.updateShapeRotation,
@@ -516,7 +517,8 @@ const AppContent: React.FC<{
       // Node dropped handler (for group membership)
       onNodeDropped: annotations.onNodeDropped,
       // Group handlers
-      onUpdateGroupSize: annotations.updateGroupSizeWithUndo,
+      onUpdateGroupSize: annotations.updateGroupSize,
+      onUpdateGroupSizeWithUndo: annotations.updateGroupSizeWithUndo,
       onEditGroup: annotations.editGroup,
       onDeleteGroup: annotations.deleteGroupWithUndo,
       // Get group members (for group dragging)

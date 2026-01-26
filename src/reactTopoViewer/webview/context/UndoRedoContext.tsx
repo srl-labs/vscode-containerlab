@@ -2,10 +2,20 @@
  * UndoRedoContext - Snapshot-based undo/redo management
  *
  * Provides a single undo/redo system for the graph and annotations.
+ *
+ * IMPORTANT: This context uses React state directly (not refs) to ensure
+ * we always have the correct state. When mutating (add/delete), callers
+ * MUST pass explicitNodes/explicitEdges to commitChange to provide the
+ * expected "after" state, since React state updates are async.
  */
-import React, { createContext, useContext, useMemo, useRef, useEffect } from "react";
+import React, { createContext, useContext, useMemo, useRef, useCallback } from "react";
+import type { Node } from "@xyflow/react";
 
-import { useUndoRedo, type UseUndoRedoReturn } from "../hooks/state/useUndoRedo";
+import {
+  useUndoRedo,
+  type UseUndoRedoReturn,
+  type UndoRedoSnapshot
+} from "../hooks/state/useUndoRedo";
 import { persistSnapshotChange } from "../hooks/state/snapshotPersistence";
 import { useGraph } from "./GraphContext";
 import { useTopoViewerActions, useTopoViewerState } from "./TopoViewerContext";
@@ -30,33 +40,30 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({ enabled, chi
   const { state } = useTopoViewerState();
   const { setEdgeAnnotations } = useTopoViewerActions();
 
-  const nodesRef = useRef(nodes);
-  const edgesRef = useRef(edges);
-  const edgeAnnotationsRef = useRef(state.edgeAnnotations);
+  // Use refs that are updated synchronously for persistence callbacks
+  // These are needed because onPersistSnapshot is called after state updates
+  // but we need access to the nodes for annotation persistence
+  const nodesRef = useRef<Node[]>(nodes);
+  nodesRef.current = nodes; // Update synchronously on each render
 
-  useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
-
-  useEffect(() => {
-    edgesRef.current = edges;
-  }, [edges]);
-
-  useEffect(() => {
-    edgeAnnotationsRef.current = state.edgeAnnotations;
-  }, [state.edgeAnnotations]);
+  // Stable callback for persistence that captures current nodes
+  const handlePersistSnapshot = useCallback(
+    (snapshot: UndoRedoSnapshot, direction: "undo" | "redo") => {
+      persistSnapshotChange(snapshot, direction, { getNodes: () => nodesRef.current });
+    },
+    []
+  );
 
   const undoRedo = useUndoRedo({
     enabled,
-    getNodes: () => nodesRef.current,
-    getEdges: () => edgesRef.current,
+    // Pass state directly - callers must use explicitNodes/explicitEdges for mutations
+    getNodes: () => nodes,
+    getEdges: () => edges,
     setNodes,
     setEdges,
-    getEdgeAnnotations: () => edgeAnnotationsRef.current,
+    getEdgeAnnotations: () => state.edgeAnnotations,
     setEdgeAnnotations,
-    onPersistSnapshot: (snapshot, direction) => {
-      persistSnapshotChange(snapshot, direction, { getNodes: () => nodesRef.current });
-    }
+    onPersistSnapshot: handlePersistSnapshot
   });
 
   const value = useMemo<UndoRedoContextValue>(

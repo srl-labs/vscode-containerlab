@@ -257,11 +257,25 @@ function useNodeDragHandlers(
       if (dragSnapshotRef.current) {
         const nodeCount = dragSnapshotRef.current.nodeIds.length;
         const description = buildMoveDescription(node, nodeCount);
-        undoRedo.commitChange(dragSnapshotRef.current, description);
+
+        // Build explicit nodes with updated positions to avoid stale state issue
+        const explicitNodes: Node[] = [];
+        for (const change of changes) {
+          if (change.type === "position" && change.position) {
+            const existingNode = nodes?.find((n) => n.id === change.id);
+            if (existingNode) {
+              explicitNodes.push({ ...existingNode, position: change.position });
+            }
+          }
+        }
+
+        undoRedo.commitChange(dragSnapshotRef.current, description, {
+          explicitNodes: explicitNodes.length > 0 ? explicitNodes : undefined
+        });
         dragSnapshotRef.current = null;
       }
     },
-    [modeRef, onNodesChangeBase, groupMemberHandlers, undoRedo, buildMoveDescription]
+    [modeRef, nodes, onNodesChangeBase, groupMemberHandlers, undoRedo, buildMoveDescription]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };

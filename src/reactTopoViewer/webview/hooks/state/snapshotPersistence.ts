@@ -331,7 +331,52 @@ export function persistSnapshotChange(
       }
 
       if (annotationsChanged) {
-        const annotationNodes = options.getNodes().filter((n) => isAnnotationNodeType(n.type));
+        // Build expected annotation state from current nodes + snapshot changes
+        // We can't rely on getNodes() as it returns stale ref data
+        const currentAnnotationNodes = options
+          .getNodes()
+          .filter((n) => isAnnotationNodeType(n.type));
+        const nodeMap = new Map(currentAnnotationNodes.map((n) => [n.id, n]));
+
+        // Apply snapshot changes to build expected state
+        for (const entry of snapshot.nodes) {
+          if (renameIds.has(entry.id)) continue;
+          const from = useBefore ? entry.after : entry.before;
+          const to = useBefore ? entry.before : entry.after;
+
+          if (!isAnnotationSnapshot(from) && !isAnnotationSnapshot(to)) continue;
+
+          if (!from && to) {
+            // Creation: add node to map (it may not be in stale ref yet)
+            nodeMap.set(to.id, {
+              id: to.id,
+              type: to.type,
+              position: to.position,
+              data: to.data ?? {},
+              width: to.width,
+              height: to.height,
+              style: to.style,
+              parentId: to.parentNode
+            } as Node);
+          } else if (from && !to) {
+            // Deletion: remove node from map (it may still be in stale ref)
+            nodeMap.delete(from.id);
+          } else if (from && to) {
+            // Update: use the 'to' state
+            nodeMap.set(to.id, {
+              id: to.id,
+              type: to.type,
+              position: to.position,
+              data: to.data ?? {},
+              width: to.width,
+              height: to.height,
+              style: to.style,
+              parentId: to.parentNode
+            } as Node);
+          }
+        }
+
+        const annotationNodes = Array.from(nodeMap.values());
         const { freeTextAnnotations, freeShapeAnnotations, groups } =
           nodesToAnnotations(annotationNodes);
         await saveFreeTextAnnotations(freeTextAnnotations);

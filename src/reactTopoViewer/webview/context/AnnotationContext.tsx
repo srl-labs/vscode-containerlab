@@ -33,6 +33,7 @@ import {
   DEFAULT_BORDER_STYLE
 } from "../hooks/annotations/freeShape";
 import { normalizeShapeAnnotationColors } from "../utils/color";
+import { freeTextToNode, freeShapeToNode, groupToNode } from "../utils/annotationNodeConverters";
 import { log } from "../utils/logger";
 
 /** Props for AnnotationProvider */
@@ -79,6 +80,7 @@ interface AnnotationActionsContextValue {
   deleteGroupWithUndo: (id: string) => void;
   generateGroupId: () => string;
   addGroupWithUndo: (group: GroupStyleAnnotation) => void;
+  updateGroupSize: (id: string, width: number, height: number) => void;
   updateGroupSizeWithUndo: (id: string, width: number, height: number) => void;
 
   // Text annotations
@@ -116,6 +118,7 @@ interface AnnotationActionsContextValue {
   deleteSelectedShapeAnnotations: () => void;
   updateShapeRotation: (id: string, rotation: number) => void;
   updateShapeSize: (id: string, width: number, height: number) => void;
+  updateShapeSizeWithUndo: (id: string, width: number, height: number) => void;
   updateShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   updateShapeGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
   updateShapeEndGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
@@ -379,7 +382,11 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
         derived.addNodeToGroup(memberId, newGroupId);
       }
     }
-    undoRedo.commitChange(snapshot, `Add group ${newGroup.name ?? newGroup.id}`);
+    // Pass explicit node so commitChange doesn't rely on stale state ref
+    const node = groupToNode(newGroup);
+    undoRedo.commitChange(snapshot, `Add group ${newGroup.name ?? newGroup.id}`, {
+      explicitNodes: [node]
+    });
   }, [mode, isLocked, onLockedAction, rfInstance, derived, undoRedo]);
 
   const deleteGroupWithUndo = useCallback(
@@ -394,7 +401,10 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
         return next;
       });
       if (group) {
-        undoRedo.commitChange(snapshot, `Delete group ${group.name ?? group.id}`);
+        // Pass empty explicit nodes to indicate deletion (after = null)
+        undoRedo.commitChange(snapshot, `Delete group ${group.name ?? group.id}`, {
+          explicitNodes: []
+        });
       }
     },
     [derived, undoRedo]
@@ -410,16 +420,34 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
           derived.addNodeToGroup(memberId, group.id);
         }
       }
-      undoRedo.commitChange(snapshot, `Add group ${group.name ?? group.id}`);
+      // Pass explicit node so commitChange doesn't rely on stale state ref
+      const node = groupToNode(group);
+      undoRedo.commitChange(snapshot, `Add group ${group.name ?? group.id}`, {
+        explicitNodes: [node]
+      });
     },
     [derived, undoRedo]
   );
 
+  const updateGroupSize = useCallback(
+    (id: string, width: number, height: number) => {
+      derived.updateGroup(id, { width, height });
+    },
+    [derived]
+  );
+
   const updateGroupSizeWithUndo = useCallback(
     (id: string, width: number, height: number) => {
+      const group = derived.groups.find((g) => g.id === id);
+      if (!group) return;
       const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
       derived.updateGroup(id, { width, height });
-      undoRedo.commitChange(snapshot, `Resize group ${id}`);
+      // Build expected "after" state with updated size
+      const updatedGroup: GroupStyleAnnotation = { ...group, width, height };
+      const node = groupToNode(updatedGroup);
+      undoRedo.commitChange(snapshot, `Resize group ${id}`, {
+        explicitNodes: [node]
+      });
     },
     [derived, undoRedo]
   );
@@ -510,9 +538,14 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     (annotation: FreeTextAnnotation, isNew: boolean) => {
       const snapshot = undoRedo.captureSnapshot({ nodeIds: [annotation.id] });
       saveTextAnnotation(annotation);
+      // Pass explicit node so commitChange doesn't rely on stale state ref
+      const node = freeTextToNode(annotation);
       undoRedo.commitChange(
         snapshot,
-        isNew ? `Add text ${annotation.id}` : `Update text ${annotation.id}`
+        isNew ? `Add text ${annotation.id}` : `Update text ${annotation.id}`,
+        {
+          explicitNodes: [node]
+        }
       );
     },
     [saveTextAnnotation, undoRedo]
@@ -534,7 +567,10 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     (id: string) => {
       const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
       deleteTextAnnotation(id);
-      undoRedo.commitChange(snapshot, `Delete text ${id}`);
+      // Pass empty explicit nodes to indicate deletion (after = null)
+      undoRedo.commitChange(snapshot, `Delete text ${id}`, {
+        explicitNodes: []
+      });
     },
     [deleteTextAnnotation, undoRedo]
   );
@@ -545,9 +581,13 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     const snapshot = undoRedo.captureSnapshot({ nodeIds: ids });
     ids.forEach((id) => derived.deleteTextAnnotation(id));
     setSelectedTextIds(new Set());
+    // Pass empty explicit nodes to indicate deletion (after = null)
     undoRedo.commitChange(
       snapshot,
-      `Delete ${ids.length} text annotation${ids.length === 1 ? "" : "s"}`
+      `Delete ${ids.length} text annotation${ids.length === 1 ? "" : "s"}`,
+      {
+        explicitNodes: []
+      }
     );
   }, [selectedTextIds, derived, undoRedo]);
 
@@ -706,7 +746,10 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     (id: string) => {
       const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
       deleteShapeAnnotation(id);
-      undoRedo.commitChange(snapshot, `Delete shape ${id}`);
+      // Pass empty explicit nodes to indicate deletion (after = null)
+      undoRedo.commitChange(snapshot, `Delete shape ${id}`, {
+        explicitNodes: []
+      });
     },
     [deleteShapeAnnotation, undoRedo]
   );
@@ -717,7 +760,10 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     const snapshot = undoRedo.captureSnapshot({ nodeIds: ids });
     ids.forEach((id) => derived.deleteShapeAnnotation(id));
     setSelectedShapeIds(new Set());
-    undoRedo.commitChange(snapshot, `Delete ${ids.length} shape${ids.length === 1 ? "" : "s"}`);
+    // Pass empty explicit nodes to indicate deletion (after = null)
+    undoRedo.commitChange(snapshot, `Delete ${ids.length} shape${ids.length === 1 ? "" : "s"}`, {
+      explicitNodes: []
+    });
   }, [selectedShapeIds, derived, undoRedo]);
 
   const updateShapeRotation = useCallback(
@@ -732,6 +778,22 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       derived.updateShapeAnnotation(id, { width, height });
     },
     [derived]
+  );
+
+  const updateShapeSizeWithUndo = useCallback(
+    (id: string, width: number, height: number) => {
+      const shape = derived.shapeAnnotations.find((s) => s.id === id);
+      if (!shape) return;
+      const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
+      derived.updateShapeAnnotation(id, { width, height });
+      // Build expected "after" state with updated size
+      const updatedShape: FreeShapeAnnotation = { ...shape, width, height };
+      const node = freeShapeToNode(updatedShape);
+      undoRedo.commitChange(snapshot, `Resize shape ${id}`, {
+        explicitNodes: [node]
+      });
+    },
+    [derived, undoRedo]
   );
 
   const updateShapeEndPosition = useCallback(
@@ -783,7 +845,11 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       };
       const snapshot = undoRedo.captureSnapshot({ nodeIds: [newAnnotation.id] });
       derived.addShapeAnnotation(newAnnotation);
-      undoRedo.commitChange(snapshot, `Add shape ${newAnnotation.id}`);
+      // Pass explicit node so commitChange doesn't rely on stale state ref
+      const node = freeShapeToNode(newAnnotation);
+      undoRedo.commitChange(snapshot, `Add shape ${newAnnotation.id}`, {
+        explicitNodes: [node]
+      });
       setIsAddShapeMode(false);
       log.info(`[FreeShape] Creating ${pendingShapeType} at (${position.x}, ${position.y})`);
     },
@@ -903,6 +969,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteGroupWithUndo,
       generateGroupId: generateGroupIdCallback,
       addGroupWithUndo,
+      updateGroupSize,
       updateGroupSizeWithUndo,
       handleAddText,
       disableAddTextMode,
@@ -936,6 +1003,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteSelectedShapeAnnotations,
       updateShapeRotation,
       updateShapeSize,
+      updateShapeSizeWithUndo,
       updateShapeEndPosition,
       updateShapeGeoPosition,
       updateShapeEndGeoPosition,
@@ -964,6 +1032,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteGroupWithUndo,
       generateGroupIdCallback,
       addGroupWithUndo,
+      updateGroupSize,
       updateGroupSizeWithUndo,
       handleAddText,
       disableAddTextMode,
@@ -997,6 +1066,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteSelectedShapeAnnotations,
       updateShapeRotation,
       updateShapeSize,
+      updateShapeSizeWithUndo,
       updateShapeEndPosition,
       updateShapeGeoPosition,
       updateShapeEndGeoPosition,

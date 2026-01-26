@@ -120,7 +120,8 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateGroupSize?.(id, params.width, params.height);
+      // Use undo version for final state after resize
+      annotationHandlers?.onUpdateGroupSizeWithUndo?.(id, params.width, params.height);
     },
     [id, annotationHandlers]
   );
