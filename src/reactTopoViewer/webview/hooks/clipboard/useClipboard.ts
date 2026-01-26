@@ -28,6 +28,12 @@ interface SerializedNode {
   position: { x: number; y: number };
   relativePosition: { x: number; y: number };
   type?: string;
+  /** Top-level width (for annotation nodes like groups) */
+  width?: number;
+  /** Top-level height (for annotation nodes like groups) */
+  height?: number;
+  /** zIndex for proper layering */
+  zIndex?: number;
 }
 
 /** Serialized edge data for clipboard */
@@ -67,6 +73,10 @@ export interface UseClipboardOptions {
       targetEndpoint: string;
     }
   ) => void;
+  /** Get node's group membership (for topology nodes whose groupId is not in node.data) */
+  getNodeMembership?: (nodeId: string) => string | null;
+  /** Add node to group (updates in-memory membership map) */
+  addNodeToGroup?: (nodeId: string, groupId: string) => void;
 }
 
 /** Return type for useClipboard hook */
@@ -102,7 +112,7 @@ let pasteCounter = 0;
  * @param options - Optional callbacks for node/edge creation that include persistence
  */
 export function useClipboard(options: UseClipboardOptions = {}): UseClipboardReturn {
-  const { onNodeCreated, onEdgeCreated } = options;
+  const { onNodeCreated, onEdgeCreated, getNodeMembership, addNodeToGroup } = options;
   const { nodes, addNode, addEdge } = useGraph();
   const { rfInstance } = useViewport();
   const { undoRedo } = useUndoRedoContext();
@@ -146,16 +156,37 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
     const origin = calculateCenter(positions);
 
     const serializedNodes: SerializedNode[] = selectedNodes.map(
-      (node: { id: string; data: unknown; position: { x: number; y: number }; type?: string }) => ({
-        id: node.id,
-        data: { ...(node.data as Record<string, unknown>) },
-        position: { ...node.position },
-        relativePosition: {
-          x: node.position.x - origin.x,
-          y: node.position.y - origin.y
-        },
-        type: node.type
-      })
+      (node: {
+        id: string;
+        data: unknown;
+        position: { x: number; y: number };
+        type?: string;
+        width?: number;
+        height?: number;
+        zIndex?: number;
+      }) => {
+        const nodeData = node.data as Record<string, unknown>;
+        // For topology nodes, groupId is stored in membershipMap, not in node.data
+        // Look it up if available and not already present in data
+        let groupId = nodeData.groupId as string | undefined;
+        if (!groupId && getNodeMembership) {
+          groupId = getNodeMembership(node.id) ?? undefined;
+        }
+        return {
+          id: node.id,
+          data: { ...nodeData, groupId },
+          position: { ...node.position },
+          relativePosition: {
+            x: node.position.x - origin.x,
+            y: node.position.y - origin.y
+          },
+          type: node.type,
+          // Preserve top-level dimensions for annotation nodes (groups, shapes, text)
+          width: node.width,
+          height: node.height,
+          zIndex: node.zIndex
+        };
+      }
     );
 
     const serializedEdges: SerializedEdge[] = selectedEdges.map(
@@ -185,7 +216,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
       log.error(`[Clipboard] Failed to write to clipboard: ${String(err)}`);
       return false;
     }
-  }, [rfInstance]);
+  }, [rfInstance, getNodeMembership]);
 
   /**
    * Paste clipboard contents at the given position (or viewport center).
@@ -249,38 +280,59 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
 
       const idMapping = new Map<string, string>();
 
+      // Annotation node types that should use original ID as base (not name)
+      const annotationTypes = new Set(["group-node", "free-text-node", "free-shape-node"]);
+
       for (const node of clipboardData.nodes) {
-        const originalName = (node.data.name as string) || node.id;
+        // For annotation nodes (groups, text, shapes), use the original ID as base
+        // For topology nodes, use the name (which becomes the YAML node name)
+        const isAnnotation = annotationTypes.has(node.type ?? "");
+        const idBase = isAnnotation ? node.id : (node.data.name as string) || node.id;
         console.log(
-          `[Clipboard] Generating ID for originalName="${originalName}", node.id="${node.id}"`
+          `[Clipboard] Generating ID for idBase="${idBase}", node.id="${node.id}", isAnnotation=${isAnnotation}`
         );
-        const newId = getUniqueId(originalName, usedNames);
-        console.log(`[Clipboard] Generated unique ID: ${originalName} -> ${newId}`);
-        log.info(`[Clipboard] Generated unique ID: ${originalName} -> ${newId}`);
+        const newId = getUniqueId(idBase, usedNames);
+        console.log(`[Clipboard] Generated unique ID: ${idBase} -> ${newId}`);
+        log.info(`[Clipboard] Generated unique ID: ${idBase} -> ${newId}`);
         usedNames.add(newId);
         idMapping.set(node.id, newId);
       }
 
       undoRedo.beginBatch();
 
+      // Track pasted node/edge IDs for selection
+      const pastedNodeIds: string[] = [];
+      const pastedEdgeIds: string[] = [];
+
       try {
         for (const node of clipboardData.nodes) {
           const newId = idMapping.get(node.id)!;
+          pastedNodeIds.push(newId);
           const newPosition = {
             x: pastePosition!.x + node.relativePosition.x + offset,
             y: pastePosition!.y + node.relativePosition.y + offset
           };
 
+          // Remap groupId if the node belongs to a group that was also copied
+          const originalGroupId = node.data.groupId as string | undefined;
+          const newGroupId = originalGroupId ? idMapping.get(originalGroupId) : undefined;
+
           const newNode: TopoNode = {
             id: newId,
             type: (node.type ?? "topology-node") as "topology-node",
             position: newPosition,
+            // Preserve top-level dimensions for annotation nodes (groups, shapes, text)
+            ...(node.width !== undefined && { width: node.width }),
+            ...(node.height !== undefined && { height: node.height }),
+            ...(node.zIndex !== undefined && { zIndex: node.zIndex }),
             data: {
               ...node.data,
               id: newId,
               name: newId,
               label: newId, // Always use the new unique ID as the label
-              role: (node.data.role as string) || "node"
+              role: (node.data.role as string) || "node",
+              // Remap groupId to point to the new copied group (or remove if group wasn't copied)
+              groupId: newGroupId
             } as TopologyNodeData
           };
 
@@ -290,6 +342,13 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
             onNodeCreated(newId, newNode, newPosition);
           } else {
             addNode(newNode);
+          }
+
+          // Update in-memory membership map for topology nodes with group membership
+          // Annotation nodes (free-text, free-shape) have groupId in their data and are handled by useAnnotationPersistence
+          const isAnnotation = annotationTypes.has(node.type ?? "");
+          if (newGroupId && !isAnnotation && addNodeToGroup) {
+            addNodeToGroup(newId, newGroupId);
           }
         }
 
@@ -303,6 +362,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
           const sourceEndpoint = (edge.data.sourceEndpoint as string) || "eth1";
           const targetEndpoint = (edge.data.targetEndpoint as string) || "eth1";
           const newId = `${newSource}:${sourceEndpoint}--${newTarget}:${targetEndpoint}`;
+          pastedEdgeIds.push(newId);
 
           // Use onEdgeCreated callback if provided (includes YAML persistence)
           // Otherwise fall back to addEdge (React Flow state only)
@@ -331,6 +391,34 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         }
 
         log.info(`[Clipboard] Pasted ${clipboardData.nodes.length} nodes, ${edgeCount} edges`);
+
+        // Select pasted elements and deselect everything else
+        // Use setTimeout to ensure nodes are added to React Flow before selecting
+        setTimeout(() => {
+          if (!rfInstance) return;
+          const pastedNodeSet = new Set(pastedNodeIds);
+          const pastedEdgeSet = new Set(pastedEdgeIds);
+
+          // Update nodes: select pasted, deselect others
+          rfInstance.setNodes((nodes) =>
+            nodes.map((n) => ({
+              ...n,
+              selected: pastedNodeSet.has(n.id)
+            }))
+          );
+
+          // Update edges: select pasted, deselect others
+          rfInstance.setEdges((edges) =>
+            edges.map((e) => ({
+              ...e,
+              selected: pastedEdgeSet.has(e.id)
+            }))
+          );
+
+          log.info(
+            `[Clipboard] Selected ${pastedNodeIds.length} nodes, ${pastedEdgeIds.length} edges after paste`
+          );
+        }, 50);
       } finally {
         undoRedo.endBatch();
       }

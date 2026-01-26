@@ -156,6 +156,7 @@ const NODE_FALLBACK_PROPS = [
   "type",
   "image",
   "group",
+  "groupId",
   "topoViewerRole",
   "iconColor",
   "iconCornerRadius",
@@ -214,11 +215,19 @@ function cloneEdge(edge: TopoEdge): TopoEdge {
 // Persistence Helpers
 // ============================================================================
 
+/** Annotation node types that should NOT be persisted via createNode */
+const ANNOTATION_NODE_TYPES = new Set(["group-node", "free-text-node", "free-shape-node"]);
+
 function persistNewNode(
   nodeId: string,
   nodeElement: TopoNode,
   position: { x: number; y: number }
 ): void {
+  // Skip annotation nodes - they are persisted via annotation persistence, not nodeAnnotations
+  if (ANNOTATION_NODE_TYPES.has(nodeElement.type ?? "")) {
+    return;
+  }
+
   const data = nodeElement.data as Record<string, unknown>;
 
   if (isNetworkNode(data)) {

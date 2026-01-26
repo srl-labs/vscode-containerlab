@@ -264,17 +264,17 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   const addNodeToGroup = useCallback(
     (nodeId: string, groupId: string) => {
-      const node = nodes.find((n) => n.id === nodeId);
-      if (!node) return;
-
       // For annotation nodes (text/shape), update groupId in node data
-      if (node.type === "free-text-node" || node.type === "free-shape-node") {
+      // Node lookup may fail if called right after node creation (React state not yet updated)
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node && (node.type === "free-text-node" || node.type === "free-shape-node")) {
         updateNode(nodeId, {
           data: { ...node.data, groupId }
         });
       }
 
       // Update membership map (for all node types including topology nodes)
+      // This must happen even if node isn't found yet (e.g., called during paste before React re-renders)
       setMembershipMap((prev) => {
         const next = new Map(prev);
         next.set(nodeId, groupId);
@@ -289,16 +289,16 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   const removeNodeFromGroup = useCallback(
     (nodeId: string) => {
-      const node = nodes.find((n) => n.id === nodeId);
-      if (!node) return;
-
       // For annotation nodes (text/shape), remove groupId from node data
-      if (node.type === "free-text-node" || node.type === "free-shape-node") {
+      // Node lookup may fail if called before React re-renders
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node && (node.type === "free-text-node" || node.type === "free-shape-node")) {
         const { groupId: _removed, ...restData } = node.data as { groupId?: string };
         updateNode(nodeId, { data: restData });
       }
 
       // Update membership map (for all node types)
+      // This must happen even if node isn't found
       setMembershipMap((prev) => {
         const next = new Map(prev);
         next.delete(nodeId);

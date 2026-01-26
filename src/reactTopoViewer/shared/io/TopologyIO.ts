@@ -201,7 +201,8 @@ export class TopologyIO {
               icon: nodeData.extraData.topoViewerRole as string | undefined,
               iconColor: nodeData.extraData.iconColor as string | undefined,
               iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
-              interfacePattern: nodeData.extraData.interfacePattern as string | undefined
+              interfacePattern: nodeData.extraData.interfacePattern as string | undefined,
+              groupId: nodeData.extraData.groupId as string | undefined
             }
           : undefined;
         await this.saveNodePosition(nodeId, nodeData.position, annotationData);

@@ -3,4 +3,4 @@
  */
 
 export { useClipboard } from "./useClipboard";
-export type { UseClipboardReturn } from "./useClipboard";
+export type { UseClipboardReturn, UseClipboardOptions } from "./useClipboard";

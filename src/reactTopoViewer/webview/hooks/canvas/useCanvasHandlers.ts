@@ -218,7 +218,10 @@ function useNodeDragHandlers(
 
       const isGroupNode = node.type === "group-node";
       const finalPosition = isGroupNode ? node.position : snapToGrid(node.position);
-      const positionsToSave: DragPositionEntry[] = [{ id: node.id, position: finalPosition }];
+      // Only save non-annotation nodes to nodeAnnotations - annotations are handled by useAnnotationPersistence
+      const positionsToSave: DragPositionEntry[] = isGroupNode
+        ? []
+        : [{ id: node.id, position: finalPosition }];
       const changes: NodeChange[] = [
         { type: "position", id: node.id, position: finalPosition, dragging: false }
       ];
@@ -238,7 +241,11 @@ function useNodeDragHandlers(
               position: memberNode.position,
               dragging: false
             });
-            positionsToSave.push({ id: memberId, position: memberNode.position });
+            // Only save non-annotation member nodes to nodeAnnotations
+            // Annotation nodes (free-text, free-shape) are saved via useAnnotationPersistence
+            if (!ANNOTATION_NODE_TYPES.includes(memberNode.type || "")) {
+              positionsToSave.push({ id: memberId, position: memberNode.position });
+            }
           }
         }
 
@@ -250,8 +257,10 @@ function useNodeDragHandlers(
       onNodesChangeBase(changes);
       log.info(`[ReactFlowCanvas] Node ${node.id} moved to ${finalPosition.x}, ${finalPosition.y}`);
 
-      // Save all positions to annotations file via TopologyIO service
-      void saveNodePositionsService(positionsToSave);
+      // Save all positions to annotations file via TopologyIO service (only non-annotation nodes)
+      if (positionsToSave.length > 0) {
+        void saveNodePositionsService(positionsToSave);
+      }
 
       if (onMoveComplete && dragStartPositionsRef.current.length > 0) {
         const afterPositions = computeAfterPositions(

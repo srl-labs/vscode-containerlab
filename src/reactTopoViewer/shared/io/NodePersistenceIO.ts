@@ -54,6 +54,8 @@ export interface NodeAnnotationData {
   iconCornerRadius?: number;
   /** Interface pattern for link creation - tracks template inheritance */
   interfacePattern?: string;
+  /** Group ID for group membership */
+  groupId?: string;
 }
 
 /** Node properties that can be saved to YAML */
@@ -496,6 +498,7 @@ export function applyAnnotationData(
     iconColor?: string;
     iconCornerRadius?: number;
     interfacePattern?: string;
+    groupId?: string;
   },
   data?: NodeAnnotationData
 ): void {
@@ -504,6 +507,7 @@ export function applyAnnotationData(
   if (data.iconColor) annotation.iconColor = data.iconColor;
   if (data.iconCornerRadius !== undefined) annotation.iconCornerRadius = data.iconCornerRadius;
   if (data.interfacePattern) annotation.interfacePattern = data.interfacePattern;
+  if (data.groupId) annotation.groupId = data.groupId;
 }
 
 /** Build annotation properties for spread */
@@ -513,6 +517,7 @@ export function buildAnnotationProps(data?: NodeAnnotationData): Record<string, 
     ...(data.icon && { icon: data.icon }),
     ...(data.iconColor && { iconColor: data.iconColor }),
     ...(data.iconCornerRadius !== undefined && { iconCornerRadius: data.iconCornerRadius }),
-    ...(data.interfacePattern && { interfacePattern: data.interfacePattern })
+    ...(data.interfacePattern && { interfacePattern: data.interfacePattern }),
+    ...(data.groupId && { groupId: data.groupId })
   };
 }

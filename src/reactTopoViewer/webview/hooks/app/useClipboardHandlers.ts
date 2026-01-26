@@ -93,9 +93,16 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
   const clipboardOptions: UseClipboardOptions = React.useMemo(
     () => ({
       onNodeCreated: handleNodeCreatedCallback,
-      onEdgeCreated: handleEdgeCreated
+      onEdgeCreated: handleEdgeCreated,
+      getNodeMembership: annotations.getNodeMembership,
+      addNodeToGroup: annotations.addNodeToGroup
     }),
-    [handleNodeCreatedCallback, handleEdgeCreated]
+    [
+      handleNodeCreatedCallback,
+      handleEdgeCreated,
+      annotations.getNodeMembership,
+      annotations.addNodeToGroup
+    ]
   );
 
   // Use the React Flow clipboard hook with persistence callbacks

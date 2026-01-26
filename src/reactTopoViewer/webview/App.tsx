@@ -62,7 +62,7 @@ import {
   // Types
   type GraphChange
 } from "./hooks/internal";
-import { annotationsToNodes } from "./utils/annotationNodeConverters";
+import { annotationsToNodes, isAnnotationNodeType } from "./utils/annotationNodeConverters";
 import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
 import { convertToLinkEditorData } from "./utils/linkEditorConversions";
 import { saveNodePositions } from "./services";
@@ -575,13 +575,15 @@ const AppContent: React.FC<{
       },
       onGroupDragEnd: (groupId: string) => {
         // Save member topology node positions to file on drag end
+        // Only save non-annotation nodes - annotations are saved via useAnnotationPersistence
         const memberNodeIds = annotations.getGroupMembers(groupId);
         if (memberNodeIds.length === 0) return;
 
         const nodePositionsToSave: Array<{ id: string; position: { x: number; y: number } }> = [];
         for (const memberId of memberNodeIds) {
           const node = nodes.find((n) => n.id === memberId);
-          if (node) {
+          // Skip annotation nodes - their positions are saved via useAnnotationPersistence
+          if (node && !isAnnotationNodeType(node.type)) {
             nodePositionsToSave.push({ id: memberId, position: node.position });
           }
         }
