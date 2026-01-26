@@ -27,7 +27,7 @@ interface AnnotationsClipboardSubset {
   selectedGroupIds: Set<string>;
   selectedTextIds: Set<string>;
   selectedShapeIds: Set<string>;
-  addGroupWithUndo: (group: GroupStyleAnnotation) => void;
+  addGroup: (group: GroupStyleAnnotation) => void;
   saveTextAnnotation: (annotation: FreeTextAnnotation) => void;
   saveShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
   addNodeToGroup: (nodeId: string, groupId: string) => void;

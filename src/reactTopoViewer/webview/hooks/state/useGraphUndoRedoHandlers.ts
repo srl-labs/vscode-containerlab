@@ -46,8 +46,8 @@ interface GraphHandlersResult {
     nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
-  handleDeleteNodeWithUndo: (nodeId: string) => void;
-  handleDeleteLinkWithUndo: (edgeId: string) => void;
+  handleDeleteNode: (nodeId: string) => void;
+  handleDeleteLink: (edgeId: string) => void;
 }
 
 // ============================================================================
@@ -131,7 +131,7 @@ function useGraphMutationHandlers(params: {
     [addNode, undoRedo]
   );
 
-  const handleDeleteNodeWithUndo = React.useCallback(
+  const handleDeleteNode = React.useCallback(
     (nodeId: string) => {
       const edges = getEdges();
       const connectedEdgeIds = getConnectedEdgeIds(edges, nodeId);
@@ -147,7 +147,7 @@ function useGraphMutationHandlers(params: {
     [getEdges, removeNodeAndEdges, menuHandlers, undoRedo]
   );
 
-  const handleDeleteLinkWithUndo = React.useCallback(
+  const handleDeleteLink = React.useCallback(
     (edgeId: string) => {
       const before = undoRedo.captureSnapshot({ edgeIds: [edgeId] });
       removeEdge(edgeId);
@@ -163,8 +163,8 @@ function useGraphMutationHandlers(params: {
   return {
     handleEdgeCreated,
     handleNodeCreatedCallback,
-    handleDeleteNodeWithUndo,
-    handleDeleteLinkWithUndo
+    handleDeleteNode,
+    handleDeleteLink
   };
 }
 

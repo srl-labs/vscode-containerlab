@@ -357,7 +357,6 @@ interface BoxNodeProps {
   readonly isSelected: boolean;
   readonly showHandles: boolean;
   readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
-  readonly onResize: (_event: unknown, params: ResizeParams) => void;
   readonly onResizeEnd: (_event: unknown, params: ResizeParams) => void;
 }
 
@@ -367,7 +366,6 @@ function BoxNode({
   isSelected,
   showHandles,
   annotationHandlers,
-  onResize,
   onResizeEnd
 }: BoxNodeProps): React.ReactElement {
   const rotation = data.rotation ?? 0;
@@ -392,7 +390,6 @@ function BoxNode({
         handleClassName="nodrag"
         color={SELECTION_COLOR}
         keepAspectRatio={data.shapeType === "circle"}
-        onResize={onResize}
         onResizeEnd={onResizeEnd}
       />
       {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (
@@ -423,18 +420,10 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
   const isSelected = selected ?? false;
   const showHandles = isSelected && isEditMode;
 
-  // Live resize handler - updates annotation state during resize for visual feedback
-  const handleResize = useCallback(
-    (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
-    },
-    [id, annotationHandlers]
-  );
-
+  // Only save at end of resize to avoid creating undo entries for each pixel
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      // Use undo version for final state after resize
-      annotationHandlers?.onUpdateFreeShapeSizeWithUndo?.(id, params.width, params.height);
+      annotationHandlers?.onUpdateFreeShapeSize?.(id, params.width, params.height);
     },
     [id, annotationHandlers]
   );
@@ -458,7 +447,6 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
       isSelected={isSelected}
       showHandles={showHandles}
       annotationHandlers={annotationHandlers}
-      onResize={handleResize}
       onResizeEnd={handleResizeEnd}
     />
   );

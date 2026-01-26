@@ -3,7 +3,7 @@
  * Extracted from App.tsx to reduce file size.
  */
 import React from "react";
-import type { ReactFlowInstance } from "@xyflow/react";
+import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
 import type {
   NodeEditorData,
@@ -16,7 +16,8 @@ import type { CustomIconInfo } from "../../../shared/types/icons";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
 import { convertEditorDataToYaml } from "../../../shared/utilities/nodeEditorConversions";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
-import type { SnapshotCapture } from "../state/useUndoRedo";
+import type { SnapshotCapture, NodeSnapshot } from "../state/useUndoRedo";
+import { useGraph } from "../../context/GraphContext";
 import {
   editNode as editNodeService,
   isServicesInitialized,
@@ -101,6 +102,65 @@ function handleNodeUpdate(
   return updateNodeExtraData(data.id, data);
 }
 
+/**
+ * Build the expected node state after an edit operation.
+ * Used to pass explicit "after" state to commitChange to avoid stale React state issues.
+ */
+function buildExpectedNodeAfterEdit(
+  beforeSnapshot: NodeSnapshot | null | undefined,
+  nodeId: string,
+  newExtraData: Record<string, unknown> | null,
+  editorData: NodeEditorData
+): Node | null {
+  if (!beforeSnapshot || !newExtraData) return null;
+
+  // Build expected node with updated data
+  const currentData = (beforeSnapshot.data ?? {}) as Record<string, unknown>;
+  return {
+    id: nodeId,
+    type: beforeSnapshot.type,
+    position: beforeSnapshot.position,
+    width: beforeSnapshot.width,
+    height: beforeSnapshot.height,
+    style: beforeSnapshot.style,
+    className: beforeSnapshot.className,
+    zIndex: beforeSnapshot.zIndex,
+    parentId: beforeSnapshot.parentNode,
+    extent: beforeSnapshot.extent,
+    draggable: beforeSnapshot.draggable,
+    selectable: beforeSnapshot.selectable,
+    hidden: beforeSnapshot.hidden,
+    data: {
+      ...currentData,
+      label: editorData.name,
+      extraData: newExtraData
+    }
+  } as Node;
+}
+
+/**
+ * Find all edges connected to a node (by source or target).
+ */
+function findConnectedEdges(edges: Edge[], nodeId: string): Edge[] {
+  return edges.filter((e) => e.source === nodeId || e.target === nodeId);
+}
+
+/**
+ * Build expected edges after a node rename.
+ * Updates source/target to point to the new node ID.
+ */
+function buildExpectedEdgesAfterRename(
+  edges: Edge[],
+  oldNodeId: string,
+  newNodeId: string
+): Edge[] {
+  return edges.map((edge) => ({
+    ...edge,
+    source: edge.source === oldNodeId ? newNodeId : edge.source,
+    target: edge.target === oldNodeId ? newNodeId : edge.target
+  }));
+}
+
 function persistEdgeLabelOffset(
   data: LinkEditorData,
   handlers: EdgeAnnotationHandlers | undefined
@@ -109,6 +169,38 @@ function persistEdgeLabelOffset(
   const nextAnnotations = upsertEdgeLabelOffsetAnnotation(handlers.edgeAnnotations, data);
   if (!nextAnnotations) return;
   handlers.setEdgeAnnotations(nextAnnotations);
+}
+
+/**
+ * Build the expected edge state after an edit operation.
+ * Used to pass explicit "after" state to commitChange to avoid stale React state issues.
+ */
+function buildExpectedEdgeAfterEdit(snapshot: SnapshotCapture, data: LinkEditorData): Edge | null {
+  const edgeEntry = snapshot.edgesBefore.find((e) => e.id === data.id);
+  const beforeSnapshot = edgeEntry?.before;
+  if (!beforeSnapshot) return null;
+
+  const saveData = convertEditorDataToLinkSaveData(data);
+  const currentData = (beforeSnapshot.data ?? {}) as Record<string, unknown>;
+
+  return {
+    id: data.id,
+    source: saveData.source,
+    target: saveData.target,
+    type: beforeSnapshot.type,
+    label: beforeSnapshot.label,
+    style: beforeSnapshot.style,
+    className: beforeSnapshot.className,
+    markerStart: beforeSnapshot.markerStart,
+    markerEnd: beforeSnapshot.markerEnd,
+    animated: beforeSnapshot.animated,
+    data: {
+      ...currentData,
+      sourceEndpoint: saveData.sourceEndpoint ?? data.sourceEndpoint,
+      targetEndpoint: saveData.targetEndpoint ?? data.targetEndpoint,
+      extraData: saveData.extraData ?? currentData.extraData
+    }
+  } as Edge;
 }
 
 // ============================================================================
@@ -159,6 +251,7 @@ export function useNodeEditorHandlers(
   refreshEditorData?: () => void
 ) {
   const { undoRedo } = useUndoRedoContext();
+  const { edges } = useGraph();
   const initialDataRef = React.useRef<NodeEditorData | null>(null);
 
   React.useEffect(() => {
@@ -189,16 +282,40 @@ export function useNodeEditorHandlers(
         return;
       }
       const oldName = beforeData?.name !== data.name ? beforeData?.name : undefined;
+      const nodeId = oldName ? data.name : data.id;
+
+      // For renames, also capture connected edges (they will have source/target updated)
+      const connectedEdges = oldName ? findConnectedEdges(edges, oldName) : [];
+      const connectedEdgeIds = connectedEdges.map((e) => e.id);
+
       const snapshot = undoRedo.captureSnapshot({
         nodeIds: oldName ? [oldName, data.name] : [data.id],
+        edgeIds: connectedEdgeIds,
         meta: oldName ? { nodeRenames: [{ from: oldName, to: data.name }] } : undefined
       });
+
+      // Calculate expected "after" state before applying changes (to bypass stale React state)
+      const newExtraData = handleNodeUpdate(data, undefined, undefined, customIcons);
+      const beforeSnapshot = oldName
+        ? snapshot.nodesBefore.find((e) => e.id === oldName)?.before
+        : snapshot.nodesBefore.find((e) => e.id === data.id)?.before;
+      const expectedNode = buildExpectedNodeAfterEdit(beforeSnapshot, nodeId, newExtraData, data);
+
+      // Build expected edges with updated source/target for renames
+      const expectedEdges = oldName
+        ? buildExpectedEdgesAfterRename(connectedEdges, oldName, data.name)
+        : undefined;
+
       applyNodeChanges(data, oldName, persistDeps);
-      undoRedo.commitChange(snapshot, `Edit node ${data.name}`);
+
+      undoRedo.commitChange(snapshot, `Edit node ${data.name}`, {
+        explicitNodes: expectedNode ? [expectedNode] : undefined,
+        explicitEdges: expectedEdges
+      });
       initialDataRef.current = null;
       editNode(null);
     },
-    [editNode, persistDeps, undoRedo]
+    [editNode, persistDeps, undoRedo, customIcons, edges]
   );
 
   const handleApply = React.useCallback(
@@ -207,15 +324,39 @@ export function useNodeEditorHandlers(
       const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
       if (!hasChanges) return;
       const oldName = beforeData?.name !== data.name ? beforeData?.name : undefined;
+      const nodeId = oldName ? data.name : data.id;
+
+      // For renames, also capture connected edges (they will have source/target updated)
+      const connectedEdges = oldName ? findConnectedEdges(edges, oldName) : [];
+      const connectedEdgeIds = connectedEdges.map((e) => e.id);
+
       const snapshot = undoRedo.captureSnapshot({
         nodeIds: oldName ? [oldName, data.name] : [data.id],
+        edgeIds: connectedEdgeIds,
         meta: oldName ? { nodeRenames: [{ from: oldName, to: data.name }] } : undefined
       });
+
+      // Calculate expected "after" state before applying changes (to bypass stale React state)
+      const newExtraData = handleNodeUpdate(data, undefined, undefined, customIcons);
+      const beforeSnapshot = oldName
+        ? snapshot.nodesBefore.find((e) => e.id === oldName)?.before
+        : snapshot.nodesBefore.find((e) => e.id === data.id)?.before;
+      const expectedNode = buildExpectedNodeAfterEdit(beforeSnapshot, nodeId, newExtraData, data);
+
+      // Build expected edges with updated source/target for renames
+      const expectedEdges = oldName
+        ? buildExpectedEdgesAfterRename(connectedEdges, oldName, data.name)
+        : undefined;
+
       applyNodeChanges(data, oldName, persistDeps);
-      undoRedo.commitChange(snapshot, `Edit node ${data.name}`);
+
+      undoRedo.commitChange(snapshot, `Edit node ${data.name}`, {
+        explicitNodes: expectedNode ? [expectedNode] : undefined,
+        explicitEdges: expectedEdges
+      });
       initialDataRef.current = { ...data };
     },
-    [persistDeps, undoRedo]
+    [persistDeps, undoRedo, customIcons, edges]
   );
 
   return { handleClose, handleSave, handleApply };
@@ -406,8 +547,15 @@ export function useLinkEditorHandlers(
         editEdge(null);
         return;
       }
+
+      // Build expected "after" edge state before applying changes (to bypass stale React state)
+      const expectedEdge = buildExpectedEdgeAfterEdit(snapshot, normalized);
+
       applyLinkChanges(normalized, persistDeps);
-      undoRedo.commitChange(snapshot, `Edit link ${normalized.id}`);
+
+      undoRedo.commitChange(snapshot, `Edit link ${normalized.id}`, {
+        explicitEdges: expectedEdge ? [expectedEdge] : undefined
+      });
       initialDataRef.current = null;
       editEdge(null);
     },
@@ -432,8 +580,15 @@ export function useLinkEditorHandlers(
         initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
         return;
       }
+
+      // Build expected "after" edge state before applying changes (to bypass stale React state)
+      const expectedEdge = buildExpectedEdgeAfterEdit(snapshot, normalized);
+
       applyLinkChanges(normalized, persistDeps);
-      undoRedo.commitChange(snapshot, `Edit link ${normalized.id}`);
+
+      undoRedo.commitChange(snapshot, `Edit link ${normalized.id}`, {
+        explicitEdges: expectedEdge ? [expectedEdge] : undefined
+      });
       initialDataRef.current = { ...normalized };
     },
     [applyOffsetAnnotations, persistDeps, undoRedo]
@@ -652,36 +807,79 @@ function saveBridgeNodeProperties(
 }
 
 /**
- * Hook for network editor handlers
+ * Hook for network editor handlers with undo/redo support
  */
 export function useNetworkEditorHandlers(
   editNetwork: (id: string | null) => void,
-  _editingNetworkData: NetworkEditorData | null,
+  editingNetworkData: NetworkEditorData | null,
   renameNode?: RenameNodeCallback
 ) {
+  const { undoRedo } = useUndoRedoContext();
+  const initialDataRef = React.useRef<NetworkEditorData | null>(null);
+
+  React.useEffect(() => {
+    if (editingNetworkData) {
+      initialDataRef.current = { ...editingNetworkData };
+    } else {
+      initialDataRef.current = null;
+    }
+  }, [editingNetworkData?.id]);
+
   const handleClose = React.useCallback(() => {
+    initialDataRef.current = null;
     editNetwork(null);
   }, [editNetwork]);
 
   const handleSave = React.useCallback(
     (data: NetworkEditorData) => {
+      const beforeData = initialDataRef.current;
+      const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
+      if (!hasChanges) {
+        editNetwork(null);
+        return;
+      }
+
       const newNodeId = calculateExpectedNodeId(data);
+      const oldName = data.id !== newNodeId ? data.id : undefined;
+
+      const snapshot = undoRedo.captureSnapshot({
+        nodeIds: oldName ? [oldName, newNodeId] : [data.id],
+        meta: oldName ? { nodeRenames: [{ from: oldName, to: newNodeId }] } : undefined
+      });
+
       saveNetworkAnnotation(data, newNodeId);
       saveNetworkLinkProperties(data, newNodeId);
       saveBridgeNodeProperties(data, newNodeId, renameNode);
+
+      undoRedo.commitChange(snapshot, `Edit network ${newNodeId}`);
+      initialDataRef.current = null;
       editNetwork(null);
     },
-    [editNetwork, renameNode]
+    [editNetwork, renameNode, undoRedo]
   );
 
   const handleApply = React.useCallback(
     (data: NetworkEditorData) => {
+      const beforeData = initialDataRef.current;
+      const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
+      if (!hasChanges) return;
+
       const newNodeId = calculateExpectedNodeId(data);
+      const oldName = data.id !== newNodeId ? data.id : undefined;
+
+      const snapshot = undoRedo.captureSnapshot({
+        nodeIds: oldName ? [oldName, newNodeId] : [data.id],
+        meta: oldName ? { nodeRenames: [{ from: oldName, to: newNodeId }] } : undefined
+      });
+
       saveNetworkAnnotation(data, newNodeId);
       saveNetworkLinkProperties(data, newNodeId);
       saveBridgeNodeProperties(data, newNodeId, renameNode);
+
+      undoRedo.commitChange(snapshot, `Edit network ${newNodeId}`);
+      initialDataRef.current = { ...data };
     },
-    [renameNode]
+    [renameNode, undoRedo]
   );
 
   return { handleClose, handleSave, handleApply };

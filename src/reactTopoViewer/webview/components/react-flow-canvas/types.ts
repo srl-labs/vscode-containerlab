@@ -196,10 +196,8 @@ export interface AnnotationHandlers {
   onDeleteFreeShape: (id: string) => void;
   /** Update free text size after resize */
   onUpdateFreeTextSize: (id: string, width: number, height: number) => void;
-  /** Update free shape size after resize (live feedback) */
+  /** Update free shape size after resize */
   onUpdateFreeShapeSize: (id: string, width: number, height: number) => void;
-  /** Update free shape size after resize ends (with undo) */
-  onUpdateFreeShapeSizeWithUndo?: (id: string, width: number, height: number) => void;
   /** Update free text rotation after rotate */
   onUpdateFreeTextRotation: (id: string, rotation: number) => void;
   /** Update free shape rotation after rotate */
@@ -214,10 +212,8 @@ export interface AnnotationHandlers {
   disableAddShapeMode: () => void;
   /** Handle node dropped - check for group membership changes */
   onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
-  /** Update group size during resize (live feedback) */
+  /** Update group size after resize */
   onUpdateGroupSize?: (id: string, width: number, height: number) => void;
-  /** Update group size after resize ends (with undo) */
-  onUpdateGroupSizeWithUndo?: (id: string, width: number, height: number) => void;
   /** Edit a group annotation */
   onEditGroup?: (id: string) => void;
   /** Delete a group annotation */

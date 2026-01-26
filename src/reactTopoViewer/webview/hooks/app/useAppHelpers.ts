@@ -122,7 +122,7 @@ export interface E2ETestingConfig {
     nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
-  handleAddGroupWithUndo: () => void;
+  handleAddGroup: () => void;
   createNetworkAtPosition: (
     position: { x: number; y: number },
     networkType: NetworkType
@@ -157,7 +157,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     undoRedo,
     handleEdgeCreated,
     handleNodeCreatedCallback,
-    handleAddGroupWithUndo,
+    handleAddGroup,
     createNetworkAtPosition,
     editNetwork,
     groups,
@@ -190,7 +190,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.undoRedo = { canUndo: undoRedo.canUndo, canRedo: undoRedo.canRedo };
       window.__DEV__.handleEdgeCreated = handleEdgeCreated;
       window.__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
-      window.__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
+      window.__DEV__.createGroupFromSelected = handleAddGroup;
       window.__DEV__.createNetworkAtPosition = createNetworkAtPosition;
     }
   }, [
@@ -198,7 +198,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     undoRedo.canRedo,
     handleEdgeCreated,
     handleNodeCreatedCallback,
-    handleAddGroupWithUndo,
+    handleAddGroup,
     createNetworkAtPosition
   ]);
 

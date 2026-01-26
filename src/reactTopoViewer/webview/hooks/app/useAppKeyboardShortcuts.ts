@@ -32,12 +32,12 @@ export interface AppKeyboardShortcutsConfig {
     selectedShapeIds: Set<string>;
     selectedGroupIds: Set<string>;
     clearAllSelections: () => void;
-    handleAddGroupWithUndo: () => void;
+    handleAddGroup: () => void;
   };
   clipboardHandlers: ClipboardHandlersReturn;
   deleteHandlers: {
-    handleDeleteNodeWithUndo: (nodeId: string) => void;
-    handleDeleteLinkWithUndo: (edgeId: string) => void;
+    handleDeleteNode: (nodeId: string) => void;
+    handleDeleteLink: (edgeId: string) => void;
   };
   handleDeselectAll: () => void;
 }
@@ -67,8 +67,8 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     isLocked: state.isLocked,
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
-    onDeleteNode: deleteHandlers.handleDeleteNodeWithUndo,
-    onDeleteEdge: deleteHandlers.handleDeleteLinkWithUndo,
+    onDeleteNode: deleteHandlers.handleDeleteNode,
+    onDeleteEdge: deleteHandlers.handleDeleteLink,
     onDeselectAll: handleDeselectAll,
     onUndo: undoRedo.undo,
     onRedo: undoRedo.redo,
@@ -84,6 +84,6 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     onDeleteAnnotations: clipboardHandlers.handleUnifiedDelete,
     onClearAnnotationSelection: annotations.clearAllSelections,
     hasAnnotationClipboard: clipboardHandlers.hasClipboardData,
-    onCreateGroup: annotations.handleAddGroupWithUndo
+    onCreateGroup: annotations.handleAddGroup
   });
 }

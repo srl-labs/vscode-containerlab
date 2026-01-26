@@ -302,21 +302,17 @@ const AppContent: React.FC<{
   const getEdges = React.useCallback(() => rfInstance?.getEdges() ?? [], [rfInstance]);
 
   // Graph handlers using context
-  const {
-    handleEdgeCreated,
-    handleNodeCreatedCallback,
-    handleDeleteNodeWithUndo,
-    handleDeleteLinkWithUndo
-  } = useGraphHandlersWithContext({
-    getNodes,
-    getEdges: getEdges as () => TopoEdge[],
-    addNode: addNodeDirect as (element: unknown) => void,
-    addEdge: addEdgeDirect as (element: unknown) => void,
-    removeNodeAndEdges,
-    removeEdge,
-    menuHandlers,
-    undoRedo
-  });
+  const { handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNode, handleDeleteLink } =
+    useGraphHandlersWithContext({
+      getNodes,
+      getEdges: getEdges as () => TopoEdge[],
+      addNode: addNodeDirect as (element: unknown) => void,
+      addEdge: addEdgeDirect as (element: unknown) => void,
+      removeNodeAndEdges,
+      removeEdge,
+      menuHandlers,
+      undoRedo
+    });
 
   // Callback to update node data
   const handleUpdateNodeData = React.useCallback(
@@ -394,7 +390,7 @@ const AppContent: React.FC<{
     undoRedo,
     handleEdgeCreated,
     handleNodeCreatedCallback,
-    handleAddGroupWithUndo: annotations.handleAddGroupWithUndo,
+    handleAddGroup: annotations.handleAddGroup,
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
     editNetwork,
     groups: annotations.groups,
@@ -430,14 +426,6 @@ const AppContent: React.FC<{
     handleEdgeCreated
   });
 
-  const handleSaveTextAnnotationWithUndo = React.useCallback(
-    (annotation: Parameters<typeof annotations.saveTextAnnotation>[0]) => {
-      const isNew = annotations.editingTextAnnotation?.text === "";
-      annotations.saveTextAnnotationWithUndo(annotation, isNew);
-    },
-    [annotations]
-  );
-
   // Keyboard shortcuts
   useAppKeyboardShortcuts({
     state: {
@@ -457,12 +445,12 @@ const AppContent: React.FC<{
       selectedShapeIds: annotations.selectedShapeIds,
       selectedGroupIds: annotations.selectedGroupIds,
       clearAllSelections: annotations.clearAllSelections,
-      handleAddGroupWithUndo: annotations.handleAddGroupWithUndo
+      handleAddGroup: annotations.handleAddGroup
     },
     clipboardHandlers,
     deleteHandlers: {
-      handleDeleteNodeWithUndo,
-      handleDeleteLinkWithUndo
+      handleDeleteNode,
+      handleDeleteLink
     },
     handleDeselectAll
   });
@@ -484,19 +472,18 @@ const AppContent: React.FC<{
     () => ({
       // Add mode handlers
       onAddTextClick: annotations.handleTextCanvasClick,
-      onAddShapeClick: annotations.handleShapeCanvasClickWithUndo,
+      onAddShapeClick: annotations.handleShapeCanvasClick,
       disableAddTextMode: annotations.disableAddTextMode,
       disableAddShapeMode: annotations.disableAddShapeMode,
       // Edit handlers
       onEditFreeText: annotations.editTextAnnotation,
       onEditFreeShape: annotations.editShapeAnnotation,
       // Delete handlers
-      onDeleteFreeText: annotations.deleteTextAnnotationWithUndo,
-      onDeleteFreeShape: annotations.deleteShapeAnnotationWithUndo,
+      onDeleteFreeText: annotations.deleteTextAnnotation,
+      onDeleteFreeShape: annotations.deleteShapeAnnotation,
       // Size update handlers (for resize)
       onUpdateFreeTextSize: annotations.updateTextSize,
       onUpdateFreeShapeSize: annotations.updateShapeSize,
-      onUpdateFreeShapeSizeWithUndo: annotations.updateShapeSizeWithUndo,
       // Rotation handlers
       onUpdateFreeTextRotation: annotations.updateTextRotation,
       onUpdateFreeShapeRotation: annotations.updateShapeRotation,
@@ -518,9 +505,8 @@ const AppContent: React.FC<{
       onNodeDropped: annotations.onNodeDropped,
       // Group handlers
       onUpdateGroupSize: annotations.updateGroupSize,
-      onUpdateGroupSizeWithUndo: annotations.updateGroupSizeWithUndo,
       onEditGroup: annotations.editGroup,
-      onDeleteGroup: annotations.deleteGroupWithUndo,
+      onDeleteGroup: annotations.deleteGroup,
       // Get group members (for group dragging)
       getGroupMembers: annotations.getGroupMembers
     }),
@@ -568,8 +554,8 @@ const AppContent: React.FC<{
           onInit={onInit}
           onEdgeCreated={handleEdgeCreated}
           onShiftClickCreate={graphCreation.createNodeAtPosition}
-          onNodeDelete={handleDeleteNodeWithUndo}
-          onEdgeDelete={handleDeleteLinkWithUndo}
+          onNodeDelete={handleDeleteNode}
+          onEdgeDelete={handleDeleteLink}
         />
         <ViewPanels
           nodeInfo={{
@@ -642,9 +628,9 @@ const AppContent: React.FC<{
           freeTextEditor={{
             isVisible: !!annotations.editingTextAnnotation,
             annotation: annotations.editingTextAnnotation,
-            onSave: handleSaveTextAnnotationWithUndo,
+            onSave: annotations.saveTextAnnotation,
             onClose: annotations.closeTextEditor,
-            onDelete: annotations.deleteTextAnnotationWithUndo
+            onDelete: annotations.deleteTextAnnotation
           }}
           freeShapeEditor={{
             isVisible: !!annotations.editingShapeAnnotation,
@@ -679,7 +665,7 @@ const AppContent: React.FC<{
           onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
           onAddNode={graphCreation.handleAddNodeFromPanel}
           onAddNetwork={graphCreation.handleAddNetworkFromPanel}
-          onAddGroup={annotations.handleAddGroupWithUndo}
+          onAddGroup={annotations.handleAddGroup}
           onAddText={annotations.handleAddText}
           onAddShapes={annotations.handleAddShapes}
           onAddBulkLink={() => setShowBulkLinkPanel(true)}

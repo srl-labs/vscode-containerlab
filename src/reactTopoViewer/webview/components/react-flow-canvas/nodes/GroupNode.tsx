@@ -110,18 +110,10 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const isSelected = selected ?? false;
   const showResizer = isSelected && isEditMode;
 
-  // Live resize handler - updates annotation state during resize for visual feedback
-  const handleResize = useCallback(
-    (_event: unknown, params: ResizeParams) => {
-      annotationHandlers?.onUpdateGroupSize?.(id, params.width, params.height);
-    },
-    [id, annotationHandlers]
-  );
-
+  // Only save at end of resize to avoid creating undo entries for each pixel
   const handleResizeEnd = useCallback(
     (_event: unknown, params: ResizeParams) => {
-      // Use undo version for final state after resize
-      annotationHandlers?.onUpdateGroupSizeWithUndo?.(id, params.width, params.height);
+      annotationHandlers?.onUpdateGroupSize?.(id, params.width, params.height);
     },
     [id, annotationHandlers]
   );
@@ -167,7 +159,6 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
         lineClassName="nodrag"
         handleClassName="nodrag"
         color={SELECTION_COLOR}
-        onResize={handleResize}
         onResizeEnd={handleResizeEnd}
       />
       {displayLabel && (

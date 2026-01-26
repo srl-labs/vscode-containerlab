@@ -293,7 +293,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     );
 
     // Note: Keyboard delete handling is done by useAppKeyboardShortcuts in App.tsx
-    // which uses handleDeleteNodeWithUndo for proper undo/redo support.
+    // which uses handleDeleteNode for proper undo/redo support.
     // Do NOT add useKeyboardDeleteHandlers here as it bypasses the undo system.
 
     const refMethods = useCanvasRefMethods(
