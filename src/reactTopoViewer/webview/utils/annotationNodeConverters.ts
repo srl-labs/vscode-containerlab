@@ -21,7 +21,7 @@ import type {
   FreeTextNodeData,
   FreeShapeNodeData,
   GroupNodeData
-} from "../components/react-flow-canvas/types";
+} from "../components/canvas/types";
 import { DEFAULT_LINE_LENGTH } from "./annotations/constants";
 
 // ============================================================================

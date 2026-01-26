@@ -4,7 +4,7 @@
  */
 import React from "react";
 
-import { BasePanel } from "../../shared/editor/BasePanel";
+import { BasePanel } from "../../ui/editor/BasePanel";
 import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlers } from "../../../hooks/panels/useGenericFormState";
 import { normalizeShapeAnnotationColors } from "../../../utils/color";

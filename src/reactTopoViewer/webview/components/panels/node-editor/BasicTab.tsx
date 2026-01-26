@@ -7,13 +7,13 @@
  */
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
-import { FormField, InputField, FilterableDropdown } from "../../shared/form";
-import { IconSelectorModal } from "../../shared/IconSelectorModal";
+import { FormField, InputField, FilterableDropdown } from "../../ui/form";
+import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../utils/SvgGenerator";
 import { generateEncodedSVG } from "../../../utils/SvgGenerator";
 import { useSchema, useDockerImages } from "../../../hooks/data";
 import { useTopoViewerState } from "../../../context/TopoViewerContext";
-import { DEFAULT_ICON_COLOR } from "../../react-flow-canvas/types";
+import { DEFAULT_ICON_COLOR } from "../../canvas/types";
 
 import type { TabProps } from "./types";
 import { CustomNodeTemplateFields } from "./CustomNodeTemplateFields";

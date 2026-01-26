@@ -21,7 +21,7 @@ import {
 import type { SnapshotCapture } from "../state/useUndoRedo";
 import { log } from "../../utils/logger";
 import { useUndoRedoContext } from "../../context/UndoRedoContext";
-import { isLineHandleActive } from "../../components/react-flow-canvas/nodes/AnnotationHandles";
+import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 
 // Grid size for snapping
 export const GRID_SIZE = 20;

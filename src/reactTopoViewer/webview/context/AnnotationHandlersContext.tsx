@@ -4,7 +4,7 @@
  */
 import React, { createContext, useContext } from "react";
 
-import type { AnnotationHandlers } from "../components/react-flow-canvas/types";
+import type { AnnotationHandlers } from "../components/canvas/types";
 
 const AnnotationHandlersContext = createContext<AnnotationHandlers | null>(null);
 

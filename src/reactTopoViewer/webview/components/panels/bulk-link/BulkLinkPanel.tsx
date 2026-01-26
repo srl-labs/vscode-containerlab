@@ -3,7 +3,7 @@
  */
 import React from "react";
 
-import { BasePanel } from "../../shared/editor/BasePanel";
+import { BasePanel } from "../../ui/editor/BasePanel";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import { useGraph, useGraphActions } from "../../../context/GraphContext";
 import { useUndoRedoContext } from "../../../context/UndoRedoContext";

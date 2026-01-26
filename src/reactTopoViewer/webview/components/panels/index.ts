@@ -2,6 +2,10 @@
  * Panel components barrel file
  */
 
+// Panel collections
+export { EditorPanels } from "./EditorPanels";
+export { ViewPanels } from "./ViewPanels";
+
 // Info panels
 export { NodeInfoPanel } from "./NodeInfoPanel";
 export { LinkInfoPanel } from "./LinkInfoPanel";

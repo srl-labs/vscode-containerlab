@@ -9,7 +9,7 @@ export {
   useCanvasRefMethods
 } from "./useReactFlowCanvasHooks";
 
-// Canvas event handlers (moved from components/react-flow-canvas/)
+// Canvas event handlers (moved from components/canvas/)
 export { useCanvasHandlers, snapToGrid, GRID_SIZE } from "./useCanvasHandlers";
 
 // Annotation canvas handlers hook

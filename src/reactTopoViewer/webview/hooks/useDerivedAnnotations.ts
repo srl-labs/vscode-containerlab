@@ -20,7 +20,7 @@ import type {
   FreeTextNodeData,
   FreeShapeNodeData,
   GroupNodeData
-} from "../components/react-flow-canvas/types";
+} from "../components/canvas/types";
 import { useGraph } from "../context/GraphContext";
 import {
   nodeToFreeText,

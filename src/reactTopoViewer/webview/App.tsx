@@ -18,18 +18,21 @@ import type {
   GroupStyleAnnotation
 } from "../shared/types/topology";
 
-import { ReactFlowCanvas, type ReactFlowCanvasRef } from "./components/react-flow-canvas";
+import { ReactFlowCanvas, type ReactFlowCanvasRef } from "./components/canvas";
 import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
 import { GraphProvider, useGraph, useGraphActions } from "./context/GraphContext";
 import { UndoRedoProvider, useUndoRedoContext } from "./context/UndoRedoContext";
 import { AnnotationProvider, useAnnotations } from "./context/AnnotationContext";
 import { ViewportProvider } from "./context/ViewportContext";
 import { Navbar } from "./components/navbar/Navbar";
-import { ShortcutDisplay } from "./components/ShortcutDisplay";
-import { FloatingActionPanel, type FloatingActionPanelHandle } from "./components/panels";
-import { EditorPanels } from "./components/EditorPanels";
-import { ViewPanels } from "./components/ViewPanels";
-import { ToastContainer, useToasts } from "./components/Toast";
+import { ShortcutDisplay } from "./components/ui/ShortcutDisplay";
+import {
+  FloatingActionPanel,
+  type FloatingActionPanelHandle,
+  EditorPanels,
+  ViewPanels
+} from "./components/panels";
+import { ToastContainer, useToasts } from "./components/ui/Toast";
 import { useEasterEgg, EasterEggRenderer } from "./easter-eggs";
 import {
   // State management
@@ -553,7 +556,7 @@ const AppContent: React.FC<{
           edges={filteredEdges as TopoEdge[]}
           annotationMode={annotationMode}
           annotationHandlers={
-            canvasAnnotationHandlers as import("./components/react-flow-canvas/types").AnnotationHandlers
+            canvasAnnotationHandlers as import("./components/canvas/types").AnnotationHandlers
           }
           linkLabelMode={state.linkLabelMode}
           onInit={onInit}

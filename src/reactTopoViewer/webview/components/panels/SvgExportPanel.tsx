@@ -4,7 +4,7 @@
  */
 import React, { useState, useCallback } from "react";
 
-import { BasePanel } from "../shared/editor/BasePanel";
+import { BasePanel } from "../ui/editor/BasePanel";
 import { log } from "../../utils/logger";
 import type { NodeType } from "../../utils/SvgGenerator";
 import { generateEncodedSVG } from "../../utils/SvgGenerator";
@@ -14,7 +14,7 @@ import type {
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
 import { compositeAnnotationsIntoSvg, addBackgroundRect } from "../../utils/annotationsToSvg";
-import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../shared/form";
+import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../ui/form";
 
 export interface SvgExportPanelProps {
   isVisible: boolean;

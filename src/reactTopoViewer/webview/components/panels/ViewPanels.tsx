@@ -5,14 +5,12 @@
  */
 import React from "react";
 
-import {
-  NodeInfoPanel,
-  LinkInfoPanel,
-  ShortcutsPanel,
-  AboutPanel,
-  FindNodePanel,
-  SvgExportPanel
-} from "./panels";
+import { NodeInfoPanel } from "./NodeInfoPanel";
+import { LinkInfoPanel } from "./LinkInfoPanel";
+import { ShortcutsPanel } from "./ShortcutsPanel";
+import { AboutPanel } from "./AboutPanel";
+import { FindNodePanel } from "./FindNodePanel";
+import { SvgExportPanel } from "./SvgExportPanel";
 
 /** Props passed directly to each panel */
 type NodeInfoProps = React.ComponentProps<typeof NodeInfoPanel>;

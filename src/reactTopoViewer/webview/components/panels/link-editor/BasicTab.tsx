@@ -3,7 +3,7 @@
  */
 import React from "react";
 
-import { FormField, ReadOnlyBadge, InputField } from "../../shared/form";
+import { FormField, ReadOnlyBadge, InputField } from "../../ui/form";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,

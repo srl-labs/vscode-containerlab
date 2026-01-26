@@ -11,7 +11,7 @@ import {
   DynamicList,
   KeyValueList,
   Section
-} from "../../shared/form";
+} from "../../ui/form";
 
 import type { TabProps, HealthCheckConfig } from "./types";
 

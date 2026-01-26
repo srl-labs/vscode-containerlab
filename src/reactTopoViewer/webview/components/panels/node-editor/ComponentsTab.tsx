@@ -4,7 +4,7 @@
  */
 import React, { useCallback, useState } from "react";
 
-import { FormField, InputField, SelectField, Section } from "../../shared/form";
+import { FormField, InputField, SelectField, Section } from "../../ui/form";
 import { useSchema, type SrosComponentTypes } from "../../../hooks/data/useSchema";
 
 import type { TabProps, SrosComponent, SrosMda, SrosXiom } from "./types";

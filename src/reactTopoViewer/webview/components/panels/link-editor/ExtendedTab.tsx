@@ -3,7 +3,7 @@
  */
 import React from "react";
 
-import { FormField, InputField, KeyValueList, ReadOnlyBadge } from "../../shared/form";
+import { FormField, InputField, KeyValueList, ReadOnlyBadge } from "../../ui/form";
 import { quoteBlockStyle } from "../../../styles/cssVariables";
 
 import type { LinkTabProps, LinkEditorData } from "./types";

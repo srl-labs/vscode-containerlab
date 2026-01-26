@@ -5,7 +5,7 @@ import type React from "react";
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
-import { applyLayout, type LayoutName } from "../../components/react-flow-canvas/layout";
+import { applyLayout, type LayoutName } from "../../components/canvas/layout";
 import { log } from "../../utils/logger";
 
 /**

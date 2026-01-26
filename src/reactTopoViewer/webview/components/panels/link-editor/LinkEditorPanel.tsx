@@ -3,8 +3,8 @@
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-import type { TabDefinition } from "../../shared/editor";
-import { EditorPanel } from "../../shared/editor";
+import type { TabDefinition } from "../../ui/editor";
+import { EditorPanel } from "../../ui/editor";
 
 import type { LinkEditorData, LinkEditorTabId } from "./types";
 import { BasicTab } from "./BasicTab";

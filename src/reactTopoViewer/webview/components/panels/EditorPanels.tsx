@@ -5,16 +5,14 @@
  */
 import React from "react";
 
-import {
-  NodeEditorPanel,
-  NetworkEditorPanel,
-  LinkEditorPanel,
-  BulkLinkPanel,
-  FreeTextEditorPanel,
-  FreeShapeEditorPanel,
-  GroupEditorPanel,
-  LabSettingsPanel
-} from "./panels";
+import { NodeEditorPanel } from "./node-editor";
+import { NetworkEditorPanel } from "./network-editor";
+import { LinkEditorPanel } from "./link-editor";
+import { BulkLinkPanel } from "./bulk-link";
+import { FreeTextEditorPanel } from "./free-text-editor";
+import { FreeShapeEditorPanel } from "./free-shape-editor";
+import { GroupEditorPanel } from "./group-editor";
+import { LabSettingsPanel } from "./lab-settings";
 
 /** Props passed directly to each panel */
 type NodeEditorProps = React.ComponentProps<typeof NodeEditorPanel>;

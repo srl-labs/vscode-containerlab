@@ -7,10 +7,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import type { Node, ReactFlowInstance } from "@xyflow/react";
 
-import type {
-  AnnotationModeState,
-  AnnotationHandlers
-} from "../../components/react-flow-canvas/types";
+import type { AnnotationModeState, AnnotationHandlers } from "../../components/canvas/types";
 import { log } from "../../utils/logger";
 
 import { snapToGrid } from "./useCanvasHandlers";

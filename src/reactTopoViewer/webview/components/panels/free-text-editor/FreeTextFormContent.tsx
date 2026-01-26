@@ -6,7 +6,7 @@ import React, { useMemo } from "react";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
 import { renderMarkdown, MARKDOWN_EMPTY_MESSAGE } from "../../../utils/markdownRenderer";
-import { Toggle, ColorSwatch, PREVIEW_GRID_BG } from "../../shared/form";
+import { Toggle, ColorSwatch, PREVIEW_GRID_BG } from "../../ui/form";
 
 const FONTS = [
   "monospace",

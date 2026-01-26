@@ -17,7 +17,7 @@ import {
   DEFAULT_CORNER_RADIUS
 } from "../../../utils/annotations/constants";
 import { buildShapeSvg } from "../../../utils/annotations/freeShapeSvg";
-import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../../shared/form";
+import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../../ui/form";
 
 interface Props {
   formData: FreeShapeAnnotation;
