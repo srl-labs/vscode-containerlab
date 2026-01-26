@@ -29,7 +29,6 @@ export const LinkCreationProvider: React.FC<LinkCreationProviderProps> = ({
 }) => {
   // Memoize to prevent new object reference on every parent render
   const value = useMemo(() => {
-    console.log("[LinkCreationContext] value created, linkSourceNode:", linkSourceNode);
     return { linkSourceNode };
   }, [linkSourceNode]);
 

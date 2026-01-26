@@ -39,8 +39,6 @@
 // Main parser API
 export {
   TopologyParser,
-  parseTopology,
-  parseTopologyForEditor,
   parseTopologyToReactFlow,
   parseTopologyForEditorRF
 } from "./TopologyParser";
@@ -48,7 +46,6 @@ export {
 // Core types
 export type {
   ParseOptions,
-  ParseResult,
   ParseResultRF,
   ContainerDataProvider,
   ContainerInfo,

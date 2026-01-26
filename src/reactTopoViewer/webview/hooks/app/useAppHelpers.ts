@@ -2,6 +2,7 @@
  * App helper hooks - extracted from App.tsx to reduce file size
  */
 import React from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import type {
   CustomNodeTemplate,
@@ -136,7 +137,7 @@ export interface E2ETestingConfig {
   isGeoLayout?: boolean;
   geoMode?: "pan" | "edit";
   /** React Flow instance for E2E testing */
-  rfInstance?: import("@xyflow/react").ReactFlowInstance | null;
+  rfInstance?: ReactFlowInstance | null;
   /** Selection state for E2E testing */
   selectedNode?: string | null;
   selectedEdge?: string | null;

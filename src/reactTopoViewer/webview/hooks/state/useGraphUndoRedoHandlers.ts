@@ -7,7 +7,8 @@ import React from "react";
 import type { Node, Edge } from "@xyflow/react";
 
 import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../shared/types/graph";
-import { useUndoRedo } from "./useUndoRedo";
+
+import type { useUndoRedo } from "./useUndoRedo";
 
 // ============================================================================
 // Types

@@ -16,6 +16,7 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../shared/types/topology";
+import type { TopoNode } from "../../shared/types/graph";
 import type {
   FreeTextNodeData,
   FreeShapeNodeData,
@@ -108,7 +109,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const addGroup = useCallback(
     (group: GroupStyleAnnotation) => {
       const node = groupToNode(group);
-      addNode(node as import("../../shared/types/graph").TopoNode);
+      addNode(node as TopoNode);
     },
     [addNode]
   );
@@ -142,7 +143,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const addTextAnnotation = useCallback(
     (annotation: FreeTextAnnotation) => {
       const node = freeTextToNode(annotation);
-      addNode(node as import("../../shared/types/graph").TopoNode);
+      addNode(node as TopoNode);
     },
     [addNode]
   );
@@ -174,7 +175,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const addShapeAnnotation = useCallback(
     (annotation: FreeShapeAnnotation) => {
       const node = freeShapeToNode(annotation);
-      addNode(node as import("../../shared/types/graph").TopoNode);
+      addNode(node as TopoNode);
     },
     [addNode]
   );
@@ -218,8 +219,11 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     (nodeId: string) => {
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
-      const { groupId: _removed, ...rest } = node.data as { groupId?: string };
-      updateNode(nodeId, { data: rest });
+      const nodeData = node.data as Record<string, unknown>;
+      const newData = Object.fromEntries(
+        Object.entries(nodeData).filter(([key]) => key !== "groupId")
+      );
+      updateNode(nodeId, { data: newData });
     },
     [nodes, updateNode]
   );

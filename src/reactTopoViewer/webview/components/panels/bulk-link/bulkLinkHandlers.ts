@@ -3,6 +3,7 @@
  * Uses React Flow nodes/edges arrays for graph queries.
  */
 import type { Edge } from "@xyflow/react";
+
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import type { SnapshotCapture, CommitChangeOptions } from "../../../hooks/state/useUndoRedo";
 

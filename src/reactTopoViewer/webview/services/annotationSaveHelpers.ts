@@ -18,6 +18,31 @@ import { getTopologyIO, getAnnotationsIO, isServicesInitialized } from "./servic
 const WARN_SERVICES_NOT_INIT = "[Services] Cannot save annotations: services not initialized";
 const WARN_NO_YAML_PATH = "[Services] Cannot save annotations: no YAML file path";
 
+/** Helper to remove specific keys from a NodeAnnotation-like object */
+type NodeAnnotationLike = { id: string; groupId?: string; group?: unknown };
+
+function omitGroupFields<T extends NodeAnnotationLike>(
+  obj: T
+): Omit<T, "group" | "groupId"> & { id: string } {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key !== "group" && key !== "groupId") {
+      result[key] = value;
+    }
+  }
+  return result as Omit<T, "group" | "groupId"> & { id: string };
+}
+
+function omitGroupOnly<T extends NodeAnnotationLike>(obj: T): Omit<T, "group"> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key !== "group") {
+      result[key] = value;
+    }
+  }
+  return result as Omit<T, "group">;
+}
+
 /**
  * Generic helper for saving annotations via AnnotationsIO.
  * Uses the current topology file path from TopologyIO.
@@ -106,8 +131,7 @@ export async function saveNodeGroupMembership(
         nodeAnnotations[existingIndex] = { ...existing, groupId };
       } else {
         // Remove group fields
-        const { group: _removed, groupId: _removedId, ...rest } = existing;
-        nodeAnnotations[existingIndex] = rest as typeof existing;
+        nodeAnnotations[existingIndex] = omitGroupFields(existing) as typeof existing;
       }
     } else if (groupId) {
       // Create new annotation with group membership
@@ -142,7 +166,7 @@ export async function saveAllNodeGroupMemberships(
     for (const [nodeId, groupId] of membershipMap) {
       const existing = existingMap.get(nodeId);
       if (existing) {
-        const { group: _removed, ...rest } = existing;
+        const rest = omitGroupOnly(existing);
         result.push({ ...rest, groupId });
         existingMap.delete(nodeId);
       } else {
@@ -155,9 +179,9 @@ export async function saveAllNodeGroupMemberships(
     for (const [nodeId, annotation] of existingMap) {
       if (!membershipMap.has(nodeId)) {
         // Remove group fields if node is no longer in any group
-        const { group: _removed, groupId: _removedId, ...rest } = annotation;
+        const rest = omitGroupFields(annotation);
         if (Object.keys(rest).length > 1 || (Object.keys(rest).length === 1 && rest.id)) {
-          result.push(rest as typeof annotation);
+          result.push(rest);
         }
       }
     }

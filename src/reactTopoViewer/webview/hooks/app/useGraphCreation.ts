@@ -137,7 +137,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
       // Edge creation in ReactFlow is handled through the onConnect callback
       // and the connection line feature. This function could be used to
       // start an interactive edge creation mode if needed.
-      void onEdgeCreated;
+      // onEdgeCreated callback is available for future programmatic use
     },
     [onEdgeCreated]
   );

@@ -52,7 +52,7 @@ import {
 } from "./contextMenuBuilders";
 import { edgeTypes } from "./edges";
 import { nodeTypes } from "./nodes";
-import type { ReactFlowCanvasRef, ReactFlowCanvasProps } from "./types";
+import type { ReactFlowCanvasRef, ReactFlowCanvasProps, AnnotationHandlers } from "./types";
 
 /**
  * Hook for building context menu items.
@@ -70,7 +70,7 @@ function useContextMenuItems(
   linkSourceNode: string | null,
   startLinkCreation: (nodeId: string) => void,
   cancelLinkCreation: () => void,
-  annotationHandlers?: import("./types").AnnotationHandlers
+  annotationHandlers?: AnnotationHandlers
 ): ContextMenuItem[] {
   const { type, targetId } = handlers.contextMenu;
 
@@ -601,6 +601,7 @@ const LinkCreationLine = React.memo<LinkCreationLineProps>(
   }
 );
 
+LinkCreationLine.displayName = "LinkCreationLine";
 ReactFlowCanvasInner.displayName = "ReactFlowCanvasInner";
 
 /**

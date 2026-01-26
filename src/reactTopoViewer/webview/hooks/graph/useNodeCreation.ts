@@ -4,7 +4,7 @@
  * Uses ReactFlow instance for viewport operations.
  * The event handling should be integrated via ReactFlow's onPaneClick callback.
  */
-import { useEffect, useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { log } from "../../utils/logger";
@@ -213,14 +213,6 @@ function createNodeData(
 }
 
 /**
- * Determine position for a new node
- * In ReactFlow, position comes directly from the pane click event
- */
-function determinePosition(eventPosition?: { x: number; y: number }): { x: number; y: number } {
-  return eventPosition ?? { x: 0, y: 0 };
-}
-
-/**
  * Convert NodeData to TopoNode format
  */
 function nodeDataToTopoNode(data: NodeData, position: { x: number; y: number }): TopoNode {
@@ -301,11 +293,8 @@ export function useNodeCreation(
     [onNodeCreated]
   );
 
-  useEffect(() => {
-    // Shift+Click to create nodes should be handled via ReactFlow's onPaneClick callback
-    // with something like: if (event.shiftKey) createNodeAtPosition(screenToFlowPosition({ x, y }))
-    void determinePosition;
-  }, [createNodeAtPosition]);
+  // Shift+Click to create nodes should be handled via ReactFlow's onPaneClick callback
+  // with something like: if (event.shiftKey) createNodeAtPosition(screenToFlowPosition({ x, y }))
 
   return { createNodeAtPosition };
 }

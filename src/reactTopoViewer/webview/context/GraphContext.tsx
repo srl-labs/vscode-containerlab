@@ -12,7 +12,9 @@ import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 import type {
   EdgeAnnotation,
   NodeAnnotation,
-  GroupStyleAnnotation
+  GroupStyleAnnotation,
+  FreeTextAnnotation,
+  FreeShapeAnnotation
 } from "../../shared/types/topology";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
 import { pruneEdgeAnnotations } from "../utils/edgeAnnotations";
@@ -84,9 +86,9 @@ interface TopologyDataMessage {
     nodes?: TopoNode[];
     edges?: TopoEdge[];
     edgeAnnotations?: EdgeAnnotation[];
-    freeTextAnnotations?: import("../../shared/types/topology").FreeTextAnnotation[];
-    freeShapeAnnotations?: import("../../shared/types/topology").FreeShapeAnnotation[];
-    groupStyleAnnotations?: import("../../shared/types/topology").GroupStyleAnnotation[];
+    freeTextAnnotations?: FreeTextAnnotation[];
+    freeShapeAnnotations?: FreeShapeAnnotation[];
+    groupStyleAnnotations?: GroupStyleAnnotation[];
     nodeAnnotations?: NodeAnnotation[];
   };
 }

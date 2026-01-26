@@ -610,41 +610,41 @@ describe("useUndoRedo", () => {
   // Move Action Tests
   // NOTE: SKIPPED - These tests rely on Cytoscape position tracking
   // which has been removed during ReactFlow migration.
-  // TODO: Re-enable when ReactFlow-based position tracking is implemented
+  // Re-enable when ReactFlow-based position tracking is implemented
   // ==========================================================================
   describe.skip("Move Actions [SKIPPED - Requires Cytoscape integration]", () => {
     it("M-001: recordMove creates move action with correct type", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-002: recordMove works with multi-node moves", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-003: recordMove no-ops if positions unchanged", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-004: undo move restores before positions", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-005: redo move restores after positions", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-006: undo move calls saveNodePositions", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-007: redo move calls saveNodePositions", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-008: Move with membership changes records correctly", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-009: Undo restores membership via applyMembershipChange callback", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-010: Redo restores membership via applyMembershipChange callback", () => {
-      /* Skipped */
+      /* skipped */
     });
     it("M-011: Multi-node move in single action", () => {
-      /* Skipped */
+      /* skipped */
     });
   });
 

@@ -4,6 +4,8 @@
 import type { ReactElement } from "react";
 
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
+import { applyAlphaToColor } from "../color";
+
 import {
   DEFAULT_LINE_LENGTH,
   DEFAULT_BORDER_WIDTH,
@@ -14,8 +16,6 @@ import {
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY
 } from "./constants";
-
-import { applyAlphaToColor } from "../color";
 
 export interface LineGeometry {
   dx: number;

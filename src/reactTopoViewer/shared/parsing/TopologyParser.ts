@@ -6,6 +6,7 @@
 import * as YAML from "yaml";
 
 import type { ClabTopology, ParsedElement, TopologyAnnotations } from "../types/topology";
+import { convertElementsToTopologyData } from "../utilities/elementConversions";
 
 import type {
   ParseOptions,
@@ -18,7 +19,6 @@ import type {
   ParserLogger
 } from "./types";
 import { nullLogger } from "./types";
-import { convertElementsToTopologyData } from "../utilities/elementConversions";
 import { computeFullPrefix, getLabName, getTopologyNodeIds, isPresetLayout } from "./utils";
 import { addNodeElements } from "./NodeElementBuilder";
 import { addEdgeElements } from "./EdgeElementBuilder";
@@ -107,15 +107,6 @@ export class TopologyParser {
   }
 
   /**
-   * Parses YAML for editor mode (no container data).
-   */
-  static parseForEditor(yamlContent: string, annotations?: TopologyAnnotations): ParseResult {
-    return TopologyParser.parse(yamlContent, {
-      annotations
-    });
-  }
-
-  /**
    * Parses YAML content into ReactFlow nodes and edges.
    * Use this for new code instead of parse().
    *
@@ -142,22 +133,6 @@ export class TopologyParser {
    */
   static parseForEditorRF(yamlContent: string, annotations?: TopologyAnnotations): ParseResultRF {
     return TopologyParser.parseToReactFlow(yamlContent, { annotations });
-  }
-
-  /**
-   * Parses YAML with container data enrichment.
-   */
-  static parseWithContainerData(
-    yamlContent: string,
-    annotations: TopologyAnnotations | undefined,
-    containerDataProvider: ContainerDataProvider,
-    logger?: ParserLogger
-  ): ParseResult {
-    return TopologyParser.parse(yamlContent, {
-      annotations,
-      containerDataProvider,
-      logger
-    });
   }
 
   // ============================================================================
@@ -252,25 +227,6 @@ export class TopologyParser {
 // ============================================================================
 // Convenience Functions
 // ============================================================================
-
-/**
- * Parses a topology YAML string.
- * Convenience function that wraps TopologyParser.parse().
- */
-export function parseTopology(yamlContent: string, options?: ParseOptions): ParseResult {
-  return TopologyParser.parse(yamlContent, options);
-}
-
-/**
- * Parses a topology for editor mode.
- * Convenience function that wraps TopologyParser.parseForEditor().
- */
-export function parseTopologyForEditor(
-  yamlContent: string,
-  annotations?: TopologyAnnotations
-): ParseResult {
-  return TopologyParser.parseForEditor(yamlContent, annotations);
-}
 
 /**
  * Parses a topology YAML string to ReactFlow format.

@@ -88,7 +88,6 @@ test.describe("Full Workflow E2E Test", () => {
   // Increase timeout for comprehensive test (2 minutes)
   test.setTimeout(120000);
 
-  // eslint-disable-next-line complexity, sonarjs/cognitive-complexity
   test("comprehensive workflow: nodes, links, groups, undo/redo, copy/paste", async ({
     page,
     topoViewerPage
@@ -786,11 +785,14 @@ test.describe("Full Workflow E2E Test", () => {
     // ============================================================================
     console.log("[STEP 10] Final persistence verification after reload");
 
-    // Get current state before reload
-    const nodeCountBeforeReload = await topoViewerPage.getNodeCount();
-    const edgeCountBeforeReload = await topoViewerPage.getEdgeCount();
+    // Get current state before reload (logged for debugging)
     const groupCountBeforeReload = await topoViewerPage.getGroupCount();
-    const nodeIdsBeforeReload = await topoViewerPage.getNodeIds();
+    console.log(
+      `[STEP 10] State before reload: nodes=${await topoViewerPage.getNodeCount()}, edges=${await topoViewerPage.getEdgeCount()}, groups=${groupCountBeforeReload}`
+    );
+    console.log(
+      `[STEP 10] Node IDs before reload: ${JSON.stringify(await topoViewerPage.getNodeIds())}`
+    );
 
     // Note: Due to the annotation paste system interference (which tries to create
     // already-existing nodes during redo), we verify that the original core topology

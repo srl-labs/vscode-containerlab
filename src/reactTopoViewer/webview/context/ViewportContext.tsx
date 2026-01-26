@@ -53,14 +53,14 @@ export const ViewportProvider: React.FC<ViewportProviderProps> = ({ children, rf
         pan: { x: v.x, y: v.y },
         zoom: v.zoom
       });
-      rafRef.current = requestAnimationFrame(syncViewport);
+      rafRef.current = window.requestAnimationFrame(syncViewport);
     };
 
     syncViewport();
 
     return () => {
       if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
+        window.cancelAnimationFrame(rafRef.current);
       }
     };
   }, [rfInstance]);
@@ -69,7 +69,11 @@ export const ViewportProvider: React.FC<ViewportProviderProps> = ({ children, rf
     (v: ViewportState) => {
       setViewportState(v);
       if (rfInstance) {
-        rfInstance.setViewport({ x: v.pan.x, y: v.pan.y, zoom: v.zoom });
+        Promise.resolve(rfInstance.setViewport({ x: v.pan.x, y: v.pan.y, zoom: v.zoom })).catch(
+          () => {
+            /* ignore */
+          }
+        );
       }
     },
     [rfInstance]

@@ -7,6 +7,7 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../shared/types/topology";
+
 import {
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY,
@@ -17,7 +18,6 @@ import {
   DEFAULT_LINE_LENGTH
 } from "./annotations/constants";
 import { applyAlphaToColor } from "./color";
-
 import { renderMarkdown } from "./markdownRenderer";
 
 // ============================================================================

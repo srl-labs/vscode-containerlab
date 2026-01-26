@@ -229,7 +229,6 @@ test.describe("Undo and Redo - File Persistence", () => {
         { timeout: 5000, message: "Node client1 should be restored to YAML after undo" }
       )
       .toBe(true);
-    yaml = await topoViewerPage.getYamlFromFile(SPINE_LEAF_FILE);
 
     // Redo the deletion
     await topoViewerPage.redo();

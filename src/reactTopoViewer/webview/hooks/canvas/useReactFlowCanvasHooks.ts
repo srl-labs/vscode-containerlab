@@ -211,7 +211,9 @@ export function useCanvasRefMethods(
       runLayout: (layoutName: string) => {
         setNodes(applyLayout(layoutName as LayoutName, nodes, edges));
         setTimeout(() => {
-          void reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 });
+          reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }).catch(() => {
+            /* ignore */
+          });
         }, 100);
       },
       getReactFlowInstance: () => reactFlowInstanceRef.current,

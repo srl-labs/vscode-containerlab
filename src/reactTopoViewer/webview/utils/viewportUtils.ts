@@ -5,6 +5,9 @@
  */
 import type { ReactFlowInstance, Viewport } from "@xyflow/react";
 
+/** Selector for the React Flow container element */
+const REACT_FLOW_CONTAINER_SELECTOR = ".react-flow";
+
 /**
  * Get the center of the visible viewport in model (flow) coordinates
  * Get the visible center of the viewport
@@ -15,7 +18,7 @@ export function getViewportCenter(rfInstance: ReactFlowInstance | null): { x: nu
   }
 
   const viewport = rfInstance.getViewport();
-  const container = document.querySelector(".react-flow");
+  const container = document.querySelector(REACT_FLOW_CONTAINER_SELECTOR);
   if (!container) {
     return { x: 0, y: 0 };
   }
@@ -88,7 +91,7 @@ export function getViewportExtent(rfInstance: ReactFlowInstance | null): {
   }
 
   const viewport = rfInstance.getViewport();
-  const container = document.querySelector(".react-flow");
+  const container = document.querySelector(REACT_FLOW_CONTAINER_SELECTOR);
   if (!container) {
     return { x1: 0, y1: 0, x2: 0, y2: 0, width: 0, height: 0 };
   }
@@ -140,7 +143,9 @@ export function setViewportState(
 ): void {
   if (!rfInstance) return;
 
-  rfInstance.setViewport({ x: pan.x, y: pan.y, zoom });
+  Promise.resolve(rfInstance.setViewport({ x: pan.x, y: pan.y, zoom })).catch(() => {
+    /* ignore */
+  });
 }
 
 /**
@@ -153,7 +158,7 @@ export function centerOnPosition(
 ): void {
   if (!rfInstance) return;
 
-  const container = document.querySelector(".react-flow");
+  const container = document.querySelector(REACT_FLOW_CONTAINER_SELECTOR);
   if (!container) return;
 
   const { width, height } = container.getBoundingClientRect();
@@ -166,14 +171,16 @@ export function centerOnPosition(
     zoom: currentZoom
   };
 
-  rfInstance.setViewport(newViewport);
+  Promise.resolve(rfInstance.setViewport(newViewport)).catch(() => {
+    /* ignore */
+  });
 }
 
 /**
  * Get the container element for the React Flow instance
  */
 export function getContainer(): HTMLElement | null {
-  return document.querySelector(".react-flow") as HTMLElement | null;
+  return document.querySelector(REACT_FLOW_CONTAINER_SELECTOR) as HTMLElement | null;
 }
 
 /**

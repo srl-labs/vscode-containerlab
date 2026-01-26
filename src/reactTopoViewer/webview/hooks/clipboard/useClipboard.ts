@@ -207,7 +207,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
     };
 
     try {
-      await navigator.clipboard.writeText(JSON.stringify(clipboardData));
+      await window.navigator.clipboard.writeText(JSON.stringify(clipboardData));
       log.info(
         `[Clipboard] Copied ${serializedNodes.length} nodes, ${serializedEdges.length} edges`
       );
@@ -230,7 +230,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
       let clipboardData: ClipboardData;
 
       try {
-        const text = await navigator.clipboard.readText();
+        const text = await window.navigator.clipboard.readText();
         clipboardData = JSON.parse(text) as ClipboardData;
 
         if (!clipboardData.version || !clipboardData.nodes) {
@@ -269,11 +269,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
       const currentNodes = rfInstance?.getNodes() ?? nodes;
       const usedNames = new Set<string>(currentNodes.map((n: { id: string }) => n.id));
 
-      // Direct console.log for debugging (bypasses VS Code message bridge)
-      console.log(
-        `[Clipboard] Building unique IDs from ${usedNames.size} existing nodes:`,
-        Array.from(usedNames)
-      );
+      // Log for debugging (bypasses VS Code message bridge)
       log.info(
         `[Clipboard] Building unique IDs from ${usedNames.size} existing nodes: ${Array.from(usedNames).join(", ")}`
       );
@@ -288,11 +284,10 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         // For topology nodes, use the name (which becomes the YAML node name)
         const isAnnotation = annotationTypes.has(node.type ?? "");
         const idBase = isAnnotation ? node.id : (node.data.name as string) || node.id;
-        console.log(
-          `[Clipboard] Generating ID for idBase="${idBase}", node.id="${node.id}", isAnnotation=${isAnnotation}`
+        log.info(
+          `[Clipboard] Generating ID for idBase="${idBase}", node.id="${node.id}", isAnnotation=${String(isAnnotation)}`
         );
         const newId = getUniqueId(idBase, usedNames);
-        console.log(`[Clipboard] Generated unique ID: ${idBase} -> ${newId}`);
         log.info(`[Clipboard] Generated unique ID: ${idBase} -> ${newId}`);
         usedNames.add(newId);
         idMapping.set(node.id, newId);
@@ -433,7 +428,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
    */
   const hasClipboardData = useCallback(async (): Promise<boolean> => {
     try {
-      const text = await navigator.clipboard.readText();
+      const text = await window.navigator.clipboard.readText();
       const data = JSON.parse(text) as ClipboardData;
       return Boolean(data.version && data.nodes);
     } catch {

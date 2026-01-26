@@ -3,6 +3,7 @@
  * Used by FreeShape, FreeText, and Group editors
  */
 import React from "react";
+
 import { normalizeHexColor } from "../../../utils/color";
 
 /**

@@ -189,7 +189,6 @@ interface InitialData {
   freeShapeAnnotations: unknown[];
   groupStyleAnnotations: unknown[];
   nodeAnnotations: unknown[];
-  cloudNodeAnnotations: unknown[];
   networkNodeAnnotations: unknown[];
   edgeAnnotations?: TopologyAnnotations["edgeAnnotations"];
   viewerSettings?: TopologyAnnotations["viewerSettings"];
@@ -240,7 +239,6 @@ async function buildInitialData(filePath: string): Promise<InitialData> {
     freeShapeAnnotations: annotations.freeShapeAnnotations || [],
     groupStyleAnnotations: annotations.groupStyleAnnotations || [],
     nodeAnnotations: annotations.nodeAnnotations || [],
-    cloudNodeAnnotations: annotations.cloudNodeAnnotations || [],
     networkNodeAnnotations: annotations.networkNodeAnnotations || [],
     edgeAnnotations: annotations.edgeAnnotations || [],
     viewerSettings: annotations.viewerSettings || {}

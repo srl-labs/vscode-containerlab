@@ -5,7 +5,6 @@
  * Now uses ReactFlow as the rendering layer for rendering.
  * Graph state is managed by GraphContext (React Flow is source of truth).
  */
-/* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
@@ -15,9 +14,14 @@ import type { LinkEditorData } from "../shared/types/editors";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
-  GroupStyleAnnotation
+  GroupStyleAnnotation,
+  NodeAnnotation,
+  EdgeAnnotation
 } from "../shared/types/topology";
 
+import type { AnnotationHandlers } from "./components/canvas/types";
+import type { CanvasRef } from "./hooks/ui/useAppState";
+import type { TopoViewerState } from "./context/TopoViewerContext";
 import { ReactFlowCanvas, type ReactFlowCanvasRef } from "./components/canvas";
 import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
 import { GraphProvider, useGraph, useGraphActions } from "./context/GraphContext";
@@ -256,7 +260,9 @@ const AppContent: React.FC<{
 
   // Navbar and menu handlers
   const handleZoomToFit = React.useCallback(() => {
-    rfInstance?.fitView({ padding: 0.1 });
+    rfInstance?.fitView({ padding: 0.1 }).catch(() => {
+      /* ignore */
+    });
   }, [rfInstance]);
 
   // Fit viewport on initial load
@@ -555,9 +561,7 @@ const AppContent: React.FC<{
           nodes={filteredNodes as TopoNode[]}
           edges={filteredEdges as TopoEdge[]}
           annotationMode={annotationMode}
-          annotationHandlers={
-            canvasAnnotationHandlers as import("./components/canvas/types").AnnotationHandlers
-          }
+          annotationHandlers={canvasAnnotationHandlers as AnnotationHandlers}
           linkLabelMode={state.linkLabelMode}
           onInit={onInit}
           onEdgeCreated={handleEdgeCreated}
@@ -705,7 +709,7 @@ export const App: React.FC = () => {
         freeTextAnnotations?: FreeTextAnnotation[];
         freeShapeAnnotations?: FreeShapeAnnotation[];
         groupStyleAnnotations?: GroupStyleAnnotation[];
-        nodeAnnotations?: import("../shared/types/topology").NodeAnnotation[];
+        nodeAnnotations?: NodeAnnotation[];
       };
     }
   ).__INITIAL_DATA__;
@@ -741,12 +745,12 @@ export const App: React.FC = () => {
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   // Layout controls
   const layoutControls = useLayoutControls(
-    reactFlowRef as unknown as React.RefObject<import("./hooks/ui/useAppState").CanvasRef | null>
+    reactFlowRef as unknown as React.RefObject<CanvasRef | null>
   );
 
   // Handle edge annotations update from GraphContext
   const handleEdgeAnnotationsUpdate = React.useCallback(
-    (annotations: import("../shared/types/topology").EdgeAnnotation[]) => {
+    (annotations: EdgeAnnotation[]) => {
       setEdgeAnnotations(annotations);
     },
     [setEdgeAnnotations]
@@ -772,7 +776,7 @@ export const App: React.FC = () => {
 
 /** Intermediate component to access GraphContext for AnnotationProvider */
 const GraphProviderConsumer: React.FC<{
-  state: import("./context/TopoViewerContext").TopoViewerState;
+  state: TopoViewerState;
   rfInstance: ReactFlowInstance | null;
   setRfInstance: (instance: ReactFlowInstance) => void;
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;

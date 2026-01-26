@@ -5,6 +5,7 @@
  * This is used for both forward changes (commit) and undo/redo.
  */
 import type { Node } from "@xyflow/react";
+
 import type { TopologyEdgeData } from "../../../shared/types/graph";
 import type { NodeSaveData, LinkSaveData, NetworkNodeData } from "../../services";
 import {
@@ -24,8 +25,9 @@ import {
   saveNodeGroupMembership
 } from "../../services";
 import { isAnnotationNodeType, nodesToAnnotations } from "../../utils/annotationNodeConverters";
-import type { UndoRedoSnapshot, NodeSnapshot, EdgeSnapshot } from "./useUndoRedo";
 import { log } from "../../utils/logger";
+
+import type { UndoRedoSnapshot, NodeSnapshot, EdgeSnapshot } from "./useUndoRedo";
 
 // ============================================================================
 // Constants and helpers

@@ -19,7 +19,6 @@ import type {
 } from "../../shared/annotations";
 import type { GroupEditorData } from "../hooks/groups/groupTypes";
 import { useDerivedAnnotations } from "../hooks/useDerivedAnnotations";
-import { useUndoRedoContext } from "./UndoRedoContext";
 import {
   findDeepestGroupAtPosition,
   findParentGroupForBounds,
@@ -35,6 +34,8 @@ import {
 import { normalizeShapeAnnotationColors } from "../utils/color";
 import { freeTextToNode, freeShapeToNode, groupToNode } from "../utils/annotationNodeConverters";
 import { log } from "../utils/logger";
+
+import { useUndoRedoContext } from "./UndoRedoContext";
 
 /** Props for AnnotationProvider */
 interface AnnotationProviderProps {

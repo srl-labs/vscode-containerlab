@@ -7,7 +7,7 @@
  * proper ReactFlow integration is complete.
  */
 
-import React from "react";
+import type React from "react";
 
 import type { UseEasterEggReturn } from "./useEasterEgg";
 
@@ -19,9 +19,8 @@ interface EasterEggRendererProps {
  * Renders the appropriate easter egg mode based on current state.
  * Currently disabled during ReactFlow migration.
  */
-export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg }) => {
+export const EasterEggRenderer: React.FC<EasterEggRendererProps> = (_props) => {
   // Easter eggs temporarily disabled - they require cyCompat for visual effects
-  // TODO: Re-enable after ReactFlow integration is complete
-  void easterEgg;
+  // Re-enable after ReactFlow integration is complete
   return null;
 };

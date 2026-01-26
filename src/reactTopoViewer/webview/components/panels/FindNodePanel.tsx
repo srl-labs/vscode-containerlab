@@ -130,10 +130,14 @@ function useSearchState(
     if (combinedMatches.length > 0 && rfInstance) {
       const bounds = getNodesBoundingBox(combinedMatches);
       if (bounds) {
-        rfInstance.fitBounds(
-          { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
-          { padding: 0.2, duration: 300 }
-        );
+        rfInstance
+          .fitBounds(
+            { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+            { padding: 0.2, duration: 300 }
+          )
+          .catch(() => {
+            /* ignore */
+          });
       }
     }
   }, [nodes, searchTerm, rfInstance]);

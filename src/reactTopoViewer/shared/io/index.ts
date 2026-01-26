@@ -41,7 +41,7 @@ export {
 } from "./YamlDocumentIO";
 
 // Annotations I/O
-export { AnnotationsIO, AnnotationsIOOptions, migrateAnnotations } from "./AnnotationsIO";
+export { AnnotationsIO, AnnotationsIOOptions } from "./AnnotationsIO";
 export { createEmptyAnnotations } from "../annotations/types";
 
 // Node persistence

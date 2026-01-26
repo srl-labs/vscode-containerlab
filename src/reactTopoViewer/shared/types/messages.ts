@@ -3,7 +3,6 @@
  */
 
 import type { TopologyAnnotations, EdgeAnnotation } from "./topology";
-
 // Re-export ReactFlow types from graph.ts (new format)
 import type { TopoNode, TopoEdge, TopologyData } from "./graph";
 export type { TopoNode, TopoEdge, TopologyData };

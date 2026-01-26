@@ -269,7 +269,9 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       id: "fit-view",
       label: "Fit View",
       onClick: () => {
-        void reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS);
+        reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
+          /* ignore */
+        });
         closeContextMenu();
       }
     },
@@ -280,7 +282,9 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         const newNodes = applyLayout("force", nodes, edges);
         setNodes(newNodes);
         setTimeout(() => {
-          void reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS);
+          reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
+            /* ignore */
+          });
         }, 100);
         closeContextMenu();
       }

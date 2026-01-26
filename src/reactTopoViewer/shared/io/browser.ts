@@ -24,10 +24,7 @@ import {
   ERROR_NO_YAML_PATH as _ERROR_NO_YAML_PATH
 } from "./types";
 import type { AnnotationsIOOptions as _AnnotationsIOOptions } from "./AnnotationsIO";
-import {
-  AnnotationsIO as _AnnotationsIO,
-  migrateAnnotations as _migrateAnnotations
-} from "./AnnotationsIO";
+import { AnnotationsIO as _AnnotationsIO } from "./AnnotationsIO";
 import type { TopologyIOOptions as _TopologyIOOptions } from "./TopologyIO";
 import { TopologyIO as _TopologyIO } from "./TopologyIO";
 import type {
@@ -52,7 +49,6 @@ export type TopologyAnnotations = _TopologyAnnotations;
 // Annotations I/O (browser-safe - uses FileSystemAdapter abstraction)
 export type AnnotationsIOOptions = _AnnotationsIOOptions;
 export const AnnotationsIO = _AnnotationsIO;
-export const migrateAnnotations = _migrateAnnotations;
 export const createEmptyAnnotations = _createEmptyAnnotations;
 
 // Topology I/O orchestration (browser-safe - uses FileSystemAdapter abstraction)

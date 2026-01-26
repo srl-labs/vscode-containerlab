@@ -36,7 +36,7 @@ export interface ParseOptions {
 
 /**
  * Result from parsing a topology (internal ParsedElement format).
- * @deprecated Use ParseResultRF with TopologyData (ReactFlow format) for new code.
+ * For external consumers, use ParseResultRF with TopologyData (ReactFlow format).
  */
 export interface ParseResult {
   /** Parsed elements (nodes and edges) */

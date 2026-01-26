@@ -3,6 +3,7 @@
  */
 import type { TopoNode } from "../../shared/types/graph";
 import type { GroupStyleAnnotation, NodeAnnotation } from "../../shared/types/topology";
+
 import { isAnnotationNodeType } from "./annotationNodeConverters";
 
 function buildGroupLookup(groups: GroupStyleAnnotation[]): {

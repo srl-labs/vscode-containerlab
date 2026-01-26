@@ -5,7 +5,8 @@
  * plus optional edge annotation snapshots. All mutations should capture
  * a snapshot before applying changes, then commit the change with a description.
  */
-import React, { useCallback, useMemo, useReducer, useRef } from "react";
+import { useCallback, useMemo, useReducer, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { Node, Edge } from "@xyflow/react";
 
 import type { EdgeAnnotation } from "../../../shared/types/topology";
@@ -348,8 +349,8 @@ export interface UseUndoRedoOptions {
   enabled?: boolean;
   getNodes: () => Node[];
   getEdges: () => Edge[];
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
-  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
+  setNodes: Dispatch<SetStateAction<Node[]>>;
+  setEdges: Dispatch<SetStateAction<Edge[]>>;
   getEdgeAnnotations?: () => EdgeAnnotation[];
   setEdgeAnnotations?: (annotations: EdgeAnnotation[]) => void;
   onPersistSnapshot?: (snapshot: UndoRedoSnapshot, direction: "undo" | "redo") => void;

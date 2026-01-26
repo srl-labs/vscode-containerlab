@@ -22,14 +22,24 @@ import type {
   FreeShapeNodeData,
   GroupNodeData
 } from "../components/canvas/types";
+
 import { DEFAULT_LINE_LENGTH } from "./annotations/constants";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
+/** Node type constants */
+export const FREE_TEXT_NODE_TYPE = "free-text-node" as const;
+export const FREE_SHAPE_NODE_TYPE = "free-shape-node" as const;
+export const GROUP_NODE_TYPE = "group-node" as const;
+
 /** Set of annotation node types for quick lookup */
-export const ANNOTATION_NODE_TYPES = new Set(["free-text-node", "free-shape-node", "group-node"]);
+export const ANNOTATION_NODE_TYPES: Set<string> = new Set([
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+]);
 
 /** Padding for line bounding box to accommodate arrows and stroke */
 const LINE_PADDING = 20;
@@ -52,11 +62,11 @@ export function getAnnotationTypeFromNodeType(
   nodeType: string | undefined
 ): "freeText" | "freeShape" | "group" | null {
   switch (nodeType) {
-    case "free-text-node":
+    case FREE_TEXT_NODE_TYPE:
       return "freeText";
-    case "free-shape-node":
+    case FREE_SHAPE_NODE_TYPE:
       return "freeShape";
-    case "group-node":
+    case GROUP_NODE_TYPE:
       return "group";
     default:
       return null;
@@ -111,7 +121,7 @@ function computeLineBounds(annotation: FreeShapeAnnotation): LineBounds {
 export function freeTextToNode(annotation: FreeTextAnnotation): Node<FreeTextNodeData> {
   return {
     id: annotation.id,
-    type: "free-text-node",
+    type: FREE_TEXT_NODE_TYPE,
     position: annotation.position,
     // Width/height at top level for React Flow's NodeResizer compatibility
     width: annotation.width,
@@ -153,7 +163,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
 
     return {
       id: annotation.id,
-      type: "free-shape-node",
+      type: FREE_SHAPE_NODE_TYPE,
       position: nodePosition,
       width,
       height,
@@ -189,7 +199,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
   // Non-line shapes (rectangle, circle)
   return {
     id: annotation.id,
-    type: "free-shape-node",
+    type: FREE_SHAPE_NODE_TYPE,
     position: annotation.position,
     width: annotation.width ?? 100,
     height: annotation.height ?? 100,
@@ -221,7 +231,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
 export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
   return {
     id: group.id,
-    type: "group-node",
+    type: GROUP_NODE_TYPE,
     position: group.position,
     // Width/height at top level for React Flow's NodeResizer compatibility
     width: group.width ?? 200,
@@ -404,13 +414,13 @@ export function nodesToAnnotations(nodes: Node[]): {
 
   for (const node of nodes) {
     switch (node.type) {
-      case "free-text-node":
+      case FREE_TEXT_NODE_TYPE:
         freeTextAnnotations.push(nodeToFreeText(node as Node<FreeTextNodeData>));
         break;
-      case "free-shape-node":
+      case FREE_SHAPE_NODE_TYPE:
         freeShapeAnnotations.push(nodeToFreeShape(node as Node<FreeShapeNodeData>));
         break;
-      case "group-node":
+      case GROUP_NODE_TYPE:
         groups.push(nodeToGroup(node as Node<GroupNodeData>));
         break;
     }

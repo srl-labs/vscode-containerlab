@@ -20,22 +20,24 @@ import type {
 // Sample ReactFlow Elements
 // ============================================================================
 
+const TOPOLOGY_NODE_TYPE = "topology-node";
+
 export const sampleNodes: TopoNode[] = [
   {
     id: "node1",
-    type: "topology-node",
+    type: TOPOLOGY_NODE_TYPE,
     position: { x: 100, y: 100 },
     data: { label: "Router1", role: "pe", kind: "nokia_srlinux" }
   },
   {
     id: "node2",
-    type: "topology-node",
+    type: TOPOLOGY_NODE_TYPE,
     position: { x: 200, y: 200 },
     data: { label: "Router2", role: "pe", kind: "nokia_srlinux" }
   },
   {
     id: "node3",
-    type: "topology-node",
+    type: TOPOLOGY_NODE_TYPE,
     position: { x: 300, y: 300 },
     data: { label: "Client1", role: "client", kind: "linux" }
   }

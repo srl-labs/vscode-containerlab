@@ -21,7 +21,6 @@ export const NodeRenderConfigProvider: React.FC<{
 }> = ({ value, children }) => {
   // Memoize based on individual properties to ensure stable reference
   const memoizedValue = useMemo(() => {
-    console.log("[NodeRenderConfigContext] value created, suppressLabels:", value.suppressLabels);
     return { suppressLabels: value.suppressLabels };
   }, [value.suppressLabels]);
 

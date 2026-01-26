@@ -39,7 +39,6 @@ export function createDefaultAnnotations() {
     freeShapeAnnotations: [],
     groupStyleAnnotations: [],
     nodeAnnotations: [],
-    cloudNodeAnnotations: [],
     networkNodeAnnotations: [],
     aliasEndpointAnnotations: []
   };

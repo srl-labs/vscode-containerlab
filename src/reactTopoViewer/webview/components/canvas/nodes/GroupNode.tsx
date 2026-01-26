@@ -55,7 +55,7 @@ function getBackgroundWithOpacity(color: string, opacity?: number): string {
   if (opacity === undefined) return color;
   // If already rgba, modify the alpha
   if (color.startsWith("rgba")) {
-    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    const match = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
     if (match) {
       return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${opacity / 100})`;
     }

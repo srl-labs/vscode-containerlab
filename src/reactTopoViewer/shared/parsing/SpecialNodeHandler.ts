@@ -3,13 +3,11 @@
  * Pure functions - no VS Code dependencies.
  */
 
-// eslint-disable-next-line sonarjs/deprecation
 import type {
   ClabNode,
   ParsedElement,
   ClabTopology,
   NetworkNodeAnnotation,
-  CloudNodeAnnotation,
   TopologyAnnotations
 } from "../types/topology";
 
@@ -276,36 +274,18 @@ function extractNetworkPlacement(saved: NetworkNodeAnnotation): PlacementResult 
 }
 
 /**
- * Extract placement from a cloud annotation (legacy).
- */
-// eslint-disable-next-line sonarjs/deprecation
-function extractCloudPlacement(saved: CloudNodeAnnotation | undefined): PlacementResult {
-  return {
-    position: saved?.position || { x: 0, y: 0 },
-    label: saved?.label,
-    group: saved?.group,
-    level: saved?.level
-  };
-}
-
-/**
  * Resolves position and label from network node annotations.
- * Checks networkNodeAnnotations first (new format), then falls back to cloudNodeAnnotations (legacy).
  */
 function resolveCloudNodePlacement(
   nodeId: string,
   annotations?: TopologyAnnotations
 ): PlacementResult {
-  // Check networkNodeAnnotations first (new format)
   const networkSaved = annotations?.networkNodeAnnotations?.find((nn) => nn.id === nodeId);
   if (networkSaved) {
     return extractNetworkPlacement(networkSaved);
   }
 
-  // Fallback to cloudNodeAnnotations (legacy format)
-  // eslint-disable-next-line sonarjs/deprecation
-  const cloudSaved = annotations?.cloudNodeAnnotations?.find((cn) => cn.id === nodeId);
-  return extractCloudPlacement(cloudSaved);
+  return { position: { x: 0, y: 0 } };
 }
 
 /**

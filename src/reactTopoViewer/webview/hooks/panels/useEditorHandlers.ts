@@ -765,8 +765,8 @@ function saveNetworkLinkProperties(data: NetworkEditorData, _newNodeId: string):
   if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
 
   // Build extraData for the network link - caller handles edge lookup from React state
-  const extraData = buildNetworkExtraData(data);
-  void extraData;
+  // extraData is prepared for future canvas updates via React state
+  buildNetworkExtraData(data);
 }
 
 /**

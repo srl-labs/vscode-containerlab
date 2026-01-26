@@ -22,6 +22,11 @@ import type { SnapshotCapture } from "../state/useUndoRedo";
 import { log } from "../../utils/logger";
 import { useUndoRedoContext } from "../../context/UndoRedoContext";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../utils/annotationNodeConverters";
 
 // Grid size for snapping
 export const GRID_SIZE = 20;
@@ -98,7 +103,11 @@ interface CanvasHandlers {
   closeContextMenu: () => void;
 }
 
-const ANNOTATION_NODE_TYPES = ["group-node", "free-text-node", "free-shape-node"];
+const ANNOTATION_NODE_TYPES: readonly string[] = [
+  GROUP_NODE_TYPE,
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE
+];
 const EDITABLE_NODE_TYPES = ["topology-node", "cloud-node"];
 
 function generateEdgeId(source: string, target: string): string {
@@ -129,7 +138,7 @@ function useNodeDragHandlers(
         }
       }
 
-      if (node.type === "group-node" && groupMemberHandlers?.getGroupMembers) {
+      if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
         const memberIds = groupMemberHandlers.getGroupMembers(node.id);
         for (const memberId of memberIds) {
           ids.add(memberId);
@@ -142,7 +151,7 @@ function useNodeDragHandlers(
   );
 
   const buildMoveDescription = useCallback((node: Node, count: number): string => {
-    if (node.type === "group-node") return `Move group ${node.id}`;
+    if (node.type === GROUP_NODE_TYPE) return `Move group ${node.id}`;
     if (count > 1) return `Move ${count} nodes`;
     return `Move node ${node.id}`;
   }, []);
@@ -156,7 +165,7 @@ function useNodeDragHandlers(
         dragNodeIds.length > 0 ? undoRedo.captureSnapshot({ nodeIds: dragNodeIds }) : null;
 
       // If dragging a group node, capture members and their initial positions
-      if (node.type === "group-node" && groupMemberHandlers?.getGroupMembers) {
+      if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
         const memberIds = groupMemberHandlers.getGroupMembers(node.id);
         groupMembersRef.current.set(node.id, memberIds);
         groupLastPositionRef.current.set(node.id, { ...node.position });
@@ -173,7 +182,7 @@ function useNodeDragHandlers(
       if (modeRef.current !== "edit" || !setNodes) return;
 
       // Handle group member movement during drag
-      if (node.type === "group-node") {
+      if (node.type === GROUP_NODE_TYPE) {
         const lastPos = groupLastPositionRef.current.get(node.id);
         const memberIds = groupMembersRef.current.get(node.id);
 
@@ -220,7 +229,7 @@ function useNodeDragHandlers(
         return;
       }
 
-      const isGroupNode = node.type === "group-node";
+      const isGroupNode = node.type === GROUP_NODE_TYPE;
       const finalPosition = isGroupNode ? node.position : snapToGrid(node.position);
       const changes: NodeChange[] = [
         { type: "position", id: node.id, position: finalPosition, dragging: false }

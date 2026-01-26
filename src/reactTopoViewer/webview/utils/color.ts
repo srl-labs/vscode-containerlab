@@ -14,23 +14,25 @@ function toHexByte(value: number): string {
 
 function expandShortHex(value: string): string {
   const hex = value.replace("#", "");
-  return `#${hex
+  const expanded = hex
     .split("")
-    .map((ch) => `${ch}${ch}`)
-    .join("")}`;
+    .map((ch) => ch + ch)
+    .join("");
+  return "#" + expanded;
 }
 
+// Regex pattern for parsing rgba() or rgb() values
+const RGB_REGEX = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i;
+
 function parseRgb(value: string): { hex: string; alpha?: number } | null {
-  const match = value.match(
-    /^rgba?\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*(?:,\s*([0-9]*\.?[0-9]+)\s*)?\)$/i
-  );
+  const match = RGB_REGEX.exec(value);
   if (!match) return null;
   const r = parseInt(match[1], 10);
   const g = parseInt(match[2], 10);
   const b = parseInt(match[3], 10);
-  const alphaRaw = match[4] !== undefined ? parseFloat(match[4]) : undefined;
+  const alphaRaw = match[4] != null ? parseFloat(match[4]) : undefined;
   const alpha = alphaRaw !== undefined ? Math.min(1, Math.max(0, alphaRaw)) : undefined;
-  return { hex: `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`, alpha };
+  return { hex: "#" + toHexByte(r) + toHexByte(g) + toHexByte(b), alpha };
 }
 
 /**
