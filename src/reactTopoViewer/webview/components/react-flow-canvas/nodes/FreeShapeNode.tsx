@@ -252,6 +252,8 @@ interface LineNodeProps {
   readonly isSelected: boolean;
   readonly showHandles: boolean;
   readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
+  readonly onRotationStart: () => void;
+  readonly onRotationEnd: () => void;
 }
 
 /** Line padding constant (must match annotationNodeConverters.ts) */
@@ -299,7 +301,9 @@ function LineNode({
   data,
   isSelected,
   showHandles,
-  annotationHandlers
+  annotationHandlers,
+  onRotationStart,
+  onRotationEnd
 }: LineNodeProps): React.ReactElement {
   const { relativeEnd, startPosition, endPosition, lineStartInNode } = getLinePositions(data);
   const styleProps = getLineStyleProps(data);
@@ -341,6 +345,8 @@ function LineNode({
           nodeId={id}
           currentRotation={rotation}
           onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
+          onRotationStart={onRotationStart}
+          onRotationEnd={onRotationEnd}
         />
       )}
     </div>
@@ -358,6 +364,8 @@ interface BoxNodeProps {
   readonly showHandles: boolean;
   readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
   readonly onResizeEnd: (_event: unknown, params: ResizeParams) => void;
+  readonly onRotationStart: () => void;
+  readonly onRotationEnd: () => void;
 }
 
 function BoxNode({
@@ -366,7 +374,9 @@ function BoxNode({
   isSelected,
   showHandles,
   annotationHandlers,
-  onResizeEnd
+  onResizeEnd,
+  onRotationStart,
+  onRotationEnd
 }: BoxNodeProps): React.ReactElement {
   const rotation = data.rotation ?? 0;
   const wrapperStyle = buildBoxWrapperStyle(rotation);
@@ -397,6 +407,8 @@ function BoxNode({
           nodeId={id}
           currentRotation={data.rotation ?? 0}
           onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
+          onRotationStart={onRotationStart}
+          onRotationEnd={onRotationEnd}
         />
       )}
       {data.shapeType === "rectangle" ? (
@@ -418,7 +430,23 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
   const annotationHandlers = useAnnotationHandlers();
   const isEditMode = state.mode === "edit" && !state.isLocked;
   const isSelected = selected ?? false;
-  const showHandles = isSelected && isEditMode;
+
+  // Track rotation state to keep handles visible during rotation
+  const [isRotating, setIsRotating] = React.useState(false);
+
+  // Rotation handlers
+  const handleRotationStart = useCallback(() => {
+    setIsRotating(true);
+    annotationHandlers?.onFreeShapeRotationStart?.(id);
+  }, [id, annotationHandlers]);
+
+  const handleRotationEnd = useCallback(() => {
+    setIsRotating(false);
+    annotationHandlers?.onFreeShapeRotationEnd?.(id);
+  }, [id, annotationHandlers]);
+
+  // Show handles when selected in edit mode, or when actively rotating
+  const showHandles = (isSelected || isRotating) && isEditMode;
 
   // Only save at end of resize to avoid creating undo entries for each pixel
   const handleResizeEnd = useCallback(
@@ -436,6 +464,8 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
         isSelected={isSelected}
         showHandles={showHandles}
         annotationHandlers={annotationHandlers}
+        onRotationStart={handleRotationStart}
+        onRotationEnd={handleRotationEnd}
       />
     );
   }
@@ -448,6 +478,8 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
       showHandles={showHandles}
       annotationHandlers={annotationHandlers}
       onResizeEnd={handleResizeEnd}
+      onRotationStart={handleRotationStart}
+      onRotationEnd={handleRotationEnd}
     />
   );
 };

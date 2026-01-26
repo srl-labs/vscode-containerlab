@@ -60,7 +60,12 @@ const ROTATE_CURSOR_ACTIVE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w
 interface RotationHandleProps {
   readonly nodeId: string;
   readonly currentRotation: number;
+  /** Called during rotation with live rotation value */
   readonly onRotationChange: (id: string, rotation: number) => void;
+  /** Called when rotation starts (for undo/redo snapshot capture) */
+  readonly onRotationStart?: () => void;
+  /** Called when rotation ends (for undo/redo commit) */
+  readonly onRotationEnd?: () => void;
 }
 
 /** Calculate angle from center to mouse position */
@@ -75,20 +80,27 @@ function normalizeRotation(rotation: number): number {
   return ((rotation % 360) + 360) % 360;
 }
 
-function useSyncRotationInternals(nodeId: string, rotation: number): void {
+/**
+ * Returns a callback to sync node internals with React Flow.
+ * Should be called AFTER rotation completes (on mouseup), not during drag,
+ * to avoid interrupting the rotation interaction.
+ */
+function useRotationInternalsSync(nodeId: string): () => void {
   const updateNodeInternals = useUpdateNodeInternals();
 
-  useEffect(() => {
+  return useCallback(() => {
     // Refresh node internals so the selection box and resize handles keep in
     // sync with the rotated element, matching React Flow's rotatable example.
     updateNodeInternals(nodeId);
-  }, [nodeId, rotation, updateNodeInternals]);
+  }, [nodeId, updateNodeInternals]);
 }
 
 export const RotationHandle: React.FC<RotationHandleProps> = ({
   nodeId,
   currentRotation,
-  onRotationChange
+  onRotationChange,
+  onRotationStart,
+  onRotationEnd
 }) => {
   const [isRotating, setIsRotating] = useState(false);
   const dragStartRef = useRef<{
@@ -99,7 +111,8 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
   } | null>(null);
   const handleRef = useRef<HTMLDivElement>(null);
 
-  useSyncRotationInternals(nodeId, currentRotation);
+  // Get callback to sync node internals - only called after rotation completes
+  const syncNodeInternals = useRotationInternalsSync(nodeId);
 
   useEffect(() => {
     if (!isRotating) return;
@@ -122,6 +135,10 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
     const handleMouseUp = () => {
       setIsRotating(false);
       dragStartRef.current = null;
+      // Sync node internals AFTER rotation completes to update selection box
+      syncNodeInternals();
+      // Notify parent that rotation ended (for undo/redo commit)
+      onRotationEnd?.();
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -130,7 +147,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isRotating, nodeId, onRotationChange]);
+  }, [isRotating, nodeId, onRotationChange, onRotationEnd, syncNodeInternals]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -152,6 +169,8 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
       const startAngle = calculateAngle(centerX, centerY, e.clientX, e.clientY);
 
       setIsRotating(true);
+      // Notify parent that rotation started (for undo/redo snapshot and keeping handles visible)
+      onRotationStart?.();
       dragStartRef.current = {
         startAngle,
         centerX,
@@ -159,7 +178,7 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
         startRotation: currentRotation
       };
     },
-    [currentRotation]
+    [currentRotation, onRotationStart]
   );
 
   return (

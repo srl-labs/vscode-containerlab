@@ -94,6 +94,8 @@ interface AnnotationActionsContextValue {
   deleteTextAnnotation: (id: string) => void;
   deleteSelectedTextAnnotations: () => void;
   updateTextRotation: (id: string, rotation: number) => void;
+  onTextRotationStart: (id: string) => void;
+  onTextRotationEnd: (id: string) => void;
   updateTextSize: (id: string, width: number, height: number) => void;
   updateTextGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
   updateTextAnnotation: (id: string, updates: Partial<FreeTextAnnotation>) => void;
@@ -112,6 +114,8 @@ interface AnnotationActionsContextValue {
   deleteShapeAnnotation: (id: string) => void;
   deleteSelectedShapeAnnotations: () => void;
   updateShapeRotation: (id: string, rotation: number) => void;
+  onShapeRotationStart: (id: string) => void;
+  onShapeRotationEnd: (id: string) => void;
   updateShapeSize: (id: string, width: number, height: number) => void;
   updateShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   updateShapeGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
@@ -182,6 +186,16 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     "rectangle"
   );
   const lastShapeStyleRef = useRef<Partial<FreeShapeAnnotation>>({});
+
+  // Rotation undo/redo snapshot refs (to track state between start/end)
+  const textRotationSnapshotRef = useRef<{
+    id: string;
+    snapshot: ReturnType<typeof undoRedo.captureSnapshot>;
+  } | null>(null);
+  const shapeRotationSnapshotRef = useRef<{
+    id: string;
+    snapshot: ReturnType<typeof undoRedo.captureSnapshot>;
+  } | null>(null);
 
   // ============================================================================
   // Group Actions
@@ -616,6 +630,34 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     [derived]
   );
 
+  const onTextRotationStart = useCallback(
+    (id: string) => {
+      // Capture snapshot at start of rotation for undo/redo
+      textRotationSnapshotRef.current = {
+        id,
+        snapshot: undoRedo.captureSnapshot({ nodeIds: [id] })
+      };
+    },
+    [undoRedo]
+  );
+
+  const onTextRotationEnd = useCallback(
+    (id: string) => {
+      // Commit the rotation change for undo/redo
+      if (textRotationSnapshotRef.current && textRotationSnapshotRef.current.id === id) {
+        const annotation = derived.textAnnotations.find((a) => a.id === id);
+        if (annotation) {
+          const node = freeTextToNode(annotation);
+          undoRedo.commitChange(textRotationSnapshotRef.current.snapshot, `Rotate text ${id}`, {
+            explicitNodes: [node]
+          });
+        }
+        textRotationSnapshotRef.current = null;
+      }
+    },
+    [derived.textAnnotations, undoRedo]
+  );
+
   const updateTextSize = useCallback(
     (id: string, width: number, height: number) => {
       derived.updateTextAnnotation(id, { width, height });
@@ -809,6 +851,34 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       derived.updateShapeAnnotation(id, { rotation });
     },
     [derived]
+  );
+
+  const onShapeRotationStart = useCallback(
+    (id: string) => {
+      // Capture snapshot at start of rotation for undo/redo
+      shapeRotationSnapshotRef.current = {
+        id,
+        snapshot: undoRedo.captureSnapshot({ nodeIds: [id] })
+      };
+    },
+    [undoRedo]
+  );
+
+  const onShapeRotationEnd = useCallback(
+    (id: string) => {
+      // Commit the rotation change for undo/redo
+      if (shapeRotationSnapshotRef.current && shapeRotationSnapshotRef.current.id === id) {
+        const annotation = derived.shapeAnnotations.find((a) => a.id === id);
+        if (annotation) {
+          const node = freeShapeToNode(annotation);
+          undoRedo.commitChange(shapeRotationSnapshotRef.current.snapshot, `Rotate shape ${id}`, {
+            explicitNodes: [node]
+          });
+        }
+        shapeRotationSnapshotRef.current = null;
+      }
+    },
+    [derived.shapeAnnotations, undoRedo]
   );
 
   const updateShapeSize = useCallback(
@@ -1012,6 +1082,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteTextAnnotation,
       deleteSelectedTextAnnotations,
       updateTextRotation,
+      onTextRotationStart,
+      onTextRotationEnd,
       updateTextSize,
       updateTextGeoPosition,
       updateTextAnnotation,
@@ -1028,6 +1100,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteShapeAnnotation,
       deleteSelectedShapeAnnotations,
       updateShapeRotation,
+      onShapeRotationStart,
+      onShapeRotationEnd,
       updateShapeSize,
       updateShapeEndPosition,
       updateShapeGeoPosition,
@@ -1069,6 +1143,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteTextAnnotation,
       deleteSelectedTextAnnotations,
       updateTextRotation,
+      onTextRotationStart,
+      onTextRotationEnd,
       updateTextSize,
       updateTextGeoPosition,
       updateTextAnnotation,
@@ -1085,6 +1161,8 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       deleteShapeAnnotation,
       deleteSelectedShapeAnnotations,
       updateShapeRotation,
+      onShapeRotationStart,
+      onShapeRotationEnd,
       updateShapeSize,
       updateShapeEndPosition,
       updateShapeGeoPosition,

@@ -87,10 +87,11 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const isEditMode = state.mode === "edit" && !state.isLocked;
   const rotation = nodeData.rotation ?? 0;
 
-  // Track resize state to keep selection border visible during resize
+  // Track resize/rotate state to keep selection border and handles visible
   const [isResizing, setIsResizing] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
 
-  // Live resize handler - updates annotation state during resize for visual feedback
+  // Resize handlers
   const handleResizeStart = useCallback(() => {
     setIsResizing(true);
   }, []);
@@ -110,17 +111,28 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     [id, annotationHandlers]
   );
 
+  // Rotation handlers
+  const handleRotationStart = useCallback(() => {
+    setIsRotating(true);
+    annotationHandlers?.onFreeTextRotationStart?.(id);
+  }, [id, annotationHandlers]);
+
+  const handleRotationEnd = useCallback(() => {
+    setIsRotating(false);
+    annotationHandlers?.onFreeTextRotationEnd?.(id);
+  }, [id, annotationHandlers]);
+
   const renderedHtml = useMemo(() => renderMarkdown(nodeData.text || ""), [nodeData.text]);
   const isSelected = selected ?? false;
-  // Show selection border when selected OR when actively resizing
-  const showSelectionBorder = isSelected || isResizing;
+  // Show selection border when selected OR when actively resizing/rotating
+  const showSelectionBorder = isSelected || isResizing || isRotating;
   const wrapperStyle = useMemo(
     () => buildWrapperStyle(rotation, showSelectionBorder),
     [rotation, showSelectionBorder]
   );
   const textStyle = useMemo(() => buildTextStyle(nodeData), [nodeData]);
-  // Show handles when selected in edit mode, or when actively resizing
-  const showHandles = (isSelected || isResizing) && isEditMode;
+  // Show handles when selected in edit mode, or when actively resizing/rotating
+  const showHandles = (isSelected || isResizing || isRotating) && isEditMode;
 
   return (
     <div style={wrapperStyle} className="free-text-node">
@@ -140,6 +152,8 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
           nodeId={id}
           currentRotation={nodeData.rotation || 0}
           onRotationChange={annotationHandlers.onUpdateFreeTextRotation}
+          onRotationStart={handleRotationStart}
+          onRotationEnd={handleRotationEnd}
         />
       )}
       <div

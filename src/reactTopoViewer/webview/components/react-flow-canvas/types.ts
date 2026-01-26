@@ -204,10 +204,18 @@ export interface AnnotationHandlers {
   onUpdateFreeTextSize: (id: string, width: number, height: number) => void;
   /** Update free shape size after resize */
   onUpdateFreeShapeSize: (id: string, width: number, height: number) => void;
-  /** Update free text rotation after rotate */
+  /** Update free text rotation during rotate (live updates) */
   onUpdateFreeTextRotation: (id: string, rotation: number) => void;
-  /** Update free shape rotation after rotate */
+  /** Update free shape rotation during rotate (live updates) */
   onUpdateFreeShapeRotation: (id: string, rotation: number) => void;
+  /** Called when free text rotation starts (for undo/redo snapshot) */
+  onFreeTextRotationStart?: (id: string) => void;
+  /** Called when free text rotation ends (for undo/redo commit) */
+  onFreeTextRotationEnd?: (id: string) => void;
+  /** Called when free shape rotation starts (for undo/redo snapshot) */
+  onFreeShapeRotationStart?: (id: string) => void;
+  /** Called when free shape rotation ends (for undo/redo commit) */
+  onFreeShapeRotationEnd?: (id: string) => void;
   /** Update line end position after resize */
   onUpdateFreeShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   /** Update line start position after resize */

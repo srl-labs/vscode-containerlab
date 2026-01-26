@@ -484,9 +484,14 @@ const AppContent: React.FC<{
       // Size update handlers (for resize)
       onUpdateFreeTextSize: annotations.updateTextSize,
       onUpdateFreeShapeSize: annotations.updateShapeSize,
-      // Rotation handlers
+      // Rotation handlers (live updates during drag)
       onUpdateFreeTextRotation: annotations.updateTextRotation,
       onUpdateFreeShapeRotation: annotations.updateShapeRotation,
+      // Rotation start/end handlers (for undo/redo)
+      onFreeTextRotationStart: annotations.onTextRotationStart,
+      onFreeTextRotationEnd: annotations.onTextRotationEnd,
+      onFreeShapeRotationStart: annotations.onShapeRotationStart,
+      onFreeShapeRotationEnd: annotations.onShapeRotationEnd,
       // Line-specific handlers
       onUpdateFreeShapeEndPosition: annotations.updateShapeEndPosition,
       onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => {
