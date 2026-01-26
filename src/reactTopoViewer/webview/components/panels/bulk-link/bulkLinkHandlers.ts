@@ -2,8 +2,9 @@
  * Handler functions for bulk link operations
  * Uses React Flow nodes/edges arrays for graph queries.
  */
+import type { Edge } from "@xyflow/react";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import type { SnapshotCapture } from "../../../hooks/state/useUndoRedo";
+import type { SnapshotCapture, CommitChangeOptions } from "../../../hooks/state/useUndoRedo";
 
 import { computeCandidates, buildBulkEdges, type LinkCandidate } from "./bulkLinkUtils";
 
@@ -44,7 +45,11 @@ interface ConfirmCreateParams {
   canApply: boolean;
   addEdge?: (edge: TopoEdge) => void;
   captureSnapshot?: (options: { edgeIds: string[] }) => SnapshotCapture;
-  commitChange?: (before: SnapshotCapture, description: string) => void;
+  commitChange?: (
+    before: SnapshotCapture,
+    description: string,
+    options?: CommitChangeOptions
+  ) => void;
   setStatus: SetStatus;
   setPendingCandidates: SetCandidates;
   onClose: () => void;
@@ -82,7 +87,10 @@ export async function confirmAndCreateLinks({
     builtEdges.forEach((edge) => addEdge(edge));
   }
   if (snapshot && commitChange) {
-    commitChange(snapshot, `Add ${builtEdges.length} link${builtEdges.length === 1 ? "" : "s"}`);
+    // Pass explicit edges so commitChange doesn't rely on stale state ref
+    commitChange(snapshot, `Add ${builtEdges.length} link${builtEdges.length === 1 ? "" : "s"}`, {
+      explicitEdges: builtEdges as Edge[]
+    });
   }
 
   setPendingCandidates(null);

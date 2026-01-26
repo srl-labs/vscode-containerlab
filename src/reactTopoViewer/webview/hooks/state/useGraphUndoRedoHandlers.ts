@@ -4,7 +4,7 @@
  * Centralizes add/delete operations for nodes and edges.
  */
 import React from "react";
-import type { Node } from "@xyflow/react";
+import type { Node, Edge } from "@xyflow/react";
 
 import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../shared/types/graph";
 import { useUndoRedo } from "./useUndoRedo";
@@ -65,6 +65,7 @@ function buildEdge(edgeData: {
     id: edgeData.id,
     source: edgeData.source,
     target: edgeData.target,
+    type: "topology-edge",
     data: {
       sourceEndpoint: edgeData.sourceEndpoint,
       targetEndpoint: edgeData.targetEndpoint
@@ -107,9 +108,13 @@ function useGraphMutationHandlers(params: {
         targetEndpoint: string;
       }
     ) => {
+      const edge = buildEdge(edgeData);
       const before = undoRedo.captureSnapshot({ edgeIds: [edgeData.id] });
-      addEdge(buildEdge(edgeData));
-      undoRedo.commitChange(before, `Add link ${edgeData.source} → ${edgeData.target}`);
+      addEdge(edge);
+      // Pass explicit edge so commitChange doesn't rely on stale state ref
+      undoRedo.commitChange(before, `Add link ${edgeData.source} → ${edgeData.target}`, {
+        explicitEdges: [edge as Edge]
+      });
     },
     [addEdge, undoRedo]
   );
@@ -118,7 +123,10 @@ function useGraphMutationHandlers(params: {
     (nodeId: string, nodeElement: TopoNode, _position: { x: number; y: number }) => {
       const before = undoRedo.captureSnapshot({ nodeIds: [nodeId] });
       addNode(nodeElement);
-      undoRedo.commitChange(before, `Add node ${nodeId}`);
+      // Pass explicit node so commitChange doesn't rely on stale state ref
+      undoRedo.commitChange(before, `Add node ${nodeId}`, {
+        explicitNodes: [nodeElement as Node]
+      });
     },
     [addNode, undoRedo]
   );

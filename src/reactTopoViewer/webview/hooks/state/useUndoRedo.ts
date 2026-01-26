@@ -357,6 +357,16 @@ export interface UseUndoRedoOptions {
   onEndBatch?: () => void;
 }
 
+/** Options for commitChange */
+export interface CommitChangeOptions {
+  /** Whether to persist the change (default: true) */
+  persist?: boolean;
+  /** Explicit nodes to use as "after" state (bypasses stale ref for new nodes) */
+  explicitNodes?: Node[];
+  /** Explicit edges to use as "after" state (bypasses stale ref for new edges) */
+  explicitEdges?: Edge[];
+}
+
 export interface UseUndoRedoReturn {
   canUndo: boolean;
   canRedo: boolean;
@@ -369,7 +379,7 @@ export interface UseUndoRedoReturn {
   commitChange: (
     before: SnapshotCapture,
     description: string,
-    options?: { persist?: boolean }
+    options?: CommitChangeOptions
   ) => void;
   beginBatch: () => void;
   endBatch: () => void;
@@ -467,7 +477,7 @@ export function useUndoRedo(options: UseUndoRedoOptions): UseUndoRedoReturn {
   );
 
   const commitChange = useCallback(
-    (before: SnapshotCapture, description: string, options?: { persist?: boolean }) => {
+    (before: SnapshotCapture, description: string, options?: CommitChangeOptions) => {
       if (!enabled) return;
 
       const nodes = getNodes();
@@ -475,17 +485,37 @@ export function useUndoRedo(options: UseUndoRedoOptions): UseUndoRedoReturn {
       const nodeMap = new Map(nodes.map((n) => [n.id, n]));
       const edgeMap = new Map(edges.map((e) => [e.id, e]));
 
-      const nodesEntries = before.nodeIds.map((id) => ({
-        id,
-        before: before.nodesBefore.find((entry) => entry.id === id)?.before ?? null,
-        after: nodeMap.has(id) ? toNodeSnapshot(nodeMap.get(id) as Node) : null
-      }));
+      // Build explicit maps for quick lookup
+      const explicitNodeMap = options?.explicitNodes
+        ? new Map(options.explicitNodes.map((n) => [n.id, n]))
+        : null;
+      const explicitEdgeMap = options?.explicitEdges
+        ? new Map(options.explicitEdges.map((e) => [e.id, e]))
+        : null;
 
-      const edgesEntries = before.edgeIds.map((id) => ({
-        id,
-        before: before.edgesBefore.find((entry) => entry.id === id)?.before ?? null,
-        after: edgeMap.has(id) ? toEdgeSnapshot(edgeMap.get(id) as Edge) : null
-      }));
+      const nodesEntries = before.nodeIds.map((id) => {
+        const beforeEntry = before.nodesBefore.find((entry) => entry.id === id)?.before ?? null;
+        // Use explicit node if provided, otherwise look in current state
+        const explicitNode = explicitNodeMap?.get(id);
+        const afterEntry = explicitNode
+          ? toNodeSnapshot(explicitNode)
+          : nodeMap.has(id)
+            ? toNodeSnapshot(nodeMap.get(id) as Node)
+            : null;
+        return { id, before: beforeEntry, after: afterEntry };
+      });
+
+      const edgesEntries = before.edgeIds.map((id) => {
+        const beforeEntry = before.edgesBefore.find((entry) => entry.id === id)?.before ?? null;
+        // Use explicit edge if provided, otherwise look in current state
+        const explicitEdge = explicitEdgeMap?.get(id);
+        const afterEntry = explicitEdge
+          ? toEdgeSnapshot(explicitEdge)
+          : edgeMap.has(id)
+            ? toEdgeSnapshot(edgeMap.get(id) as Edge)
+            : null;
+        return { id, before: beforeEntry, after: afterEntry };
+      });
 
       const snapshot: UndoRedoSnapshot = {
         type: "snapshot",
