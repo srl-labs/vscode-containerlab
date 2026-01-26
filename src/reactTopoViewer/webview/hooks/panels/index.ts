@@ -10,7 +10,6 @@ export {
   useNodeEditorHandlers,
   useLinkEditorHandlers,
   useNetworkEditorHandlers,
-  useNodeCreationHandlers,
-  useMembershipCallbacks
+  useNodeCreationHandlers
 } from "./useEditorHandlers";
 export type { NodeCreationState } from "./useEditorHandlers";

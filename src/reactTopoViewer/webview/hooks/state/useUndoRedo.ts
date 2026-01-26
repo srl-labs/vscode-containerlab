@@ -122,7 +122,7 @@ function toNodeSnapshot(node: Node): NodeSnapshot {
     style: node.style,
     className: node.className,
     zIndex: node.zIndex,
-    parentNode: node.parentNode,
+    parentNode: node.parentId,
     extent: node.extent,
     draggable: node.draggable,
     selectable: node.selectable,
@@ -240,13 +240,12 @@ function mergeNodeSnapshot(current: Node | undefined, target: NodeSnapshot): Nod
   const merged: Node = {
     ...base,
     ...target,
-    data: target.data
+    data: target.data ?? {}
   };
 
   if (current) {
     merged.selected = current.selected;
     merged.dragging = current.dragging;
-    merged.positionAbsolute = current.positionAbsolute;
     merged.measured = current.measured;
   }
 

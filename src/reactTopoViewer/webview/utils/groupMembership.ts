@@ -56,6 +56,6 @@ export function applyGroupMembershipToNodes(
     return {
       ...node,
       data: { ...(data ?? {}), groupId }
-    };
+    } as unknown as TopoNode;
   });
 }

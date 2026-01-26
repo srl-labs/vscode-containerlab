@@ -92,16 +92,8 @@ function useGraphMutationHandlers(params: {
   menuHandlers: MenuHandlers;
   undoRedo: ReturnType<typeof useUndoRedo>;
 }): GraphHandlersResult {
-  const {
-    getNodes,
-    getEdges,
-    addNode,
-    addEdge,
-    removeNodeAndEdges,
-    removeEdge,
-    menuHandlers,
-    undoRedo
-  } = params;
+  const { getEdges, addNode, addEdge, removeNodeAndEdges, removeEdge, menuHandlers, undoRedo } =
+    params;
 
   const handleEdgeCreated = React.useCallback(
     (

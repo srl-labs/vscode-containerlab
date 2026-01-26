@@ -309,7 +309,7 @@ const AppContent: React.FC<{
     handleDeleteLinkWithUndo
   } = useGraphHandlersWithContext({
     getNodes,
-    getEdges,
+    getEdges: getEdges as () => TopoEdge[],
     addNode: addNodeDirect as (element: unknown) => void,
     addEdge: addEdgeDirect as (element: unknown) => void,
     removeNodeAndEdges,

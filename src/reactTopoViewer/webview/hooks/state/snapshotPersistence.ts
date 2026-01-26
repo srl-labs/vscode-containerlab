@@ -4,9 +4,7 @@
  * Applies snapshot changes to the persistence layer (YAML + annotations JSON).
  * This is used for both forward changes (commit) and undo/redo.
  */
-import type { Node, Edge } from "@xyflow/react";
-
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
+import type { Node } from "@xyflow/react";
 import type { TopologyEdgeData } from "../../../shared/types/graph";
 import type { NodeSaveData, LinkSaveData, NetworkNodeData } from "../../services";
 import {
@@ -26,7 +24,7 @@ import {
   saveNodeGroupMembership
 } from "../../services";
 import { isAnnotationNodeType, nodesToAnnotations } from "../../utils/annotationNodeConverters";
-import type { UndoRedoSnapshot, NodeSnapshot, EdgeSnapshot, SnapshotEntry } from "./useUndoRedo";
+import type { UndoRedoSnapshot, NodeSnapshot, EdgeSnapshot } from "./useUndoRedo";
 import { log } from "../../utils/logger";
 
 // ============================================================================
