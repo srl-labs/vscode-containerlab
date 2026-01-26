@@ -138,7 +138,11 @@ function useGraphMutationHandlers(params: {
       const before = undoRedo.captureSnapshot({ nodeIds: [nodeId], edgeIds: connectedEdgeIds });
       removeNodeAndEdges(nodeId);
       menuHandlers.handleDeleteNode(nodeId);
-      undoRedo.commitChange(before, `Delete node ${nodeId}`);
+      // Pass empty explicit arrays to indicate deletion (after = null for these IDs)
+      undoRedo.commitChange(before, `Delete node ${nodeId}`, {
+        explicitNodes: [],
+        explicitEdges: []
+      });
     },
     [getEdges, removeNodeAndEdges, menuHandlers, undoRedo]
   );
@@ -148,7 +152,10 @@ function useGraphMutationHandlers(params: {
       const before = undoRedo.captureSnapshot({ edgeIds: [edgeId] });
       removeEdge(edgeId);
       menuHandlers.handleDeleteLink(edgeId);
-      undoRedo.commitChange(before, `Delete link ${edgeId}`);
+      // Pass empty explicit array to indicate deletion (after = null for this edge)
+      undoRedo.commitChange(before, `Delete link ${edgeId}`, {
+        explicitEdges: []
+      });
     },
     [removeEdge, menuHandlers, undoRedo]
   );

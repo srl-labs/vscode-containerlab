@@ -566,6 +566,8 @@ const AppContent: React.FC<{
           onInit={onInit}
           onEdgeCreated={handleEdgeCreated}
           onShiftClickCreate={graphCreation.createNodeAtPosition}
+          onNodeDelete={handleDeleteNodeWithUndo}
+          onEdgeDelete={handleDeleteLinkWithUndo}
         />
         <ViewPanels
           nodeInfo={{

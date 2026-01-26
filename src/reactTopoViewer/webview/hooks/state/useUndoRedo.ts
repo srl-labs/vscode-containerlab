@@ -495,25 +495,31 @@ export function useUndoRedo(options: UseUndoRedoOptions): UseUndoRedoReturn {
 
       const nodesEntries = before.nodeIds.map((id) => {
         const beforeEntry = before.nodesBefore.find((entry) => entry.id === id)?.before ?? null;
-        // Use explicit node if provided, otherwise look in current state
-        const explicitNode = explicitNodeMap?.get(id);
-        const afterEntry = explicitNode
-          ? toNodeSnapshot(explicitNode)
-          : nodeMap.has(id)
-            ? toNodeSnapshot(nodeMap.get(id) as Node)
-            : null;
+        // If explicit list provided, use it as source of truth (supports creation and deletion)
+        // - For creation: pass [newNode] → node found → after = snapshot
+        // - For deletion: pass [] → node not found → after = null
+        let afterEntry: NodeSnapshot | null;
+        if (explicitNodeMap !== null) {
+          const explicitNode = explicitNodeMap.get(id);
+          afterEntry = explicitNode ? toNodeSnapshot(explicitNode) : null;
+        } else {
+          afterEntry = nodeMap.has(id) ? toNodeSnapshot(nodeMap.get(id) as Node) : null;
+        }
         return { id, before: beforeEntry, after: afterEntry };
       });
 
       const edgesEntries = before.edgeIds.map((id) => {
         const beforeEntry = before.edgesBefore.find((entry) => entry.id === id)?.before ?? null;
-        // Use explicit edge if provided, otherwise look in current state
-        const explicitEdge = explicitEdgeMap?.get(id);
-        const afterEntry = explicitEdge
-          ? toEdgeSnapshot(explicitEdge)
-          : edgeMap.has(id)
-            ? toEdgeSnapshot(edgeMap.get(id) as Edge)
-            : null;
+        // If explicit list provided, use it as source of truth (supports creation and deletion)
+        // - For creation: pass [newEdge] → edge found → after = snapshot
+        // - For deletion: pass [] → edge not found → after = null
+        let afterEntry: EdgeSnapshot | null;
+        if (explicitEdgeMap !== null) {
+          const explicitEdge = explicitEdgeMap.get(id);
+          afterEntry = explicitEdge ? toEdgeSnapshot(explicitEdge) : null;
+        } else {
+          afterEntry = edgeMap.has(id) ? toEdgeSnapshot(edgeMap.get(id) as Edge) : null;
+        }
         return { id, before: beforeEntry, after: afterEntry };
       });
 
