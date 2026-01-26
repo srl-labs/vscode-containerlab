@@ -7,6 +7,7 @@ import React from "react";
 import { BasePanel } from "../../shared/editor/BasePanel";
 import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlers } from "../../../hooks/panels/useGenericFormState";
+import { normalizeShapeAnnotationColors } from "../../../utils/color";
 
 import { FreeShapeFormContent } from "./FreeShapeFormContent";
 
@@ -25,8 +26,10 @@ export const FreeShapeEditorPanel: React.FC<FreeShapeEditorPanelProps> = ({
   onSave,
   onDelete
 }) => {
-  const { formData, updateField, hasChanges, resetInitialData, isNew } =
-    useGenericFormState(annotation);
+  const { formData, updateField, hasChanges, resetInitialData, isNew } = useGenericFormState(
+    annotation,
+    { transformData: normalizeShapeAnnotationColors }
+  );
 
   const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
     formData,

@@ -3,6 +3,7 @@
  * Used by FreeShape, FreeText, and Group editors
  */
 import React from "react";
+import { normalizeHexColor } from "../../../utils/color";
 
 /**
  * Toggle pill button
@@ -33,22 +34,25 @@ export const ColorSwatch: React.FC<{
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
-}> = ({ label, value, onChange, disabled }) => (
-  <div className="flex flex-col gap-0.5">
-    <span className="field-label">{label}</span>
-    <div
-      className={`relative w-[30px] h-[30px] rounded-sm overflow-hidden border border-white/10 hover:border-white/20 transition-colors ${disabled ? "opacity-40" : ""}`}
-    >
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer border-0"
-      />
+}> = ({ label, value, onChange, disabled }) => {
+  const inputValue = normalizeHexColor(value);
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="field-label">{label}</span>
+      <div
+        className={`relative w-[30px] h-[30px] rounded-sm overflow-hidden border border-white/10 hover:border-white/20 transition-colors ${disabled ? "opacity-40" : ""}`}
+      >
+        <input
+          type="color"
+          value={inputValue}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer border-0"
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /**
  * Number input with label and optional unit

@@ -35,6 +35,14 @@ import {
   findParentGroupForBounds,
   generateGroupId
 } from "../hooks/groups";
+import {
+  DEFAULT_FILL_COLOR,
+  DEFAULT_FILL_OPACITY,
+  DEFAULT_BORDER_COLOR,
+  DEFAULT_BORDER_WIDTH,
+  DEFAULT_BORDER_STYLE
+} from "../hooks/annotations/freeShape";
+import { normalizeShapeAnnotationColors } from "../utils/color";
 import { log } from "../utils/logger";
 
 /** Pending membership change during node drag */
@@ -832,19 +840,20 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   const saveShapeAnnotation = useCallback(
     (annotation: FreeShapeAnnotation) => {
-      const existing = derived.shapeAnnotations.find((a) => a.id === annotation.id);
+      const normalized = normalizeShapeAnnotationColors(annotation);
+      const existing = derived.shapeAnnotations.find((a) => a.id === normalized.id);
       if (existing) {
-        derived.updateShapeAnnotation(annotation.id, annotation);
+        derived.updateShapeAnnotation(normalized.id, normalized);
       } else {
-        derived.addShapeAnnotation(annotation);
+        derived.addShapeAnnotation(normalized);
       }
       // Save style for next annotation
       lastShapeStyleRef.current = {
-        fillColor: annotation.fillColor,
-        fillOpacity: annotation.fillOpacity,
-        borderColor: annotation.borderColor,
-        borderWidth: annotation.borderWidth,
-        borderStyle: annotation.borderStyle
+        fillColor: normalized.fillColor,
+        fillOpacity: normalized.fillOpacity,
+        borderColor: normalized.borderColor,
+        borderWidth: normalized.borderWidth,
+        borderStyle: normalized.borderStyle
       };
       setEditingShapeAnnotation(null);
     },
@@ -936,11 +945,11 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
         height: pendingShapeType === "line" ? undefined : 100,
         endPosition:
           pendingShapeType === "line" ? { x: position.x + 150, y: position.y } : undefined,
-        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(100, 100, 255, 0.3)",
-        fillOpacity: lastShapeStyleRef.current.fillOpacity ?? 0.3,
-        borderColor: lastShapeStyleRef.current.borderColor ?? "#666",
-        borderWidth: lastShapeStyleRef.current.borderWidth ?? 2,
-        borderStyle: lastShapeStyleRef.current.borderStyle ?? "solid",
+        fillColor: lastShapeStyleRef.current.fillColor ?? DEFAULT_FILL_COLOR,
+        fillOpacity: lastShapeStyleRef.current.fillOpacity ?? DEFAULT_FILL_OPACITY,
+        borderColor: lastShapeStyleRef.current.borderColor ?? DEFAULT_BORDER_COLOR,
+        borderWidth: lastShapeStyleRef.current.borderWidth ?? DEFAULT_BORDER_WIDTH,
+        borderStyle: lastShapeStyleRef.current.borderStyle ?? DEFAULT_BORDER_STYLE,
         groupId: parentGroup?.id
       };
       derived.addShapeAnnotation(newAnnotation);
