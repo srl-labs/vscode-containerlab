@@ -1,5 +1,5 @@
 /**
- * Messages that applies to webview.
+ * Types of postMessage commands that target webview.
  */
 
 /** Message type for topology data updates sent to webview */

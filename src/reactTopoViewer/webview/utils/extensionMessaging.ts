@@ -24,6 +24,7 @@
  *    - Custom node templates: save-custom-node, delete-custom-node, set-default-custom-node
  *      (stored in VS Code settings, not annotations)
  */
+import type { ExtensionCommandType } from "../../shared/messages/extension";
 import type { SaveCustomNodeData } from "../../shared/utilities/customNodeConversions";
 
 import { log } from "./logger";
@@ -51,7 +52,10 @@ function getVscodeApi(): { postMessage(data: unknown): void } | undefined {
  *
  * DO NOT use this for topology data operations - use service hooks instead.
  */
-export function sendCommandToExtension(command: string, payload?: Record<string, unknown>): void {
+export function sendCommandToExtension(
+  command: ExtensionCommandType,
+  payload?: Record<string, unknown>
+): void {
   const vscodeApi = getVscodeApi();
   if (!vscodeApi) {
     log.warn(`[ExtensionMessaging] VS Code API unavailable, command skipped: ${command}`);
