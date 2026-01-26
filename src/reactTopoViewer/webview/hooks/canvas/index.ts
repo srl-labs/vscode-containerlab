@@ -10,15 +10,7 @@ export {
 } from "./useReactFlowCanvasHooks";
 
 // Canvas event handlers (moved from components/react-flow-canvas/)
-export {
-  useCanvasHandlers,
-  snapToGrid,
-  GRID_SIZE,
-  type DragPositionEntry
-} from "./useCanvasHandlers";
+export { useCanvasHandlers, snapToGrid, GRID_SIZE } from "./useCanvasHandlers";
 
 // Annotation canvas handlers hook
 export { useAnnotationCanvasHandlers } from "./useAnnotationCanvasHandlers";
-
-// Annotation canvas props hook
-export { useAnnotationCanvasProps } from "./useAnnotationCanvasProps";

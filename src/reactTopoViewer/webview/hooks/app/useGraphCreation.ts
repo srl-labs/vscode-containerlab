@@ -175,7 +175,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   );
 
   // Network creation callback - uses the same handler as regular nodes (which has undo/redo support)
-  // The persistence logic is handled in useGraphUndoRedoHandlers based on node type
+  // Persistence is handled by snapshot-based undo/redo after graph mutations
   const handleNetworkCreatedCallback = React.useCallback(
     (networkId: string, networkElement: TopoNode, position: Position) => {
       // Delegate to the node created handler which handles persistence and undo/redo

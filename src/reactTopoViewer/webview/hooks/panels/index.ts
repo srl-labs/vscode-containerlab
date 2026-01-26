@@ -13,4 +13,4 @@ export {
   useNodeCreationHandlers,
   useMembershipCallbacks
 } from "./useEditorHandlers";
-export type { NodeCreationState, PendingMembershipChange } from "./useEditorHandlers";
+export type { NodeCreationState } from "./useEditorHandlers";

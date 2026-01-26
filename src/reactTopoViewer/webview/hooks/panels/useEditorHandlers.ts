@@ -14,42 +14,24 @@ import type {
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { CustomIconInfo } from "../../../shared/types/icons";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
-import type { MembershipEntry } from "../state/useUndoRedo";
-import {
-  convertEditorDataToNodeSaveData,
-  convertEditorDataToYaml
-} from "../../../shared/utilities/nodeEditorConversions";
+import { convertEditorDataToYaml } from "../../../shared/utilities/nodeEditorConversions";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
+import type { SnapshotCapture } from "../state/useUndoRedo";
 import {
   editNode as editNodeService,
-  editLink as editLinkService,
-  saveEdgeAnnotations,
   isServicesInitialized,
   getAnnotationsIO,
   getTopologyIO
 } from "../../services";
 import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
 import { getViewportCenter } from "../shared/viewportUtils";
+import { useUndoRedoContext } from "../../context/UndoRedoContext";
 
-/** Pending membership change during node drag */
-export interface PendingMembershipChange {
-  nodeId: string;
-  oldGroupId: string | null;
-  newGroupId: string | null;
-}
+// Pending membership tracking moved to drag handler
 
 // ============================================================================
 // Types
 // ============================================================================
-
-/** Property edit action for undo/redo (matches UndoRedoActionPropertyEdit without 'type') */
-interface PropertyEditAction {
-  entityType: "node" | "link";
-  entityId: string;
-  before: Record<string, unknown>;
-  after: Record<string, unknown>;
-  [key: string]: unknown;
-}
 
 interface EdgeAnnotationHandlers {
   edgeAnnotations: EdgeAnnotation[];
@@ -72,15 +54,6 @@ type RenameNodeCallback = (oldId: string, newId: string, nameOverride?: string) 
 // ============================================================================
 // Shared Helper Functions
 // ============================================================================
-
-/**
- * Update edge data after editor changes.
- * In ReactFlow, edge data updates are handled via React state.
- * The editLinkService call in persistLinkChanges handles persistence.
- */
-function updateEdgeData(_edgeId: string, _data: LinkEditorData): void {
-  // Edge data updates are handled via React state; this is a no-op.
-}
 
 /**
  * Convert node editor data to extraData format.
@@ -128,32 +101,6 @@ function handleNodeUpdate(
   return updateNodeExtraData(data.id, data);
 }
 
-/**
- * Record property edit for undo/redo if needed
- */
-function recordEdit<T extends { id: string }>(
-  entityType: "node" | "link",
-  current: T | null,
-  newData: T,
-  recordPropertyEdit: ((action: PropertyEditAction) => void) | undefined,
-  checkChanges = false
-): boolean {
-  if (!recordPropertyEdit || !current) return true;
-
-  if (checkChanges) {
-    const hasChanges = JSON.stringify(current) !== JSON.stringify(newData);
-    if (!hasChanges) return false;
-  }
-
-  recordPropertyEdit({
-    entityType,
-    entityId: current.id,
-    before: current as unknown as Record<string, unknown>,
-    after: newData as unknown as Record<string, unknown>
-  });
-  return true;
-}
-
 function persistEdgeLabelOffset(
   data: LinkEditorData,
   handlers: EdgeAnnotationHandlers | undefined
@@ -162,7 +109,6 @@ function persistEdgeLabelOffset(
   const nextAnnotations = upsertEdgeLabelOffsetAnnotation(handlers.edgeAnnotations, data);
   if (!nextAnnotations) return;
   handlers.setEdgeAnnotations(nextAnnotations);
-  void saveEdgeAnnotations(nextAnnotations);
 }
 
 // ============================================================================
@@ -184,14 +130,12 @@ interface NodePersistDeps {
  * Persist node editor changes to the service and update canvas/state.
  * Shared by both Save and Apply operations.
  */
-function persistNodeChanges(
+function applyNodeChanges(
   data: NodeEditorData,
   oldName: string | undefined,
   deps: NodePersistDeps
 ): void {
   const { renameNode, customIcons, updateNodeData, refreshEditorData } = deps;
-  const saveData = convertEditorDataToNodeSaveData(data, oldName);
-  void editNodeService(saveData);
   const newExtraData = handleNodeUpdate(data, oldName, renameNode, customIcons);
   // Update React state with the new extraData
   // For renames, use data.name (new id) since React state was already updated via renameNode
@@ -209,12 +153,12 @@ function persistNodeChanges(
 export function useNodeEditorHandlers(
   editNode: (id: string | null) => void,
   editingNodeData: NodeEditorData | null,
-  recordPropertyEdit?: (action: PropertyEditAction) => void,
   renameNode?: RenameNodeCallback,
   customIcons?: CustomIconInfo[],
   updateNodeData?: UpdateNodeDataCallback,
   refreshEditorData?: () => void
 ) {
+  const { undoRedo } = useUndoRedoContext();
   const initialDataRef = React.useRef<NodeEditorData | null>(null);
 
   React.useEffect(() => {
@@ -238,28 +182,40 @@ export function useNodeEditorHandlers(
 
   const handleSave = React.useCallback(
     (data: NodeEditorData) => {
-      // Only record if there are actual changes (checkChanges = true)
-      recordEdit("node", initialDataRef.current, data, recordPropertyEdit, true);
-      const oldName =
-        initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-      persistNodeChanges(data, oldName, persistDeps);
+      const beforeData = initialDataRef.current;
+      const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
+      if (!hasChanges) {
+        editNode(null);
+        return;
+      }
+      const oldName = beforeData?.name !== data.name ? beforeData?.name : undefined;
+      const snapshot = undoRedo.captureSnapshot({
+        nodeIds: oldName ? [oldName, data.name] : [data.id],
+        meta: oldName ? { nodeRenames: [{ from: oldName, to: data.name }] } : undefined
+      });
+      applyNodeChanges(data, oldName, persistDeps);
+      undoRedo.commitChange(snapshot, `Edit node ${data.name}`);
       initialDataRef.current = null;
       editNode(null);
     },
-    [editNode, recordPropertyEdit, persistDeps]
+    [editNode, persistDeps, undoRedo]
   );
 
   const handleApply = React.useCallback(
     (data: NodeEditorData) => {
-      const oldName =
-        initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-      const changed = recordEdit("node", initialDataRef.current, data, recordPropertyEdit, true);
-      if (changed) {
-        initialDataRef.current = { ...data };
-      }
-      persistNodeChanges(data, oldName, persistDeps);
+      const beforeData = initialDataRef.current;
+      const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
+      if (!hasChanges) return;
+      const oldName = beforeData?.name !== data.name ? beforeData?.name : undefined;
+      const snapshot = undoRedo.captureSnapshot({
+        nodeIds: oldName ? [oldName, data.name] : [data.id],
+        meta: oldName ? { nodeRenames: [{ from: oldName, to: data.name }] } : undefined
+      });
+      applyNodeChanges(data, oldName, persistDeps);
+      undoRedo.commitChange(snapshot, `Edit node ${data.name}`);
+      initialDataRef.current = { ...data };
     },
-    [recordPropertyEdit, persistDeps]
+    [persistDeps, undoRedo]
   );
 
   return { handleClose, handleSave, handleApply };
@@ -274,19 +230,26 @@ const EDGE_OFFSET_SAVE_DEBOUNCE_MS = 300;
 /** Dependencies for persisting link editor changes */
 interface LinkPersistDeps {
   edgeAnnotationHandlers?: EdgeAnnotationHandlers;
+  updateEdgeData?: (edgeId: string, data: LinkEditorData) => void;
 }
 
 /**
  * Persist link editor changes to the service and update canvas.
  * Shared by both Save and Apply operations.
  */
-function persistLinkChanges(data: LinkEditorData, deps: LinkPersistDeps): void {
-  const { edgeAnnotationHandlers } = deps;
+function applyLinkChanges(data: LinkEditorData, deps: LinkPersistDeps): void {
+  const { edgeAnnotationHandlers, updateEdgeData } = deps;
   const saveData = convertEditorDataToLinkSaveData(data);
-  void editLinkService(saveData);
   persistEdgeLabelOffset(data, edgeAnnotationHandlers);
-  // Update edge data via React state - the service call handles persistence
-  updateEdgeData(data.id, data);
+  if (updateEdgeData) {
+    updateEdgeData(data.id, {
+      ...data,
+      source: saveData.source,
+      target: saveData.target,
+      sourceEndpoint: saveData.sourceEndpoint || data.sourceEndpoint,
+      targetEndpoint: saveData.targetEndpoint || data.targetEndpoint
+    });
+  }
 }
 
 function enableLinkEndpointOffset(data: LinkEditorData): LinkEditorData {
@@ -327,17 +290,17 @@ function mergeOffsetBaseline(
 export function useLinkEditorHandlers(
   editEdge: (id: string | null) => void,
   editingLinkData: LinkEditorData | null,
-  recordPropertyEdit?: (action: PropertyEditAction) => void,
-  edgeAnnotationHandlers?: EdgeAnnotationHandlers
+  edgeAnnotationHandlers?: EdgeAnnotationHandlers,
+  updateEdgeData?: (edgeId: string, data: LinkEditorData) => void
 ) {
+  const { undoRedo } = useUndoRedoContext();
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
-  const edgeAnnotationSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingEdgeAnnotationsRef = React.useRef<EdgeAnnotation[] | null>(null);
   const offsetEditSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingOffsetEditRef = React.useRef<{
     before: LinkEditorData;
     after: LinkEditorData;
   } | null>(null);
+  const pendingOffsetSnapshotRef = React.useRef<SnapshotCapture | null>(null);
 
   React.useEffect(() => {
     if (editingLinkData) {
@@ -346,12 +309,6 @@ export function useLinkEditorHandlers(
       initialDataRef.current = null;
     }
   }, [editingLinkData?.id]);
-
-  const clearEdgeAnnotationSave = React.useCallback(() => {
-    if (!edgeAnnotationSaveRef.current) return;
-    clearTimeout(edgeAnnotationSaveRef.current);
-    edgeAnnotationSaveRef.current = null;
-  }, []);
 
   const clearOffsetEditSave = React.useCallback(() => {
     if (!offsetEditSaveRef.current) return;
@@ -374,12 +331,13 @@ export function useLinkEditorHandlers(
 
   const flushPendingOffsetEdit = React.useCallback(() => {
     clearOffsetEditSave();
-    const pending = pendingOffsetEditRef.current;
     pendingOffsetEditRef.current = null;
-    if (!pending) return false;
-    recordEdit("link", pending.before, pending.after, recordPropertyEdit, true);
+    const snapshot = pendingOffsetSnapshotRef.current;
+    pendingOffsetSnapshotRef.current = null;
+    if (!snapshot) return false;
+    undoRedo.commitChange(snapshot, "Adjust link offset", { persist: false });
     return true;
-  }, [clearOffsetEditSave, recordPropertyEdit]);
+  }, [clearOffsetEditSave, undoRedo]);
 
   const queueOffsetEdit = React.useCallback(
     (before: LinkEditorData | null, after: LinkEditorData) => {
@@ -394,42 +352,17 @@ export function useLinkEditorHandlers(
     [clearOffsetEditSave, flushPendingOffsetEdit, resolveOffsetBaseline]
   );
 
-  const saveEdgeAnnotationsImmediate = React.useCallback(
-    (annotations: EdgeAnnotation[]) => {
-      clearEdgeAnnotationSave();
-      pendingEdgeAnnotationsRef.current = null;
-      void saveEdgeAnnotations(annotations);
-    },
-    [clearEdgeAnnotationSave]
-  );
-
-  const saveEdgeAnnotationsDebounced = React.useCallback(
-    (annotations: EdgeAnnotation[]) => {
-      pendingEdgeAnnotationsRef.current = annotations;
-      clearEdgeAnnotationSave();
-      edgeAnnotationSaveRef.current = setTimeout(() => {
-        const pending = pendingEdgeAnnotationsRef.current;
-        pendingEdgeAnnotationsRef.current = null;
-        edgeAnnotationSaveRef.current = null;
-        if (!pending) return;
-        void saveEdgeAnnotations(pending);
-      }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
-    },
-    [clearEdgeAnnotationSave]
-  );
-
   React.useEffect(
     () => () => {
-      clearEdgeAnnotationSave();
-      pendingEdgeAnnotationsRef.current = null;
       clearOffsetEditSave();
       pendingOffsetEditRef.current = null;
+      pendingOffsetSnapshotRef.current = null;
     },
-    [clearEdgeAnnotationSave, clearOffsetEditSave]
+    [clearOffsetEditSave]
   );
 
   const applyOffsetAnnotations = React.useCallback(
-    (data: LinkEditorData, saveAnnotations: (annotations: EdgeAnnotation[]) => void) => {
+    (data: LinkEditorData) => {
       if (!edgeAnnotationHandlers) return;
       const nextAnnotations = upsertEdgeLabelOffsetAnnotation(
         edgeAnnotationHandlers.edgeAnnotations,
@@ -437,7 +370,6 @@ export function useLinkEditorHandlers(
       );
       if (!nextAnnotations) return;
       edgeAnnotationHandlers.setEdgeAnnotations(nextAnnotations);
-      saveAnnotations(nextAnnotations);
     },
     [edgeAnnotationHandlers]
   );
@@ -447,84 +379,64 @@ export function useLinkEditorHandlers(
     editEdge(null);
   }, [editEdge]);
 
-  // Memoize dependencies for persistLinkChanges
   const persistDeps = React.useMemo<LinkPersistDeps>(
-    () => ({ edgeAnnotationHandlers }),
-    [edgeAnnotationHandlers]
+    () => ({ edgeAnnotationHandlers, updateEdgeData }),
+    [edgeAnnotationHandlers, updateEdgeData]
   );
 
   const handleSave = React.useCallback(
     (data: LinkEditorData) => {
-      clearEdgeAnnotationSave();
-      const offsetFlushed = flushPendingOffsetEdit();
+      const beforeData = initialDataRef.current;
       const normalized = enableLinkEndpointOffset(data);
-      if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
-        if (!offsetFlushed) {
-          recordEdit("link", initialDataRef.current, normalized, recordPropertyEdit, true);
-        }
-        applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
+      const hasChanges = beforeData
+        ? JSON.stringify(beforeData) !== JSON.stringify(normalized)
+        : true;
+      if (!hasChanges) {
+        editEdge(null);
+        return;
+      }
+      const snapshot = undoRedo.captureSnapshot({
+        edgeIds: [normalized.id],
+        includeEdgeAnnotations: true
+      });
+      if (isOffsetOnlyChange(beforeData, normalized)) {
+        applyOffsetAnnotations(normalized);
+        undoRedo.commitChange(snapshot, "Edit link offset", { persist: false });
         initialDataRef.current = null;
         editEdge(null);
         return;
       }
-      // Only record if there are actual changes (checkChanges = true)
-      recordEdit("link", initialDataRef.current, normalized, recordPropertyEdit, true);
-      persistLinkChanges(normalized, persistDeps);
+      applyLinkChanges(normalized, persistDeps);
+      undoRedo.commitChange(snapshot, `Edit link ${normalized.id}`);
       initialDataRef.current = null;
       editEdge(null);
     },
-    [
-      applyOffsetAnnotations,
-      clearEdgeAnnotationSave,
-      editEdge,
-      flushPendingOffsetEdit,
-      recordPropertyEdit,
-      saveEdgeAnnotationsImmediate,
-      persistDeps
-    ]
+    [applyOffsetAnnotations, editEdge, persistDeps, undoRedo]
   );
 
   const handleApply = React.useCallback(
     (data: LinkEditorData) => {
-      clearEdgeAnnotationSave();
-      const offsetFlushed = flushPendingOffsetEdit();
+      const beforeData = initialDataRef.current;
       const normalized = enableLinkEndpointOffset(data);
-      if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
-        if (!offsetFlushed) {
-          const changed = recordEdit(
-            "link",
-            initialDataRef.current,
-            normalized,
-            recordPropertyEdit,
-            true
-          );
-          if (changed) {
-            initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
-          }
-        }
-        applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
+      const hasChanges = beforeData
+        ? JSON.stringify(beforeData) !== JSON.stringify(normalized)
+        : true;
+      if (!hasChanges) return;
+      const snapshot = undoRedo.captureSnapshot({
+        edgeIds: [normalized.id],
+        includeEdgeAnnotations: true
+      });
+      if (isOffsetOnlyChange(beforeData, normalized)) {
+        applyOffsetAnnotations(normalized);
+        undoRedo.commitChange(snapshot, "Edit link offset", { persist: false });
+        initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
         return;
       }
-      const changed = recordEdit(
-        "link",
-        initialDataRef.current,
-        normalized,
-        recordPropertyEdit,
-        true
-      );
-      if (changed) {
-        initialDataRef.current = { ...normalized };
-      }
-      persistLinkChanges(normalized, persistDeps);
+      applyLinkChanges(normalized, persistDeps);
+      undoRedo.commitChange(snapshot, `Edit link ${normalized.id}`);
+      initialDataRef.current = { ...normalized };
     },
-    [
-      applyOffsetAnnotations,
-      clearEdgeAnnotationSave,
-      flushPendingOffsetEdit,
-      recordPropertyEdit,
-      saveEdgeAnnotationsImmediate,
-      persistDeps
-    ]
+    [applyOffsetAnnotations, persistDeps, undoRedo]
   );
 
   const handleAutoApplyOffset = React.useCallback(
@@ -536,11 +448,16 @@ export function useLinkEditorHandlers(
         normalized.endpointLabelOffset !== initialDataRef.current.endpointLabelOffset ||
         normalized.endpointLabelOffsetEnabled !== initialDataRef.current.endpointLabelOffsetEnabled;
       if (!hasOffsetChange) return;
-      applyOffsetAnnotations(normalized, saveEdgeAnnotationsDebounced);
+      if (!pendingOffsetSnapshotRef.current) {
+        pendingOffsetSnapshotRef.current = undoRedo.captureSnapshot({
+          includeEdgeAnnotations: true
+        });
+      }
+      applyOffsetAnnotations(normalized);
       queueOffsetEdit(initialDataRef.current, normalized);
       initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
     },
-    [applyOffsetAnnotations, edgeAnnotationHandlers, queueOffsetEdit, saveEdgeAnnotationsDebounced]
+    [applyOffsetAnnotations, edgeAnnotationHandlers, queueOffsetEdit, undoRedo]
   );
 
   return { handleClose, handleSave, handleApply, handleAutoApplyOffset };
@@ -820,43 +737,4 @@ export function useNodeCreationHandlers(
   );
 
   return { handleAddNodeFromPanel };
-}
-
-// ============================================================================
-// useMembershipCallbacks
-// ============================================================================
-
-interface GroupsApi {
-  addNodeToGroup: (nodeId: string, groupId: string) => void;
-  removeNodeFromGroup: (nodeId: string) => void;
-}
-
-/**
- * Hook for membership change callbacks (reduces App complexity)
- */
-export function useMembershipCallbacks(
-  groups: GroupsApi,
-  pendingMembershipChangesRef: React.RefObject<Map<string, PendingMembershipChange>>
-) {
-  const applyMembershipChange = React.useCallback(
-    (memberships: MembershipEntry[]) => {
-      for (const entry of memberships) {
-        if (entry.groupId) {
-          groups.addNodeToGroup(entry.nodeId, entry.groupId);
-        } else {
-          groups.removeNodeFromGroup(entry.nodeId);
-        }
-      }
-    },
-    [groups]
-  );
-
-  const onMembershipWillChange = React.useCallback(
-    (nodeId: string, oldGroupId: string | null, newGroupId: string | null) => {
-      pendingMembershipChangesRef.current.set(nodeId, { nodeId, oldGroupId, newGroupId });
-    },
-    [pendingMembershipChangesRef]
-  );
-
-  return { applyMembershipChange, onMembershipWillChange };
 }

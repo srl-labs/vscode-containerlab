@@ -2,38 +2,13 @@
  * Handler functions for bulk link operations
  * Uses React Flow nodes/edges arrays for graph queries.
  */
-import type { GraphChange } from "../../../hooks/state/useUndoRedo";
-import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../../shared/types/graph";
-import { createLink, beginBatch, endBatch, type LinkSaveData } from "../../../services";
+import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
+import type { SnapshotCapture } from "../../../hooks/state/useUndoRedo";
 
-import {
-  computeCandidates,
-  buildBulkEdges,
-  buildUndoRedoEntries,
-  type LinkCandidate
-} from "./bulkLinkUtils";
+import { computeCandidates, buildBulkEdges, type LinkCandidate } from "./bulkLinkUtils";
 
 type SetStatus = (status: string | null) => void;
 type SetCandidates = (candidates: LinkCandidate[] | null) => void;
-
-export async function sendBulkEdgesToExtension(edges: TopoEdge[]): Promise<void> {
-  beginBatch();
-  try {
-    for (const edge of edges) {
-      const data = edge.data as TopologyEdgeData | undefined;
-      const linkData: LinkSaveData = {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceEndpoint: data?.sourceEndpoint || "",
-        targetEndpoint: data?.targetEndpoint || ""
-      };
-      await createLink(linkData);
-    }
-  } finally {
-    await endBatch();
-  }
-}
 
 export function computeAndValidateCandidates(
   nodes: TopoNode[],
@@ -68,7 +43,8 @@ interface ConfirmCreateParams {
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
   addEdge?: (edge: TopoEdge) => void;
-  recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
+  captureSnapshot?: (options: { edgeIds: string[] }) => SnapshotCapture;
+  commitChange?: (before: SnapshotCapture, description: string) => void;
   setStatus: SetStatus;
   setPendingCandidates: SetCandidates;
   onClose: () => void;
@@ -80,7 +56,8 @@ export async function confirmAndCreateLinks({
   pendingCandidates,
   canApply,
   addEdge,
-  recordGraphChanges,
+  captureSnapshot,
+  commitChange,
   setStatus,
   setPendingCandidates,
   onClose
@@ -99,12 +76,14 @@ export async function confirmAndCreateLinks({
     return;
   }
 
-  const { before, after } = buildUndoRedoEntries(builtEdges);
+  const edgeIds = builtEdges.map((edge) => edge.id);
+  const snapshot = captureSnapshot ? captureSnapshot({ edgeIds }) : null;
   if (addEdge) {
     builtEdges.forEach((edge) => addEdge(edge));
   }
-  await sendBulkEdgesToExtension(builtEdges);
-  recordGraphChanges?.(before, after);
+  if (snapshot && commitChange) {
+    commitChange(snapshot, `Add ${builtEdges.length} link${builtEdges.length === 1 ? "" : "s"}`);
+  }
 
   setPendingCandidates(null);
   setStatus(null);

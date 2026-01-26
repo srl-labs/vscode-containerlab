@@ -226,7 +226,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       annotationHandlers,
       onNodeDelete,
       onEdgeDelete,
-      onMoveComplete,
       linkLabelMode = "show-all",
       onInit: onInitProp,
       onEdgeCreated,
@@ -261,19 +260,16 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onLockedAction: () => floatingPanelRef.current?.triggerShake(),
       nodes: allNodes,
       setNodes,
-      onMoveComplete,
       onEdgeCreated,
       groupMemberHandlers: {
-        getGroupMembers: annotationHandlers?.getGroupMembers
+        getGroupMembers: annotationHandlers?.getGroupMembers,
+        onNodeDropped: annotationHandlers?.onNodeDropped
       }
     });
 
     const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =
       useLinkCreation(onEdgeCreated);
     const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
-      (propEdges as Edge[]) ?? [],
-      setNodes,
-      setEdges,
       selectNode,
       selectEdge,
       handlers.closeContextMenu,

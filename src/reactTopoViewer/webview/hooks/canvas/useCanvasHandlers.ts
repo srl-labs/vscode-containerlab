@@ -18,8 +18,10 @@ import {
   type XYPosition
 } from "@xyflow/react";
 
+import type { SnapshotCapture } from "../state/useUndoRedo";
 import { log } from "../../utils/logger";
-import { saveNodePositions as saveNodePositionsService } from "../../services";
+import { useUndoRedoContext } from "../../context/UndoRedoContext";
+import { isLineHandleActive } from "../../components/react-flow-canvas/nodes/AnnotationHandles";
 
 // Grid size for snapping
 export const GRID_SIZE = 20;
@@ -32,16 +34,12 @@ export function snapToGrid(position: XYPosition): XYPosition {
   };
 }
 
-/** Position entry for undo/redo tracking */
-export interface DragPositionEntry {
-  id: string;
-  position: { x: number; y: number };
-}
-
 /** Handlers for group member movement during drag */
 export interface GroupMemberHandlers {
   /** Get member node IDs for a group */
   getGroupMembers?: (groupId: string) => string[];
+  /** Handle node dropped (for group membership updates) */
+  onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
 }
 
 interface CanvasHandlersConfig {
@@ -57,11 +55,6 @@ interface CanvasHandlersConfig {
   nodes?: Node[];
   /** Direct setNodes for member node updates (bypasses React Flow drag tracking) */
   setNodes?: React.Dispatch<React.SetStateAction<Node[]>>;
-  /** Callback when a move is complete (for undo/redo) */
-  onMoveComplete?: (
-    beforePositions: DragPositionEntry[],
-    afterPositions: DragPositionEntry[]
-  ) => void;
   /** Callback when an edge is created via drag-to-connect */
   onEdgeCreated?: (
     sourceId: string,
@@ -118,54 +111,60 @@ function useNodeDragHandlers(
   nodes: Node[] | undefined,
   onNodesChangeBase: OnNodesChange,
   setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
-  onMoveComplete?: (before: DragPositionEntry[], after: DragPositionEntry[]) => void,
   groupMemberHandlers?: GroupMemberHandlers
 ) {
-  const dragStartPositionsRef = useRef<DragPositionEntry[]>([]);
+  const { undoRedo } = useUndoRedoContext();
+  const dragSnapshotRef = useRef<SnapshotCapture | null>(null);
   // Track the last position of a dragging group to compute delta
   const groupLastPositionRef = useRef<Map<string, XYPosition>>(new Map());
   // Track member IDs that are being moved with a group
   const groupMembersRef = useRef<Map<string, string[]>>(new Map());
 
+  const buildDragNodeIds = useCallback(
+    (node: Node, currentNodes: Node[]): string[] => {
+      const ids = new Set<string>();
+      for (const candidate of currentNodes) {
+        if (candidate.selected || candidate.id === node.id) {
+          ids.add(candidate.id);
+        }
+      }
+
+      if (node.type === "group-node" && groupMemberHandlers?.getGroupMembers) {
+        const memberIds = groupMemberHandlers.getGroupMembers(node.id);
+        for (const memberId of memberIds) {
+          ids.add(memberId);
+        }
+      }
+
+      return Array.from(ids);
+    },
+    [groupMemberHandlers]
+  );
+
+  const buildMoveDescription = useCallback((node: Node, count: number): string => {
+    if (node.type === "group-node") return `Move group ${node.id}`;
+    if (count > 1) return `Move ${count} nodes`;
+    return `Move node ${node.id}`;
+  }, []);
+
   const onNodeDragStart: NodeMouseHandler = useCallback(
     (_event, node) => {
       if (modeRef.current !== "edit" || !nodes) return;
 
-      // Capture initial positions for all selected nodes
-      const nodesToCapture = nodes.filter((n) => n.selected || n.id === node.id);
-      dragStartPositionsRef.current = nodesToCapture.map((n) => ({
-        id: n.id,
-        position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }
-      }));
+      const dragNodeIds = buildDragNodeIds(node, nodes);
+      dragSnapshotRef.current =
+        dragNodeIds.length > 0 ? undoRedo.captureSnapshot({ nodeIds: dragNodeIds }) : null;
 
       // If dragging a group node, capture members and their initial positions
       if (node.type === "group-node" && groupMemberHandlers?.getGroupMembers) {
         const memberIds = groupMemberHandlers.getGroupMembers(node.id);
         groupMembersRef.current.set(node.id, memberIds);
         groupLastPositionRef.current.set(node.id, { ...node.position });
-
-        // Add member nodes to the capture list if not already there
-        for (const memberId of memberIds) {
-          if (!dragStartPositionsRef.current.some((p) => p.id === memberId)) {
-            const memberNode = nodes.find((n) => n.id === memberId);
-            if (memberNode) {
-              dragStartPositionsRef.current.push({
-                id: memberId,
-                position: {
-                  x: Math.round(memberNode.position.x),
-                  y: Math.round(memberNode.position.y)
-                }
-              });
-            }
-          }
-        }
       }
 
-      log.info(
-        `[ReactFlowCanvas] Drag started for ${dragStartPositionsRef.current.length} node(s)`
-      );
+      log.info(`[ReactFlowCanvas] Drag started for ${dragNodeIds.length} node(s)`);
     },
-    [modeRef, nodes, groupMemberHandlers]
+    [modeRef, nodes, groupMemberHandlers, undoRedo, buildDragNodeIds]
   );
 
   // Called during drag - moves members with group using direct state update
@@ -216,16 +215,16 @@ function useNodeDragHandlers(
     (_event, node) => {
       if (modeRef.current !== "edit") return;
 
+      if (node.type === "free-shape-node" && isLineHandleActive()) {
+        dragSnapshotRef.current = null;
+        return;
+      }
+
       const isGroupNode = node.type === "group-node";
       const finalPosition = isGroupNode ? node.position : snapToGrid(node.position);
-      // Only save non-annotation nodes to nodeAnnotations - annotations are handled by useAnnotationPersistence
-      const positionsToSave: DragPositionEntry[] = isGroupNode
-        ? []
-        : [{ id: node.id, position: finalPosition }];
       const changes: NodeChange[] = [
         { type: "position", id: node.id, position: finalPosition, dragging: false }
       ];
-      const overridePositions = new Map<string, XYPosition>();
 
       // For group nodes, do not snap the group or its members
       if (isGroupNode) {
@@ -234,18 +233,12 @@ function useNodeDragHandlers(
         for (const memberId of memberIds) {
           const memberNode = nodes?.find((n) => n.id === memberId);
           if (memberNode) {
-            overridePositions.set(memberId, memberNode.position);
             changes.push({
               type: "position",
               id: memberId,
               position: memberNode.position,
               dragging: false
             });
-            // Only save non-annotation member nodes to nodeAnnotations
-            // Annotation nodes (free-text, free-shape) are saved via useAnnotationPersistence
-            if (!ANNOTATION_NODE_TYPES.includes(memberNode.type || "")) {
-              positionsToSave.push({ id: memberId, position: memberNode.position });
-            }
           }
         }
 
@@ -257,66 +250,21 @@ function useNodeDragHandlers(
       onNodesChangeBase(changes);
       log.info(`[ReactFlowCanvas] Node ${node.id} moved to ${finalPosition.x}, ${finalPosition.y}`);
 
-      // Save all positions to annotations file via TopologyIO service (only non-annotation nodes)
-      if (positionsToSave.length > 0) {
-        void saveNodePositionsService(positionsToSave);
+      if (!isGroupNode && groupMemberHandlers?.onNodeDropped) {
+        groupMemberHandlers.onNodeDropped(node.id, finalPosition);
       }
 
-      if (onMoveComplete && dragStartPositionsRef.current.length > 0) {
-        const afterPositions = computeAfterPositions(
-          dragStartPositionsRef.current,
-          nodes,
-          node,
-          finalPosition,
-          overridePositions,
-          isGroupNode
-        );
-        const hasChanged = checkPositionsChanged(dragStartPositionsRef.current, afterPositions);
-        if (hasChanged) {
-          log.info(
-            `[ReactFlowCanvas] Recording move for undo/redo: ${afterPositions.length} node(s)`
-          );
-          onMoveComplete(dragStartPositionsRef.current, afterPositions);
-        }
-        dragStartPositionsRef.current = [];
+      if (dragSnapshotRef.current) {
+        const nodeCount = dragSnapshotRef.current.nodeIds.length;
+        const description = buildMoveDescription(node, nodeCount);
+        undoRedo.commitChange(dragSnapshotRef.current, description);
+        dragSnapshotRef.current = null;
       }
     },
-    [modeRef, nodes, onNodesChangeBase, onMoveComplete]
+    [modeRef, onNodesChangeBase, groupMemberHandlers, undoRedo, buildMoveDescription]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };
-}
-
-/** Compute after positions for undo/redo */
-function computeAfterPositions(
-  before: DragPositionEntry[],
-  nodes: Node[] | undefined,
-  draggedNode: Node,
-  finalPos: XYPosition,
-  overrides?: Map<string, XYPosition>,
-  skipSnapForMembers: boolean = false
-): DragPositionEntry[] {
-  return before.map((b) => {
-    if (b.id === draggedNode.id) return { id: b.id, position: finalPos };
-    const override = overrides?.get(b.id);
-    if (override) return { id: b.id, position: override };
-    const currentNode = nodes?.find((n) => n.id === b.id);
-    return {
-      id: b.id,
-      position: currentNode
-        ? skipSnapForMembers
-          ? currentNode.position
-          : snapToGrid(currentNode.position)
-        : b.position
-    };
-  });
-}
-
-/** Check if positions changed */
-function checkPositionsChanged(before: DragPositionEntry[], after: DragPositionEntry[]): boolean {
-  return before.some(
-    (b, i) => b.position.x !== after[i].position.x || b.position.y !== after[i].position.y
-  );
 }
 
 /** Hook for context menu handlers */
@@ -603,7 +551,6 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     onLockedAction,
     nodes,
     setNodes,
-    onMoveComplete,
     onEdgeCreated,
     groupMemberHandlers
   } = config;
@@ -672,7 +619,6 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     nodes,
     onNodesChangeBase,
     setNodes,
-    onMoveComplete,
     groupMemberHandlers
   );
 

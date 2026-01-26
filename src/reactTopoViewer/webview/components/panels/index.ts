@@ -54,8 +54,7 @@ export {
   CopyableCode,
   ConfirmBulkLinksModal,
   computeCandidates,
-  buildBulkEdges,
-  buildUndoRedoEntries
+  buildBulkEdges
 } from "./bulk-link";
 export type { LinkCandidate } from "./bulk-link";
 
@@ -73,6 +72,8 @@ export {
   DeployButtonGroup,
   PanelButtonWithDropdown,
   filterDropdownItems,
+  buildMenuClass,
+  buildItemClass,
   DropdownItem
 } from "./floatingPanel";
 export type { FloatingActionPanelHandle, DropdownMenuItem } from "./floatingPanel";

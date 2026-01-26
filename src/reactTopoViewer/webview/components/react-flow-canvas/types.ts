@@ -194,10 +194,6 @@ export interface AnnotationHandlers {
   onDeleteFreeText: (id: string) => void;
   /** Delete a free shape annotation */
   onDeleteFreeShape: (id: string) => void;
-  /** Update annotation position after drag */
-  onUpdateFreeTextPosition: (id: string, position: { x: number; y: number }) => void;
-  /** Update annotation position after drag */
-  onUpdateFreeShapePosition: (id: string, position: { x: number; y: number }) => void;
   /** Update free text size after resize */
   onUpdateFreeTextSize: (id: string, width: number, height: number) => void;
   /** Update free shape size after resize */
@@ -210,14 +206,6 @@ export interface AnnotationHandlers {
   onUpdateFreeShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   /** Update line start position after resize */
   onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => void;
-  /** Called when free text drag starts (capture before state for undo) */
-  onFreeTextDragStart?: (id: string) => void;
-  /** Called when free text drag ends (finalize undo action) */
-  onFreeTextDragEnd?: (id: string, position: { x: number; y: number }) => void;
-  /** Called when free shape drag starts (capture before state for undo) */
-  onFreeShapeDragStart?: (id: string) => void;
-  /** Called when free shape drag ends (finalize undo action) */
-  onFreeShapeDragEnd?: (id: string, position: { x: number; y: number }) => void;
   /** Disable add text mode (e.g., on Escape) */
   disableAddTextMode: () => void;
   /** Disable add shape mode (e.g., on Escape) */
@@ -226,10 +214,6 @@ export interface AnnotationHandlers {
   onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
   /** Update group size after resize */
   onUpdateGroupSize?: (id: string, width: number, height: number) => void;
-  /** Update group position during drag (for live rendering) */
-  onUpdateGroupPosition?: (id: string, position: { x: number; y: number }) => void;
-  /** Called when group drag ends - saves member positions to file */
-  onGroupDragEnd?: (groupId: string) => void;
   /** Edit a group annotation */
   onEditGroup?: (id: string) => void;
   /** Delete a group annotation */
@@ -265,8 +249,6 @@ export interface ReactFlowCanvasProps {
   onNodeDelete?: (nodeId: string) => void;
   onEdgeDelete?: (edgeId: string) => void;
   onPaneClick?: () => void;
-  /** Callback when a node move is complete (for undo/redo) */
-  onMoveComplete?: (before: MovePositionEntry[], after: MovePositionEntry[]) => void;
   /** Callback when ReactFlow instance is initialized */
   onInit?: (instance: ReactFlowInstance) => void;
   /** Callback when an edge is created via UI link creation mode */

@@ -11,6 +11,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
 import type { TopoNode, TopoEdge } from "../shared/types/graph";
+import type { LinkEditorData } from "../shared/types/editors";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
@@ -21,11 +22,7 @@ import { ReactFlowCanvas, type ReactFlowCanvasRef } from "./components/react-flo
 import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
 import { GraphProvider, useGraph, useGraphActions } from "./context/GraphContext";
 import { UndoRedoProvider, useUndoRedoContext } from "./context/UndoRedoContext";
-import {
-  AnnotationProvider,
-  useAnnotations,
-  type PendingMembershipChange
-} from "./context/AnnotationContext";
+import { AnnotationProvider, useAnnotations } from "./context/AnnotationContext";
 import { ViewportProvider } from "./context/ViewportContext";
 import { Navbar } from "./components/navbar/Navbar";
 import { ShortcutDisplay } from "./components/ShortcutDisplay";
@@ -58,33 +55,25 @@ import {
   useAppKeyboardShortcuts,
   useGraphCreation,
   // External file change
-  useExternalFileChange,
-  // Types
-  type GraphChange
+  useExternalFileChange
 } from "./hooks/internal";
-import { annotationsToNodes, isAnnotationNodeType } from "./utils/annotationNodeConverters";
-import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
-import { convertToLinkEditorData } from "./utils/linkEditorConversions";
-import { saveNodePositions } from "./services";
+import { annotationsToNodes } from "./utils/annotationNodeConverters";
+import { applyGroupMembershipToNodes } from "./utils/groupMembership";
+import {
+  convertToLinkEditorData,
+  convertEditorDataToLinkSaveData
+} from "./utils/linkEditorConversions";
 import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "./utils/edgeAnnotations";
 import { parseEndpointLabelOffset } from "./utils/endpointLabelOffset";
 
 /** Inner component that uses contexts */
 const AppContent: React.FC<{
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
-  pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
   layoutControls: ReturnType<typeof useLayoutControls>;
   onInit: (instance: ReactFlowInstance) => void;
-}> = ({
-  floatingPanelRef,
-  pendingMembershipChangesRef,
-  reactFlowRef,
-  rfInstance,
-  layoutControls,
-  onInit
-}) => {
+}> = ({ floatingPanelRef, reactFlowRef, rfInstance, layoutControls, onInit }) => {
   const { state } = useTopoViewerState();
   const {
     selectNode,
@@ -109,32 +98,12 @@ const AppContent: React.FC<{
     removeNodeAndEdges,
     removeEdge,
     updateNodeData,
-    updateNodePositions,
+    updateEdge,
     renameNode
   } = useGraphActions();
 
-  const { undoRedo, registerGraphHandler, registerPropertyEditHandler, registerPositionHandler } =
-    useUndoRedoContext();
+  const { undoRedo } = useUndoRedoContext();
   const annotations = useAnnotations();
-
-  // Persist annotation node changes to JSON file
-  // This watches GraphContext for annotation node changes and saves them
-  useAnnotationPersistence();
-
-  // Register position handler for undo/redo of node moves
-  React.useEffect(() => {
-    registerPositionHandler((positions) => {
-      // Filter to only entries with defined positions and update canvas
-      const validPositions = positions
-        .filter(
-          (p): p is { id: string; position: { x: number; y: number } } => p.position !== undefined
-        )
-        .map((p) => ({ id: p.id, position: p.position }));
-      if (validPositions.length > 0) {
-        updateNodePositions(validPositions);
-      }
-    });
-  }, [registerPositionHandler, updateNodePositions]);
 
   // Toast notifications
   const { toasts, addToast, dismissToast } = useToasts();
@@ -176,23 +145,6 @@ const AppContent: React.FC<{
       addEdge(edge);
     },
     [addEdge]
-  );
-
-  // Remove handlers that also clear UI state
-  const removeNodeAndEdgesWithCleanup = React.useCallback(
-    (nodeId: string) => {
-      removeNodeAndEdges(nodeId);
-      clearSelectionForDeletedNode(nodeId);
-    },
-    [removeNodeAndEdges, clearSelectionForDeletedNode]
-  );
-
-  const removeEdgeWithCleanup = React.useCallback(
-    (edgeId: string) => {
-      removeEdge(edgeId);
-      clearSelectionForDeletedEdge(edgeId);
-    },
-    [removeEdge, clearSelectionForDeletedEdge]
   );
 
   const edgeAnnotationLookup = React.useMemo(
@@ -319,12 +271,12 @@ const AppContent: React.FC<{
       handleEditNode: (nodeId: string) => editNode(nodeId),
       handleEditNetwork: (nodeId: string) => editNetwork(nodeId),
       handleDeleteNode: (nodeId: string) => {
-        removeNodeAndEdgesWithCleanup(nodeId);
+        clearSelectionForDeletedNode(nodeId);
       },
       handleCreateLinkFromNode: (_nodeId: string) => {},
       handleEditLink: (edgeId: string) => editEdge(edgeId),
       handleDeleteLink: (edgeId: string) => {
-        removeEdgeWithCleanup(edgeId);
+        clearSelectionForDeletedEdge(edgeId);
       },
       handleShowNodeProperties: (nodeId: string) => selectNode(nodeId),
       handleShowLinkProperties: (edgeId: string) => selectEdge(edgeId),
@@ -335,8 +287,8 @@ const AppContent: React.FC<{
       editNode,
       editNetwork,
       editEdge,
-      removeNodeAndEdgesWithCleanup,
-      removeEdgeWithCleanup,
+      clearSelectionForDeletedNode,
+      clearSelectionForDeletedEdge,
       selectNode,
       selectEdge
     ]
@@ -354,21 +306,16 @@ const AppContent: React.FC<{
     handleEdgeCreated,
     handleNodeCreatedCallback,
     handleDeleteNodeWithUndo,
-    handleDeleteLinkWithUndo,
-    recordPropertyEdit
+    handleDeleteLinkWithUndo
   } = useGraphHandlersWithContext({
     getNodes,
     getEdges,
     addNode: addNodeDirect as (element: unknown) => void,
     addEdge: addEdgeDirect as (element: unknown) => void,
+    removeNodeAndEdges,
+    removeEdge,
     menuHandlers,
-    edgeAnnotationHandlers: {
-      edgeAnnotations: state.edgeAnnotations,
-      setEdgeAnnotations
-    },
-    undoRedo,
-    registerGraphHandler,
-    registerPropertyEditHandler
+    undoRedo
   });
 
   // Callback to update node data
@@ -379,31 +326,44 @@ const AppContent: React.FC<{
     [updateNodeData]
   );
 
+  const handleUpdateEdgeData = React.useCallback(
+    (edgeId: string, data: LinkEditorData) => {
+      const saveData = convertEditorDataToLinkSaveData(data);
+      updateEdge(edgeId, {
+        source: saveData.source,
+        target: saveData.target,
+        data: {
+          sourceEndpoint: saveData.sourceEndpoint ?? data.sourceEndpoint,
+          targetEndpoint: saveData.targetEndpoint ?? data.targetEndpoint,
+          ...(saveData.extraData ? { extraData: saveData.extraData } : {})
+        }
+      });
+    },
+    [updateEdge]
+  );
+
   // Editor handlers
   const nodeEditorHandlers = useNodeEditorHandlers(
     editNode,
     editingNodeData,
-    recordPropertyEdit,
     renameNodeInGraph,
     state.customIcons,
     handleUpdateNodeData,
     refreshEditorData
   );
-  const linkEditorHandlers = useLinkEditorHandlers(editEdge, editingLinkData, recordPropertyEdit, {
-    edgeAnnotations: state.edgeAnnotations,
-    setEdgeAnnotations
-  });
+  const linkEditorHandlers = useLinkEditorHandlers(
+    editEdge,
+    editingLinkData,
+    {
+      edgeAnnotations: state.edgeAnnotations,
+      setEdgeAnnotations
+    },
+    handleUpdateEdgeData
+  );
   const networkEditorHandlers = useNetworkEditorHandlers(
     editNetwork,
     editingNetworkData,
     renameNodeInGraph
-  );
-
-  const recordGraphChanges = React.useCallback(
-    (before: GraphChange[], after: GraphChange[]) => {
-      undoRedo.pushAction({ type: "graph", before, after });
-    },
-    [undoRedo]
   );
 
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
@@ -452,11 +412,7 @@ const AppContent: React.FC<{
 
   // App-level handlers
   const { handleDeselectAll } = useAppHandlers({
-    selectionCallbacks: { selectNode, selectEdge, editNode, editEdge },
-    undoRedo,
-    floatingPanelRef,
-    isLocked: state.isLocked,
-    pendingMembershipChangesRef
+    selectionCallbacks: { selectNode, selectEdge, editNode, editEdge }
   });
 
   const shortcutDisplay = useShortcutDisplay();
@@ -537,15 +493,6 @@ const AppContent: React.FC<{
       // Delete handlers
       onDeleteFreeText: annotations.deleteTextAnnotationWithUndo,
       onDeleteFreeShape: annotations.deleteShapeAnnotationWithUndo,
-      // Position update handlers (for drag) - use direct update without undo spam
-      onUpdateFreeTextPosition: (id: string, position: { x: number; y: number }) => {
-        // Use direct update for live rendering, undo is handled separately on drag end
-        annotations.updateTextAnnotation(id, { position });
-      },
-      onUpdateFreeShapePosition: (id: string, position: { x: number; y: number }) => {
-        // Use direct update for live rendering, undo is handled separately on drag end
-        annotations.updateShapeAnnotation(id, { position });
-      },
       // Size update handlers (for resize)
       onUpdateFreeTextSize: annotations.updateTextSize,
       onUpdateFreeShapeSize: annotations.updateShapeSize,
@@ -570,41 +517,12 @@ const AppContent: React.FC<{
       onNodeDropped: annotations.onNodeDropped,
       // Group handlers
       onUpdateGroupSize: annotations.updateGroupSizeWithUndo,
-      onUpdateGroupPosition: (id: string, newPosition: { x: number; y: number }) => {
-        // Only update the group position - member movement is handled by onNodeDrag in useCanvasHandlers
-        // This avoids double-updates that cause React Flow "node not initialized" warnings
-        annotations.updateGroup(id, { position: newPosition });
-      },
-      onGroupDragEnd: (groupId: string) => {
-        // Save member topology node positions to file on drag end
-        // Only save non-annotation nodes - annotations are saved via useAnnotationPersistence
-        const memberNodeIds = annotations.getGroupMembers(groupId);
-        if (memberNodeIds.length === 0) return;
-
-        const nodePositionsToSave: Array<{ id: string; position: { x: number; y: number } }> = [];
-        for (const memberId of memberNodeIds) {
-          const node = nodes.find((n) => n.id === memberId);
-          // Skip annotation nodes - their positions are saved via useAnnotationPersistence
-          if (node && !isAnnotationNodeType(node.type)) {
-            nodePositionsToSave.push({ id: memberId, position: node.position });
-          }
-        }
-
-        if (nodePositionsToSave.length > 0) {
-          void saveNodePositions(nodePositionsToSave);
-        }
-      },
       onEditGroup: annotations.editGroup,
       onDeleteGroup: annotations.deleteGroupWithUndo,
       // Get group members (for group dragging)
-      getGroupMembers: annotations.getGroupMembers,
-      // Drag start/end handlers for undo support
-      onFreeTextDragStart: annotations.onFreeTextDragStart,
-      onFreeTextDragEnd: annotations.onFreeTextDragEnd,
-      onFreeShapeDragStart: annotations.onFreeShapeDragStart,
-      onFreeShapeDragEnd: annotations.onFreeShapeDragEnd
+      getGroupMembers: annotations.getGroupMembers
     }),
-    [annotations, nodes]
+    [annotations]
   );
 
   return (
@@ -645,9 +563,6 @@ const AppContent: React.FC<{
             canvasAnnotationHandlers as import("./components/react-flow-canvas/types").AnnotationHandlers
           }
           linkLabelMode={state.linkLabelMode}
-          onMoveComplete={(before, after) => {
-            undoRedo.pushAction({ type: "move", before, after });
-          }}
           onInit={onInit}
           onEdgeCreated={handleEdgeCreated}
           onShiftClickCreate={graphCreation.createNodeAtPosition}
@@ -718,9 +633,7 @@ const AppContent: React.FC<{
             isVisible: showBulkLinkPanel,
             mode: state.mode,
             isLocked: state.isLocked,
-            onClose: () => setShowBulkLinkPanel(false),
-            recordGraphChanges,
-            addEdge: addEdgeDirect as (element: unknown) => void
+            onClose: () => setShowBulkLinkPanel(false)
           }}
           freeTextEditor={{
             isVisible: !!annotations.editingTextAnnotation,
@@ -794,6 +707,7 @@ export const App: React.FC = () => {
         freeTextAnnotations?: FreeTextAnnotation[];
         freeShapeAnnotations?: FreeShapeAnnotation[];
         groupStyleAnnotations?: GroupStyleAnnotation[];
+        nodeAnnotations?: import("../shared/types/topology").NodeAnnotation[];
       };
     }
   ).__INITIAL_DATA__;
@@ -801,17 +715,23 @@ export const App: React.FC = () => {
   // Convert annotation arrays to React Flow nodes and combine with topology nodes
   const initialNodes = React.useMemo((): TopoNode[] => {
     const topoNodes = initialData?.nodes ?? [];
+    const topoWithMembership = applyGroupMembershipToNodes(
+      topoNodes,
+      initialData?.nodeAnnotations,
+      initialData?.groupStyleAnnotations ?? []
+    );
     const annotationNodes = annotationsToNodes(
       initialData?.freeTextAnnotations ?? [],
       initialData?.freeShapeAnnotations ?? [],
       initialData?.groupStyleAnnotations ?? []
     ) as TopoNode[];
-    return [...topoNodes, ...annotationNodes];
+    return [...topoWithMembership, ...annotationNodes];
   }, [
     initialData?.nodes,
     initialData?.freeTextAnnotations,
     initialData?.freeShapeAnnotations,
-    initialData?.groupStyleAnnotations
+    initialData?.groupStyleAnnotations,
+    initialData?.nodeAnnotations
   ]);
 
   const initialEdges = initialData?.edges ?? [];
@@ -821,8 +741,6 @@ export const App: React.FC = () => {
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance | null>(null);
 
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
-  const pendingMembershipChangesRef = React.useRef<Map<string, PendingMembershipChange>>(new Map());
-
   // Layout controls
   const layoutControls = useLayoutControls(
     reactFlowRef as unknown as React.RefObject<import("./hooks/ui/useAppState").CanvasRef | null>
@@ -847,7 +765,6 @@ export const App: React.FC = () => {
         rfInstance={rfInstance}
         setRfInstance={setRfInstance}
         floatingPanelRef={floatingPanelRef}
-        pendingMembershipChangesRef={pendingMembershipChangesRef}
         layoutControls={layoutControls}
         reactFlowRef={reactFlowRef}
       />
@@ -861,36 +778,20 @@ const GraphProviderConsumer: React.FC<{
   rfInstance: ReactFlowInstance | null;
   setRfInstance: (instance: ReactFlowInstance) => void;
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
-  pendingMembershipChangesRef: React.MutableRefObject<Map<string, PendingMembershipChange>>;
   layoutControls: ReturnType<typeof useLayoutControls>;
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
-}> = ({
-  state,
-  rfInstance,
-  setRfInstance,
-  floatingPanelRef,
-  pendingMembershipChangesRef,
-  layoutControls,
-  reactFlowRef
-}) => {
-  const { nodes } = useGraph();
-  const { updateNodePositions } = useGraphActions();
-
+}> = ({ state, rfInstance, setRfInstance, floatingPanelRef, layoutControls, reactFlowRef }) => {
   return (
     <ViewportProvider rfInstance={rfInstance}>
       <UndoRedoProvider enabled={state.mode === "edit"}>
         <AnnotationProvider
-          nodes={nodes as TopoNode[]}
           rfInstance={rfInstance}
           mode={state.mode}
           isLocked={state.isLocked}
           onLockedAction={() => floatingPanelRef.current?.triggerShake()}
-          pendingMembershipChangesRef={pendingMembershipChangesRef}
-          updateNodePositions={updateNodePositions}
         >
           <AppContent
             floatingPanelRef={floatingPanelRef}
-            pendingMembershipChangesRef={pendingMembershipChangesRef}
             reactFlowRef={reactFlowRef}
             rfInstance={rfInstance}
             layoutControls={layoutControls}

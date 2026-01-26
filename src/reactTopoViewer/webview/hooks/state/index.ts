@@ -2,21 +2,20 @@
  * State management hooks
  */
 
-export { useUndoRedo, filterEntriesWithPosition } from "./useUndoRedo";
+export { useUndoRedo } from "./useUndoRedo";
 export type {
-  NodePositionEntry,
-  NodePositionEntryWithPosition,
-  MembershipEntry,
-  GraphChange,
-  UndoRedoActionMove,
-  UndoRedoActionGraph,
-  UndoRedoActionAnnotation,
-  UndoRedoAction,
+  NodeSnapshot,
+  EdgeSnapshot,
+  SnapshotEntry,
+  SnapshotMeta,
+  UndoRedoSnapshot,
+  SnapshotCapture,
+  CaptureSnapshotOptions,
   UseUndoRedoOptions,
   UseUndoRedoReturn
 } from "./useUndoRedo";
 
-export { useGraphUndoRedoHandlers, useGraphHandlersWithContext } from "./useGraphUndoRedoHandlers";
+export { useGraphHandlersWithContext } from "./useGraphUndoRedoHandlers";
 
 export { useCustomTemplateEditor } from "./useCustomTemplateEditor";
 export type {

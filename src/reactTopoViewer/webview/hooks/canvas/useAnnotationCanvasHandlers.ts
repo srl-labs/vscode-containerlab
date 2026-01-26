@@ -12,7 +12,6 @@ import type {
   AnnotationHandlers
 } from "../../components/react-flow-canvas/types";
 import { log } from "../../utils/logger";
-import { isLineHandleActive } from "../../components/react-flow-canvas/nodes/AnnotationHandles";
 
 import { snapToGrid } from "./useCanvasHandlers";
 
@@ -182,98 +181,6 @@ function useWrappedNodeDoubleClick(
 }
 
 /**
- * Hook for wrapping node drag start handler for annotations
- * Captures "before" state for undo support
- */
-function useWrappedNodeDragStart(
-  mode: "view" | "edit",
-  annotationHandlers: AnnotationHandlers | undefined,
-  baseOnNodeDragStart: (event: React.MouseEvent, node: Node) => void
-) {
-  return useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      // Always call base handler first to capture positions for all nodes
-      baseOnNodeDragStart(event, node);
-
-      if (mode !== "edit") return;
-
-      // For annotation nodes, capture "before" state for undo
-      if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onFreeTextDragStart) {
-        annotationHandlers.onFreeTextDragStart(node.id);
-      } else if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onFreeShapeDragStart) {
-        annotationHandlers.onFreeShapeDragStart(node.id);
-      }
-    },
-    [mode, annotationHandlers, baseOnNodeDragStart]
-  );
-}
-
-/**
- * Hook for wrapping node drag stop handler for annotations
- * Only updates the annotation state - React Flow handles the visual position
- */
-function useWrappedNodeDragStop(
-  mode: "view" | "edit",
-  annotationHandlers: AnnotationHandlers | undefined,
-  baseOnNodeDragStop: (event: React.MouseEvent, node: Node) => void
-) {
-  return useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      if (mode !== "edit") return;
-
-      // For annotation nodes, update position and check for group membership
-      if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers) {
-        const snappedPosition = snapToGrid(node.position);
-        log.info(`[ReactFlowCanvas] Updated free text position: ${node.id}`);
-        annotationHandlers.onUpdateFreeTextPosition(node.id, snappedPosition);
-        // Finalize drag with undo support
-        annotationHandlers.onFreeTextDragEnd?.(node.id, snappedPosition);
-        // Check for group membership changes
-        annotationHandlers.onNodeDropped?.(node.id, snappedPosition);
-        return;
-      }
-
-      if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers) {
-        // Skip position update if a line handle drag is in progress
-        // The handle already updates the position directly
-        if (isLineHandleActive()) {
-          log.info(`[ReactFlowCanvas] Skipping position update (line handle active): ${node.id}`);
-          return;
-        }
-
-        const snappedPosition = snapToGrid(node.position);
-        log.info(`[ReactFlowCanvas] Updated free shape position: ${node.id}`);
-        annotationHandlers.onUpdateFreeShapePosition(node.id, snappedPosition);
-        // Finalize drag with undo support
-        annotationHandlers.onFreeShapeDragEnd?.(node.id, snappedPosition);
-        // Check for group membership changes
-        annotationHandlers.onNodeDropped?.(node.id, snappedPosition);
-        return;
-      }
-
-      if (node.type === GROUP_NODE_TYPE && annotationHandlers) {
-        // Groups should not snap; preserve exact drag position
-        const position = node.position;
-        log.info(`[ReactFlowCanvas] Updated group position: ${node.id}`);
-        annotationHandlers.onUpdateGroupPosition?.(node.id, position);
-        // Save member positions to file on drag end
-        annotationHandlers.onGroupDragEnd?.(node.id);
-        return;
-      }
-
-      // For regular topology nodes, check for group membership changes
-      if (annotationHandlers?.onNodeDropped) {
-        const snappedPosition = snapToGrid(node.position);
-        annotationHandlers.onNodeDropped(node.id, snappedPosition);
-      }
-
-      baseOnNodeDragStop(event, node);
-    },
-    [mode, annotationHandlers, baseOnNodeDragStop]
-  );
-}
-
-/**
  * Hook for computing add mode state and message
  */
 function useAddModeState(annotationMode?: AnnotationModeState) {
@@ -335,15 +242,17 @@ export function useAnnotationCanvasHandlers(
     annotationHandlers,
     baseOnNodeDoubleClick
   );
-  const wrappedOnNodeDragStart = useWrappedNodeDragStart(
-    mode,
-    annotationHandlers,
-    baseOnNodeDragStart
+  const wrappedOnNodeDragStart = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      baseOnNodeDragStart(event, node);
+    },
+    [baseOnNodeDragStart]
   );
-  const wrappedOnNodeDragStop = useWrappedNodeDragStop(
-    mode,
-    annotationHandlers,
-    baseOnNodeDragStop
+  const wrappedOnNodeDragStop = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      baseOnNodeDragStop(event, node);
+    },
+    [baseOnNodeDragStop]
   );
 
   // Add mode state

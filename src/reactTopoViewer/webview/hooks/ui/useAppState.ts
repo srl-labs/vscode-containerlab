@@ -5,8 +5,6 @@
 import type React from "react";
 import { useCallback, useState } from "react";
 
-import { deleteNode } from "../../services";
-
 /**
  * Canvas ref interface for layout controls.
  */
@@ -222,7 +220,6 @@ export function useContextMenuHandlers(
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
-      void deleteNode(nodeId); // Persist to YAML and annotations
       removeNodeAndEdges(nodeId);
       selectNode(null);
     },
@@ -231,7 +228,6 @@ export function useContextMenuHandlers(
 
   const handleDeleteLink = useCallback(
     (edgeId: string) => {
-      // The deleteLink service will be called by the TopoViewerContext
       removeEdge(edgeId);
       selectEdge(null);
     },

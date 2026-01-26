@@ -7,19 +7,11 @@ import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import { applyLayout, type LayoutName } from "../../components/react-flow-canvas/layout";
 import { log } from "../../utils/logger";
-import {
-  saveNodePositions as saveNodePositionsService,
-  deleteNode as deleteNodeService,
-  deleteLink as deleteLinkService
-} from "../../services";
 
 /**
  * Hook for delete node/edge handlers
  */
 export function useDeleteHandlers(
-  edges: Edge[],
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
-  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>,
   selectNode: (id: string | null) => void,
   selectEdge: (id: string | null) => void,
   closeContextMenu: () => void,
@@ -29,40 +21,23 @@ export function useDeleteHandlers(
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
       log.info(`[ReactFlowCanvas] Deleting node: ${nodeId}`);
-      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-      setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
-      // Persist deletion to YAML and annotations via TopologyIO service
-      void deleteNodeService(nodeId);
       onNodeDelete?.(nodeId);
       selectNode(null);
+      selectEdge(null);
       closeContextMenu();
     },
-    [setNodes, setEdges, selectNode, onNodeDelete, closeContextMenu]
+    [selectNode, selectEdge, onNodeDelete, closeContextMenu]
   );
 
   const handleDeleteEdge = useCallback(
     (edgeId: string) => {
       log.info(`[ReactFlowCanvas] Deleting edge: ${edgeId}`);
-      const edge = edges.find((e) => e.id === edgeId);
-      setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-
-      if (edge) {
-        const edgeData = edge.data as Record<string, unknown> | undefined;
-        const linkData = {
-          id: edgeId,
-          source: edge.source,
-          target: edge.target,
-          sourceEndpoint: (edgeData?.sourceEndpoint as string) || "",
-          targetEndpoint: (edgeData?.targetEndpoint as string) || ""
-        };
-        // Persist deletion to YAML via TopologyIO service
-        void deleteLinkService(linkData);
-      }
       onEdgeDelete?.(edgeId);
       selectEdge(null);
+      selectNode(null);
       closeContextMenu();
     },
-    [edges, setEdges, selectEdge, onEdgeDelete, closeContextMenu]
+    [selectNode, selectEdge, onEdgeDelete, closeContextMenu]
   );
 
   return { handleDeleteNode, handleDeleteEdge };
@@ -244,8 +219,6 @@ export function useCanvasRefMethods(
       getEdges: () => edges,
       setNodePositions: (positions: PositionEntry[]) => {
         setNodes(createPositionUpdater(positions));
-        // Save positions to annotations file via TopologyIO service
-        void saveNodePositionsService(positions);
       },
       updateNodes: (updater: (nodes: Node[]) => Node[]) => setNodes(updater),
       updateEdges: (updater: (edges: Edge[]) => Edge[]) => setEdges(updater)

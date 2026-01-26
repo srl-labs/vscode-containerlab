@@ -9,10 +9,15 @@ import { useNodesState, useEdgesState } from "@xyflow/react";
 import type { Node, Edge, OnNodesChange, OnEdgesChange } from "@xyflow/react";
 
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
-import type { EdgeAnnotation } from "../../shared/types/topology";
+import type {
+  EdgeAnnotation,
+  NodeAnnotation,
+  GroupStyleAnnotation
+} from "../../shared/types/topology";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
 import { pruneEdgeAnnotations } from "../utils/edgeAnnotations";
 import { annotationsToNodes } from "../utils/annotationNodeConverters";
+import { applyGroupMembershipToNodes } from "../utils/groupMembership";
 import { isServicesInitialized, getTopologyIO } from "../services";
 
 /**
@@ -45,6 +50,10 @@ export interface GraphActions {
   updateNode: (nodeId: string, updates: Partial<Node>) => void;
   /** Replace a node entirely (for annotation updates) */
   replaceNode: (nodeId: string, newNode: Node) => void;
+  /** Update any edge properties (data, endpoints, style) */
+  updateEdge: (edgeId: string, updates: Partial<Edge>) => void;
+  /** Update edge data (merged) */
+  updateEdgeData: (edgeId: string, data: Partial<Record<string, unknown>>) => void;
 }
 
 /**
@@ -78,6 +87,7 @@ interface TopologyDataMessage {
     freeTextAnnotations?: import("../../shared/types/topology").FreeTextAnnotation[];
     freeShapeAnnotations?: import("../../shared/types/topology").FreeShapeAnnotation[];
     groupStyleAnnotations?: import("../../shared/types/topology").GroupStyleAnnotation[];
+    nodeAnnotations?: NodeAnnotation[];
   };
 }
 
@@ -266,6 +276,30 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
     [setNodes]
   );
 
+  // Update any edge properties
+  const updateEdge = useCallback(
+    (edgeId: string, updates: Partial<Edge>) => {
+      setEdges((current) =>
+        current.map((edge) => {
+          if (edge.id !== edgeId) return edge;
+          const mergedData = updates.data
+            ? { ...edge.data, ...(updates.data as Record<string, unknown>) }
+            : edge.data;
+          return { ...edge, ...updates, data: mergedData };
+        })
+      );
+    },
+    [setEdges]
+  );
+
+  // Update edge data only (merged)
+  const updateEdgeData = useCallback(
+    (edgeId: string, data: Partial<Record<string, unknown>>) => {
+      updateEdge(edgeId, { data });
+    },
+    [updateEdge]
+  );
+
   // Handle extension messages
   useEffect(() => {
     const handleMessage = (event: TypedMessageEvent) => {
@@ -277,14 +311,21 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
         const newNodes = msg.nodes || msg.data?.nodes;
         const newEdges = msg.edges || msg.data?.edges;
         const rawEdgeAnnotations = msg.data?.edgeAnnotations;
+        const nodeAnnotations = msg.data?.nodeAnnotations;
+        const groupStyleAnnotations = msg.data?.groupStyleAnnotations ?? [];
 
         if (newNodes && newEdges) {
+          const topoWithMembership = applyGroupMembershipToNodes(
+            newNodes as TopoNode[],
+            nodeAnnotations,
+            groupStyleAnnotations as GroupStyleAnnotation[]
+          );
           const annotationNodes = annotationsToNodes(
             msg.data?.freeTextAnnotations ?? [],
             msg.data?.freeShapeAnnotations ?? [],
-            msg.data?.groupStyleAnnotations ?? []
+            groupStyleAnnotations as GroupStyleAnnotation[]
           );
-          const mergedNodes = [...(newNodes as Node[]), ...(annotationNodes as Node[])];
+          const mergedNodes = [...(topoWithMembership as Node[]), ...(annotationNodes as Node[])];
           // Deduplicate by id in case annotations are already included
           const uniqueNodes = Array.from(new Map(mergedNodes.map((n) => [n.id, n])).values());
 
@@ -371,7 +412,9 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
       updateNodeData,
       renameNode,
       updateNode,
-      replaceNode
+      replaceNode,
+      updateEdge,
+      updateEdgeData
     }),
     [
       nodes,
@@ -389,7 +432,9 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
       updateNodeData,
       renameNode,
       updateNode,
-      replaceNode
+      replaceNode,
+      updateEdge,
+      updateEdgeData
     ]
   );
 
@@ -435,7 +480,9 @@ export function useGraphActions(): GraphActions {
       updateNodeData: context.updateNodeData,
       renameNode: context.renameNode,
       updateNode: context.updateNode,
-      replaceNode: context.replaceNode
+      replaceNode: context.replaceNode,
+      updateEdge: context.updateEdge,
+      updateEdgeData: context.updateEdgeData
     }),
     [context]
   );

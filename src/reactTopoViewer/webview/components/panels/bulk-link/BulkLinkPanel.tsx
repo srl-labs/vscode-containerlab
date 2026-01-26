@@ -4,9 +4,9 @@
 import React from "react";
 
 import { BasePanel } from "../../shared/editor/BasePanel";
-import type { GraphChange } from "../../../hooks/state";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import { useGraph } from "../../../context/GraphContext";
+import { useGraph, useGraphActions } from "../../../context/GraphContext";
+import { useUndoRedoContext } from "../../../context/UndoRedoContext";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -18,8 +18,6 @@ interface BulkLinkPanelProps {
   mode: "edit" | "view";
   isLocked: boolean;
   onClose: () => void;
-  recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
-  addEdge?: (edge: TopoEdge) => void;
   storageKey?: string;
 }
 
@@ -80,16 +78,11 @@ const ExamplesSection: React.FC = () => (
 
 type UseBulkLinkPanelOptions = Omit<BulkLinkPanelProps, "storageKey">;
 
-function useBulkLinkPanel({
-  isVisible,
-  mode,
-  isLocked,
-  onClose,
-  recordGraphChanges,
-  addEdge
-}: UseBulkLinkPanelOptions) {
+function useBulkLinkPanel({ isVisible, mode, isLocked, onClose }: UseBulkLinkPanelOptions) {
   // Get nodes and edges from GraphContext
   const { nodes, edges } = useGraph();
+  const { addEdge } = useGraphActions();
+  const { undoRedo } = useUndoRedoContext();
 
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
@@ -131,12 +124,13 @@ function useBulkLinkPanel({
       pendingCandidates,
       canApply,
       addEdge,
-      recordGraphChanges,
+      captureSnapshot: undoRedo.captureSnapshot,
+      commitChange: undoRedo.commitChange,
       setStatus,
       setPendingCandidates,
       onClose
     });
-  }, [nodes, edges, pendingCandidates, canApply, addEdge, recordGraphChanges, onClose]);
+  }, [nodes, edges, pendingCandidates, canApply, addEdge, undoRedo, onClose]);
 
   const handleDismissConfirm = React.useCallback(() => {
     setPendingCandidates(null);
@@ -163,8 +157,6 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
   mode,
   isLocked,
   onClose,
-  recordGraphChanges,
-  addEdge,
   storageKey = "bulk-link"
 }) => {
   const {
@@ -180,7 +172,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
     handleCompute,
     handleConfirmCreate,
     handleDismissConfirm
-  } = useBulkLinkPanel({ isVisible, mode, isLocked, onClose, recordGraphChanges, addEdge });
+  } = useBulkLinkPanel({ isVisible, mode, isLocked, onClose });
 
   return (
     <>

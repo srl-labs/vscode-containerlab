@@ -6,7 +6,6 @@
  */
 
 // Used by App.tsx wiring
-export type { GraphChange } from "../state";
 export { useGraphHandlersWithContext, useCustomTemplateEditor } from "../state";
 export {
   useFloatingPanelCommands,

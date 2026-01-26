@@ -42,7 +42,6 @@ export { useShortcutDisplay } from "./useShortcutDisplay";
 // App Handlers
 // ============================================================================
 export { useAppHandlers } from "./useAppHandlers";
-export type { PendingMembershipChange } from "./useAppHandlers";
 
 // ============================================================================
 // Click, Escape, Hover

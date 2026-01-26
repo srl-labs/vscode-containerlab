@@ -345,7 +345,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
           }
 
           // Update in-memory membership map for topology nodes with group membership
-          // Annotation nodes (free-text, free-shape) have groupId in their data and are handled by useAnnotationPersistence
+          // Annotation nodes carry groupId in their data and are persisted via snapshot-based annotations
           const isAnnotation = annotationTypes.has(node.type ?? "");
           if (newGroupId && !isAnnotation && addNodeToGroup) {
             addNodeToGroup(newId, newGroupId);

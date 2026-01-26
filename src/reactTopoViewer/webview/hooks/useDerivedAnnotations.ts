@@ -4,11 +4,11 @@
  * This hook bridges AnnotationContext with GraphContext by:
  * 1. Deriving annotation arrays (groups, text, shapes) from GraphContext nodes
  * 2. Providing mutation functions that update GraphContext nodes
- * 3. Managing membership via membershipMap (loaded from nodeAnnotations JSON)
+ * 3. Managing membership via node.data.groupId (derived from GraphContext)
  *
  * This is the key to making GraphContext the single source of truth for all nodes.
  */
-import { useMemo, useCallback, useRef, useEffect, useState } from "react";
+import { useMemo, useCallback } from "react";
 import type { Node } from "@xyflow/react";
 
 import type {
@@ -30,51 +30,6 @@ import {
   freeShapeToNode,
   groupToNode
 } from "../utils/annotationNodeConverters";
-import { saveAllNodeGroupMemberships } from "../services";
-import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
-
-/** Node annotation from JSON file */
-interface NodeAnnotation {
-  id: string;
-  group?: string;
-  groupId?: string;
-}
-
-/** Initial data structure from window */
-interface InitialData {
-  nodeAnnotations?: NodeAnnotation[];
-  groupStyleAnnotations?: GroupStyleAnnotation[];
-}
-
-function buildMembershipMap(
-  groups: GroupStyleAnnotation[],
-  nodeAnnotations?: NodeAnnotation[]
-): Map<string, string> {
-  const map = new Map<string, string>();
-  const groupNameToId = new Map<string, string>();
-  const groupIds = new Set<string>();
-
-  for (const group of groups) {
-    groupNameToId.set(group.name, group.id);
-    groupIds.add(group.id);
-  }
-
-  for (const annotation of nodeAnnotations ?? []) {
-    if (annotation.groupId) {
-      map.set(annotation.id, annotation.groupId);
-      continue;
-    }
-    if (annotation.group) {
-      const legacy = annotation.group;
-      const groupId = groupIds.has(legacy) ? legacy : (groupNameToId.get(legacy) ?? null);
-      if (groupId) {
-        map.set(annotation.id, groupId);
-      }
-    }
-  }
-
-  return map;
-}
 
 /**
  * Return type for useDerivedAnnotations
@@ -133,32 +88,18 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       .map(nodeToFreeShape);
   }, [nodes]);
 
-  // Membership map: nodeId -> groupId
-  // This is maintained separately from node data and loaded from nodeAnnotations JSON
-  const [membershipMap, setMembershipMap] = useState<Map<string, string>>(() => {
-    // Load initial membership from window.__INITIAL_DATA__.nodeAnnotations
-    const initialData = (window as { __INITIAL_DATA__?: InitialData }).__INITIAL_DATA__;
-    return buildMembershipMap(
-      initialData?.groupStyleAnnotations ?? [],
-      initialData?.nodeAnnotations
-    );
-  });
-
-  // Sync membership map on topology-data refreshes (external file edits)
-  useEffect(() => {
-    const handleMessage = (event: TypedMessageEvent) => {
-      const message = event.data as { type?: string; data?: InitialData } | undefined;
-      if (message?.type !== "topology-data") return;
-      const data = message.data;
-      if (!data) return;
-      setMembershipMap(buildMembershipMap(data.groupStyleAnnotations ?? [], data.nodeAnnotations));
-    };
-
-    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
-  }, []);
-
-  // Track if membership has changed for persistence
-  const membershipChangedRef = useRef(false);
+  // Membership map: nodeId -> groupId (derived from node data)
+  const membershipMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const node of nodes) {
+      const data = node.data as Record<string, unknown> | undefined;
+      const groupId = data?.groupId as string | undefined;
+      if (groupId) {
+        map.set(node.id, groupId);
+      }
+    }
+    return map;
+  }, [nodes]);
 
   // ============================================================================
   // Group mutations
@@ -264,49 +205,21 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   const addNodeToGroup = useCallback(
     (nodeId: string, groupId: string) => {
-      // For annotation nodes (text/shape), update groupId in node data
-      // Node lookup may fail if called right after node creation (React state not yet updated)
       const node = nodes.find((n) => n.id === nodeId);
-      if (node && (node.type === "free-text-node" || node.type === "free-shape-node")) {
-        updateNode(nodeId, {
-          data: { ...node.data, groupId }
-        });
-      }
-
-      // Update membership map (for all node types including topology nodes)
-      // This must happen even if node isn't found yet (e.g., called during paste before React re-renders)
-      setMembershipMap((prev) => {
-        const next = new Map(prev);
-        next.set(nodeId, groupId);
-        return next;
+      if (!node) return;
+      updateNode(nodeId, {
+        data: { ...(node.data as Record<string, unknown>), groupId }
       });
-
-      // Mark as changed for persistence
-      membershipChangedRef.current = true;
     },
     [nodes, updateNode]
   );
 
   const removeNodeFromGroup = useCallback(
     (nodeId: string) => {
-      // For annotation nodes (text/shape), remove groupId from node data
-      // Node lookup may fail if called before React re-renders
       const node = nodes.find((n) => n.id === nodeId);
-      if (node && (node.type === "free-text-node" || node.type === "free-shape-node")) {
-        const { groupId: _removed, ...restData } = node.data as { groupId?: string };
-        updateNode(nodeId, { data: restData });
-      }
-
-      // Update membership map (for all node types)
-      // This must happen even if node isn't found
-      setMembershipMap((prev) => {
-        const next = new Map(prev);
-        next.delete(nodeId);
-        return next;
-      });
-
-      // Mark as changed for persistence
-      membershipChangedRef.current = true;
+      if (!node) return;
+      const { groupId: _removed, ...rest } = node.data as { groupId?: string };
+      updateNode(nodeId, { data: rest });
     },
     [nodes, updateNode]
   );
@@ -341,22 +254,6 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     },
     [membershipMap, textAnnotations, shapeAnnotations]
   );
-
-  // Persist membership changes to nodeAnnotations JSON
-  useEffect(() => {
-    if (!membershipChangedRef.current) return;
-    membershipChangedRef.current = false;
-
-    // Convert membership map to nodeAnnotations array (store groupId)
-    const nodeAnnotations: Array<{ id: string; groupId?: string }> = [];
-
-    for (const [nodeId, groupId] of membershipMap) {
-      nodeAnnotations.push({ id: nodeId, groupId });
-    }
-
-    // Save to JSON file
-    void saveAllNodeGroupMemberships(nodeAnnotations);
-  }, [membershipMap, groups]);
 
   return {
     groups,

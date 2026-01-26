@@ -5,7 +5,6 @@
 import { FilterUtils } from "../../../../../helpers/filterUtils";
 import { isSpecialEndpointId } from "../../../../shared/utilities/LinkTypes";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import type { GraphChange } from "../../../hooks/state/useUndoRedo";
 import {
   type ParsedInterfacePattern,
   parseInterfacePattern,
@@ -213,21 +212,4 @@ export function buildBulkEdges(
   }
 
   return result;
-}
-
-export function buildUndoRedoEntries(edges: TopoEdge[]): {
-  before: GraphChange[];
-  after: GraphChange[];
-} {
-  const before: GraphChange[] = [];
-  const after: GraphChange[] = [];
-  for (const edge of edges) {
-    const clonedEdge: TopoEdge = {
-      ...edge,
-      data: edge.data ? { ...edge.data } : undefined
-    };
-    before.push({ entity: "edge", kind: "delete", before: clonedEdge });
-    after.push({ entity: "edge", kind: "add", after: clonedEdge });
-  }
-  return { before, after };
 }
