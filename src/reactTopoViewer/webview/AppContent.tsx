@@ -27,6 +27,7 @@ export interface AppContentProps {
   rfInstance: ReactFlowInstance | null;
   layoutControls: LayoutControls;
   onInit: (instance: ReactFlowInstance) => void;
+  onLockedAction?: () => void;
 }
 
 export const AppContent: React.FC<AppContentProps> = ({
@@ -34,7 +35,8 @@ export const AppContent: React.FC<AppContentProps> = ({
   reactFlowRef,
   rfInstance,
   layoutControls,
-  onInit
+  onInit,
+  onLockedAction
 }) => {
   const {
     state,
@@ -67,7 +69,8 @@ export const AppContent: React.FC<AppContentProps> = ({
   } = useAppContentViewModel({
     floatingPanelRef,
     rfInstance,
-    layoutControls
+    layoutControls,
+    onLockedAction
   });
 
   return (

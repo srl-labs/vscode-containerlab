@@ -7,7 +7,8 @@ import { EdgeLabelRenderer, useStore, type EdgeProps } from "@xyflow/react";
 
 import type { TopologyEdgeData } from "../types";
 import { SELECTION_COLOR } from "../types";
-import { useEdgeInfo, useEdgeRenderConfig } from "../../../context/CanvasContext";
+import { useEdgeInfo, useEdgeRenderConfig } from "../../../stores/canvasStore";
+import { useEdges } from "../../../stores/graphStore";
 
 // Edge style constants
 const EDGE_COLOR_DEFAULT = "#969799";
@@ -459,7 +460,8 @@ function computeRegularGeometry(
 function useEdgeGeometry(edgeId: string, source: string, target: string) {
   const sourceNode = useNodeGeometry(source);
   const targetNode = useNodeGeometry(target);
-  const { getParallelInfo, getLoopInfo } = useEdgeInfo();
+  const edges = useEdges();
+  const { getParallelInfo, getLoopInfo } = useEdgeInfo(edges);
 
   const parallelInfo = getParallelInfo(edgeId);
   const loopInfo = getLoopInfo(edgeId);

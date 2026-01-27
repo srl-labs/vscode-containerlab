@@ -5,8 +5,8 @@ import React from "react";
 
 import { BasePanel } from "../../ui/editor/BasePanel";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import { useGraph, useGraphActions } from "../../../context/GraphContext";
-import { useUndoRedoContext } from "../../../context/UndoRedoContext";
+import { useGraph, useGraphActions } from "../../../hooks/useGraphCompat";
+import { useUndoRedoContext } from "../../../hooks/useUndoRedoCompat";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";

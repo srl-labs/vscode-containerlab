@@ -7,7 +7,7 @@ import React, { useCallback, useState, useEffect, useMemo, useRef } from "react"
 import type { NodeType } from "../../utils/SvgGenerator";
 import { generateEncodedSVG } from "../../utils/SvgGenerator";
 import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
-import { useTopoViewerState } from "../../context/TopoViewerContext";
+import { useTopoViewerState } from "../../hooks/useTopoViewerCompat";
 import { postCommand } from "../../utils/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
 

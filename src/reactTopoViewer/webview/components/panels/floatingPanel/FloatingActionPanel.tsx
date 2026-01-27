@@ -12,7 +12,7 @@ import React, {
 } from "react";
 
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
-import { useTopoViewerActions, useTopoViewerState } from "../../../context/TopoViewerContext";
+import { useTopoViewerActions, useTopoViewerState } from "../../../hooks/useTopoViewerCompat";
 import {
   usePanelDrag,
   useDrawerSide,

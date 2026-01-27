@@ -1,9 +1,8 @@
 /**
  * React TopoViewer Main Application Component
  *
- * Uses context-based architecture for undo/redo and annotations.
- * Now uses ReactFlow as the rendering layer for rendering.
- * Graph state is managed by GraphContext (React Flow is source of truth).
+ * Uses Zustand stores for state management.
+ * Graph state is managed by graphStore (React Flow is source of truth).
  */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
@@ -11,12 +10,15 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import type { CanvasRef } from "./hooks/ui/useAppState";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import type { FloatingActionPanelHandle } from "./components/panels";
-import { AppProvider } from "./context/AppContext";
 import { useLayoutControls } from "./hooks/ui/useAppState";
 import { useInitialGraphData, type InitialGraphData } from "./hooks/app/useInitialGraphData";
+import { useStoreInitialization } from "./hooks/useStoreInitialization";
+import { useGraphMessageSubscription } from "./hooks/useGraphMessageSubscription";
+import { useTopoViewerMessageSubscription } from "./hooks/useTopoViewerMessageSubscription";
+import { useUndoRedoPersistence } from "./hooks/useUndoRedoPersistence";
 import { AppContent } from "./AppContent";
 
-/** Main App component with providers */
+/** Main App component - initializes stores and subscriptions */
 export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData }) => {
   const { initialNodes, initialEdges } = useInitialGraphData(initialData);
 
@@ -30,21 +32,26 @@ export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData 
     floatingPanelRef.current?.triggerShake();
   }, []);
 
+  // Initialize stores with initial data
+  useStoreInitialization({
+    initialNodes,
+    initialEdges,
+    initialData
+  });
+
+  // Set up message subscriptions (side effects)
+  useGraphMessageSubscription();
+  useTopoViewerMessageSubscription();
+  useUndoRedoPersistence();
+
   return (
-    <AppProvider
-      initialData={initialData}
-      initialNodes={initialNodes}
-      initialEdges={initialEdges}
+    <AppContent
+      floatingPanelRef={floatingPanelRef}
+      reactFlowRef={reactFlowRef}
       rfInstance={rfInstance}
+      layoutControls={layoutControls}
+      onInit={setRfInstance}
       onLockedAction={handleLockedAction}
-    >
-      <AppContent
-        floatingPanelRef={floatingPanelRef}
-        reactFlowRef={reactFlowRef}
-        rfInstance={rfInstance}
-        layoutControls={layoutControls}
-        onInit={setRfInstance}
-      />
-    </AppProvider>
+    />
   );
 };

@@ -1,0 +1,289 @@
+/**
+ * annotationUIStore - Zustand store for annotation UI state
+ *
+ * This store manages annotation-specific UI state like selections and editing.
+ * Annotation data is derived from graphStore via useDerivedAnnotations hook.
+ */
+import { create } from "zustand";
+
+import type { FreeTextAnnotation, FreeShapeAnnotation } from "../../shared/types/topology";
+import type { GroupEditorData } from "../hooks/groups/groupTypes";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface AnnotationUIState {
+  // Group UI state
+  selectedGroupIds: Set<string>;
+  editingGroup: GroupEditorData | null;
+
+  // Text annotation UI state
+  selectedTextIds: Set<string>;
+  editingTextAnnotation: FreeTextAnnotation | null;
+  isAddTextMode: boolean;
+
+  // Shape annotation UI state
+  selectedShapeIds: Set<string>;
+  editingShapeAnnotation: FreeShapeAnnotation | null;
+  isAddShapeMode: boolean;
+  pendingShapeType: "rectangle" | "circle" | "line";
+}
+
+export interface AnnotationUIActions {
+  // Group selection
+  selectGroup: (id: string) => void;
+  toggleGroupSelection: (id: string) => void;
+  boxSelectGroups: (ids: string[]) => void;
+  clearGroupSelection: () => void;
+
+  // Group editing
+  setEditingGroup: (data: GroupEditorData | null) => void;
+  closeGroupEditor: () => void;
+
+  // Text annotation selection
+  selectTextAnnotation: (id: string) => void;
+  toggleTextAnnotationSelection: (id: string) => void;
+  boxSelectTextAnnotations: (ids: string[]) => void;
+  clearTextAnnotationSelection: () => void;
+
+  // Text annotation editing
+  setEditingTextAnnotation: (annotation: FreeTextAnnotation | null) => void;
+  closeTextEditor: () => void;
+  setAddTextMode: (enabled: boolean) => void;
+  disableAddTextMode: () => void;
+
+  // Shape annotation selection
+  selectShapeAnnotation: (id: string) => void;
+  toggleShapeAnnotationSelection: (id: string) => void;
+  boxSelectShapeAnnotations: (ids: string[]) => void;
+  clearShapeAnnotationSelection: () => void;
+
+  // Shape annotation editing
+  setEditingShapeAnnotation: (annotation: FreeShapeAnnotation | null) => void;
+  closeShapeEditor: () => void;
+  setAddShapeMode: (enabled: boolean, shapeType?: "rectangle" | "circle" | "line") => void;
+  disableAddShapeMode: () => void;
+  setPendingShapeType: (shapeType: "rectangle" | "circle" | "line") => void;
+
+  // Utility
+  clearAllSelections: () => void;
+
+  // For deletion cleanup
+  removeFromGroupSelection: (id: string) => void;
+  removeFromTextSelection: (id: string) => void;
+  removeFromShapeSelection: (id: string) => void;
+}
+
+export type AnnotationUIStore = AnnotationUIState & AnnotationUIActions;
+
+// ============================================================================
+// Initial State
+// ============================================================================
+
+const initialState: AnnotationUIState = {
+  selectedGroupIds: new Set(),
+  editingGroup: null,
+  selectedTextIds: new Set(),
+  editingTextAnnotation: null,
+  isAddTextMode: false,
+  selectedShapeIds: new Set(),
+  editingShapeAnnotation: null,
+  isAddShapeMode: false,
+  pendingShapeType: "rectangle"
+};
+
+// ============================================================================
+// Store Creation
+// ============================================================================
+
+export const useAnnotationUIStore = create<AnnotationUIStore>((set) => ({
+  ...initialState,
+
+  // Group selection
+  selectGroup: (id) => {
+    set({ selectedGroupIds: new Set([id]) });
+  },
+
+  toggleGroupSelection: (id) => {
+    set((state) => {
+      const next = new Set(state.selectedGroupIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { selectedGroupIds: next };
+    });
+  },
+
+  boxSelectGroups: (ids) => {
+    set({ selectedGroupIds: new Set(ids) });
+  },
+
+  clearGroupSelection: () => {
+    set({ selectedGroupIds: new Set() });
+  },
+
+  // Group editing
+  setEditingGroup: (editingGroup) => {
+    set({ editingGroup });
+  },
+
+  closeGroupEditor: () => {
+    set({ editingGroup: null });
+  },
+
+  // Text annotation selection
+  selectTextAnnotation: (id) => {
+    set({ selectedTextIds: new Set([id]) });
+  },
+
+  toggleTextAnnotationSelection: (id) => {
+    set((state) => {
+      const next = new Set(state.selectedTextIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { selectedTextIds: next };
+    });
+  },
+
+  boxSelectTextAnnotations: (ids) => {
+    set({ selectedTextIds: new Set(ids) });
+  },
+
+  clearTextAnnotationSelection: () => {
+    set({ selectedTextIds: new Set() });
+  },
+
+  // Text annotation editing
+  setEditingTextAnnotation: (editingTextAnnotation) => {
+    set({ editingTextAnnotation });
+  },
+
+  closeTextEditor: () => {
+    set({ editingTextAnnotation: null });
+  },
+
+  setAddTextMode: (isAddTextMode) => {
+    set({ isAddTextMode, isAddShapeMode: false });
+  },
+
+  disableAddTextMode: () => {
+    set({ isAddTextMode: false });
+  },
+
+  // Shape annotation selection
+  selectShapeAnnotation: (id) => {
+    set({ selectedShapeIds: new Set([id]) });
+  },
+
+  toggleShapeAnnotationSelection: (id) => {
+    set((state) => {
+      const next = new Set(state.selectedShapeIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { selectedShapeIds: next };
+    });
+  },
+
+  boxSelectShapeAnnotations: (ids) => {
+    set({ selectedShapeIds: new Set(ids) });
+  },
+
+  clearShapeAnnotationSelection: () => {
+    set({ selectedShapeIds: new Set() });
+  },
+
+  // Shape annotation editing
+  setEditingShapeAnnotation: (editingShapeAnnotation) => {
+    set({ editingShapeAnnotation });
+  },
+
+  closeShapeEditor: () => {
+    set({ editingShapeAnnotation: null });
+  },
+
+  setAddShapeMode: (enabled, shapeType) => {
+    set({
+      isAddShapeMode: enabled,
+      isAddTextMode: false,
+      ...(shapeType ? { pendingShapeType: shapeType } : {})
+    });
+  },
+
+  disableAddShapeMode: () => {
+    set({ isAddShapeMode: false });
+  },
+
+  setPendingShapeType: (pendingShapeType) => {
+    set({ pendingShapeType });
+  },
+
+  // Utility
+  clearAllSelections: () => {
+    set({
+      selectedGroupIds: new Set(),
+      selectedTextIds: new Set(),
+      selectedShapeIds: new Set()
+    });
+  },
+
+  // For deletion cleanup
+  removeFromGroupSelection: (id) => {
+    set((state) => {
+      if (!state.selectedGroupIds.has(id)) return state;
+      const next = new Set(state.selectedGroupIds);
+      next.delete(id);
+      return { selectedGroupIds: next };
+    });
+  },
+
+  removeFromTextSelection: (id) => {
+    set((state) => {
+      if (!state.selectedTextIds.has(id)) return state;
+      const next = new Set(state.selectedTextIds);
+      next.delete(id);
+      return { selectedTextIds: next };
+    });
+  },
+
+  removeFromShapeSelection: (id) => {
+    set((state) => {
+      if (!state.selectedShapeIds.has(id)) return state;
+      const next = new Set(state.selectedShapeIds);
+      next.delete(id);
+      return { selectedShapeIds: next };
+    });
+  }
+}));
+
+// ============================================================================
+// Selector Hooks (for convenience)
+// ============================================================================
+
+/** Get selected group IDs */
+export const useSelectedGroupIds = () => useAnnotationUIStore((state) => state.selectedGroupIds);
+
+/** Get editing group */
+export const useEditingGroup = () => useAnnotationUIStore((state) => state.editingGroup);
+
+/** Get selected text IDs */
+export const useSelectedTextIds = () => useAnnotationUIStore((state) => state.selectedTextIds);
+
+/** Get editing text annotation */
+export const useEditingTextAnnotation = () =>
+  useAnnotationUIStore((state) => state.editingTextAnnotation);
+
+/** Get add text mode */
+export const useIsAddTextMode = () => useAnnotationUIStore((state) => state.isAddTextMode);
+
+/** Get selected shape IDs */
+export const useSelectedShapeIds = () => useAnnotationUIStore((state) => state.selectedShapeIds);
+
+/** Get editing shape annotation */
+export const useEditingShapeAnnotation = () =>
+  useAnnotationUIStore((state) => state.editingShapeAnnotation);
+
+/** Get add shape mode */
+export const useIsAddShapeMode = () => useAnnotationUIStore((state) => state.isAddShapeMode);
+
+/** Get pending shape type */
+export const usePendingShapeType = () => useAnnotationUIStore((state) => state.pendingShapeType);

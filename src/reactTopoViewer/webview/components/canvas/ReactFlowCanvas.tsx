@@ -27,10 +27,10 @@ import type { Node, Edge, ReactFlowInstance, ConnectionLineComponentProps } from
 
 import "@xyflow/react/dist/style.css";
 
-import { useTopoViewer } from "../../context/TopoViewerContext";
-import { useGraph } from "../../context/GraphContext";
-import { CanvasProvider } from "../../context/CanvasContext";
-import type { EdgeLabelMode } from "../../context/canvasTypes";
+import { useTopoViewer } from "../../hooks/useTopoViewerCompat";
+import { useGraph } from "../../hooks/useGraphCompat";
+import { useCanvasStore } from "../../stores/canvasStore";
+import type { EdgeLabelMode } from "../../stores/canvasStore";
 import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 import {
   useDeleteHandlers,
@@ -388,6 +388,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     // Get setters from GraphContext - these update the single source of truth
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraph();
 
+    // Import canvas store actions
+    const { setEdgeRenderConfig, setNodeRenderConfig, setAnnotationHandlers, setLinkSourceNode } =
+      useCanvasStore();
+
     const floatingPanelRef = useRef<{ triggerShake: () => void } | null>(null);
 
     // All nodes (topology + annotation) are now unified in propNodes
@@ -432,12 +436,31 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     );
     const sourceNodePosition = useSourceNodePosition(linkSourceNode, allNodes);
 
+    // Sync linkSourceNode to canvas store
+    useEffect(() => {
+      setLinkSourceNode(linkSourceNode);
+    }, [linkSourceNode, setLinkSourceNode]);
+
     // Use extracted hooks for render config and drag handlers
     const { isLowDetail, edgeRenderConfig, nodeRenderConfig } = useRenderConfig(
       allNodes.length,
       allEdges.length,
       linkLabelMode
     );
+
+    // Sync render config to canvas store
+    useEffect(() => {
+      setEdgeRenderConfig(edgeRenderConfig);
+    }, [edgeRenderConfig, setEdgeRenderConfig]);
+
+    useEffect(() => {
+      setNodeRenderConfig(nodeRenderConfig);
+    }, [nodeRenderConfig, setNodeRenderConfig]);
+
+    // Sync annotation handlers to canvas store
+    useEffect(() => {
+      setAnnotationHandlers(annotationHandlers ?? null);
+    }, [annotationHandlers, setAnnotationHandlers]);
 
     // Note: Keyboard delete handling is done by useAppKeyboardShortcuts in App.tsx
     // which uses handleDeleteNode for proper undo/redo support.
@@ -503,59 +526,51 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     return (
       <div style={canvasStyle} className="react-flow-canvas">
-        <CanvasProvider
+        <ReactFlow
+          nodes={allNodes}
           edges={allEdges}
-          linkSourceNode={linkSourceNode}
-          edgeRenderConfig={edgeRenderConfig}
-          nodeRenderConfig={nodeRenderConfig}
-          annotationHandlers={annotationHandlers}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={handlers.handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          onInit={wrappedOnInit}
+          onNodeClick={wrappedOnNodeClick}
+          onNodeDoubleClick={wrappedOnNodeDoubleClick}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragStop={handleNodeDragStop}
+          onNodeContextMenu={handlers.onNodeContextMenu}
+          onEdgeClick={handlers.onEdgeClick}
+          onEdgeDoubleClick={handlers.onEdgeDoubleClick}
+          onEdgeContextMenu={handlers.onEdgeContextMenu}
+          onPaneClick={wrappedOnPaneClick}
+          onPaneContextMenu={handlers.onPaneContextMenu}
+          onConnect={handlers.onConnect}
+          onSelectionChange={handlers.onSelectionChange}
+          connectionLineComponent={CustomConnectionLine}
+          fitView
+          fitViewOptions={fitViewOptions}
+          defaultViewport={defaultViewport}
+          minZoom={0.1}
+          maxZoom={Infinity}
+          onlyRenderVisibleElements={!isLowDetail}
+          selectionMode={SelectionMode.Partial}
+          selectNodesOnDrag={false}
+          panOnDrag={!isInAddMode}
+          selectionOnDrag={!isInAddMode}
+          selectionKeyCode="Shift"
+          connectionMode={ConnectionMode.Loose}
+          proOptions={proOptions}
+          deleteKeyCode={null}
+          multiSelectionKeyCode="Shift"
+          nodesDraggable={state.mode === "edit" && !state.isLocked}
+          nodesConnectable={state.mode === "edit" && !state.isLocked}
+          elementsSelectable
         >
-          <ReactFlow
-            nodes={allNodes}
-            edges={allEdges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={handlers.handleNodesChange}
-            onEdgesChange={onEdgesChange}
-            onInit={wrappedOnInit}
-            onNodeClick={wrappedOnNodeClick}
-            onNodeDoubleClick={wrappedOnNodeDoubleClick}
-            onNodeDragStart={handleNodeDragStart}
-            onNodeDrag={handleNodeDrag}
-            onNodeDragStop={handleNodeDragStop}
-            onNodeContextMenu={handlers.onNodeContextMenu}
-            onEdgeClick={handlers.onEdgeClick}
-            onEdgeDoubleClick={handlers.onEdgeDoubleClick}
-            onEdgeContextMenu={handlers.onEdgeContextMenu}
-            onPaneClick={wrappedOnPaneClick}
-            onPaneContextMenu={handlers.onPaneContextMenu}
-            onConnect={handlers.onConnect}
-            onSelectionChange={handlers.onSelectionChange}
-            connectionLineComponent={CustomConnectionLine}
-            fitView
-            fitViewOptions={fitViewOptions}
-            defaultViewport={defaultViewport}
-            minZoom={0.1}
-            maxZoom={Infinity}
-            onlyRenderVisibleElements={!isLowDetail}
-            selectionMode={SelectionMode.Partial}
-            selectNodesOnDrag={false}
-            panOnDrag={!isInAddMode}
-            selectionOnDrag={!isInAddMode}
-            selectionKeyCode="Shift"
-            connectionMode={ConnectionMode.Loose}
-            proOptions={proOptions}
-            deleteKeyCode={null}
-            multiSelectionKeyCode="Shift"
-            nodesDraggable={state.mode === "edit" && !state.isLocked}
-            nodesConnectable={state.mode === "edit" && !state.isLocked}
-            elementsSelectable
-          >
-            {!isLowDetail && (
-              <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
-            )}
-          </ReactFlow>
-        </CanvasProvider>
+          {!isLowDetail && (
+            <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
+          )}
+        </ReactFlow>
 
         <ContextMenu
           isVisible={handlers.contextMenu.type !== null}

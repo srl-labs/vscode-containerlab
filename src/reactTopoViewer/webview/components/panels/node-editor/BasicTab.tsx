@@ -12,7 +12,7 @@ import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../utils/SvgGenerator";
 import { generateEncodedSVG } from "../../../utils/SvgGenerator";
 import { useSchema, useDockerImages } from "../../../hooks/data";
-import { useTopoViewerState } from "../../../context/TopoViewerContext";
+import { useTopoViewerState } from "../../../hooks/useTopoViewerCompat";
 import { DEFAULT_ICON_COLOR } from "../../canvas/types";
 
 import type { TabProps } from "./types";

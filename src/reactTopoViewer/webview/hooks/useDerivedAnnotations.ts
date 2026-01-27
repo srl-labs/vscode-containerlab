@@ -22,7 +22,7 @@ import type {
   FreeShapeNodeData,
   GroupNodeData
 } from "../components/canvas/types";
-import type { GraphContextValue } from "../context/GraphContext";
+import type { GraphContextValue } from "./useGraphCompat";
 import {
   nodeToFreeText,
   nodeToFreeShape,

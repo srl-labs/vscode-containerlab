@@ -7,8 +7,8 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import type { FreeTextNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
-import { useTopoViewer } from "../../../context/TopoViewerContext";
-import { useAnnotationHandlers } from "../../../context/CanvasContext";
+import { useTopoViewer } from "../../../hooks/useTopoViewerCompat";
+import { useAnnotationHandlers } from "../../../stores/canvasStore";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
 
 import { RotationHandle } from "./AnnotationHandles";

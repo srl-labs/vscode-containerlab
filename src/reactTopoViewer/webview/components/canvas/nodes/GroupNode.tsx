@@ -6,8 +6,8 @@ import React, { memo, useCallback } from "react";
 import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import { SELECTION_COLOR } from "../types";
-import { useTopoViewer } from "../../../context/TopoViewerContext";
-import { useAnnotationHandlers } from "../../../context/CanvasContext";
+import { useTopoViewer } from "../../../hooks/useTopoViewerCompat";
+import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
 // ============================================================================
 // Types

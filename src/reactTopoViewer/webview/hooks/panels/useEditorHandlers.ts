@@ -17,7 +17,7 @@ import type { EdgeAnnotation } from "../../../shared/types/topology";
 import { convertEditorDataToYaml } from "../../../shared/utilities/nodeEditorConversions";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
 import type { SnapshotCapture, NodeSnapshot } from "../state/useUndoRedo";
-import { useGraph } from "../../context/GraphContext";
+import { useGraph } from "../useGraphCompat";
 import {
   editNode as editNodeService,
   isServicesInitialized,
@@ -26,7 +26,7 @@ import {
 } from "../../services";
 import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
 import { getViewportCenter } from "../../utils/viewportUtils";
-import { useUndoRedoContext } from "../../context/UndoRedoContext";
+import { useUndoRedoContext } from "../useUndoRedoCompat";
 
 // Pending membership tracking moved to drag handler
 

@@ -8,8 +8,8 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 import type { FreeShapeNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { DEFAULT_LINE_LENGTH } from "../../../utils/annotations/constants";
-import { useTopoViewer } from "../../../context/TopoViewerContext";
-import { useAnnotationHandlers } from "../../../context/CanvasContext";
+import { useTopoViewer } from "../../../hooks/useTopoViewerCompat";
+import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
 import { RotationHandle, LineEndHandle, LineStartHandle } from "./AnnotationHandles";
 

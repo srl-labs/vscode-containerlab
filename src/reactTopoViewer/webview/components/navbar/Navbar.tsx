@@ -4,8 +4,8 @@
  */
 import React from "react";
 
-import type { LinkLabelMode } from "../../context/TopoViewerContext";
-import { useTopoViewerActions, useTopoViewerState } from "../../context/TopoViewerContext";
+import type { LinkLabelMode } from "../../hooks/useTopoViewerCompat";
+import { useTopoViewerActions, useTopoViewerState } from "../../hooks/useTopoViewerCompat";
 import { DEFAULT_GRID_LINE_WIDTH, useDropdown } from "../../hooks/ui";
 import type { LayoutOption } from "../../hooks/ui";
 import {

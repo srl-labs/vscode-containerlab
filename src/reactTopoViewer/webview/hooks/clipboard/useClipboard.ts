@@ -7,8 +7,8 @@
 import { useCallback, useRef } from "react";
 import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
-import { useGraph } from "../../context/GraphContext";
-import { useUndoRedoContext } from "../../context/UndoRedoContext";
+import { useGraph } from "../useGraphCompat";
+import { useUndoRedoContext } from "../useUndoRedoCompat";
 import { log } from "../../utils/logger";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
 import type {

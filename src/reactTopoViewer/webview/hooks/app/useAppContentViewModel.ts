@@ -11,10 +11,10 @@ import type { AnnotationHandlers } from "../../components/canvas/types";
 import type { FloatingActionPanelHandle } from "../../components/panels";
 import type { useLayoutControls } from "../ui";
 import { convertToEditorData, convertToNetworkEditorData } from "../../../shared/utilities";
-import { useTopoViewerActions, useTopoViewerState } from "../../context/TopoViewerContext";
-import { useGraph, useGraphActions } from "../../context/GraphContext";
-import { useUndoRedoContext } from "../../context/UndoRedoContext";
-import { useAnnotations } from "../../context/AnnotationContext";
+import { useTopoViewerActions, useTopoViewerState } from "../useTopoViewerCompat";
+import { useGraph, useGraphActions } from "../useGraphCompat";
+import { useUndoRedoContext } from "../useUndoRedoCompat";
+import { useAnnotations } from "../useAnnotationsCompat";
 import { useToasts } from "../../components/ui/Toast";
 import { useEasterEgg } from "../../easter-eggs";
 import { useGraphHandlersWithContext, useCustomTemplateEditor } from "../state";
@@ -45,6 +45,7 @@ interface UseAppContentViewModelParams {
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   rfInstance: ReactFlowInstance | null;
   layoutControls: LayoutControls;
+  onLockedAction?: () => void;
 }
 
 function useCustomNodeErrorToast(
@@ -257,7 +258,8 @@ function useAnnotationCanvasHandlers(annotations: ReturnType<typeof useAnnotatio
 export function useAppContentViewModel({
   floatingPanelRef,
   rfInstance,
-  layoutControls
+  layoutControls,
+  onLockedAction
 }: UseAppContentViewModelParams) {
   const { state } = useTopoViewerState();
   const {
@@ -288,7 +290,7 @@ export function useAppContentViewModel({
   } = useGraphActions();
 
   const { undoRedo } = useUndoRedoContext();
-  const annotations = useAnnotations();
+  const annotations = useAnnotations({ rfInstance, onLockedAction });
 
   // Toast notifications
   const { toasts, addToast, dismissToast } = useToasts();

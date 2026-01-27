@@ -20,7 +20,7 @@ import {
 
 import type { SnapshotCapture } from "../state/useUndoRedo";
 import { log } from "../../utils/logger";
-import { useUndoRedoContext } from "../../context/UndoRedoContext";
+import { useUndoRedoContext } from "../useUndoRedoCompat";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 import {
   FREE_TEXT_NODE_TYPE,

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { BasePanel } from "../ui/editor/BasePanel";
-import { useGraph } from "../../context/GraphContext";
+import { useGraph } from "../../hooks/useGraphCompat";
 import { searchNodes as searchNodesUtil, getNodesBoundingBox } from "../../utils/graphQueryUtils";
 import type { TopoNode } from "../../../shared/types/graph";
 
