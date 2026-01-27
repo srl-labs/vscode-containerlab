@@ -9,41 +9,23 @@ import type { Node } from "@xyflow/react";
 import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
 import type { NetworkNodeAnnotation } from "../../shared/types/topology";
+import { useGraphStore } from "../stores/graphStore";
+import {
+  BRIDGE_NETWORK_TYPES,
+  SPECIAL_NETWORK_TYPES,
+  getNetworkType
+} from "../utils/networkNodeTypes";
 
 import { executeTopologyCommand } from "./topologyHostCommands";
-import { useGraphStore } from "../stores/graphStore";
 
 // Re-export types for convenience
 export type { NodeSaveData, LinkSaveData };
-
-// Network node types stored in annotations (not YAML nodes)
-const SPECIAL_NETWORK_TYPES = new Set([
-  "host",
-  "mgmt-net",
-  "macvlan",
-  "vxlan",
-  "vxlan-stitch",
-  "dummy"
-]);
-
-const BRIDGE_NETWORK_TYPES = new Set(["bridge", "ovs-bridge"]);
 
 const WARN_COMMAND_FAILED = "[Host] Topology command failed";
 
 function isNetworkNode(node: Node): boolean {
   const data = node.data as Record<string, unknown> | undefined;
   return data?.role === "cloud" || data?.topoViewerRole === "cloud";
-}
-
-function getNetworkType(data: Record<string, unknown>): string | undefined {
-  const kind = data.kind;
-  if (typeof kind === "string") return kind;
-  const nodeType = data.nodeType;
-  if (typeof nodeType === "string") return nodeType;
-  const extraData = data.extraData as Record<string, unknown> | undefined;
-  const extraKind = extraData?.kind;
-  if (typeof extraKind === "string") return extraKind;
-  return undefined;
 }
 
 function buildNetworkNodeAnnotations(nodes: Node[]): NetworkNodeAnnotation[] {

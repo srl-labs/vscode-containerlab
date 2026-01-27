@@ -73,6 +73,24 @@ export const AppContent: React.FC<AppContentProps> = ({
     onLockedAction
   });
 
+  const handleNetworkSave = React.useCallback(
+    (data: Parameters<typeof networkEditorHandlers.handleSave>[0]) => {
+      networkEditorHandlers.handleSave(data).catch((err) => {
+        console.error("[TopoViewer] Network editor save failed", err);
+      });
+    },
+    [networkEditorHandlers]
+  );
+
+  const handleNetworkApply = React.useCallback(
+    (data: Parameters<typeof networkEditorHandlers.handleApply>[0]) => {
+      networkEditorHandlers.handleApply(data).catch((err) => {
+        console.error("[TopoViewer] Network editor apply failed", err);
+      });
+    },
+    [networkEditorHandlers]
+  );
+
   return (
     <div className="topoviewer-app" data-testid="topoviewer-app">
       <Navbar
@@ -160,8 +178,8 @@ export const AppContent: React.FC<AppContentProps> = ({
             isVisible: !!state.editingNetwork,
             nodeData: selectionData.editingNetworkData,
             onClose: networkEditorHandlers.handleClose,
-            onSave: networkEditorHandlers.handleSave,
-            onApply: networkEditorHandlers.handleApply
+            onSave: handleNetworkSave,
+            onApply: handleNetworkApply
           }}
           customTemplateEditor={{
             isVisible: !!state.editingCustomTemplate,

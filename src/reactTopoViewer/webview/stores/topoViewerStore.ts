@@ -12,7 +12,6 @@ import type { EdgeAnnotation } from "../../shared/types/topology";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import type { LabSettings } from "../../shared/types/labSettings";
 import { upsertEdgeAnnotation } from "../utils/edgeAnnotations";
-import { saveViewerSettings } from "../services";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset
@@ -74,7 +73,6 @@ export interface TopoViewerActions {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
-  commitEndpointLabelOffset: () => void;
 
   // Edge annotations
   setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
@@ -154,7 +152,7 @@ export function parseInitialData(data: unknown): Partial<TopoViewerState> {
 // Store Creation
 // ============================================================================
 
-export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, get) => ({
+export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) => ({
   ...initialState,
 
   // Selection (mutually exclusive)
@@ -228,11 +226,6 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, ge
       ? clampEndpointLabelOffset(value)
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     set({ endpointLabelOffset: next });
-  },
-
-  commitEndpointLabelOffset: () => {
-    const { endpointLabelOffset } = get();
-    void saveViewerSettings({ endpointLabelOffset });
   },
 
   // Edge annotations
@@ -408,7 +401,6 @@ export const useTopoViewerActions = () =>
       toggleDummyLinks: state.toggleDummyLinks,
       toggleEndpointLabelOffset: state.toggleEndpointLabelOffset,
       setEndpointLabelOffset: state.setEndpointLabelOffset,
-      commitEndpointLabelOffset: state.commitEndpointLabelOffset,
       setEdgeAnnotations: state.setEdgeAnnotations,
       upsertEdgeAnnotation: state.upsertEdgeAnnotation,
       setCustomNodes: state.setCustomNodes,

@@ -347,6 +347,8 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
  */
 export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
   const data = node.data;
+  const parentId = typeof data.parentId === "string" ? data.parentId : undefined;
+  const zIndex = typeof data.zIndex === "number" ? data.zIndex : node.zIndex;
   return {
     id: node.id,
     name: data.name,
@@ -362,8 +364,8 @@ export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
     borderRadius: data.borderRadius,
     labelColor: data.labelColor,
     labelPosition: data.labelPosition,
-    parentId: data.parentId,
-    zIndex: data.zIndex ?? node.zIndex,
+    parentId,
+    zIndex,
     geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined
   };
 }

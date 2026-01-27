@@ -2,26 +2,14 @@
  * Handler functions for bulk link operations
  * Uses React Flow nodes/edges arrays for graph queries.
  */
-import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../../shared/types/graph";
-import type { LinkSaveData } from "../../../../shared/io/LinkPersistenceIO";
-
-import { computeCandidates, buildBulkEdges, type LinkCandidate } from "./bulkLinkUtils";
+import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import { executeTopologyCommands } from "../../../services";
+import { toLinkSaveData } from "../../../utils/linkSaveData";
+
+import { buildBulkEdges, computeCandidates, type LinkCandidate } from "./bulkLinkUtils";
 
 type SetStatus = (status: string | null) => void;
 type SetCandidates = (candidates: LinkCandidate[] | null) => void;
-
-function toLinkSaveData(edge: TopoEdge): LinkSaveData {
-  const data = edge.data as TopologyEdgeData | undefined;
-  return {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceEndpoint: data?.sourceEndpoint,
-    targetEndpoint: data?.targetEndpoint,
-    ...(data?.extraData ? { extraData: data.extraData } : {})
-  };
-}
 
 export function computeAndValidateCandidates(
   nodes: TopoNode[],

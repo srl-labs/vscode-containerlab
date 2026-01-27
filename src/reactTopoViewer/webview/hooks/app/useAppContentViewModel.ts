@@ -7,7 +7,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
 import type { LinkEditorData } from "../../../shared/types/editors";
-import type { FloatingActionPanelHandle } from "../../components/panels";
+import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
 import type { useLayoutControls } from "../ui";
 import { useTopoViewerActions, useTopoViewerState } from "../../stores/topoViewerStore";
 import { useGraphActions, useGraphState } from "../../stores/graphStore";

@@ -232,10 +232,14 @@ export const RotationHandle: React.FC<RotationHandleProps> = ({
 };
 
 // ============================================================================
-// Line End Handle (for resizing lines)
+// Line Resize Handle (for resizing lines)
 // ============================================================================
 
-interface LineEndHandleProps {
+const MIN_LINE_LENGTH = 20;
+
+type LineHandleMode = "start" | "end";
+
+interface LineResizeHandleProps {
   readonly nodeId: string;
   readonly startPosition: { x: number; y: number };
   readonly endPosition: { x: number; y: number };
@@ -243,26 +247,31 @@ interface LineEndHandleProps {
   readonly lineStartOffset: { x: number; y: number };
   /** Current node rotation in degrees (applied to the node wrapper) */
   readonly rotation?: number;
-  readonly onEndPositionChange: (id: string, endPosition: { x: number; y: number }) => void;
+  readonly mode: LineHandleMode;
+  readonly onPositionChange: (id: string, position: { x: number; y: number }) => void;
 }
 
-const MIN_LINE_LENGTH = 20;
+function getHandleCursor(mode: LineHandleMode, isResizing: boolean): string {
+  if (isResizing) return "grabbing";
+  return mode === "end" ? "nwse-resize" : "nesw-resize";
+}
 
-export const LineEndHandle: React.FC<LineEndHandleProps> = ({
+export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
   nodeId,
   startPosition,
   endPosition,
   lineStartOffset,
   rotation = 0,
-  onEndPositionChange
+  mode,
+  onPositionChange
 }) => {
   const [isResizing, setIsResizing] = useState(false);
   const reactFlow = useReactFlow();
   const dragStartRef = useRef<{
     startClientX: number;
     startClientY: number;
-    startEndX: number;
-    startEndY: number;
+    startHandleX: number;
+    startHandleY: number;
     rotationRad: number;
     zoom: number;
   } | null>(null);
@@ -275,7 +284,6 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
 
       const deltaClientX = e.clientX - dragStartRef.current.startClientX;
       const deltaClientY = e.clientY - dragStartRef.current.startClientY;
-
       const deltaX = deltaClientX / dragStartRef.current.zoom;
       const deltaY = deltaClientY / dragStartRef.current.zoom;
 
@@ -285,23 +293,23 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
       const rotatedDx = deltaX * cos - deltaY * sin;
       const rotatedDy = deltaX * sin + deltaY * cos;
 
-      let newEndX = dragStartRef.current.startEndX + rotatedDx;
-      let newEndY = dragStartRef.current.startEndY + rotatedDy;
+      let nextX = dragStartRef.current.startHandleX + rotatedDx;
+      let nextY = dragStartRef.current.startHandleY + rotatedDy;
 
-      // Ensure minimum line length
-      const dx = newEndX - startPosition.x;
-      const dy = newEndY - startPosition.y;
+      // Ensure minimum line length.
+      const anchor = mode === "end" ? startPosition : endPosition;
+      const dx = nextX - anchor.x;
+      const dy = nextY - anchor.y;
       const length = Math.hypot(dx, dy);
-
       if (length < MIN_LINE_LENGTH && length > 0) {
         const scale = MIN_LINE_LENGTH / length;
-        newEndX = startPosition.x + dx * scale;
-        newEndY = startPosition.y + dy * scale;
+        nextX = anchor.x + dx * scale;
+        nextY = anchor.y + dy * scale;
       }
 
-      onEndPositionChange(nodeId, {
-        x: Math.round(newEndX),
-        y: Math.round(newEndY)
+      onPositionChange(nodeId, {
+        x: Math.round(nextX),
+        y: Math.round(nextY)
       });
     };
 
@@ -313,7 +321,7 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizing, nodeId, startPosition, onEndPositionChange]);
+  }, [isResizing, nodeId, startPosition, endPosition, mode, onPositionChange]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -324,21 +332,23 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
       setIsResizing(true);
       setLineHandleDragging(true);
       const viewport = reactFlow.getViewport();
+      const origin = mode === "end" ? endPosition : startPosition;
       dragStartRef.current = {
         startClientX: e.clientX,
         startClientY: e.clientY,
-        startEndX: endPosition.x,
-        startEndY: endPosition.y,
+        startHandleX: origin.x,
+        startHandleY: origin.y,
         rotationRad: (rotation * Math.PI) / 180,
         zoom: viewport.zoom || 1
       };
     },
-    [endPosition, reactFlow, rotation]
+    [endPosition, startPosition, reactFlow, rotation, mode]
   );
 
-  // Calculate the handle position relative to the node (line start offset + relative end)
-  const handleX = lineStartOffset.x + (endPosition.x - startPosition.x);
-  const handleY = lineStartOffset.y + (endPosition.y - startPosition.y);
+  const handleX =
+    mode === "end" ? lineStartOffset.x + (endPosition.x - startPosition.x) : lineStartOffset.x;
+  const handleY =
+    mode === "end" ? lineStartOffset.y + (endPosition.y - startPosition.y) : lineStartOffset.y;
 
   return (
     <div
@@ -354,138 +364,7 @@ export const LineEndHandle: React.FC<LineEndHandleProps> = ({
         border: `2px solid ${SELECTION_COLOR}`,
         borderRadius: "2px",
         transform: CENTER_TRANSFORM,
-        cursor: isResizing ? "grabbing" : "nwse-resize",
-        boxShadow: HANDLE_BOX_SHADOW,
-        zIndex: 1000,
-        pointerEvents: "auto"
-      }}
-      title="Drag to resize line"
-    />
-  );
-};
-
-// ============================================================================
-// Line Start Handle (for resizing lines from the start point)
-// ============================================================================
-
-interface LineStartHandleProps {
-  readonly nodeId: string;
-  readonly startPosition: { x: number; y: number };
-  readonly endPosition: { x: number; y: number };
-  /** Offset of line start within the node (for bounding box positioning) */
-  readonly lineStartOffset: { x: number; y: number };
-  /** Current node rotation in degrees (applied to the node wrapper) */
-  readonly rotation?: number;
-  readonly onStartPositionChange: (id: string, startPosition: { x: number; y: number }) => void;
-}
-
-export const LineStartHandle: React.FC<LineStartHandleProps> = ({
-  nodeId,
-  startPosition,
-  endPosition,
-  lineStartOffset,
-  rotation = 0,
-  onStartPositionChange
-}) => {
-  const [isResizing, setIsResizing] = useState(false);
-  const reactFlow = useReactFlow();
-  const dragStartRef = useRef<{
-    startClientX: number;
-    startClientY: number;
-    startStartX: number;
-    startStartY: number;
-    rotationRad: number;
-    zoom: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragStartRef.current) return;
-
-      const deltaClientX = e.clientX - dragStartRef.current.startClientX;
-      const deltaClientY = e.clientY - dragStartRef.current.startClientY;
-
-      const deltaX = deltaClientX / dragStartRef.current.zoom;
-      const deltaY = deltaClientY / dragStartRef.current.zoom;
-
-      // Convert screen delta into model-space delta for the unrotated line
-      const cos = Math.cos(-dragStartRef.current.rotationRad);
-      const sin = Math.sin(-dragStartRef.current.rotationRad);
-      const rotatedDx = deltaX * cos - deltaY * sin;
-      const rotatedDy = deltaX * sin + deltaY * cos;
-
-      let newStartX = dragStartRef.current.startStartX + rotatedDx;
-      let newStartY = dragStartRef.current.startStartY + rotatedDy;
-
-      // Ensure minimum line length
-      const dx = endPosition.x - newStartX;
-      const dy = endPosition.y - newStartY;
-      const length = Math.hypot(dx, dy);
-
-      if (length < MIN_LINE_LENGTH && length > 0) {
-        const scale = MIN_LINE_LENGTH / length;
-        newStartX = endPosition.x - dx * scale;
-        newStartY = endPosition.y - dy * scale;
-      }
-
-      onStartPositionChange(nodeId, {
-        x: Math.round(newStartX),
-        y: Math.round(newStartY)
-      });
-    };
-
-    const handleMouseUp = createLineHandleMouseUpHandler(setIsResizing, dragStartRef);
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isResizing, nodeId, endPosition, onStartPositionChange]);
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      setIsResizing(true);
-      setLineHandleDragging(true);
-      const viewport = reactFlow.getViewport();
-      dragStartRef.current = {
-        startClientX: e.clientX,
-        startClientY: e.clientY,
-        startStartX: startPosition.x,
-        startStartY: startPosition.y,
-        rotationRad: (rotation * Math.PI) / 180,
-        zoom: viewport.zoom || 1
-      };
-    },
-    [startPosition, reactFlow, rotation]
-  );
-
-  // Handle is at the line start offset position
-  const handleX = lineStartOffset.x;
-  const handleY = lineStartOffset.y;
-
-  return (
-    <div
-      onMouseDown={handleMouseDown}
-      className="nodrag nopan nowheel"
-      style={{
-        position: "absolute",
-        left: `${handleX}px`,
-        top: `${handleY}px`,
-        width: `${HANDLE_SIZE + 4}px`,
-        height: `${HANDLE_SIZE + 4}px`,
-        backgroundColor: "white",
-        border: `2px solid ${SELECTION_COLOR}`,
-        borderRadius: "2px",
-        transform: CENTER_TRANSFORM,
-        cursor: isResizing ? "grabbing" : "nesw-resize",
+        cursor: getHandleCursor(mode, isResizing),
         boxShadow: HANDLE_BOX_SHADOW,
         zIndex: 1000,
         pointerEvents: "auto"

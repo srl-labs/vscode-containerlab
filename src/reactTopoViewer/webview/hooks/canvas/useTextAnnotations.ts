@@ -2,11 +2,11 @@ import { useCallback, useMemo, useRef } from "react";
 
 import type { FreeTextAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions, AnnotationUIState } from "../../stores/annotationUIStore";
+import { saveAnnotationNodesFromGraph } from "../../services";
+import { log } from "../../utils/logger";
+
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
-import { log } from "../../utils/logger";
-import { saveAnnotationNodesFromGraph } from "../../services";
-
 interface UseTextAnnotationsParams {
   mode: "edit" | "view";
   isLocked: boolean;

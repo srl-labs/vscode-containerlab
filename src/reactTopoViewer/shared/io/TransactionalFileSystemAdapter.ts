@@ -6,6 +6,8 @@
  * to behave as a single transaction from the host's perspective.
  */
 
+import { randomUUID } from "crypto";
+
 import type { FileSystemAdapter } from "./types";
 
 type PendingEntry = { path: string; content: string | null };
@@ -112,70 +114,102 @@ export class TransactionalFileSystemAdapter implements FileSystemAdapter {
   // Commit logic
   // ---------------------------------------------------------------------------
 
-  private async commitEntries(entries: PendingEntry[]): Promise<void> {
-    const operations = entries.filter((entry) => entry.content !== undefined);
-    if (operations.length === 0) return;
+  private buildTempPath(dir: string, base: string, prefix: "tmp" | "bak"): string {
+    return this.base.join(dir, `.${prefix}-${randomUUID()}-${base}`);
+  }
 
+  private async writeTempFiles(entries: PendingEntry[]): Promise<Map<string, string>> {
     const tempFiles = new Map<string, string>();
+    for (const entry of entries) {
+      if (entry.content === null) continue;
+      const dir = this.base.dirname(entry.path);
+      const base = this.base.basename(entry.path);
+      const tempPath = this.buildTempPath(dir, base, "tmp");
+      await this.base.writeFile(tempPath, entry.content);
+      tempFiles.set(entry.path, tempPath);
+    }
+    return tempFiles;
+  }
+
+  private async createBackups(entries: PendingEntry[]): Promise<Map<string, string>> {
     const backups = new Map<string, string>();
+    for (const entry of entries) {
+      const exists = await this.base.exists(entry.path);
+      if (!exists) continue;
+      const dir = this.base.dirname(entry.path);
+      const base = this.base.basename(entry.path);
+      const backupPath = this.buildTempPath(dir, base, "bak");
+      await this.base.rename(entry.path, backupPath);
+      backups.set(entry.path, backupPath);
+    }
+    return backups;
+  }
+
+  private async applyWrites(
+    entries: PendingEntry[],
+    tempFiles: Map<string, string>
+  ): Promise<void> {
+    for (const entry of entries) {
+      if (entry.content === null) continue;
+      const tempPath = tempFiles.get(entry.path);
+      if (!tempPath) {
+        throw new Error(`Missing temp file for ${entry.path}`);
+      }
+      await this.base.rename(tempPath, entry.path);
+    }
+  }
+
+  private async cleanupBackups(backups: Map<string, string>): Promise<void> {
+    for (const backupPath of backups.values()) {
+      await this.base.unlink(backupPath);
+    }
+  }
+
+  private async restoreBackups(backups: Map<string, string>): Promise<void> {
+    for (const [targetPath, backupPath] of backups) {
+      try {
+        const stillMissing = !(await this.base.exists(targetPath));
+        if (stillMissing) {
+          await this.base.rename(backupPath, targetPath);
+        }
+      } catch {
+        // ignore rollback errors
+      }
+    }
+  }
+
+  private async cleanupTempFiles(tempFiles: Map<string, string>): Promise<void> {
+    for (const tempPath of tempFiles.values()) {
+      try {
+        await this.base.unlink(tempPath);
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+  }
+
+  private async commitEntries(entries: PendingEntry[]): Promise<void> {
+    if (entries.length === 0) return;
+
+    let tempFiles = new Map<string, string>();
+    let backups = new Map<string, string>();
 
     try {
       // 1) Write temp files for all writes.
-      for (const entry of operations) {
-        if (entry.content === null) continue;
-        const dir = this.base.dirname(entry.path);
-        const base = this.base.basename(entry.path);
-        const tempName = `.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}-${base}`;
-        const tempPath = this.base.join(dir, tempName);
-        await this.base.writeFile(tempPath, entry.content);
-        tempFiles.set(entry.path, tempPath);
-      }
+      tempFiles = await this.writeTempFiles(entries);
 
       // 2) Move existing targets to backups.
-      for (const entry of operations) {
-        const exists = await this.base.exists(entry.path);
-        if (!exists) continue;
-        const dir = this.base.dirname(entry.path);
-        const base = this.base.basename(entry.path);
-        const backupName = `.bak-${Date.now()}-${Math.random().toString(16).slice(2)}-${base}`;
-        const backupPath = this.base.join(dir, backupName);
-        await this.base.rename(entry.path, backupPath);
-        backups.set(entry.path, backupPath);
-      }
+      backups = await this.createBackups(entries);
 
       // 3) Apply writes (rename temp -> target). Deletes are handled by backup cleanup.
-      for (const entry of operations) {
-        if (entry.content === null) continue;
-        const tempPath = tempFiles.get(entry.path);
-        if (!tempPath) {
-          throw new Error(`Missing temp file for ${entry.path}`);
-        }
-        await this.base.rename(tempPath, entry.path);
-      }
+      await this.applyWrites(entries, tempFiles);
 
       // 4) Clean up backups (delete original files that were replaced or deleted).
-      for (const backupPath of backups.values()) {
-        await this.base.unlink(backupPath);
-      }
+      await this.cleanupBackups(backups);
     } catch (err) {
       // Best-effort rollback: restore backups and clean temp files.
-      for (const [targetPath, backupPath] of backups) {
-        try {
-          const stillMissing = !(await this.base.exists(targetPath));
-          if (stillMissing) {
-            await this.base.rename(backupPath, targetPath);
-          }
-        } catch {
-          // ignore rollback errors
-        }
-      }
-      for (const tempPath of tempFiles.values()) {
-        try {
-          await this.base.unlink(tempPath);
-        } catch {
-          // ignore cleanup errors
-        }
-      }
+      await this.restoreBackups(backups);
+      await this.cleanupTempFiles(tempFiles);
       throw err;
     }
   }

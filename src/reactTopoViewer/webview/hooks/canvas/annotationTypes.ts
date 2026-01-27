@@ -3,6 +3,7 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
+
 import type { GroupEditorData } from "./groupTypes";
 
 export interface AnnotationState {

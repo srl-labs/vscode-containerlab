@@ -4,12 +4,6 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type {
-  NodeEditorData,
-  LinkEditorData,
-  NetworkEditorData,
-  FloatingActionPanelHandle
-} from "../../components/panels";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
 import {
@@ -17,17 +11,20 @@ import {
   convertEditorDataToNodeSaveData,
   convertNetworkEditorDataToYaml
 } from "../../../shared/utilities";
-import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
-import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
-import { getViewportCenter } from "../../utils/viewportUtils";
-import { useGraphState } from "../../stores/graphStore";
-import { useGraphStore } from "../../stores/graphStore";
+import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
+import type { LinkEditorData } from "../../components/panels/link-editor/types";
+import type { NetworkEditorData } from "../../components/panels/network-editor/types";
+import type { NodeEditorData } from "../../components/panels/node-editor/types";
 import {
   executeTopologyCommand,
   executeTopologyCommands,
   saveEdgeAnnotations,
   saveNetworkNodesFromGraph
 } from "../../services";
+import { useGraphState, useGraphStore } from "../../stores/graphStore";
+import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
+import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
+import { getViewportCenter } from "../../utils/viewportUtils";
 
 // ============================================================================
 // Types
@@ -404,28 +401,42 @@ function calculateExpectedNodeId(data: NetworkEditorData): string {
   return data.id;
 }
 
-function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown> {
-  const extraData: Record<string, unknown> = { extType: data.networkType };
+function applyVxlanFields(extraData: Record<string, unknown>, data: NetworkEditorData): void {
+  if (!VXLAN_NETWORK_TYPES.has(data.networkType)) return;
+  Object.assign(extraData, {
+    extRemote: data.vxlanRemote || undefined,
+    extVni: data.vxlanVni ? Number(data.vxlanVni) : undefined,
+    extDstPort: data.vxlanDstPort ? Number(data.vxlanDstPort) : undefined,
+    extSrcPort: data.vxlanSrcPort ? Number(data.vxlanSrcPort) : undefined
+  });
+}
 
-  if (VXLAN_NETWORK_TYPES.has(data.networkType)) {
-    Object.assign(extraData, {
-      extRemote: data.vxlanRemote || undefined,
-      extVni: data.vxlanVni ? Number(data.vxlanVni) : undefined,
-      extDstPort: data.vxlanDstPort ? Number(data.vxlanDstPort) : undefined,
-      extSrcPort: data.vxlanSrcPort ? Number(data.vxlanSrcPort) : undefined
-    });
-  } else if (HOST_INTERFACE_TYPES.has(data.networkType)) {
-    extraData.extHostInterface = data.interfaceName || undefined;
-    extraData.extMode = data.networkType === "macvlan" ? data.macvlanMode || undefined : undefined;
-  }
+function applyHostInterfaceFields(
+  extraData: Record<string, unknown>,
+  data: NetworkEditorData
+): void {
+  if (!HOST_INTERFACE_TYPES.has(data.networkType)) return;
+  extraData.extHostInterface = data.interfaceName || undefined;
+  extraData.extMode = data.networkType === "macvlan" ? data.macvlanMode || undefined : undefined;
+}
 
+function applyCommonNetworkFields(
+  extraData: Record<string, unknown>,
+  data: NetworkEditorData
+): void {
   Object.assign(extraData, {
     extMtu: data.mtu ? Number(data.mtu) : undefined,
     extMac: data.mac || undefined,
     extVars: data.vars && Object.keys(data.vars).length > 0 ? data.vars : undefined,
     extLabels: data.labels && Object.keys(data.labels).length > 0 ? data.labels : undefined
   });
+}
 
+function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown> {
+  const extraData: Record<string, unknown> = { extType: data.networkType };
+  applyVxlanFields(extraData, data);
+  applyHostInterfaceFields(extraData, data);
+  applyCommonNetworkFields(extraData, data);
   return extraData;
 }
 
@@ -517,12 +528,14 @@ export function useNetworkEditorHandlers(
     void executeTopologyCommand({ command: "editNode", payload: saveData });
   }, []);
 
-  const handleSave = React.useCallback(
-    async (data: NetworkEditorData) => {
+  const persistNetworkEdits = React.useCallback(
+    async (data: NetworkEditorData, closeAfterSave: boolean) => {
       const beforeData = initialDataRef.current;
       const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
       if (!hasChanges) {
-        editNetwork(null);
+        if (closeAfterSave) {
+          editNetwork(null);
+        }
         return;
       }
 
@@ -536,31 +549,29 @@ export function useNetworkEditorHandlers(
         persistBridgeNetwork(data, newNodeId);
       }
 
-      initialDataRef.current = null;
-      editNetwork(null);
-    },
-    [editNetwork, applyGraphUpdates, persistLinkBasedNetwork, persistBridgeNetwork]
-  );
-
-  const handleApply = React.useCallback(
-    async (data: NetworkEditorData) => {
-      const beforeData = initialDataRef.current;
-      const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
-      if (!hasChanges) return;
-
-      const newNodeId = calculateExpectedNodeId(data);
-
-      applyGraphUpdates(data, newNodeId);
-
-      if (LINK_BASED_NETWORK_TYPES.has(data.networkType)) {
-        await persistLinkBasedNetwork(data, newNodeId);
-      } else if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
-        persistBridgeNetwork(data, newNodeId);
+      if (closeAfterSave) {
+        initialDataRef.current = null;
+        editNetwork(null);
+        return;
       }
 
       initialDataRef.current = { ...data };
     },
-    [applyGraphUpdates, persistLinkBasedNetwork, persistBridgeNetwork]
+    [editNetwork, applyGraphUpdates, persistLinkBasedNetwork, persistBridgeNetwork]
+  );
+
+  const handleSave = React.useCallback(
+    (data: NetworkEditorData) => {
+      return persistNetworkEdits(data, true);
+    },
+    [persistNetworkEdits]
+  );
+
+  const handleApply = React.useCallback(
+    (data: NetworkEditorData) => {
+      return persistNetworkEdits(data, false);
+    },
+    [persistNetworkEdits]
   );
 
   return { handleClose, handleSave, handleApply };

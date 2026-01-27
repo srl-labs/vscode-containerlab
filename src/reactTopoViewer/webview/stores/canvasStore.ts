@@ -9,9 +9,6 @@ import type { Edge } from "@xyflow/react";
 
 import type { AnnotationHandlers, EdgeLabelMode } from "../components/canvas/types";
 
-// Re-export types from canvas/types for convenience
-export type { EdgeLabelMode } from "../components/canvas/types";
-
 export interface EdgeRenderConfig {
   labelMode: EdgeLabelMode;
   suppressLabels: boolean;

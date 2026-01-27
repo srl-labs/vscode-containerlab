@@ -11,10 +11,10 @@ import type {
   EdgeAnnotation,
   TopologyAnnotations
 } from "../../shared/types/topology";
-
-import { executeTopologyCommand } from "./topologyHostCommands";
 import { useGraphStore } from "../stores/graphStore";
 import { nodesToAnnotations } from "../utils/annotationNodeConverters";
+
+import { executeTopologyCommand } from "./topologyHostCommands";
 
 const WARN_COMMAND_FAILED = "[Host] Annotation command failed";
 

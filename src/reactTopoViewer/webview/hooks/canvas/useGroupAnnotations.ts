@@ -2,16 +2,15 @@ import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
-import type { GroupEditorData } from "./groupTypes";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
-import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
-import { findParentGroupForBounds, generateGroupId } from "./groupUtils";
-import { isAnnotationNodeType } from "../../utils/annotationNodeConverters";
-
-import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";
 import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
+import { collectNodeGroupMemberships } from "../../utils/groupMembership";
 
+import type { GroupEditorData } from "./groupTypes";
+import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";
+import { findParentGroupForBounds, generateGroupId } from "./groupUtils";
+import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 interface UseGroupAnnotationsParams {
   mode: "edit" | "view";
   isLocked: boolean;
@@ -33,18 +32,6 @@ export interface GroupAnnotationActions {
   updateGroupSize: (id: string, width: number, height: number) => void;
 }
 
-function collectMemberships(): Array<{ id: string; groupId?: string }> {
-  const nodes = useGraphStore.getState().nodes;
-  return nodes
-    .filter((node) => !isAnnotationNodeType(node.type))
-    .map((node) => {
-      const data = node.data as Record<string, unknown> | undefined;
-      const groupId = data?.groupId as string | undefined;
-      return groupId ? { id: node.id, groupId } : null;
-    })
-    .filter((entry): entry is { id: string; groupId: string } => Boolean(entry));
-}
-
 export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnnotationActions {
   const { mode, isLocked, onLockedAction, rfInstance, derived, uiActions } = params;
 
@@ -53,7 +40,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
   }, []);
 
   const persistMemberships = useCallback(() => {
-    const memberships = collectMemberships();
+    const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
     void saveAllNodeGroupMemberships(memberships);
   }, []);
 

@@ -7,7 +7,6 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import { useClipboard, type UseClipboardOptions } from "./useClipboard";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
@@ -15,6 +14,7 @@ import type {
 } from "../../../shared/types/topology";
 import type { TopoNode } from "../../../shared/types/graph";
 
+import { useClipboard, type UseClipboardOptions } from "./useClipboard";
 /**
  * Annotations interface subset for clipboard operations
  * Avoids circular dependency with AnnotationContext.tsx

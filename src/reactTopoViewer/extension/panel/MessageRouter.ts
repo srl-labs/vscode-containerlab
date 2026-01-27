@@ -47,6 +47,13 @@ const CUSTOM_NODE_COMMANDS = new Set([
 
 const ICON_COMMANDS = new Set(["icon-list", "icon-upload", "icon-delete", "icon-reconcile"]);
 
+const TOPOLOGY_HOST_GET_SNAPSHOT = "topology-host:get-snapshot";
+const TOPOLOGY_HOST_COMMAND = "topology-host:command";
+const TOPOLOGY_HOST_SNAPSHOT = "topology-host:snapshot";
+const TOPOLOGY_HOST_ACK = "topology-host:ack";
+const TOPOLOGY_HOST_REJECT = "topology-host:reject";
+const TOPOLOGY_HOST_ERROR = "topology-host:error";
+
 /**
  * Context required by the message router
  */
@@ -109,64 +116,28 @@ export class MessageRouter {
   /**
    * Handle TopologyHost protocol messages (snapshot + commands)
    */
-  private async handleTopologyHostMessage(
-    message: WebviewMessage,
-    panel: vscode.WebviewPanel
-  ): Promise<boolean> {
-    const msgType = typeof message.type === "string" ? message.type : "";
-    if (msgType !== "topology-host:get-snapshot" && msgType !== "topology-host:command") {
-      return false;
-    }
+  private postTopologyHostError(
+    panel: vscode.WebviewPanel,
+    requestId: string,
+    error: string
+  ): void {
+    panel.webview.postMessage({
+      type: TOPOLOGY_HOST_ERROR,
+      protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+      requestId,
+      error
+    });
+  }
 
-    const host = this.context.topologyHost;
-    const requestId = typeof message.requestId === "string" ? message.requestId : "";
-    const protocolVersion =
-      typeof (message as { protocolVersion?: unknown }).protocolVersion === "number"
-        ? (message as { protocolVersion?: number }).protocolVersion
-        : undefined;
+  private getTopologyHostProtocolVersion(message: WebviewMessage): number | undefined {
+    return typeof (message as { protocolVersion?: unknown }).protocolVersion === "number"
+      ? (message as { protocolVersion?: number }).protocolVersion
+      : undefined;
+  }
 
-    if (protocolVersion !== TOPOLOGY_HOST_PROTOCOL_VERSION) {
-      panel.webview.postMessage({
-        type: "topology-host:error",
-        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-        requestId,
-        error: `Unsupported topology host protocol version: ${protocolVersion ?? "unknown"}`
-      });
-      return true;
-    }
-
-    if (!host) {
-      panel.webview.postMessage({
-        type: "topology-host:error",
-        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-        requestId,
-        error: "Topology host unavailable"
-      });
-      return true;
-    }
-
-    if (msgType === "topology-host:get-snapshot") {
-      try {
-        const snapshot = await host.getSnapshot();
-        this.context.onHostSnapshot?.(snapshot);
-        panel.webview.postMessage({
-          type: "topology-host:snapshot",
-          protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-          requestId,
-          snapshot,
-          reason: "init"
-        });
-      } catch (err) {
-        panel.webview.postMessage({
-          type: "topology-host:error",
-          protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-          requestId,
-          error: err instanceof Error ? err.message : String(err)
-        });
-      }
-      return true;
-    }
-
+  private parseTopologyHostCommand(
+    message: WebviewMessage
+  ): { command: TopologyHostCommand; baseRevision: number } | null {
     const baseRevisionRaw = (message as { baseRevision?: unknown }).baseRevision;
     const commandPayload = (message as { command?: unknown }).command;
     const baseRevision =
@@ -178,21 +149,76 @@ export class MessageRouter {
       typeof (commandPayload as { command?: unknown }).command !== "string" ||
       !Number.isFinite(baseRevision)
     ) {
+      return null;
+    }
+    return { command: commandPayload as TopologyHostCommand, baseRevision };
+  }
+
+  private async sendTopologySnapshot(
+    host: TopologyHost,
+    panel: vscode.WebviewPanel,
+    requestId: string
+  ): Promise<void> {
+    try {
+      const snapshot = await host.getSnapshot();
+      this.context.onHostSnapshot?.(snapshot);
       panel.webview.postMessage({
-        type: "topology-host:error",
+        type: TOPOLOGY_HOST_SNAPSHOT,
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         requestId,
-        error: "Invalid topology host command payload"
+        snapshot,
+        reason: "init"
       });
+    } catch (err) {
+      this.postTopologyHostError(
+        panel,
+        requestId,
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+  }
+
+  private async handleTopologyHostMessage(
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<boolean> {
+    const msgType = typeof message.type === "string" ? message.type : "";
+    if (msgType !== TOPOLOGY_HOST_GET_SNAPSHOT && msgType !== TOPOLOGY_HOST_COMMAND) {
+      return false;
+    }
+
+    const requestId = typeof message.requestId === "string" ? message.requestId : "";
+    const protocolVersion = this.getTopologyHostProtocolVersion(message);
+
+    if (protocolVersion !== TOPOLOGY_HOST_PROTOCOL_VERSION) {
+      this.postTopologyHostError(
+        panel,
+        requestId,
+        `Unsupported topology host protocol version: ${protocolVersion ?? "unknown"}`
+      );
       return true;
     }
 
-    const response = await host.applyCommand(commandPayload as TopologyHostCommand, baseRevision);
+    const host = this.context.topologyHost;
+    if (!host) {
+      this.postTopologyHostError(panel, requestId, "Topology host unavailable");
+      return true;
+    }
+
+    if (msgType === TOPOLOGY_HOST_GET_SNAPSHOT) {
+      await this.sendTopologySnapshot(host, panel, requestId);
+      return true;
+    }
+
+    const commandData = this.parseTopologyHostCommand(message);
+    if (!commandData) {
+      this.postTopologyHostError(panel, requestId, "Invalid topology host command payload");
+      return true;
+    }
+
+    const response = await host.applyCommand(commandData.command, commandData.baseRevision);
     const responseWithId = { ...response, requestId: requestId || response.requestId };
-    if (
-      responseWithId.type === "topology-host:ack" ||
-      responseWithId.type === "topology-host:reject"
-    ) {
+    if (responseWithId.type === TOPOLOGY_HOST_ACK || responseWithId.type === TOPOLOGY_HOST_REJECT) {
       const snapshot = (responseWithId as { snapshot?: TopologySnapshot }).snapshot;
       if (snapshot) {
         this.context.onHostSnapshot?.(snapshot);

@@ -4,7 +4,6 @@
  * This is now a fully controlled component - nodes/edges come from the graph store.
  * No internal state duplication.
  */
-/* eslint-disable import-x/max-dependencies */
 import React, {
   useRef,
   useImperativeHandle,
@@ -30,7 +29,6 @@ import "@xyflow/react/dist/style.css";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useCanvasStore } from "../../stores/canvasStore";
-import type { EdgeLabelMode } from "../../stores/canvasStore";
 import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 import {
   useDeleteHandlers,
@@ -50,7 +48,12 @@ import {
 } from "./contextMenuBuilders";
 import { edgeTypes } from "./edges";
 import { nodeTypes } from "./nodes";
-import type { ReactFlowCanvasRef, ReactFlowCanvasProps, AnnotationHandlers } from "./types";
+import type {
+  AnnotationHandlers,
+  EdgeLabelMode,
+  ReactFlowCanvasProps,
+  ReactFlowCanvasRef
+} from "./types";
 
 /** Parameters for useContextMenuItems hook */
 interface ContextMenuItemsParams {

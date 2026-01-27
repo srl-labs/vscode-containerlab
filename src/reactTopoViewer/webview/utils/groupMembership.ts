@@ -1,6 +1,8 @@
 /**
  * Group membership helpers for applying nodeAnnotations to graph store nodes.
  */
+import type { Node } from "@xyflow/react";
+
 import type { TopoNode } from "../../shared/types/graph";
 import type { GroupStyleAnnotation, NodeAnnotation } from "../../shared/types/topology";
 
@@ -59,4 +61,20 @@ export function applyGroupMembershipToNodes(
       data: { ...(data ?? {}), groupId }
     } as unknown as TopoNode;
   });
+}
+
+export interface NodeGroupMembership {
+  id: string;
+  groupId: string;
+}
+
+export function collectNodeGroupMemberships(nodes: Node[]): NodeGroupMembership[] {
+  return nodes
+    .filter((node) => !isAnnotationNodeType(node.type))
+    .map((node) => {
+      const data = node.data as Record<string, unknown> | undefined;
+      const groupId = data?.groupId as string | undefined;
+      return groupId ? { id: node.id, groupId } : null;
+    })
+    .filter((entry): entry is NodeGroupMembership => Boolean(entry));
 }

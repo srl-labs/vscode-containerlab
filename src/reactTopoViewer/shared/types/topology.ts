@@ -3,6 +3,8 @@
  * These types define the structure for Containerlab topologies and ReactFlow elements.
  */
 
+import type { TextStyle } from "./annotationStyles";
+
 // ============================================================================
 // Containerlab YAML Types
 // ============================================================================
@@ -89,25 +91,13 @@ export interface ParsedElement {
 /**
  * Free text annotation for canvas text overlays.
  */
-export interface FreeTextAnnotation {
+export interface FreeTextAnnotation extends TextStyle {
   id: string;
   text: string;
   position: { x: number; y: number };
   geoCoordinates?: { lat: number; lng: number };
   groupId?: string; // Parent group ID for hierarchy membership
-  fontSize?: number;
-  fontColor?: string;
-  backgroundColor?: string;
-  fontWeight?: "normal" | "bold";
-  fontStyle?: "normal" | "italic";
-  textDecoration?: "none" | "underline";
-  textAlign?: "left" | "center" | "right";
-  fontFamily?: string;
-  rotation?: number;
-  width?: number;
-  height?: number;
   zIndex?: number;
-  roundedBackground?: boolean;
   [key: string]: unknown;
 }
 

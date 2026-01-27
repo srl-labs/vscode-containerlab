@@ -243,9 +243,8 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const node = useGraphStore.getState().nodes.find((n) => n.id === nodeId);
       if (!node) return;
       const nodeData = node.data as Record<string, unknown>;
-      const { groupId: _groupId, ...rest } = nodeData;
       // Force groupId to undefined so updateNode's merge clears membership.
-      updateNode(nodeId, { data: { ...rest, groupId: undefined } });
+      updateNode(nodeId, { data: { ...nodeData, groupId: undefined } });
     },
     [updateNode]
   );

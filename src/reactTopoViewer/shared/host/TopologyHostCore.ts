@@ -7,7 +7,7 @@
 
 import * as YAML from "yaml";
 
-import type { ClabTopology, TopologyAnnotations } from "../types/topology";
+import type { ClabTopology, DeploymentState, TopologyAnnotations } from "../types/topology";
 import type { LabSettings } from "../types/labSettings";
 import type {
   TopologyHostCommand,
@@ -16,7 +16,6 @@ import type {
 } from "../types/messages";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../types/messages";
 import type { TopologyHost } from "../types/topologyHost";
-import type { DeploymentState } from "../types/topology";
 import type { TopologyData } from "../types/graph";
 import type { ContainerDataProvider, ParserLogger } from "../parsing/types";
 import { TopologyParser } from "../parsing/TopologyParser";
@@ -42,6 +41,7 @@ interface HistoryEntry {
 }
 
 const DEFAULT_HISTORY_LIMIT = 50;
+const TOPOLOGY_HOST_ACK = "topology-host:ack";
 
 const noopLogger: IOLogger = {
   debug: () => {},
@@ -176,7 +176,7 @@ export class TopologyHostCore implements TopologyHost {
     this.snapshot = await this.buildSnapshot();
 
     return {
-      type: "topology-host:ack",
+      type: TOPOLOGY_HOST_ACK,
       protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
       requestId: "",
       revision: this.revision,
@@ -380,7 +380,7 @@ export class TopologyHostCore implements TopologyHost {
     if (stack.length === 0) {
       const snapshot = await this.getSnapshot();
       return {
-        type: "topology-host:ack",
+        type: TOPOLOGY_HOST_ACK,
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
         requestId: "",
         revision: this.revision,
@@ -415,7 +415,7 @@ export class TopologyHostCore implements TopologyHost {
     this.revision += 1;
     this.snapshot = await this.buildSnapshot();
     return {
-      type: "topology-host:ack",
+      type: TOPOLOGY_HOST_ACK,
       protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
       requestId: "",
       revision: this.revision,

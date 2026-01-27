@@ -4,11 +4,12 @@
  * Topology state is authoritative in the host via the TopologyHost protocol.
  */
 
+import type { NodeSaveData } from "../io/NodePersistenceIO";
+import type { LinkSaveData } from "../io/LinkPersistenceIO";
+
 import type { TopologyAnnotations, EdgeAnnotation, DeploymentState } from "./topology";
 import type { TopoNode, TopoEdge } from "./graph";
 import type { LabSettings } from "./labSettings";
-import type { NodeSaveData } from "../io/NodePersistenceIO";
-import type { LinkSaveData } from "../io/LinkPersistenceIO";
 
 /**
  * Base message interface for all messages

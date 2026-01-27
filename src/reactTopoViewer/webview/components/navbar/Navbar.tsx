@@ -18,6 +18,7 @@ import {
 } from "../../stores/topoViewerStore";
 import { DEFAULT_GRID_LINE_WIDTH, useDropdown } from "../../hooks/ui";
 import type { LayoutOption } from "../../hooks/ui";
+import { saveViewerSettings } from "../../services";
 import {
   ENDPOINT_LABEL_OFFSET_MAX,
   ENDPOINT_LABEL_OFFSET_MIN
@@ -93,11 +94,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isProcessing = useIsProcessing();
   const processingMode = useProcessingMode();
 
-  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset, commitEndpointLabelOffset } =
-    useTopoViewerActions();
+  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset } = useTopoViewerActions();
   const saveEndpointLabelOffset = React.useCallback(() => {
-    commitEndpointLabelOffset();
-  }, [commitEndpointLabelOffset]);
+    void saveViewerSettings({ endpointLabelOffset });
+  }, [endpointLabelOffset]);
 
   const linkDropdown = useDropdown();
   const layoutDropdown = useDropdown();

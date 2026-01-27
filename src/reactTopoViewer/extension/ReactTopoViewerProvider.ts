@@ -10,9 +10,12 @@
 
 import * as vscode from "vscode";
 
-import type { TopoEdge } from "../shared/types/graph";
-import type { ClabLabTreeNode } from "../../treeView/common";
 import { runningLabsProvider } from "../../globals";
+import type { ClabLabTreeNode } from "../../treeView/common";
+import { TopologyHostCore } from "../shared/host/TopologyHostCore";
+import { nodeFsAdapter } from "../shared/io";
+import type { TopoEdge } from "../shared/types/graph";
+import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
 
 import { log } from "./services/logger";
 import { ContainerDataAdapter } from "./services/ContainerDataAdapter";
@@ -27,9 +30,6 @@ import {
   WatcherManager,
   buildBootstrapData
 } from "./panel";
-import { TopologyHostCore } from "../shared/host/TopologyHostCore";
-import { nodeFsAdapter } from "../shared/io";
-import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
 
 /** Message type for incremental edge stats updates */
 const MSG_EDGE_STATS_UPDATE = "edge-stats-update";

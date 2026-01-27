@@ -14,6 +14,8 @@ import type { GroupEditorData } from "../hooks/canvas/groupTypes";
 // Types
 // ============================================================================
 
+type ShapeAnnotationType = FreeShapeAnnotation["shapeType"];
+
 export interface AnnotationUIState {
   // Group UI state
   selectedGroupIds: Set<string>;
@@ -28,7 +30,7 @@ export interface AnnotationUIState {
   selectedShapeIds: Set<string>;
   editingShapeAnnotation: FreeShapeAnnotation | null;
   isAddShapeMode: boolean;
-  pendingShapeType: "rectangle" | "circle" | "line";
+  pendingShapeType: ShapeAnnotationType;
 }
 
 export interface AnnotationUIActions {
@@ -63,9 +65,9 @@ export interface AnnotationUIActions {
   // Shape annotation editing
   setEditingShapeAnnotation: (annotation: FreeShapeAnnotation | null) => void;
   closeShapeEditor: () => void;
-  setAddShapeMode: (enabled: boolean, shapeType?: "rectangle" | "circle" | "line") => void;
+  setAddShapeMode: (enabled: boolean, shapeType?: ShapeAnnotationType) => void;
   disableAddShapeMode: () => void;
-  setPendingShapeType: (shapeType: "rectangle" | "circle" | "line") => void;
+  setPendingShapeType: (shapeType: ShapeAnnotationType) => void;
 
   // Utility
   clearAllSelections: () => void;

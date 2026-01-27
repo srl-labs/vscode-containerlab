@@ -11,7 +11,7 @@ import { DEFAULT_LINE_LENGTH } from "../../../utils/annotations/constants";
 import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
-import { RotationHandle, LineEndHandle, LineStartHandle } from "./AnnotationHandles";
+import { LineResizeHandle, RotationHandle } from "./AnnotationHandles";
 
 // ============================================================================
 // Constants
@@ -321,23 +321,25 @@ function LineNode({
         nodeId={id}
       />
       {showHandles && annotationHandlers?.onUpdateFreeShapeStartPosition && (
-        <LineStartHandle
+        <LineResizeHandle
           nodeId={id}
           startPosition={startPosition}
           endPosition={endPosition}
           lineStartOffset={lineStartInNode}
           rotation={rotation}
-          onStartPositionChange={annotationHandlers.onUpdateFreeShapeStartPosition}
+          mode="start"
+          onPositionChange={annotationHandlers.onUpdateFreeShapeStartPosition}
         />
       )}
       {showHandles && annotationHandlers?.onUpdateFreeShapeEndPosition && (
-        <LineEndHandle
+        <LineResizeHandle
           nodeId={id}
           startPosition={startPosition}
           endPosition={endPosition}
           lineStartOffset={lineStartInNode}
           rotation={rotation}
-          onEndPositionChange={annotationHandlers.onUpdateFreeShapeEndPosition}
+          mode="end"
+          onPositionChange={annotationHandlers.onUpdateFreeShapeEndPosition}
         />
       )}
       {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (

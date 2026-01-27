@@ -1,23 +1,23 @@
 import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import { useDerivedAnnotations } from "./useDerivedAnnotations";
-import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
-import { useMode, useIsLocked } from "../../stores/topoViewerStore";
-import { findDeepestGroupAtPosition, generateGroupId } from "./groupUtils";
-
-import type { AnnotationContextValue } from "./annotationTypes";
-import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHelpers";
-import { useGroupAnnotations } from "./useGroupAnnotations";
-import { useTextAnnotations } from "./useTextAnnotations";
-import { useShapeAnnotations } from "./useShapeAnnotations";
 import {
   saveAllNodeGroupMemberships,
   saveAnnotationNodesFromGraph,
   saveNodeGroupMembership
 } from "../../services";
+import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
 import { useGraphStore } from "../../stores/graphStore";
-import { isAnnotationNodeType } from "../../utils/annotationNodeConverters";
+import { useIsLocked, useMode } from "../../stores/topoViewerStore";
+import { collectNodeGroupMemberships } from "../../utils/groupMembership";
+
+import type { AnnotationContextValue } from "./annotationTypes";
+import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHelpers";
+import { findDeepestGroupAtPosition, generateGroupId } from "./groupUtils";
+import { useDerivedAnnotations } from "./useDerivedAnnotations";
+import { useGroupAnnotations } from "./useGroupAnnotations";
+import { useShapeAnnotations } from "./useShapeAnnotations";
+import { useTextAnnotations } from "./useTextAnnotations";
 
 interface UseAnnotationsParams {
   rfInstance: ReactFlowInstance | null;
@@ -130,16 +130,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
         derived.removeNodeFromGroup(memberId);
       }
 
-      const memberships = useGraphStore
-        .getState()
-        .nodes.filter((node) => !isAnnotationNodeType(node.type))
-        .map((node) => {
-          const data = node.data as Record<string, unknown> | undefined;
-          const groupId = data?.groupId as string | undefined;
-          return groupId ? { id: node.id, groupId } : null;
-        })
-        .filter((entry): entry is { id: string; groupId: string } => Boolean(entry));
-
+      const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
       void saveAllNodeGroupMemberships(memberships);
     }
 

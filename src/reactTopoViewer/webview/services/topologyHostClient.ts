@@ -78,7 +78,6 @@ function ensureListener(): void {
         }
         pendingRequest.resolve(data as TopologyHostResponseMessage);
         pending.delete(data.requestId);
-        return;
       }
     },
     (event) => {

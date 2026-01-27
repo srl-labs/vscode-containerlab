@@ -4,6 +4,8 @@
  */
 import type { Node, Edge } from "@xyflow/react";
 
+import type { TextStyle } from "./annotationStyles";
+
 // ============================================================================
 // Node Data Types
 // ============================================================================
@@ -68,20 +70,8 @@ export interface GroupNodeData {
 /**
  * Node data for free text annotations
  */
-export interface FreeTextNodeData {
+export interface FreeTextNodeData extends TextStyle {
   text: string;
-  fontSize?: number;
-  fontColor?: string;
-  backgroundColor?: string;
-  fontWeight?: "normal" | "bold";
-  fontStyle?: "normal" | "italic";
-  textDecoration?: "none" | "underline";
-  textAlign?: "left" | "center" | "right";
-  fontFamily?: string;
-  rotation?: number;
-  width?: number;
-  height?: number;
-  roundedBackground?: boolean;
   [key: string]: unknown;
 }
 

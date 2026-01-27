@@ -19,6 +19,7 @@ import { applyGroupMembershipToNodes } from "../utils/groupMembership";
 import { annotationsToNodes } from "../utils/annotationNodeConverters";
 import { pruneEdgeAnnotations } from "../utils/edgeAnnotations";
 import { parseEndpointLabelOffset } from "../utils/endpointLabelOffset";
+
 import { setHostRevision } from "./topologyHostClient";
 
 function buildMergedNodes(
@@ -43,15 +44,25 @@ function buildMergedNodes(
 }
 
 function normalizeAnnotations(annotations?: TopologyAnnotations): Required<TopologyAnnotations> {
+  const {
+    freeTextAnnotations = [],
+    freeShapeAnnotations = [],
+    groupStyleAnnotations = [],
+    nodeAnnotations = [],
+    networkNodeAnnotations = [],
+    edgeAnnotations = [],
+    aliasEndpointAnnotations = [],
+    viewerSettings = {}
+  } = annotations ?? {};
   return {
-    freeTextAnnotations: annotations?.freeTextAnnotations ?? [],
-    freeShapeAnnotations: annotations?.freeShapeAnnotations ?? [],
-    groupStyleAnnotations: annotations?.groupStyleAnnotations ?? [],
-    nodeAnnotations: annotations?.nodeAnnotations ?? [],
-    networkNodeAnnotations: annotations?.networkNodeAnnotations ?? [],
-    edgeAnnotations: annotations?.edgeAnnotations ?? [],
-    aliasEndpointAnnotations: annotations?.aliasEndpointAnnotations ?? [],
-    viewerSettings: annotations?.viewerSettings ?? {}
+    freeTextAnnotations,
+    freeShapeAnnotations,
+    groupStyleAnnotations,
+    nodeAnnotations,
+    networkNodeAnnotations,
+    edgeAnnotations,
+    aliasEndpointAnnotations,
+    viewerSettings
   };
 }
 

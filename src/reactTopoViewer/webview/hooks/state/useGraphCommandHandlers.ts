@@ -6,17 +6,21 @@ import type { Node } from "@xyflow/react";
 
 import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../shared/types/graph";
 import type { NodeSaveData } from "../../../shared/io/NodePersistenceIO";
-import type { LinkSaveData } from "../../../shared/io/LinkPersistenceIO";
-
 import {
-  createNode,
   createLink,
-  deleteNode,
+  createNode,
   deleteLink,
-  saveNetworkNodesFromGraph,
-  saveAnnotationNodesFromGraph
+  deleteNode,
+  saveAnnotationNodesFromGraph,
+  saveNetworkNodesFromGraph
 } from "../../services";
 import { isAnnotationNodeType } from "../../utils/annotationNodeConverters";
+import { toLinkSaveData } from "../../utils/linkSaveData";
+import {
+  BRIDGE_NETWORK_TYPES,
+  SPECIAL_NETWORK_TYPES,
+  getNetworkType
+} from "../../utils/networkNodeTypes";
 
 // ============================================================================
 // Types
@@ -62,17 +66,6 @@ interface GraphHandlersResult {
 // Helpers
 // ============================================================================
 
-const SPECIAL_NETWORK_TYPES = new Set([
-  "host",
-  "mgmt-net",
-  "macvlan",
-  "vxlan",
-  "vxlan-stitch",
-  "dummy"
-]);
-
-const BRIDGE_NETWORK_TYPES = new Set(["bridge", "ovs-bridge"]);
-
 type NodeElementData = Record<string, unknown> & { extraData?: Record<string, unknown> };
 
 const NODE_FALLBACK_PROPS = [
@@ -110,29 +103,6 @@ function toNodeSaveData(node: TopoNode): NodeSaveData {
     position: node.position,
     extraData: mergeNodeExtraData(data)
   };
-}
-
-function toLinkSaveData(edge: TopoEdge): LinkSaveData {
-  const data = edge.data as TopologyEdgeData | undefined;
-  return {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceEndpoint: data?.sourceEndpoint,
-    targetEndpoint: data?.targetEndpoint,
-    ...(data?.extraData ? { extraData: data.extraData } : {})
-  };
-}
-
-function getNetworkType(data: Record<string, unknown>): string | undefined {
-  const kind = data.kind;
-  if (typeof kind === "string") return kind;
-  const nodeType = data.nodeType;
-  if (typeof nodeType === "string") return nodeType;
-  const extraData = data.extraData as Record<string, unknown> | undefined;
-  const extraKind = extraData?.kind;
-  if (typeof extraKind === "string") return extraKind;
-  return undefined;
 }
 
 function isSpecialNetworkNode(node: TopoNode): boolean {
@@ -188,21 +158,27 @@ export function useGraphHandlersWithContext(
   );
 
   const handleNodeCreatedCallback = React.useCallback(
-    (nodeId: string, nodeElement: TopoNode, _position: { x: number; y: number }) => {
-      void nodeId;
-      addNode(nodeElement);
+    (nodeId: string, nodeElement: TopoNode, position: { x: number; y: number }) => {
+      const nextNode =
+        nodeElement.id === nodeId &&
+        nodeElement.position.x === position.x &&
+        nodeElement.position.y === position.y
+          ? nodeElement
+          : { ...nodeElement, id: nodeId, position };
 
-      if (isAnnotationNodeType(nodeElement.type)) {
+      addNode(nextNode);
+
+      if (isAnnotationNodeType(nextNode.type)) {
         void saveAnnotationNodesFromGraph();
         return;
       }
 
-      if (isSpecialNetworkNode(nodeElement) && !isBridgeNetworkNode(nodeElement)) {
+      if (isSpecialNetworkNode(nextNode) && !isBridgeNetworkNode(nextNode)) {
         void saveNetworkNodesFromGraph();
         return;
       }
 
-      void createNode(toNodeSaveData(nodeElement));
+      void createNode(toNodeSaveData(nextNode));
     },
     [addNode]
   );

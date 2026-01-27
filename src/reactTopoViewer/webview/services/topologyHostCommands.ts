@@ -9,9 +9,9 @@ import type {
   TopologyHostResponseMessage,
   TopologySnapshot
 } from "../../shared/types/messages";
-import { dispatchTopologyCommand, requestSnapshot } from "./topologyHostClient";
+
+import { dispatchTopologyCommand, requestSnapshot, setHostRevision } from "./topologyHostClient";
 import { applySnapshotToStores } from "./topologyHostSync";
-import { setHostRevision } from "./topologyHostClient";
 
 interface ExecuteOptions {
   applySnapshot?: boolean;

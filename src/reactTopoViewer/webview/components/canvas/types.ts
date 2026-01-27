@@ -3,159 +3,45 @@
  */
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
+import type {
+  CloudNodeData,
+  FreeShapeNodeData,
+  FreeTextNodeData,
+  GroupNodeData,
+  RFNodeData,
+  RFNodeType,
+  TopoEdge,
+  TopoNode,
+  TopologyEdgeData,
+  TopologyNodeData,
+  TopologyRFNode,
+  CloudRFNode,
+  FreeTextRFNode,
+  FreeShapeRFNode,
+  GroupRFNode
+} from "../../../shared/types/graph";
+import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP, SELECTION_COLOR } from "../../../shared/types/graph";
+
 /** Edge label rendering mode */
 export type EdgeLabelMode = "show-all" | "on-select" | "hide";
-import {
-  type TopoNode,
-  type TopoEdge,
-  SELECTION_COLOR,
-  DEFAULT_ICON_COLOR,
-  ROLE_SVG_MAP
-} from "../../../shared/types/graph";
 
-/**
- * Node data for topology nodes (routers, switches, etc.)
- */
-export interface TopologyNodeData {
-  label: string;
-  role: string;
-  kind?: string;
-  image?: string;
-  iconColor?: string;
-  iconCornerRadius?: number;
-  state?: string;
-  mgmtIpv4Address?: string;
-  mgmtIpv6Address?: string;
-  longname?: string;
-  extraData?: Record<string, unknown>;
-  [key: string]: unknown;
-}
+export type {
+  TopologyNodeData,
+  CloudNodeData,
+  FreeTextNodeData,
+  FreeShapeNodeData,
+  GroupNodeData,
+  TopologyEdgeData,
+  RFNodeData,
+  RFNodeType,
+  TopologyRFNode,
+  CloudRFNode,
+  FreeTextRFNode,
+  FreeShapeRFNode,
+  GroupRFNode
+};
 
-/**
- * Node data for cloud/external endpoint nodes
- */
-export interface CloudNodeData {
-  label: string;
-  nodeType: "host" | "mgmt-net" | "macvlan" | "vxlan" | "bridge";
-  extraData?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-/**
- * Node data for free text annotations
- */
-export interface FreeTextNodeData {
-  text: string;
-  fontSize?: number;
-  fontColor?: string;
-  backgroundColor?: string;
-  fontWeight?: "normal" | "bold";
-  fontStyle?: "normal" | "italic";
-  textDecoration?: "none" | "underline";
-  textAlign?: "left" | "center" | "right";
-  fontFamily?: string;
-  rotation?: number;
-  width?: number;
-  height?: number;
-  roundedBackground?: boolean;
-  [key: string]: unknown;
-}
-
-/**
- * Node data for free shape annotations
- */
-export interface FreeShapeNodeData {
-  shapeType: "rectangle" | "circle" | "line";
-  width?: number;
-  height?: number;
-  /** Absolute end position for lines (for updating annotation state) */
-  endPosition?: { x: number; y: number };
-  /** Relative end position for lines (end - start) */
-  relativeEndPosition?: { x: number; y: number };
-  /** Start position for lines (absolute, for handle updates) */
-  startPosition?: { x: number; y: number };
-  /** Line start position within the node's bounding box */
-  lineStartInNode?: { x: number; y: number };
-  fillColor?: string;
-  fillOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dashed" | "dotted";
-  rotation?: number;
-  lineStartArrow?: boolean;
-  lineEndArrow?: boolean;
-  lineArrowSize?: number;
-  cornerRadius?: number;
-  [key: string]: unknown;
-}
-
-/**
- * Node data for group annotations
- */
-export interface GroupNodeData {
-  name: string;
-  label?: string;
-  level?: string;
-  width?: number;
-  height?: number;
-  backgroundColor?: string;
-  backgroundOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dashed" | "dotted" | "double";
-  borderRadius?: number;
-  labelColor?: string;
-  labelPosition?: string;
-  members?: string[];
-  parentId?: string;
-  zIndex?: number;
-  [key: string]: unknown;
-}
-
-/**
- * Edge data for topology edges (links)
- */
-export interface TopologyEdgeData {
-  sourceEndpoint: string;
-  targetEndpoint: string;
-  linkStatus?: "up" | "down" | "unknown";
-  extraData?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-/**
- * Union type for all node data types
- */
-export type RFNodeData =
-  | TopologyNodeData
-  | CloudNodeData
-  | FreeTextNodeData
-  | FreeShapeNodeData
-  | GroupNodeData;
-
-/**
- * Custom node types used in the topology viewer
- */
-export type RFNodeType =
-  | "topology-node"
-  | "cloud-node"
-  | "free-text-node"
-  | "free-shape-node"
-  | "group-node";
-
-/**
- * React Flow node with topology data
- */
-export type TopologyRFNode = Node<TopologyNodeData, "topology-node">;
-export type CloudRFNode = Node<CloudNodeData, "cloud-node">;
-export type FreeTextRFNode = Node<FreeTextNodeData, "free-text-node">;
-export type FreeShapeRFNode = Node<FreeShapeNodeData, "free-shape-node">;
-export type GroupRFNode = Node<GroupNodeData, "group-node">;
-
-/**
- * React Flow edge with topology data
- */
-export type TopologyRFEdge = Edge<TopologyEdgeData>;
+export type TopologyRFEdge = TopoEdge;
 
 /**
  * Ref interface for ReactFlowCanvas component

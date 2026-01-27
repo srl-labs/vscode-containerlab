@@ -24,6 +24,18 @@ function isLayoutableNode(node: Node): boolean {
   return LAYOUTABLE_NODE_TYPES.includes(node.type || "");
 }
 
+function applyPositionMap(nodes: Node[], positions: Map<string, { x: number; y: number }>): Node[] {
+  if (positions.size === 0) return nodes;
+  return nodes.map((node) => {
+    const newPos = positions.get(node.id);
+    if (!newPos) return node;
+    return {
+      ...node,
+      position: newPos
+    };
+  });
+}
+
 /**
  * Available layout types
  */
@@ -143,16 +155,7 @@ export function applyForceLayout(
   }
 
   // Return nodes with updated positions
-  return nodes.map((node) => {
-    const newPos = nodePositions.get(node.id);
-    if (newPos) {
-      return {
-        ...node,
-        position: newPos
-      };
-    }
-    return node;
-  });
+  return applyPositionMap(nodes, nodePositions);
 }
 
 /**
@@ -184,16 +187,7 @@ export function applyGridLayout(nodes: Node[], options: LayoutOptions = {}): Nod
   });
 
   // Return nodes with updated positions
-  return nodes.map((node) => {
-    const newPos = nodePositions.get(node.id);
-    if (newPos) {
-      return {
-        ...node,
-        position: newPos
-      };
-    }
-    return node;
-  });
+  return applyPositionMap(nodes, nodePositions);
 }
 
 /**
