@@ -7,8 +7,7 @@ import { EdgeLabelRenderer, useStore, type EdgeProps } from "@xyflow/react";
 
 import type { TopologyEdgeData } from "../types";
 import { SELECTION_COLOR } from "../types";
-import { useEdgeInfo } from "../../../context/EdgeInfoContext";
-import { useEdgeRenderConfig } from "../../../context/EdgeRenderConfigContext";
+import { useEdgeInfo, useEdgeRenderConfig } from "../../../context/CanvasContext";
 
 // Edge style constants
 const EDGE_COLOR_DEFAULT = "#969799";
@@ -212,7 +211,7 @@ function getLabelPosition(
   };
 }
 
-// ParallelEdgeInfo type is now imported from EdgeInfoContext
+// Parallel edge info is now provided via CanvasContext
 
 /**
  * Calculate the bezier control point for a curved edge
@@ -318,7 +317,7 @@ function calculateLoopEdgeGeometry(
   };
 }
 
-// Loop edge info is now pre-computed in EdgeInfoContext
+// Loop edge info is now pre-computed in CanvasContext
 
 // Constant label style (extracted for performance - avoids object creation per render)
 const LABEL_STYLE_BASE: React.CSSProperties = {

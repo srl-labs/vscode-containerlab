@@ -3,16 +3,17 @@
  * Uses GraphContext for node data and viewport operations.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import { BasePanel } from "../ui/editor/BasePanel";
 import { useGraph } from "../../context/GraphContext";
-import { useViewport } from "../../context/ViewportContext";
 import { searchNodes as searchNodesUtil, getNodesBoundingBox } from "../../utils/graphQueryUtils";
 import type { TopoNode } from "../../../shared/types/graph";
 
 interface FindNodePanelProps {
   isVisible: boolean;
   onClose: () => void;
+  rfInstance: ReactFlowInstance | null;
 }
 
 /** Creates a wildcard filter regex */
@@ -97,7 +98,7 @@ function usePanelFocus(isVisible: boolean, inputRef: React.RefObject<HTMLInputEl
 /** Hook for search state management */
 function useSearchState(
   nodes: TopoNode[],
-  rfInstance: ReturnType<typeof useViewport>["rfInstance"],
+  rfInstance: ReactFlowInstance | null,
   isVisible: boolean
 ) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -150,9 +151,8 @@ function useSearchState(
   return { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear };
 }
 
-export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose }) => {
+export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, rfInstance }) => {
   const { nodes } = useGraph();
-  const { rfInstance } = useViewport();
   const inputRef = useRef<HTMLInputElement>(null);
   usePanelFocus(isVisible, inputRef);
   const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(

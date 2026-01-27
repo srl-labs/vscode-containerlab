@@ -8,8 +8,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { TopologyNodeData } from "../types";
 import { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../types";
 import { generateEncodedSVG, type NodeType } from "../../../utils/SvgGenerator";
-import { useLinkCreationContext } from "../../../context/LinkCreationContext";
-import { useNodeRenderConfig } from "../../../context/NodeRenderConfigContext";
+import { useLinkCreationContext, useNodeRenderConfig } from "../../../context/CanvasContext";
 
 /**
  * Map role to SVG node type

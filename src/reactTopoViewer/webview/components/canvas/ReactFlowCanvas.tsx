@@ -29,14 +29,8 @@ import "@xyflow/react/dist/style.css";
 
 import { useTopoViewer } from "../../context/TopoViewerContext";
 import { useGraph } from "../../context/GraphContext";
-import { LinkCreationProvider } from "../../context/LinkCreationContext";
-import { AnnotationHandlersProvider } from "../../context/AnnotationHandlersContext";
-import { EdgeInfoProvider } from "../../context/EdgeInfoContext";
-import {
-  EdgeRenderConfigProvider,
-  type EdgeLabelMode
-} from "../../context/EdgeRenderConfigContext";
-import { NodeRenderConfigProvider } from "../../context/NodeRenderConfigContext";
+import { CanvasProvider } from "../../context/CanvasContext";
+import type { EdgeLabelMode } from "../../context/canvasTypes";
 import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 import {
   useDeleteHandlers,
@@ -509,66 +503,59 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     return (
       <div style={canvasStyle} className="react-flow-canvas">
-        <NodeRenderConfigProvider value={nodeRenderConfig}>
-          <EdgeRenderConfigProvider value={edgeRenderConfig}>
-            <EdgeInfoProvider>
-              <AnnotationHandlersProvider handlers={annotationHandlers}>
-                <LinkCreationProvider linkSourceNode={linkSourceNode}>
-                  <ReactFlow
-                    nodes={allNodes}
-                    edges={allEdges}
-                    nodeTypes={nodeTypes}
-                    edgeTypes={edgeTypes}
-                    onNodesChange={handlers.handleNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onInit={wrappedOnInit}
-                    onNodeClick={wrappedOnNodeClick}
-                    onNodeDoubleClick={wrappedOnNodeDoubleClick}
-                    onNodeDragStart={handleNodeDragStart}
-                    onNodeDrag={handleNodeDrag}
-                    onNodeDragStop={handleNodeDragStop}
-                    onNodeContextMenu={handlers.onNodeContextMenu}
-                    onEdgeClick={handlers.onEdgeClick}
-                    onEdgeDoubleClick={handlers.onEdgeDoubleClick}
-                    onEdgeContextMenu={handlers.onEdgeContextMenu}
-                    onPaneClick={wrappedOnPaneClick}
-                    onPaneContextMenu={handlers.onPaneContextMenu}
-                    onConnect={handlers.onConnect}
-                    onSelectionChange={handlers.onSelectionChange}
-                    connectionLineComponent={CustomConnectionLine}
-                    fitView
-                    fitViewOptions={fitViewOptions}
-                    defaultViewport={defaultViewport}
-                    minZoom={0.1}
-                    maxZoom={Infinity}
-                    onlyRenderVisibleElements={!isLowDetail}
-                    selectionMode={SelectionMode.Partial}
-                    selectNodesOnDrag={false}
-                    panOnDrag={!isInAddMode}
-                    selectionOnDrag={!isInAddMode}
-                    selectionKeyCode="Shift"
-                    connectionMode={ConnectionMode.Loose}
-                    proOptions={proOptions}
-                    deleteKeyCode={null}
-                    multiSelectionKeyCode="Shift"
-                    nodesDraggable={state.mode === "edit" && !state.isLocked}
-                    nodesConnectable={state.mode === "edit" && !state.isLocked}
-                    elementsSelectable
-                  >
-                    {!isLowDetail && (
-                      <Background
-                        variant={BackgroundVariant.Dots}
-                        gap={GRID_SIZE}
-                        size={1}
-                        color="#555"
-                      />
-                    )}
-                  </ReactFlow>
-                </LinkCreationProvider>
-              </AnnotationHandlersProvider>
-            </EdgeInfoProvider>
-          </EdgeRenderConfigProvider>
-        </NodeRenderConfigProvider>
+        <CanvasProvider
+          edges={allEdges}
+          linkSourceNode={linkSourceNode}
+          edgeRenderConfig={edgeRenderConfig}
+          nodeRenderConfig={nodeRenderConfig}
+          annotationHandlers={annotationHandlers}
+        >
+          <ReactFlow
+            nodes={allNodes}
+            edges={allEdges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={handlers.handleNodesChange}
+            onEdgesChange={onEdgesChange}
+            onInit={wrappedOnInit}
+            onNodeClick={wrappedOnNodeClick}
+            onNodeDoubleClick={wrappedOnNodeDoubleClick}
+            onNodeDragStart={handleNodeDragStart}
+            onNodeDrag={handleNodeDrag}
+            onNodeDragStop={handleNodeDragStop}
+            onNodeContextMenu={handlers.onNodeContextMenu}
+            onEdgeClick={handlers.onEdgeClick}
+            onEdgeDoubleClick={handlers.onEdgeDoubleClick}
+            onEdgeContextMenu={handlers.onEdgeContextMenu}
+            onPaneClick={wrappedOnPaneClick}
+            onPaneContextMenu={handlers.onPaneContextMenu}
+            onConnect={handlers.onConnect}
+            onSelectionChange={handlers.onSelectionChange}
+            connectionLineComponent={CustomConnectionLine}
+            fitView
+            fitViewOptions={fitViewOptions}
+            defaultViewport={defaultViewport}
+            minZoom={0.1}
+            maxZoom={Infinity}
+            onlyRenderVisibleElements={!isLowDetail}
+            selectionMode={SelectionMode.Partial}
+            selectNodesOnDrag={false}
+            panOnDrag={!isInAddMode}
+            selectionOnDrag={!isInAddMode}
+            selectionKeyCode="Shift"
+            connectionMode={ConnectionMode.Loose}
+            proOptions={proOptions}
+            deleteKeyCode={null}
+            multiSelectionKeyCode="Shift"
+            nodesDraggable={state.mode === "edit" && !state.isLocked}
+            nodesConnectable={state.mode === "edit" && !state.isLocked}
+            elementsSelectable
+          >
+            {!isLowDetail && (
+              <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
+            )}
+          </ReactFlow>
+        </CanvasProvider>
 
         <ContextMenu
           isVisible={handlers.contextMenu.type !== null}

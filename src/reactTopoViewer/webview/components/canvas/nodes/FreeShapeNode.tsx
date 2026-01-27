@@ -9,7 +9,7 @@ import type { FreeShapeNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { DEFAULT_LINE_LENGTH } from "../../../utils/annotations/constants";
 import { useTopoViewer } from "../../../context/TopoViewerContext";
-import { useAnnotationHandlers } from "../../../context/AnnotationHandlersContext";
+import { useAnnotationHandlers } from "../../../context/CanvasContext";
 
 import { RotationHandle, LineEndHandle, LineStartHandle } from "./AnnotationHandles";
 

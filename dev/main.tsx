@@ -15,7 +15,6 @@
  */
 import { createRoot, type Root as ReactRoot } from "react-dom/client";
 import { App } from "@webview/App";
-import { TopoViewerProvider } from "@webview/context/TopoViewerContext";
 import type { CustomNodeTemplate } from "@shared/types/editors";
 import "@webview/styles/tailwind.css";
 
@@ -276,11 +275,8 @@ function renderApp(initialData: InitialData): void {
   renderKey++;
 
   // Re-render with new key - this forces a full remount with fresh state
-  reactRoot.render(
-    <TopoViewerProvider key={renderKey} initialData={initialData}>
-      <App />
-    </TopoViewerProvider>
-  );
+  // App component handles AppProvider internally
+  reactRoot.render(<App key={renderKey} initialData={initialData} />);
 }
 
 // ============================================================================

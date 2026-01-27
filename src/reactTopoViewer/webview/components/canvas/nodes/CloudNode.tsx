@@ -7,8 +7,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { CloudNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { generateEncodedSVG } from "../../../utils/SvgGenerator";
-import { useLinkCreationContext } from "../../../context/LinkCreationContext";
-import { useNodeRenderConfig } from "../../../context/NodeRenderConfigContext";
+import { useLinkCreationContext, useNodeRenderConfig } from "../../../context/CanvasContext";
 
 /**
  * Get icon color based on node type

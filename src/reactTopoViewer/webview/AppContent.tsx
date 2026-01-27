@@ -133,7 +133,8 @@ export const AppContent: React.FC<AppContentProps> = ({
           }}
           findNode={{
             isVisible: panelVisibility.showFindNodePanel,
-            onClose: panelVisibility.handleCloseFindNode
+            onClose: panelVisibility.handleCloseFindNode,
+            rfInstance
           }}
           svgExport={{
             isVisible: panelVisibility.showSvgExportPanel,

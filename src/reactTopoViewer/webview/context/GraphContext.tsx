@@ -4,7 +4,7 @@
  * This context owns the React Flow nodes/edges state and provides
  * all graph manipulation operations. React Flow is the source of truth.
  */
-import React, { createContext, useContext, useCallback, useMemo, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useEffect, useRef } from "react";
 import { useNodesState, useEdgesState } from "@xyflow/react";
 import type { Node, Edge, OnNodesChange, OnEdgesChange } from "@xyflow/react";
 
@@ -21,6 +21,7 @@ import { pruneEdgeAnnotations } from "../utils/edgeAnnotations";
 import { annotationsToNodes } from "../utils/annotationNodeConverters";
 import { applyGroupMembershipToNodes } from "../utils/groupMembership";
 import { isServicesInitialized, getTopologyIO } from "../services";
+import { useAppActionsSelector, useAppSelector } from "./AppContext";
 
 /**
  * Graph state interface
@@ -61,15 +62,12 @@ export interface GraphActions {
 /**
  * Combined context value
  */
-interface GraphContextValue extends GraphState, GraphActions {}
-
-const GraphContext = createContext<GraphContextValue | undefined>(undefined);
+export type GraphContextValue = GraphState & GraphActions;
 
 /**
- * Props for GraphProvider
+ * Props for graph model
  */
-interface GraphProviderProps {
-  children: React.ReactNode;
+export interface GraphModelProps {
   initialNodes?: TopoNode[];
   initialEdges?: TopoEdge[];
   onEdgeAnnotationsUpdate?: (annotations: EdgeAnnotation[]) => void;
@@ -269,18 +267,17 @@ function handleEdgeStatsUpdateMessage(
 }
 
 // ============================================================================
-// GraphProvider Component
+// Graph Model
 // ============================================================================
 
 /**
- * GraphProvider - Provides React Flow state management
+ * Graph model - Provides React Flow state management
  */
-export const GraphProvider: React.FC<GraphProviderProps> = ({
-  children,
+export function useGraphModel({
   initialNodes = [],
   initialEdges = [],
   onEdgeAnnotationsUpdate
-}) => {
+}: GraphModelProps): { state: GraphState; actions: GraphActions } {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges as Edge[]);
 
@@ -487,10 +484,10 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
     }
   }, [initialNodes]);
 
-  const value = useMemo<GraphContextValue>(
+  const state = useMemo<GraphState>(() => ({ nodes, edges }), [nodes, edges]);
+
+  const actions = useMemo<GraphActions>(
     () => ({
-      nodes,
-      edges,
       setNodes,
       setEdges,
       onNodesChange,
@@ -509,8 +506,6 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
       updateEdgeData
     }),
     [
-      nodes,
-      edges,
       setNodes,
       setEdges,
       onNodesChange,
@@ -530,52 +525,28 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
     ]
   );
 
-  return <GraphContext.Provider value={value}>{children}</GraphContext.Provider>;
-};
+  return { state, actions };
+}
 
 /**
  * Hook to access graph state and actions
  */
 export function useGraph(): GraphContextValue {
-  const context = useContext(GraphContext);
-  if (!context) {
-    throw new Error("useGraph must be used within a GraphProvider");
-  }
-  return context;
+  const graphState = useAppSelector((state) => state.graph);
+  const graphActions = useAppActionsSelector((actions) => actions.graph);
+  return useMemo(() => ({ ...graphState, ...graphActions }), [graphState, graphActions]);
 }
 
 /**
  * Hook for graph state only (for components that only read)
  */
 export function useGraphState(): GraphState {
-  const { nodes, edges } = useGraph();
-  return useMemo(() => ({ nodes, edges }), [nodes, edges]);
+  return useAppSelector((state) => state.graph);
 }
 
 /**
  * Hook for graph actions only (stable reference)
  */
 export function useGraphActions(): GraphActions {
-  const context = useGraph();
-  return useMemo(
-    () => ({
-      setNodes: context.setNodes,
-      setEdges: context.setEdges,
-      onNodesChange: context.onNodesChange,
-      onEdgesChange: context.onEdgesChange,
-      addNode: context.addNode,
-      addEdge: context.addEdge,
-      removeNode: context.removeNode,
-      removeEdge: context.removeEdge,
-      removeNodeAndEdges: context.removeNodeAndEdges,
-      updateNodePositions: context.updateNodePositions,
-      updateNodeData: context.updateNodeData,
-      renameNode: context.renameNode,
-      updateNode: context.updateNode,
-      replaceNode: context.replaceNode,
-      updateEdge: context.updateEdge,
-      updateEdgeData: context.updateEdgeData
-    }),
-    [context]
-  );
+  return useAppActionsSelector((actions) => actions.graph);
 }

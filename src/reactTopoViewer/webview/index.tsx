@@ -5,7 +5,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
-import { TopoViewerProvider } from "./context/TopoViewerContext";
 import { log } from "./utils/logger";
 import "./styles/tailwind.css";
 import { PostMessageFsAdapter } from "./adapters";
@@ -78,9 +77,7 @@ async function bootstrap(): Promise<void> {
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <TopoViewerProvider initialData={initialData}>
-        <App />
-      </TopoViewerProvider>
+      <App initialData={initialData} />
     </React.StrictMode>
   );
 }

@@ -8,7 +8,6 @@ import { useCallback, useRef } from "react";
 import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
 import { useGraph } from "../../context/GraphContext";
-import { useViewport } from "../../context/ViewportContext";
 import { useUndoRedoContext } from "../../context/UndoRedoContext";
 import { log } from "../../utils/logger";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
@@ -56,6 +55,8 @@ interface ClipboardData {
 
 /** Options for useClipboard hook */
 export interface UseClipboardOptions {
+  /** React Flow instance for viewport calculations */
+  rfInstance?: ReactFlowInstance | null;
   /** Custom node creation callback (includes YAML persistence) */
   onNodeCreated?: (
     nodeId: string,
@@ -342,9 +343,8 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
  * @param options - Optional callbacks for node/edge creation that include persistence
  */
 export function useClipboard(options: UseClipboardOptions = {}): UseClipboardReturn {
-  const { onNodeCreated, onEdgeCreated, getNodeMembership, addNodeToGroup } = options;
+  const { onNodeCreated, onEdgeCreated, getNodeMembership, addNodeToGroup, rfInstance } = options;
   const { nodes, addNode, addEdge } = useGraph();
-  const { rfInstance } = useViewport();
   const { undoRedo } = useUndoRedoContext();
 
   const lastPasteTimeRef = useRef(0);
@@ -463,7 +463,7 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         return false;
       }
 
-      const pastePosition = calculatePastePosition(position, rfInstance);
+      const pastePosition = calculatePastePosition(position, rfInstance ?? null);
       pasteCounter++;
 
       // Get fresh nodes from React Flow instance to ensure we have the latest state

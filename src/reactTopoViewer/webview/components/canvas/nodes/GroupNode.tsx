@@ -7,7 +7,7 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import { SELECTION_COLOR } from "../types";
 import { useTopoViewer } from "../../../context/TopoViewerContext";
-import { useAnnotationHandlers } from "../../../context/AnnotationHandlersContext";
+import { useAnnotationHandlers } from "../../../context/CanvasContext";
 
 // ============================================================================
 // Types

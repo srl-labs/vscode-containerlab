@@ -3,7 +3,7 @@
  */
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
-import type { EdgeLabelMode } from "../../context/EdgeRenderConfigContext";
+import type { EdgeLabelMode } from "../../context/canvasTypes";
 import {
   type TopoNode,
   type TopoEdge,

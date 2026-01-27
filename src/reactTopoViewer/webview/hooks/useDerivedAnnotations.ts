@@ -22,7 +22,7 @@ import type {
   FreeShapeNodeData,
   GroupNodeData
 } from "../components/canvas/types";
-import { useGraph } from "../context/GraphContext";
+import type { GraphContextValue } from "../context/GraphContext";
 import {
   nodeToFreeText,
   nodeToFreeShape,
@@ -67,8 +67,8 @@ export interface UseDerivedAnnotationsReturn {
 /**
  * Hook to derive annotation data from GraphContext and provide mutation functions
  */
-export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
-  const { nodes, addNode, removeNode, updateNode, replaceNode } = useGraph();
+export function useDerivedAnnotations(graph: GraphContextValue): UseDerivedAnnotationsReturn {
+  const { nodes, addNode, removeNode, updateNode, replaceNode } = graph;
 
   // Derive groups from group-node type nodes
   const groups = useMemo(() => {

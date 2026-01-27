@@ -8,7 +8,7 @@
  * MUST pass explicitNodes/explicitEdges to commitChange to provide the
  * expected "after" state, since React state updates are async.
  */
-import React, { createContext, useContext, useMemo, useRef, useCallback } from "react";
+import { useMemo, useRef, useCallback } from "react";
 import type { Node } from "@xyflow/react";
 
 import {
@@ -18,8 +18,9 @@ import {
 } from "../hooks/state/useUndoRedo";
 import { persistSnapshotChange } from "../hooks/state/snapshotPersistence";
 
-import { useGraph } from "./GraphContext";
-import { useTopoViewerActions, useTopoViewerState } from "./TopoViewerContext";
+import type { EdgeAnnotation } from "../../shared/types/topology";
+import type { GraphActions, GraphState } from "./GraphContext";
+import { useAppSelector } from "./AppContext";
 
 /** Context value shape */
 interface UndoRedoContextValue {
@@ -27,19 +28,23 @@ interface UndoRedoContextValue {
   undoRedo: UseUndoRedoReturn;
 }
 
-const UndoRedoContext = createContext<UndoRedoContextValue | null>(null);
-
-/** Props for UndoRedoProvider */
-interface UndoRedoProviderProps {
+export interface UndoRedoModelProps {
   enabled: boolean;
-  children: React.ReactNode;
+  graphState: GraphState;
+  graphActions: GraphActions;
+  edgeAnnotations: EdgeAnnotation[];
+  setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
 }
 
-/** Provider component for undo/redo context */
-export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({ enabled, children }) => {
-  const { nodes, edges, setNodes, setEdges } = useGraph();
-  const { state } = useTopoViewerState();
-  const { setEdgeAnnotations } = useTopoViewerActions();
+export function useUndoRedoModel({
+  enabled,
+  graphState,
+  graphActions,
+  edgeAnnotations,
+  setEdgeAnnotations
+}: UndoRedoModelProps): UseUndoRedoReturn {
+  const { nodes, edges } = graphState;
+  const { setNodes, setEdges } = graphActions;
 
   // Use refs that are updated synchronously for persistence callbacks
   // These are needed because onPersistSnapshot is called after state updates
@@ -62,28 +67,18 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({ enabled, chi
     getEdges: () => edges,
     setNodes,
     setEdges,
-    getEdgeAnnotations: () => state.edgeAnnotations,
+    getEdgeAnnotations: () => edgeAnnotations,
     setEdgeAnnotations,
     onPersistSnapshot: handlePersistSnapshot
   });
 
-  const value = useMemo<UndoRedoContextValue>(
-    () => ({
-      undoRedo
-    }),
-    [undoRedo]
-  );
-
-  return <UndoRedoContext.Provider value={value}>{children}</UndoRedoContext.Provider>;
-};
+  return undoRedo;
+}
 
 /** Hook to access undo/redo context */
 export function useUndoRedoContext(): UndoRedoContextValue {
-  const context = useContext(UndoRedoContext);
-  if (!context) {
-    throw new Error("useUndoRedoContext must be used within an UndoRedoProvider");
-  }
-  return context;
+  const undoRedo = useAppSelector((state) => state.undoRedo);
+  return useMemo(() => ({ undoRedo }), [undoRedo]);
 }
 
 /** Hook to just get the undoRedo object (convenience) */

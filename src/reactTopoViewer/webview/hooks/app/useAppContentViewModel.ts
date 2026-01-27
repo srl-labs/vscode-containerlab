@@ -484,6 +484,7 @@ export function useAppContentViewModel({
       beginBatch: undoRedo.beginBatch,
       endBatch: undoRedo.endBatch
     },
+    rfInstance,
     handleNodeCreatedCallback,
     handleEdgeCreated
   });

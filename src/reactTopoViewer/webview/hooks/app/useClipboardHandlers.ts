@@ -5,6 +5,7 @@
  * using the React Flow clipboard hook.
  */
 import React from "react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import { useClipboard, type UseClipboardOptions } from "../clipboard";
 import type {
@@ -47,6 +48,7 @@ export interface ClipboardHandlersConfig {
     beginBatch: () => void;
     endBatch: () => void;
   };
+  rfInstance?: ReactFlowInstance | null;
   /** Callback for node creation (includes YAML persistence and undo) */
   handleNodeCreatedCallback?: (
     nodeId: string,
@@ -87,17 +89,19 @@ export interface ClipboardHandlersReturn {
  * Hook that provides debounced clipboard operations.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { annotations, handleNodeCreatedCallback, handleEdgeCreated } = config;
+  const { annotations, handleNodeCreatedCallback, handleEdgeCreated, rfInstance } = config;
 
   // Build clipboard options with persistence callbacks
   const clipboardOptions: UseClipboardOptions = React.useMemo(
     () => ({
+      rfInstance,
       onNodeCreated: handleNodeCreatedCallback,
       onEdgeCreated: handleEdgeCreated,
       getNodeMembership: annotations.getNodeMembership,
       addNodeToGroup: annotations.addNodeToGroup
     }),
     [
+      rfInstance,
       handleNodeCreatedCallback,
       handleEdgeCreated,
       annotations.getNodeMembership,

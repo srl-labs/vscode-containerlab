@@ -8,27 +8,17 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { EdgeAnnotation } from "../shared/types/topology";
-
 import type { CanvasRef } from "./hooks/ui/useAppState";
-import type { TopoViewerState } from "./context/TopoViewerContext";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import type { FloatingActionPanelHandle } from "./components/panels";
-import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
-import { GraphProvider } from "./context/GraphContext";
-import { UndoRedoProvider } from "./context/UndoRedoContext";
-import { AnnotationProvider } from "./context/AnnotationContext";
-import { ViewportProvider } from "./context/ViewportContext";
+import { AppProvider } from "./context/AppContext";
 import { useLayoutControls } from "./hooks/ui/useAppState";
-import { useInitialGraphData } from "./hooks/app/useInitialGraphData";
+import { useInitialGraphData, type InitialGraphData } from "./hooks/app/useInitialGraphData";
 import { AppContent } from "./AppContent";
 
 /** Main App component with providers */
-export const App: React.FC = () => {
-  const { state } = useTopoViewerState();
-  const { setEdgeAnnotations } = useTopoViewerActions();
-
-  const { initialNodes, initialEdges } = useInitialGraphData();
+export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData }) => {
+  const { initialNodes, initialEdges } = useInitialGraphData(initialData);
 
   const reactFlowRef = React.useRef<ReactFlowCanvasRef>(null);
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance | null>(null);
@@ -36,59 +26,25 @@ export const App: React.FC = () => {
   const layoutControls = useLayoutControls(
     reactFlowRef as unknown as React.RefObject<CanvasRef | null>
   );
-
-  const handleEdgeAnnotationsUpdate = React.useCallback(
-    (annotations: EdgeAnnotation[]) => {
-      setEdgeAnnotations(annotations);
-    },
-    [setEdgeAnnotations]
-  );
+  const handleLockedAction = React.useCallback(() => {
+    floatingPanelRef.current?.triggerShake();
+  }, []);
 
   return (
-    <GraphProvider
+    <AppProvider
+      initialData={initialData}
       initialNodes={initialNodes}
       initialEdges={initialEdges}
-      onEdgeAnnotationsUpdate={handleEdgeAnnotationsUpdate}
+      rfInstance={rfInstance}
+      onLockedAction={handleLockedAction}
     >
-      <GraphProviderConsumer
-        state={state}
-        rfInstance={rfInstance}
-        setRfInstance={setRfInstance}
+      <AppContent
         floatingPanelRef={floatingPanelRef}
-        layoutControls={layoutControls}
         reactFlowRef={reactFlowRef}
+        rfInstance={rfInstance}
+        layoutControls={layoutControls}
+        onInit={setRfInstance}
       />
-    </GraphProvider>
-  );
-};
-
-/** Intermediate component to access GraphContext for AnnotationProvider */
-const GraphProviderConsumer: React.FC<{
-  state: TopoViewerState;
-  rfInstance: ReactFlowInstance | null;
-  setRfInstance: (instance: ReactFlowInstance) => void;
-  floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
-  layoutControls: ReturnType<typeof useLayoutControls>;
-  reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
-}> = ({ state, rfInstance, setRfInstance, floatingPanelRef, layoutControls, reactFlowRef }) => {
-  return (
-    <ViewportProvider rfInstance={rfInstance}>
-      <UndoRedoProvider enabled={state.mode === "edit"}>
-        <AnnotationProvider
-          rfInstance={rfInstance}
-          mode={state.mode}
-          isLocked={state.isLocked}
-          onLockedAction={() => floatingPanelRef.current?.triggerShake()}
-        >
-          <AppContent
-            floatingPanelRef={floatingPanelRef}
-            reactFlowRef={reactFlowRef}
-            rfInstance={rfInstance}
-            layoutControls={layoutControls}
-            onInit={setRfInstance}
-          />
-        </AnnotationProvider>
-      </UndoRedoProvider>
-    </ViewportProvider>
+    </AppProvider>
   );
 };

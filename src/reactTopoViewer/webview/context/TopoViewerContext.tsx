@@ -4,16 +4,7 @@
  * NOTE: Graph data (nodes/edges) has been moved to GraphContext.
  * This context now only handles UI state, selections, and editing state.
  */
-import type { ReactNode } from "react";
-import React, {
-  createContext,
-  useContext,
-  useReducer,
-  useEffect,
-  useCallback,
-  useMemo,
-  useRef
-} from "react";
+import React, { useReducer, useEffect, useCallback, useMemo, useRef } from "react";
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/types/editors";
 import type { EdgeAnnotation } from "../../shared/types/topology";
@@ -26,6 +17,7 @@ import {
   parseEndpointLabelOffset
 } from "../utils/endpointLabelOffset";
 import { saveEdgeAnnotations, saveViewerSettings } from "../services";
+import { useAppActionsSelector, useAppSelector } from "./AppContext";
 
 /**
  * Deployment state type alias
@@ -235,12 +227,12 @@ function topoViewerReducer(state: TopoViewerState, action: TopoViewerAction): To
 /**
  * Context value interfaces
  */
-interface TopoViewerStateContextValue {
+export interface TopoViewerStateContextValue {
   state: TopoViewerState;
   dispatch: React.Dispatch<TopoViewerAction>;
 }
 
-interface TopoViewerActionsContextValue {
+export interface TopoViewerActionsContextValue {
   selectNode: (nodeId: string | null) => void;
   selectEdge: (edgeId: string | null) => void;
   editNode: (nodeId: string | null) => void;
@@ -261,16 +253,6 @@ interface TopoViewerActionsContextValue {
   clearCustomNodeError: () => void;
   clearSelectionForDeletedNode: (nodeId: string) => void;
   clearSelectionForDeletedEdge: (edgeId: string) => void;
-}
-
-const TopoViewerStateContext = createContext<TopoViewerStateContextValue | undefined>(undefined);
-const TopoViewerActionsContext = createContext<TopoViewerActionsContextValue | undefined>(
-  undefined
-);
-
-interface TopoViewerProviderProps {
-  children: ReactNode;
-  initialData?: unknown;
 }
 
 /**
@@ -571,13 +553,16 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
   );
 }
 
+export interface TopoViewerModel {
+  state: TopoViewerState;
+  actions: TopoViewerActionsContextValue;
+  dispatch: React.Dispatch<TopoViewerAction>;
+}
+
 /**
- * TopoViewer Context Provider
+ * TopoViewer state model (used by AppProvider)
  */
-export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
-  children,
-  initialData
-}) => {
+export function useTopoViewerModel(initialData?: unknown): TopoViewerModel {
   const initialEdgeAnnotationCleanupRef = useRef(false);
   const [state, dispatch] = useReducer(topoViewerReducer, initialData, (initial) => {
     try {
@@ -606,14 +591,6 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
     void saveEdgeAnnotations(state.edgeAnnotations);
   }, [state.edgeAnnotations]);
 
-  const stateValue = useMemo<TopoViewerStateContextValue>(
-    () => ({
-      state,
-      dispatch
-    }),
-    [state, dispatch]
-  );
-
   const saveEndpointLabelOffset = useCallback(() => {
     void saveViewerSettings({ endpointLabelOffset: state.endpointLabelOffset });
   }, [state.endpointLabelOffset]);
@@ -626,35 +603,21 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
     [actions, saveEndpointLabelOffset]
   );
 
-  return (
-    <TopoViewerStateContext.Provider value={stateValue}>
-      <TopoViewerActionsContext.Provider value={actionsValue}>
-        {children}
-      </TopoViewerActionsContext.Provider>
-    </TopoViewerStateContext.Provider>
-  );
-};
+  return { state, actions: actionsValue, dispatch };
+}
 
 /**
  * Hook to use TopoViewer state + dispatch
  */
 export const useTopoViewerState = (): TopoViewerStateContextValue => {
-  const context = useContext(TopoViewerStateContext);
-  if (context === undefined) {
-    throw new Error("useTopoViewerState must be used within a TopoViewerProvider");
-  }
-  return context;
+  return useAppSelector((state) => state.topo);
 };
 
 /**
  * Hook to use TopoViewer actions (stable)
  */
 export const useTopoViewerActions = (): TopoViewerActionsContextValue => {
-  const context = useContext(TopoViewerActionsContext);
-  if (context === undefined) {
-    throw new Error("useTopoViewerActions must be used within a TopoViewerProvider");
-  }
-  return context;
+  return useAppActionsSelector((actions) => actions.topo);
 };
 
 /**

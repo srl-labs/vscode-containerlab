@@ -9,7 +9,7 @@
  * - All mutations go through GraphContext (via useDerivedAnnotations)
  * - Only UI state (selection, editing, add mode) is managed locally
  */
-import React, { createContext, useContext, useCallback, useMemo, useState, useRef } from "react";
+import { useCallback, useMemo, useState, useRef } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import type {
@@ -35,18 +35,20 @@ import { normalizeShapeAnnotationColors } from "../utils/color";
 import { freeTextToNode, freeShapeToNode, groupToNode } from "../utils/annotationNodeConverters";
 import { log } from "../utils/logger";
 
-import { useUndoRedoContext } from "./UndoRedoContext";
+import type { GraphContextValue } from "./GraphContext";
+import type { UseUndoRedoReturn } from "../hooks/state/useUndoRedo";
+import { useAppActionsSelector, useAppSelector } from "./AppContext";
 
-/** Props for AnnotationProvider */
-interface AnnotationProviderProps {
+export interface AnnotationModelProps {
+  graph: GraphContextValue;
+  undoRedo: UseUndoRedoReturn;
   rfInstance: ReactFlowInstance | null;
   mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
-  children: React.ReactNode;
 }
 
-interface AnnotationStateContextValue {
+export interface AnnotationStateContextValue {
   groups: GroupStyleAnnotation[];
   selectedGroupIds: Set<string>;
   editingGroup: GroupEditorData | null;
@@ -61,7 +63,7 @@ interface AnnotationStateContextValue {
   pendingShapeType: "rectangle" | "circle" | "line";
 }
 
-interface AnnotationActionsContextValue {
+export interface AnnotationActionsContextValue {
   // Groups
   selectGroup: (id: string) => void;
   toggleGroupSelection: (id: string) => void;
@@ -133,11 +135,6 @@ interface AnnotationActionsContextValue {
 }
 
 export type AnnotationContextValue = AnnotationStateContextValue & AnnotationActionsContextValue;
-
-const AnnotationStateContext = createContext<AnnotationStateContextValue | undefined>(undefined);
-const AnnotationActionsContext = createContext<AnnotationActionsContextValue | undefined>(
-  undefined
-);
 
 // ============================================================================
 // Helper functions for complexity reduction
@@ -227,19 +224,20 @@ function handleTopologyNodeDrop(
 // Provider Component
 // ============================================================================
 
-/** Provider component for annotation context */
-export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
+/** Annotation model (used by AppProvider) */
+export function useAnnotationModel({
+  graph,
+  undoRedo,
   rfInstance,
   mode,
   isLocked,
-  onLockedAction,
-  children
-}) => {
-  // Access undo/redo context for snapshot recording
-  const { undoRedo } = useUndoRedoContext();
-
+  onLockedAction
+}: AnnotationModelProps): {
+  state: AnnotationStateContextValue;
+  actions: AnnotationActionsContextValue;
+} {
   // Get derived annotation data and mutation functions from GraphContext
-  const derived = useDerivedAnnotations();
+  const derived = useDerivedAnnotations(graph);
 
   // Shape UI state
   const [selectedShapeIds, setSelectedShapeIds] = useState<Set<string>>(new Set());
@@ -1243,29 +1241,15 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
     ]
   );
 
-  return (
-    <AnnotationStateContext.Provider value={stateValue}>
-      <AnnotationActionsContext.Provider value={actionsValue}>
-        {children}
-      </AnnotationActionsContext.Provider>
-    </AnnotationStateContext.Provider>
-  );
-};
+  return { state: stateValue, actions: actionsValue };
+}
 
 export function useAnnotationsState(): AnnotationStateContextValue {
-  const context = useContext(AnnotationStateContext);
-  if (context === undefined) {
-    throw new Error("useAnnotationsState must be used within an AnnotationProvider");
-  }
-  return context;
+  return useAppSelector((state) => state.annotations);
 }
 
 export function useAnnotationsActions(): AnnotationActionsContextValue {
-  const context = useContext(AnnotationActionsContext);
-  if (context === undefined) {
-    throw new Error("useAnnotationsActions must be used within an AnnotationProvider");
-  }
-  return context;
+  return useAppActionsSelector((actions) => actions.annotations);
 }
 
 /** Legacy combined hook (prefer useAnnotationsState/useAnnotationsActions) */

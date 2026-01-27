@@ -13,7 +13,7 @@ import type {
 import { annotationsToNodes } from "../../utils/annotationNodeConverters";
 import { applyGroupMembershipToNodes } from "../../utils/groupMembership";
 
-interface InitialGraphData {
+export interface InitialGraphData {
   nodes?: TopoNode[];
   edges?: TopoEdge[];
   freeTextAnnotations?: FreeTextAnnotation[];
@@ -22,28 +22,31 @@ interface InitialGraphData {
   nodeAnnotations?: NodeAnnotation[];
 }
 
-function getInitialData(): InitialGraphData {
-  return (window as { __INITIAL_DATA__?: InitialGraphData }).__INITIAL_DATA__ ?? {};
+function getInitialData(initialData?: InitialGraphData): InitialGraphData {
+  return initialData ?? (window as { __INITIAL_DATA__?: InitialGraphData }).__INITIAL_DATA__ ?? {};
 }
 
-export function useInitialGraphData(): { initialNodes: TopoNode[]; initialEdges: TopoEdge[] } {
+export function useInitialGraphData(initialData?: InitialGraphData): {
+  initialNodes: TopoNode[];
+  initialEdges: TopoEdge[];
+} {
   return React.useMemo(() => {
-    const initialData = getInitialData();
-    const topoNodes = initialData.nodes ?? [];
+    const data = getInitialData(initialData);
+    const topoNodes = data.nodes ?? [];
     const topoWithMembership = applyGroupMembershipToNodes(
       topoNodes,
-      initialData.nodeAnnotations,
-      initialData.groupStyleAnnotations ?? []
+      data.nodeAnnotations,
+      data.groupStyleAnnotations ?? []
     );
     const annotationNodes = annotationsToNodes(
-      initialData.freeTextAnnotations ?? [],
-      initialData.freeShapeAnnotations ?? [],
-      initialData.groupStyleAnnotations ?? []
+      data.freeTextAnnotations ?? [],
+      data.freeShapeAnnotations ?? [],
+      data.groupStyleAnnotations ?? []
     ) as TopoNode[];
 
     return {
       initialNodes: [...topoWithMembership, ...annotationNodes],
-      initialEdges: initialData.edges ?? []
+      initialEdges: data.edges ?? []
     };
-  }, []);
+  }, [initialData]);
 }
