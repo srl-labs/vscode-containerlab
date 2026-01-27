@@ -11,6 +11,7 @@ import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/
 import type { EdgeAnnotation } from "../../shared/types/topology";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import { upsertEdgeAnnotation } from "../utils/edgeAnnotations";
+import { saveViewerSettings } from "../services";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset,
@@ -70,6 +71,7 @@ export interface TopoViewerActions {
   toggleDummyLinks: () => void;
   toggleEndpointLabelOffset: () => void;
   setEndpointLabelOffset: (value: number) => void;
+  commitEndpointLabelOffset: () => void;
 
   // Edge annotations
   setEdgeAnnotations: (annotations: EdgeAnnotation[]) => void;
@@ -163,7 +165,7 @@ export function parseInitialData(data: unknown): Partial<TopoViewerState> {
 // Store Creation
 // ============================================================================
 
-export const useTopoViewerStore = create<TopoViewerStore>((set) => ({
+export const useTopoViewerStore = create<TopoViewerStore>((set, get) => ({
   ...initialState,
 
   // Selection (mutually exclusive)
@@ -237,6 +239,11 @@ export const useTopoViewerStore = create<TopoViewerStore>((set) => ({
       ? clampEndpointLabelOffset(value)
       : DEFAULT_ENDPOINT_LABEL_OFFSET;
     set({ endpointLabelOffset: next });
+  },
+
+  commitEndpointLabelOffset: () => {
+    const { endpointLabelOffset } = get();
+    void saveViewerSettings({ endpointLabelOffset });
   },
 
   // Edge annotations
@@ -317,6 +324,9 @@ export const useTopoViewerStore = create<TopoViewerStore>((set) => ({
 /** Get mode */
 export const useMode = () => useTopoViewerStore((state) => state.mode);
 
+/** Get lab name */
+export const useLabName = () => useTopoViewerStore((state) => state.labName);
+
 /** Get deployment state */
 export const useDeploymentState = () => useTopoViewerStore((state) => state.deploymentState);
 
@@ -334,6 +344,16 @@ export const useEditingEdge = () => useTopoViewerStore((state) => state.editingE
 
 /** Get lock state */
 export const useIsLocked = () => useTopoViewerStore((state) => state.isLocked);
+
+/** Get link label mode */
+export const useLinkLabelMode = () => useTopoViewerStore((state) => state.linkLabelMode);
+
+/** Get dummy link visibility */
+export const useShowDummyLinks = () => useTopoViewerStore((state) => state.showDummyLinks);
+
+/** Get endpoint label offset */
+export const useEndpointLabelOffset = () =>
+  useTopoViewerStore((state) => state.endpointLabelOffset);
 
 /** Get processing state */
 export const useIsProcessing = () => useTopoViewerStore((state) => state.isProcessing);
@@ -396,6 +416,7 @@ export const useTopoViewerActions = () =>
       toggleDummyLinks: state.toggleDummyLinks,
       toggleEndpointLabelOffset: state.toggleEndpointLabelOffset,
       setEndpointLabelOffset: state.setEndpointLabelOffset,
+      commitEndpointLabelOffset: state.commitEndpointLabelOffset,
       setEdgeAnnotations: state.setEdgeAnnotations,
       upsertEdgeAnnotation: state.upsertEdgeAnnotation,
       setCustomNodes: state.setCustomNodes,

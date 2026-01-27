@@ -19,7 +19,6 @@ import {
   sendSetDefaultCustomNode,
   sendCommandToExtension
 } from "../../utils/extensionMessaging";
-import type { UseUndoRedoStoreReturn } from "../useUndoRedoStore";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 
 /**
@@ -106,7 +105,10 @@ export interface E2ETestingConfig {
   isLocked: boolean;
   mode: "edit" | "view";
   toggleLock: () => void;
-  undoRedo: UseUndoRedoStoreReturn;
+  undoRedo: {
+    canUndo: boolean;
+    canRedo: boolean;
+  };
   handleEdgeCreated: (
     sourceId: string,
     targetId: string,

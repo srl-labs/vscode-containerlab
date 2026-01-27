@@ -10,6 +10,7 @@
  */
 import { useMemo, useCallback } from "react";
 import type { Node } from "@xyflow/react";
+import { shallow } from "zustand/shallow";
 
 import type {
   FreeTextAnnotation,
@@ -64,11 +65,27 @@ export interface UseDerivedAnnotationsReturn {
   getGroupMembers: (groupId: string) => string[];
 }
 
+const isGroupNode = (node: Node): node is Node<GroupNodeData> => node.type === "group-node";
+const isFreeTextNode = (node: Node): node is Node<FreeTextNodeData> =>
+  node.type === "free-text-node";
+const isFreeShapeNode = (node: Node): node is Node<FreeShapeNodeData> =>
+  node.type === "free-shape-node";
+
+const hasGroupMembership = (node: Node): boolean => {
+  const data = node.data as Record<string, unknown> | undefined;
+  const groupId = data?.groupId;
+  return typeof groupId === "string" && groupId.length > 0;
+};
+
 /**
  * Hook to derive annotation data from graph state and provide mutation functions
  */
 export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
-  const nodes = useGraphStore((state) => state.nodes);
+  const groupNodes = useGraphStore((state) => state.nodes.filter(isGroupNode), shallow);
+  const textNodes = useGraphStore((state) => state.nodes.filter(isFreeTextNode), shallow);
+  const shapeNodes = useGraphStore((state) => state.nodes.filter(isFreeShapeNode), shallow);
+  const membershipNodes = useGraphStore((state) => state.nodes.filter(hasGroupMembership), shallow);
+
   const addNode = useGraphStore((state) => state.addNode);
   const removeNode = useGraphStore((state) => state.removeNode);
   const updateNode = useGraphStore((state) => state.updateNode);
@@ -76,27 +93,23 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   // Derive groups from group-node type nodes
   const groups = useMemo(() => {
-    return nodes.filter((n): n is Node<GroupNodeData> => n.type === "group-node").map(nodeToGroup);
-  }, [nodes]);
+    return groupNodes.map(nodeToGroup);
+  }, [groupNodes]);
 
   // Derive text annotations from free-text-node type nodes
   const textAnnotations = useMemo(() => {
-    return nodes
-      .filter((n): n is Node<FreeTextNodeData> => n.type === "free-text-node")
-      .map(nodeToFreeText);
-  }, [nodes]);
+    return textNodes.map(nodeToFreeText);
+  }, [textNodes]);
 
   // Derive shape annotations from free-shape-node type nodes
   const shapeAnnotations = useMemo(() => {
-    return nodes
-      .filter((n): n is Node<FreeShapeNodeData> => n.type === "free-shape-node")
-      .map(nodeToFreeShape);
-  }, [nodes]);
+    return shapeNodes.map(nodeToFreeShape);
+  }, [shapeNodes]);
 
   // Membership map: nodeId -> groupId (derived from node data)
   const membershipMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const node of nodes) {
+    for (const node of membershipNodes) {
       const data = node.data as Record<string, unknown> | undefined;
       const groupId = data?.groupId as string | undefined;
       if (groupId) {
@@ -104,7 +117,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       }
     }
     return map;
-  }, [nodes]);
+  }, [membershipNodes]);
 
   // ============================================================================
   // Group mutations
@@ -121,7 +134,9 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   const updateGroup = useCallback(
     (id: string, updates: Partial<GroupStyleAnnotation>) => {
       // Find current group node
-      const currentNode = nodes.find((n) => n.id === id && n.type === "group-node");
+      const currentNode = useGraphStore
+        .getState()
+        .nodes.find((n) => n.id === id && n.type === "group-node");
       if (!currentNode) return;
 
       // Convert to annotation, apply updates, convert back to node
@@ -130,7 +145,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const newNode = groupToNode(updatedGroup);
       replaceNode(id, newNode);
     },
-    [nodes, replaceNode]
+    [replaceNode]
   );
 
   const deleteGroup = useCallback(
@@ -154,7 +169,9 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   const updateTextAnnotation = useCallback(
     (id: string, updates: Partial<FreeTextAnnotation>) => {
-      const currentNode = nodes.find((n) => n.id === id && n.type === "free-text-node");
+      const currentNode = useGraphStore
+        .getState()
+        .nodes.find((n) => n.id === id && n.type === "free-text-node");
       if (!currentNode) return;
 
       const currentAnnotation = nodeToFreeText(currentNode as Node<FreeTextNodeData>);
@@ -162,7 +179,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const newNode = freeTextToNode(updatedAnnotation);
       replaceNode(id, newNode);
     },
-    [nodes, replaceNode]
+    [replaceNode]
   );
 
   const deleteTextAnnotation = useCallback(
@@ -186,7 +203,9 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   const updateShapeAnnotation = useCallback(
     (id: string, updates: Partial<FreeShapeAnnotation>) => {
-      const currentNode = nodes.find((n) => n.id === id && n.type === "free-shape-node");
+      const currentNode = useGraphStore
+        .getState()
+        .nodes.find((n) => n.id === id && n.type === "free-shape-node");
       if (!currentNode) return;
 
       const currentAnnotation = nodeToFreeShape(currentNode as Node<FreeShapeNodeData>);
@@ -194,7 +213,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       const newNode = freeShapeToNode(updatedAnnotation);
       replaceNode(id, newNode);
     },
-    [nodes, replaceNode]
+    [replaceNode]
   );
 
   const deleteShapeAnnotation = useCallback(
@@ -210,25 +229,25 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   const addNodeToGroup = useCallback(
     (nodeId: string, groupId: string) => {
-      const node = nodes.find((n) => n.id === nodeId);
+      const node = useGraphStore.getState().nodes.find((n) => n.id === nodeId);
       if (!node) return;
       updateNode(nodeId, {
         data: { ...(node.data as Record<string, unknown>), groupId }
       });
     },
-    [nodes, updateNode]
+    [updateNode]
   );
 
   const removeNodeFromGroup = useCallback(
     (nodeId: string) => {
-      const node = nodes.find((n) => n.id === nodeId);
+      const node = useGraphStore.getState().nodes.find((n) => n.id === nodeId);
       if (!node) return;
       const nodeData = node.data as Record<string, unknown>;
       const { groupId: _groupId, ...rest } = nodeData;
       // Force groupId to undefined so updateNode's merge clears membership.
       updateNode(nodeId, { data: { ...rest, groupId: undefined } });
     },
-    [nodes, updateNode]
+    [updateNode]
   );
 
   const getNodeMembership = useCallback(
@@ -240,24 +259,20 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
   const getGroupMembers = useCallback(
     (groupId: string): string[] => {
-      const members: string[] = [];
+      const members = new Set<string>();
       for (const [nodeId, gId] of membershipMap) {
         if (gId === groupId) {
-          members.push(nodeId);
+          members.add(nodeId);
         }
       }
       // Also include text/shape annotations with this groupId (from node data)
       for (const text of textAnnotations) {
-        if (text.groupId === groupId && !members.includes(text.id)) {
-          members.push(text.id);
-        }
+        if (text.groupId === groupId) members.add(text.id);
       }
       for (const shape of shapeAnnotations) {
-        if (shape.groupId === groupId && !members.includes(shape.id)) {
-          members.push(shape.id);
-        }
+        if (shape.groupId === groupId) members.add(shape.id);
       }
-      return members;
+      return Array.from(members);
     },
     [membershipMap, textAnnotations, shapeAnnotations]
   );

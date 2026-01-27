@@ -5,15 +5,23 @@
 import React from "react";
 
 import type { LinkLabelMode } from "../../stores/topoViewerStore";
-import { useTopoViewerActions, useTopoViewerStore } from "../../stores/topoViewerStore";
-import { shallow } from "zustand/shallow";
+import {
+  useEndpointLabelOffset,
+  useIsLocked,
+  useIsProcessing,
+  useLabName,
+  useLinkLabelMode,
+  useMode,
+  useProcessingMode,
+  useShowDummyLinks,
+  useTopoViewerActions
+} from "../../stores/topoViewerStore";
 import { DEFAULT_GRID_LINE_WIDTH, useDropdown } from "../../hooks/ui";
 import type { LayoutOption } from "../../hooks/ui";
 import {
   ENDPOINT_LABEL_OFFSET_MAX,
   ENDPOINT_LABEL_OFFSET_MIN
 } from "../../utils/endpointLabelOffset";
-import { saveViewerSettings } from "../../services";
 
 import { ContainerlabLogo } from "./ContainerlabLogo";
 import { NavbarLoadingIndicator } from "./NavbarLoadingIndicator";
@@ -76,23 +84,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   logoClickProgress = 0,
   isPartyMode = false
 }) => {
-  const state = useTopoViewerStore(
-    (s) => ({
-      mode: s.mode,
-      labName: s.labName,
-      linkLabelMode: s.linkLabelMode,
-      showDummyLinks: s.showDummyLinks,
-      endpointLabelOffset: s.endpointLabelOffset,
-      isLocked: s.isLocked,
-      isProcessing: s.isProcessing,
-      processingMode: s.processingMode
-    }),
-    shallow
-  );
-  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset } = useTopoViewerActions();
+  const mode = useMode();
+  const labName = useLabName();
+  const linkLabelMode = useLinkLabelMode();
+  const showDummyLinks = useShowDummyLinks();
+  const endpointLabelOffset = useEndpointLabelOffset();
+  const isLocked = useIsLocked();
+  const isProcessing = useIsProcessing();
+  const processingMode = useProcessingMode();
+
+  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset, commitEndpointLabelOffset } =
+    useTopoViewerActions();
   const saveEndpointLabelOffset = React.useCallback(() => {
-    void saveViewerSettings({ endpointLabelOffset: state.endpointLabelOffset });
-  }, [state.endpointLabelOffset]);
+    commitEndpointLabelOffset();
+  }, [commitEndpointLabelOffset]);
 
   const linkDropdown = useDropdown();
   const layoutDropdown = useDropdown();
@@ -122,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           clickProgress={logoClickProgress}
           isPartyMode={isPartyMode}
         />
-        <NavbarTitle mode={state.mode} labName={state.labName} />
+        <NavbarTitle mode={mode} labName={labName} />
       </div>
 
       {/* Center: Buttons */}
@@ -136,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         />
 
         {/* Undo - only show in edit mode */}
-        {state.mode === "edit" && (
+        {mode === "edit" && (
           <NavButton
             icon="fa-rotate-left"
             title="Undo (Ctrl+Z)"
@@ -147,7 +152,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* Redo - only show in edit mode */}
-        {state.mode === "edit" && (
+        {mode === "edit" && (
           <NavButton
             icon="fa-rotate-right"
             title="Redo (Ctrl+Y)"
@@ -220,10 +225,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           />
           {linkDropdown.isOpen && (
             <LinkLabelMenu
-              currentMode={state.linkLabelMode}
-              showDummyLinks={state.showDummyLinks}
-              endpointLabelOffset={state.endpointLabelOffset}
-              isLocked={state.isLocked}
+              currentMode={linkLabelMode}
+              showDummyLinks={showDummyLinks}
+              endpointLabelOffset={endpointLabelOffset}
+              isLocked={isLocked}
               onModeChange={handleLinkLabelModeChange}
               onToggleDummyLinks={toggleDummyLinks}
               onEndpointLabelOffsetChange={handleEndpointLabelOffsetChange}
@@ -270,7 +275,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Loading Indicator - shows during deployment/destroy operations */}
-      <NavbarLoadingIndicator isActive={state.isProcessing} mode={state.processingMode} />
+      <NavbarLoadingIndicator isActive={isProcessing} mode={processingMode} />
     </nav>
   );
 };

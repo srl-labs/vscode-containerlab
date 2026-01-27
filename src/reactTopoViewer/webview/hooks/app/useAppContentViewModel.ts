@@ -7,13 +7,17 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
 import type { LinkEditorData } from "../../../shared/types/editors";
-import type { AnnotationHandlers } from "../../components/canvas/types";
 import type { FloatingActionPanelHandle } from "../../components/panels";
 import type { useLayoutControls } from "../ui";
-import { convertToEditorData, convertToNetworkEditorData } from "../../../shared/utilities";
 import { useTopoViewerActions, useTopoViewerState } from "../../stores/topoViewerStore";
 import { useGraphActions, useGraphState } from "../../stores/graphStore";
-import { useUndoRedoStore } from "../useUndoRedoStore";
+import {
+  useCanRedo,
+  useCanUndo,
+  useRedoCount,
+  useUndoCount,
+  useUndoRedoActions
+} from "../../stores/undoRedoStore";
 import { useAnnotations } from "../annotations/useAnnotations";
 import { useToasts } from "../../components/ui/Toast";
 import { useEasterEgg } from "../../easter-eggs";
@@ -27,18 +31,20 @@ import {
 } from "../ui";
 import { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../panels";
 import { useExternalFileChange } from "../useExternalFileChange";
-import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "../../utils/edgeAnnotations";
-import {
-  convertToLinkEditorData,
-  convertEditorDataToLinkSaveData
-} from "../../utils/linkEditorConversions";
-import { parseEndpointLabelOffset } from "../../utils/endpointLabelOffset";
+import { buildEdgeAnnotationLookup } from "../../utils/edgeAnnotations";
+import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
 import { saveEdgeAnnotations } from "../../services";
 
 import { useCustomNodeCommands, useNavbarCommands, useE2ETestingExposure } from "./useAppHelpers";
 import { useClipboardHandlers } from "./useClipboardHandlers";
 import { useAppKeyboardShortcuts } from "./useAppKeyboardShortcuts";
 import { useGraphCreation } from "./useGraphCreation";
+import {
+  useAnnotationCanvasHandlers,
+  useCustomNodeErrorToast,
+  useFilteredGraphElements,
+  useSelectionData
+} from "./useAppContentViewModel.helpers";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
 
@@ -47,268 +53,6 @@ interface UseAppContentViewModelParams {
   rfInstance: ReactFlowInstance | null;
   layoutControls: LayoutControls;
   onLockedAction?: () => void;
-}
-
-function useCustomNodeErrorToast(
-  customNodeError: unknown,
-  addToast: (message: string, type?: "success" | "error" | "info", duration?: number) => void,
-  clearCustomNodeError: () => void
-): void {
-  React.useEffect(() => {
-    if (!customNodeError) return;
-    const errorMsg = typeof customNodeError === "string" ? customNodeError : "Unknown error";
-    addToast(`Failed to save custom node: ${errorMsg}`, "error", 5000);
-    clearCustomNodeError();
-  }, [customNodeError, addToast, clearCustomNodeError]);
-}
-
-function useFilteredGraphElements(
-  nodes: TopoNode[],
-  edges: TopoEdge[],
-  showDummyLinks: boolean
-): { filteredNodes: TopoNode[]; filteredEdges: TopoEdge[] } {
-  const filteredNodes = React.useMemo(() => {
-    if (showDummyLinks) return nodes;
-    return nodes.filter((node) => !node.id.startsWith("dummy"));
-  }, [nodes, showDummyLinks]);
-
-  const filteredEdges = React.useMemo(() => {
-    if (showDummyLinks) return edges;
-    const dummyNodeIds = new Set(
-      nodes.filter((node) => node.id.startsWith("dummy")).map((node) => node.id)
-    );
-    return edges.filter((edge) => !dummyNodeIds.has(edge.source) && !dummyNodeIds.has(edge.target));
-  }, [nodes, edges, showDummyLinks]);
-
-  return { filteredNodes, filteredEdges };
-}
-
-function useSelectionData(
-  state: ReturnType<typeof useTopoViewerState>,
-  nodes: TopoNode[],
-  edges: TopoEdge[],
-  edgeAnnotationLookup: ReturnType<typeof buildEdgeAnnotationLookup>
-) {
-  const selectedNodeData = React.useMemo(() => {
-    if (!state.selectedNode) return null;
-    const node = nodes.find((n) => n.id === state.selectedNode);
-    if (!node) return null;
-    return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.selectedNode, nodes]);
-
-  const selectedLinkData = React.useMemo(() => {
-    if (!state.selectedEdge) return null;
-    const edge = edges.find((e) => e.id === state.selectedEdge);
-    if (!edge) return null;
-    return {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      ...(edge.data as Record<string, unknown>)
-    };
-  }, [state.selectedEdge, edges]);
-
-  const editingNodeRawData = React.useMemo(() => {
-    if (!state.editingNode) return null;
-    const node = nodes.find((n) => n.id === state.editingNode);
-    if (!node) return null;
-    return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.editingNode, nodes]);
-
-  const editingNetworkRawData = React.useMemo(() => {
-    if (!state.editingNetwork) return null;
-    const node = nodes.find((n) => n.id === state.editingNetwork);
-    if (!node) return null;
-    return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.editingNetwork, nodes]);
-
-  const editingLinkRawData = React.useMemo(() => {
-    if (!state.editingEdge) return null;
-    const edge = edges.find((e) => e.id === state.editingEdge);
-    if (!edge) return null;
-    return {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      ...(edge.data as Record<string, unknown>)
-    };
-  }, [state.editingEdge, edges]);
-
-  const editingNodeData = React.useMemo(
-    () => convertToEditorData(editingNodeRawData),
-    [editingNodeRawData]
-  );
-  const editingNodeInheritedProps = React.useMemo(() => {
-    const extra = (editingNodeRawData as Record<string, unknown> | null)?.extraData as
-      | Record<string, unknown>
-      | undefined;
-    const inherited = extra?.inherited;
-    return Array.isArray(inherited)
-      ? inherited.filter((p): p is string => typeof p === "string")
-      : [];
-  }, [editingNodeRawData]);
-  const editingNetworkData = React.useMemo(
-    () => convertToNetworkEditorData(editingNetworkRawData),
-    [editingNetworkRawData]
-  );
-  const editingLinkData = React.useMemo(() => {
-    const base = convertToLinkEditorData(editingLinkRawData);
-    if (!base) return null;
-    const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
-      id: base.id,
-      source: base.source,
-      target: base.target,
-      sourceEndpoint: base.sourceEndpoint,
-      targetEndpoint: base.targetEndpoint
-    });
-    const offset =
-      parseEndpointLabelOffset(annotation?.endpointLabelOffset) ?? state.endpointLabelOffset;
-    const enabled =
-      annotation?.endpointLabelOffsetEnabled ??
-      (annotation?.endpointLabelOffset !== undefined ? true : false);
-    return {
-      ...base,
-      endpointLabelOffsetEnabled: enabled,
-      endpointLabelOffset: offset
-    };
-  }, [editingLinkRawData, edgeAnnotationLookup, state.endpointLabelOffset]);
-
-  return {
-    selectedNodeData,
-    selectedLinkData,
-    editingNodeData,
-    editingNetworkData,
-    editingLinkData,
-    editingNodeInheritedProps
-  };
-}
-
-function useAnnotationCanvasHandlers(annotations: ReturnType<typeof useAnnotations>): {
-  annotationMode: {
-    isAddTextMode: boolean;
-    isAddShapeMode: boolean;
-    pendingShapeType?: "rectangle" | "circle" | "line";
-  };
-  canvasAnnotationHandlers: AnnotationHandlers;
-} {
-  const {
-    isAddTextMode,
-    isAddShapeMode,
-    pendingShapeType,
-    handleTextCanvasClick,
-    handleShapeCanvasClick,
-    disableAddTextMode,
-    disableAddShapeMode,
-    editTextAnnotation,
-    editShapeAnnotation,
-    deleteTextAnnotation,
-    deleteShapeAnnotation,
-    updateTextSize,
-    updateShapeSize,
-    updateTextRotation,
-    updateShapeRotation,
-    onTextRotationStart,
-    onTextRotationEnd,
-    onShapeRotationStart,
-    onShapeRotationEnd,
-    updateShapeEndPosition,
-    shapeAnnotations,
-    updateShapeAnnotation,
-    onNodeDropped,
-    updateGroupSize,
-    editGroup,
-    deleteGroup,
-    getGroupMembers
-  } = annotations;
-
-  const annotationMode = React.useMemo(
-    () => ({
-      isAddTextMode,
-      isAddShapeMode,
-      pendingShapeType: isAddShapeMode ? pendingShapeType : undefined
-    }),
-    [isAddTextMode, isAddShapeMode, pendingShapeType]
-  );
-
-  const canvasAnnotationHandlers = React.useMemo(
-    () => ({
-      // Add mode handlers
-      onAddTextClick: handleTextCanvasClick,
-      onAddShapeClick: handleShapeCanvasClick,
-      disableAddTextMode,
-      disableAddShapeMode,
-      // Edit handlers
-      onEditFreeText: editTextAnnotation,
-      onEditFreeShape: editShapeAnnotation,
-      // Delete handlers
-      onDeleteFreeText: deleteTextAnnotation,
-      onDeleteFreeShape: deleteShapeAnnotation,
-      // Size update handlers (for resize)
-      onUpdateFreeTextSize: updateTextSize,
-      onUpdateFreeShapeSize: updateShapeSize,
-      // Rotation handlers (live updates during drag)
-      onUpdateFreeTextRotation: updateTextRotation,
-      onUpdateFreeShapeRotation: updateShapeRotation,
-      // Rotation start/end handlers (for undo/redo)
-      onFreeTextRotationStart: onTextRotationStart,
-      onFreeTextRotationEnd: onTextRotationEnd,
-      onFreeShapeRotationStart: onShapeRotationStart,
-      onFreeShapeRotationEnd: onShapeRotationEnd,
-      // Line-specific handlers
-      onUpdateFreeShapeEndPosition: updateShapeEndPosition,
-      onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => {
-        // Update both position and recalculate end position
-        const shape = shapeAnnotations.find((s) => s.id === id);
-        if (shape && shape.endPosition) {
-          const dx = startPosition.x - shape.position.x;
-          const dy = startPosition.y - shape.position.y;
-          updateShapeAnnotation(id, {
-            position: startPosition,
-            endPosition: { x: shape.endPosition.x + dx, y: shape.endPosition.y + dy }
-          });
-        }
-      },
-      // Node dropped handler (for group membership)
-      onNodeDropped,
-      // Group handlers
-      onUpdateGroupSize: updateGroupSize,
-      onEditGroup: editGroup,
-      onDeleteGroup: deleteGroup,
-      // Get group members (for group dragging)
-      getGroupMembers
-    }),
-    [
-      handleTextCanvasClick,
-      handleShapeCanvasClick,
-      disableAddTextMode,
-      disableAddShapeMode,
-      editTextAnnotation,
-      editShapeAnnotation,
-      deleteTextAnnotation,
-      deleteShapeAnnotation,
-      updateTextSize,
-      updateShapeSize,
-      updateTextRotation,
-      updateShapeRotation,
-      onTextRotationStart,
-      onTextRotationEnd,
-      onShapeRotationStart,
-      onShapeRotationEnd,
-      updateShapeEndPosition,
-      shapeAnnotations,
-      updateShapeAnnotation,
-      onNodeDropped,
-      updateGroupSize,
-      editGroup,
-      deleteGroup,
-      getGroupMembers
-    ]
-  );
-
-  return {
-    annotationMode,
-    canvasAnnotationHandlers: canvasAnnotationHandlers as AnnotationHandlers
-  };
 }
 
 export function useAppContentViewModel({
@@ -345,7 +89,38 @@ export function useAppContentViewModel({
     renameNode
   } = useGraphActions();
 
-  const undoRedo = useUndoRedoStore();
+  const undoRedoActions = useUndoRedoActions();
+  const canUndo = useCanUndo();
+  const canRedo = useCanRedo();
+  const undoCount = useUndoCount();
+  const redoCount = useRedoCount();
+
+  const undoRedoHistory = React.useMemo(
+    () => ({
+      undoCount,
+      redoCount,
+      clearHistory: undoRedoActions.clearHistory
+    }),
+    [undoCount, redoCount, undoRedoActions.clearHistory]
+  );
+
+  const undoRedoControls = React.useMemo(
+    () => ({
+      undo: undoRedoActions.undo,
+      redo: undoRedoActions.redo,
+      canUndo,
+      canRedo
+    }),
+    [undoRedoActions.undo, undoRedoActions.redo, canUndo, canRedo]
+  );
+
+  const undoRedoBatch = React.useMemo(
+    () => ({
+      beginBatch: undoRedoActions.beginBatch,
+      endBatch: undoRedoActions.endBatch
+    }),
+    [undoRedoActions.beginBatch, undoRedoActions.endBatch]
+  );
   const annotations = useAnnotations({ rfInstance, onLockedAction });
 
   // Toast notifications
@@ -355,7 +130,7 @@ export function useAppContentViewModel({
 
   // Clear undo history on external file changes
   useExternalFileChange({
-    undoRedo,
+    undoRedo: undoRedoHistory,
     addToast,
     enabled: state.mode === "edit"
   });
@@ -433,7 +208,7 @@ export function useAppContentViewModel({
       removeNodeAndEdges,
       removeEdge,
       menuHandlers,
-      undoRedo
+      undoRedo: undoRedoActions
     });
 
   const handleUpdateNodeData = React.useCallback(
@@ -516,7 +291,7 @@ export function useAppContentViewModel({
     isLocked: state.isLocked,
     mode: state.mode,
     toggleLock,
-    undoRedo,
+    undoRedo: undoRedoControls,
     handleEdgeCreated,
     handleNodeCreatedCallback,
     handleAddGroup: annotations.handleAddGroup,
@@ -546,10 +321,7 @@ export function useAppContentViewModel({
   // Clipboard handlers
   const clipboardHandlers = useClipboardHandlers({
     annotations,
-    undoRedo: {
-      beginBatch: undoRedo.beginBatch,
-      endBatch: undoRedo.endBatch
-    },
+    undoRedo: undoRedoBatch,
     rfInstance,
     handleNodeCreatedCallback,
     handleEdgeCreated
@@ -563,12 +335,7 @@ export function useAppContentViewModel({
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge
     },
-    undoRedo: {
-      undo: undoRedo.undo,
-      redo: undoRedo.redo,
-      canUndo: undoRedo.canUndo,
-      canRedo: undoRedo.canRedo
-    },
+    undoRedo: undoRedoControls,
     annotations: {
       selectedTextIds: annotations.selectedTextIds,
       selectedShapeIds: annotations.selectedShapeIds,
@@ -597,7 +364,7 @@ export function useAppContentViewModel({
   return {
     state,
     annotations,
-    undoRedo,
+    undoRedo: undoRedoControls,
     toasts,
     dismissToast,
     navbarCommands,
