@@ -4,7 +4,7 @@
  * This store owns the React Flow nodes/edges state and provides
  * all graph manipulation operations. React Flow is the source of truth.
  */
-import { create } from "zustand";
+import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 import { applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 import type { Node, Edge, NodeChange, EdgeChange } from "@xyflow/react";
@@ -54,7 +54,7 @@ export type GraphStore = GraphState & GraphActions;
 // Store Creation
 // ============================================================================
 
-export const useGraphStore = create<GraphStore>((set, get) => ({
+export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
   // Initial state
   nodes: [],
   edges: [],

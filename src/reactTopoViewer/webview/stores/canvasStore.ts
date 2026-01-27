@@ -4,7 +4,7 @@
  * Manages link creation, render config, and annotation handlers.
  * Edge info (parallel/loop) is computed separately as derived data.
  */
-import { create } from "zustand";
+import { createWithEqualityFn } from "zustand/traditional";
 import type { Edge } from "@xyflow/react";
 
 import type { AnnotationHandlers, EdgeLabelMode } from "../components/canvas/types";
@@ -172,7 +172,7 @@ let edgeInfoCache: {
 // Store Creation
 // ============================================================================
 
-export const useCanvasStore = create<CanvasStore>((set) => ({
+export const useCanvasStore = createWithEqualityFn<CanvasStore>((set) => ({
   ...initialState,
 
   setLinkSourceNode: (linkSourceNode) => {

@@ -4,7 +4,7 @@
  * This store manages annotation-specific UI state like selections and editing.
  * Annotation data is derived from graphStore via useDerivedAnnotations hook.
  */
-import { create } from "zustand";
+import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 
 import type { FreeTextAnnotation, FreeShapeAnnotation } from "../../shared/types/topology";
@@ -98,7 +98,7 @@ const initialState: AnnotationUIState = {
 // Store Creation
 // ============================================================================
 
-export const useAnnotationUIStore = create<AnnotationUIStore>((set) => ({
+export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set) => ({
   ...initialState,
 
   // Group selection

@@ -4,7 +4,7 @@
  * This store handles UI state, selections, editing state, and settings.
  * Graph data (nodes/edges) is managed separately in graphStore.
  */
-import { create } from "zustand";
+import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/shallow";
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/types/editors";
@@ -154,7 +154,7 @@ export function parseInitialData(data: unknown): Partial<TopoViewerState> {
 // Store Creation
 // ============================================================================
 
-export const useTopoViewerStore = create<TopoViewerStore>((set, get) => ({
+export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set, get) => ({
   ...initialState,
 
   // Selection (mutually exclusive)

@@ -342,11 +342,50 @@ console.log("  __DEV__.toggleSplitView()");
  * HTTP endpoints instead of VS Code messaging for topology operations.
  */
 function setupDevModeCommandInterceptor(): void {
+  type DevVscodeMessage = {
+    command?: string;
+    type?: string;
+    level?: string;
+    message?: string;
+    fileLine?: string;
+  };
+
+  const warnedCommands = new Set<string>();
+  const logLevelMap: Record<string, (...args: unknown[]) => void> = {
+    debug: console.debug.bind(console),
+    info: console.info.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console)
+  };
+
+  const warnOnce = (command: string) => {
+    if (warnedCommands.has(command)) return;
+    warnedCommands.add(command);
+    console.warn(`[Dev] Unhandled VS Code command: ${command}`);
+  };
+
+  const handleViewerLog = (msg: DevVscodeMessage) => {
+    const level = typeof msg.level === "string" ? msg.level : "info";
+    const logger = logLevelMap[level] ?? console.log.bind(console);
+    const fileLine = typeof msg.fileLine === "string" ? msg.fileLine : "";
+    const message = typeof msg.message === "string" ? msg.message : "";
+    const prefix = fileLine ? `[${fileLine}] ` : "";
+    logger(`${prefix}${message}`);
+  };
+
+  const commandHandlers: Record<string, (msg: DevVscodeMessage) => void> = {
+    "topo-toggle-split-view": () => {
+      void toggleSplitView();
+    },
+    reactTopoViewerLog: handleViewerLog,
+    topoViewerLog: handleViewerLog
+  };
+
   // Create a mock vscode API that intercepts postMessage calls
   const mockVscodeApi = {
     __isDevMock__: true,
     postMessage: (message: unknown) => {
-      const msg = message as { command?: string; type?: string } | undefined;
+      const msg = message as DevVscodeMessage | undefined;
 
       // Ignore topology-host messages - these should use HTTP in dev mode
       if (msg?.type?.startsWith("topology-host:")) {
@@ -355,15 +394,13 @@ function setupDevModeCommandInterceptor(): void {
 
       if (!msg?.command) return;
 
-      console.log(`%c[Dev] Intercepted VS Code command: ${msg.command}`, "color: #FF9800;");
-
-      switch (msg.command) {
-        case "topo-toggle-split-view":
-          void toggleSplitView();
-          break;
-        default:
-          console.log(`%c[Dev] Unhandled command: ${msg.command}`, "color: #9E9E9E;");
+      const handler = commandHandlers[msg.command];
+      if (handler) {
+        handler(msg);
+        return;
       }
+
+      warnOnce(msg.command);
     }
   };
 
