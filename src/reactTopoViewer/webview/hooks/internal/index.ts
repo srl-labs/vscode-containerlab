@@ -16,15 +16,8 @@ export {
 export { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../panels";
 export { useLayoutControls, useContextMenuHandlers } from "../ui/useAppState";
 
-// App composition hooks
-export {
-  useCustomNodeCommands,
-  useNavbarCommands,
-  useE2ETestingExposure,
-  useClipboardHandlers,
-  useAppKeyboardShortcuts,
-  useGraphCreation
-} from "../app";
+// App composition hooks - import directly from ../app/* to avoid circular deps
+// (useAppContentViewModel imports from ../app sibling files directly)
 
 // Annotation hooks removed during ReactFlow migration cleanup
 

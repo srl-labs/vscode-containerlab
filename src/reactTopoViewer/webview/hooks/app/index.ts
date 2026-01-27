@@ -33,3 +33,7 @@ export {
   type NavbarCommands,
   type E2ETestingConfig
 } from "./useAppHelpers";
+
+// App content view-model + initial data
+export { useAppContentViewModel } from "./useAppContentViewModel";
+export { useInitialGraphData } from "./useInitialGraphData";

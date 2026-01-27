@@ -143,8 +143,8 @@ interface SelectionCallbacks {
   editNode: (id: string | null) => void;
   editEdge: (id: string | null) => void;
   editNetwork: (id: string | null) => void;
-  removeNodeAndEdges: (id: string) => void;
-  removeEdge: (id: string) => void;
+  onDeleteNode?: (id: string) => void;
+  onDeleteEdge?: (id: string) => void;
 }
 
 interface ContextMenuHandlersResult {
@@ -163,19 +163,9 @@ interface ContextMenuHandlersResult {
 /**
  * Hook for context menu handlers
  */
-export function useContextMenuHandlers(
-  _canvasRef: React.RefObject<CanvasRef | null>,
-  callbacks: SelectionCallbacks
-): ContextMenuHandlersResult {
-  const {
-    selectNode,
-    selectEdge,
-    editNode,
-    editEdge,
-    editNetwork,
-    removeNodeAndEdges,
-    removeEdge
-  } = callbacks;
+export function useContextMenuHandlers(callbacks: SelectionCallbacks): ContextMenuHandlersResult {
+  const { selectNode, selectEdge, editNode, editEdge, editNetwork, onDeleteNode, onDeleteEdge } =
+    callbacks;
 
   const handleEditNode = useCallback(
     (nodeId: string) => {
@@ -220,18 +210,16 @@ export function useContextMenuHandlers(
 
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
-      removeNodeAndEdges(nodeId);
-      selectNode(null);
+      onDeleteNode?.(nodeId);
     },
-    [selectNode, removeNodeAndEdges]
+    [onDeleteNode]
   );
 
   const handleDeleteLink = useCallback(
     (edgeId: string) => {
-      removeEdge(edgeId);
-      selectEdge(null);
+      onDeleteEdge?.(edgeId);
     },
-    [selectEdge, removeEdge]
+    [onDeleteEdge]
   );
 
   return {

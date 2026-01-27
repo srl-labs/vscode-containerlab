@@ -60,3 +60,4 @@ memory/**
 .claude-flow/**
 patch.sh
 report/
+src/reactTopoViewer/docs

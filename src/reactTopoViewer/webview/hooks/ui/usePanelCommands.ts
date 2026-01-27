@@ -1,7 +1,7 @@
 /**
  * usePanelCommands - Hooks providing FloatingActionPanel callbacks and panel visibility management.
  *
- * Merged from usePanelVisibility.ts - manages panel visibility for shortcuts, about, find node, SVG export, and lab settings.
+ * Merged from usePanelVisibility.ts - manages panel visibility for shortcuts, about, find node, SVG export, lab settings, and bulk link.
  */
 import { useCallback, useState } from "react";
 
@@ -82,16 +82,19 @@ export interface PanelVisibility {
   showFindNodePanel: boolean;
   showSvgExportPanel: boolean;
   showLabSettingsPanel: boolean;
+  showBulkLinkPanel: boolean;
   handleShowShortcuts: () => void;
   handleShowAbout: () => void;
   handleShowFindNode: () => void;
   handleShowSvgExport: () => void;
   handleShowLabSettings: () => void;
+  handleShowBulkLink: () => void;
   handleCloseShortcuts: () => void;
   handleCloseAbout: () => void;
   handleCloseFindNode: () => void;
   handleCloseSvgExport: () => void;
   handleCloseLabSettings: () => void;
+  handleCloseBulkLink: () => void;
 }
 
 /** Hook for info panels (shortcuts/about) with mutual exclusivity */
@@ -149,9 +152,19 @@ function useUtilityPanels() {
   };
 }
 
+function useEditorPanels() {
+  const [showBulkLinkPanel, setShowBulkLinkPanel] = useState(false);
+
+  const handleShowBulkLink = useCallback(() => setShowBulkLinkPanel(true), []);
+  const handleCloseBulkLink = useCallback(() => setShowBulkLinkPanel(false), []);
+
+  return { showBulkLinkPanel, handleShowBulkLink, handleCloseBulkLink };
+}
+
 export function usePanelVisibility(): PanelVisibility {
   const info = useInfoPanels();
   const utility = useUtilityPanels();
+  const editor = useEditorPanels();
 
-  return { ...info, ...utility };
+  return { ...info, ...utility, ...editor };
 }
