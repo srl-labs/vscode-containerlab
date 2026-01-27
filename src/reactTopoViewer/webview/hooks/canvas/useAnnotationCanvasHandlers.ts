@@ -8,14 +8,14 @@ import { useCallback, useEffect, useMemo } from "react";
 import type { Node, ReactFlowInstance } from "@xyflow/react";
 
 import type { AnnotationModeState, AnnotationHandlers } from "../../components/canvas/types";
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 import { log } from "../../utils/logger";
 
 import { snapToGrid } from "./useCanvasHandlers";
-
-/** Node type constants */
-const FREE_TEXT_NODE_TYPE = "free-text-node";
-const FREE_SHAPE_NODE_TYPE = "free-shape-node";
-const GROUP_NODE_TYPE = "group-node";
 
 interface UseAnnotationCanvasHandlersOptions {
   mode: "view" | "edit";

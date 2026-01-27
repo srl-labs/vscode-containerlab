@@ -1,29 +1,18 @@
 /**
  * Graph Query Utilities
  * Helper functions to query nodes and edges in React Flow graphs.
- * These replace graph queries for nodes and edges.
  */
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 
 /**
  * Get a node by its ID
- * Replaces cy.getElementById(id) for nodes
  */
 export function getNodeById(nodes: TopoNode[], id: string): TopoNode | null {
   return nodes.find((node) => node.id === id) ?? null;
 }
 
 /**
- * Get an edge by its ID
- * Replaces cy.getElementById(id) for edges
- */
-export function getEdgeById(edges: TopoEdge[], id: string): TopoEdge | null {
-  return edges.find((edge) => edge.id === id) ?? null;
-}
-
-/**
  * Check if an edge exists between two nodes (in either direction)
- * Replaces cy.edges('[source = "a"][target = "b"]').nonempty()
  */
 export function hasEdgeBetween(edges: TopoEdge[], sourceId: string, targetId: string): boolean {
   return edges.some(
@@ -35,26 +24,9 @@ export function hasEdgeBetween(edges: TopoEdge[], sourceId: string, targetId: st
 
 /**
  * Get all edges connected to a node (as source or target)
- * Replaces node.connectedEdges()
  */
 export function getConnectedEdges(edges: TopoEdge[], nodeId: string): TopoEdge[] {
   return edges.filter((edge) => edge.source === nodeId || edge.target === nodeId);
-}
-
-/**
- * Get edges where the given node is the source
- * Replaces node.outgoers().edges()
- */
-export function getOutgoingEdges(edges: TopoEdge[], nodeId: string): TopoEdge[] {
-  return edges.filter((edge) => edge.source === nodeId);
-}
-
-/**
- * Get edges where the given node is the target
- * Replaces node.incomers().edges()
- */
-export function getIncomingEdges(edges: TopoEdge[], nodeId: string): TopoEdge[] {
-  return edges.filter((edge) => edge.target === nodeId);
 }
 
 /**
@@ -89,76 +61,6 @@ export function searchNodes(nodes: TopoNode[], query: string): TopoNode[] {
 
     return false;
   });
-}
-
-/**
- * Find the first node matching a query
- */
-export function findNode(nodes: TopoNode[], query: string): TopoNode | null {
-  const results = searchNodes(nodes, query);
-  return results.length > 0 ? results[0] : null;
-}
-
-/**
- * Get all nodes of a specific type
- */
-export function getNodesByType(nodes: TopoNode[], type: string): TopoNode[] {
-  return nodes.filter((node) => node.type === type);
-}
-
-/**
- * Get node position by ID
- */
-export function getNodePosition(
-  nodes: TopoNode[],
-  nodeId: string
-): { x: number; y: number } | null {
-  const node = getNodeById(nodes, nodeId);
-  return node?.position ?? null;
-}
-
-/**
- * Get positions for multiple nodes
- */
-export function getNodePositions(
-  nodes: TopoNode[],
-  nodeIds: string[]
-): Array<{ id: string; position: { x: number; y: number } }> {
-  return nodeIds
-    .map((id) => {
-      const node = getNodeById(nodes, id);
-      if (!node) return null;
-      return { id, position: { x: node.position.x, y: node.position.y } };
-    })
-    .filter((item): item is { id: string; position: { x: number; y: number } } => item !== null);
-}
-
-/**
- * Get all node IDs
- */
-export function getNodeIds(nodes: TopoNode[]): string[] {
-  return nodes.map((node) => node.id);
-}
-
-/**
- * Get all edge IDs
- */
-export function getEdgeIds(edges: TopoEdge[]): string[] {
-  return edges.map((edge) => edge.id);
-}
-
-/**
- * Check if a node exists
- */
-export function nodeExists(nodes: TopoNode[], nodeId: string): boolean {
-  return nodes.some((node) => node.id === nodeId);
-}
-
-/**
- * Check if an edge exists
- */
-export function edgeExists(edges: TopoEdge[], edgeId: string): boolean {
-  return edges.some((edge) => edge.id === edgeId);
 }
 
 /**

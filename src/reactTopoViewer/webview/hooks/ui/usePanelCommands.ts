@@ -5,7 +5,7 @@
  */
 import { useCallback, useState } from "react";
 
-import { sendCommandToExtension } from "../../utils/extensionMessaging";
+import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 
 export interface DeploymentCommands {
   onDeploy: () => void;

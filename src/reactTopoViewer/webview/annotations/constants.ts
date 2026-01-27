@@ -1,7 +1,7 @@
 /**
  * Free shape annotation constants (used across panels and SVG helpers).
  */
-import type { FreeShapeAnnotation } from "../../../shared/types/topology";
+import type { FreeShapeAnnotation } from "../../shared/types/topology";
 
 export const DEFAULT_SHAPE_WIDTH = 50;
 export const DEFAULT_SHAPE_HEIGHT = 50;

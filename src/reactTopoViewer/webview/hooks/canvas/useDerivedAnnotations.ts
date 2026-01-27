@@ -30,8 +30,11 @@ import {
   nodeToGroup,
   freeTextToNode,
   freeShapeToNode,
-  groupToNode
-} from "../../utils/annotationNodeConverters";
+  groupToNode,
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 
 /**
  * Return type for useDerivedAnnotations
@@ -65,11 +68,11 @@ export interface UseDerivedAnnotationsReturn {
   getGroupMembers: (groupId: string) => string[];
 }
 
-const isGroupNode = (node: Node): node is Node<GroupNodeData> => node.type === "group-node";
+const isGroupNode = (node: Node): node is Node<GroupNodeData> => node.type === GROUP_NODE_TYPE;
 const isFreeTextNode = (node: Node): node is Node<FreeTextNodeData> =>
-  node.type === "free-text-node";
+  node.type === FREE_TEXT_NODE_TYPE;
 const isFreeShapeNode = (node: Node): node is Node<FreeShapeNodeData> =>
-  node.type === "free-shape-node";
+  node.type === FREE_SHAPE_NODE_TYPE;
 
 const hasGroupMembership = (node: Node): boolean => {
   const data = node.data as Record<string, unknown> | undefined;
@@ -136,7 +139,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
       // Find current group node
       const currentNode = useGraphStore
         .getState()
-        .nodes.find((n) => n.id === id && n.type === "group-node");
+        .nodes.find((n) => n.id === id && n.type === GROUP_NODE_TYPE);
       if (!currentNode) return;
 
       // Convert to annotation, apply updates, convert back to node
@@ -171,7 +174,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     (id: string, updates: Partial<FreeTextAnnotation>) => {
       const currentNode = useGraphStore
         .getState()
-        .nodes.find((n) => n.id === id && n.type === "free-text-node");
+        .nodes.find((n) => n.id === id && n.type === FREE_TEXT_NODE_TYPE);
       if (!currentNode) return;
 
       const currentAnnotation = nodeToFreeText(currentNode as Node<FreeTextNodeData>);
@@ -205,7 +208,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
     (id: string, updates: Partial<FreeShapeAnnotation>) => {
       const currentNode = useGraphStore
         .getState()
-        .nodes.find((n) => n.id === id && n.type === "free-shape-node");
+        .nodes.find((n) => n.id === id && n.type === FREE_SHAPE_NODE_TYPE);
       if (!currentNode) return;
 
       const currentAnnotation = nodeToFreeShape(currentNode as Node<FreeShapeNodeData>);

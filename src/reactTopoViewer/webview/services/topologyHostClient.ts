@@ -13,7 +13,7 @@ import type {
 } from "../../shared/types/messages";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
 import type { DeploymentState } from "../../shared/types/topology";
-import { subscribeToWebviewMessages } from "../utils/webviewMessageBus";
+import { subscribeToWebviewMessages } from "../messaging/webviewMessageBus";
 
 declare global {
   interface Window {

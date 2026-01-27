@@ -4,11 +4,11 @@
  */
 import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
 
-import type { NodeType } from "../../utils/SvgGenerator";
-import { generateEncodedSVG } from "../../utils/SvgGenerator";
+import type { NodeType } from "../../icons/SvgGenerator";
+import { generateEncodedSVG } from "../../icons/SvgGenerator";
 import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
 import { useCustomIcons } from "../../stores/topoViewerStore";
-import { postCommand } from "../../utils/extensionMessaging";
+import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
 
 import { BasePanel } from "./editor/BasePanel";

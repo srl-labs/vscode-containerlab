@@ -1,34 +1,10 @@
 /**
- * Helper utilities for sending messages from the React webview to the VS Code extension.
- *
- * ARCHITECTURE NOTE: This module is for VS Code extension integration commands only.
- * Topology persistence is owned by the host (TopologyHost protocol). The webview
- * dispatches topology commands via the host command pipeline, not through these
- * VS Code command messages.
- *
- * HOST-COMMAND OPERATIONS (DO NOT use sendCommandToExtension):
- * ================================================================
- * - Node/link CRUD + lab settings edits
- * - Annotation saves (positions, free-text, free-shapes, groups)
- * - Batch operations
- * → Use host command services (e.g. `useLabSettings`, `createNode`, `editLink`) which dispatch
- *   TopologyHost commands.
- *
- * MESSAGING-BASED OPERATIONS (OK to use sendCommandToExtension):
- * ================================================================
- * 1. CONTAINERLAB COMMANDS (require VS Code terminal/CLI access):
- *    - clab-node-connect-ssh, clab-node-attach-shell, clab-node-view-logs
- *    - clab-interface-capture
- *    - deployLab, destroyLab, redeployLab, *Cleanup commands
- *
- * 2. VS CODE UI INTEGRATION (require VS Code API):
- *    - topo-toggle-split-view (VS Code split editor)
- *    - Custom node templates: save-custom-node, delete-custom-node, set-default-custom-node
- *      (stored in VS Code settings, not annotations)
+ * VS Code extension messaging helpers.
+ * Use for VS Code/CLI operations and settings updates. Topology persistence goes
+ * through the host command pipeline, not these messages.
  */
 import type { SaveCustomNodeData } from "../../shared/utilities/customNodeConversions";
-
-import { log } from "./logger";
+import { log } from "../utils/logger";
 
 declare global {
   interface Window {
@@ -45,13 +21,6 @@ function getVscodeApi(): { postMessage(data: unknown): void } | undefined {
 
 /**
  * Send a fire-and-forget command message to the extension.
- *
- * IMPORTANT: Only use this for:
- * 1. Containerlab CLI operations (SSH, logs, capture, deploy/destroy)
- * 2. VS Code-specific operations (split view, custom node templates in settings)
- * 3. UI state coordination between webview and extension
- *
- * DO NOT use this for topology data operations - use service hooks instead.
  */
 export function sendCommandToExtension(command: string, payload?: Record<string, unknown>): void {
   const vscodeApi = getVscodeApi();

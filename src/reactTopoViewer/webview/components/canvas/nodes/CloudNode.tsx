@@ -6,7 +6,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 import type { CloudNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
-import { generateEncodedSVG } from "../../../utils/SvgGenerator";
+import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import { useLinkCreationContext, useNodeRenderConfig } from "../../../stores/canvasStore";
 
 /**

@@ -3,6 +3,12 @@
  */
 import type { NodeTypes } from "@xyflow/react";
 
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../../annotations/annotationNodeConverters";
+
 import { TopologyNode } from "./TopologyNode";
 import { CloudNode } from "./CloudNode";
 import { FreeTextNode } from "./FreeTextNode";
@@ -15,7 +21,7 @@ import { GroupNode } from "./GroupNode";
 export const nodeTypes: NodeTypes = {
   "topology-node": TopologyNode,
   "cloud-node": CloudNode,
-  "free-text-node": FreeTextNode,
-  "free-shape-node": FreeShapeNode,
-  "group-node": GroupNode
+  [FREE_TEXT_NODE_TYPE]: FreeTextNode,
+  [FREE_SHAPE_NODE_TYPE]: FreeShapeNode,
+  [GROUP_NODE_TYPE]: GroupNode
 };

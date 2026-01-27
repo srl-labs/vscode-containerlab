@@ -5,7 +5,7 @@ import React from "react";
 
 import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
 import type { TopoViewerState } from "../../stores/topoViewerStore";
-import { buildEdgeAnnotationLookup } from "../../utils/edgeAnnotations";
+import { buildEdgeAnnotationLookup } from "../../annotations/edgeAnnotations";
 
 import { useFilteredGraphElements, useSelectionData } from "./useAppContentHelpers";
 

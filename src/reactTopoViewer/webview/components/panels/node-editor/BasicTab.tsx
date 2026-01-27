@@ -9,8 +9,8 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import { FormField, InputField, FilterableDropdown } from "../../ui/form";
 import { IconSelectorModal } from "../../ui/IconSelectorModal";
-import type { NodeType } from "../../../utils/SvgGenerator";
-import { generateEncodedSVG } from "../../../utils/SvgGenerator";
+import type { NodeType } from "../../../icons/SvgGenerator";
+import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import { useSchema, useDockerImages } from "../../../hooks/editor";
 import { useCustomIcons } from "../../../stores/topoViewerStore";
 import { DEFAULT_ICON_COLOR } from "../../canvas/types";

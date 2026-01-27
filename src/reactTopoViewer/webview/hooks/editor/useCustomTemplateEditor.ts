@@ -9,7 +9,7 @@ import {
   convertCustomTemplateToEditorData,
   convertEditorDataToSaveData
 } from "../../../shared/utilities/customNodeConversions";
-import { sendSaveCustomNode } from "../../utils/extensionMessaging";
+import { sendSaveCustomNode } from "../../messaging/extensionMessaging";
 
 export interface CustomTemplateEditorHandlers {
   handleClose: () => void;

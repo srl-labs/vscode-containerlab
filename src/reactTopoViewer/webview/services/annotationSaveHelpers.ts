@@ -12,7 +12,7 @@ import type {
   TopologyAnnotations
 } from "../../shared/types/topology";
 import { useGraphStore } from "../stores/graphStore";
-import { nodesToAnnotations } from "../utils/annotationNodeConverters";
+import { nodesToAnnotations } from "../annotations/annotationNodeConverters";
 
 import { executeTopologyCommand } from "./topologyHostCommands";
 

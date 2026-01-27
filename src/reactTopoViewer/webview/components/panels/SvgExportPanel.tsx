@@ -4,18 +4,18 @@
  */
 import React, { useState, useCallback } from "react";
 
-import { BasePanel } from "../ui/editor/BasePanel";
-import { log } from "../../utils/logger";
-import type { NodeType } from "../../utils/SvgGenerator";
-import { generateEncodedSVG } from "../../utils/SvgGenerator";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
-import { compositeAnnotationsIntoSvg, addBackgroundRect } from "../../utils/annotationsToSvg";
+import type { NodeType } from "../../icons/SvgGenerator";
+import { generateEncodedSVG } from "../../icons/SvgGenerator";
+import { log } from "../../utils/logger";
+import { BasePanel } from "../ui/editor/BasePanel";
 import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../ui/form";
 
+import { compositeAnnotationsIntoSvg, addBackgroundRect } from "./svg-export/annotationsToSvg";
 export interface SvgExportPanelProps {
   isVisible: boolean;
   onClose: () => void;

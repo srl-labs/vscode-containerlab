@@ -22,7 +22,7 @@ import { saveViewerSettings } from "../../services";
 import {
   ENDPOINT_LABEL_OFFSET_MAX,
   ENDPOINT_LABEL_OFFSET_MIN
-} from "../../utils/endpointLabelOffset";
+} from "../../annotations/endpointLabelOffset";
 
 import { ContainerlabLogo } from "./ContainerlabLogo";
 import { NavbarLoadingIndicator } from "./NavbarLoadingIndicator";

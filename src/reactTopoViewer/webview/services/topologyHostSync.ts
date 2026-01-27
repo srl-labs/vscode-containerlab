@@ -15,10 +15,10 @@ import type {
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 import { useGraphStore } from "../stores/graphStore";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
-import { applyGroupMembershipToNodes } from "../utils/groupMembership";
-import { annotationsToNodes } from "../utils/annotationNodeConverters";
-import { pruneEdgeAnnotations } from "../utils/edgeAnnotations";
-import { parseEndpointLabelOffset } from "../utils/endpointLabelOffset";
+import { applyGroupMembershipToNodes } from "../annotations/groupMembership";
+import { annotationsToNodes } from "../annotations/annotationNodeConverters";
+import { pruneEdgeAnnotations } from "../annotations/edgeAnnotations";
+import { parseEndpointLabelOffset } from "../annotations/endpointLabelOffset";
 
 import { setHostRevision } from "./topologyHostClient";
 

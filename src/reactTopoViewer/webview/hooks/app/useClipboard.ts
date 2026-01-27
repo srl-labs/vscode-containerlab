@@ -16,6 +16,11 @@ import type {
   TopologyNodeData,
   TopologyEdgeData
 } from "../../../shared/types/graph";
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 
 /** Version string for clipboard format compatibility */
 const CLIPBOARD_VERSION = "1.0";
@@ -107,7 +112,11 @@ function calculateCenter(positions: Array<{ x: number; y: number }>): { x: numbe
 let pasteCounter = 0;
 
 /** Annotation node types that should use original ID as base (not name) */
-const ANNOTATION_TYPES = new Set(["group-node", "free-text-node", "free-shape-node"]);
+const ANNOTATION_TYPES = new Set<string>([
+  GROUP_NODE_TYPE,
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE
+]);
 
 // ============================================================================
 // Paste helper functions (extracted for complexity reduction)

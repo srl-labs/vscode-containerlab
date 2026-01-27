@@ -6,8 +6,7 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation
-} from "../../shared/types/topology";
-
+} from "../../../../shared/types/topology";
 import {
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY,
@@ -16,9 +15,9 @@ import {
   DEFAULT_BORDER_STYLE,
   DEFAULT_ARROW_SIZE,
   DEFAULT_LINE_LENGTH
-} from "./annotations/constants";
-import { applyAlphaToColor } from "./color";
-import { renderMarkdown } from "./markdownRenderer";
+} from "../../../annotations/constants";
+import { applyAlphaToColor } from "../../../utils/color";
+import { renderMarkdown } from "../../../utils/markdownRenderer";
 
 // ============================================================================
 // Constants
@@ -202,7 +201,7 @@ function buildGroupLabelSvg(
  * NOTE: Uses MODEL coordinates - the parent transform handles scaling.
  * Group position represents the CENTER of the group (same as canvas rendering).
  */
-export function groupToSvgString(group: GroupStyleAnnotation): string {
+function groupToSvgString(group: GroupStyleAnnotation): string {
   const width = group.width;
   const height = group.height;
   // Group position is CENTER-based, convert to top-left for SVG rect
@@ -359,7 +358,7 @@ function buildLineSvg(shape: FreeShapeAnnotation): string {
  * Convert a FreeShapeAnnotation to an SVG string.
  * NOTE: Uses MODEL coordinates - the parent transform handles scaling.
  */
-export function shapeToSvgString(shape: FreeShapeAnnotation): string {
+function shapeToSvgString(shape: FreeShapeAnnotation): string {
   switch (shape.shapeType) {
     case "rectangle":
       return buildRectangleSvg(shape);
@@ -458,7 +457,7 @@ function estimateTextDimensions(
  * NOTE: Uses MODEL coordinates - the parent transform handles scaling.
  * Text position represents the CENTER of the annotation (same as canvas rendering).
  */
-export function textToSvgString(text: FreeTextAnnotation): string {
+function textToSvgString(text: FreeTextAnnotation): string {
   // Use explicit dimensions if provided, otherwise estimate from content
   let width: number;
   let height: number;

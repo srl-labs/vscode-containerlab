@@ -15,9 +15,10 @@ import {
   DEFAULT_BORDER_STYLE,
   DEFAULT_ARROW_SIZE,
   DEFAULT_CORNER_RADIUS
-} from "../../../utils/annotations/constants";
-import { buildShapeSvg } from "../../../utils/annotations/freeShapeSvg";
+} from "../../../annotations/constants";
 import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../../ui/form";
+
+import { buildShapeSvg } from "./FreeShapeSvg";
 
 interface Props {
   formData: FreeShapeAnnotation;

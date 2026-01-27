@@ -9,7 +9,10 @@ import { useEffect } from "react";
 import type { Edge } from "@xyflow/react";
 
 import type { TopologySnapshot } from "../../../shared/types/messages";
-import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
+import {
+  subscribeToWebviewMessages,
+  type TypedMessageEvent
+} from "../../messaging/webviewMessageBus";
 import { useGraphStore } from "../../stores/graphStore";
 import { applySnapshotToStores } from "../../services/topologyHostSync";
 

@@ -1,7 +1,7 @@
 // SvgGenerator.ts
 
 // Import logger for webview
-import { log } from "./logger";
+import { log } from "../utils/logger";
 
 /**
  * Supported node types for SVG generation
@@ -22,14 +22,9 @@ export type NodeType =
   | "client" // Client
   | "bridge"; // Bridge
 
-/**
- * Generates an encoded SVG data URI for a given node type and fill color.
- *
- * @param nodeType - The type of network node to generate SVG for
- * @param fillColor - The fill color for the SVG background (e.g., "#FF0000", "blue")
- * @returns Encoded SVG data URI suitable for use as CSS background-image
- */
-export function generateEncodedSVG(nodeType: NodeType, fillColor: string): string {
+const svgCache = new Map<string, string>();
+
+function buildSvgString(nodeType: NodeType, fillColor: string): string {
   let svgString = "";
 
   function renderLeafOrDcgw(fill: string): string {
@@ -546,7 +541,23 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                         </g>
                     </svg>`;
   }
+  return svgString;
+}
 
-  // Encode the final selected SVG for the graph
-  return "data:image/svg+xml;utf8," + encodeURIComponent(svgString);
+/**
+ * Generates an encoded SVG data URI for a given node type and fill color.
+ *
+ * @param nodeType - The type of network node to generate SVG for
+ * @param fillColor - The fill color for the SVG background (e.g., "#FF0000", "blue")
+ * @returns Encoded SVG data URI suitable for use as CSS background-image
+ */
+export function generateEncodedSVG(nodeType: NodeType, fillColor: string): string {
+  const cacheKey = `${nodeType}:${fillColor}`;
+  const cached = svgCache.get(cacheKey);
+  if (cached) return cached;
+
+  const svgString = buildSvgString(nodeType, fillColor);
+  const encoded = "data:image/svg+xml;utf8," + encodeURIComponent(svgString);
+  svgCache.set(cacheKey, encoded);
+  return encoded;
 }

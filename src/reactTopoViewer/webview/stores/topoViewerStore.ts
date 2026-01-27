@@ -11,11 +11,11 @@ import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/
 import type { EdgeAnnotation } from "../../shared/types/topology";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import type { LabSettings } from "../../shared/types/labSettings";
-import { upsertEdgeAnnotation } from "../utils/edgeAnnotations";
+import { upsertEdgeAnnotation } from "../annotations/edgeAnnotations";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset
-} from "../utils/endpointLabelOffset";
+} from "../annotations/endpointLabelOffset";
 
 // ============================================================================
 // Types

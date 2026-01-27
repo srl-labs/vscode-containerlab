@@ -13,7 +13,10 @@ import { useEffect } from "react";
 
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { CustomIconInfo } from "../../../shared/types/icons";
-import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
+import {
+  subscribeToWebviewMessages,
+  type TypedMessageEvent
+} from "../../messaging/webviewMessageBus";
 import { useTopoViewerStore, type DeploymentState } from "../../stores/topoViewerStore";
 
 // ============================================================================

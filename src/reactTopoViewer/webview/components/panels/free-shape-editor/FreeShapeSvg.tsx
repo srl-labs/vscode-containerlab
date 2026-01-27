@@ -3,9 +3,8 @@
  */
 import type { ReactElement } from "react";
 
-import type { FreeShapeAnnotation } from "../../../shared/types/topology";
-import { applyAlphaToColor } from "../color";
-
+import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
+import { applyAlphaToColor } from "../../../utils/color";
 import {
   DEFAULT_LINE_LENGTH,
   DEFAULT_BORDER_WIDTH,
@@ -15,9 +14,9 @@ import {
   MIN_SHAPE_SIZE,
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY
-} from "./constants";
+} from "../../../annotations/constants";
 
-export interface LineGeometry {
+interface LineGeometry {
   dx: number;
   dy: number;
   width: number;
@@ -26,7 +25,7 @@ export interface LineGeometry {
   end: { x: number; y: number };
 }
 
-export function getBorderDashArray(style?: FreeShapeAnnotation["borderStyle"]): string {
+function getBorderDashArray(style?: FreeShapeAnnotation["borderStyle"]): string {
   switch (style) {
     case "dashed":
       return "10,5";
@@ -37,7 +36,7 @@ export function getBorderDashArray(style?: FreeShapeAnnotation["borderStyle"]): 
   }
 }
 
-export function computeLineGeometry(annotation: FreeShapeAnnotation): LineGeometry {
+function computeLineGeometry(annotation: FreeShapeAnnotation): LineGeometry {
   const startX = annotation.position.x;
   const startY = annotation.position.y;
   const endX = annotation.endPosition?.x ?? annotation.position.x + DEFAULT_LINE_LENGTH;

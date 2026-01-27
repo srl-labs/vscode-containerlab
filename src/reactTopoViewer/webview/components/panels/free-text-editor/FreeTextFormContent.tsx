@@ -5,7 +5,7 @@
 import React, { useMemo } from "react";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
-import { renderMarkdown, MARKDOWN_EMPTY_MESSAGE } from "../../../utils/markdownRenderer";
+import { renderMarkdown } from "../../../utils/markdownRenderer";
 import { Toggle, ColorSwatch, PREVIEW_GRID_BG } from "../../ui/form";
 
 const FONTS = [
@@ -235,7 +235,7 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
         <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
         <div className="relative z-10 transition-all duration-200 free-text-markdown" style={style}>
           {isEmpty ? (
-            <span className="opacity-50 italic">{MARKDOWN_EMPTY_MESSAGE}</span>
+            <span className="opacity-50 italic">Start typing to see preview...</span>
           ) : (
             <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
           )}

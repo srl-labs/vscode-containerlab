@@ -9,7 +9,7 @@ import {
 import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
 import { useGraphStore } from "../../stores/graphStore";
 import { useIsLocked, useMode } from "../../stores/topoViewerStore";
-import { collectNodeGroupMemberships } from "../../utils/groupMembership";
+import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 
 import type { AnnotationContextValue } from "./annotationTypes";
 import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHelpers";

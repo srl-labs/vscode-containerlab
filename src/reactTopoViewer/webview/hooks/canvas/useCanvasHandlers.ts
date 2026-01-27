@@ -22,11 +22,10 @@ import {
 import { log } from "../../utils/logger";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 import {
-  FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE,
   isAnnotationNodeType
-} from "../../utils/annotationNodeConverters";
+} from "../../annotations/annotationNodeConverters";
 import { saveAnnotationNodesFromGraph, saveNodePositions } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
 
@@ -105,11 +104,6 @@ interface CanvasHandlers {
   closeContextMenu: () => void;
 }
 
-const ANNOTATION_NODE_TYPES: readonly string[] = [
-  GROUP_NODE_TYPE,
-  FREE_TEXT_NODE_TYPE,
-  FREE_SHAPE_NODE_TYPE
-];
 const EDITABLE_NODE_TYPES = ["topology-node", "cloud-node"];
 
 function generateEdgeId(source: string, target: string): string {
@@ -233,7 +227,7 @@ function useNodeDragHandlers(
       if (modeRef.current !== "edit") return;
 
       // Skip for shape nodes with active line handle
-      if (node.type === "free-shape-node" && isLineHandleActive()) {
+      if (node.type === FREE_SHAPE_NODE_TYPE && isLineHandleActive()) {
         return;
       }
 
@@ -370,7 +364,7 @@ function useNodeClickHandlers(
     (_event, node) => {
       log.info(`[ReactFlowCanvas] Node clicked: ${node.id}`);
       closeContextMenu();
-      if (ANNOTATION_NODE_TYPES.includes(node.type || "")) return;
+      if (isAnnotationNodeType(node.type)) return;
       selectNode(node.id);
       selectEdge(null);
     },

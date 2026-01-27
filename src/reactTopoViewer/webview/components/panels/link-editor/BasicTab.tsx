@@ -8,7 +8,7 @@ import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,
   ENDPOINT_LABEL_OFFSET_MAX
-} from "../../../utils/endpointLabelOffset";
+} from "../../../annotations/endpointLabelOffset";
 
 import type { LinkTabProps } from "./types";
 

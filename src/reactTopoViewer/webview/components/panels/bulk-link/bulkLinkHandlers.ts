@@ -4,7 +4,7 @@
  */
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import { executeTopologyCommands } from "../../../services";
-import { toLinkSaveData } from "../../../utils/linkSaveData";
+import { toLinkSaveData } from "../../../services/linkSaveData";
 
 import { buildBulkEdges, computeCandidates, type LinkCandidate } from "./bulkLinkUtils";
 

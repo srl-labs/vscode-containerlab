@@ -5,7 +5,7 @@ import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
 import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
-import { collectNodeGroupMemberships } from "../../utils/groupMembership";
+import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 
 import type { GroupEditorData } from "./groupTypes";
 import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";

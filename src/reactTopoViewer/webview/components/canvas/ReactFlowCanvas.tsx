@@ -39,7 +39,6 @@ import {
   useAnnotationCanvasHandlers,
   GRID_SIZE
 } from "../../hooks/canvas";
-import { rafThrottle } from "../../utils/throttle";
 
 import {
   buildNodeContextMenu,
@@ -54,6 +53,35 @@ import type {
   ReactFlowCanvasProps,
   ReactFlowCanvasRef
 } from "./types";
+
+type RafThrottled<Args extends unknown[]> = ((...args: Args) => void) & { cancel: () => void };
+
+function rafThrottle<Args extends unknown[]>(func: (...args: Args) => void): RafThrottled<Args> {
+  let rafId: number | null = null;
+  let lastArgs: Args | null = null;
+
+  const throttled = (...args: Args) => {
+    lastArgs = args;
+    if (rafId === null) {
+      rafId = window.requestAnimationFrame(() => {
+        if (lastArgs) {
+          func(...lastArgs);
+          lastArgs = null;
+        }
+        rafId = null;
+      });
+    }
+  };
+
+  throttled.cancel = () => {
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  };
+
+  return throttled as RafThrottled<Args>;
+}
 
 /** Parameters for useContextMenuItems hook */
 interface ContextMenuItemsParams {

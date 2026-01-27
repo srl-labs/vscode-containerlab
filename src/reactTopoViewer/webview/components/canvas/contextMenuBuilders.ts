@@ -4,14 +4,14 @@
 import type React from "react";
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
 
 import { applyLayout } from "./layout";
-
-/** Annotation node type constants */
-const FREE_TEXT_NODE_TYPE = "free-text-node";
-const FREE_SHAPE_NODE_TYPE = "free-shape-node";
-const GROUP_NODE_TYPE = "group-node";
 
 interface MenuBuilderContext {
   targetId: string;

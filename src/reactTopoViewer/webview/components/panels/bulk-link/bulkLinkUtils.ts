@@ -5,13 +5,7 @@
 import { FilterUtils } from "../../../../../helpers/filterUtils";
 import { isSpecialEndpointId } from "../../../../shared/utilities/LinkTypes";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import {
-  type ParsedInterfacePattern,
-  parseInterfacePattern,
-  generateInterfaceName,
-  getNodeInterfacePattern,
-  collectUsedIndices
-} from "../../../utils/interfacePatterns";
+import { DEFAULT_INTERFACE_PATTERNS } from "../../../../shared/constants/interfacePatterns";
 import {
   hasEdgeBetween as hasEdgeBetweenUtil,
   getNodeById,
@@ -19,6 +13,90 @@ import {
 } from "../../../utils/graphQueryUtils";
 
 export type LinkCandidate = { sourceId: string; targetId: string };
+
+const DEFAULT_INTERFACE_PATTERN = "eth{n}";
+const INTERFACE_PATTERN_REGEX = /^(.+)?\{n(?::(\d+))?\}(.+)?$/;
+
+type ParsedInterfacePattern = {
+  prefix: string;
+  suffix: string;
+  startIndex: number;
+};
+
+type NodeExtraData = {
+  interfacePattern?: string;
+  kind?: string;
+};
+
+type EdgeData = {
+  source: string;
+  target: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+};
+
+function parseInterfacePattern(pattern: string): ParsedInterfacePattern {
+  const match = INTERFACE_PATTERN_REGEX.exec(pattern);
+  if (!match) {
+    return { prefix: pattern || "eth", suffix: "", startIndex: 0 };
+  }
+  const [, prefix = "", startStr, suffix = ""] = match;
+  const startIndex = startStr ? parseInt(startStr, 10) : 1;
+  return { prefix, suffix, startIndex };
+}
+
+function generateInterfaceName(parsed: ParsedInterfacePattern, index: number): string {
+  const num = parsed.startIndex + index;
+  return `${parsed.prefix}${num}${parsed.suffix}`;
+}
+
+function extractInterfaceIndex(endpoint: string, parsed: ParsedInterfacePattern): number {
+  const escapedPrefix = parsed.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedSuffix = parsed.suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`^${escapedPrefix}(\\d+)${escapedSuffix}$`);
+  const match = regex.exec(endpoint);
+  if (match) {
+    return parseInt(match[1], 10) - parsed.startIndex;
+  }
+  return -1;
+}
+
+function getNodeInterfacePattern(
+  extraData: NodeExtraData | undefined,
+  interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
+): string {
+  if (extraData?.interfacePattern) {
+    return extraData.interfacePattern;
+  }
+
+  const kind = extraData?.kind;
+  if (kind && interfacePatternMapping[kind]) {
+    return interfacePatternMapping[kind];
+  }
+
+  return DEFAULT_INTERFACE_PATTERN;
+}
+
+function collectUsedIndices(
+  edges: EdgeData[],
+  nodeId: string,
+  parsed: ParsedInterfacePattern
+): Set<number> {
+  const usedIndices = new Set<number>();
+
+  for (const edge of edges) {
+    if (edge.source === nodeId && edge.sourceEndpoint) {
+      const idx = extractInterfaceIndex(edge.sourceEndpoint, parsed);
+      if (idx >= 0) usedIndices.add(idx);
+    }
+    if (edge.target === nodeId && edge.targetEndpoint) {
+      const idx = extractInterfaceIndex(edge.targetEndpoint, parsed);
+      if (idx >= 0) usedIndices.add(idx);
+    }
+  }
+
+  return usedIndices;
+}
 
 type EndpointAllocator = {
   parsed: ParsedInterfacePattern;

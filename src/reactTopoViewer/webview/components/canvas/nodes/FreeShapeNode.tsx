@@ -7,7 +7,7 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import type { FreeShapeNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
-import { DEFAULT_LINE_LENGTH } from "../../../utils/annotations/constants";
+import { DEFAULT_LINE_LENGTH } from "../../../annotations/constants";
 import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 

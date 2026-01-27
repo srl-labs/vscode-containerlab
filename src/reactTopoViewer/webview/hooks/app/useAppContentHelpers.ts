@@ -6,9 +6,12 @@ import React from "react";
 import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
 import { convertToEditorData, convertToNetworkEditorData } from "../../../shared/utilities";
 import type { AnnotationHandlers } from "../../components/canvas/types";
-import { findEdgeAnnotationInLookup, type EdgeAnnotationLookup } from "../../utils/edgeAnnotations";
+import {
+  findEdgeAnnotationInLookup,
+  type EdgeAnnotationLookup
+} from "../../annotations/edgeAnnotations";
 import { convertToLinkEditorData } from "../../utils/linkEditorConversions";
-import { parseEndpointLabelOffset } from "../../utils/endpointLabelOffset";
+import { parseEndpointLabelOffset } from "../../annotations/endpointLabelOffset";
 import type { AnnotationContextValue } from "../canvas";
 
 interface SelectionStateSlice {

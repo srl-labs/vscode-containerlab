@@ -14,8 +14,8 @@ import {
   saveAnnotationNodesFromGraph,
   saveNetworkNodesFromGraph
 } from "../../services";
-import { isAnnotationNodeType } from "../../utils/annotationNodeConverters";
-import { toLinkSaveData } from "../../utils/linkSaveData";
+import { isAnnotationNodeType } from "../../annotations/annotationNodeConverters";
+import { toLinkSaveData } from "../../services/linkSaveData";
 import {
   BRIDGE_NETWORK_TYPES,
   SPECIAL_NETWORK_TYPES,

@@ -22,8 +22,12 @@ import {
   saveNetworkNodesFromGraph
 } from "../../services";
 import { useGraphState, useGraphStore } from "../../stores/graphStore";
-import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
+import {
+  findEdgeAnnotation,
+  upsertEdgeLabelOffsetAnnotation
+} from "../../annotations/edgeAnnotations";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
+import { BRIDGE_NETWORK_TYPES } from "../../utils/networkNodeTypes";
 import { getViewportCenter } from "../../utils/viewportUtils";
 
 // ============================================================================
@@ -383,8 +387,6 @@ const LINK_BASED_NETWORK_TYPES = new Set([
 ]);
 
 /** Bridge types that are stored as YAML nodes */
-const BRIDGE_NETWORK_TYPES = new Set(["bridge", "ovs-bridge"]);
-
 function calculateExpectedNodeId(data: NetworkEditorData): string {
   if (data.networkType === "host") {
     return `host:${data.interfaceName || "eth0"}`;

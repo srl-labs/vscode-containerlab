@@ -5,8 +5,6 @@
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
-import { addMouseMoveUpListeners } from "../../utils/dragHelpers";
-
 export interface Position {
   x: number;
   y: number;
@@ -131,6 +129,21 @@ function shouldPreventDrag(target: HTMLElement): boolean {
     target.closest(".panel-close-btn") !== null ||
     target.closest("button") !== null
   );
+}
+
+/**
+ * Add mouse move and mouse up event listeners and return cleanup function.
+ */
+function addMouseMoveUpListeners(
+  handleMouseMove: (e: MouseEvent) => void,
+  handleMouseUp: (e: MouseEvent) => void
+): () => void {
+  document.addEventListener("mousemove", handleMouseMove);
+  document.addEventListener("mouseup", handleMouseUp);
+  return () => {
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  };
 }
 
 /**

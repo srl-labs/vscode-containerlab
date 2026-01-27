@@ -18,7 +18,7 @@ import {
   sendDeleteCustomNode,
   sendSetDefaultCustomNode,
   sendCommandToExtension
-} from "../../utils/extensionMessaging";
+} from "../../messaging/extensionMessaging";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 
 /**

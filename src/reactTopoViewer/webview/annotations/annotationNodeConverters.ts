@@ -23,7 +23,7 @@ import type {
   GroupNodeData
 } from "../components/canvas/types";
 
-import { DEFAULT_LINE_LENGTH } from "./annotations/constants";
+import { DEFAULT_LINE_LENGTH } from "./constants";
 
 // ============================================================================
 // Constants
@@ -35,7 +35,7 @@ export const FREE_SHAPE_NODE_TYPE = "free-shape-node" as const;
 export const GROUP_NODE_TYPE = "group-node" as const;
 
 /** Set of annotation node types for quick lookup */
-export const ANNOTATION_NODE_TYPES: Set<string> = new Set([
+const ANNOTATION_NODE_TYPES: Set<string> = new Set([
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE
@@ -53,24 +53,6 @@ const LINE_PADDING = 20;
  */
 export function isAnnotationNodeType(type: string | undefined): boolean {
   return type !== undefined && ANNOTATION_NODE_TYPES.has(type);
-}
-
-/**
- * Get annotation type from node type
- */
-export function getAnnotationTypeFromNodeType(
-  nodeType: string | undefined
-): "freeText" | "freeShape" | "group" | null {
-  switch (nodeType) {
-    case FREE_TEXT_NODE_TYPE:
-      return "freeText";
-    case FREE_SHAPE_NODE_TYPE:
-      return "freeShape";
-    case GROUP_NODE_TYPE:
-      return "group";
-    default:
-      return null;
-  }
 }
 
 // ============================================================================
@@ -429,18 +411,4 @@ export function nodesToAnnotations(nodes: Node[]): {
   }
 
   return { freeTextAnnotations, freeShapeAnnotations, groups };
-}
-
-/**
- * Filter nodes to get only annotation nodes
- */
-export function filterAnnotationNodes(nodes: Node[]): Node[] {
-  return nodes.filter((n) => isAnnotationNodeType(n.type));
-}
-
-/**
- * Filter nodes to get only topology nodes (non-annotation)
- */
-export function filterTopologyNodes(nodes: Node[]): Node[] {
-  return nodes.filter((n) => !isAnnotationNodeType(n.type));
 }
