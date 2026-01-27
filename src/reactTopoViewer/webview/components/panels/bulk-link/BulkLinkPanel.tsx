@@ -5,8 +5,8 @@ import React from "react";
 
 import { BasePanel } from "../../ui/editor/BasePanel";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import { useGraph, useGraphActions } from "../../../hooks/useGraphCompat";
-import { useUndoRedoContext } from "../../../hooks/useUndoRedoCompat";
+import { useGraphActions, useGraphState } from "../../../stores/graphStore";
+import { useUndoRedoActions } from "../../../stores/undoRedoStore";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -79,10 +79,10 @@ const ExamplesSection: React.FC = () => (
 type UseBulkLinkPanelOptions = Omit<BulkLinkPanelProps, "storageKey">;
 
 function useBulkLinkPanel({ isVisible, mode, isLocked, onClose }: UseBulkLinkPanelOptions) {
-  // Get nodes and edges from GraphContext
-  const { nodes, edges } = useGraph();
+  // Get nodes and edges from graph store
+  const { nodes, edges } = useGraphState();
   const { addEdge } = useGraphActions();
-  const { undoRedo } = useUndoRedoContext();
+  const undoRedo = useUndoRedoActions();
 
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");

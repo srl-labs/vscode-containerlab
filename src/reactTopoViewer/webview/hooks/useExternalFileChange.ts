@@ -8,10 +8,10 @@ import { useEffect } from "react";
 
 import { subscribeToWebviewMessages } from "../utils/webviewMessageBus";
 
-import type { UseUndoRedoReturn } from "./state/useUndoRedo";
+import type { UseUndoRedoStoreReturn } from "./useUndoRedoStore";
 
 interface UseExternalFileChangeOptions {
-  undoRedo: UseUndoRedoReturn;
+  undoRedo: Pick<UseUndoRedoStoreReturn, "undoCount" | "redoCount" | "clearHistory">;
   addToast: (message: string, type?: "info" | "success" | "warning" | "error") => void;
   enabled?: boolean;
 }

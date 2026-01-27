@@ -18,9 +18,9 @@ import {
   type XYPosition
 } from "@xyflow/react";
 
-import type { SnapshotCapture } from "../state/useUndoRedo";
+import type { SnapshotCapture } from "../../stores/undoRedoStore";
 import { log } from "../../utils/logger";
-import { useUndoRedoContext } from "../useUndoRedoCompat";
+import { useUndoRedoActions } from "../../stores/undoRedoStore";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 import {
   FREE_TEXT_NODE_TYPE,
@@ -171,7 +171,7 @@ function useNodeDragHandlers(
   setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
   groupMemberHandlers?: GroupMemberHandlers
 ) {
-  const { undoRedo } = useUndoRedoContext();
+  const undoRedo = useUndoRedoActions();
   const dragSnapshotRef = useRef<SnapshotCapture | null>(null);
   // Track the last position of a dragging group to compute delta
   const groupLastPositionRef = useRef<Map<string, XYPosition>>(new Map());
@@ -654,8 +654,8 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   );
   const onConnect = useConnectionHandler(modeRef, isLockedRef, onLockedAction, onEdgeCreated);
 
-  // Node changes handler - all nodes (topology + annotation) are in GraphContext
-  // GraphContext is now the single source of truth, so we just pass changes through directly
+  // Node changes handler - all nodes (topology + annotation) live in the graph store
+  // The graph store is the single source of truth, so we pass changes through directly
   const handleNodesChange: OnNodesChange = useCallback(
     (changes: NodeChange[]) => {
       onNodesChangeBase(changes);

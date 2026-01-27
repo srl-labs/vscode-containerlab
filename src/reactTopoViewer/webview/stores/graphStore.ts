@@ -5,6 +5,7 @@
  * all graph manipulation operations. React Flow is the source of truth.
  */
 import { create } from "zustand";
+import { shallow } from "zustand/shallow";
 import { applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 import type { Node, Edge, NodeChange, EdgeChange } from "@xyflow/react";
 
@@ -222,25 +223,28 @@ export const useEdges = () => useGraphStore((state) => state.edges);
 
 /** Get both nodes and edges */
 export const useGraphState = () =>
-  useGraphStore((state) => ({ nodes: state.nodes, edges: state.edges }));
+  useGraphStore((state) => ({ nodes: state.nodes, edges: state.edges }), shallow);
 
 /** Get graph actions (stable reference) */
 export const useGraphActions = () =>
-  useGraphStore((state) => ({
-    setNodes: state.setNodes,
-    setEdges: state.setEdges,
-    onNodesChange: state.onNodesChange,
-    onEdgesChange: state.onEdgesChange,
-    addNode: state.addNode,
-    removeNode: state.removeNode,
-    removeNodeAndEdges: state.removeNodeAndEdges,
-    updateNode: state.updateNode,
-    replaceNode: state.replaceNode,
-    renameNode: state.renameNode,
-    updateNodePositions: state.updateNodePositions,
-    updateNodeData: state.updateNodeData,
-    addEdge: state.addEdge,
-    removeEdge: state.removeEdge,
-    updateEdge: state.updateEdge,
-    updateEdgeData: state.updateEdgeData
-  }));
+  useGraphStore(
+    (state) => ({
+      setNodes: state.setNodes,
+      setEdges: state.setEdges,
+      onNodesChange: state.onNodesChange,
+      onEdgesChange: state.onEdgesChange,
+      addNode: state.addNode,
+      removeNode: state.removeNode,
+      removeNodeAndEdges: state.removeNodeAndEdges,
+      updateNode: state.updateNode,
+      replaceNode: state.replaceNode,
+      renameNode: state.renameNode,
+      updateNodePositions: state.updateNodePositions,
+      updateNodeData: state.updateNodeData,
+      addEdge: state.addEdge,
+      removeEdge: state.removeEdge,
+      updateEdge: state.updateEdge,
+      updateEdgeData: state.updateEdgeData
+    }),
+    shallow
+  );

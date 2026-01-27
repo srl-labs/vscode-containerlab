@@ -16,8 +16,8 @@ import type { CustomIconInfo } from "../../../shared/types/icons";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
 import { convertEditorDataToYaml } from "../../../shared/utilities/nodeEditorConversions";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
-import type { SnapshotCapture, NodeSnapshot } from "../state/useUndoRedo";
-import { useGraph } from "../useGraphCompat";
+import type { SnapshotCapture, NodeSnapshot } from "../../stores/undoRedoStore";
+import { useGraphState } from "../../stores/graphStore";
 import {
   editNode as editNodeService,
   isServicesInitialized,
@@ -26,7 +26,7 @@ import {
 } from "../../services";
 import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
 import { getViewportCenter } from "../../utils/viewportUtils";
-import { useUndoRedoContext } from "../useUndoRedoCompat";
+import { useUndoRedoActions } from "../../stores/undoRedoStore";
 
 // Pending membership tracking moved to drag handler
 
@@ -250,8 +250,8 @@ export function useNodeEditorHandlers(
   updateNodeData?: UpdateNodeDataCallback,
   refreshEditorData?: () => void
 ) {
-  const { undoRedo } = useUndoRedoContext();
-  const { edges } = useGraph();
+  const undoRedo = useUndoRedoActions();
+  const { edges } = useGraphState();
   const initialDataRef = React.useRef<NodeEditorData | null>(null);
 
   React.useEffect(() => {
@@ -434,7 +434,7 @@ export function useLinkEditorHandlers(
   edgeAnnotationHandlers?: EdgeAnnotationHandlers,
   updateEdgeData?: (edgeId: string, data: LinkEditorData) => void
 ) {
-  const { undoRedo } = useUndoRedoContext();
+  const undoRedo = useUndoRedoActions();
   const initialDataRef = React.useRef<LinkEditorData | null>(null);
   const offsetEditSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingOffsetEditRef = React.useRef<{
@@ -814,7 +814,7 @@ export function useNetworkEditorHandlers(
   editingNetworkData: NetworkEditorData | null,
   renameNode?: RenameNodeCallback
 ) {
-  const { undoRedo } = useUndoRedoContext();
+  const undoRedo = useUndoRedoActions();
   const initialDataRef = React.useRef<NetworkEditorData | null>(null);
 
   React.useEffect(() => {

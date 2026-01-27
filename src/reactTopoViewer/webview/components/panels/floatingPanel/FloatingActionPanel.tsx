@@ -12,7 +12,14 @@ import React, {
 } from "react";
 
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
-import { useTopoViewerActions, useTopoViewerState } from "../../../hooks/useTopoViewerCompat";
+import {
+  useCustomNodes,
+  useIsLocked,
+  useIsProcessing,
+  useMode,
+  useProcessingMode,
+  useTopoViewerActions
+} from "../../../stores/topoViewerStore";
 import {
   usePanelDrag,
   useDrawerSide,
@@ -137,10 +144,10 @@ function buildNodeMenuItems(customNodes: CustomNodeTemplate[]): DropdownMenuItem
 
 export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, FloatingActionPanelProps>(
   (props, ref) => {
-    const { state } = useTopoViewerState();
     const { toggleLock } = useTopoViewerActions();
-    const isViewerMode = state.mode === "view";
-    const { isLocked } = state;
+    const mode = useMode();
+    const isLocked = useIsLocked();
+    const isViewerMode = mode === "view";
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const { isShaking, trigger: triggerLockShake } = useShakeAnimation();
@@ -268,9 +275,9 @@ const PanelContent: React.FC<PanelContentProps> = ({
   isAddTextMode = false,
   isAddShapeMode = false
 }) => {
-  const { state } = useTopoViewerState();
+  const isProcessing = useIsProcessing();
+  const processingMode = useProcessingMode();
   const { setProcessing } = useTopoViewerActions();
-  const { isProcessing, processingMode } = state;
 
   const handleDeployClick = useCallback(() => {
     const mode = isViewerMode ? "destroy" : "deploy";
@@ -305,7 +312,8 @@ const PanelContent: React.FC<PanelContentProps> = ({
 
   const createLockAwareHandler = useLockAwareHandler(isLocked, onLockedClick);
 
-  const nodeMenuItems = useMemo(() => buildNodeMenuItems(state.customNodes), [state.customNodes]);
+  const customNodes = useCustomNodes();
+  const nodeMenuItems = useMemo(() => buildNodeMenuItems(customNodes), [customNodes]);
   const customNodeActions = useMemo(
     () => buildCustomNodeActions(onEditCustomNode, onDeleteCustomNode, onSetDefaultCustomNode),
     [onEditCustomNode, onDeleteCustomNode, onSetDefaultCustomNode]

@@ -7,7 +7,7 @@ import React, { useCallback, useState, useEffect, useMemo, useRef } from "react"
 import type { NodeType } from "../../utils/SvgGenerator";
 import { generateEncodedSVG } from "../../utils/SvgGenerator";
 import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
-import { useTopoViewerState } from "../../hooks/useTopoViewerCompat";
+import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../utils/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
 
@@ -272,8 +272,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
   initialColor = null,
   initialCornerRadius = 0
 }) => {
-  const { state } = useTopoViewerState();
-  const customIcons = state.customIcons;
+  const customIcons = useCustomIcons();
 
   const {
     icon,

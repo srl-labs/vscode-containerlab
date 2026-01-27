@@ -1,5 +1,5 @@
 /**
- * Group membership helpers for applying nodeAnnotations to GraphContext nodes.
+ * Group membership helpers for applying nodeAnnotations to graph store nodes.
  */
 import type { TopoNode } from "../../shared/types/graph";
 import type { GroupStyleAnnotation, NodeAnnotation } from "../../shared/types/topology";

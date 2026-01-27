@@ -1,12 +1,12 @@
 /**
- * useDerivedAnnotations - Derive annotation data from GraphContext nodes
+ * useDerivedAnnotations - Derive annotation data from graph store nodes
  *
- * This hook bridges AnnotationContext with GraphContext by:
- * 1. Deriving annotation arrays (groups, text, shapes) from GraphContext nodes
- * 2. Providing mutation functions that update GraphContext nodes
- * 3. Managing membership via node.data.groupId (derived from GraphContext)
+ * This hook bridges annotation UI and graph state by:
+ * 1. Deriving annotation arrays (groups, text, shapes) from graph nodes
+ * 2. Providing mutation functions that update graph nodes
+ * 3. Managing membership via node.data.groupId (derived from graph nodes)
  *
- * This is the key to making GraphContext the single source of truth for all nodes.
+ * This is the key to keeping graph state as the single source of truth for all nodes.
  */
 import { useMemo, useCallback } from "react";
 import type { Node } from "@xyflow/react";
@@ -22,7 +22,7 @@ import type {
   FreeShapeNodeData,
   GroupNodeData
 } from "../components/canvas/types";
-import type { GraphContextValue } from "./useGraphCompat";
+import { useGraphStore } from "../stores/graphStore";
 import {
   nodeToFreeText,
   nodeToFreeShape,
@@ -36,7 +36,7 @@ import {
  * Return type for useDerivedAnnotations
  */
 export interface UseDerivedAnnotationsReturn {
-  // Derived annotation data (read-only views of GraphContext nodes)
+  // Derived annotation data (read-only views of graph nodes)
   groups: GroupStyleAnnotation[];
   textAnnotations: FreeTextAnnotation[];
   shapeAnnotations: FreeShapeAnnotation[];
@@ -65,10 +65,14 @@ export interface UseDerivedAnnotationsReturn {
 }
 
 /**
- * Hook to derive annotation data from GraphContext and provide mutation functions
+ * Hook to derive annotation data from graph state and provide mutation functions
  */
-export function useDerivedAnnotations(graph: GraphContextValue): UseDerivedAnnotationsReturn {
-  const { nodes, addNode, removeNode, updateNode, replaceNode } = graph;
+export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
+  const nodes = useGraphStore((state) => state.nodes);
+  const addNode = useGraphStore((state) => state.addNode);
+  const removeNode = useGraphStore((state) => state.removeNode);
+  const updateNode = useGraphStore((state) => state.updateNode);
+  const replaceNode = useGraphStore((state) => state.replaceNode);
 
   // Derive groups from group-node type nodes
   const groups = useMemo(() => {
@@ -220,10 +224,9 @@ export function useDerivedAnnotations(graph: GraphContextValue): UseDerivedAnnot
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
       const nodeData = node.data as Record<string, unknown>;
-      const newData = Object.fromEntries(
-        Object.entries(nodeData).filter(([key]) => key !== "groupId")
-      );
-      updateNode(nodeId, { data: newData });
+      const { groupId: _groupId, ...rest } = nodeData;
+      // Force groupId to undefined so updateNode's merge clears membership.
+      updateNode(nodeId, { data: { ...rest, groupId: undefined } });
     },
     [nodes, updateNode]
   );
@@ -259,23 +262,44 @@ export function useDerivedAnnotations(graph: GraphContextValue): UseDerivedAnnot
     [membershipMap, textAnnotations, shapeAnnotations]
   );
 
-  return {
-    groups,
-    textAnnotations,
-    shapeAnnotations,
-    addGroup,
-    updateGroup,
-    deleteGroup,
-    addTextAnnotation,
-    updateTextAnnotation,
-    deleteTextAnnotation,
-    addShapeAnnotation,
-    updateShapeAnnotation,
-    deleteShapeAnnotation,
-    membershipMap,
-    addNodeToGroup,
-    removeNodeFromGroup,
-    getNodeMembership,
-    getGroupMembers
-  };
+  return useMemo(
+    () => ({
+      groups,
+      textAnnotations,
+      shapeAnnotations,
+      addGroup,
+      updateGroup,
+      deleteGroup,
+      addTextAnnotation,
+      updateTextAnnotation,
+      deleteTextAnnotation,
+      addShapeAnnotation,
+      updateShapeAnnotation,
+      deleteShapeAnnotation,
+      membershipMap,
+      addNodeToGroup,
+      removeNodeFromGroup,
+      getNodeMembership,
+      getGroupMembers
+    }),
+    [
+      groups,
+      textAnnotations,
+      shapeAnnotations,
+      addGroup,
+      updateGroup,
+      deleteGroup,
+      addTextAnnotation,
+      updateTextAnnotation,
+      deleteTextAnnotation,
+      addShapeAnnotation,
+      updateShapeAnnotation,
+      deleteShapeAnnotation,
+      membershipMap,
+      addNodeToGroup,
+      removeNodeFromGroup,
+      getNodeMembership,
+      getGroupMembers
+    ]
+  );
 }

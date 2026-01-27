@@ -8,7 +8,7 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 import type { FreeShapeNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { DEFAULT_LINE_LENGTH } from "../../../utils/annotations/constants";
-import { useTopoViewer } from "../../../hooks/useTopoViewerCompat";
+import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
 import { RotationHandle, LineEndHandle, LineStartHandle } from "./AnnotationHandles";
@@ -426,9 +426,10 @@ function BoxNode({
 
 const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as FreeShapeNodeData;
-  const { state } = useTopoViewer();
+  const mode = useMode();
+  const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
-  const isEditMode = state.mode === "edit" && !state.isLocked;
+  const isEditMode = mode === "edit" && !isLocked;
   const isSelected = selected ?? false;
 
   // Track rotation state to keep handles visible during rotation

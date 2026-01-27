@@ -2,13 +2,13 @@
  * React Flow Clipboard Hook
  *
  * Provides copy/paste functionality using the browser's clipboard API
- * and React Flow's node/edge state via GraphContext.
+ * and React Flow's node/edge state via the graph store.
  */
 import { useCallback, useRef } from "react";
 import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
-import { useGraph } from "../useGraphCompat";
-import { useUndoRedoContext } from "../useUndoRedoCompat";
+import { useGraphActions, useGraphState } from "../../stores/graphStore";
+import { useUndoRedoActions } from "../../stores/undoRedoStore";
 import { log } from "../../utils/logger";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
 import type {
@@ -344,8 +344,9 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
  */
 export function useClipboard(options: UseClipboardOptions = {}): UseClipboardReturn {
   const { onNodeCreated, onEdgeCreated, getNodeMembership, addNodeToGroup, rfInstance } = options;
-  const { nodes, addNode, addEdge } = useGraph();
-  const { undoRedo } = useUndoRedoContext();
+  const { nodes } = useGraphState();
+  const { addNode, addEdge } = useGraphActions();
+  const undoRedo = useUndoRedoActions();
 
   const lastPasteTimeRef = useRef(0);
 

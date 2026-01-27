@@ -1,7 +1,7 @@
 /**
  * ReactFlowCanvas - Main React Flow canvas component for topology visualization
  *
- * This is now a fully controlled component - nodes/edges come from GraphContext.
+ * This is now a fully controlled component - nodes/edges come from the graph store.
  * No internal state duplication.
  */
 /* eslint-disable import-x/max-dependencies */
@@ -27,8 +27,8 @@ import type { Node, Edge, ReactFlowInstance, ConnectionLineComponentProps } from
 
 import "@xyflow/react/dist/style.css";
 
-import { useTopoViewer } from "../../hooks/useTopoViewerCompat";
-import { useGraph } from "../../hooks/useGraphCompat";
+import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
+import { useGraphActions } from "../../stores/graphStore";
 import { useCanvasStore } from "../../stores/canvasStore";
 import type { EdgeLabelMode } from "../../stores/canvasStore";
 import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
@@ -364,7 +364,7 @@ function useGraphRefs(nodes: Node[], edges: Edge[]) {
 
 /**
  * Inner component that uses useStore (requires ReactFlowProvider ancestor)
- * Now fully controlled - nodes/edges come from GraphContext (unified source of truth).
+ * Now fully controlled - nodes/edges come from the graph store (unified source of truth).
  * All nodes (topology + annotation) are in the same array.
  */
 const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps>(
@@ -383,10 +383,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     },
     ref
   ) => {
-    const { state, selectNode, selectEdge, editNode, editEdge } = useTopoViewer();
+    const mode = useMode();
+    const isLocked = useIsLocked();
+    const { selectNode, selectEdge, editNode, editEdge } = useTopoViewerActions();
 
-    // Get setters from GraphContext - these update the single source of truth
-    const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraph();
+    // Get setters from graph store - these update the single source of truth
+    const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
+
+    const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
 
     // Import canvas store actions
     const { setEdgeRenderConfig, setNodeRenderConfig, setAnnotationHandlers, setLinkSourceNode } =
@@ -406,8 +410,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       selectEdge,
       editNode,
       editEdge,
-      mode: state.mode,
-      isLocked: state.isLocked,
+      mode,
+      isLocked,
       onNodesChangeBase: onNodesChange,
       onLockedAction: () => floatingPanelRef.current?.triggerShake(),
       nodes: allNodes,
@@ -482,7 +486,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     );
     const contextMenuItems = useContextMenuItems({
       handlers,
-      state,
+      state: topoState,
       editNode,
       editEdge,
       handleDeleteNode,
@@ -504,8 +508,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isInAddMode,
       addModeMessage
     } = useAnnotationCanvasHandlers({
-      mode: state.mode,
-      isLocked: state.isLocked,
+      mode,
+      isLocked,
       annotationMode,
       annotationHandlers,
       reactFlowInstanceRef: handlers.reactFlowInstance,
@@ -563,8 +567,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           proOptions={proOptions}
           deleteKeyCode={null}
           multiSelectionKeyCode="Shift"
-          nodesDraggable={state.mode === "edit" && !state.isLocked}
-          nodesConnectable={state.mode === "edit" && !state.isLocked}
+          nodesDraggable={mode === "edit" && !isLocked}
+          nodesConnectable={mode === "edit" && !isLocked}
           elementsSelectable
         >
           {!isLowDetail && (

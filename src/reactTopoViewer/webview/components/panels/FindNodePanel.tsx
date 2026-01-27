@@ -1,12 +1,12 @@
 /**
  * FindNodePanel - Search/find nodes in the topology
- * Uses GraphContext for node data and viewport operations.
+ * Uses graph store state for node data and viewport operations.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { BasePanel } from "../ui/editor/BasePanel";
-import { useGraph } from "../../hooks/useGraphCompat";
+import { useGraphState } from "../../stores/graphStore";
 import { searchNodes as searchNodesUtil, getNodesBoundingBox } from "../../utils/graphQueryUtils";
 import type { TopoNode } from "../../../shared/types/graph";
 
@@ -152,7 +152,7 @@ function useSearchState(
 }
 
 export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, rfInstance }) => {
-  const { nodes } = useGraph();
+  const { nodes } = useGraphState();
   const inputRef = useRef<HTMLInputElement>(null);
   usePanelFocus(isVisible, inputRef);
   const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(

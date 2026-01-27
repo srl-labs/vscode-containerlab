@@ -7,7 +7,7 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import type { FreeTextNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
-import { useTopoViewer } from "../../../hooks/useTopoViewerCompat";
+import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
 
@@ -82,9 +82,10 @@ function handleWheelEvent(e: React.WheelEvent): void {
  */
 const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as FreeTextNodeData;
-  const { state } = useTopoViewer();
+  const mode = useMode();
+  const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
-  const isEditMode = state.mode === "edit" && !state.isLocked;
+  const isEditMode = mode === "edit" && !isLocked;
   const rotation = nodeData.rotation ?? 0;
 
   // Track resize/rotate state to keep selection border and handles visible

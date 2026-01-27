@@ -8,7 +8,11 @@ import type { Node, Edge } from "@xyflow/react";
 
 import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../shared/types/graph";
 
-import type { useUndoRedo } from "./useUndoRedo";
+import type {
+  SnapshotCapture,
+  CaptureSnapshotOptions,
+  CommitChangeOptions
+} from "../../stores/undoRedoStore";
 
 // ============================================================================
 // Types
@@ -19,6 +23,15 @@ interface MenuHandlers {
   handleDeleteLink: (id: string) => void;
 }
 
+interface UndoRedoActions {
+  captureSnapshot: (options?: CaptureSnapshotOptions) => SnapshotCapture;
+  commitChange: (
+    before: SnapshotCapture,
+    description: string,
+    options?: CommitChangeOptions
+  ) => void;
+}
+
 interface UseGraphHandlersWithContextParams {
   getNodes: () => Node[];
   getEdges: () => TopoEdge[];
@@ -27,7 +40,7 @@ interface UseGraphHandlersWithContextParams {
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
   menuHandlers: MenuHandlers;
-  undoRedo: ReturnType<typeof useUndoRedo>;
+  undoRedo: UndoRedoActions;
 }
 
 interface GraphHandlersResult {
@@ -92,7 +105,7 @@ function useGraphMutationHandlers(params: {
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
   menuHandlers: MenuHandlers;
-  undoRedo: ReturnType<typeof useUndoRedo>;
+  undoRedo: UndoRedoActions;
 }): GraphHandlersResult {
   const { getEdges, addNode, addEdge, removeNodeAndEdges, removeEdge, menuHandlers, undoRedo } =
     params;

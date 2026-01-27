@@ -4,14 +4,16 @@
  */
 import React from "react";
 
-import type { LinkLabelMode } from "../../hooks/useTopoViewerCompat";
-import { useTopoViewerActions, useTopoViewerState } from "../../hooks/useTopoViewerCompat";
+import type { LinkLabelMode } from "../../stores/topoViewerStore";
+import { useTopoViewerActions, useTopoViewerStore } from "../../stores/topoViewerStore";
+import { shallow } from "zustand/shallow";
 import { DEFAULT_GRID_LINE_WIDTH, useDropdown } from "../../hooks/ui";
 import type { LayoutOption } from "../../hooks/ui";
 import {
   ENDPOINT_LABEL_OFFSET_MAX,
   ENDPOINT_LABEL_OFFSET_MIN
 } from "../../utils/endpointLabelOffset";
+import { saveViewerSettings } from "../../services";
 
 import { ContainerlabLogo } from "./ContainerlabLogo";
 import { NavbarLoadingIndicator } from "./NavbarLoadingIndicator";
@@ -74,9 +76,23 @@ export const Navbar: React.FC<NavbarProps> = ({
   logoClickProgress = 0,
   isPartyMode = false
 }) => {
-  const { state } = useTopoViewerState();
-  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset, saveEndpointLabelOffset } =
-    useTopoViewerActions();
+  const state = useTopoViewerStore(
+    (s) => ({
+      mode: s.mode,
+      labName: s.labName,
+      linkLabelMode: s.linkLabelMode,
+      showDummyLinks: s.showDummyLinks,
+      endpointLabelOffset: s.endpointLabelOffset,
+      isLocked: s.isLocked,
+      isProcessing: s.isProcessing,
+      processingMode: s.processingMode
+    }),
+    shallow
+  );
+  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset } = useTopoViewerActions();
+  const saveEndpointLabelOffset = React.useCallback(() => {
+    void saveViewerSettings({ endpointLabelOffset: state.endpointLabelOffset });
+  }, [state.endpointLabelOffset]);
 
   const linkDropdown = useDropdown();
   const layoutDropdown = useDropdown();

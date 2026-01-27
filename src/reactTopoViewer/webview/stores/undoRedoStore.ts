@@ -8,6 +8,7 @@
  * This store reads from graphStore and topoViewerStore via getState() for snapshots.
  */
 import { create } from "zustand";
+import { shallow } from "zustand/shallow";
 import type { Node, Edge } from "@xyflow/react";
 
 import type { EdgeAnnotation } from "../../shared/types/topology";
@@ -670,14 +671,17 @@ export const useRedoCount = () => useUndoRedoStore((state) => state.future.lengt
 
 /** Get undo/redo actions (stable reference) */
 export const useUndoRedoActions = () =>
-  useUndoRedoStore((state) => ({
-    captureSnapshot: state.captureSnapshot,
-    commitChange: state.commitChange,
-    undo: state.undo,
-    redo: state.redo,
-    clearHistory: state.clearHistory,
-    beginBatch: state.beginBatch,
-    endBatch: state.endBatch,
-    isInBatch: state.isInBatch,
-    setEnabled: state.setEnabled
-  }));
+  useUndoRedoStore(
+    (state) => ({
+      captureSnapshot: state.captureSnapshot,
+      commitChange: state.commitChange,
+      undo: state.undo,
+      redo: state.redo,
+      clearHistory: state.clearHistory,
+      beginBatch: state.beginBatch,
+      endBatch: state.endBatch,
+      isInBatch: state.isInBatch,
+      setEnabled: state.setEnabled
+    }),
+    shallow
+  );

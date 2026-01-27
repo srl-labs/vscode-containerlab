@@ -7,7 +7,7 @@
  * - GroupStyleAnnotation <-> Node<GroupNodeData>
  *
  * Used for:
- * - Loading annotations from JSON into GraphContext (annotation → node)
+ * - Loading annotations from JSON into graph store (annotation → node)
  * - Persisting annotation nodes to JSON (node → annotation)
  */
 import type { Node } from "@xyflow/react";

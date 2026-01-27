@@ -12,7 +12,7 @@ import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../utils/SvgGenerator";
 import { generateEncodedSVG } from "../../../utils/SvgGenerator";
 import { useSchema, useDockerImages } from "../../../hooks/data";
-import { useTopoViewerState } from "../../../hooks/useTopoViewerCompat";
+import { useCustomIcons } from "../../../stores/topoViewerStore";
 import { DEFAULT_ICON_COLOR } from "../../canvas/types";
 
 import type { TabProps } from "./types";
@@ -273,8 +273,7 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
  */
 const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { state } = useTopoViewerState();
-  const customIcons = state.customIcons;
+  const customIcons = useCustomIcons();
 
   const color = data.iconColor || DEFAULT_ICON_COLOR;
   // Don't apply default for dropdown value - show actual value (or empty)

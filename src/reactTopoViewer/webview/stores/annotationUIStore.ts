@@ -5,6 +5,7 @@
  * Annotation data is derived from graphStore via useDerivedAnnotations hook.
  */
 import { create } from "zustand";
+import { shallow } from "zustand/shallow";
 
 import type { FreeTextAnnotation, FreeShapeAnnotation } from "../../shared/types/topology";
 import type { GroupEditorData } from "../hooks/groups/groupTypes";
@@ -287,3 +288,55 @@ export const useIsAddShapeMode = () => useAnnotationUIStore((state) => state.isA
 
 /** Get pending shape type */
 export const usePendingShapeType = () => useAnnotationUIStore((state) => state.pendingShapeType);
+
+/** Get annotation UI state (group/text/shape selections and edit modes) */
+export const useAnnotationUIState = () =>
+  useAnnotationUIStore(
+    (state) => ({
+      selectedGroupIds: state.selectedGroupIds,
+      editingGroup: state.editingGroup,
+      selectedTextIds: state.selectedTextIds,
+      editingTextAnnotation: state.editingTextAnnotation,
+      isAddTextMode: state.isAddTextMode,
+      selectedShapeIds: state.selectedShapeIds,
+      editingShapeAnnotation: state.editingShapeAnnotation,
+      isAddShapeMode: state.isAddShapeMode,
+      pendingShapeType: state.pendingShapeType
+    }),
+    shallow
+  );
+
+/** Get annotation UI actions (stable) */
+export const useAnnotationUIActions = () =>
+  useAnnotationUIStore(
+    (state) => ({
+      selectGroup: state.selectGroup,
+      toggleGroupSelection: state.toggleGroupSelection,
+      boxSelectGroups: state.boxSelectGroups,
+      clearGroupSelection: state.clearGroupSelection,
+      setEditingGroup: state.setEditingGroup,
+      closeGroupEditor: state.closeGroupEditor,
+      selectTextAnnotation: state.selectTextAnnotation,
+      toggleTextAnnotationSelection: state.toggleTextAnnotationSelection,
+      boxSelectTextAnnotations: state.boxSelectTextAnnotations,
+      clearTextAnnotationSelection: state.clearTextAnnotationSelection,
+      setEditingTextAnnotation: state.setEditingTextAnnotation,
+      closeTextEditor: state.closeTextEditor,
+      setAddTextMode: state.setAddTextMode,
+      disableAddTextMode: state.disableAddTextMode,
+      selectShapeAnnotation: state.selectShapeAnnotation,
+      toggleShapeAnnotationSelection: state.toggleShapeAnnotationSelection,
+      boxSelectShapeAnnotations: state.boxSelectShapeAnnotations,
+      clearShapeAnnotationSelection: state.clearShapeAnnotationSelection,
+      setEditingShapeAnnotation: state.setEditingShapeAnnotation,
+      closeShapeEditor: state.closeShapeEditor,
+      setAddShapeMode: state.setAddShapeMode,
+      disableAddShapeMode: state.disableAddShapeMode,
+      setPendingShapeType: state.setPendingShapeType,
+      clearAllSelections: state.clearAllSelections,
+      removeFromGroupSelection: state.removeFromGroupSelection,
+      removeFromTextSelection: state.removeFromTextSelection,
+      removeFromShapeSelection: state.removeFromShapeSelection
+    }),
+    shallow
+  );

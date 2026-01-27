@@ -11,10 +11,10 @@ import type { AnnotationHandlers } from "../../components/canvas/types";
 import type { FloatingActionPanelHandle } from "../../components/panels";
 import type { useLayoutControls } from "../ui";
 import { convertToEditorData, convertToNetworkEditorData } from "../../../shared/utilities";
-import { useTopoViewerActions, useTopoViewerState } from "../useTopoViewerCompat";
-import { useGraph, useGraphActions } from "../useGraphCompat";
-import { useUndoRedoContext } from "../useUndoRedoCompat";
-import { useAnnotations } from "../useAnnotationsCompat";
+import { useTopoViewerActions, useTopoViewerState } from "../../stores/topoViewerStore";
+import { useGraphActions, useGraphState } from "../../stores/graphStore";
+import { useUndoRedoStore } from "../useUndoRedoStore";
+import { useAnnotations } from "../annotations/useAnnotations";
 import { useToasts } from "../../components/ui/Toast";
 import { useEasterEgg } from "../../easter-eggs";
 import { useGraphHandlersWithContext, useCustomTemplateEditor } from "../state";
@@ -33,6 +33,7 @@ import {
   convertEditorDataToLinkSaveData
 } from "../../utils/linkEditorConversions";
 import { parseEndpointLabelOffset } from "../../utils/endpointLabelOffset";
+import { saveEdgeAnnotations } from "../../services";
 
 import { useCustomNodeCommands, useNavbarCommands, useE2ETestingExposure } from "./useAppHelpers";
 import { useClipboardHandlers } from "./useClipboardHandlers";
@@ -83,7 +84,7 @@ function useFilteredGraphElements(
 }
 
 function useSelectionData(
-  state: ReturnType<typeof useTopoViewerState>["state"],
+  state: ReturnType<typeof useTopoViewerState>,
   nodes: TopoNode[],
   edges: TopoEdge[],
   edgeAnnotationLookup: ReturnType<typeof buildEdgeAnnotationLookup>
@@ -190,63 +191,118 @@ function useAnnotationCanvasHandlers(annotations: ReturnType<typeof useAnnotatio
   };
   canvasAnnotationHandlers: AnnotationHandlers;
 } {
+  const {
+    isAddTextMode,
+    isAddShapeMode,
+    pendingShapeType,
+    handleTextCanvasClick,
+    handleShapeCanvasClick,
+    disableAddTextMode,
+    disableAddShapeMode,
+    editTextAnnotation,
+    editShapeAnnotation,
+    deleteTextAnnotation,
+    deleteShapeAnnotation,
+    updateTextSize,
+    updateShapeSize,
+    updateTextRotation,
+    updateShapeRotation,
+    onTextRotationStart,
+    onTextRotationEnd,
+    onShapeRotationStart,
+    onShapeRotationEnd,
+    updateShapeEndPosition,
+    shapeAnnotations,
+    updateShapeAnnotation,
+    onNodeDropped,
+    updateGroupSize,
+    editGroup,
+    deleteGroup,
+    getGroupMembers
+  } = annotations;
+
   const annotationMode = React.useMemo(
     () => ({
-      isAddTextMode: annotations.isAddTextMode,
-      isAddShapeMode: annotations.isAddShapeMode,
-      pendingShapeType: annotations.isAddShapeMode ? annotations.pendingShapeType : undefined
+      isAddTextMode,
+      isAddShapeMode,
+      pendingShapeType: isAddShapeMode ? pendingShapeType : undefined
     }),
-    [annotations.isAddTextMode, annotations.isAddShapeMode, annotations.pendingShapeType]
+    [isAddTextMode, isAddShapeMode, pendingShapeType]
   );
 
   const canvasAnnotationHandlers = React.useMemo(
     () => ({
       // Add mode handlers
-      onAddTextClick: annotations.handleTextCanvasClick,
-      onAddShapeClick: annotations.handleShapeCanvasClick,
-      disableAddTextMode: annotations.disableAddTextMode,
-      disableAddShapeMode: annotations.disableAddShapeMode,
+      onAddTextClick: handleTextCanvasClick,
+      onAddShapeClick: handleShapeCanvasClick,
+      disableAddTextMode,
+      disableAddShapeMode,
       // Edit handlers
-      onEditFreeText: annotations.editTextAnnotation,
-      onEditFreeShape: annotations.editShapeAnnotation,
+      onEditFreeText: editTextAnnotation,
+      onEditFreeShape: editShapeAnnotation,
       // Delete handlers
-      onDeleteFreeText: annotations.deleteTextAnnotation,
-      onDeleteFreeShape: annotations.deleteShapeAnnotation,
+      onDeleteFreeText: deleteTextAnnotation,
+      onDeleteFreeShape: deleteShapeAnnotation,
       // Size update handlers (for resize)
-      onUpdateFreeTextSize: annotations.updateTextSize,
-      onUpdateFreeShapeSize: annotations.updateShapeSize,
+      onUpdateFreeTextSize: updateTextSize,
+      onUpdateFreeShapeSize: updateShapeSize,
       // Rotation handlers (live updates during drag)
-      onUpdateFreeTextRotation: annotations.updateTextRotation,
-      onUpdateFreeShapeRotation: annotations.updateShapeRotation,
+      onUpdateFreeTextRotation: updateTextRotation,
+      onUpdateFreeShapeRotation: updateShapeRotation,
       // Rotation start/end handlers (for undo/redo)
-      onFreeTextRotationStart: annotations.onTextRotationStart,
-      onFreeTextRotationEnd: annotations.onTextRotationEnd,
-      onFreeShapeRotationStart: annotations.onShapeRotationStart,
-      onFreeShapeRotationEnd: annotations.onShapeRotationEnd,
+      onFreeTextRotationStart: onTextRotationStart,
+      onFreeTextRotationEnd: onTextRotationEnd,
+      onFreeShapeRotationStart: onShapeRotationStart,
+      onFreeShapeRotationEnd: onShapeRotationEnd,
       // Line-specific handlers
-      onUpdateFreeShapeEndPosition: annotations.updateShapeEndPosition,
+      onUpdateFreeShapeEndPosition: updateShapeEndPosition,
       onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => {
         // Update both position and recalculate end position
-        const shape = annotations.shapeAnnotations.find((s) => s.id === id);
+        const shape = shapeAnnotations.find((s) => s.id === id);
         if (shape && shape.endPosition) {
           const dx = startPosition.x - shape.position.x;
           const dy = startPosition.y - shape.position.y;
-          annotations.updateShapeAnnotation(id, {
+          updateShapeAnnotation(id, {
             position: startPosition,
             endPosition: { x: shape.endPosition.x + dx, y: shape.endPosition.y + dy }
           });
         }
       },
       // Node dropped handler (for group membership)
-      onNodeDropped: annotations.onNodeDropped,
+      onNodeDropped,
       // Group handlers
-      onUpdateGroupSize: annotations.updateGroupSize,
-      onEditGroup: annotations.editGroup,
-      onDeleteGroup: annotations.deleteGroup,
+      onUpdateGroupSize: updateGroupSize,
+      onEditGroup: editGroup,
+      onDeleteGroup: deleteGroup,
       // Get group members (for group dragging)
-      getGroupMembers: annotations.getGroupMembers
+      getGroupMembers
     }),
-    [annotations]
+    [
+      handleTextCanvasClick,
+      handleShapeCanvasClick,
+      disableAddTextMode,
+      disableAddShapeMode,
+      editTextAnnotation,
+      editShapeAnnotation,
+      deleteTextAnnotation,
+      deleteShapeAnnotation,
+      updateTextSize,
+      updateShapeSize,
+      updateTextRotation,
+      updateShapeRotation,
+      onTextRotationStart,
+      onTextRotationEnd,
+      onShapeRotationStart,
+      onShapeRotationEnd,
+      updateShapeEndPosition,
+      shapeAnnotations,
+      updateShapeAnnotation,
+      onNodeDropped,
+      updateGroupSize,
+      editGroup,
+      deleteGroup,
+      getGroupMembers
+    ]
   );
 
   return {
@@ -261,7 +317,7 @@ export function useAppContentViewModel({
   layoutControls,
   onLockedAction
 }: UseAppContentViewModelParams) {
-  const { state } = useTopoViewerState();
+  const state = useTopoViewerState();
   const {
     selectNode,
     selectEdge,
@@ -277,8 +333,8 @@ export function useAppContentViewModel({
     clearSelectionForDeletedEdge
   } = useTopoViewerActions();
 
-  // Graph state from GraphContext (React Flow is source of truth)
-  const { nodes, edges } = useGraph();
+  // Graph state from the graph store (React Flow is source of truth)
+  const { nodes, edges } = useGraphState();
   const {
     addNode,
     addEdge,
@@ -289,7 +345,7 @@ export function useAppContentViewModel({
     renameNode
   } = useGraphActions();
 
-  const { undoRedo } = useUndoRedoContext();
+  const undoRedo = useUndoRedoStore();
   const annotations = useAnnotations({ rfInstance, onLockedAction });
 
   // Toast notifications
@@ -412,12 +468,20 @@ export function useAppContentViewModel({
     handleUpdateNodeData,
     refreshEditorData
   );
+  const persistEdgeAnnotations = React.useCallback(
+    (next: typeof state.edgeAnnotations) => {
+      setEdgeAnnotations(next);
+      void saveEdgeAnnotations(next);
+    },
+    [setEdgeAnnotations]
+  );
+
   const linkEditorHandlers = useLinkEditorHandlers(
     editEdge,
     selectionData.editingLinkData,
     {
       edgeAnnotations: state.edgeAnnotations,
-      setEdgeAnnotations
+      setEdgeAnnotations: persistEdgeAnnotations
     },
     handleUpdateEdgeData
   );

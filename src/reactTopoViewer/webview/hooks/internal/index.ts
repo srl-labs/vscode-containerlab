@@ -19,7 +19,7 @@ export { useLayoutControls, useContextMenuHandlers } from "../ui/useAppState";
 // App composition hooks - import directly from ../app/* to avoid circular deps
 // (useAppContentViewModel imports from ../app sibling files directly)
 
-// Annotation hooks removed during ReactFlow migration cleanup
+// Annotation hooks live in ../annotations (import directly to avoid circular deps)
 
 // External file change handling
 export { useExternalFileChange } from "../useExternalFileChange";

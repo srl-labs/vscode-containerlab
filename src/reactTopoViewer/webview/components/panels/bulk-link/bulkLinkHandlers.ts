@@ -5,7 +5,7 @@
 import type { Edge } from "@xyflow/react";
 
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import type { SnapshotCapture, CommitChangeOptions } from "../../../hooks/state/useUndoRedo";
+import type { SnapshotCapture, CommitChangeOptions } from "../../../stores/undoRedoStore";
 
 import { computeCandidates, buildBulkEdges, type LinkCandidate } from "./bulkLinkUtils";
 

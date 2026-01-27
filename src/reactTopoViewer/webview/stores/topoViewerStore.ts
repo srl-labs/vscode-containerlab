@@ -5,6 +5,7 @@
  * Graph data (nodes/edges) is managed separately in graphStore.
  */
 import { create } from "zustand";
+import { shallow } from "zustand/shallow";
 
 import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/types/editors";
 import type { EdgeAnnotation } from "../../shared/types/topology";
@@ -334,64 +335,79 @@ export const useEditingEdge = () => useTopoViewerStore((state) => state.editingE
 /** Get lock state */
 export const useIsLocked = () => useTopoViewerStore((state) => state.isLocked);
 
+/** Get processing state */
+export const useIsProcessing = () => useTopoViewerStore((state) => state.isProcessing);
+
+/** Get processing mode */
+export const useProcessingMode = () => useTopoViewerStore((state) => state.processingMode);
+
 /** Get edge annotations */
 export const useEdgeAnnotations = () => useTopoViewerStore((state) => state.edgeAnnotations);
 
 /** Get custom nodes */
 export const useCustomNodes = () => useTopoViewerStore((state) => state.customNodes);
 
+/** Get custom icons */
+export const useCustomIcons = () => useTopoViewerStore((state) => state.customIcons);
+
 /** Get TopoViewer state (convenience) */
 export const useTopoViewerState = () =>
-  useTopoViewerStore((state) => ({
-    labName: state.labName,
-    mode: state.mode,
-    deploymentState: state.deploymentState,
-    selectedNode: state.selectedNode,
-    selectedEdge: state.selectedEdge,
-    editingNode: state.editingNode,
-    editingEdge: state.editingEdge,
-    editingNetwork: state.editingNetwork,
-    isLocked: state.isLocked,
-    linkLabelMode: state.linkLabelMode,
-    showDummyLinks: state.showDummyLinks,
-    endpointLabelOffsetEnabled: state.endpointLabelOffsetEnabled,
-    endpointLabelOffset: state.endpointLabelOffset,
-    edgeAnnotations: state.edgeAnnotations,
-    customNodes: state.customNodes,
-    defaultNode: state.defaultNode,
-    customIcons: state.customIcons,
-    editingCustomTemplate: state.editingCustomTemplate,
-    isProcessing: state.isProcessing,
-    processingMode: state.processingMode,
-    editorDataVersion: state.editorDataVersion,
-    customNodeError: state.customNodeError
-  }));
+  useTopoViewerStore(
+    (state) => ({
+      labName: state.labName,
+      mode: state.mode,
+      deploymentState: state.deploymentState,
+      selectedNode: state.selectedNode,
+      selectedEdge: state.selectedEdge,
+      editingNode: state.editingNode,
+      editingEdge: state.editingEdge,
+      editingNetwork: state.editingNetwork,
+      isLocked: state.isLocked,
+      linkLabelMode: state.linkLabelMode,
+      showDummyLinks: state.showDummyLinks,
+      endpointLabelOffsetEnabled: state.endpointLabelOffsetEnabled,
+      endpointLabelOffset: state.endpointLabelOffset,
+      edgeAnnotations: state.edgeAnnotations,
+      customNodes: state.customNodes,
+      defaultNode: state.defaultNode,
+      customIcons: state.customIcons,
+      editingCustomTemplate: state.editingCustomTemplate,
+      isProcessing: state.isProcessing,
+      processingMode: state.processingMode,
+      editorDataVersion: state.editorDataVersion,
+      customNodeError: state.customNodeError
+    }),
+    shallow
+  );
 
 /** Get TopoViewer actions (stable reference) */
 export const useTopoViewerActions = () =>
-  useTopoViewerStore((state) => ({
-    selectNode: state.selectNode,
-    selectEdge: state.selectEdge,
-    editNode: state.editNode,
-    editEdge: state.editEdge,
-    editNetwork: state.editNetwork,
-    setMode: state.setMode,
-    setDeploymentState: state.setDeploymentState,
-    toggleLock: state.toggleLock,
-    setLinkLabelMode: state.setLinkLabelMode,
-    toggleDummyLinks: state.toggleDummyLinks,
-    toggleEndpointLabelOffset: state.toggleEndpointLabelOffset,
-    setEndpointLabelOffset: state.setEndpointLabelOffset,
-    setEdgeAnnotations: state.setEdgeAnnotations,
-    upsertEdgeAnnotation: state.upsertEdgeAnnotation,
-    setCustomNodes: state.setCustomNodes,
-    setCustomIcons: state.setCustomIcons,
-    editCustomTemplate: state.editCustomTemplate,
-    setCustomNodeError: state.setCustomNodeError,
-    clearCustomNodeError: state.clearCustomNodeError,
-    setProcessing: state.setProcessing,
-    refreshEditorData: state.refreshEditorData,
-    clearSelectionForDeletedNode: state.clearSelectionForDeletedNode,
-    clearSelectionForDeletedEdge: state.clearSelectionForDeletedEdge,
-    setInitialData: state.setInitialData
-  }));
+  useTopoViewerStore(
+    (state) => ({
+      selectNode: state.selectNode,
+      selectEdge: state.selectEdge,
+      editNode: state.editNode,
+      editEdge: state.editEdge,
+      editNetwork: state.editNetwork,
+      setMode: state.setMode,
+      setDeploymentState: state.setDeploymentState,
+      toggleLock: state.toggleLock,
+      setLinkLabelMode: state.setLinkLabelMode,
+      toggleDummyLinks: state.toggleDummyLinks,
+      toggleEndpointLabelOffset: state.toggleEndpointLabelOffset,
+      setEndpointLabelOffset: state.setEndpointLabelOffset,
+      setEdgeAnnotations: state.setEdgeAnnotations,
+      upsertEdgeAnnotation: state.upsertEdgeAnnotation,
+      setCustomNodes: state.setCustomNodes,
+      setCustomIcons: state.setCustomIcons,
+      editCustomTemplate: state.editCustomTemplate,
+      setCustomNodeError: state.setCustomNodeError,
+      clearCustomNodeError: state.clearCustomNodeError,
+      setProcessing: state.setProcessing,
+      refreshEditorData: state.refreshEditorData,
+      clearSelectionForDeletedNode: state.clearSelectionForDeletedNode,
+      clearSelectionForDeletedEdge: state.clearSelectionForDeletedEdge,
+      setInitialData: state.setInitialData
+    }),
+    shallow
+  );

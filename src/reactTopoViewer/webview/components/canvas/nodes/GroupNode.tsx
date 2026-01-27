@@ -6,7 +6,7 @@ import React, { memo, useCallback } from "react";
 import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import { SELECTION_COLOR } from "../types";
-import { useTopoViewer } from "../../../hooks/useTopoViewerCompat";
+import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
 // ============================================================================
@@ -104,9 +104,10 @@ function getLabelPositionStyle(position: string | undefined): React.CSSPropertie
 
 const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as GroupNodeData;
-  const { state } = useTopoViewer();
+  const mode = useMode();
+  const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
-  const isEditMode = state.mode === "edit" && !state.isLocked;
+  const isEditMode = mode === "edit" && !isLocked;
   const isSelected = selected ?? false;
   const showResizer = isSelected && isEditMode;
 
