@@ -51,7 +51,11 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         onLockedAction();
         return;
       }
-      uiActions.setAddShapeMode(shapeType ?? "rectangle");
+      const normalizedShape: FreeShapeAnnotation["shapeType"] =
+        shapeType === "circle" || shapeType === "line" || shapeType === "rectangle"
+          ? shapeType
+          : "rectangle";
+      uiActions.setAddShapeMode(true, normalizedShape);
     },
     [mode, isLocked, onLockedAction, uiActions]
   );
@@ -136,7 +140,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
       const newAnnotation: FreeShapeAnnotation = {
         id: `freeShape_${Date.now()}`,
-        type: uiState.pendingShapeType ?? "rectangle",
+        shapeType: uiState.pendingShapeType ?? "rectangle",
         position,
         endPosition: { x: position.x + 120, y: position.y + 60 },
         rotation: 0,

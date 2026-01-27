@@ -6,7 +6,6 @@ import type { Node, Edge } from "@xyflow/react";
 
 import type { TopologySnapshot } from "../../shared/types/messages";
 import type {
-  EdgeAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation,
@@ -73,10 +72,7 @@ export function applySnapshotToStores(snapshot: TopologySnapshot): void {
     annotations.freeShapeAnnotations
   );
 
-  const cleanedEdgeAnnotations = pruneEdgeAnnotations(
-    annotations.edgeAnnotations,
-    edges as unknown as Edge[]
-  );
+  const cleanedEdgeAnnotations = pruneEdgeAnnotations(annotations.edgeAnnotations, edges);
 
   const graphStore = useGraphStore.getState();
   graphStore.setNodes(mergedNodes);

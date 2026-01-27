@@ -18,7 +18,7 @@ import {
   convertNetworkEditorDataToYaml
 } from "../../../shared/utilities";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
-import { upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
+import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
 import { getViewportCenter } from "../../utils/viewportUtils";
 import { useGraphState } from "../../stores/graphStore";
 import { useGraphStore } from "../../stores/graphStore";

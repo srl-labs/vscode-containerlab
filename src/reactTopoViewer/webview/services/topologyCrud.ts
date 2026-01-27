@@ -4,7 +4,7 @@
  * Dispatches topology commands to the host and applies snapshots.
  */
 
-import type { Node, Edge } from "@xyflow/react";
+import type { Node } from "@xyflow/react";
 
 import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";

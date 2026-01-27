@@ -189,6 +189,7 @@ export function useGraphHandlersWithContext(
 
   const handleNodeCreatedCallback = React.useCallback(
     (nodeId: string, nodeElement: TopoNode, _position: { x: number; y: number }) => {
+      void nodeId;
       addNode(nodeElement);
 
       if (isAnnotationNodeType(nodeElement.type)) {

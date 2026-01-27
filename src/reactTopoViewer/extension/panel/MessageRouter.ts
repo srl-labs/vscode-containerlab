@@ -12,7 +12,7 @@ import { customNodeConfigManager } from "../services/CustomNodeConfigManager";
 import type { CustomNodeConfig } from "../services/CustomNodeConfigManager";
 import { iconService } from "../services/IconService";
 import type { TopologyHost } from "../../shared/types/topologyHost";
-import type { TopologySnapshot, TopologyHostCommandMessage } from "../../shared/types/messages";
+import type { TopologySnapshot, TopologyHostCommand } from "../../shared/types/messages";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
 
 type WebviewMessage = Record<string, unknown> & {
@@ -167,14 +167,15 @@ export class MessageRouter {
       return true;
     }
 
-    const typed = message as TopologyHostCommandMessage;
+    const baseRevisionRaw = (message as { baseRevision?: unknown }).baseRevision;
+    const commandPayload = (message as { command?: unknown }).command;
     const baseRevision =
-      typeof typed.baseRevision === "number" && Number.isFinite(typed.baseRevision)
-        ? typed.baseRevision
+      typeof baseRevisionRaw === "number" && Number.isFinite(baseRevisionRaw)
+        ? baseRevisionRaw
         : NaN;
     if (
-      !typed.command ||
-      typeof (typed.command as { command?: unknown }).command !== "string" ||
+      !commandPayload ||
+      typeof (commandPayload as { command?: unknown }).command !== "string" ||
       !Number.isFinite(baseRevision)
     ) {
       panel.webview.postMessage({
@@ -186,7 +187,7 @@ export class MessageRouter {
       return true;
     }
 
-    const response = await host.applyCommand(typed.command, baseRevision);
+    const response = await host.applyCommand(commandPayload as TopologyHostCommand, baseRevision);
     const responseWithId = { ...response, requestId: requestId || response.requestId };
     if (
       responseWithId.type === "topology-host:ack" ||

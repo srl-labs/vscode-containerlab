@@ -55,6 +55,9 @@ export class TransactionalFileSystemAdapter implements FileSystemAdapter {
       if (value === null) {
         throw new Error(`ENOENT: no such file ${filePath}`);
       }
+      if (value === undefined) {
+        throw new Error(`Missing pending entry for ${filePath}`);
+      }
       return value;
     }
     return this.base.readFile(filePath);

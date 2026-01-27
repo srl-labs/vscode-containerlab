@@ -15,6 +15,7 @@ import {
   type Node,
   type Edge,
   type NodeChange,
+  type NodePositionChange,
   type XYPosition
 } from "@xyflow/react";
 
@@ -140,6 +141,10 @@ function buildGroupMemberChanges(
   return changes;
 }
 
+function isNodePositionChange(change: NodeChange): change is NodePositionChange {
+  return change.type === "position" && change.position !== undefined;
+}
+
 /** Clean up group tracking refs */
 function cleanupGroupRefs(
   nodeId: string,
@@ -257,8 +262,8 @@ function useNodeDragHandlers(
       const currentNodes = useGraphStore.getState().nodes;
       const nodeTypeMap = new Map(currentNodes.map((n) => [n.id, n.type]));
       const movedPositions = changes
-        .filter((change) => change.type === "position" && change.position)
-        .map((change) => ({ id: change.id, position: change.position! }));
+        .filter(isNodePositionChange)
+        .map((change) => ({ id: change.id, position: change.position }));
 
       const topoPositions = movedPositions.filter(
         (pos) => !isAnnotationNodeType(nodeTypeMap.get(pos.id))

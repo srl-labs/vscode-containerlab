@@ -10,12 +10,12 @@ import * as YAML from "yaml";
 import type { ClabTopology, TopologyAnnotations } from "../types/topology";
 import type { LabSettings } from "../types/labSettings";
 import type {
-  TopologyHost,
   TopologyHostCommand,
   TopologyHostResponseMessage,
   TopologySnapshot
 } from "../types/messages";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../types/messages";
+import type { TopologyHost } from "../types/topologyHost";
 import type { DeploymentState } from "../types/topology";
 import type { TopologyData } from "../types/graph";
 import type { ContainerDataProvider, ParserLogger } from "../parsing/types";
