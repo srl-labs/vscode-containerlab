@@ -111,7 +111,7 @@ declare global {
   interface Window {
     __DEV__?: DevModeInterface;
     __INITIAL_DATA__?: WebviewInitialData;
-    // Note: __SCHEMA_DATA__ is typed in hooks/data/useSchema.ts
+    // Note: __SCHEMA_DATA__ is typed in hooks/editor/useSchema.ts
     __DOCKER_IMAGES__?: string[];
   }
 }

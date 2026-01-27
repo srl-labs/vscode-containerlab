@@ -2,9 +2,9 @@ import { useCallback, useMemo, useRef } from "react";
 
 import type { FreeTextAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions, AnnotationUIState } from "../../stores/annotationUIStore";
-import type { UndoRedoActions } from "./types";
-import type { UseDerivedAnnotationsReturn } from "../useDerivedAnnotations";
-import { findDeepestGroupAtPosition } from "../groups";
+import type { UndoRedoActions } from "./annotationTypes";
+import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
+import { findDeepestGroupAtPosition } from "./groupUtils";
 import { freeTextToNode } from "../../utils/annotationNodeConverters";
 import { log } from "../../utils/logger";
 

@@ -2,8 +2,8 @@ import { useCallback, useMemo, useRef } from "react";
 
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions, AnnotationUIState } from "../../stores/annotationUIStore";
-import type { UndoRedoActions } from "./types";
-import type { UseDerivedAnnotationsReturn } from "../useDerivedAnnotations";
+import type { UndoRedoActions } from "./annotationTypes";
+import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import {
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY,
@@ -13,7 +13,7 @@ import {
 } from "../../utils/annotations/constants";
 import { normalizeShapeAnnotationColors } from "../../utils/color";
 import { freeShapeToNode } from "../../utils/annotationNodeConverters";
-import { findDeepestGroupAtPosition } from "../groups";
+import { findDeepestGroupAtPosition } from "./groupUtils";
 import { log } from "../../utils/logger";
 
 interface UseShapeAnnotationsParams {

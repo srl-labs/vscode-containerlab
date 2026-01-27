@@ -6,9 +6,9 @@
  */
 import { useEffect, useRef } from "react";
 
-import type { TopoNode, TopoEdge } from "../../shared/types/graph";
-import { useGraphStore } from "../stores/graphStore";
-import { useTopoViewerStore, parseInitialData } from "../stores/topoViewerStore";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
+import { useGraphStore } from "../../stores/graphStore";
+import { useTopoViewerStore, parseInitialData } from "../../stores/topoViewerStore";
 
 export interface StoreInitializationData {
   initialNodes: TopoNode[];

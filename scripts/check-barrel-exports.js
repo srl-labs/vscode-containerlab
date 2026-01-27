@@ -15,7 +15,6 @@ const CUSTOM_LIMITS = {
   // Allow larger barrels for specific entry points
   "src/commands/index.ts": 120,
   "src/reactTopoViewer/webview/hooks/index.ts": 65,
-  "src/reactTopoViewer/webview/hooks/groups/index.ts": 80, // Consolidated from core/interactions/undo/utils
   "src/reactTopoViewer/shared/parsing/index.ts": 60,
   "src/reactTopoViewer/shared/io/index.ts": 60,
   "src/treeView/index.ts": 60

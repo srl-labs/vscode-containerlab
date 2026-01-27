@@ -18,10 +18,10 @@ import {
   useUndoCount,
   useUndoRedoActions
 } from "../../stores/undoRedoStore";
-import { useAnnotations } from "../annotations/useAnnotations";
+import { useAnnotations } from "../canvas";
 import { useToasts } from "../../components/ui/Toast";
 import { useEasterEgg } from "../../easter-eggs";
-import { useGraphHandlersWithContext, useCustomTemplateEditor } from "../state";
+import { useGraphHandlersWithContext } from "../state";
 import {
   useFloatingPanelCommands,
   usePanelVisibility,
@@ -29,8 +29,13 @@ import {
   useAppHandlers,
   useContextMenuHandlers
 } from "../ui";
-import { useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers } from "../panels";
-import { useExternalFileChange } from "../useExternalFileChange";
+import {
+  useNodeEditorHandlers,
+  useLinkEditorHandlers,
+  useNetworkEditorHandlers,
+  useCustomTemplateEditor
+} from "../editor";
+import { useExternalFileChange } from "./useExternalFileChange";
 import { buildEdgeAnnotationLookup } from "../../utils/edgeAnnotations";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
 import { saveEdgeAnnotations } from "../../services";

@@ -16,14 +16,14 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation
-} from "../../shared/types/topology";
-import type { TopoNode } from "../../shared/types/graph";
+} from "../../../shared/types/topology";
+import type { TopoNode } from "../../../shared/types/graph";
 import type {
   FreeTextNodeData,
   FreeShapeNodeData,
   GroupNodeData
-} from "../components/canvas/types";
-import { useGraphStore } from "../stores/graphStore";
+} from "../../components/canvas/types";
+import { useGraphStore } from "../../stores/graphStore";
 import {
   nodeToFreeText,
   nodeToFreeShape,
@@ -31,7 +31,7 @@ import {
   freeTextToNode,
   freeShapeToNode,
   groupToNode
-} from "../utils/annotationNodeConverters";
+} from "../../utils/annotationNodeConverters";
 
 /**
  * Return type for useDerivedAnnotations

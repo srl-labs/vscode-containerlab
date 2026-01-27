@@ -3,7 +3,7 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
-import type { GroupEditorData } from "../groups/groupTypes";
+import type { GroupEditorData } from "./groupTypes";
 import type {
   SnapshotCapture,
   CaptureSnapshotOptions,

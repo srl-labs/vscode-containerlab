@@ -9,7 +9,7 @@ import type { AnnotationHandlers } from "../../components/canvas/types";
 import { findEdgeAnnotationInLookup, type EdgeAnnotationLookup } from "../../utils/edgeAnnotations";
 import { convertToLinkEditorData } from "../../utils/linkEditorConversions";
 import { parseEndpointLabelOffset } from "../../utils/endpointLabelOffset";
-import type { AnnotationContextValue } from "../annotations/types";
+import type { AnnotationContextValue } from "../canvas";
 
 interface SelectionStateSlice {
   selectedNode: string | null;

@@ -10,21 +10,21 @@
 import { useEffect } from "react";
 import type { Node, Edge } from "@xyflow/react";
 
-import type { TopoNode, TopoEdge } from "../../shared/types/graph";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import type {
   EdgeAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation,
   NodeAnnotation
-} from "../../shared/types/topology";
-import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
-import { pruneEdgeAnnotations } from "../utils/edgeAnnotations";
-import { annotationsToNodes } from "../utils/annotationNodeConverters";
-import { applyGroupMembershipToNodes } from "../utils/groupMembership";
-import { isServicesInitialized, getTopologyIO } from "../services";
-import { useGraphStore } from "../stores/graphStore";
-import { useTopoViewerStore } from "../stores/topoViewerStore";
+} from "../../../shared/types/topology";
+import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
+import { pruneEdgeAnnotations } from "../../utils/edgeAnnotations";
+import { annotationsToNodes } from "../../utils/annotationNodeConverters";
+import { applyGroupMembershipToNodes } from "../../utils/groupMembership";
+import { isServicesInitialized, getTopologyIO } from "../../services";
+import { useGraphStore } from "../../stores/graphStore";
+import { useTopoViewerStore } from "../../stores/topoViewerStore";
 
 // ============================================================================
 // Message Types

@@ -6,7 +6,7 @@
  */
 import { useEffect } from "react";
 
-import { subscribeToWebviewMessages } from "../utils/webviewMessageBus";
+import { subscribeToWebviewMessages } from "../../utils/webviewMessageBus";
 
 interface UseExternalFileChangeOptions {
   undoRedo: {

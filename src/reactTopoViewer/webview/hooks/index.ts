@@ -1,7 +1,7 @@
 /**
  * React TopoViewer hooks (public API)
  *
- * Keep this surface small: import leaf hooks from feature folders (e.g. `./graph`) or use `./internal`
+ * Keep this surface small: import leaf hooks from feature folders (e.g. `./canvas`, `./editor`)
  * when wiring the App/context layers.
  */
 

@@ -6,7 +6,7 @@ import React from "react";
 
 import { BasePanel } from "../../ui/editor/BasePanel";
 import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
-import { useGenericFormState, useEditorHandlers } from "../../../hooks/panels/useGenericFormState";
+import { useGenericFormState, useEditorHandlers } from "../../../hooks/editor";
 import { normalizeShapeAnnotationColors } from "../../../utils/color";
 
 import { FreeShapeFormContent } from "./FreeShapeFormContent";

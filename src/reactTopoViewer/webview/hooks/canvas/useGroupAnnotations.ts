@@ -2,14 +2,14 @@ import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
-import type { GroupEditorData } from "../groups/groupTypes";
+import type { GroupEditorData } from "./groupTypes";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
-import type { UndoRedoActions } from "./types";
-import type { UseDerivedAnnotationsReturn } from "../useDerivedAnnotations";
-import { findParentGroupForBounds, generateGroupId } from "../groups";
+import type { UndoRedoActions } from "./annotationTypes";
+import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
+import { findParentGroupForBounds, generateGroupId } from "./groupUtils";
 import { groupToNode } from "../../utils/annotationNodeConverters";
 
-import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./helpers";
+import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";
 
 interface UseGroupAnnotationsParams {
   mode: "edit" | "view";

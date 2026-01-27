@@ -6,14 +6,14 @@
  */
 import { useEffect } from "react";
 
-import { persistSnapshotChange } from "./state/snapshotPersistence";
-import { useGraphStore } from "../stores/graphStore";
-import { useTopoViewerStore } from "../stores/topoViewerStore";
+import { persistSnapshotChange } from "./snapshotPersistence";
+import { useGraphStore } from "../../stores/graphStore";
+import { useTopoViewerStore } from "../../stores/topoViewerStore";
 import {
   useUndoRedoStore,
   setPersistSnapshotCallback,
   type UndoRedoSnapshot
-} from "../stores/undoRedoStore";
+} from "../../stores/undoRedoStore";
 
 /**
  * Hook to set up undo/redo persistence and mode synchronization.

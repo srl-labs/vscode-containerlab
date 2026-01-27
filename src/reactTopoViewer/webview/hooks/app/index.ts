@@ -37,3 +37,10 @@ export {
 // App content view-model + initial data
 export { useAppContentViewModel } from "./useAppContentViewModel";
 export { useInitialGraphData } from "./useInitialGraphData";
+export type { InitialGraphData } from "./useInitialGraphData";
+
+// App initialization & subscriptions
+export { useStoreInitialization } from "./useStoreInitialization";
+export type { StoreInitializationData } from "./useStoreInitialization";
+export { useGraphMessageSubscription } from "./useGraphMessageSubscription";
+export { useTopoViewerMessageSubscription } from "./useTopoViewerMessageSubscription";

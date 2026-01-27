@@ -11,10 +11,10 @@
  */
 import { useEffect } from "react";
 
-import type { CustomNodeTemplate } from "../../shared/types/editors";
-import type { CustomIconInfo } from "../../shared/types/icons";
-import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
-import { useTopoViewerStore, type DeploymentState } from "../stores/topoViewerStore";
+import type { CustomNodeTemplate } from "../../../shared/types/editors";
+import type { CustomIconInfo } from "../../../shared/types/icons";
+import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
+import { useTopoViewerStore, type DeploymentState } from "../../stores/topoViewerStore";
 
 // ============================================================================
 // Message Types

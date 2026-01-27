@@ -8,7 +8,7 @@ import { create } from "zustand";
 import { shallow } from "zustand/shallow";
 
 import type { FreeTextAnnotation, FreeShapeAnnotation } from "../../shared/types/topology";
-import type { GroupEditorData } from "../hooks/groups/groupTypes";
+import type { GroupEditorData } from "../hooks/canvas/groupTypes";
 
 // ============================================================================
 // Types

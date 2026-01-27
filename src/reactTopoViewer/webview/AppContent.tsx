@@ -16,7 +16,7 @@ import {
 } from "./components/panels";
 import { ToastContainer } from "./components/ui/Toast";
 import { EasterEggRenderer } from "./easter-eggs";
-import { useAppContentViewModel } from "./hooks/app/useAppContentViewModel";
+import { useAppContentViewModel } from "./hooks/app";
 import type { useLayoutControls } from "./hooks/ui";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;

@@ -7,15 +7,18 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { CanvasRef } from "./hooks/ui/useAppState";
+import type { CanvasRef } from "./hooks/ui";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import type { FloatingActionPanelHandle } from "./components/panels";
-import { useLayoutControls } from "./hooks/ui/useAppState";
-import { useInitialGraphData, type InitialGraphData } from "./hooks/app/useInitialGraphData";
-import { useStoreInitialization } from "./hooks/useStoreInitialization";
-import { useGraphMessageSubscription } from "./hooks/useGraphMessageSubscription";
-import { useTopoViewerMessageSubscription } from "./hooks/useTopoViewerMessageSubscription";
-import { useUndoRedoPersistence } from "./hooks/useUndoRedoPersistence";
+import { useLayoutControls } from "./hooks/ui";
+import {
+  useInitialGraphData,
+  type InitialGraphData,
+  useStoreInitialization,
+  useGraphMessageSubscription,
+  useTopoViewerMessageSubscription
+} from "./hooks/app";
+import { useUndoRedoPersistence } from "./hooks/state";
 import { AppContent } from "./AppContent";
 
 /** Main App component - initializes stores and subscriptions */

@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from "react";
 
 import { BasePanel } from "../../ui/editor/BasePanel";
-import { useLabSettingsState } from "../../../hooks/panels/useLabSettings";
+import { useLabSettingsState } from "../../../hooks/editor";
 
 import { BasicTab } from "./BasicTab";
 import { MgmtTab } from "./MgmtTab";

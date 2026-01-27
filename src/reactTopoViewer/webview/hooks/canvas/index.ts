@@ -1,5 +1,5 @@
 /**
- * Canvas interaction hooks (React Flow integration)
+ * Canvas & graph hooks (React Flow + annotations + groups)
  */
 export {
   useDeleteHandlers,
@@ -9,8 +9,34 @@ export {
   useCanvasRefMethods
 } from "./useReactFlowCanvasHooks";
 
-// Canvas event handlers (moved from components/canvas/)
+// Canvas event handlers (React Flow integration)
 export { useCanvasHandlers, snapToGrid, GRID_SIZE } from "./useCanvasHandlers";
-
-// Annotation canvas handlers hook
 export { useAnnotationCanvasHandlers } from "./useAnnotationCanvasHandlers";
+
+// Annotation hooks
+export { useAnnotations } from "./useAnnotations";
+export type {
+  AnnotationContextValue,
+  AnnotationState,
+  AnnotationActions,
+  UndoRedoActions
+} from "./annotationTypes";
+export { useDerivedAnnotations } from "./useDerivedAnnotations";
+
+// Graph creation hooks
+export { useNodeCreation } from "./useNodeCreation";
+export { useNetworkCreation } from "./useNetworkCreation";
+export type { NetworkType } from "./useNetworkCreation";
+
+// Group helpers
+export type { GroupEditorData, UseGroupClipboardReturn, GroupStyle } from "./groupTypes";
+export { groupToEditorData, editorDataToGroup, GROUP_LABEL_POSITIONS } from "./groupTypes";
+export {
+  findDeepestGroupAtPosition,
+  findGroupForNodeAtPosition,
+  findParentGroupForBounds,
+  generateGroupId,
+  handleNodeMembershipChange,
+  isGroupInsideGroup,
+  isPositionInsideGroup
+} from "./groupUtils";

@@ -9,9 +9,8 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import { useNodeCreation } from "../graph/useNodeCreation";
-import { useNetworkCreation, type NetworkType } from "../graph/useNetworkCreation";
-import { useNodeCreationHandlers, type NodeCreationState } from "../panels/useEditorHandlers";
+import { useNodeCreation, useNetworkCreation, type NetworkType } from "../canvas";
+import { useNodeCreationHandlers, type NodeCreationState } from "../editor";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { TopoNode } from "../../../shared/types/graph";
 import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";

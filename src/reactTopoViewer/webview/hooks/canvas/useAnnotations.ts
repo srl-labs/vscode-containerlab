@@ -1,14 +1,14 @@
 import { useCallback, useMemo } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import { useDerivedAnnotations } from "../useDerivedAnnotations";
+import { useDerivedAnnotations } from "./useDerivedAnnotations";
 import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
 import { useMode, useIsLocked } from "../../stores/topoViewerStore";
 import { useUndoRedoActions } from "../../stores/undoRedoStore";
-import { findDeepestGroupAtPosition, generateGroupId } from "../groups";
+import { findDeepestGroupAtPosition, generateGroupId } from "./groupUtils";
 
-import type { AnnotationContextValue } from "./types";
-import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./helpers";
+import type { AnnotationContextValue } from "./annotationTypes";
+import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHelpers";
 import { useGroupAnnotations } from "./useGroupAnnotations";
 import { useTextAnnotations } from "./useTextAnnotations";
 import { useShapeAnnotations } from "./useShapeAnnotations";

@@ -7,7 +7,7 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import { useClipboard, type UseClipboardOptions } from "../clipboard";
+import { useClipboard, type UseClipboardOptions } from "./useClipboard";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
