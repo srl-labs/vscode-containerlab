@@ -237,7 +237,8 @@ function handleCreateGroup(
 /**
  * Handle Ctrl+A: Select all nodes
  * Note: Selection is now handled by ReactFlow natively via its built-in select all
- * This stub returns false to allow the browser/ReactFlow to handle the event
+ * Returns true when the shortcut is recognized (but doesn't prevent default),
+ * false when the key combination doesn't match.
  */
 function handleSelectAll(event: KeyboardEvent): boolean {
   if (!(event.ctrlKey || event.metaKey) || event.key !== "a") return false;
@@ -245,7 +246,8 @@ function handleSelectAll(event: KeyboardEvent): boolean {
   // Let ReactFlow handle select all natively
   log.info("[Keyboard] Select all - delegating to ReactFlow");
   // Don't prevent default - let ReactFlow handle it
-  return false;
+  // Return true to indicate the shortcut was recognized
+  return true;
 }
 
 /**

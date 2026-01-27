@@ -9,6 +9,10 @@ import { test as base } from "@playwright/test";
 const CANVAS_SELECTOR = ".react-flow";
 const APP_SELECTOR = '[data-testid="topoviewer-app"]';
 
+// Node type constants (used in browser-side code)
+const TOPOLOGY_NODE_TYPE = "topology-node";
+const CLOUD_NODE_TYPE = "cloud-node";
+
 // Topologies directory path (must match dev server config)
 const TOPOLOGIES_DIR = path.resolve(__dirname, "../../../dev/topologies");
 
@@ -28,81 +32,80 @@ interface CreateGroupResult {
   isLocked?: boolean;
   groupsBefore: number;
   groupsAfter: number | null;
-  reactGroupsBefore: number | string;
-  reactGroupsAfter?: number | string;
+  reactGroupsBefore: number;
+  reactGroupsAfter?: number;
   hasRf?: boolean;
 }
 
 interface GroupDebugInfo {
   reactGroupCount: number;
-  reactGroupsDirectCount: number | string;
+  reactGroupsDirectCount: number;
   stateManagerGroupCount: number;
   reactGroupIds: string[];
   stateManagerGroupIds: string[];
 }
 
+// Browser helper functions for page.evaluate() (must be inlined, not referenced)
+const getSelectedNodeIds = (rfInstance: unknown): string[] => {
+  if (!rfInstance) return [];
+  const rf = rfInstance as { getNodes?: () => Array<{ id: string; selected?: boolean }> };
+  const nodes = rf.getNodes?.() ?? [];
+  return nodes.filter((n) => n.selected).map((n) => n.id);
+};
+
+const getReactGroupCount = (d: unknown): number => {
+  const dev = d as { getReactGroups?: () => unknown[] } | undefined;
+  const groups = dev?.getReactGroups?.();
+  return groups?.length ?? -1;
+};
+
+const dispatchGroupKeyboardEvent = (): void => {
+  const event = new KeyboardEvent("keydown", {
+    key: "g",
+    ctrlKey: true,
+    bubbles: true,
+    cancelable: true
+  });
+  window.dispatchEvent(event);
+};
+
 /**
  * Browser-side function to create a group from selected nodes.
- * Note: All helper logic is inlined because page.evaluate() only serializes this function,
- * not any external references from the module scope.
+ * Note: Helper functions must be inlined because page.evaluate() serializes only the function body.
  */
 function browserCreateGroup(): CreateGroupResult {
-  const dev = (window as any).__DEV__;
+  const dev = (
+    window as {
+      __DEV__?: {
+        rfInstance?: unknown;
+        mode?: () => string;
+        isLocked?: () => boolean;
+        getReactGroups?: () => unknown[];
+        createGroupFromSelected?: () => void;
+      };
+    }
+  ).__DEV__;
   const rf = dev?.rfInstance;
 
-  // Inline helper: get selected node IDs (React Flow version)
-  const getSelectedNodeIds = (rfInstance: any): string[] => {
-    if (!rfInstance) return [];
-    const nodes = rfInstance.getNodes?.() ?? [];
-    return nodes.filter((n: any) => n.selected).map((n: any) => n.id);
+  const base = {
+    selectedBefore: getSelectedNodeIds(rf),
+    mode: dev?.mode?.(),
+    isLocked: dev?.isLocked?.(),
+    groupsBefore: dev?.getReactGroups?.()?.length ?? 0,
+    reactGroupsBefore: getReactGroupCount(dev)
   };
-
-  // Inline helper: get react group count
-  const getReactGroupCount = (d: any): number | string => {
-    const groups = d?.getReactGroups?.();
-    return groups?.length ?? "undefined";
-  };
-
-  // Inline helper: dispatch keyboard event
-  const dispatchGroupKeyboardEvent = (): void => {
-    const event = new KeyboardEvent("keydown", {
-      key: "g",
-      ctrlKey: true,
-      bubbles: true,
-      cancelable: true
-    });
-    window.dispatchEvent(event);
-  };
-
-  const selectedBefore = getSelectedNodeIds(rf);
-  const mode = dev?.mode?.();
-  const isLocked = dev?.isLocked?.();
-  const groupsBefore = dev?.getReactGroups?.()?.length ?? 0;
-  const reactGroupsBefore = getReactGroupCount(dev);
 
   if (!dev?.createGroupFromSelected) {
     dispatchGroupKeyboardEvent();
-    return {
-      method: "keyboard",
-      selectedBefore,
-      mode,
-      isLocked,
-      groupsBefore,
-      groupsAfter: null,
-      reactGroupsBefore
-    };
+    return { method: "keyboard", ...base, groupsAfter: null };
   }
 
   dev.createGroupFromSelected();
   return {
     method: "direct",
-    selectedBefore,
+    ...base,
     selectedAfter: getSelectedNodeIds(rf),
-    mode,
-    isLocked,
-    groupsBefore,
-    groupsAfter: dev?.getReactGroups?.()?.length ?? 0,
-    reactGroupsBefore,
+    groupsAfter: dev.getReactGroups?.()?.length ?? 0,
     reactGroupsAfter: getReactGroupCount(dev),
     hasRf: !!rf
   };
@@ -121,7 +124,7 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
 
   return {
     reactGroupCount: reactGroups.length,
-    reactGroupsDirectCount: dev?.groupsCount ?? "undefined",
+    reactGroupsDirectCount: dev?.groupsCount ?? -1,
     stateManagerGroupCount: reactGroups.length, // Same as React groups now
     reactGroupIds: getGroupIds(reactGroups),
     stateManagerGroupIds: getGroupIds(reactGroups) // Same as React groups now
@@ -434,17 +437,18 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             // Verify nodes are actually loaded if this is not empty.clab.yml
             if (filename === "simple.clab.yml") {
               await page.waitForFunction(
-                () => {
+                (types) => {
                   const dev = (window as any).__DEV__;
                   const rf = dev?.rfInstance;
                   if (!rf) return false;
                   const nodes = rf.getNodes?.() ?? [];
                   // Filter to topology nodes only (exclude annotations)
                   const topoNodes = nodes.filter(
-                    (n: any) => n.type === "topology-node" || n.type === "cloud-node"
+                    (n: any) => n.type === types.topo || n.type === types.cloud
                   );
                   return topoNodes.length >= 2;
                 },
+                { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE },
                 { timeout: 5000 }
               );
             }
@@ -596,15 +600,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getNodeCount: async () => {
-        return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          const rf = dev?.rfInstance;
-          if (!rf) return 0;
-          const nodes = rf.getNodes?.() ?? [];
-          // Filter out non-topology nodes (annotations, etc.)
-          return nodes.filter((n: any) => n.type === "topology-node" || n.type === "cloud-node")
-            .length;
-        });
+        return await page.evaluate(
+          (types) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return 0;
+            const nodes = rf.getNodes?.() ?? [];
+            // Filter out non-topology nodes (annotations, etc.)
+            return nodes.filter((n: any) => n.type === types.topo || n.type === types.cloud).length;
+          },
+          { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+        );
       },
 
       getNodePosition: async (nodeId: string) => {
@@ -620,76 +626,31 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getNodeBoundingBox: async (nodeId: string) => {
-        return await page.evaluate((id) => {
-          // First try to get the DOM element directly - most reliable method
-          const nodeElement = document.querySelector(`[data-id="${id}"]`);
-          if (nodeElement) {
-            const rect = nodeElement.getBoundingClientRect();
-            return {
-              x: rect.left,
-              y: rect.top,
-              width: rect.width,
-              height: rect.height
-            };
-          }
+        // Try DOM element first - most reliable for visible nodes
+        const domElement = page.locator(`[data-id="${nodeId}"]`);
+        const domBox = await domElement.boundingBox().catch(() => null);
+        if (domBox) return domBox;
 
-          // Fallback to React Flow instance calculation
-          const dev = (window as any).__DEV__;
-          const rf = dev?.rfInstance;
+        // Fallback to React Flow calculation (simplified - use default size)
+        return await page.evaluate((id) => {
+          const rf = (window as any).__DEV__?.rfInstance;
           if (!rf) return null;
 
-          // Use React Flow's internal node which has computed dimensions
-          const internalNode = rf.getInternalNode?.(id);
-          if (!internalNode) {
-            // Fallback to basic node lookup
-            const nodes = rf.getNodes?.() ?? [];
-            const node = nodes.find((n: any) => n.id === id);
-            if (!node) return null;
+          const nodes = rf.getNodes?.() ?? [];
+          const node = nodes.find((n: any) => n.id === id);
+          if (!node) return null;
 
-            // Get viewport transform
-            const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-
-            // Calculate rendered position
-            const renderedX = node.position.x * viewport.zoom + viewport.x;
-            const renderedY = node.position.y * viewport.zoom + viewport.y;
-
-            // Get container position
-            const container = document.querySelector(".react-flow");
-            const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
-
-            // Default node size (topology nodes are 60x60)
-            const nodeWidth = 60 * viewport.zoom;
-            const nodeHeight = 60 * viewport.zoom;
-
-            return {
-              x: rect.left + renderedX,
-              y: rect.top + renderedY,
-              width: nodeWidth,
-              height: nodeHeight
-            };
-          }
-
-          // Get computed position and dimensions from internal node
-          const computed = internalNode.internals?.positionAbsolute ?? internalNode.position;
-          const width = internalNode.measured?.width ?? internalNode.width ?? 60;
-          const height = internalNode.measured?.height ?? internalNode.height ?? 60;
-
-          // Get viewport transform
-          const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-
-          // Calculate rendered position
-          const renderedX = computed.x * viewport.zoom + viewport.x;
-          const renderedY = computed.y * viewport.zoom + viewport.y;
-
-          // Get container position
+          const vp = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
           const container = document.querySelector(".react-flow");
-          const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+          const rect = container?.getBoundingClientRect();
+          const ox = rect?.left ?? 0;
+          const oy = rect?.top ?? 0;
 
           return {
-            x: rect.left + renderedX,
-            y: rect.top + renderedY,
-            width: width * viewport.zoom,
-            height: height * viewport.zoom
+            x: ox + node.position.x * vp.zoom + vp.x,
+            y: oy + node.position.y * vp.zoom + vp.y,
+            width: 60 * vp.zoom,
+            height: 60 * vp.zoom
           };
         }, nodeId);
       },
@@ -733,15 +694,18 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getNodeIds: async () => {
-        return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          const rf = dev?.rfInstance;
-          if (!rf) return [];
-          const nodes = rf.getNodes?.() ?? [];
-          return nodes
-            .filter((n: any) => n.type === "topology-node" || n.type === "cloud-node")
-            .map((n: any) => n.id);
-        });
+        return await page.evaluate(
+          (types) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return [];
+            const nodes = rf.getNodes?.() ?? [];
+            return nodes
+              .filter((n: any) => n.type === types.topo || n.type === types.cloud)
+              .map((n: any) => n.id);
+          },
+          { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+        );
       },
 
       selectNode: async (nodeId: string) => {
@@ -990,7 +954,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         );
 
         await page.evaluate(
-          ({ nodeId, position, kind }) => {
+          ({ nodeId, position, kind, nodeType }) => {
             const dev = (window as any).__DEV__;
             if (!dev?.handleNodeCreatedCallback) {
               throw new Error("handleNodeCreatedCallback not available");
@@ -999,7 +963,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             // Create node element in React Flow format
             const nodeElement = {
               id: nodeId,
-              type: "topology-node",
+              type: nodeType,
               position,
               data: {
                 label: nodeId,
@@ -1023,7 +987,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             // 3. Pushes undo action
             dev.handleNodeCreatedCallback(nodeId, nodeElement, position);
           },
-          { nodeId, position, kind }
+          { nodeId, position, kind, nodeType: TOPOLOGY_NODE_TYPE }
         );
 
         // Wait for the node to appear in React Flow
@@ -1160,13 +1124,13 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getNetworkNodeIds: async (): Promise<string[]> => {
-        return await page.evaluate(() => {
+        return await page.evaluate((cloudType) => {
           const dev = (window as any).__DEV__;
           const rf = dev?.rfInstance;
           if (!rf) return [];
           const nodes = rf.getNodes?.() ?? [];
-          return nodes.filter((n: any) => n.type === "cloud-node").map((n: any) => n.id);
-        });
+          return nodes.filter((n: any) => n.type === cloudType).map((n: any) => n.id);
+        }, CLOUD_NODE_TYPE);
       },
 
       dragNode: async (nodeId: string, delta: { x: number; y: number }) => {

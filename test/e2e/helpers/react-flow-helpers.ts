@@ -1,5 +1,10 @@
 import type { Page, Locator } from "@playwright/test";
 
+// Constants for browser-side code
+const RF_SELECTOR = ".react-flow";
+const TOPOLOGY_NODE_TYPE = "topology-node";
+const CLOUD_NODE_TYPE = "cloud-node";
+
 /**
  * Convert React Flow model coordinates to page/screen coordinates.
  * This accounts for pan, zoom, and container position.
@@ -10,13 +15,13 @@ export async function modelToPageCoords(
   modelY: number
 ): Promise<{ x: number; y: number }> {
   return await page.evaluate(
-    ({ mx, my }) => {
+    ({ mx, my, sel }) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
       if (!rf) return { x: 0, y: 0 };
 
       const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-      const container = document.querySelector(".react-flow");
+      const container = document.querySelector(sel);
       const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
       return {
@@ -24,7 +29,7 @@ export async function modelToPageCoords(
         y: rect.top + my * viewport.zoom + viewport.y
       };
     },
-    { mx: modelX, my: modelY }
+    { mx: modelX, my: modelY, sel: RF_SELECTOR }
   );
 }
 
@@ -37,13 +42,13 @@ export async function pageToModelCoords(
   pageY: number
 ): Promise<{ x: number; y: number }> {
   return await page.evaluate(
-    ({ px, py }) => {
+    ({ px, py, sel }) => {
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
       if (!rf) return { x: 0, y: 0 };
 
       const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-      const container = document.querySelector(".react-flow");
+      const container = document.querySelector(sel);
       const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
       return {
@@ -51,7 +56,7 @@ export async function pageToModelCoords(
         y: (py - rect.top - viewport.y) / viewport.zoom
       };
     },
-    { px: pageX, py: pageY }
+    { px: pageX, py: pageY, sel: RF_SELECTOR }
   );
 }
 
@@ -93,15 +98,18 @@ export async function fitGraph(page: Page): Promise<void> {
  * Get all node IDs in the graph.
  */
 export async function getAllNodeIds(page: Page): Promise<string[]> {
-  return await page.evaluate(() => {
-    const dev = (window as any).__DEV__;
-    const rf = dev?.rfInstance;
-    if (!rf) return [];
-    const nodes = rf.getNodes?.() ?? [];
-    return nodes
-      .filter((n: any) => n.type === "topology-node" || n.type === "cloud-node")
-      .map((n: any) => n.id);
-  });
+  return await page.evaluate(
+    (types) => {
+      const dev = (window as any).__DEV__;
+      const rf = dev?.rfInstance;
+      if (!rf) return [];
+      const nodes = rf.getNodes?.() ?? [];
+      return nodes
+        .filter((n: any) => n.type === types.topo || n.type === types.cloud)
+        .map((n: any) => n.id);
+    },
+    { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+  );
 }
 
 /**
@@ -227,30 +235,33 @@ export async function rightClick(page: Page, x: number, y: number): Promise<void
  * Open context menu for a node by calculating its position.
  */
 export async function openNodeContextMenu(page: Page, nodeId: string): Promise<void> {
-  const coords = await page.evaluate((id) => {
-    const dev = (window as any).__DEV__;
-    const rf = dev?.rfInstance;
-    if (!rf) return null;
+  const coords = await page.evaluate(
+    ({ id, sel }) => {
+      const dev = (window as any).__DEV__;
+      const rf = dev?.rfInstance;
+      if (!rf) return null;
 
-    const nodes = rf.getNodes?.() ?? [];
-    const node = nodes.find((n: any) => n.id === id);
-    if (!node) return null;
+      const nodes = rf.getNodes?.() ?? [];
+      const node = nodes.find((n: any) => n.id === id);
+      if (!node) return null;
 
-    const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-    const container = document.querySelector(".react-flow");
-    const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+      const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+      const container = document.querySelector(sel);
+      const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
-    // Node center (assuming 60x60 node size)
-    const nodeCenter = {
-      x: node.position.x + 30,
-      y: node.position.y + 30
-    };
+      // Node center (assuming 60x60 node size)
+      const nodeCenter = {
+        x: node.position.x + 30,
+        y: node.position.y + 30
+      };
 
-    return {
-      x: rect.left + nodeCenter.x * viewport.zoom + viewport.x,
-      y: rect.top + nodeCenter.y * viewport.zoom + viewport.y
-    };
-  }, nodeId);
+      return {
+        x: rect.left + nodeCenter.x * viewport.zoom + viewport.x,
+        y: rect.top + nodeCenter.y * viewport.zoom + viewport.y
+      };
+    },
+    { id: nodeId, sel: RF_SELECTOR }
+  );
 
   if (!coords) {
     throw new Error(`Failed to open context menu for node: ${nodeId}`);
@@ -368,37 +379,40 @@ export async function getEdgeBoundingBox(
   page: Page,
   edgeId: string
 ): Promise<{ x: number; y: number; width: number; height: number } | null> {
-  return await page.evaluate((id) => {
-    const dev = (window as any).__DEV__;
-    const rf = dev?.rfInstance;
-    if (!rf) return null;
+  return await page.evaluate(
+    ({ id, sel }) => {
+      const dev = (window as any).__DEV__;
+      const rf = dev?.rfInstance;
+      if (!rf) return null;
 
-    const edges = rf.getEdges?.() ?? [];
-    const edge = edges.find((e: any) => e.id === id);
-    if (!edge) return null;
+      const edges = rf.getEdges?.() ?? [];
+      const edge = edges.find((e: any) => e.id === id);
+      if (!edge) return null;
 
-    const nodes = rf.getNodes?.() ?? [];
-    const sourceNode = nodes.find((n: any) => n.id === edge.source);
-    const targetNode = nodes.find((n: any) => n.id === edge.target);
-    if (!sourceNode || !targetNode) return null;
+      const nodes = rf.getNodes?.() ?? [];
+      const sourceNode = nodes.find((n: any) => n.id === edge.source);
+      const targetNode = nodes.find((n: any) => n.id === edge.target);
+      if (!sourceNode || !targetNode) return null;
 
-    const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-    const container = document.querySelector(".react-flow");
-    const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+      const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+      const container = document.querySelector(sel);
+      const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
-    // Calculate bounding box from source and target positions
-    const minX = Math.min(sourceNode.position.x, targetNode.position.x);
-    const minY = Math.min(sourceNode.position.y, targetNode.position.y);
-    const maxX = Math.max(sourceNode.position.x, targetNode.position.x) + 60; // Add node width
-    const maxY = Math.max(sourceNode.position.y, targetNode.position.y) + 60;
+      // Calculate bounding box from source and target positions
+      const minX = Math.min(sourceNode.position.x, targetNode.position.x);
+      const minY = Math.min(sourceNode.position.y, targetNode.position.y);
+      const maxX = Math.max(sourceNode.position.x, targetNode.position.x) + 60; // Add node width
+      const maxY = Math.max(sourceNode.position.y, targetNode.position.y) + 60;
 
-    return {
-      x: rect.left + minX * viewport.zoom + viewport.x,
-      y: rect.top + minY * viewport.zoom + viewport.y,
-      width: (maxX - minX) * viewport.zoom,
-      height: (maxY - minY) * viewport.zoom
-    };
-  }, edgeId);
+      return {
+        x: rect.left + minX * viewport.zoom + viewport.x,
+        y: rect.top + minY * viewport.zoom + viewport.y,
+        width: (maxX - minX) * viewport.zoom,
+        height: (maxY - minY) * viewport.zoom
+      };
+    },
+    { id: edgeId, sel: RF_SELECTOR }
+  );
 }
 
 /**
@@ -409,33 +423,36 @@ export async function getEdgeMidpoint(
   page: Page,
   edgeId: string
 ): Promise<{ x: number; y: number } | null> {
-  return await page.evaluate((id) => {
-    const dev = (window as any).__DEV__;
-    const rf = dev?.rfInstance;
-    if (!rf) return null;
+  return await page.evaluate(
+    ({ id, sel }) => {
+      const dev = (window as any).__DEV__;
+      const rf = dev?.rfInstance;
+      if (!rf) return null;
 
-    const edges = rf.getEdges?.() ?? [];
-    const edge = edges.find((e: any) => e.id === id);
-    if (!edge) return null;
+      const edges = rf.getEdges?.() ?? [];
+      const edge = edges.find((e: any) => e.id === id);
+      if (!edge) return null;
 
-    const nodes = rf.getNodes?.() ?? [];
-    const sourceNode = nodes.find((n: any) => n.id === edge.source);
-    const targetNode = nodes.find((n: any) => n.id === edge.target);
-    if (!sourceNode || !targetNode) return null;
+      const nodes = rf.getNodes?.() ?? [];
+      const sourceNode = nodes.find((n: any) => n.id === edge.source);
+      const targetNode = nodes.find((n: any) => n.id === edge.target);
+      if (!sourceNode || !targetNode) return null;
 
-    const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-    const container = document.querySelector(".react-flow");
-    const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+      const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+      const container = document.querySelector(sel);
+      const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
-    // Calculate geometric midpoint (adding 30 for node center offset)
-    const midX = (sourceNode.position.x + targetNode.position.x) / 2 + 30;
-    const midY = (sourceNode.position.y + targetNode.position.y) / 2 + 30;
+      // Calculate geometric midpoint (adding 30 for node center offset)
+      const midX = (sourceNode.position.x + targetNode.position.x) / 2 + 30;
+      const midY = (sourceNode.position.y + targetNode.position.y) / 2 + 30;
 
-    return {
-      x: rect.left + midX * viewport.zoom + viewport.x,
-      y: rect.top + midY * viewport.zoom + viewport.y
-    };
-  }, edgeId);
+      return {
+        x: rect.left + midX * viewport.zoom + viewport.x,
+        y: rect.top + midY * viewport.zoom + viewport.y
+      };
+    },
+    { id: edgeId, sel: RF_SELECTOR }
+  );
 }
 
 /**

@@ -1,41 +1,39 @@
 /**
  * Shared utilities barrel file
+ *
+ * For large imports, prefer importing from sub-barrels directly:
+ * - './conversions' - Node/network/element conversion utilities
+ * - './identifiers' - ID generation and link type utilities
+ * - './helpers' - Type helpers and migration utilities
  */
 
-// Node editor conversions
+// Re-export from conversions
 export {
   convertToEditorData,
   convertEditorDataToYaml,
-  convertEditorDataToNodeSaveData
-} from "./nodeEditorConversions";
-export type { YamlExtraData } from "./nodeEditorConversions";
-
-// Network editor conversions
-export {
+  convertEditorDataToNodeSaveData,
   convertToNetworkEditorData,
-  convertNetworkEditorDataToYaml
-} from "./networkEditorConversions";
-
-// Custom node conversions
-export {
+  convertNetworkEditorDataToYaml,
   convertCustomTemplateToEditorData,
   convertEditorDataToSaveData,
   convertTemplateToEditorData,
-  createNewTemplateEditorData
-} from "./customNodeConversions";
-export type { SaveCustomNodeData } from "./customNodeConversions";
+  createNewTemplateEditorData,
+  parsedElementToTopoNode,
+  parsedElementToTopoEdge,
+  convertElementsToTopologyData,
+  topoNodeToParsedElement,
+  topoEdgeToParsedElement,
+  convertTopologyDataToElements
+} from "./conversions";
+export type { YamlExtraData, SaveCustomNodeData } from "./conversions";
 
-// ID utilities
+// Re-export from identifiers
 export {
   generateDummyId,
   generateAdapterNodeId,
   generateSpecialNodeId,
   generateRegularNodeId,
-  getUniqueId
-} from "./idUtils";
-
-// Link types and utilities
-export {
+  getUniqueId,
   STR_HOST,
   STR_MGMT_NET,
   PREFIX_MACVLAN,
@@ -51,28 +49,16 @@ export {
   isSpecialEndpointId,
   isSpecialNodeOrBridge,
   splitEndpointLike
-} from "./LinkTypes";
+} from "./identifiers";
 
-// Type helpers
+// Re-export from helpers
 export {
   getString,
   getStringOrEmpty,
   getNumber,
   getBoolean,
   getStringArray,
-  getRecord
-} from "./typeHelpers";
-
-// Annotation migrations
-export { applyInterfacePatternMigrations } from "./annotationMigrations";
-export type { InterfacePatternMigration } from "./annotationMigrations";
-
-// Element conversions (ParsedElement <-> ReactFlow)
-export {
-  parsedElementToTopoNode,
-  parsedElementToTopoEdge,
-  convertElementsToTopologyData,
-  topoNodeToParsedElement,
-  topoEdgeToParsedElement,
-  convertTopologyDataToElements
-} from "./elementConversions";
+  getRecord,
+  applyInterfacePatternMigrations
+} from "./helpers";
+export type { InterfacePatternMigration } from "./helpers";

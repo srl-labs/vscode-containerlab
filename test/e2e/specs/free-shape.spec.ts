@@ -5,6 +5,7 @@ const EMPTY_FILE = "empty.clab.yml";
 const SEL_ADD_SHAPES_BTN = '[data-testid="floating-panel-add-shapes-btn"]';
 const SEL_FREE_SHAPE_EDITOR = '[data-testid="free-shape-editor"]';
 const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
+const SEL_RECTANGLE_OPTION = "text=Rectangle";
 
 test.describe("Free Shape Annotations", () => {
   test("can create rectangle and persist to annotations file", async ({ page, topoViewerPage }) => {
@@ -19,7 +20,7 @@ test.describe("Free Shape Annotations", () => {
 
     await page.locator(SEL_ADD_SHAPES_BTN).click();
     await page.waitForTimeout(200);
-    await page.locator("text=Rectangle").click();
+    await page.locator(SEL_RECTANGLE_OPTION).click();
     await page.waitForTimeout(200);
 
     const canvasCenter = await topoViewerPage.getCanvasCenter();
@@ -60,7 +61,7 @@ test.describe("Free Shape Annotations", () => {
     // Create a rectangle
     await page.locator(SEL_ADD_SHAPES_BTN).click();
     await page.waitForTimeout(200);
-    await page.locator("text=Rectangle").click();
+    await page.locator(SEL_RECTANGLE_OPTION).click();
     await page.waitForTimeout(200);
 
     const canvasCenter = await topoViewerPage.getCanvasCenter();
@@ -231,7 +232,7 @@ test.describe("Free Shape Annotations", () => {
     // Create a rectangle first
     await page.locator(SEL_ADD_SHAPES_BTN).click();
     await page.waitForTimeout(200);
-    await page.locator("text=Rectangle").click();
+    await page.locator(SEL_RECTANGLE_OPTION).click();
     await page.waitForTimeout(200);
 
     const canvasCenter = await topoViewerPage.getCanvasCenter();

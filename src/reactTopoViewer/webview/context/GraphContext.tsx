@@ -121,6 +121,157 @@ type ExtensionMessage =
   | EdgeStatsUpdateMessage
   | { type: string };
 
+// ============================================================================
+// Message handler helpers (extracted for complexity reduction)
+// ============================================================================
+
+/** Apply edge stats update to a single edge */
+function applyEdgeStatsToEdge(
+  edge: Edge,
+  updateMap: Map<string, { id: string; extraData: Record<string, unknown>; classes?: string }>
+): Edge {
+  const update = updateMap.get(edge.id);
+  if (!update) return edge;
+  const oldExtraData = ((edge.data as Record<string, unknown>)?.extraData ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const newExtraData = { ...oldExtraData, ...update.extraData };
+  return {
+    ...edge,
+    data: { ...edge.data, extraData: newExtraData },
+    className: update.classes ?? edge.className
+  };
+}
+
+/** Context for topology data message handling */
+interface TopologyDataContext {
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
+  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
+  onEdgeAnnotationsUpdate?: (annotations: EdgeAnnotation[]) => void;
+}
+
+/** Build merged nodes from topology and annotations */
+function buildMergedNodes(
+  newNodes: TopoNode[],
+  nodeAnnotations: NodeAnnotation[] | undefined,
+  groupStyleAnnotations: GroupStyleAnnotation[],
+  freeTextAnnotations: FreeTextAnnotation[],
+  freeShapeAnnotations: FreeShapeAnnotation[]
+): Node[] {
+  const topoWithMembership = applyGroupMembershipToNodes(
+    newNodes,
+    nodeAnnotations,
+    groupStyleAnnotations
+  );
+  const annotationNodes = annotationsToNodes(
+    freeTextAnnotations,
+    freeShapeAnnotations,
+    groupStyleAnnotations
+  );
+  const mergedNodes = [...(topoWithMembership as Node[]), ...(annotationNodes as Node[])];
+  // Deduplicate by id in case annotations are already included
+  return Array.from(new Map(mergedNodes.map((n) => [n.id, n])).values());
+}
+
+/** Reinitialize TopologyIO for external file changes */
+function reinitializeTopologyIO(): void {
+  const yamlFilePath = (window as { __INITIAL_DATA__?: { yamlFilePath?: string } }).__INITIAL_DATA__
+    ?.yamlFilePath;
+  if (yamlFilePath && isServicesInitialized()) {
+    const topologyIO = getTopologyIO();
+    void topologyIO.initializeFromFile(yamlFilePath);
+  }
+}
+
+/** Extract nodes and edges from topology data message */
+function extractNodesAndEdges(msg: TopologyDataMessage): {
+  nodes: TopoNode[] | undefined;
+  edges: TopoEdge[] | undefined;
+} {
+  const nodes = msg.nodes || msg.data?.nodes;
+  const edges = msg.edges || msg.data?.edges;
+  return { nodes: nodes as TopoNode[] | undefined, edges: edges as TopoEdge[] | undefined };
+}
+
+/** Apply graph state update from topology data */
+function applyGraphStateUpdate(
+  nodes: TopoNode[],
+  edges: TopoEdge[],
+  msg: TopologyDataMessage,
+  ctx: TopologyDataContext
+): void {
+  const data = msg.data;
+  const uniqueNodes = buildMergedNodes(
+    nodes,
+    data?.nodeAnnotations,
+    (data?.groupStyleAnnotations ?? []) as GroupStyleAnnotation[],
+    data?.freeTextAnnotations ?? [],
+    data?.freeShapeAnnotations ?? []
+  );
+  ctx.setNodes(uniqueNodes);
+  ctx.setEdges(edges as Edge[]);
+  reinitializeTopologyIO();
+}
+
+/** Apply edge annotations update if available */
+function applyEdgeAnnotationsUpdate(
+  rawAnnotations: EdgeAnnotation[] | undefined,
+  edges: TopoEdge[] | undefined,
+  onUpdate: ((annotations: EdgeAnnotation[]) => void) | undefined
+): void {
+  if (!Array.isArray(rawAnnotations) || !edges || !onUpdate) return;
+  const cleaned = pruneEdgeAnnotations(rawAnnotations, edges);
+  onUpdate(cleaned);
+}
+
+/** Handle topology-data message */
+function handleTopologyDataMessage(msg: TopologyDataMessage, ctx: TopologyDataContext): void {
+  const { nodes, edges } = extractNodesAndEdges(msg);
+
+  if (nodes && edges) {
+    applyGraphStateUpdate(nodes, edges, msg, ctx);
+  }
+
+  applyEdgeAnnotationsUpdate(msg.data?.edgeAnnotations, edges, ctx.onEdgeAnnotationsUpdate);
+}
+
+/** Handle node-renamed message */
+function handleNodeRenamedMessage(
+  msg: NodeRenamedMessage,
+  renameNode: (oldId: string, newId: string, name?: string) => void
+): void {
+  if (msg.data?.oldId && msg.data?.newId) {
+    renameNode(msg.data.oldId, msg.data.newId, msg.data.name);
+  }
+}
+
+/** Handle node-data-updated message */
+function handleNodeDataUpdatedMessage(
+  msg: NodeDataUpdatedMessage,
+  updateNodeData: (nodeId: string, data: Partial<Record<string, unknown>>) => void
+): void {
+  if (msg.data?.nodeId && msg.data?.extraData) {
+    updateNodeData(msg.data.nodeId, msg.data.extraData);
+  }
+}
+
+/** Handle edge-stats-update message */
+function handleEdgeStatsUpdateMessage(
+  msg: EdgeStatsUpdateMessage,
+  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>
+): void {
+  const updates = msg.data?.edgeUpdates;
+  if (!updates || updates.length === 0) return;
+
+  const updateMap = new Map(updates.map((u) => [u.id, u]));
+  setEdges((current) => current.map((edge) => applyEdgeStatsToEdge(edge, updateMap)));
+}
+
+// ============================================================================
+// GraphProvider Component
+// ============================================================================
+
 /**
  * GraphProvider - Provides React Flow state management
  */
@@ -304,86 +455,25 @@ export const GraphProvider: React.FC<GraphProviderProps> = ({
 
   // Handle extension messages
   useEffect(() => {
+    const ctx: TopologyDataContext = { setNodes, setEdges, onEdgeAnnotationsUpdate };
+
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as ExtensionMessage | undefined;
       if (!message?.type) return;
 
-      if (message.type === "topology-data") {
-        const msg = message as TopologyDataMessage;
-        const newNodes = msg.nodes || msg.data?.nodes;
-        const newEdges = msg.edges || msg.data?.edges;
-        const rawEdgeAnnotations = msg.data?.edgeAnnotations;
-        const nodeAnnotations = msg.data?.nodeAnnotations;
-        const groupStyleAnnotations = msg.data?.groupStyleAnnotations ?? [];
-
-        if (newNodes && newEdges) {
-          const topoWithMembership = applyGroupMembershipToNodes(
-            newNodes as TopoNode[],
-            nodeAnnotations,
-            groupStyleAnnotations as GroupStyleAnnotation[]
-          );
-          const annotationNodes = annotationsToNodes(
-            msg.data?.freeTextAnnotations ?? [],
-            msg.data?.freeShapeAnnotations ?? [],
-            groupStyleAnnotations as GroupStyleAnnotation[]
-          );
-          const mergedNodes = [...(topoWithMembership as Node[]), ...(annotationNodes as Node[])];
-          // Deduplicate by id in case annotations are already included
-          const uniqueNodes = Array.from(new Map(mergedNodes.map((n) => [n.id, n])).values());
-
-          setNodes(uniqueNodes);
-          setEdges(newEdges as Edge[]);
-
-          // Reinitialize TopologyIO for external file changes
-          const yamlFilePath = (window as { __INITIAL_DATA__?: { yamlFilePath?: string } })
-            .__INITIAL_DATA__?.yamlFilePath;
-          if (yamlFilePath && isServicesInitialized()) {
-            const topologyIO = getTopologyIO();
-            void topologyIO.initializeFromFile(yamlFilePath);
-          }
-        }
-
-        // Handle edge annotations
-        if (Array.isArray(rawEdgeAnnotations) && newEdges && onEdgeAnnotationsUpdate) {
-          const cleaned = pruneEdgeAnnotations(rawEdgeAnnotations, newEdges as TopoEdge[]);
-          onEdgeAnnotationsUpdate(cleaned);
-        }
-      }
-
-      if (message.type === "node-renamed") {
-        const msg = message as NodeRenamedMessage;
-        if (msg.data?.oldId && msg.data?.newId) {
-          renameNode(msg.data.oldId, msg.data.newId, msg.data.name);
-        }
-      }
-
-      if (message.type === "node-data-updated") {
-        const msg = message as NodeDataUpdatedMessage;
-        if (msg.data?.nodeId && msg.data?.extraData) {
-          updateNodeData(msg.data.nodeId, msg.data.extraData);
-        }
-      }
-
-      if (message.type === "edge-stats-update") {
-        const msg = message as EdgeStatsUpdateMessage;
-        const updates = msg.data?.edgeUpdates;
-        if (updates && updates.length > 0) {
-          const updateMap = new Map(updates.map((u) => [u.id, u]));
-          setEdges((current) =>
-            current.map((edge) => {
-              const update = updateMap.get(edge.id);
-              if (!update) return edge;
-              const oldExtraData = ((edge.data as Record<string, unknown>)?.extraData ??
-                {}) as Record<string, unknown>;
-              const newExtraData = { ...oldExtraData, ...update.extraData };
-              return {
-                ...edge,
-                data: { ...edge.data, extraData: newExtraData },
-                className: update.classes ?? edge.className
-              };
-            })
-          );
-        }
+      switch (message.type) {
+        case "topology-data":
+          handleTopologyDataMessage(message as TopologyDataMessage, ctx);
+          break;
+        case "node-renamed":
+          handleNodeRenamedMessage(message as NodeRenamedMessage, renameNode);
+          break;
+        case "node-data-updated":
+          handleNodeDataUpdatedMessage(message as NodeDataUpdatedMessage, updateNodeData);
+          break;
+        case "edge-stats-update":
+          handleEdgeStatsUpdateMessage(message as EdgeStatsUpdateMessage, setEdges);
+          break;
       }
     };
 

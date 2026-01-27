@@ -1,15 +1,10 @@
 /**
  * Test fixtures for undo/redo hook tests
+ *
+ * Note: The useUndoRedo hook API was significantly changed during the ReactFlow migration.
+ * The new API uses captureSnapshot/commitChange instead of pushAction.
+ * This file provides sample data for tests.
  */
-import type {
-  NodePositionEntry,
-  MembershipEntry,
-  UndoRedoActionMove,
-  UndoRedoActionGraph,
-  UndoRedoActionPropertyEdit,
-  UndoRedoActionAnnotation,
-  UndoRedoActionGroupMove
-} from "../../../../src/reactTopoViewer/webview/hooks/state/useUndoRedo";
 import type { TopoNode, TopoEdge } from "../../../../src/reactTopoViewer/shared/types/graph";
 import type {
   FreeShapeAnnotation,
@@ -61,8 +56,13 @@ export const sampleEdges: TopoEdge[] = [
 ];
 
 // ============================================================================
-// Sample Position Entries
+// Sample Position Data
 // ============================================================================
+
+export interface NodePositionEntry {
+  id: string;
+  position: { x: number; y: number };
+}
 
 export const samplePositionsBefore: NodePositionEntry[] = [
   { id: "node1", position: { x: 100, y: 100 } },
@@ -72,20 +72,6 @@ export const samplePositionsBefore: NodePositionEntry[] = [
 export const samplePositionsAfter: NodePositionEntry[] = [
   { id: "node1", position: { x: 150, y: 150 } },
   { id: "node2", position: { x: 250, y: 250 } }
-];
-
-// ============================================================================
-// Sample Membership Entries
-// ============================================================================
-
-export const sampleMembershipBefore: MembershipEntry[] = [
-  { nodeId: "node1", groupId: null },
-  { nodeId: "node2", groupId: "group1:1" }
-];
-
-export const sampleMembershipAfter: MembershipEntry[] = [
-  { nodeId: "node1", groupId: "group1:1" },
-  { nodeId: "node2", groupId: null }
 ];
 
 // ============================================================================
@@ -116,183 +102,8 @@ export const sampleGroup: GroupStyleAnnotation = {
 };
 
 // ============================================================================
-// Action Factory Functions
+// Helper Functions
 // ============================================================================
-
-/**
- * Creates a move action for testing
- */
-export function createMoveAction(
-  before: NodePositionEntry[] = samplePositionsBefore,
-  after: NodePositionEntry[] = samplePositionsAfter,
-  membershipBefore?: MembershipEntry[],
-  membershipAfter?: MembershipEntry[]
-): UndoRedoActionMove {
-  return {
-    type: "move",
-    before,
-    after,
-    membershipBefore,
-    membershipAfter
-  };
-}
-
-/**
- * Creates a graph action for adding a node
- */
-export function createGraphAddNodeAction(node: TopoNode): UndoRedoActionGraph {
-  return {
-    type: "graph",
-    before: [{ entity: "node", kind: "delete", before: node }],
-    after: [{ entity: "node", kind: "add", after: node }]
-  };
-}
-
-/**
- * Creates a graph action for deleting a node (with connected edges)
- */
-export function createGraphDeleteNodeAction(
-  node: TopoNode,
-  connectedEdges: TopoEdge[] = []
-): UndoRedoActionGraph {
-  return {
-    type: "graph",
-    before: [
-      { entity: "node", kind: "add", after: node },
-      ...connectedEdges.map((e) => ({ entity: "edge" as const, kind: "add" as const, after: e }))
-    ],
-    after: [{ entity: "node", kind: "delete", before: node }]
-  };
-}
-
-/**
- * Creates a graph action for adding an edge
- */
-export function createGraphAddEdgeAction(edge: TopoEdge): UndoRedoActionGraph {
-  return {
-    type: "graph",
-    before: [{ entity: "edge", kind: "delete", before: edge }],
-    after: [{ entity: "edge", kind: "add", after: edge }]
-  };
-}
-
-/**
- * Creates a graph action for deleting an edge
- */
-export function createGraphDeleteEdgeAction(edge: TopoEdge): UndoRedoActionGraph {
-  return {
-    type: "graph",
-    before: [{ entity: "edge", kind: "add", after: edge }],
-    after: [{ entity: "edge", kind: "delete", before: edge }]
-  };
-}
-
-/**
- * Creates a property edit action
- */
-export function createPropertyEditAction(
-  entityType: "node" | "link",
-  entityId: string,
-  before: Record<string, unknown>,
-  after: Record<string, unknown>
-): UndoRedoActionPropertyEdit {
-  return {
-    type: "property-edit",
-    entityType,
-    entityId,
-    before,
-    after
-  };
-}
-
-/**
- * Creates a node rename property edit action
- */
-export function createNodeRenameAction(
-  originalName: string,
-  newName: string,
-  otherProps: Record<string, unknown> = {}
-): UndoRedoActionPropertyEdit {
-  return {
-    type: "property-edit",
-    entityType: "node",
-    entityId: originalName,
-    before: { name: originalName, ...otherProps },
-    after: { name: newName, ...otherProps }
-  };
-}
-
-/**
- * Creates an annotation action
- */
-export function createAnnotationAction(
-  annotationType: "freeText" | "freeShape" | "group",
-  before: Record<string, unknown> | null,
-  after: Record<string, unknown> | null
-): UndoRedoActionAnnotation {
-  return {
-    type: "annotation",
-    annotationType,
-    before,
-    after
-  };
-}
-
-/**
- * Creates a free shape creation annotation action
- */
-export function createFreeShapeCreationAction(
-  shape: FreeShapeAnnotation = sampleFreeShape
-): UndoRedoActionAnnotation {
-  return createAnnotationAction("freeShape", null, shape as unknown as Record<string, unknown>);
-}
-
-/**
- * Creates a free shape deletion annotation action
- */
-export function createFreeShapeDeletionAction(
-  shape: FreeShapeAnnotation = sampleFreeShape
-): UndoRedoActionAnnotation {
-  return createAnnotationAction("freeShape", shape as unknown as Record<string, unknown>, null);
-}
-
-/**
- * Creates a group creation annotation action
- */
-export function createGroupCreationAction(
-  group: GroupStyleAnnotation = sampleGroup
-): UndoRedoActionAnnotation {
-  return createAnnotationAction("group", null, group as unknown as Record<string, unknown>);
-}
-
-/**
- * Creates a group move action (compound action for group + member nodes)
- */
-export function createGroupMoveAction(
-  groupBefore: Record<string, unknown>,
-  groupAfter: Record<string, unknown>,
-  nodesBefore: NodePositionEntry[] = samplePositionsBefore,
-  nodesAfter: NodePositionEntry[] = samplePositionsAfter
-): UndoRedoActionGroupMove {
-  return {
-    type: "group-move",
-    groupBefore,
-    groupAfter,
-    nodesBefore,
-    nodesAfter
-  };
-}
-
-/**
- * Creates multiple unique move actions for history limit testing
- */
-export function createMultipleMoveActions(count: number): UndoRedoActionMove[] {
-  return Array.from({ length: count }, (_, i) => ({
-    type: "move" as const,
-    before: [{ id: `node${i}`, position: { x: i * 10, y: i * 10 } }],
-    after: [{ id: `node${i}`, position: { x: i * 10 + 50, y: i * 10 + 50 } }]
-  }));
-}
 
 /**
  * Deep clones an object (for creating isolated test data)

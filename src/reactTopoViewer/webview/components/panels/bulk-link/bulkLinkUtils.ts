@@ -118,6 +118,46 @@ function getSourceMatch(
   return fallbackFilter(name) ? null : undefined;
 }
 
+/** Check if target name matches filter with backreference support */
+function matchTargetWithBackrefs(
+  targetName: string,
+  targetFilterText: string,
+  targetRegex: RegExp | null,
+  sourceMatch: RegExpMatchArray | null
+): boolean {
+  if (targetRegex && sourceMatch) {
+    // Apply backreferences from source match
+    const expandedPattern = applyBackreferences(targetFilterText, sourceMatch);
+    const expandedRegex = FilterUtils.tryCreateRegExp(expandedPattern);
+    if (expandedRegex) {
+      return expandedRegex.test(targetName);
+    }
+    return false;
+  }
+  const targetFilter = FilterUtils.createFilter(targetFilterText);
+  return targetFilter(targetName);
+}
+
+/** Process a single target node for potential link candidate */
+function processTargetNode(
+  sourceId: string,
+  targetNode: TopoNode,
+  targetFilterText: string,
+  targetRegex: RegExp | null,
+  sourceMatch: RegExpMatchArray | null,
+  edges: TopoEdge[],
+  candidates: LinkCandidate[]
+): void {
+  const targetId = targetNode.id;
+  if (sourceId === targetId) return; // Skip self-loops
+
+  const targetName = ((targetNode.data as Record<string, unknown>).label as string) || targetId;
+  if (!matchTargetWithBackrefs(targetName, targetFilterText, targetRegex, sourceMatch)) return;
+  if (hasEdgeBetweenUtil(edges, sourceId, targetId)) return;
+
+  candidates.push({ sourceId, targetId });
+}
+
 /**
  * Compute candidate link pairs between source and target nodes.
  * Uses React Flow nodes/edges arrays for graph queries.
@@ -148,32 +188,17 @@ export function computeCandidates(
     const sourceMatch = getSourceMatch(sourceName, sourceRegex, sourceFallbackFilter);
     if (sourceMatch === undefined) continue; // No match
 
+    // Process all potential target nodes
     for (const targetNode of topologyNodes) {
-      const targetId = targetNode.id;
-      if (sourceId === targetId) continue; // Skip self-loops
-
-      const targetName = ((targetNode.data as Record<string, unknown>).label as string) || targetId;
-
-      // Check if target matches filter (with backreference support)
-      let targetMatches = false;
-      if (targetRegex) {
-        // Apply backreferences from source match
-        const expandedPattern = applyBackreferences(targetFilterText, sourceMatch);
-        const expandedRegex = FilterUtils.tryCreateRegExp(expandedPattern);
-        if (expandedRegex) {
-          targetMatches = expandedRegex.test(targetName);
-        }
-      } else {
-        const targetFilter = FilterUtils.createFilter(targetFilterText);
-        targetMatches = targetFilter(targetName);
-      }
-
-      if (!targetMatches) continue;
-
-      // Check if edge already exists
-      if (hasEdgeBetweenUtil(edges, sourceId, targetId)) continue;
-
-      candidates.push({ sourceId, targetId });
+      processTargetNode(
+        sourceId,
+        targetNode,
+        targetFilterText,
+        targetRegex,
+        sourceMatch,
+        edges,
+        candidates
+      );
     }
   }
 

@@ -139,6 +139,94 @@ const AnnotationActionsContext = createContext<AnnotationActionsContextValue | u
   undefined
 );
 
+// ============================================================================
+// Helper functions for complexity reduction
+// ============================================================================
+
+/** Calculate group bounds from selected nodes */
+function calculateGroupBoundsFromNodes(
+  selectedNodes: Array<{
+    id: string;
+    position: { x: number; y: number };
+    measured?: { width?: number; height?: number };
+  }>,
+  padding: number
+): { position: { x: number; y: number }; width: number; height: number; members: string[] } {
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  const members: string[] = [];
+
+  for (const node of selectedNodes) {
+    const nodeWidth = node.measured?.width ?? 100;
+    const nodeHeight = node.measured?.height ?? 100;
+    minX = Math.min(minX, node.position.x);
+    minY = Math.min(minY, node.position.y);
+    maxX = Math.max(maxX, node.position.x + nodeWidth);
+    maxY = Math.max(maxY, node.position.y + nodeHeight);
+    members.push(node.id);
+  }
+
+  return {
+    position: { x: minX - padding, y: minY - padding },
+    width: maxX - minX + padding * 2,
+    height: maxY - minY + padding * 2,
+    members
+  };
+}
+
+/** Calculate default group position from viewport */
+function calculateDefaultGroupPosition(viewport: { x: number; y: number; zoom: number }): {
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  members: string[];
+} {
+  return {
+    position: { x: -viewport.x / viewport.zoom + 200, y: -viewport.y / viewport.zoom + 200 },
+    width: 300,
+    height: 200,
+    members: []
+  };
+}
+
+/** Handle text/shape annotation group membership on drop */
+function handleAnnotationNodeDrop(
+  nodeId: string,
+  targetGroupId: string | null,
+  annotationList: Array<{ id: string; groupId?: string }>,
+  updateFn: (id: string, updates: { groupId?: string }) => void
+): boolean {
+  const annotation = annotationList.find((a) => a.id === nodeId);
+  const currentGroupId = annotation?.groupId ?? null;
+  if (currentGroupId !== targetGroupId) {
+    updateFn(nodeId, { groupId: targetGroupId ?? undefined });
+  }
+  return true;
+}
+
+/** Handle topology node group membership on drop */
+function handleTopologyNodeDrop(
+  nodeId: string,
+  targetGroupId: string | null,
+  currentGroupId: string | null,
+  addToGroup: (nodeId: string, groupId: string) => void,
+  removeFromGroup: (nodeId: string) => void
+): void {
+  if (currentGroupId === targetGroupId) return;
+
+  if (targetGroupId) {
+    addToGroup(nodeId, targetGroupId);
+  } else {
+    removeFromGroup(nodeId);
+  }
+}
+
+// ============================================================================
+// Provider Component
+// ============================================================================
+
 /** Provider component for annotation context */
 export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   rfInstance,
@@ -353,43 +441,20 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       onLockedAction();
       return;
     }
+
     const viewport = rfInstance?.getViewport() ?? { x: 0, y: 0, zoom: 1 };
     const newGroupId = generateGroupId(derived.groups);
+    const PADDING = 40;
 
     // Get selected nodes from React Flow to create group around them
     const rfNodes = rfInstance?.getNodes() ?? [];
     const selectedNodes = rfNodes.filter((n) => n.selected && n.type !== "group");
 
-    let position: { x: number; y: number };
-    let width: number;
-    let height: number;
-    const members: string[] = [];
-    const PADDING = 40; // Padding around nodes
-
-    if (selectedNodes.length > 0) {
-      // Calculate bounding box of selected nodes
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      for (const node of selectedNodes) {
-        const nodeWidth = node.measured?.width ?? 100;
-        const nodeHeight = node.measured?.height ?? 100;
-        minX = Math.min(minX, node.position.x);
-        minY = Math.min(minY, node.position.y);
-        maxX = Math.max(maxX, node.position.x + nodeWidth);
-        maxY = Math.max(maxY, node.position.y + nodeHeight);
-        members.push(node.id);
-      }
-      position = { x: minX - PADDING, y: minY - PADDING };
-      width = maxX - minX + PADDING * 2;
-      height = maxY - minY + PADDING * 2;
-    } else {
-      // No selection - create at viewport position
-      position = { x: -viewport.x / viewport.zoom + 200, y: -viewport.y / viewport.zoom + 200 };
-      width = 300;
-      height = 200;
-    }
+    // Calculate bounds from selected nodes or use default position
+    const { position, width, height, members } =
+      selectedNodes.length > 0
+        ? calculateGroupBoundsFromNodes(selectedNodes, PADDING)
+        : calculateDefaultGroupPosition(viewport);
 
     // Find the parent group (smallest existing group that contains this new group)
     const parentGroup = findParentGroupForBounds(
@@ -450,7 +515,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   const addGroup = useCallback(
     (group: GroupStyleAnnotation) => {
-      const memberIds = Array.isArray(group.members) ? group.members : [];
+      const memberIds = Array.isArray(group.members) ? (group.members as string[]) : [];
       const snapshot = undoRedo.captureSnapshot({ nodeIds: [group.id, ...memberIds] });
       derived.addGroup(group);
       if (memberIds.length > 0) {
@@ -967,34 +1032,36 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
       const targetGroup = findDeepestGroupAtPosition(position, derived.groups);
       const targetGroupId = targetGroup?.id ?? null;
 
-      // Handle text/shape annotations
+      // Handle text annotations
       if (nodeId.startsWith("freeText_")) {
-        const annotation = derived.textAnnotations.find((a) => a.id === nodeId);
-        const currentGroupId = annotation?.groupId ?? null;
-        if (currentGroupId !== targetGroupId) {
-          derived.updateTextAnnotation(nodeId, { groupId: targetGroupId ?? undefined });
-        }
+        handleAnnotationNodeDrop(
+          nodeId,
+          targetGroupId,
+          derived.textAnnotations,
+          derived.updateTextAnnotation
+        );
         return;
       }
 
+      // Handle shape annotations
       if (nodeId.startsWith("freeShape_")) {
-        const annotation = derived.shapeAnnotations.find((a) => a.id === nodeId);
-        const currentGroupId = annotation?.groupId ?? null;
-        if (currentGroupId !== targetGroupId) {
-          derived.updateShapeAnnotation(nodeId, { groupId: targetGroupId ?? undefined });
-        }
+        handleAnnotationNodeDrop(
+          nodeId,
+          targetGroupId,
+          derived.shapeAnnotations,
+          derived.updateShapeAnnotation
+        );
         return;
       }
 
       // Handle topology nodes
-      const currentGroupId = derived.getNodeMembership(nodeId);
-      if (currentGroupId === targetGroupId) return;
-
-      if (targetGroupId) {
-        derived.addNodeToGroup(nodeId, targetGroupId);
-      } else {
-        derived.removeNodeFromGroup(nodeId);
-      }
+      handleTopologyNodeDrop(
+        nodeId,
+        targetGroupId,
+        derived.getNodeMembership(nodeId),
+        derived.addNodeToGroup,
+        derived.removeNodeFromGroup
+      );
     },
     [derived]
   );

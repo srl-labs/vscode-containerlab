@@ -114,6 +114,55 @@ function generateEdgeId(source: string, target: string): string {
   return `${source}-${target}-${Date.now()}`;
 }
 
+// ============================================================================
+// Node drag stop helpers (extracted for complexity reduction)
+// ============================================================================
+
+/** Build position changes for group members */
+function buildGroupMemberChanges(
+  _node: Node,
+  members: string[],
+  nodes: Node[] | undefined
+): NodeChange[] {
+  const changes: NodeChange[] = [];
+  for (const memberId of members) {
+    const memberNode = nodes?.find((n) => n.id === memberId);
+    if (memberNode) {
+      changes.push({
+        type: "position",
+        id: memberId,
+        position: memberNode.position,
+        dragging: false
+      });
+    }
+  }
+  return changes;
+}
+
+/** Clean up group tracking refs */
+function cleanupGroupRefs(
+  nodeId: string,
+  groupMembersRef: React.RefObject<Map<string, string[]>>,
+  groupLastPositionRef: React.RefObject<Map<string, XYPosition>>
+): void {
+  groupMembersRef.current?.delete(nodeId);
+  groupLastPositionRef.current?.delete(nodeId);
+}
+
+/** Build explicit nodes from position changes for undo/redo */
+function buildExplicitNodesFromChanges(changes: NodeChange[], nodes: Node[] | undefined): Node[] {
+  const explicitNodes: Node[] = [];
+  for (const change of changes) {
+    if (change.type === "position" && change.position) {
+      const existingNode = nodes?.find((n) => n.id === change.id);
+      if (existingNode) {
+        explicitNodes.push({ ...existingNode, position: change.position });
+      }
+    }
+  }
+  return explicitNodes;
+}
+
 /** Hook for node drag handlers with undo/redo support and group member movement */
 function useNodeDragHandlers(
   modeRef: React.RefObject<"view" | "edit">,
@@ -224,6 +273,7 @@ function useNodeDragHandlers(
     (_event, node) => {
       if (modeRef.current !== "edit") return;
 
+      // Skip for shape nodes with active line handle
       if (node.type === "free-shape-node" && isLineHandleActive()) {
         dragSnapshotRef.current = null;
         return;
@@ -235,49 +285,26 @@ function useNodeDragHandlers(
         { type: "position", id: node.id, position: finalPosition, dragging: false }
       ];
 
-      // For group nodes, do not snap the group or its members
+      // Handle group node members
       if (isGroupNode) {
         const memberIds = groupMembersRef.current.get(node.id) ?? [];
-
-        for (const memberId of memberIds) {
-          const memberNode = nodes?.find((n) => n.id === memberId);
-          if (memberNode) {
-            changes.push({
-              type: "position",
-              id: memberId,
-              position: memberNode.position,
-              dragging: false
-            });
-          }
-        }
-
-        // Clean up refs
-        groupMembersRef.current.delete(node.id);
-        groupLastPositionRef.current.delete(node.id);
+        const memberChanges = buildGroupMemberChanges(node, memberIds, nodes);
+        changes.push(...memberChanges);
+        cleanupGroupRefs(node.id, groupMembersRef, groupLastPositionRef);
       }
 
       onNodesChangeBase(changes);
       log.info(`[ReactFlowCanvas] Node ${node.id} moved to ${finalPosition.x}, ${finalPosition.y}`);
 
+      // Notify group member handler for non-group nodes
       if (!isGroupNode && groupMemberHandlers?.onNodeDropped) {
         groupMemberHandlers.onNodeDropped(node.id, finalPosition);
       }
 
+      // Commit to undo/redo if snapshot exists
       if (dragSnapshotRef.current) {
-        const nodeCount = dragSnapshotRef.current.nodeIds.length;
-        const description = buildMoveDescription(node, nodeCount);
-
-        // Build explicit nodes with updated positions to avoid stale state issue
-        const explicitNodes: Node[] = [];
-        for (const change of changes) {
-          if (change.type === "position" && change.position) {
-            const existingNode = nodes?.find((n) => n.id === change.id);
-            if (existingNode) {
-              explicitNodes.push({ ...existingNode, position: change.position });
-            }
-          }
-        }
-
+        const description = buildMoveDescription(node, dragSnapshotRef.current.nodeIds.length);
+        const explicitNodes = buildExplicitNodesFromChanges(changes, nodes);
         undoRedo.commitChange(dragSnapshotRef.current, description, {
           explicitNodes: explicitNodes.length > 0 ? explicitNodes : undefined
         });

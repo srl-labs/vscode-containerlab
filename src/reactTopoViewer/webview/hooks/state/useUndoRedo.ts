@@ -184,42 +184,71 @@ function addToPastWithLimit(
   return next;
 }
 
+/** Merge a single entry into the entry map */
+function mergeEntry<T>(map: Map<string, SnapshotEntry<T>>, entry: SnapshotEntry<T>): void {
+  const existing = map.get(entry.id);
+  if (!existing) {
+    map.set(entry.id, { id: entry.id, before: entry.before, after: entry.after });
+  } else {
+    if (existing.before === undefined) existing.before = entry.before;
+    existing.after = entry.after;
+  }
+}
+
+/** Merge node entries from snapshot into map */
+function mergeNodeEntries(
+  nodeMap: Map<string, SnapshotEntry<NodeSnapshot>>,
+  nodes: SnapshotEntry<NodeSnapshot>[]
+): void {
+  for (const entry of nodes) {
+    mergeEntry(nodeMap, entry);
+  }
+}
+
+/** Merge edge entries from snapshot into map */
+function mergeEdgeEntries(
+  edgeMap: Map<string, SnapshotEntry<EdgeSnapshot>>,
+  edges: SnapshotEntry<EdgeSnapshot>[]
+): void {
+  for (const entry of edges) {
+    mergeEntry(edgeMap, entry);
+  }
+}
+
+/** Merge context for edge annotations */
+interface EdgeAnnotationMergeContext {
+  before?: EdgeAnnotation[];
+  after?: EdgeAnnotation[];
+}
+
+/** Merge edge annotations from snapshot */
+function mergeEdgeAnnotations(
+  ctx: EdgeAnnotationMergeContext,
+  edgeAnnotations: { before: EdgeAnnotation[]; after: EdgeAnnotation[] } | undefined
+): void {
+  if (!edgeAnnotations) return;
+  if (!ctx.before) ctx.before = edgeAnnotations.before;
+  ctx.after = edgeAnnotations.after;
+}
+
+/** Merge metadata from snapshot */
+function mergeMeta(meta: SnapshotMeta, snapshotMeta: SnapshotMeta | undefined): void {
+  if (snapshotMeta?.nodeRenames) {
+    meta.nodeRenames = [...(meta.nodeRenames ?? []), ...snapshotMeta.nodeRenames];
+  }
+}
+
 function mergeSnapshots(snapshots: UndoRedoSnapshot[]): UndoRedoSnapshot {
   const nodeMap = new Map<string, SnapshotEntry<NodeSnapshot>>();
   const edgeMap = new Map<string, SnapshotEntry<EdgeSnapshot>>();
-  let edgeAnnotationsBefore: EdgeAnnotation[] | undefined;
-  let edgeAnnotationsAfter: EdgeAnnotation[] | undefined;
+  const annotationCtx: EdgeAnnotationMergeContext = {};
   const meta: SnapshotMeta = {};
 
   for (const snapshot of snapshots) {
-    for (const entry of snapshot.nodes) {
-      const existing = nodeMap.get(entry.id);
-      if (!existing) {
-        nodeMap.set(entry.id, { id: entry.id, before: entry.before, after: entry.after });
-      } else {
-        if (existing.before === undefined) existing.before = entry.before;
-        existing.after = entry.after;
-      }
-    }
-
-    for (const entry of snapshot.edges) {
-      const existing = edgeMap.get(entry.id);
-      if (!existing) {
-        edgeMap.set(entry.id, { id: entry.id, before: entry.before, after: entry.after });
-      } else {
-        if (existing.before === undefined) existing.before = entry.before;
-        existing.after = entry.after;
-      }
-    }
-
-    if (snapshot.edgeAnnotations) {
-      if (!edgeAnnotationsBefore) edgeAnnotationsBefore = snapshot.edgeAnnotations.before;
-      edgeAnnotationsAfter = snapshot.edgeAnnotations.after;
-    }
-
-    if (snapshot.meta?.nodeRenames) {
-      meta.nodeRenames = [...(meta.nodeRenames ?? []), ...snapshot.meta.nodeRenames];
-    }
+    mergeNodeEntries(nodeMap, snapshot.nodes);
+    mergeEdgeEntries(edgeMap, snapshot.edges);
+    mergeEdgeAnnotations(annotationCtx, snapshot.edgeAnnotations);
+    mergeMeta(meta, snapshot.meta);
   }
 
   return {
@@ -228,8 +257,8 @@ function mergeSnapshots(snapshots: UndoRedoSnapshot[]): UndoRedoSnapshot {
     nodes: [...nodeMap.values()],
     edges: [...edgeMap.values()],
     edgeAnnotations:
-      edgeAnnotationsBefore || edgeAnnotationsAfter
-        ? { before: edgeAnnotationsBefore ?? [], after: edgeAnnotationsAfter ?? [] }
+      annotationCtx.before || annotationCtx.after
+        ? { before: annotationCtx.before ?? [], after: annotationCtx.after ?? [] }
         : undefined,
     meta: Object.keys(meta).length > 0 ? meta : undefined,
     timestamp: Date.now()

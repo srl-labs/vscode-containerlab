@@ -198,6 +198,15 @@ function createPositionUpdater(positions: PositionEntry[]) {
 /**
  * Hook to create imperative handle methods
  */
+/** Schedule a fit view after layout application */
+function scheduleFitView(rfRef: React.RefObject<ReactFlowInstance | null>): void {
+  setTimeout(() => {
+    rfRef.current?.fitView({ padding: 0.2, duration: 200 })?.catch(() => {
+      /* ignore */
+    });
+  }, 100);
+}
+
 export function useCanvasRefMethods(
   reactFlowInstanceRef: React.RefObject<ReactFlowInstance | null>,
   nodes: Node[],
@@ -210,11 +219,7 @@ export function useCanvasRefMethods(
       fit: () => reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }),
       runLayout: (layoutName: string) => {
         setNodes(applyLayout(layoutName as LayoutName, nodes, edges));
-        setTimeout(() => {
-          reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }).catch(() => {
-            /* ignore */
-          });
-        }, 100);
+        scheduleFitView(reactFlowInstanceRef);
       },
       getReactFlowInstance: () => reactFlowInstanceRef.current,
       getNodes: () => nodes,

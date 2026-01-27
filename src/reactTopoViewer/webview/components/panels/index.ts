@@ -1,6 +1,7 @@
 /**
  * Panel components barrel file
  */
+/* eslint-disable import-x/max-dependencies */
 
 // Panel collections
 export { EditorPanels } from "./EditorPanels";

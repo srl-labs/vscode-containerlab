@@ -4,6 +4,7 @@
  * This is now a fully controlled component - nodes/edges come from GraphContext.
  * No internal state duplication.
  */
+/* eslint-disable import-x/max-dependencies */
 import React, {
   useRef,
   useImperativeHandle,
@@ -31,7 +32,10 @@ import { useGraph } from "../../context/GraphContext";
 import { LinkCreationProvider } from "../../context/LinkCreationContext";
 import { AnnotationHandlersProvider } from "../../context/AnnotationHandlersContext";
 import { EdgeInfoProvider } from "../../context/EdgeInfoContext";
-import { EdgeRenderConfigProvider } from "../../context/EdgeRenderConfigContext";
+import {
+  EdgeRenderConfigProvider,
+  type EdgeLabelMode
+} from "../../context/EdgeRenderConfigContext";
 import { NodeRenderConfigProvider } from "../../context/NodeRenderConfigContext";
 import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 import {
@@ -54,24 +58,42 @@ import { edgeTypes } from "./edges";
 import { nodeTypes } from "./nodes";
 import type { ReactFlowCanvasRef, ReactFlowCanvasProps, AnnotationHandlers } from "./types";
 
+/** Parameters for useContextMenuItems hook */
+interface ContextMenuItemsParams {
+  handlers: ReturnType<typeof useCanvasHandlers>;
+  state: { mode: "view" | "edit"; isLocked: boolean };
+  editNode: (id: string | null) => void;
+  editEdge: (id: string | null) => void;
+  handleDeleteNode: (nodeId: string) => void;
+  handleDeleteEdge: (edgeId: string) => void;
+  nodesRef: React.RefObject<Node[]>;
+  edgesRef: React.RefObject<Edge[]>;
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
+  linkSourceNode: string | null;
+  startLinkCreation: (nodeId: string) => void;
+  cancelLinkCreation: () => void;
+  annotationHandlers?: AnnotationHandlers;
+}
+
 /**
  * Hook for building context menu items.
  */
-function useContextMenuItems(
-  handlers: ReturnType<typeof useCanvasHandlers>,
-  state: { mode: "view" | "edit"; isLocked: boolean },
-  editNode: (id: string | null) => void,
-  editEdge: (id: string | null) => void,
-  handleDeleteNode: (nodeId: string) => void,
-  handleDeleteEdge: (edgeId: string) => void,
-  nodesRef: React.RefObject<Node[]>,
-  edgesRef: React.RefObject<Edge[]>,
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
-  linkSourceNode: string | null,
-  startLinkCreation: (nodeId: string) => void,
-  cancelLinkCreation: () => void,
-  annotationHandlers?: AnnotationHandlers
-): ContextMenuItem[] {
+function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] {
+  const {
+    handlers,
+    state,
+    editNode,
+    editEdge,
+    handleDeleteNode,
+    handleDeleteEdge,
+    nodesRef,
+    edgesRef,
+    setNodes,
+    linkSourceNode,
+    startLinkCreation,
+    cancelLinkCreation,
+    annotationHandlers
+  } = params;
   const { type, targetId } = handlers.contextMenu;
 
   return useMemo(() => {
@@ -212,6 +234,140 @@ const LOW_DETAIL_ZOOM_THRESHOLD = 0.5;
 const LARGE_GRAPH_NODE_THRESHOLD = 600;
 const LARGE_GRAPH_EDGE_THRESHOLD = 900;
 
+// ============================================================================
+// Hooks extracted for complexity reduction
+// ============================================================================
+
+/** Hook for render configuration based on graph size and zoom level */
+function useRenderConfig(nodeCount: number, edgeCount: number, linkLabelMode: EdgeLabelMode) {
+  const isLargeGraph =
+    nodeCount >= LARGE_GRAPH_NODE_THRESHOLD || edgeCount >= LARGE_GRAPH_EDGE_THRESHOLD;
+
+  const isLowDetail = useStore(
+    useCallback(
+      (store) => {
+        const zoom = store.transform[2];
+        return isLargeGraph && zoom <= LOW_DETAIL_ZOOM_THRESHOLD;
+      },
+      [isLargeGraph]
+    ),
+    (left, right) => left === right
+  );
+
+  const edgeRenderConfig = useMemo(
+    () => ({
+      labelMode: linkLabelMode,
+      suppressLabels: isLowDetail,
+      suppressHitArea: isLowDetail
+    }),
+    [linkLabelMode, isLowDetail]
+  );
+
+  const nodeRenderConfig = useMemo(
+    () => ({
+      suppressLabels: isLowDetail
+    }),
+    [isLowDetail]
+  );
+
+  return { isLargeGraph, isLowDetail, edgeRenderConfig, nodeRenderConfig };
+}
+
+/** Hook for node drag handler wrappers */
+function useDragHandlers(
+  onNodeDrag: (event: React.MouseEvent, node: Node) => void,
+  wrappedOnNodeDragStart: (event: React.MouseEvent, node: Node) => void,
+  wrappedOnNodeDragStop: (event: React.MouseEvent, node: Node) => void
+) {
+  const handleNodeDragStart = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      wrappedOnNodeDragStart(event, node);
+    },
+    [wrappedOnNodeDragStart]
+  );
+
+  const handleNodeDrag = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      onNodeDrag(event, node);
+    },
+    [onNodeDrag]
+  );
+
+  const handleNodeDragStop = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      wrappedOnNodeDragStop(event, node);
+    },
+    [wrappedOnNodeDragStop]
+  );
+
+  return { handleNodeDragStart, handleNodeDrag, handleNodeDragStop };
+}
+
+/** Hook for link and delete handlers combined */
+function useLinkAndDeleteHandlers(
+  selectNode: (id: string | null) => void,
+  selectEdge: (id: string | null) => void,
+  closeContextMenu: () => void,
+  onNodeDelete?: (nodeId: string) => void,
+  onEdgeDelete?: (edgeId: string) => void,
+  onEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void
+) {
+  const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =
+    useLinkCreation(onEdgeCreated);
+  const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
+    selectNode,
+    selectEdge,
+    closeContextMenu,
+    onNodeDelete,
+    onEdgeDelete
+  );
+  return {
+    linkSourceNode,
+    startLinkCreation,
+    completeLinkCreation,
+    cancelLinkCreation,
+    handleDeleteNode,
+    handleDeleteEdge
+  };
+}
+
+/** Hook to wrap onInit with additional callback */
+function useWrappedOnInit(
+  handlersOnInit: (instance: ReactFlowInstance) => void,
+  onInitProp?: (instance: ReactFlowInstance) => void
+) {
+  return useCallback(
+    (instance: ReactFlowInstance) => {
+      handlersOnInit(instance);
+      onInitProp?.(instance);
+    },
+    [handlersOnInit, onInitProp]
+  );
+}
+
+/** Hook for node and edge refs that update each render */
+function useGraphRefs(nodes: Node[], edges: Edge[]) {
+  const nodesRef = useRef<Node[]>(nodes);
+  const edgesRef = useRef<Edge[]>(edges);
+  nodesRef.current = nodes;
+  edgesRef.current = edges;
+  return { nodesRef, edgesRef };
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
 /**
  * Inner component that uses useStore (requires ReactFlowProvider ancestor)
  * Now fully controlled - nodes/edges come from GraphContext (unified source of truth).
@@ -242,12 +398,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     // All nodes (topology + annotation) are now unified in propNodes
     const allNodes = (propNodes as Node[]) ?? [];
+    const allEdges = (propEdges as Edge[]) ?? [];
 
     // Refs for context menu (to avoid re-renders)
-    const nodesRef = useRef<Node[]>(allNodes);
-    const edgesRef = useRef<Edge[]>((propEdges as Edge[]) ?? []);
-    nodesRef.current = allNodes;
-    edgesRef.current = (propEdges as Edge[]) ?? [];
+    const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
 
     const handlers = useCanvasHandlers({
       selectNode,
@@ -267,29 +421,28 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       }
     });
 
-    const { linkSourceNode, startLinkCreation, completeLinkCreation, cancelLinkCreation } =
-      useLinkCreation(onEdgeCreated);
-    const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
+    const {
+      linkSourceNode,
+      startLinkCreation,
+      completeLinkCreation,
+      cancelLinkCreation,
+      handleDeleteNode,
+      handleDeleteEdge
+    } = useLinkAndDeleteHandlers(
       selectNode,
       selectEdge,
       handlers.closeContextMenu,
       onNodeDelete,
-      onEdgeDelete
+      onEdgeDelete,
+      onEdgeCreated
     );
     const sourceNodePosition = useSourceNodePosition(linkSourceNode, allNodes);
 
-    const isLargeGraph =
-      allNodes.length >= LARGE_GRAPH_NODE_THRESHOLD ||
-      (propEdges?.length ?? 0) >= LARGE_GRAPH_EDGE_THRESHOLD;
-    const isLowDetail = useStore(
-      useCallback(
-        (store) => {
-          const zoom = store.transform[2];
-          return isLargeGraph && zoom <= LOW_DETAIL_ZOOM_THRESHOLD;
-        },
-        [isLargeGraph]
-      ),
-      (left, right) => left === right
+    // Use extracted hooks for render config and drag handlers
+    const { isLowDetail, edgeRenderConfig, nodeRenderConfig } = useRenderConfig(
+      allNodes.length,
+      allEdges.length,
+      linkLabelMode
     );
 
     // Note: Keyboard delete handling is done by useAppKeyboardShortcuts in App.tsx
@@ -299,7 +452,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const refMethods = useCanvasRefMethods(
       handlers.reactFlowInstance,
       allNodes,
-      (propEdges as Edge[]) ?? [],
+      allEdges,
       setNodes,
       setEdges
     );
@@ -310,7 +463,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       completeLinkCreation,
       handlers.onNodeClick
     );
-    const contextMenuItems = useContextMenuItems(
+    const contextMenuItems = useContextMenuItems({
       handlers,
       state,
       editNode,
@@ -324,7 +477,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       startLinkCreation,
       cancelLinkCreation,
       annotationHandlers
-    );
+    });
 
     const {
       wrappedOnPaneClick,
@@ -346,50 +499,13 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onShiftClickCreate
     });
 
-    const handleNodeDragStart = useCallback(
-      (event: React.MouseEvent, node: Node) => {
-        wrappedOnNodeDragStart(event, node);
-      },
-      [wrappedOnNodeDragStart]
+    const { handleNodeDragStart, handleNodeDrag, handleNodeDragStop } = useDragHandlers(
+      handlers.onNodeDrag,
+      wrappedOnNodeDragStart,
+      wrappedOnNodeDragStop
     );
 
-    const handleNodeDrag = useCallback(
-      (event: React.MouseEvent, node: Node) => {
-        handlers.onNodeDrag(event, node);
-      },
-      [handlers.onNodeDrag]
-    );
-
-    const handleNodeDragStop = useCallback(
-      (event: React.MouseEvent, node: Node) => {
-        wrappedOnNodeDragStop(event, node);
-      },
-      [wrappedOnNodeDragStop]
-    );
-
-    const edgeRenderConfig = useMemo(
-      () => ({
-        labelMode: linkLabelMode,
-        suppressLabels: isLowDetail,
-        suppressHitArea: isLowDetail
-      }),
-      [linkLabelMode, isLowDetail]
-    );
-
-    const nodeRenderConfig = useMemo(
-      () => ({
-        suppressLabels: isLowDetail
-      }),
-      [isLowDetail]
-    );
-
-    const wrappedOnInit = useCallback(
-      (instance: ReactFlowInstance) => {
-        handlers.onInit(instance);
-        onInitProp?.(instance);
-      },
-      [handlers.onInit, onInitProp]
-    );
+    const wrappedOnInit = useWrappedOnInit(handlers.onInit, onInitProp);
 
     return (
       <div style={canvasStyle} className="react-flow-canvas">
@@ -400,7 +516,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
                 <LinkCreationProvider linkSourceNode={linkSourceNode}>
                   <ReactFlow
                     nodes={allNodes}
-                    edges={(propEdges as Edge[]) ?? []}
+                    edges={allEdges}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
                     onNodesChange={handlers.handleNodesChange}

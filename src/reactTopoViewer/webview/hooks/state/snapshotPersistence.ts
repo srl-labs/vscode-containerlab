@@ -218,6 +218,231 @@ function handleEdgeEdit(edge: EdgeSnapshot, before: EdgeSnapshot): Promise<void>
   return editLink(toLinkSaveData(edge, before));
 }
 
+// ============================================================================
+// Extracted helpers for persistence operations
+// ============================================================================
+
+interface PersistenceContext {
+  useBefore: boolean;
+  renameIds: Set<string>;
+  positionUpdates: Array<{ id: string; position: { x: number; y: number } }>;
+  membershipUpdates: Array<{ nodeId: string; groupId: string | null }>;
+  annotationsChanged: boolean;
+}
+
+/** Convert a NodeSnapshot to a React Flow Node */
+function snapshotToNode(snap: NodeSnapshot): Node {
+  return {
+    id: snap.id,
+    type: snap.type,
+    position: snap.position,
+    data: snap.data ?? {},
+    width: snap.width,
+    height: snap.height,
+    style: snap.style,
+    parentId: snap.parentNode
+  } as Node;
+}
+
+/** Handle node renames to preserve link rewrites */
+async function persistNodeRenames(snapshot: UndoRedoSnapshot, useBefore: boolean): Promise<void> {
+  const renamePairs = snapshot.meta?.nodeRenames ?? [];
+  for (const rename of renamePairs) {
+    const fromEntry = snapshot.nodes.find((n) => n.id === rename.from);
+    const toEntry = snapshot.nodes.find((n) => n.id === rename.to);
+    const beforeNode = useBefore ? toEntry?.after : fromEntry?.before;
+    const afterNode = useBefore ? fromEntry?.before : toEntry?.after;
+    if (beforeNode && afterNode) {
+      const data = (afterNode.data ?? {}) as Record<string, unknown>;
+      const name = (data.label as string) || (data.name as string) || afterNode.id;
+      const nodeData: NodeSaveData = {
+        ...toNodeSaveData(afterNode),
+        id: beforeNode.id,
+        name
+      };
+      await editNode(nodeData);
+    }
+  }
+}
+
+/** Handle node creation and return whether it was an annotation */
+async function persistNodeCreation(
+  to: NodeSnapshot,
+  membershipUpdates: Array<{ nodeId: string; groupId: string | null }>
+): Promise<boolean> {
+  if (isAnnotationSnapshot(to)) {
+    return true; // annotationsChanged
+  }
+  await handleNodeAdd(to);
+  const addedGroupId = getGroupId(to);
+  if (addedGroupId) {
+    membershipUpdates.push({ nodeId: to.id, groupId: addedGroupId });
+  }
+  return false;
+}
+
+/** Handle node deletion and return whether it was an annotation */
+async function persistNodeDeletion(from: NodeSnapshot): Promise<boolean> {
+  if (isAnnotationSnapshot(from)) {
+    return true; // annotationsChanged
+  }
+  await handleNodeDelete(from);
+  return false;
+}
+
+/** Track position and membership updates for a node */
+function trackNodeUpdates(from: NodeSnapshot, to: NodeSnapshot, ctx: PersistenceContext): void {
+  if (hasPositionChanged(from, to)) {
+    ctx.positionUpdates.push({ id: to.id, position: to.position });
+  }
+
+  const beforeGroupId = getGroupId(from);
+  const afterGroupId = getGroupId(to);
+  if (beforeGroupId !== afterGroupId) {
+    ctx.membershipUpdates.push({ nodeId: to.id, groupId: afterGroupId });
+  }
+}
+
+/** Process a single node entry and return whether annotations changed */
+async function persistSingleNodeEntry(
+  from: NodeSnapshot | null | undefined,
+  to: NodeSnapshot | null | undefined,
+  ctx: PersistenceContext
+): Promise<boolean> {
+  // Node creation
+  if (!from && to) {
+    return persistNodeCreation(to, ctx.membershipUpdates);
+  }
+
+  // Node deletion
+  if (from && !to) {
+    return persistNodeDeletion(from);
+  }
+
+  // Both null - no change
+  if (!from || !to) return false;
+
+  // Annotation update
+  if (isAnnotationSnapshot(to)) {
+    return true;
+  }
+
+  // Regular node update
+  trackNodeUpdates(from, to, ctx);
+  if (hasDataChanged(from, to)) {
+    await handleNodeEdit(to);
+  }
+  return false;
+}
+
+/** Process all node entries in the snapshot */
+async function persistNodeChanges(
+  snapshot: UndoRedoSnapshot,
+  ctx: PersistenceContext
+): Promise<void> {
+  for (const entry of snapshot.nodes) {
+    if (ctx.renameIds.has(entry.id)) continue;
+    const from = ctx.useBefore ? entry.after : entry.before;
+    const to = ctx.useBefore ? entry.before : entry.after;
+    const annotationChanged = await persistSingleNodeEntry(from, to, ctx);
+    if (annotationChanged) ctx.annotationsChanged = true;
+  }
+}
+
+/** Process all edge entries in the snapshot */
+async function persistEdgeChanges(snapshot: UndoRedoSnapshot, useBefore: boolean): Promise<void> {
+  for (const entry of snapshot.edges) {
+    const from = useBefore ? entry.after : entry.before;
+    const to = useBefore ? entry.before : entry.after;
+
+    if (!from && to) {
+      await handleEdgeAdd(to);
+      continue;
+    }
+
+    if (from && !to) {
+      await handleEdgeDelete(from);
+      continue;
+    }
+
+    if (!from || !to) continue;
+
+    if (hasEdgeChanged(from, to)) {
+      await handleEdgeEdit(to, from);
+    }
+  }
+}
+
+/** Apply position updates in batch */
+async function persistPositionUpdates(
+  positionUpdates: Array<{ id: string; position: { x: number; y: number } }>
+): Promise<void> {
+  if (positionUpdates.length > 0) {
+    await saveNodePositions(positionUpdates);
+  }
+}
+
+/** Apply membership updates */
+async function persistMembershipUpdates(
+  membershipUpdates: Array<{ nodeId: string; groupId: string | null }>
+): Promise<void> {
+  for (const update of membershipUpdates) {
+    await saveNodeGroupMembership(update.nodeId, update.groupId);
+  }
+}
+
+/** Apply a snapshot entry to the annotation node map */
+function applyAnnotationEntry(
+  entry: { before?: NodeSnapshot | null; after?: NodeSnapshot | null },
+  useBefore: boolean,
+  nodeMap: Map<string, Node>
+): void {
+  const from = useBefore ? entry.after : entry.before;
+  const to = useBefore ? entry.before : entry.after;
+
+  if (!isAnnotationSnapshot(from) && !isAnnotationSnapshot(to)) return;
+
+  if (!from && to) {
+    // Creation: add node to map
+    nodeMap.set(to.id, snapshotToNode(to));
+  } else if (from && !to) {
+    // Deletion: remove node from map
+    nodeMap.delete(from.id);
+  } else if (from && to) {
+    // Update: use the 'to' state
+    nodeMap.set(to.id, snapshotToNode(to));
+  }
+}
+
+/** Rebuild and persist annotations from snapshot changes */
+async function rebuildAnnotationNodes(
+  snapshot: UndoRedoSnapshot,
+  useBefore: boolean,
+  renameIds: Set<string>,
+  getNodes: () => Node[]
+): Promise<void> {
+  const currentAnnotationNodes = getNodes().filter((n) => isAnnotationNodeType(n.type));
+  const nodeMap = new Map(currentAnnotationNodes.map((n) => [n.id, n]));
+
+  for (const entry of snapshot.nodes) {
+    if (renameIds.has(entry.id)) continue;
+    applyAnnotationEntry(entry, useBefore, nodeMap);
+  }
+
+  const annotationNodes = Array.from(nodeMap.values());
+  const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(annotationNodes);
+  await saveFreeTextAnnotations(freeTextAnnotations);
+  await saveFreeShapeAnnotations(freeShapeAnnotations);
+  await saveGroupStyleAnnotations(groups);
+  log.info(
+    `[UndoRedo] Persisted annotations (${freeTextAnnotations.length} text, ${freeShapeAnnotations.length} shape, ${groups.length} groups)`
+  );
+}
+
+// ============================================================================
+// Main export
+// ============================================================================
+
 export function persistSnapshotChange(
   snapshot: UndoRedoSnapshot,
   direction: "undo" | "redo",
@@ -230,163 +455,22 @@ export function persistSnapshotChange(
   void (async () => {
     beginBatch();
     try {
-      const positionUpdates: Array<{ id: string; position: { x: number; y: number } }> = [];
-      const membershipUpdates: Array<{ nodeId: string; groupId: string | null }> = [];
-      let annotationsChanged = false;
+      const ctx: PersistenceContext = {
+        useBefore,
+        renameIds,
+        positionUpdates: [],
+        membershipUpdates: [],
+        annotationsChanged: false
+      };
 
-      // Handle renames explicitly to preserve link rewrites
-      for (const rename of renamePairs) {
-        const fromEntry = snapshot.nodes.find((n) => n.id === rename.from);
-        const toEntry = snapshot.nodes.find((n) => n.id === rename.to);
-        const beforeNode = useBefore ? toEntry?.after : fromEntry?.before;
-        const afterNode = useBefore ? fromEntry?.before : toEntry?.after;
-        if (beforeNode && afterNode) {
-          const data = (afterNode.data ?? {}) as Record<string, unknown>;
-          const name = (data.label as string) || (data.name as string) || afterNode.id;
-          const nodeData: NodeSaveData = {
-            ...toNodeSaveData(afterNode),
-            id: beforeNode.id,
-            name
-          };
-          await editNode(nodeData);
-        }
-      }
+      await persistNodeRenames(snapshot, useBefore);
+      await persistNodeChanges(snapshot, ctx);
+      await persistEdgeChanges(snapshot, useBefore);
+      await persistPositionUpdates(ctx.positionUpdates);
+      await persistMembershipUpdates(ctx.membershipUpdates);
 
-      for (const entry of snapshot.nodes) {
-        if (renameIds.has(entry.id)) continue;
-        const from = useBefore ? entry.after : entry.before;
-        const to = useBefore ? entry.before : entry.after;
-
-        if (!from && to) {
-          if (isAnnotationSnapshot(to)) {
-            annotationsChanged = true;
-            continue;
-          }
-          await handleNodeAdd(to);
-          const addedGroupId = getGroupId(to);
-          if (addedGroupId) {
-            membershipUpdates.push({ nodeId: to.id, groupId: addedGroupId });
-          }
-          continue;
-        }
-
-        if (from && !to) {
-          if (isAnnotationSnapshot(from)) {
-            annotationsChanged = true;
-            continue;
-          }
-          await handleNodeDelete(from);
-          continue;
-        }
-
-        if (!from || !to) continue;
-
-        if (isAnnotationSnapshot(to)) {
-          annotationsChanged = true;
-          continue;
-        }
-
-        if (hasPositionChanged(from, to)) {
-          positionUpdates.push({ id: to.id, position: to.position });
-        }
-
-        const beforeGroupId = getGroupId(from);
-        const afterGroupId = getGroupId(to);
-        if (beforeGroupId !== afterGroupId) {
-          membershipUpdates.push({ nodeId: to.id, groupId: afterGroupId });
-        }
-
-        if (hasDataChanged(from, to)) {
-          await handleNodeEdit(to);
-        }
-      }
-
-      for (const entry of snapshot.edges) {
-        const from = useBefore ? entry.after : entry.before;
-        const to = useBefore ? entry.before : entry.after;
-
-        if (!from && to) {
-          await handleEdgeAdd(to);
-          continue;
-        }
-
-        if (from && !to) {
-          await handleEdgeDelete(from);
-          continue;
-        }
-
-        if (!from || !to) continue;
-
-        if (hasEdgeChanged(from, to)) {
-          await handleEdgeEdit(to, from);
-        }
-      }
-
-      if (positionUpdates.length > 0) {
-        await saveNodePositions(positionUpdates);
-      }
-
-      if (membershipUpdates.length > 0) {
-        for (const update of membershipUpdates) {
-          await saveNodeGroupMembership(update.nodeId, update.groupId);
-        }
-      }
-
-      if (annotationsChanged) {
-        // Build expected annotation state from current nodes + snapshot changes
-        // We can't rely on getNodes() as it returns stale ref data
-        const currentAnnotationNodes = options
-          .getNodes()
-          .filter((n) => isAnnotationNodeType(n.type));
-        const nodeMap = new Map(currentAnnotationNodes.map((n) => [n.id, n]));
-
-        // Apply snapshot changes to build expected state
-        for (const entry of snapshot.nodes) {
-          if (renameIds.has(entry.id)) continue;
-          const from = useBefore ? entry.after : entry.before;
-          const to = useBefore ? entry.before : entry.after;
-
-          if (!isAnnotationSnapshot(from) && !isAnnotationSnapshot(to)) continue;
-
-          if (!from && to) {
-            // Creation: add node to map (it may not be in stale ref yet)
-            nodeMap.set(to.id, {
-              id: to.id,
-              type: to.type,
-              position: to.position,
-              data: to.data ?? {},
-              width: to.width,
-              height: to.height,
-              style: to.style,
-              parentId: to.parentNode
-            } as Node);
-          } else if (from && !to) {
-            // Deletion: remove node from map (it may still be in stale ref)
-            nodeMap.delete(from.id);
-          } else if (from && to) {
-            // Update: use the 'to' state
-            nodeMap.set(to.id, {
-              id: to.id,
-              type: to.type,
-              position: to.position,
-              data: to.data ?? {},
-              width: to.width,
-              height: to.height,
-              style: to.style,
-              parentId: to.parentNode
-            } as Node);
-          }
-        }
-
-        const annotationNodes = Array.from(nodeMap.values());
-        const { freeTextAnnotations, freeShapeAnnotations, groups } =
-          nodesToAnnotations(annotationNodes);
-        await saveFreeTextAnnotations(freeTextAnnotations);
-        await saveFreeShapeAnnotations(freeShapeAnnotations);
-        await saveGroupStyleAnnotations(groups);
-        log.info(
-          `[UndoRedo] Persisted annotations (${freeTextAnnotations.length} text, ${freeShapeAnnotations.length} shape, ${groups.length} groups)`
-        );
+      if (ctx.annotationsChanged) {
+        await rebuildAnnotationNodes(snapshot, useBefore, renameIds, options.getNodes);
       }
     } finally {
       await endBatch();

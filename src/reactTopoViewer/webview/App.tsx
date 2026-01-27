@@ -5,6 +5,7 @@
  * Now uses ReactFlow as the rendering layer for rendering.
  * Graph state is managed by GraphContext (React Flow is source of truth).
  */
+/* eslint-disable import-x/max-dependencies */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
@@ -198,14 +199,14 @@ const AppContent: React.FC<{
     const node = nodes.find((n) => n.id === state.editingNode);
     if (!node) return null;
     return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.editingNode, nodes, state.editorDataVersion]);
+  }, [state.editingNode, nodes]);
 
   const editingNetworkRawData = React.useMemo(() => {
     if (!state.editingNetwork) return null;
     const node = nodes.find((n) => n.id === state.editingNetwork);
     if (!node) return null;
     return { id: node.id, ...(node.data as Record<string, unknown>) };
-  }, [state.editingNetwork, nodes, state.editorDataVersion]);
+  }, [state.editingNetwork, nodes]);
 
   const editingLinkRawData = React.useMemo(() => {
     if (!state.editingEdge) return null;
@@ -217,7 +218,7 @@ const AppContent: React.FC<{
       target: edge.target,
       ...(edge.data as Record<string, unknown>)
     };
-  }, [state.editingEdge, edges, state.editorDataVersion]);
+  }, [state.editingEdge, edges]);
 
   const editingNodeData = React.useMemo(
     () => convertToEditorData(editingNodeRawData),
