@@ -4,6 +4,8 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
+import type { TopoEdge, TopoNode } from "../shared/types/graph";
+
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
@@ -15,9 +17,31 @@ import {
   ViewPanels
 } from "./components/panels";
 import { ToastContainer } from "./components/ui/Toast";
-import { EasterEggRenderer } from "./easter-eggs";
-import { useAppContentViewModel } from "./hooks/app";
+import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
+import {
+  useAppAnnotations,
+  useAppDerivedData,
+  useAppEditorBindings,
+  useAppE2EExposure,
+  useAppGraphHandlers,
+  useAppKeyboardShortcuts,
+  useAppToasts,
+  useClipboardHandlers,
+  useCustomNodeCommands,
+  useGraphCreation,
+  useNavbarCommands,
+  useUndoRedoControls
+} from "./hooks/app";
 import type { useLayoutControls } from "./hooks/ui";
+import {
+  useAppHandlers,
+  useContextMenuHandlers,
+  useFloatingPanelCommands,
+  usePanelVisibility,
+  useShortcutDisplay
+} from "./hooks/ui";
+import { useGraphActions, useGraphState } from "./stores/graphStore";
+import { useTopoViewerActions, useTopoViewerState } from "./stores/topoViewerStore";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
 
@@ -38,40 +62,174 @@ export const AppContent: React.FC<AppContentProps> = ({
   onInit,
   onLockedAction
 }) => {
-  const {
+  const state = useTopoViewerState();
+  const topoActions = useTopoViewerActions();
+  const { nodes, edges } = useGraphState();
+  const graphActions = useGraphActions();
+
+  const graphNodes = nodes as TopoNode[];
+  const graphEdges = edges as TopoEdge[];
+
+  const undoRedo = useUndoRedoControls(state.canUndo, state.canRedo);
+
+  const { annotations, annotationMode, canvasAnnotationHandlers } = useAppAnnotations({
+    rfInstance,
+    onLockedAction
+  });
+
+  const { toasts, dismissToast } = useAppToasts({
+    customNodeError: state.customNodeError,
+    clearCustomNodeError: topoActions.clearCustomNodeError
+  });
+
+  const { filteredNodes, filteredEdges, selectionData } = useAppDerivedData({
     state,
-    annotations,
-    undoRedo,
-    toasts,
-    dismissToast,
-    navbarCommands,
-    floatingPanelCommands,
-    customNodeCommands,
+    nodes: graphNodes,
+    edges: graphEdges
+  });
+
+  const navbarCommands = useNavbarCommands();
+  const floatingPanelCommands = useFloatingPanelCommands();
+  const customNodeCommands = useCustomNodeCommands(
+    state.customNodes,
+    topoActions.editCustomTemplate
+  );
+
+  const menuHandlers = useContextMenuHandlers({
+    selectNode: topoActions.selectNode,
+    selectEdge: topoActions.selectEdge,
+    editNode: topoActions.editNode,
+    editEdge: topoActions.editEdge,
+    editNetwork: topoActions.editNetwork,
+    onDeleteNode: topoActions.clearSelectionForDeletedNode,
+    onDeleteEdge: topoActions.clearSelectionForDeletedEdge
+  });
+
+  const graphHandlers = useAppGraphHandlers({
+    rfInstance,
     menuHandlers,
-    graphCreation,
-    selectionData,
+    actions: {
+      addNode: graphActions.addNode,
+      addEdge: graphActions.addEdge,
+      removeNodeAndEdges: graphActions.removeNodeAndEdges,
+      removeEdge: graphActions.removeEdge,
+      updateNodeData: graphActions.updateNodeData,
+      updateEdge: graphActions.updateEdge,
+      renameNode: graphActions.renameNode
+    }
+  });
+
+  const {
     nodeEditorHandlers,
     linkEditorHandlers,
     networkEditorHandlers,
     customTemplateEditorData,
-    customTemplateHandlers,
-    filteredNodes,
-    filteredEdges,
-    annotationMode,
-    canvasAnnotationHandlers,
-    shortcutDisplay,
-    panelVisibility,
-    easterEgg,
-    handleZoomToFit,
-    handleEdgeCreated,
-    handleDeleteNode,
-    handleDeleteLink
-  } = useAppContentViewModel({
-    floatingPanelRef,
-    rfInstance,
-    layoutControls,
-    onLockedAction
+    customTemplateHandlers
+  } = useAppEditorBindings({
+    selectionData,
+    state: {
+      edgeAnnotations: state.edgeAnnotations,
+      editingCustomTemplate: state.editingCustomTemplate
+    },
+    actions: {
+      editNode: topoActions.editNode,
+      editEdge: topoActions.editEdge,
+      editNetwork: topoActions.editNetwork,
+      editCustomTemplate: topoActions.editCustomTemplate,
+      setEdgeAnnotations: topoActions.setEdgeAnnotations,
+      refreshEditorData: topoActions.refreshEditorData
+    },
+    renameNodeInGraph: graphHandlers.renameNodeInGraph,
+    handleUpdateNodeData: graphHandlers.handleUpdateNodeData,
+    handleUpdateEdgeData: graphHandlers.handleUpdateEdgeData
   });
+
+  const graphCreation = useGraphCreation({
+    rfInstance,
+    floatingPanelRef,
+    state: {
+      mode: state.mode,
+      isLocked: state.isLocked,
+      customNodes: state.customNodes,
+      defaultNode: state.defaultNode,
+      nodes: graphNodes
+    },
+    onEdgeCreated: graphHandlers.handleEdgeCreated,
+    onNodeCreated: graphHandlers.handleNodeCreatedCallback,
+    addNode: graphHandlers.addNodeDirect,
+    onNewCustomNode: customNodeCommands.onNewCustomNode
+  });
+
+  useAppE2EExposure({
+    state: {
+      isLocked: state.isLocked,
+      mode: state.mode,
+      selectedNode: state.selectedNode,
+      selectedEdge: state.selectedEdge
+    },
+    actions: {
+      toggleLock: topoActions.toggleLock,
+      editNetwork: topoActions.editNetwork,
+      selectNode: topoActions.selectNode,
+      selectEdge: topoActions.selectEdge
+    },
+    undoRedo,
+    graphHandlers,
+    annotations,
+    graphCreation,
+    layoutControls,
+    rfInstance
+  });
+
+  const { handleDeselectAll } = useAppHandlers({
+    selectionCallbacks: {
+      selectNode: topoActions.selectNode,
+      selectEdge: topoActions.selectEdge,
+      editNode: topoActions.editNode,
+      editEdge: topoActions.editEdge
+    }
+  });
+
+  const shortcutDisplay = useShortcutDisplay();
+  const panelVisibility = usePanelVisibility();
+
+  const clipboardHandlers = useClipboardHandlers({
+    annotations,
+    rfInstance,
+    handleNodeCreatedCallback: graphHandlers.handleNodeCreatedCallback,
+    handleEdgeCreated: graphHandlers.handleEdgeCreated
+  });
+
+  useAppKeyboardShortcuts({
+    state: {
+      mode: state.mode,
+      isLocked: state.isLocked,
+      selectedNode: state.selectedNode,
+      selectedEdge: state.selectedEdge
+    },
+    undoRedo,
+    annotations: {
+      selectedTextIds: annotations.selectedTextIds,
+      selectedShapeIds: annotations.selectedShapeIds,
+      selectedGroupIds: annotations.selectedGroupIds,
+      clearAllSelections: annotations.clearAllSelections,
+      handleAddGroup: annotations.handleAddGroup
+    },
+    clipboardHandlers,
+    deleteHandlers: {
+      handleDeleteNode: graphHandlers.handleDeleteNode,
+      handleDeleteLink: graphHandlers.handleDeleteLink
+    },
+    handleDeselectAll
+  });
+
+  const easterEgg = useEasterEgg({});
+
+  const handleZoomToFit = React.useCallback(() => {
+    rfInstance?.fitView({ padding: 0.1 }).catch(() => {
+      /* ignore */
+    });
+  }, [rfInstance]);
 
   const handleNetworkSave = React.useCallback(
     (data: Parameters<typeof networkEditorHandlers.handleSave>[0]) => {
@@ -128,10 +286,10 @@ export const AppContent: React.FC<AppContentProps> = ({
           annotationHandlers={canvasAnnotationHandlers}
           linkLabelMode={state.linkLabelMode}
           onInit={onInit}
-          onEdgeCreated={handleEdgeCreated}
+          onEdgeCreated={graphHandlers.handleEdgeCreated}
           onShiftClickCreate={graphCreation.createNodeAtPosition}
-          onNodeDelete={handleDeleteNode}
-          onEdgeDelete={handleDeleteLink}
+          onNodeDelete={graphHandlers.handleDeleteNode}
+          onEdgeDelete={graphHandlers.handleDeleteLink}
         />
         <ViewPanels
           nodeInfo={{

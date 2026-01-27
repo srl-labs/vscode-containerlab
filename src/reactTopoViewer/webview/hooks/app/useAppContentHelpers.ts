@@ -1,5 +1,5 @@
 /**
- * AppContent view-model helpers.
+ * AppContent helpers.
  */
 import React from "react";
 

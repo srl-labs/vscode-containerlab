@@ -34,13 +34,21 @@ export {
   type E2ETestingConfig
 } from "./useAppHelpers";
 
-// App content view-model + initial data
-export { useAppContentViewModel } from "./useAppContentViewModel";
+// App content composition helpers
+export { useAppAnnotations } from "./useAppAnnotations";
+export { useAppDerivedData } from "./useAppDerivedData";
+export { useAppEditorBindings } from "./useAppEditorBindings";
+export { useAppE2EExposure } from "./useAppE2EExposure";
+export { useAppGraphHandlers } from "./useAppGraphHandlers";
+export { useAppToasts } from "./useAppToasts";
+export { useUndoRedoControls } from "./useUndoRedoControls";
 export type { InitialGraphData } from "./useInitialGraphData";
 
 // App initialization & subscriptions
-export { useStoreInitialization } from "./useStoreInitialization";
-export type { StoreInitializationData } from "./useStoreInitialization";
-export { useGraphMessageSubscription } from "./useGraphMessageSubscription";
-export { useTopoViewerMessageSubscription } from "./useTopoViewerMessageSubscription";
-export { useTopologyHostInitialization } from "./useTopologyHostInitialization";
+export {
+  useStoreInitialization,
+  useGraphMessageSubscription,
+  useTopoViewerMessageSubscription,
+  useTopologyHostInitialization,
+  type StoreInitializationData
+} from "./lifecycle";
