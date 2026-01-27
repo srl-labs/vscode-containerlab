@@ -95,7 +95,13 @@ function ensureListener(): void {
 }
 
 function isVsCode(): boolean {
-  return typeof window !== "undefined" && Boolean(window.vscode);
+  if (typeof window === "undefined" || !window.vscode) {
+    return false;
+  }
+  // In dev mode, window.vscode is a mock with __isDevMock__ marker
+  // We should use HTTP endpoints instead of VS Code messaging
+  const vscode = window.vscode as { __isDevMock__?: boolean };
+  return !vscode.__isDevMock__;
 }
 
 function buildApiUrl(path: string, sessionId?: string): string {

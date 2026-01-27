@@ -46,11 +46,6 @@ export interface CanvasState {
   edgeRenderConfig: EdgeRenderConfig;
   nodeRenderConfig: NodeRenderConfig;
   annotationHandlers: AnnotationHandlers | null;
-  // Internal cache for edge info computation
-  _edgeInfoCache: {
-    edgesRef: Edge[] | null;
-    info: EdgeInfo | null;
-  };
 }
 
 export interface CanvasActions {
@@ -58,7 +53,6 @@ export interface CanvasActions {
   setEdgeRenderConfig: (config: EdgeRenderConfig) => void;
   setNodeRenderConfig: (config: NodeRenderConfig) => void;
   setAnnotationHandlers: (handlers: AnnotationHandlers | null) => void;
-  getEdgeInfo: (edges: Edge[]) => EdgeInfo;
 }
 
 export type CanvasStore = CanvasState & CanvasActions;
@@ -159,18 +153,26 @@ const initialState: CanvasState = {
   linkSourceNode: null,
   edgeRenderConfig: defaultEdgeRenderConfig,
   nodeRenderConfig: defaultNodeRenderConfig,
-  annotationHandlers: null,
-  _edgeInfoCache: {
-    edgesRef: null,
-    info: null
-  }
+  annotationHandlers: null
+};
+
+// ============================================================================
+// Module-level Edge Info Cache (avoids setState during render)
+// ============================================================================
+
+let edgeInfoCache: {
+  edgesRef: Edge[] | null;
+  info: EdgeInfo | null;
+} = {
+  edgesRef: null,
+  info: null
 };
 
 // ============================================================================
 // Store Creation
 // ============================================================================
 
-export const useCanvasStore = create<CanvasStore>((set, get) => ({
+export const useCanvasStore = create<CanvasStore>((set) => ({
   ...initialState,
 
   setLinkSourceNode: (linkSourceNode) => {
@@ -187,31 +189,27 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   setAnnotationHandlers: (annotationHandlers) => {
     set({ annotationHandlers });
-  },
-
-  // Compute edge info with caching (only recompute if edges array changed)
-  getEdgeInfo: (edges) => {
-    const state = get();
-
-    // If same reference, return cached
-    if (state._edgeInfoCache.edgesRef === edges && state._edgeInfoCache.info) {
-      return state._edgeInfoCache.info;
-    }
-
-    // Compute new edge info
-    const info = buildEdgeInfo(edges);
-
-    // Update cache (without triggering re-render for consumers not using _edgeInfoCache)
-    set({
-      _edgeInfoCache: {
-        edgesRef: edges,
-        info
-      }
-    });
-
-    return info;
   }
 }));
+
+/**
+ * Get edge info with caching (module-level cache to avoid setState during render).
+ * This function is safe to call during render because it doesn't trigger React updates.
+ */
+export function getEdgeInfo(edges: Edge[]): EdgeInfo {
+  // If same reference, return cached
+  if (edgeInfoCache.edgesRef === edges && edgeInfoCache.info) {
+    return edgeInfoCache.info;
+  }
+
+  // Compute new edge info
+  const info = buildEdgeInfo(edges);
+
+  // Update module-level cache (no React state update)
+  edgeInfoCache = { edgesRef: edges, info };
+
+  return info;
+}
 
 // ============================================================================
 // Selector Hooks (for convenience)
@@ -237,9 +235,8 @@ export const useLinkCreationContext = () => {
 
 /**
  * Hook to get edge info computed from edges array.
- * Uses the store's cached computation.
+ * Uses module-level cached computation (safe to call during render).
  */
 export function useEdgeInfo(edges: Edge[]): EdgeInfo {
-  const getEdgeInfo = useCanvasStore((state) => state.getEdgeInfo);
   return getEdgeInfo(edges);
 }

@@ -118,6 +118,11 @@ async function loadTopologyFile(filePath: string): Promise<void> {
 
   renderApp();
   await refreshTopologySnapshot();
+
+  // Update split view if open
+  if (splitViewOpen) {
+    await updateSplitViewContent();
+  }
 }
 
 async function listTopologyFiles(): Promise<
@@ -151,6 +156,84 @@ async function resetFiles(): Promise<void> {
 }
 
 // ============================================================================
+// Split View
+// ============================================================================
+
+let splitViewOpen = false;
+
+async function toggleSplitView(): Promise<void> {
+  const panel = document.getElementById("splitViewPanel");
+  const root = document.getElementById("root");
+  const splitViewBtn = document.getElementById("splitViewBtn");
+
+  if (!panel || !root) {
+    console.warn("[Dev] Split view panel or root element not found");
+    return;
+  }
+
+  splitViewOpen = !splitViewOpen;
+  panel.classList.toggle("open", splitViewOpen);
+  root.classList.toggle("split-view-active", splitViewOpen);
+  splitViewBtn?.classList.toggle("active", splitViewOpen);
+
+  if (splitViewOpen && currentFilePath) {
+    await updateSplitViewContent();
+  }
+}
+
+async function updateSplitViewContent(): Promise<void> {
+  if (!currentFilePath) return;
+
+  const yamlContent = document.getElementById("yamlContent");
+  const annotationsContent = document.getElementById("annotationsContent");
+  const filePathLabel = document.getElementById("splitViewFilePath");
+  const yamlLabel = document.getElementById("splitViewYamlLabel");
+  const annotLabel = document.getElementById("splitViewAnnotLabel");
+
+  if (!yamlContent || !annotationsContent) return;
+
+  const filename = currentFilePath.split("/").pop() || currentFilePath;
+  if (filePathLabel) filePathLabel.textContent = `File: ${filename}`;
+  if (yamlLabel) yamlLabel.textContent = filename;
+  if (annotLabel) annotLabel.textContent = `${filename}.annotations.json`;
+
+  try {
+    // Fetch YAML content
+    const yamlUrl = sessionId
+      ? `/file/${encodeURIComponent(currentFilePath)}?sessionId=${sessionId}`
+      : `/file/${encodeURIComponent(currentFilePath)}`;
+    const yamlResponse = await fetch(yamlUrl);
+    if (yamlResponse.ok) {
+      yamlContent.textContent = await yamlResponse.text();
+    } else {
+      yamlContent.textContent = "# Failed to load YAML file";
+    }
+
+    // Fetch annotations content
+    const annotPath = `${currentFilePath}.annotations.json`;
+    const annotUrl = sessionId
+      ? `/file/${encodeURIComponent(annotPath)}?sessionId=${sessionId}`
+      : `/file/${encodeURIComponent(annotPath)}`;
+    const annotResponse = await fetch(annotUrl);
+    if (annotResponse.ok) {
+      const annotText = await annotResponse.text();
+      try {
+        const parsed = JSON.parse(annotText);
+        annotationsContent.textContent = JSON.stringify(parsed, null, 2);
+      } catch {
+        annotationsContent.textContent = annotText;
+      }
+    } else {
+      annotationsContent.textContent = "{}";
+    }
+  } catch (error) {
+    console.error("[Dev] Failed to update split view content:", error);
+    yamlContent.textContent = "# Error loading content";
+    annotationsContent.textContent = "{}";
+  }
+}
+
+// ============================================================================
 // External File Changes (SSE)
 // ============================================================================
 
@@ -164,9 +247,20 @@ function subscribeToFileChanges(): void {
     try {
       const payload = JSON.parse(message) as { path?: string; type?: string };
       const filename = currentFilePath.split("/").pop();
-      if (!filename || payload.type !== "yaml") return;
-      if (payload.path !== filename) return;
-      void refreshTopologySnapshot();
+      if (!filename) return;
+
+      // Refresh topology on YAML changes
+      if (payload.type === "yaml" && payload.path === filename) {
+        void refreshTopologySnapshot();
+      }
+
+      // Refresh split view on any file change for current topology
+      if (
+        splitViewOpen &&
+        (payload.path === filename || payload.path === `${filename}.annotations.json`)
+      ) {
+        void updateSplitViewContent();
+      }
     } catch (err) {
       console.warn("[Dev] Failed to parse SSE message", err);
     }
@@ -186,6 +280,7 @@ interface DevServerInterface {
   getCurrentFile: () => string | null;
   setMode: (mode: "edit" | "view") => void;
   setDeploymentState: (state: "deployed" | "undeployed" | "unknown") => void;
+  toggleSplitView: () => Promise<void>;
   stateManager: DevStateManager;
 }
 
@@ -214,6 +309,7 @@ interface DevServerInterface {
     });
     void refreshTopologySnapshot();
   },
+  toggleSplitView,
   stateManager
 };
 
@@ -230,10 +326,55 @@ console.log("");
 console.log("%cMode and state:", "color: #2196F3; font-weight: bold;");
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed")');
+console.log("");
+console.log("%cSplit view:", "color: #9C27B0; font-weight: bold;");
+console.log("  __DEV__.toggleSplitView()");
+
+// ============================================================================
+// Dev Mode Command Interceptor
+// ============================================================================
+
+/**
+ * In VS Code, the webview sends commands via window.vscode.postMessage().
+ * In dev mode, we don't have VS Code, so we intercept these commands here.
+ *
+ * We mark the mock with __isDevMock__ so topologyHostClient.ts knows to use
+ * HTTP endpoints instead of VS Code messaging for topology operations.
+ */
+function setupDevModeCommandInterceptor(): void {
+  // Create a mock vscode API that intercepts postMessage calls
+  const mockVscodeApi = {
+    __isDevMock__: true,
+    postMessage: (message: unknown) => {
+      const msg = message as { command?: string; type?: string } | undefined;
+
+      // Ignore topology-host messages - these should use HTTP in dev mode
+      if (msg?.type?.startsWith("topology-host:")) {
+        return;
+      }
+
+      if (!msg?.command) return;
+
+      console.log(`%c[Dev] Intercepted VS Code command: ${msg.command}`, "color: #FF9800;");
+
+      switch (msg.command) {
+        case "topo-toggle-split-view":
+          void toggleSplitView();
+          break;
+        default:
+          console.log(`%c[Dev] Unhandled command: ${msg.command}`, "color: #9E9E9E;");
+      }
+    }
+  };
+
+  // Expose the mock API on window.vscode
+  (window as unknown as { vscode: typeof mockVscodeApi }).vscode = mockVscodeApi;
+}
 
 // ============================================================================
 // Bootstrap
 // ============================================================================
 
+setupDevModeCommandInterceptor();
 subscribeToFileChanges();
 void loadTopologyFile(DEFAULT_TOPOLOGY);
