@@ -2,19 +2,10 @@ import { useCallback, useMemo, useRef } from "react";
 
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions, AnnotationUIState } from "../../stores/annotationUIStore";
-import type { UndoRedoActions } from "./annotationTypes";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
-import {
-  DEFAULT_FILL_COLOR,
-  DEFAULT_FILL_OPACITY,
-  DEFAULT_BORDER_COLOR,
-  DEFAULT_BORDER_WIDTH,
-  DEFAULT_BORDER_STYLE
-} from "../../utils/annotations/constants";
-import { normalizeShapeAnnotationColors } from "../../utils/color";
-import { freeShapeToNode } from "../../utils/annotationNodeConverters";
 import { findDeepestGroupAtPosition } from "./groupUtils";
 import { log } from "../../utils/logger";
+import { saveAnnotationNodesFromGraph } from "../../services";
 
 interface UseShapeAnnotationsParams {
   mode: "edit" | "view";
@@ -30,7 +21,6 @@ interface UseShapeAnnotationsParams {
     | "closeShapeEditor"
     | "removeFromShapeSelection"
   >;
-  undoRedo: UndoRedoActions;
 }
 
 export interface ShapeAnnotationActions {
@@ -41,18 +31,18 @@ export interface ShapeAnnotationActions {
   deleteSelectedShapeAnnotations: () => void;
   onShapeRotationStart: (id: string) => void;
   onShapeRotationEnd: (id: string) => void;
-  updateShapeSize: (id: string, width: number, height: number) => void;
   handleShapeCanvasClick: (position: { x: number; y: number }) => void;
 }
 
 export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnnotationActions {
-  const { mode, isLocked, onLockedAction, derived, uiState, uiActions, undoRedo } = params;
+  const { mode, isLocked, onLockedAction, derived, uiState, uiActions } = params;
 
   const lastShapeStyleRef = useRef<Partial<FreeShapeAnnotation>>({});
-  const shapeRotationSnapshotRef = useRef<{
-    id: string;
-    snapshot: ReturnType<typeof undoRedo.captureSnapshot>;
-  } | null>(null);
+  const pendingRotationRef = useRef<string | null>(null);
+
+  const persist = useCallback(() => {
+    void saveAnnotationNodesFromGraph();
+  }, []);
 
   const handleAddShapes = useCallback(
     (shapeType?: string) => {
@@ -61,11 +51,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         onLockedAction();
         return;
       }
-      const validType =
-        shapeType === "rectangle" || shapeType === "circle" || shapeType === "line"
-          ? shapeType
-          : undefined;
-      uiActions.setAddShapeMode(true, validType);
+      uiActions.setAddShapeMode(shapeType ?? "rectangle");
     },
     [mode, isLocked, onLockedAction, uiActions]
   );
@@ -88,125 +74,85 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
   const saveShapeAnnotation = useCallback(
     (annotation: FreeShapeAnnotation) => {
       const isNew = !derived.shapeAnnotations.some((s) => s.id === annotation.id);
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [annotation.id] });
-      const normalized = normalizeShapeAnnotationColors(annotation);
 
       if (isNew) {
-        derived.addShapeAnnotation(normalized);
+        derived.addShapeAnnotation(annotation);
       } else {
-        derived.updateShapeAnnotation(normalized.id, normalized);
+        derived.updateShapeAnnotation(annotation.id, annotation);
       }
 
       lastShapeStyleRef.current = {
-        fillColor: normalized.fillColor,
-        fillOpacity: normalized.fillOpacity,
-        borderColor: normalized.borderColor,
-        borderWidth: normalized.borderWidth,
-        borderStyle: normalized.borderStyle
+        fillColor: annotation.fillColor,
+        fillOpacity: annotation.fillOpacity,
+        borderColor: annotation.borderColor,
+        borderWidth: annotation.borderWidth,
+        borderStyle: annotation.borderStyle,
+        borderRadius: annotation.borderRadius,
+        rotation: annotation.rotation
       };
 
       uiActions.closeShapeEditor();
-
-      undoRedo.commitChange(
-        snapshot,
-        isNew ? `Add shape ${annotation.id}` : `Update shape ${annotation.id}`,
-        { explicitNodes: [freeShapeToNode(normalized)] }
-      );
+      persist();
     },
-    [derived, uiActions, undoRedo]
+    [derived, uiActions, persist]
   );
 
   const deleteShapeAnnotation = useCallback(
     (id: string) => {
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
       derived.deleteShapeAnnotation(id);
       uiActions.removeFromShapeSelection(id);
-      undoRedo.commitChange(snapshot, `Delete shape ${id}`, { explicitNodes: [] });
+      persist();
     },
-    [derived, uiActions, undoRedo]
+    [derived, uiActions, persist]
   );
 
   const deleteSelectedShapeAnnotations = useCallback(() => {
     const ids = Array.from(uiState.selectedShapeIds);
     if (ids.length === 0) return;
-    const snapshot = undoRedo.captureSnapshot({ nodeIds: ids });
     ids.forEach((id) => {
       derived.deleteShapeAnnotation(id);
       uiActions.removeFromShapeSelection(id);
     });
-    undoRedo.commitChange(snapshot, `Delete ${ids.length} shape${ids.length === 1 ? "" : "s"}`, {
-      explicitNodes: []
-    });
-  }, [derived, uiActions, undoRedo, uiState.selectedShapeIds]);
+    persist();
+  }, [derived, uiActions, persist, uiState.selectedShapeIds]);
 
-  const onShapeRotationStart = useCallback(
-    (id: string) => {
-      shapeRotationSnapshotRef.current = {
-        id,
-        snapshot: undoRedo.captureSnapshot({ nodeIds: [id] })
-      };
-    },
-    [undoRedo]
-  );
+  const onShapeRotationStart = useCallback((id: string) => {
+    pendingRotationRef.current = id;
+  }, []);
 
   const onShapeRotationEnd = useCallback(
     (id: string) => {
-      if (shapeRotationSnapshotRef.current && shapeRotationSnapshotRef.current.id === id) {
-        const annotation = derived.shapeAnnotations.find((a) => a.id === id);
-        if (annotation) {
-          undoRedo.commitChange(shapeRotationSnapshotRef.current.snapshot, `Rotate shape ${id}`, {
-            explicitNodes: [freeShapeToNode(annotation)]
-          });
-        }
-        shapeRotationSnapshotRef.current = null;
+      if (pendingRotationRef.current === id) {
+        pendingRotationRef.current = null;
+        persist();
       }
     },
-    [derived.shapeAnnotations, undoRedo]
-  );
-
-  const updateShapeSize = useCallback(
-    (id: string, width: number, height: number) => {
-      const shape = derived.shapeAnnotations.find((s) => s.id === id);
-      if (!shape) return;
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
-      derived.updateShapeAnnotation(id, { width, height });
-      const updatedShape: FreeShapeAnnotation = { ...shape, width, height };
-      undoRedo.commitChange(snapshot, `Resize shape ${id}`, {
-        explicitNodes: [freeShapeToNode(updatedShape)]
-      });
-    },
-    [derived, undoRedo]
+    [persist]
   );
 
   const handleShapeCanvasClick = useCallback(
     (position: { x: number; y: number }) => {
       if (!uiState.isAddShapeMode) return;
       const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
-      const pendingShapeType = uiState.pendingShapeType;
       const newAnnotation: FreeShapeAnnotation = {
         id: `freeShape_${Date.now()}`,
-        shapeType: pendingShapeType,
+        type: uiState.pendingShapeType ?? "rectangle",
         position,
-        width: pendingShapeType === "line" ? undefined : 100,
-        height: pendingShapeType === "line" ? undefined : 100,
-        endPosition:
-          pendingShapeType === "line" ? { x: position.x + 150, y: position.y } : undefined,
-        fillColor: lastShapeStyleRef.current.fillColor ?? DEFAULT_FILL_COLOR,
-        fillOpacity: lastShapeStyleRef.current.fillOpacity ?? DEFAULT_FILL_OPACITY,
-        borderColor: lastShapeStyleRef.current.borderColor ?? DEFAULT_BORDER_COLOR,
-        borderWidth: lastShapeStyleRef.current.borderWidth ?? DEFAULT_BORDER_WIDTH,
-        borderStyle: lastShapeStyleRef.current.borderStyle ?? DEFAULT_BORDER_STYLE,
+        endPosition: { x: position.x + 120, y: position.y + 60 },
+        rotation: 0,
+        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(255, 255, 255, 0.1)",
+        fillOpacity: lastShapeStyleRef.current.fillOpacity ?? 0.2,
+        borderColor: lastShapeStyleRef.current.borderColor ?? "#ffffff",
+        borderWidth: lastShapeStyleRef.current.borderWidth ?? 1,
+        borderStyle: lastShapeStyleRef.current.borderStyle ?? "solid",
+        borderRadius: lastShapeStyleRef.current.borderRadius ?? 4,
         groupId: parentGroup?.id
       };
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [newAnnotation.id] });
-      derived.addShapeAnnotation(newAnnotation);
-      undoRedo.commitChange(snapshot, `Add shape ${newAnnotation.id}`, {
-        explicitNodes: [freeShapeToNode(newAnnotation)]
-      });
+      uiActions.setEditingShapeAnnotation(newAnnotation);
       uiActions.disableAddShapeMode();
-      log.info(`[FreeShape] Creating ${pendingShapeType} at (${position.x}, ${position.y})`);
+      log.info(`[FreeShape] Creating annotation at (${position.x}, ${position.y})`);
     },
-    [uiState.isAddShapeMode, uiState.pendingShapeType, derived, undoRedo, uiActions]
+    [uiState.isAddShapeMode, uiState.pendingShapeType, derived.groups, uiActions]
   );
 
   return useMemo(
@@ -218,7 +164,6 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       deleteSelectedShapeAnnotations,
       onShapeRotationStart,
       onShapeRotationEnd,
-      updateShapeSize,
       handleShapeCanvasClick
     }),
     [
@@ -229,7 +174,6 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       deleteSelectedShapeAnnotations,
       onShapeRotationStart,
       onShapeRotationEnd,
-      updateShapeSize,
       handleShapeCanvasClick
     ]
   );

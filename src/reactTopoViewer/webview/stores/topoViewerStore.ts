@@ -10,12 +10,12 @@ import { shallow } from "zustand/shallow";
 import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/types/editors";
 import type { EdgeAnnotation } from "../../shared/types/topology";
 import type { CustomIconInfo } from "../../shared/types/icons";
+import type { LabSettings } from "../../shared/types/labSettings";
 import { upsertEdgeAnnotation } from "../utils/edgeAnnotations";
 import { saveViewerSettings } from "../services";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
-  clampEndpointLabelOffset,
-  parseEndpointLabelOffset
+  clampEndpointLabelOffset
 } from "../utils/endpointLabelOffset";
 
 // ============================================================================
@@ -30,6 +30,7 @@ export interface TopoViewerState {
   labName: string;
   mode: "edit" | "view";
   deploymentState: DeploymentState;
+  labSettings?: LabSettings;
   selectedNode: string | null;
   selectedEdge: string | null;
   editingNode: string | null;
@@ -41,6 +42,8 @@ export interface TopoViewerState {
   endpointLabelOffsetEnabled: boolean;
   endpointLabelOffset: number;
   edgeAnnotations: EdgeAnnotation[];
+  canUndo: boolean;
+  canRedo: boolean;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
   customIcons: CustomIconInfo[];
@@ -108,6 +111,7 @@ const initialState: TopoViewerState = {
   labName: "",
   mode: "edit",
   deploymentState: "unknown",
+  labSettings: undefined,
   selectedNode: null,
   selectedEdge: null,
   editingNode: null,
@@ -119,6 +123,8 @@ const initialState: TopoViewerState = {
   endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
   edgeAnnotations: [],
+  canUndo: false,
+  canRedo: false,
   customNodes: [],
   defaultNode: "",
   customIcons: [],
@@ -133,32 +139,15 @@ const initialState: TopoViewerState = {
 // Helper Functions
 // ============================================================================
 
-/** Parse initial data from extension */
+/** Parse non-topology bootstrap data from extension/dev host */
 export function parseInitialData(data: unknown): Partial<TopoViewerState> {
   if (!data || typeof data !== "object") return {};
   const obj = data as Record<string, unknown>;
-  const result: Partial<TopoViewerState> = {
-    labName: (obj.labName as string) || "",
-    mode: (obj.mode as "edit" | "view") || "edit",
-    deploymentState: (obj.deploymentState as DeploymentState) || "unknown",
+  return {
     customNodes: (obj.customNodes as CustomNodeTemplate[]) || [],
     defaultNode: (obj.defaultNode as string) || "",
     customIcons: (obj.customIcons as CustomIconInfo[]) || []
   };
-  if (typeof obj.isLocked === "boolean") {
-    result.isLocked = obj.isLocked;
-  }
-  const viewerSettings = obj.viewerSettings as Record<string, unknown> | undefined;
-  if (viewerSettings) {
-    const offset = parseEndpointLabelOffset(viewerSettings.endpointLabelOffset);
-    if (offset !== null) {
-      result.endpointLabelOffset = offset;
-    }
-  }
-  if (Array.isArray(obj.edgeAnnotations)) {
-    result.edgeAnnotations = obj.edgeAnnotations as EdgeAnnotation[];
-  }
-  return result;
 }
 
 // ============================================================================
@@ -377,6 +366,9 @@ export const useTopoViewerState = () =>
       labName: state.labName,
       mode: state.mode,
       deploymentState: state.deploymentState,
+      labSettings: state.labSettings,
+      canUndo: state.canUndo,
+      canRedo: state.canRedo,
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge,
       editingNode: state.editingNode,

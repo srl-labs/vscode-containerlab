@@ -91,7 +91,7 @@ export function useLinkCreation(
 
       // Use the unified callback which handles:
       // 1. Adding edge to React state
-      // 2. Persisting to YAML via TopologyIO
+      // 2. Persisting via TopologyHost commands
       // 3. Undo/redo support
       if (onEdgeCreated) {
         onEdgeCreated(linkSourceNode, targetNodeId, edgeData);

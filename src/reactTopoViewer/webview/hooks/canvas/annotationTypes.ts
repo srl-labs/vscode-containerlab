@@ -4,11 +4,6 @@ import type {
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
 import type { GroupEditorData } from "./groupTypes";
-import type {
-  SnapshotCapture,
-  CaptureSnapshotOptions,
-  CommitChangeOptions
-} from "../../stores/undoRedoStore";
 
 export interface AnnotationState {
   groups: GroupStyleAnnotation[];
@@ -97,12 +92,3 @@ export interface AnnotationActions {
 }
 
 export type AnnotationContextValue = AnnotationState & AnnotationActions;
-
-export interface UndoRedoActions {
-  captureSnapshot: (options?: CaptureSnapshotOptions) => SnapshotCapture;
-  commitChange: (
-    before: SnapshotCapture,
-    description: string,
-    options?: CommitChangeOptions
-  ) => void;
-}

@@ -59,6 +59,12 @@ export interface FileSystemAdapter {
   unlink(filePath: string): Promise<void>;
 
   /**
+   * Rename (or move) a file.
+   * Should replace the destination if supported by the platform.
+   */
+  rename(oldPath: string, newPath: string): Promise<void>;
+
+  /**
    * Check if file exists
    */
   exists(filePath: string): Promise<boolean>;

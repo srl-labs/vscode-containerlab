@@ -1,8 +1,8 @@
 /**
- * Annotation Save Helpers
- *
- * Helper functions for saving annotation data via AnnotationsIO.
+ * Annotation Save Helpers (Host-authoritative)
  */
+
+import type { Node } from "@xyflow/react";
 
 import type {
   FreeTextAnnotation,
@@ -12,180 +12,105 @@ import type {
   TopologyAnnotations
 } from "../../shared/types/topology";
 
-import { getTopologyIO, getAnnotationsIO, isServicesInitialized } from "./serviceInitialization";
+import { executeTopologyCommand } from "./topologyHostCommands";
+import { useGraphStore } from "../stores/graphStore";
+import { nodesToAnnotations } from "../utils/annotationNodeConverters";
 
-// Warning messages
-const WARN_SERVICES_NOT_INIT = "[Services] Cannot save annotations: services not initialized";
-const WARN_NO_YAML_PATH = "[Services] Cannot save annotations: no YAML file path";
+const WARN_COMMAND_FAILED = "[Host] Annotation command failed";
 
-/** Helper to remove specific keys from a NodeAnnotation-like object */
-type NodeAnnotationLike = { id: string; groupId?: string; group?: unknown };
-
-function omitGroupFields<T extends NodeAnnotationLike>(
-  obj: T
-): Omit<T, "group" | "groupId"> & { id: string } {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (key !== "group" && key !== "groupId") {
-      result[key] = value;
-    }
-  }
-  return result as Omit<T, "group" | "groupId"> & { id: string };
-}
-
-function omitGroupOnly<T extends NodeAnnotationLike>(obj: T): Omit<T, "group"> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (key !== "group") {
-      result[key] = value;
-    }
-  }
-  return result as Omit<T, "group">;
-}
-
-/**
- * Generic helper for saving annotations via AnnotationsIO.
- * Uses the current topology file path from TopologyIO.
- */
-async function saveAnnotationsGeneric(
-  updater: (current: TopologyAnnotations) => TopologyAnnotations
-): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
-  const topologyIO = getTopologyIO();
-  const annotationsIO = getAnnotationsIO();
-
-  const yamlPath = topologyIO.getYamlFilePath();
-  if (!yamlPath) {
-    console.warn(WARN_NO_YAML_PATH);
-    return;
-  }
-
-  await annotationsIO.modifyAnnotations(yamlPath, updater);
-}
-
-/**
- * Save free text annotations via AnnotationsIO.
- */
 export async function saveFreeTextAnnotations(annotations: FreeTextAnnotation[]): Promise<void> {
-  await saveAnnotationsGeneric((current) => ({ ...current, freeTextAnnotations: annotations }));
+  try {
+    await executeTopologyCommand({
+      command: "setAnnotations",
+      payload: { freeTextAnnotations: annotations }
+    });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setAnnotations(freeTextAnnotations)`, err);
+  }
 }
 
-/**
- * Save free shape annotations via AnnotationsIO.
- */
+export async function saveAnnotationNodesFromGraph(nodes?: Node[]): Promise<void> {
+  try {
+    const graphNodes = nodes ?? useGraphStore.getState().nodes;
+    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    await executeTopologyCommand({
+      command: "setAnnotations",
+      payload: {
+        freeTextAnnotations,
+        freeShapeAnnotations,
+        groupStyleAnnotations: groups
+      }
+    });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setAnnotations(annotationNodes)`, err);
+  }
+}
+
 export async function saveFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): Promise<void> {
-  await saveAnnotationsGeneric((current) => ({ ...current, freeShapeAnnotations: annotations }));
+  try {
+    await executeTopologyCommand({
+      command: "setAnnotations",
+      payload: { freeShapeAnnotations: annotations }
+    });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setAnnotations(freeShapeAnnotations)`, err);
+  }
 }
 
-/**
- * Save group style annotations via AnnotationsIO.
- */
 export async function saveGroupStyleAnnotations(
   annotations: GroupStyleAnnotation[]
 ): Promise<void> {
-  await saveAnnotationsGeneric((current) => ({ ...current, groupStyleAnnotations: annotations }));
+  try {
+    await executeTopologyCommand({
+      command: "setAnnotations",
+      payload: { groupStyleAnnotations: annotations }
+    });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setAnnotations(groupStyleAnnotations)`, err);
+  }
 }
 
-/**
- * Save edge annotations via AnnotationsIO.
- */
 export async function saveEdgeAnnotations(annotations: EdgeAnnotation[]): Promise<void> {
-  await saveAnnotationsGeneric((current) => ({ ...current, edgeAnnotations: annotations }));
+  try {
+    await executeTopologyCommand({ command: "setEdgeAnnotations", payload: annotations });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setEdgeAnnotations`, err);
+  }
 }
 
-/**
- * Save viewer settings via AnnotationsIO.
- */
 export async function saveViewerSettings(
   settings: NonNullable<TopologyAnnotations["viewerSettings"]>
 ): Promise<void> {
-  await saveAnnotationsGeneric((current) => ({
-    ...current,
-    viewerSettings: {
-      ...(current.viewerSettings ?? {}),
-      ...settings
-    }
-  }));
+  try {
+    await executeTopologyCommand({ command: "setViewerSettings", payload: settings });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setViewerSettings`, err);
+  }
 }
 
-/**
- * Update node group membership via AnnotationsIO.
- * Updates the `groupId` field on nodeAnnotations.
- */
 export async function saveNodeGroupMembership(
   nodeId: string,
   groupId: string | null
 ): Promise<void> {
-  await saveAnnotationsGeneric((current) => {
-    const nodeAnnotations = current.nodeAnnotations ? [...current.nodeAnnotations] : [];
-
-    const existingIndex = nodeAnnotations.findIndex((n) => n.id === nodeId);
-    if (existingIndex >= 0) {
-      // Update existing annotation
-      const existing = nodeAnnotations[existingIndex];
-      if (groupId) {
-        nodeAnnotations[existingIndex] = { ...existing, groupId };
-      } else {
-        // Remove group fields
-        nodeAnnotations[existingIndex] = omitGroupFields(existing) as typeof existing;
-      }
-    } else if (groupId) {
-      // Create new annotation with group membership
-      nodeAnnotations.push({ id: nodeId, groupId });
-    }
-
-    return { ...current, nodeAnnotations };
-  });
+  try {
+    await executeTopologyCommand({
+      command: "setNodeGroupMembership",
+      payload: { nodeId, groupId }
+    });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setNodeGroupMembership`, err);
+  }
 }
 
-/**
- * Save all node group memberships at once via AnnotationsIO.
- * Replaces the entire nodeAnnotations array with the provided memberships.
- */
 export async function saveAllNodeGroupMemberships(
   memberships: Array<{ id: string; groupId?: string }>
 ): Promise<void> {
-  await saveAnnotationsGeneric((current) => {
-    // Build map of new memberships
-    const membershipMap = new Map(
-      memberships.filter((m) => m.groupId).map((m) => [m.id, m.groupId!])
-    );
-
-    // Preserve existing nodeAnnotations but update groupId field
-    const existingAnnotations = current.nodeAnnotations ?? [];
-    const existingMap = new Map(existingAnnotations.map((a) => [a.id, a]));
-
-    // Merge: update existing, add new
-    const result: Array<{ id: string; groupId?: string }> = [];
-
-    // Process memberships
-    for (const [nodeId, groupId] of membershipMap) {
-      const existing = existingMap.get(nodeId);
-      if (existing) {
-        const rest = omitGroupOnly(existing);
-        result.push({ ...rest, groupId });
-        existingMap.delete(nodeId);
-      } else {
-        result.push({ id: nodeId, groupId });
-      }
-    }
-
-    // Add remaining existing annotations that have no membership update
-    // but keep them without group field
-    for (const [nodeId, annotation] of existingMap) {
-      if (!membershipMap.has(nodeId)) {
-        // Remove group fields if node is no longer in any group
-        const rest = omitGroupFields(annotation);
-        if (Object.keys(rest).length > 1 || (Object.keys(rest).length === 1 && rest.id)) {
-          result.push(rest);
-        }
-      }
-    }
-
-    return { ...current, nodeAnnotations: result };
-  });
+  try {
+    await executeTopologyCommand({
+      command: "setNodeGroupMemberships",
+      payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
+    });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setNodeGroupMemberships`, err);
+  }
 }

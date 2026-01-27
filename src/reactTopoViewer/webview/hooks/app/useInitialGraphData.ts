@@ -1,52 +1,16 @@
 /**
- * Initial graph data hook - consolidates initial data parsing for the App entry.
+ * Initial bootstrap data type for the App entry.
+ *
+ * Topology state now comes from TopologyHost snapshots; this shape
+ * represents only non-topology bootstrap data injected by the host.
  */
-import React from "react";
-
-import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
-import type {
-  FreeTextAnnotation,
-  FreeShapeAnnotation,
-  GroupStyleAnnotation,
-  NodeAnnotation
-} from "../../../shared/types/topology";
-import { annotationsToNodes } from "../../utils/annotationNodeConverters";
-import { applyGroupMembershipToNodes } from "../../utils/groupMembership";
+import type { CustomNodeTemplate, SchemaData } from "../../../shared/schema";
+import type { CustomIconInfo } from "../../../shared/types/icons";
 
 export interface InitialGraphData {
-  nodes?: TopoNode[];
-  edges?: TopoEdge[];
-  freeTextAnnotations?: FreeTextAnnotation[];
-  freeShapeAnnotations?: FreeShapeAnnotation[];
-  groupStyleAnnotations?: GroupStyleAnnotation[];
-  nodeAnnotations?: NodeAnnotation[];
-}
-
-function getInitialData(initialData?: InitialGraphData): InitialGraphData {
-  return initialData ?? (window as { __INITIAL_DATA__?: InitialGraphData }).__INITIAL_DATA__ ?? {};
-}
-
-export function useInitialGraphData(initialData?: InitialGraphData): {
-  initialNodes: TopoNode[];
-  initialEdges: TopoEdge[];
-} {
-  return React.useMemo(() => {
-    const data = getInitialData(initialData);
-    const topoNodes = data.nodes ?? [];
-    const topoWithMembership = applyGroupMembershipToNodes(
-      topoNodes,
-      data.nodeAnnotations,
-      data.groupStyleAnnotations ?? []
-    );
-    const annotationNodes = annotationsToNodes(
-      data.freeTextAnnotations ?? [],
-      data.freeShapeAnnotations ?? [],
-      data.groupStyleAnnotations ?? []
-    ) as TopoNode[];
-
-    return {
-      initialNodes: [...topoWithMembership, ...annotationNodes],
-      initialEdges: data.edges ?? []
-    };
-  }, [initialData]);
+  schemaData?: SchemaData;
+  dockerImages?: string[];
+  customNodes?: CustomNodeTemplate[];
+  defaultNode?: string;
+  customIcons?: CustomIconInfo[];
 }

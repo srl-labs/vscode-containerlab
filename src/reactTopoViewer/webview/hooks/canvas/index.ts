@@ -15,12 +15,7 @@ export { useAnnotationCanvasHandlers } from "./useAnnotationCanvasHandlers";
 
 // Annotation hooks
 export { useAnnotations } from "./useAnnotations";
-export type {
-  AnnotationContextValue,
-  AnnotationState,
-  AnnotationActions,
-  UndoRedoActions
-} from "./annotationTypes";
+export type { AnnotationContextValue, AnnotationState, AnnotationActions } from "./annotationTypes";
 export { useDerivedAnnotations } from "./useDerivedAnnotations";
 
 // Graph creation hooks

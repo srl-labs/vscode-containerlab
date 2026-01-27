@@ -1,8 +1,8 @@
 /**
  * Vite API Middleware for File Operations (Simplified)
  *
- * Provides minimal REST endpoints for file I/O. All business logic
- * (parsing, YAML manipulation, annotations) is handled by the browser.
+ * Provides REST endpoints for file I/O and TopologyHost commands.
+ * Topology parsing and persistence are handled by TopologyHostCore in Node.
  *
  * Endpoints:
  * - GET  /file/:path     - Read file content (text/plain)
@@ -12,16 +12,25 @@
  * - GET  /files          - List available .clab.yml files
  * - POST /reset          - Reset session files to original state
  * - GET  /api/events     - SSE endpoint for live file change notifications
+ * - POST /api/topology/snapshot - Get TopologyHost snapshot
+ * - POST /api/topology/command  - Dispatch TopologyHost command
  */
 
 import type { Plugin } from "vite";
 import * as fs from "fs";
 import * as path from "path";
+import { TopologyHostCore } from "../../src/reactTopoViewer/shared/host/TopologyHostCore";
+import { nodeFsAdapter } from "../../src/reactTopoViewer/shared/io";
+import type { TopologyHostCommand } from "../../src/reactTopoViewer/shared/types/messages";
+import type { DeploymentState } from "../../src/reactTopoViewer/shared/types/topology";
 import { SessionFsAdapter, SessionMaps, createSessionMaps, resetSession } from "./SessionFsAdapter";
 import { addClient, broadcastFileChange, startFileWatcher } from "./sseManager";
 
 const TOPOLOGIES_DIR = path.join(__dirname, "../topologies");
 const TOPOLOGIES_ORIGINAL_DIR = path.join(__dirname, "../topologies-original");
+
+// Host cache (per session + file)
+const topologyHosts = new Map<string, TopologyHostCore>();
 
 // ============================================================================
 // Session Management
@@ -38,6 +47,51 @@ function getFsAdapter(sessionId?: string): SessionFsAdapter | null {
     return new SessionFsAdapter(sessionId, sessionMaps, TOPOLOGIES_DIR);
   }
   return null; // Use disk directly
+}
+
+function normalizeTopologyPath(requestedPath: string): string {
+  const filename = path.basename(requestedPath);
+  return path.join(TOPOLOGIES_DIR, filename);
+}
+
+function getTopologyHost(
+  sessionId: string | undefined,
+  filePath: string,
+  context?: { mode?: "edit" | "view"; deploymentState?: DeploymentState }
+): TopologyHostCore {
+  const normalizedPath = normalizeTopologyPath(filePath);
+  const key = `${sessionId ?? "__disk__"}:${normalizedPath}`;
+  const fsAdapter = sessionId
+    ? new SessionFsAdapter(sessionId, sessionMaps, TOPOLOGIES_DIR)
+    : nodeFsAdapter;
+
+  let host = topologyHosts.get(key);
+  if (!host) {
+    host = new TopologyHostCore({
+      fs: fsAdapter,
+      yamlFilePath: normalizedPath,
+      mode: context?.mode ?? "edit",
+      deploymentState: context?.deploymentState ?? "undeployed",
+      logger: console
+    });
+    topologyHosts.set(key, host);
+  } else if (context) {
+    host.updateContext({
+      mode: context.mode,
+      deploymentState: context.deploymentState
+    });
+  }
+
+  return host;
+}
+
+function dropTopologyHosts(sessionId?: string): void {
+  const prefix = sessionId ? `${sessionId}:` : "__disk__:";
+  for (const key of topologyHosts.keys()) {
+    if (key.startsWith(prefix)) {
+      topologyHosts.delete(key);
+    }
+  }
 }
 
 // ============================================================================
@@ -316,14 +370,76 @@ export function fileApiPlugin(): Plugin {
             if (sessionId) {
               // Reset session to use current disk files
               await resetSession(sessionId, sessionMaps, TOPOLOGIES_DIR);
+              dropTopologyHosts(sessionId);
               res.setHeader("Content-Type", "application/json");
               res.end(JSON.stringify({ success: true, sessionId }));
             } else {
               // Reset disk files to original state
               await resetDiskFiles();
+              dropTopologyHosts();
               res.setHeader("Content-Type", "application/json");
               res.end(JSON.stringify({ success: true }));
             }
+            return;
+          }
+
+          // ----------------------------------------------------------------
+          // POST /api/topology/snapshot - Get host snapshot
+          // ----------------------------------------------------------------
+          if (urlWithoutQuery === "/api/topology/snapshot" && req.method === "POST") {
+            const body = await readBody(req);
+            const payload = JSON.parse(body || "{}") as {
+              path?: string;
+              mode?: "edit" | "view";
+              deploymentState?: DeploymentState;
+            };
+
+            if (!payload.path) {
+              res.statusCode = 400;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Missing topology path" }));
+              return;
+            }
+
+            const host = getTopologyHost(sessionId, payload.path, {
+              mode: payload.mode,
+              deploymentState: payload.deploymentState
+            });
+            const snapshot = await host.getSnapshot();
+
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ snapshot }));
+            return;
+          }
+
+          // ----------------------------------------------------------------
+          // POST /api/topology/command - Apply command to host
+          // ----------------------------------------------------------------
+          if (urlWithoutQuery === "/api/topology/command" && req.method === "POST") {
+            const body = await readBody(req);
+            const payload = JSON.parse(body || "{}") as {
+              path?: string;
+              baseRevision?: number;
+              command?: TopologyHostCommand;
+              mode?: "edit" | "view";
+              deploymentState?: DeploymentState;
+            };
+
+            if (!payload.path || !payload.command || typeof payload.baseRevision !== "number") {
+              res.statusCode = 400;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Invalid topology command request" }));
+              return;
+            }
+
+            const host = getTopologyHost(sessionId, payload.path, {
+              mode: payload.mode,
+              deploymentState: payload.deploymentState
+            });
+            const response = await host.applyCommand(payload.command, payload.baseRevision);
+
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(response));
             return;
           }
 

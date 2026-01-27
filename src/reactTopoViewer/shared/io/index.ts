@@ -27,6 +27,7 @@ export type { TopologyAnnotations } from "../types/topology";
 
 // File system adapters
 export { NodeFsAdapter, nodeFsAdapter } from "./NodeFsAdapter";
+export { TransactionalFileSystemAdapter } from "./TransactionalFileSystemAdapter";
 
 // YAML utilities
 export {

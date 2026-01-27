@@ -5,23 +5,18 @@
  * - Panel lifecycle (via PanelManager)
  * - Message routing (via MessageRouter)
  * - File/Docker watchers (via WatcherManager)
- * - Topology data loading (via TopologyAdapter)
+ * - Topology data loading (via TopologyHost)
  */
-
-import * as path from "path";
 
 import * as vscode from "vscode";
 
-import { nodeFsAdapter } from "../shared/io";
-import type { ClabTopology } from "../shared/types/topology";
 import type { TopoEdge } from "../shared/types/graph";
 import type { ClabLabTreeNode } from "../../treeView/common";
 import { runningLabsProvider } from "../../globals";
 
 import { log } from "./services/logger";
-import { TopoViewerAdaptorClab } from "./services/TopologyAdapter";
+import { ContainerDataAdapter } from "./services/ContainerDataAdapter";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";
-import { annotationsIO } from "./services/annotations";
 import { buildEdgeStatsUpdates } from "./services/EdgeStatsBuilder";
 import { SplitViewManager } from "./services/SplitViewManager";
 import {
@@ -32,9 +27,9 @@ import {
   WatcherManager,
   buildBootstrapData
 } from "./panel";
-
-/** Message type for topology data updates sent to webview */
-const MSG_TOPOLOGY_DATA = "topology-data";
+import { TopologyHostCore } from "../shared/host/TopologyHostCore";
+import { nodeFsAdapter } from "../shared/io";
+import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
 
 /** Message type for incremental edge stats updates */
 const MSG_EDGE_STATS_UPDATE = "edge-stats-update";
@@ -45,7 +40,7 @@ const MSG_EDGE_STATS_UPDATE = "edge-stats-update";
 export class ReactTopoViewer {
   public currentPanel: vscode.WebviewPanel | undefined;
   private readonly viewType = "reactTopoViewer";
-  private adaptor: TopoViewerAdaptorClab;
+  private topologyHost: TopologyHostCore | undefined;
   public context: vscode.ExtensionContext;
   public lastYamlFilePath: string = "";
   public currentLabName: string = "";
@@ -60,7 +55,6 @@ export class ReactTopoViewer {
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
-    this.adaptor = new TopoViewerAdaptorClab();
     this.watcherManager = new WatcherManager();
   }
 
@@ -73,77 +67,30 @@ export class ReactTopoViewer {
   }
 
   /**
-   * Get ID prefix from node ID (for annotation migration)
-   */
-  private getIdPrefix(id: string): string {
-    const match = /^([a-zA-Z]+)/.exec(id);
-    return match ? match[1] : id;
-  }
-
-  /**
-   * Reconcile annotations when nodes are renamed in YAML
-   */
-  private async reconcileAnnotationsForRenamedNodes(
-    parsedTopo: ClabTopology | undefined
-  ): Promise<boolean> {
-    if (!this.lastYamlFilePath || !parsedTopo?.topology?.nodes) {
-      return false;
-    }
-
-    const yamlNodeIds = new Set(Object.keys(parsedTopo.topology.nodes));
-    try {
-      const annotations = await annotationsIO.loadAnnotations(this.lastYamlFilePath);
-      const nodeAnnotations = annotations.nodeAnnotations ?? [];
-      const missingIds = [...yamlNodeIds].filter((id) => !nodeAnnotations.some((n) => n.id === id));
-      const orphanAnnotations = nodeAnnotations.filter((n) => !yamlNodeIds.has(n.id));
-
-      if (missingIds.length === 1 && orphanAnnotations.length > 0) {
-        const newId = missingIds[0];
-        const newPrefix = this.getIdPrefix(newId);
-        const prefixMatches = orphanAnnotations.filter((n) => this.getIdPrefix(n.id) === newPrefix);
-        const candidate = prefixMatches[0] || orphanAnnotations[0];
-        if (candidate) {
-          const oldId = candidate.id;
-          candidate.id = newId;
-          await annotationsIO.saveAnnotations(this.lastYamlFilePath, annotations);
-          log.info(
-            `[ReactTopoViewer] Migrated annotation id from ${oldId} to ${newId} after YAML rename`
-          );
-          return true;
-        }
-      }
-    } catch (err) {
-      log.warn(`[ReactTopoViewer] Failed to reconcile annotations on rename: ${err}`);
-    }
-
-    return false;
-  }
-
-  /**
    * Initialize watchers for file changes and docker images
    */
   private initializeWatchers(panel: vscode.WebviewPanel): void {
     const updateController = { isInternalUpdate: () => this.internalUpdateDepth > 0 };
-    const postTopologyData = (data: unknown) => {
-      panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data });
-    };
-    const notifyExternalChange = () => {
-      panel.webview.postMessage({ type: "external-file-change" });
+    const postSnapshot = (snapshot: unknown) => {
+      panel.webview.postMessage({
+        type: "topology-host:snapshot",
+        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+        snapshot,
+        reason: "external-change"
+      });
     };
 
     this.watcherManager.setupFileWatcher(
       this.lastYamlFilePath,
       updateController,
-      () => this.loadTopologyData(),
-      postTopologyData,
-      notifyExternalChange
+      () => this.topologyHost?.onExternalChange() ?? Promise.resolve(null),
+      postSnapshot
     );
     this.watcherManager.setupSaveListener(
       this.lastYamlFilePath,
       updateController,
-      () => this.loadTopologyData(),
-      postTopologyData,
-      notifyExternalChange
+      () => this.topologyHost?.onExternalChange() ?? Promise.resolve(null),
+      postSnapshot
     );
     this.watcherManager.setupDockerImagesSubscription(panel);
   }
@@ -156,6 +103,8 @@ export class ReactTopoViewer {
       () => {
         this.currentPanel = undefined;
         this.internalUpdateDepth = 0;
+        this.topologyHost?.dispose();
+        this.topologyHost = undefined;
         this.watcherManager.dispose();
       },
       null,
@@ -227,122 +176,54 @@ export class ReactTopoViewer {
     const panel = createPanel(config);
     this.currentPanel = panel;
 
+    await this.initializeLabState(labName);
+
+    const containerDataProvider = this.isViewMode
+      ? new ContainerDataAdapter(this.cacheClabTreeDataToTopoviewer)
+      : undefined;
+
+    this.topologyHost = new TopologyHostCore({
+      fs: nodeFsAdapter,
+      yamlFilePath: this.lastYamlFilePath,
+      mode: this.isViewMode ? "view" : "edit",
+      deploymentState: this.deploymentState,
+      containerDataProvider,
+      setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
+      logger: log
+    });
+
     this.messageRouter = new MessageRouter({
       yamlFilePath: this.lastYamlFilePath,
       isViewMode: this.isViewMode,
-      loadTopologyData: () => this.loadTopologyData(),
       splitViewManager: this.splitViewManager,
+      topologyHost: this.topologyHost,
       setInternalUpdate: (updating: boolean) => this.setInternalUpdate(updating),
-      onInternalFileWritten: (filePath: string, content: string) => {
-        const resolved = path.resolve(filePath);
-        const resolvedYaml = path.resolve(this.lastYamlFilePath);
-        const resolvedAnnotations = path.resolve(`${this.lastYamlFilePath}.annotations.json`);
-        if (resolved === resolvedYaml) {
-          this.watcherManager.setLastYamlContent(content);
-        } else if (resolved === resolvedAnnotations) {
-          this.watcherManager.setLastAnnotationsContent(content);
+      onHostSnapshot: (snapshot) => {
+        if (!snapshot) return;
+        this.lastTopologyEdges = snapshot.edges ?? [];
+        if (snapshot.labName && snapshot.labName !== this.currentLabName) {
+          this.currentLabName = snapshot.labName;
+          if (this.currentPanel) {
+            this.currentPanel.title = snapshot.labName;
+          }
         }
       }
     });
 
     this.initializeWatchers(panel);
-    await this.initializeLabState(labName);
 
-    let topologyData = null;
-    try {
-      topologyData = await this.loadTopologyData();
-    } catch (err) {
-      log.error(`Failed to load topology: ${err}`);
-    }
+    const bootstrapData = await buildBootstrapData({
+      extensionUri: this.context.extensionUri,
+      yamlFilePath: this.lastYamlFilePath
+    });
 
     panel.webview.html = generateWebviewHtml({
       webview: panel.webview,
       extensionUri: context.extensionUri,
-      topologyData
+      bootstrapData
     });
 
     this.setupPanelHandlers(panel, context);
-  }
-
-  /**
-   * Load and convert topology data from YAML file
-   */
-  private async loadTopologyData(): Promise<unknown> {
-    if (!this.lastYamlFilePath) {
-      this.lastTopologyEdges = [];
-      return null;
-    }
-
-    try {
-      const yamlContent = await nodeFsAdapter.readFile(this.lastYamlFilePath);
-      let topologyData = await this.adaptor.parseTopology(
-        yamlContent,
-        this.cacheClabTreeDataToTopoviewer,
-        this.lastYamlFilePath
-      );
-      const annotationsUpdated = await this.reconcileAnnotationsForRenamedNodes(
-        this.adaptor.currentClabTopo
-      );
-      if (annotationsUpdated) {
-        topologyData = await this.adaptor.parseTopology(
-          yamlContent,
-          this.cacheClabTreeDataToTopoviewer,
-          this.lastYamlFilePath
-        );
-      }
-      this.lastTopologyEdges = topologyData.edges;
-      this.watcherManager.setLastYamlContent(yamlContent);
-
-      // Load annotations (free text + free shapes + groups + nodes)
-      const annotations = await annotationsIO.loadAnnotations(this.lastYamlFilePath);
-      const freeTextAnnotations = annotations.freeTextAnnotations || [];
-      const freeShapeAnnotations = annotations.freeShapeAnnotations || [];
-      const groupStyleAnnotations = annotations.groupStyleAnnotations || [];
-      const nodeAnnotations = annotations.nodeAnnotations || [];
-      const edgeAnnotations = annotations.edgeAnnotations || [];
-      const viewerSettings = annotations.viewerSettings;
-      // Track annotations file content for external change detection
-      try {
-        const annotationsPath = `${this.lastYamlFilePath}.annotations.json`;
-        const annotationsContent = await nodeFsAdapter.readFile(annotationsPath);
-        this.watcherManager.setLastAnnotationsContent(annotationsContent);
-      } catch {
-        this.watcherManager.setLastAnnotationsContent("");
-      }
-
-      // Use lab name from parsed YAML (source of truth), fallback to stored name
-      const parsedLabName = this.adaptor.currentClabName || this.currentLabName;
-
-      // Update stored name if it changed in the YAML
-      if (parsedLabName && parsedLabName !== this.currentLabName) {
-        this.currentLabName = parsedLabName;
-        // Update panel title to reflect the new name
-        if (this.currentPanel) {
-          this.currentPanel.title = parsedLabName;
-        }
-      }
-
-      // Build and return bootstrap data for the webview
-      return buildBootstrapData({
-        nodes: topologyData.nodes,
-        edges: topologyData.edges,
-        labName: parsedLabName,
-        isViewMode: this.isViewMode,
-        deploymentState: this.deploymentState,
-        extensionUri: this.context.extensionUri,
-        yamlFilePath: this.lastYamlFilePath,
-        freeTextAnnotations,
-        freeShapeAnnotations,
-        groupStyleAnnotations,
-        nodeAnnotations,
-        edgeAnnotations,
-        viewerSettings
-      });
-    } catch (err) {
-      this.lastTopologyEdges = [];
-      log.error(`Error loading topology data: ${err}`);
-      return null;
-    }
   }
 
   /**
@@ -366,11 +247,14 @@ export class ReactTopoViewer {
     }
 
     try {
-      const topologyData = await this.loadTopologyData();
+      const bootstrapData = await buildBootstrapData({
+        extensionUri: this.context.extensionUri,
+        yamlFilePath: this.lastYamlFilePath
+      });
       panel.webview.html = generateWebviewHtml({
         webview: panel.webview,
         extensionUri: this.context.extensionUri,
-        topologyData
+        bootstrapData
       });
       return true;
     } catch (err) {
@@ -413,14 +297,24 @@ export class ReactTopoViewer {
         this.cacheClabTreeDataToTopoviewer = undefined;
       }
 
-      // Reload topology data
-      const topologyData = await this.loadTopologyData();
-
-      // Send topology data update to webview
-      this.currentPanel.webview.postMessage({
-        type: MSG_TOPOLOGY_DATA,
-        data: topologyData
-      });
+      if (this.topologyHost) {
+        const containerDataProvider = this.isViewMode
+          ? new ContainerDataAdapter(this.cacheClabTreeDataToTopoviewer)
+          : undefined;
+        this.topologyHost.updateContext({
+          mode: this.isViewMode ? "view" : "edit",
+          deploymentState: this.deploymentState,
+          containerDataProvider
+        });
+        const snapshot = await this.topologyHost.getSnapshot();
+        this.lastTopologyEdges = snapshot.edges ?? [];
+        this.currentPanel.webview.postMessage({
+          type: "topology-host:snapshot",
+          protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+          snapshot,
+          reason: "resync"
+        });
+      }
 
       // Notify webview of mode change
       await this.notifyWebviewModeChanged();
@@ -471,11 +365,16 @@ export class ReactTopoViewer {
     try {
       // Update cached labs data
       this.cacheClabTreeDataToTopoviewer = labsData;
+      if (this.topologyHost && this.isViewMode) {
+        this.topologyHost.updateContext({
+          containerDataProvider: new ContainerDataAdapter(labsData)
+        });
+      }
 
       // Build edge stats updates from cached edges using extracted builder
       const edgeUpdates = buildEdgeStatsUpdates(this.lastTopologyEdges, labsData, {
         currentLabName: this.currentLabName,
-        topology: this.adaptor.currentClabTopo?.topology
+        topology: this.topologyHost?.currentClabTopology?.topology
       });
 
       if (edgeUpdates.length > 0) {

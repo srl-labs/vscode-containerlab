@@ -11,13 +11,6 @@ import type { FloatingActionPanelHandle } from "../../components/panels";
 import type { useLayoutControls } from "../ui";
 import { useTopoViewerActions, useTopoViewerState } from "../../stores/topoViewerStore";
 import { useGraphActions, useGraphState } from "../../stores/graphStore";
-import {
-  useCanRedo,
-  useCanUndo,
-  useRedoCount,
-  useUndoCount,
-  useUndoRedoActions
-} from "../../stores/undoRedoStore";
 import { useAnnotations } from "../canvas";
 import { useToasts } from "../../components/ui/Toast";
 import { useEasterEgg } from "../../easter-eggs";
@@ -35,10 +28,9 @@ import {
   useNetworkEditorHandlers,
   useCustomTemplateEditor
 } from "../editor";
-import { useExternalFileChange } from "./useExternalFileChange";
 import { buildEdgeAnnotationLookup } from "../../utils/edgeAnnotations";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
-import { saveEdgeAnnotations } from "../../services";
+import { executeTopologyCommand, saveEdgeAnnotations } from "../../services";
 
 import { useCustomNodeCommands, useNavbarCommands, useE2ETestingExposure } from "./useAppHelpers";
 import { useClipboardHandlers } from "./useClipboardHandlers";
@@ -94,37 +86,18 @@ export function useAppContentViewModel({
     renameNode
   } = useGraphActions();
 
-  const undoRedoActions = useUndoRedoActions();
-  const canUndo = useCanUndo();
-  const canRedo = useCanRedo();
-  const undoCount = useUndoCount();
-  const redoCount = useRedoCount();
-
-  const undoRedoHistory = React.useMemo(
-    () => ({
-      undoCount,
-      redoCount,
-      clearHistory: undoRedoActions.clearHistory
-    }),
-    [undoCount, redoCount, undoRedoActions.clearHistory]
-  );
-
   const undoRedoControls = React.useMemo(
     () => ({
-      undo: undoRedoActions.undo,
-      redo: undoRedoActions.redo,
-      canUndo,
-      canRedo
+      undo: () => {
+        void executeTopologyCommand({ command: "undo" });
+      },
+      redo: () => {
+        void executeTopologyCommand({ command: "redo" });
+      },
+      canUndo: state.canUndo,
+      canRedo: state.canRedo
     }),
-    [undoRedoActions.undo, undoRedoActions.redo, canUndo, canRedo]
-  );
-
-  const undoRedoBatch = React.useMemo(
-    () => ({
-      beginBatch: undoRedoActions.beginBatch,
-      endBatch: undoRedoActions.endBatch
-    }),
-    [undoRedoActions.beginBatch, undoRedoActions.endBatch]
+    [state.canUndo, state.canRedo]
   );
   const annotations = useAnnotations({ rfInstance, onLockedAction });
 
@@ -132,13 +105,6 @@ export function useAppContentViewModel({
   const { toasts, addToast, dismissToast } = useToasts();
 
   useCustomNodeErrorToast(state.customNodeError, addToast, clearCustomNodeError);
-
-  // Clear undo history on external file changes
-  useExternalFileChange({
-    undoRedo: undoRedoHistory,
-    addToast,
-    enabled: state.mode === "edit"
-  });
 
   const edgeAnnotationLookup = React.useMemo(
     () => buildEdgeAnnotationLookup(state.edgeAnnotations),
@@ -212,8 +178,7 @@ export function useAppContentViewModel({
       addEdge: addEdgeDirect,
       removeNodeAndEdges,
       removeEdge,
-      menuHandlers,
-      undoRedo: undoRedoActions
+      menuHandlers
     });
 
   const handleUpdateNodeData = React.useCallback(
@@ -244,7 +209,6 @@ export function useAppContentViewModel({
     editNode,
     selectionData.editingNodeData,
     renameNodeInGraph,
-    state.customIcons,
     handleUpdateNodeData,
     refreshEditorData
   );
@@ -326,7 +290,6 @@ export function useAppContentViewModel({
   // Clipboard handlers
   const clipboardHandlers = useClipboardHandlers({
     annotations,
-    undoRedo: undoRedoBatch,
     rfInstance,
     handleNodeCreatedCallback,
     handleEdgeCreated

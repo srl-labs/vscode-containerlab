@@ -6,7 +6,6 @@ import React from "react";
 import { BasePanel } from "../../ui/editor/BasePanel";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
 import { useGraphActions, useGraphState } from "../../../stores/graphStore";
-import { useUndoRedoActions } from "../../../stores/undoRedoStore";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -82,7 +81,6 @@ function useBulkLinkPanel({ isVisible, mode, isLocked, onClose }: UseBulkLinkPan
   // Get nodes and edges from graph store
   const { nodes, edges } = useGraphState();
   const { addEdge } = useGraphActions();
-  const undoRedo = useUndoRedoActions();
 
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
@@ -124,13 +122,11 @@ function useBulkLinkPanel({ isVisible, mode, isLocked, onClose }: UseBulkLinkPan
       pendingCandidates,
       canApply,
       addEdge,
-      captureSnapshot: undoRedo.captureSnapshot,
-      commitChange: undoRedo.commitChange,
       setStatus,
       setPendingCandidates,
       onClose
     });
-  }, [nodes, edges, pendingCandidates, canApply, addEdge, undoRedo, onClose]);
+  }, [nodes, edges, pendingCandidates, canApply, addEdge, onClose]);
 
   const handleDismissConfirm = React.useCallback(() => {
     setPendingCandidates(null);

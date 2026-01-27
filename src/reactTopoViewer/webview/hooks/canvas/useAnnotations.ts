@@ -4,7 +4,6 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import { useDerivedAnnotations } from "./useDerivedAnnotations";
 import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
 import { useMode, useIsLocked } from "../../stores/topoViewerStore";
-import { useUndoRedoActions } from "../../stores/undoRedoStore";
 import { findDeepestGroupAtPosition, generateGroupId } from "./groupUtils";
 
 import type { AnnotationContextValue } from "./annotationTypes";
@@ -12,6 +11,13 @@ import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHe
 import { useGroupAnnotations } from "./useGroupAnnotations";
 import { useTextAnnotations } from "./useTextAnnotations";
 import { useShapeAnnotations } from "./useShapeAnnotations";
+import {
+  saveAllNodeGroupMemberships,
+  saveAnnotationNodesFromGraph,
+  saveNodeGroupMembership
+} from "../../services";
+import { useGraphStore } from "../../stores/graphStore";
+import { isAnnotationNodeType } from "../../utils/annotationNodeConverters";
 
 interface UseAnnotationsParams {
   rfInstance: ReactFlowInstance | null;
@@ -26,8 +32,6 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
   const isLocked = useIsLocked();
   const uiState = useAnnotationUIState();
   const uiActions = useAnnotationUIActions();
-  const undoRedo = useUndoRedoActions();
-
   const derived = useDerivedAnnotations();
 
   const groupActions = useGroupAnnotations({
@@ -36,8 +40,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     onLockedAction,
     rfInstance,
     derived,
-    uiActions,
-    undoRedo
+    uiActions
   });
 
   const textActions = useTextAnnotations({
@@ -49,8 +52,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       isAddTextMode: uiState.isAddTextMode,
       selectedTextIds: uiState.selectedTextIds
     },
-    uiActions,
-    undoRedo
+    uiActions
   });
 
   const shapeActions = useShapeAnnotations({
@@ -63,8 +65,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       pendingShapeType: uiState.pendingShapeType,
       selectedShapeIds: uiState.selectedShapeIds
     },
-    uiActions,
-    undoRedo
+    uiActions
   });
 
   const onNodeDropped = useCallback(
@@ -81,6 +82,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
           derived.textAnnotations,
           derived.updateTextAnnotation
         );
+        void saveAnnotationNodesFromGraph();
         return;
       }
 
@@ -91,32 +93,71 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
           derived.shapeAnnotations,
           derived.updateShapeAnnotation
         );
+        void saveAnnotationNodesFromGraph();
         return;
       }
 
+      const currentGroupId = derived.getNodeMembership(nodeId);
       handleTopologyNodeDrop(
         nodeId,
         targetGroupId,
-        derived.getNodeMembership(nodeId),
+        currentGroupId,
         derived.addNodeToGroup,
         derived.removeNodeFromGroup
       );
+
+      if (currentGroupId !== targetGroupId) {
+        void saveNodeGroupMembership(nodeId, targetGroupId);
+      }
     },
-    [derived]
+    [derived, saveAnnotationNodesFromGraph, saveNodeGroupMembership]
   );
 
   const deleteAllSelected = useCallback(() => {
-    uiState.selectedGroupIds.forEach((id) => derived.deleteGroup(id));
+    const groupsToDelete = Array.from(uiState.selectedGroupIds);
+    const membersToClear = new Set<string>();
+
+    for (const groupId of groupsToDelete) {
+      derived.getGroupMembers(groupId).forEach((memberId) => membersToClear.add(memberId));
+      derived.deleteGroup(groupId);
+    }
+
     uiState.selectedTextIds.forEach((id) => derived.deleteTextAnnotation(id));
     uiState.selectedShapeIds.forEach((id) => derived.deleteShapeAnnotation(id));
+
+    if (membersToClear.size > 0) {
+      for (const memberId of membersToClear) {
+        derived.removeNodeFromGroup(memberId);
+      }
+
+      const memberships = useGraphStore
+        .getState()
+        .nodes.filter((node) => !isAnnotationNodeType(node.type))
+        .map((node) => {
+          const data = node.data as Record<string, unknown> | undefined;
+          const groupId = data?.groupId as string | undefined;
+          return groupId ? { id: node.id, groupId } : null;
+        })
+        .filter((entry): entry is { id: string; groupId: string } => Boolean(entry));
+
+      void saveAllNodeGroupMemberships(memberships);
+    }
+
     uiActions.clearAllSelections();
+    void saveAnnotationNodesFromGraph();
   }, [
     uiState.selectedGroupIds,
     uiState.selectedTextIds,
     uiState.selectedShapeIds,
     uiActions,
-    derived
+    derived,
+    saveAnnotationNodesFromGraph,
+    saveAllNodeGroupMemberships
   ]);
+
+  const persistAnnotationNodes = useCallback(() => {
+    void saveAnnotationNodesFromGraph();
+  }, [saveAnnotationNodesFromGraph]);
 
   return useMemo<AnnotationContextValue>(
     () => ({
@@ -144,9 +185,14 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       saveGroup: groupActions.saveGroup,
       deleteGroup: groupActions.deleteGroup,
       updateGroup: derived.updateGroup,
-      updateGroupParent: (id, parentId) =>
-        derived.updateGroup(id, { parentId: parentId ?? undefined }),
-      updateGroupGeoPosition: (id, coords) => derived.updateGroup(id, { geoCoordinates: coords }),
+      updateGroupParent: (id, parentId) => {
+        derived.updateGroup(id, { parentId: parentId ?? undefined });
+        persistAnnotationNodes();
+      },
+      updateGroupGeoPosition: (id, coords) => {
+        derived.updateGroup(id, { geoCoordinates: coords });
+        persistAnnotationNodes();
+      },
       addNodeToGroup: derived.addNodeToGroup,
       getNodeMembership: derived.getNodeMembership,
       getGroupMembers: derived.getGroupMembers,
@@ -171,9 +217,14 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
         derived.updateTextAnnotation(id, { rotation }),
       onTextRotationStart: textActions.onTextRotationStart,
       onTextRotationEnd: textActions.onTextRotationEnd,
-      updateTextSize: (id, width, height) => derived.updateTextAnnotation(id, { width, height }),
-      updateTextGeoPosition: (id, coords) =>
-        derived.updateTextAnnotation(id, { geoCoordinates: coords }),
+      updateTextSize: (id, width, height) => {
+        derived.updateTextAnnotation(id, { width, height });
+        persistAnnotationNodes();
+      },
+      updateTextGeoPosition: (id, coords) => {
+        derived.updateTextAnnotation(id, { geoCoordinates: coords });
+        persistAnnotationNodes();
+      },
       updateTextAnnotation: derived.updateTextAnnotation,
       handleTextCanvasClick: textActions.handleTextCanvasClick,
 
@@ -192,13 +243,22 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       updateShapeRotation: (id, rotation) => derived.updateShapeAnnotation(id, { rotation }),
       onShapeRotationStart: shapeActions.onShapeRotationStart,
       onShapeRotationEnd: shapeActions.onShapeRotationEnd,
-      updateShapeSize: shapeActions.updateShapeSize,
-      updateShapeEndPosition: (id, endPosition) =>
-        derived.updateShapeAnnotation(id, { endPosition }),
-      updateShapeGeoPosition: (id, coords) =>
-        derived.updateShapeAnnotation(id, { geoCoordinates: coords }),
-      updateShapeEndGeoPosition: (id, coords) =>
-        derived.updateShapeAnnotation(id, { endGeoCoordinates: coords }),
+      updateShapeSize: (id, width, height) => {
+        derived.updateShapeAnnotation(id, { width, height });
+        persistAnnotationNodes();
+      },
+      updateShapeEndPosition: (id, endPosition) => {
+        derived.updateShapeAnnotation(id, { endPosition });
+        persistAnnotationNodes();
+      },
+      updateShapeGeoPosition: (id, coords) => {
+        derived.updateShapeAnnotation(id, { geoCoordinates: coords });
+        persistAnnotationNodes();
+      },
+      updateShapeEndGeoPosition: (id, coords) => {
+        derived.updateShapeAnnotation(id, { endGeoCoordinates: coords });
+        persistAnnotationNodes();
+      },
       updateShapeAnnotation: derived.updateShapeAnnotation,
       handleShapeCanvasClick: shapeActions.handleShapeCanvasClick,
 
@@ -217,7 +277,8 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       textActions,
       shapeActions,
       onNodeDropped,
-      deleteAllSelected
+      deleteAllSelected,
+      persistAnnotationNodes
     ]
   );
 }

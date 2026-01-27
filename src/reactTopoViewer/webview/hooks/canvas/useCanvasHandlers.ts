@@ -18,15 +18,16 @@ import {
   type XYPosition
 } from "@xyflow/react";
 
-import type { SnapshotCapture } from "../../stores/undoRedoStore";
 import { log } from "../../utils/logger";
-import { useUndoRedoActions } from "../../stores/undoRedoStore";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
+  isAnnotationNodeType
 } from "../../utils/annotationNodeConverters";
+import { saveAnnotationNodesFromGraph, saveNodePositions } from "../../services";
+import { useGraphStore } from "../../stores/graphStore";
 
 // Grid size for snapping
 export const GRID_SIZE = 20;
@@ -149,21 +150,7 @@ function cleanupGroupRefs(
   groupLastPositionRef.current?.delete(nodeId);
 }
 
-/** Build explicit nodes from position changes for undo/redo */
-function buildExplicitNodesFromChanges(changes: NodeChange[], nodes: Node[] | undefined): Node[] {
-  const explicitNodes: Node[] = [];
-  for (const change of changes) {
-    if (change.type === "position" && change.position) {
-      const existingNode = nodes?.find((n) => n.id === change.id);
-      if (existingNode) {
-        explicitNodes.push({ ...existingNode, position: change.position });
-      }
-    }
-  }
-  return explicitNodes;
-}
-
-/** Hook for node drag handlers with undo/redo support and group member movement */
+/** Hook for node drag handlers with group member movement */
 function useNodeDragHandlers(
   modeRef: React.RefObject<"view" | "edit">,
   nodes: Node[] | undefined,
@@ -171,47 +158,14 @@ function useNodeDragHandlers(
   setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
   groupMemberHandlers?: GroupMemberHandlers
 ) {
-  const undoRedo = useUndoRedoActions();
-  const dragSnapshotRef = useRef<SnapshotCapture | null>(null);
   // Track the last position of a dragging group to compute delta
   const groupLastPositionRef = useRef<Map<string, XYPosition>>(new Map());
   // Track member IDs that are being moved with a group
   const groupMembersRef = useRef<Map<string, string[]>>(new Map());
 
-  const buildDragNodeIds = useCallback(
-    (node: Node, currentNodes: Node[]): string[] => {
-      const ids = new Set<string>();
-      for (const candidate of currentNodes) {
-        if (candidate.selected || candidate.id === node.id) {
-          ids.add(candidate.id);
-        }
-      }
-
-      if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
-        const memberIds = groupMemberHandlers.getGroupMembers(node.id);
-        for (const memberId of memberIds) {
-          ids.add(memberId);
-        }
-      }
-
-      return Array.from(ids);
-    },
-    [groupMemberHandlers]
-  );
-
-  const buildMoveDescription = useCallback((node: Node, count: number): string => {
-    if (node.type === GROUP_NODE_TYPE) return `Move group ${node.id}`;
-    if (count > 1) return `Move ${count} nodes`;
-    return `Move node ${node.id}`;
-  }, []);
-
   const onNodeDragStart: NodeMouseHandler = useCallback(
     (_event, node) => {
       if (modeRef.current !== "edit" || !nodes) return;
-
-      const dragNodeIds = buildDragNodeIds(node, nodes);
-      dragSnapshotRef.current =
-        dragNodeIds.length > 0 ? undoRedo.captureSnapshot({ nodeIds: dragNodeIds }) : null;
 
       // If dragging a group node, capture members and their initial positions
       if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
@@ -220,9 +174,9 @@ function useNodeDragHandlers(
         groupLastPositionRef.current.set(node.id, { ...node.position });
       }
 
-      log.info(`[ReactFlowCanvas] Drag started for ${dragNodeIds.length} node(s)`);
+      log.info("[ReactFlowCanvas] Drag started");
     },
-    [modeRef, nodes, groupMemberHandlers, undoRedo, buildDragNodeIds]
+    [modeRef, nodes, groupMemberHandlers]
   );
 
   // Called during drag - moves members with group using direct state update
@@ -275,7 +229,6 @@ function useNodeDragHandlers(
 
       // Skip for shape nodes with active line handle
       if (node.type === "free-shape-node" && isLineHandleActive()) {
-        dragSnapshotRef.current = null;
         return;
       }
 
@@ -301,17 +254,28 @@ function useNodeDragHandlers(
         groupMemberHandlers.onNodeDropped(node.id, finalPosition);
       }
 
-      // Commit to undo/redo if snapshot exists
-      if (dragSnapshotRef.current) {
-        const description = buildMoveDescription(node, dragSnapshotRef.current.nodeIds.length);
-        const explicitNodes = buildExplicitNodesFromChanges(changes, nodes);
-        undoRedo.commitChange(dragSnapshotRef.current, description, {
-          explicitNodes: explicitNodes.length > 0 ? explicitNodes : undefined
-        });
-        dragSnapshotRef.current = null;
+      const currentNodes = useGraphStore.getState().nodes;
+      const nodeTypeMap = new Map(currentNodes.map((n) => [n.id, n.type]));
+      const movedPositions = changes
+        .filter((change) => change.type === "position" && change.position)
+        .map((change) => ({ id: change.id, position: change.position! }));
+
+      const topoPositions = movedPositions.filter(
+        (pos) => !isAnnotationNodeType(nodeTypeMap.get(pos.id))
+      );
+      const movedAnnotations = movedPositions.some((pos) =>
+        isAnnotationNodeType(nodeTypeMap.get(pos.id))
+      );
+
+      if (topoPositions.length > 0) {
+        void saveNodePositions(topoPositions);
+      }
+
+      if (movedAnnotations) {
+        void saveAnnotationNodesFromGraph(currentNodes);
       }
     },
-    [modeRef, nodes, onNodesChangeBase, groupMemberHandlers, undoRedo, buildMoveDescription]
+    [modeRef, nodes, onNodesChangeBase, groupMemberHandlers]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };
@@ -532,7 +496,7 @@ function useConnectionHandler(
 
       // Use unified callback which handles:
       // 1. Adding edge to React state
-      // 2. Persisting to YAML via TopologyIO
+      // 2. Persisting via TopologyHost commands
       // 3. Undo/redo support
       if (onEdgeCreated) {
         onEdgeCreated(connection.source, connection.target, edgeData);

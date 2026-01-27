@@ -45,6 +45,14 @@ class MockFileSystemAdapter implements FileSystemAdapter {
     this.files.delete(filePath);
   }
 
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    const content = this.files.get(oldPath);
+    if (content !== undefined) {
+      this.files.set(newPath, content);
+      this.files.delete(oldPath);
+    }
+  }
+
   async exists(filePath: string): Promise<boolean> {
     return this.files.has(filePath);
   }

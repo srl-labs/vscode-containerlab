@@ -6,9 +6,11 @@
 
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/topology";
+import type { GroupStyleAnnotation } from "../../shared/types/topology";
 import type { NetworkType } from "../../shared/types/editors";
-import type { TopoNode, TopoEdge } from "../../shared/types/graph";
+import type { TopoNode } from "../../shared/types/graph";
+import type { CustomIconInfo } from "../../shared/types/icons";
+import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
 
 /** Layout option type */
 type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical";
@@ -87,23 +89,14 @@ export interface DevModeInterface {
 }
 
 /**
- * Initial data passed from extension to webview.
+ * Initial bootstrap data passed from extension/dev host (non-topology).
  */
 export interface WebviewInitialData {
-  nodes?: TopoNode[];
-  edges?: TopoEdge[];
-  schemaData?: Record<string, unknown>;
+  schemaData?: SchemaData;
   dockerImages?: string[];
-  annotations?: Record<string, unknown>;
-  edgeAnnotations?: EdgeAnnotation[];
-  viewerSettings?: {
-    gridLineWidth?: number;
-    endpointLabelOffsetEnabled?: boolean;
-    endpointLabelOffset?: number;
-  };
-  isViewMode?: boolean;
-  labName?: string;
-  yamlFilePath?: string;
+  customNodes?: CustomNodeTemplate[];
+  defaultNode?: string;
+  customIcons?: CustomIconInfo[];
   [key: string]: unknown;
 }
 

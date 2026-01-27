@@ -10,16 +10,9 @@ export { useGraphStore } from "./graphStore";
 export { useTopoViewerStore, parseInitialData } from "./topoViewerStore";
 export { useAnnotationUIStore } from "./annotationUIStore";
 export { useCanvasStore, buildEdgeInfo, useEdgeInfo } from "./canvasStore";
-export { useUndoRedoStore, setPersistSnapshotCallback } from "./undoRedoStore";
 
 // Essential types (import other types directly from sub-modules)
 export type { GraphState, GraphActions, GraphStore } from "./graphStore";
 export type { TopoViewerState, DeploymentState, LinkLabelMode } from "./topoViewerStore";
 export type { AnnotationUIState } from "./annotationUIStore";
 export type { EdgeRenderConfig, NodeRenderConfig, EdgeInfo } from "./canvasStore";
-export type {
-  UndoRedoSnapshot,
-  SnapshotCapture,
-  CaptureSnapshotOptions,
-  CommitChangeOptions
-} from "./undoRedoStore";

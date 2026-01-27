@@ -210,7 +210,7 @@ export const AppContent: React.FC<AppContentProps> = ({
             isVisible: panelVisibility.showLabSettingsPanel,
             mode: state.mode,
             isLocked: state.isLocked,
-            labSettings: { name: state.labName },
+            labSettings: state.labSettings ?? { name: state.labName },
             onClose: panelVisibility.handleCloseLabSettings
           }}
         />

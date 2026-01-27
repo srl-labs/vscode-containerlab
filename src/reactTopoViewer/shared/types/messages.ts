@@ -1,11 +1,14 @@
 /**
- * Shared message types between extension and webview
+ * Shared message types between extension and webview.
+ *
+ * Topology state is authoritative in the host via the TopologyHost protocol.
  */
 
-import type { TopologyAnnotations, EdgeAnnotation } from "./topology";
-// Re-export ReactFlow types from graph.ts (new format)
-import type { TopoNode, TopoEdge, TopologyData } from "./graph";
-export type { TopoNode, TopoEdge, TopologyData };
+import type { TopologyAnnotations, EdgeAnnotation, DeploymentState } from "./topology";
+import type { TopoNode, TopoEdge } from "./graph";
+import type { LabSettings } from "./labSettings";
+import type { NodeSaveData } from "../io/NodePersistenceIO";
+import type { LinkSaveData } from "../io/LinkPersistenceIO";
 
 /**
  * Base message interface for all messages
@@ -16,51 +19,9 @@ export interface BaseMessage {
 }
 
 /**
- * Request message from webview to extension
- */
-export interface RequestMessage extends BaseMessage {
-  type: "POST";
-  endpointName: string;
-  payload?: string;
-}
-
-/**
- * Response message from extension to webview
- */
-export interface ResponseMessage extends BaseMessage {
-  type: "POST_RESPONSE";
-  requestId: string;
-  result: unknown;
-  error: string | null;
-}
-
-/**
- * Push message from extension to webview
- */
-export interface PushMessage extends BaseMessage {
-  type: string;
-  data?: unknown;
-}
-
-/**
- * Topology data message
- */
-export interface TopologyDataMessage extends PushMessage {
-  type: "topology-data";
-  data: {
-    nodes: TopoNode[];
-    edges: TopoEdge[];
-    labName: string;
-    mode: "edit" | "view";
-    viewerSettings?: TopologyAnnotations["viewerSettings"];
-    edgeAnnotations?: EdgeAnnotation[];
-  };
-}
-
-/**
  * Mode changed message
  */
-export interface ModeChangedMessage extends PushMessage {
+export interface ModeChangedMessage extends BaseMessage {
   type: "topo-mode-changed";
   data: {
     mode: "editor" | "viewer";
@@ -68,71 +29,113 @@ export interface ModeChangedMessage extends PushMessage {
   };
 }
 
-/**
- * Node renamed message - sent after a node is renamed to trigger in-place update
- */
-export interface NodeRenamedMessage extends PushMessage {
-  type: "node-renamed";
-  data: {
-    oldId: string;
-    newId: string;
-  };
+// ============================================================================
+// TopologyHost Protocol (authoritative host state)
+// ============================================================================
+
+export const TOPOLOGY_HOST_PROTOCOL_VERSION = 1;
+
+export type TopologyHostCommand =
+  | { command: "addNode"; payload: NodeSaveData }
+  | { command: "editNode"; payload: NodeSaveData }
+  | { command: "deleteNode"; payload: { id: string } }
+  | { command: "addLink"; payload: LinkSaveData }
+  | { command: "editLink"; payload: LinkSaveData }
+  | { command: "deleteLink"; payload: LinkSaveData }
+  | {
+      command: "savePositions";
+      payload: Array<{
+        id: string;
+        position?: { x: number; y: number };
+        geoCoordinates?: { lat: number; lng: number };
+      }>;
+    }
+  | { command: "setAnnotations"; payload: Partial<TopologyAnnotations> }
+  | { command: "setEdgeAnnotations"; payload: EdgeAnnotation[] }
+  | { command: "setViewerSettings"; payload: NonNullable<TopologyAnnotations["viewerSettings"]> }
+  | { command: "setNodeGroupMembership"; payload: { nodeId: string; groupId: string | null } }
+  | {
+      command: "setNodeGroupMemberships";
+      payload: Array<{ nodeId: string; groupId: string | null }>;
+    }
+  | { command: "setLabSettings"; payload: LabSettings }
+  | { command: "undo" }
+  | { command: "redo" };
+
+export interface TopologySnapshot {
+  revision: number;
+  nodes: TopoNode[];
+  edges: TopoEdge[];
+  annotations: TopologyAnnotations;
+  labName: string;
+  mode: "edit" | "view";
+  deploymentState: DeploymentState;
+  labSettings?: LabSettings;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
-/**
- * External file change message - sent when YAML file is modified outside the webview
- * Used to notify webview to clear undo history
- */
-export interface ExternalFileChangeMessage extends PushMessage {
-  type: "external-file-change";
+export interface TopologyPatch {
+  revision: number;
+  nodes?: TopoNode[];
+  edges?: TopoEdge[];
+  annotations?: Partial<TopologyAnnotations>;
+  labName?: string;
+  mode?: "edit" | "view";
+  deploymentState?: DeploymentState;
+  labSettings?: LabSettings;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
-/**
- * Node data for graph nodes
- */
-export interface NodeData {
-  id: string;
-  label: string;
-  kind?: string;
-  type?: string;
-  image?: string;
-  parent?: string;
-  [key: string]: unknown;
+export interface TopologyHostSnapshotRequestMessage extends BaseMessage {
+  type: "topology-host:get-snapshot";
+  protocolVersion: number;
+  requestId: string;
 }
 
-/**
- * Edge data for graph edges
- */
-export interface EdgeData {
-  id: string;
-  source: string;
-  target: string;
-  sourceEndpoint?: string;
-  targetEndpoint?: string;
-  [key: string]: unknown;
+export interface TopologyHostCommandMessage extends BaseMessage {
+  type: "topology-host:command";
+  protocolVersion: number;
+  requestId: string;
+  baseRevision: number;
+  command: TopologyHostCommand;
 }
 
-/**
- * VS Code API interface exposed to webview
- */
-export interface VSCodeAPI {
-  postMessage(msg: unknown): void;
-  getState(): unknown;
-  setState(newState: unknown): void;
+export interface TopologyHostAckMessage extends BaseMessage {
+  type: "topology-host:ack";
+  protocolVersion: number;
+  requestId: string;
+  revision: number;
+  snapshot?: TopologySnapshot;
+  patch?: TopologyPatch;
 }
 
-/**
- * Endpoint names for message passing
- */
-export type EndpointName =
-  | "lab-settings-get"
-  | "lab-settings-update"
-  | "topo-viewport-save"
-  | "topo-editor-viewport-save"
-  | "topo-editor-load-annotations"
-  | "topo-editor-save-annotations"
-  | "topo-switch-mode"
-  | "deployLab"
-  | "destroyLab"
-  | "redeployLab"
-  | "get-topology-data";
+export interface TopologyHostRejectMessage extends BaseMessage {
+  type: "topology-host:reject";
+  protocolVersion: number;
+  requestId: string;
+  revision: number;
+  snapshot: TopologySnapshot;
+  reason: "stale";
+}
+
+export interface TopologyHostErrorMessage extends BaseMessage {
+  type: "topology-host:error";
+  protocolVersion: number;
+  requestId: string;
+  error: string;
+}
+
+export interface TopologyHostSnapshotMessage extends BaseMessage {
+  type: "topology-host:snapshot";
+  protocolVersion: number;
+  snapshot: TopologySnapshot;
+  reason?: "init" | "external-change" | "resync";
+}
+
+export type TopologyHostResponseMessage =
+  | TopologyHostAckMessage
+  | TopologyHostRejectMessage
+  | TopologyHostErrorMessage
+  | TopologyHostSnapshotMessage;

@@ -2,9 +2,6 @@
  * MessageRouter - Handles webview message routing for ReactTopoViewer
  */
 
-import * as fs from "fs";
-import * as path from "path";
-
 import type * as vscode from "vscode";
 
 import { log, logWithLocation } from "../services/logger";
@@ -14,6 +11,9 @@ import type { SplitViewManager } from "../services/SplitViewManager";
 import { customNodeConfigManager } from "../services/CustomNodeConfigManager";
 import type { CustomNodeConfig } from "../services/CustomNodeConfigManager";
 import { iconService } from "../services/IconService";
+import type { TopologyHost } from "../../shared/types/topologyHost";
+import type { TopologySnapshot, TopologyHostCommandMessage } from "../../shared/types/messages";
+import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
 
 type WebviewMessage = Record<string, unknown> & {
   type?: string;
@@ -53,10 +53,10 @@ const ICON_COMMANDS = new Set(["icon-list", "icon-upload", "icon-delete", "icon-
 export interface MessageRouterContext {
   yamlFilePath: string;
   isViewMode: boolean;
-  loadTopologyData: () => Promise<unknown>;
   splitViewManager: SplitViewManager;
+  topologyHost?: TopologyHost;
   setInternalUpdate: (updating: boolean) => void;
-  onInternalFileWritten?: (filePath: string, content: string) => void;
+  onHostSnapshot?: (snapshot: TopologySnapshot) => void;
 }
 
 /**
@@ -74,30 +74,6 @@ export class MessageRouter {
    */
   updateContext(context: Partial<MessageRouterContext>): void {
     Object.assign(this.context, context);
-  }
-
-  /**
-   * Resolve and validate an fs request path.
-   * Webviews are not a trust boundary; only allow access to the active lab YAML
-   * and its adjacent annotations file.
-   */
-  private validateFsPath(
-    filePath: string
-  ): { ok: true; normalizedPath: string } | { ok: false; error: string } {
-    const yamlFilePath = this.context.yamlFilePath;
-    if (!yamlFilePath) {
-      return { ok: false, error: "No YAML file path available" };
-    }
-
-    const normalizedRequested = path.resolve(filePath);
-    const normalizedYaml = path.resolve(yamlFilePath);
-    const normalizedAnnotations = path.resolve(`${yamlFilePath}.annotations.json`);
-
-    if (normalizedRequested === normalizedYaml || normalizedRequested === normalizedAnnotations) {
-      return { ok: true, normalizedPath: normalizedRequested };
-    }
-
-    return { ok: false, error: "File access denied" };
   }
 
   /**
@@ -131,180 +107,98 @@ export class MessageRouter {
   }
 
   /**
-   * Handle file system messages from webview (fs:read, fs:write, fs:unlink, fs:exists)
+   * Handle TopologyHost protocol messages (snapshot + commands)
    */
-  private async handleFsMessage(
+  private async handleTopologyHostMessage(
     message: WebviewMessage,
     panel: vscode.WebviewPanel
   ): Promise<boolean> {
     const msgType = typeof message.type === "string" ? message.type : "";
-    if (!msgType?.startsWith("fs:")) {
+    if (msgType !== "topology-host:get-snapshot" && msgType !== "topology-host:command") {
       return false;
     }
 
-    const requestId = typeof message.requestId === "string" ? message.requestId : undefined;
-    const filePath = typeof message.path === "string" ? message.path : undefined;
+    const host = this.context.topologyHost;
+    const requestId = typeof message.requestId === "string" ? message.requestId : "";
+    const protocolVersion =
+      typeof (message as { protocolVersion?: unknown }).protocolVersion === "number"
+        ? (message as { protocolVersion?: number }).protocolVersion
+        : undefined;
 
-    if (!requestId) {
-      log.warn("[MessageRouter] fs: message missing requestId");
+    if (protocolVersion !== TOPOLOGY_HOST_PROTOCOL_VERSION) {
+      panel.webview.postMessage({
+        type: "topology-host:error",
+        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+        requestId,
+        error: `Unsupported topology host protocol version: ${protocolVersion ?? "unknown"}`
+      });
       return true;
     }
 
-    if (!filePath) {
-      this.respondFs(panel, requestId, null, "Missing path parameter");
+    if (!host) {
+      panel.webview.postMessage({
+        type: "topology-host:error",
+        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+        requestId,
+        error: "Topology host unavailable"
+      });
       return true;
     }
 
-    const validation = this.validateFsPath(filePath);
-    if (!validation.ok) {
-      this.respondFs(panel, requestId, null, validation.error);
-      return true;
-    }
-
-    try {
-      const handlers: Record<string, () => Promise<void>> = {
-        "fs:read": () => this.handleFsRead(validation.normalizedPath, requestId, panel),
-        "fs:write": () =>
-          this.handleFsWrite(
-            validation.normalizedPath,
-            typeof message.content === "string" ? message.content : undefined,
-            requestId,
-            panel
-          ),
-        "fs:unlink": () => this.handleFsUnlink(validation.normalizedPath, requestId, panel),
-        "fs:exists": () => this.handleFsExists(validation.normalizedPath, requestId, panel)
-      };
-
-      const handler = handlers[msgType];
-      if (!handler) {
-        this.respondFs(panel, requestId, null, `Unknown fs message type: ${msgType}`);
-        return true;
+    if (msgType === "topology-host:get-snapshot") {
+      try {
+        const snapshot = await host.getSnapshot();
+        this.context.onHostSnapshot?.(snapshot);
+        panel.webview.postMessage({
+          type: "topology-host:snapshot",
+          protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+          requestId,
+          snapshot,
+          reason: "init"
+        });
+      } catch (err) {
+        panel.webview.postMessage({
+          type: "topology-host:error",
+          protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+          requestId,
+          error: err instanceof Error ? err.message : String(err)
+        });
       }
-
-      await handler();
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      this.respondFs(panel, requestId, null, error);
+      return true;
     }
 
+    const typed = message as TopologyHostCommandMessage;
+    const baseRevision =
+      typeof typed.baseRevision === "number" && Number.isFinite(typed.baseRevision)
+        ? typed.baseRevision
+        : NaN;
+    if (
+      !typed.command ||
+      typeof (typed.command as { command?: unknown }).command !== "string" ||
+      !Number.isFinite(baseRevision)
+    ) {
+      panel.webview.postMessage({
+        type: "topology-host:error",
+        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
+        requestId,
+        error: "Invalid topology host command payload"
+      });
+      return true;
+    }
+
+    const response = await host.applyCommand(typed.command, baseRevision);
+    const responseWithId = { ...response, requestId: requestId || response.requestId };
+    if (
+      responseWithId.type === "topology-host:ack" ||
+      responseWithId.type === "topology-host:reject"
+    ) {
+      const snapshot = (responseWithId as { snapshot?: TopologySnapshot }).snapshot;
+      if (snapshot) {
+        this.context.onHostSnapshot?.(snapshot);
+      }
+    }
+    panel.webview.postMessage(responseWithId);
     return true;
-  }
-
-  private async handleFsRead(
-    filePath: string,
-    requestId: string,
-    panel: vscode.WebviewPanel
-  ): Promise<void> {
-    try {
-      const content = await fs.promises.readFile(filePath, "utf-8");
-      this.respondFs(panel, requestId, content);
-    } catch (err) {
-      this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  private async handleFsWrite(
-    filePath: string,
-    content: string | undefined,
-    requestId: string,
-    panel: vscode.WebviewPanel
-  ): Promise<void> {
-    if (content === undefined) {
-      this.respondFs(panel, requestId, null, "Missing content parameter");
-      return;
-    }
-    this.context.setInternalUpdate(true);
-    try {
-      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.promises.writeFile(filePath, content, "utf-8");
-      if (this.context.onInternalFileWritten) {
-        this.context.onInternalFileWritten(filePath, content);
-      }
-      this.respondFs(panel, requestId, null);
-    } catch (err) {
-      this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
-    } finally {
-      this.context.setInternalUpdate(false);
-    }
-  }
-
-  private async handleFsUnlink(
-    filePath: string,
-    requestId: string,
-    panel: vscode.WebviewPanel
-  ): Promise<void> {
-    this.context.setInternalUpdate(true);
-    try {
-      await fs.promises.unlink(filePath);
-      this.respondFs(panel, requestId, null);
-    } catch (err) {
-      // Don't throw if file doesn't exist
-      const code = (err as { code?: string }).code;
-      if (code === "ENOENT") {
-        this.respondFs(panel, requestId, null);
-      } else {
-        this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
-      }
-    } finally {
-      this.context.setInternalUpdate(false);
-    }
-  }
-
-  private async handleFsExists(
-    filePath: string,
-    requestId: string,
-    panel: vscode.WebviewPanel
-  ): Promise<void> {
-    try {
-      await fs.promises.access(filePath);
-      this.respondFs(panel, requestId, true);
-    } catch {
-      this.respondFs(panel, requestId, false);
-    }
-  }
-
-  private respondFs(
-    panel: vscode.WebviewPanel,
-    requestId: string,
-    result: unknown,
-    error?: string
-  ): void {
-    panel.webview.postMessage({
-      type: "fs:response",
-      requestId,
-      result,
-      error: error ?? null
-    });
-  }
-
-  /**
-   * Handle POST request messages
-   */
-  private async handlePostMessage(
-    message: WebviewMessage,
-    panel: vscode.WebviewPanel
-  ): Promise<void> {
-    const requestId = message.requestId;
-    const endpointName = message.endpointName;
-    let result: unknown = null;
-    let error: string | null = null;
-
-    try {
-      if (endpointName === "get-topology-data") {
-        result = await this.context.loadTopologyData();
-      } else {
-        error = `Unknown endpoint: ${endpointName}`;
-      }
-    } catch (err) {
-      error = err instanceof Error ? err.message : String(err);
-    }
-
-    panel.webview.postMessage({
-      type: "POST_RESPONSE",
-      requestId,
-      result,
-      error
-    });
   }
 
   private async handleLifecycleCommand(command: string): Promise<void> {
@@ -560,19 +454,14 @@ export class MessageRouter {
       return;
     }
 
-    // Handle file system messages (fs:read, fs:write, fs:unlink, fs:exists)
-    if (await this.handleFsMessage(message, panel)) {
-      return;
-    }
-
     // Handle command messages (lifecycle, node/interface commands, split view, custom nodes)
     if (await this.handleCommandMessage(message, panel)) {
       return;
     }
 
-    // Handle POST requests (production-specific)
-    if (message.type === "POST" && message.requestId && message.endpointName) {
-      await this.handlePostMessage(message, panel);
+    // Handle TopologyHost protocol messages
+    if (await this.handleTopologyHostMessage(message, panel)) {
+      return;
     }
   }
 }

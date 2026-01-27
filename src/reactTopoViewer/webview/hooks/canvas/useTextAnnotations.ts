@@ -2,11 +2,10 @@ import { useCallback, useMemo, useRef } from "react";
 
 import type { FreeTextAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions, AnnotationUIState } from "../../stores/annotationUIStore";
-import type { UndoRedoActions } from "./annotationTypes";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
-import { freeTextToNode } from "../../utils/annotationNodeConverters";
 import { log } from "../../utils/logger";
+import { saveAnnotationNodesFromGraph } from "../../services";
 
 interface UseTextAnnotationsParams {
   mode: "edit" | "view";
@@ -22,7 +21,6 @@ interface UseTextAnnotationsParams {
     | "closeTextEditor"
     | "removeFromTextSelection"
   >;
-  undoRedo: UndoRedoActions;
 }
 
 export interface TextAnnotationActions {
@@ -37,13 +35,10 @@ export interface TextAnnotationActions {
 }
 
 export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnotationActions {
-  const { mode, isLocked, onLockedAction, derived, uiState, uiActions, undoRedo } = params;
+  const { mode, isLocked, onLockedAction, derived, uiState, uiActions } = params;
 
   const lastTextStyleRef = useRef<Partial<FreeTextAnnotation>>({});
-  const textRotationSnapshotRef = useRef<{
-    id: string;
-    snapshot: ReturnType<typeof undoRedo.captureSnapshot>;
-  } | null>(null);
+  const pendingRotationRef = useRef<string | null>(null);
 
   const handleAddText = useCallback(() => {
     if (mode !== "edit") return;
@@ -69,10 +64,13 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
     [mode, isLocked, onLockedAction, derived.textAnnotations, uiActions]
   );
 
+  const persist = useCallback(() => {
+    void saveAnnotationNodesFromGraph();
+  }, []);
+
   const saveTextAnnotation = useCallback(
     (annotation: FreeTextAnnotation) => {
       const isNew = !derived.textAnnotations.some((t) => t.id === annotation.id);
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [annotation.id] });
 
       if (isNew) {
         derived.addTextAnnotation(annotation);
@@ -92,66 +90,42 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
       };
 
       uiActions.closeTextEditor();
-
-      undoRedo.commitChange(
-        snapshot,
-        isNew ? `Add text ${annotation.id}` : `Update text ${annotation.id}`,
-        { explicitNodes: [freeTextToNode(annotation)] }
-      );
+      persist();
     },
-    [derived, uiActions, undoRedo]
+    [derived, uiActions, persist]
   );
 
   const deleteTextAnnotation = useCallback(
     (id: string) => {
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
       derived.deleteTextAnnotation(id);
       uiActions.removeFromTextSelection(id);
-      undoRedo.commitChange(snapshot, `Delete text ${id}`, { explicitNodes: [] });
+      persist();
     },
-    [derived, uiActions, undoRedo]
+    [derived, uiActions, persist]
   );
 
   const deleteSelectedTextAnnotations = useCallback(() => {
     const ids = Array.from(uiState.selectedTextIds);
     if (ids.length === 0) return;
-    const snapshot = undoRedo.captureSnapshot({ nodeIds: ids });
     ids.forEach((id) => {
       derived.deleteTextAnnotation(id);
       uiActions.removeFromTextSelection(id);
     });
-    undoRedo.commitChange(
-      snapshot,
-      `Delete ${ids.length} text annotation${ids.length === 1 ? "" : "s"}`,
-      {
-        explicitNodes: []
-      }
-    );
-  }, [derived, uiActions, undoRedo, uiState.selectedTextIds]);
+    persist();
+  }, [derived, uiActions, persist, uiState.selectedTextIds]);
 
-  const onTextRotationStart = useCallback(
-    (id: string) => {
-      textRotationSnapshotRef.current = {
-        id,
-        snapshot: undoRedo.captureSnapshot({ nodeIds: [id] })
-      };
-    },
-    [undoRedo]
-  );
+  const onTextRotationStart = useCallback((id: string) => {
+    pendingRotationRef.current = id;
+  }, []);
 
   const onTextRotationEnd = useCallback(
     (id: string) => {
-      if (textRotationSnapshotRef.current && textRotationSnapshotRef.current.id === id) {
-        const annotation = derived.textAnnotations.find((a) => a.id === id);
-        if (annotation) {
-          undoRedo.commitChange(textRotationSnapshotRef.current.snapshot, `Rotate text ${id}`, {
-            explicitNodes: [freeTextToNode(annotation)]
-          });
-        }
-        textRotationSnapshotRef.current = null;
+      if (pendingRotationRef.current === id) {
+        pendingRotationRef.current = null;
+        persist();
       }
     },
-    [derived.textAnnotations, undoRedo]
+    [persist]
   );
 
   const handleTextCanvasClick = useCallback(

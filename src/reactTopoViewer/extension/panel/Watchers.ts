@@ -11,17 +11,12 @@ import { onDockerImagesUpdated } from "../../../utils/docker/images";
 /**
  * Callback for loading topology data
  */
-export type TopologyDataLoader = () => Promise<unknown>;
+export type SnapshotLoader = () => Promise<unknown>;
 
 /**
  * Callback for posting topology data to webview
  */
-export type TopologyDataPoster = (data: unknown) => void;
-
-/**
- * Callback for notifying webview of external file change
- */
-export type ExternalChangeNotifier = () => void;
+export type SnapshotPoster = (data: unknown) => void;
 
 /**
  * Callback for getting/setting internal update flag
@@ -71,9 +66,8 @@ export class WatcherManager {
   setupFileWatcher(
     yamlFilePath: string,
     updateController: InternalUpdateController,
-    loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster,
-    notifyExternalChange?: ExternalChangeNotifier
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
   ): void {
     if (!yamlFilePath) return;
 
@@ -87,9 +81,8 @@ export class WatcherManager {
         "change",
         yamlFilePath,
         updateController,
-        loadTopologyData,
-        postTopologyData,
-        notifyExternalChange
+        loadSnapshot,
+        postSnapshot
       );
     });
 
@@ -100,9 +93,8 @@ export class WatcherManager {
         trigger,
         annotationsPath,
         updateController,
-        loadTopologyData,
-        postTopologyData,
-        notifyExternalChange
+        loadSnapshot,
+        postSnapshot
       );
     };
     this.annotationsWatcher.onDidChange(() => handleAnnotations("change"));
@@ -116,9 +108,8 @@ export class WatcherManager {
   setupSaveListener(
     yamlFilePath: string,
     updateController: InternalUpdateController,
-    loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster,
-    notifyExternalChange?: ExternalChangeNotifier
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
   ): void {
     if (!yamlFilePath) return;
 
@@ -129,9 +120,8 @@ export class WatcherManager {
         "save",
         yamlFilePath,
         updateController,
-        loadTopologyData,
-        postTopologyData,
-        notifyExternalChange
+        loadSnapshot,
+        postSnapshot
       );
     });
   }
@@ -151,29 +141,14 @@ export class WatcherManager {
   }
 
   /**
-   * Update the last known YAML content (for change detection)
-   */
-  setLastYamlContent(content: string): void {
-    this.lastYamlContent = content;
-  }
-
-  /**
-   * Update the last known annotations content (for change detection)
-   */
-  setLastAnnotationsContent(content: string): void {
-    this.lastAnnotationsContent = content;
-  }
-
-  /**
    * Reload topology data after external YAML edits and push to webview
    */
   private async handleExternalYamlChange(
     trigger: "change" | "save",
     yamlFilePath: string,
     updateController: InternalUpdateController,
-    loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster,
-    notifyExternalChange?: ExternalChangeNotifier
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
   ): Promise<void> {
     if (!yamlFilePath) return;
     if (updateController.isInternalUpdate()) {
@@ -198,13 +173,11 @@ export class WatcherManager {
 
       log.info(`[ReactTopoViewer] YAML ${trigger} detected, refreshing topology`);
 
-      // Notify webview of external change (to clear undo history)
-      notifyExternalChange?.();
-
-      const topologyData = await loadTopologyData();
-      if (topologyData) {
-        postTopologyData(topologyData);
+      const snapshot = await loadSnapshot();
+      if (snapshot) {
+        postSnapshot(snapshot);
       }
+      this.lastYamlContent = currentContent;
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh after YAML ${trigger}: ${err}`);
     } finally {
@@ -215,9 +188,8 @@ export class WatcherManager {
           trigger,
           yamlFilePath,
           updateController,
-          loadTopologyData,
-          postTopologyData,
-          notifyExternalChange
+          loadSnapshot,
+          postSnapshot
         );
       }
     }
@@ -230,9 +202,8 @@ export class WatcherManager {
     trigger: "change" | "create" | "delete",
     annotationsPath: string,
     updateController: InternalUpdateController,
-    loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster,
-    notifyExternalChange?: ExternalChangeNotifier
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
   ): Promise<void> {
     if (!annotationsPath) return;
     if (updateController.isInternalUpdate()) {
@@ -263,12 +234,9 @@ export class WatcherManager {
 
       log.info(`[ReactTopoViewer] Annotations ${trigger} detected, refreshing topology`);
 
-      // Notify webview of external change (to clear undo history)
-      notifyExternalChange?.();
-
-      const topologyData = await loadTopologyData();
-      if (topologyData) {
-        postTopologyData(topologyData);
+      const snapshot = await loadSnapshot();
+      if (snapshot) {
+        postSnapshot(snapshot);
       }
 
       this.lastAnnotationsContent = currentContent;
@@ -282,9 +250,8 @@ export class WatcherManager {
           trigger,
           annotationsPath,
           updateController,
-          loadTopologyData,
-          postTopologyData,
-          notifyExternalChange
+          loadSnapshot,
+          postSnapshot
         );
       }
     }

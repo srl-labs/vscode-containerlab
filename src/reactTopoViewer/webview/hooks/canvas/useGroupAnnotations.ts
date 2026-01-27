@@ -4,12 +4,13 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { GroupEditorData } from "./groupTypes";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
-import type { UndoRedoActions } from "./annotationTypes";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findParentGroupForBounds, generateGroupId } from "./groupUtils";
-import { groupToNode } from "../../utils/annotationNodeConverters";
+import { isAnnotationNodeType } from "../../utils/annotationNodeConverters";
 
 import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";
+import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
+import { useGraphStore } from "../../stores/graphStore";
 
 interface UseGroupAnnotationsParams {
   mode: "edit" | "view";
@@ -21,7 +22,6 @@ interface UseGroupAnnotationsParams {
     AnnotationUIActions,
     "setEditingGroup" | "closeGroupEditor" | "removeFromGroupSelection"
   >;
-  undoRedo: UndoRedoActions;
 }
 
 export interface GroupAnnotationActions {
@@ -33,8 +33,29 @@ export interface GroupAnnotationActions {
   updateGroupSize: (id: string, width: number, height: number) => void;
 }
 
+function collectMemberships(): Array<{ id: string; groupId?: string }> {
+  const nodes = useGraphStore.getState().nodes;
+  return nodes
+    .filter((node) => !isAnnotationNodeType(node.type))
+    .map((node) => {
+      const data = node.data as Record<string, unknown> | undefined;
+      const groupId = data?.groupId as string | undefined;
+      return groupId ? { id: node.id, groupId } : null;
+    })
+    .filter((entry): entry is { id: string; groupId: string } => Boolean(entry));
+}
+
 export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnnotationActions {
-  const { mode, isLocked, onLockedAction, rfInstance, derived, uiActions, undoRedo } = params;
+  const { mode, isLocked, onLockedAction, rfInstance, derived, uiActions } = params;
+
+  const persist = useCallback(() => {
+    void saveAnnotationNodesFromGraph();
+  }, []);
+
+  const persistMemberships = useCallback(() => {
+    const memberships = collectMemberships();
+    void saveAllNodeGroupMemberships(memberships);
+  }, []);
 
   const editGroup = useCallback(
     (id: string) => {
@@ -73,9 +94,6 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       const group = derived.groups.find((g) => g.id === data.id);
       if (!group) return;
 
-      const memberIds = derived.getGroupMembers(data.id);
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [data.id, ...memberIds] });
-
       derived.updateGroup(data.id, {
         name: data.name,
         level: data.level,
@@ -92,44 +110,31 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         labelPosition: data.style.labelPosition
       });
       uiActions.closeGroupEditor();
-
-      const updatedGroup: GroupStyleAnnotation = {
-        ...group,
-        name: data.name,
-        level: data.level,
-        position: data.position,
-        width: data.width,
-        height: data.height,
-        backgroundColor: data.style.backgroundColor,
-        backgroundOpacity: data.style.backgroundOpacity,
-        borderColor: data.style.borderColor,
-        borderWidth: data.style.borderWidth,
-        borderStyle: data.style.borderStyle,
-        borderRadius: data.style.borderRadius,
-        labelColor: data.style.labelColor,
-        labelPosition: data.style.labelPosition
-      };
-
-      undoRedo.commitChange(snapshot, `Edit group ${data.name ?? data.id}`, {
-        explicitNodes: [groupToNode(updatedGroup)]
-      });
+      persist();
     },
-    [derived, uiActions, undoRedo]
+    [derived, uiActions, persist]
   );
 
   const deleteGroup = useCallback(
     (id: string) => {
       const group = derived.groups.find((g) => g.id === id);
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
+      const memberIds = derived.getGroupMembers(id);
+
       derived.deleteGroup(id);
       uiActions.removeFromGroupSelection(id);
+
+      if (memberIds.length > 0) {
+        for (const memberId of memberIds) {
+          derived.removeNodeFromGroup(memberId);
+        }
+      }
+
       if (group) {
-        undoRedo.commitChange(snapshot, `Delete group ${group.name ?? group.id}`, {
-          explicitNodes: []
-        });
+        persist();
+        persistMemberships();
       }
     },
-    [derived, uiActions, undoRedo]
+    [derived, uiActions, persist, persistMemberships]
   );
 
   const handleAddGroup = useCallback(() => {
@@ -173,7 +178,6 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       ...(parentGroup ? { parentId: parentGroup.id } : {})
     };
 
-    const snapshot = undoRedo.captureSnapshot({ nodeIds: [newGroupId, ...members] });
     derived.addGroup(newGroup);
     if (members.length > 0) {
       for (const memberId of members) {
@@ -181,40 +185,33 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       }
     }
 
-    undoRedo.commitChange(snapshot, `Add group ${newGroup.name ?? newGroup.id}`, {
-      explicitNodes: [groupToNode(newGroup)]
-    });
-  }, [mode, isLocked, onLockedAction, rfInstance, derived, undoRedo]);
+    persist();
+    persistMemberships();
+  }, [mode, isLocked, onLockedAction, rfInstance, derived, persist, persistMemberships]);
 
   const addGroup = useCallback(
     (group: GroupStyleAnnotation) => {
       const memberIds = Array.isArray(group.members) ? (group.members as string[]) : [];
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [group.id, ...memberIds] });
       derived.addGroup(group);
       if (memberIds.length > 0) {
         for (const memberId of memberIds) {
           derived.addNodeToGroup(memberId, group.id);
         }
       }
-      undoRedo.commitChange(snapshot, `Add group ${group.name ?? group.id}`, {
-        explicitNodes: [groupToNode(group)]
-      });
+      persist();
+      persistMemberships();
     },
-    [derived, undoRedo]
+    [derived, persist, persistMemberships]
   );
 
   const updateGroupSize = useCallback(
     (id: string, width: number, height: number) => {
       const group = derived.groups.find((g) => g.id === id);
       if (!group) return;
-      const snapshot = undoRedo.captureSnapshot({ nodeIds: [id] });
       derived.updateGroup(id, { width, height });
-      const updatedGroup: GroupStyleAnnotation = { ...group, width, height };
-      undoRedo.commitChange(snapshot, `Resize group ${id}`, {
-        explicitNodes: [groupToNode(updatedGroup)]
-      });
+      persist();
     },
-    [derived, undoRedo]
+    [derived, persist]
   );
 
   return useMemo(

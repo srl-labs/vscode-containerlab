@@ -12,7 +12,7 @@ export type { MessageRouterContext } from "./MessageRouter";
 
 // File watchers
 export { WatcherManager } from "./Watchers";
-export type { TopologyDataLoader, TopologyDataPoster, InternalUpdateController } from "./Watchers";
+export type { SnapshotLoader, SnapshotPoster, InternalUpdateController } from "./Watchers";
 
 // Bootstrap data
 export { buildBootstrapData } from "./BootstrapDataBuilder";

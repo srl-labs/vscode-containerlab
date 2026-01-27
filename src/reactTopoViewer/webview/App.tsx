@@ -12,19 +12,16 @@ import type { ReactFlowCanvasRef } from "./components/canvas";
 import type { FloatingActionPanelHandle } from "./components/panels";
 import { useLayoutControls } from "./hooks/ui";
 import {
-  useInitialGraphData,
   type InitialGraphData,
   useStoreInitialization,
   useGraphMessageSubscription,
-  useTopoViewerMessageSubscription
+  useTopoViewerMessageSubscription,
+  useTopologyHostInitialization
 } from "./hooks/app";
-import { useUndoRedoPersistence } from "./hooks/state";
 import { AppContent } from "./AppContent";
 
 /** Main App component - initializes stores and subscriptions */
 export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData }) => {
-  const { initialNodes, initialEdges } = useInitialGraphData(initialData);
-
   const reactFlowRef = React.useRef<ReactFlowCanvasRef>(null);
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance | null>(null);
   const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
@@ -36,16 +33,12 @@ export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData 
   }, []);
 
   // Initialize stores with initial data
-  useStoreInitialization({
-    initialNodes,
-    initialEdges,
-    initialData
-  });
+  useStoreInitialization({ initialData });
 
   // Set up message subscriptions (side effects)
   useGraphMessageSubscription();
   useTopoViewerMessageSubscription();
-  useUndoRedoPersistence();
+  useTopologyHostInitialization();
 
   return (
     <AppContent

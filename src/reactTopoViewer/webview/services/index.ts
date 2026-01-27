@@ -1,23 +1,13 @@
 /**
- * Webview Services
- *
- * This module provides I/O services for the webview:
- * - Service initialization and getters
- * - Annotation save helpers
- * - Topology CRUD operations
+ * Webview Services (Host-authoritative)
  */
 
-// Re-export service initialization
 export {
-  initializeServices,
-  resetServices,
-  isServicesInitialized,
-  getFsAdapter,
-  getTopologyIO,
-  getAnnotationsIO
-} from "./serviceInitialization";
+  executeTopologyCommand,
+  executeTopologyCommands,
+  refreshTopologySnapshot
+} from "./topologyHostCommands";
 
-// Re-export annotation save helpers
 export {
   saveFreeTextAnnotations,
   saveFreeShapeAnnotations,
@@ -25,10 +15,10 @@ export {
   saveEdgeAnnotations,
   saveViewerSettings,
   saveNodeGroupMembership,
-  saveAllNodeGroupMemberships
+  saveAllNodeGroupMemberships,
+  saveAnnotationNodesFromGraph
 } from "./annotationSaveHelpers";
 
-// Re-export topology CRUD helpers
 export {
   createNode,
   editNode,
@@ -37,10 +27,8 @@ export {
   editLink,
   deleteLink,
   createNetworkNode,
-  saveNodePositions,
-  beginBatch,
-  endBatch
+  saveNetworkNodesFromGraph,
+  saveNodePositions
 } from "./topologyCrud";
 
-// Re-export types
 export type { NodeSaveData, LinkSaveData, NetworkNodeData } from "./topologyCrud";

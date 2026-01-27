@@ -64,14 +64,14 @@ export function generateNonce(): string {
 export interface WebviewHtmlData {
   webview: vscode.Webview;
   extensionUri: vscode.Uri;
-  topologyData: unknown;
+  bootstrapData: unknown;
 }
 
 /**
  * Generates the HTML content for the React TopoViewer webview
  */
 export function generateWebviewHtml(data: WebviewHtmlData): string {
-  const { webview, extensionUri, topologyData } = data;
+  const { webview, extensionUri, bootstrapData } = data;
 
   // Get URIs for resources
   const scriptUri = webview.asWebviewUri(
@@ -90,7 +90,7 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   const nonce = generateNonce();
 
   // Serialize initial data
-  const initialDataJson = JSON.stringify(topologyData || {});
+  const initialDataJson = JSON.stringify(bootstrapData || {});
 
   return `<!DOCTYPE html>
 <html lang="en">

@@ -142,6 +142,46 @@ export class SessionFsAdapter implements FileSystemAdapter {
     }
   }
 
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    const oldIsAnnotation = this.isAnnotationsFile(oldPath);
+    const newIsAnnotation = this.isAnnotationsFile(newPath);
+
+    if (oldIsAnnotation !== newIsAnnotation) {
+      throw new Error(`Cannot rename between different file types: ${oldPath} -> ${newPath}`);
+    }
+
+    if (oldIsAnnotation) {
+      const oldKey = this.getYamlFilename(oldPath);
+      const newKey = this.getYamlFilename(newPath);
+      if (this.annotationsStorage.has(oldKey)) {
+        const content = this.annotationsStorage.get(oldKey);
+        this.annotationsStorage.set(newKey, content ?? null);
+        this.annotationsStorage.delete(oldKey);
+        return;
+      }
+
+      // Fall back to disk if not in session
+      const diskOld = path.join(this.diskBasePath, path.basename(oldPath));
+      const diskNew = path.join(this.diskBasePath, path.basename(newPath));
+      await fs.promises.rename(diskOld, diskNew);
+      return;
+    }
+
+    const oldKey = this.getStorageKey(oldPath);
+    const newKey = this.getStorageKey(newPath);
+    if (this.yamlStorage.has(oldKey)) {
+      const content = this.yamlStorage.get(oldKey)!;
+      this.yamlStorage.set(newKey, content);
+      this.yamlStorage.delete(oldKey);
+      return;
+    }
+
+    // Fall back to disk if not in session
+    const diskOld = path.join(this.diskBasePath, path.basename(oldPath));
+    const diskNew = path.join(this.diskBasePath, path.basename(newPath));
+    await fs.promises.rename(diskOld, diskNew);
+  }
+
   async exists(filePath: string): Promise<boolean> {
     const filename = this.getStorageKey(filePath);
     const isAnnotation = this.isAnnotationsFile(filePath);

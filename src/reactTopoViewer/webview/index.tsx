@@ -7,12 +7,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { log } from "./utils/logger";
 import "./styles/tailwind.css";
-import { PostMessageFsAdapter } from "./adapters";
-import { initializeServices, getTopologyIO } from "./services";
 import { subscribeToWebviewMessages } from "./utils/webviewMessageBus";
-
-const fsAdapter = new PostMessageFsAdapter();
-initializeServices(fsAdapter, { verbose: false });
 
 // Get the initial data from the window object (injected by extension)
 const initialData = window.__INITIAL_DATA__ ?? {};
@@ -44,33 +39,23 @@ subscribeToWebviewMessages((event) => {
   }
 });
 
-// Log initial data
+// Log bootstrap data
+const customNodeCount = Array.isArray(initialData?.customNodes)
+  ? initialData.customNodes.length
+  : 0;
+const iconCount = Array.isArray(initialData?.customIcons) ? initialData.customIcons.length : 0;
 log.info(
-  `[ReactTopoViewer] Initial data received, nodes: ${initialData?.nodes?.length || 0}, edges: ${initialData?.edges?.length || 0}`
+  `[ReactTopoViewer] Bootstrap data loaded (customNodes: ${customNodeCount}, customIcons: ${iconCount})`
 );
 
 /**
- * Bootstrap the application:
- * 1. Initialize TopologyIO with the YAML file (for editing support)
- * 2. Render React with the loaded data
+ * Bootstrap the application.
  */
-async function bootstrap(): Promise<void> {
+function bootstrap(): void {
   // Find the root element
   const container = document.getElementById("root");
   if (!container) {
     throw new Error("Root element not found");
-  }
-
-  // Initialize TopologyIO if we have a YAML file path (required for lab settings editing)
-  const yamlFilePath = initialData.yamlFilePath as string | undefined;
-  if (yamlFilePath) {
-    try {
-      const topologyIO = getTopologyIO();
-      await topologyIO.initializeFromFile(yamlFilePath);
-      log.info(`[ReactTopoViewer] TopologyIO initialized for: ${yamlFilePath}`);
-    } catch (err) {
-      log.warn(`[ReactTopoViewer] Failed to initialize TopologyIO: ${err}`);
-    }
   }
 
   // Create React root and render
@@ -83,4 +68,4 @@ async function bootstrap(): Promise<void> {
 }
 
 // Start the app
-void bootstrap();
+bootstrap();

@@ -8,7 +8,6 @@ import { useCallback, useRef } from "react";
 import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
 import { useGraphActions, useGraphState } from "../../stores/graphStore";
-import { useUndoRedoActions } from "../../stores/undoRedoStore";
 import { log } from "../../utils/logger";
 import { getUniqueId } from "../../../shared/utilities/idUtils";
 import type {
@@ -346,8 +345,6 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
   const { onNodeCreated, onEdgeCreated, getNodeMembership, addNodeToGroup, rfInstance } = options;
   const { nodes } = useGraphState();
   const { addNode, addEdge } = useGraphActions();
-  const undoRedo = useUndoRedoActions();
-
   const lastPasteTimeRef = useRef(0);
 
   /**
@@ -484,25 +481,20 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         addNodeToGroup
       };
 
-      undoRedo.beginBatch();
-      try {
-        pasteNodes(clipboardData.nodes, ctx);
-        const edgeCount = pasteEdges(clipboardData.edges, ctx);
-        log.info(`[Clipboard] Pasted ${clipboardData.nodes.length} nodes, ${edgeCount} edges`);
+      pasteNodes(clipboardData.nodes, ctx);
+      const edgeCount = pasteEdges(clipboardData.edges, ctx);
+      log.info(`[Clipboard] Pasted ${clipboardData.nodes.length} nodes, ${edgeCount} edges`);
 
-        // Select pasted elements after they're added to React Flow
-        setTimeout(() => {
-          if (rfInstance) {
-            selectPastedElements(rfInstance, ctx.pastedNodeIds, ctx.pastedEdgeIds);
-          }
-        }, 50);
-      } finally {
-        undoRedo.endBatch();
-      }
+      // Select pasted elements after they're added to React Flow
+      setTimeout(() => {
+        if (rfInstance) {
+          selectPastedElements(rfInstance, ctx.pastedNodeIds, ctx.pastedEdgeIds);
+        }
+      }, 50);
 
       return true;
     },
-    [rfInstance, nodes, addNode, addEdge, undoRedo, onNodeCreated, onEdgeCreated, addNodeToGroup]
+    [rfInstance, nodes, addNode, addEdge, onNodeCreated, onEdgeCreated, addNodeToGroup]
   );
 
   /**

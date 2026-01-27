@@ -80,11 +80,11 @@ export function convertToLinkEditorData(
 }
 
 /**
- * Converts LinkEditorData to LinkSaveData for TopologyIO.
- * This is used when saving link editor changes via the services.
+ * Converts LinkEditorData to LinkSaveData for host commands.
+ * This is used when saving link editor changes via the host pipeline.
  *
  * @param data - LinkEditorData from the editor panel
- * @returns LinkSaveData for TopologyIO.editLink()
+ * @returns LinkSaveData for host editLink command
  */
 export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveData {
   // Build extraData with extended properties

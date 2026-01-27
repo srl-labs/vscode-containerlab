@@ -2,15 +2,17 @@
  * Helper utilities for sending messages from the React webview to the VS Code extension.
  *
  * ARCHITECTURE NOTE: This module is for VS Code extension integration commands only.
- * Topology persistence is owned by the webview (via hooks + shared `TopologyIO`/`AnnotationsIO`).
- * Those services perform file I/O through `PostMessageFsAdapter` (fs:* bridge), not via command messages.
+ * Topology persistence is owned by the host (TopologyHost protocol). The webview
+ * dispatches topology commands via the host command pipeline, not through these
+ * VS Code command messages.
  *
- * SERVICE-BASED OPERATIONS (DO NOT use sendCommandToExtension):
+ * HOST-COMMAND OPERATIONS (DO NOT use sendCommandToExtension):
  * ================================================================
  * - Node/link CRUD + lab settings edits
  * - Annotation saves (positions, free-text, free-shapes, groups)
  * - Batch operations
- * → Use hooks/services (e.g. `useLabSettings`, `createNode`, `editLink`) which call `TopologyIO` directly.
+ * → Use host command services (e.g. `useLabSettings`, `createNode`, `editLink`) which dispatch
+ *   TopologyHost commands.
  *
  * MESSAGING-BASED OPERATIONS (OK to use sendCommandToExtension):
  * ================================================================

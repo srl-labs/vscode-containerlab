@@ -44,10 +44,6 @@ const DEBOUNCE_MS = 50;
  */
 export interface ClipboardHandlersConfig {
   annotations: AnnotationsClipboardSubset;
-  undoRedo: {
-    beginBatch: () => void;
-    endBatch: () => void;
-  };
   rfInstance?: ReactFlowInstance | null;
   /** Callback for node creation (includes YAML persistence and undo) */
   handleNodeCreatedCallback?: (

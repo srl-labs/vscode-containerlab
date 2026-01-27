@@ -2,15 +2,26 @@
  * Handler functions for bulk link operations
  * Uses React Flow nodes/edges arrays for graph queries.
  */
-import type { Edge } from "@xyflow/react";
-
-import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import type { SnapshotCapture, CommitChangeOptions } from "../../../stores/undoRedoStore";
+import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../../shared/types/graph";
+import type { LinkSaveData } from "../../../../shared/io/LinkPersistenceIO";
 
 import { computeCandidates, buildBulkEdges, type LinkCandidate } from "./bulkLinkUtils";
+import { executeTopologyCommands } from "../../../services";
 
 type SetStatus = (status: string | null) => void;
 type SetCandidates = (candidates: LinkCandidate[] | null) => void;
+
+function toLinkSaveData(edge: TopoEdge): LinkSaveData {
+  const data = edge.data as TopologyEdgeData | undefined;
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    sourceEndpoint: data?.sourceEndpoint,
+    targetEndpoint: data?.targetEndpoint,
+    ...(data?.extraData ? { extraData: data.extraData } : {})
+  };
+}
 
 export function computeAndValidateCandidates(
   nodes: TopoNode[],
@@ -45,12 +56,6 @@ interface ConfirmCreateParams {
   pendingCandidates: LinkCandidate[] | null;
   canApply: boolean;
   addEdge?: (edge: TopoEdge) => void;
-  captureSnapshot?: (options: { edgeIds: string[] }) => SnapshotCapture;
-  commitChange?: (
-    before: SnapshotCapture,
-    description: string,
-    options?: CommitChangeOptions
-  ) => void;
   setStatus: SetStatus;
   setPendingCandidates: SetCandidates;
   onClose: () => void;
@@ -62,8 +67,6 @@ export async function confirmAndCreateLinks({
   pendingCandidates,
   canApply,
   addEdge,
-  captureSnapshot,
-  commitChange,
   setStatus,
   setPendingCandidates,
   onClose
@@ -82,17 +85,16 @@ export async function confirmAndCreateLinks({
     return;
   }
 
-  const edgeIds = builtEdges.map((edge) => edge.id);
-  const snapshot = captureSnapshot ? captureSnapshot({ edgeIds }) : null;
   if (addEdge) {
     builtEdges.forEach((edge) => addEdge(edge));
   }
-  if (snapshot && commitChange) {
-    // Pass explicit edges so commitChange doesn't rely on stale state ref
-    commitChange(snapshot, `Add ${builtEdges.length} link${builtEdges.length === 1 ? "" : "s"}`, {
-      explicitEdges: builtEdges as Edge[]
-    });
-  }
+
+  const commands = builtEdges.map((edge) => ({
+    command: "addLink" as const,
+    payload: toLinkSaveData(edge)
+  }));
+
+  await executeTopologyCommands(commands);
 
   setPendingCandidates(null);
   setStatus(null);
