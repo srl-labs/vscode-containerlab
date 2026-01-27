@@ -3,8 +3,7 @@
  */
 import { useMemo } from "react";
 
-import type { NodeEditorData } from "../../components/panels/node-editor/types";
-import type { CustomTemplateEditorData } from "../../../shared/types/editors";
+import type { CustomTemplateEditorData, NodeEditorData } from "../../../shared/types/editors";
 import {
   convertCustomTemplateToEditorData,
   convertEditorDataToSaveData

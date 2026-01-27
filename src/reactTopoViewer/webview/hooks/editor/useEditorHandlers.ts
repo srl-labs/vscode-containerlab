@@ -4,7 +4,12 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { CustomNodeTemplate } from "../../../shared/types/editors";
+import type {
+  CustomNodeTemplate,
+  LinkEditorData,
+  NetworkEditorData,
+  NodeEditorData
+} from "../../../shared/types/editors";
 import type { EdgeAnnotation } from "../../../shared/types/topology";
 import {
   convertEditorDataToYaml,
@@ -12,9 +17,6 @@ import {
   convertNetworkEditorDataToYaml
 } from "../../../shared/utilities";
 import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
-import type { LinkEditorData } from "../../components/panels/link-editor/types";
-import type { NetworkEditorData } from "../../components/panels/network-editor/types";
-import type { NodeEditorData } from "../../components/panels/node-editor/types";
 import {
   executeTopologyCommand,
   executeTopologyCommands,

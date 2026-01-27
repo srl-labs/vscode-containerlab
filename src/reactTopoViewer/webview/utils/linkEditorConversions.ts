@@ -1,7 +1,7 @@
 /**
  * Conversions for link editor data.
  */
-import type { LinkEditorData } from "../components/panels/link-editor/types";
+import type { LinkEditorData } from "../../shared/types/editors";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
 import { isSpecialEndpointId } from "../../shared/utilities/LinkTypes";
 

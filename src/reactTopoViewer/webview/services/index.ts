@@ -2,16 +2,9 @@
  * Webview Services (Host-authoritative)
  */
 
-export {
-  executeTopologyCommand,
-  executeTopologyCommands,
-  refreshTopologySnapshot
-} from "./topologyHostCommands";
+export { executeTopologyCommand, executeTopologyCommands } from "./topologyHostCommands";
 
 export {
-  saveFreeTextAnnotations,
-  saveFreeShapeAnnotations,
-  saveGroupStyleAnnotations,
   saveEdgeAnnotations,
   saveViewerSettings,
   saveNodeGroupMembership,
@@ -21,12 +14,9 @@ export {
 
 export {
   createNode,
-  editNode,
   deleteNode,
   createLink,
-  editLink,
   deleteLink,
-  createNetworkNode,
   saveNetworkNodesFromGraph,
   saveNodePositions
 } from "./topologyCrud";
