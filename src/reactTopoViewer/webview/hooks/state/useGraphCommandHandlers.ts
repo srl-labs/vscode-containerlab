@@ -4,7 +4,14 @@
 import React from "react";
 import type { Node } from "@xyflow/react";
 
-import type { TopoNode, TopoEdge, TopologyEdgeData } from "../../../shared/types/graph";
+import type {
+  TopoNode,
+  TopoEdge,
+  TopologyEdgeData,
+  EdgeCreatedData,
+  EdgeCreatedHandler,
+  NodeCreatedHandler
+} from "../../../shared/types/graph";
 import type { NodeSaveData } from "../../../shared/io/NodePersistenceIO";
 import {
   createLink,
@@ -42,22 +49,8 @@ interface UseGraphHandlersWithContextParams {
 }
 
 interface GraphHandlersResult {
-  handleEdgeCreated: (
-    _sourceId: string,
-    _targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void;
-  handleNodeCreatedCallback: (
-    nodeId: string,
-    nodeElement: TopoNode,
-    position: { x: number; y: number }
-  ) => void;
+  handleEdgeCreated: EdgeCreatedHandler;
+  handleNodeCreatedCallback: NodeCreatedHandler;
   handleDeleteNode: (nodeId: string) => void;
   handleDeleteLink: (edgeId: string) => void;
 }
@@ -130,17 +123,7 @@ export function useGraphHandlersWithContext(
     params;
 
   const handleEdgeCreated = React.useCallback(
-    (
-      _sourceId: string,
-      _targetId: string,
-      edgeData: {
-        id: string;
-        source: string;
-        target: string;
-        sourceEndpoint: string;
-        targetEndpoint: string;
-      }
-    ) => {
+    (_sourceId: string, _targetId: string, edgeData: EdgeCreatedData) => {
       const edge: TopoEdge = {
         id: edgeData.id,
         source: edgeData.source,

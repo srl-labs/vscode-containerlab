@@ -15,3 +15,17 @@ export interface TextStyle {
   height?: number;
   roundedBackground?: boolean;
 }
+
+/**
+ * Shared style properties for box/group containers.
+ */
+export interface BoxStyle {
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderStyle?: "solid" | "dotted" | "dashed" | "double";
+  borderRadius?: number;
+  labelColor?: string;
+  labelPosition?: string;
+}

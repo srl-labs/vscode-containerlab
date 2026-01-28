@@ -3,7 +3,7 @@
  * These types define the structure for Containerlab topologies and ReactFlow elements.
  */
 
-import type { TextStyle } from "./annotationStyles";
+import type { TextStyle, BoxStyle } from "./annotationStyles";
 
 // ============================================================================
 // Containerlab YAML Types
@@ -133,7 +133,7 @@ export interface FreeShapeAnnotation {
  * Members are tracked via NodeAnnotation.groupId (preferred) and group/level for legacy display.
  * Groups can be nested via parentId for hierarchical organization.
  */
-export interface GroupStyleAnnotation {
+export interface GroupStyleAnnotation extends BoxStyle {
   id: string;
   name: string;
   level: string;
@@ -147,14 +147,6 @@ export interface GroupStyleAnnotation {
   geoCoordinates?: { lat: number; lng: number };
   // Style
   color?: string;
-  backgroundColor?: string;
-  backgroundOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dotted" | "dashed" | "double";
-  borderRadius?: number;
-  labelColor?: string;
-  labelPosition?: string;
   zIndex?: number;
   [key: string]: unknown;
 }

@@ -66,6 +66,17 @@ export class ReactTopoViewer {
     this.internalUpdateDepth = Math.max(0, this.internalUpdateDepth - 1);
   }
 
+  private async loadRunningLabsData(): Promise<Record<string, ClabLabTreeNode> | undefined> {
+    try {
+      return (await runningLabsProvider.discoverInspectLabs()) as
+        | Record<string, ClabLabTreeNode>
+        | undefined;
+    } catch (err) {
+      log.warn(`Failed to load running lab data: ${err}`);
+      return undefined;
+    }
+  }
+
   /**
    * Initialize watchers for file changes and docker images
    */
@@ -134,13 +145,7 @@ export class ReactTopoViewer {
     }
 
     if (this.isViewMode) {
-      try {
-        this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
-          | Record<string, ClabLabTreeNode>
-          | undefined;
-      } catch (err) {
-        log.warn(`Failed to load running lab data: ${err}`);
-      }
+      this.cacheClabTreeDataToTopoviewer = await this.loadRunningLabsData();
     }
   }
 
@@ -285,17 +290,9 @@ export class ReactTopoViewer {
       }
 
       // Reload running lab data if switching to view mode
-      if (this.isViewMode) {
-        try {
-          this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
-            | Record<string, ClabLabTreeNode>
-            | undefined;
-        } catch (err) {
-          log.warn(`Failed to load running lab data: ${err}`);
-        }
-      } else {
-        this.cacheClabTreeDataToTopoviewer = undefined;
-      }
+      this.cacheClabTreeDataToTopoviewer = this.isViewMode
+        ? await this.loadRunningLabsData()
+        : undefined;
 
       if (this.topologyHost) {
         const containerDataProvider = this.isViewMode

@@ -9,7 +9,7 @@ import type {
   CustomTemplateEditorData,
   NetworkType
 } from "../../../shared/types/editors";
-import type { TopoNode } from "../../../shared/types/graph";
+import type { EdgeCreatedHandler, NodeCreatedHandler } from "../../../shared/types/graph";
 import {
   createNewTemplateEditorData,
   convertTemplateToEditorData
@@ -116,22 +116,8 @@ export interface E2ETestingConfig {
     canUndo: boolean;
     canRedo: boolean;
   };
-  handleEdgeCreated: (
-    sourceId: string,
-    targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void;
-  handleNodeCreatedCallback: (
-    nodeId: string,
-    nodeElement: TopoNode,
-    position: { x: number; y: number }
-  ) => void;
+  handleEdgeCreated: EdgeCreatedHandler;
+  handleNodeCreatedCallback: NodeCreatedHandler;
   handleAddGroup: () => void;
   createNetworkAtPosition: (
     position: { x: number; y: number },

@@ -43,6 +43,17 @@ interface HistoryEntry {
 const DEFAULT_HISTORY_LIMIT = 50;
 const TOPOLOGY_HOST_ACK = "topology-host:ack";
 
+/** Migration entry for graph label data (position, icon, group info) */
+interface GraphLabelMigration {
+  nodeId: string;
+  position?: { x: number; y: number };
+  icon?: string;
+  group?: string;
+  level?: string;
+  groupLabelPos?: string;
+  geoCoordinates?: { lat: number; lng: number };
+}
+
 const noopLogger: IOLogger = {
   debug: () => {},
   info: () => {},
@@ -538,15 +549,7 @@ export class TopologyHostCore implements TopologyHost {
     topology: TopologyData;
     labName?: string;
     pendingMigrations: Array<{ nodeId: string; interfacePattern: string }>;
-    graphLabelMigrations: Array<{
-      nodeId: string;
-      position?: { x: number; y: number };
-      icon?: string;
-      group?: string;
-      level?: string;
-      groupLabelPos?: string;
-      geoCoordinates?: { lat: number; lng: number };
-    }>;
+    graphLabelMigrations: GraphLabelMigration[];
   } {
     if (this.mode === "view") {
       return TopologyParser.parseToReactFlow(yamlContent, {
@@ -560,15 +563,7 @@ export class TopologyHostCore implements TopologyHost {
 
   private async applyMigrations(
     annotations: TopologyAnnotations,
-    graphLabelMigrations: Array<{
-      nodeId: string;
-      position?: { x: number; y: number };
-      icon?: string;
-      group?: string;
-      level?: string;
-      groupLabelPos?: string;
-      geoCoordinates?: { lat: number; lng: number };
-    }>,
+    graphLabelMigrations: GraphLabelMigration[],
     pendingMigrations: Array<{ nodeId: string; interfacePattern: string }>
   ): Promise<boolean> {
     let modified = false;
@@ -722,66 +717,43 @@ function extractLabSettings(doc: YAML.Document.Parsed): LabSettings {
 
 function persistGraphLabelMigrations(
   annotations: TopologyAnnotations,
-  migrations: Array<{
-    nodeId: string;
-    position?: { x: number; y: number };
-    icon?: string;
-    group?: string;
-    level?: string;
-    groupLabelPos?: string;
-    geoCoordinates?: { lat: number; lng: number };
-  }>
+  migrations: GraphLabelMigration[]
 ): TopologyAnnotations {
-  const localAnnotations = {
-    freeTextAnnotations: annotations.freeTextAnnotations ?? [],
-    groupStyleAnnotations: annotations.groupStyleAnnotations ?? [],
-    nodeAnnotations: annotations.nodeAnnotations ?? []
-  } as {
-    nodeAnnotations: Array<{
-      id: string;
-      position?: { x: number; y: number };
-      icon?: string;
-      group?: string;
-      level?: string;
-      groupLabelPos?: string;
-      geoCoordinates?: { lat: number; lng: number };
-    }>;
-  };
+  const nodeAnnotations: Array<Omit<GraphLabelMigration, "nodeId"> & { id: string }> = [
+    ...(annotations.nodeAnnotations ?? [])
+  ];
 
-  const existingIds = new Set(localAnnotations.nodeAnnotations.map((na) => na.id));
+  const existingIds = new Set(nodeAnnotations.map((na) => na.id));
   for (const migration of migrations) {
     if (existingIds.has(migration.nodeId)) continue;
-    localAnnotations.nodeAnnotations.push({ ...migration, id: migration.nodeId });
+    const { nodeId, ...rest } = migration;
+    nodeAnnotations.push({ ...rest, id: nodeId });
   }
 
-  return {
-    ...annotations,
-    nodeAnnotations: localAnnotations.nodeAnnotations
-  };
+  return { ...annotations, nodeAnnotations };
 }
 
 type NodeAnnotationLike = { id: string; groupId?: string; group?: unknown };
 
+function omitKeys<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
+  const keysToOmit = new Set<string>(keys as string[]);
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (!keysToOmit.has(key)) {
+      result[key] = value;
+    }
+  }
+  return result as Omit<T, K>;
+}
+
 function omitGroupFields<T extends NodeAnnotationLike>(
   obj: T
 ): Omit<T, "group" | "groupId"> & { id: string } {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (key !== "group" && key !== "groupId") {
-      result[key] = value;
-    }
-  }
-  return result as Omit<T, "group" | "groupId"> & { id: string };
+  return omitKeys(obj, ["group", "groupId"]) as Omit<T, "group" | "groupId"> & { id: string };
 }
 
 function omitGroupOnly<T extends NodeAnnotationLike>(obj: T): Omit<T, "group"> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (key !== "group") {
-      result[key] = value;
-    }
-  }
-  return result as Omit<T, "group">;
+  return omitKeys(obj, ["group"]) as Omit<T, "group">;
 }
 
 function setKeyAfter(map: YAML.YAMLMap, key: string, value: YAML.Node, afterKey: string): void {

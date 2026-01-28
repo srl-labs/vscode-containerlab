@@ -37,6 +37,13 @@ function getNodeTypeColor(nodeType: string): string {
 
 const ICON_SIZE = 40;
 
+const HANDLE_POSITIONS = [
+  { position: Position.Top, id: "top" },
+  { position: Position.Right, id: "right" },
+  { position: Position.Bottom, id: "bottom" },
+  { position: Position.Left, id: "left" }
+] as const;
+
 /**
  * CloudNode component renders external endpoint nodes (host, mgmt-net, etc.)
  */
@@ -127,62 +134,24 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Hidden handles for edge connections - not interactive */}
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-target"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-target"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-target"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-target"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
+      {HANDLE_POSITIONS.map(({ position, id }) => (
+        <React.Fragment key={id}>
+          <Handle
+            type="source"
+            position={position}
+            id={id}
+            style={HIDDEN_HANDLE_STYLE}
+            isConnectable={false}
+          />
+          <Handle
+            type="target"
+            position={position}
+            id={`${id}-target`}
+            style={HIDDEN_HANDLE_STYLE}
+            isConnectable={false}
+          />
+        </React.Fragment>
+      ))}
 
       {/* Node icon */}
       <div style={iconStyle} className="cloud-node-icon" />

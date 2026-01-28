@@ -5,7 +5,12 @@ import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { LinkEditorData } from "../../../shared/types/editors";
-import type { TopoEdge, TopoNode } from "../../../shared/types/graph";
+import type {
+  TopoEdge,
+  TopoNode,
+  EdgeCreatedHandler,
+  NodeCreatedHandler
+} from "../../../shared/types/graph";
 import type { GraphActions } from "../../stores/graphStore";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
 import { useGraphHandlersWithContext } from "../state";
@@ -33,22 +38,8 @@ interface AppGraphHandlersConfig {
 }
 
 export interface AppGraphHandlers {
-  handleEdgeCreated: (
-    sourceId: string,
-    targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void;
-  handleNodeCreatedCallback: (
-    nodeId: string,
-    nodeElement: TopoNode,
-    position: { x: number; y: number }
-  ) => void;
+  handleEdgeCreated: EdgeCreatedHandler;
+  handleNodeCreatedCallback: NodeCreatedHandler;
   handleDeleteNode: (nodeId: string) => void;
   handleDeleteLink: (edgeId: string) => void;
   handleUpdateNodeData: (nodeId: string, extraData: Record<string, unknown>) => void;

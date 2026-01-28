@@ -4,7 +4,7 @@
  */
 import type { Node, Edge } from "@xyflow/react";
 
-import type { TextStyle } from "./annotationStyles";
+import type { TextStyle, BoxStyle } from "./annotationStyles";
 
 // ============================================================================
 // Node Data Types
@@ -52,20 +52,12 @@ export interface CloudNodeData {
 /**
  * Node data for group container nodes
  */
-export interface GroupNodeData {
+export interface GroupNodeData extends BoxStyle {
   label: string;
   name: string;
   level: string;
   parentId?: string;
   groupId?: string;
-  backgroundColor?: string;
-  backgroundOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dotted" | "dashed" | "double";
-  borderRadius?: number;
-  labelColor?: string;
-  labelPosition?: string;
   width: number;
   height: number;
   [key: string]: unknown;
@@ -185,6 +177,39 @@ export interface TopologyData {
   nodes: TopoNode[];
   edges: TopoEdge[];
 }
+
+// ============================================================================
+// Handler Callback Types
+// ============================================================================
+
+/**
+ * Edge creation data passed to handler callbacks
+ */
+export interface EdgeCreatedData {
+  id: string;
+  source: string;
+  target: string;
+  sourceEndpoint: string;
+  targetEndpoint: string;
+}
+
+/**
+ * Handler callback for edge creation
+ */
+export type EdgeCreatedHandler = (
+  sourceId: string,
+  targetId: string,
+  edgeData: EdgeCreatedData
+) => void;
+
+/**
+ * Handler callback for node creation
+ */
+export type NodeCreatedHandler = (
+  nodeId: string,
+  nodeElement: TopoNode,
+  position: { x: number; y: number }
+) => void;
 
 // ============================================================================
 // Constants
