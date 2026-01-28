@@ -83,18 +83,21 @@ export interface PanelVisibility {
   showSvgExportPanel: boolean;
   showLabSettingsPanel: boolean;
   showBulkLinkPanel: boolean;
+  showNodePalettePanel: boolean;
   handleShowShortcuts: () => void;
   handleShowAbout: () => void;
   handleShowFindNode: () => void;
   handleShowSvgExport: () => void;
   handleShowLabSettings: () => void;
   handleShowBulkLink: () => void;
+  handleShowNodePalette: () => void;
   handleCloseShortcuts: () => void;
   handleCloseAbout: () => void;
   handleCloseFindNode: () => void;
   handleCloseSvgExport: () => void;
   handleCloseLabSettings: () => void;
   handleCloseBulkLink: () => void;
+  handleCloseNodePalette: () => void;
 }
 
 /** Hook for info panels (shortcuts/about) with mutual exclusivity */
@@ -154,11 +157,22 @@ function useUtilityPanels() {
 
 function useEditorPanels() {
   const [showBulkLinkPanel, setShowBulkLinkPanel] = useState(false);
+  const [showNodePalettePanel, setShowNodePalettePanel] = useState(false);
 
   const handleShowBulkLink = useCallback(() => setShowBulkLinkPanel(true), []);
   const handleCloseBulkLink = useCallback(() => setShowBulkLinkPanel(false), []);
 
-  return { showBulkLinkPanel, handleShowBulkLink, handleCloseBulkLink };
+  const handleShowNodePalette = useCallback(() => setShowNodePalettePanel((prev) => !prev), []);
+  const handleCloseNodePalette = useCallback(() => setShowNodePalettePanel(false), []);
+
+  return {
+    showBulkLinkPanel,
+    handleShowBulkLink,
+    handleCloseBulkLink,
+    showNodePalettePanel,
+    handleShowNodePalette,
+    handleCloseNodePalette
+  };
 }
 
 export function usePanelVisibility(): PanelVisibility {

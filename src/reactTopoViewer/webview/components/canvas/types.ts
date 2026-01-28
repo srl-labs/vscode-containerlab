@@ -170,6 +170,12 @@ export interface ReactFlowCanvasProps {
   ) => void;
   /** Callback for shift+click node creation */
   onShiftClickCreate?: (position: { x: number; y: number }) => void;
+  /** Callback to open the node palette panel */
+  onOpenNodePalette?: () => void;
+  /** Callback for drag-drop node creation from palette */
+  onDropCreateNode?: (position: { x: number; y: number }, templateName: string) => void;
+  /** Callback for drag-drop network creation from palette */
+  onDropCreateNetwork?: (position: { x: number; y: number }, networkType: string) => void;
 }
 
 export { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP };

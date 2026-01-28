@@ -80,6 +80,7 @@ interface ContextMenuItemsParams {
   startLinkCreation: (nodeId: string) => void;
   cancelLinkCreation: () => void;
   annotationHandlers?: AnnotationHandlers;
+  onOpenNodePalette?: () => void;
 }
 
 /**
@@ -99,7 +100,8 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation,
-    annotationHandlers
+    annotationHandlers,
+    onOpenNodePalette
   } = params;
   const { type, targetId } = handlers.contextMenu;
 
@@ -150,7 +152,8 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
         reactFlowInstance: handlers.reactFlowInstance,
         nodes,
         edges,
-        setNodes
+        setNodes,
+        onOpenNodePalette
       });
     }
     return [];
@@ -171,7 +174,8 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation,
-    annotationHandlers
+    annotationHandlers,
+    onOpenNodePalette
   ]);
 }
 
@@ -669,7 +673,10 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       linkLabelMode = "show-all",
       onInit: onInitProp,
       onEdgeCreated,
-      onShiftClickCreate
+      onShiftClickCreate,
+      onOpenNodePalette,
+      onDropCreateNode,
+      onDropCreateNetwork
     },
     ref
   ) => {
@@ -815,7 +822,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       linkSourceNode,
       startLinkCreation,
       cancelLinkCreation,
-      annotationHandlers
+      annotationHandlers,
+      onOpenNodePalette
     });
 
     const {
@@ -852,6 +860,50 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const wrappedOnInit = useWrappedOnInit(handlers.onInit, onInitProp);
 
+    // Drag-drop handlers for node palette
+    const handleDragOver = useCallback((event: React.DragEvent) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    }, []);
+
+    const handleDrop = useCallback(
+      (event: React.DragEvent) => {
+        event.preventDefault();
+
+        if (mode !== "edit" || isLocked) return;
+
+        const dataStr = event.dataTransfer.getData("application/reactflow-node");
+        if (!dataStr) return;
+
+        try {
+          const data = JSON.parse(dataStr) as { type: string; templateName?: string; networkType?: string };
+          const rfInstance = handlers.reactFlowInstance.current;
+          if (!rfInstance) return;
+
+          // Get the drop position in flow coordinates
+          const position = rfInstance.screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY
+          });
+
+          // Snap to grid
+          const snappedPosition = {
+            x: Math.round(position.x / GRID_SIZE) * GRID_SIZE,
+            y: Math.round(position.y / GRID_SIZE) * GRID_SIZE
+          };
+
+          if (data.type === "node" && data.templateName && onDropCreateNode) {
+            onDropCreateNode(snappedPosition, data.templateName);
+          } else if (data.type === "network" && data.networkType && onDropCreateNetwork) {
+            onDropCreateNetwork(snappedPosition, data.networkType);
+          }
+        } catch {
+          // Invalid drop data, ignore
+        }
+      },
+      [mode, isLocked, handlers.reactFlowInstance, onDropCreateNode, onDropCreateNetwork]
+    );
+
     const interactionConfig = getCanvasInteractionConfig({
       mode,
       isLocked,
@@ -887,6 +939,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         ref={canvasContainerRef}
         style={canvasStyle}
         className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}`}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
       >
         {overlays.geoMapLayer}
         <ReactFlow

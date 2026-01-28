@@ -16,6 +16,7 @@ import {
   EditorPanels,
   ViewPanels
 } from "./components/panels";
+import { NodePalettePanel } from "./components/panels/NodePalettePanel";
 import { ToastContainer } from "./components/ui/Toast";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
@@ -160,6 +161,33 @@ export const AppContent: React.FC<AppContentProps> = ({
     onNewCustomNode: customNodeCommands.onNewCustomNode
   });
 
+  // Drag-drop handlers for node palette
+  const handleDropCreateNode = React.useCallback(
+    (position: { x: number; y: number }, templateName: string) => {
+      if (state.isLocked) {
+        floatingPanelRef.current?.triggerShake();
+        return;
+      }
+      // Find the template by name
+      const template = state.customNodes.find((t) => t.name === templateName);
+      if (template) {
+        graphCreation.createNodeAtPosition(position, template);
+      }
+    },
+    [state.isLocked, state.customNodes, graphCreation, floatingPanelRef]
+  );
+
+  const handleDropCreateNetwork = React.useCallback(
+    (position: { x: number; y: number }, networkType: string) => {
+      if (state.isLocked) {
+        floatingPanelRef.current?.triggerShake();
+        return;
+      }
+      graphCreation.createNetworkAtPosition(position, networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]);
+    },
+    [state.isLocked, graphCreation, floatingPanelRef]
+  );
+
   useAppE2EExposure({
     state: {
       isLocked: state.isLocked,
@@ -291,6 +319,9 @@ export const AppContent: React.FC<AppContentProps> = ({
           onShiftClickCreate={graphCreation.createNodeAtPosition}
           onNodeDelete={graphHandlers.handleDeleteNode}
           onEdgeDelete={graphHandlers.handleDeleteLink}
+          onOpenNodePalette={panelVisibility.handleShowNodePalette}
+          onDropCreateNode={handleDropCreateNode}
+          onDropCreateNetwork={handleDropCreateNetwork}
         />
         <ViewPanels
           nodeInfo={{
@@ -411,6 +442,15 @@ export const AppContent: React.FC<AppContentProps> = ({
           isAddTextMode={annotations.isAddTextMode}
           isAddShapeMode={annotations.isAddShapeMode}
         />
+        {state.mode === "edit" && (
+          <NodePalettePanel
+            isVisible={panelVisibility.showNodePalettePanel}
+            onClose={panelVisibility.handleCloseNodePalette}
+            onEditCustomNode={customNodeCommands.onEditCustomNode}
+            onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
+            onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
+          />
+        )}
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
         <EasterEggRenderer easterEgg={easterEgg} />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />

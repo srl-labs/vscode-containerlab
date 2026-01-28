@@ -59,6 +59,8 @@ interface PaneMenuBuilderContext {
   nodes: Node[];
   edges: Edge[];
   setNodes: (nodes: Node[]) => void;
+  /** Callback to open the node palette panel */
+  onOpenNodePalette?: () => void;
 }
 
 /**
@@ -317,13 +319,25 @@ const FIT_VIEW_OPTIONS = { padding: 0.2 };
  * Build pane context menu items
  */
 export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuItem[] {
-  const { isEditMode, isLocked, closeContextMenu, reactFlowInstance, nodes, edges, setNodes } = ctx;
+  const {
+    isEditMode,
+    isLocked,
+    closeContextMenu,
+    reactFlowInstance,
+    nodes,
+    edges,
+    setNodes,
+    onOpenNodePalette
+  } = ctx;
   return [
     {
       id: "add-node",
-      label: "Add Node (Shift+Click)",
+      label: "Add Node",
       disabled: !isEditMode || isLocked,
-      onClick: () => closeContextMenu()
+      onClick: () => {
+        onOpenNodePalette?.();
+        closeContextMenu();
+      }
     },
     { id: "divider-1", label: "", divider: true },
     {
