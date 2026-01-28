@@ -343,21 +343,14 @@ function extractIfaceProps(ifaceData?: InterfaceInfo): {
   state: string;
   mtu: string | number;
   type: string;
-<<<<<<< HEAD
-=======
   netemState: NetemState;
->>>>>>> bac108d0 (Consume netem from events)
 } {
   return {
     mac: ifaceData?.mac ?? "",
     state: ifaceData?.state ?? "",
     mtu: ifaceData?.mtu ?? "",
-<<<<<<< HEAD
-    type: ifaceData?.type ?? ""
-=======
     type: ifaceData?.type ?? "",
     netemState: ifaceData?.netemState ?? {}
->>>>>>> bac108d0 (Consume netem from events)
   };
 }
 
@@ -399,13 +392,9 @@ export function createClabInfo(params: {
     clabSourceMtu: src.mtu,
     clabTargetMtu: tgt.mtu,
     clabSourceType: src.type,
-<<<<<<< HEAD
-    clabTargetType: tgt.type
-=======
     clabTargetType: tgt.type,
     clabSourceNetem: src.netemState,
     clabTargetNetem: tgt.netemState
->>>>>>> bac108d0 (Consume netem from events)
   };
 
   if (sourceStats) info.clabSourceStats = sourceStats;

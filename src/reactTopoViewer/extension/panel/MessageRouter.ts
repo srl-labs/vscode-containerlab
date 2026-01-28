@@ -423,22 +423,15 @@ export class MessageRouter {
     }
     const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
     const interfaceName = typeof message.interfaceName === "string" ? message.interfaceName : "";
-<<<<<<< HEAD
-=======
     const data =
       typeof message.data === "object" ? (message.data as Record<string, unknown>) : undefined;
->>>>>>> b02b6e25 (Set link impairment)
     if (!nodeName || !interfaceName) {
       log.warn(`[MessageRouter] Invalid interface command payload: ${JSON.stringify(message)}`);
       return;
     }
     const res = await nodeCommandService.handleInterfaceEndpoint(
       command,
-<<<<<<< HEAD
-      { nodeName, interfaceName },
-=======
       { nodeName, interfaceName, data },
->>>>>>> b02b6e25 (Set link impairment)
       yamlFilePath
     );
     if (res.error) log.error(`[MessageRouter] ${res.error}`);
