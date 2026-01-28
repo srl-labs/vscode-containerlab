@@ -19,19 +19,6 @@ function getRoleSvgType(role: string): NodeType {
   return "pe"; // Default to PE router icon
 }
 
-// Constant styles extracted outside component to avoid recreation on every render
-const CONTAINER_STYLE_BASE: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  position: "relative"
-};
-
-const CONTAINER_STYLE_LINK_TARGET: React.CSSProperties = {
-  ...CONTAINER_STYLE_BASE,
-  cursor: "crosshair"
-};
-
 const LABEL_STYLE: React.CSSProperties = {
   marginTop: -2,
   fontSize: "0.7rem",
@@ -42,6 +29,7 @@ const LABEL_STYLE: React.CSSProperties = {
   backgroundColor: "rgba(0, 0, 0, 0.7)",
   padding: "1px 4px",
   borderRadius: 3,
+  flexShrink: 0,
   maxWidth: 80,
   overflow: "hidden",
   textOverflow: "ellipsis",
@@ -59,9 +47,27 @@ const HIDDEN_HANDLE_STYLE: React.CSSProperties = {
 
 // Icon style constants
 const ICON_SIZE = 40;
+
+// Constant styles extracted outside component to avoid recreation on every render
+const CONTAINER_STYLE_BASE: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  position: "relative",
+  width: ICON_SIZE,
+  height: ICON_SIZE,
+  overflow: "visible"
+};
+
+const CONTAINER_STYLE_LINK_TARGET: React.CSSProperties = {
+  ...CONTAINER_STYLE_BASE,
+  cursor: "crosshair"
+};
+
 const ICON_STYLE_BASE: React.CSSProperties = {
   width: ICON_SIZE,
   height: ICON_SIZE,
+  flexShrink: 0,
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat"

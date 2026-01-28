@@ -29,6 +29,8 @@ function getNodeTypeColor(nodeType: string): string {
   }
 }
 
+const ICON_SIZE = 40;
+
 /**
  * CloudNode component renders external endpoint nodes (host, mgmt-net, etc.)
  */
@@ -56,6 +58,9 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     flexDirection: "column",
     alignItems: "center",
     position: "relative",
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    overflow: "visible",
     cursor: isLinkTarget ? "crosshair" : undefined
   };
 
@@ -81,8 +86,9 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   // Icon styles
   const iconStyle: React.CSSProperties = {
-    width: 40,
-    height: 40,
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    flexShrink: 0,
     backgroundImage: `url(${svgUrl})`,
     backgroundSize: "cover",
     backgroundPosition: "center",
@@ -104,6 +110,7 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     backgroundColor: "rgba(0, 0, 0, 0.7)",
     padding: "1px 4px",
     borderRadius: 3,
+    flexShrink: 0,
     maxWidth: 80,
     overflow: "hidden",
     textOverflow: "ellipsis",
