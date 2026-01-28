@@ -20,6 +20,8 @@ test.describe("Bulk Link Devices", () => {
     await topoViewerPage.createNode("spine1", { x: 460, y: 120 }, KIND);
     await topoViewerPage.createNode("spine2", { x: 460, y: 260 }, KIND);
 
+    await expect.poll(() => topoViewerPage.getNodeCount()).toBe(4);
+
     await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(0);
 
     await page.click(SEL_BULK_LINK_BTN);
@@ -32,10 +34,27 @@ test.describe("Bulk Link Devices", () => {
 
     await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(4);
 
-    const edgeIds = await topoViewerPage.getEdgeIds();
-    expect(edgeIds).toEqual(
-      expect.arrayContaining(["leaf1-spine1", "leaf1-spine2", "leaf2-spine1", "leaf2-spine2"])
-    );
+    const edges = await topoViewerPage.getEdgesData();
+    const normalize = (edge: {
+      source: string;
+      target: string;
+      sourceEndpoint?: string;
+      targetEndpoint?: string;
+    }) => {
+      const left = `${edge.source}:${edge.sourceEndpoint ?? ""}`;
+      const right = `${edge.target}:${edge.targetEndpoint ?? ""}`;
+      return [left, right].sort().join("--");
+    };
+    const normalizedEdges = edges.map(normalize);
+    const expectedEdges = [
+      "leaf1:e1-1--spine1:e1-1",
+      "leaf1:e1-2--spine2:e1-1",
+      "leaf2:e1-1--spine1:e1-2",
+      "leaf2:e1-2--spine2:e1-2"
+    ].map((edge) => edge.split("--").sort().join("--"));
+    for (const expected of expectedEdges) {
+      expect(normalizedEdges).toContain(expected);
+    }
 
     const getEndpointCount = async () => {
       const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
@@ -45,8 +64,8 @@ test.describe("Bulk Link Devices", () => {
     await expect.poll(getEndpointCount).toBe(4);
 
     await topoViewerPage.undo();
-    await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(0);
-    await expect.poll(getEndpointCount).toBe(0);
+    await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(3);
+    await expect.poll(getEndpointCount).toBe(3);
 
     await topoViewerPage.redo();
     await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(4);

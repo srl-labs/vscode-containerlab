@@ -161,12 +161,11 @@ test.describe("Group Operations", () => {
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
     expect(secondNodeBox).not.toBeNull();
 
-    await page.keyboard.down("Control");
-    await page.mouse.click(
+    await shiftClick(
+      page,
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     const selectedIds = await topoViewerPage.getSelectedNodeIds();
@@ -193,12 +192,11 @@ test.describe("Group Operations", () => {
     // Select two nodes
     await topoViewerPage.selectNode(node1);
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(node2);
-    await page.keyboard.down("Control");
-    await page.mouse.click(
+    await shiftClick(
+      page,
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     // Create group using the fixture helper
@@ -483,12 +481,11 @@ test.describe("Group Operations - File Persistence", () => {
     // Select two nodes
     await topoViewerPage.selectNode(nodeIds[0]);
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    await page.keyboard.down("Control");
-    await page.mouse.click(
+    await shiftClick(
+      page,
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     // Create group with Ctrl+G using fixture helper
@@ -535,12 +532,11 @@ test.describe("Group Operations - File Persistence", () => {
     // Select two nodes and create a group
     await topoViewerPage.selectNode(nodeIds[0]);
     const secondNodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
-    await page.keyboard.down("Control");
-    await page.mouse.click(
+    await shiftClick(
+      page,
       secondNodeBox!.x + secondNodeBox!.width / 2,
       secondNodeBox!.y + secondNodeBox!.height / 2
     );
-    await page.keyboard.up("Control");
     await page.waitForTimeout(200);
 
     // Create group using fixture helper

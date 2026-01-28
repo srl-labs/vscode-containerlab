@@ -19,8 +19,14 @@ import { applyGroupMembershipToNodes } from "../annotations/groupMembership";
 import { annotationsToNodes } from "../annotations/annotationNodeConverters";
 import { pruneEdgeAnnotations } from "../annotations/edgeAnnotations";
 import { parseEndpointLabelOffset } from "../annotations/endpointLabelOffset";
+import { applyForceLayout, hasPresetPositions } from "../components/canvas/layout";
 
 import { setHostRevision } from "./topologyHostClient";
+
+export interface ApplySnapshotOptions {
+  /** If true, apply auto-layout when nodes have no preset positions */
+  isInitialLoad?: boolean;
+}
 
 function buildMergedNodes(
   newNodes: TopoNode[],
@@ -66,7 +72,10 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
   };
 }
 
-export function applySnapshotToStores(snapshot: TopologySnapshot): void {
+export function applySnapshotToStores(
+  snapshot: TopologySnapshot,
+  options: ApplySnapshotOptions = {}
+): void {
   if (!snapshot) return;
 
   setHostRevision(snapshot.revision);
@@ -75,13 +84,19 @@ export function applySnapshotToStores(snapshot: TopologySnapshot): void {
   const edges = (snapshot.edges ?? []) as TopoEdge[];
   const nodes = (snapshot.nodes ?? []) as TopoNode[];
 
-  const mergedNodes = buildMergedNodes(
+  let mergedNodes = buildMergedNodes(
     nodes,
     annotations.nodeAnnotations,
     annotations.groupStyleAnnotations,
     annotations.freeTextAnnotations,
     annotations.freeShapeAnnotations
   );
+
+  // On initial load, apply force layout if nodes don't have preset positions
+  // This handles the case when annotation.json doesn't exist or nodes have no saved positions
+  if (options.isInitialLoad && !hasPresetPositions(mergedNodes)) {
+    mergedNodes = applyForceLayout(mergedNodes, edges as unknown as Edge[]);
+  }
 
   const cleanedEdgeAnnotations = pruneEdgeAnnotations(annotations.edgeAnnotations, edges);
 

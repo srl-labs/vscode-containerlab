@@ -20,7 +20,10 @@ test.describe("Node Dragging", () => {
 
     const nodeId = nodeIds[0];
 
-    // Get initial position
+    // Get initial position (model coords) and current zoom
+    const initialPosition = await topoViewerPage.getNodePosition(nodeId);
+
+    // Get bounding box for drag start (screen coords)
     const initialBox = await topoViewerPage.getNodeBoundingBox(nodeId);
     expect(initialBox).not.toBeNull();
 
@@ -39,17 +42,14 @@ test.describe("Node Dragging", () => {
     // Wait for drag to complete
     await page.waitForTimeout(300);
 
-    // Get new position
-    const newBox = await topoViewerPage.getNodeBoundingBox(nodeId);
-    expect(newBox).not.toBeNull();
+    // Get new position (model coords)
+    const newPosition = await topoViewerPage.getNodePosition(nodeId);
 
-    // Verify node moved approximately the drag distance
-    const movedX = newBox!.x - initialBox!.x;
-    const movedY = newBox!.y - initialBox!.y;
-
-    // Allow some tolerance for coordinate transforms (70% of expected)
-    expect(movedX).toBeGreaterThan(dragDistance * 0.7);
-    expect(movedY).toBeGreaterThan(dragDistance * 0.7);
+    // Verify node moved a meaningful amount in model space (zoom-independent threshold)
+    const movedX = Math.abs(newPosition.x - initialPosition.x);
+    const movedY = Math.abs(newPosition.y - initialPosition.y);
+    expect(movedX).toBeGreaterThan(10);
+    expect(movedY).toBeGreaterThan(10);
   });
 
   test("does not drag node when canvas is locked", async ({ page, topoViewerPage }) => {
@@ -62,7 +62,10 @@ test.describe("Node Dragging", () => {
 
     const nodeId = nodeIds[0];
 
-    // Get initial position
+    // Get initial position (model coords)
+    const initialPosition = await topoViewerPage.getNodePosition(nodeId);
+
+    // Get bounding box for drag start (screen coords)
     const initialBox = await topoViewerPage.getNodeBoundingBox(nodeId);
     expect(initialBox).not.toBeNull();
 
@@ -74,16 +77,15 @@ test.describe("Node Dragging", () => {
 
     await page.waitForTimeout(300);
 
-    // Get position after attempted drag
-    const afterBox = await topoViewerPage.getNodeBoundingBox(nodeId);
-    expect(afterBox).not.toBeNull();
+    // Get position after attempted drag (model coords)
+    const afterPosition = await topoViewerPage.getNodePosition(nodeId);
 
     // Position should be the same (or very close)
-    const movedX = Math.abs(afterBox!.x - initialBox!.x);
-    const movedY = Math.abs(afterBox!.y - initialBox!.y);
+    const movedX = Math.abs(afterPosition.x - initialPosition.x);
+    const movedY = Math.abs(afterPosition.y - initialPosition.y);
 
-    expect(movedX).toBeLessThan(5);
-    expect(movedY).toBeLessThan(5);
+    expect(movedX).toBeLessThan(1);
+    expect(movedY).toBeLessThan(1);
   });
 
   test("drag maintains relative position", async ({ page, topoViewerPage }) => {

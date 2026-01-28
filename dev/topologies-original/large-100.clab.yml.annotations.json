@@ -1,0 +1,1035 @@
+{
+  "nodeAnnotations": [
+    {
+      "id": "border1",
+      "position": {
+        "x": 2340,
+        "y": 50
+      },
+      "group": "group-border",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "border2",
+      "position": {
+        "x": 2400,
+        "y": 50
+      },
+      "group": "group-border",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "spine1",
+      "position": {
+        "x": 2280,
+        "y": 170
+      },
+      "group": "group-spine",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "spine2",
+      "position": {
+        "x": 2340,
+        "y": 170
+      },
+      "group": "group-spine",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "spine3",
+      "position": {
+        "x": 2400,
+        "y": 170
+      },
+      "group": "group-spine",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "spine4",
+      "position": {
+        "x": 2460,
+        "y": 170
+      },
+      "group": "group-spine",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf1",
+      "position": {
+        "x": 1980,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf2",
+      "position": {
+        "x": 2040,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf3",
+      "position": {
+        "x": 2100,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf4",
+      "position": {
+        "x": 2160,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf5",
+      "position": {
+        "x": 2220,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf6",
+      "position": {
+        "x": 2280,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf7",
+      "position": {
+        "x": 2340,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf8",
+      "position": {
+        "x": 2400,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf9",
+      "position": {
+        "x": 2460,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf10",
+      "position": {
+        "x": 2520,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf11",
+      "position": {
+        "x": 2580,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf12",
+      "position": {
+        "x": 2640,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf13",
+      "position": {
+        "x": 2700,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "leaf14",
+      "position": {
+        "x": 2760,
+        "y": 290
+      },
+      "group": "group-leaf",
+      "level": "1",
+      "interfacePattern": "eth{n}"
+    },
+    {
+      "id": "server1",
+      "position": {
+        "x": 900,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server2",
+      "position": {
+        "x": 960,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server3",
+      "position": {
+        "x": 1020,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server4",
+      "position": {
+        "x": 1080,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server5",
+      "position": {
+        "x": 1140,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server6",
+      "position": {
+        "x": 1200,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server7",
+      "position": {
+        "x": 1260,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server8",
+      "position": {
+        "x": 1320,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server9",
+      "position": {
+        "x": 1380,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server10",
+      "position": {
+        "x": 1440,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server11",
+      "position": {
+        "x": 1500,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server12",
+      "position": {
+        "x": 1560,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server13",
+      "position": {
+        "x": 1620,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server14",
+      "position": {
+        "x": 1680,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server15",
+      "position": {
+        "x": 1740,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server16",
+      "position": {
+        "x": 1800,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server17",
+      "position": {
+        "x": 1860,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server18",
+      "position": {
+        "x": 1920,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server19",
+      "position": {
+        "x": 1980,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server20",
+      "position": {
+        "x": 2040,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server21",
+      "position": {
+        "x": 2100,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server22",
+      "position": {
+        "x": 2160,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server23",
+      "position": {
+        "x": 2220,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server24",
+      "position": {
+        "x": 2280,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server25",
+      "position": {
+        "x": 2340,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server26",
+      "position": {
+        "x": 2400,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server27",
+      "position": {
+        "x": 2460,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server28",
+      "position": {
+        "x": 2520,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server29",
+      "position": {
+        "x": 2580,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server30",
+      "position": {
+        "x": 2640,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server31",
+      "position": {
+        "x": 2700,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server32",
+      "position": {
+        "x": 2760,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server33",
+      "position": {
+        "x": 2820,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server34",
+      "position": {
+        "x": 2880,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server35",
+      "position": {
+        "x": 2940,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server36",
+      "position": {
+        "x": 3000,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server37",
+      "position": {
+        "x": 3060,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server38",
+      "position": {
+        "x": 3120,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server39",
+      "position": {
+        "x": 3180,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server40",
+      "position": {
+        "x": 3240,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server41",
+      "position": {
+        "x": 3300,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server42",
+      "position": {
+        "x": 3360,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server43",
+      "position": {
+        "x": 3420,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server44",
+      "position": {
+        "x": 3480,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server45",
+      "position": {
+        "x": 3540,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server46",
+      "position": {
+        "x": 3600,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server47",
+      "position": {
+        "x": 3660,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server48",
+      "position": {
+        "x": 3720,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server49",
+      "position": {
+        "x": 3780,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server50",
+      "position": {
+        "x": 3840,
+        "y": 410
+      },
+      "group": "group-servers-row1",
+      "level": "1"
+    },
+    {
+      "id": "server51",
+      "position": {
+        "x": 1500,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server52",
+      "position": {
+        "x": 1560,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server53",
+      "position": {
+        "x": 1620,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server54",
+      "position": {
+        "x": 1680,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server55",
+      "position": {
+        "x": 1740,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server56",
+      "position": {
+        "x": 1800,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server57",
+      "position": {
+        "x": 1860,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server58",
+      "position": {
+        "x": 1920,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server59",
+      "position": {
+        "x": 1980,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server60",
+      "position": {
+        "x": 2040,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server61",
+      "position": {
+        "x": 2100,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server62",
+      "position": {
+        "x": 2160,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server63",
+      "position": {
+        "x": 2220,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server64",
+      "position": {
+        "x": 2280,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server65",
+      "position": {
+        "x": 2340,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server66",
+      "position": {
+        "x": 2400,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server67",
+      "position": {
+        "x": 2460,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server68",
+      "position": {
+        "x": 2520,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server69",
+      "position": {
+        "x": 2580,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server70",
+      "position": {
+        "x": 2640,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server71",
+      "position": {
+        "x": 2700,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server72",
+      "position": {
+        "x": 2760,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server73",
+      "position": {
+        "x": 2820,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server74",
+      "position": {
+        "x": 2880,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server75",
+      "position": {
+        "x": 2940,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server76",
+      "position": {
+        "x": 3000,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server77",
+      "position": {
+        "x": 3060,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server78",
+      "position": {
+        "x": 3120,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server79",
+      "position": {
+        "x": 3180,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    },
+    {
+      "id": "server80",
+      "position": {
+        "x": 3240,
+        "y": 490
+      },
+      "group": "group-servers-row2",
+      "level": "1"
+    }
+  ],
+  "freeTextAnnotations": [],
+  "freeShapeAnnotations": [],
+  "groupStyleAnnotations": [
+    {
+      "id": "group-border",
+      "name": "Border",
+      "level": "L0",
+      "position": {
+        "x": 2450,
+        "y": 50
+      },
+      "width": 200,
+      "height": 60,
+      "color": "#dc2626",
+      "backgroundColor": "#dc2626",
+      "backgroundOpacity": 0.08,
+      "borderColor": "#dc2626",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "borderRadius": 8,
+      "labelColor": "#dc2626",
+      "labelPosition": "top-left",
+      "zIndex": -5
+    },
+    {
+      "id": "group-spine",
+      "name": "Spine",
+      "level": "L1",
+      "position": {
+        "x": 2450,
+        "y": 170
+      },
+      "width": 320,
+      "height": 60,
+      "color": "#7c3aed",
+      "backgroundColor": "#7c3aed",
+      "backgroundOpacity": 0.08,
+      "borderColor": "#7c3aed",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "borderRadius": 8,
+      "labelColor": "#7c3aed",
+      "labelPosition": "top-left",
+      "zIndex": -5
+    },
+    {
+      "id": "group-leaf",
+      "name": "Leaf",
+      "level": "L2",
+      "position": {
+        "x": 2450,
+        "y": 290
+      },
+      "width": 920,
+      "height": 60,
+      "color": "#059669",
+      "backgroundColor": "#059669",
+      "backgroundOpacity": 0.08,
+      "borderColor": "#059669",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "borderRadius": 8,
+      "labelColor": "#059669",
+      "labelPosition": "top-left",
+      "zIndex": -4
+    },
+    {
+      "id": "group-servers-row1",
+      "name": "Servers 1",
+      "level": "L3",
+      "position": {
+        "x": 2450,
+        "y": 410
+      },
+      "width": 3080,
+      "height": 60,
+      "color": "#ea580c",
+      "backgroundColor": "#ea580c",
+      "backgroundOpacity": 0.06,
+      "borderColor": "#ea580c",
+      "borderWidth": 1,
+      "borderStyle": "dashed",
+      "borderRadius": 6,
+      "labelColor": "#ea580c",
+      "labelPosition": "bottom-center",
+      "zIndex": -4
+    },
+    {
+      "id": "group-servers-row2",
+      "name": "Servers 2",
+      "level": "L3",
+      "position": {
+        "x": 2450,
+        "y": 490
+      },
+      "width": 3080,
+      "height": 60,
+      "color": "#ea580c",
+      "backgroundColor": "#ea580c",
+      "backgroundOpacity": 0.06,
+      "borderColor": "#ea580c",
+      "borderWidth": 1,
+      "borderStyle": "dashed",
+      "borderRadius": 6,
+      "labelColor": "#ea580c",
+      "labelPosition": "bottom-center",
+      "zIndex": -4
+    }
+  ],
+  "networkNodeAnnotations": [],
+  "aliasEndpointAnnotations": []
+}

@@ -16,7 +16,10 @@ type LayoutControls = ReturnType<typeof useLayoutControls>;
 
 interface AppE2EExposureParams {
   state: Pick<TopoViewerState, "isLocked" | "mode" | "selectedNode" | "selectedEdge">;
-  actions: Pick<TopoViewerActions, "toggleLock" | "editNetwork" | "selectNode" | "selectEdge">;
+  actions: Pick<
+    TopoViewerActions,
+    "toggleLock" | "editNetwork" | "selectNode" | "selectEdge" | "setMode"
+  >;
   undoRedo: Pick<UndoRedoControls, "canUndo" | "canRedo">;
   graphHandlers: Pick<AppGraphHandlers, "handleEdgeCreated" | "handleNodeCreatedCallback">;
   annotations: Pick<AnnotationContextValue, "handleAddGroup" | "groups">;
@@ -39,6 +42,7 @@ export function useAppE2EExposure({
     isLocked: state.isLocked,
     mode: state.mode,
     toggleLock: actions.toggleLock,
+    setMode: actions.setMode,
     undoRedo,
     handleEdgeCreated: graphHandlers.handleEdgeCreated,
     handleNodeCreatedCallback: graphHandlers.handleNodeCreatedCallback,

@@ -17,6 +17,8 @@ interface ExecuteOptions {
   applySnapshot?: boolean;
 }
 
+let commandQueue: Promise<unknown> = Promise.resolve();
+
 async function handleHostResponse(
   response: TopologyHostResponseMessage,
   applySnapshot: boolean
@@ -60,40 +62,52 @@ export async function executeTopologyCommand(
   command: TopologyHostCommand,
   options: ExecuteOptions = {}
 ): Promise<TopologyHostResponseMessage> {
-  const applySnapshot = options.applySnapshot ?? true;
-  const response = await dispatchTopologyCommand(command);
-  return handleHostResponse(response, applySnapshot);
+  const run = async () => {
+    const applySnapshot = options.applySnapshot ?? true;
+    const response = await dispatchTopologyCommand(command);
+    return handleHostResponse(response, applySnapshot);
+  };
+
+  const queued = commandQueue.then(run, run);
+  commandQueue = queued.catch(() => undefined);
+  return queued;
 }
 
 export async function executeTopologyCommands(
   commands: TopologyHostCommand[],
   options: ExecuteOptions = {}
 ): Promise<TopologyHostResponseMessage | null> {
-  const applySnapshot = options.applySnapshot ?? true;
-  let lastResponse: TopologyHostResponseMessage | null = null;
+  const run = async () => {
+    const applySnapshot = options.applySnapshot ?? true;
+    let lastResponse: TopologyHostResponseMessage | null = null;
 
-  for (const command of commands) {
-    const response = await dispatchTopologyCommand(command);
-    lastResponse = await handleHostResponse(response, false);
+    for (const command of commands) {
+      const response = await dispatchTopologyCommand(command);
+      lastResponse = await handleHostResponse(response, false);
 
-    if (response.type === "topology-host:reject") {
-      if (applySnapshot) {
-        applySnapshotToStores(response.snapshot);
+      if (response.type === "topology-host:reject") {
+        if (applySnapshot) {
+          applySnapshotToStores(response.snapshot);
+        }
+        return response;
       }
-      return response;
     }
-  }
 
-  if (applySnapshot) {
-    if (lastResponse?.type === "topology-host:ack" && lastResponse.snapshot) {
-      applySnapshotToStores(lastResponse.snapshot);
-    } else {
-      const snapshot = await requestSnapshot();
-      applySnapshotToStores(snapshot);
+    if (applySnapshot) {
+      if (lastResponse?.type === "topology-host:ack" && lastResponse.snapshot) {
+        applySnapshotToStores(lastResponse.snapshot);
+      } else {
+        const snapshot = await requestSnapshot();
+        applySnapshotToStores(snapshot);
+      }
     }
-  }
 
-  return lastResponse;
+    return lastResponse;
+  };
+
+  const queued = commandQueue.then(run, run);
+  commandQueue = queued.catch(() => undefined);
+  return queued;
 }
 
 export async function refreshTopologySnapshot(): Promise<TopologySnapshot> {

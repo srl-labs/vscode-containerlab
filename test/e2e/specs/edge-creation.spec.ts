@@ -50,9 +50,14 @@ test.describe("Edge Creation", () => {
     const newEdgeCount = await topoViewerPage.getEdgeCount();
     expect(newEdgeCount).toBe(initialEdgeCount + 1);
 
-    // Verify the edge exists in the graph
-    const edgeIds = await topoViewerPage.getEdgeIds();
-    expect(edgeIds).toContain(`srl1:${sourceEndpoint}-srl2:${targetEndpoint}`);
+    // Verify the edge exists in the graph (match by endpoints)
+    const edge = await topoViewerPage.findEdgeByEndpoints(
+      "srl1",
+      "srl2",
+      sourceEndpoint,
+      targetEndpoint
+    );
+    expect(edge).not.toBeNull();
 
     // Read YAML and verify endpoints
     const yaml = await topoViewerPage.getYamlFromFile(SIMPLE_FILE);
@@ -60,28 +65,10 @@ test.describe("Edge Creation", () => {
     expect(yaml).toContain(`srl2:${targetEndpoint}`);
 
     // Verify via browser-side API (via React Flow API)
-    const edgeData = await page.evaluate((expectedId) => {
-      const dev = (window as any).__DEV__;
-      const rf = dev?.rfInstance;
-      if (!rf) return null;
-
-      const edges = rf.getEdges?.() ?? [];
-      const edge = edges.find((e: any) => e.id === expectedId);
-      if (!edge) return null;
-
-      return {
-        source: edge.source,
-        target: edge.target,
-        sourceEndpoint: edge.data?.sourceEndpoint,
-        targetEndpoint: edge.data?.targetEndpoint
-      };
-    }, `srl1:${sourceEndpoint}-srl2:${targetEndpoint}`);
-
-    expect(edgeData).not.toBeNull();
-    expect(edgeData?.source).toBe("srl1");
-    expect(edgeData?.target).toBe("srl2");
-    expect(edgeData?.sourceEndpoint).toBe(sourceEndpoint);
-    expect(edgeData?.targetEndpoint).toBe(targetEndpoint);
+    expect(edge?.source).toBe("srl1");
+    expect(edge?.target).toBe("srl2");
+    expect(edge?.sourceEndpoint).toBe(sourceEndpoint);
+    expect(edge?.targetEndpoint).toBe(targetEndpoint);
   });
 
   test("can create self-loop edge (hairpin)", async ({ page, topoViewerPage }) => {
@@ -359,9 +346,9 @@ test.describe("Edge Creation - Undo/Redo", () => {
     edgeCount = await topoViewerPage.getEdgeCount();
     expect(edgeCount).toBe(initialEdgeCount + 1);
 
-    // Verify edge exists
-    const edgeIds = await topoViewerPage.getEdgeIds();
-    expect(edgeIds).toContain("srl1:e1-14-srl2:e1-14");
+    // Verify edge exists (by endpoints)
+    const edge = await topoViewerPage.findEdgeByEndpoints("srl1", "srl2", "e1-14", "e1-14");
+    expect(edge).not.toBeNull();
   });
 
   test("undo multiple edge creations in reverse order", async ({ page, topoViewerPage }) => {

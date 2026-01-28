@@ -53,6 +53,11 @@ import type {
   ReactFlowCanvasProps,
   ReactFlowCanvasRef
 } from "./types";
+import {
+  FREE_SHAPE_NODE_TYPE,
+  FREE_TEXT_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 
 type RafThrottled<Args extends unknown[]> = ((...args: Args) => void) & { cancel: () => void };
 
@@ -197,10 +202,31 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
 function useWrappedNodeClick(
   linkSourceNode: string | null,
   completeLinkCreation: (nodeId: string) => void,
-  onNodeClick: ReturnType<typeof useCanvasHandlers>["onNodeClick"]
+  onNodeClick: ReturnType<typeof useCanvasHandlers>["onNodeClick"],
+  mode: "view" | "edit",
+  isLocked: boolean,
+  handleDeleteNode: (nodeId: string) => void,
+  annotationHandlers?: AnnotationHandlers
 ) {
   return useCallback(
     (event: React.MouseEvent, node: { id: string; type?: string }) => {
+      if (event.altKey && mode === "edit" && !isLocked) {
+        event.stopPropagation();
+        if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onDeleteFreeText) {
+          annotationHandlers.onDeleteFreeText(node.id);
+          return;
+        }
+        if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onDeleteFreeShape) {
+          annotationHandlers.onDeleteFreeShape(node.id);
+          return;
+        }
+        if (node.type === GROUP_NODE_TYPE && annotationHandlers?.onDeleteGroup) {
+          annotationHandlers.onDeleteGroup(node.id);
+          return;
+        }
+        handleDeleteNode(node.id);
+        return;
+      }
       if (linkSourceNode) {
         const isLoopLink = linkSourceNode === node.id;
         const isCloudNode = node.type === "cloud-node";
@@ -213,7 +239,34 @@ function useWrappedNodeClick(
       }
       onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
     },
-    [linkSourceNode, completeLinkCreation, onNodeClick]
+    [
+      linkSourceNode,
+      completeLinkCreation,
+      onNodeClick,
+      mode,
+      isLocked,
+      handleDeleteNode,
+      annotationHandlers
+    ]
+  );
+}
+
+function useWrappedEdgeClick(
+  onEdgeClick: ReturnType<typeof useCanvasHandlers>["onEdgeClick"],
+  mode: "view" | "edit",
+  isLocked: boolean,
+  handleDeleteEdge: (edgeId: string) => void
+) {
+  return useCallback(
+    (event: React.MouseEvent, edge: { id: string }) => {
+      if (event.altKey && mode === "edit" && !isLocked) {
+        event.stopPropagation();
+        handleDeleteEdge(edge.id);
+        return;
+      }
+      onEdgeClick(event, edge as Parameters<typeof onEdgeClick>[1]);
+    },
+    [onEdgeClick, mode, isLocked, handleDeleteEdge]
   );
 }
 
@@ -513,7 +566,17 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const wrappedOnNodeClick = useWrappedNodeClick(
       linkSourceNode,
       completeLinkCreation,
-      handlers.onNodeClick
+      handlers.onNodeClick,
+      mode,
+      isLocked,
+      handleDeleteNode,
+      annotationHandlers
+    );
+    const wrappedOnEdgeClick = useWrappedEdgeClick(
+      handlers.onEdgeClick,
+      mode,
+      isLocked,
+      handleDeleteEdge
     );
     const contextMenuItems = useContextMenuItems({
       handlers,
@@ -575,7 +638,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           onNodeDrag={handleNodeDrag}
           onNodeDragStop={handleNodeDragStop}
           onNodeContextMenu={handlers.onNodeContextMenu}
-          onEdgeClick={handlers.onEdgeClick}
+          onEdgeClick={wrappedOnEdgeClick}
           onEdgeDoubleClick={handlers.onEdgeDoubleClick}
           onEdgeContextMenu={handlers.onEdgeContextMenu}
           onPaneClick={wrappedOnPaneClick}

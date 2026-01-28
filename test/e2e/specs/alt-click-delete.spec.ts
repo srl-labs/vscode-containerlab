@@ -148,9 +148,7 @@ test.describe("Alt+Click Delete", () => {
 
       // Wait for groups to be loaded and fit to viewport
       await page.waitForTimeout(500);
-      await page.evaluate(() => {
-        (window as any).__DEV__?.cy?.fit();
-      });
+      await topoViewerPage.fit();
       await page.waitForTimeout(300);
 
       const groupIds = await topoViewerPage.getGroupIds();
@@ -190,9 +188,7 @@ test.describe("Alt+Click Delete", () => {
 
       // Wait for groups to be loaded and fit to viewport
       await page.waitForTimeout(500);
-      await page.evaluate(() => {
-        (window as any).__DEV__?.cy?.fit();
-      });
+      await topoViewerPage.fit();
       await page.waitForTimeout(300);
 
       const groupIds = await topoViewerPage.getGroupIds();
@@ -231,9 +227,7 @@ test.describe("Alt+Click Delete", () => {
 
       // Wait for annotations to load and fit to viewport
       await page.waitForTimeout(500);
-      await page.evaluate(() => {
-        (window as any).__DEV__?.cy?.fit();
-      });
+      await topoViewerPage.fit();
       await page.waitForTimeout(300);
 
       // Get initial text annotation count from file
@@ -241,25 +235,19 @@ test.describe("Alt+Click Delete", () => {
       const initialTextCount = beforeAnnotations.freeTextAnnotations?.length ?? 0;
       expect(initialTextCount).toBeGreaterThan(0);
 
-      // Find a visible text annotation - click on .free-text-markdown which bubbles up to handler
-      // Playwright's coordinate-based click can miss narrow rotated elements, so we use dispatchEvent
-      const markdownDivs = page.locator(".free-text-layer .free-text-markdown");
-      const count = await markdownDivs.count();
-      let visibleElement = null;
+      const textAnnotation = beforeAnnotations.freeTextAnnotations?.[0];
+      expect(textAnnotation).toBeDefined();
 
-      for (let i = 0; i < count; i++) {
-        const el = markdownDivs.nth(i);
-        const box = await el.boundingBox();
-        // Check if the element is within the viewport (y > 50 to avoid edge, y < 600 to be visible)
-        if (box && box.y > 50 && box.y < 600 && box.x > 0) {
-          visibleElement = el;
-          break;
-        }
+      const textBox = await topoViewerPage.getNodeBoundingBox(textAnnotation!.id);
+      expect(textBox).not.toBeNull();
+
+      // Use altClickElement which dispatches the event directly to the element for reliability
+      const textElement = page.locator(`[data-id="${textAnnotation!.id}"] .free-text-content`);
+      if (await textElement.count()) {
+        await altClickElement(page, textElement.first());
+      } else {
+        await altClick(page, textBox!.x + textBox!.width / 2, textBox!.y + textBox!.height / 2);
       }
-      expect(visibleElement).not.toBeNull();
-
-      // Use altClickElement which dispatches the event directly to the element
-      await altClickElement(page, visibleElement!);
 
       // Text should be deleted - verify in file
       await expect
@@ -285,9 +273,7 @@ test.describe("Alt+Click Delete", () => {
 
       // Wait for annotations to load and fit to viewport
       await page.waitForTimeout(500);
-      await page.evaluate(() => {
-        (window as any).__DEV__?.cy?.fit();
-      });
+      await topoViewerPage.fit();
       await page.waitForTimeout(300);
 
       // Get initial shape annotation count from file
@@ -298,31 +284,16 @@ test.describe("Alt+Click Delete", () => {
       // Get the position of the shape from annotations file
       const shapeAnnotation = beforeAnnotations.freeShapeAnnotations[0];
 
-      // Click on the border edge of the shape (shapes have pointerEvents only on 12px border frame)
-      // Use left edge: position.x - width/2 + 6 (middle of border)
-      const shapeLeftEdgeX = shapeAnnotation.position.x - (shapeAnnotation.width || 100) / 2 + 6;
-      const shapeCenterY = shapeAnnotation.position.y;
+      const shapeBox = await topoViewerPage.getNodeBoundingBox(shapeAnnotation.id);
+      expect(shapeBox).not.toBeNull();
 
-      // Convert model position to page coordinates for clicking
-      const pageCoords = await page.evaluate(
-        ({ modelX, modelY }) => {
-          const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return { x: 0, y: 0 };
-          const pan = cy.pan();
-          const zoom = cy.zoom();
-          const container = cy.container();
-          const rect = container.getBoundingClientRect();
-          return {
-            x: rect.left + modelX * zoom + pan.x,
-            y: rect.top + modelY * zoom + pan.y
-          };
-        },
-        { modelX: shapeLeftEdgeX, modelY: shapeCenterY }
-      );
-
-      // Alt+Click on the shape
-      await altClick(page, pageCoords.x, pageCoords.y);
+      if (shapeAnnotation.shapeType === "line") {
+        const lineElement = page.locator(`[data-id="${shapeAnnotation.id}"] .free-shape-line line`);
+        await altClickElement(page, lineElement);
+      } else {
+        // Alt+Click on the shape center
+        await altClick(page, shapeBox!.x + shapeBox!.width / 2, shapeBox!.y + shapeBox!.height / 2);
+      }
 
       // Shape should be deleted - verify in file
       await expect

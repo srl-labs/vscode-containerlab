@@ -15,7 +15,8 @@ export function useTopologyHostInitialization(): void {
       try {
         const snapshot = await requestSnapshot();
         if (!disposed) {
-          applySnapshotToStores(snapshot);
+          // Pass isInitialLoad: true to apply auto-layout if nodes have no preset positions
+          applySnapshotToStores(snapshot, { isInitialLoad: true });
         }
       } catch (err) {
         log.error(

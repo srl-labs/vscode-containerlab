@@ -511,13 +511,10 @@ const SELECTABLE_NODE_TYPES = ["topology-node", "cloud-node"];
 /** Hook for selection change handler (box selection support) */
 function useSelectionChangeHandler(
   selectNode: (id: string | null) => void,
-  selectEdge: (id: string | null) => void,
-  closeContextMenu: () => void
+  selectEdge: (id: string | null) => void
 ): OnSelectionChangeFunc {
   return useCallback(
     ({ nodes, edges }) => {
-      closeContextMenu();
-
       // Filter to only topology/cloud nodes (ignore annotation nodes for context selection)
       const selectableNodes = nodes.filter((n) => SELECTABLE_NODE_TYPES.includes(n.type || ""));
 
@@ -545,7 +542,7 @@ function useSelectionChangeHandler(
         log.info(`[ReactFlowCanvas] Box selection: ${nodes.length} nodes, ${edges.length} edges`);
       }
     },
-    [selectNode, selectEdge, closeContextMenu]
+    [selectNode, selectEdge]
   );
 }
 
@@ -645,7 +642,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   );
 
   // Selection change handler (for box selection)
-  const onSelectionChange = useSelectionChangeHandler(selectNode, selectEdge, closeContextMenu);
+  const onSelectionChange = useSelectionChangeHandler(selectNode, selectEdge);
 
   return {
     reactFlowInstance,

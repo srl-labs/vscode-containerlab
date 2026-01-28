@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { test, expect } from "../fixtures/topoviewer";
+import { getEdgeMidpoint } from "../helpers/react-flow-helpers";
 
 const SIMPLE_FILE = "simple.clab.yml";
 
@@ -18,21 +19,7 @@ async function openLinkLabelsMenu(page: Page): Promise<Locator> {
 }
 
 async function openLinkEditorForEdge(page: Page, edgeId: string): Promise<Locator> {
-  const midpoint = await page.evaluate((id) => {
-    const dev = (window as any).__DEV__;
-    const cy = dev?.cy;
-    const edge = cy?.getElementById(id);
-    if (!edge || edge.empty()) return null;
-
-    const bb = edge.renderedBoundingBox();
-    const container = cy.container();
-    const rect = container.getBoundingClientRect();
-
-    return {
-      x: rect.left + bb.x1 + bb.w / 2,
-      y: rect.top + bb.y1 + bb.h / 2
-    };
-  }, edgeId);
+  const midpoint = await getEdgeMidpoint(page, edgeId);
 
   if (!midpoint) throw new Error(`Edge ${edgeId} not found`);
   await page.mouse.dblclick(midpoint.x, midpoint.y);
@@ -46,6 +33,8 @@ test.describe("Endpoint Label Offset", () => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SIMPLE_FILE);
     await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
   });
 
   test("persists global endpoint label offset and restores on reload", async ({

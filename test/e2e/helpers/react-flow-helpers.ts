@@ -425,6 +425,18 @@ export async function getEdgeMidpoint(
 ): Promise<{ x: number; y: number } | null> {
   return await page.evaluate(
     ({ id, sel }) => {
+      const interactionId = `${id}-interaction`;
+      const pathEl = document.getElementById(interactionId) || document.getElementById(id);
+      if (pathEl) {
+        const rect = pathEl.getBoundingClientRect();
+        if (rect.width > 0 || rect.height > 0) {
+          return {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+          };
+        }
+      }
+
       const dev = (window as any).__DEV__;
       const rf = dev?.rfInstance;
       if (!rf) return null;

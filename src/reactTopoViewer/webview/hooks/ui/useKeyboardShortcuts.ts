@@ -4,6 +4,7 @@
 import { useEffect, useCallback } from "react";
 
 import { log } from "../../utils/logger";
+import { useGraphStore } from "../../stores/graphStore";
 
 interface KeyboardShortcutsOptions {
   mode: "edit" | "view";
@@ -243,10 +244,20 @@ function handleCreateGroup(
 function handleSelectAll(event: KeyboardEvent): boolean {
   if (!(event.ctrlKey || event.metaKey) || event.key !== "a") return false;
 
-  // Let ReactFlow handle select all natively
-  log.info("[Keyboard] Select all - delegating to ReactFlow");
-  // Don't prevent default - let ReactFlow handle it
-  // Return true to indicate the shortcut was recognized
+  const target = event.target as HTMLElement | null;
+  if (
+    target &&
+    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+  ) {
+    return false;
+  }
+
+  const { nodes, edges, setNodes, setEdges } = useGraphStore.getState();
+  setNodes(nodes.map((n) => ({ ...n, selected: true })));
+  setEdges(edges.map((e) => ({ ...e, selected: true })));
+
+  log.info("[Keyboard] Select all nodes and edges");
+  event.preventDefault();
   return true;
 }
 
@@ -276,6 +287,24 @@ function deleteSelectedElements(
   onDeleteEdge: (edgeId: string) => void
 ): boolean {
   let handled = false;
+
+  if (!selectedNode && !selectedEdge) {
+    const { nodes, edges } = useGraphStore.getState();
+    const selectedNodes = nodes.filter((n) => n.selected);
+    const selectedEdges = edges.filter((e) => e.selected);
+
+    if (selectedNodes.length > 0) {
+      log.info(`[Keyboard] Deleting ${selectedNodes.length} selected nodes`);
+      selectedNodes.forEach((node) => onDeleteNode(node.id));
+      return true;
+    }
+
+    if (selectedEdges.length > 0) {
+      log.info(`[Keyboard] Deleting ${selectedEdges.length} selected edges`);
+      selectedEdges.forEach((edge) => onDeleteEdge(edge.id));
+      return true;
+    }
+  }
 
   if (selectedNode) {
     log.info(`[Keyboard] Deleting node: ${selectedNode}`);
@@ -349,7 +378,11 @@ function handleEscape(
     event.preventDefault();
     return true;
   }
-  return false;
+
+  // Also clear multi-selection even when there is no single selected element
+  onDeselectAll();
+  event.preventDefault();
+  return true;
 }
 
 /**

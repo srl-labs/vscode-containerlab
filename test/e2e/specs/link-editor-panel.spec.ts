@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
+import { getEdgeMidpoint } from "../helpers/react-flow-helpers";
 
 // Test selectors
 const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
@@ -26,21 +27,7 @@ test.describe("Link Editor Panel", () => {
     expect(edgeIds.length).toBeGreaterThan(0);
 
     // Get edge midpoint
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     expect(midpoint).not.toBeNull();
 
@@ -56,21 +43,7 @@ test.describe("Link Editor Panel", () => {
   test("link editor panel has correct title", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
@@ -83,21 +56,7 @@ test.describe("Link Editor Panel", () => {
   test("link editor panel has Basic tab selected by default", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
@@ -111,21 +70,7 @@ test.describe("Link Editor Panel", () => {
   test("closes link editor panel with close button", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
@@ -145,21 +90,7 @@ test.describe("Link Editor Panel", () => {
   test("closes link editor panel with OK button", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
@@ -182,21 +113,7 @@ test.describe("Link Editor Panel", () => {
 
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
@@ -215,21 +132,7 @@ test.describe("Link Editor Panel", () => {
 
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
@@ -242,21 +145,7 @@ test.describe("Link Editor Panel", () => {
   test("Apply button exists in link editor panel", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);
@@ -271,21 +160,7 @@ test.describe("Link Editor Panel", () => {
     // Need to find a veth link (between two regular nodes)
     const edgeIds = await topoViewerPage.getEdgeIds();
 
-    const midpoint = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const edge = cy?.getElementById(id);
-      if (!edge || edge.empty()) return null;
-
-      const bb = edge.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1 + bb.w / 2,
-        y: rect.top + bb.y1 + bb.h / 2
-      };
-    }, edgeIds[0]);
+    const midpoint = await getEdgeMidpoint(page, edgeIds[0]);
 
     await page.mouse.dblclick(midpoint!.x, midpoint!.y);
     await page.waitForTimeout(500);

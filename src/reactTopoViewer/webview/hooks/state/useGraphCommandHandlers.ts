@@ -186,7 +186,6 @@ export function useGraphHandlersWithContext(
   const handleDeleteNode = React.useCallback(
     (nodeId: string) => {
       const nodes = getNodes();
-      const edges = getEdges();
       const node = nodes.find((n) => n.id === nodeId) as TopoNode | undefined;
 
       removeNodeAndEdges(nodeId);
@@ -204,18 +203,8 @@ export function useGraphHandlersWithContext(
 
       // Always let host handle YAML removal + link cleanup
       void deleteNode(nodeId);
-
-      // Remove connected links from YAML for non-network nodes
-      if (!node || !isSpecialNetworkNode(node)) {
-        const connectedEdges = edges.filter(
-          (edge) => edge.source === nodeId || edge.target === nodeId
-        );
-        for (const edge of connectedEdges) {
-          void deleteLink(toLinkSaveData(edge));
-        }
-      }
     },
-    [getNodes, getEdges, removeNodeAndEdges, menuHandlers]
+    [getNodes, removeNodeAndEdges, menuHandlers]
   );
 
   const handleDeleteLink = React.useCallback(

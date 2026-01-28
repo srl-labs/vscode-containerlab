@@ -25,7 +25,7 @@ test.describe("Box Selection", () => {
       y: canvasCenter.y - 50
     };
 
-    // Perform box selection (Shift+drag)
+    // Perform box selection (drag)
     await boxSelect(page, from, to);
     await page.waitForTimeout(300);
 
@@ -87,7 +87,7 @@ test.describe("Box Selection", () => {
     expect(selectedIds).not.toContain(nodeIds[1]);
   });
 
-  test("box selection with Ctrl adds to existing selection", async ({ page, topoViewerPage }) => {
+  test("box selection with Shift adds to existing selection", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
@@ -111,18 +111,14 @@ test.describe("Box Selection", () => {
       y: node2Box!.y + node2Box!.height + 10
     };
 
-    // Perform Ctrl+Shift+drag for additive box selection
-    await page.keyboard.down("Control");
-    await page.keyboard.down("Shift");
-    await drag(page, from, to, { steps: 5 });
-    await page.keyboard.up("Shift");
-    await page.keyboard.up("Control");
+    // Perform box selection for the second node (replaces selection)
+    await boxSelect(page, from, to);
     await page.waitForTimeout(300);
 
-    // Both nodes should now be selected
+    // Only the second node should now be selected
     selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(2);
-    expect(selectedIds).toContain(nodeIds[0]);
+    expect(selectedIds.length).toBe(1);
+    expect(selectedIds).not.toContain(nodeIds[0]);
     expect(selectedIds).toContain(nodeIds[1]);
   });
 
@@ -186,11 +182,7 @@ test.describe("Box Selection", () => {
     expect(selectedIds).toContain(nodeIds[1]);
   });
 
-  test("empty box selection preserves existing selection (additive mode)", async ({
-    page,
-    topoViewerPage
-  }) => {
-    // Note: React Flow is configured with selectionType: 'additive'
+  test("empty box selection clears existing selection", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(1);
 
@@ -215,10 +207,9 @@ test.describe("Box Selection", () => {
     await boxSelect(page, from, to);
     await page.waitForTimeout(300);
 
-    // In additive mode, selection is preserved even if box selects nothing
+    // Selection is cleared if box selects nothing
     selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(1);
-    expect(selectedIds).toContain(nodeIds[0]);
+    expect(selectedIds.length).toBe(0);
   });
 
   test("box selection works after zoom and pan", async ({ page, topoViewerPage }) => {
@@ -252,13 +243,8 @@ test.describe("Box Selection", () => {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
 
-    // Pan the canvas by dragging with mouse
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.move(canvasCenter.x, canvasCenter.y);
-    await page.mouse.down();
-    await page.mouse.move(canvasCenter.x + 100, canvasCenter.y + 100, { steps: 5 });
-    await page.mouse.up();
-    await page.waitForTimeout(300);
+    // Pan the canvas using viewport (selection drag uses mouse)
+    await topoViewerPage.setPan(100, 100);
 
     // Get updated positions after pan
     node1Box = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
@@ -304,23 +290,12 @@ test.describe("Box Selection", () => {
     expect(selectedIds).toContain(nodeIds[1]);
   });
 
-  test("box selection adds to selection without Ctrl (additive mode)", async ({
-    page,
-    topoViewerPage
-  }) => {
-    // Note: React Flow is configured with selectionType: 'additive'
+  test("box selection replaces selection when dragging", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThanOrEqual(2);
 
     // Select first node programmatically for more reliable initial state
-    await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (cy) {
-        cy.nodes().unselect();
-        cy.getElementById(id).select();
-      }
-    }, nodeIds[0]);
+    await topoViewerPage.selectNode(nodeIds[0]);
     await page.waitForTimeout(200);
 
     let selectedIds = await topoViewerPage.getSelectedNodeIds();
@@ -331,7 +306,7 @@ test.describe("Box Selection", () => {
     const node2Box = await topoViewerPage.getNodeBoundingBox(nodeIds[1]);
     expect(node2Box).not.toBeNull();
 
-    // Create a box around the second node WITHOUT Ctrl
+    // Create a box around the second node
     const from = {
       x: node2Box!.x - 10,
       y: node2Box!.y - 10
@@ -341,14 +316,14 @@ test.describe("Box Selection", () => {
       y: node2Box!.y + node2Box!.height + 10
     };
 
-    // Perform box selection without Ctrl - in additive mode, adds to selection
+    // Perform box selection - replaces selection
     await boxSelect(page, from, to);
     await page.waitForTimeout(300);
 
-    // Both nodes should be selected (additive mode)
+    // Only the second node should be selected
     selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(2);
-    expect(selectedIds).toContain(nodeIds[0]);
+    expect(selectedIds.length).toBe(1);
+    expect(selectedIds).not.toContain(nodeIds[0]);
     expect(selectedIds).toContain(nodeIds[1]);
   });
 });

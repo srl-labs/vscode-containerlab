@@ -50,6 +50,9 @@ test.describe("Node Deletion", () => {
     const initialNodeCount = await topoViewerPage.getNodeCount();
     expect(initialNodeCount).toBeGreaterThanOrEqual(2);
 
+    // Ensure canvas has focus for keyboard shortcut
+    await topoViewerPage.getCanvas().click();
+
     // Select all nodes with Ctrl+A
     await page.keyboard.down("Control");
     await page.keyboard.press("a");
@@ -111,9 +114,10 @@ test.describe("Node Deletion", () => {
     // Get edges connected to first node
     const connectedEdgeCount = await page.evaluate((nodeId) => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const node = cy?.getElementById(nodeId);
-      return node?.connectedEdges().length ?? 0;
+      const rf = dev?.rfInstance;
+      if (!rf) return 0;
+      const edges = rf.getEdges?.() ?? [];
+      return edges.filter((e: any) => e.source === nodeId || e.target === nodeId).length;
     }, nodeIds[0]);
 
     // Delete the node

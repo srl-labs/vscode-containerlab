@@ -163,7 +163,7 @@ const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
         onResizeEnd={handleResizeEnd}
       />
       {displayLabel && (
-        <div style={labelStyle} className="group-node-label">
+        <div style={labelStyle} className="group-node-label" data-testid={`group-label-${id}`}>
           {displayLabel}
         </div>
       )}

@@ -11,6 +11,7 @@ import {
 } from "../../annotations/annotationNodeConverters";
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
 
+import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import { applyLayout } from "./layout";
 
 interface MenuBuilderContext {
@@ -147,6 +148,44 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
   ];
 }
 
+function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
+  const { targetId, closeContextMenu } = ctx;
+  return [
+    {
+      id: "ssh-node",
+      label: "SSH",
+      onClick: () => {
+        sendCommandToExtension("clab-node-connect-ssh", { nodeName: targetId });
+        closeContextMenu();
+      }
+    },
+    {
+      id: "shell-node",
+      label: "Shell",
+      onClick: () => {
+        sendCommandToExtension("clab-node-attach-shell", { nodeName: targetId });
+        closeContextMenu();
+      }
+    },
+    {
+      id: "logs-node",
+      label: "Logs",
+      onClick: () => {
+        sendCommandToExtension("clab-node-view-logs", { nodeName: targetId });
+        closeContextMenu();
+      }
+    },
+    { id: "divider-1", label: "", divider: true },
+    {
+      id: "info-node",
+      label: "Info",
+      onClick: () => {
+        closeContextMenu();
+      }
+    }
+  ];
+}
+
 /**
  * Build node context menu items
  */
@@ -164,6 +203,10 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     cancelLinkCreation
   } = ctx;
 
+  if (isEditMode && isLocked) {
+    return [];
+  }
+
   // Handle annotation nodes with specific menus
   if (targetNodeType === FREE_TEXT_NODE_TYPE) {
     return buildFreeTextContextMenu(ctx);
@@ -173,6 +216,10 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   }
   if (targetNodeType === GROUP_NODE_TYPE) {
     return buildGroupContextMenu(ctx);
+  }
+
+  if (!isEditMode) {
+    return buildNodeViewContextMenu(ctx);
   }
 
   const items: ContextMenuItem[] = [];
@@ -229,6 +276,20 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
  */
 export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuItem[] {
   const { targetId, isEditMode, isLocked, closeContextMenu, editEdge, handleDeleteEdge } = ctx;
+  if (isEditMode && isLocked) {
+    return [];
+  }
+  if (!isEditMode) {
+    return [
+      {
+        id: "info-edge",
+        label: "Link Info",
+        onClick: () => {
+          closeContextMenu();
+        }
+      }
+    ];
+  }
   return [
     {
       id: "edit-edge",

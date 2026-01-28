@@ -94,6 +94,16 @@ function applyNodeChanges(
   refreshEditorData?.();
 }
 
+function needsDefaultCleanup(data: NodeEditorData | null): boolean {
+  if (!data) return false;
+  return (
+    data.autoRemove === false ||
+    data.enforceStartupConfig === false ||
+    data.suppressStartupConfig === false ||
+    data.startupDelay === 0
+  );
+}
+
 // ============================================================================
 // useNodeEditorHandlers
 // ============================================================================
@@ -129,7 +139,7 @@ export function useNodeEditorHandlers(
     (data: NodeEditorData) => {
       const beforeData = initialDataRef.current;
       const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
-      if (!hasChanges) {
+      if (!hasChanges && !needsDefaultCleanup(data)) {
         editNode(null);
         return;
       }
@@ -150,7 +160,7 @@ export function useNodeEditorHandlers(
     (data: NodeEditorData) => {
       const beforeData = initialDataRef.current;
       const hasChanges = beforeData ? JSON.stringify(beforeData) !== JSON.stringify(data) : true;
-      if (!hasChanges) return;
+      if (!hasChanges && !needsDefaultCleanup(data)) return;
 
       const oldName = beforeData?.name !== data.name ? beforeData?.name : undefined;
       applyNodeChanges(data, oldName, persistDeps);

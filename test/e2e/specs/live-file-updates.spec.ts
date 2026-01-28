@@ -153,11 +153,11 @@ topology:
         async () => {
           return await page.evaluate(() => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return null;
-            const node = cy.getElementById("srl1");
-            if (!node || node.empty()) return null;
-            return node.data("extraData")?.kind;
+            const rf = dev?.rfInstance;
+            if (!rf) return null;
+            const nodes = rf.getNodes?.() ?? [];
+            const node = nodes.find((n: any) => n.id === "srl1");
+            return node?.data?.extraData?.kind ?? node?.data?.kind ?? null;
           });
         },
         {

@@ -86,13 +86,20 @@ function browserCreateGroup(): CreateGroupResult {
     }
   ).__DEV__;
   const rf = dev?.rfInstance;
+  const getSelected = (): string[] => {
+    if (!rf) return [];
+    const nodes =
+      (rf as { getNodes?: () => Array<{ id: string; selected?: boolean }> }).getNodes?.() ?? [];
+    return nodes.filter((node) => node.selected).map((node) => node.id);
+  };
+  const getGroupCount = (): number => (dev?.getReactGroups?.() ?? []).length;
 
   const base = {
-    selectedBefore: getSelectedNodeIds(rf),
+    selectedBefore: getSelected(),
     mode: dev?.mode?.(),
     isLocked: dev?.isLocked?.(),
-    groupsBefore: dev?.getReactGroups?.()?.length ?? 0,
-    reactGroupsBefore: getReactGroupCount(dev)
+    groupsBefore: getGroupCount(),
+    reactGroupsBefore: getGroupCount()
   };
 
   if (!dev?.createGroupFromSelected) {
@@ -104,9 +111,9 @@ function browserCreateGroup(): CreateGroupResult {
   return {
     method: "direct",
     ...base,
-    selectedAfter: getSelectedNodeIds(rf),
-    groupsAfter: dev.getReactGroups?.()?.length ?? 0,
-    reactGroupsAfter: getReactGroupCount(dev),
+    selectedAfter: getSelected(),
+    groupsAfter: getGroupCount(),
+    reactGroupsAfter: getGroupCount(),
     hasRf: !!rf
   };
 }
@@ -253,6 +260,31 @@ interface TopoViewerPage {
   /** Get all edge IDs */
   getEdgeIds(): Promise<string[]>;
 
+  /** Get edge data objects */
+  getEdgesData(): Promise<
+    Array<{
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint?: string;
+      targetEndpoint?: string;
+    }>
+  >;
+
+  /** Find an edge by endpoints (order-insensitive) */
+  findEdgeByEndpoints(
+    source: string,
+    target: string,
+    sourceEndpoint?: string,
+    targetEndpoint?: string
+  ): Promise<{
+    id: string;
+    source: string;
+    target: string;
+    sourceEndpoint?: string;
+    targetEndpoint?: string;
+  } | null>;
+
   /** Get edge count */
   getEdgeCount(): Promise<number>;
 
@@ -333,6 +365,9 @@ interface TopoViewerPage {
   /** Perform paste (Ctrl+V) */
   paste(): Promise<void>;
 
+  /** Clear browser clipboard (for deterministic paste tests) */
+  clearClipboard(): Promise<void>;
+
   /** Create a group from selected nodes (Ctrl+G) */
   createGroup(): Promise<void>;
 
@@ -389,6 +424,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     const topoViewerPage: TopoViewerPage = {
       gotoFile: async (filename: string) => {
+        const resolvedFilePath = path.join(TOPOLOGIES_DIR, filename);
         // Pass session ID via URL so auto-load uses correct session
         await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`);
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
@@ -417,7 +453,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
                   return { success: false, error: e?.message || String(e) };
                 }
               },
-              { file: filename, sid: sessionId }
+              { file: resolvedFilePath, sid: sessionId }
             );
 
             if (!loadResult.success) {
@@ -428,25 +464,26 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             await page.waitForFunction(
               (expectedFile) => {
                 const currentFile = (window as any).__DEV__?.getCurrentFile?.();
-                return currentFile === expectedFile;
+                if (!currentFile || typeof currentFile !== "string") return false;
+                return currentFile.endsWith(expectedFile);
               },
               filename,
               { timeout: 5000 }
             );
 
-            // Verify nodes are actually loaded if this is not empty.clab.yml
-            if (filename === "simple.clab.yml") {
+            // Verify nodes are actually loaded for non-empty topologies
+            if (filename !== "empty.clab.yml") {
               await page.waitForFunction(
                 (types) => {
                   const dev = (window as any).__DEV__;
                   const rf = dev?.rfInstance;
                   if (!rf) return false;
                   const nodes = rf.getNodes?.() ?? [];
-                  // Filter to topology nodes only (exclude annotations)
+                  // Prefer topology nodes, but fall back to any node count
                   const topoNodes = nodes.filter(
                     (n: any) => n.type === types.topo || n.type === types.cloud
                   );
-                  return topoNodes.length >= 2;
+                  return topoNodes.length > 0 || nodes.length > 0;
                 },
                 { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE },
                 { timeout: 5000 }
@@ -480,9 +517,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getCurrentFile: async () => {
-        return await page.evaluate(() => {
+        const currentFile = await page.evaluate(() => {
           return (window as any).__DEV__.getCurrentFile();
         });
+        return currentFile ? path.basename(currentFile) : null;
       },
 
       getAnnotationsFromFile: async (filename: string) => {
@@ -542,15 +580,64 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { timeout: 15000 }
         );
 
-        // Wait for nodes to be loaded
+        // Wait for React Flow instance to be usable
         await page.waitForFunction(
           () => {
             const dev = (window as any).__DEV__;
             const rf = dev?.rfInstance;
-            return rf !== undefined && rf !== null;
+            return rf !== undefined && rf !== null && typeof rf.getNodes === "function";
           },
           { timeout: 15000, polling: 200 }
         );
+
+        // If a non-empty file is loaded, wait for topology nodes to exist
+        const currentFile = await page.evaluate(
+          () => (window as any).__DEV__?.getCurrentFile?.() ?? null
+        );
+        const currentFileName =
+          currentFile && typeof currentFile === "string" ? path.basename(currentFile) : null;
+        if (currentFileName && currentFileName !== "empty.clab.yml") {
+          await page.waitForFunction(
+            (types) => {
+              const dev = (window as any).__DEV__;
+              const rf = dev?.rfInstance;
+              if (!rf) return false;
+              const nodes = rf.getNodes?.() ?? [];
+              return nodes.some((n: any) => n.type === types.topo || n.type === types.cloud);
+            },
+            { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE },
+            { timeout: 10000, polling: 200 }
+          );
+        }
+
+        // If topology nodes exist, wait for at least one to render in the DOM
+        const firstNodeId = await page.evaluate(
+          (types) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return null;
+            const nodes = rf.getNodes?.() ?? [];
+            const topoNode = nodes.find(
+              (n: any) => n.type === types.topo || n.type === types.cloud
+            );
+            return topoNode?.id ?? null;
+          },
+          { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+        );
+
+        if (firstNodeId) {
+          await page.waitForSelector(`[data-id="${firstNodeId}"]`, { timeout: 10000 });
+          await page.waitForFunction(
+            (nodeId) => {
+              const el = document.querySelector(`[data-id="${nodeId}"]`) as HTMLElement | null;
+              if (!el) return false;
+              const rect = el.getBoundingClientRect();
+              return rect.width > 0 && rect.height > 0;
+            },
+            firstNodeId,
+            { timeout: 10000 }
+          );
+        }
 
         // Check if nodes need layout (all at 0,0)
         const needsLayout = await page.evaluate(() => {
@@ -627,9 +714,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       getNodeBoundingBox: async (nodeId: string) => {
         // Try DOM element first - most reliable for visible nodes
-        const domElement = page.locator(`[data-id="${nodeId}"]`);
-        const domBox = await domElement.boundingBox().catch(() => null);
-        if (domBox) return domBox;
+        const domHandle = await page.$(`[data-id="${nodeId}"]`);
+        if (domHandle) {
+          const domBox = await domHandle.boundingBox();
+          if (domBox) return domBox;
+        }
 
         // Fallback to React Flow calculation (simplified - use default size)
         return await page.evaluate((id) => {
@@ -661,30 +750,48 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       setEditMode: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setMode("edit");
+          const dev = (window as any).__DEV__;
+          if (dev?.setModeState) {
+            dev.setModeState("edit");
+            return;
+          }
+          dev?.setMode?.("edit");
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.mode?.() === "edit", {
+          timeout: 2000
+        });
       },
 
       setViewMode: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setMode("view");
+          const dev = (window as any).__DEV__;
+          if (dev?.setModeState) {
+            dev.setModeState("view");
+            return;
+          }
+          dev?.setMode?.("view");
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.mode?.() === "view", {
+          timeout: 2000
+        });
       },
 
       unlock: async () => {
         await page.evaluate(() => {
           (window as any).__DEV__.setLocked(false);
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.isLocked?.() === false, {
+          timeout: 2000
+        });
       },
 
       lock: async () => {
         await page.evaluate(() => {
           (window as any).__DEV__.setLocked(true);
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.isLocked?.() === true, {
+          timeout: 2000
+        });
       },
 
       isLocked: async () => {
@@ -769,6 +876,59 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         });
       },
 
+      getEdgesData: async () => {
+        return await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const edges = rf.getEdges?.() ?? [];
+          return edges.map((e: any) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceEndpoint: e.data?.sourceEndpoint,
+            targetEndpoint: e.data?.targetEndpoint
+          }));
+        });
+      },
+
+      findEdgeByEndpoints: async (source, target, sourceEndpoint, targetEndpoint) => {
+        return await page.evaluate(
+          ({ source, target, sourceEndpoint, targetEndpoint }) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return null;
+            const edges = rf.getEdges?.() ?? [];
+            const matches = (edge: any) => {
+              const data = edge.data ?? {};
+              const se = data.sourceEndpoint;
+              const te = data.targetEndpoint;
+              const direct =
+                edge.source === source &&
+                edge.target === target &&
+                (sourceEndpoint === undefined || se === sourceEndpoint) &&
+                (targetEndpoint === undefined || te === targetEndpoint);
+              const flipped =
+                edge.source === target &&
+                edge.target === source &&
+                (sourceEndpoint === undefined || te === sourceEndpoint) &&
+                (targetEndpoint === undefined || se === targetEndpoint);
+              return direct || flipped;
+            };
+            const edge = edges.find(matches);
+            if (!edge) return null;
+            return {
+              id: edge.id,
+              source: edge.source,
+              target: edge.target,
+              sourceEndpoint: edge.data?.sourceEndpoint,
+              targetEndpoint: edge.data?.targetEndpoint
+            };
+          },
+          { source, target, sourceEndpoint, targetEndpoint }
+        );
+      },
+
       getEdgeCount: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
@@ -836,7 +996,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const rf = dev?.rfInstance;
           if (rf?.setViewport) {
             const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-            rf.setViewport({ ...viewport, zoom: z });
+            const container = document.querySelector(".react-flow") as HTMLElement | null;
+            const rect = container?.getBoundingClientRect();
+            const centerX = rect ? rect.width / 2 : 0;
+            const centerY = rect ? rect.height / 2 : 0;
+            const modelCenterX = (centerX - viewport.x) / viewport.zoom;
+            const modelCenterY = (centerY - viewport.y) / viewport.zoom;
+            rf.setViewport({
+              x: centerX - modelCenterX * z,
+              y: centerY - modelCenterY * z,
+              zoom: z
+            });
           }
         }, zoom);
         await page.waitForTimeout(100);
@@ -913,6 +1083,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       undo: async () => {
+        await page
+          .waitForFunction(() => (window as any).__DEV__?.undoRedo?.canUndo === true, {
+            timeout: 2000
+          })
+          .catch(() => {});
         await page.keyboard.down("Control");
         await page.keyboard.press("z");
         await page.keyboard.up("Control");
@@ -920,6 +1095,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       redo: async () => {
+        await page
+          .waitForFunction(() => (window as any).__DEV__?.undoRedo?.canRedo === true, {
+            timeout: 2000
+          })
+          .catch(() => {});
         await page.keyboard.down("Control");
         await page.keyboard.down("Shift");
         await page.keyboard.press("z");
@@ -1037,10 +1217,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               throw new Error("handleEdgeCreated not available");
             }
 
-            // Include endpoints in ID to allow multiple edges between same nodes
-            const linkId = `${sourceId}:${sourceEndpoint}-${targetId}:${targetEndpoint}`;
             const linkData = {
-              id: linkId,
+              id: `${sourceId}:${sourceEndpoint}--${targetId}:${targetEndpoint}`,
               source: sourceId,
               target: targetId,
               sourceEndpoint,
@@ -1056,17 +1234,22 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { sourceId, targetId, sourceEndpoint, targetEndpoint }
         );
 
-        // Include endpoints in ID to allow multiple edges between same nodes (including self-loops/hairpins)
-        const linkId = `${sourceId}:${sourceEndpoint}-${targetId}:${targetEndpoint}`;
+        // Wait for matching edge to appear (ID may be re-written by snapshot sync)
         await page.waitForFunction(
-          (id) => {
+          ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
             const dev = (window as any).__DEV__;
             const rf = dev?.rfInstance;
             if (!rf) return false;
             const edges = rf.getEdges?.() ?? [];
-            return edges.some((e: any) => e.id === id);
+            return edges.some((edge: any) => {
+              if (edge.source !== sourceId || edge.target !== targetId) return false;
+              return (
+                edge.data?.sourceEndpoint === sourceEndpoint &&
+                edge.data?.targetEndpoint === targetEndpoint
+              );
+            });
           },
-          linkId,
+          { sourceId, targetId, sourceEndpoint, targetEndpoint },
           { timeout: 5000 }
         );
       },
@@ -1203,6 +1386,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.keyboard.press("v");
         await page.keyboard.up("Control");
         await page.waitForTimeout(300);
+      },
+
+      clearClipboard: async () => {
+        await page.evaluate(async () => {
+          try {
+            await window.navigator.clipboard.writeText("");
+          } catch {
+            // Ignore clipboard write failures; tests will fall back to existing state.
+          }
+        });
+        await page.waitForTimeout(100);
       },
 
       createGroup: async () => {

@@ -169,6 +169,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     },
     actions: {
       toggleLock: topoActions.toggleLock,
+      setMode: topoActions.setMode,
       editNetwork: topoActions.editNetwork,
       selectNode: topoActions.selectNode,
       selectEdge: topoActions.selectEdge
@@ -187,7 +188,8 @@ export const AppContent: React.FC<AppContentProps> = ({
       selectEdge: topoActions.selectEdge,
       editNode: topoActions.editNode,
       editEdge: topoActions.editEdge
-    }
+    },
+    rfInstance
   });
 
   const shortcutDisplay = useShortcutDisplay();

@@ -105,6 +105,7 @@ export interface E2ETestingConfig {
   isLocked: boolean;
   mode: "edit" | "view";
   toggleLock: () => void;
+  setMode?: (mode: "edit" | "view") => void;
   undoRedo: {
     canUndo: boolean;
     canRedo: boolean;
@@ -157,6 +158,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     isLocked,
     mode,
     toggleLock,
+    setMode,
     undoRedo,
     handleEdgeCreated,
     handleNodeCreatedCallback,
@@ -184,8 +186,13 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.setLocked = (locked: boolean) => {
         if (isLocked !== locked) toggleLock();
       };
+      if (setMode) {
+        window.__DEV__.setModeState = (nextMode: "edit" | "view") => {
+          setMode(nextMode);
+        };
+      }
     }
-  }, [isLocked, mode, toggleLock]);
+  }, [isLocked, mode, toggleLock, setMode]);
 
   // Undo/redo E2E exposure
   React.useEffect(() => {

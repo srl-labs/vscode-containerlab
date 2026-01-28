@@ -979,9 +979,10 @@ test.describe("Network Node Undo/Redo", () => {
     // Check edge data
     const allEdgeData = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return [];
-      return cy.edges().map((e: any) => e.data());
+      const rf = dev?.rfInstance;
+      if (!rf) return [];
+      const edges = rf.getEdges?.() ?? [];
+      return edges.map((e: any) => e.data);
     });
     console.log("[DEBUG] Edge data after redo:", JSON.stringify(allEdgeData, null, 2));
 
@@ -1060,9 +1061,10 @@ test.describe("Network Node Undo/Redo", () => {
     // Check edge data after undo
     const allEdgeDataAfter = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return [];
-      return cy.edges().map((e: any) => e.data());
+      const rf = dev?.rfInstance;
+      if (!rf) return [];
+      const edges = rf.getEdges?.() ?? [];
+      return edges.map((e: any) => e.data);
     });
     console.log("[DEBUG] All edge data after undo:", JSON.stringify(allEdgeDataAfter, null, 2));
 
@@ -1185,9 +1187,10 @@ test.describe("Network Node Undo/Redo", () => {
     // Check edge data after redo
     const allEdgeDataAfter = await page.evaluate(() => {
       const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (!cy) return [];
-      return cy.edges().map((e: any) => e.data());
+      const rf = dev?.rfInstance;
+      if (!rf) return [];
+      const edges = rf.getEdges?.() ?? [];
+      return edges.map((e: any) => e.data);
     });
     console.log("[DEBUG] All edge data after redo:", JSON.stringify(allEdgeDataAfter, null, 2));
 
@@ -1334,15 +1337,7 @@ test.describe("Network Node Undo/Redo", () => {
     console.log(`[DEBUG] Edge to delete: ${edgeToDelete}`);
 
     // Select edge programmatically (more reliable than clicking)
-    await page.evaluate((edgeId) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      if (cy) {
-        cy.elements().unselect();
-        cy.getElementById(edgeId).select();
-      }
-    }, edgeToDelete);
-    await page.waitForTimeout(300);
+    await topoViewerPage.selectEdge(edgeToDelete);
 
     const selectedEdges = await topoViewerPage.getSelectedEdgeIds();
     console.log(`[DEBUG] Selected edges: ${selectedEdges.join(", ")}`);

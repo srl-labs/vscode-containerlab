@@ -47,7 +47,7 @@ test.describe("Context Menu Actions", () => {
       // Verify all edit mode options are present
       await expect(page.locator(SEL_EDIT_NODE_ITEM)).toBeVisible();
       await expect(page.locator('[data-testid="context-menu-item-delete-node"]')).toBeVisible();
-      await expect(page.locator('[data-testid="context-menu-item-link-node"]')).toBeVisible();
+      await expect(page.locator('[data-testid="context-menu-item-create-link"]')).toBeVisible();
     });
 
     test("clicking Edit opens node editor panel", async ({ page, topoViewerPage }) => {

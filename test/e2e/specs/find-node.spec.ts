@@ -160,9 +160,10 @@ test.describe("Find Node Panel", () => {
     await searchBtn.click();
     await page.waitForTimeout(500);
 
-    // Check that nodes are selected
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBeGreaterThan(0);
+    // Check that the result count is shown for the matching node
+    const result = page.locator(SEL_FIND_NODE_RESULT);
+    await expect(result).toBeVisible();
+    await expect(result).toHaveText("Found 1 node");
   });
 
   test("closes find node panel with close button", async ({ page }) => {

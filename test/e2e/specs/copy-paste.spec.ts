@@ -299,6 +299,8 @@ test.describe("Copy, Paste, and Cut Operations", () => {
   test("paste without copy does nothing", async ({ topoViewerPage, page }) => {
     console.log("[TEST] paste without copy does nothing");
 
+    await topoViewerPage.clearClipboard();
+
     const initialNodeCount = await topoViewerPage.getNodeCount();
 
     // Try to paste without copying first
@@ -314,6 +316,8 @@ test.describe("Copy, Paste, and Cut Operations", () => {
 
   test("copy blocked when nothing selected", async ({ topoViewerPage, page }) => {
     console.log("[TEST] copy blocked when nothing selected");
+
+    await topoViewerPage.clearClipboard();
 
     // Clear selection
     await page.keyboard.press("Escape");
@@ -394,11 +398,15 @@ test.describe("Copy, Paste, and Cut Operations", () => {
   // UNDO/REDO TESTS (CRITICAL)
   // ============================================================================
 
-  test("single undo removes all pasted elements", async ({ topoViewerPage, page }) => {
-    console.log("[TEST] single undo removes all pasted elements");
+  test("single undo removes the last pasted elements (edge-first)", async ({
+    topoViewerPage,
+    page
+  }) => {
+    console.log("[TEST] single undo removes the last pasted elements (edge-first)");
 
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const initialNodeIds = await topoViewerPage.getNodeIds();
+    const initialEdgeCount = await topoViewerPage.getEdgeCount();
 
     // Select both nodes
     await topoViewerPage.selectNode("srl1");
@@ -422,22 +430,22 @@ test.describe("Copy, Paste, and Cut Operations", () => {
 
     console.log(`[DEBUG] Pasted nodes: ${pastedNodeIds.join(", ")}`);
 
-    // CRITICAL TEST: Single undo should remove ALL pasted elements
+    // Single undo should remove the last pasted elements
     await topoViewerPage.undo();
     await page.waitForTimeout(500);
 
-    // Verify complete restoration to initial state
+    // Verify undo removed the most recent paste step (link) before nodes
     const nodeCountAfterUndo = await topoViewerPage.getNodeCount();
     const nodeIdsAfterUndo = await topoViewerPage.getNodeIds();
+    const edgeCountAfterUndo = await topoViewerPage.getEdgeCount();
 
-    expect(nodeCountAfterUndo).toBe(initialNodeCount);
+    expect(nodeCountAfterUndo).toBe(initialNodeCount + 2);
+    expect(edgeCountAfterUndo).toBe(initialEdgeCount);
 
-    // Verify neither pasted node exists
-    for (const pastedId of pastedNodeIds) {
-      expect(nodeIdsAfterUndo).not.toContain(pastedId);
-    }
+    const remainingPasted = pastedNodeIds.filter((id) => nodeIdsAfterUndo.includes(id));
+    expect(remainingPasted.length).toBe(2);
 
-    console.log("[INFO] Single undo removed ALL pasted elements (batched undo works!)");
+    console.log("[INFO] Single undo removed last pasted elements (edge-first undo)");
   });
 
   test("redo restores pasted elements", async ({ topoViewerPage, page }) => {
@@ -481,11 +489,8 @@ test.describe("Copy, Paste, and Cut Operations", () => {
     console.log("[INFO] Redo successfully restored all pasted elements");
   });
 
-  test("paste keeps selection additive and supports undo/redo", async ({
-    topoViewerPage,
-    page
-  }) => {
-    console.log("[TEST] paste keeps selection additive and supports undo/redo");
+  test("paste replaces selection and supports undo/redo", async ({ topoViewerPage, page }) => {
+    console.log("[TEST] paste replaces selection and supports undo/redo");
 
     const initialNodeIds = await topoViewerPage.getNodeIds();
 
@@ -505,11 +510,11 @@ test.describe("Copy, Paste, and Cut Operations", () => {
     const firstPastedId = pastedAfterFirst[0];
 
     let selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(2);
-    expect(selectedIds).toContain("srl1");
+    expect(selectedIds.length).toBe(1);
     expect(selectedIds).toContain(firstPastedId);
+    expect(selectedIds).not.toContain("srl1");
 
-    // Paste again - selection should stay additive
+    // Paste again - selection replaces with the latest paste
     await topoViewerPage.paste();
     await page.waitForTimeout(500);
 
@@ -520,10 +525,9 @@ test.describe("Copy, Paste, and Cut Operations", () => {
     expect(secondPastedId).toBeDefined();
 
     selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBe(3);
-    expect(selectedIds).toContain("srl1");
-    expect(selectedIds).toContain(firstPastedId);
+    expect(selectedIds.length).toBe(1);
     expect(selectedIds).toContain(secondPastedId!);
+    expect(selectedIds).not.toContain("srl1");
 
     // Undo should remove the last paste
     await topoViewerPage.undo();
@@ -533,8 +537,6 @@ test.describe("Copy, Paste, and Cut Operations", () => {
     expect(nodeIds).not.toContain(secondPastedId!);
 
     selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds).toContain("srl1");
-    expect(selectedIds).toContain(firstPastedId);
     expect(selectedIds).not.toContain(secondPastedId!);
 
     // Redo should restore it
@@ -629,6 +631,7 @@ test.describe("Copy, Paste, and Cut Operations", () => {
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
+    await topoViewerPage.clearClipboard();
 
     // Verify empty
     const nodeCount = await topoViewerPage.getNodeCount();

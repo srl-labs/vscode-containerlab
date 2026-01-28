@@ -16,23 +16,8 @@ async function openNodeEditorByNodeId(page: Page, nodeId: string, maxRetries = 3
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     // Get fresh bounding box right before clicking
-    const nodeBox = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const node = cy?.getElementById(id);
-      if (!node || node.empty()) return null;
-
-      const bb = node.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1,
-        y: rect.top + bb.y1,
-        width: bb.w,
-        height: bb.h
-      };
-    }, nodeId);
+    const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
+    const nodeBox = await nodeHandle.boundingBox();
 
     if (!nodeBox) {
       throw new Error(`Node ${nodeId} not found or has no bounding box`);
