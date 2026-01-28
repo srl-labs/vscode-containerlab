@@ -2,12 +2,12 @@
  * EditorPanel - Panel with tabs and Apply/OK footer
  * Built on top of BasePanel
  */
-import type { ReactNode } from 'react';
-import React from 'react';
+import type { ReactNode } from "react";
+import React from "react";
 
-import { BasePanel } from './BasePanel';
-import type { TabDefinition } from './TabNavigation';
-import { TabNavigation } from './TabNavigation';
+import { BasePanel } from "./BasePanel";
+import type { TabDefinition } from "./TabNavigation";
+import { TabNavigation } from "./TabNavigation";
 
 interface EditorPanelProps {
   title: string;

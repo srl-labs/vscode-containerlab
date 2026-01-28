@@ -2,14 +2,14 @@
  * Shared logging utilities used by both extension and webview loggers
  */
 
-export type LogLevel = 'info' | 'debug' | 'warn' | 'error';
+export type LogLevel = "info" | "debug" | "warn" | "error";
 
 /**
  * Format message for logging
  */
 export function formatMessage(msg: unknown): string {
-  if (typeof msg === 'string') return msg;
-  if (typeof msg === 'object' && msg !== null) {
+  if (typeof msg === "string") return msg;
+  if (typeof msg === "object" && msg !== null) {
     try {
       return JSON.stringify(msg);
     } catch {
@@ -28,20 +28,20 @@ export function getCallerFileLine(skipFrames = 0): string {
   Error.captureStackTrace?.(obj, getCallerFileLine);
 
   const stack = obj.stack;
-  if (!stack) return 'unknown:0';
+  if (!stack) return "unknown:0";
 
-  const lines = stack.split('\n');
+  const lines = stack.split("\n");
   const baseIndex = 3 + skipFrames;
-  const callSite = lines[baseIndex] || lines[baseIndex + 1] || '';
+  const callSite = lines[baseIndex] || lines[baseIndex + 1] || "";
 
   const reParen = /\(([^():]+):(\d+):\d+\)/;
   const reAt = /at ([^():]+):(\d+):\d+/;
   const match = reParen.exec(callSite) || reAt.exec(callSite);
-  if (!match) return 'unknown:0';
+  if (!match) return "unknown:0";
 
   const filePath = match[1];
   const lineNum = match[2];
-  const fileName = filePath.split(/[\\/]/).pop() ?? 'unknown';
+  const fileName = filePath.split(/[\\/]/).pop() ?? "unknown";
   return `${fileName}:${lineNum}`;
 }
 
@@ -51,16 +51,16 @@ export function getCallerFileLine(skipFrames = 0): string {
 export function createLogger(logFn: (level: LogLevel, message: unknown) => void) {
   return {
     info(msg: unknown): void {
-      logFn('info', msg);
+      logFn("info", msg);
     },
     debug(msg: unknown): void {
-      logFn('debug', msg);
+      logFn("debug", msg);
     },
     warn(msg: unknown): void {
-      logFn('warn', msg);
+      logFn("warn", msg);
     },
     error(msg: unknown): void {
-      logFn('error', msg);
+      logFn("error", msg);
     }
   };
 }

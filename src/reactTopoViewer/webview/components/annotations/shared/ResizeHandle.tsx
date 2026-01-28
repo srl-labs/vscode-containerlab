@@ -1,17 +1,10 @@
 /**
  * Shared resize handle for annotations
  */
-import React from 'react';
+import React from "react";
 
-import type {
-  ResizeCorner
-} from './handleConstants';
-import {
-  HANDLE_SIZE,
-  HANDLE_BOX_SHADOW,
-  HANDLE_BORDER,
-  CORNER_STYLES
-} from './handleConstants';
+import type { ResizeCorner } from "./handleConstants";
+import { HANDLE_SIZE, HANDLE_BOX_SHADOW, HANDLE_BORDER, CORNER_STYLES } from "./handleConstants";
 
 interface ResizeHandleProps {
   position: ResizeCorner;
@@ -22,14 +15,14 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({ position, onMouseDow
   <div
     onMouseDown={onMouseDown}
     style={{
-      position: 'absolute',
+      position: "absolute",
       width: `${HANDLE_SIZE}px`,
       height: `${HANDLE_SIZE}px`,
-      backgroundColor: 'white',
+      backgroundColor: "white",
       border: HANDLE_BORDER,
-      borderRadius: '2px',
+      borderRadius: "2px",
       boxShadow: HANDLE_BOX_SHADOW,
-      pointerEvents: 'auto',
+      pointerEvents: "auto",
       ...CORNER_STYLES[position]
     }}
     title="Drag to resize (Shift for aspect ratio)"

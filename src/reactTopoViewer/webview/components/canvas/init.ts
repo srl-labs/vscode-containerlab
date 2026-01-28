@@ -1,17 +1,17 @@
 /**
  * Cytoscape initialization, layouts, and configuration utilities
  */
-import type { Core, CytoscapeOptions, LayoutOptions } from 'cytoscape';
-import cytoscape from 'cytoscape';
-import cola from 'cytoscape-cola';
+import type { Core, CytoscapeOptions, LayoutOptions } from "cytoscape";
+import cytoscape from "cytoscape";
+import cola from "cytoscape-cola";
 
-import type { CyElement } from '../../../shared/types/messages';
-import type { CustomIconInfo } from '../../../shared/types/icons';
-import { log } from '../../utils/logger';
-import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
-import { applyCustomIconStyles } from '../../utils/cytoscapeHelpers';
+import type { CyElement } from "../../../shared/types/messages";
+import type { CustomIconInfo } from "../../../shared/types/icons";
+import { log } from "../../utils/logger";
+import { generateEncodedSVG, type NodeType } from "../../utils/SvgGenerator";
+import { applyCustomIconStyles } from "../../utils/cytoscapeHelpers";
 
-import { cytoscapeStyles, ROLE_SVG_MAP } from './styles';
+import { cytoscapeStyles, ROLE_SVG_MAP } from "./styles";
 
 let colaRegistered = false;
 
@@ -20,11 +20,11 @@ let colaRegistered = false;
  * This ensures dashed styling for network connections regardless of how elements were loaded
  */
 export function applyStubLinkClasses(cy: Core): void {
-  cy.edges().forEach(edge => {
-    const sourceRole = edge.source().data('topoViewerRole') as string | undefined;
-    const targetRole = edge.target().data('topoViewerRole') as string | undefined;
-    if (sourceRole === 'cloud' || targetRole === 'cloud') {
-      edge.addClass('stub-link');
+  cy.edges().forEach((edge) => {
+    const sourceRole = edge.source().data("topoViewerRole") as string | undefined;
+    const targetRole = edge.target().data("topoViewerRole") as string | undefined;
+    if (sourceRole === "cloud" || targetRole === "cloud") {
+      edge.addClass("stub-link");
     }
   });
 }
@@ -48,18 +48,18 @@ export function ensureColaRegistered(): void {
  */
 export function hasPresetPositions(elements: CyElement[]): boolean {
   // Filter to regular topology nodes only
-  const regularNodes = elements.filter(el => {
-    if (el.group !== 'nodes') return false;
+  const regularNodes = elements.filter((el) => {
+    if (el.group !== "nodes") return false;
     const role = el.data?.topoViewerRole;
     // Exclude group nodes, annotations, and cloud/network nodes
-    return role !== 'group' && role !== 'freeText' && role !== 'freeShape' && role !== 'cloud';
+    return role !== "group" && role !== "freeText" && role !== "freeShape" && role !== "cloud";
   });
 
   if (regularNodes.length === 0) return false;
 
   // Use preset layout if ANY regular topology node has a stored position
   // This preserves existing positions when new nodes are added
-  return regularNodes.some(node => {
+  return regularNodes.some((node) => {
     const pos = node.position;
     return pos && (pos.x !== 0 || pos.y !== 0);
   });
@@ -80,20 +80,20 @@ type ExtendedLayoutOptions = LayoutOptions & {
 export function getLayoutOptions(layoutName: string): ExtendedLayoutOptions {
   const layouts: Record<string, ExtendedLayoutOptions> = {
     cose: {
-      name: 'cose',
+      name: "cose",
       animate: true,
       animationDuration: 500,
-      randomize: true,  // Add initial jitter when nodes start at same position
+      randomize: true, // Add initial jitter when nodes start at same position
       nodeRepulsion: () => 8000,
       idealEdgeLength: () => 100,
       edgeElasticity: () => 100
     },
-    grid: { name: 'grid', animate: true, animationDuration: 300 },
-    circle: { name: 'circle', animate: true, animationDuration: 300 },
-    concentric: { name: 'concentric', animate: true, animationDuration: 300 },
-    preset: { name: 'preset', animate: false },
+    grid: { name: "grid", animate: true, animationDuration: 300 },
+    circle: { name: "circle", animate: true, animationDuration: 300 },
+    concentric: { name: "concentric", animate: true, animationDuration: 300 },
+    preset: { name: "preset", animate: false },
     cola: {
-      name: 'cola',
+      name: "cola",
       animate: true,
       maxSimulationTime: 1500,
       fit: true,
@@ -101,7 +101,7 @@ export function getLayoutOptions(layoutName: string): ExtendedLayoutOptions {
       nodeSpacing: 12
     },
     breadthfirst: {
-      name: 'breadthfirst',
+      name: "breadthfirst",
       directed: true,
       animate: true,
       animationDuration: 400,
@@ -114,19 +114,22 @@ export function getLayoutOptions(layoutName: string): ExtendedLayoutOptions {
 /**
  * Create Cytoscape configuration options
  */
-export function createCytoscapeConfig(container: HTMLElement, elements: CyElement[]): CytoscapeOptions {
+export function createCytoscapeConfig(
+  container: HTMLElement,
+  elements: CyElement[]
+): CytoscapeOptions {
   return {
     container: container,
     elements: elements,
     style: cytoscapeStyles,
-    layout: { name: 'preset' },
+    layout: { name: "preset" },
     boxSelectionEnabled: true,
-    selectionType: 'additive',
+    selectionType: "additive",
     wheelSensitivity: 0,
     textureOnViewport: true,
     hideEdgesOnViewport: false,
     hideLabelsOnViewport: false,
-    pixelRatio: 'auto',
+    pixelRatio: "auto",
     motionBlur: false,
     motionBlurOpacity: 0.2
   };
@@ -138,12 +141,12 @@ export type NodePositions = Array<{ id: string; position: { x: number; y: number
  * Collect node positions from Cytoscape (for syncing to React state after layout)
  */
 export function collectNodePositions(cy: Core): NodePositions {
-  const excludedRoles = new Set(['group', 'freeText', 'freeShape']);
+  const excludedRoles = new Set(["group", "freeText", "freeShape"]);
   const positions: NodePositions = [];
 
-  cy.nodes().forEach(node => {
+  cy.nodes().forEach((node) => {
     const id = node.id();
-    const role = node.data('topoViewerRole') as string | undefined;
+    const role = node.data("topoViewerRole") as string | undefined;
     if (!id) return;
     if (role && excludedRoles.has(role)) return;
     const pos = node.position();
@@ -170,11 +173,11 @@ export function applyNodeIconColors(cy: Core, customIcons?: CustomIconInfo[]): v
     }
   }
 
-  cy.nodes().forEach(node => {
+  cy.nodes().forEach((node) => {
     // iconColor and iconCornerRadius are at top-level of data (from NodeElementBuilder)
-    const iconColor = node.data('iconColor') as string | undefined;
-    const iconCornerRadius = node.data('iconCornerRadius') as number | undefined;
-    const role = (node.data('topoViewerRole') as string) || 'default';
+    const iconColor = node.data("iconColor") as string | undefined;
+    const iconCornerRadius = node.data("iconCornerRadius") as number | undefined;
+    const role = (node.data("topoViewerRole") as string) || "default";
 
     // Check if this is a custom icon
     const customIconDataUri = customIconMap.get(role);
@@ -184,14 +187,14 @@ export function applyNodeIconColors(cy: Core, customIcons?: CustomIconInfo[]): v
       // Built-in icon with optional color
       const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
       if (iconColor && svgType) {
-        node.style('background-image', generateEncodedSVG(svgType, iconColor));
+        node.style("background-image", generateEncodedSVG(svgType, iconColor));
       }
     }
 
     // Apply iconCornerRadius - requires round-rectangle shape
     if (iconCornerRadius !== undefined && iconCornerRadius > 0) {
-      node.style('shape', 'round-rectangle');
-      node.style('corner-radius', iconCornerRadius);
+      node.style("shape", "round-rectangle");
+      node.style("corner-radius", iconCornerRadius);
     }
   });
 }
@@ -222,17 +225,17 @@ export function updateCytoscapeElements(
   const needsAutoLayout = !usePresetLayout || nodesNeedAutoLayout(cy);
 
   if (needsAutoLayout) {
-    cy.one('layoutstop', () => {
-      cy.scratch('initialLayoutDone', true);
+    cy.one("layoutstop", () => {
+      cy.scratch("initialLayoutDone", true);
       // Sync positions back to React state so they persist
       if (onLayoutComplete) {
         onLayoutComplete(collectNodePositions(cy));
       }
     });
-    cy.layout(getLayoutOptions('cose')).run();
+    cy.layout(getLayoutOptions("cose")).run();
   } else {
     cy.fit(undefined, 50);
-    cy.scratch('initialLayoutDone', true);
+    cy.scratch("initialLayoutDone", true);
   }
 }
 
@@ -245,12 +248,12 @@ export function nodesNeedAutoLayout(cy: Core): boolean {
   if (nodes.length === 0) return false;
 
   // Check if all regular topology nodes are at or near the origin
-  const excludedRoles = new Set(['group', 'freeText', 'freeShape', 'cloud']);
+  const excludedRoles = new Set(["group", "freeText", "freeShape", "cloud"]);
   let regularNodeCount = 0;
   let nodesAtOrigin = 0;
 
-  nodes.forEach(node => {
-    const role = node.data('topoViewerRole') as string | undefined;
+  nodes.forEach((node) => {
+    const role = node.data("topoViewerRole") as string | undefined;
     if (role && excludedRoles.has(role)) return;
 
     regularNodeCount++;
@@ -273,16 +276,18 @@ export function handleCytoscapeReady(
   _usePresetLayout: boolean,
   customIcons?: CustomIconInfo[]
 ): void {
-  log.info(`[CytoscapeCanvas] Cytoscape ready - nodes: ${cy.nodes().length}, edges: ${cy.edges().length}`);
+  log.info(
+    `[CytoscapeCanvas] Cytoscape ready - nodes: ${cy.nodes().length}, edges: ${cy.edges().length}`
+  );
 
   // Check if canvas was created
   const container = cy.container();
   if (container) {
-    const canvas = container.querySelector('canvas');
+    const canvas = container.querySelector("canvas");
     if (canvas) {
       log.info(`[CytoscapeCanvas] Canvas element found: ${canvas.width}x${canvas.height}`);
     } else {
-      log.error('[CytoscapeCanvas] No canvas element found inside container!');
+      log.error("[CytoscapeCanvas] No canvas element found inside container!");
     }
   }
 
@@ -291,7 +296,9 @@ export function handleCytoscapeReady(
   if (firstNode.length > 0) {
     const pos = firstNode.position();
     const bb = firstNode.boundingBox();
-    log.info(`[CytoscapeCanvas] First node - pos: (${pos.x}, ${pos.y}), bbox: w=${bb.w}, h=${bb.h}`);
+    log.info(
+      `[CytoscapeCanvas] First node - pos: (${pos.x}, ${pos.y}), bbox: w=${bb.w}, h=${bb.h}`
+    );
   }
 
   // Apply stub-link class to edges connected to network/cloud nodes

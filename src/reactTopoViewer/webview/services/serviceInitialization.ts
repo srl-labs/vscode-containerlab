@@ -9,10 +9,10 @@
  * - Dev/standalone: Uses HttpFsAdapter
  */
 
-import type { FileSystemAdapter, IOLogger } from '../../shared/io/types';
-import { noopLogger } from '../../shared/io/types';
-import { TopologyIO } from '../../shared/io/TopologyIO';
-import { AnnotationsIO } from '../../shared/io/AnnotationsIO';
+import type { FileSystemAdapter, IOLogger } from "../../shared/io/types";
+import { noopLogger } from "../../shared/io/types";
+import { TopologyIO } from "../../shared/io/TopologyIO";
+import { AnnotationsIO } from "../../shared/io/AnnotationsIO";
 
 // Global service instances
 let annotationsIO: AnnotationsIO | null = null;
@@ -20,16 +20,20 @@ let topologyIO: TopologyIO | null = null;
 let fsAdapter: FileSystemAdapter | null = null;
 
 // Error message constant
-const ERROR_NOT_INITIALIZED = 'Services not initialized. Call initializeServices() first.';
+const ERROR_NOT_INITIALIZED = "Services not initialized. Call initializeServices() first.";
 
 /**
  * Browser console logger adapter
  */
 const browserLogger: IOLogger = {
-  debug: () => { /* debug logging disabled in production */ },
-  info: () => { /* info logging disabled in production */ },
+  debug: () => {
+    /* debug logging disabled in production */
+  },
+  info: () => {
+    /* info logging disabled in production */
+  },
   warn: (msg: string) => console.warn(`[Services] ${msg}`),
-  error: (msg: string) => console.error(`[Services] ${msg}`),
+  error: (msg: string) => console.error(`[Services] ${msg}`)
 };
 
 /**
@@ -49,16 +53,16 @@ export function initializeServices(
 
   annotationsIO = new AnnotationsIO({
     fs: adapter,
-    logger,
+    logger
   });
 
   topologyIO = new TopologyIO({
     fs: adapter,
     annotationsIO,
-    logger,
+    logger
   });
 
-  logger.info('Services initialized');
+  logger.info("Services initialized");
 }
 
 /**

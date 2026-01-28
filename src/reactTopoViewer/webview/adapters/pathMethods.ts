@@ -4,7 +4,7 @@
  * These methods delegate to pathUtils and are used by adapter implementations
  * to satisfy the FileSystemAdapter interface.
  */
-import * as pathUtils from './pathUtils';
+import * as pathUtils from "./pathUtils";
 
 /**
  * Returns an object with the three path utility methods required by FileSystemAdapter.
@@ -22,6 +22,6 @@ export function createPathMethods() {
 
     join(...segments: string[]): string {
       return pathUtils.join(...segments);
-    },
+    }
   };
 }

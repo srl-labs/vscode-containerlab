@@ -3,14 +3,14 @@
  * Extracted from App.tsx to reduce complexity.
  * Note: This hook must be called after useGraphUndoRedoHandlers since it needs undoRedo.
  */
-import { useCallback } from 'react';
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
+import { useCallback } from "react";
+import type { Core as CyCore, NodeSingular } from "cytoscape";
 
-import type { FreeShapeAnnotation, FreeTextAnnotation } from '../../../shared/types/topology';
-import type { RelatedAnnotationChange, UndoRedoAction } from '../state/useUndoRedo';
+import type { FreeShapeAnnotation, FreeTextAnnotation } from "../../../shared/types/topology";
+import type { RelatedAnnotationChange, UndoRedoAction } from "../state/useUndoRedo";
 
-import type { UseGroupsReturn } from './groupTypes';
-import { useGroupUndoRedoHandlers } from './useGroupUndoRedoHandlers';
+import type { UseGroupsReturn } from "./groupTypes";
+import { useGroupUndoRedoHandlers } from "./useGroupUndoRedoHandlers";
 
 interface UndoRedoApi {
   pushAction: (action: UndoRedoAction) => void;
@@ -34,11 +34,13 @@ export interface UseAppGroupUndoHandlersReturn {
  * Returns false for annotations.
  */
 function canBeGrouped(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole') as string | undefined;
-  return role !== 'freeText' && role !== 'freeShape';
+  const role = node.data("topoViewerRole") as string | undefined;
+  return role !== "freeText" && role !== "freeShape";
 }
 
-export function useAppGroupUndoHandlers(options: UseAppGroupUndoHandlersOptions): UseAppGroupUndoHandlersReturn {
+export function useAppGroupUndoHandlers(
+  options: UseAppGroupUndoHandlersOptions
+): UseAppGroupUndoHandlersReturn {
   const { cyInstance, groups, undoRedo, textAnnotations, shapeAnnotations } = options;
 
   // Group undo/redo handlers
@@ -50,9 +52,9 @@ export function useAppGroupUndoHandlers(options: UseAppGroupUndoHandlersOptions)
   const handleAddGroupWithUndo = useCallback(() => {
     if (!cyInstance) return;
     const selectedNodeIds = cyInstance
-      .nodes(':selected')
-      .filter(n => canBeGrouped(n as NodeSingular))
-      .map(n => n.id());
+      .nodes(":selected")
+      .filter((n) => canBeGrouped(n as NodeSingular))
+      .map((n) => n.id());
 
     const groupId = groupUndoHandlers.createGroupWithUndo(
       selectedNodeIds.length > 0 ? selectedNodeIds : undefined
@@ -66,62 +68,65 @@ export function useAppGroupUndoHandlers(options: UseAppGroupUndoHandlersOptions)
     }
   }, [cyInstance, groupUndoHandlers, groups]);
 
-  const deleteGroupWithUndo = useCallback((groupId: string) => {
-    const beforeGroup = groups.groups.find(g => g.id === groupId);
-    if (!beforeGroup) return;
+  const deleteGroupWithUndo = useCallback(
+    (groupId: string) => {
+      const beforeGroup = groups.groups.find((g) => g.id === groupId);
+      if (!beforeGroup) return;
 
-    if (!groupUndoHandlers.isApplyingGroupUndoRedo.current) {
-      const parentId = groups.getParentGroup(groupId)?.id ?? null;
-      const memberIds = groups.getGroupMembers(groupId);
-      const action = groups.getUndoRedoAction(beforeGroup, null);
+      if (!groupUndoHandlers.isApplyingGroupUndoRedo.current) {
+        const parentId = groups.getParentGroup(groupId)?.id ?? null;
+        const memberIds = groups.getGroupMembers(groupId);
+        const action = groups.getUndoRedoAction(beforeGroup, null);
 
-      if (memberIds.length > 0) {
-        action.membershipBefore = memberIds.map(nodeId => ({ nodeId, groupId }));
-        action.membershipAfter = memberIds.map(nodeId => ({ nodeId, groupId: parentId }));
-      }
+        if (memberIds.length > 0) {
+          action.membershipBefore = memberIds.map((nodeId) => ({ nodeId, groupId }));
+          action.membershipAfter = memberIds.map((nodeId) => ({ nodeId, groupId: parentId }));
+        }
 
-      const relatedAnnotations: RelatedAnnotationChange[] = [];
-      const childGroups = groups.getChildGroups(groupId);
-      if (childGroups.length > 0) {
-        const promotedParentId = beforeGroup.parentId;
-        childGroups.forEach(child => {
-          const beforeChild = { ...child, position: { ...child.position } };
-          relatedAnnotations.push({
-            annotationType: 'group',
-            before: beforeChild,
-            after: { ...beforeChild, parentId: promotedParentId }
+        const relatedAnnotations: RelatedAnnotationChange[] = [];
+        const childGroups = groups.getChildGroups(groupId);
+        if (childGroups.length > 0) {
+          const promotedParentId = beforeGroup.parentId;
+          childGroups.forEach((child) => {
+            const beforeChild = { ...child, position: { ...child.position } };
+            relatedAnnotations.push({
+              annotationType: "group",
+              before: beforeChild,
+              after: { ...beforeChild, parentId: promotedParentId }
+            });
           });
-        });
-      }
-      if (textAnnotations) {
-        textAnnotations.forEach(annotation => {
-          if (annotation.groupId !== groupId) return;
-          relatedAnnotations.push({
-            annotationType: 'freeText',
-            before: { ...annotation },
-            after: { ...annotation, groupId: parentId ?? undefined }
+        }
+        if (textAnnotations) {
+          textAnnotations.forEach((annotation) => {
+            if (annotation.groupId !== groupId) return;
+            relatedAnnotations.push({
+              annotationType: "freeText",
+              before: { ...annotation },
+              after: { ...annotation, groupId: parentId ?? undefined }
+            });
           });
-        });
-      }
-      if (shapeAnnotations) {
-        shapeAnnotations.forEach(annotation => {
-          if (annotation.groupId !== groupId) return;
-          relatedAnnotations.push({
-            annotationType: 'freeShape',
-            before: { ...annotation },
-            after: { ...annotation, groupId: parentId ?? undefined }
+        }
+        if (shapeAnnotations) {
+          shapeAnnotations.forEach((annotation) => {
+            if (annotation.groupId !== groupId) return;
+            relatedAnnotations.push({
+              annotationType: "freeShape",
+              before: { ...annotation },
+              after: { ...annotation, groupId: parentId ?? undefined }
+            });
           });
-        });
-      }
-      if (relatedAnnotations.length > 0) {
-        action.relatedAnnotations = relatedAnnotations;
+        }
+        if (relatedAnnotations.length > 0) {
+          action.relatedAnnotations = relatedAnnotations;
+        }
+
+        undoRedo.pushAction(action);
       }
 
-      undoRedo.pushAction(action);
-    }
-
-    groups.deleteGroup(groupId);
-  }, [groups, undoRedo, textAnnotations, shapeAnnotations, groupUndoHandlers]);
+      groups.deleteGroup(groupId);
+    },
+    [groups, undoRedo, textAnnotations, shapeAnnotations, groupUndoHandlers]
+  );
 
   return {
     handleAddGroupWithUndo,
@@ -148,18 +153,19 @@ export type GroupPositionChangeHandler = (
  * Hook that creates a handler for group position changes.
  * Moves member nodes along with the group when dragged.
  */
-export function useGroupPositionHandler(options: UseGroupPositionHandlerOptions): GroupPositionChangeHandler {
+export function useGroupPositionHandler(
+  options: UseGroupPositionHandlerOptions
+): GroupPositionChangeHandler {
   const { groups } = options;
 
-  return useCallback((
-    groupId: string,
-    position: { x: number; y: number },
-    _delta: { dx: number; dy: number }
-  ) => {
-    // Note: Real-time node movement is handled by useGroupDragMoveHandler
-    // This handler just persists the final group position
-    groups.updateGroupPosition(groupId, position);
-  }, [groups]);
+  return useCallback(
+    (groupId: string, position: { x: number; y: number }, _delta: { dx: number; dy: number }) => {
+      // Note: Real-time node movement is handled by useGroupDragMoveHandler
+      // This handler just persists the final group position
+      groups.updateGroupPosition(groupId, position);
+    },
+    [groups]
+  );
 }
 
 export type GroupDragMoveHandler = (groupId: string, delta: { dx: number; dy: number }) => void;
@@ -167,18 +173,23 @@ export type GroupDragMoveHandler = (groupId: string, delta: { dx: number; dy: nu
 /**
  * Hook that creates a handler for real-time node movement during group drag.
  */
-export function useGroupDragMoveHandler(options: UseGroupPositionHandlerOptions): GroupDragMoveHandler {
+export function useGroupDragMoveHandler(
+  options: UseGroupPositionHandlerOptions
+): GroupDragMoveHandler {
   const { cyInstance, groups } = options;
 
-  return useCallback((groupId: string, delta: { dx: number; dy: number }) => {
-    if (!cyInstance || (delta.dx === 0 && delta.dy === 0)) return;
-    const memberIds = groups.getGroupMembers(groupId);
-    memberIds.forEach(nodeId => {
-      const node = cyInstance.getElementById(nodeId);
-      if (node.length > 0) {
-        const currentPos = node.position();
-        node.position({ x: currentPos.x + delta.dx, y: currentPos.y + delta.dy });
-      }
-    });
-  }, [cyInstance, groups]);
+  return useCallback(
+    (groupId: string, delta: { dx: number; dy: number }) => {
+      if (!cyInstance || (delta.dx === 0 && delta.dy === 0)) return;
+      const memberIds = groups.getGroupMembers(groupId);
+      memberIds.forEach((nodeId) => {
+        const node = cyInstance.getElementById(nodeId);
+        if (node.length > 0) {
+          const currentPos = node.position();
+          node.position({ x: currentPos.x + delta.dx, y: currentPos.y + delta.dy });
+        }
+      });
+    },
+    [cyInstance, groups]
+  );
 }

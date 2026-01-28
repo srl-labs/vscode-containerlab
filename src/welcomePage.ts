@@ -1,16 +1,16 @@
-import * as path from 'path';
-import * as fs from 'fs';
-import * as https from 'https';
+import * as path from "path";
+import * as fs from "fs";
+import * as https from "https";
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { extensionVersion } from './globals';
+import { extensionVersion } from "./globals";
 
 /**
  * Message types sent from the webview to the extension
  */
 interface WebviewMessage {
-  command: 'createExample' | 'dontShowAgain' | 'getRepos';
+  command: "createExample" | "dontShowAgain" | "getRepos";
   value?: boolean;
 }
 
@@ -47,8 +47,8 @@ export class WelcomePage {
    */
   public async show(): Promise<void> {
     // Check if welcome page should be shown
-    const config = vscode.workspace.getConfiguration('containerlab');
-    const showWelcomePage = config.get<boolean>('showWelcomePage', true);
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const showWelcomePage = config.get<boolean>("showWelcomePage", true);
 
     if (!showWelcomePage) {
       return;
@@ -56,19 +56,17 @@ export class WelcomePage {
 
     // Create and show the webview panel
     this.panel = vscode.window.createWebviewPanel(
-      'containerlabWelcome',
-      'Welcome to Containerlab',
+      "containerlabWelcome",
+      "Welcome to Containerlab",
       vscode.ViewColumn.One,
       {
         enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.file(path.join(this.context.extensionPath, 'resources'))
-        ]
+        localResourceRoots: [vscode.Uri.file(path.join(this.context.extensionPath, "resources"))]
       }
     );
 
     const iconUri = vscode.Uri.file(
-      path.join(this.context.extensionPath, 'resources', 'containerlab.svg')
+      path.join(this.context.extensionPath, "resources", "containerlab.svg")
     );
     this.panel.iconPath = iconUri;
 
@@ -78,13 +76,13 @@ export class WelcomePage {
     // Handle webview messages
     this.panel.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       switch (message.command) {
-        case 'createExample':
+        case "createExample":
           this.createExampleTopology();
           break;
-        case 'dontShowAgain':
+        case "dontShowAgain":
           this.saveWelcomePageSetting(!message.value);
           break;
-        case 'getRepos':
+        case "getRepos":
           void this.fetchGitHubRepos();
           break;
       }
@@ -129,23 +127,24 @@ export class WelcomePage {
    * Fetches repositories from GitHub with the clab-topo topic.
    */
   private async fetchGitHubRepos(): Promise<void> {
-    const url = 'https://api.github.com/search/repositories?q=topic:clab-topo+org:srl-labs+fork:true&sort=stars&order=desc';
+    const url =
+      "https://api.github.com/search/repositories?q=topic:clab-topo+org:srl-labs+fork:true&sort=stars&order=desc";
 
     this.fetchJson(url)
-      .then(data => {
+      .then((data) => {
         if (this.panel) {
           this.panel.webview.postMessage({
-            command: 'reposLoaded',
+            command: "reposLoaded",
             repos: data.items || [],
             usingFallback: false
           });
         }
       })
-      .catch(error => {
-        console.error('Error fetching GitHub repositories:', error);
+      .catch((error) => {
+        console.error("Error fetching GitHub repositories:", error);
         if (this.panel) {
           this.panel.webview.postMessage({
-            command: 'reposLoaded',
+            command: "reposLoaded",
             repos: this.fallbackRepos,
             usingFallback: true
           });
@@ -158,29 +157,35 @@ export class WelcomePage {
    */
   private fetchJson(url: string): Promise<GitHubSearchResponse> {
     return new Promise((resolve, reject) => {
-      const req = https.get(url, {
-        headers: {
-          'User-Agent': 'VSCode-Containerlab-Extension',
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      }, (res) => {
-        let data = '';
+      const req = https
+        .get(
+          url,
+          {
+            headers: {
+              "User-Agent": "VSCode-Containerlab-Extension",
+              Accept: "application/vnd.github.v3+json"
+            }
+          },
+          (res) => {
+            let data = "";
 
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
+            res.on("data", (chunk) => {
+              data += chunk;
+            });
 
-        res.on('end', () => {
-          try {
-            const parsedData = JSON.parse(data) as GitHubSearchResponse;
-            resolve(parsedData);
-          } catch (e) {
-            reject(e);
+            res.on("end", () => {
+              try {
+                const parsedData = JSON.parse(data) as GitHubSearchResponse;
+                resolve(parsedData);
+              } catch (e) {
+                reject(e);
+              }
+            });
           }
+        )
+        .on("error", (err) => {
+          reject(err);
         });
-      }).on('error', (err) => {
-        reject(err);
-      });
 
       req.end();
     });
@@ -193,17 +198,17 @@ export class WelcomePage {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     if (!workspaceFolders) {
-      vscode.window.showErrorMessage('No workspace folder is open. Please open a folder first.');
+      vscode.window.showErrorMessage("No workspace folder is open. Please open a folder first.");
       return;
     }
 
     const rootPath = workspaceFolders[0].uri.fsPath;
-    const filePath = path.join(rootPath, 'example.clab.yml');
+    const filePath = path.join(rootPath, "example.clab.yml");
 
     // Check if file already exists
     if (fs.existsSync(filePath)) {
-      vscode.window.showWarningMessage('example.clab.yml already exists in the workspace.');
-      vscode.workspace.openTextDocument(filePath).then(doc => {
+      vscode.window.showWarningMessage("example.clab.yml already exists in the workspace.");
+      vscode.workspace.openTextDocument(filePath).then((doc) => {
         vscode.window.showTextDocument(doc);
       });
       return;
@@ -232,9 +237,9 @@ topology:
     fs.writeFileSync(filePath, content);
 
     // Open the file in editor
-    vscode.workspace.openTextDocument(filePath).then(doc => {
+    vscode.workspace.openTextDocument(filePath).then((doc) => {
       vscode.window.showTextDocument(doc);
-      vscode.window.showInformationMessage('Created example.clab.yml in your workspace.');
+      vscode.window.showInformationMessage("Created example.clab.yml in your workspace.");
     });
   }
 
@@ -242,16 +247,19 @@ topology:
    * Save the welcome page setting
    */
   private saveWelcomePageSetting(show: boolean): void {
-    const config = vscode.workspace.getConfiguration('containerlab');
-    config.update('showWelcomePage', show, vscode.ConfigurationTarget.Global);
+    const config = vscode.workspace.getConfiguration("containerlab");
+    config.update("showWelcomePage", show, vscode.ConfigurationTarget.Global);
   }
 
   /**
    * Get the webview HTML content
    */
   private async getWebviewContent(): Promise<string> {
-
-    const cssURI = this.panel?.webview.asWebviewUri(vscode.Uri.file(path.join(this.context.extensionPath, 'resources', 'tailwind.js'))).toString();
+    const cssURI = this.panel?.webview
+      .asWebviewUri(
+        vscode.Uri.file(path.join(this.context.extensionPath, "resources", "tailwind.js"))
+      )
+      .toString();
 
     return `<!DOCTYPE html>
 <html lang="en">

@@ -79,7 +79,9 @@
   }
 
   /* Allow text selection in inputs */
-  input, textarea, [contenteditable="true"] {
+  input,
+  textarea,
+  [contenteditable="true"] {
     user-select: text;
     -webkit-user-select: text;
   }

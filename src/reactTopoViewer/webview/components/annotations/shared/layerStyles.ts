@@ -1,16 +1,16 @@
 /**
  * Shared style constants for annotation layers
  */
-import type React from 'react';
+import type React from "react";
 
 /** Click capture overlay style - used in add-annotation mode */
 export const CLICK_CAPTURE_STYLE_BASE: React.CSSProperties = {
-  position: 'absolute',
+  position: "absolute",
   top: 0,
   left: 0,
   right: 0,
   bottom: 0,
-  pointerEvents: 'auto',
+  pointerEvents: "auto",
   // Must be above annotation interaction layers so canvas clicks create annotations
   // even when other overlays (text/groups) are present/selected.
   zIndex: 9999

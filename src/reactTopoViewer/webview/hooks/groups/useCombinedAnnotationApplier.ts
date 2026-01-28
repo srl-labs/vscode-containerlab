@@ -5,14 +5,18 @@
  * This file also includes the group annotation applier functionality
  * (previously in useGroupAnnotationApplier.ts).
  */
-import React, { useCallback } from 'react';
+import React, { useCallback } from "react";
 
-import type { UndoRedoActionAnnotation, UndoRedoActionGroupMove } from '../state/useUndoRedo';
-import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
-import { log } from '../../utils/logger';
+import type { UndoRedoActionAnnotation, UndoRedoActionGroupMove } from "../state/useUndoRedo";
+import type {
+  GroupStyleAnnotation,
+  FreeTextAnnotation,
+  FreeShapeAnnotation
+} from "../../../shared/types/topology";
+import { log } from "../../utils/logger";
 
-import type { UseGroupsReturn } from './groupTypes';
-import { createGroupInserter, createGroupRemover, createGroupUpserter } from './groupHelpers';
+import type { UseGroupsReturn } from "./groupTypes";
+import { createGroupInserter, createGroupRemover, createGroupUpserter } from "./groupHelpers";
 
 // ============================================================================
 // Group Annotation Applier Types and Functions
@@ -23,7 +27,7 @@ export interface UseGroupAnnotationApplierReturn {
   applyGroupAnnotationChange: (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
 }
 
-type GroupsApi = Pick<UseGroupsReturn, 'loadGroups' | 'groups' | 'deleteGroup'>;
+type GroupsApi = Pick<UseGroupsReturn, "loadGroups" | "groups" | "deleteGroup">;
 
 /** Log the current state for debugging */
 function logGroupUndoState(
@@ -32,13 +36,13 @@ function logGroupUndoState(
   target: GroupStyleAnnotation | null,
   opposite: GroupStyleAnnotation | null
 ): void {
-  const action = isUndo ? 'UNDO' : 'REDO';
-  const targetLabel = isUndo ? 'before' : 'after';
-  const oppositeLabel = isUndo ? 'after' : 'before';
+  const action = isUndo ? "UNDO" : "REDO";
+  const targetLabel = isUndo ? "before" : "after";
+  const oppositeLabel = isUndo ? "after" : "before";
   log.info(`[GroupUndo] ${action} group annotation`);
-  log.info(`[GroupUndo] Current groups: ${groups.map(g => g.id).join(', ')}`);
-  log.info(`[GroupUndo] Target (${targetLabel}): ${target?.id ?? 'null'}`);
-  log.info(`[GroupUndo] Opposite (${oppositeLabel}): ${opposite?.id ?? 'null'}`);
+  log.info(`[GroupUndo] Current groups: ${groups.map((g) => g.id).join(", ")}`);
+  log.info(`[GroupUndo] Target (${targetLabel}): ${target?.id ?? "null"}`);
+  log.info(`[GroupUndo] Opposite (${oppositeLabel}): ${opposite?.id ?? "null"}`);
 }
 
 /** Restore a deleted group */
@@ -65,7 +69,7 @@ function applyGroupAnnotationChangeInternal(
   groupsApi: GroupsApi,
   isApplyingRef: React.RefObject<boolean>
 ): void {
-  if (action.annotationType !== 'group') return;
+  if (action.annotationType !== "group") return;
   const target = (isUndo ? action.before : action.after) as GroupStyleAnnotation | null;
   const opposite = (isUndo ? action.after : action.before) as GroupStyleAnnotation | null;
 
@@ -123,9 +127,9 @@ function restoreDescendantGroups(
   isUndo: boolean,
   currentGroups: GroupStyleAnnotation[]
 ): GroupStyleAnnotation[] {
-  const descendantGroups = (isUndo
-    ? action.descendantGroupsBefore
-    : action.descendantGroupsAfter) as GroupStyleAnnotation[] | undefined;
+  const descendantGroups = (
+    isUndo ? action.descendantGroupsBefore : action.descendantGroupsAfter
+  ) as GroupStyleAnnotation[] | undefined;
 
   if (!descendantGroups || descendantGroups.length === 0) {
     return currentGroups;
@@ -133,7 +137,7 @@ function restoreDescendantGroups(
 
   let updatedGroups = currentGroups;
   for (const dg of descendantGroups) {
-    updatedGroups = updatedGroups.map(g => g.id === dg.id ? dg : g);
+    updatedGroups = updatedGroups.map((g) => (g.id === dg.id ? dg : g));
   }
   log.info(`[CombinedApplier] Restored ${descendantGroups.length} descendant groups`);
   return updatedGroups;
@@ -147,9 +151,9 @@ function restoreTextAnnotations(
 ): void {
   if (!onUpdate) return;
 
-  const textAnnotations = (isUndo
-    ? action.textAnnotationsBefore
-    : action.textAnnotationsAfter) as FreeTextAnnotation[] | undefined;
+  const textAnnotations = (isUndo ? action.textAnnotationsBefore : action.textAnnotationsAfter) as
+    | FreeTextAnnotation[]
+    | undefined;
 
   if (!textAnnotations || textAnnotations.length === 0) return;
 
@@ -167,9 +171,9 @@ function restoreShapeAnnotations(
 ): void {
   if (!onUpdate) return;
 
-  const shapeAnnotations = (isUndo
-    ? action.shapeAnnotationsBefore
-    : action.shapeAnnotationsAfter) as FreeShapeAnnotation[] | undefined;
+  const shapeAnnotations = (
+    isUndo ? action.shapeAnnotationsBefore : action.shapeAnnotationsAfter
+  ) as FreeShapeAnnotation[] | undefined;
 
   if (!shapeAnnotations || shapeAnnotations.length === 0) return;
 
@@ -191,7 +195,13 @@ export interface UseCombinedAnnotationApplierReturn {
 export function useCombinedAnnotationApplier(
   options: UseCombinedAnnotationApplierOptions
 ): UseCombinedAnnotationApplierReturn {
-  const { groups, applyFreeShapeChange, applyFreeTextChange, onUpdateTextAnnotation, onUpdateShapeAnnotation } = options;
+  const {
+    groups,
+    applyFreeShapeChange,
+    applyFreeTextChange,
+    onUpdateTextAnnotation,
+    onUpdateShapeAnnotation
+  } = options;
 
   // Group annotation applier for undo/redo
   const { applyGroupAnnotationChange } = useGroupAnnotationApplier(groups);
@@ -199,11 +209,11 @@ export function useCombinedAnnotationApplier(
   // Combined annotation change handler for undo/redo
   const applyAnnotationChange = useCallback(
     (action: UndoRedoActionAnnotation, isUndo: boolean) => {
-      if (action.annotationType === 'freeShape') {
+      if (action.annotationType === "freeShape") {
         applyFreeShapeChange(action, isUndo);
-      } else if (action.annotationType === 'freeText') {
+      } else if (action.annotationType === "freeText") {
         applyFreeTextChange(action, isUndo);
-      } else if (action.annotationType === 'group') {
+      } else if (action.annotationType === "group") {
         applyGroupAnnotationChange(action, isUndo);
       }
     },
@@ -216,9 +226,7 @@ export function useCombinedAnnotationApplier(
       const targetGroup = (isUndo ? action.groupBefore : action.groupAfter) as GroupStyleAnnotation;
 
       // 1. Restore parent group position
-      let updatedGroups = groups.groups.map(g =>
-        g.id === targetGroup.id ? targetGroup : g
-      );
+      let updatedGroups = groups.groups.map((g) => (g.id === targetGroup.id ? targetGroup : g));
 
       // 2. Restore descendant group positions
       updatedGroups = restoreDescendantGroups(action, isUndo, updatedGroups);
@@ -228,7 +236,9 @@ export function useCombinedAnnotationApplier(
       restoreTextAnnotations(action, isUndo, onUpdateTextAnnotation);
       restoreShapeAnnotations(action, isUndo, onUpdateShapeAnnotation);
 
-      log.info(`[CombinedApplier] Applied group move ${isUndo ? 'undo' : 'redo'} for ${targetGroup.id}`);
+      log.info(
+        `[CombinedApplier] Applied group move ${isUndo ? "undo" : "redo"} for ${targetGroup.id}`
+      );
     },
     [groups, onUpdateTextAnnotation, onUpdateShapeAnnotation]
   );

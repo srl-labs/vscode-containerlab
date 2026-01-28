@@ -3,19 +3,19 @@
  * Maintains group membership and relationships when pasting.
  */
 
-import { useCallback, useRef } from 'react';
-import type { RefObject } from 'react';
-import type { Core as CyCore, NodeSingular, NodeCollection } from 'cytoscape';
+import { useCallback, useRef } from "react";
+import type { RefObject } from "react";
+import type { Core as CyCore, NodeSingular, NodeCollection } from "cytoscape";
 
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
-} from '../../../shared/types/topology';
-import type { CyElement } from '../../../shared/types/messages';
-import { log } from '../../utils/logger';
-import { beginBatch, endBatch } from '../../services';
-import { getUniqueId } from '../../../shared/utilities/idUtils';
+} from "../../../shared/types/topology";
+import type { CyElement } from "../../../shared/types/messages";
+import { log } from "../../utils/logger";
+import { beginBatch, endBatch } from "../../services";
+import { getUniqueId } from "../../../shared/utilities/idUtils";
 
 /** Node data stored in clipboard */
 interface ClipboardNode {
@@ -115,9 +115,23 @@ export interface UseUnifiedClipboardOptions {
   /** Generate a unique group ID */
   generateGroupId: () => string;
   /** Callback to create a node (persists to YAML) */
-  onCreateNode?: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void;
+  onCreateNode?: (
+    nodeId: string,
+    nodeElement: CyElement,
+    position: { x: number; y: number }
+  ) => void;
   /** Callback to create an edge (persists to YAML) */
-  onCreateEdge?: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void;
+  onCreateEdge?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void;
   /** Begin undo batch mode - actions will be collected until endBatch is called */
   beginUndoBatch?: () => void;
   /** End undo batch mode - commits all collected actions as a single undo entry */
@@ -150,10 +164,10 @@ function generateId(prefix: string): string {
 function calculateCenter(positions: Array<{ x: number; y: number }>): { x: number; y: number } {
   if (positions.length === 0) return { x: 0, y: 0 };
 
-  const sum = positions.reduce(
-    (acc, pos) => ({ x: acc.x + pos.x, y: acc.y + pos.y }),
-    { x: 0, y: 0 }
-  );
+  const sum = positions.reduce((acc, pos) => ({ x: acc.x + pos.x, y: acc.y + pos.y }), {
+    x: 0,
+    y: 0
+  });
 
   return {
     x: sum.x / positions.length,
@@ -164,7 +178,7 @@ function calculateCenter(positions: Array<{ x: number; y: number }>): { x: numbe
 /** Get descendant groups of a group */
 function getDescendantGroupIds(groupId: string, groups: GroupStyleAnnotation[]): string[] {
   const descendants: string[] = [];
-  const children = groups.filter(g => g.parentId === groupId);
+  const children = groups.filter((g) => g.parentId === groupId);
 
   for (const child of children) {
     descendants.push(child.id);
@@ -186,10 +200,10 @@ function collectGroupIdsToInclude(
   for (const groupId of selectedGroupIds) {
     groupIdsToInclude.add(groupId);
     const descendants = getDescendantGroupIds(groupId, groups);
-    descendants.forEach(id => groupIdsToInclude.add(id));
+    descendants.forEach((id) => groupIdsToInclude.add(id));
   }
 
-  selectedNodes.forEach(node => {
+  selectedNodes.forEach((node) => {
     const groupId = getNodeMembership(node.id());
     if (groupId) {
       groupIdsToInclude.add(groupId);
@@ -206,11 +220,13 @@ function collectNodeIdsToInclude(
   getGroupMembers: (groupId: string) => string[]
 ): Set<string> {
   const nodeIdsToInclude = new Set<string>();
-  selectedNodes.forEach(node => { nodeIdsToInclude.add(node.id()); });
+  selectedNodes.forEach((node) => {
+    nodeIdsToInclude.add(node.id());
+  });
 
   for (const groupId of groupIdsToInclude) {
     const members = getGroupMembers(groupId);
-    members.forEach(nodeId => nodeIdsToInclude.add(nodeId));
+    members.forEach((nodeId) => nodeIdsToInclude.add(nodeId));
   }
 
   return nodeIdsToInclude;
@@ -231,7 +247,9 @@ function collectClipboardNodes(
       const pos = node.position();
       positions.push(pos);
       const membership = getNodeMembership(node.id());
-      log.info(`[UnifiedClipboard] Copying node ${node.id()}, group membership: ${membership ?? 'none'}`);
+      log.info(
+        `[UnifiedClipboard] Copying node ${node.id()}, group membership: ${membership ?? "none"}`
+      );
       clipboardNodes.push({
         id: node.id(),
         data: { ...(node.data() as Record<string, unknown>) },
@@ -246,15 +264,12 @@ function collectClipboardNodes(
 }
 
 /** Collect clipboard edges from cytoscape */
-function collectClipboardEdges(
-  cyInstance: CyCore,
-  nodeIdsToInclude: Set<string>
-): ClipboardEdge[] {
+function collectClipboardEdges(cyInstance: CyCore, nodeIdsToInclude: Set<string>): ClipboardEdge[] {
   const clipboardEdges: ClipboardEdge[] = [];
 
   // Include all edges between the nodes we're copying, even if the edges themselves
   // aren't explicitly selected (common UX expectation for copy/paste).
-  cyInstance.edges().forEach(edge => {
+  cyInstance.edges().forEach((edge) => {
     const sourceId = edge.source().id();
     const targetId = edge.target().id();
     if (nodeIdsToInclude.has(sourceId) && nodeIdsToInclude.has(targetId)) {
@@ -279,7 +294,7 @@ function collectClipboardGroups(
   const positions: Array<{ x: number; y: number }> = [];
 
   for (const groupId of groupIdsToInclude) {
-    const group = groups.find(g => g.id === groupId);
+    const group = groups.find((g) => g.id === groupId);
     if (group) {
       positions.push(group.position);
       clipboardGroups.push({
@@ -302,15 +317,15 @@ function collectClipboardTextAnnotations(
 
   for (const groupId of groupIdsToInclude) {
     textAnnotations
-      .filter(a => a.groupId === groupId)
-      .forEach(a => textAnnotationIdsToInclude.add(a.id));
+      .filter((a) => a.groupId === groupId)
+      .forEach((a) => textAnnotationIdsToInclude.add(a.id));
   }
 
   const clipboardTextAnnotations: ClipboardTextAnnotation[] = [];
   const positions: Array<{ x: number; y: number }> = [];
 
   for (const annotationId of textAnnotationIdsToInclude) {
-    const annotation = textAnnotations.find(a => a.id === annotationId);
+    const annotation = textAnnotations.find((a) => a.id === annotationId);
     if (annotation) {
       positions.push(annotation.position);
       clipboardTextAnnotations.push({
@@ -333,15 +348,15 @@ function collectClipboardShapeAnnotations(
 
   for (const groupId of groupIdsToInclude) {
     shapeAnnotations
-      .filter(a => a.groupId === groupId)
-      .forEach(a => shapeAnnotationIdsToInclude.add(a.id));
+      .filter((a) => a.groupId === groupId)
+      .forEach((a) => shapeAnnotationIdsToInclude.add(a.id));
   }
 
   const clipboardShapeAnnotations: ClipboardShapeAnnotation[] = [];
   const positions: Array<{ x: number; y: number }> = [];
 
   for (const annotationId of shapeAnnotationIdsToInclude) {
-    const annotation = shapeAnnotations.find(a => a.id === annotationId);
+    const annotation = shapeAnnotations.find((a) => a.id === annotationId);
     if (annotation) {
       positions.push(annotation.position);
       const item: ClipboardShapeAnnotation = {
@@ -366,28 +381,28 @@ function updateRelativePositions(
   clipboardTextAnnotations: ClipboardTextAnnotation[],
   clipboardShapeAnnotations: ClipboardShapeAnnotation[]
 ): void {
-  clipboardNodes.forEach(node => {
+  clipboardNodes.forEach((node) => {
     node.relativePosition = {
       x: node.position.x - origin.x,
       y: node.position.y - origin.y
     };
   });
 
-  clipboardGroups.forEach(item => {
+  clipboardGroups.forEach((item) => {
     item.relativePosition = {
       x: item.group.position.x - origin.x,
       y: item.group.position.y - origin.y
     };
   });
 
-  clipboardTextAnnotations.forEach(item => {
+  clipboardTextAnnotations.forEach((item) => {
     item.relativePosition = {
       x: item.annotation.position.x - origin.x,
       y: item.annotation.position.y - origin.y
     };
   });
 
-  clipboardShapeAnnotations.forEach(item => {
+  clipboardShapeAnnotations.forEach((item) => {
     item.relativePosition = {
       x: item.annotation.position.x - origin.x,
       y: item.annotation.position.y - origin.y
@@ -452,9 +467,7 @@ function pasteGroups(
     const newGroupId = generateGroupId();
     idMapping.set(item.group.id, newGroupId);
 
-    const newParentId = item.group.parentId
-      ? idMapping.get(item.group.parentId)
-      : undefined;
+    const newParentId = item.group.parentId ? idMapping.get(item.group.parentId) : undefined;
 
     const newGroup: GroupStyleAnnotation = {
       ...item.group,
@@ -481,19 +494,25 @@ function pasteNodes(
   idMapping: Map<string, string>,
   cyInstance: CyCore,
   onAddNodeToGroup: (nodeId: string, groupId: string) => void,
-  onCreateNode?: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void
+  onCreateNode?: (
+    nodeId: string,
+    nodeElement: CyElement,
+    position: { x: number; y: number }
+  ) => void
 ): string[] {
   const newNodeIds: string[] = [];
 
   if (!onCreateNode) {
     if (clipboardNodes.length > 0) {
-      log.warn('[UnifiedClipboard] No onCreateNode callback; skipping node paste');
+      log.warn("[UnifiedClipboard] No onCreateNode callback; skipping node paste");
     }
     return newNodeIds;
   }
 
   // Get existing node names to avoid duplicates
-  const usedNames = new Set<string>(cyInstance.nodes().map(node => (node.data('name') as string | undefined) || node.id()));
+  const usedNames = new Set<string>(
+    cyInstance.nodes().map((node) => (node.data("name") as string | undefined) || node.id())
+  );
 
   for (const item of clipboardNodes) {
     // Generate unique name based on original node name
@@ -512,7 +531,7 @@ function pasteNodes(
     delete nodeData.position;
 
     const nodeElement: CyElement = {
-      group: 'nodes',
+      group: "nodes",
       data: nodeData,
       position: newPosition
     };
@@ -522,12 +541,16 @@ function pasteNodes(
 
     if (item.groupId) {
       const newGroupId = idMapping.get(item.groupId);
-      log.info(`[UnifiedClipboard] Node ${item.id} -> ${newNodeName}, original group: ${item.groupId}, new group: ${newGroupId}`);
+      log.info(
+        `[UnifiedClipboard] Node ${item.id} -> ${newNodeName}, original group: ${item.groupId}, new group: ${newGroupId}`
+      );
       if (newGroupId) {
         onAddNodeToGroup(newNodeName, newGroupId);
         log.info(`[UnifiedClipboard] Added node ${newNodeName} to group ${newGroupId}`);
       } else {
-        log.warn(`[UnifiedClipboard] Could not find new group ID for original group ${item.groupId}`);
+        log.warn(
+          `[UnifiedClipboard] Could not find new group ID for original group ${item.groupId}`
+        );
       }
     } else {
       log.info(`[UnifiedClipboard] Node ${item.id} -> ${newNodeName}, no group membership`);
@@ -541,11 +564,21 @@ function pasteNodes(
 function pasteEdges(
   clipboardEdges: ClipboardEdge[],
   idMapping: Map<string, string>,
-  onCreateEdge?: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void
+  onCreateEdge?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void
 ): void {
   if (!onCreateEdge) {
     if (clipboardEdges.length > 0) {
-      log.warn('[UnifiedClipboard] No onCreateEdge callback; skipping edge paste');
+      log.warn("[UnifiedClipboard] No onCreateEdge callback; skipping edge paste");
     }
     return;
   }
@@ -555,15 +588,15 @@ function pasteEdges(
     const newTargetId = idMapping.get(item.target);
 
     if (newSourceId && newTargetId) {
-      const newEdgeId = `${newSourceId}:${(item.data.sourceEndpoint as string) || 'eth1'}--${newTargetId}:${(item.data.targetEndpoint as string) || 'eth1'}`;
+      const newEdgeId = `${newSourceId}:${(item.data.sourceEndpoint as string) || "eth1"}--${newTargetId}:${(item.data.targetEndpoint as string) || "eth1"}`;
       idMapping.set(item.id, newEdgeId);
 
       onCreateEdge(newSourceId, newTargetId, {
         id: newEdgeId,
         source: newSourceId,
         target: newTargetId,
-        sourceEndpoint: (item.data.sourceEndpoint as string) || 'eth1',
-        targetEndpoint: (item.data.targetEndpoint as string) || 'eth1'
+        sourceEndpoint: (item.data.sourceEndpoint as string) || "eth1",
+        targetEndpoint: (item.data.targetEndpoint as string) || "eth1"
       });
     }
   }
@@ -580,12 +613,10 @@ function pasteTextAnnotations(
   const newTextAnnotationIds: string[] = [];
 
   for (const item of clipboardTextAnnotations) {
-    const newAnnotationId = generateId('freeText');
+    const newAnnotationId = generateId("freeText");
     idMapping.set(item.annotation.id, newAnnotationId);
 
-    const newGroupId = item.annotation.groupId
-      ? idMapping.get(item.annotation.groupId)
-      : undefined;
+    const newGroupId = item.annotation.groupId ? idMapping.get(item.annotation.groupId) : undefined;
 
     const newAnnotation: FreeTextAnnotation = {
       ...item.annotation,
@@ -615,12 +646,10 @@ function pasteShapeAnnotations(
   const newShapeAnnotationIds: string[] = [];
 
   for (const item of clipboardShapeAnnotations) {
-    const newAnnotationId = generateId('freeShape');
+    const newAnnotationId = generateId("freeShape");
     idMapping.set(item.annotation.id, newAnnotationId);
 
-    const newGroupId = item.annotation.groupId
-      ? idMapping.get(item.annotation.groupId)
-      : undefined;
+    const newGroupId = item.annotation.groupId ? idMapping.get(item.annotation.groupId) : undefined;
 
     const newAnnotation: FreeShapeAnnotation = {
       ...item.annotation,
@@ -674,7 +703,9 @@ function selectPastedNodes(cy: CyCore, nodeIds: string[]): void {
   window.requestAnimationFrame(() => attemptSelect(0));
 }
 
-export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUnifiedClipboardReturn {
+export function useUnifiedClipboard(
+  options: UseUnifiedClipboardOptions
+): UseUnifiedClipboardReturn {
   const {
     cyInstance,
     groups,
@@ -701,43 +732,70 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
 
   const copy = useCallback((): boolean => {
     if (!cyInstance) {
-      log.warn('[UnifiedClipboard] No cytoscape instance');
+      log.warn("[UnifiedClipboard] No cytoscape instance");
       return false;
     }
 
-    const selectedNodes = cyInstance.nodes(':selected');
+    const selectedNodes = cyInstance.nodes(":selected");
 
     // Collect IDs
     const groupIdsToInclude = collectGroupIdsToInclude(
-      selectedGroupIds, selectedNodes, groups, getNodeMembership
+      selectedGroupIds,
+      selectedNodes,
+      groups,
+      getNodeMembership
     );
     const nodeIdsToInclude = collectNodeIdsToInclude(
-      selectedNodes, groupIdsToInclude, getGroupMembers
+      selectedNodes,
+      groupIdsToInclude,
+      getGroupMembers
     );
 
     // Collect all elements
-    const { nodes: clipboardNodes, positions: nodePositions } =
-      collectClipboardNodes(nodeIdsToInclude, cyInstance, getNodeMembership);
+    const { nodes: clipboardNodes, positions: nodePositions } = collectClipboardNodes(
+      nodeIdsToInclude,
+      cyInstance,
+      getNodeMembership
+    );
     const clipboardEdges = collectClipboardEdges(cyInstance, nodeIdsToInclude);
-    const { groups: clipboardGroups, positions: groupPositions } =
-      collectClipboardGroups(groupIdsToInclude, groups);
+    const { groups: clipboardGroups, positions: groupPositions } = collectClipboardGroups(
+      groupIdsToInclude,
+      groups
+    );
     const { annotations: clipboardTextAnnotations, positions: textPositions } =
-      collectClipboardTextAnnotations(selectedTextAnnotationIds, groupIdsToInclude, textAnnotations);
+      collectClipboardTextAnnotations(
+        selectedTextAnnotationIds,
+        groupIdsToInclude,
+        textAnnotations
+      );
     const { annotations: clipboardShapeAnnotations, positions: shapePositions } =
-      collectClipboardShapeAnnotations(selectedShapeAnnotationIds, groupIdsToInclude, shapeAnnotations);
+      collectClipboardShapeAnnotations(
+        selectedShapeAnnotationIds,
+        groupIdsToInclude,
+        shapeAnnotations
+      );
 
     // Check if we have anything to copy
-    const hasContent = clipboardNodes.length > 0 || clipboardGroups.length > 0 ||
-      clipboardTextAnnotations.length > 0 || clipboardShapeAnnotations.length > 0;
+    const hasContent =
+      clipboardNodes.length > 0 ||
+      clipboardGroups.length > 0 ||
+      clipboardTextAnnotations.length > 0 ||
+      clipboardShapeAnnotations.length > 0;
     if (!hasContent) {
-      log.info('[UnifiedClipboard] Nothing to copy');
+      log.info("[UnifiedClipboard] Nothing to copy");
       return false;
     }
 
     // Calculate center and update relative positions
     const allPositions = [...nodePositions, ...groupPositions, ...textPositions, ...shapePositions];
     const origin = calculateCenter(allPositions);
-    updateRelativePositions(origin, clipboardNodes, clipboardGroups, clipboardTextAnnotations, clipboardShapeAnnotations);
+    updateRelativePositions(
+      origin,
+      clipboardNodes,
+      clipboardGroups,
+      clipboardTextAnnotations,
+      clipboardShapeAnnotations
+    );
 
     // Store in clipboard
     clipboardRef.current = {
@@ -754,97 +812,136 @@ export function useUnifiedClipboard(options: UseUnifiedClipboardOptions): UseUni
 
     log.info(
       `[UnifiedClipboard] Copied ${clipboardNodes.length} nodes, ` +
-      `${clipboardEdges.length} edges, ${clipboardGroups.length} groups, ` +
-      `${clipboardTextAnnotations.length} texts, ${clipboardShapeAnnotations.length} shapes`
+        `${clipboardEdges.length} edges, ${clipboardGroups.length} groups, ` +
+        `${clipboardTextAnnotations.length} texts, ${clipboardShapeAnnotations.length} shapes`
     );
 
     return true;
   }, [
-    cyInstance, groups, textAnnotations, shapeAnnotations,
-    selectedGroupIds, selectedTextAnnotationIds, selectedShapeAnnotationIds,
-    getNodeMembership, getGroupMembers
+    cyInstance,
+    groups,
+    textAnnotations,
+    shapeAnnotations,
+    selectedGroupIds,
+    selectedTextAnnotationIds,
+    selectedShapeAnnotationIds,
+    getNodeMembership,
+    getGroupMembers
   ]);
 
-  const paste = useCallback((position: { x: number; y: number }): PasteResult | null => {
-    const clipboardData = clipboardRef.current;
-    if (!clipboardData) {
-      log.warn('[UnifiedClipboard] No clipboard data to paste');
-      return null;
-    }
+  const paste = useCallback(
+    (position: { x: number; y: number }): PasteResult | null => {
+      const clipboardData = clipboardRef.current;
+      if (!clipboardData) {
+        log.warn("[UnifiedClipboard] No clipboard data to paste");
+        return null;
+      }
 
-    if (!cyInstance) {
-      log.warn('[UnifiedClipboard] No cytoscape instance for paste');
-      return null;
-    }
+      if (!cyInstance) {
+        log.warn("[UnifiedClipboard] No cytoscape instance for paste");
+        return null;
+      }
 
-    const idMapping = new Map<string, string>();
-    pasteCounterRef.current++;
-    const offset = pasteCounterRef.current * 20;
+      const idMapping = new Map<string, string>();
+      pasteCounterRef.current++;
+      const offset = pasteCounterRef.current * 20;
 
-    // Determine if we have anything to paste that needs undo batching
-    const hasNodesToCreate = clipboardData.nodes.length > 0 && onCreateNode;
-    const hasEdgesToCreate = clipboardData.edges.length > 0 && onCreateEdge;
-    const hasGroupsToCreate = clipboardData.groups.length > 0;
-    const needsBatching = hasNodesToCreate || hasEdgesToCreate || hasGroupsToCreate;
+      // Determine if we have anything to paste that needs undo batching
+      const hasNodesToCreate = clipboardData.nodes.length > 0 && onCreateNode;
+      const hasEdgesToCreate = clipboardData.edges.length > 0 && onCreateEdge;
+      const hasGroupsToCreate = clipboardData.groups.length > 0;
+      const needsBatching = hasNodesToCreate || hasEdgesToCreate || hasGroupsToCreate;
 
-    // Begin undo batch BEFORE any paste operations to group everything into single undo entry
-    if (needsBatching && beginUndoBatch) {
-      beginUndoBatch();
-    }
+      // Begin undo batch BEFORE any paste operations to group everything into single undo entry
+      if (needsBatching && beginUndoBatch) {
+        beginUndoBatch();
+      }
 
-    // Begin batch to prevent race conditions when creating multiple nodes/edges
-    if (hasNodesToCreate || hasEdgesToCreate) {
-      beginBatch();
-    }
+      // Begin batch to prevent race conditions when creating multiple nodes/edges
+      if (hasNodesToCreate || hasEdgesToCreate) {
+        beginBatch();
+      }
 
-    // Paste all elements using helper functions
-    const newGroupIds = pasteGroups(
-      clipboardData.groups, position, offset, idMapping, generateGroupId, onAddGroup
-    );
+      // Paste all elements using helper functions
+      const newGroupIds = pasteGroups(
+        clipboardData.groups,
+        position,
+        offset,
+        idMapping,
+        generateGroupId,
+        onAddGroup
+      );
 
-    const newNodeIds = pasteNodes(
-      clipboardData.nodes, position, offset, idMapping, cyInstance, onAddNodeToGroup, onCreateNode
-    );
-    pasteEdges(clipboardData.edges, idMapping, onCreateEdge);
+      const newNodeIds = pasteNodes(
+        clipboardData.nodes,
+        position,
+        offset,
+        idMapping,
+        cyInstance,
+        onAddNodeToGroup,
+        onCreateNode
+      );
+      pasteEdges(clipboardData.edges, idMapping, onCreateEdge);
 
-    // End batch to flush all changes at once
-    if (hasNodesToCreate || hasEdgesToCreate) {
-      void endBatch();
-    }
+      // End batch to flush all changes at once
+      if (hasNodesToCreate || hasEdgesToCreate) {
+        void endBatch();
+      }
 
-    const newTextAnnotationIds = pasteTextAnnotations(
-      clipboardData.textAnnotations, position, offset, idMapping, onAddTextAnnotation
-    );
-    const newShapeAnnotationIds = pasteShapeAnnotations(
-      clipboardData.shapeAnnotations, position, offset, idMapping, onAddShapeAnnotation
-    );
+      const newTextAnnotationIds = pasteTextAnnotations(
+        clipboardData.textAnnotations,
+        position,
+        offset,
+        idMapping,
+        onAddTextAnnotation
+      );
+      const newShapeAnnotationIds = pasteShapeAnnotations(
+        clipboardData.shapeAnnotations,
+        position,
+        offset,
+        idMapping,
+        onAddShapeAnnotation
+      );
 
-    // End undo batch - this commits all collected actions as a single undo entry
-    if (needsBatching && endUndoBatch) {
-      endUndoBatch();
-    }
+      // End undo batch - this commits all collected actions as a single undo entry
+      if (needsBatching && endUndoBatch) {
+        endUndoBatch();
+      }
 
-    selectPastedNodes(cyInstance, newNodeIds);
+      selectPastedNodes(cyInstance, newNodeIds);
 
-    log.info(
-      `[UnifiedClipboard] Pasted ${newNodeIds.length} nodes, ` +
-      `${newGroupIds.length} groups, ` +
-      `${newTextAnnotationIds.length} texts, ` +
-      `${newShapeAnnotationIds.length} shapes`
-    );
+      log.info(
+        `[UnifiedClipboard] Pasted ${newNodeIds.length} nodes, ` +
+          `${newGroupIds.length} groups, ` +
+          `${newTextAnnotationIds.length} texts, ` +
+          `${newShapeAnnotationIds.length} shapes`
+      );
 
-    return {
-      idMapping,
-      newGroupIds,
-      newNodeIds,
-      newTextAnnotationIds,
-      newShapeAnnotationIds
-    };
-  }, [cyInstance, onAddGroup, onAddTextAnnotation, onAddShapeAnnotation, onAddNodeToGroup, generateGroupId, onCreateNode, onCreateEdge, beginUndoBatch, endUndoBatch]);
+      return {
+        idMapping,
+        newGroupIds,
+        newNodeIds,
+        newTextAnnotationIds,
+        newShapeAnnotationIds
+      };
+    },
+    [
+      cyInstance,
+      onAddGroup,
+      onAddTextAnnotation,
+      onAddShapeAnnotation,
+      onAddNodeToGroup,
+      generateGroupId,
+      onCreateNode,
+      onCreateEdge,
+      beginUndoBatch,
+      endUndoBatch
+    ]
+  );
 
   const hasClipboardData = createHasClipboardData(clipboardRef);
 
-  const clearClipboard = createClearClipboard(clipboardRef, pasteCounterRef, 'UnifiedClipboard');
+  const clearClipboard = createClearClipboard(clipboardRef, pasteCounterRef, "UnifiedClipboard");
 
   const getClipboardData = useCallback((): UnifiedClipboardData | null => {
     return clipboardRef.current;

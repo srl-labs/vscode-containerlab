@@ -2,7 +2,7 @@
  * Shared form components for annotation editors
  * Used by FreeShape, FreeText, and Group editors
  */
-import React from 'react';
+import React from "react";
 
 /**
  * Toggle pill button
@@ -17,8 +17,8 @@ export const Toggle: React.FC<{
     onClick={onClick}
     className={`px-3 py-1.5 text-[11px] font-medium rounded-sm transition-all duration-150 ${
       active
-        ? 'bg-[var(--accent)] text-white shadow-sm'
-        : 'bg-white/5 text-[var(--vscode-foreground)] hover:bg-white/10 border border-white/10'
+        ? "bg-[var(--accent)] text-white shadow-sm"
+        : "bg-white/5 text-[var(--vscode-foreground)] hover:bg-white/10 border border-white/10"
     }`}
   >
     {children}
@@ -36,7 +36,9 @@ export const ColorSwatch: React.FC<{
 }> = ({ label, value, onChange, disabled }) => (
   <div className="flex flex-col gap-0.5">
     <span className="field-label">{label}</span>
-    <div className={`relative w-[30px] h-[30px] rounded-sm overflow-hidden border border-white/10 hover:border-white/20 transition-colors ${disabled ? 'opacity-40' : ''}`}>
+    <div
+      className={`relative w-[30px] h-[30px] rounded-sm overflow-hidden border border-white/10 hover:border-white/20 transition-colors ${disabled ? "opacity-40" : ""}`}
+    >
       <input
         type="color"
         value={value}
@@ -73,7 +75,9 @@ export const NumberInput: React.FC<{
         step={step}
       />
       {unit && (
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--vscode-descriptionForeground)] pointer-events-none">{unit}</span>
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--vscode-descriptionForeground)] pointer-events-none">
+          {unit}
+        </span>
       )}
     </div>
   </div>
@@ -116,8 +120,10 @@ export const SelectInput: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      {options.map(opt => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
       ))}
     </select>
   </div>
@@ -133,11 +139,14 @@ export const RangeSlider: React.FC<{
   min?: number;
   max?: number;
   unit?: string;
-}> = ({ label, value, onChange, min = 0, max = 100, unit = '%' }) => (
+}> = ({ label, value, onChange, min = 0, max = 100, unit = "%" }) => (
   <div className="flex flex-col gap-0.5 flex-1 min-w-[120px]">
     <div className="flex justify-between">
       <span className="field-label">{label}</span>
-      <span className="field-label">{value}{unit}</span>
+      <span className="field-label">
+        {value}
+        {unit}
+      </span>
     </div>
     <div className="flex items-center h-[30px]">
       <input
@@ -155,4 +164,5 @@ export const RangeSlider: React.FC<{
 /**
  * Grid pattern background for previews
  */
-export const PREVIEW_GRID_BG = "bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grid%22%20width%3D%2220%22%20height%3D%2220%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M%200%200%20L%2020%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.03)%22%20stroke-width%3D%221%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23grid)%22%2F%3E%3C%2Fsvg%3E')]";
+export const PREVIEW_GRID_BG =
+  "bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22grid%22%20width%3D%2220%22%20height%3D%2220%22%20patternUnits%3D%22userSpaceOnUse%22%3E%3Cpath%20d%3D%22M%200%200%20L%2020%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22rgba(255%2C255%2C255%2C0.03)%22%20stroke-width%3D%221%22%2F%3E%3C%2Fpattern%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23grid)%22%2F%3E%3C%2Fsvg%3E')]";

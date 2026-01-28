@@ -5,11 +5,10 @@
  * This replaces the previous Leaflet-based implementation with MapLibre GL
  * for smoother WebGL-powered animations that match Google Maps quality.
  */
-import { useEffect, useRef, useCallback, useState } from 'react';
-import type { Core, EventObject, NodeSingular } from 'cytoscape';
+import { useEffect, useRef, useCallback, useState } from "react";
+import type { Core, EventObject, NodeSingular } from "cytoscape";
 
-import type {
-  MapLibreState} from './maplibreUtils';
+import type { MapLibreState } from "./maplibreUtils";
 import {
   createInitialMapLibreState,
   initializeMapLibre,
@@ -17,12 +16,12 @@ import {
   handleMapMove,
   handleNodeDragFree,
   handleGeoModeChange
-} from './maplibreUtils';
+} from "./maplibreUtils";
 
 export interface UseGeoMapOptions {
   cyInstance: Core | null;
   isGeoLayout: boolean;
-  geoMode: 'pan' | 'edit';
+  geoMode: "pan" | "edit";
   /** Callback fired when geomap is fully initialized */
   onGeoMapReady?: (state: MapLibreState) => void;
 }
@@ -43,7 +42,12 @@ function cancelPendingMoveRequest(moveRafRef: WritableRef<number | null>): void 
 /**
  * Hook for managing MapLibre GL geo map integration
  */
-export function useGeoMap({ cyInstance, isGeoLayout, geoMode, onGeoMapReady }: UseGeoMapOptions): UseGeoMapReturn {
+export function useGeoMap({
+  cyInstance,
+  isGeoLayout,
+  geoMode,
+  onGeoMapReady
+}: UseGeoMapOptions): UseGeoMapReturn {
   const stateRef = useRef<MapLibreState>(createInitialMapLibreState());
   const isInitializingRef = useRef(false);
   const moveRafRef = useRef<number | null>(null);
@@ -61,19 +65,16 @@ export function useGeoMap({ cyInstance, isGeoLayout, geoMode, onGeoMapReady }: U
   }, [cyInstance]);
 
   // Node drag handler - updates geo coordinates after dragging
-  const handleDragFree = useCallback(
-    (event: EventObject) => {
-      // Cast target to NodeSingular for type safety - Cytoscape events always have a target
-      const target = event.target as NodeSingular | undefined;
-      // Check if target is a node element by calling isNode() with proper 'this' context
-      // We must call the method directly on the target, NOT extract and call it separately,
-      // because Cytoscape's isNode() uses 'this' internally to check the element's group.
-      if (target && typeof target.isNode === 'function' && target.isNode()) {
-        handleNodeDragFree(target, stateRef.current);
-      }
-    },
-    []
-  );
+  const handleDragFree = useCallback((event: EventObject) => {
+    // Cast target to NodeSingular for type safety - Cytoscape events always have a target
+    const target = event.target as NodeSingular | undefined;
+    // Check if target is a node element by calling isNode() with proper 'this' context
+    // We must call the method directly on the target, NOT extract and call it separately,
+    // because Cytoscape's isNode() uses 'this' internally to check the element's group.
+    if (target && typeof target.isNode === "function" && target.isNode()) {
+      handleNodeDragFree(target, stateRef.current);
+    }
+  }, []);
 
   // Geo map lifecycle
   useEffect(() => {

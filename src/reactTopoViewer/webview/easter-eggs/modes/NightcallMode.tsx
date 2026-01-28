@@ -5,12 +5,20 @@
  * Dreamy, non-stressed aesthetic while keeping topology visible.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useEffect, useRef, useState } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { useNightcallAudio } from '../audio';
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, applyNodeGlow, restoreNodeStyles, MuteButton } from '../shared';
-import type { RGBColor } from '../shared';
+import { useNightcallAudio } from "../audio";
+import {
+  BTN_VISIBLE,
+  BTN_HIDDEN,
+  BTN_BLUR,
+  lerpColor,
+  applyNodeGlow,
+  restoreNodeStyles,
+  MuteButton
+} from "../shared";
+import type { RGBColor } from "../shared";
 
 interface NightcallModeProps {
   isActive: boolean;
@@ -22,11 +30,11 @@ interface NightcallModeProps {
 
 /** Retro synthwave color palette */
 const COLORS = {
-  purple: { r: 138, g: 43, b: 226 },      // Blue violet
-  magenta: { r: 255, g: 0, b: 128 },      // Hot pink
-  cyan: { r: 0, g: 255, b: 255 },         // Cyan
-  darkPurple: { r: 48, g: 25, b: 88 },    // Dark purple
-  pink: { r: 255, g: 105, b: 180 },       // Hot pink
+  purple: { r: 138, g: 43, b: 226 }, // Blue violet
+  magenta: { r: 255, g: 0, b: 128 }, // Hot pink
+  cyan: { r: 0, g: 255, b: 255 }, // Cyan
+  darkPurple: { r: 48, g: 25, b: 88 }, // Dark purple
+  pink: { r: 255, g: 105, b: 180 } // Hot pink
 };
 
 /** Chord to color mapping */
@@ -34,7 +42,7 @@ const CHORD_COLORS: Record<string, RGBColor> = {
   Am: COLORS.purple,
   GB: COLORS.cyan,
   F: COLORS.magenta,
-  Dm: COLORS.pink,
+  Dm: COLORS.pink
 };
 
 /**
@@ -56,7 +64,7 @@ const NightcallCanvas: React.FC<{
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
-  const prevChordRef = useRef<string>('Am');
+  const prevChordRef = useRef<string>("Am");
   const colorTransitionRef = useRef<number>(1);
 
   useEffect(() => {
@@ -65,7 +73,7 @@ const NightcallCanvas: React.FC<{
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return undefined;
 
     const updateSize = (): void => {
@@ -73,7 +81,7 @@ const NightcallCanvas: React.FC<{
       canvas.height = window.innerHeight;
     };
     updateSize();
-    window.addEventListener('resize', updateSize);
+    window.addEventListener("resize", updateSize);
 
     timeRef.current = 0;
 
@@ -118,7 +126,7 @@ const NightcallCanvas: React.FC<{
     animationRef.current = window.requestAnimationFrame(animate);
 
     return () => {
-      window.removeEventListener('resize', updateSize);
+      window.removeEventListener("resize", updateSize);
       window.cancelAnimationFrame(animationRef.current);
     };
   }, [isActive, getFrequencyData, getBeatIntensity, getCurrentChord]);
@@ -129,7 +137,7 @@ const NightcallCanvas: React.FC<{
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-[99998]"
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: "100%", height: "100%" }}
     />
   );
 };
@@ -152,16 +160,16 @@ function drawRetroSunGlow(
   const pulseRadius = baseRadius + Math.sin(time * 0.02) * 20 + intensity * 30;
 
   // Outer glow
-  const gradient = ctx.createRadialGradient(
-    centerX, centerY, 0,
-    centerX, centerY, pulseRadius
-  );
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius);
 
   const alpha = 0.08 + intensity * 0.06;
   gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 1.5})`);
   gradient.addColorStop(0.3, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
-  gradient.addColorStop(0.6, `rgba(${COLORS.darkPurple.r}, ${COLORS.darkPurple.g}, ${COLORS.darkPurple.b}, ${alpha * 0.5})`);
-  gradient.addColorStop(1, 'transparent');
+  gradient.addColorStop(
+    0.6,
+    `rgba(${COLORS.darkPurple.r}, ${COLORS.darkPurple.g}, ${COLORS.darkPurple.b}, ${alpha * 0.5})`
+  );
+  gradient.addColorStop(1, "transparent");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
@@ -182,7 +190,7 @@ function drawScanLines(
   const lineSpacing = 4;
   const offset = (time * 0.5) % lineSpacing;
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
   ctx.lineWidth = 1;
 
   for (let y = offset; y < height; y += lineSpacing) {
@@ -211,29 +219,38 @@ function drawSmoothEdgeGlow(
 
   // Top edge - purple to transparent
   const topGrad = ctx.createLinearGradient(0, 0, 0, glowSize);
-  topGrad.addColorStop(0, `rgba(${COLORS.purple.r}, ${COLORS.purple.g}, ${COLORS.purple.b}, ${alpha})`);
-  topGrad.addColorStop(1, 'transparent');
+  topGrad.addColorStop(
+    0,
+    `rgba(${COLORS.purple.r}, ${COLORS.purple.g}, ${COLORS.purple.b}, ${alpha})`
+  );
+  topGrad.addColorStop(1, "transparent");
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, width, glowSize);
 
   // Bottom edge - chord color
   const botGrad = ctx.createLinearGradient(0, height, 0, height - glowSize);
   botGrad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.8})`);
-  botGrad.addColorStop(1, 'transparent');
+  botGrad.addColorStop(1, "transparent");
   ctx.fillStyle = botGrad;
   ctx.fillRect(0, height - glowSize, width, glowSize);
 
   // Left edge - cyan accent
   const leftGrad = ctx.createLinearGradient(0, 0, glowSize * 0.7, 0);
-  leftGrad.addColorStop(0, `rgba(${COLORS.cyan.r}, ${COLORS.cyan.g}, ${COLORS.cyan.b}, ${alpha * 0.5})`);
-  leftGrad.addColorStop(1, 'transparent');
+  leftGrad.addColorStop(
+    0,
+    `rgba(${COLORS.cyan.r}, ${COLORS.cyan.g}, ${COLORS.cyan.b}, ${alpha * 0.5})`
+  );
+  leftGrad.addColorStop(1, "transparent");
   ctx.fillStyle = leftGrad;
   ctx.fillRect(0, 0, glowSize * 0.7, height);
 
   // Right edge - magenta accent
   const rightGrad = ctx.createLinearGradient(width, 0, width - glowSize * 0.7, 0);
-  rightGrad.addColorStop(0, `rgba(${COLORS.magenta.r}, ${COLORS.magenta.g}, ${COLORS.magenta.b}, ${alpha * 0.5})`);
-  rightGrad.addColorStop(1, 'transparent');
+  rightGrad.addColorStop(
+    0,
+    `rgba(${COLORS.magenta.r}, ${COLORS.magenta.g}, ${COLORS.magenta.b}, ${alpha * 0.5})`
+  );
+  rightGrad.addColorStop(1, "transparent");
   ctx.fillStyle = rightGrad;
   ctx.fillRect(width - glowSize * 0.7, 0, glowSize * 0.7, height);
 }
@@ -320,7 +337,7 @@ function drawFloatingParticles(
         vy: -0.2 - Math.random() * 0.3,
         size: 1 + Math.random() * 2,
         alpha: 0.2 + Math.random() * 0.3,
-        hue: 260 + Math.random() * 60, // Purple to pink range
+        hue: 260 + Math.random() * 60 // Purple to pink range
       });
       /* eslint-enable sonarjs/pseudo-random */
     }
@@ -377,12 +394,12 @@ function useNightcallNodeGlow(
     const nodes = cyInstance.nodes();
 
     // Store original styles
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        'background-color': node.style('background-color') as string,
-        'border-color': node.style('border-color') as string,
-        'border-width': node.style('border-width') as string,
+        "background-color": node.style("background-color") as string,
+        "border-color": node.style("border-color") as string,
+        "border-width": node.style("border-width") as string
       });
     });
 
@@ -417,7 +434,7 @@ export const NightcallMode: React.FC<NightcallModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance,
+  cyInstance
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useNightcallAudio();
@@ -465,15 +482,16 @@ export const NightcallMode: React.FC<NightcallModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(0, 255, 255, 0.6) 0%, rgba(138, 43, 226, 0.6) 100%)',
-            border: '2px solid rgba(255, 0, 128, 0.5)',
-            color: '#ff0080',
-            cursor: 'pointer',
+            background:
+              "linear-gradient(135deg, rgba(0, 255, 255, 0.6) 0%, rgba(138, 43, 226, 0.6) 100%)",
+            border: "2px solid rgba(255, 0, 128, 0.5)",
+            color: "#ff0080",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(255, 0, 128, 0.8)',
-            boxShadow: '0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(255, 0, 128, 0.1)',
+            textShadow: "0 0 10px rgba(255, 0, 128, 0.8)",
+            boxShadow: "0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(255, 0, 128, 0.1)"
           }}
           title={`Current: ${modeName}`}
         >
@@ -493,15 +511,16 @@ export const NightcallMode: React.FC<NightcallModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.8) 0%, rgba(255, 0, 128, 0.8) 100%)',
-            border: '2px solid rgba(0, 255, 255, 0.5)',
-            color: '#00ffff',
-            cursor: 'pointer',
+            background:
+              "linear-gradient(135deg, rgba(138, 43, 226, 0.8) 0%, rgba(255, 0, 128, 0.8) 100%)",
+            border: "2px solid rgba(0, 255, 255, 0.5)",
+            color: "#00ffff",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(0, 255, 255, 0.8)',
-            boxShadow: '0 0 20px rgba(138, 43, 226, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1)',
+            textShadow: "0 0 10px rgba(0, 255, 255, 0.8)",
+            boxShadow: "0 0 20px rgba(138, 43, 226, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1)"
           }}
         >
           End Nightcall

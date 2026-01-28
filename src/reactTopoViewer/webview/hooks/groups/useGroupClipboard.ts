@@ -3,24 +3,24 @@
  * Supports copying entire group hierarchies including annotations.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from "react";
 
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
-} from '../../../shared/types/topology';
-import { log } from '../../utils/logger';
-import { createHasClipboardData, createClearClipboard } from '../clipboard/useUnifiedClipboard';
-import { generateAnnotationId } from '../annotations/sharedAnnotationHelpers';
+} from "../../../shared/types/topology";
+import { log } from "../../utils/logger";
+import { createHasClipboardData, createClearClipboard } from "../clipboard/useUnifiedClipboard";
+import { generateAnnotationId } from "../annotations/sharedAnnotationHelpers";
 
-import type { GroupClipboardData, PastedGroupResult } from './groupTypes';
+import type { GroupClipboardData, PastedGroupResult } from "./groupTypes";
 import {
   getDescendantGroups,
   getAllAnnotationsInHierarchy,
   getRelativePosition
-} from './hierarchyUtils';
-import { generateGroupId } from './groupHelpers';
+} from "./hierarchyUtils";
+import { generateGroupId } from "./groupHelpers";
 
 /** Create descendant groups with new IDs */
 function createDescendantGroups(
@@ -37,9 +37,7 @@ function createDescendantGroups(
     const newDescendantId = generateGroupId([...existingGroups, ...newGroups]);
     idMapping.set(descendant.id, newDescendantId);
 
-    const newParentId = descendant.parentId
-      ? idMapping.get(descendant.parentId)
-      : undefined;
+    const newParentId = descendant.parentId ? idMapping.get(descendant.parentId) : undefined;
 
     newGroups.push({
       ...descendant,
@@ -62,8 +60,8 @@ function createTextAnnotations(
   position: { x: number; y: number },
   pasteOffset: number
 ): FreeTextAnnotation[] {
-  return clipboardData.textAnnotations.map(text => {
-    const newTextId = generateAnnotationId('freeText');
+  return clipboardData.textAnnotations.map((text) => {
+    const newTextId = generateAnnotationId("freeText");
     idMapping.set(text.id, newTextId);
 
     const newGroupId = text.groupId ? idMapping.get(text.groupId) : undefined;
@@ -88,8 +86,8 @@ function createShapeAnnotations(
   position: { x: number; y: number },
   pasteOffset: number
 ): FreeShapeAnnotation[] {
-  return clipboardData.shapeAnnotations.map(shape => {
-    const newShapeId = generateAnnotationId('freeShape');
+  return clipboardData.shapeAnnotations.map((shape) => {
+    const newShapeId = generateAnnotationId("freeShape");
     idMapping.set(shape.id, newShapeId);
 
     const newGroupId = shape.groupId ? idMapping.get(shape.groupId) : undefined;
@@ -160,7 +158,7 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
 
   const copyGroup = useCallback(
     (groupId: string): boolean => {
-      const rootGroup = groups.find(g => g.id === groupId);
+      const rootGroup = groups.find((g) => g.id === groupId);
       if (!rootGroup) {
         log.warn(`[GroupClipboard] Group not found: ${groupId}`);
         return false;
@@ -178,11 +176,11 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
       );
 
       // Collect member nodes with relative positions
-      const allGroupIds = [groupId, ...descendantGroups.map(g => g.id)];
-      const memberNodes: GroupClipboardData['memberNodes'] = [];
+      const allGroupIds = [groupId, ...descendantGroups.map((g) => g.id)];
+      const memberNodes: GroupClipboardData["memberNodes"] = [];
 
       for (const gId of allGroupIds) {
-        const group = gId === groupId ? rootGroup : descendantGroups.find(g => g.id === gId);
+        const group = gId === groupId ? rootGroup : descendantGroups.find((g) => g.id === gId);
         if (!group) continue;
 
         const members = getGroupMembers(gId);
@@ -198,17 +196,17 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
       }
 
       // Calculate relative positions from root group position
-      const textAnnotationsWithRelative = texts.map(t => ({
+      const textAnnotationsWithRelative = texts.map((t) => ({
         ...t,
         relativePosition: getRelativePosition(t.position, rootGroup)
       }));
 
-      const shapeAnnotationsWithRelative = shapes.map(s => ({
+      const shapeAnnotationsWithRelative = shapes.map((s) => ({
         ...s,
         relativePosition: getRelativePosition(s.position, rootGroup)
       }));
 
-      const descendantGroupsWithRelative = descendantGroups.map(g => ({
+      const descendantGroupsWithRelative = descendantGroups.map((g) => ({
         ...g,
         position: getRelativePosition(g.position, rootGroup)
       }));
@@ -225,8 +223,8 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
 
       log.info(
         `[GroupClipboard] Copied group ${groupId} with ` +
-        `${descendantGroups.length} descendants, ` +
-        `${texts.length} texts, ${shapes.length} shapes`
+          `${descendantGroups.length} descendants, ` +
+          `${texts.length} texts, ${shapes.length} shapes`
       );
 
       return true;
@@ -238,7 +236,7 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
     (position: { x: number; y: number }): PastedGroupResult | null => {
       const clipboardData = clipboardRef.current;
       if (!clipboardData) {
-        log.warn('[GroupClipboard] No clipboard data to paste');
+        log.warn("[GroupClipboard] No clipboard data to paste");
         return null;
       }
 
@@ -259,19 +257,34 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
 
       // Create all groups, text annotations, and shape annotations
       const newGroups = createDescendantGroups(
-        clipboardData, groups, idMapping, position, pasteOffset, [newRootGroup]
+        clipboardData,
+        groups,
+        idMapping,
+        position,
+        pasteOffset,
+        [newRootGroup]
       );
-      const newTextAnnotations = createTextAnnotations(clipboardData, idMapping, position, pasteOffset);
-      const newShapeAnnotations = createShapeAnnotations(clipboardData, idMapping, position, pasteOffset);
+      const newTextAnnotations = createTextAnnotations(
+        clipboardData,
+        idMapping,
+        position,
+        pasteOffset
+      );
+      const newShapeAnnotations = createShapeAnnotations(
+        clipboardData,
+        idMapping,
+        position,
+        pasteOffset
+      );
 
       // Add elements using callbacks
-      newGroups.forEach(group => onAddGroup?.(group));
-      newTextAnnotations.forEach(text => onAddTextAnnotation?.(text));
-      newShapeAnnotations.forEach(shape => onAddShapeAnnotation?.(shape));
+      newGroups.forEach((group) => onAddGroup?.(group));
+      newTextAnnotations.forEach((text) => onAddTextAnnotation?.(text));
+      newShapeAnnotations.forEach((shape) => onAddShapeAnnotation?.(shape));
 
       log.info(
         `[GroupClipboard] Pasted ${newGroups.length} groups, ` +
-        `${newTextAnnotations.length} texts, ${newShapeAnnotations.length} shapes`
+          `${newTextAnnotations.length} texts, ${newShapeAnnotations.length} shapes`
       );
 
       return { newGroups, newTextAnnotations, newShapeAnnotations, idMapping };
@@ -281,7 +294,7 @@ export function useGroupClipboard(options: UseGroupClipboardOptions): UseGroupCl
 
   const hasClipboardData = createHasClipboardData(clipboardRef);
 
-  const clearClipboard = createClearClipboard(clipboardRef, pasteCounterRef, 'GroupClipboard');
+  const clearClipboard = createClearClipboard(clipboardRef, pasteCounterRef, "GroupClipboard");
 
   const getClipboardData = useCallback((): GroupClipboardData | null => {
     return clipboardRef.current;

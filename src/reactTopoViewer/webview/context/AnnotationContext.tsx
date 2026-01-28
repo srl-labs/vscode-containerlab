@@ -5,11 +5,15 @@
  * Registers handlers with UndoRedoContext for undo/redo support.
  * Exposes state and actions to consuming components.
  */
-import React, { createContext, useContext, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { createContext, useContext, useEffect, useCallback, useMemo, useRef } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../shared/annotations';
-import type { GroupEditorData } from '../hooks/groups/groupTypes';
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation
+} from "../../shared/annotations";
+import type { GroupEditorData } from "../hooks/groups/groupTypes";
 import {
   useAppGroups,
   useAppFreeTextAnnotations,
@@ -21,7 +25,7 @@ import {
   useAnnotationEffects,
   useAddShapesHandler,
   filterEntriesWithPosition
-} from '../hooks/internal';
+} from "../hooks/internal";
 import {
   useAppGroupUndoHandlers,
   useCombinedAnnotationApplier,
@@ -30,9 +34,9 @@ import {
   useGroupUndoRedoHandlers,
   useNodeReparent,
   generateGroupId
-} from '../hooks/groups';
+} from "../hooks/groups";
 
-import { useUndoRedoContext } from './UndoRedoContext';
+import { useUndoRedoContext } from "./UndoRedoContext";
 
 /** Pending membership change during node drag */
 export interface PendingMembershipChange {
@@ -44,12 +48,14 @@ export interface PendingMembershipChange {
 /** Props for AnnotationProvider */
 interface AnnotationProviderProps {
   cy: CyCore | null;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
   pendingMembershipChangesRef: { current: Map<string, PendingMembershipChange> };
   /** Callback to sync node positions to React state (prevents position drift during reconcile) */
-  updateNodePositions: (positions: Array<{ id: string; position: { x: number; y: number } }>) => void;
+  updateNodePositions: (
+    positions: Array<{ id: string; position: { x: number; y: number } }>
+  ) => void;
   children: React.ReactNode;
 }
 
@@ -94,13 +100,27 @@ interface AnnotationActionsContextValue {
   addGroupWithUndo: (group: GroupStyleAnnotation) => void;
   // Group drag handlers
   onGroupDragStart: (groupId: string) => void;
-  onGroupDragEnd: (groupId: string, finalPosition: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
+  onGroupDragEnd: (
+    groupId: string,
+    finalPosition: { x: number; y: number },
+    delta: { dx: number; dy: number }
+  ) => void;
   onGroupDragMove: (groupId: string, delta: { dx: number; dy: number }) => void;
   updateGroupSizeWithUndo: (id: string, width: number, height: number) => void;
   // Group resize handlers (separate from drag to avoid undo spam)
   onResizeStart: (groupId: string) => void;
-  onResizeMove: (groupId: string, width: number, height: number, position: { x: number; y: number }) => void;
-  onResizeEnd: (groupId: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void;
+  onResizeMove: (
+    groupId: string,
+    width: number,
+    height: number,
+    position: { x: number; y: number }
+  ) => void;
+  onResizeEnd: (
+    groupId: string,
+    finalWidth: number,
+    finalHeight: number,
+    finalPosition: { x: number; y: number }
+  ) => void;
 
   handleAddText: () => void;
   selectTextAnnotation: (id: string) => void;
@@ -147,7 +167,11 @@ interface AnnotationActionsContextValue {
 
   // Membership callbacks for node reparent
   applyMembershipChange: (memberships: { nodeId: string; groupId: string | null }[]) => void;
-  onMembershipWillChange: (nodeId: string, oldGroupId: string | null, newGroupId: string | null) => void;
+  onMembershipWillChange: (
+    nodeId: string,
+    oldGroupId: string | null,
+    newGroupId: string | null
+  ) => void;
 
   // Utilities
   clearAllSelections: () => void;
@@ -157,7 +181,9 @@ interface AnnotationActionsContextValue {
 export type AnnotationContextValue = AnnotationStateContextValue & AnnotationActionsContextValue;
 
 const AnnotationStateContext = createContext<AnnotationStateContextValue | undefined>(undefined);
-const AnnotationActionsContext = createContext<AnnotationActionsContextValue | undefined>(undefined);
+const AnnotationActionsContext = createContext<AnnotationActionsContextValue | undefined>(
+  undefined
+);
 
 /** Provider component for annotation context */
 export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
@@ -169,11 +195,20 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   updateNodePositions,
   children
 }) => {
-  const { undoRedo, registerAnnotationHandler, registerGroupMoveHandler, registerMembershipHandler } = useUndoRedoContext();
+  const {
+    undoRedo,
+    registerAnnotationHandler,
+    registerGroupMoveHandler,
+    registerMembershipHandler
+  } = useUndoRedoContext();
 
   // Refs for late-bound migration callbacks
-  const migrateTextAnnotationsRef = useRef<((oldGroupId: string, newGroupId: string | null) => void) | undefined>(undefined);
-  const migrateShapeAnnotationsRef = useRef<((oldGroupId: string, newGroupId: string | null) => void) | undefined>(undefined);
+  const migrateTextAnnotationsRef = useRef<
+    ((oldGroupId: string, newGroupId: string | null) => void) | undefined
+  >(undefined);
+  const migrateShapeAnnotationsRef = useRef<
+    ((oldGroupId: string, newGroupId: string | null) => void) | undefined
+  >(undefined);
 
   // Groups
   const { groups: groupsHook } = useAppGroups({
@@ -208,10 +243,14 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   migrateShapeAnnotationsRef.current = freeShapeAnnotations.migrateGroupId;
 
   // Appliers for undo/redo
-  const { isApplyingAnnotationUndoRedo: isApplyingShapeUndoRedo, applyAnnotationChange: applyFreeShapeChange } =
-    useFreeShapeAnnotationApplier(freeShapeAnnotations);
-  const { isApplyingAnnotationUndoRedo: isApplyingTextUndoRedo, applyAnnotationChange: applyFreeTextChange } =
-    useFreeTextAnnotationApplier(freeTextAnnotations);
+  const {
+    isApplyingAnnotationUndoRedo: isApplyingShapeUndoRedo,
+    applyAnnotationChange: applyFreeShapeChange
+  } = useFreeShapeAnnotationApplier(freeShapeAnnotations);
+  const {
+    isApplyingAnnotationUndoRedo: isApplyingTextUndoRedo,
+    applyAnnotationChange: applyFreeTextChange
+  } = useFreeTextAnnotationApplier(freeTextAnnotations);
 
   // Combined annotation applier
   const { applyAnnotationChange, applyGroupMoveChange } = useCombinedAnnotationApplier({
@@ -232,19 +271,25 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   }, [registerGroupMoveHandler, applyGroupMoveChange]);
 
   // Membership callbacks
-  const applyMembershipChange = useCallback((memberships: { nodeId: string; groupId: string | null }[]) => {
-    for (const { nodeId, groupId } of memberships) {
-      if (groupId) {
-        groupsHook.addNodeToGroup(nodeId, groupId);
-      } else {
-        groupsHook.removeNodeFromGroup(nodeId);
+  const applyMembershipChange = useCallback(
+    (memberships: { nodeId: string; groupId: string | null }[]) => {
+      for (const { nodeId, groupId } of memberships) {
+        if (groupId) {
+          groupsHook.addNodeToGroup(nodeId, groupId);
+        } else {
+          groupsHook.removeNodeFromGroup(nodeId);
+        }
       }
-    }
-  }, [groupsHook]);
+    },
+    [groupsHook]
+  );
 
-  const onMembershipWillChange = useCallback((nodeId: string, oldGroupId: string | null, newGroupId: string | null) => {
-    pendingMembershipChangesRef.current.set(nodeId, { nodeId, oldGroupId, newGroupId });
-  }, [pendingMembershipChangesRef]);
+  const onMembershipWillChange = useCallback(
+    (nodeId: string, oldGroupId: string | null, newGroupId: string | null) => {
+      pendingMembershipChangesRef.current.set(nodeId, { nodeId, oldGroupId, newGroupId });
+    },
+    [pendingMembershipChangesRef]
+  );
 
   // Register membership handler
   useEffect(() => {
@@ -300,15 +345,19 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   );
 
   // Node reparent
-  useNodeReparent(cy, {
-    mode,
-    isLocked,
-    onMembershipWillChange
-  }, {
-    groups: groupsHook.groups,
-    addNodeToGroup: groupsHook.addNodeToGroup,
-    removeNodeFromGroup: groupsHook.removeNodeFromGroup
-  });
+  useNodeReparent(
+    cy,
+    {
+      mode,
+      isLocked,
+      onMembershipWillChange
+    },
+    {
+      groups: groupsHook.groups,
+      addNodeToGroup: groupsHook.addNodeToGroup,
+      removeNodeFromGroup: groupsHook.removeNodeFromGroup
+    }
+  );
 
   // Annotation effects
   useAnnotationEffects({
@@ -337,10 +386,13 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
   }, [groupsHook.groups]);
 
   // Add group with undo recording (for paste operations)
-  const addGroupWithUndo = useCallback((group: GroupStyleAnnotation) => {
-    groupsHook.addGroup(group);
-    undoRedo.pushAction(groupsHook.getUndoRedoAction(null, group));
-  }, [groupsHook, undoRedo]);
+  const addGroupWithUndo = useCallback(
+    (group: GroupStyleAnnotation) => {
+      groupsHook.addGroup(group);
+      undoRedo.pushAction(groupsHook.getUndoRedoAction(null, group));
+    },
+    [groupsHook, undoRedo]
+  );
 
   // Clear all selections
   const clearAllSelections = useCallback(() => {
@@ -351,192 +403,198 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 
   // Delete all selected
   const deleteAllSelected = useCallback(() => {
-    groupsHook.selectedGroupIds.forEach(id => deleteGroupWithUndo(id));
+    groupsHook.selectedGroupIds.forEach((id) => deleteGroupWithUndo(id));
     groupsHook.clearGroupSelection();
     freeTextAnnotations.deleteSelectedAnnotations();
     freeShapeAnnotations.deleteSelectedAnnotations();
   }, [groupsHook, deleteGroupWithUndo, freeTextAnnotations, freeShapeAnnotations]);
 
-  const stateValue = useMemo<AnnotationStateContextValue>(() => ({
-    groups: groupsHook.groups,
-    selectedGroupIds: groupsHook.selectedGroupIds,
-    editingGroup: groupsHook.editingGroup,
+  const stateValue = useMemo<AnnotationStateContextValue>(
+    () => ({
+      groups: groupsHook.groups,
+      selectedGroupIds: groupsHook.selectedGroupIds,
+      editingGroup: groupsHook.editingGroup,
 
-    textAnnotations: freeTextAnnotations.annotations,
-    selectedTextIds: freeTextAnnotations.selectedAnnotationIds,
-    editingTextAnnotation: freeTextAnnotations.editingAnnotation,
-    isAddTextMode: freeTextAnnotations.isAddTextMode,
+      textAnnotations: freeTextAnnotations.annotations,
+      selectedTextIds: freeTextAnnotations.selectedAnnotationIds,
+      editingTextAnnotation: freeTextAnnotations.editingAnnotation,
+      isAddTextMode: freeTextAnnotations.isAddTextMode,
 
-    shapeAnnotations: freeShapeAnnotations.annotations,
-    selectedShapeIds: freeShapeAnnotations.selectedAnnotationIds,
-    editingShapeAnnotation: freeShapeAnnotations.editingAnnotation,
-    isAddShapeMode: freeShapeAnnotations.isAddShapeMode
-  }), [
-    groupsHook.groups,
-    groupsHook.selectedGroupIds,
-    groupsHook.editingGroup,
-    freeTextAnnotations.annotations,
-    freeTextAnnotations.selectedAnnotationIds,
-    freeTextAnnotations.editingAnnotation,
-    freeTextAnnotations.isAddTextMode,
-    freeShapeAnnotations.annotations,
-    freeShapeAnnotations.selectedAnnotationIds,
-    freeShapeAnnotations.editingAnnotation,
-    freeShapeAnnotations.isAddShapeMode
-  ]);
+      shapeAnnotations: freeShapeAnnotations.annotations,
+      selectedShapeIds: freeShapeAnnotations.selectedAnnotationIds,
+      editingShapeAnnotation: freeShapeAnnotations.editingAnnotation,
+      isAddShapeMode: freeShapeAnnotations.isAddShapeMode
+    }),
+    [
+      groupsHook.groups,
+      groupsHook.selectedGroupIds,
+      groupsHook.editingGroup,
+      freeTextAnnotations.annotations,
+      freeTextAnnotations.selectedAnnotationIds,
+      freeTextAnnotations.editingAnnotation,
+      freeTextAnnotations.isAddTextMode,
+      freeShapeAnnotations.annotations,
+      freeShapeAnnotations.selectedAnnotationIds,
+      freeShapeAnnotations.editingAnnotation,
+      freeShapeAnnotations.isAddShapeMode
+    ]
+  );
 
-  const actionsValue = useMemo<AnnotationActionsContextValue>(() => ({
-    // Groups
-    selectGroup: groupsHook.selectGroup,
-    toggleGroupSelection: groupsHook.toggleGroupSelection,
-    boxSelectGroups: groupsHook.boxSelectGroups,
-    clearGroupSelection: groupsHook.clearGroupSelection,
-    editGroup: groupsHook.editGroup,
-    closeGroupEditor: groupsHook.closeEditor,
-    saveGroup: groupsHook.saveGroup,
-    deleteGroup: groupsHook.deleteGroup,
-    updateGroup: groupsHook.updateGroup,
-    updateGroupParent: groupsHook.updateGroupParent,
-    updateGroupGeoPosition: groupsHook.updateGroupGeoPosition,
-    addNodeToGroup: groupsHook.addNodeToGroup,
-    getNodeMembership: groupsHook.getNodeMembership,
-    getGroupMembers: groupsHook.getGroupMembers,
-    handleAddGroupWithUndo,
-    deleteGroupWithUndo,
-    generateGroupId: generateGroupIdCallback,
-    addGroupWithUndo,
-    onGroupDragStart: groupDragUndo.onGroupDragStart,
-    onGroupDragEnd: groupDragUndo.onGroupDragEnd,
-    onGroupDragMove: groupDragUndo.onGroupDragMove,
-    updateGroupSizeWithUndo: groupUndoHandlers.updateGroupSizeWithUndo,
-    onResizeStart: groupResizeUndo.onResizeStart,
-    onResizeMove: groupResizeUndo.onResizeMove,
-    onResizeEnd: groupResizeUndo.onResizeEnd,
+  const actionsValue = useMemo<AnnotationActionsContextValue>(
+    () => ({
+      // Groups
+      selectGroup: groupsHook.selectGroup,
+      toggleGroupSelection: groupsHook.toggleGroupSelection,
+      boxSelectGroups: groupsHook.boxSelectGroups,
+      clearGroupSelection: groupsHook.clearGroupSelection,
+      editGroup: groupsHook.editGroup,
+      closeGroupEditor: groupsHook.closeEditor,
+      saveGroup: groupsHook.saveGroup,
+      deleteGroup: groupsHook.deleteGroup,
+      updateGroup: groupsHook.updateGroup,
+      updateGroupParent: groupsHook.updateGroupParent,
+      updateGroupGeoPosition: groupsHook.updateGroupGeoPosition,
+      addNodeToGroup: groupsHook.addNodeToGroup,
+      getNodeMembership: groupsHook.getNodeMembership,
+      getGroupMembers: groupsHook.getGroupMembers,
+      handleAddGroupWithUndo,
+      deleteGroupWithUndo,
+      generateGroupId: generateGroupIdCallback,
+      addGroupWithUndo,
+      onGroupDragStart: groupDragUndo.onGroupDragStart,
+      onGroupDragEnd: groupDragUndo.onGroupDragEnd,
+      onGroupDragMove: groupDragUndo.onGroupDragMove,
+      updateGroupSizeWithUndo: groupUndoHandlers.updateGroupSizeWithUndo,
+      onResizeStart: groupResizeUndo.onResizeStart,
+      onResizeMove: groupResizeUndo.onResizeMove,
+      onResizeEnd: groupResizeUndo.onResizeEnd,
 
-    // Text annotations
-    handleAddText: freeTextAnnotations.handleAddText,
-    selectTextAnnotation: freeTextAnnotations.selectAnnotation,
-    toggleTextAnnotationSelection: freeTextAnnotations.toggleAnnotationSelection,
-    boxSelectTextAnnotations: freeTextAnnotations.boxSelectAnnotations,
-    clearTextAnnotationSelection: freeTextAnnotations.clearAnnotationSelection,
-    editTextAnnotation: freeTextAnnotations.editAnnotation,
-    closeTextEditor: freeTextAnnotations.closeEditor,
-    saveTextAnnotation: freeTextAnnotations.saveAnnotation,
-    saveTextAnnotationWithUndo: freeTextUndoHandlers.saveAnnotationWithUndo,
-    deleteTextAnnotation: freeTextAnnotations.deleteAnnotation,
-    deleteTextAnnotationWithUndo: freeTextUndoHandlers.deleteAnnotationWithUndo,
-    deleteSelectedTextAnnotations: freeTextAnnotations.deleteSelectedAnnotations,
-    updateTextPosition: freeTextAnnotations.updatePosition,
-    updateTextRotation: freeTextAnnotations.updateRotation,
-    updateTextSize: freeTextAnnotations.updateSize,
-    updateTextGeoPosition: freeTextAnnotations.updateGeoPosition,
-    updateTextAnnotation: freeTextAnnotations.updateAnnotation,
-    handleTextCanvasClick: freeTextAnnotations.handleCanvasClick,
-    migrateTextAnnotationsGroupId: freeTextAnnotations.migrateGroupId,
+      // Text annotations
+      handleAddText: freeTextAnnotations.handleAddText,
+      selectTextAnnotation: freeTextAnnotations.selectAnnotation,
+      toggleTextAnnotationSelection: freeTextAnnotations.toggleAnnotationSelection,
+      boxSelectTextAnnotations: freeTextAnnotations.boxSelectAnnotations,
+      clearTextAnnotationSelection: freeTextAnnotations.clearAnnotationSelection,
+      editTextAnnotation: freeTextAnnotations.editAnnotation,
+      closeTextEditor: freeTextAnnotations.closeEditor,
+      saveTextAnnotation: freeTextAnnotations.saveAnnotation,
+      saveTextAnnotationWithUndo: freeTextUndoHandlers.saveAnnotationWithUndo,
+      deleteTextAnnotation: freeTextAnnotations.deleteAnnotation,
+      deleteTextAnnotationWithUndo: freeTextUndoHandlers.deleteAnnotationWithUndo,
+      deleteSelectedTextAnnotations: freeTextAnnotations.deleteSelectedAnnotations,
+      updateTextPosition: freeTextAnnotations.updatePosition,
+      updateTextRotation: freeTextAnnotations.updateRotation,
+      updateTextSize: freeTextAnnotations.updateSize,
+      updateTextGeoPosition: freeTextAnnotations.updateGeoPosition,
+      updateTextAnnotation: freeTextAnnotations.updateAnnotation,
+      handleTextCanvasClick: freeTextAnnotations.handleCanvasClick,
+      migrateTextAnnotationsGroupId: freeTextAnnotations.migrateGroupId,
 
-    // Shape annotations
-    handleAddShapes,
-    selectShapeAnnotation: freeShapeAnnotations.selectAnnotation,
-    toggleShapeAnnotationSelection: freeShapeAnnotations.toggleAnnotationSelection,
-    boxSelectShapeAnnotations: freeShapeAnnotations.boxSelectAnnotations,
-    clearShapeAnnotationSelection: freeShapeAnnotations.clearAnnotationSelection,
-    editShapeAnnotation: freeShapeAnnotations.editAnnotation,
-    closeShapeEditor: freeShapeAnnotations.closeEditor,
-    saveShapeAnnotation: freeShapeAnnotations.saveAnnotation,
-    deleteShapeAnnotation: freeShapeAnnotations.deleteAnnotation,
-    deleteShapeAnnotationWithUndo: freeShapeUndoHandlers.deleteAnnotationWithUndo,
-    deleteSelectedShapeAnnotations: freeShapeAnnotations.deleteSelectedAnnotations,
-    updateShapePositionWithUndo: freeShapeUndoHandlers.updatePositionWithUndo,
-    updateShapeRotation: freeShapeAnnotations.updateRotation,
-    updateShapeSize: freeShapeAnnotations.updateSize,
-    updateShapeEndPosition: freeShapeAnnotations.updateEndPosition,
-    updateShapeGeoPosition: freeShapeAnnotations.updateGeoPosition,
-    updateShapeEndGeoPosition: freeShapeAnnotations.updateEndGeoPosition,
-    updateShapeAnnotation: freeShapeAnnotations.updateAnnotation,
-    handleShapeCanvasClickWithUndo: freeShapeUndoHandlers.handleCanvasClickWithUndo,
-    captureShapeAnnotationBefore: freeShapeUndoHandlers.captureAnnotationBefore,
-    finalizeShapeWithUndo: freeShapeUndoHandlers.finalizeWithUndo,
-    migrateShapeAnnotationsGroupId: freeShapeAnnotations.migrateGroupId,
+      // Shape annotations
+      handleAddShapes,
+      selectShapeAnnotation: freeShapeAnnotations.selectAnnotation,
+      toggleShapeAnnotationSelection: freeShapeAnnotations.toggleAnnotationSelection,
+      boxSelectShapeAnnotations: freeShapeAnnotations.boxSelectAnnotations,
+      clearShapeAnnotationSelection: freeShapeAnnotations.clearAnnotationSelection,
+      editShapeAnnotation: freeShapeAnnotations.editAnnotation,
+      closeShapeEditor: freeShapeAnnotations.closeEditor,
+      saveShapeAnnotation: freeShapeAnnotations.saveAnnotation,
+      deleteShapeAnnotation: freeShapeAnnotations.deleteAnnotation,
+      deleteShapeAnnotationWithUndo: freeShapeUndoHandlers.deleteAnnotationWithUndo,
+      deleteSelectedShapeAnnotations: freeShapeAnnotations.deleteSelectedAnnotations,
+      updateShapePositionWithUndo: freeShapeUndoHandlers.updatePositionWithUndo,
+      updateShapeRotation: freeShapeAnnotations.updateRotation,
+      updateShapeSize: freeShapeAnnotations.updateSize,
+      updateShapeEndPosition: freeShapeAnnotations.updateEndPosition,
+      updateShapeGeoPosition: freeShapeAnnotations.updateGeoPosition,
+      updateShapeEndGeoPosition: freeShapeAnnotations.updateEndGeoPosition,
+      updateShapeAnnotation: freeShapeAnnotations.updateAnnotation,
+      handleShapeCanvasClickWithUndo: freeShapeUndoHandlers.handleCanvasClickWithUndo,
+      captureShapeAnnotationBefore: freeShapeUndoHandlers.captureAnnotationBefore,
+      finalizeShapeWithUndo: freeShapeUndoHandlers.finalizeWithUndo,
+      migrateShapeAnnotationsGroupId: freeShapeAnnotations.migrateGroupId,
 
-    // Membership callbacks
-    applyMembershipChange,
-    onMembershipWillChange,
+      // Membership callbacks
+      applyMembershipChange,
+      onMembershipWillChange,
 
-    // Utilities
-    clearAllSelections,
-    deleteAllSelected
-  }), [
-    groupsHook.selectGroup,
-    groupsHook.toggleGroupSelection,
-    groupsHook.boxSelectGroups,
-    groupsHook.clearGroupSelection,
-    groupsHook.editGroup,
-    groupsHook.closeEditor,
-    groupsHook.saveGroup,
-    groupsHook.deleteGroup,
-    groupsHook.updateGroup,
-    groupsHook.updateGroupParent,
-    groupsHook.updateGroupGeoPosition,
-    groupsHook.addNodeToGroup,
-    groupsHook.getNodeMembership,
-    groupsHook.getGroupMembers,
-    handleAddGroupWithUndo,
-    deleteGroupWithUndo,
-    generateGroupIdCallback,
-    addGroupWithUndo,
-    groupDragUndo.onGroupDragStart,
-    groupDragUndo.onGroupDragEnd,
-    groupDragUndo.onGroupDragMove,
-    groupUndoHandlers.updateGroupSizeWithUndo,
-    groupResizeUndo.onResizeStart,
-    groupResizeUndo.onResizeMove,
-    groupResizeUndo.onResizeEnd,
-    freeTextAnnotations.handleAddText,
-    freeTextAnnotations.selectAnnotation,
-    freeTextAnnotations.toggleAnnotationSelection,
-    freeTextAnnotations.boxSelectAnnotations,
-    freeTextAnnotations.clearAnnotationSelection,
-    freeTextAnnotations.editAnnotation,
-    freeTextAnnotations.closeEditor,
-    freeTextAnnotations.saveAnnotation,
-    freeTextUndoHandlers.saveAnnotationWithUndo,
-    freeTextAnnotations.deleteAnnotation,
-    freeTextUndoHandlers.deleteAnnotationWithUndo,
-    freeTextAnnotations.deleteSelectedAnnotations,
-    freeTextAnnotations.updatePosition,
-    freeTextAnnotations.updateRotation,
-    freeTextAnnotations.updateSize,
-    freeTextAnnotations.updateGeoPosition,
-    freeTextAnnotations.updateAnnotation,
-    freeTextAnnotations.handleCanvasClick,
-    freeTextAnnotations.migrateGroupId,
-    handleAddShapes,
-    freeShapeAnnotations.selectAnnotation,
-    freeShapeAnnotations.toggleAnnotationSelection,
-    freeShapeAnnotations.boxSelectAnnotations,
-    freeShapeAnnotations.clearAnnotationSelection,
-    freeShapeAnnotations.editAnnotation,
-    freeShapeAnnotations.closeEditor,
-    freeShapeAnnotations.saveAnnotation,
-    freeShapeAnnotations.deleteAnnotation,
-    freeShapeUndoHandlers.deleteAnnotationWithUndo,
-    freeShapeAnnotations.deleteSelectedAnnotations,
-    freeShapeUndoHandlers.updatePositionWithUndo,
-    freeShapeAnnotations.updateRotation,
-    freeShapeAnnotations.updateSize,
-    freeShapeAnnotations.updateEndPosition,
-    freeShapeAnnotations.updateGeoPosition,
-    freeShapeAnnotations.updateEndGeoPosition,
-    freeShapeAnnotations.updateAnnotation,
-    freeShapeUndoHandlers.handleCanvasClickWithUndo,
-    freeShapeUndoHandlers.captureAnnotationBefore,
-    freeShapeUndoHandlers.finalizeWithUndo,
-    freeShapeAnnotations.migrateGroupId,
-    applyMembershipChange,
-    onMembershipWillChange,
-    clearAllSelections,
-    deleteAllSelected
-  ]);
+      // Utilities
+      clearAllSelections,
+      deleteAllSelected
+    }),
+    [
+      groupsHook.selectGroup,
+      groupsHook.toggleGroupSelection,
+      groupsHook.boxSelectGroups,
+      groupsHook.clearGroupSelection,
+      groupsHook.editGroup,
+      groupsHook.closeEditor,
+      groupsHook.saveGroup,
+      groupsHook.deleteGroup,
+      groupsHook.updateGroup,
+      groupsHook.updateGroupParent,
+      groupsHook.updateGroupGeoPosition,
+      groupsHook.addNodeToGroup,
+      groupsHook.getNodeMembership,
+      groupsHook.getGroupMembers,
+      handleAddGroupWithUndo,
+      deleteGroupWithUndo,
+      generateGroupIdCallback,
+      addGroupWithUndo,
+      groupDragUndo.onGroupDragStart,
+      groupDragUndo.onGroupDragEnd,
+      groupDragUndo.onGroupDragMove,
+      groupUndoHandlers.updateGroupSizeWithUndo,
+      groupResizeUndo.onResizeStart,
+      groupResizeUndo.onResizeMove,
+      groupResizeUndo.onResizeEnd,
+      freeTextAnnotations.handleAddText,
+      freeTextAnnotations.selectAnnotation,
+      freeTextAnnotations.toggleAnnotationSelection,
+      freeTextAnnotations.boxSelectAnnotations,
+      freeTextAnnotations.clearAnnotationSelection,
+      freeTextAnnotations.editAnnotation,
+      freeTextAnnotations.closeEditor,
+      freeTextAnnotations.saveAnnotation,
+      freeTextUndoHandlers.saveAnnotationWithUndo,
+      freeTextAnnotations.deleteAnnotation,
+      freeTextUndoHandlers.deleteAnnotationWithUndo,
+      freeTextAnnotations.deleteSelectedAnnotations,
+      freeTextAnnotations.updatePosition,
+      freeTextAnnotations.updateRotation,
+      freeTextAnnotations.updateSize,
+      freeTextAnnotations.updateGeoPosition,
+      freeTextAnnotations.updateAnnotation,
+      freeTextAnnotations.handleCanvasClick,
+      freeTextAnnotations.migrateGroupId,
+      handleAddShapes,
+      freeShapeAnnotations.selectAnnotation,
+      freeShapeAnnotations.toggleAnnotationSelection,
+      freeShapeAnnotations.boxSelectAnnotations,
+      freeShapeAnnotations.clearAnnotationSelection,
+      freeShapeAnnotations.editAnnotation,
+      freeShapeAnnotations.closeEditor,
+      freeShapeAnnotations.saveAnnotation,
+      freeShapeAnnotations.deleteAnnotation,
+      freeShapeUndoHandlers.deleteAnnotationWithUndo,
+      freeShapeAnnotations.deleteSelectedAnnotations,
+      freeShapeUndoHandlers.updatePositionWithUndo,
+      freeShapeAnnotations.updateRotation,
+      freeShapeAnnotations.updateSize,
+      freeShapeAnnotations.updateEndPosition,
+      freeShapeAnnotations.updateGeoPosition,
+      freeShapeAnnotations.updateEndGeoPosition,
+      freeShapeAnnotations.updateAnnotation,
+      freeShapeUndoHandlers.handleCanvasClickWithUndo,
+      freeShapeUndoHandlers.captureAnnotationBefore,
+      freeShapeUndoHandlers.finalizeWithUndo,
+      freeShapeAnnotations.migrateGroupId,
+      applyMembershipChange,
+      onMembershipWillChange,
+      clearAllSelections,
+      deleteAllSelected
+    ]
+  );
 
   return (
     <AnnotationStateContext.Provider value={stateValue}>
@@ -550,7 +608,7 @@ export const AnnotationProvider: React.FC<AnnotationProviderProps> = ({
 export function useAnnotationsState(): AnnotationStateContextValue {
   const context = useContext(AnnotationStateContext);
   if (context === undefined) {
-    throw new Error('useAnnotationsState must be used within an AnnotationProvider');
+    throw new Error("useAnnotationsState must be used within an AnnotationProvider");
   }
   return context;
 }
@@ -558,7 +616,7 @@ export function useAnnotationsState(): AnnotationStateContextValue {
 export function useAnnotationsActions(): AnnotationActionsContextValue {
   const context = useContext(AnnotationActionsContext);
   if (context === undefined) {
-    throw new Error('useAnnotationsActions must be used within an AnnotationProvider');
+    throw new Error("useAnnotationsActions must be used within an AnnotationProvider");
   }
   return context;
 }

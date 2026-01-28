@@ -3,14 +3,14 @@
  * When an annotation is dragged and dropped inside a group, it becomes a member.
  * When dragged outside all groups, it's removed from its group.
  */
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from "react";
 
-import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { log } from '../../utils/logger';
-import { findDeepestGroupAtPosition } from '../groups';
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import { log } from "../../utils/logger";
+import { findDeepestGroupAtPosition } from "../groups";
 
 export interface UseAnnotationReparentOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   groups: GroupStyleAnnotation[];
   /** Callback to update annotation's groupId */
@@ -27,39 +27,47 @@ export interface UseAnnotationReparentReturn {
 /**
  * Hook for handling annotation reparenting via drag-drop.
  */
-export function useAnnotationReparent(options: UseAnnotationReparentOptions): UseAnnotationReparentReturn {
+export function useAnnotationReparent(
+  options: UseAnnotationReparentOptions
+): UseAnnotationReparentReturn {
   const { isLocked, groups, onUpdateGroupId } = options;
 
   // Track the group the annotation was in when drag started
   const dragStartGroupRef = useRef<Map<string, string | undefined>>(new Map());
 
-  const onDragStart = useCallback((annotationId: string, currentGroupId: string | undefined) => {
-    // Only check isLocked - allows reparenting in viewer mode when explicitly unlocked
-    if (isLocked) return;
-    dragStartGroupRef.current.set(annotationId, currentGroupId);
-  }, [isLocked]);
+  const onDragStart = useCallback(
+    (annotationId: string, currentGroupId: string | undefined) => {
+      // Only check isLocked - allows reparenting in viewer mode when explicitly unlocked
+      if (isLocked) return;
+      dragStartGroupRef.current.set(annotationId, currentGroupId);
+    },
+    [isLocked]
+  );
 
-  const onDragEnd = useCallback((annotationId: string, finalPosition: { x: number; y: number }) => {
-    // Only check isLocked - allows reparenting in viewer mode when explicitly unlocked
-    if (isLocked) return;
+  const onDragEnd = useCallback(
+    (annotationId: string, finalPosition: { x: number; y: number }) => {
+      // Only check isLocked - allows reparenting in viewer mode when explicitly unlocked
+      if (isLocked) return;
 
-    const oldGroupId = dragStartGroupRef.current.get(annotationId);
-    dragStartGroupRef.current.delete(annotationId);
+      const oldGroupId = dragStartGroupRef.current.get(annotationId);
+      dragStartGroupRef.current.delete(annotationId);
 
-    // Find the deepest group at the drop position
-    const dropTarget = findDeepestGroupAtPosition(finalPosition, groups);
-    const newGroupId = dropTarget?.id;
+      // Find the deepest group at the drop position
+      const dropTarget = findDeepestGroupAtPosition(finalPosition, groups);
+      const newGroupId = dropTarget?.id;
 
-    // Only update if the group changed
-    if (oldGroupId !== newGroupId) {
-      onUpdateGroupId(annotationId, newGroupId);
-      if (newGroupId) {
-        log.info(`[AnnotationReparent] Annotation ${annotationId} added to group ${newGroupId}`);
-      } else if (oldGroupId) {
-        log.info(`[AnnotationReparent] Annotation ${annotationId} removed from group`);
+      // Only update if the group changed
+      if (oldGroupId !== newGroupId) {
+        onUpdateGroupId(annotationId, newGroupId);
+        if (newGroupId) {
+          log.info(`[AnnotationReparent] Annotation ${annotationId} added to group ${newGroupId}`);
+        } else if (oldGroupId) {
+          log.info(`[AnnotationReparent] Annotation ${annotationId} removed from group`);
+        }
       }
-    }
-  }, [isLocked, groups, onUpdateGroupId]);
+    },
+    [isLocked, groups, onUpdateGroupId]
+  );
 
   return { onDragStart, onDragEnd };
 }

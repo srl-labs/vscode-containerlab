@@ -1,15 +1,15 @@
 /**
  * Hook for annotation drag functionality
  */
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import type React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { MapLibreState } from '../canvas/maplibreUtils';
-import { unprojectToGeoCoords, calculateScale } from '../canvas/maplibreUtils';
+import type { MapLibreState } from "../canvas/maplibreUtils";
+import { unprojectToGeoCoords, calculateScale } from "../canvas/maplibreUtils";
 
-import type { RenderedPosition } from './freeText';
-import { modelToRendered, modelToRenderedGeo } from './freeText';
+import type { RenderedPosition } from "./freeText";
+import { modelToRendered, modelToRenderedGeo } from "./freeText";
 
 interface DragStart {
   mouseX: number;
@@ -30,7 +30,7 @@ interface UseAnnotationDragOptions {
   onDragEnd?: (finalPosition: { x: number; y: number }) => void;
   // Geo mode options
   isGeoMode?: boolean;
-  geoMode?: 'pan' | 'edit';
+  geoMode?: "pan" | "edit";
   geoCoordinates?: { lat: number; lng: number };
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
@@ -43,7 +43,11 @@ interface UseAnnotationDragReturn {
 }
 
 // Helper to calculate delta from drag start
-function calculateDelta(e: MouseEvent, dragStart: DragStart, zoom: number): { deltaX: number; deltaY: number } {
+function calculateDelta(
+  e: MouseEvent,
+  dragStart: DragStart,
+  zoom: number
+): { deltaX: number; deltaY: number } {
   return {
     deltaX: (e.clientX - dragStart.mouseX) / zoom,
     deltaY: (e.clientY - dragStart.mouseY) / zoom
@@ -66,7 +70,7 @@ function handleGeoModeMove(
 ): void {
   const pos = getContainerRelativePos(cy, e);
   if (pos) {
-    setRenderedPos(prev => ({ ...prev, x: pos.x, y: pos.y }));
+    setRenderedPos((prev) => ({ ...prev, x: pos.x, y: pos.y }));
   }
 }
 
@@ -81,7 +85,7 @@ function handleNonGeoModeMove(
   const newModelX = dragStart.modelX + deltaX;
   const newModelY = dragStart.modelY + deltaY;
   const rendered = modelToRendered(cy, newModelX, newModelY);
-  setRenderedPos(prev => ({ ...prev, x: rendered.x, y: rendered.y }));
+  setRenderedPos((prev) => ({ ...prev, x: rendered.x, y: rendered.y }));
 }
 
 // Finalize geo mode drag - convert screen to geo coords and call callback
@@ -140,13 +144,17 @@ function useViewportSync(
 
     // In geo mode, listen to map move events to update positions
     if (mapLibreState?.isInitialized && mapLibreState.map) {
-      mapLibreState.map.on('move', updatePosition);
-      return () => { mapLibreState.map?.off('move', updatePosition); };
+      mapLibreState.map.on("move", updatePosition);
+      return () => {
+        mapLibreState.map?.off("move", updatePosition);
+      };
     }
 
     // In non-geo mode, listen to cy pan/zoom events
-    cy.on('pan zoom', updatePosition);
-    return () => { cy.off('pan zoom', updatePosition); };
+    cy.on("pan zoom", updatePosition);
+    return () => {
+      cy.off("pan zoom", updatePosition);
+    };
   }, [cy, modelX, modelY, setRenderedPos, mapLibreState, geoCoordinates]);
 }
 
@@ -228,11 +236,11 @@ function useDragHandlers(options: DragHandlersOptions): void {
       onDragEnd?.(finalPosition);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [
     isDragging,
@@ -271,9 +279,16 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
   const dragStartRef = useRef<DragStart | null>(null);
 
   // In geo mode, disable drag in pan mode (only map navigation should work)
-  const effectivelyLocked = isLocked || (isGeoMode && geoMode === 'pan');
+  const effectivelyLocked = isLocked || (isGeoMode && geoMode === "pan");
 
-  useViewportSync(cy, modelPosition.x, modelPosition.y, setRenderedPos, mapLibreState, geoCoordinates);
+  useViewportSync(
+    cy,
+    modelPosition.x,
+    modelPosition.y,
+    setRenderedPos,
+    mapLibreState,
+    geoCoordinates
+  );
   useDragHandlers({
     cy,
     isDragging,
@@ -288,20 +303,23 @@ export function useAnnotationDrag(options: UseAnnotationDragOptions): UseAnnotat
     onDragEnd
   });
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (effectivelyLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      modelX: modelPosition.x,
-      modelY: modelPosition.y
-    };
-    // Notify drag started (for reparenting)
-    onDragStart?.();
-  }, [effectivelyLocked, modelPosition.x, modelPosition.y, onDragStart]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (effectivelyLocked || e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(true);
+      dragStartRef.current = {
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        modelX: modelPosition.x,
+        modelY: modelPosition.y
+      };
+      // Notify drag started (for reparenting)
+      onDragStart?.();
+    },
+    [effectivelyLocked, modelPosition.x, modelPosition.y, onDragStart]
+  );
 
   return { isDragging, renderedPos, handleMouseDown };
 }

@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import type { ClabTopology, ClabNode } from '../types/topology';
+import type { ClabTopology, ClabNode } from "../types/topology";
 
 /**
  * Gets a section from the topology configuration.
@@ -41,10 +41,7 @@ function mergeNodeLabels(
  * configuration for a node. The precedence order is:
  * node -> group -> kind -> defaults.
  */
-export function resolveNodeConfig(
-  parsed: ClabTopology,
-  node: ClabNode
-): ClabNode {
+export function resolveNodeConfig(parsed: ClabTopology, node: ClabNode): ClabNode {
   const { defaults = {}, groups, kinds } = parsed.topology ?? {};
 
   const groupCfg = getSection(groups, node.group);
@@ -61,7 +58,7 @@ export function resolveNodeConfig(
       defaults.labels as Record<string, unknown>,
       kindCfg.labels as Record<string, unknown>,
       groupCfg.labels as Record<string, unknown>,
-      node.labels as Record<string, unknown>,
-    ),
+      node.labels as Record<string, unknown>
+    )
   };
 }

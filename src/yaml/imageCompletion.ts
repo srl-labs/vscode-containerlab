@@ -1,16 +1,16 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 import * as utils from "../utils";
 
 function lineContainsInlineImage(line: string, cursor: number): boolean {
   const beforeCursor = line.slice(0, cursor);
-  const beforeNoComment = beforeCursor.split('#')[0];
-  const idx = beforeNoComment.toLowerCase().lastIndexOf('image:');
+  const beforeNoComment = beforeCursor.split("#")[0];
+  const idx = beforeNoComment.toLowerCase().lastIndexOf("image:");
   if (idx === -1) {
     return false;
   }
   const pre = beforeNoComment.slice(0, idx).trim();
-  return pre === '' || pre === '-';
+  return pre === "" || pre === "-";
 }
 
 function getIndent(line: string): number {
@@ -24,22 +24,16 @@ function hasPreviousLineEndingWithImage(
   currIndent: number
 ): boolean {
   for (let l = fromLine - 1; l >= 0 && l >= fromLine - 10; l--) {
-    const text = document
-      .lineAt(l)
-      .text.split('#')[0]
-      .trimEnd();
-    if (text.toLowerCase().endsWith('image:')) {
-      const prevIndent = ( /^[- \t]*/.exec(text) || [''])[0].length;
+    const text = document.lineAt(l).text.split("#")[0].trimEnd();
+    if (text.toLowerCase().endsWith("image:")) {
+      const prevIndent = (/^[- \t]*/.exec(text) || [""])[0].length;
       return currIndent > prevIndent;
     }
   }
   return false;
 }
 
-function isCompletingImageValue(
-  document: vscode.TextDocument,
-  position: vscode.Position
-): boolean {
+function isCompletingImageValue(document: vscode.TextDocument, position: vscode.Position): boolean {
   const line = document.lineAt(position.line).text;
   if (lineContainsInlineImage(line, position.character)) {
     return true;
@@ -49,7 +43,7 @@ function isCompletingImageValue(
 }
 
 function extractKeyFromLine(trimmedLine: string): string | undefined {
-  const colonIndex = trimmedLine.indexOf(':');
+  const colonIndex = trimmedLine.indexOf(":");
   if (colonIndex === -1) {
     return undefined;
   }
@@ -62,7 +56,7 @@ function getAncestorPath(document: vscode.TextDocument, lineIndex: number): stri
   let currentIndent = getIndent(document.lineAt(lineIndex).text);
   for (let i = lineIndex - 1; i >= 0; i--) {
     const raw = document.lineAt(i).text;
-    const trimmed = raw.split('#')[0].trimEnd();
+    const trimmed = raw.split("#")[0].trimEnd();
     if (!trimmed.trim()) {
       continue;
     }
@@ -82,21 +76,20 @@ function getAncestorPath(document: vscode.TextDocument, lineIndex: number): stri
 }
 
 function isNodesContext(path: string[]): boolean {
-  const nodesIndex = path.lastIndexOf('nodes');
+  const nodesIndex = path.lastIndexOf("nodes");
   if (nodesIndex === -1 || nodesIndex >= path.length - 1) {
     return false;
   }
-  return nodesIndex === 0 || path[nodesIndex - 1] === 'topology';
+  return nodesIndex === 0 || path[nodesIndex - 1] === "topology";
 }
 
 function isDefaultsContext(path: string[]): boolean {
-  const defaultsIndex = path.lastIndexOf('defaults');
+  const defaultsIndex = path.lastIndexOf("defaults");
   if (defaultsIndex === -1) {
     return false;
   }
   return (
-    (defaultsIndex === 0 && path.length === 1) ||
-    (defaultsIndex === 1 && path[0] === 'topology')
+    (defaultsIndex === 0 && path.length === 1) || (defaultsIndex === 1 && path[0] === "topology")
   );
 }
 
@@ -105,14 +98,11 @@ function isScopedContext(path: string[], section: string): boolean {
   if (sectionIndex === -1 || sectionIndex >= path.length - 1) {
     return false;
   }
-  return (
-    (sectionIndex === 0 && path.length > 1) ||
-    (sectionIndex === 1 && path[0] === 'topology')
-  );
+  return (sectionIndex === 0 && path.length > 1) || (sectionIndex === 1 && path[0] === "topology");
 }
 
 function isAllowedImageSection(document: vscode.TextDocument, position: vscode.Position): boolean {
-  const path = getAncestorPath(document, position.line).map(key => key.toLowerCase());
+  const path = getAncestorPath(document, position.line).map((key) => key.toLowerCase());
   if (path.length === 0) {
     return false;
   }
@@ -120,12 +110,15 @@ function isAllowedImageSection(document: vscode.TextDocument, position: vscode.P
   return (
     isNodesContext(path) ||
     isDefaultsContext(path) ||
-    isScopedContext(path, 'kinds') ||
-    isScopedContext(path, 'groups')
+    isScopedContext(path, "kinds") ||
+    isScopedContext(path, "groups")
   );
 }
 
-function shouldProvideImageCompletion(document: vscode.TextDocument, position: vscode.Position): boolean {
+function shouldProvideImageCompletion(
+  document: vscode.TextDocument,
+  position: vscode.Position
+): boolean {
   return (
     utils.isClabYamlFile(document.uri.fsPath) &&
     isCompletingImageValue(document, position) &&
@@ -136,12 +129,12 @@ function shouldProvideImageCompletion(document: vscode.TextDocument, position: v
 function getInlineImageFilter(document: vscode.TextDocument, position: vscode.Position): string {
   const line = document.lineAt(position.line).text;
   const portion = line.slice(0, position.character);
-  const before = portion.split('#')[0];
-  const idx = before.toLowerCase().lastIndexOf('image:');
+  const before = portion.split("#")[0];
+  const idx = before.toLowerCase().lastIndexOf("image:");
   if (idx === -1) {
-    return '';
+    return "";
   }
-  const afterImage = before.slice(idx + 'image:'.length).trimStart();
+  const afterImage = before.slice(idx + "image:".length).trimStart();
   return afterImage.toLowerCase();
 }
 
@@ -156,8 +149,8 @@ function buildCompletionItems(images: string[]): vscode.CompletionList | undefin
   const items: vscode.CompletionItem[] = images.map((img, index) => {
     const ci = new vscode.CompletionItem(img, vscode.CompletionItemKind.Value);
     ci.insertText = img;
-    ci.detail = 'Docker image';
-    ci.sortText = index.toString().padStart(6, '0');
+    ci.detail = "Docker image";
+    ci.sortText = index.toString().padStart(6, "0");
     return ci;
   });
   return new vscode.CompletionList(items, true);
@@ -168,7 +161,7 @@ function filterImages(images: string[], filterText: string): string[] {
     return images;
   }
   const lowerFilter = filterText.toLowerCase();
-  return images.filter(img => img.toLowerCase().includes(lowerFilter));
+  return images.filter((img) => img.toLowerCase().includes(lowerFilter));
 }
 
 async function provideImageCompletions(
@@ -196,15 +189,19 @@ function registerCompletionProvider(context: vscode.ExtensionContext): void {
   };
 
   const disposable = vscode.languages.registerCompletionItemProvider(
-    { language: 'yaml', scheme: 'file' },
+    { language: "yaml", scheme: "file" },
     provider,
-    ':', ' ', '"', '\'', '/'
+    ":",
+    " ",
+    '"',
+    "'",
+    "/"
   );
   context.subscriptions.push(disposable);
 }
 
 function registerAutoTrigger(context: vscode.ExtensionContext): void {
-  const changeListener = vscode.workspace.onDidChangeTextDocument(event => {
+  const changeListener = vscode.workspace.onDidChangeTextDocument((event) => {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document !== event.document) {
       return;
@@ -230,15 +227,14 @@ function registerAutoTrigger(context: vscode.ExtensionContext): void {
     const images = utils.getDockerImages();
     const isExactMatch =
       images.length > 0 &&
-      images.some(img => img.toLowerCase() === currentFilter && lineText.trimEnd().endsWith(img));
+      images.some((img) => img.toLowerCase() === currentFilter && lineText.trimEnd().endsWith(img));
 
-    const shouldTrigger =
-      !isExactMatch && (/\S/.test(lastChar) || inserted.includes('\n'));
+    const shouldTrigger = !isExactMatch && (/\S/.test(lastChar) || inserted.includes("\n"));
     if (!shouldTrigger) {
       return;
     }
 
-    void vscode.commands.executeCommand('editor.action.triggerSuggest');
+    void vscode.commands.executeCommand("editor.action.triggerSuggest");
   });
 
   context.subscriptions.push(changeListener);

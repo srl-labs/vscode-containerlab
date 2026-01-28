@@ -3,7 +3,7 @@
  */
 
 // Re-export CyElement from topology.ts (single source of truth)
-import { CyElement, type TopologyAnnotations, type EdgeAnnotation } from './topology';
+import { CyElement, type TopologyAnnotations, type EdgeAnnotation } from "./topology";
 export { CyElement };
 
 /**
@@ -18,7 +18,7 @@ export interface BaseMessage {
  * Request message from webview to extension
  */
 export interface RequestMessage extends BaseMessage {
-  type: 'POST';
+  type: "POST";
   endpointName: string;
   payload?: string;
 }
@@ -27,7 +27,7 @@ export interface RequestMessage extends BaseMessage {
  * Response message from extension to webview
  */
 export interface ResponseMessage extends BaseMessage {
-  type: 'POST_RESPONSE';
+  type: "POST_RESPONSE";
   requestId: string;
   result: unknown;
   error: string | null;
@@ -45,12 +45,12 @@ export interface PushMessage extends BaseMessage {
  * Topology data message
  */
 export interface TopologyDataMessage extends PushMessage {
-  type: 'topology-data';
+  type: "topology-data";
   data: {
     elements: CyElement[];
     labName: string;
-    mode: 'edit' | 'view';
-    viewerSettings?: TopologyAnnotations['viewerSettings'];
+    mode: "edit" | "view";
+    viewerSettings?: TopologyAnnotations["viewerSettings"];
     edgeAnnotations?: EdgeAnnotation[];
   };
 }
@@ -59,10 +59,10 @@ export interface TopologyDataMessage extends PushMessage {
  * Mode changed message
  */
 export interface ModeChangedMessage extends PushMessage {
-  type: 'topo-mode-changed';
+  type: "topo-mode-changed";
   data: {
-    mode: 'editor' | 'viewer';
-    deploymentState: 'deployed' | 'undeployed' | 'unknown';
+    mode: "editor" | "viewer";
+    deploymentState: "deployed" | "undeployed" | "unknown";
   };
 }
 
@@ -70,7 +70,7 @@ export interface ModeChangedMessage extends PushMessage {
  * Node renamed message - sent after a node is renamed to trigger in-place update
  */
 export interface NodeRenamedMessage extends PushMessage {
-  type: 'node-renamed';
+  type: "node-renamed";
   data: {
     oldId: string;
     newId: string;
@@ -82,7 +82,7 @@ export interface NodeRenamedMessage extends PushMessage {
  * Used to notify webview to clear undo history
  */
 export interface ExternalFileChangeMessage extends PushMessage {
-  type: 'external-file-change';
+  type: "external-file-change";
 }
 
 /**
@@ -123,14 +123,14 @@ export interface VSCodeAPI {
  * Endpoint names for message passing
  */
 export type EndpointName =
-  | 'lab-settings-get'
-  | 'lab-settings-update'
-  | 'topo-viewport-save'
-  | 'topo-editor-viewport-save'
-  | 'topo-editor-load-annotations'
-  | 'topo-editor-save-annotations'
-  | 'topo-switch-mode'
-  | 'deployLab'
-  | 'destroyLab'
-  | 'redeployLab'
-  | 'get-topology-data';
+  | "lab-settings-get"
+  | "lab-settings-update"
+  | "topo-viewport-save"
+  | "topo-editor-viewport-save"
+  | "topo-editor-load-annotations"
+  | "topo-editor-save-annotations"
+  | "topo-switch-mode"
+  | "deployLab"
+  | "destroyLab"
+  | "redeployLab"
+  | "get-topology-data";

@@ -7,10 +7,10 @@ export function clampEndpointLabelOffset(value: number): number {
 }
 
 export function parseEndpointLabelOffset(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return clampEndpointLabelOffset(value);
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const parsed = Number.parseFloat(value);
     if (Number.isFinite(parsed)) {
       return clampEndpointLabelOffset(parsed);

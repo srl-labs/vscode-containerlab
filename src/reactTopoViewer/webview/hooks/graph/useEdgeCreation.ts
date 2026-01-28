@@ -1,17 +1,17 @@
 /**
  * useEdgeCreation - Hook for edge/link creation via cytoscape-edgehandles
  */
-import { useEffect, useRef, useCallback } from 'react';
-import type { Core as CyCore, NodeSingular, EdgeSingular } from 'cytoscape';
-import cytoscape from 'cytoscape';
-import edgehandles from 'cytoscape-edgehandles';
+import { useEffect, useRef, useCallback } from "react";
+import type { Core as CyCore, NodeSingular, EdgeSingular } from "cytoscape";
+import cytoscape from "cytoscape";
+import edgehandles from "cytoscape-edgehandles";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 import {
   DEFAULT_INTERFACE_PATTERNS,
   getNextEndpointForNode as getNextEndpoint,
   getNextEndpointForNodeExcluding
-} from '../../utils/interfacePatterns';
+} from "../../utils/interfacePatterns";
 
 // Register extension once
 let edgehandlesRegistered = false;
@@ -33,7 +33,7 @@ function buildInterfacePatternMapping(): Record<string, string> {
 }
 
 interface EdgeCreationOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onEdgeCreated?: (sourceId: string, targetId: string, edgeData: EdgeData) => void;
 }
@@ -64,13 +64,13 @@ function getNextEndpointForNode(
  * Returns false for bridges - they are node kinds that require interfaces (bridge0:eth1)
  */
 function isNetworkNode(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole') as string | undefined;
-  if (role !== 'cloud') return false;
+  const role = node.data("topoViewerRole") as string | undefined;
+  if (role !== "cloud") return false;
 
   // Bridges are node kinds, not special endpoint types - they need interface names
-  const extraData = node.data('extraData') as { kind?: string } | undefined;
+  const extraData = node.data("extraData") as { kind?: string } | undefined;
   const kind = extraData?.kind;
-  if (kind === 'bridge' || kind === 'ovs-bridge') return false;
+  if (kind === "bridge" || kind === "ovs-bridge") return false;
 
   return true;
 }
@@ -81,26 +81,27 @@ function isNetworkNode(node: NodeSingular): boolean {
  * Network-to-node and node-to-network connections are allowed
  */
 function canConnect(sourceNode: NodeSingular, targetNode: NodeSingular): boolean {
-  const sourceRole = sourceNode.data('topoViewerRole') as string | undefined;
-  const targetRole = targetNode.data('topoViewerRole') as string | undefined;
-  const invalidRoles = ['freeText', 'group'];
+  const sourceRole = sourceNode.data("topoViewerRole") as string | undefined;
+  const targetRole = targetNode.data("topoViewerRole") as string | undefined;
+  const invalidRoles = ["freeText", "group"];
 
-  log.info(`[EdgeCreation] canConnect check: ${sourceNode.id()} (${sourceRole}) -> ${targetNode.id()} (${targetRole})`);
+  log.info(
+    `[EdgeCreation] canConnect check: ${sourceNode.id()} (${sourceRole}) -> ${targetNode.id()} (${targetRole})`
+  );
 
   // Network-to-network connections not allowed
   if (isNetworkNode(sourceNode) && isNetworkNode(targetNode)) {
-    log.info('[EdgeCreation] canConnect: REJECTED - network-to-network');
+    log.info("[EdgeCreation] canConnect: REJECTED - network-to-network");
     return false;
   }
 
-  const result = (
+  const result =
     (!sourceRole || !invalidRoles.includes(sourceRole)) &&
     (!targetRole || !invalidRoles.includes(targetRole)) &&
     !sourceNode.isParent() &&
-    !targetNode.isParent()
-  );
+    !targetNode.isParent();
 
-  log.info(`[EdgeCreation] canConnect: ${result ? 'ALLOWED' : 'REJECTED'}`);
+  log.info(`[EdgeCreation] canConnect: ${result ? "ALLOWED" : "REJECTED"}`);
   return result;
 }
 
@@ -118,9 +119,9 @@ function createEdgeParams(
   // For self-loops (hairpin): allocate a different endpoint for target
   let targetEndpoint: string;
   if (sourceNode.same(targetNode)) {
-    targetEndpoint = getNextEndpointForNodeExcluding(
-      cy, targetNode, interfacePatternMapping, [sourceEndpoint]
-    );
+    targetEndpoint = getNextEndpointForNodeExcluding(cy, targetNode, interfacePatternMapping, [
+      sourceEndpoint
+    ]);
   } else {
     targetEndpoint = getNextEndpointForNode(cy, targetNode, interfacePatternMapping);
   }
@@ -153,7 +154,7 @@ function getEdgehandlesOptions(cy: CyCore, interfacePatternMapping: Record<strin
 }
 
 // Scratch key for storing edge creation state on cy instance
-export const EDGE_CREATION_SCRATCH_KEY = '_isCreatingEdge';
+export const EDGE_CREATION_SCRATCH_KEY = "_isCreatingEdge";
 
 /**
  * Process completed edge creation and notify callback
@@ -170,31 +171,34 @@ function processEdgeCreation(
 
   // Add stub-link class if either endpoint is a network node (dashed line styling)
   if (isNetworkNode(sourceNode) || isNetworkNode(targetNode)) {
-    addedEdge.addClass('stub-link');
-    log.info('[EdgeCreation] Added stub-link class for network connection');
+    addedEdge.addClass("stub-link");
+    log.info("[EdgeCreation] Added stub-link class for network connection");
   }
 
   if (!onEdgeCreated) return;
 
   const isSelfLoop = sourceNode.same(targetNode);
-  const existingSourceEndpoint = addedEdge.data('sourceEndpoint') as string | undefined;
-  const existingTargetEndpoint = addedEdge.data('targetEndpoint') as string | undefined;
+  const existingSourceEndpoint = addedEdge.data("sourceEndpoint") as string | undefined;
+  const existingTargetEndpoint = addedEdge.data("targetEndpoint") as string | undefined;
 
   // Calculate endpoints directly using node-specific interface patterns
-  let srcEndpoint = existingSourceEndpoint || getNextEndpointForNode(cy, sourceNode, interfacePatternMapping);
-  let tgtEndpoint = existingTargetEndpoint || (
-    isSelfLoop
+  let srcEndpoint =
+    existingSourceEndpoint || getNextEndpointForNode(cy, sourceNode, interfacePatternMapping);
+  let tgtEndpoint =
+    existingTargetEndpoint ||
+    (isSelfLoop
       ? getNextEndpointForNodeExcluding(cy, targetNode, interfacePatternMapping, [srcEndpoint])
-      : getNextEndpointForNode(cy, targetNode, interfacePatternMapping)
-  );
+      : getNextEndpointForNode(cy, targetNode, interfacePatternMapping));
 
   if (isSelfLoop && srcEndpoint && tgtEndpoint && srcEndpoint === tgtEndpoint) {
-    tgtEndpoint = getNextEndpointForNodeExcluding(cy, targetNode, interfacePatternMapping, [srcEndpoint]);
+    tgtEndpoint = getNextEndpointForNodeExcluding(cy, targetNode, interfacePatternMapping, [
+      srcEndpoint
+    ]);
   }
 
   // Update the edge data with endpoints
-  addedEdge.data('sourceEndpoint', srcEndpoint);
-  addedEdge.data('targetEndpoint', tgtEndpoint);
+  addedEdge.data("sourceEndpoint", srcEndpoint);
+  addedEdge.data("targetEndpoint", tgtEndpoint);
 
   log.info(`[EdgeCreation] Endpoints: ${srcEndpoint} -> ${tgtEndpoint}`);
 
@@ -228,28 +232,40 @@ interface EdgeCreationHandlers {
 function createLifecycleHandlers(
   cy: CyCore,
   isCreatingEdgeRef: { current: boolean },
-  onEdgeCreatedRef: { current: EdgeCreationOptions['onEdgeCreated'] },
+  onEdgeCreatedRef: { current: EdgeCreationOptions["onEdgeCreated"] },
   interfacePatternMappingRef: { current: Record<string, string> }
 ): EdgeCreationHandlers {
   return {
     handleStart: () => {
       isCreatingEdgeRef.current = true;
       cy.scratch(EDGE_CREATION_SCRATCH_KEY, true);
-      log.debug('[EdgeCreation] Edge creation started');
+      log.debug("[EdgeCreation] Edge creation started");
     },
     handleStopCancel: () => {
       setTimeout(() => {
         isCreatingEdgeRef.current = false;
         cy.scratch(EDGE_CREATION_SCRATCH_KEY, false);
-        log.debug('[EdgeCreation] Edge creation stopped/cancelled');
+        log.debug("[EdgeCreation] Edge creation stopped/cancelled");
       }, 200);
     },
-    handleComplete: (_event: unknown, sourceNode: NodeSingular, targetNode: NodeSingular, addedEdge: EdgeSingular) => {
-      processEdgeCreation(cy, sourceNode, targetNode, addedEdge, interfacePatternMappingRef.current, onEdgeCreatedRef.current);
+    handleComplete: (
+      _event: unknown,
+      sourceNode: NodeSingular,
+      targetNode: NodeSingular,
+      addedEdge: EdgeSingular
+    ) => {
+      processEdgeCreation(
+        cy,
+        sourceNode,
+        targetNode,
+        addedEdge,
+        interfacePatternMappingRef.current,
+        onEdgeCreatedRef.current
+      );
       setTimeout(() => {
         isCreatingEdgeRef.current = false;
         cy.scratch(EDGE_CREATION_SCRATCH_KEY, false);
-        log.debug('[EdgeCreation] Edge creation flag cleared');
+        log.debug("[EdgeCreation] Edge creation flag cleared");
       }, 200);
     }
   };
@@ -258,35 +274,39 @@ function createLifecycleHandlers(
 interface EdgehandlesRefs {
   ehRef: { current: EdgehandlesInstance | null };
   isCreatingEdgeRef: { current: boolean };
-  onEdgeCreatedRef: { current: EdgeCreationOptions['onEdgeCreated'] };
+  onEdgeCreatedRef: { current: EdgeCreationOptions["onEdgeCreated"] };
   interfacePatternMappingRef: { current: Record<string, string> };
 }
 
 /**
  * Initialize edgehandles extension on cytoscape instance
  */
-function initializeEdgehandles(
-  cyInstance: CyCore,
-  refs: EdgehandlesRefs
-): () => void {
+function initializeEdgehandles(cyInstance: CyCore, refs: EdgehandlesRefs): () => void {
   ensureEdgehandlesRegistered();
 
   const cyAny = cyInstance as unknown as { edgehandles: (opts: unknown) => EdgehandlesInstance };
-  const eh = cyAny.edgehandles(getEdgehandlesOptions(cyInstance, refs.interfacePatternMappingRef.current));
+  const eh = cyAny.edgehandles(
+    getEdgehandlesOptions(cyInstance, refs.interfacePatternMappingRef.current)
+  );
   refs.ehRef.current = eh;
   eh.enable();
 
-  const handlers = createLifecycleHandlers(cyInstance, refs.isCreatingEdgeRef, refs.onEdgeCreatedRef, refs.interfacePatternMappingRef);
-  cyInstance.on('ehstart', handlers.handleStart);
-  cyInstance.on('ehstop ehcancel', handlers.handleStopCancel);
-  cyInstance.on('ehcomplete', handlers.handleComplete as unknown as cytoscape.EventHandler);
+  const handlers = createLifecycleHandlers(
+    cyInstance,
+    refs.isCreatingEdgeRef,
+    refs.onEdgeCreatedRef,
+    refs.interfacePatternMappingRef
+  );
+  cyInstance.on("ehstart", handlers.handleStart);
+  cyInstance.on("ehstop ehcancel", handlers.handleStopCancel);
+  cyInstance.on("ehcomplete", handlers.handleComplete as unknown as cytoscape.EventHandler);
 
-  log.info('[EdgeCreation] Edgehandles initialized');
+  log.info("[EdgeCreation] Edgehandles initialized");
 
   return () => {
-    cyInstance.off('ehstart', handlers.handleStart);
-    cyInstance.off('ehstop ehcancel', handlers.handleStopCancel);
-    cyInstance.off('ehcomplete', handlers.handleComplete as unknown as cytoscape.EventHandler);
+    cyInstance.off("ehstart", handlers.handleStart);
+    cyInstance.off("ehstop ehcancel", handlers.handleStopCancel);
+    cyInstance.off("ehcomplete", handlers.handleComplete as unknown as cytoscape.EventHandler);
     if (refs.ehRef.current) {
       refs.ehRef.current.destroy();
       refs.ehRef.current = null;
@@ -316,29 +336,37 @@ export function useEdgeCreation(
 
   // Initialize edgehandles
   useEffect(() => {
-    if (!cyInstance || options.mode !== 'edit') return;
-    const refs: EdgehandlesRefs = { ehRef, isCreatingEdgeRef, onEdgeCreatedRef, interfacePatternMappingRef };
+    if (!cyInstance || options.mode !== "edit") return;
+    const refs: EdgehandlesRefs = {
+      ehRef,
+      isCreatingEdgeRef,
+      onEdgeCreatedRef,
+      interfacePatternMappingRef
+    };
     return initializeEdgehandles(cyInstance, refs);
   }, [cyInstance, options.mode]);
 
   // Enable/disable based on mode and lock state
   useEffect(() => {
     if (!ehRef.current) return;
-    if (options.mode === 'edit' && !options.isLocked) {
+    if (options.mode === "edit" && !options.isLocked) {
       ehRef.current.enable();
     } else {
       ehRef.current.disable();
     }
   }, [options.mode, options.isLocked]);
 
-  const startEdgeCreation = useCallback((nodeId: string) => {
-    if (!cyInstance || !ehRef.current || options.mode !== 'edit') return;
-    const node = cyInstance.getElementById(nodeId);
-    if (node.empty()) return;
-    ehRef.current.start(node as NodeSingular);
-    isCreatingEdgeRef.current = true;
-    log.info(`[EdgeCreation] Starting edge creation from node: ${nodeId}`);
-  }, [cyInstance, options.mode]);
+  const startEdgeCreation = useCallback(
+    (nodeId: string) => {
+      if (!cyInstance || !ehRef.current || options.mode !== "edit") return;
+      const node = cyInstance.getElementById(nodeId);
+      if (node.empty()) return;
+      ehRef.current.start(node as NodeSingular);
+      isCreatingEdgeRef.current = true;
+      log.info(`[EdgeCreation] Starting edge creation from node: ${nodeId}`);
+    },
+    [cyInstance, options.mode]
+  );
 
   return {
     startEdgeCreation,

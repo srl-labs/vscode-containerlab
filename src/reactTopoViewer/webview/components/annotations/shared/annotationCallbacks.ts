@@ -36,12 +36,15 @@ export function createBoundAnnotationCallbacks(
   return {
     onSelect: () => handlers.onAnnotationSelect?.(annotationId),
     onToggleSelect: () => handlers.onAnnotationToggleSelect?.(annotationId),
-    onPositionChange: (pos: { x: number; y: number }) => handlers.onPositionChange(annotationId, pos),
+    onPositionChange: (pos: { x: number; y: number }) =>
+      handlers.onPositionChange(annotationId, pos),
     onRotationChange: (rotation: number) => handlers.onRotationChange(annotationId, rotation),
-    onSizeChange: (width: number, height: number) => handlers.onSizeChange(annotationId, width, height),
+    onSizeChange: (width: number, height: number) =>
+      handlers.onSizeChange(annotationId, width, height),
     onDelete: () => handlers.onAnnotationDelete(annotationId),
     onGeoPositionChange: handlers.onGeoPositionChange
-      ? (geoCoords: { lat: number; lng: number }) => handlers.onGeoPositionChange!(annotationId, geoCoords)
+      ? (geoCoords: { lat: number; lng: number }) =>
+          handlers.onGeoPositionChange!(annotationId, geoCoords)
       : undefined
   };
 }

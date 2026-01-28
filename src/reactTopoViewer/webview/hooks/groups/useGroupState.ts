@@ -1,14 +1,14 @@
 /**
  * State management hook for overlay groups.
  */
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from "react";
 
-import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { saveGroupStyleAnnotations as saveGroupsToIO } from '../../services';
-import { log } from '../../utils/logger';
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import { saveGroupStyleAnnotations as saveGroupsToIO } from "../../services";
+import { log } from "../../utils/logger";
 
-import { GROUP_SAVE_DEBOUNCE_MS } from './groupHelpers';
-import type { UseGroupStateReturn, GroupEditorData } from './groupTypes';
+import { GROUP_SAVE_DEBOUNCE_MS } from "./groupHelpers";
+import type { UseGroupStateReturn, GroupEditorData } from "./groupTypes";
 
 export function useGroupState(): UseGroupStateReturn {
   const [groups, setGroups] = useState<GroupStyleAnnotation[]>([]);
@@ -18,20 +18,17 @@ export function useGroupState(): UseGroupStateReturn {
   const lastStyleRef = useRef<Partial<GroupStyleAnnotation>>({});
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveGroupsToExtension = useCallback(
-    (updatedGroups: GroupStyleAnnotation[]) => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      saveTimeoutRef.current = setTimeout(() => {
-        saveGroupsToIO(updatedGroups).catch(err => {
-          log.error(`[Groups] Failed to save groups: ${err}`);
-        });
-        log.info(`[Groups] Saved ${updatedGroups.length} overlay groups`);
-      }, GROUP_SAVE_DEBOUNCE_MS);
-    },
-    []
-  );
+  const saveGroupsToExtension = useCallback((updatedGroups: GroupStyleAnnotation[]) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveGroupsToIO(updatedGroups).catch((err) => {
+        log.error(`[Groups] Failed to save groups: ${err}`);
+      });
+      log.info(`[Groups] Saved ${updatedGroups.length} overlay groups`);
+    }, GROUP_SAVE_DEBOUNCE_MS);
+  }, []);
 
   // Selection operations
   const selectGroup = useCallback((id: string) => {
@@ -40,7 +37,7 @@ export function useGroupState(): UseGroupStateReturn {
   }, []);
 
   const toggleGroupSelection = useCallback((id: string) => {
-    setSelectedGroupIds(prev => {
+    setSelectedGroupIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -55,9 +52,9 @@ export function useGroupState(): UseGroupStateReturn {
 
   const boxSelectGroups = useCallback((ids: string[]) => {
     if (ids.length === 0) return;
-    setSelectedGroupIds(prev => {
+    setSelectedGroupIds((prev) => {
       const next = new Set(prev);
-      ids.forEach(id => next.add(id));
+      ids.forEach((id) => next.add(id));
       return next;
     });
     log.info(`[Groups] Box selected ${ids.length} groups`);
@@ -65,7 +62,7 @@ export function useGroupState(): UseGroupStateReturn {
 
   const clearGroupSelection = useCallback(() => {
     setSelectedGroupIds(new Set());
-    log.info('[Groups] Cleared group selection');
+    log.info("[Groups] Cleared group selection");
   }, []);
 
   // Cleanup timeout on unmount

@@ -30,11 +30,17 @@ export interface SchemaData {
  * Extract sorted kinds from schema (Nokia first, then alphabetical)
  */
 export function extractKindsFromSchema(schema: Record<string, unknown>): string[] {
-  const nodeConfig = (schema.definitions as Record<string, unknown>)?.['node-config'] as Record<string, unknown>;
-  const kindProp = (nodeConfig?.properties as Record<string, unknown>)?.kind as Record<string, unknown>;
+  const nodeConfig = (schema.definitions as Record<string, unknown>)?.["node-config"] as Record<
+    string,
+    unknown
+  >;
+  const kindProp = (nodeConfig?.properties as Record<string, unknown>)?.kind as Record<
+    string,
+    unknown
+  >;
   const kindsEnum = (kindProp?.enum as string[]) || [];
-  const nokiaKinds = kindsEnum.filter((k: string) => k.startsWith('nokia_')).sort();
-  const otherKinds = kindsEnum.filter((k: string) => !k.startsWith('nokia_')).sort();
+  const nokiaKinds = kindsEnum.filter((k: string) => k.startsWith("nokia_")).sort();
+  const otherKinds = kindsEnum.filter((k: string) => !k.startsWith("nokia_")).sort();
   return [...nokiaKinds, ...otherKinds];
 }
 
@@ -44,8 +50,8 @@ export function extractKindsFromSchema(schema: Record<string, unknown>): string[
  */
 function getKindFromPattern(pattern: string | undefined): string | null {
   if (!pattern) return null;
-  const start = pattern.indexOf('(');
-  const end = pattern.indexOf(')', start + 1);
+  const start = pattern.indexOf("(");
+  const end = pattern.indexOf(")", start + 1);
   if (start < 0 || end < 0) return null;
   return pattern.slice(start + 1, end);
 }
@@ -57,14 +63,16 @@ function getTypeEnumValues(typeProp: Record<string, unknown>): string[] {
   if (typeProp.enum) return typeProp.enum as string[];
   if (!typeProp.anyOf) return [];
   return (typeProp.anyOf as Record<string, unknown>[])
-    .filter(opt => opt.enum)
-    .flatMap(opt => opt.enum as string[]);
+    .filter((opt) => opt.enum)
+    .flatMap((opt) => opt.enum as string[]);
 }
 
 /**
  * Extract type options for a single condition item
  */
-function extractTypesFromCondition(item: Record<string, unknown>): { kind: string; types: string[] } | null {
+function extractTypesFromCondition(
+  item: Record<string, unknown>
+): { kind: string; types: string[] } | null {
   const ifProps = (item?.if as Record<string, unknown>)?.properties as Record<string, unknown>;
   const kindPattern = (ifProps?.kind as Record<string, unknown>)?.pattern as string | undefined;
   const kind = getKindFromPattern(kindPattern);
@@ -81,9 +89,14 @@ function extractTypesFromCondition(item: Record<string, unknown>): { kind: strin
 /**
  * Extract types by kind from schema allOf conditions
  */
-export function extractTypesByKindFromSchema(schema: Record<string, unknown>): Record<string, string[]> {
+export function extractTypesByKindFromSchema(
+  schema: Record<string, unknown>
+): Record<string, string[]> {
   const typesByKind: Record<string, string[]> = {};
-  const nodeConfig = (schema.definitions as Record<string, unknown>)?.['node-config'] as Record<string, unknown>;
+  const nodeConfig = (schema.definitions as Record<string, unknown>)?.["node-config"] as Record<
+    string,
+    unknown
+  >;
   const allOf = (nodeConfig?.allOf as Record<string, unknown>[]) || [];
 
   for (const item of allOf) {
@@ -107,12 +120,12 @@ export function extractSrosComponentTypes(schema: Record<string, unknown>): Sros
   };
 
   return {
-    sfm: getEnumFromDef('sros-sfm-types'),
-    cpm: getEnumFromDef('sros-cpm-types'),
-    card: getEnumFromDef('sros-card-types'),
-    mda: getEnumFromDef('sros-mda-types'),
-    xiom: getEnumFromDef('sros-xiom-types'),
-    xiomMda: getEnumFromDef('sros-xiom-mda-types'),
+    sfm: getEnumFromDef("sros-sfm-types"),
+    cpm: getEnumFromDef("sros-cpm-types"),
+    card: getEnumFromDef("sros-card-types"),
+    mda: getEnumFromDef("sros-mda-types"),
+    xiom: getEnumFromDef("sros-xiom-types"),
+    xiomMda: getEnumFromDef("sros-xiom-mda-types")
   };
 }
 
@@ -123,6 +136,6 @@ export function parseSchemaData(schema: Record<string, unknown>): SchemaData {
   return {
     kinds: extractKindsFromSchema(schema),
     typesByKind: extractTypesByKindFromSchema(schema),
-    srosComponentTypes: extractSrosComponentTypes(schema),
+    srosComponentTypes: extractSrosComponentTypes(schema)
   };
 }

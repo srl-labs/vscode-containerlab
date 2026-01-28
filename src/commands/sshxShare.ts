@@ -1,7 +1,12 @@
 import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
-import { outputChannel, sshxSessions, runningLabsProvider, containerlabBinaryPath } from "../globals";
+import {
+  outputChannel,
+  sshxSessions,
+  runningLabsProvider,
+  containerlabBinaryPath
+} from "../globals";
 import { refreshSshxSessions, refreshRunningLabsProvider } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";
 
@@ -17,23 +22,27 @@ async function sshxStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
     return;
   }
   try {
-    const out = await runCommand(
+    const out = (await runCommand(
       `${containerlabBinaryPath} tools sshx ${action} -l ${node.name}`,
       `SSHX ${action}`,
       outputChannel,
       true,
       true
-    ) as string;
-    const link = parseLink(out || '');
+    )) as string;
+    const link = parseLink(out || "");
     if (link) {
       sshxSessions.set(node.name, link);
       await vscode.env.clipboard.writeText(link);
-      const choice = await vscode.window.showInformationMessage('SSHX link copied to clipboard.', 'Open Link');
-      if (choice === 'Open Link') {
+      const choice = await vscode.window.showInformationMessage(
+        "SSHX link copied to clipboard.",
+        "Open Link"
+      );
+      if (choice === "Open Link") {
         vscode.env.openExternal(vscode.Uri.parse(link));
       }
     } else {
-      const msg = action === 'attach' ? 'SSHX session started but no link found.' : 'SSHX session reattached';
+      const msg =
+        action === "attach" ? "SSHX session started but no link found." : "SSHX session reattached";
       vscode.window.showInformationMessage(msg);
     }
   } catch (err: unknown) {
@@ -45,7 +54,7 @@ async function sshxStart(action: "attach" | "reattach", node: ClabLabTreeNode) {
 }
 
 export async function sshxAttach(node: ClabLabTreeNode) {
-  await sshxStart('attach', node);
+  await sshxStart("attach", node);
 }
 
 export async function sshxDetach(node: ClabLabTreeNode) {
@@ -56,13 +65,13 @@ export async function sshxDetach(node: ClabLabTreeNode) {
   try {
     await runCommand(
       `${containerlabBinaryPath} tools sshx detach -l ${node.name}`,
-      'SSHX detach',
+      "SSHX detach",
       outputChannel,
       false,
       false
     );
     sshxSessions.delete(node.name);
-    vscode.window.showInformationMessage('SSHX session detached');
+    vscode.window.showInformationMessage("SSHX session detached");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(`Failed to detach SSHX: ${message}`);
@@ -77,10 +86,10 @@ export async function sshxDetach(node: ClabLabTreeNode) {
 }
 
 export async function sshxReattach(node: ClabLabTreeNode) {
-  await sshxStart('reattach', node);
+  await sshxStart("reattach", node);
 }
 
 export function sshxCopyLink(link: string) {
   vscode.env.clipboard.writeText(link);
-  vscode.window.showInformationMessage('SSHX link copied to clipboard');
+  vscode.window.showInformationMessage("SSHX link copied to clipboard");
 }

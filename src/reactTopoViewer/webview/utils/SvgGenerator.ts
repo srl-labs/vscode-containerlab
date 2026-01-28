@@ -1,26 +1,26 @@
 // SvgGenerator.ts
 
 // Import logger for webview
-import { log } from './logger';
+import { log } from "./logger";
 
 /**
  * Supported node types for SVG generation
  */
 export type NodeType =
-  | "pe"           // Provider Edge Router
-  | "dcgw"         // Data Center Gateway
-  | "leaf"         // Leaf Node
-  | "switch"       // Switch
-  | "spine"        // Spine Node
-  | "super-spine"  // Super Spine Router
-  | "server"       // Server
-  | "pon"          // PON
-  | "controller"   // Controller
-  | "rgw"          // Residential Gateway
-  | "ue"           // User Equipment
-  | "cloud"        // Cloud
-  | "client"       // Client
-  | "bridge";      // Bridge
+  | "pe" // Provider Edge Router
+  | "dcgw" // Data Center Gateway
+  | "leaf" // Leaf Node
+  | "switch" // Switch
+  | "spine" // Spine Node
+  | "super-spine" // Super Spine Router
+  | "server" // Server
+  | "pon" // PON
+  | "controller" // Controller
+  | "rgw" // Residential Gateway
+  | "ue" // User Equipment
+  | "cloud" // Cloud
+  | "client" // Client
+  | "bridge"; // Bridge
 
 /**
  * Generates an encoded SVG data URI for a given node type and fill color.
@@ -81,8 +81,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
   }
 
   switch (nodeType) {
-
-    case "pe":  // Provider Edge Router
+    case "pe": // Provider Edge Router
       svgString = `
                 <svg
                         xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -124,16 +123,16 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     </svg>`;
       break;
 
-    case "dcgw":  // Data Center Gateway
+    case "dcgw": // Data Center Gateway
       svgString = renderLeafOrDcgw(fillColor);
       break;
 
-    case "leaf":  // Leaf Node
+    case "leaf": // Leaf Node
       svgString = renderLeafOrDcgw(fillColor);
       break;
 
     case "bridge": // Bridge uses switch icon
-    case "switch":  // Switch
+    case "switch": // Switch
       svgString = `
                     <svg
                         xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -173,7 +172,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                 `;
       break;
 
-    case "spine":  // Spine Node
+    case "spine": // Spine Node
       svgString = `
                     <svg
                         xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -217,7 +216,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                 `;
       break;
 
-    case "super-spine":  // Super Spine Router
+    case "super-spine": // Super Spine Router
       svgString = `
                         <svg
                             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -261,7 +260,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     `;
       break;
 
-    case "server":  // Server
+    case "server": // Server
       svgString = `
                         <svg
                             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -294,7 +293,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     `;
       break;
 
-    case "pon":  // PON
+    case "pon": // PON
       svgString = `
                         <svg
                             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -327,7 +326,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     `;
       break;
 
-    case "controller":  // Controller
+    case "controller": // Controller
       svgString = `
                         <svg
                             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -370,7 +369,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     `;
       break;
 
-    case "rgw":  // Residential Gateway
+    case "rgw": // Residential Gateway
       svgString = `
                         <svg
                             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -404,7 +403,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     `;
       break;
 
-    case "ue":  // User Equipment
+    case "ue": // User Equipment
       svgString = `
                   <svg
                           xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -437,7 +436,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     `;
       break;
 
-    case "cloud":  // Cloud
+    case "cloud": // Cloud
       svgString = `
                     <svg
                         xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -470,7 +469,7 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
                     `;
       break;
 
-    case "client":  // Client
+    case "client": // Client
       svgString = `
                         <svg
                             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -549,5 +548,5 @@ export function generateEncodedSVG(nodeType: NodeType, fillColor: string): strin
   }
 
   // Encode the final selected SVG for Cytoscape.js
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svgString);
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svgString);
 }

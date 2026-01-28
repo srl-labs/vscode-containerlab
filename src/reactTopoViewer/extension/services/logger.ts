@@ -3,9 +3,14 @@
  * Writes to VS Code LogOutputChannel for better debugging experience.
  */
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { type LogLevel, formatMessage, getCallerFileLine, createLogger } from '../../shared/utilities/loggerUtils';
+import {
+  type LogLevel,
+  formatMessage,
+  getCallerFileLine,
+  createLogger
+} from "../../shared/utilities/loggerUtils";
 
 let outputChannel: vscode.LogOutputChannel | undefined;
 
@@ -14,7 +19,7 @@ let outputChannel: vscode.LogOutputChannel | undefined;
  */
 function getLogChannel(): vscode.LogOutputChannel {
   if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel('TopoViewer React', { log: true });
+    outputChannel = vscode.window.createOutputChannel("TopoViewer React", { log: true });
   }
   return outputChannel;
 }
@@ -25,13 +30,13 @@ function getLogChannel(): vscode.LogOutputChannel {
 function writeToChannel(level: LogLevel, text: string): void {
   const channel = getLogChannel();
   switch (level) {
-    case 'error':
+    case "error":
       channel.error(text);
       break;
-    case 'warn':
+    case "warn":
       channel.warn(text);
       break;
-    case 'debug':
+    case "debug":
       channel.debug(text);
       break;
     default:

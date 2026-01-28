@@ -6,33 +6,42 @@
 // ============================================================================
 // App-level hooks (main entry points for App.tsx)
 // ============================================================================
-export { useAppFreeTextAnnotations } from './useAppFreeTextAnnotations';
-export type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
-export { useAppFreeShapeAnnotations, useAddShapesHandler } from './useAppFreeShapeAnnotations';
+export { useAppFreeTextAnnotations } from "./useAppFreeTextAnnotations";
+export type { UseAppFreeTextAnnotationsReturn } from "./useAppFreeTextAnnotations";
+export { useAppFreeShapeAnnotations, useAddShapesHandler } from "./useAppFreeShapeAnnotations";
 
 // ============================================================================
 // Undo/Redo Handlers
 // ============================================================================
-export { useFreeTextUndoRedoHandlers, useFreeTextAnnotationApplier } from './useFreeTextUndoRedoHandlers';
-export type { UseFreeTextAnnotationApplierReturn, UseFreeTextUndoRedoHandlersReturn } from './useFreeTextUndoRedoHandlers';
-export { useFreeShapeUndoRedoHandlers, useFreeShapeAnnotationApplier } from './useFreeShapeUndoRedoHandlers';
-export type { UseFreeShapeUndoRedoHandlersReturn, UseFreeShapeAnnotationApplierReturn } from './useFreeShapeUndoRedoHandlers';
+export {
+  useFreeTextUndoRedoHandlers,
+  useFreeTextAnnotationApplier
+} from "./useFreeTextUndoRedoHandlers";
+export type {
+  UseFreeTextAnnotationApplierReturn,
+  UseFreeTextUndoRedoHandlersReturn
+} from "./useFreeTextUndoRedoHandlers";
+export {
+  useFreeShapeUndoRedoHandlers,
+  useFreeShapeAnnotationApplier
+} from "./useFreeShapeUndoRedoHandlers";
+export type {
+  UseFreeShapeUndoRedoHandlersReturn,
+  UseFreeShapeAnnotationApplierReturn
+} from "./useFreeShapeUndoRedoHandlers";
 
 // ============================================================================
 // Types
 // ============================================================================
-export type {
-  FreeTextAnnotation,
-  AnnotationUndoAction
-} from './freeText';
+export type { FreeTextAnnotation, AnnotationUndoAction } from "./freeText";
 
 export type {
   UseFreeShapeAnnotationsOptions,
   UseFreeShapeAnnotationsReturn,
   AnnotationUndoAction as FreeShapeUndoAction
-} from './useAppFreeShapeAnnotations';
+} from "./useAppFreeShapeAnnotations";
 
-export type { FreeShapeAnnotation } from './freeShape';
+export type { FreeShapeAnnotation } from "./freeShape";
 
 // ============================================================================
 // Layer Helpers (for FreeTextLayer)
@@ -44,33 +53,51 @@ export {
   getCursorStyle,
   getBorderRadius,
   computeAnnotationStyle
-} from './freeText';
-export type { RenderedPosition } from './freeText';
+} from "./freeText";
+export type { RenderedPosition } from "./freeText";
 
 // Shape Helpers (for FreeShapeLayer)
-export { getLineCenter } from './freeShape';
+export { getLineCenter } from "./freeShape";
 
 // ============================================================================
 // Interaction Hooks (drag, resize, rotation, selection)
 // ============================================================================
-export { useAnnotationDrag } from './useAnnotationDrag';
-export { useRotationDrag, useResizeDrag, useLineResizeDrag } from './useAnnotationHandles';
+export { useAnnotationDrag } from "./useAnnotationDrag";
+export { useRotationDrag, useResizeDrag, useLineResizeDrag } from "./useAnnotationHandles";
 export {
   useAnnotationClickHandlers,
   useLayerClickHandler,
   useAnnotationBoxSelection
-} from './useAnnotationSelection';
-export { useAnnotationInteractions } from './useAnnotationInteractions';
+} from "./useAnnotationSelection";
+export { useAnnotationInteractions } from "./useAnnotationInteractions";
 
 // ============================================================================
 // Management Hooks (list operations, shortcuts, effects)
 // ============================================================================
-export { useAnnotationListSelection, useAnnotationListCopyPaste, getSelectedByIds } from './useAnnotationListOperations';
-export type { AnnotationWithId, UseAnnotationListSelectionReturn, UseAnnotationListCopyPasteReturn } from './useAnnotationListOperations';
-export { useCombinedAnnotationShortcuts } from './useCombinedAnnotationShortcuts';
-export type { UseCombinedAnnotationShortcutsReturn, GroupClipboardOptions } from './useCombinedAnnotationShortcuts';
-export { useAnnotationEffects } from './useAnnotationEffects';
-export { useAnnotationReparent } from './useAnnotationReparent';
-export type { UseAnnotationReparentOptions, UseAnnotationReparentReturn } from './useAnnotationReparent';
-export { generateAnnotationId, useDebouncedSave, useDebouncedHover } from './sharedAnnotationHelpers';
-export type { UseDebouncedSaveReturn, UseDebouncedHoverReturn } from './sharedAnnotationHelpers';
+export {
+  useAnnotationListSelection,
+  useAnnotationListCopyPaste,
+  getSelectedByIds
+} from "./useAnnotationListOperations";
+export type {
+  AnnotationWithId,
+  UseAnnotationListSelectionReturn,
+  UseAnnotationListCopyPasteReturn
+} from "./useAnnotationListOperations";
+export { useCombinedAnnotationShortcuts } from "./useCombinedAnnotationShortcuts";
+export type {
+  UseCombinedAnnotationShortcutsReturn,
+  GroupClipboardOptions
+} from "./useCombinedAnnotationShortcuts";
+export { useAnnotationEffects } from "./useAnnotationEffects";
+export { useAnnotationReparent } from "./useAnnotationReparent";
+export type {
+  UseAnnotationReparentOptions,
+  UseAnnotationReparentReturn
+} from "./useAnnotationReparent";
+export {
+  generateAnnotationId,
+  useDebouncedSave,
+  useDebouncedHover
+} from "./sharedAnnotationHelpers";
+export type { UseDebouncedSaveReturn, UseDebouncedHoverReturn } from "./sharedAnnotationHelpers";

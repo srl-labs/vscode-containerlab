@@ -2,10 +2,10 @@
  * FindNodePanel - Search/find nodes in the topology
  * Migrated from legacy TopoViewer viewport-drawer-topology-overview.html
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { BasePanel } from '../shared/editor/BasePanel';
+import { BasePanel } from "../shared/editor/BasePanel";
 
 interface FindNodePanelProps {
   isVisible: boolean;
@@ -16,8 +16,13 @@ interface FindNodePanelProps {
 /** Creates a wildcard filter regex */
 function createWildcardFilter(trimmed: string): (value: string) => boolean {
   const regex = new RegExp(
-    '^' + trimmed.split('*').map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$',
-    'i'
+    "^" +
+      trimmed
+        .split("*")
+        .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join(".*") +
+      "$",
+    "i"
   );
   return (value: string) => regex.test(value);
 }
@@ -40,21 +45,21 @@ function createContainsFilter(lower: string): (value: string) => boolean {
 function createFilter(pattern: string): (value: string) => boolean {
   const trimmed = pattern.trim();
   if (!trimmed) return () => true;
-  if (trimmed.includes('*')) return createWildcardFilter(trimmed);
-  if (trimmed.startsWith('+')) return createPrefixFilter(trimmed);
+  if (trimmed.includes("*")) return createWildcardFilter(trimmed);
+  if (trimmed.startsWith("+")) return createPrefixFilter(trimmed);
   return createContainsFilter(trimmed.toLowerCase());
 }
 
 /** Formats the search result message */
 function formatResultMessage(count: number): string {
-  if (count === 0) return 'No nodes found';
-  const plural = count === 1 ? '' : 's';
+  if (count === 0) return "No nodes found";
+  const plural = count === 1 ? "" : "s";
   return `Found ${count} node${plural}`;
 }
 
 /** Component to display search result status */
 const SearchResultStatus: React.FC<{ count: number }> = ({ count }) => {
-  const colorClass = count > 0 ? 'text-green-500' : 'text-orange-500';
+  const colorClass = count > 0 ? "text-green-500" : "text-orange-500";
   return (
     <span className={`text-sm ${colorClass}`} data-testid="find-node-result">
       {formatResultMessage(count)}
@@ -73,8 +78,8 @@ function searchNodes(cy: CyCore, searchTerm: string): number {
   const filter = createFilter(searchTerm);
   const matchingNodes = cy.nodes().filter((node) => {
     const data = node.data() as NodeDataForSearch;
-    const shortName = data.name ?? data.id ?? '';
-    const longName = data.extraData?.longname ?? '';
+    const shortName = data.name ?? data.id ?? "";
+    const longName = data.extraData?.longname ?? "";
     return filter(`${shortName} ${longName}`);
   });
 
@@ -90,25 +95,33 @@ function searchNodes(cy: CyCore, searchTerm: string): number {
 function usePanelFocus(isVisible: boolean, inputRef: React.RefObject<HTMLInputElement | null>) {
   useEffect(() => {
     if (isVisible && inputRef.current) {
-      setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 50);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 50);
     }
   }, [isVisible, inputRef]);
 }
 
 /** Hook for search state management */
 function useSearchState(cy: CyCore | null, isVisible: boolean) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
-  useEffect(() => { if (!isVisible) setMatchCount(null); }, [isVisible]);
+  useEffect(() => {
+    if (!isVisible) setMatchCount(null);
+  }, [isVisible]);
 
   const handleSearch = useCallback(() => {
-    if (!cy || !searchTerm.trim()) { setMatchCount(null); return; }
+    if (!cy || !searchTerm.trim()) {
+      setMatchCount(null);
+      return;
+    }
     setMatchCount(searchNodes(cy, searchTerm));
   }, [cy, searchTerm]);
 
   const handleClear = useCallback(() => {
-    setSearchTerm('');
+    setSearchTerm("");
     setMatchCount(null);
     cy?.elements().unselect();
   }, [cy]);
@@ -119,12 +132,22 @@ function useSearchState(cy: CyCore | null, isVisible: boolean) {
 export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, cy }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   usePanelFocus(isVisible, inputRef);
-  const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(cy, isVisible);
+  const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(
+    cy,
+    isVisible
+  );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') { e.preventDefault(); handleSearch(); }
-    else if (e.key === 'Escape') { onClose(); }
-  }, [handleSearch, onClose]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleSearch();
+      } else if (e.key === "Escape") {
+        onClose();
+      }
+    },
+    [handleSearch, onClose]
+  );
 
   const handleClearClick = useCallback(() => {
     handleClear();
@@ -147,9 +170,7 @@ export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose
     >
       <div className="space-y-3">
         <div>
-          <p className="text-secondary text-sm mb-2">
-            Search for nodes in the topology by name.
-          </p>
+          <p className="text-secondary text-sm mb-2">Search for nodes in the topology by name.</p>
         </div>
 
         <div className="relative">
@@ -189,17 +210,22 @@ export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose
             Search
           </button>
 
-          {matchCount !== null && (
-            <SearchResultStatus count={matchCount} />
-          )}
+          {matchCount !== null && <SearchResultStatus count={matchCount} />}
         </div>
 
         <div className="text-xs text-secondary mt-2">
           <p className="font-semibold mb-1">Search tips:</p>
           <ul className="list-disc list-inside space-y-0.5">
-            <li>Use <kbd className="shortcuts-kbd-inline">*</kbd> for wildcard (e.g., <code>srl*</code>)</li>
-            <li>Use <kbd className="shortcuts-kbd-inline">+</kbd> prefix for starts-with</li>
-            <li>Press <kbd className="shortcuts-kbd-inline">Enter</kbd> to search</li>
+            <li>
+              Use <kbd className="shortcuts-kbd-inline">*</kbd> for wildcard (e.g.,{" "}
+              <code>srl*</code>)
+            </li>
+            <li>
+              Use <kbd className="shortcuts-kbd-inline">+</kbd> prefix for starts-with
+            </li>
+            <li>
+              Press <kbd className="shortcuts-kbd-inline">Enter</kbd> to search
+            </li>
           </ul>
         </div>
       </div>

@@ -2,15 +2,18 @@
  * Apply source/target endpoint label offsets to edges.
  * Per-link overrides take precedence over the global setting.
  */
-import { useEffect } from 'react';
-import type { Core as CyCore, EdgeSingular, EventObject, NodeSingular } from 'cytoscape';
+import { useEffect } from "react";
+import type { Core as CyCore, EdgeSingular, EventObject, NodeSingular } from "cytoscape";
 
-import type { EdgeAnnotation } from '../../../shared/types/topology';
-import type { EdgeIdentity } from '../../utils/edgeAnnotations';
-import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from '../../utils/edgeAnnotations';
-import { clampEndpointLabelOffset, parseEndpointLabelOffset } from '../../utils/endpointLabelOffset';
+import type { EdgeAnnotation } from "../../../shared/types/topology";
+import type { EdgeIdentity } from "../../utils/edgeAnnotations";
+import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "../../utils/edgeAnnotations";
+import {
+  clampEndpointLabelOffset,
+  parseEndpointLabelOffset
+} from "../../utils/endpointLabelOffset";
 
-const OFFSET_STYLE_KEYS = 'source-text-offset target-text-offset';
+const OFFSET_STYLE_KEYS = "source-text-offset target-text-offset";
 
 export type EndpointLabelOffsetConfig = {
   globalEnabled: boolean;
@@ -23,18 +26,18 @@ function applyOffset(edge: EdgeSingular, offset: number): void {
   // Previous clamping logic caused labels to shift during zoom when edge stats
   // updates triggered recalculation at different zoom levels.
   edge.style({
-    'source-text-offset': offset,
-    'target-text-offset': offset
+    "source-text-offset": offset,
+    "target-text-offset": offset
   });
 }
 
 function getEdgeIdentity(edge: EdgeSingular): EdgeIdentity {
   return {
     id: edge.id(),
-    source: edge.data('source') as string | undefined,
-    target: edge.data('target') as string | undefined,
-    sourceEndpoint: edge.data('sourceEndpoint') as string | undefined,
-    targetEndpoint: edge.data('targetEndpoint') as string | undefined,
+    source: edge.data("source") as string | undefined,
+    target: edge.data("target") as string | undefined,
+    sourceEndpoint: edge.data("sourceEndpoint") as string | undefined,
+    targetEndpoint: edge.data("targetEndpoint") as string | undefined
   };
 }
 
@@ -75,7 +78,7 @@ export function useEndpointLabelOffset(
 
     const applyToEdges = () => {
       const edges = cyInstance.edges();
-      edges.forEach(edge => applyEdgeOffset(edge as EdgeSingular));
+      edges.forEach((edge) => applyEdgeOffset(edge as EdgeSingular));
     };
 
     const handleEdgeChange = (evt: EventObject) => {
@@ -87,24 +90,24 @@ export function useEndpointLabelOffset(
     const handleNodePosition = (evt: EventObject) => {
       const node = evt.target as NodeSingular;
       if (!node || !node.isNode()) return;
-      node.connectedEdges().forEach(edge => applyEdgeOffset(edge as EdgeSingular));
+      node.connectedEdges().forEach((edge) => applyEdgeOffset(edge as EdgeSingular));
     };
 
     const handleLayoutStop = () => {
-      cyInstance.edges().forEach(edge => applyEdgeOffset(edge as EdgeSingular));
+      cyInstance.edges().forEach((edge) => applyEdgeOffset(edge as EdgeSingular));
     };
 
     applyToEdges();
-    cyInstance.on('add', 'edge', handleEdgeChange);
-    cyInstance.on('data', 'edge', handleEdgeChange);
-    cyInstance.on('position', 'node', handleNodePosition);
-    cyInstance.on('layoutstop', handleLayoutStop);
+    cyInstance.on("add", "edge", handleEdgeChange);
+    cyInstance.on("data", "edge", handleEdgeChange);
+    cyInstance.on("position", "node", handleNodePosition);
+    cyInstance.on("layoutstop", handleLayoutStop);
 
     return () => {
-      cyInstance.off('add', 'edge', handleEdgeChange);
-      cyInstance.off('data', 'edge', handleEdgeChange);
-      cyInstance.off('position', 'node', handleNodePosition);
-      cyInstance.off('layoutstop', handleLayoutStop);
+      cyInstance.off("add", "edge", handleEdgeChange);
+      cyInstance.off("data", "edge", handleEdgeChange);
+      cyInstance.off("position", "node", handleNodePosition);
+      cyInstance.off("layoutstop", handleLayoutStop);
     };
   }, [cyInstance, config.globalEnabled, config.globalOffset, config.edgeAnnotations]);
 }

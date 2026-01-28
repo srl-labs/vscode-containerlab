@@ -6,11 +6,18 @@
  * - Debounced copy/paste/duplicate/delete handlers
  * - Viewport center calculation
  */
-import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { useUnifiedClipboard, type UseUnifiedClipboardOptions } from '../clipboard/useUnifiedClipboard';
-import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
+import {
+  useUnifiedClipboard,
+  type UseUnifiedClipboardOptions
+} from "../clipboard/useUnifiedClipboard";
+import type {
+  GroupStyleAnnotation,
+  FreeTextAnnotation,
+  FreeShapeAnnotation
+} from "../../../shared/types/topology";
 
 /**
  * Annotations interface subset for clipboard operations
@@ -46,8 +53,8 @@ export interface ClipboardHandlersConfig {
     beginBatch: () => void;
     endBatch: () => void;
   };
-  handleNodeCreatedCallback: UseUnifiedClipboardOptions['onCreateNode'];
-  handleEdgeCreated: UseUnifiedClipboardOptions['onCreateEdge'];
+  handleNodeCreatedCallback: UseUnifiedClipboardOptions["onCreateNode"];
+  handleEdgeCreated: UseUnifiedClipboardOptions["onCreateEdge"];
 }
 
 /**
@@ -72,7 +79,8 @@ export interface ClipboardHandlersReturn {
  * Consolidates ~70 lines of clipboard code from App.tsx into a single hook.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { cyInstance, annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } = config;
+  const { cyInstance, annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } =
+    config;
 
   // Viewport center for paste operations
   const getViewportCenter = React.useCallback(() => {
@@ -111,8 +119,11 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
 
     const extent = cyInstance.extent();
     const { origin } = clipboardData;
-    const originIsInView = origin.x >= extent.x1 && origin.x <= extent.x2 &&
-      origin.y >= extent.y1 && origin.y <= extent.y2;
+    const originIsInView =
+      origin.x >= extent.x1 &&
+      origin.x <= extent.x2 &&
+      origin.y >= extent.y1 &&
+      origin.y <= extent.y2;
 
     // Prefer pasting relative to the copied selection when it's visible, so a
     // single copy+paste doesn't unexpectedly land far away (or overlap due to

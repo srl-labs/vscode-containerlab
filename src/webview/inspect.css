@@ -63,7 +63,11 @@ button:hover {
 }
 
 button.secondary:hover {
-  background-color: color-mix(in srgb, var(--vscode-editor-background) 90%, var(--vscode-editor-foreground) 10%);
+  background-color: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 90%,
+    var(--vscode-editor-foreground) 10%
+  );
 }
 
 table {
@@ -81,7 +85,8 @@ thead th {
   z-index: 10;
 }
 
-th, td {
+th,
+td {
   border: 1px solid var(--vscode-panel-border);
   padding: 6px 8px;
   text-align: left;
@@ -176,8 +181,9 @@ h2 {
   table {
     font-size: 12px;
   }
-  
-  th, td {
+
+  th,
+  td {
     padding: 4px 6px;
   }
 }

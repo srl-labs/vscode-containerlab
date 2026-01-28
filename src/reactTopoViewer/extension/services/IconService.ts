@@ -6,31 +6,31 @@
  * 2. Global ~/.clab/icons/ folder
  * 3. Built-in icons (handled separately by webview)
  */
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import type { CustomIconInfo } from '../../shared/types/icons';
+import type { CustomIconInfo } from "../../shared/types/icons";
 import {
   getIconFormat,
   getIconMimeType,
   isBuiltInIcon,
-  isSupportedIconExtension,
-} from '../../shared/types/icons';
+  isSupportedIconExtension
+} from "../../shared/types/icons";
 
-import { log } from './logger';
+import { log } from "./logger";
 
 /**
  * Name of the workspace icons folder
  */
-const WORKSPACE_ICONS_FOLDER = '.clab-icons';
+const WORKSPACE_ICONS_FOLDER = ".clab-icons";
 
 /**
  * Global icons folder under user home
  */
-const GLOBAL_ICONS_FOLDER = '.clab/icons';
+const GLOBAL_ICONS_FOLDER = ".clab/icons";
 
 /**
  * Result of an icon operation
@@ -69,14 +69,14 @@ export class IconService {
     // Lowercase, replace non-alphanumeric with hyphens, collapse multiple hyphens
     let result = baseName
       .toLowerCase()
-      .replace(/[^a-z0-9_-]+/g, '-')  // Replace non-alphanumeric chars
-      .replace(/^-+/, '');             // Trim leading hyphens
+      .replace(/[^a-z0-9_-]+/g, "-") // Replace non-alphanumeric chars
+      .replace(/^-+/, ""); // Trim leading hyphens
     // Trim trailing hyphens safely (avoid super-linear regex)
-    while (result.endsWith('-')) {
+    while (result.endsWith("-")) {
       result = result.slice(0, -1);
     }
     // Collapse multiple hyphens
-    return result.replace(/-+/g, '-');
+    return result.replace(/-+/g, "-");
   }
 
   /**
@@ -91,7 +91,7 @@ export class IconService {
 
       const buffer = await fs.promises.readFile(filePath);
       const mimeType = getIconMimeType(ext);
-      const base64 = buffer.toString('base64');
+      const base64 = buffer.toString("base64");
       return `data:${mimeType};base64,${base64}`;
     } catch (err) {
       log.warn(`Failed to load icon ${filePath}: ${err}`);
@@ -104,7 +104,7 @@ export class IconService {
    */
   private async listIconsFromDir(
     dirPath: string,
-    source: 'workspace' | 'global'
+    source: "workspace" | "global"
   ): Promise<CustomIconInfo[]> {
     const icons: CustomIconInfo[] = [];
 
@@ -131,7 +131,7 @@ export class IconService {
             name,
             source,
             dataUri,
-            format: getIconFormat(ext),
+            format: getIconFormat(ext)
           });
         }
       }
@@ -151,10 +151,10 @@ export class IconService {
     const globalDir = this.getGlobalIconDir();
 
     // Load workspace icons first (they take priority)
-    const workspaceIcons = await this.listIconsFromDir(workspaceDir, 'workspace');
+    const workspaceIcons = await this.listIconsFromDir(workspaceDir, "workspace");
 
     // Load global icons
-    const globalIcons = await this.listIconsFromDir(globalDir, 'global');
+    const globalIcons = await this.listIconsFromDir(globalDir, "global");
 
     // Merge: workspace icons override global icons with same name
     const iconMap = new Map<string, CustomIconInfo>();
@@ -183,20 +183,20 @@ export class IconService {
         canSelectFolders: false,
         canSelectMany: false,
         filters: {
-          'Icon files': ['svg', 'png'],
+          "Icon files": ["svg", "png"]
         },
-        title: 'Select Custom Icon',
+        title: "Select Custom Icon"
       });
 
       if (!selection || selection.length === 0) {
-        return { success: false, error: 'No file selected' };
+        return { success: false, error: "No file selected" };
       }
 
       const sourceUri = selection[0];
       const ext = path.extname(sourceUri.fsPath).toLowerCase();
 
       if (!isSupportedIconExtension(ext)) {
-        return { success: false, error: 'Only SVG and PNG files are supported' };
+        return { success: false, error: "Only SVG and PNG files are supported" };
       }
 
       // Ensure global icons directory exists
@@ -234,7 +234,7 @@ export class IconService {
       let deleted = false;
 
       // Try both extensions
-      for (const ext of ['.svg', '.png']) {
+      for (const ext of [".svg", ".png"]) {
         const filePath = path.join(globalDir, `${iconName}${ext}`);
         if (await this.pathExists(filePath)) {
           await fs.promises.unlink(filePath);
@@ -268,9 +268,9 @@ export class IconService {
 
       // Find the icon in global directory
       let sourceFile: string | null = null;
-      let ext = '';
+      let ext = "";
 
-      for (const testExt of ['.svg', '.png']) {
+      for (const testExt of [".svg", ".png"]) {
         const testPath = path.join(globalDir, `${iconName}${testExt}`);
         if (await this.pathExists(testPath)) {
           sourceFile = testPath;
@@ -307,7 +307,7 @@ export class IconService {
       const workspaceDir = this.getWorkspaceIconDir(yamlFilePath);
 
       // Try both extensions
-      for (const ext of ['.svg', '.png']) {
+      for (const ext of [".svg", ".png"]) {
         const filePath = path.join(workspaceDir, `${iconName}${ext}`);
         if (await this.pathExists(filePath)) {
           await fs.promises.unlink(filePath);
@@ -330,7 +330,7 @@ export class IconService {
    * Check if an icon exists in a directory (any supported extension)
    */
   private async iconExistsInDir(dir: string, iconName: string): Promise<boolean> {
-    for (const ext of ['.svg', '.png']) {
+    for (const ext of [".svg", ".png"]) {
       if (await this.pathExists(path.join(dir, `${iconName}${ext}`))) {
         return true;
       }
@@ -346,7 +346,7 @@ export class IconService {
     workspaceDir: string,
     globalDir: string
   ): Promise<void> {
-    for (const ext of ['.svg', '.png']) {
+    for (const ext of [".svg", ".png"]) {
       const globalPath = path.join(globalDir, `${iconName}${ext}`);
       if (await this.pathExists(globalPath)) {
         await this.ensureDir(workspaceDir);
@@ -362,10 +362,7 @@ export class IconService {
    * - Copies missing icons from global to workspace
    * - Removes unused icons from workspace
    */
-  async reconcileWorkspaceIcons(
-    yamlFilePath: string,
-    usedIconNames: string[]
-  ): Promise<void> {
+  async reconcileWorkspaceIcons(yamlFilePath: string, usedIconNames: string[]): Promise<void> {
     try {
       // Filter to only custom icons (not built-in)
       const usedCustomIcons = usedIconNames.filter((name) => !isBuiltInIcon(name));
@@ -387,7 +384,7 @@ export class IconService {
       }
 
       // 2. Remove unused icons from workspace
-      const workspaceIcons = await this.listIconsFromDir(workspaceDir, 'workspace');
+      const workspaceIcons = await this.listIconsFromDir(workspaceDir, "workspace");
       for (const icon of workspaceIcons) {
         if (!usedCustomIcons.includes(icon.name)) {
           await this.deleteFromWorkspace(icon.name, yamlFilePath);

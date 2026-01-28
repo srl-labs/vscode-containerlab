@@ -3,15 +3,15 @@
  * Extends Cytoscape's native fit() to also consider text, shape, and group annotations.
  */
 
-import type { Core } from 'cytoscape';
+import type { Core } from "cytoscape";
 
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation
-} from '../../shared/types/topology';
+} from "../../shared/types/topology";
 
-import { getCombinedBounds, type BoundingBox } from './boundingBox';
+import { getCombinedBounds, type BoundingBox } from "./boundingBox";
 
 /** Default padding around the fitted content */
 const DEFAULT_PADDING = 50;
@@ -101,7 +101,7 @@ export function fitViewportToAll(
   padding: number = DEFAULT_PADDING
 ): void {
   // Skip if GeoMap is active - GeoMap requires cy.zoom()=1 and cy.pan()={0,0}
-  if (cy.scratch('geoMapActive') === true) return;
+  if (cy.scratch("geoMapActive") === true) return;
 
   const container = cy.container();
   if (!container) return;
@@ -114,12 +114,7 @@ export function fitViewportToAll(
   const cyExtent = getCytoscapeExtent(cy);
 
   // Calculate combined bounds including all annotations
-  const combinedBounds = getCombinedBounds(
-    cyExtent,
-    textAnnotations,
-    shapeAnnotations,
-    groups
-  );
+  const combinedBounds = getCombinedBounds(cyExtent, textAnnotations, shapeAnnotations, groups);
 
   // If no bounds at all, nothing to fit
   if (!combinedBounds) {
@@ -129,12 +124,7 @@ export function fitViewportToAll(
   }
 
   // Calculate and apply viewport
-  const { zoom, pan } = calculateViewport(
-    combinedBounds,
-    containerWidth,
-    containerHeight,
-    padding
-  );
+  const { zoom, pan } = calculateViewport(combinedBounds, containerWidth, containerHeight, padding);
 
   cy.viewport({ zoom, pan });
 }

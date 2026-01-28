@@ -1,19 +1,20 @@
 /**
  * BasicTab - Basic link configuration (endpoints)
  */
-import React from 'react';
+import React from "react";
 
-import { FormField, ReadOnlyBadge, InputField } from '../../shared/form';
+import { FormField, ReadOnlyBadge, InputField } from "../../shared/form";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,
   ENDPOINT_LABEL_OFFSET_MAX
-} from '../../../utils/endpointLabelOffset';
+} from "../../../utils/endpointLabelOffset";
 
-import type { LinkTabProps } from './types';
+import type { LinkTabProps } from "./types";
 
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOffset }) => {
-  const rawEndpointOffset = typeof data.endpointLabelOffset === 'number' ? data.endpointLabelOffset : Number.NaN;
+  const rawEndpointOffset =
+    typeof data.endpointLabelOffset === "number" ? data.endpointLabelOffset : Number.NaN;
   const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
     ? rawEndpointOffset
     : DEFAULT_ENDPOINT_LABEL_OFFSET;
@@ -50,22 +51,20 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
   return (
     <div className="space-y-3">
       {/* Source Endpoint Section */}
-      <div className="border-b pb-3 mb-3" style={{ borderColor: 'var(--vscode-panel-border)' }}>
-        <div className="section-header">
-          Source Endpoint
-        </div>
+      <div className="border-b pb-3 mb-3" style={{ borderColor: "var(--vscode-panel-border)" }}>
+        <div className="section-header">Source Endpoint</div>
         <FormField label="Node">
-          <ReadOnlyBadge>{data.source || 'Unknown'}</ReadOnlyBadge>
+          <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
         </FormField>
         {data.sourceIsNetwork ? (
           <FormField label="Interface">
-              <ReadOnlyBadge>{data.source || 'Unknown'}</ReadOnlyBadge>
+            <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
           </FormField>
         ) : (
           <FormField label="Interface" required>
             <InputField
               id="link-source-interface"
-              value={data.sourceEndpoint || ''}
+              value={data.sourceEndpoint || ""}
               onChange={(value: string) => onChange({ sourceEndpoint: value })}
               placeholder="e.g., eth1, e1-1"
             />
@@ -75,21 +74,19 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
 
       {/* Target Endpoint Section */}
       <div>
-        <div className="section-header">
-          Target Endpoint
-        </div>
+        <div className="section-header">Target Endpoint</div>
         <FormField label="Node">
-          <ReadOnlyBadge>{data.target || 'Unknown'}</ReadOnlyBadge>
+          <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
         </FormField>
         {data.targetIsNetwork ? (
           <FormField label="Interface">
-            <ReadOnlyBadge>{data.target || 'Unknown'}</ReadOnlyBadge>
+            <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
           </FormField>
         ) : (
           <FormField label="Interface" required>
             <InputField
               id="link-target-interface"
-              value={data.targetEndpoint || ''}
+              value={data.targetEndpoint || ""}
               onChange={(value: string) => onChange({ targetEndpoint: value })}
               placeholder="e.g., eth1, e1-1"
             />
@@ -97,10 +94,8 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
         )}
       </div>
 
-      <div className="border-t pt-3 mt-4" style={{ borderColor: 'var(--vscode-panel-border)' }}>
-        <div className="section-header">
-          Label Offset
-        </div>
+      <div className="border-t pt-3 mt-4" style={{ borderColor: "var(--vscode-panel-border)" }}>
+        <div className="section-header">Label Offset</div>
         <div className="form-group">
           <div className="px-2">
             <div className="flex items-center gap-2 mb-2">

@@ -6,14 +6,18 @@
  * - FreeTextLayer
  * - FreeShapeLayer
  */
-import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { GroupLayer } from '../../components/annotations/GroupLayer';
-import type { FreeTextLayer } from '../../components/annotations/FreeTextLayer';
-import type { FreeShapeLayer } from '../../components/annotations/FreeShapeLayer';
-import type { MapLibreState } from '../canvas/maplibreUtils';
-import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { GroupLayer } from "../../components/annotations/GroupLayer";
+import type { FreeTextLayer } from "../../components/annotations/FreeTextLayer";
+import type { FreeShapeLayer } from "../../components/annotations/FreeShapeLayer";
+import type { MapLibreState } from "../canvas/maplibreUtils";
+import type {
+  GroupStyleAnnotation,
+  FreeTextAnnotation,
+  FreeShapeAnnotation
+} from "../../../shared/types/topology";
 
 // Note: We use a subset type here instead of ReturnType<typeof useAnnotations>
 // to avoid circular dependency with AnnotationContext.tsx
@@ -39,13 +43,27 @@ interface AnnotationsSubset {
   editGroup: (id: string) => void;
   deleteGroupWithUndo: (id: string) => void;
   onGroupDragStart: (groupId: string) => void;
-  onGroupDragEnd: (groupId: string, finalPosition: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
+  onGroupDragEnd: (
+    groupId: string,
+    finalPosition: { x: number; y: number },
+    delta: { dx: number; dy: number }
+  ) => void;
   onGroupDragMove: (groupId: string, delta: { dx: number; dy: number }) => void;
   updateGroupSizeWithUndo: (id: string, width: number, height: number) => void;
   // Resize handlers (separate from drag to avoid undo spam)
   onResizeStart: (groupId: string) => void;
-  onResizeMove: (groupId: string, width: number, height: number, position: { x: number; y: number }) => void;
-  onResizeEnd: (groupId: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void;
+  onResizeMove: (
+    groupId: string,
+    width: number,
+    height: number,
+    position: { x: number; y: number }
+  ) => void;
+  onResizeEnd: (
+    groupId: string,
+    finalWidth: number,
+    finalHeight: number,
+    finalPosition: { x: number; y: number }
+  ) => void;
   selectGroup: (id: string) => void;
   toggleGroupSelection: (id: string) => void;
   boxSelectGroups: (ids: string[]) => void;
@@ -98,11 +116,11 @@ export interface AnnotationLayerPropsConfig {
   annotations: AnnotationsSubset;
   state: {
     isLocked: boolean;
-    mode: 'edit' | 'view';
+    mode: "edit" | "view";
   };
   layoutControls: {
     isGeoLayout: boolean;
-    geoMode: 'edit' | 'pan' | undefined;
+    geoMode: "edit" | "pan" | undefined;
   };
   mapLibreState: MapLibreState | null;
   shapeLayerNode: HTMLElement | null;
@@ -132,7 +150,13 @@ interface BoundsAccumulator {
 }
 
 /** Expand bounds to include a rectangular area */
-function expandBoundsRect(bounds: BoundsAccumulator, x: number, y: number, w: number, h: number): void {
+function expandBoundsRect(
+  bounds: BoundsAccumulator,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): void {
   bounds.minX = Math.min(bounds.minX, x - w / 2);
   bounds.maxX = Math.max(bounds.maxX, x + w / 2);
   bounds.minY = Math.min(bounds.minY, y - h / 2);
@@ -141,7 +165,13 @@ function expandBoundsRect(bounds: BoundsAccumulator, x: number, y: number, w: nu
 }
 
 /** Expand bounds to include a line between two points */
-function expandBoundsLine(bounds: BoundsAccumulator, x1: number, y1: number, x2: number, y2: number): void {
+function expandBoundsLine(
+  bounds: BoundsAccumulator,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): void {
   bounds.minX = Math.min(bounds.minX, x1, x2);
   bounds.maxX = Math.max(bounds.maxX, x1, x2);
   bounds.minY = Math.min(bounds.minY, y1, y2);
@@ -150,7 +180,10 @@ function expandBoundsLine(bounds: BoundsAccumulator, x1: number, y1: number, x2:
 }
 
 /** Expand bounds to include a bounding box */
-function expandBoundsBB(bounds: BoundsAccumulator, bb: { x1: number; x2: number; y1: number; y2: number }): void {
+function expandBoundsBB(
+  bounds: BoundsAccumulator,
+  bb: { x1: number; x2: number; y1: number; y2: number }
+): void {
   bounds.minX = Math.min(bounds.minX, bb.x1);
   bounds.maxX = Math.max(bounds.maxX, bb.x2);
   bounds.minY = Math.min(bounds.minY, bb.y1);
@@ -160,10 +193,22 @@ function expandBoundsBB(bounds: BoundsAccumulator, bb: { x1: number; x2: number;
 
 /** Process a shape annotation and expand bounds accordingly */
 function processShapeBounds(bounds: BoundsAccumulator, shape: FreeShapeAnnotation): void {
-  if (shape.shapeType === 'line' && shape.endPosition) {
-    expandBoundsLine(bounds, shape.position.x, shape.position.y, shape.endPosition.x, shape.endPosition.y);
+  if (shape.shapeType === "line" && shape.endPosition) {
+    expandBoundsLine(
+      bounds,
+      shape.position.x,
+      shape.position.y,
+      shape.endPosition.x,
+      shape.endPosition.y
+    );
   } else {
-    expandBoundsRect(bounds, shape.position.x, shape.position.y, shape.width ?? 50, shape.height ?? 50);
+    expandBoundsRect(
+      bounds,
+      shape.position.x,
+      shape.position.y,
+      shape.width ?? 50,
+      shape.height ?? 50
+    );
   }
 }
 
@@ -178,8 +223,18 @@ function processChildGroupBounds(bounds: BoundsAccumulator, group: GroupStyleAnn
  *
  * Consolidates 3 large useMemo blocks (~100 lines) into a single hook call.
  */
-export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): AnnotationLayerPropsReturn {
-  const { cyInstance, annotations, state, layoutControls, mapLibreState, shapeLayerNode, textLayerNode } = config;
+export function useAnnotationLayerProps(
+  config: AnnotationLayerPropsConfig
+): AnnotationLayerPropsReturn {
+  const {
+    cyInstance,
+    annotations,
+    state,
+    layoutControls,
+    mapLibreState,
+    shapeLayerNode,
+    textLayerNode
+  } = config;
 
   // Helper callbacks for updating group IDs
   const updateTextGroupId = React.useCallback(
@@ -193,144 +248,222 @@ export function useAnnotationLayerProps(config: AnnotationLayerPropsConfig): Ann
   );
 
   // Calculate minimum bounds for group resize based on contained objects
-  const getMinimumBounds = React.useCallback((groupId: string) => {
-    const bounds: BoundsAccumulator = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, hasContent: false };
+  const getMinimumBounds = React.useCallback(
+    (groupId: string) => {
+      const bounds: BoundsAccumulator = {
+        minX: Infinity,
+        maxX: -Infinity,
+        minY: Infinity,
+        maxY: -Infinity,
+        hasContent: false
+      };
 
-    // Accumulate node bounds
-    for (const nodeId of annotations.getGroupMembers(groupId)) {
-      const node = cyInstance?.getElementById(nodeId);
-      if (node && !node.empty()) expandBoundsBB(bounds, node.boundingBox());
-    }
+      // Accumulate node bounds
+      for (const nodeId of annotations.getGroupMembers(groupId)) {
+        const node = cyInstance?.getElementById(nodeId);
+        if (node && !node.empty()) expandBoundsBB(bounds, node.boundingBox());
+      }
 
-    // Accumulate text annotation bounds
-    for (const text of annotations.textAnnotations) {
-      if (text.groupId === groupId) expandBoundsRect(bounds, text.position.x, text.position.y, text.width ?? 100, text.height ?? 24);
-    }
+      // Accumulate text annotation bounds
+      for (const text of annotations.textAnnotations) {
+        if (text.groupId === groupId)
+          expandBoundsRect(
+            bounds,
+            text.position.x,
+            text.position.y,
+            text.width ?? 100,
+            text.height ?? 24
+          );
+      }
 
-    // Accumulate shape annotation bounds
-    for (const shape of annotations.shapeAnnotations) {
-      if (shape.groupId === groupId) processShapeBounds(bounds, shape);
-    }
+      // Accumulate shape annotation bounds
+      for (const shape of annotations.shapeAnnotations) {
+        if (shape.groupId === groupId) processShapeBounds(bounds, shape);
+      }
 
-    // Accumulate child group bounds (groups with parentId === groupId)
-    for (const childGroup of annotations.groups) {
-      if (childGroup.parentId === groupId) processChildGroupBounds(bounds, childGroup);
-    }
+      // Accumulate child group bounds (groups with parentId === groupId)
+      for (const childGroup of annotations.groups) {
+        if (childGroup.parentId === groupId) processChildGroupBounds(bounds, childGroup);
+      }
 
-    if (!bounds.hasContent) return { minWidth: MIN_BOUNDS_FALLBACK, minHeight: MIN_BOUNDS_FALLBACK };
-    return {
-      minWidth: Math.max(MIN_BOUNDS_FALLBACK, (bounds.maxX - bounds.minX) + MIN_BOUNDS_PADDING * 2),
-      minHeight: Math.max(MIN_BOUNDS_FALLBACK, (bounds.maxY - bounds.minY) + MIN_BOUNDS_PADDING * 2)
-    };
-  }, [cyInstance, annotations.getGroupMembers, annotations.textAnnotations, annotations.shapeAnnotations, annotations.groups]);
+      if (!bounds.hasContent)
+        return { minWidth: MIN_BOUNDS_FALLBACK, minHeight: MIN_BOUNDS_FALLBACK };
+      return {
+        minWidth: Math.max(MIN_BOUNDS_FALLBACK, bounds.maxX - bounds.minX + MIN_BOUNDS_PADDING * 2),
+        minHeight: Math.max(MIN_BOUNDS_FALLBACK, bounds.maxY - bounds.minY + MIN_BOUNDS_PADDING * 2)
+      };
+    },
+    [
+      cyInstance,
+      annotations.getGroupMembers,
+      annotations.textAnnotations,
+      annotations.shapeAnnotations,
+      annotations.groups
+    ]
+  );
 
   // GroupLayer props
-  const groupLayerProps = React.useMemo(() => ({
-    cy: cyInstance,
-    groups: annotations.groups,
-    isLocked: state.isLocked,
-    onGroupEdit: annotations.editGroup,
-    onGroupDelete: annotations.deleteGroupWithUndo,
-    onDragStart: annotations.onGroupDragStart,
-    onPositionChange: annotations.onGroupDragEnd,
-    onDragMove: annotations.onGroupDragMove,
-    // Resize handlers (use dedicated undo handler to avoid spam)
-    onResizeStart: annotations.onResizeStart,
-    onResizeMove: annotations.onResizeMove,
-    onResizeEnd: annotations.onResizeEnd,
-    selectedGroupIds: annotations.selectedGroupIds,
-    onGroupSelect: annotations.selectGroup,
-    onGroupToggleSelect: annotations.toggleGroupSelection,
-    onGroupBoxSelect: annotations.boxSelectGroups,
-    onGroupReparent: annotations.updateGroupParent,
-    isGeoMode: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode,
-    mapLibreState,
-    onGeoPositionChange: annotations.updateGroupGeoPosition,
-    getMinimumBounds
-  }), [
-    cyInstance, annotations.groups, state.isLocked, annotations.editGroup,
-    annotations.deleteGroupWithUndo, annotations.onGroupDragStart, annotations.onGroupDragEnd,
-    annotations.onGroupDragMove, annotations.onResizeStart, annotations.onResizeMove,
-    annotations.onResizeEnd, annotations.selectedGroupIds, annotations.selectGroup,
-    annotations.toggleGroupSelection, annotations.boxSelectGroups, annotations.updateGroupParent,
-    layoutControls.isGeoLayout, layoutControls.geoMode, mapLibreState, annotations.updateGroupGeoPosition,
-    getMinimumBounds
-  ]);
+  const groupLayerProps = React.useMemo(
+    () => ({
+      cy: cyInstance,
+      groups: annotations.groups,
+      isLocked: state.isLocked,
+      onGroupEdit: annotations.editGroup,
+      onGroupDelete: annotations.deleteGroupWithUndo,
+      onDragStart: annotations.onGroupDragStart,
+      onPositionChange: annotations.onGroupDragEnd,
+      onDragMove: annotations.onGroupDragMove,
+      // Resize handlers (use dedicated undo handler to avoid spam)
+      onResizeStart: annotations.onResizeStart,
+      onResizeMove: annotations.onResizeMove,
+      onResizeEnd: annotations.onResizeEnd,
+      selectedGroupIds: annotations.selectedGroupIds,
+      onGroupSelect: annotations.selectGroup,
+      onGroupToggleSelect: annotations.toggleGroupSelection,
+      onGroupBoxSelect: annotations.boxSelectGroups,
+      onGroupReparent: annotations.updateGroupParent,
+      isGeoMode: layoutControls.isGeoLayout,
+      geoMode: layoutControls.geoMode,
+      mapLibreState,
+      onGeoPositionChange: annotations.updateGroupGeoPosition,
+      getMinimumBounds
+    }),
+    [
+      cyInstance,
+      annotations.groups,
+      state.isLocked,
+      annotations.editGroup,
+      annotations.deleteGroupWithUndo,
+      annotations.onGroupDragStart,
+      annotations.onGroupDragEnd,
+      annotations.onGroupDragMove,
+      annotations.onResizeStart,
+      annotations.onResizeMove,
+      annotations.onResizeEnd,
+      annotations.selectedGroupIds,
+      annotations.selectGroup,
+      annotations.toggleGroupSelection,
+      annotations.boxSelectGroups,
+      annotations.updateGroupParent,
+      layoutControls.isGeoLayout,
+      layoutControls.geoMode,
+      mapLibreState,
+      annotations.updateGroupGeoPosition,
+      getMinimumBounds
+    ]
+  );
 
   // FreeTextLayer props
-  const freeTextLayerProps = React.useMemo(() => ({
-    cy: cyInstance,
-    annotations: annotations.textAnnotations,
-    isLocked: state.isLocked,
-    isAddTextMode: annotations.isAddTextMode,
-    mode: state.mode,
-    textLayerNode,
-    onAnnotationDoubleClick: annotations.editTextAnnotation,
-    onAnnotationDelete: annotations.deleteTextAnnotation,
-    onPositionChange: annotations.updateTextPosition,
-    onRotationChange: annotations.updateTextRotation,
-    onSizeChange: annotations.updateTextSize,
-    onCanvasClick: annotations.handleTextCanvasClick,
-    selectedAnnotationIds: annotations.selectedTextIds,
-    onAnnotationSelect: annotations.selectTextAnnotation,
-    onAnnotationToggleSelect: annotations.toggleTextAnnotationSelection,
-    onAnnotationBoxSelect: annotations.boxSelectTextAnnotations,
-    isGeoMode: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode,
-    mapLibreState,
-    onGeoPositionChange: annotations.updateTextGeoPosition,
-    groups: annotations.groups,
-    onUpdateGroupId: updateTextGroupId
-  }), [
-    cyInstance, annotations.textAnnotations, state.isLocked, annotations.isAddTextMode,
-    state.mode, textLayerNode, annotations.editTextAnnotation, annotations.deleteTextAnnotation,
-    annotations.updateTextPosition, annotations.updateTextRotation, annotations.updateTextSize,
-    annotations.handleTextCanvasClick, annotations.selectedTextIds, annotations.selectTextAnnotation,
-    annotations.toggleTextAnnotationSelection, annotations.boxSelectTextAnnotations,
-    layoutControls.isGeoLayout, layoutControls.geoMode, mapLibreState,
-    annotations.updateTextGeoPosition, annotations.groups, updateTextGroupId
-  ]);
+  const freeTextLayerProps = React.useMemo(
+    () => ({
+      cy: cyInstance,
+      annotations: annotations.textAnnotations,
+      isLocked: state.isLocked,
+      isAddTextMode: annotations.isAddTextMode,
+      mode: state.mode,
+      textLayerNode,
+      onAnnotationDoubleClick: annotations.editTextAnnotation,
+      onAnnotationDelete: annotations.deleteTextAnnotation,
+      onPositionChange: annotations.updateTextPosition,
+      onRotationChange: annotations.updateTextRotation,
+      onSizeChange: annotations.updateTextSize,
+      onCanvasClick: annotations.handleTextCanvasClick,
+      selectedAnnotationIds: annotations.selectedTextIds,
+      onAnnotationSelect: annotations.selectTextAnnotation,
+      onAnnotationToggleSelect: annotations.toggleTextAnnotationSelection,
+      onAnnotationBoxSelect: annotations.boxSelectTextAnnotations,
+      isGeoMode: layoutControls.isGeoLayout,
+      geoMode: layoutControls.geoMode,
+      mapLibreState,
+      onGeoPositionChange: annotations.updateTextGeoPosition,
+      groups: annotations.groups,
+      onUpdateGroupId: updateTextGroupId
+    }),
+    [
+      cyInstance,
+      annotations.textAnnotations,
+      state.isLocked,
+      annotations.isAddTextMode,
+      state.mode,
+      textLayerNode,
+      annotations.editTextAnnotation,
+      annotations.deleteTextAnnotation,
+      annotations.updateTextPosition,
+      annotations.updateTextRotation,
+      annotations.updateTextSize,
+      annotations.handleTextCanvasClick,
+      annotations.selectedTextIds,
+      annotations.selectTextAnnotation,
+      annotations.toggleTextAnnotationSelection,
+      annotations.boxSelectTextAnnotations,
+      layoutControls.isGeoLayout,
+      layoutControls.geoMode,
+      mapLibreState,
+      annotations.updateTextGeoPosition,
+      annotations.groups,
+      updateTextGroupId
+    ]
+  );
 
   // FreeShapeLayer props
-  const freeShapeLayerProps = React.useMemo(() => ({
-    cy: cyInstance,
-    annotations: annotations.shapeAnnotations,
-    isLocked: state.isLocked,
-    isAddShapeMode: annotations.isAddShapeMode,
-    mode: state.mode,
-    shapeLayerNode,
-    onAnnotationEdit: annotations.editShapeAnnotation,
-    onAnnotationDelete: annotations.deleteShapeAnnotationWithUndo,
-    onPositionChange: annotations.updateShapePositionWithUndo,
-    onRotationChange: annotations.updateShapeRotation,
-    onSizeChange: annotations.updateShapeSize,
-    onEndPositionChange: annotations.updateShapeEndPosition,
-    onCanvasClick: annotations.handleShapeCanvasClickWithUndo,
-    selectedAnnotationIds: annotations.selectedShapeIds,
-    onAnnotationSelect: annotations.selectShapeAnnotation,
-    onAnnotationToggleSelect: annotations.toggleShapeAnnotationSelection,
-    onAnnotationBoxSelect: annotations.boxSelectShapeAnnotations,
-    isGeoMode: layoutControls.isGeoLayout,
-    geoMode: layoutControls.geoMode,
-    mapLibreState,
-    onGeoPositionChange: annotations.updateShapeGeoPosition,
-    onEndGeoPositionChange: annotations.updateShapeEndGeoPosition,
-    onCaptureAnnotationBefore: annotations.captureShapeAnnotationBefore,
-    onFinalizeWithUndo: annotations.finalizeShapeWithUndo,
-    groups: annotations.groups,
-    onUpdateGroupId: updateShapeGroupId
-  }), [
-    cyInstance, annotations.shapeAnnotations, state.isLocked, annotations.isAddShapeMode,
-    state.mode, shapeLayerNode, annotations.editShapeAnnotation, annotations.deleteShapeAnnotationWithUndo,
-    annotations.updateShapePositionWithUndo, annotations.updateShapeRotation, annotations.updateShapeSize,
-    annotations.updateShapeEndPosition, annotations.handleShapeCanvasClickWithUndo,
-    annotations.selectedShapeIds, annotations.selectShapeAnnotation, annotations.toggleShapeAnnotationSelection,
-    annotations.boxSelectShapeAnnotations, layoutControls.isGeoLayout, layoutControls.geoMode,
-    mapLibreState, annotations.updateShapeGeoPosition, annotations.updateShapeEndGeoPosition,
-    annotations.captureShapeAnnotationBefore, annotations.finalizeShapeWithUndo,
-    annotations.groups, updateShapeGroupId
-  ]);
+  const freeShapeLayerProps = React.useMemo(
+    () => ({
+      cy: cyInstance,
+      annotations: annotations.shapeAnnotations,
+      isLocked: state.isLocked,
+      isAddShapeMode: annotations.isAddShapeMode,
+      mode: state.mode,
+      shapeLayerNode,
+      onAnnotationEdit: annotations.editShapeAnnotation,
+      onAnnotationDelete: annotations.deleteShapeAnnotationWithUndo,
+      onPositionChange: annotations.updateShapePositionWithUndo,
+      onRotationChange: annotations.updateShapeRotation,
+      onSizeChange: annotations.updateShapeSize,
+      onEndPositionChange: annotations.updateShapeEndPosition,
+      onCanvasClick: annotations.handleShapeCanvasClickWithUndo,
+      selectedAnnotationIds: annotations.selectedShapeIds,
+      onAnnotationSelect: annotations.selectShapeAnnotation,
+      onAnnotationToggleSelect: annotations.toggleShapeAnnotationSelection,
+      onAnnotationBoxSelect: annotations.boxSelectShapeAnnotations,
+      isGeoMode: layoutControls.isGeoLayout,
+      geoMode: layoutControls.geoMode,
+      mapLibreState,
+      onGeoPositionChange: annotations.updateShapeGeoPosition,
+      onEndGeoPositionChange: annotations.updateShapeEndGeoPosition,
+      onCaptureAnnotationBefore: annotations.captureShapeAnnotationBefore,
+      onFinalizeWithUndo: annotations.finalizeShapeWithUndo,
+      groups: annotations.groups,
+      onUpdateGroupId: updateShapeGroupId
+    }),
+    [
+      cyInstance,
+      annotations.shapeAnnotations,
+      state.isLocked,
+      annotations.isAddShapeMode,
+      state.mode,
+      shapeLayerNode,
+      annotations.editShapeAnnotation,
+      annotations.deleteShapeAnnotationWithUndo,
+      annotations.updateShapePositionWithUndo,
+      annotations.updateShapeRotation,
+      annotations.updateShapeSize,
+      annotations.updateShapeEndPosition,
+      annotations.handleShapeCanvasClickWithUndo,
+      annotations.selectedShapeIds,
+      annotations.selectShapeAnnotation,
+      annotations.toggleShapeAnnotationSelection,
+      annotations.boxSelectShapeAnnotations,
+      layoutControls.isGeoLayout,
+      layoutControls.geoMode,
+      mapLibreState,
+      annotations.updateShapeGeoPosition,
+      annotations.updateShapeEndGeoPosition,
+      annotations.captureShapeAnnotationBefore,
+      annotations.finalizeShapeWithUndo,
+      annotations.groups,
+      updateShapeGroupId
+    ]
+  );
 
   return {
     groupLayerProps,

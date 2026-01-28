@@ -8,7 +8,7 @@
 import type {
   NetworkType as _NetworkType,
   NetworkEditorData as _NetworkEditorData
-} from '../../../../shared/types/editors';
+} from "../../../../shared/types/editors";
 import {
   NETWORK_TYPES as _NETWORK_TYPES,
   VXLAN_TYPES as _VXLAN_TYPES,
@@ -19,7 +19,7 @@ import {
   getInterfacePlaceholder as _getInterfacePlaceholder,
   showInterfaceField as _showInterfaceField,
   supportsExtendedProps as _supportsExtendedProps
-} from '../../../../shared/types/editors';
+} from "../../../../shared/types/editors";
 
 // Re-export types
 export type NetworkType = _NetworkType;

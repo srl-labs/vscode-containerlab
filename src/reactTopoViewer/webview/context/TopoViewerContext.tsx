@@ -1,41 +1,54 @@
 /**
  * TopoViewer Context - Global state management for React TopoViewer
  */
-import type { ReactNode } from 'react';
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef } from 'react';
+import type { ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef
+} from "react";
 
-import type { CustomNodeTemplate, CustomTemplateEditorData } from '../../shared/types/editors';
-import type { EdgeAnnotation } from '../../shared/types/topology';
-import type { CyElement } from '../../shared/types/messages';
-import type { CustomIconInfo } from '../../shared/types/icons';
-import { extractUsedCustomIcons } from '../../shared/types/icons';
-import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
-import { postCommand } from '../utils/extensionMessaging';
-import { getElementId, getEdgeSource, getEdgeTarget } from '../utils/cytoscapeHelpers';
-import { pruneEdgeAnnotations, upsertEdgeAnnotation } from '../utils/edgeAnnotations';
+import type { CustomNodeTemplate, CustomTemplateEditorData } from "../../shared/types/editors";
+import type { EdgeAnnotation } from "../../shared/types/topology";
+import type { CyElement } from "../../shared/types/messages";
+import type { CustomIconInfo } from "../../shared/types/icons";
+import { extractUsedCustomIcons } from "../../shared/types/icons";
+import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
+import { postCommand } from "../utils/extensionMessaging";
+import { getElementId, getEdgeSource, getEdgeTarget } from "../utils/cytoscapeHelpers";
+import { pruneEdgeAnnotations, upsertEdgeAnnotation } from "../utils/edgeAnnotations";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset,
   parseEndpointLabelOffset
-} from '../utils/endpointLabelOffset';
-import { isServicesInitialized, getTopologyIO, saveEdgeAnnotations, saveViewerSettings } from '../services';
+} from "../utils/endpointLabelOffset";
+import {
+  isServicesInitialized,
+  getTopologyIO,
+  saveEdgeAnnotations,
+  saveViewerSettings
+} from "../services";
 
 // CustomNodeTemplate and CustomTemplateEditorData are available from shared/types/editors directly
 
 /**
  * Deployment state type alias
  */
-export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
+export type DeploymentState = "deployed" | "undeployed" | "unknown";
 
 /**
  * Link label display mode
  */
-export type LinkLabelMode = 'show-all' | 'on-select' | 'hide';
+export type LinkLabelMode = "show-all" | "on-select" | "hide";
 
 /**
  * Processing mode for lifecycle operations
  */
-export type ProcessingMode = 'deploy' | 'destroy' | null;
+export type ProcessingMode = "deploy" | "destroy" | null;
 
 /**
  * TopoViewer State Interface
@@ -43,7 +56,7 @@ export type ProcessingMode = 'deploy' | 'destroy' | null;
 export interface TopoViewerState {
   elements: CyElement[];
   labName: string;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   deploymentState: DeploymentState;
   selectedNode: string | null;
   selectedEdge: string | null;
@@ -77,22 +90,22 @@ export interface TopoViewerState {
  */
 const initialState: TopoViewerState = {
   elements: [],
-  labName: '',
-  mode: 'edit',
-  deploymentState: 'unknown',
+  labName: "",
+  mode: "edit",
+  deploymentState: "unknown",
   selectedNode: null,
   selectedEdge: null,
   editingNode: null,
   editingEdge: null,
   editingNetwork: null,
   isLocked: true,
-  linkLabelMode: 'show-all',
+  linkLabelMode: "show-all",
   showDummyLinks: true,
   endpointLabelOffsetEnabled: true,
   endpointLabelOffset: DEFAULT_ENDPOINT_LABEL_OFFSET,
   edgeAnnotations: [],
   customNodes: [],
-  defaultNode: '',
+  defaultNode: "",
   customIcons: [],
   editingCustomTemplate: null,
   isProcessing: false,
@@ -124,42 +137,45 @@ interface UpdateNodePositionsPayload {
 }
 
 type TopoViewerAction =
-  | { type: 'SET_ELEMENTS'; payload: CyElement[] }
-  | { type: 'SET_MODE'; payload: 'edit' | 'view' }
-  | { type: 'SET_DEPLOYMENT_STATE'; payload: DeploymentState }
-  | { type: 'SELECT_NODE'; payload: string | null }
-  | { type: 'SELECT_EDGE'; payload: string | null }
-  | { type: 'EDIT_NODE'; payload: string | null }
-  | { type: 'EDIT_EDGE'; payload: string | null }
-  | { type: 'EDIT_NETWORK'; payload: string | null }
-  | { type: 'TOGGLE_LOCK' }
-  | { type: 'SET_LINK_LABEL_MODE'; payload: LinkLabelMode }
-  | { type: 'TOGGLE_DUMMY_LINKS' }
-  | { type: 'TOGGLE_ENDPOINT_LABEL_OFFSET' }
-  | { type: 'SET_ENDPOINT_LABEL_OFFSET'; payload: number }
-  | { type: 'SET_EDGE_ANNOTATIONS'; payload: EdgeAnnotation[] }
-  | { type: 'UPSERT_EDGE_ANNOTATION'; payload: EdgeAnnotation }
-  | { type: 'SET_INITIAL_DATA'; payload: Partial<TopoViewerState> }
-  | { type: 'ADD_NODE'; payload: CyElement }
-  | { type: 'ADD_EDGE'; payload: CyElement }
-  | { type: 'REMOVE_NODE_AND_EDGES'; payload: string }
-  | { type: 'REMOVE_EDGE'; payload: string }
-  | { type: 'SET_CUSTOM_NODES'; payload: { customNodes: CustomNodeTemplate[]; defaultNode: string } }
-  | { type: 'SET_CUSTOM_ICONS'; payload: CustomIconInfo[] }
-  | { type: 'EDIT_CUSTOM_TEMPLATE'; payload: CustomTemplateEditorData | null }
-  | { type: 'SET_PROCESSING'; payload: { isProcessing: boolean; mode: ProcessingMode } }
-  | { type: 'UPDATE_EDGE_STATS'; payload: EdgeStatsUpdate[] }
-  | { type: 'RENAME_NODE'; payload: { oldId: string; newId: string; name?: string } }
-  | { type: 'UPDATE_NODE_DATA'; payload: UpdateNodeDataPayload }
-  | { type: 'UPDATE_NODE_POSITIONS'; payload: UpdateNodePositionsPayload }
-  | { type: 'REFRESH_EDITOR_DATA' }
-  | { type: 'SET_CUSTOM_NODE_ERROR'; payload: string | null };
+  | { type: "SET_ELEMENTS"; payload: CyElement[] }
+  | { type: "SET_MODE"; payload: "edit" | "view" }
+  | { type: "SET_DEPLOYMENT_STATE"; payload: DeploymentState }
+  | { type: "SELECT_NODE"; payload: string | null }
+  | { type: "SELECT_EDGE"; payload: string | null }
+  | { type: "EDIT_NODE"; payload: string | null }
+  | { type: "EDIT_EDGE"; payload: string | null }
+  | { type: "EDIT_NETWORK"; payload: string | null }
+  | { type: "TOGGLE_LOCK" }
+  | { type: "SET_LINK_LABEL_MODE"; payload: LinkLabelMode }
+  | { type: "TOGGLE_DUMMY_LINKS" }
+  | { type: "TOGGLE_ENDPOINT_LABEL_OFFSET" }
+  | { type: "SET_ENDPOINT_LABEL_OFFSET"; payload: number }
+  | { type: "SET_EDGE_ANNOTATIONS"; payload: EdgeAnnotation[] }
+  | { type: "UPSERT_EDGE_ANNOTATION"; payload: EdgeAnnotation }
+  | { type: "SET_INITIAL_DATA"; payload: Partial<TopoViewerState> }
+  | { type: "ADD_NODE"; payload: CyElement }
+  | { type: "ADD_EDGE"; payload: CyElement }
+  | { type: "REMOVE_NODE_AND_EDGES"; payload: string }
+  | { type: "REMOVE_EDGE"; payload: string }
+  | {
+      type: "SET_CUSTOM_NODES";
+      payload: { customNodes: CustomNodeTemplate[]; defaultNode: string };
+    }
+  | { type: "SET_CUSTOM_ICONS"; payload: CustomIconInfo[] }
+  | { type: "EDIT_CUSTOM_TEMPLATE"; payload: CustomTemplateEditorData | null }
+  | { type: "SET_PROCESSING"; payload: { isProcessing: boolean; mode: ProcessingMode } }
+  | { type: "UPDATE_EDGE_STATS"; payload: EdgeStatsUpdate[] }
+  | { type: "RENAME_NODE"; payload: { oldId: string; newId: string; name?: string } }
+  | { type: "UPDATE_NODE_DATA"; payload: UpdateNodeDataPayload }
+  | { type: "UPDATE_NODE_POSITIONS"; payload: UpdateNodePositionsPayload }
+  | { type: "REFRESH_EDITOR_DATA" }
+  | { type: "SET_CUSTOM_NODE_ERROR"; payload: string | null };
 
 /**
  * Reducer function
  */
 type ReducerHandlers = {
-  [K in TopoViewerAction['type']]?: (
+  [K in TopoViewerAction["type"]]?: (
     state: TopoViewerState,
     action: Extract<TopoViewerAction, { type: K }>
   ) => TopoViewerState;
@@ -171,13 +187,37 @@ const reducerHandlers: ReducerHandlers = {
   SET_DEPLOYMENT_STATE: (state, action) => ({ ...state, deploymentState: action.payload }),
   SELECT_NODE: (state, action) => ({ ...state, selectedNode: action.payload, selectedEdge: null }),
   SELECT_EDGE: (state, action) => ({ ...state, selectedEdge: action.payload, selectedNode: null }),
-  EDIT_NODE: (state, action) => ({ ...state, editingNode: action.payload, editingEdge: null, editingNetwork: null, selectedNode: null, selectedEdge: null }),
-  EDIT_EDGE: (state, action) => ({ ...state, editingEdge: action.payload, editingNode: null, editingNetwork: null, selectedNode: null, selectedEdge: null }),
-  EDIT_NETWORK: (state, action) => ({ ...state, editingNetwork: action.payload, editingNode: null, editingEdge: null, selectedNode: null, selectedEdge: null }),
+  EDIT_NODE: (state, action) => ({
+    ...state,
+    editingNode: action.payload,
+    editingEdge: null,
+    editingNetwork: null,
+    selectedNode: null,
+    selectedEdge: null
+  }),
+  EDIT_EDGE: (state, action) => ({
+    ...state,
+    editingEdge: action.payload,
+    editingNode: null,
+    editingNetwork: null,
+    selectedNode: null,
+    selectedEdge: null
+  }),
+  EDIT_NETWORK: (state, action) => ({
+    ...state,
+    editingNetwork: action.payload,
+    editingNode: null,
+    editingEdge: null,
+    selectedNode: null,
+    selectedEdge: null
+  }),
   TOGGLE_LOCK: (state) => ({ ...state, isLocked: !state.isLocked }),
   SET_LINK_LABEL_MODE: (state, action) => ({ ...state, linkLabelMode: action.payload }),
   TOGGLE_DUMMY_LINKS: (state) => ({ ...state, showDummyLinks: !state.showDummyLinks }),
-  TOGGLE_ENDPOINT_LABEL_OFFSET: (state) => ({ ...state, endpointLabelOffsetEnabled: !state.endpointLabelOffsetEnabled }),
+  TOGGLE_ENDPOINT_LABEL_OFFSET: (state) => ({
+    ...state,
+    endpointLabelOffsetEnabled: !state.endpointLabelOffsetEnabled
+  }),
   SET_ENDPOINT_LABEL_OFFSET: (state, action) => ({ ...state, endpointLabelOffset: action.payload }),
   SET_EDGE_ANNOTATIONS: (state, action) => ({ ...state, edgeAnnotations: action.payload }),
   UPSERT_EDGE_ANNOTATION: (state, action) => ({
@@ -190,15 +230,17 @@ const reducerHandlers: ReducerHandlers = {
     elements: (() => {
       const nodeId = getElementId(action.payload);
       if (!nodeId) return state.elements;
-      const exists = state.elements.some(el => el.group === 'nodes' && getElementId(el) === nodeId);
+      const exists = state.elements.some(
+        (el) => el.group === "nodes" && getElementId(el) === nodeId
+      );
       return exists ? state.elements : [...state.elements, action.payload];
     })()
   }),
   ADD_EDGE: (state, action) => {
     const edge = action.payload;
-    if (edge.group !== 'edges') return state;
+    if (edge.group !== "edges") return state;
     const edgeId = getElementId(edge);
-    const exists = state.elements.some(el => el.group === 'edges' && getElementId(el) === edgeId);
+    const exists = state.elements.some((el) => el.group === "edges" && getElementId(el) === edgeId);
     if (exists) return state;
     return {
       ...state,
@@ -207,23 +249,24 @@ const reducerHandlers: ReducerHandlers = {
   },
   REMOVE_NODE_AND_EDGES: (state, action) => {
     const nodeId = action.payload;
-    const filteredElements = state.elements.filter(el => {
-      if (el.group === 'nodes') {
+    const filteredElements = state.elements.filter((el) => {
+      if (el.group === "nodes") {
         return getElementId(el) !== nodeId;
       }
-      if (el.group === 'edges') {
+      if (el.group === "edges") {
         const source = getEdgeSource(el);
         const target = getEdgeTarget(el);
         return source !== nodeId && target !== nodeId;
       }
       return true;
     });
-    const selectedEdgeStillExists = state.selectedEdge !== null
-      ? filteredElements.some(el => {
-          const elId = getElementId(el);
-          return el.group === 'edges' && elId !== undefined && elId === state.selectedEdge;
-        })
-      : false;
+    const selectedEdgeStillExists =
+      state.selectedEdge !== null
+        ? filteredElements.some((el) => {
+            const elId = getElementId(el);
+            return el.group === "edges" && elId !== undefined && elId === state.selectedEdge;
+          })
+        : false;
     return {
       ...state,
       elements: filteredElements,
@@ -233,7 +276,9 @@ const reducerHandlers: ReducerHandlers = {
   },
   REMOVE_EDGE: (state, action) => {
     const edgeId = action.payload;
-    const filteredElements = state.elements.filter(el => !(el.group === 'edges' && getElementId(el) === edgeId));
+    const filteredElements = state.elements.filter(
+      (el) => !(el.group === "edges" && getElementId(el) === edgeId)
+    );
     return {
       ...state,
       elements: filteredElements,
@@ -275,17 +320,20 @@ const reducerHandlers: ReducerHandlers = {
     if (!updates || updates.length === 0) return state;
 
     // Create a map for O(1) lookup
-    const updateMap = new Map(updates.map(u => [u.id, u]));
+    const updateMap = new Map(updates.map((u) => [u.id, u]));
 
     // Update only the edges that have updates
-    const newElements = state.elements.map(el => {
-      if (el.group !== 'edges') return el;
+    const newElements = state.elements.map((el) => {
+      if (el.group !== "edges") return el;
       const edgeId = (el.data as Record<string, unknown>)?.id as string;
       const update = updateMap.get(edgeId);
       if (!update) return el;
 
       // Merge extraData
-      const oldExtraData = ((el.data as Record<string, unknown>)?.extraData ?? {}) as Record<string, unknown>;
+      const oldExtraData = ((el.data as Record<string, unknown>)?.extraData ?? {}) as Record<
+        string,
+        unknown
+      >;
       const newExtraData = { ...oldExtraData, ...update.extraData };
 
       return {
@@ -301,14 +349,14 @@ const reducerHandlers: ReducerHandlers = {
     const { oldId, newId, name } = action.payload;
     const nextName = name ?? newId;
     // Update node ID and name, and update edge references
-    const elements = state.elements.map(el => {
-      if (el.group === 'nodes' && (el.data as Record<string, unknown>)?.id === oldId) {
+    const elements = state.elements.map((el) => {
+      if (el.group === "nodes" && (el.data as Record<string, unknown>)?.id === oldId) {
         return {
           ...el,
           data: { ...el.data, id: newId, name: nextName }
         };
       }
-      if (el.group === 'edges') {
+      if (el.group === "edges") {
         const data = el.data as Record<string, unknown>;
         const source = data.source as string;
         const target = data.target as string;
@@ -331,8 +379,8 @@ const reducerHandlers: ReducerHandlers = {
     const { nodeId, extraData } = action.payload;
     // Update the node's extraData AND top-level visual properties
     // IMPORTANT: We REPLACE extraData entirely (not merge) so deleted fields stay deleted
-    const elements = state.elements.map(el => {
-      if (el.group === 'nodes' && (el.data as Record<string, unknown>)?.id === nodeId) {
+    const elements = state.elements.map((el) => {
+      if (el.group === "nodes" && (el.data as Record<string, unknown>)?.id === nodeId) {
         const currentData = el.data as Record<string, unknown>;
 
         // Build updated data with top-level visual properties
@@ -358,14 +406,13 @@ const reducerHandlers: ReducerHandlers = {
       return el;
     });
     return { ...state, elements };
-  }
-  ,
+  },
   UPDATE_NODE_POSITIONS: (state, action) => {
-    const updates = new Map(action.payload.positions.map(p => [p.id, p.position]));
+    const updates = new Map(action.payload.positions.map((p) => [p.id, p.position]));
     if (updates.size === 0) return state;
 
-    const nextElements = state.elements.map(el => {
-      if (el.group !== 'nodes') return el;
+    const nextElements = state.elements.map((el) => {
+      if (el.group !== "nodes") return el;
       const id = getElementId(el);
       if (!id) return el;
       const nextPos = updates.get(id);
@@ -401,7 +448,7 @@ interface TopoViewerActionsContextValue {
   editEdge: (edgeId: string | null) => void;
   editNetwork: (nodeId: string | null) => void;
   toggleLock: () => void;
-  setMode: (mode: 'edit' | 'view') => void;
+  setMode: (mode: "edit" | "view") => void;
   setLinkLabelMode: (mode: LinkLabelMode) => void;
   toggleDummyLinks: () => void;
   setEndpointLabelOffset: (value: number) => void;
@@ -412,10 +459,12 @@ interface TopoViewerActionsContextValue {
   addEdge: (edge: CyElement) => void;
   removeNodeAndEdges: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
-  updateNodePositions: (positions: Array<{ id: string; position: { x: number; y: number } }>) => void;
+  updateNodePositions: (
+    positions: Array<{ id: string; position: { x: number; y: number } }>
+  ) => void;
   setCustomNodes: (customNodes: CustomNodeTemplate[], defaultNode: string) => void;
   editCustomTemplate: (data: CustomTemplateEditorData | null) => void;
-  setProcessing: (isProcessing: boolean, mode?: 'deploy' | 'destroy') => void;
+  setProcessing: (isProcessing: boolean, mode?: "deploy" | "destroy") => void;
   refreshEditorData: () => void;
   clearCustomNodeError: () => void;
 }
@@ -424,7 +473,9 @@ interface TopoViewerActionsContextValue {
  * Create context
  */
 const TopoViewerStateContext = createContext<TopoViewerStateContextValue | undefined>(undefined);
-const TopoViewerActionsContext = createContext<TopoViewerActionsContextValue | undefined>(undefined);
+const TopoViewerActionsContext = createContext<TopoViewerActionsContextValue | undefined>(
+  undefined
+);
 
 /**
  * Provider props
@@ -438,21 +489,21 @@ interface TopoViewerProviderProps {
  * Parse initial data from extension
  */
 function parseInitialData(data: unknown): Partial<TopoViewerState> {
-  if (!data || typeof data !== 'object') {
+  if (!data || typeof data !== "object") {
     return {};
   }
   const obj = data as Record<string, unknown>;
   const result: Partial<TopoViewerState> = {
     elements: (obj.elements as CyElement[]) || [],
-    labName: (obj.labName as string) || '',
-    mode: (obj.mode as 'edit' | 'view') || 'edit',
-    deploymentState: (obj.deploymentState as DeploymentState) || 'unknown',
+    labName: (obj.labName as string) || "",
+    mode: (obj.mode as "edit" | "view") || "edit",
+    deploymentState: (obj.deploymentState as DeploymentState) || "unknown",
     customNodes: (obj.customNodes as CustomNodeTemplate[]) || [],
-    defaultNode: (obj.defaultNode as string) || '',
+    defaultNode: (obj.defaultNode as string) || "",
     customIcons: (obj.customIcons as CustomIconInfo[]) || []
   };
   // Only set isLocked if explicitly provided (allows dev mode to override default)
-  if (typeof obj.isLocked === 'boolean') {
+  if (typeof obj.isLocked === "boolean") {
     result.isLocked = obj.isLocked;
   }
   const viewerSettings = obj.viewerSettings as Record<string, unknown> | undefined;
@@ -478,42 +529,51 @@ function extractEndpointLabelSettings(
 /**
  * Handle incoming extension messages
  */
-type ExtensionMessage = { type?: string; data?: Record<string, unknown>; action?: string; nodeId?: string; edgeId?: string };
+type ExtensionMessage = {
+  type?: string;
+  data?: Record<string, unknown>;
+  action?: string;
+  nodeId?: string;
+  edgeId?: string;
+};
 
-function handlePanelAction(message: ExtensionMessage, dispatch: React.Dispatch<TopoViewerAction>): void {
+function handlePanelAction(
+  message: ExtensionMessage,
+  dispatch: React.Dispatch<TopoViewerAction>
+): void {
   const action = message.action;
   const nodeId = message.nodeId as string | undefined;
   const edgeId = message.edgeId as string | undefined;
   if (!action) return;
 
-  if (action === 'delete-node' && nodeId) {
-    dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
+  if (action === "delete-node" && nodeId) {
+    dispatch({ type: "REMOVE_NODE_AND_EDGES", payload: nodeId });
     return;
   }
-  if (action === 'delete-link' && edgeId) {
-    dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
+  if (action === "delete-link" && edgeId) {
+    dispatch({ type: "REMOVE_EDGE", payload: edgeId });
     return;
   }
 
   // Edit actions trigger the editor panel
-  if (action === 'edit-node' && nodeId) {
-    dispatch({ type: 'EDIT_NODE', payload: nodeId });
+  if (action === "edit-node" && nodeId) {
+    dispatch({ type: "EDIT_NODE", payload: nodeId });
     return;
   }
-  if (action === 'edit-link' && edgeId) {
-    dispatch({ type: 'EDIT_EDGE', payload: edgeId });
+  if (action === "edit-link" && edgeId) {
+    dispatch({ type: "EDIT_EDGE", payload: edgeId });
     return;
   }
 
-  const nodeSelectActions = new Set(['node-info']);
-  const edgeSelectActions = new Set(['link-info']);
+  const nodeSelectActions = new Set(["node-info"]);
+  const edgeSelectActions = new Set(["link-info"]);
 
   if (nodeSelectActions.has(action) && nodeId) {
-    dispatch({ type: 'SELECT_NODE', payload: nodeId });
+    dispatch({ type: "SELECT_NODE", payload: nodeId });
     return;
   }
   if (edgeSelectActions.has(action) && edgeId) {
-    dispatch({ type: 'SELECT_EDGE', payload: edgeId });
+    dispatch({ type: "SELECT_EDGE", payload: edgeId });
   }
 }
 
@@ -524,7 +584,7 @@ function handleExtensionMessage(
   if (!message.type) return;
 
   const handlers: Record<string, () => void> = {
-    'topology-data': () => {
+    "topology-data": () => {
       // Elements can be at top level (message.elements) or in data (message.data.elements)
       const msg = message as unknown as {
         elements?: CyElement[];
@@ -536,20 +596,24 @@ function handleExtensionMessage(
       };
       const elements = msg.elements || msg.data?.elements;
       const rawEdgeAnnotations = msg.data?.edgeAnnotations;
-      const cleanedEdgeAnnotations = Array.isArray(rawEdgeAnnotations) && Array.isArray(elements)
-        ? pruneEdgeAnnotations(rawEdgeAnnotations, elements)
-        : rawEdgeAnnotations;
+      const cleanedEdgeAnnotations =
+        Array.isArray(rawEdgeAnnotations) && Array.isArray(elements)
+          ? pruneEdgeAnnotations(rawEdgeAnnotations, elements)
+          : rawEdgeAnnotations;
       if (elements) {
-        dispatch({ type: 'SET_ELEMENTS', payload: elements });
+        dispatch({ type: "SET_ELEMENTS", payload: elements });
 
         // Re-initialize TopologyIO to sync with the new YAML file content
         // This is critical for node deletion to work after external file changes
-        const yamlFilePath = (window as { __INITIAL_DATA__?: { yamlFilePath?: string } }).__INITIAL_DATA__?.yamlFilePath;
+        const yamlFilePath = (window as { __INITIAL_DATA__?: { yamlFilePath?: string } })
+          .__INITIAL_DATA__?.yamlFilePath;
         if (yamlFilePath && isServicesInitialized()) {
           const topologyIO = getTopologyIO();
           void topologyIO.initializeFromFile(yamlFilePath).then((result) => {
             if (!result.success) {
-              console.error(`[TopoViewerContext] Failed to reinitialize TopologyIO: ${result.error}`);
+              console.error(
+                `[TopoViewerContext] Failed to reinitialize TopologyIO: ${result.error}`
+              );
             }
           });
         }
@@ -557,70 +621,85 @@ function handleExtensionMessage(
 
       const viewerSettings = extractEndpointLabelSettings(msg.data?.viewerSettings);
       if (Object.keys(viewerSettings).length > 0) {
-        dispatch({ type: 'SET_INITIAL_DATA', payload: viewerSettings });
+        dispatch({ type: "SET_INITIAL_DATA", payload: viewerSettings });
       }
       if (Array.isArray(cleanedEdgeAnnotations)) {
-        if (Array.isArray(rawEdgeAnnotations) && cleanedEdgeAnnotations.length !== rawEdgeAnnotations.length) {
+        if (
+          Array.isArray(rawEdgeAnnotations) &&
+          cleanedEdgeAnnotations.length !== rawEdgeAnnotations.length
+        ) {
           void saveEdgeAnnotations(cleanedEdgeAnnotations);
         }
-        dispatch({ type: 'SET_EDGE_ANNOTATIONS', payload: cleanedEdgeAnnotations });
+        dispatch({ type: "SET_EDGE_ANNOTATIONS", payload: cleanedEdgeAnnotations });
       }
     },
-    'node-renamed': () => {
+    "node-renamed": () => {
       const data = message.data as { oldId?: string; newId?: string; name?: string } | undefined;
       if (data?.oldId && data?.newId) {
-        dispatch({ type: 'RENAME_NODE', payload: { oldId: data.oldId, newId: data.newId, name: data.name } });
-      }
-    },
-    'node-data-updated': () => {
-      const data = message.data as { nodeId?: string; extraData?: Record<string, unknown> } | undefined;
-      if (data?.nodeId && data?.extraData) {
-        dispatch({ type: 'UPDATE_NODE_DATA', payload: { nodeId: data.nodeId, extraData: data.extraData } });
-      }
-    },
-    'edge-stats-update': () => {
-      const edgeUpdates = message.data?.edgeUpdates as EdgeStatsUpdate[] | undefined;
-      if (edgeUpdates && edgeUpdates.length > 0) {
-        dispatch({ type: 'UPDATE_EDGE_STATS', payload: edgeUpdates });
-      }
-    },
-    'topo-mode-changed': () => {
-      if (message.data?.mode) {
-        // Support both old format ('viewer'/'editor') and new format ('view'/'edit')
-        const modeValue = message.data.mode;
-        const normalizedMode = (modeValue === 'viewer' || modeValue === 'view') ? 'view' : 'edit';
-        dispatch({ type: 'SET_MODE', payload: normalizedMode });
-      }
-      if (message.data?.deploymentState) {
-        dispatch({ type: 'SET_DEPLOYMENT_STATE', payload: message.data.deploymentState as DeploymentState });
-      }
-    },
-    'panel-action': () => handlePanelAction(message, dispatch),
-    'custom-nodes-updated': () => {
-      const customNodes = (message as unknown as { customNodes?: CustomNodeTemplate[] }).customNodes;
-      const defaultNode = (message as unknown as { defaultNode?: string }).defaultNode;
-      if (customNodes !== undefined) {
         dispatch({
-          type: 'SET_CUSTOM_NODES',
-          payload: { customNodes, defaultNode: defaultNode || '' }
+          type: "RENAME_NODE",
+          payload: { oldId: data.oldId, newId: data.newId, name: data.name }
         });
       }
     },
-    'custom-node-error': () => {
+    "node-data-updated": () => {
+      const data = message.data as
+        | { nodeId?: string; extraData?: Record<string, unknown> }
+        | undefined;
+      if (data?.nodeId && data?.extraData) {
+        dispatch({
+          type: "UPDATE_NODE_DATA",
+          payload: { nodeId: data.nodeId, extraData: data.extraData }
+        });
+      }
+    },
+    "edge-stats-update": () => {
+      const edgeUpdates = message.data?.edgeUpdates as EdgeStatsUpdate[] | undefined;
+      if (edgeUpdates && edgeUpdates.length > 0) {
+        dispatch({ type: "UPDATE_EDGE_STATS", payload: edgeUpdates });
+      }
+    },
+    "topo-mode-changed": () => {
+      if (message.data?.mode) {
+        // Support both old format ('viewer'/'editor') and new format ('view'/'edit')
+        const modeValue = message.data.mode;
+        const normalizedMode = modeValue === "viewer" || modeValue === "view" ? "view" : "edit";
+        dispatch({ type: "SET_MODE", payload: normalizedMode });
+      }
+      if (message.data?.deploymentState) {
+        dispatch({
+          type: "SET_DEPLOYMENT_STATE",
+          payload: message.data.deploymentState as DeploymentState
+        });
+      }
+    },
+    "panel-action": () => handlePanelAction(message, dispatch),
+    "custom-nodes-updated": () => {
+      const customNodes = (message as unknown as { customNodes?: CustomNodeTemplate[] })
+        .customNodes;
+      const defaultNode = (message as unknown as { defaultNode?: string }).defaultNode;
+      if (customNodes !== undefined) {
+        dispatch({
+          type: "SET_CUSTOM_NODES",
+          payload: { customNodes, defaultNode: defaultNode || "" }
+        });
+      }
+    },
+    "custom-node-error": () => {
       const error = (message as unknown as { error?: string }).error;
       if (error) {
-        dispatch({ type: 'SET_CUSTOM_NODE_ERROR', payload: error });
+        dispatch({ type: "SET_CUSTOM_NODE_ERROR", payload: error });
       }
     },
-    'icon-list-response': () => {
+    "icon-list-response": () => {
       const icons = (message as unknown as { icons?: CustomIconInfo[] }).icons;
       if (icons !== undefined) {
-        dispatch({ type: 'SET_CUSTOM_ICONS', payload: icons });
+        dispatch({ type: "SET_CUSTOM_ICONS", payload: icons });
       }
     },
-    'lab-lifecycle-status': () => {
+    "lab-lifecycle-status": () => {
       // Lifecycle operation completed - clear processing state
-      dispatch({ type: 'SET_PROCESSING', payload: { isProcessing: false, mode: null } });
+      dispatch({ type: "SET_PROCESSING", payload: { isProcessing: false, mode: null } });
     }
   };
 
@@ -631,58 +710,94 @@ function handleExtensionMessage(
  * Custom hook for selection-related action creators
  */
 function useSelectionActions(dispatch: React.Dispatch<TopoViewerAction>) {
-  const selectNode = useCallback((nodeId: string | null) => {
-    dispatch({ type: 'SELECT_NODE', payload: nodeId });
-  }, [dispatch]);
-  const selectEdge = useCallback((edgeId: string | null) => {
-    dispatch({ type: 'SELECT_EDGE', payload: edgeId });
-  }, [dispatch]);
-  const editNode = useCallback((nodeId: string | null) => {
-    dispatch({ type: 'EDIT_NODE', payload: nodeId });
-  }, [dispatch]);
-  const editEdge = useCallback((edgeId: string | null) => {
-    dispatch({ type: 'EDIT_EDGE', payload: edgeId });
-  }, [dispatch]);
-  const editNetwork = useCallback((nodeId: string | null) => {
-    dispatch({ type: 'EDIT_NETWORK', payload: nodeId });
-  }, [dispatch]);
+  const selectNode = useCallback(
+    (nodeId: string | null) => {
+      dispatch({ type: "SELECT_NODE", payload: nodeId });
+    },
+    [dispatch]
+  );
+  const selectEdge = useCallback(
+    (edgeId: string | null) => {
+      dispatch({ type: "SELECT_EDGE", payload: edgeId });
+    },
+    [dispatch]
+  );
+  const editNode = useCallback(
+    (nodeId: string | null) => {
+      dispatch({ type: "EDIT_NODE", payload: nodeId });
+    },
+    [dispatch]
+  );
+  const editEdge = useCallback(
+    (edgeId: string | null) => {
+      dispatch({ type: "EDIT_EDGE", payload: edgeId });
+    },
+    [dispatch]
+  );
+  const editNetwork = useCallback(
+    (nodeId: string | null) => {
+      dispatch({ type: "EDIT_NETWORK", payload: nodeId });
+    },
+    [dispatch]
+  );
 
-  return useMemo(() => ({
-    selectNode,
-    selectEdge,
-    editNode,
-    editEdge,
-    editNetwork
-  }), [selectNode, selectEdge, editNode, editEdge, editNetwork]);
+  return useMemo(
+    () => ({
+      selectNode,
+      selectEdge,
+      editNode,
+      editEdge,
+      editNetwork
+    }),
+    [selectNode, selectEdge, editNode, editEdge, editNetwork]
+  );
 }
 
 /**
  * Custom hook for graph element action creators
  */
 function useGraphElementActions(dispatch: React.Dispatch<TopoViewerAction>) {
-  const addNode = useCallback((node: CyElement) => {
-    dispatch({ type: 'ADD_NODE', payload: node });
-  }, [dispatch]);
-  const addEdge = useCallback((edge: CyElement) => {
-    dispatch({ type: 'ADD_EDGE', payload: edge });
-  }, [dispatch]);
-  const removeNodeAndEdges = useCallback((nodeId: string) => {
-    dispatch({ type: 'REMOVE_NODE_AND_EDGES', payload: nodeId });
-  }, [dispatch]);
-  const removeEdge = useCallback((edgeId: string) => {
-    dispatch({ type: 'REMOVE_EDGE', payload: edgeId });
-  }, [dispatch]);
-  const updateNodePositions = useCallback((positions: Array<{ id: string; position: { x: number; y: number } }>) => {
-    dispatch({ type: 'UPDATE_NODE_POSITIONS', payload: { positions } });
-  }, [dispatch]);
+  const addNode = useCallback(
+    (node: CyElement) => {
+      dispatch({ type: "ADD_NODE", payload: node });
+    },
+    [dispatch]
+  );
+  const addEdge = useCallback(
+    (edge: CyElement) => {
+      dispatch({ type: "ADD_EDGE", payload: edge });
+    },
+    [dispatch]
+  );
+  const removeNodeAndEdges = useCallback(
+    (nodeId: string) => {
+      dispatch({ type: "REMOVE_NODE_AND_EDGES", payload: nodeId });
+    },
+    [dispatch]
+  );
+  const removeEdge = useCallback(
+    (edgeId: string) => {
+      dispatch({ type: "REMOVE_EDGE", payload: edgeId });
+    },
+    [dispatch]
+  );
+  const updateNodePositions = useCallback(
+    (positions: Array<{ id: string; position: { x: number; y: number } }>) => {
+      dispatch({ type: "UPDATE_NODE_POSITIONS", payload: { positions } });
+    },
+    [dispatch]
+  );
 
-  return useMemo(() => ({
-    addNode,
-    addEdge,
-    removeNodeAndEdges,
-    removeEdge,
-    updateNodePositions
-  }), [addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodePositions]);
+  return useMemo(
+    () => ({
+      addNode,
+      addEdge,
+      removeNodeAndEdges,
+      removeEdge,
+      updateNodePositions
+    }),
+    [addNode, addEdge, removeNodeAndEdges, removeEdge, updateNodePositions]
+  );
 }
 
 /**
@@ -690,72 +805,101 @@ function useGraphElementActions(dispatch: React.Dispatch<TopoViewerAction>) {
  */
 function useUIStateActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const toggleLock = useCallback(() => {
-    dispatch({ type: 'TOGGLE_LOCK' });
+    dispatch({ type: "TOGGLE_LOCK" });
   }, [dispatch]);
-  const setMode = useCallback((mode: 'edit' | 'view') => {
-    dispatch({ type: 'SET_MODE', payload: mode });
-  }, [dispatch]);
-  const setLinkLabelMode = useCallback((mode: LinkLabelMode) => {
-    dispatch({ type: 'SET_LINK_LABEL_MODE', payload: mode });
-  }, [dispatch]);
+  const setMode = useCallback(
+    (mode: "edit" | "view") => {
+      dispatch({ type: "SET_MODE", payload: mode });
+    },
+    [dispatch]
+  );
+  const setLinkLabelMode = useCallback(
+    (mode: LinkLabelMode) => {
+      dispatch({ type: "SET_LINK_LABEL_MODE", payload: mode });
+    },
+    [dispatch]
+  );
   const toggleDummyLinks = useCallback(() => {
-    dispatch({ type: 'TOGGLE_DUMMY_LINKS' });
+    dispatch({ type: "TOGGLE_DUMMY_LINKS" });
   }, [dispatch]);
-  const setEndpointLabelOffset = useCallback((value: number) => {
-    const next = Number.isFinite(value) ? clampEndpointLabelOffset(value) : DEFAULT_ENDPOINT_LABEL_OFFSET;
-    dispatch({ type: 'SET_ENDPOINT_LABEL_OFFSET', payload: next });
-  }, [dispatch]);
-  const setEdgeAnnotations = useCallback((annotations: EdgeAnnotation[]) => {
-    dispatch({ type: 'SET_EDGE_ANNOTATIONS', payload: annotations });
-  }, [dispatch]);
-  const upsertEdgeAnnotationAction = useCallback((annotation: EdgeAnnotation) => {
-    dispatch({ type: 'UPSERT_EDGE_ANNOTATION', payload: annotation });
-  }, [dispatch]);
-  const setCustomNodes = useCallback((customNodes: CustomNodeTemplate[], defaultNode: string) => {
-    dispatch({ type: 'SET_CUSTOM_NODES', payload: { customNodes, defaultNode } });
-  }, [dispatch]);
-  const editCustomTemplate = useCallback((data: CustomTemplateEditorData | null) => {
-    dispatch({ type: 'EDIT_CUSTOM_TEMPLATE', payload: data });
-  }, [dispatch]);
-  const setProcessing = useCallback((isProcessing: boolean, mode?: 'deploy' | 'destroy') => {
-    dispatch({ type: 'SET_PROCESSING', payload: { isProcessing, mode: mode ?? null } });
-  }, [dispatch]);
+  const setEndpointLabelOffset = useCallback(
+    (value: number) => {
+      const next = Number.isFinite(value)
+        ? clampEndpointLabelOffset(value)
+        : DEFAULT_ENDPOINT_LABEL_OFFSET;
+      dispatch({ type: "SET_ENDPOINT_LABEL_OFFSET", payload: next });
+    },
+    [dispatch]
+  );
+  const setEdgeAnnotations = useCallback(
+    (annotations: EdgeAnnotation[]) => {
+      dispatch({ type: "SET_EDGE_ANNOTATIONS", payload: annotations });
+    },
+    [dispatch]
+  );
+  const upsertEdgeAnnotationAction = useCallback(
+    (annotation: EdgeAnnotation) => {
+      dispatch({ type: "UPSERT_EDGE_ANNOTATION", payload: annotation });
+    },
+    [dispatch]
+  );
+  const setCustomNodes = useCallback(
+    (customNodes: CustomNodeTemplate[], defaultNode: string) => {
+      dispatch({ type: "SET_CUSTOM_NODES", payload: { customNodes, defaultNode } });
+    },
+    [dispatch]
+  );
+  const editCustomTemplate = useCallback(
+    (data: CustomTemplateEditorData | null) => {
+      dispatch({ type: "EDIT_CUSTOM_TEMPLATE", payload: data });
+    },
+    [dispatch]
+  );
+  const setProcessing = useCallback(
+    (isProcessing: boolean, mode?: "deploy" | "destroy") => {
+      dispatch({ type: "SET_PROCESSING", payload: { isProcessing, mode: mode ?? null } });
+    },
+    [dispatch]
+  );
 
   const refreshEditorData = useCallback(() => {
-    dispatch({ type: 'REFRESH_EDITOR_DATA' });
+    dispatch({ type: "REFRESH_EDITOR_DATA" });
   }, [dispatch]);
 
   const clearCustomNodeError = useCallback(() => {
-    dispatch({ type: 'SET_CUSTOM_NODE_ERROR', payload: null });
+    dispatch({ type: "SET_CUSTOM_NODE_ERROR", payload: null });
   }, [dispatch]);
 
-  return useMemo(() => ({
-    toggleLock,
-    setMode,
-    setLinkLabelMode,
-    toggleDummyLinks,
-    setEndpointLabelOffset,
-    setEdgeAnnotations,
-    upsertEdgeAnnotation: upsertEdgeAnnotationAction,
-    setCustomNodes,
-    editCustomTemplate,
-    setProcessing,
-    refreshEditorData,
-    clearCustomNodeError
-  }), [
-    toggleLock,
-    setMode,
-    setLinkLabelMode,
-    toggleDummyLinks,
-    setEndpointLabelOffset,
-    setEdgeAnnotations,
-    upsertEdgeAnnotationAction,
-    setCustomNodes,
-    editCustomTemplate,
-    setProcessing,
-    refreshEditorData,
-    clearCustomNodeError
-  ]);
+  return useMemo(
+    () => ({
+      toggleLock,
+      setMode,
+      setLinkLabelMode,
+      toggleDummyLinks,
+      setEndpointLabelOffset,
+      setEdgeAnnotations,
+      upsertEdgeAnnotation: upsertEdgeAnnotationAction,
+      setCustomNodes,
+      editCustomTemplate,
+      setProcessing,
+      refreshEditorData,
+      clearCustomNodeError
+    }),
+    [
+      toggleLock,
+      setMode,
+      setLinkLabelMode,
+      toggleDummyLinks,
+      setEndpointLabelOffset,
+      setEdgeAnnotations,
+      upsertEdgeAnnotationAction,
+      setCustomNodes,
+      editCustomTemplate,
+      setProcessing,
+      refreshEditorData,
+      clearCustomNodeError
+    ]
+  );
 }
 
 /**
@@ -766,46 +910,48 @@ function useActions(dispatch: React.Dispatch<TopoViewerAction>) {
   const graphElementActions = useGraphElementActions(dispatch);
   const uiStateActions = useUIStateActions(dispatch);
 
-  return useMemo(() => ({
-    ...selectionActions,
-    ...graphElementActions,
-    ...uiStateActions
-  }), [selectionActions, graphElementActions, uiStateActions]);
+  return useMemo(
+    () => ({
+      ...selectionActions,
+      ...graphElementActions,
+      ...uiStateActions
+    }),
+    [selectionActions, graphElementActions, uiStateActions]
+  );
 }
 
 /**
  * TopoViewer Context Provider
  */
-export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children, initialData }) => {
+export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({
+  children,
+  initialData
+}) => {
   // Initialize reducer with parsed initial data to avoid race conditions
   // where state.defaultNode would be empty on first render
   const initialEdgeAnnotationCleanupRef = useRef(false);
-  const [state, dispatch] = useReducer(
-    topoViewerReducer,
-    initialData,
-    (initial) => {
-      try {
-        const parsed = parseInitialData(initial);
-        if (parsed.edgeAnnotations) {
-          const cleaned = pruneEdgeAnnotations(parsed.edgeAnnotations, parsed.elements);
-          if (cleaned.length !== parsed.edgeAnnotations.length) {
-            initialEdgeAnnotationCleanupRef.current = true;
-            parsed.edgeAnnotations = cleaned;
-          }
+  const [state, dispatch] = useReducer(topoViewerReducer, initialData, (initial) => {
+    try {
+      const parsed = parseInitialData(initial);
+      if (parsed.edgeAnnotations) {
+        const cleaned = pruneEdgeAnnotations(parsed.edgeAnnotations, parsed.elements);
+        if (cleaned.length !== parsed.edgeAnnotations.length) {
+          initialEdgeAnnotationCleanupRef.current = true;
+          parsed.edgeAnnotations = cleaned;
         }
-        return { ...initialState, ...parsed };
-      } catch {
-        return initialState;
       }
+      return { ...initialState, ...parsed };
+    } catch {
+      return initialState;
     }
-  );
+  });
   const actions = useActions(dispatch);
 
   // Listen for messages from extension
   useEffect(() => {
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as ExtensionMessage | undefined;
-      if (message && typeof message === 'object' && message.type) {
+      if (message && typeof message === "object" && message.type) {
         handleExtensionMessage(message, dispatch);
       }
     };
@@ -818,7 +964,6 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     void saveEdgeAnnotations(state.edgeAnnotations);
   }, [state.edgeAnnotations]);
 
-
   // Track used custom icons and trigger reconciliation when usage changes
   const prevUsedIconsRef = useRef<string[]>([]);
   useEffect(() => {
@@ -829,31 +974,38 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
     // Check if the set of used icons has changed
     const usedSet = new Set(usedIcons);
     const prevSet = new Set(prevUsedIcons);
-    const hasChanged = usedIcons.length !== prevUsedIcons.length ||
-      usedIcons.some(icon => !prevSet.has(icon)) ||
-      prevUsedIcons.some(icon => !usedSet.has(icon));
+    const hasChanged =
+      usedIcons.length !== prevUsedIcons.length ||
+      usedIcons.some((icon) => !prevSet.has(icon)) ||
+      prevUsedIcons.some((icon) => !usedSet.has(icon));
 
     if (hasChanged && state.elements.length > 0) {
       prevUsedIconsRef.current = usedIcons;
       // Trigger icon reconciliation on extension side
-      postCommand('icon-reconcile', { usedIcons });
+      postCommand("icon-reconcile", { usedIcons });
     }
   }, [state.elements]);
 
-  const stateValue = useMemo<TopoViewerStateContextValue>(() => ({
-    state,
-    dispatch
-  }), [state, dispatch]);
+  const stateValue = useMemo<TopoViewerStateContextValue>(
+    () => ({
+      state,
+      dispatch
+    }),
+    [state, dispatch]
+  );
 
   // Save endpoint offset - needs access to current state
   const saveEndpointLabelOffset = useCallback(() => {
     void saveViewerSettings({ endpointLabelOffset: state.endpointLabelOffset });
   }, [state.endpointLabelOffset]);
 
-  const actionsValue = useMemo<TopoViewerActionsContextValue>(() => ({
-    ...actions,
-    saveEndpointLabelOffset
-  }), [actions, saveEndpointLabelOffset]);
+  const actionsValue = useMemo<TopoViewerActionsContextValue>(
+    () => ({
+      ...actions,
+      saveEndpointLabelOffset
+    }),
+    [actions, saveEndpointLabelOffset]
+  );
 
   return (
     <TopoViewerStateContext.Provider value={stateValue}>
@@ -870,7 +1022,7 @@ export const TopoViewerProvider: React.FC<TopoViewerProviderProps> = ({ children
 export const useTopoViewerState = (): TopoViewerStateContextValue => {
   const context = useContext(TopoViewerStateContext);
   if (context === undefined) {
-    throw new Error('useTopoViewerState must be used within a TopoViewerProvider');
+    throw new Error("useTopoViewerState must be used within a TopoViewerProvider");
   }
   return context;
 };
@@ -881,7 +1033,7 @@ export const useTopoViewerState = (): TopoViewerStateContextValue => {
 export const useTopoViewerActions = (): TopoViewerActionsContextValue => {
   const context = useContext(TopoViewerActionsContext);
   if (context === undefined) {
-    throw new Error('useTopoViewerActions must be used within a TopoViewerProvider');
+    throw new Error("useTopoViewerActions must be used within a TopoViewerProvider");
   }
   return context;
 };

@@ -2,7 +2,7 @@
  * Shared utilities for annotation migrations
  */
 
-import type { TopologyAnnotations } from '../types/topology';
+import type { TopologyAnnotations } from "../types/topology";
 
 /**
  * Migration data for interface patterns
@@ -30,7 +30,7 @@ export function applyInterfacePatternMigrations(
 
   let modified = false;
   for (const { nodeId, interfacePattern } of migrations) {
-    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+    const existing = annotations.nodeAnnotations.find((n) => n.id === nodeId);
     if (existing) {
       if (!existing.interfacePattern) {
         existing.interfacePattern = interfacePattern;

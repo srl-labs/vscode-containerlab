@@ -2,11 +2,11 @@
  * Traffic Chart Component
  * uPlot-based real-time traffic visualization for link endpoints
  */
-import React, { useRef, useEffect, useCallback } from 'react';
-import uPlot from 'uplot';
+import React, { useRef, useEffect, useCallback } from "react";
+import uPlot from "uplot";
 
-import 'uplot/dist/uPlot.min.css';
-import type { InterfaceStatsPayload, EndpointStatsHistory } from '../../../shared/types/topology';
+import "uplot/dist/uPlot.min.css";
+import type { InterfaceStatsPayload, EndpointStatsHistory } from "../../../shared/types/topology";
 
 const MAX_GRAPH_POINTS = 60;
 
@@ -25,13 +25,13 @@ interface TrafficChartProps {
  */
 function determineBpsUnit(maxBps: number): BpsUnit {
   if (maxBps >= 1_000_000_000) {
-    return { divisor: 1_000_000_000, label: 'Gbps' };
+    return { divisor: 1_000_000_000, label: "Gbps" };
   } else if (maxBps >= 1_000_000) {
-    return { divisor: 1_000_000, label: 'Mbps' };
+    return { divisor: 1_000_000, label: "Mbps" };
   } else if (maxBps >= 1_000) {
-    return { divisor: 1_000, label: 'Kbps' };
+    return { divisor: 1_000, label: "Kbps" };
   }
-  return { divisor: 1, label: 'bps' };
+  return { divisor: 1, label: "bps" };
 }
 
 /**
@@ -50,7 +50,11 @@ function createEmptyHistory(): EndpointStatsHistory {
 /**
  * Calculate scale range with padding
  */
-function calculateScaleRange(_self: uPlot, dataMin: number | undefined, dataMax: number | undefined): [number, number] {
+function calculateScaleRange(
+  _self: uPlot,
+  dataMin: number | undefined,
+  dataMax: number | undefined
+): [number, number] {
   const min = Math.min(0, dataMin ?? 0);
   const max = Math.max(1, dataMax ?? 1);
   const padding = (max - min) * 0.1;
@@ -62,37 +66,37 @@ function calculateScaleRange(_self: uPlot, dataMin: number | undefined, dataMax:
  */
 function createGraphSeries(unitLabel: string): uPlot.Series[] {
   const formatValue = (_self: uPlot, rawValue: number | null): string => {
-    return rawValue == null ? '-' : rawValue.toFixed(2);
+    return rawValue == null ? "-" : rawValue.toFixed(2);
   };
 
   return [
     {},
     {
       label: `RX ${unitLabel}`,
-      stroke: '#4ec9b0',
+      stroke: "#4ec9b0",
       width: 2,
-      scale: 'bps',
+      scale: "bps",
       value: formatValue
     },
     {
       label: `TX ${unitLabel}`,
-      stroke: '#569cd6',
+      stroke: "#569cd6",
       width: 2,
-      scale: 'bps',
+      scale: "bps",
       value: formatValue
     },
     {
-      label: 'RX PPS',
-      stroke: '#b5cea8',
+      label: "RX PPS",
+      stroke: "#b5cea8",
       width: 2,
-      scale: 'pps',
+      scale: "pps",
       value: formatValue
     },
     {
-      label: 'TX PPS',
-      stroke: '#9cdcfe',
+      label: "TX PPS",
+      stroke: "#9cdcfe",
       width: 2,
-      scale: 'pps',
+      scale: "pps",
       value: formatValue
     }
   ];
@@ -115,41 +119,41 @@ function createGraphOptions(width: number, height: number, unitLabel: string): u
     series: createGraphSeries(unitLabel),
     axes: [
       {
-        scale: 'x',
+        scale: "x",
         show: false
       },
       {
-        scale: 'bps',
+        scale: "bps",
         side: 3,
         label: unitLabel,
         labelSize: 20,
-        labelFont: '12px sans-serif',
+        labelFont: "12px sans-serif",
         size: 60,
-        stroke: '#cccccc',
+        stroke: "#cccccc",
         grid: {
           show: true,
-          stroke: '#3e3e42',
+          stroke: "#3e3e42",
           width: 1
         },
         ticks: {
           show: true,
-          stroke: '#3e3e42',
+          stroke: "#3e3e42",
           width: 1
         },
         values: (_self, ticks) => ticks.map((v) => v.toFixed(1))
       },
       {
-        scale: 'pps',
+        scale: "pps",
         side: 1,
-        label: 'PPS',
+        label: "PPS",
         labelSize: 20,
-        labelFont: '12px sans-serif',
+        labelFont: "12px sans-serif",
         size: 60,
-        stroke: '#cccccc',
+        stroke: "#cccccc",
         grid: { show: false },
         ticks: {
           show: true,
-          stroke: '#3e3e42',
+          stroke: "#3e3e42",
           width: 1
         },
         values: (_self, ticks) => ticks.map((v) => v.toFixed(1))
@@ -179,48 +183,51 @@ const historyStore = new Map<string, EndpointStatsHistory>();
 export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
-  const unitRef = useRef<BpsUnit>({ divisor: 1000, label: 'Kbps' });
+  const unitRef = useRef<BpsUnit>({ divisor: 1000, label: "Kbps" });
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   /**
    * Update stats history and return prepared graph data
    */
-  const updateHistory = useCallback((key: string, newStats: InterfaceStatsPayload | undefined): number[][] => {
-    let history = historyStore.get(key);
-    if (!history) {
-      history = createEmptyHistory();
-      historyStore.set(key, history);
-    }
-
-    if (newStats) {
-      const now = Date.now() / 1000;
-      history.timestamps.push(now);
-      history.rxBps.push(newStats.rxBps ?? 0);
-      history.txBps.push(newStats.txBps ?? 0);
-      history.rxPps.push(newStats.rxPps ?? 0);
-      history.txPps.push(newStats.txPps ?? 0);
-
-      // Trim to max points
-      while (history.timestamps.length > MAX_GRAPH_POINTS) {
-        history.timestamps.shift();
-        history.rxBps.shift();
-        history.txBps.shift();
-        history.rxPps.shift();
-        history.txPps.shift();
+  const updateHistory = useCallback(
+    (key: string, newStats: InterfaceStatsPayload | undefined): number[][] => {
+      let history = historyStore.get(key);
+      if (!history) {
+        history = createEmptyHistory();
+        historyStore.set(key, history);
       }
-    }
 
-    // Determine unit scaling
-    const maxBps = Math.max(...history.rxBps, ...history.txBps, 1);
-    unitRef.current = determineBpsUnit(maxBps);
-    const { divisor } = unitRef.current;
+      if (newStats) {
+        const now = Date.now() / 1000;
+        history.timestamps.push(now);
+        history.rxBps.push(newStats.rxBps ?? 0);
+        history.txBps.push(newStats.txBps ?? 0);
+        history.rxPps.push(newStats.rxPps ?? 0);
+        history.txPps.push(newStats.txPps ?? 0);
 
-    // Scale BPS values
-    const rxScaled = history.rxBps.map((v) => v / divisor);
-    const txScaled = history.txBps.map((v) => v / divisor);
+        // Trim to max points
+        while (history.timestamps.length > MAX_GRAPH_POINTS) {
+          history.timestamps.shift();
+          history.rxBps.shift();
+          history.txBps.shift();
+          history.rxPps.shift();
+          history.txPps.shift();
+        }
+      }
 
-    return [history.timestamps, rxScaled, txScaled, history.rxPps, history.txPps];
-  }, []);
+      // Determine unit scaling
+      const maxBps = Math.max(...history.rxBps, ...history.txBps, 1);
+      unitRef.current = determineBpsUnit(maxBps);
+      const { divisor } = unitRef.current;
+
+      // Scale BPS values
+      const rxScaled = history.rxBps.map((v) => v / divisor);
+      const txScaled = history.txBps.map((v) => v / divisor);
+
+      return [history.timestamps, rxScaled, txScaled, history.rxPps, history.txPps];
+    },
+    []
+  );
 
   /**
    * Update axis labels after unit change
@@ -230,13 +237,13 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
     if (!container) return;
 
     // Update axis label
-    const axisLabel = container.querySelector('.u-axis.u-off1 .u-label') as HTMLElement | null;
+    const axisLabel = container.querySelector(".u-axis.u-off1 .u-label") as HTMLElement | null;
     if (axisLabel) {
       axisLabel.textContent = unitLabel;
     }
 
     // Update legend labels
-    const legendLabels = container.querySelectorAll('.u-legend .u-series td.u-label');
+    const legendLabels = container.querySelectorAll(".u-legend .u-series td.u-label");
     legendLabels.forEach((label, index) => {
       if (index === 1) {
         (label as HTMLElement).textContent = `RX ${unitLabel}`;
@@ -306,15 +313,15 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
   }, [endpointKey]);
 
   return (
-    <div className="traffic-chart-container" style={{ overflow: 'hidden' }}>
+    <div className="traffic-chart-container" style={{ overflow: "hidden" }}>
       <div
         ref={containerRef}
         className="traffic-chart"
         style={{
-          width: '100%',
-          height: '200px',
-          minHeight: '150px',
-          overflow: 'hidden'
+          width: "100%",
+          height: "200px",
+          minHeight: "150px",
+          overflow: "hidden"
         }}
       />
       {!stats && (

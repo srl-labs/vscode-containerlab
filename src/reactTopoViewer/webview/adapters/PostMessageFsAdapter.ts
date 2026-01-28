@@ -4,13 +4,13 @@
  * Uses postMessage to communicate with the extension for file operations.
  * The extension handles the actual filesystem access.
  */
-import type { FileSystemAdapter } from '../../shared/io/types';
-import { subscribeToWebviewMessages, type TypedMessageEvent } from '../utils/webviewMessageBus';
+import type { FileSystemAdapter } from "../../shared/io/types";
+import { subscribeToWebviewMessages, type TypedMessageEvent } from "../utils/webviewMessageBus";
 
-import { createPathMethods } from './pathMethods';
+import { createPathMethods } from "./pathMethods";
 
 interface FsResponseMessage {
-  type: 'fs:response';
+  type: "fs:response";
   requestId: string;
   result?: unknown;
   error?: string;
@@ -48,7 +48,7 @@ export class PostMessageFsAdapter implements FileSystemAdapter {
     this.join = pathMethods.join;
     this.unsubscribe = subscribeToWebviewMessages(
       this.handleResponse.bind(this),
-      (e) => e.data?.type === 'fs:response'
+      (e) => e.data?.type === "fs:response"
     );
   }
 
@@ -62,26 +62,26 @@ export class PostMessageFsAdapter implements FileSystemAdapter {
     }
     // Reject any pending requests
     for (const [, pending] of this.pending) {
-      pending.reject(new Error('Adapter disposed'));
+      pending.reject(new Error("Adapter disposed"));
     }
     this.pending.clear();
   }
 
   async readFile(filePath: string): Promise<string> {
-    const result = await this.request('fs:read', { path: filePath });
+    const result = await this.request("fs:read", { path: filePath });
     return result as string;
   }
 
   async writeFile(filePath: string, content: string): Promise<void> {
-    await this.request('fs:write', { path: filePath, content });
+    await this.request("fs:write", { path: filePath, content });
   }
 
   async unlink(filePath: string): Promise<void> {
-    await this.request('fs:unlink', { path: filePath });
+    await this.request("fs:unlink", { path: filePath });
   }
 
   async exists(filePath: string): Promise<boolean> {
-    const result = await this.request('fs:exists', { path: filePath });
+    const result = await this.request("fs:exists", { path: filePath });
     return result as boolean;
   }
 
@@ -92,7 +92,7 @@ export class PostMessageFsAdapter implements FileSystemAdapter {
 
       if (!window.vscode) {
         this.pending.delete(requestId);
-        reject(new Error('VS Code API not available'));
+        reject(new Error("VS Code API not available"));
         return;
       }
 
@@ -110,7 +110,7 @@ export class PostMessageFsAdapter implements FileSystemAdapter {
 
   private handleResponse(e: TypedMessageEvent): void {
     const data = e.data as FsResponseMessage | undefined;
-    if (!data || data.type !== 'fs:response') return;
+    if (!data || data.type !== "fs:response") return;
     if (!data.requestId) return;
 
     const pending = this.pending.get(data.requestId);

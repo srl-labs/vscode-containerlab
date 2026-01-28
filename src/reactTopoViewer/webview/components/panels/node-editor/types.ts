@@ -12,8 +12,8 @@ import type {
   SrosXiom as _SrosXiom,
   SrosComponent as _SrosComponent,
   NodeEditorData as _NodeEditorData
-} from '../../../../shared/types/editors';
-import { INTEGRATED_SROS_TYPES as _INTEGRATED_SROS_TYPES } from '../../../../shared/types/editors';
+} from "../../../../shared/types/editors";
+import { INTEGRATED_SROS_TYPES as _INTEGRATED_SROS_TYPES } from "../../../../shared/types/editors";
 
 // Re-export types
 export type NodeEditorTabId = _NodeEditorTabId;

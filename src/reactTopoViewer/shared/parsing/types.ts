@@ -9,8 +9,8 @@ import type {
   CyElement,
   TopologyAnnotations,
   NodeAnnotation,
-  InterfaceStatsPayload,
-} from '../types/topology';
+  InterfaceStatsPayload
+} from "../types/topology";
 
 // Re-export commonly used types for convenience
 export type { ClabTopology, CyElement, TopologyAnnotations, NodeAnnotation };
@@ -172,7 +172,7 @@ export const nullLogger: ParserLogger = {
   info: () => {},
   warn: () => {},
   debug: () => {},
-  error: () => {},
+  error: () => {}
 };
 
 // ============================================================================
@@ -280,7 +280,15 @@ export interface SpecialNodeInfo {
   /** Node ID (e.g., "host:eth0", "mgmt-net:eth1") */
   id: string;
   /** Node type */
-  type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy' | 'bridge' | 'ovs-bridge';
+  type:
+    | "host"
+    | "mgmt-net"
+    | "macvlan"
+    | "vxlan"
+    | "vxlan-stitch"
+    | "dummy"
+    | "bridge"
+    | "ovs-bridge";
   /** Display label */
   label?: string;
   /** Position from annotations */
@@ -300,51 +308,44 @@ export interface SpecialNodeInfo {
 /**
  * Node role for visual styling.
  */
-export type NodeRole = 'router' | 'client' | 'default' | 'cloud';
+export type NodeRole = "router" | "client" | "default" | "cloud";
 
 /**
  * Kinds that are considered routers.
  */
 export const ROUTER_KINDS = new Set([
-  'nokia_srlinux',
-  'nokia_sros',
-  'nokia_srsim',
-  'arista_ceos',
-  'arista_veos',
-  'cisco_xrd',
-  'cisco_xrv',
-  'cisco_xrv9k',
-  'juniper_crpd',
-  'juniper_vjunos_router',
-  'juniper_vjunos_switch',
-  'juniper_vmx',
-  'juniper_vqfx',
-  'juniper_vsrx',
-  'frr',
-  'gobgp',
-  'bird',
-  'openbgpd',
+  "nokia_srlinux",
+  "nokia_sros",
+  "nokia_srsim",
+  "arista_ceos",
+  "arista_veos",
+  "cisco_xrd",
+  "cisco_xrv",
+  "cisco_xrv9k",
+  "juniper_crpd",
+  "juniper_vjunos_router",
+  "juniper_vjunos_switch",
+  "juniper_vmx",
+  "juniper_vqfx",
+  "juniper_vsrx",
+  "frr",
+  "gobgp",
+  "bird",
+  "openbgpd"
 ]);
 
 /**
  * Kinds that are considered clients.
  */
-export const CLIENT_KINDS = new Set([
-  'linux',
-  'alpine',
-  'debian',
-  'ubuntu',
-  'centos',
-  'rocky',
-]);
+export const CLIENT_KINDS = new Set(["linux", "alpine", "debian", "ubuntu", "centos", "rocky"]);
 
 /**
  * Detect the role of a node based on its kind.
  */
 export function detectRole(kind: string | undefined): NodeRole {
-  if (!kind) return 'default';
+  if (!kind) return "default";
   const k = kind.toLowerCase();
-  if (ROUTER_KINDS.has(k)) return 'router';
-  if (CLIENT_KINDS.has(k)) return 'client';
-  return 'default';
+  if (ROUTER_KINDS.has(k)) return "router";
+  if (CLIENT_KINDS.has(k)) return "client";
+  return "default";
 }

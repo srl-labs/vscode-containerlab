@@ -1,9 +1,9 @@
 /**
  * Section - Bordered section with title and optional inheritance badge
  */
-import React from 'react';
+import React from "react";
 
-import { InheritanceBadge } from './Badge';
+import { InheritanceBadge } from "./Badge";
 
 interface SectionProps {
   title: string;
@@ -17,13 +17,13 @@ interface SectionProps {
 export const Section: React.FC<SectionProps> = ({
   title,
   children,
-  className = '',
+  className = "",
   hasBorder = true,
   inherited
 }) => (
   <div
-    className={`${hasBorder ? 'border-b pb-3 mb-3' : ''} ${className}`}
-    style={hasBorder ? { borderColor: 'var(--vscode-panel-border)' } : undefined}
+    className={`${hasBorder ? "border-b pb-3 mb-3" : ""} ${className}`}
+    style={hasBorder ? { borderColor: "var(--vscode-panel-border)" } : undefined}
   >
     <h3 className="section-header">
       {title}

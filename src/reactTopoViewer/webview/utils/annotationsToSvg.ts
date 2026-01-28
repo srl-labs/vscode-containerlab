@@ -2,7 +2,11 @@
  * Utilities for converting annotations to SVG elements for export.
  * Used by SvgExportPanel to composite annotations into exported SVG.
  */
-import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../shared/types/topology';
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation
+} from "../../shared/types/topology";
 import {
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY,
@@ -11,46 +15,53 @@ import {
   DEFAULT_BORDER_STYLE,
   DEFAULT_ARROW_SIZE,
   DEFAULT_LINE_LENGTH
-} from '../hooks/annotations/freeShape';
-import { applyAlphaToColor } from '../components/annotations/shared/colorUtils';
+} from "../hooks/annotations/freeShape";
+import { applyAlphaToColor } from "../components/annotations/shared/colorUtils";
 
-import { renderMarkdown } from './markdownRenderer';
+import { renderMarkdown } from "./markdownRenderer";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const XHTML_NS = 'http://www.w3.org/1999/xhtml';
-const SVG_MIME_TYPE = 'image/svg+xml';
-const ANNOTATION_GROUPS_LAYER = 'annotation-groups-layer';
-const ANNOTATION_SHAPES_LAYER = 'annotation-shapes-layer';
-const ANNOTATION_TEXT_LAYER = 'annotation-text-layer';
-const DEFAULT_FONT_FAMILY = 'sans-serif';
+const SVG_NS = "http://www.w3.org/2000/svg";
+const XHTML_NS = "http://www.w3.org/1999/xhtml";
+const SVG_MIME_TYPE = "image/svg+xml";
+const ANNOTATION_GROUPS_LAYER = "annotation-groups-layer";
+const ANNOTATION_SHAPES_LAYER = "annotation-shapes-layer";
+const ANNOTATION_TEXT_LAYER = "annotation-text-layer";
+const DEFAULT_FONT_FAMILY = "sans-serif";
 
 function escapeXml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
-function getBorderDashArray(style?: FreeShapeAnnotation['borderStyle']): string {
+function getBorderDashArray(style?: FreeShapeAnnotation["borderStyle"]): string {
   switch (style) {
-    case 'dashed': return '10,5';
-    case 'dotted': return '2,2';
-    default: return '';
+    case "dashed":
+      return "10,5";
+    case "dotted":
+      return "2,2";
+    default:
+      return "";
   }
 }
 
-function getGroupBorderDashArray(style?: GroupStyleAnnotation['borderStyle']): string {
+function getGroupBorderDashArray(style?: GroupStyleAnnotation["borderStyle"]): string {
   switch (style) {
-    case 'dashed': return '10,5';
-    case 'dotted': return '2,2';
-    case 'double': return ''; // Double style not directly supported in SVG dash, render as solid
-    default: return '';
+    case "dashed":
+      return "10,5";
+    case "dotted":
+      return "2,2";
+    case "double":
+      return ""; // Double style not directly supported in SVG dash, render as solid
+    default:
+      return "";
   }
 }
 
@@ -115,23 +126,40 @@ function calculateLabelPosition(
   const { x, y, width, height } = rect;
 
   const positions: Record<string, LabelPosition> = {
-    'top-center': { x: x + width / 2, y: y - labelPadding, textAnchor: 'middle' },
-    'top-right': { x: x + width - labelPadding, y: y - labelPadding, textAnchor: 'end' },
-    'bottom-left': { x: x + labelPadding, y: y + height + labelFontSize + labelPadding, textAnchor: 'start' },
-    'bottom-center': { x: x + width / 2, y: y + height + labelFontSize + labelPadding, textAnchor: 'middle' },
-    'bottom-right': { x: x + width - labelPadding, y: y + height + labelFontSize + labelPadding, textAnchor: 'end' },
-    'top-left': { x: x + labelPadding, y: y - labelPadding, textAnchor: 'start' }
+    "top-center": { x: x + width / 2, y: y - labelPadding, textAnchor: "middle" },
+    "top-right": { x: x + width - labelPadding, y: y - labelPadding, textAnchor: "end" },
+    "bottom-left": {
+      x: x + labelPadding,
+      y: y + height + labelFontSize + labelPadding,
+      textAnchor: "start"
+    },
+    "bottom-center": {
+      x: x + width / 2,
+      y: y + height + labelFontSize + labelPadding,
+      textAnchor: "middle"
+    },
+    "bottom-right": {
+      x: x + width - labelPadding,
+      y: y + height + labelFontSize + labelPadding,
+      textAnchor: "end"
+    },
+    "top-left": { x: x + labelPadding, y: y - labelPadding, textAnchor: "start" }
   };
 
-  return positions[labelPosition] ?? positions['top-left'];
+  return positions[labelPosition] ?? positions["top-left"];
 }
 
 /**
  * Calculate label background X position based on text anchor.
  */
-function calculateLabelBgX(labelX: number, textAnchor: string, labelWidth: number, bgPadding: number): number {
-  if (textAnchor === 'middle') return labelX - labelWidth / 2;
-  if (textAnchor === 'end') return labelX - labelWidth;
+function calculateLabelBgX(
+  labelX: number,
+  textAnchor: string,
+  labelWidth: number,
+  bgPadding: number
+): number {
+  if (textAnchor === "middle") return labelX - labelWidth / 2;
+  if (textAnchor === "end") return labelX - labelWidth;
   return labelX - bgPadding;
 }
 
@@ -149,7 +177,12 @@ function buildGroupLabelSvg(
 ): string {
   const estimatedLabelWidth = name.length * labelFontSize * 0.6 + labelBgPadding * 2;
   const labelBgHeight = labelFontSize + labelPadding * 2;
-  const bgX = calculateLabelBgX(labelPos.x, labelPos.textAnchor, estimatedLabelWidth, labelBgPadding);
+  const bgX = calculateLabelBgX(
+    labelPos.x,
+    labelPos.textAnchor,
+    estimatedLabelWidth,
+    labelBgPadding
+  );
   const bgY = labelPos.y - labelFontSize - labelPadding / 2;
 
   let svg = `<rect x="${bgX}" y="${bgY}" width="${estimatedLabelWidth}" height="${labelBgHeight}" `;
@@ -176,11 +209,11 @@ export function groupToSvgString(group: GroupStyleAnnotation): string {
   const x = group.position.x - group.width / 2;
   const y = group.position.y - group.height / 2;
 
-  const bgColor = group.backgroundColor ?? '#d9d9d9';
+  const bgColor = group.backgroundColor ?? "#d9d9d9";
   const bgOpacity = (group.backgroundOpacity ?? 20) / 100;
-  const fillColor = bgColor === 'transparent' ? 'none' : applyAlphaToColor(bgColor, bgOpacity);
+  const fillColor = bgColor === "transparent" ? "none" : applyAlphaToColor(bgColor, bgOpacity);
 
-  const borderColor = group.borderColor ?? '#dddddd';
+  const borderColor = group.borderColor ?? "#dddddd";
   const borderWidth = group.borderWidth ?? 0.5;
   const borderRadius = group.borderRadius ?? 0;
   const dashArray = getGroupBorderDashArray(group.borderStyle);
@@ -198,14 +231,14 @@ export function groupToSvgString(group: GroupStyleAnnotation): string {
     const labelBgPadding = 6;
     const labelPos = calculateLabelPosition(
       { x, y, width, height },
-      group.labelPosition ?? 'top-left',
+      group.labelPosition ?? "top-left",
       labelFontSize,
       labelPadding
     );
     svg += buildGroupLabelSvg(
       group.name,
       labelPos,
-      group.labelColor ?? '#ebecf0',
+      group.labelColor ?? "#ebecf0",
       labelFontSize,
       labelPadding,
       labelBgPadding
@@ -220,7 +253,13 @@ export function groupToSvgString(group: GroupStyleAnnotation): string {
 // Shape to SVG - Subcomponents
 // ============================================================================
 
-function makeArrowPoints(arrowSize: number, x: number, y: number, fromX: number, fromY: number): string {
+function makeArrowPoints(
+  arrowSize: number,
+  x: number,
+  y: number,
+  fromX: number,
+  fromY: number
+): string {
   const angle = Math.atan2(y - fromY, x - fromX);
   const arrowAngle = Math.PI / 6;
   const p1x = x - arrowSize * Math.cos(angle - arrowAngle);
@@ -276,7 +315,7 @@ function buildLineSvg(shape: FreeShapeAnnotation): string {
   const style = getShapeStyle(shape);
   const startX = shape.position.x;
   const startY = shape.position.y;
-  const endX = shape.endPosition?.x ?? (shape.position.x + DEFAULT_LINE_LENGTH);
+  const endX = shape.endPosition?.x ?? shape.position.x + DEFAULT_LINE_LENGTH;
   const endY = shape.endPosition?.y ?? shape.position.y;
   const arrowSize = shape.lineArrowSize ?? DEFAULT_ARROW_SIZE;
 
@@ -284,7 +323,10 @@ function buildLineSvg(shape: FreeShapeAnnotation): string {
   const dx = endX - startX;
   const dy = endY - startY;
   const length = Math.sqrt(dx * dx + dy * dy);
-  let lineStartX = startX, lineStartY = startY, lineEndX = endX, lineEndY = endY;
+  let lineStartX = startX,
+    lineStartY = startY,
+    lineEndX = endX,
+    lineEndY = endY;
 
   if (length > 0) {
     const ux = dx / length;
@@ -319,9 +361,11 @@ function buildLineSvg(shape: FreeShapeAnnotation): string {
  */
 export function shapeToSvgString(shape: FreeShapeAnnotation): string {
   switch (shape.shapeType) {
-    case 'rectangle': return buildRectangleSvg(shape);
-    case 'circle': return buildCircleSvg(shape);
-    case 'line':
+    case "rectangle":
+      return buildRectangleSvg(shape);
+    case "circle":
+      return buildCircleSvg(shape);
+    case "line":
     default:
       return buildLineSvg(shape);
   }
@@ -347,13 +391,13 @@ interface TextStyle {
 function getTextStyle(text: FreeTextAnnotation): TextStyle {
   return {
     fontSize: text.fontSize ?? 14,
-    fontColor: text.fontColor ?? '#000000',
-    fontWeight: text.fontWeight ?? 'normal',
-    fontStyle: text.fontStyle ?? 'normal',
-    textDecoration: text.textDecoration ?? 'none',
-    textAlign: text.textAlign ?? 'left',
+    fontColor: text.fontColor ?? "#000000",
+    fontWeight: text.fontWeight ?? "normal",
+    fontStyle: text.fontStyle ?? "normal",
+    textDecoration: text.textDecoration ?? "none",
+    textAlign: text.textAlign ?? "left",
     fontFamily: text.fontFamily ?? DEFAULT_FONT_FAMILY,
-    backgroundColor: text.backgroundColor ?? 'transparent',
+    backgroundColor: text.backgroundColor ?? "transparent",
     borderRadius: text.roundedBackground ? 4 : 0,
     padding: 4
   };
@@ -382,19 +426,19 @@ function estimateTextDimensions(
   fontWeight: string
 ): { width: number; height: number } {
   // Split into lines for multi-line text
-  const lines = textContent.split('\n');
+  const lines = textContent.split("\n");
   const lineCount = Math.max(1, lines.length);
 
   // Find the longest line
-  const longestLine = lines.reduce((a, b) => (a.length > b.length ? a : b), '');
+  const longestLine = lines.reduce((a, b) => (a.length > b.length ? a : b), "");
 
   // Character width multiplier based on font family
   // Monospace fonts have consistent width, proportional fonts vary
-  const isMonospace = fontFamily.toLowerCase().includes('mono');
+  const isMonospace = fontFamily.toLowerCase().includes("mono");
   const charWidthRatio = isMonospace ? 0.6 : 0.55;
 
   // Bold text is slightly wider
-  const boldMultiplier = fontWeight === 'bold' ? 1.1 : 1.0;
+  const boldMultiplier = fontWeight === "bold" ? 1.1 : 1.0;
 
   // Calculate dimensions
   const charWidth = fontSize * charWidthRatio * boldMultiplier;
@@ -424,10 +468,10 @@ export function textToSvgString(text: FreeTextAnnotation): string {
     height = text.height;
   } else {
     const estimated = estimateTextDimensions(
-      text.text || '',
+      text.text || "",
       text.fontSize ?? 14,
       text.fontFamily ?? DEFAULT_FONT_FAMILY,
-      text.fontWeight ?? 'normal'
+      text.fontWeight ?? "normal"
     );
     width = text.width ?? estimated.width;
     height = text.height ?? estimated.height;
@@ -438,8 +482,8 @@ export function textToSvgString(text: FreeTextAnnotation): string {
   // The wrapper is larger than content due to padding, and translate(-50%, -50%)
   // uses the wrapper size, shifting content differently than pure center calculation.
   // Empirically determined offsets to match canvas rendering:
-  const CANVAS_Y_OFFSET = 28;  // Shifts text UP to match canvas
-  const CANVAS_X_OFFSET = 5;  // Shifts text LEFT to match canvas
+  const CANVAS_Y_OFFSET = 28; // Shifts text UP to match canvas
+  const CANVAS_X_OFFSET = 5; // Shifts text LEFT to match canvas
 
   // Convert to top-left corner for SVG foreignObject
   const x = text.position.x - CANVAS_X_OFFSET - width / 2;
@@ -452,7 +496,7 @@ export function textToSvgString(text: FreeTextAnnotation): string {
 
   const style = getTextStyle(text);
   const styleStr = buildTextStyleString(style);
-  const htmlContent = renderMarkdown(text.text || '');
+  const htmlContent = renderMarkdown(text.text || "");
 
   let svg = `<g class="annotation-text" data-id="${escapeXml(text.id)}"`;
   if (rotation !== 0) svg += ` transform="rotate(${rotation}, ${cx}, ${cy})"`;
@@ -487,24 +531,27 @@ export function addBackgroundRect(svgContent: string, color: string): string {
   const doc = parser.parseFromString(svgContent, SVG_MIME_TYPE);
   const svgEl = doc.documentElement;
 
-  const viewBox = svgEl.getAttribute('viewBox');
-  let x = 0, y = 0, width = 0, height = 0;
+  const viewBox = svgEl.getAttribute("viewBox");
+  let x = 0,
+    y = 0,
+    width = 0,
+    height = 0;
 
   if (viewBox) {
-    [x, y, width, height] = viewBox.split(' ').map(parseFloat);
+    [x, y, width, height] = viewBox.split(" ").map(parseFloat);
   } else {
     // Fall back to width/height attributes
-    width = parseFloat(svgEl.getAttribute('width') || '0');
-    height = parseFloat(svgEl.getAttribute('height') || '0');
+    width = parseFloat(svgEl.getAttribute("width") || "0");
+    height = parseFloat(svgEl.getAttribute("height") || "0");
     if (width === 0 || height === 0) return svgContent;
   }
 
-  const rect = doc.createElementNS(SVG_NS, 'rect');
-  rect.setAttribute('x', x.toString());
-  rect.setAttribute('y', y.toString());
-  rect.setAttribute('width', width.toString());
-  rect.setAttribute('height', height.toString());
-  rect.setAttribute('fill', color);
+  const rect = doc.createElementNS(SVG_NS, "rect");
+  rect.setAttribute("x", x.toString());
+  rect.setAttribute("y", y.toString());
+  rect.setAttribute("width", width.toString());
+  rect.setAttribute("height", height.toString());
+  rect.setAttribute("fill", color);
 
   svgEl.insertBefore(rect, svgEl.firstChild);
 
@@ -514,7 +561,7 @@ export function addBackgroundRect(svgContent: string, color: string): string {
 function parseAndImportElement(doc: Document, parser: DOMParser, svgStr: string): Element | null {
   const tempDoc = parser.parseFromString(`<svg xmlns="${SVG_NS}">${svgStr}</svg>`, SVG_MIME_TYPE);
   const element = tempDoc.documentElement.firstChild;
-  return element ? doc.importNode(element, true) as Element : null;
+  return element ? (doc.importNode(element, true) as Element) : null;
 }
 
 /**
@@ -523,19 +570,19 @@ function parseAndImportElement(doc: Document, parser: DOMParser, svgStr: string)
  */
 function extractCytoscapeTransform(svgEl: Element): string {
   // Find the main content group with transform (should have scale for cytoscape exports)
-  const groups = svgEl.querySelectorAll('g[transform]');
+  const groups = svgEl.querySelectorAll("g[transform]");
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i];
-    const transform = group.getAttribute('transform') || '';
+    const transform = group.getAttribute("transform") || "";
     // Look for the cytoscape main group which has scale in its transform
-    if (transform.includes('scale(')) {
+    if (transform.includes("scale(")) {
       return transform;
     }
   }
 
   // Fallback: find any group with a translate transform
-  const firstGroup = svgEl.querySelector('g[transform]');
-  return firstGroup?.getAttribute('transform') || '';
+  const firstGroup = svgEl.querySelector("g[transform]");
+  return firstGroup?.getAttribute("transform") || "";
 }
 
 /**
@@ -600,7 +647,7 @@ function addGroupBounds(bounds: BoundingBox, groups: GroupStyleAnnotation[]): vo
 
 function addShapeBounds(bounds: BoundingBox, shapes: FreeShapeAnnotation[]): void {
   for (const shape of shapes) {
-    if (shape.shapeType === 'line') {
+    if (shape.shapeType === "line") {
       const x1 = shape.position.x;
       const y1 = shape.position.y;
       const x2 = shape.endPosition?.x ?? shape.position.x;
@@ -608,8 +655,10 @@ function addShapeBounds(bounds: BoundingBox, shapes: FreeShapeAnnotation[]): voi
       mergeBounds(bounds, Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2));
     } else {
       const b = getCenterBasedBounds(
-        shape.position.x, shape.position.y,
-        shape.width ?? 50, shape.height ?? 50
+        shape.position.x,
+        shape.position.y,
+        shape.width ?? 50,
+        shape.height ?? 50
       );
       mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
     }
@@ -621,10 +670,10 @@ function getTextDimensions(text: FreeTextAnnotation): { w: number; h: number } {
     return { w: text.width, h: text.height };
   }
   const estimated = estimateTextDimensions(
-    text.text || '',
+    text.text || "",
     text.fontSize ?? 14,
-    text.fontFamily ?? 'sans-serif',
-    text.fontWeight ?? 'normal'
+    text.fontFamily ?? "sans-serif",
+    text.fontWeight ?? "normal"
   );
   return { w: text.width ?? estimated.width, h: text.height ?? estimated.height };
 }
@@ -653,25 +702,31 @@ function shiftGroupTransforms(svgEl: Element, shiftX: number, shiftY: number): v
   const children = svgEl.children;
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
-    if (child.tagName === 'g') {
-      const existingTransform = child.getAttribute('transform') || '';
+    if (child.tagName === "g") {
+      const existingTransform = child.getAttribute("transform") || "";
       const newTransform = existingTransform
         ? `translate(${shiftX}, ${shiftY}) ${existingTransform}`
         : `translate(${shiftX}, ${shiftY})`;
-      child.setAttribute('transform', newTransform);
+      child.setAttribute("transform", newTransform);
     }
   }
 }
 
-function shiftBackgroundRect(svgEl: Element, shiftX: number, shiftY: number, newWidth: number, newHeight: number): void {
-  const bgRect = svgEl.querySelector('rect');
-  if (bgRect && !bgRect.closest('g')) {
-    const rectX = parseFloat(bgRect.getAttribute('x') || '0');
-    const rectY = parseFloat(bgRect.getAttribute('y') || '0');
-    bgRect.setAttribute('x', (rectX + shiftX).toString());
-    bgRect.setAttribute('y', (rectY + shiftY).toString());
-    bgRect.setAttribute('width', newWidth.toString());
-    bgRect.setAttribute('height', newHeight.toString());
+function shiftBackgroundRect(
+  svgEl: Element,
+  shiftX: number,
+  shiftY: number,
+  newWidth: number,
+  newHeight: number
+): void {
+  const bgRect = svgEl.querySelector("rect");
+  if (bgRect && !bgRect.closest("g")) {
+    const rectX = parseFloat(bgRect.getAttribute("x") || "0");
+    const rectY = parseFloat(bgRect.getAttribute("y") || "0");
+    bgRect.setAttribute("x", (rectX + shiftX).toString());
+    bgRect.setAttribute("y", (rectY + shiftY).toString());
+    bgRect.setAttribute("width", newWidth.toString());
+    bgRect.setAttribute("height", newHeight.toString());
   }
 }
 
@@ -680,8 +735,8 @@ function shiftBackgroundRect(svgEl: Element, shiftX: number, shiftY: number, new
  * @param transform - The full transform string from cytoscape
  */
 function expandSvgBounds(svgEl: Element, annotationBounds: BoundingBox, transform: string): void {
-  const currentWidth = parseFloat(svgEl.getAttribute('width') || '0');
-  const currentHeight = parseFloat(svgEl.getAttribute('height') || '0');
+  const currentWidth = parseFloat(svgEl.getAttribute("width") || "0");
+  const currentHeight = parseFloat(svgEl.getAttribute("height") || "0");
 
   // Extract translate and scale from the transform
   const { tx, ty } = extractTranslateFromTransform(transform);
@@ -704,12 +759,13 @@ function expandSvgBounds(svgEl: Element, annotationBounds: BoundingBox, transfor
 
   const newWidth = newMaxX - newMinX;
   const newHeight = newMaxY - newMinY;
-  const needsExpansion = newMinX < 0 || newMinY < 0 || newWidth > currentWidth || newHeight > currentHeight;
+  const needsExpansion =
+    newMinX < 0 || newMinY < 0 || newWidth > currentWidth || newHeight > currentHeight;
 
   if (!needsExpansion) return;
 
-  svgEl.setAttribute('width', newWidth.toString());
-  svgEl.setAttribute('height', newHeight.toString());
+  svgEl.setAttribute("width", newWidth.toString());
+  svgEl.setAttribute("height", newHeight.toString());
 
   // If we expanded to negative coordinates, shift all content
   if (newMinX < 0 || newMinY < 0) {
@@ -748,17 +804,17 @@ export function compositeAnnotationsIntoSvg(
   const transform = extractCytoscapeTransform(svgEl);
 
   // Create annotation layer groups with the SAME transform as cytoscape content
-  const groupsLayer = doc.createElementNS(SVG_NS, 'g');
-  groupsLayer.setAttribute('class', ANNOTATION_GROUPS_LAYER);
-  groupsLayer.setAttribute('transform', transform);
+  const groupsLayer = doc.createElementNS(SVG_NS, "g");
+  groupsLayer.setAttribute("class", ANNOTATION_GROUPS_LAYER);
+  groupsLayer.setAttribute("transform", transform);
 
-  const shapesLayer = doc.createElementNS(SVG_NS, 'g');
-  shapesLayer.setAttribute('class', ANNOTATION_SHAPES_LAYER);
-  shapesLayer.setAttribute('transform', transform);
+  const shapesLayer = doc.createElementNS(SVG_NS, "g");
+  shapesLayer.setAttribute("class", ANNOTATION_SHAPES_LAYER);
+  shapesLayer.setAttribute("transform", transform);
 
-  const textLayer = doc.createElementNS(SVG_NS, 'g');
-  textLayer.setAttribute('class', ANNOTATION_TEXT_LAYER);
-  textLayer.setAttribute('transform', transform);
+  const textLayer = doc.createElementNS(SVG_NS, "g");
+  textLayer.setAttribute("class", ANNOTATION_TEXT_LAYER);
+  textLayer.setAttribute("transform", transform);
 
   // Sort by zIndex
   const sortedGroups = [...groups].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));

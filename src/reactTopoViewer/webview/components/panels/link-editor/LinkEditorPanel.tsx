@@ -1,14 +1,14 @@
 /**
  * Link Editor Panel - Multi-tab editor for link configuration
  */
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-import type { TabDefinition } from '../../shared/editor';
-import { EditorPanel } from '../../shared/editor';
+import type { TabDefinition } from "../../shared/editor";
+import { EditorPanel } from "../../shared/editor";
 
-import type { LinkEditorData, LinkEditorTabId } from './types';
-import { BasicTab } from './BasicTab';
-import { ExtendedTab, validateLinkEditorData } from './ExtendedTab';
+import type { LinkEditorData, LinkEditorTabId } from "./types";
+import { BasicTab } from "./BasicTab";
+import { ExtendedTab, validateLinkEditorData } from "./ExtendedTab";
 
 interface LinkEditorPanelProps {
   isVisible: boolean;
@@ -20,19 +20,17 @@ interface LinkEditorPanelProps {
 }
 
 const ALL_TABS: TabDefinition[] = [
-  { id: 'basic', label: 'Basic' },
-  { id: 'extended', label: 'Extended' }
+  { id: "basic", label: "Basic" },
+  { id: "extended", label: "Extended" }
 ];
 
-const BASIC_ONLY_TABS: TabDefinition[] = [
-  { id: 'basic', label: 'Basic' }
-];
+const BASIC_ONLY_TABS: TabDefinition[] = [{ id: "basic", label: "Basic" }];
 
 /**
  * Custom hook to manage link editor form state with change tracking
  */
 function useLinkEditorForm(linkData: LinkEditorData | null) {
-  const [activeTab, setActiveTab] = useState<LinkEditorTabId>('basic');
+  const [activeTab, setActiveTab] = useState<LinkEditorTabId>("basic");
   const [formData, setFormData] = useState<LinkEditorData | null>(null);
   const [initialData, setInitialData] = useState<string | null>(null);
   const initialDataRef = useRef<string | null>(null);
@@ -43,17 +41,16 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
 
   useEffect(() => {
     if (!linkData) return;
-    setFormData(prev => {
+    setFormData((prev) => {
       const isNewLink = !prev || prev.id !== linkData.id;
-      const hasPendingChanges = prev && initialDataRef.current
-        ? JSON.stringify(prev) !== initialDataRef.current
-        : false;
+      const hasPendingChanges =
+        prev && initialDataRef.current ? JSON.stringify(prev) !== initialDataRef.current : false;
       if (isNewLink || !hasPendingChanges) {
         const serialized = JSON.stringify(linkData);
         initialDataRef.current = serialized;
         setInitialData(serialized);
         if (isNewLink) {
-          setActiveTab('basic');
+          setActiveTab("basic");
         }
         return { ...linkData };
       }
@@ -62,7 +59,7 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
   }, [linkData]);
 
   const handleChange = useCallback((updates: Partial<LinkEditorData>) => {
-    setFormData(prev => prev ? { ...prev, ...updates } : null);
+    setFormData((prev) => (prev ? { ...prev, ...updates } : null));
   }, []);
 
   // Reset initial data after apply (to track further changes from the applied state)
@@ -75,7 +72,7 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
         originalSource: formData.source,
         originalTarget: formData.target,
         originalSourceEndpoint: formData.sourceEndpoint,
-        originalTargetEndpoint: formData.targetEndpoint,
+        originalTargetEndpoint: formData.targetEndpoint
       };
       setFormData(updatedFormData);
       setInitialData(JSON.stringify(updatedFormData));
@@ -83,7 +80,7 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
   }, [formData]);
 
   const markOffsetApplied = useCallback((offset?: number, enabled?: boolean) => {
-    setInitialData(prev => {
+    setInitialData((prev) => {
       if (!prev) return prev;
       try {
         const parsed = JSON.parse(prev) as LinkEditorData;
@@ -102,11 +99,17 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
   }, []);
 
   // Check if form has changes compared to initial state
-  const hasChanges = formData && initialData
-    ? JSON.stringify(formData) !== initialData
-    : false;
+  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
 
-  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, markOffsetApplied };
+  return {
+    activeTab,
+    setActiveTab,
+    formData,
+    handleChange,
+    hasChanges,
+    resetAfterApply,
+    markOffsetApplied
+  };
 }
 
 /**
@@ -119,9 +122,9 @@ const TabContent: React.FC<{
   onAutoApplyOffset?: (data: LinkEditorData) => void;
 }> = ({ activeTab, formData, onChange, onAutoApplyOffset }) => {
   switch (activeTab) {
-    case 'basic':
+    case "basic":
       return <BasicTab data={formData} onChange={onChange} onAutoApplyOffset={onAutoApplyOffset} />;
-    case 'extended':
+    case "extended":
       return <ExtendedTab data={formData} onChange={onChange} />;
     default:
       return null;
@@ -138,8 +141,8 @@ const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
     <div
       className="mb-2 p-2 rounded-sm"
       style={{
-        backgroundColor: 'var(--vscode-inputValidation-errorBackground)',
-        border: '1px solid var(--vscode-inputValidation-errorBorder)'
+        backgroundColor: "var(--vscode-inputValidation-errorBackground)",
+        border: "1px solid var(--vscode-inputValidation-errorBorder)"
       }}
     >
       <div className="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">
@@ -190,23 +193,26 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
     }
   }, [formData, validationErrors, onSave]);
 
-  const handleAutoApplyOffset = useCallback((nextData: LinkEditorData) => {
-    if (!onAutoApplyOffset) return;
-    onAutoApplyOffset(nextData);
-    markOffsetApplied(nextData.endpointLabelOffset, nextData.endpointLabelOffsetEnabled);
-  }, [onAutoApplyOffset, markOffsetApplied]);
+  const handleAutoApplyOffset = useCallback(
+    (nextData: LinkEditorData) => {
+      if (!onAutoApplyOffset) return;
+      onAutoApplyOffset(nextData);
+      markOffsetApplied(nextData.endpointLabelOffset, nextData.endpointLabelOffsetEnabled);
+    },
+    [onAutoApplyOffset, markOffsetApplied]
+  );
 
   if (!formData) return null;
 
-  const isNewLink = !linkData?.id || linkData.id.startsWith('temp-');
-  const title = isNewLink ? 'Create Link' : 'Link Editor';
+  const isNewLink = !linkData?.id || linkData.id.startsWith("temp-");
+  const title = isNewLink ? "Create Link" : "Link Editor";
 
   // Only show Extended tab for veth links (both endpoints are regular nodes)
   const isVethLink = !formData.sourceIsNetwork && !formData.targetIsNetwork;
   const tabs = isVethLink ? ALL_TABS : BASIC_ONLY_TABS;
 
   // Force basic tab if on extended tab but not a veth link
-  const effectiveActiveTab = (!isVethLink && activeTab === 'extended') ? 'basic' : activeTab;
+  const effectiveActiveTab = !isVethLink && activeTab === "extended" ? "basic" : activeTab;
 
   return (
     <EditorPanel

@@ -1,9 +1,9 @@
 /**
  * FormField - Label wrapper with optional tooltip and inheritance badge
  */
-import React from 'react';
+import React from "react";
 
-import { InheritanceBadge } from './Badge';
+import { InheritanceBadge } from "./Badge";
 
 interface FormFieldProps {
   label: string;
@@ -18,7 +18,7 @@ interface FormFieldProps {
 export const FormField: React.FC<FormFieldProps> = ({
   label,
   children,
-  className = '',
+  className = "",
   tooltip,
   required,
   inherited

@@ -8,46 +8,46 @@ import type { ClabLabTreeNode } from "../treeView/common";
 import { execCommandInTerminal } from "./command";
 
 interface ClabTopologyYaml {
-    mgmt?: {
-        network?: string;
-    };
+  mgmt?: {
+    network?: string;
+  };
 }
 
 function buildNetworkFromYaml(topoPath: string): string {
-    try {
-        const content = fs.readFileSync(topoPath, "utf8");
-        const doc = YAML.parse(content) as ClabTopologyYaml | null;
-        const net = doc?.mgmt?.network;
-        if (typeof net === 'string' && net.trim().length > 0) {
-            return net.trim();
-        }
-    } catch {
-        // ignore errors
+  try {
+    const content = fs.readFileSync(topoPath, "utf8");
+    const doc = YAML.parse(content) as ClabTopologyYaml | null;
+    const net = doc?.mgmt?.network;
+    if (typeof net === "string" && net.trim().length > 0) {
+      return net.trim();
     }
-    return "clab";
+  } catch {
+    // ignore errors
+  }
+  return "clab";
 }
 
 function runFcli(node: ClabLabTreeNode, cmd: string) {
-    if (!node) {
-        vscode.window.showErrorMessage('No lab node selected.');
-        return;
-    }
+  if (!node) {
+    vscode.window.showErrorMessage("No lab node selected.");
+    return;
+  }
 
-    const topo = node.labPath?.absolute;
-    if (!topo) {
-        vscode.window.showErrorMessage('No topology path found.');
-        return;
-    }
+  const topo = node.labPath?.absolute;
+  if (!topo) {
+    vscode.window.showErrorMessage("No topology path found.");
+    return;
+  }
 
-    const config = vscode.workspace.getConfiguration("containerlab");
-    const runtime = config.get<string>("runtime", "docker");
-    const extraArgs = config.get<string>("extras.fcli.extraDockerArgs", "")
+  const config = vscode.workspace.getConfiguration("containerlab");
+  const runtime = config.get<string>("runtime", "docker");
+  const extraArgs = config.get<string>("extras.fcli.extraDockerArgs", "");
 
-    const network = buildNetworkFromYaml(topo);
+  const network = buildNetworkFromYaml(topo);
 
-    const command = `${runtime} run --pull always -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${topo}":/topo.yml ${extraArgs} ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml ${cmd}`;
+  const command = `${runtime} run --pull always -it --network ${network} --rm -v /etc/hosts:/etc/hosts:ro -v "${topo}":/topo.yml ${extraArgs} ghcr.io/srl-labs/nornir-srl:latest -t /topo.yml ${cmd}`;
 
-    execCommandInTerminal(command, `fcli - ${node.label}`);
+  execCommandInTerminal(command, `fcli - ${node.label}`);
 }
 
 export const fcliBgpPeers = (node: ClabLabTreeNode) => runFcli(node, "bgp-peers");
@@ -60,12 +60,12 @@ export const fcliSubif = (node: ClabLabTreeNode) => runFcli(node, "subif");
 export const fcliSysInfo = (node: ClabLabTreeNode) => runFcli(node, "sys-info");
 
 export async function fcliCustom(node: ClabLabTreeNode) {
-    const val = await vscode.window.showInputBox({
-        title: 'Custom fcli command',
-        placeHolder: 'Enter command, e.g. bgp-peers',
-    });
-    if (!val || val.trim().length === 0) {
-        return;
-    }
-    runFcli(node, val.trim());
+  const val = await vscode.window.showInputBox({
+    title: "Custom fcli command",
+    placeHolder: "Enter command, e.g. bgp-peers"
+  });
+  if (!val || val.trim().length === 0) {
+    return;
+  }
+  runFcli(node, val.trim());
 }

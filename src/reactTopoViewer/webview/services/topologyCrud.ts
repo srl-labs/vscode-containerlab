@@ -4,16 +4,16 @@
  * Helper functions for node/link CRUD operations via TopologyIO.
  */
 
-import type { NodeSaveData } from '../../shared/io/NodePersistenceIO';
-import type { LinkSaveData } from '../../shared/io/LinkPersistenceIO';
+import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
+import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
 
-import { getTopologyIO, isServicesInitialized } from './serviceInitialization';
+import { getTopologyIO, isServicesInitialized } from "./serviceInitialization";
 
 // Re-export types for convenience
 export type { NodeSaveData, LinkSaveData };
 
 // Warning message
-const WARN_SERVICES_NOT_INIT = '[Services] Cannot perform operation: services not initialized';
+const WARN_SERVICES_NOT_INIT = "[Services] Cannot perform operation: services not initialized";
 
 /**
  * Create a new node via TopologyIO.
@@ -143,7 +143,7 @@ export async function deleteLink(linkData: LinkSaveData): Promise<void> {
 export interface NetworkNodeData {
   id: string;
   label: string;
-  type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy';
+  type: "host" | "mgmt-net" | "macvlan" | "vxlan" | "vxlan-stitch" | "dummy";
   position: { x: number; y: number };
 }
 
@@ -162,13 +162,13 @@ export async function createNetworkNode(data: NetworkNodeData): Promise<void> {
     const topologyIO = getTopologyIO();
     const yamlPath = topologyIO.getYamlFilePath();
     if (!yamlPath) {
-      console.warn('[Services] No YAML path available for network node creation');
+      console.warn("[Services] No YAML path available for network node creation");
       return;
     }
 
-    const { getAnnotationsIO } = await import('./serviceInitialization');
+    const { getAnnotationsIO } = await import("./serviceInitialization");
     const annotationsIO = getAnnotationsIO();
-    await annotationsIO.modifyAnnotations(yamlPath, ann => {
+    await annotationsIO.modifyAnnotations(yamlPath, (ann) => {
       if (!ann.networkNodeAnnotations) ann.networkNodeAnnotations = [];
       ann.networkNodeAnnotations.push({
         id: data.id,
@@ -188,7 +188,13 @@ export async function createNetworkNode(data: NetworkNodeData): Promise<void> {
  * In GeoMap mode, only geoCoordinates should be provided (position is omitted)
  * to avoid overwriting the preset position.
  */
-export async function saveNodePositions(positions: Array<{ id: string; position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } }>): Promise<void> {
+export async function saveNodePositions(
+  positions: Array<{
+    id: string;
+    position?: { x: number; y: number };
+    geoCoordinates?: { lat: number; lng: number };
+  }>
+): Promise<void> {
   if (!isServicesInitialized()) {
     console.warn(WARN_SERVICES_NOT_INIT);
     return;

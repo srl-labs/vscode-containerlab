@@ -2,13 +2,13 @@
  * Free Text Editor Panel - Draggable editor panel for text annotations
  * Uses BasePanel directly (no tabs needed)
  */
-import React, { useCallback } from 'react';
+import React, { useCallback } from "react";
 
-import { BasePanel } from '../../shared/editor/BasePanel';
-import type { FreeTextAnnotation } from '../../../../shared/types/topology';
-import { useGenericFormState, useEditorHandlers } from '../../../hooks/panels/useGenericFormState';
+import { BasePanel } from "../../shared/editor/BasePanel";
+import type { FreeTextAnnotation } from "../../../../shared/types/topology";
+import { useGenericFormState, useEditorHandlers } from "../../../hooks/panels/useGenericFormState";
 
-import { FreeTextFormContent } from './FreeTextFormContent';
+import { FreeTextFormContent } from "./FreeTextFormContent";
 
 interface FreeTextEditorPanelProps {
   isVisible: boolean;
@@ -18,7 +18,7 @@ interface FreeTextEditorPanelProps {
   onDelete?: (id: string) => void;
 }
 
-const getIsNew = (annotation: FreeTextAnnotation | null) => annotation?.text === '';
+const getIsNew = (annotation: FreeTextAnnotation | null) => annotation?.text === "";
 const canSave = (data: FreeTextAnnotation) => data.text.trim().length > 0;
 
 export const FreeTextEditorPanel: React.FC<FreeTextEditorPanelProps> = ({
@@ -51,7 +51,7 @@ export const FreeTextEditorPanel: React.FC<FreeTextEditorPanelProps> = ({
 
   return (
     <BasePanel
-      title={isNew ? 'Add Text' : 'Edit Text'}
+      title={isNew ? "Add Text" : "Edit Text"}
       isVisible={isVisible}
       onClose={onClose}
       onPrimaryClick={handleSaveAndClose}

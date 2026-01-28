@@ -2,12 +2,12 @@
  * Free text annotation types and helpers
  * Consolidated from: freeTextTypes.ts + freeTextHelpers.ts + freeTextLayerHelpers.ts
  */
-import type { Core as CyCore } from 'cytoscape';
-import type React from 'react';
+import type { Core as CyCore } from "cytoscape";
+import type React from "react";
 
-import type { FreeTextAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
-import type { MapLibreState } from '../canvas/maplibreUtils';
-import { projectAnnotationGeoCoords, calculateScale } from '../canvas/maplibreUtils';
+import type { FreeTextAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
+import type { MapLibreState } from "../canvas/maplibreUtils";
+import { projectAnnotationGeoCoords, calculateScale } from "../canvas/maplibreUtils";
 
 import {
   generateAnnotationId as generateId,
@@ -16,8 +16,8 @@ import {
   updateAnnotationInList as genericUpdateInList,
   updateAnnotationRotation as genericUpdateRotation,
   saveAnnotationToList as genericSaveToList,
-  duplicateAnnotations as genericDuplicateAnnotations,
-} from './sharedAnnotationHelpers';
+  duplicateAnnotations as genericDuplicateAnnotations
+} from "./sharedAnnotationHelpers";
 
 // Re-export for consumers
 export type { FreeTextAnnotation };
@@ -28,8 +28,8 @@ export { SAVE_DEBOUNCE_MS, PASTE_OFFSET };
 // ============================================================================
 
 export const DEFAULT_FONT_SIZE = 14;
-export const DEFAULT_FONT_COLOR = '#FFFFFF';
-export const DEFAULT_BACKGROUND_COLOR = 'transparent';
+export const DEFAULT_FONT_COLOR = "#FFFFFF";
+export const DEFAULT_BACKGROUND_COLOR = "transparent";
 
 // ============================================================================
 // Types
@@ -37,7 +37,7 @@ export const DEFAULT_BACKGROUND_COLOR = 'transparent';
 
 export interface UseFreeTextAnnotationsOptions {
   cy: CyCore | null;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
   groups?: GroupStyleAnnotation[];
@@ -70,7 +70,8 @@ export interface AnnotationSelectionMethods {
   hasClipboardContent: () => boolean;
 }
 
-export interface UseFreeTextAnnotationsReturn extends AnnotationActionMethods, AnnotationSelectionMethods {
+export interface UseFreeTextAnnotationsReturn
+  extends AnnotationActionMethods, AnnotationSelectionMethods {
   annotations: FreeTextAnnotation[];
   editingAnnotation: FreeTextAnnotation | null;
   isAddTextMode: boolean;
@@ -78,12 +79,15 @@ export interface UseFreeTextAnnotationsReturn extends AnnotationActionMethods, A
   disableAddTextMode: () => void;
   handleCanvasClick: (position: { x: number; y: number }) => void;
   editAnnotation: (id: string) => void;
-  getUndoRedoAction: (before: FreeTextAnnotation | null, after: FreeTextAnnotation | null) => AnnotationUndoAction;
+  getUndoRedoAction: (
+    before: FreeTextAnnotation | null,
+    after: FreeTextAnnotation | null
+  ) => AnnotationUndoAction;
 }
 
 export interface AnnotationUndoAction {
-  type: 'annotation';
-  annotationType: 'freeText';
+  type: "annotation";
+  annotationType: "freeText";
   before: FreeTextAnnotation | null;
   after: FreeTextAnnotation | null;
   [key: string]: unknown;
@@ -94,7 +98,7 @@ export interface AnnotationUndoAction {
 // ============================================================================
 
 export function generateAnnotationId(): string {
-  return generateId('freeText');
+  return generateId("freeText");
 }
 
 // ============================================================================
@@ -104,16 +108,16 @@ export function generateAnnotationId(): string {
 export function createDefaultAnnotation(position: { x: number; y: number }): FreeTextAnnotation {
   return {
     id: generateAnnotationId(),
-    text: '',
+    text: "",
     position: { x: Math.round(position.x), y: Math.round(position.y) },
     fontSize: DEFAULT_FONT_SIZE,
     fontColor: DEFAULT_FONT_COLOR,
     backgroundColor: DEFAULT_BACKGROUND_COLOR,
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    textDecoration: 'none',
-    textAlign: 'left',
-    fontFamily: 'monospace',
+    fontWeight: "normal",
+    fontStyle: "normal",
+    textDecoration: "none",
+    textAlign: "left",
+    fontFamily: "monospace",
     rotation: 0,
     roundedBackground: true
   };
@@ -123,7 +127,9 @@ export function createDefaultAnnotation(position: { x: number; y: number }): Fre
 // Style Extraction
 // ============================================================================
 
-export function extractStyleFromAnnotation(annotation: FreeTextAnnotation): Partial<FreeTextAnnotation> {
+export function extractStyleFromAnnotation(
+  annotation: FreeTextAnnotation
+): Partial<FreeTextAnnotation> {
   return {
     fontSize: annotation.fontSize,
     fontColor: annotation.fontColor,
@@ -206,13 +212,21 @@ export function duplicateAnnotations(
 // Coordinate Conversion
 // ============================================================================
 
-export function modelToRendered(cy: CyCore, modelX: number, modelY: number): { x: number; y: number; zoom: number } {
+export function modelToRendered(
+  cy: CyCore,
+  modelX: number,
+  modelY: number
+): { x: number; y: number; zoom: number } {
   const pan = cy.pan();
   const zoom = cy.zoom();
   return { x: modelX * zoom + pan.x, y: modelY * zoom + pan.y, zoom };
 }
 
-export function renderedToModel(cy: CyCore, renderedX: number, renderedY: number): { x: number; y: number } {
+export function renderedToModel(
+  cy: CyCore,
+  renderedX: number,
+  renderedY: number
+): { x: number; y: number } {
   const pan = cy.pan();
   const zoom = cy.zoom();
   return { x: (renderedX - pan.x) / zoom, y: (renderedY - pan.y) / zoom };
@@ -246,13 +260,13 @@ export function modelToRenderedGeo(
 // ============================================================================
 
 export function getCursorStyle(isLocked: boolean, isDragging: boolean): string {
-  if (isLocked) return 'default';
-  return isDragging ? 'grabbing' : 'grab';
+  if (isLocked) return "default";
+  return isDragging ? "grabbing" : "grab";
 }
 
 export function getBorderRadius(hasBackground: boolean, roundedBackground?: boolean): string {
-  if (!hasBackground) return '0';
-  return roundedBackground !== false ? '4px' : '0';
+  if (!hasBackground) return "0";
+  return roundedBackground !== false ? "4px" : "0";
 }
 
 // ============================================================================
@@ -269,30 +283,38 @@ export interface RenderedPosition {
 // Style Computation - Split into smaller functions
 // ============================================================================
 
-function computeBaseStyle(annotation: FreeTextAnnotation, _renderedPos: RenderedPosition): React.CSSProperties {
+function computeBaseStyle(
+  annotation: FreeTextAnnotation,
+  _renderedPos: RenderedPosition
+): React.CSSProperties {
   // Base font size - scaling is done via transform: scale(zoom) on the wrapper
   const baseFontSize = annotation.fontSize || 14;
   return {
     // Position/transform are handled by the wrapper in FreeTextLayer
     fontSize: `${baseFontSize}px`,
-    fontFamily: annotation.fontFamily || 'monospace',
-    fontWeight: annotation.fontWeight || 'normal',
-    fontStyle: annotation.fontStyle || 'normal',
-    textDecoration: annotation.textDecoration || 'none',
-    textAlign: annotation.textAlign || 'left',
-    color: annotation.fontColor || '#FFFFFF',
-    userSelect: 'none',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    pointerEvents: 'auto'
+    fontFamily: annotation.fontFamily || "monospace",
+    fontWeight: annotation.fontWeight || "normal",
+    fontStyle: annotation.fontStyle || "normal",
+    textDecoration: annotation.textDecoration || "none",
+    textAlign: annotation.textAlign || "left",
+    color: annotation.fontColor || "#FFFFFF",
+    userSelect: "none",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    pointerEvents: "auto"
   };
 }
 
-function computeBackgroundStyle(annotation: FreeTextAnnotation, _renderedPos: RenderedPosition): React.CSSProperties {
-  const hasBackground = Boolean(annotation.backgroundColor && annotation.backgroundColor !== 'transparent');
+function computeBackgroundStyle(
+  annotation: FreeTextAnnotation,
+  _renderedPos: RenderedPosition
+): React.CSSProperties {
+  const hasBackground = Boolean(
+    annotation.backgroundColor && annotation.backgroundColor !== "transparent"
+  );
   const style: React.CSSProperties = {
-    backgroundColor: hasBackground ? annotation.backgroundColor : 'transparent',
-    padding: hasBackground ? '4px 8px' : '2px',
+    backgroundColor: hasBackground ? annotation.backgroundColor : "transparent",
+    padding: hasBackground ? "4px 8px" : "2px",
     borderRadius: getBorderRadius(hasBackground, annotation.roundedBackground)
   };
 
@@ -301,8 +323,8 @@ function computeBackgroundStyle(annotation: FreeTextAnnotation, _renderedPos: Re
   if (annotation.width) {
     style.width = `${annotation.width}px`;
   } else {
-    style.maxWidth = '300px';
-    style.minWidth = '20px';
+    style.maxWidth = "300px";
+    style.minWidth = "20px";
   }
   if (annotation.height) {
     style.height = `${annotation.height}px`;
@@ -316,14 +338,14 @@ function computeBackgroundStyle(annotation: FreeTextAnnotation, _renderedPos: Re
 
 function computeInteractionStyle(isDragging: boolean): React.CSSProperties {
   return {
-    boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.3)' : 'none',
-    transition: isDragging ? 'none' : 'box-shadow 0.15s ease'
+    boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.3)" : "none",
+    transition: isDragging ? "none" : "box-shadow 0.15s ease"
   };
 }
 
 function computeTextShadow(hasBackground: boolean): React.CSSProperties {
   if (hasBackground) return {};
-  return { textShadow: '0 0 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)' };
+  return { textShadow: "0 0 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)" };
 }
 
 export function computeAnnotationStyle(
@@ -333,7 +355,9 @@ export function computeAnnotationStyle(
   _isHovered: boolean,
   _isLocked: boolean
 ): React.CSSProperties {
-  const hasBackground = Boolean(annotation.backgroundColor && annotation.backgroundColor !== 'transparent');
+  const hasBackground = Boolean(
+    annotation.backgroundColor && annotation.backgroundColor !== "transparent"
+  );
   return {
     ...computeBaseStyle(annotation, renderedPos),
     ...computeBackgroundStyle(annotation, renderedPos),

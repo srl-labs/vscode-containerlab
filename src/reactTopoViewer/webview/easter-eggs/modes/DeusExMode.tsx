@@ -6,11 +6,11 @@
  * Renders behind nodes by inserting canvas into cytoscape container.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useEffect, useRef, useState } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { lerpColor, applyNodeGlow, restoreNodeStyles } from '../shared';
-import type { RGBColor } from '../shared';
+import { lerpColor, applyNodeGlow, restoreNodeStyles } from "../shared";
+import type { RGBColor } from "../shared";
 
 interface DeusExModeProps {
   isActive: boolean;
@@ -22,13 +22,13 @@ interface DeusExModeProps {
 
 /** Deus Ex color palette with neon accents */
 const COLORS: Record<string, RGBColor> = {
-  silver: { r: 192, g: 192, b: 192 },    // Primary silver
-  chrome: { r: 220, g: 220, b: 225 },    // Chrome accent
-  steel: { r: 113, g: 121, b: 126 },     // Steel gray
-  dark: { r: 15, g: 18, b: 22 },         // Near-black background
+  silver: { r: 192, g: 192, b: 192 }, // Primary silver
+  chrome: { r: 220, g: 220, b: 225 }, // Chrome accent
+  steel: { r: 113, g: 121, b: 126 }, // Steel gray
+  dark: { r: 15, g: 18, b: 22 }, // Near-black background
   highlight: { r: 255, g: 255, b: 255 }, // White shine
-  cyan: { r: 0, g: 255, b: 255 },        // Neon cyan
-  magenta: { r: 255, g: 0, b: 255 },     // Neon magenta
+  cyan: { r: 0, g: 255, b: 255 }, // Neon cyan
+  magenta: { r: 255, g: 0, b: 255 } // Neon magenta
 };
 
 /** Containerlab SVG content with original blue water/bubbles */
@@ -42,7 +42,7 @@ const CONTAINERLAB_SVG_CONTENT = `<?xml version="1.0" encoding="utf-8"?>
 </svg>`;
 
 /** Containerlab SVG as data URL */
-const CONTAINERLAB_SVG = 'data:image/svg+xml,' + encodeURIComponent(CONTAINERLAB_SVG_CONTENT);
+const CONTAINERLAB_SVG = "data:image/svg+xml," + encodeURIComponent(CONTAINERLAB_SVG_CONTENT);
 
 /**
  * Hook to create a canvas layer below cytoscape nodes for the rotating logo.
@@ -65,12 +65,12 @@ function useDeusExLayer(
     if (!container) return undefined;
 
     // Create canvas element and insert as first child (behind cytoscape canvases)
-    const canvas = document.createElement('canvas');
-    canvas.style.position = 'absolute';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '0'; // Behind cytoscape which has z-index: 2
+    const canvas = document.createElement("canvas");
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.pointerEvents = "none";
+    canvas.style.zIndex = "0"; // Behind cytoscape which has z-index: 2
     container.insertBefore(canvas, container.firstChild);
     canvasRef.current = canvas;
 
@@ -79,7 +79,7 @@ function useDeusExLayer(
     logo.src = CONTAINERLAB_SVG;
     logoRef.current = logo;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return undefined;
 
     // Use devicePixelRatio for sharp rendering
@@ -227,13 +227,17 @@ function drawLogoGlow(
   const intensity = 0.15 + Math.abs(Math.sin(angle)) * 0.1;
 
   const gradient = ctx.createRadialGradient(
-    centerX, centerY, glowSize * 0.2,
-    centerX, centerY, glowSize * 1.2
+    centerX,
+    centerY,
+    glowSize * 0.2,
+    centerX,
+    centerY,
+    glowSize * 1.2
   );
 
   gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${intensity})`);
   gradient.addColorStop(0.4, `rgba(${color.r}, ${color.g}, ${color.b}, ${intensity * 0.5})`);
-  gradient.addColorStop(1, 'transparent');
+  gradient.addColorStop(1, "transparent");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
@@ -258,12 +262,12 @@ function useDeusExNodeGlow(
     const nodes = cyInstance.nodes();
 
     // Store original styles
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        'background-color': node.style('background-color') as string,
-        'border-color': node.style('border-color') as string,
-        'border-width': node.style('border-width') as string,
+        "background-color": node.style("background-color") as string,
+        "border-color": node.style("border-color") as string,
+        "border-width": node.style("border-width") as string
       });
     });
 
@@ -301,7 +305,7 @@ export const DeusExMode: React.FC<DeusExModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance,
+  cyInstance
 }) => {
   const [visible, setVisible] = useState(false);
   const timeRef = useRef<number>(0);
@@ -357,18 +361,19 @@ export const DeusExMode: React.FC<DeusExModeProps> = ({
         <button
           onClick={handleSwitch}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(113, 121, 126, 0.4) 0%, rgba(70, 75, 80, 0.4) 100%)',
-            border: '2px solid rgba(192, 192, 192, 0.5)',
-            color: '#c0c0c0',
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
-            fontSize: '14px',
+            background:
+              "linear-gradient(135deg, rgba(113, 121, 126, 0.4) 0%, rgba(70, 75, 80, 0.4) 100%)",
+            border: "2px solid rgba(192, 192, 192, 0.5)",
+            color: "#c0c0c0",
+            cursor: "pointer",
+            backdropFilter: "blur(10px)",
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(220, 220, 225, 0.8)',
-            boxShadow: '0 0 20px rgba(113, 121, 126, 0.3), inset 0 0 20px rgba(192, 192, 192, 0.1)',
+            textShadow: "0 0 10px rgba(220, 220, 225, 0.8)",
+            boxShadow: "0 0 20px rgba(113, 121, 126, 0.3), inset 0 0 20px rgba(192, 192, 192, 0.1)"
           }}
           title={`Current: ${modeName}`}
         >
@@ -377,18 +382,19 @@ export const DeusExMode: React.FC<DeusExModeProps> = ({
         <button
           onClick={handleClose}
           className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(192, 192, 192, 0.7) 0%, rgba(113, 121, 126, 0.7) 100%)',
-            border: '2px solid rgba(220, 220, 225, 0.5)',
-            color: '#dcdce1',
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
-            fontSize: '14px',
+            background:
+              "linear-gradient(135deg, rgba(192, 192, 192, 0.7) 0%, rgba(113, 121, 126, 0.7) 100%)",
+            border: "2px solid rgba(220, 220, 225, 0.5)",
+            color: "#dcdce1",
+            cursor: "pointer",
+            backdropFilter: "blur(10px)",
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(255, 255, 255, 0.8)',
-            boxShadow: '0 0 20px rgba(192, 192, 192, 0.5), inset 0 0 20px rgba(220, 220, 225, 0.1)',
+            textShadow: "0 0 10px rgba(255, 255, 255, 0.8)",
+            boxShadow: "0 0 20px rgba(192, 192, 192, 0.5), inset 0 0 20px rgba(220, 220, 225, 0.1)"
           }}
         >
           Shutdown

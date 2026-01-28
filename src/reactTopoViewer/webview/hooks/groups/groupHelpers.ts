@@ -2,19 +2,15 @@
  * Helper functions for overlay-based group management.
  * Groups are rendered as HTML/SVG overlays, not Cytoscape nodes.
  */
-import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { log } from '../../utils/logger';
-import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import { log } from "../../utils/logger";
+import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from "../../services";
 
-import {
-  DEFAULT_GROUP_STYLE,
-  DEFAULT_GROUP_WIDTH,
-  DEFAULT_GROUP_HEIGHT
-} from './groupTypes';
+import { DEFAULT_GROUP_STYLE, DEFAULT_GROUP_WIDTH, DEFAULT_GROUP_HEIGHT } from "./groupTypes";
 
 /** Command name for saving node group membership */
-export const CMD_SAVE_NODE_GROUP_MEMBERSHIP = 'save-node-group-membership';
-export const CMD_SAVE_GROUP_ANNOTATIONS = 'save-group-annotations';
+export const CMD_SAVE_NODE_GROUP_MEMBERSHIP = "save-node-group-membership";
+export const CMD_SAVE_GROUP_ANNOTATIONS = "save-group-annotations";
 
 /** Debounce time for saving to extension */
 export const GROUP_SAVE_DEBOUNCE_MS = 300;
@@ -26,7 +22,7 @@ export function generateGroupId(existingGroups: GroupStyleAnnotation[]): string 
   let counter = 1;
   let newId = `group-${counter}`;
 
-  const existingIds = new Set(existingGroups.map(g => g.id));
+  const existingIds = new Set(existingGroups.map((g) => g.id));
   while (existingIds.has(newId)) {
     counter++;
     newId = `group-${counter}`;
@@ -40,8 +36,8 @@ export function generateGroupId(existingGroups: GroupStyleAnnotation[]): string 
  * Legacy IDs used the format "name:level".
  */
 export function parseGroupId(groupId: string): { name: string; level: string } {
-  const [name, level] = groupId.split(':');
-  return { name: name || '', level: level || '1' };
+  const [name, level] = groupId.split(":");
+  return { name: name || "", level: level || "1" };
 }
 
 /**
@@ -52,7 +48,7 @@ export function saveNodeMembership(
   group: { id: string; name?: string; level?: string } | null
 ): void {
   if (!isServicesInitialized()) {
-    log.warn('[Groups] Services not initialized for membership save');
+    log.warn("[Groups] Services not initialized for membership save");
     return;
   }
 
@@ -61,7 +57,7 @@ export function saveNodeMembership(
 
   const yamlPath = topologyIO.getYamlFilePath();
   if (!yamlPath) {
-    log.warn('[Groups] No YAML path for membership save');
+    log.warn("[Groups] No YAML path for membership save");
     return;
   }
 
@@ -69,29 +65,31 @@ export function saveNodeMembership(
   const groupName = group?.name ?? null;
   const groupLevel = group?.level ?? null;
 
-  annotationsIO.modifyAnnotations(yamlPath, annotations => {
-    if (!annotations.nodeAnnotations) {
-      annotations.nodeAnnotations = [];
-    }
+  annotationsIO
+    .modifyAnnotations(yamlPath, (annotations) => {
+      if (!annotations.nodeAnnotations) {
+        annotations.nodeAnnotations = [];
+      }
 
-    const existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
-    if (existing) {
-      existing.groupId = groupId ?? undefined;
-      existing.group = groupName ?? undefined;
-      existing.level = groupLevel ?? undefined;
-    } else {
-      annotations.nodeAnnotations.push({
-        id: nodeId,
-        groupId: groupId ?? undefined,
-        group: groupName ?? undefined,
-        level: groupLevel ?? undefined
-      });
-    }
+      const existing = annotations.nodeAnnotations.find((n) => n.id === nodeId);
+      if (existing) {
+        existing.groupId = groupId ?? undefined;
+        existing.group = groupName ?? undefined;
+        existing.level = groupLevel ?? undefined;
+      } else {
+        annotations.nodeAnnotations.push({
+          id: nodeId,
+          groupId: groupId ?? undefined,
+          group: groupName ?? undefined,
+          level: groupLevel ?? undefined
+        });
+      }
 
-    return annotations;
-  }).catch(err => {
-    log.error(`[Groups] Failed to save membership: ${err}`);
-  });
+      return annotations;
+    })
+    .catch((err) => {
+      log.error(`[Groups] Failed to save membership: ${err}`);
+    });
 }
 
 /**
@@ -103,7 +101,7 @@ export function buildGroupId(name: string, level: string): string {
 }
 
 /** Keys to exclude when copying last style (geometry and identity) */
-const EXCLUDED_STYLE_KEYS = new Set(['width', 'height', 'position', 'id', 'name', 'level']);
+const EXCLUDED_STYLE_KEYS = new Set(["width", "height", "position", "id", "name", "level"]);
 
 /**
  * Create a new group with default values.
@@ -183,8 +181,8 @@ export function calculateBoundingBox(
     return { position: { x: 0, y: 0 }, width: DEFAULT_GROUP_WIDTH, height: DEFAULT_GROUP_HEIGHT };
   }
 
-  const xs = positions.map(p => p.x);
-  const ys = positions.map(p => p.y);
+  const xs = positions.map((p) => p.x);
+  const ys = positions.map((p) => p.y);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
@@ -211,7 +209,7 @@ export function updateGroupInList(
   groupId: string,
   updates: Partial<GroupStyleAnnotation>
 ): GroupStyleAnnotation[] {
-  return groups.map(g => (g.id === groupId ? { ...g, ...updates } : g));
+  return groups.map((g) => (g.id === groupId ? { ...g, ...updates } : g));
 }
 
 /**
@@ -221,7 +219,7 @@ export function removeGroupFromList(
   groups: GroupStyleAnnotation[],
   groupId: string
 ): GroupStyleAnnotation[] {
-  return groups.filter(g => g.id !== groupId);
+  return groups.filter((g) => g.id !== groupId);
 }
 
 /**
@@ -255,7 +253,7 @@ export function isGroupInSelectionBox(
  */
 export function createGroupInserter(group: GroupStyleAnnotation) {
   return (prev: GroupStyleAnnotation[]): GroupStyleAnnotation[] => {
-    const existing = prev.find(g => g.id === group.id);
+    const existing = prev.find((g) => g.id === group.id);
     if (existing) return prev;
     return [...prev, group];
   };
@@ -267,7 +265,7 @@ export function createGroupInserter(group: GroupStyleAnnotation) {
  */
 export function createGroupRemover(groupId: string) {
   return (prev: GroupStyleAnnotation[]): GroupStyleAnnotation[] =>
-    prev.filter(g => g.id !== groupId);
+    prev.filter((g) => g.id !== groupId);
 }
 
 /**
@@ -276,11 +274,11 @@ export function createGroupRemover(groupId: string) {
  */
 export function createGroupUpserter(group: GroupStyleAnnotation) {
   return (prev: GroupStyleAnnotation[]): GroupStyleAnnotation[] => {
-    const exists = prev.some(g => g.id === group.id);
+    const exists = prev.some((g) => g.id === group.id);
     if (!exists) {
       return [...prev, group];
     }
-    return prev.map(g => (g.id === group.id ? group : g));
+    return prev.map((g) => (g.id === group.id ? group : g));
   };
 }
 
@@ -288,33 +286,33 @@ export function createGroupUpserter(group: GroupStyleAnnotation) {
  * Get label position styles based on labelPosition setting.
  * Labels are positioned OUTSIDE the group border.
  */
-export function getLabelPositionStyles(labelPosition: string = 'top-center'): {
+export function getLabelPositionStyles(labelPosition: string = "top-center"): {
   top?: string;
   bottom?: string;
   left?: string;
   right?: string;
-  textAlign: 'left' | 'center' | 'right';
+  textAlign: "left" | "center" | "right";
   transform: string;
 } {
-  const baseTransform = 'translateX(-50%)';
+  const baseTransform = "translateX(-50%)";
   // Position labels outside the border (negative offset moves them out)
-  const topOffset = '-18px';
-  const bottomOffset = '-18px';
+  const topOffset = "-18px";
+  const bottomOffset = "-18px";
 
   switch (labelPosition) {
-    case 'top-left':
-      return { top: topOffset, left: '0', textAlign: 'left', transform: 'none' };
-    case 'top-center':
-      return { top: topOffset, left: '50%', textAlign: 'center', transform: baseTransform };
-    case 'top-right':
-      return { top: topOffset, right: '0', textAlign: 'right', transform: 'none' };
-    case 'bottom-left':
-      return { bottom: bottomOffset, left: '0', textAlign: 'left', transform: 'none' };
-    case 'bottom-center':
-      return { bottom: bottomOffset, left: '50%', textAlign: 'center', transform: baseTransform };
-    case 'bottom-right':
-      return { bottom: bottomOffset, right: '0', textAlign: 'right', transform: 'none' };
+    case "top-left":
+      return { top: topOffset, left: "0", textAlign: "left", transform: "none" };
+    case "top-center":
+      return { top: topOffset, left: "50%", textAlign: "center", transform: baseTransform };
+    case "top-right":
+      return { top: topOffset, right: "0", textAlign: "right", transform: "none" };
+    case "bottom-left":
+      return { bottom: bottomOffset, left: "0", textAlign: "left", transform: "none" };
+    case "bottom-center":
+      return { bottom: bottomOffset, left: "50%", textAlign: "center", transform: baseTransform };
+    case "bottom-right":
+      return { bottom: bottomOffset, right: "0", textAlign: "right", transform: "none" };
     default:
-      return { top: topOffset, left: '50%', textAlign: 'center', transform: baseTransform };
+      return { top: topOffset, left: "50%", textAlign: "center", transform: baseTransform };
   }
 }

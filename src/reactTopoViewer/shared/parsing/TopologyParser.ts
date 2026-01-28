@@ -3,9 +3,9 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import * as YAML from 'yaml';
+import * as YAML from "yaml";
 
-import type { ClabTopology, CyElement, TopologyAnnotations } from '../types/topology';
+import type { ClabTopology, CyElement, TopologyAnnotations } from "../types/topology";
 
 import type {
   ParseOptions,
@@ -14,23 +14,20 @@ import type {
   DummyContext,
   InterfacePatternMigration,
   GraphLabelMigration,
-  ParserLogger,
-} from './types';
-import { nullLogger } from './types';
-import { computeFullPrefix, getLabName, getTopologyNodeIds, isPresetLayout } from './utils';
-import { addNodeElements } from './NodeElementBuilder';
-import { addEdgeElements } from './EdgeElementBuilder';
-import { collectSpecialNodes, addCloudNodes } from './SpecialNodeHandler';
+  ParserLogger
+} from "./types";
+import { nullLogger } from "./types";
+import { computeFullPrefix, getLabName, getTopologyNodeIds, isPresetLayout } from "./utils";
+import { addNodeElements } from "./NodeElementBuilder";
+import { addEdgeElements } from "./EdgeElementBuilder";
+import { collectSpecialNodes, addCloudNodes } from "./SpecialNodeHandler";
 import {
   addAliasNodesFromAnnotations,
   applyAliasMappingsToEdges,
-  hideBaseBridgeNodesWithAliases,
-} from './AliasNodeHandler';
-import { createDummyContext } from './LinkNormalizer';
-import {
-  detectGraphLabelMigrations,
-  applyGraphLabelMigrations,
-} from './GraphLabelMigrator';
+  hideBaseBridgeNodesWithAliases
+} from "./AliasNodeHandler";
+import { createDummyContext } from "./LinkNormalizer";
+import { detectGraphLabelMigrations, applyGraphLabelMigrations } from "./GraphLabelMigrator";
 
 // ============================================================================
 // Main Parser Class
@@ -94,7 +91,7 @@ export class TopologyParser {
       containerDataProvider: options.containerDataProvider,
       logger: log,
       labName,
-      prefix,
+      prefix
     });
 
     return {
@@ -103,19 +100,16 @@ export class TopologyParser {
       prefix,
       isPresetLayout: result.isPresetLayout,
       pendingMigrations: result.interfacePatternMigrations,
-      graphLabelMigrations,
+      graphLabelMigrations
     };
   }
 
   /**
    * Parses YAML for editor mode (no container data).
    */
-  static parseForEditor(
-    yamlContent: string,
-    annotations?: TopologyAnnotations
-  ): ParseResult {
+  static parseForEditor(yamlContent: string, annotations?: TopologyAnnotations): ParseResult {
     return TopologyParser.parse(yamlContent, {
-      annotations,
+      annotations
     });
   }
 
@@ -131,7 +125,7 @@ export class TopologyParser {
     return TopologyParser.parse(yamlContent, {
       annotations,
       containerDataProvider,
-      logger,
+      logger
     });
   }
 
@@ -173,7 +167,7 @@ export class TopologyParser {
       includeContainerData: Boolean(options.containerDataProvider),
       containerDataProvider: options.containerDataProvider,
       annotations: options.annotations,
-      logger: options.logger,
+      logger: options.logger
     };
 
     // Add node elements
@@ -219,7 +213,7 @@ export class TopologyParser {
     return {
       elements,
       isPresetLayout: preset,
-      interfacePatternMigrations: migrations,
+      interfacePatternMigrations: migrations
     };
   }
 }
@@ -232,10 +226,7 @@ export class TopologyParser {
  * Parses a topology YAML string.
  * Convenience function that wraps TopologyParser.parse().
  */
-export function parseTopology(
-  yamlContent: string,
-  options?: ParseOptions
-): ParseResult {
+export function parseTopology(yamlContent: string, options?: ParseOptions): ParseResult {
   return TopologyParser.parse(yamlContent, options);
 }
 

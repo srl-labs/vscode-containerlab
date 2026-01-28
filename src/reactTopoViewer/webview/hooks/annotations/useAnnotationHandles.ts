@@ -1,15 +1,15 @@
 /**
  * Hooks for annotation rotation and resize handles
  */
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import type React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { FreeShapeAnnotation } from '../../../shared/types/topology';
-import { handleDragStart, addMouseMoveUpListeners } from '../shared/dragHelpers';
+import type { FreeShapeAnnotation } from "../../../shared/types/topology";
+import { handleDragStart, addMouseMoveUpListeners } from "../shared/dragHelpers";
 
-import type { RenderedPosition } from './freeText';
-import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from './freeShape';
+import type { RenderedPosition } from "./freeText";
+import { MIN_SHAPE_SIZE, DEFAULT_LINE_LENGTH } from "./freeShape";
 
 // ============================================================================
 // Rotation Hook
@@ -51,7 +51,8 @@ function normalizeRotation(rotation: number): number {
 }
 
 export function useRotationDrag(options: UseRotationDragOptions): UseRotationDragReturn {
-  const { cy, renderedPos, currentRotation, isLocked, onRotationChange, onDragStart, onDragEnd } = options;
+  const { cy, renderedPos, currentRotation, isLocked, onRotationChange, onDragStart, onDragEnd } =
+    options;
 
   const [isRotating, setIsRotating] = useState(false);
   const dragStartRef = useRef<RotationDragStart | null>(null);
@@ -68,7 +69,9 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
       const newRotation = normalizeRotation(startRotation + angleDelta);
 
       // Snap to 15-degree increments if shift is held
-      const snappedRotation = e.shiftKey ? Math.round(newRotation / 15) * 15 : Math.round(newRotation);
+      const snappedRotation = e.shiftKey
+        ? Math.round(newRotation / 15) * 15
+        : Math.round(newRotation);
       onRotationChange(snappedRotation);
     };
 
@@ -82,36 +85,39 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
       beforeStateRef.current = null;
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isRotating, onRotationChange, onDragEnd]);
 
-  const handleRotationMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
+  const handleRotationMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
 
-    // Get the center of the annotation in screen coordinates
-    const container = cy.container();
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const centerX = rect.left + renderedPos.x;
-    const centerY = rect.top + renderedPos.y;
+      // Get the center of the annotation in screen coordinates
+      const container = cy.container();
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const centerX = rect.left + renderedPos.x;
+      const centerY = rect.top + renderedPos.y;
 
-    const startAngle = calculateAngle(centerX, centerY, e.clientX, e.clientY);
+      const startAngle = calculateAngle(centerX, centerY, e.clientX, e.clientY);
 
-    setIsRotating(true);
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      centerX,
-      centerY,
-      startAngle,
-      currentRotation
-    };
-  }, [cy, isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]);
+      setIsRotating(true);
+      dragStartRef.current = {
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        centerX,
+        centerY,
+        startAngle,
+        currentRotation
+      };
+    },
+    [cy, isLocked, renderedPos.x, renderedPos.y, currentRotation, onDragStart]
+  );
 
   return { isRotating, handleRotationMouseDown };
 }
@@ -121,7 +127,7 @@ export function useRotationDrag(options: UseRotationDragOptions): UseRotationDra
 // ============================================================================
 
 /** Corner type alias for resize handles */
-type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
+type ResizeCorner = "nw" | "ne" | "sw" | "se";
 
 interface UseResizeDragOptions {
   renderedPos: RenderedPosition;
@@ -172,7 +178,12 @@ function calculateNewSize(
 }
 
 /** Apply aspect ratio constraint if shift is held */
-function applyAspectRatio(width: number, height: number, startWidth: number, startHeight: number): { width: number; height: number } {
+function applyAspectRatio(
+  width: number,
+  height: number,
+  startWidth: number,
+  startHeight: number
+): { width: number; height: number } {
   const aspectRatio = startWidth / startHeight;
   if (width / height > aspectRatio) {
     return { width: height * aspectRatio, height };
@@ -216,39 +227,65 @@ function useResizeDragHandlers(
       }
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing, dragStartRef, beforeStateRef, zoom, setIsResizing, onSizeChange, onDragEnd]);
 }
 
 export function useResizeDrag(options: UseResizeDragOptions): UseResizeDragReturn {
-  const { renderedPos, currentWidth, currentHeight, contentRef, isLocked, onSizeChange, onDragStart, onDragEnd } = options;
+  const {
+    renderedPos,
+    currentWidth,
+    currentHeight,
+    contentRef,
+    isLocked,
+    onSizeChange,
+    onDragStart,
+    onDragEnd
+  } = options;
 
   const [isResizing, setIsResizing] = useState(false);
   const dragStartRef = useRef<ResizeDragStart | null>(null);
   const beforeStateRef = useRef<FreeShapeAnnotation | null>(null);
 
-  useResizeDragHandlers(isResizing, dragStartRef, beforeStateRef, renderedPos.zoom, setIsResizing, onSizeChange, onDragEnd);
+  useResizeDragHandlers(
+    isResizing,
+    dragStartRef,
+    beforeStateRef,
+    renderedPos.zoom,
+    setIsResizing,
+    onSizeChange,
+    onDragEnd
+  );
 
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent, corner: ResizeCorner) => {
-    if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent, corner: ResizeCorner) => {
+      if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
 
-    let startWidth = currentWidth || 100;
-    let startHeight = currentHeight || 50;
+      let startWidth = currentWidth || 100;
+      let startHeight = currentHeight || 50;
 
-    if (contentRef.current && !currentWidth && !currentHeight) {
-      const rect = contentRef.current.getBoundingClientRect();
-      startWidth = rect.width / renderedPos.zoom;
-      startHeight = rect.height / renderedPos.zoom;
-    }
+      if (contentRef.current && !currentWidth && !currentHeight) {
+        const rect = contentRef.current.getBoundingClientRect();
+        startWidth = rect.width / renderedPos.zoom;
+        startHeight = rect.height / renderedPos.zoom;
+      }
 
-    setIsResizing(true);
-    dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, startWidth, startHeight, corner };
-  }, [isLocked, currentWidth, currentHeight, contentRef, renderedPos.zoom, onDragStart]);
+      setIsResizing(true);
+      dragStartRef.current = {
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        startWidth,
+        startHeight,
+        corner
+      };
+    },
+    [isLocked, currentWidth, currentHeight, contentRef, renderedPos.zoom, onDragStart]
+  );
 
   return { isResizing, handleResizeMouseDown };
 }
@@ -292,8 +329,14 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
       const dxClient = e.clientX - dragRef.current.startClientX;
       const dyClient = e.clientY - dragRef.current.startClientY;
 
-      const rotatedDx = (dxClient * Math.cos(-dragRef.current.rotationRad) - dyClient * Math.sin(-dragRef.current.rotationRad)) / zoom;
-      const rotatedDy = (dxClient * Math.sin(-dragRef.current.rotationRad) + dyClient * Math.cos(-dragRef.current.rotationRad)) / zoom;
+      const rotatedDx =
+        (dxClient * Math.cos(-dragRef.current.rotationRad) -
+          dyClient * Math.sin(-dragRef.current.rotationRad)) /
+        zoom;
+      const rotatedDy =
+        (dxClient * Math.sin(-dragRef.current.rotationRad) +
+          dyClient * Math.cos(-dragRef.current.rotationRad)) /
+        zoom;
 
       let newDx = dragRef.current.startDx + rotatedDx;
       let newDy = dragRef.current.startDy + rotatedDy;
@@ -321,24 +364,34 @@ export function useLineResizeDrag(options: UseLineResizeDragOptions) {
     };
 
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
-  }, [isResizing, cy, annotation.position.x, annotation.position.y, onEndPositionChange, onDragEnd]);
+  }, [
+    isResizing,
+    cy,
+    annotation.position.x,
+    annotation.position.y,
+    onEndPositionChange,
+    onDragEnd
+  ]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!handleDragStart(e, isLocked, beforeStateRef, onDragStart)) return;
 
-    const end = annotation.endPosition ?? {
-      x: annotation.position.x + DEFAULT_LINE_LENGTH,
-      y: annotation.position.y
-    };
-    dragRef.current = {
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startDx: end.x - annotation.position.x,
-      startDy: end.y - annotation.position.y,
-      rotationRad: ((annotation.rotation ?? 0) * Math.PI) / 180
-    };
-    setIsResizing(true);
-  }, [isLocked, annotation, onDragStart]);
+      const end = annotation.endPosition ?? {
+        x: annotation.position.x + DEFAULT_LINE_LENGTH,
+        y: annotation.position.y
+      };
+      dragRef.current = {
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startDx: end.x - annotation.position.x,
+        startDy: end.y - annotation.position.y,
+        rotationRad: ((annotation.rotation ?? 0) * Math.PI) / 180
+      };
+      setIsResizing(true);
+    },
+    [isLocked, annotation, onDragStart]
+  );
 
   return { isResizing, handleMouseDown };
 }

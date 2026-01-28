@@ -5,19 +5,19 @@
  * - Combined selection IDs calculation
  * - useKeyboardShortcuts call with all 20+ arguments
  */
-import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { useKeyboardShortcuts } from '../ui/useKeyboardShortcuts';
+import { useKeyboardShortcuts } from "../ui/useKeyboardShortcuts";
 
-import type { ClipboardHandlersReturn } from './useClipboardHandlers';
+import type { ClipboardHandlersReturn } from "./useClipboardHandlers";
 
 /**
  * Configuration for useAppKeyboardShortcuts hook
  */
 export interface AppKeyboardShortcutsConfig {
   state: {
-    mode: 'edit' | 'view';
+    mode: "edit" | "view";
     isLocked: boolean;
     selectedNode: string | null;
     selectedEdge: string | null;
@@ -62,8 +62,11 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
 
   // Combined selection IDs (text + shape + group annotations)
   const combinedSelectedAnnotationIds = React.useMemo(() => {
-    const combined = new Set<string>([...annotations.selectedTextIds, ...annotations.selectedShapeIds]);
-    annotations.selectedGroupIds.forEach(id => combined.add(id));
+    const combined = new Set<string>([
+      ...annotations.selectedTextIds,
+      ...annotations.selectedShapeIds
+    ]);
+    annotations.selectedGroupIds.forEach((id) => combined.add(id));
     return combined;
   }, [annotations.selectedTextIds, annotations.selectedShapeIds, annotations.selectedGroupIds]);
 

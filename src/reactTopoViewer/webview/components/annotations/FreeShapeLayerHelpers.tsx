@@ -1,9 +1,9 @@
 /**
  * Helper utilities for FreeShapeLayer rendering (JSX helpers)
  */
-import type { ReactElement } from 'react';
+import type { ReactElement } from "react";
 
-import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import {
   DEFAULT_LINE_LENGTH,
   DEFAULT_BORDER_WIDTH,
@@ -13,9 +13,9 @@ import {
   MIN_SHAPE_SIZE,
   DEFAULT_FILL_COLOR,
   DEFAULT_FILL_OPACITY
-} from '../../hooks/annotations/freeShape';
+} from "../../hooks/annotations/freeShape";
 
-import { applyAlphaToColor } from './shared';
+import { applyAlphaToColor } from "./shared";
 
 export interface LineGeometry {
   dx: number;
@@ -26,29 +26,30 @@ export interface LineGeometry {
   end: { x: number; y: number };
 }
 
-export function getBorderDashArray(style?: FreeShapeAnnotation['borderStyle']): string {
+export function getBorderDashArray(style?: FreeShapeAnnotation["borderStyle"]): string {
   switch (style) {
-    case 'dashed':
-      return '10,5';
-    case 'dotted':
-      return '2,2';
+    case "dashed":
+      return "10,5";
+    case "dotted":
+      return "2,2";
     default:
-      return '';
+      return "";
   }
 }
 
 export function computeLineGeometry(annotation: FreeShapeAnnotation): LineGeometry {
   const startX = annotation.position.x;
   const startY = annotation.position.y;
-  const endX = annotation.endPosition?.x ?? (annotation.position.x + DEFAULT_LINE_LENGTH);
+  const endX = annotation.endPosition?.x ?? annotation.position.x + DEFAULT_LINE_LENGTH;
   const endY = annotation.endPosition?.y ?? annotation.position.y;
   const dx = endX - startX;
   const dy = endY - startY;
 
   const strokeWidth = annotation.borderWidth ?? DEFAULT_BORDER_WIDTH;
-  const arrowSize = (annotation.lineStartArrow || annotation.lineEndArrow)
-    ? (annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE)
-    : 0;
+  const arrowSize =
+    annotation.lineStartArrow || annotation.lineEndArrow
+      ? (annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE)
+      : 0;
   const padding = Math.max(strokeWidth, arrowSize) + 1;
 
   const halfDx = dx / 2;
@@ -90,7 +91,10 @@ function getSharedStyle(annotation: FreeShapeAnnotation) {
   return { fillColor, strokeColor, strokeWidth, dashArray };
 }
 
-function buildRectangleSvg(annotation: FreeShapeAnnotation, shared: ReturnType<typeof getSharedStyle>): ShapeSvgResult {
+function buildRectangleSvg(
+  annotation: FreeShapeAnnotation,
+  shared: ReturnType<typeof getSharedStyle>
+): ShapeSvgResult {
   const width = annotation.width ?? 50;
   const height = annotation.height ?? 50;
   const cornerRadius = annotation.cornerRadius ?? 0;
@@ -114,7 +118,10 @@ function buildRectangleSvg(annotation: FreeShapeAnnotation, shared: ReturnType<t
   };
 }
 
-function buildCircleSvg(annotation: FreeShapeAnnotation, shared: ReturnType<typeof getSharedStyle>): ShapeSvgResult {
+function buildCircleSvg(
+  annotation: FreeShapeAnnotation,
+  shared: ReturnType<typeof getSharedStyle>
+): ShapeSvgResult {
   const width = annotation.width ?? 50;
   const height = annotation.height ?? 50;
   return {
@@ -155,7 +162,10 @@ function makeArrowPoints(
   return `${p1x},${p1y} ${p2x},${p2y} ${p3x},${p3y}`;
 }
 
-function computeLineEndpoints(annotation: FreeShapeAnnotation, geometry: LineGeometry): { start: { x: number; y: number }; end: { x: number; y: number } } {
+function computeLineEndpoints(
+  annotation: FreeShapeAnnotation,
+  geometry: LineGeometry
+): { start: { x: number; y: number }; end: { x: number; y: number } } {
   const arrowSize = annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE;
   let startX = geometry.start.x;
   let startY = geometry.start.y;
@@ -182,7 +192,10 @@ function computeLineEndpoints(annotation: FreeShapeAnnotation, geometry: LineGeo
   return { start: { x: startX, y: startY }, end: { x: endX, y: endY } };
 }
 
-function buildLineSvg(annotation: FreeShapeAnnotation, shared: ReturnType<typeof getSharedStyle>): ShapeSvgResult {
+function buildLineSvg(
+  annotation: FreeShapeAnnotation,
+  shared: ReturnType<typeof getSharedStyle>
+): ShapeSvgResult {
   const geometry = computeLineGeometry(annotation);
   const arrowSize = annotation.lineArrowSize ?? DEFAULT_ARROW_SIZE;
   const endpoints = computeLineEndpoints(annotation, geometry);
@@ -205,13 +218,25 @@ function buildLineSvg(annotation: FreeShapeAnnotation, shared: ReturnType<typeof
           />
           {annotation.lineStartArrow && (
             <polygon
-              points={makeArrowPoints(arrowSize, geometry.start.x, geometry.start.y, geometry.end.x, geometry.end.y)}
+              points={makeArrowPoints(
+                arrowSize,
+                geometry.start.x,
+                geometry.start.y,
+                geometry.end.x,
+                geometry.end.y
+              )}
               fill={shared.strokeColor}
             />
           )}
           {annotation.lineEndArrow && (
             <polygon
-              points={makeArrowPoints(arrowSize, geometry.end.x, geometry.end.y, geometry.start.x, geometry.start.y)}
+              points={makeArrowPoints(
+                arrowSize,
+                geometry.end.x,
+                geometry.end.y,
+                geometry.start.x,
+                geometry.start.y
+              )}
               fill={shared.strokeColor}
             />
           )}
@@ -224,11 +249,11 @@ function buildLineSvg(annotation: FreeShapeAnnotation, shared: ReturnType<typeof
 export function buildShapeSvg(annotation: FreeShapeAnnotation): ShapeSvgResult {
   const shared = getSharedStyle(annotation);
   switch (annotation.shapeType) {
-    case 'rectangle':
+    case "rectangle":
       return buildRectangleSvg(annotation, shared);
-    case 'circle':
+    case "circle":
       return buildCircleSvg(annotation, shared);
-    case 'line':
+    case "line":
     default:
       return buildLineSvg(annotation, shared);
   }

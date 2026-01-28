@@ -1,12 +1,12 @@
 /**
  * Toast Component - Simple notification toast
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from "react";
 
 export interface ToastMessage {
   id: string;
   message: string;
-  type?: 'info' | 'success' | 'warning' | 'error';
+  type?: "info" | "success" | "warning" | "error";
   duration?: number;
 }
 
@@ -34,8 +34,8 @@ const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
     };
   }, [toast.id, duration, onDismiss]);
 
-  const typeClass = `toast--${toast.type ?? 'info'}`;
-  const exitClass = isExiting ? 'toast--exiting' : '';
+  const typeClass = `toast--${toast.type ?? "info"}`;
+  const exitClass = isExiting ? "toast--exiting" : "";
 
   return (
     <div className={`toast ${typeClass} ${exitClass}`} role="alert" data-testid="toast">
@@ -71,11 +71,14 @@ let toastIdCounter = 0;
 export function useToasts() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const addToast = useCallback((message: string, type: ToastMessage['type'] = 'info', duration?: number) => {
-    const id = `toast-${Date.now()}-${++toastIdCounter}`;
-    setToasts((prev) => [...prev, { id, message, type, duration }]);
-    return id;
-  }, []);
+  const addToast = useCallback(
+    (message: string, type: ToastMessage["type"] = "info", duration?: number) => {
+      const id = `toast-${Date.now()}-${++toastIdCounter}`;
+      setToasts((prev) => [...prev, { id, message, type, duration }]);
+      return id;
+    },
+    []
+  );
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));

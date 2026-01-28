@@ -8,27 +8,33 @@
  * - NodeFsAdapter (requires Node.js fs/path)
  */
 
-import type { TopologyAnnotations as _TopologyAnnotations } from '../types/topology';
-import { createEmptyAnnotations as _createEmptyAnnotations } from '../annotations/types';
+import type { TopologyAnnotations as _TopologyAnnotations } from "../types/topology";
+import { createEmptyAnnotations as _createEmptyAnnotations } from "../annotations/types";
 
 import type {
   FileSystemAdapter as _FileSystemAdapter,
   SaveResult as _SaveResult,
   IOLogger as _IOLogger
-} from './types';
+} from "./types";
 import {
   noopLogger as _noopLogger,
   ERROR_NODES_NOT_MAP as _ERROR_NODES_NOT_MAP,
   ERROR_LINKS_NOT_SEQ as _ERROR_LINKS_NOT_SEQ,
   ERROR_SERVICE_NOT_INIT as _ERROR_SERVICE_NOT_INIT,
   ERROR_NO_YAML_PATH as _ERROR_NO_YAML_PATH
-} from './types';
-import type { AnnotationsIOOptions as _AnnotationsIOOptions } from './AnnotationsIO';
-import { AnnotationsIO as _AnnotationsIO, migrateAnnotations as _migrateAnnotations } from './AnnotationsIO';
-import type { TopologyIOOptions as _TopologyIOOptions } from './TopologyIO';
-import { TopologyIO as _TopologyIO } from './TopologyIO';
-import type { NodeSaveData as _NodeSaveData, NodeAnnotationData as _NodeAnnotationData } from './NodePersistenceIO';
-import type { LinkSaveData as _LinkSaveData } from './LinkPersistenceIO';
+} from "./types";
+import type { AnnotationsIOOptions as _AnnotationsIOOptions } from "./AnnotationsIO";
+import {
+  AnnotationsIO as _AnnotationsIO,
+  migrateAnnotations as _migrateAnnotations
+} from "./AnnotationsIO";
+import type { TopologyIOOptions as _TopologyIOOptions } from "./TopologyIO";
+import { TopologyIO as _TopologyIO } from "./TopologyIO";
+import type {
+  NodeSaveData as _NodeSaveData,
+  NodeAnnotationData as _NodeAnnotationData
+} from "./NodePersistenceIO";
+import type { LinkSaveData as _LinkSaveData } from "./LinkPersistenceIO";
 
 // Types (browser-safe)
 export type FileSystemAdapter = _FileSystemAdapter;

@@ -3,27 +3,31 @@
  * Handles SSH, shell attach, and log commands for container nodes.
  */
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import type { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from '../../../treeView/common';
-import { runningLabsProvider } from '../../../globals';
-import type { EndpointResult } from '../../shared/types/endpoint';
+import type {
+  ClabContainerTreeNode,
+  ClabInterfaceTreeNode,
+  ClabLabTreeNode
+} from "../../../treeView/common";
+import { runningLabsProvider } from "../../../globals";
+import type { EndpointResult } from "../../shared/types/endpoint";
 
-import { log } from './logger';
+import { log } from "./logger";
 
 /**
  * Type guard to check if a value is a valid ClabLabTreeNode.
  */
 function isClabLabTreeNode(value: unknown): value is ClabLabTreeNode {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
   const obj = value as Record<string, unknown>;
   return (
-    'labPath' in obj &&
-    typeof obj.labPath === 'object' &&
+    "labPath" in obj &&
+    typeof obj.labPath === "object" &&
     obj.labPath !== null &&
-    'absolute' in obj.labPath
+    "absolute" in obj.labPath
   );
 }
 
@@ -36,13 +40,13 @@ function createDefaultContainerNode(nodeName: string): ClabContainerTreeNode {
     name: nodeName,
     name_short: nodeName,
     cID: nodeName,
-    state: '',
-    kind: '',
-    image: '',
+    state: "",
+    kind: "",
+    image: "",
     interfaces: [],
-    labPath: { absolute: '', relative: '' },
-    IPv4Address: '',
-    IPv6Address: ''
+    labPath: { absolute: "", relative: "" },
+    IPv4Address: "",
+    IPv6Address: ""
   } as ClabContainerTreeNode;
 }
 
@@ -59,12 +63,12 @@ function createInterfaceObject(
     parentName: nodeName,
     cID: nodeName,
     name: interfaceName,
-    type: '',
-    alias: alias || '',
-    mac: '',
+    type: "",
+    alias: alias || "",
+    mac: "",
     mtu: 0,
     ifIndex: 0,
-    state: ''
+    state: ""
   } as ClabInterfaceTreeNode;
 }
 
@@ -76,14 +80,17 @@ export class NodeCommandService {
   /**
    * Gets a container node by name from the running labs.
    */
-  async getContainerNode(nodeName: string, yamlFilePath: string): Promise<ClabContainerTreeNode | undefined> {
+  async getContainerNode(
+    nodeName: string,
+    yamlFilePath: string
+  ): Promise<ClabContainerTreeNode | undefined> {
     const labsData = await runningLabsProvider?.discoverInspectLabs();
     if (!labsData || !yamlFilePath) {
       return undefined;
     }
 
     // Only search in the current lab
-    const currentLab = Object.values(labsData).find(lab => {
+    const currentLab = Object.values(labsData).find((lab) => {
       if (!isClabLabTreeNode(lab)) {
         return false;
       }
@@ -96,7 +103,8 @@ export class NodeCommandService {
 
     const containers: ClabContainerTreeNode[] = currentLab.containers ?? [];
     const directMatch = containers.find(
-      (c: ClabContainerTreeNode) => c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
+      (c: ClabContainerTreeNode) =>
+        c.name === nodeName || c.name_short === nodeName || (c.label as string) === nodeName
     );
     if (directMatch) {
       return directMatch;
@@ -115,11 +123,15 @@ export class NodeCommandService {
   ): ClabContainerTreeNode | undefined {
     const normalizedTarget = nodeName.toLowerCase();
     const candidates = containers
-      .filter((container) => container.kind === 'nokia_srsim')
+      .filter((container) => container.kind === "nokia_srsim")
       .map((container) => ({ container, info: this.extractSrosComponentInfo(container) }))
-      .filter((entry): entry is { container: ClabContainerTreeNode; info: { base: string; slot: string } } => {
-        return !!entry.info && entry.info.base.toLowerCase() === normalizedTarget;
-      });
+      .filter(
+        (
+          entry
+        ): entry is { container: ClabContainerTreeNode; info: { base: string; slot: string } } => {
+          return !!entry.info && entry.info.base.toLowerCase() === normalizedTarget;
+        }
+      );
 
     if (!candidates.length) {
       return undefined;
@@ -130,7 +142,7 @@ export class NodeCommandService {
       if (slotOrder !== 0) {
         return slotOrder;
       }
-      return a.info.slot.localeCompare(b.info.slot, undefined, { sensitivity: 'base' });
+      return a.info.slot.localeCompare(b.info.slot, undefined, { sensitivity: "base" });
     });
 
     return candidates[0].container;
@@ -142,12 +154,12 @@ export class NodeCommandService {
   private extractSrosComponentInfo(
     container: ClabContainerTreeNode
   ): { base: string; slot: string } | undefined {
-    const rawLabel = (container.name_short || container.name || '').trim();
+    const rawLabel = (container.name_short || container.name || "").trim();
     if (!rawLabel) {
       return undefined;
     }
 
-    const lastDash = rawLabel.lastIndexOf('-');
+    const lastDash = rawLabel.lastIndexOf("-");
     if (lastDash === -1) {
       return undefined;
     }
@@ -166,10 +178,10 @@ export class NodeCommandService {
    */
   private srosSlotPriority(slot: string): number {
     const normalized = slot.toLowerCase();
-    if (normalized === 'a') {
+    if (normalized === "a") {
       return 0;
     }
-    if (normalized === 'b') {
+    if (normalized === "b") {
       return 1;
     }
     return 2;
@@ -178,15 +190,21 @@ export class NodeCommandService {
   /**
    * Handles node-related endpoint commands (SSH, shell, logs).
    */
-  async handleNodeEndpoint(endpointName: string, nodeName: string, yamlFilePath: string): Promise<EndpointResult> {
+  async handleNodeEndpoint(
+    endpointName: string,
+    nodeName: string,
+    yamlFilePath: string
+  ): Promise<EndpointResult> {
     let result: unknown = null;
     let error: string | null = null;
 
     switch (endpointName) {
-      case 'clab-node-connect-ssh': {
+      case "clab-node-connect-ssh": {
         try {
-          const containerNode = (await this.getContainerNode(nodeName, yamlFilePath)) ?? createDefaultContainerNode(nodeName);
-          await vscode.commands.executeCommand('containerlab.node.ssh', containerNode);
+          const containerNode =
+            (await this.getContainerNode(nodeName, yamlFilePath)) ??
+            createDefaultContainerNode(nodeName);
+          await vscode.commands.executeCommand("containerlab.node.ssh", containerNode);
           result = `SSH connection executed for ${nodeName}`;
         } catch (innerError) {
           error = `Error executing SSH connection: ${innerError}`;
@@ -195,10 +213,12 @@ export class NodeCommandService {
         break;
       }
 
-      case 'clab-node-attach-shell': {
+      case "clab-node-attach-shell": {
         try {
-          const node = (await this.getContainerNode(nodeName, yamlFilePath)) ?? createDefaultContainerNode(nodeName);
-          await vscode.commands.executeCommand('containerlab.node.attachShell', node);
+          const node =
+            (await this.getContainerNode(nodeName, yamlFilePath)) ??
+            createDefaultContainerNode(nodeName);
+          await vscode.commands.executeCommand("containerlab.node.attachShell", node);
           result = `Attach shell executed for ${nodeName}`;
         } catch (innerError) {
           error = `Error executing attach shell: ${innerError}`;
@@ -207,10 +227,10 @@ export class NodeCommandService {
         break;
       }
 
-      case 'clab-node-view-logs': {
+      case "clab-node-view-logs": {
         try {
           const node = createDefaultContainerNode(nodeName);
-          await vscode.commands.executeCommand('containerlab.node.showLogs', node);
+          await vscode.commands.executeCommand("containerlab.node.showLogs", node);
           result = `Show logs executed for ${nodeName}`;
         } catch (innerError) {
           error = `Error executing show logs: ${innerError}`;
@@ -231,12 +251,16 @@ export class NodeCommandService {
   /**
    * Resolves the actual interface name from a logical name using the running labs data.
    */
-  async resolveInterfaceName(nodeName: string, interfaceName: string, yamlFilePath: string): Promise<string> {
+  async resolveInterfaceName(
+    nodeName: string,
+    interfaceName: string,
+    yamlFilePath: string
+  ): Promise<string> {
     if (!runningLabsProvider) return interfaceName;
     const treeData = await runningLabsProvider.discoverInspectLabs();
     if (!treeData) return interfaceName;
 
-    const currentLab = Object.values(treeData).find(lab => {
+    const currentLab = Object.values(treeData).find((lab) => {
       if (!isClabLabTreeNode(lab)) {
         return false;
       }
@@ -266,16 +290,20 @@ export class NodeCommandService {
     payloadObj: { nodeName: string; interfaceName: string },
     yamlFilePath: string
   ): Promise<EndpointResult> {
-    if (endpointName === 'clab-interface-capture') {
+    if (endpointName === "clab-interface-capture") {
       try {
         const { nodeName, interfaceName } = payloadObj;
-        const actualInterfaceName = await this.resolveInterfaceName(nodeName, interfaceName, yamlFilePath);
+        const actualInterfaceName = await this.resolveInterfaceName(
+          nodeName,
+          interfaceName,
+          yamlFilePath
+        );
         const iface = createInterfaceObject(
           nodeName,
           actualInterfaceName,
-          interfaceName !== actualInterfaceName ? interfaceName : ''
+          interfaceName !== actualInterfaceName ? interfaceName : ""
         );
-        await vscode.commands.executeCommand('containerlab.interface.capture', iface);
+        await vscode.commands.executeCommand("containerlab.interface.capture", iface);
         return { result: `Capture executed for ${nodeName}/${actualInterfaceName}`, error: null };
       } catch (innerError) {
         const errorMsg = `Error executing capture: ${innerError}`;

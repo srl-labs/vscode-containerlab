@@ -12,13 +12,13 @@ export {
   ClabInterfaceTreeNode,
   ClabSshxLinkTreeNode,
   ClabGottyLinkTreeNode
-} from './common';
-export type { LabPath, ClabDetailedJSON, ClabJSON } from './common';
+} from "./common";
+export type { LabPath, ClabDetailedJSON, ClabJSON } from "./common";
 
 // Providers
-export { HelpFeedbackProvider } from './helpFeedbackProvider';
-export { LocalLabTreeDataProvider } from './localLabsProvider';
-export { RunningLabTreeDataProvider } from './runningLabsProvider';
+export { HelpFeedbackProvider } from "./helpFeedbackProvider";
+export { LocalLabTreeDataProvider } from "./localLabsProvider";
+export { RunningLabTreeDataProvider } from "./runningLabsProvider";
 
 // Inspector
 export {
@@ -30,4 +30,4 @@ export {
   getInterfaceVersion,
   refreshFromEventStream,
   resetForcedPollingMode
-} from './inspector';
+} from "./inspector";

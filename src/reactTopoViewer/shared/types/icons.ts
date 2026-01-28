@@ -10,31 +10,31 @@ export interface CustomIconInfo {
   /** Icon name without extension (e.g., "my-router") */
   name: string;
   /** Where the icon was loaded from */
-  source: 'workspace' | 'global';
+  source: "workspace" | "global";
   /** Base64 data URI for rendering */
   dataUri: string;
   /** Image format */
-  format: 'svg' | 'png';
+  format: "svg" | "png";
 }
 
 /**
  * Built-in icon names that ship with the extension
  */
 export const BUILTIN_ICON_NAMES = new Set([
-  'pe',
-  'dcgw',
-  'leaf',
-  'switch',
-  'bridge',
-  'spine',
-  'super-spine',
-  'server',
-  'pon',
-  'controller',
-  'rgw',
-  'ue',
-  'cloud',
-  'client',
+  "pe",
+  "dcgw",
+  "leaf",
+  "switch",
+  "bridge",
+  "spine",
+  "super-spine",
+  "server",
+  "pon",
+  "controller",
+  "rgw",
+  "ue",
+  "cloud",
+  "client"
 ]);
 
 /**
@@ -47,7 +47,7 @@ export function isBuiltInIcon(name: string): boolean {
 /**
  * Supported icon file extensions
  */
-export const SUPPORTED_ICON_EXTENSIONS = new Set(['.svg', '.png']);
+export const SUPPORTED_ICON_EXTENSIONS = new Set([".svg", ".png"]);
 
 /**
  * Check if a file extension is a supported icon format
@@ -61,16 +61,16 @@ export function isSupportedIconExtension(ext: string): boolean {
  */
 export function getIconMimeType(ext: string): string {
   const lower = ext.toLowerCase();
-  if (lower === '.svg') return 'image/svg+xml';
-  if (lower === '.png') return 'image/png';
-  return 'application/octet-stream';
+  if (lower === ".svg") return "image/svg+xml";
+  if (lower === ".png") return "image/png";
+  return "application/octet-stream";
 }
 
 /**
  * Get icon format from file extension
  */
-export function getIconFormat(ext: string): 'svg' | 'png' {
-  return ext.toLowerCase() === '.png' ? 'png' : 'svg';
+export function getIconFormat(ext: string): "svg" | "png" {
+  return ext.toLowerCase() === ".png" ? "png" : "svg";
 }
 
 /**

@@ -3,10 +3,10 @@
  * Queries containerlab inspect data to determine if a lab is deployed.
  */
 
-import * as inspector from '../../../treeView/inspector';
-import type { DeploymentState } from '../../shared/types/topology';
+import * as inspector from "../../../treeView/inspector";
+import type { DeploymentState } from "../../shared/types/topology";
 
-import { log } from './logger';
+import { log } from "./logger";
 
 /**
  * Checks deployment state of containerlab labs by querying inspect data.
@@ -23,28 +23,30 @@ export class DeploymentStateChecker {
     try {
       await inspector.update();
       if (!inspector.rawInspectData) {
-        return 'unknown';
+        return "unknown";
       }
 
       if (this.labExistsByName(labName)) {
-        return 'deployed';
+        return "deployed";
       }
 
       if (topoFilePath) {
         const matchedLabName = this.findLabByTopoFile(topoFilePath);
         if (matchedLabName) {
           if (updateLabName && matchedLabName !== labName) {
-            log.info(`Updating lab name from '${labName}' to '${matchedLabName}' based on topo-file match`);
+            log.info(
+              `Updating lab name from '${labName}' to '${matchedLabName}' based on topo-file match`
+            );
             updateLabName(matchedLabName);
           }
-          return 'deployed';
+          return "deployed";
         }
       }
 
-      return 'undeployed';
+      return "undeployed";
     } catch (err) {
       log.warn(`Failed to check deployment state: ${err}`);
-      return 'unknown';
+      return "unknown";
     }
   }
 
@@ -60,19 +62,21 @@ export class DeploymentStateChecker {
    * Find a lab by its topo-file path and return the lab name if found.
    */
   private findLabByTopoFile(topoFilePath: string): string | null {
-    const inspectData = inspector.rawInspectData as Record<string, Record<string, unknown>> | undefined;
+    const inspectData = inspector.rawInspectData as
+      | Record<string, Record<string, unknown>>
+      | undefined;
     if (!inspectData) {
       return null;
     }
 
-    const normalizedYamlPath = topoFilePath.replace(/\\/g, '/');
+    const normalizedYamlPath = topoFilePath.replace(/\\/g, "/");
 
     for (const [deployedLabName, labData] of Object.entries(inspectData)) {
-      const topo = labData['topo-file'];
-      if (!topo || typeof topo !== 'string') {
+      const topo = labData["topo-file"];
+      if (!topo || typeof topo !== "string") {
         continue;
       }
-      const normalizedTopoFile = topo.replace(/\\/g, '/');
+      const normalizedTopoFile = topo.replace(/\\/g, "/");
       if (normalizedTopoFile === normalizedYamlPath) {
         return deployedLabName;
       }

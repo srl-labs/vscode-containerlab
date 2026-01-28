@@ -2,7 +2,7 @@
  * Context Menu Component
  * Displays a dropdown context menu at a specified position
  */
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from "react";
 
 export interface ContextMenuItem {
   id: string;
@@ -31,26 +31,32 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on click outside
-  const handleClickOutside = useCallback((e: MouseEvent) => {
-    if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-      onClose();
-    }
-  }, [onClose]);
+  const handleClickOutside = useCallback(
+    (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
   // Close on escape key
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  }, [onClose]);
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    },
+    [onClose]
+  );
 
   useEffect(() => {
     if (!isVisible) return;
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isVisible, handleClickOutside, handleKeyDown]);
 
@@ -63,7 +69,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       role="menu"
       data-testid="context-menu"
       style={{
-        position: 'fixed',
+        position: "fixed",
         left: position.x,
         top: position.y,
         zIndex: 10000
@@ -73,13 +79,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         if (item.divider) {
           return <div key={item.id} className="context-menu-divider" />;
         }
-        return (
-          <MenuItemButton
-            key={item.id}
-            item={item}
-            onClose={onClose}
-          />
-        );
+        return <MenuItemButton key={item.id} item={item} onClose={onClose} />;
       })}
     </div>
   );
@@ -102,10 +102,12 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
   }, [item, onClose]);
 
   const classNames = [
-    'context-menu-item',
-    item.disabled ? 'disabled' : '',
-    item.danger ? 'danger' : ''
-  ].filter(Boolean).join(' ');
+    "context-menu-item",
+    item.disabled ? "disabled" : "",
+    item.danger ? "danger" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button

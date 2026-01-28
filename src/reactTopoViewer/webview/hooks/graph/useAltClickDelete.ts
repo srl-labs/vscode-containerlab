@@ -1,15 +1,15 @@
 /**
  * useAltClickDelete - Hook for deleting nodes/edges via Alt+Click
  */
-import { useEffect } from 'react';
-import type { Core, EventObject, NodeSingular, EdgeSingular } from 'cytoscape';
+import { useEffect } from "react";
+import type { Core, EventObject, NodeSingular, EdgeSingular } from "cytoscape";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
-import { getModifierTapTarget } from './graphClickHelpers';
+import { getModifierTapTarget } from "./graphClickHelpers";
 
 interface AltClickDeleteOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onDeleteNode: (nodeId: string) => void;
   onDeleteEdge: (edgeId: string) => void;
@@ -19,10 +19,7 @@ interface AltClickDeleteOptions {
  * Hook that enables Alt+Click to delete nodes and edges
  * Only active in edit mode when not locked
  */
-export function useAltClickDelete(
-  cy: Core | null,
-  options: AltClickDeleteOptions
-): void {
+export function useAltClickDelete(cy: Core | null, options: AltClickDeleteOptions): void {
   const { mode, isLocked, onDeleteNode, onDeleteEdge } = options;
 
   useEffect(() => {
@@ -32,7 +29,7 @@ export function useAltClickDelete(
       const element = getModifierTapTarget<NodeSingular | EdgeSingular>(evt, cy, {
         mode,
         isLocked,
-        modifier: 'alt'
+        modifier: "alt"
       });
       if (!element) return;
 
@@ -45,7 +42,9 @@ export function useAltClickDelete(
       }
     };
 
-    cy.on('tap', 'node, edge', handleTap);
-    return () => { cy.off('tap', 'node, edge', handleTap); };
+    cy.on("tap", "node, edge", handleTap);
+    return () => {
+      cy.off("tap", "node, edge", handleTap);
+    };
   }, [cy, mode, isLocked, onDeleteNode, onDeleteEdge]);
 }

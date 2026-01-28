@@ -1,12 +1,12 @@
 /**
  * State management hook for free shape annotations
  */
-import type React from 'react';
-import { useState, useCallback, useRef } from 'react';
+import type React from "react";
+import { useState, useCallback, useRef } from "react";
 
-import type { FreeShapeAnnotation } from '../../../shared/types/topology';
-import { saveFreeShapeAnnotations as saveFreeShapeToIO } from '../../services';
-import { log } from '../../utils/logger';
+import type { FreeShapeAnnotation } from "../../../shared/types/topology";
+import { saveFreeShapeAnnotations as saveFreeShapeToIO } from "../../services";
+import { log } from "../../utils/logger";
 
 import {
   SAVE_DEBOUNCE_MS,
@@ -17,23 +17,26 @@ import {
   updateAnnotationRotation,
   updateAnnotationEndPosition,
   duplicateAnnotations
-} from './freeShape';
-import type { AnnotationSelectionActions } from './freeShape';
+} from "./freeShape";
+import type { AnnotationSelectionActions } from "./freeShape";
 import {
   useDebouncedSave,
   useDeleteAnnotation,
   useStandardUpdates,
   useGenericAnnotationUpdates
-} from './sharedAnnotationHelpers';
-import { useAnnotationListSelection, useAnnotationListCopyPaste } from './useAnnotationListOperations';
+} from "./sharedAnnotationHelpers";
+import {
+  useAnnotationListSelection,
+  useAnnotationListCopyPaste
+} from "./useAnnotationListOperations";
 
 export interface UseFreeShapeStateReturn {
   annotations: FreeShapeAnnotation[];
   setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>;
   isAddShapeMode: boolean;
   setIsAddShapeMode: React.Dispatch<React.SetStateAction<boolean>>;
-  pendingShapeType: FreeShapeAnnotation['shapeType'];
-  setPendingShapeType: React.Dispatch<React.SetStateAction<FreeShapeAnnotation['shapeType']>>;
+  pendingShapeType: FreeShapeAnnotation["shapeType"];
+  setPendingShapeType: React.Dispatch<React.SetStateAction<FreeShapeAnnotation["shapeType"]>>;
   editingAnnotation: FreeShapeAnnotation | null;
   setEditingAnnotation: React.Dispatch<React.SetStateAction<FreeShapeAnnotation | null>>;
   lastStyleRef: React.RefObject<Partial<FreeShapeAnnotation>>;
@@ -48,7 +51,8 @@ export interface UseFreeShapeStateReturn {
 export function useFreeShapeState(): UseFreeShapeStateReturn {
   const [annotations, setAnnotations] = useState<FreeShapeAnnotation[]>([]);
   const [isAddShapeMode, setIsAddShapeMode] = useState(false);
-  const [pendingShapeType, setPendingShapeType] = useState<FreeShapeAnnotation['shapeType']>('rectangle');
+  const [pendingShapeType, setPendingShapeType] =
+    useState<FreeShapeAnnotation["shapeType"]>("rectangle");
   const [editingAnnotation, setEditingAnnotation] = useState<FreeShapeAnnotation | null>(null);
   const [selectedAnnotationIds, setSelectedAnnotationIds] = useState<Set<string>>(new Set());
 
@@ -57,7 +61,7 @@ export function useFreeShapeState(): UseFreeShapeStateReturn {
   const pasteCounterRef = useRef<number>(0);
 
   const { saveDebounced: saveAnnotationsToExtension, saveImmediate: saveAnnotationsImmediate } =
-    useDebouncedSave(saveFreeShapeToIO, 'FreeShape', SAVE_DEBOUNCE_MS);
+    useDebouncedSave(saveFreeShapeToIO, "FreeShape", SAVE_DEBOUNCE_MS);
 
   return {
     annotations,
@@ -80,13 +84,13 @@ export function useFreeShapeState(): UseFreeShapeStateReturn {
 
 export interface UseFreeShapeActionsOptions {
   state: UseFreeShapeStateReturn;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
 }
 
 export interface UseFreeShapeActionsReturn extends AnnotationSelectionActions {
-  enableAddShapeMode: (shapeType?: FreeShapeAnnotation['shapeType']) => void;
+  enableAddShapeMode: (shapeType?: FreeShapeAnnotation["shapeType"]) => void;
   disableAddShapeMode: () => void;
   saveAnnotation: (annotation: FreeShapeAnnotation) => void;
   deleteAnnotation: (id: string) => void;
@@ -104,26 +108,29 @@ export interface UseFreeShapeActionsReturn extends AnnotationSelectionActions {
 }
 
 function useModeActions(
-  _mode: 'edit' | 'view',
+  _mode: "edit" | "view",
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   setIsAddShapeMode: React.Dispatch<React.SetStateAction<boolean>>,
-  setPendingShapeType: React.Dispatch<React.SetStateAction<FreeShapeAnnotation['shapeType']>>
+  setPendingShapeType: React.Dispatch<React.SetStateAction<FreeShapeAnnotation["shapeType"]>>
 ) {
-  const enableAddShapeMode = useCallback((shapeType?: FreeShapeAnnotation['shapeType']) => {
-    // Only check isLocked - allows adding shapes in viewer mode when explicitly unlocked
-    if (isLocked) {
-      onLockedAction?.();
-      return;
-    }
-    setPendingShapeType(shapeType || 'rectangle');
-    setIsAddShapeMode(true);
-    log.info(`[FreeShape] Add shape mode enabled (${shapeType || 'rectangle'})`);
-  }, [isLocked, onLockedAction, setPendingShapeType, setIsAddShapeMode]);
+  const enableAddShapeMode = useCallback(
+    (shapeType?: FreeShapeAnnotation["shapeType"]) => {
+      // Only check isLocked - allows adding shapes in viewer mode when explicitly unlocked
+      if (isLocked) {
+        onLockedAction?.();
+        return;
+      }
+      setPendingShapeType(shapeType || "rectangle");
+      setIsAddShapeMode(true);
+      log.info(`[FreeShape] Add shape mode enabled (${shapeType || "rectangle"})`);
+    },
+    [isLocked, onLockedAction, setPendingShapeType, setIsAddShapeMode]
+  );
 
   const disableAddShapeMode = useCallback(() => {
     setIsAddShapeMode(false);
-    log.info('[FreeShape] Add shape mode disabled');
+    log.info("[FreeShape] Add shape mode disabled");
   }, [setIsAddShapeMode]);
 
   return { enableAddShapeMode, disableAddShapeMode };
@@ -134,22 +141,32 @@ function useAnnotationCrud(
   lastStyleRef: { current: Partial<FreeShapeAnnotation> },
   saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
 ) {
-  const saveAnnotation = useCallback((annotation: FreeShapeAnnotation) => {
-    lastStyleRef.current = extractStyleFromAnnotation(annotation);
-    setAnnotations(prev => {
-      const updated = saveAnnotationToList(prev, annotation);
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[FreeShape] Saved annotation: ${annotation.id}`);
-  }, [lastStyleRef, setAnnotations, saveAnnotationsToExtension]);
+  const saveAnnotation = useCallback(
+    (annotation: FreeShapeAnnotation) => {
+      lastStyleRef.current = extractStyleFromAnnotation(annotation);
+      setAnnotations((prev) => {
+        const updated = saveAnnotationToList(prev, annotation);
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+      log.info(`[FreeShape] Saved annotation: ${annotation.id}`);
+    },
+    [lastStyleRef, setAnnotations, saveAnnotationsToExtension]
+  );
 
-  const deleteAnnotation = useDeleteAnnotation('FreeShape', setAnnotations, saveAnnotationsToExtension);
+  const deleteAnnotation = useDeleteAnnotation(
+    "FreeShape",
+    setAnnotations,
+    saveAnnotationsToExtension
+  );
 
-  const loadAnnotations = useCallback((loaded: FreeShapeAnnotation[]) => {
-    setAnnotations(loaded);
-    log.info(`[FreeShape] Loaded ${loaded.length} annotations`);
-  }, [setAnnotations]);
+  const loadAnnotations = useCallback(
+    (loaded: FreeShapeAnnotation[]) => {
+      setAnnotations(loaded);
+      log.info(`[FreeShape] Loaded ${loaded.length} annotations`);
+    },
+    [setAnnotations]
+  );
 
   return { saveAnnotation, deleteAnnotation, loadAnnotations };
 }
@@ -166,50 +183,76 @@ function useAnnotationUpdates(
     updateAnnotationRotation
   );
 
-  const updateEndPosition = useCallback((id: string, endPosition: { x: number; y: number }) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => updateAnnotationEndPosition(a, endPosition));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const updateEndPosition = useCallback(
+    (id: string, endPosition: { x: number; y: number }) => {
+      setAnnotations((prev) => {
+        const updated = updateAnnotationInList(prev, id, (a) =>
+          updateAnnotationEndPosition(a, endPosition)
+        );
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+    },
+    [setAnnotations, saveAnnotationsToExtension]
+  );
 
   const { updateAnnotation, migrateGroupId } = useGenericAnnotationUpdates(
-    'FreeShape',
+    "FreeShape",
     setAnnotations,
     saveAnnotationsToExtension,
     updateAnnotationInList
   );
 
-  return { updatePosition, updateSize, updateRotation, updateEndPosition, updateAnnotation, migrateGroupId };
+  return {
+    updatePosition,
+    updateSize,
+    updateRotation,
+    updateEndPosition,
+    updateAnnotation,
+    migrateGroupId
+  };
 }
 
 function useGeoUpdates(
   setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
   saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
 ) {
-  const updateGeoPosition = useCallback((id: string, geoCoords: { lat: number; lng: number }) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => ({ ...a, geoCoordinates: geoCoords }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[FreeShape] Updated geo position for annotation ${id}`);
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const updateGeoPosition = useCallback(
+    (id: string, geoCoords: { lat: number; lng: number }) => {
+      setAnnotations((prev) => {
+        const updated = updateAnnotationInList(prev, id, (a) => ({
+          ...a,
+          geoCoordinates: geoCoords
+        }));
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+      log.info(`[FreeShape] Updated geo position for annotation ${id}`);
+    },
+    [setAnnotations, saveAnnotationsToExtension]
+  );
 
-  const updateEndGeoPosition = useCallback((id: string, geoCoords: { lat: number; lng: number }) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => ({ ...a, endGeoCoordinates: geoCoords }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[FreeShape] Updated end geo position for annotation ${id}`);
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const updateEndGeoPosition = useCallback(
+    (id: string, geoCoords: { lat: number; lng: number }) => {
+      setAnnotations((prev) => {
+        const updated = updateAnnotationInList(prev, id, (a) => ({
+          ...a,
+          endGeoCoordinates: geoCoords
+        }));
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+      log.info(`[FreeShape] Updated end geo position for annotation ${id}`);
+    },
+    [setAnnotations, saveAnnotationsToExtension]
+  );
 
   return { updateGeoPosition, updateEndGeoPosition };
 }
 
-export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFreeShapeActionsReturn {
+export function useFreeShapeActions(
+  options: UseFreeShapeActionsOptions
+): UseFreeShapeActionsReturn {
   const { state, mode, isLocked, onLockedAction } = options;
   const {
     annotations,
@@ -225,20 +268,26 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
     pasteCounterRef
   } = state;
 
-  const modeActions = useModeActions(mode, isLocked, onLockedAction, setIsAddShapeMode, setPendingShapeType);
+  const modeActions = useModeActions(
+    mode,
+    isLocked,
+    onLockedAction,
+    setIsAddShapeMode,
+    setPendingShapeType
+  );
   const crudActions = useAnnotationCrud(setAnnotations, lastStyleRef, saveAnnotationsToExtension);
   const updateActions = useAnnotationUpdates(setAnnotations, saveAnnotationsToExtension);
   const geoActions = useGeoUpdates(setAnnotations, saveAnnotationsToExtension);
   const selectionActions = useAnnotationListSelection({
-    logPrefix: 'FreeShape',
+    logPrefix: "FreeShape",
     annotations,
     setAnnotations,
     selectedAnnotationIds,
     setSelectedAnnotationIds,
-    saveAnnotationsToExtension,
+    saveAnnotationsToExtension
   });
   const copyPasteActions = useAnnotationListCopyPaste({
-    logPrefix: 'FreeShape',
+    logPrefix: "FreeShape",
     annotations,
     setAnnotations,
     selectedAnnotationIds,
@@ -247,7 +296,7 @@ export function useFreeShapeActions(options: UseFreeShapeActionsOptions): UseFre
     pasteCounterRef,
     duplicateAnnotations,
     saveAnnotationsToExtension,
-    saveAnnotationsImmediate,
+    saveAnnotationsImmediate
   });
 
   return {

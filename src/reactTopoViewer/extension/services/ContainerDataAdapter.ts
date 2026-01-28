@@ -3,8 +3,16 @@
  * This allows the shared parser to access container data without VS Code dependencies.
  */
 
-import type { ClabLabTreeNode, ClabContainerTreeNode, ClabInterfaceTreeNode } from '../../../treeView/common';
-import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from '../../shared/parsing/types';
+import type {
+  ClabLabTreeNode,
+  ClabContainerTreeNode,
+  ClabInterfaceTreeNode
+} from "../../../treeView/common";
+import type {
+  ContainerDataProvider,
+  ContainerInfo,
+  InterfaceInfo
+} from "../../shared/parsing/types";
 
 /**
  * Adapts VS Code tree nodes to the ContainerDataProvider interface.
@@ -50,7 +58,10 @@ export class ContainerDataAdapter implements ContainerDataProvider {
   /**
    * Finds a container tree node by name within a lab.
    */
-  private findContainerNode(containerName: string, labName: string): ClabContainerTreeNode | undefined {
+  private findContainerNode(
+    containerName: string,
+    labName: string
+  ): ClabContainerTreeNode | undefined {
     const labNode = this.findLabNode(labName);
     if (!labNode?.containers) return undefined;
 
@@ -70,13 +81,15 @@ export class ContainerDataAdapter implements ContainerDataProvider {
   /**
    * Finds an interface by name within a container.
    */
-  findInterface(containerName: string, ifaceName: string, labName: string): InterfaceInfo | undefined {
+  findInterface(
+    containerName: string,
+    ifaceName: string,
+    labName: string
+  ): InterfaceInfo | undefined {
     const container = this.findContainerNode(containerName, labName);
     if (!container?.interfaces) return undefined;
 
-    const iface = container.interfaces.find(
-      (i) => i.name === ifaceName || i.alias === ifaceName
-    );
+    const iface = container.interfaces.find((i) => i.name === ifaceName || i.alias === ifaceName);
 
     return iface ? this.toInterfaceInfo(iface) : undefined;
   }
@@ -106,9 +119,10 @@ export class ContainerDataAdapter implements ContainerDataProvider {
    */
   private toContainerInfo(container: ClabContainerTreeNode): ContainerInfo {
     // Extract label text - it may be a TreeItemLabel object or string
-    const label = typeof container.label === 'string'
-      ? container.label
-      : (container.label as { label: string } | undefined)?.label ?? container.name;
+    const label =
+      typeof container.label === "string"
+        ? container.label
+        : ((container.label as { label: string } | undefined)?.label ?? container.name);
 
     return {
       name: container.name,
@@ -117,12 +131,12 @@ export class ContainerDataAdapter implements ContainerDataProvider {
       kind: container.kind,
       image: container.image,
       // Use the getter methods that remove CIDR mask, default to empty string
-      IPv4Address: container.IPv4Address ?? '',
-      IPv6Address: container.IPv6Address ?? '',
+      IPv4Address: container.IPv4Address ?? "",
+      IPv6Address: container.IPv6Address ?? "",
       nodeType: container.nodeType,
       nodeGroup: container.nodeGroup,
       interfaces: container.interfaces?.map((i) => this.toInterfaceInfo(i)) ?? [],
-      label,
+      label
     };
   }
 
@@ -138,17 +152,19 @@ export class ContainerDataAdapter implements ContainerDataProvider {
       mtu: iface.mtu,
       ifIndex: iface.ifIndex,
       state: iface.state,
-      stats: iface.stats ? {
-        rxBps: iface.stats.rxBps,
-        txBps: iface.stats.txBps,
-        rxPps: iface.stats.rxPps,
-        txPps: iface.stats.txPps,
-        rxBytes: iface.stats.rxBytes,
-        txBytes: iface.stats.txBytes,
-        rxPackets: iface.stats.rxPackets,
-        txPackets: iface.stats.txPackets,
-        statsIntervalSeconds: iface.stats.statsIntervalSeconds,
-      } : undefined,
+      stats: iface.stats
+        ? {
+            rxBps: iface.stats.rxBps,
+            txBps: iface.stats.txBps,
+            rxPps: iface.stats.rxPps,
+            txPps: iface.stats.txPps,
+            rxBytes: iface.stats.rxBytes,
+            txBytes: iface.stats.txBytes,
+            rxPackets: iface.stats.rxPackets,
+            txPackets: iface.stats.txPackets,
+            statsIntervalSeconds: iface.stats.statsIntervalSeconds
+          }
+        : undefined
     };
   }
 }

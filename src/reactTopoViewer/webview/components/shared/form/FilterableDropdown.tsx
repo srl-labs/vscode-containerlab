@@ -1,10 +1,10 @@
 /**
  * FilterableDropdown - A searchable dropdown component with keyboard navigation
  */
-import React from 'react';
+import React from "react";
 
-import type { FilterableDropdownOption as _FilterableDropdownOption } from '../../../hooks/ui/useFilterableDropdown';
-import { useFilterableDropdown } from '../../../hooks/ui/useFilterableDropdown';
+import type { FilterableDropdownOption as _FilterableDropdownOption } from "../../../hooks/ui/useFilterableDropdown";
+import { useFilterableDropdown } from "../../../hooks/ui/useFilterableDropdown";
 
 // Re-export type (import then export pattern for non-index files)
 export type FilterableDropdownOption = _FilterableDropdownOption;
@@ -31,10 +31,13 @@ const DropdownItem: React.FC<{
 }> = ({ option, isHighlighted, onSelect, onMouseEnter, renderOption }) => (
   <div
     data-dropdown-item
-    className={`block cursor-pointer px-3 py-2 ${isHighlighted ? 'bg-[var(--vscode-list-activeSelectionBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'}`}
-    style={{ color: 'var(--vscode-dropdown-foreground)' }}
+    className={`block cursor-pointer px-3 py-2 ${isHighlighted ? "bg-[var(--vscode-list-activeSelectionBackground)]" : "hover:bg-[var(--vscode-list-hoverBackground)]"}`}
+    style={{ color: "var(--vscode-dropdown-foreground)" }}
     onMouseEnter={onMouseEnter}
-    onMouseDown={(e) => { e.preventDefault(); onSelect(); }}
+    onMouseDown={(e) => {
+      e.preventDefault();
+      onSelect();
+    }}
   >
     {renderOption ? renderOption(option) : option.label}
   </div>
@@ -48,7 +51,15 @@ const DropdownMenu: React.FC<{
   onSelect: (option: FilterableDropdownOption) => void;
   onHighlight: (index: number) => void;
   renderOption?: (option: FilterableDropdownOption) => React.ReactNode;
-}> = ({ menuRef, menuClassName, options, highlightedIndex, onSelect, onHighlight, renderOption }) => (
+}> = ({
+  menuRef,
+  menuClassName,
+  options,
+  highlightedIndex,
+  onSelect,
+  onHighlight,
+  renderOption
+}) => (
   <div
     ref={menuRef}
     className={`absolute left-0 top-full z-[60] mt-1 w-full overflow-y-auto rounded-sm border border-[var(--vscode-dropdown-border)] bg-[var(--vscode-dropdown-background)] shadow-lg ${menuClassName}`}
@@ -66,27 +77,42 @@ const DropdownMenu: React.FC<{
   </div>
 );
 
-const EmptyState: React.FC<{ filterText: string; allowFreeText: boolean }> = ({ filterText, allowFreeText }) => (
+const EmptyState: React.FC<{ filterText: string; allowFreeText: boolean }> = ({
+  filterText,
+  allowFreeText
+}) => (
   <div
     className="absolute left-0 top-full z-[60] mt-1 w-full rounded-sm border border-[var(--vscode-dropdown-border)] bg-[var(--vscode-dropdown-background)] px-3 py-2 shadow-lg"
-    style={{ color: 'var(--vscode-foreground)', opacity: 0.6 }}
+    style={{ color: "var(--vscode-foreground)", opacity: 0.6 }}
   >
-    {allowFreeText ? `Use "${filterText}" as custom value` : 'No matches found'}
+    {allowFreeText ? `Use "${filterText}" as custom value` : "No matches found"}
   </div>
 );
 
 export const FilterableDropdown: React.FC<FilterableDropdownProps> = ({
-  id, options, value, onChange,
-  placeholder = 'Type to filter...',
+  id,
+  options,
+  value,
+  onChange,
+  placeholder = "Type to filter...",
   allowFreeText = false,
-  className = '',
+  className = "",
   disabled = false,
   renderOption,
-  menuClassName = 'max-h-48'
+  menuClassName = "max-h-48"
 }) => {
   const dropdown = useFilterableDropdown({ options, value, onChange, allowFreeText });
-  const { containerRef, inputRef, menuRef, isOpen, filterText, highlightedIndex, filteredOptions } = dropdown;
-  const { handleSelect, handleKeyDown, handleBlur, handleInputChange, handleToggle, handleFocus, setHighlightedIndex } = dropdown;
+  const { containerRef, inputRef, menuRef, isOpen, filterText, highlightedIndex, filteredOptions } =
+    dropdown;
+  const {
+    handleSelect,
+    handleKeyDown,
+    handleBlur,
+    handleInputChange,
+    handleToggle,
+    handleFocus,
+    setHighlightedIndex
+  } = dropdown;
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
@@ -112,7 +138,7 @@ export const FilterableDropdown: React.FC<FilterableDropdownProps> = ({
           tabIndex={-1}
           disabled={disabled}
         >
-          <i className={`fas fa-angle-${isOpen ? 'up' : 'down'}`} />
+          <i className={`fas fa-angle-${isOpen ? "up" : "down"}`} />
         </button>
       </div>
       {isOpen && filteredOptions.length > 0 && (

@@ -45,7 +45,7 @@ export async function saveNode(node: ClabContainerTreeNode) {
   }
 
   // Use the short node name if available to support custom prefixes
-  const shortNodeName = node.name_short ?? node.name.replace(/^clab-[^-]+-/, '');
+  const shortNodeName = node.name_short ?? node.name.replace(/^clab-[^-]+-/, "");
 
   const tempLabNode = new ClabLabTreeNode(
     path.basename(node.labPath.absolute),

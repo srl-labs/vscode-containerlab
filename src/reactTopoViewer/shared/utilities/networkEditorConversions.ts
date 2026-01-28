@@ -3,16 +3,20 @@
  * Cytoscape node data format for network nodes
  */
 
-import type { NetworkEditorData, NetworkType } from '../types/editors';
+import type { NetworkEditorData, NetworkType } from "../types/editors";
 
-import { getStringOrEmpty, getRecord } from './typeHelpers';
+import { getStringOrEmpty, getRecord } from "./typeHelpers";
 
 /**
  * Parse network type from node data
  * Checks in order: extraData.kind, top-level kind, top-level type, parse from ID
  * Network node IDs follow patterns like: "host:eth0", "mgmt-net:eth1", "bridge:br0"
  */
-function parseNetworkType(nodeId: string, rawData: Record<string, unknown>, extraData: Record<string, unknown>): NetworkType {
+function parseNetworkType(
+  nodeId: string,
+  rawData: Record<string, unknown>,
+  extraData: Record<string, unknown>
+): NetworkType {
   // Check extraData.kind first (new network creation format)
   const extraKind = getStringOrEmpty(extraData.kind);
   if (extraKind && isValidNetworkType(extraKind)) {
@@ -32,14 +36,14 @@ function parseNetworkType(nodeId: string, rawData: Record<string, unknown>, extr
   }
 
   // Fall back to parsing from node ID
-  const parts = nodeId.split(':');
+  const parts = nodeId.split(":");
   const prefix = parts[0];
   if (isValidNetworkType(prefix)) {
     return prefix as NetworkType;
   }
 
   // Default to host if we can't determine
-  return 'host';
+  return "host";
 }
 
 /**
@@ -47,13 +51,19 @@ function parseNetworkType(nodeId: string, rawData: Record<string, unknown>, extr
  */
 function isValidNetworkType(type: string): boolean {
   return [
-    'host', 'mgmt-net', 'macvlan', 'vxlan',
-    'vxlan-stitch', 'dummy', 'bridge', 'ovs-bridge'
+    "host",
+    "mgmt-net",
+    "macvlan",
+    "vxlan",
+    "vxlan-stitch",
+    "dummy",
+    "bridge",
+    "ovs-bridge"
   ].includes(type);
 }
 
 /** Host-like types that have host-interface property */
-const HOST_INTERFACE_TYPES = new Set(['host', 'macvlan', 'mgmt-net']);
+const HOST_INTERFACE_TYPES = new Set(["host", "macvlan", "mgmt-net"]);
 
 /**
  * Parse interface name from node ID or extraData
@@ -61,17 +71,21 @@ const HOST_INTERFACE_TYPES = new Set(['host', 'macvlan', 'mgmt-net']);
  * otherwise falls back to extracting from node ID (e.g., "host:eth0" -> "eth0")
  * For bridges, it might be the full ID or from extYamlNodeId
  */
-function parseInterfaceName(nodeId: string, networkType: NetworkType, extraData: Record<string, unknown>): string {
+function parseInterfaceName(
+  nodeId: string,
+  networkType: NetworkType,
+  extraData: Record<string, unknown>
+): string {
   // For bridges, prefer extYamlNodeId if available
-  if (networkType === 'bridge' || networkType === 'ovs-bridge') {
+  if (networkType === "bridge" || networkType === "ovs-bridge") {
     const yamlId = getStringOrEmpty(extraData.extYamlNodeId);
     if (yamlId) return yamlId;
     return nodeId;
   }
 
   // For dummy, there's no interface
-  if (networkType === 'dummy') {
-    return '';
+  if (networkType === "dummy") {
+    return "";
   }
 
   // For host-interface types, check extHostInterface first (saved by network editor)
@@ -81,14 +95,16 @@ function parseInterfaceName(nodeId: string, networkType: NetworkType, extraData:
   }
 
   // Fall back to extracting from node ID
-  const parts = nodeId.split(':');
-  return parts[1] || 'eth1';
+  const parts = nodeId.split(":");
+  return parts[1] || "eth1";
 }
 
 /**
  * Converts raw network node data (from Cytoscape) to NetworkEditorData format
  */
-export function convertToNetworkEditorData(rawData: Record<string, unknown> | null): NetworkEditorData | null {
+export function convertToNetworkEditorData(
+  rawData: Record<string, unknown> | null
+): NetworkEditorData | null {
   if (!rawData) return null;
 
   const nodeId = getStringOrEmpty(rawData.id);

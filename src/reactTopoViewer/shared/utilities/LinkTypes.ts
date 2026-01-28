@@ -2,28 +2,28 @@
  * Common link/node type constants and helpers for React TopoViewer.
  */
 
-export const STR_HOST = 'host' as const;
-export const STR_MGMT_NET = 'mgmt-net' as const;
-export const PREFIX_MACVLAN = 'macvlan:' as const;
-export const PREFIX_VXLAN = 'vxlan:' as const;
-export const PREFIX_VXLAN_STITCH = 'vxlan-stitch:' as const;
-export const PREFIX_DUMMY = 'dummy' as const;
-export const PREFIX_BRIDGE = 'bridge:' as const;
-export const PREFIX_OVS_BRIDGE = 'ovs-bridge:' as const;
+export const STR_HOST = "host" as const;
+export const STR_MGMT_NET = "mgmt-net" as const;
+export const PREFIX_MACVLAN = "macvlan:" as const;
+export const PREFIX_VXLAN = "vxlan:" as const;
+export const PREFIX_VXLAN_STITCH = "vxlan-stitch:" as const;
+export const PREFIX_DUMMY = "dummy" as const;
+export const PREFIX_BRIDGE = "bridge:" as const;
+export const PREFIX_OVS_BRIDGE = "ovs-bridge:" as const;
 
-export const TYPE_DUMMY = 'dummy' as const;
+export const TYPE_DUMMY = "dummy" as const;
 
 export const SINGLE_ENDPOINT_TYPES = new Set<string>([
   STR_HOST,
   STR_MGMT_NET,
-  'macvlan',
+  "macvlan",
   TYPE_DUMMY,
-  'vxlan',
-  'vxlan-stitch'
+  "vxlan",
+  "vxlan-stitch"
 ]);
 
-export const VX_TYPES = new Set<string>(['vxlan', 'vxlan-stitch']);
-export const HOSTY_TYPES = new Set<string>([STR_HOST, STR_MGMT_NET, 'macvlan']);
+export const VX_TYPES = new Set<string>(["vxlan", "vxlan-stitch"]);
+export const HOSTY_TYPES = new Set<string>([STR_HOST, STR_MGMT_NET, "macvlan"]);
 
 /**
  * Determines if a node ID represents a special endpoint.
@@ -35,7 +35,7 @@ export function isSpecialEndpointId(nodeId: string): boolean {
     nodeId.startsWith(PREFIX_MACVLAN) ||
     nodeId.startsWith(PREFIX_VXLAN) ||
     nodeId.startsWith(PREFIX_VXLAN_STITCH) ||
-    nodeId.startsWith('dummy') ||
+    nodeId.startsWith("dummy") ||
     nodeId.startsWith(PREFIX_BRIDGE) ||
     nodeId.startsWith(PREFIX_OVS_BRIDGE)
   );
@@ -50,11 +50,13 @@ export function isSpecialNodeOrBridge(nodeId: string, cy?: unknown): boolean {
   }
 
   if (cy) {
-    const cyInstance = cy as { getElementById: (id: string) => { length: number; data: (key: string) => unknown } };
+    const cyInstance = cy as {
+      getElementById: (id: string) => { length: number; data: (key: string) => unknown };
+    };
     const node = cyInstance.getElementById(nodeId);
     if (node.length > 0) {
-      const kind = (node.data('extraData') as { kind?: string })?.kind;
-      return kind === 'bridge' || kind === 'ovs-bridge';
+      const kind = (node.data("extraData") as { kind?: string })?.kind;
+      return kind === "bridge" || kind === "ovs-bridge";
     }
   }
 
@@ -64,24 +66,25 @@ export function isSpecialNodeOrBridge(nodeId: string, cy?: unknown): boolean {
 /**
  * Splits an endpoint string or object into node and interface components.
  */
-export function splitEndpointLike(
-  endpoint: string | { node: string; interface?: string }
-): { node: string; iface: string } {
-  if (typeof endpoint === 'string') {
+export function splitEndpointLike(endpoint: string | { node: string; interface?: string }): {
+  node: string;
+  iface: string;
+} {
+  if (typeof endpoint === "string") {
     if (
       endpoint.startsWith(PREFIX_MACVLAN) ||
       endpoint.startsWith(PREFIX_DUMMY) ||
       endpoint.startsWith(PREFIX_VXLAN) ||
       endpoint.startsWith(PREFIX_VXLAN_STITCH)
     ) {
-      return { node: endpoint, iface: '' };
+      return { node: endpoint, iface: "" };
     }
-    const parts = endpoint.split(':');
+    const parts = endpoint.split(":");
     if (parts.length === 2) return { node: parts[0], iface: parts[1] };
-    return { node: endpoint, iface: '' };
+    return { node: endpoint, iface: "" };
   }
-  if (endpoint && typeof endpoint === 'object') {
-    return { node: endpoint.node, iface: endpoint.interface ?? '' };
+  if (endpoint && typeof endpoint === "object") {
+    return { node: endpoint.node, iface: endpoint.interface ?? "" };
   }
-  return { node: '', iface: '' };
+  return { node: "", iface: "" };
 }

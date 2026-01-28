@@ -1,9 +1,9 @@
 /**
  * BasicTab - Basic settings tab for Lab Settings panel
  */
-import React from 'react';
+import React from "react";
 
-import type { PrefixType } from './types';
+import type { PrefixType } from "./types";
 
 interface BasicTabProps {
   labName: string;
@@ -55,7 +55,7 @@ export const BasicTab: React.FC<BasicTabProps> = ({
           <option value="custom">Custom</option>
           <option value="no-prefix">No prefix</option>
         </select>
-        {prefixType === 'custom' && (
+        {prefixType === "custom" && (
           <input
             type="text"
             className="input-field w-full"

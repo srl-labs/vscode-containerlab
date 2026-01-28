@@ -2,18 +2,18 @@
  * MessageRouter - Handles webview message routing for ReactTopoViewer
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
-import type * as vscode from 'vscode';
+import type * as vscode from "vscode";
 
-import { log, logWithLocation } from '../services/logger';
-import { labLifecycleService } from '../services/LabLifecycleService';
-import { nodeCommandService } from '../services/NodeCommandService';
-import type { SplitViewManager } from '../services/SplitViewManager';
-import { customNodeConfigManager } from '../services/CustomNodeConfigManager';
-import type { CustomNodeConfig } from '../services/CustomNodeConfigManager';
-import { iconService } from '../services/IconService';
+import { log, logWithLocation } from "../services/logger";
+import { labLifecycleService } from "../services/LabLifecycleService";
+import { nodeCommandService } from "../services/NodeCommandService";
+import type { SplitViewManager } from "../services/SplitViewManager";
+import { customNodeConfigManager } from "../services/CustomNodeConfigManager";
+import type { CustomNodeConfig } from "../services/CustomNodeConfigManager";
+import { iconService } from "../services/IconService";
 
 type WebviewMessage = Record<string, unknown> & {
   type?: string;
@@ -23,36 +23,29 @@ type WebviewMessage = Record<string, unknown> & {
 };
 
 const LIFECYCLE_COMMANDS = new Set([
-  'deployLab',
-  'destroyLab',
-  'redeployLab',
-  'deployLabCleanup',
-  'destroyLabCleanup',
-  'redeployLabCleanup',
+  "deployLab",
+  "destroyLab",
+  "redeployLab",
+  "deployLabCleanup",
+  "destroyLabCleanup",
+  "redeployLabCleanup"
 ]);
 
 const NODE_COMMANDS = new Set([
-  'clab-node-connect-ssh',
-  'clab-node-attach-shell',
-  'clab-node-view-logs',
+  "clab-node-connect-ssh",
+  "clab-node-attach-shell",
+  "clab-node-view-logs"
 ]);
 
-const INTERFACE_COMMANDS = new Set([
-  'clab-interface-capture',
-]);
+const INTERFACE_COMMANDS = new Set(["clab-interface-capture"]);
 
 const CUSTOM_NODE_COMMANDS = new Set([
-  'save-custom-node',
-  'delete-custom-node',
-  'set-default-custom-node',
+  "save-custom-node",
+  "delete-custom-node",
+  "set-default-custom-node"
 ]);
 
-const ICON_COMMANDS = new Set([
-  'icon-list',
-  'icon-upload',
-  'icon-delete',
-  'icon-reconcile',
-]);
+const ICON_COMMANDS = new Set(["icon-list", "icon-upload", "icon-delete", "icon-reconcile"]);
 
 /**
  * Context required by the message router
@@ -88,10 +81,12 @@ export class MessageRouter {
    * Webviews are not a trust boundary; only allow access to the active lab YAML
    * and its adjacent annotations file.
    */
-  private validateFsPath(filePath: string): { ok: true; normalizedPath: string } | { ok: false; error: string } {
+  private validateFsPath(
+    filePath: string
+  ): { ok: true; normalizedPath: string } | { ok: false; error: string } {
     const yamlFilePath = this.context.yamlFilePath;
     if (!yamlFilePath) {
-      return { ok: false, error: 'No YAML file path available' };
+      return { ok: false, error: "No YAML file path available" };
     }
 
     const normalizedRequested = path.resolve(filePath);
@@ -102,26 +97,32 @@ export class MessageRouter {
       return { ok: true, normalizedPath: normalizedRequested };
     }
 
-    return { ok: false, error: 'File access denied' };
+    return { ok: false, error: "File access denied" };
   }
 
   /**
    * Handle log command messages
    */
   private handleLogCommand(message: WebviewMessage): boolean {
-    const command = typeof message.command === 'string' ? message.command : '';
-    if (command === 'reactTopoViewerLog') {
-      const level = typeof message.level === 'string' ? message.level : 'info';
-      const logMsg = typeof message.message === 'string' ? message.message : '';
-      const fileLine = typeof message.fileLine === 'string' ? message.fileLine : undefined;
-      logWithLocation(level || 'info', logMsg || '', fileLine);
+    const command = typeof message.command === "string" ? message.command : "";
+    if (command === "reactTopoViewerLog") {
+      const level = typeof message.level === "string" ? message.level : "info";
+      const logMsg = typeof message.message === "string" ? message.message : "";
+      const fileLine = typeof message.fileLine === "string" ? message.fileLine : undefined;
+      logWithLocation(level || "info", logMsg || "", fileLine);
       return true;
     }
 
-    if (command === 'topoViewerLog') {
-      const level = typeof message.level === 'string' ? message.level : 'info';
-      const logMessage = typeof message.message === 'string' ? message.message : '';
-      const logger = ({ error: log.error, warn: log.warn, debug: log.debug } as Record<string, (m: string) => void>)[level] ?? log.info;
+    if (command === "topoViewerLog") {
+      const level = typeof message.level === "string" ? message.level : "info";
+      const logMessage = typeof message.message === "string" ? message.message : "";
+      const logger =
+        (
+          { error: log.error, warn: log.warn, debug: log.debug } as Record<
+            string,
+            (m: string) => void
+          >
+        )[level] ?? log.info;
       logger(logMessage);
       return true;
     }
@@ -132,22 +133,25 @@ export class MessageRouter {
   /**
    * Handle file system messages from webview (fs:read, fs:write, fs:unlink, fs:exists)
    */
-  private async handleFsMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
-    const msgType = typeof message.type === 'string' ? message.type : '';
-    if (!msgType?.startsWith('fs:')) {
+  private async handleFsMessage(
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<boolean> {
+    const msgType = typeof message.type === "string" ? message.type : "";
+    if (!msgType?.startsWith("fs:")) {
       return false;
     }
 
-    const requestId = typeof message.requestId === 'string' ? message.requestId : undefined;
-    const filePath = typeof message.path === 'string' ? message.path : undefined;
+    const requestId = typeof message.requestId === "string" ? message.requestId : undefined;
+    const filePath = typeof message.path === "string" ? message.path : undefined;
 
     if (!requestId) {
-      log.warn('[MessageRouter] fs: message missing requestId');
+      log.warn("[MessageRouter] fs: message missing requestId");
       return true;
     }
 
     if (!filePath) {
-      this.respondFs(panel, requestId, null, 'Missing path parameter');
+      this.respondFs(panel, requestId, null, "Missing path parameter");
       return true;
     }
 
@@ -159,15 +163,16 @@ export class MessageRouter {
 
     try {
       const handlers: Record<string, () => Promise<void>> = {
-        'fs:read': () => this.handleFsRead(validation.normalizedPath, requestId, panel),
-        'fs:write': () => this.handleFsWrite(
-          validation.normalizedPath,
-          typeof message.content === 'string' ? message.content : undefined,
-          requestId,
-          panel
-        ),
-        'fs:unlink': () => this.handleFsUnlink(validation.normalizedPath, requestId, panel),
-        'fs:exists': () => this.handleFsExists(validation.normalizedPath, requestId, panel),
+        "fs:read": () => this.handleFsRead(validation.normalizedPath, requestId, panel),
+        "fs:write": () =>
+          this.handleFsWrite(
+            validation.normalizedPath,
+            typeof message.content === "string" ? message.content : undefined,
+            requestId,
+            panel
+          ),
+        "fs:unlink": () => this.handleFsUnlink(validation.normalizedPath, requestId, panel),
+        "fs:exists": () => this.handleFsExists(validation.normalizedPath, requestId, panel)
       };
 
       const handler = handlers[msgType];
@@ -185,24 +190,33 @@ export class MessageRouter {
     return true;
   }
 
-  private async handleFsRead(filePath: string, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+  private async handleFsRead(
+    filePath: string,
+    requestId: string,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
     try {
-      const content = await fs.promises.readFile(filePath, 'utf-8');
+      const content = await fs.promises.readFile(filePath, "utf-8");
       this.respondFs(panel, requestId, content);
     } catch (err) {
       this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
     }
   }
 
-  private async handleFsWrite(filePath: string, content: string | undefined, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+  private async handleFsWrite(
+    filePath: string,
+    content: string | undefined,
+    requestId: string,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
     if (content === undefined) {
-      this.respondFs(panel, requestId, null, 'Missing content parameter');
+      this.respondFs(panel, requestId, null, "Missing content parameter");
       return;
     }
     this.context.setInternalUpdate(true);
     try {
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.promises.writeFile(filePath, content, 'utf-8');
+      await fs.promises.writeFile(filePath, content, "utf-8");
       if (this.context.onInternalFileWritten) {
         this.context.onInternalFileWritten(filePath, content);
       }
@@ -214,7 +228,11 @@ export class MessageRouter {
     }
   }
 
-  private async handleFsUnlink(filePath: string, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+  private async handleFsUnlink(
+    filePath: string,
+    requestId: string,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
     this.context.setInternalUpdate(true);
     try {
       await fs.promises.unlink(filePath);
@@ -222,7 +240,7 @@ export class MessageRouter {
     } catch (err) {
       // Don't throw if file doesn't exist
       const code = (err as { code?: string }).code;
-      if (code === 'ENOENT') {
+      if (code === "ENOENT") {
         this.respondFs(panel, requestId, null);
       } else {
         this.respondFs(panel, requestId, null, err instanceof Error ? err.message : String(err));
@@ -232,7 +250,11 @@ export class MessageRouter {
     }
   }
 
-  private async handleFsExists(filePath: string, requestId: string, panel: vscode.WebviewPanel): Promise<void> {
+  private async handleFsExists(
+    filePath: string,
+    requestId: string,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
     try {
       await fs.promises.access(filePath);
       this.respondFs(panel, requestId, true);
@@ -241,26 +263,34 @@ export class MessageRouter {
     }
   }
 
-  private respondFs(panel: vscode.WebviewPanel, requestId: string, result: unknown, error?: string): void {
+  private respondFs(
+    panel: vscode.WebviewPanel,
+    requestId: string,
+    result: unknown,
+    error?: string
+  ): void {
     panel.webview.postMessage({
-      type: 'fs:response',
+      type: "fs:response",
       requestId,
       result,
-      error: error ?? null,
+      error: error ?? null
     });
   }
 
   /**
    * Handle POST request messages
    */
-  private async handlePostMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+  private async handlePostMessage(
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
     const requestId = message.requestId;
     const endpointName = message.endpointName;
     let result: unknown = null;
     let error: string | null = null;
 
     try {
-      if (endpointName === 'get-topology-data') {
+      if (endpointName === "get-topology-data") {
         result = await this.context.loadTopologyData();
       } else {
         error = `Unknown endpoint: ${endpointName}`;
@@ -270,7 +300,7 @@ export class MessageRouter {
     }
 
     panel.webview.postMessage({
-      type: 'POST_RESPONSE',
+      type: "POST_RESPONSE",
       requestId,
       result,
       error
@@ -294,18 +324,22 @@ export class MessageRouter {
   private async handleSplitViewToggle(panel: vscode.WebviewPanel): Promise<void> {
     const yamlFilePath = this.context.yamlFilePath;
     if (!yamlFilePath) {
-      log.warn('[MessageRouter] Cannot toggle split view: no YAML path available');
+      log.warn("[MessageRouter] Cannot toggle split view: no YAML path available");
       return;
     }
     try {
       const isOpen = await this.context.splitViewManager.toggleSplitView(yamlFilePath, panel);
-      log.info(`[MessageRouter] Split view toggled: ${isOpen ? 'opened' : 'closed'}`);
+      log.info(`[MessageRouter] Split view toggled: ${isOpen ? "opened" : "closed"}`);
     } catch (err) {
       log.error(`[MessageRouter] Failed to toggle split view: ${err}`);
     }
   }
 
-  private async handleCustomNodeCommand(command: string, message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+  private async handleCustomNodeCommand(
+    command: string,
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
     const res = await this.executeCustomNodeCommand(command, message);
     if (!res) return;
 
@@ -313,18 +347,21 @@ export class MessageRouter {
       log.error(`[MessageRouter] ${res.error}`);
       // Send error back to webview so user can see the failure
       panel.webview.postMessage({
-        type: 'custom-node-error',
+        type: "custom-node-error",
         error: res.error
       });
       return;
     }
 
-    const payload = res.result as { customNodes?: unknown[]; defaultNode?: string } | null | undefined;
+    const payload = res.result as
+      | { customNodes?: unknown[]; defaultNode?: string }
+      | null
+      | undefined;
     if (payload?.customNodes) {
       panel.webview.postMessage({
-        type: 'custom-nodes-updated',
+        type: "custom-nodes-updated",
         customNodes: payload.customNodes,
-        defaultNode: payload.defaultNode ?? ''
+        defaultNode: payload.defaultNode ?? ""
       });
     }
   }
@@ -334,15 +371,15 @@ export class MessageRouter {
     message: WebviewMessage
   ): Promise<{ result?: unknown; error?: string | null } | undefined> {
     let res: { result?: unknown; error?: string | null } | undefined;
-    if (command === 'save-custom-node') {
+    if (command === "save-custom-node") {
       const data = this.parseCustomNodeSavePayload(message);
       if (data) {
         res = await customNodeConfigManager.saveCustomNode(data);
       }
-    } else if (command === 'delete-custom-node') {
+    } else if (command === "delete-custom-node") {
       const name = this.getCustomNodeName(message);
       res = await customNodeConfigManager.deleteCustomNode(name);
-    } else if (command === 'set-default-custom-node') {
+    } else if (command === "set-default-custom-node") {
       const name = this.getCustomNodeName(message);
       res = await customNodeConfigManager.setDefaultCustomNode(name);
     }
@@ -351,8 +388,8 @@ export class MessageRouter {
 
   private parseCustomNodeSavePayload(message: WebviewMessage): CustomNodeConfig | null {
     const payload = message as Record<string, unknown>;
-    const name = typeof payload.name === 'string' ? payload.name : '';
-    const kind = typeof payload.kind === 'string' ? payload.kind : '';
+    const name = typeof payload.name === "string" ? payload.name : "";
+    const kind = typeof payload.kind === "string" ? payload.kind : "";
     if (!name || !kind) {
       log.error(`[MessageRouter] Invalid custom node payload: ${JSON.stringify(message)}`);
       return null;
@@ -361,7 +398,7 @@ export class MessageRouter {
   }
 
   private getCustomNodeName(message: WebviewMessage): string {
-    return typeof message.name === 'string' ? message.name : '';
+    return typeof message.name === "string" ? message.name : "";
   }
 
   private async handleNodeCommand(command: string, message: WebviewMessage): Promise<void> {
@@ -370,7 +407,7 @@ export class MessageRouter {
       log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
       return;
     }
-    const nodeName = typeof message.nodeName === 'string' ? message.nodeName : '';
+    const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
     if (!nodeName) {
       log.warn(`[MessageRouter] Invalid node command payload: ${JSON.stringify(message)}`);
       return;
@@ -386,13 +423,17 @@ export class MessageRouter {
       log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
       return;
     }
-    const nodeName = typeof message.nodeName === 'string' ? message.nodeName : '';
-    const interfaceName = typeof message.interfaceName === 'string' ? message.interfaceName : '';
+    const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
+    const interfaceName = typeof message.interfaceName === "string" ? message.interfaceName : "";
     if (!nodeName || !interfaceName) {
       log.warn(`[MessageRouter] Invalid interface command payload: ${JSON.stringify(message)}`);
       return;
     }
-    const res = await nodeCommandService.handleInterfaceEndpoint(command, { nodeName, interfaceName }, yamlFilePath);
+    const res = await nodeCommandService.handleInterfaceEndpoint(
+      command,
+      { nodeName, interfaceName },
+      yamlFilePath
+    );
     if (res.error) log.error(`[MessageRouter] ${res.error}`);
     else if (res.result) log.info(`[MessageRouter] ${res.result}`);
   }
@@ -416,10 +457,13 @@ export class MessageRouter {
     }
   }
 
-  private async handleIconDelete(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
-    const iconName = typeof message.iconName === 'string' ? message.iconName : '';
+  private async handleIconDelete(
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const iconName = typeof message.iconName === "string" ? message.iconName : "";
     if (!iconName) {
-      log.warn('[MessageRouter] icon-delete: missing iconName');
+      log.warn("[MessageRouter] icon-delete: missing iconName");
       return;
     }
     const result = await iconService.deleteGlobalIcon(iconName);
@@ -437,13 +481,17 @@ export class MessageRouter {
     await iconService.reconcileWorkspaceIcons(yamlFilePath, usedIcons);
   }
 
-  private async handleIconCommand(command: string, message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
+  private async handleIconCommand(
+    command: string,
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
     try {
       const handlers: Record<string, () => Promise<void>> = {
-        'icon-list': () => this.handleIconList(panel),
-        'icon-upload': () => this.handleIconUpload(panel),
-        'icon-delete': () => this.handleIconDelete(message, panel),
-        'icon-reconcile': () => this.handleIconReconcile(message),
+        "icon-list": () => this.handleIconList(panel),
+        "icon-upload": () => this.handleIconUpload(panel),
+        "icon-delete": () => this.handleIconDelete(message, panel),
+        "icon-reconcile": () => this.handleIconReconcile(message)
       };
       const handler = handlers[command];
       if (handler) await handler();
@@ -454,13 +502,16 @@ export class MessageRouter {
 
   private sendIconResponse(panel: vscode.WebviewPanel, icons: unknown[]): void {
     panel.webview.postMessage({
-      type: 'icon-list-response',
-      icons,
+      type: "icon-list-response",
+      icons
     });
   }
 
-  private async handleCommandMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<boolean> {
-    const command = typeof message.command === 'string' ? message.command : '';
+  private async handleCommandMessage(
+    message: WebviewMessage,
+    panel: vscode.WebviewPanel
+  ): Promise<boolean> {
+    const command = typeof message.command === "string" ? message.command : "";
     if (!command) return false;
 
     if (LIFECYCLE_COMMANDS.has(command)) {
@@ -478,7 +529,7 @@ export class MessageRouter {
       return true;
     }
 
-    if (command === 'topo-toggle-split-view') {
+    if (command === "topo-toggle-split-view") {
       await this.handleSplitViewToggle(panel);
       return true;
     }
@@ -500,7 +551,7 @@ export class MessageRouter {
    * Handle messages from the webview
    */
   async handleMessage(message: WebviewMessage, panel: vscode.WebviewPanel): Promise<void> {
-    if (!message || typeof message !== 'object') {
+    if (!message || typeof message !== "object") {
       return;
     }
 
@@ -520,7 +571,7 @@ export class MessageRouter {
     }
 
     // Handle POST requests (production-specific)
-    if (message.type === 'POST' && message.requestId && message.endpointName) {
+    if (message.type === "POST" && message.requestId && message.endpointName) {
       await this.handlePostMessage(message, panel);
     }
   }

@@ -5,10 +5,10 @@
  * moves in sync with the canvas (no drift). Text is positioned using model
  * coordinates and scales with zoom like nodes do.
  */
-import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useRef, useState, useMemo, useCallback, useEffect } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { FreeTextAnnotation } from '../../../shared/types/topology';
+import type { FreeTextAnnotation } from "../../../shared/types/topology";
 import {
   computeAnnotationStyle,
   useAnnotationClickHandlers,
@@ -16,9 +16,9 @@ import {
   useAnnotationBoxSelection,
   useAnnotationReparent,
   useDebouncedHover
-} from '../../hooks/annotations';
-import { renderMarkdown } from '../../utils/markdownRenderer';
-import type { MapLibreState } from '../../hooks/canvas/maplibreUtils';
+} from "../../hooks/annotations";
+import { renderMarkdown } from "../../utils/markdownRenderer";
+import type { MapLibreState } from "../../hooks/canvas/maplibreUtils";
 
 import {
   HANDLE_SIZE,
@@ -30,7 +30,7 @@ import {
   createBoundAnnotationCallbacks,
   type BaseAnnotationHandlers,
   type GroupRelatedProps
-} from './shared';
+} from "./shared";
 
 // ============================================================================
 // Types
@@ -41,7 +41,7 @@ interface FreeTextLayerProps extends GroupRelatedProps {
   annotations: FreeTextAnnotation[];
   isLocked: boolean;
   isAddTextMode: boolean;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   textLayerNode?: HTMLElement | null;
   onAnnotationDoubleClick: (id: string) => void;
   onAnnotationDelete: (id: string) => void;
@@ -54,7 +54,7 @@ interface FreeTextLayerProps extends GroupRelatedProps {
   onAnnotationToggleSelect?: (id: string) => void;
   onAnnotationBoxSelect?: (ids: string[]) => void;
   isGeoMode?: boolean;
-  geoMode?: 'pan' | 'edit';
+  geoMode?: "pan" | "edit";
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
 }
@@ -82,8 +82,10 @@ function useViewportTransform(cy: CyCore | null): ViewportTransform {
     };
 
     updateTransform();
-    cy.on('pan zoom viewport', updateTransform);
-    return () => { cy.off('pan zoom viewport', updateTransform); };
+    cy.on("pan zoom viewport", updateTransform);
+    return () => {
+      cy.off("pan zoom viewport", updateTransform);
+    };
   }, [cy]);
 
   return transform;
@@ -97,11 +99,11 @@ function addMouseListeners(
   onMouseMove: (e: MouseEvent) => void,
   onMouseUp: (e: MouseEvent) => void
 ): () => void {
-  document.addEventListener('mousemove', onMouseMove);
-  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
   return () => {
-    document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
   };
 }
 
@@ -122,7 +124,12 @@ function useTextDrag(options: UseDragOptions) {
   const { cy, modelPosition, isLocked, onPositionChange, onDragStart, onDragEnd } = options;
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number } | null>(null);
-  const dragStartRef = useRef<{ mouseX: number; mouseY: number; modelX: number; modelY: number } | null>(null);
+  const dragStartRef = useRef<{
+    mouseX: number;
+    mouseY: number;
+    modelX: number;
+    modelY: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -156,24 +163,27 @@ function useTextDrag(options: UseDragOptions) {
     return addMouseListeners(handleMouseMove, handleMouseUp);
   }, [isDragging, cy, modelPosition, onPositionChange, onDragEnd]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked || e.button !== 0) return;
-    // Allow link clicks to pass through
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'A' || target.closest('a')) {
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      modelX: modelPosition.x,
-      modelY: modelPosition.y
-    };
-    onDragStart?.();
-  }, [isLocked, modelPosition, onDragStart]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (isLocked || e.button !== 0) return;
+      // Allow link clicks to pass through
+      const target = e.target as HTMLElement;
+      if (target.tagName === "A" || target.closest("a")) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(true);
+      dragStartRef.current = {
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        modelX: modelPosition.x,
+        modelY: modelPosition.y
+      };
+      onDragStart?.();
+    },
+    [isLocked, modelPosition, onDragStart]
+  );
 
   // Current position = model position + drag offset
   const currentPosition = useMemo(() => {
@@ -223,12 +233,15 @@ function useTextRotation(options: {
     return addMouseListeners(handleMouseMove, handleMouseUp);
   }, [isRotating, cy, modelPosition, onRotationChange]);
 
-  const handleRotationMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsRotating(true);
-  }, [isLocked]);
+  const handleRotationMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (isLocked) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsRotating(true);
+    },
+    [isLocked]
+  );
 
   return { isRotating, handleRotationMouseDown };
 }
@@ -247,7 +260,12 @@ function useTextResize(options: {
 }) {
   const { cy, currentWidth, currentHeight, contentRef, isLocked, onSizeChange } = options;
   const [isResizing, setIsResizing] = useState(false);
-  const resizeStartRef = useRef<{ mouseX: number; mouseY: number; width: number; height: number } | null>(null);
+  const resizeStartRef = useRef<{
+    mouseX: number;
+    mouseY: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -266,28 +284,31 @@ function useTextResize(options: {
       resizeStartRef.current = null;
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing, onSizeChange]);
 
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked) return;
-    e.preventDefault();
-    e.stopPropagation();
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (isLocked) return;
+      e.preventDefault();
+      e.stopPropagation();
 
-    const zoom = cy.zoom();
-    const rect = contentRef.current?.getBoundingClientRect();
-    // Divide by zoom to convert screen-space to model-space dimensions
-    const width = currentWidth || (rect ? rect.width / zoom : 100);
-    const height = currentHeight || (rect ? rect.height / zoom : 50);
+      const zoom = cy.zoom();
+      const rect = contentRef.current?.getBoundingClientRect();
+      // Divide by zoom to convert screen-space to model-space dimensions
+      const width = currentWidth || (rect ? rect.width / zoom : 100);
+      const height = currentHeight || (rect ? rect.height / zoom : 50);
 
-    resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width, height };
-    setIsResizing(true);
-  }, [isLocked, cy, currentWidth, currentHeight, contentRef]);
+      resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width, height };
+      setIsResizing(true);
+    },
+    [isLocked, cy, currentWidth, currentHeight, contentRef]
+  );
 
   return { isResizing, handleResizeMouseDown };
 }
@@ -302,7 +323,7 @@ interface TextItemProps {
   isLocked: boolean;
   isSelected: boolean;
   isGeoMode?: boolean;
-  geoMode?: 'pan' | 'edit';
+  geoMode?: "pan" | "edit";
   mapLibreState?: MapLibreState | null;
   groupDragOffset?: { dx: number; dy: number };
   onDoubleClick: () => void;
@@ -320,26 +341,43 @@ interface TextItemProps {
 }
 
 function getAnnotationCursor(isLocked: boolean, isDragging: boolean): string {
-  if (isLocked) return 'default';
-  if (isDragging) return 'grabbing';
-  return 'grab';
+  if (isLocked) return "default";
+  if (isDragging) return "grabbing";
+  return "grab";
 }
 
 function getMarkdownContentStyle(annotation: FreeTextAnnotation): React.CSSProperties {
   const hasExplicitSize = annotation.width || annotation.height;
   if (!hasExplicitSize) return {};
-  return { width: '100%', height: '100%', overflowX: 'hidden', overflowY: 'auto' };
+  return { width: "100%", height: "100%", overflowX: "hidden", overflowY: "auto" };
 }
 
-function calculateEffectivelyLocked(isLocked: boolean, isGeoMode?: boolean, geoMode?: 'pan' | 'edit'): boolean {
-  return isLocked || (isGeoMode === true && geoMode === 'pan');
+function calculateEffectivelyLocked(
+  isLocked: boolean,
+  isGeoMode?: boolean,
+  geoMode?: "pan" | "edit"
+): boolean {
+  return isLocked || (isGeoMode === true && geoMode === "pan");
 }
 
 const TextItem: React.FC<TextItemProps> = ({
-  annotation, cy, isLocked, isSelected,
-  isGeoMode, geoMode, groupDragOffset,
-  onDoubleClick, onDelete, onPositionChange, onRotationChange, onSizeChange,
-  onSelect, onToggleSelect, onDragStart, onDragEnd, onShowContextMenu
+  annotation,
+  cy,
+  isLocked,
+  isSelected,
+  isGeoMode,
+  geoMode,
+  groupDragOffset,
+  onDoubleClick,
+  onDelete,
+  onPositionChange,
+  onRotationChange,
+  onSizeChange,
+  onSelect,
+  onToggleSelect,
+  onDragStart,
+  onDragEnd,
+  onShowContextMenu
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const { isHovered, hoverHandlers } = useDebouncedHover();
@@ -374,33 +412,47 @@ const TextItem: React.FC<TextItemProps> = ({
   });
 
   // Click handlers - use onShowContextMenu to render context menu outside transformed layer
-  const { handleClick: baseHandleClick, handleDoubleClick } =
-    useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, onDoubleClick, onDelete);
+  const { handleClick: baseHandleClick, handleDoubleClick } = useAnnotationClickHandlers(
+    effectivelyLocked,
+    onSelect,
+    onToggleSelect,
+    onDoubleClick,
+    onDelete
+  );
 
   // Wrap click/doubleClick handlers to allow link clicks to pass through
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'A' || target.closest('a')) {
-      return; // Don't intercept link clicks
-    }
-    baseHandleClick(e);
-  }, [baseHandleClick]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "A" || target.closest("a")) {
+        return; // Don't intercept link clicks
+      }
+      baseHandleClick(e);
+    },
+    [baseHandleClick]
+  );
 
-  const handleDoubleClickWrapper = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'A' || target.closest('a')) {
-      return; // Don't intercept link double-clicks
-    }
-    handleDoubleClick(e);
-  }, [handleDoubleClick]);
+  const handleDoubleClickWrapper = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "A" || target.closest("a")) {
+        return; // Don't intercept link double-clicks
+      }
+      handleDoubleClick(e);
+    },
+    [handleDoubleClick]
+  );
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!effectivelyLocked) {
-      onShowContextMenu({ x: e.clientX, y: e.clientY });
-    }
-  }, [effectivelyLocked, onShowContextMenu]);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!effectivelyLocked) {
+        onShowContextMenu({ x: e.clientX, y: e.clientY });
+      }
+    },
+    [effectivelyLocked, onShowContextMenu]
+  );
 
   // Apply group drag offset
   const finalX = groupDragOffset ? currentPosition.x + groupDragOffset.dx : currentPosition.x;
@@ -408,35 +460,45 @@ const TextItem: React.FC<TextItemProps> = ({
 
   const isInteracting = isDragging || isRotating || isResizing;
   const showHandles = (isHovered || isInteracting || isSelected) && !effectivelyLocked;
-  const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ''), [annotation.text]);
+  const renderedHtml = useMemo(() => renderMarkdown(annotation.text || ""), [annotation.text]);
 
-  const baseStyle = useMemo(() =>
-    computeAnnotationStyle(annotation, DUMMY_RENDERED_POS, isInteracting, isHovered, effectivelyLocked),
+  const baseStyle = useMemo(
+    () =>
+      computeAnnotationStyle(
+        annotation,
+        DUMMY_RENDERED_POS,
+        isInteracting,
+        isHovered,
+        effectivelyLocked
+      ),
     [annotation, isInteracting, isHovered, effectivelyLocked]
   );
 
-  const contentStyle: React.CSSProperties = useMemo(() => ({
-    ...baseStyle,
-    position: 'relative',
-    left: 'auto',
-    top: 'auto',
-    transform: 'none',
-    zIndex: 'auto',
-    cursor: getAnnotationCursor(effectivelyLocked, isDragging)
-  }), [baseStyle, effectivelyLocked, isDragging]);
+  const contentStyle: React.CSSProperties = useMemo(
+    () => ({
+      ...baseStyle,
+      position: "relative",
+      left: "auto",
+      top: "auto",
+      transform: "none",
+      zIndex: "auto",
+      cursor: getAnnotationCursor(effectivelyLocked, isDragging)
+    }),
+    [baseStyle, effectivelyLocked, isDragging]
+  );
 
   const markdownStyle = useMemo(() => getMarkdownContentStyle(annotation), [annotation]);
 
   // Wrapper uses MODEL coordinates - layer transform handles screen conversion
   // Wrapper has pointerEvents: 'none', only the text content itself is interactive
   const wrapperStyle: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     left: finalX,
     top: finalY,
     transform: `${CENTER_TRANSLATE} rotate(${annotation.rotation || 0}deg)`,
-    transformOrigin: 'center center',
+    transformOrigin: "center center",
     zIndex: annotation.zIndex ?? 11,
-    pointerEvents: 'none',
+    pointerEvents: "none",
     padding: `${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px 10px 10px 10px`,
     margin: `-${ROTATION_HANDLE_OFFSET + HANDLE_SIZE + 5}px -10px -10px -10px`
   };
@@ -444,7 +506,7 @@ const TextItem: React.FC<TextItemProps> = ({
   // Content style needs pointerEvents: 'auto' to be interactive
   const interactiveContentStyle: React.CSSProperties = {
     ...contentStyle,
-    pointerEvents: 'auto'
+    pointerEvents: "auto"
   };
 
   return (
@@ -458,10 +520,25 @@ const TextItem: React.FC<TextItemProps> = ({
         onContextMenu={handleContextMenu}
         onMouseEnter={hoverHandlers.onMouseEnter}
         onMouseLeave={hoverHandlers.onMouseLeave}
-        title={effectivelyLocked ? undefined : 'Click to select, drag to move, double-click to edit, right-click for menu'}
+        title={
+          effectivelyLocked
+            ? undefined
+            : "Click to select, drag to move, double-click to edit, right-click for menu"
+        }
       >
-        <div className="free-text-markdown" style={markdownStyle} dangerouslySetInnerHTML={{ __html: renderedHtml }} />
-        {showHandles && <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} onMouseEnter={hoverHandlers.onMouseEnter} onMouseLeave={hoverHandlers.onMouseLeave} />}
+        <div
+          className="free-text-markdown"
+          style={markdownStyle}
+          dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        />
+        {showHandles && (
+          <AnnotationHandles
+            onRotation={handleRotationMouseDown}
+            onResize={handleResizeMouseDown}
+            onMouseEnter={hoverHandlers.onMouseEnter}
+            onMouseLeave={hoverHandlers.onMouseLeave}
+          />
+        )}
       </div>
     </div>
   );
@@ -471,7 +548,7 @@ const TextItem: React.FC<TextItemProps> = ({
 // Layer Styles
 // ============================================================================
 
-const CLICK_CAPTURE_STYLE = createClickCaptureStyle('text');
+const CLICK_CAPTURE_STYLE = createClickCaptureStyle("text");
 
 // ============================================================================
 // Callback Helpers
@@ -481,7 +558,10 @@ interface TextAnnotationHandlers extends BaseAnnotationHandlers {
   onAnnotationDoubleClick: (id: string) => void;
 }
 
-function createTextAnnotationCallbacks(annotation: FreeTextAnnotation, handlers: TextAnnotationHandlers) {
+function createTextAnnotationCallbacks(
+  annotation: FreeTextAnnotation,
+  handlers: TextAnnotationHandlers
+) {
   const id = annotation.id;
   const baseCallbacks = createBoundAnnotationCallbacks(id, handlers);
   return {
@@ -495,25 +575,47 @@ function createTextAnnotationCallbacks(annotation: FreeTextAnnotation, handlers:
 // ============================================================================
 
 export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
-  cy, annotations, isLocked, isAddTextMode, mode,
-  onAnnotationDoubleClick, onAnnotationDelete, onPositionChange, onRotationChange, onSizeChange, onCanvasClick,
+  cy,
+  annotations,
+  isLocked,
+  isAddTextMode,
+  mode,
+  onAnnotationDoubleClick,
+  onAnnotationDelete,
+  onPositionChange,
+  onRotationChange,
+  onSizeChange,
+  onCanvasClick,
   selectedAnnotationIds = new Set(),
-  onAnnotationSelect, onAnnotationToggleSelect, onAnnotationBoxSelect,
-  isGeoMode, geoMode, mapLibreState, onGeoPositionChange,
-  groupDragOffsets, groups = [], onUpdateGroupId
+  onAnnotationSelect,
+  onAnnotationToggleSelect,
+  onAnnotationBoxSelect,
+  isGeoMode,
+  geoMode,
+  mapLibreState,
+  onGeoPositionChange,
+  groupDragOffsets,
+  groups = [],
+  onUpdateGroupId
 }) => {
   const layerRef = useRef<HTMLDivElement>(null);
   const transformedLayerRef = useRef<HTMLDivElement>(null);
-  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeTextLayer');
+  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, "FreeTextLayer");
 
   // Context menu state - rendered outside transformed layer so position: fixed works
-  const [contextMenu, setContextMenu] = useState<{ position: { x: number; y: number }; annotationId: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    position: { x: number; y: number };
+    annotationId: string;
+  } | null>(null);
 
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
-  const createShowContextMenu = useCallback((annotationId: string) => (position: { x: number; y: number }) => {
-    setContextMenu({ position, annotationId });
-  }, []);
+  const createShowContextMenu = useCallback(
+    (annotationId: string) => (position: { x: number; y: number }) => {
+      setContextMenu({ position, annotationId });
+    },
+    []
+  );
 
   // Get viewport transform from Cytoscape
   const { pan, zoom } = useViewportTransform(cy);
@@ -545,7 +647,7 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
     return () => window.cancelAnimationFrame(animationId);
   }, [cy]);
 
-  useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, undefined, 'FreeTextLayer');
+  useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, undefined, "FreeTextLayer");
 
   const reparent = useAnnotationReparent({
     mode,
@@ -554,47 +656,61 @@ export const FreeTextLayer: React.FC<FreeTextLayerProps> = ({
     onUpdateGroupId: onUpdateGroupId ?? (() => {})
   });
 
-  const createDragCallbacks = useCallback((annotation: FreeTextAnnotation) => ({
-    onDragStart: () => reparent.onDragStart(annotation.id, annotation.groupId),
-    onDragEnd: (finalPosition: { x: number; y: number }) => reparent.onDragEnd(annotation.id, finalPosition)
-  }), [reparent]);
+  const createDragCallbacks = useCallback(
+    (annotation: FreeTextAnnotation) => ({
+      onDragStart: () => reparent.onDragStart(annotation.id, annotation.groupId),
+      onDragEnd: (finalPosition: { x: number; y: number }) =>
+        reparent.onDragEnd(annotation.id, finalPosition)
+    }),
+    [reparent]
+  );
 
   if (!cy || (annotations.length === 0 && !isAddTextMode)) return null;
 
   const handlers = {
-    onAnnotationDoubleClick, onAnnotationDelete, onPositionChange, onRotationChange,
-    onSizeChange, onAnnotationSelect, onAnnotationToggleSelect, onGeoPositionChange
+    onAnnotationDoubleClick,
+    onAnnotationDelete,
+    onPositionChange,
+    onRotationChange,
+    onSizeChange,
+    onAnnotationSelect,
+    onAnnotationToggleSelect,
+    onGeoPositionChange
   };
 
   // Layer style - clips content, no pointer events on container
   const layerStyle: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    pointerEvents: 'none',
+    pointerEvents: "none",
     zIndex: 10,
-    overflow: 'hidden'
+    overflow: "hidden"
   };
 
   // Transformed layer - applies Cytoscape's viewport transform
   // Large explicit dimensions prevent CSS from constraining child widths based on position
   const transformedLayerStyle: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
-    width: '10000px',
-    height: '10000px',
-    transformOrigin: '0 0',
-    pointerEvents: 'none'
+    width: "10000px",
+    height: "10000px",
+    transformOrigin: "0 0",
+    pointerEvents: "none"
   };
 
   return (
     <div ref={layerRef} className="free-text-layer" style={layerStyle}>
       {isAddTextMode && <div style={CLICK_CAPTURE_STYLE} onClick={handleLayerClick} />}
-      <div ref={transformedLayerRef} className="free-text-transformed" style={transformedLayerStyle}>
-        {annotations.map(annotation => {
+      <div
+        ref={transformedLayerRef}
+        className="free-text-transformed"
+        style={transformedLayerStyle}
+      >
+        {annotations.map((annotation) => {
           const callbacks = createTextAnnotationCallbacks(annotation, handlers);
           const dragCallbacks = createDragCallbacks(annotation);
           const offset = annotation.groupId ? groupDragOffsets?.get(annotation.groupId) : undefined;

@@ -3,10 +3,10 @@
  * Pure functions - no VS Code dependencies, no I/O.
  */
 
-import type { ClabTopology, TopologyAnnotations, NodeAnnotation } from '../types/topology';
-import { createEmptyAnnotations } from '../annotations/types';
+import type { ClabTopology, TopologyAnnotations, NodeAnnotation } from "../types/topology";
+import { createEmptyAnnotations } from "../annotations/types";
 
-import type { GraphLabelMigration } from './types';
+import type { GraphLabelMigration } from "./types";
 
 // ============================================================================
 // Detection
@@ -18,14 +18,14 @@ import type { GraphLabelMigration } from './types';
 export function nodeHasGraphLabels(labels: Record<string, unknown> | undefined): boolean {
   if (!labels) return false;
   return Boolean(
-    labels['graph-posX'] ||
-      labels['graph-posY'] ||
-      labels['graph-icon'] ||
-      labels['graph-group'] ||
-      labels['graph-level'] ||
-      labels['graph-groupLabelPos'] ||
-      labels['graph-geoCoordinateLat'] ||
-      labels['graph-geoCoordinateLng']
+    labels["graph-posX"] ||
+    labels["graph-posY"] ||
+    labels["graph-icon"] ||
+    labels["graph-group"] ||
+    labels["graph-level"] ||
+    labels["graph-groupLabelPos"] ||
+    labels["graph-geoCoordinateLat"] ||
+    labels["graph-geoCoordinateLng"]
   );
 }
 
@@ -35,7 +35,9 @@ export function nodeHasGraphLabels(labels: Record<string, unknown> | undefined):
 export function topologyHasGraphLabels(parsed: ClabTopology): boolean {
   const nodes = parsed.topology?.nodes;
   if (!nodes) return false;
-  return Object.values(nodes).some((node) => nodeHasGraphLabels(node?.labels as Record<string, unknown>));
+  return Object.values(nodes).some((node) =>
+    nodeHasGraphLabels(node?.labels as Record<string, unknown>)
+  );
 }
 
 // ============================================================================
@@ -53,30 +55,30 @@ export function buildAnnotationFromLabels(
 
   const migration: GraphLabelMigration = { nodeId: nodeName };
 
-  if (labels['graph-posX'] && labels['graph-posY']) {
+  if (labels["graph-posX"] && labels["graph-posY"]) {
     migration.position = {
-      x: parseInt(labels['graph-posX'] as string, 10) || 0,
-      y: parseInt(labels['graph-posY'] as string, 10) || 0,
+      x: parseInt(labels["graph-posX"] as string, 10) || 0,
+      y: parseInt(labels["graph-posY"] as string, 10) || 0
     };
   }
 
-  if (labels['graph-icon']) {
-    migration.icon = labels['graph-icon'] as string;
+  if (labels["graph-icon"]) {
+    migration.icon = labels["graph-icon"] as string;
   }
-  if (labels['graph-group']) {
-    migration.group = labels['graph-group'] as string;
+  if (labels["graph-group"]) {
+    migration.group = labels["graph-group"] as string;
   }
-  if (labels['graph-level']) {
-    migration.level = labels['graph-level'] as string;
+  if (labels["graph-level"]) {
+    migration.level = labels["graph-level"] as string;
   }
-  if (labels['graph-groupLabelPos']) {
-    migration.groupLabelPos = labels['graph-groupLabelPos'] as string;
+  if (labels["graph-groupLabelPos"]) {
+    migration.groupLabelPos = labels["graph-groupLabelPos"] as string;
   }
 
-  if (labels['graph-geoCoordinateLat'] && labels['graph-geoCoordinateLng']) {
+  if (labels["graph-geoCoordinateLat"] && labels["graph-geoCoordinateLng"]) {
     migration.geoCoordinates = {
-      lat: parseFloat(labels['graph-geoCoordinateLat'] as string) || 0,
-      lng: parseFloat(labels['graph-geoCoordinateLng'] as string) || 0,
+      lat: parseFloat(labels["graph-geoCoordinateLat"] as string) || 0,
+      lng: parseFloat(labels["graph-geoCoordinateLng"] as string) || 0
     };
   }
 
@@ -125,9 +127,7 @@ export function detectGraphLabelMigrations(
   const nodes = parsed.topology?.nodes;
   if (!nodes) return migrations;
 
-  const existingAnnotations = new Set(
-    annotations?.nodeAnnotations?.map((na) => na.id) ?? []
-  );
+  const existingAnnotations = new Set(annotations?.nodeAnnotations?.map((na) => na.id) ?? []);
 
   for (const [nodeName, nodeObj] of Object.entries(nodes)) {
     // Skip if node already has an annotation
@@ -155,7 +155,7 @@ function createBaseAnnotations(annotations: TopologyAnnotations | undefined): To
   return {
     ...base,
     ...annotations,
-    nodeAnnotations: [...nodeAnnotations],
+    nodeAnnotations: [...nodeAnnotations]
   };
 }
 
@@ -196,10 +196,10 @@ export function processGraphLabelMigrations(
         nodeAnnotations: [],
         edgeAnnotations: [],
         aliasEndpointAnnotations: [],
-        viewerSettings: {},
+        viewerSettings: {}
       },
       migrations: [],
-      needsSave: false,
+      needsSave: false
     };
   }
 
@@ -207,6 +207,6 @@ export function processGraphLabelMigrations(
   return {
     annotations: updatedAnnotations,
     migrations,
-    needsSave: true,
+    needsSave: true
   };
 }

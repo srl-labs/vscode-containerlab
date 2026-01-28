@@ -10,15 +10,36 @@
  * Chords: Cm(add9) - Abm(add9) - Cm(add9) - Abm(add9) - Fmaj7 - Bdim(add9)
  */
 
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
-import { getCMinorFrequency, useAudioEngine, type MelodyNote } from './core';
+import { getCMinorFrequency, useAudioEngine, type MelodyNote } from "./core";
 
 const NOTES = {
-  C3: 130.81, D3: 146.83, Eb3: 155.56, F3: 174.61, G3: 196.0, Ab3: 207.65, Bb3: 233.08,
-  C4: 261.63, D4: 293.66, Eb4: 311.13, F4: 349.23, G4: 392.0, Ab4: 415.30, Bb4: 466.16,
-  C5: 523.25, D5: 587.33, Eb5: 622.25, F5: 698.46, G5: 783.99, Ab5: 830.61, Bb5: 932.33,
-  C6: 1046.50, D6: 1174.66, Eb6: 1244.51, Bb6: 1864.66,
+  C3: 130.81,
+  D3: 146.83,
+  Eb3: 155.56,
+  F3: 174.61,
+  G3: 196.0,
+  Ab3: 207.65,
+  Bb3: 233.08,
+  C4: 261.63,
+  D4: 293.66,
+  Eb4: 311.13,
+  F4: 349.23,
+  G4: 392.0,
+  Ab4: 415.3,
+  Bb4: 466.16,
+  C5: 523.25,
+  D5: 587.33,
+  Eb5: 622.25,
+  F5: 698.46,
+  G5: 783.99,
+  Ab5: 830.61,
+  Bb5: 932.33,
+  C6: 1046.5,
+  D6: 1174.66,
+  Eb6: 1244.51,
+  Bb6: 1864.66
 } as const;
 
 const BEAT = 0.923;
@@ -112,14 +133,14 @@ function buildMelody(): MelodyNote[] {
     { sd: "7", octave: 2, beat: 47, duration: 0.25, isRest: false },
     { sd: "7", octave: 1, beat: 47.25, duration: 0.25, isRest: false },
     { sd: "7", octave: 1, beat: 47.5, duration: 0.25, isRest: false },
-    { sd: "7", octave: 2, beat: 47.75, duration: 0.25, isRest: false },
+    { sd: "7", octave: 2, beat: 47.75, duration: 0.25, isRest: false }
   ];
 
-  return rawNotes.map(note => ({
+  return rawNotes.map((note) => ({
     frequency: note.isRest ? 0 : getCMinorFrequency(note.sd, note.octave),
     beat: note.beat,
     duration: note.duration,
-    isRest: note.isRest,
+    isRest: note.isRest
   }));
 }
 
@@ -129,7 +150,7 @@ const CHORD_PADS = {
   Cm_add9: [NOTES.C3, NOTES.Eb3, NOTES.G3, NOTES.D4],
   Abm_add9: [NOTES.Ab3, NOTES.C4, NOTES.Eb4, NOTES.Bb4],
   Fmaj7: [NOTES.F3, NOTES.Ab3, NOTES.C4, NOTES.Eb4],
-  Bdim_add9: [NOTES.Bb3, NOTES.D4, NOTES.F4, NOTES.C5],
+  Bdim_add9: [NOTES.Bb3, NOTES.D4, NOTES.F4, NOTES.C5]
 };
 
 // Module-level cache
@@ -146,15 +167,15 @@ function createPadChordOffline(
 ): void {
   for (const freq of frequencies) {
     const osc1 = ctx.createOscillator();
-    osc1.type = 'sine';
+    osc1.type = "sine";
     osc1.frequency.value = freq;
 
     const osc2 = ctx.createOscillator();
-    osc2.type = 'sine';
+    osc2.type = "sine";
     osc2.frequency.value = freq * 1.003;
 
     const osc3 = ctx.createOscillator();
-    osc3.type = 'triangle';
+    osc3.type = "triangle";
     osc3.frequency.value = freq * 0.5;
 
     const oscGain = ctx.createGain();
@@ -191,12 +212,12 @@ function scheduleNoteOffline(
   noteMixer.connect(masterGain);
 
   const mainOsc = ctx.createOscillator();
-  mainOsc.type = 'sine';
+  mainOsc.type = "sine";
   mainOsc.frequency.value = frequency;
 
   const mainGain = ctx.createGain();
   mainGain.gain.setValueAtTime(0, startTime);
-  mainGain.gain.linearRampToValueAtTime(0.10, startTime + 0.04);
+  mainGain.gain.linearRampToValueAtTime(0.1, startTime + 0.04);
   mainGain.gain.exponentialRampToValueAtTime(0.07, startTime + 0.15);
   mainGain.gain.setValueAtTime(0.07, startTime + noteDuration * 0.4);
   mainGain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration + 1.2);
@@ -205,7 +226,7 @@ function scheduleNoteOffline(
   mainGain.connect(noteMixer);
 
   const subOsc = ctx.createOscillator();
-  subOsc.type = 'sine';
+  subOsc.type = "sine";
   subOsc.frequency.value = frequency / 2;
 
   const subGain = ctx.createGain();
@@ -218,7 +239,7 @@ function scheduleNoteOffline(
   subGain.connect(noteMixer);
 
   const bodyOsc = ctx.createOscillator();
-  bodyOsc.type = 'triangle';
+  bodyOsc.type = "triangle";
   bodyOsc.frequency.value = frequency;
 
   const bodyGain = ctx.createGain();
@@ -255,19 +276,19 @@ async function renderAudio(): Promise<AudioBuffer> {
     masterGain.gain.value = 0.32;
 
     const underwaterFilter = ctx.createBiquadFilter();
-    underwaterFilter.type = 'lowpass';
+    underwaterFilter.type = "lowpass";
     underwaterFilter.frequency.value = 1600;
     underwaterFilter.Q.value = 0.4;
 
     const cleanFilter = ctx.createBiquadFilter();
-    cleanFilter.type = 'highpass';
+    cleanFilter.type = "highpass";
     cleanFilter.frequency.value = 60;
 
     const chorusDelay = ctx.createDelay(0.1);
     chorusDelay.delayTime.value = 0.02;
 
     const chorusLFO = ctx.createOscillator();
-    chorusLFO.type = 'sine';
+    chorusLFO.type = "sine";
     chorusLFO.frequency.value = 0.3;
     const chorusDepth = ctx.createGain();
     chorusDepth.gain.value = 0.003;
@@ -285,7 +306,7 @@ async function renderAudio(): Promise<AudioBuffer> {
     reverbGain1.gain.value = 0.3;
 
     const reverbFilter = ctx.createBiquadFilter();
-    reverbFilter.type = 'lowpass';
+    reverbFilter.type = "lowpass";
     reverbFilter.frequency.value = 1000;
 
     const reverbDelay2 = ctx.createDelay(2.0);
@@ -379,7 +400,7 @@ export function useAquaticAmbienceAudio(): UseAquaticAmbienceAudioReturn {
   const engine = useAudioEngine(renderAudio, {
     loop: false,
     fftSize: 256,
-    smoothingTimeConstant: 0.93,
+    smoothingTimeConstant: 0.93
   });
 
   const getCurrentSection = useCallback((): number => {
@@ -417,6 +438,6 @@ export function useAquaticAmbienceAudio(): UseAquaticAmbienceAudioReturn {
     getFrequencyData: engine.getFrequencyData,
     getTimeDomainData: engine.getTimeDomainData,
     getBeatIntensity,
-    getCurrentSection,
+    getCurrentSection
   };
 }

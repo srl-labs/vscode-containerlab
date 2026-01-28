@@ -2,12 +2,12 @@
  * Hook for updating Cytoscape elements when they change
  * Uses useLayoutEffect to ensure Cytoscape is updated before other effects read from it
  */
-import type React from 'react';
-import { useLayoutEffect, useMemo, useRef } from 'react';
-import type { Core } from 'cytoscape';
+import type React from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
+import type { Core } from "cytoscape";
 
-import type { CyElement } from '../../../shared/types/messages';
-import type { CustomIconInfo } from '../../../shared/types/icons';
+import type { CyElement } from "../../../shared/types/messages";
+import type { CustomIconInfo } from "../../../shared/types/icons";
 import {
   applyStubLinkClasses,
   updateCytoscapeElements,
@@ -15,12 +15,12 @@ import {
   nodesNeedAutoLayout,
   getLayoutOptions,
   collectNodePositions
-} from '../../components/canvas/init';
-import type { NodePositions } from '../../components/canvas/init';
-import { log } from '../../utils/logger';
-import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
-import { ROLE_SVG_MAP } from '../../components/canvas/styles';
-import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
+} from "../../components/canvas/init";
+import type { NodePositions } from "../../components/canvas/init";
+import { log } from "../../utils/logger";
+import { generateEncodedSVG, type NodeType } from "../../utils/SvgGenerator";
+import { ROLE_SVG_MAP } from "../../components/canvas/styles";
+import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from "../../utils/cytoscapeHelpers";
 
 export { collectNodePositions };
 export type { NodePositions };
@@ -51,9 +51,11 @@ function hasVisualDataChanged(cy: Core, elements: CyElement[]): boolean {
     const pair = getElementDataPair(cy, reactEl);
     if (!pair) continue;
     const { reactData, cyData } = pair;
-    if (reactData.topoViewerRole !== cyData.topoViewerRole ||
-        reactData.iconColor !== cyData.iconColor ||
-        reactData.iconCornerRadius !== cyData.iconCornerRadius) {
+    if (
+      reactData.topoViewerRole !== cyData.topoViewerRole ||
+      reactData.iconColor !== cyData.iconColor ||
+      reactData.iconCornerRadius !== cyData.iconCornerRadius
+    ) {
       return true;
     }
   }
@@ -90,7 +92,7 @@ function extraDataEqual(
 
 function isEqualValue(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
-  if (a && b && typeof a === 'object' && typeof b === 'object') {
+  if (a && b && typeof a === "object" && typeof b === "object") {
     return JSON.stringify(a) === JSON.stringify(b);
   }
   return false;
@@ -101,7 +103,7 @@ function reactDataMatchesCy(
   cyData: Record<string, unknown>
 ): boolean {
   for (const [key, value] of Object.entries(reactData)) {
-    if (key === 'extraData') {
+    if (key === "extraData") {
       const reactExtra = value as Record<string, unknown> | undefined;
       const cyExtra = cyData.extraData as Record<string, unknown> | undefined;
       if (!extraDataEqual(reactExtra, cyExtra)) return false;
@@ -114,12 +116,12 @@ function reactDataMatchesCy(
 
 function getElementId(reactEl: CyElement): string | null {
   const id = reactEl.data?.id;
-  return typeof id === 'string' && id ? id : null;
+  return typeof id === "string" && id ? id : null;
 }
 
 function syncNodePosition(cy: Core, nodeId: string, position: { x: number; y: number }): void {
   // Skip position sync when GeoMap is active - the map projection controls positions
-  if (cy.scratch('geoMapActive') === true) {
+  if (cy.scratch("geoMapActive") === true) {
     return;
   }
 
@@ -135,7 +137,10 @@ function syncNodePosition(cy: Core, nodeId: string, position: { x: number; y: nu
     return;
   }
 
-  if (Math.round(cyPos.x) !== Math.round(position.x) || Math.round(cyPos.y) !== Math.round(position.y)) {
+  if (
+    Math.round(cyPos.x) !== Math.round(position.x) ||
+    Math.round(cyPos.y) !== Math.round(position.y)
+  ) {
     cyEl.position({ x: position.x, y: position.y });
   }
 }
@@ -153,13 +158,18 @@ function syncNodeData(cy: Core, reactEl: CyElement, nodeId: string): void {
   }
 }
 
-function edgeEndpointsChanged(reactData: Record<string, unknown>, cyData: Record<string, unknown>): boolean {
+function edgeEndpointsChanged(
+  reactData: Record<string, unknown>,
+  cyData: Record<string, unknown>
+): boolean {
   const nextSource = reactData.source as string | undefined;
   const nextTarget = reactData.target as string | undefined;
   const curSource = cyData.source as string | undefined;
   const curTarget = cyData.target as string | undefined;
-  return (nextSource !== undefined && curSource !== undefined && nextSource !== curSource) ||
-    (nextTarget !== undefined && curTarget !== undefined && nextTarget !== curTarget);
+  return (
+    (nextSource !== undefined && curSource !== undefined && nextSource !== curSource) ||
+    (nextTarget !== undefined && curTarget !== undefined && nextTarget !== curTarget)
+  );
 }
 
 function replaceEdgeIfNeeded(cy: Core, reactEl: CyElement, edgeId: string): void {
@@ -175,7 +185,7 @@ function replaceEdgeIfNeeded(cy: Core, reactEl: CyElement, edgeId: string): void
   if (cy.getElementById(nextSource).empty() || cy.getElementById(nextTarget).empty()) return;
 
   cyEl.remove();
-  cy.add({ group: 'edges', data: reactEl.data, classes: reactEl.classes });
+  cy.add({ group: "edges", data: reactEl.data, classes: reactEl.classes });
 }
 
 function syncEdgeData(cy: Core, reactEl: CyElement, edgeId: string): void {
@@ -193,9 +203,9 @@ function updateElementData(cy: Core, elements: CyElement[]): void {
   for (const reactEl of elements) {
     const id = getElementId(reactEl);
     if (!id) continue;
-    if (reactEl.group === 'nodes') {
+    if (reactEl.group === "nodes") {
       syncNodeData(cy, reactEl, id);
-    } else if (reactEl.group === 'edges') {
+    } else if (reactEl.group === "edges") {
       syncEdgeData(cy, reactEl, id);
     }
   }
@@ -205,7 +215,11 @@ function updateElementData(cy: Core, elements: CyElement[]): void {
  * Check if any element's extraData has changed for a specific group
  * Returns the IDs of elements with changed extraData
  */
-function getElementsWithChangedExtraData(cy: Core, elements: CyElement[], group: 'nodes' | 'edges'): string[] {
+function getElementsWithChangedExtraData(
+  cy: Core,
+  elements: CyElement[],
+  group: "nodes" | "edges"
+): string[] {
   const changedIds: string[] = [];
   for (const reactEl of elements) {
     if (reactEl.group !== group) continue;
@@ -229,15 +243,15 @@ function getElementsWithChangedExtraData(cy: Core, elements: CyElement[], group:
 function getEdgesWithChangedClasses(cy: Core, elements: CyElement[]): string[] {
   const changedIds: string[] = [];
   for (const reactEl of elements) {
-    if (reactEl.group !== 'edges') continue;
+    if (reactEl.group !== "edges") continue;
     const id = reactEl.data?.id as string;
     if (!id) continue;
 
     const cyEl = cy.getElementById(id);
     if (cyEl.empty()) continue;
 
-    const reactClasses = reactEl.classes ?? '';
-    const cyClasses = cyEl.classes().join(' ');
+    const reactClasses = reactEl.classes ?? "";
+    const cyClasses = cyEl.classes().join(" ");
 
     if (reactClasses !== cyClasses) {
       changedIds.push(id);
@@ -251,11 +265,11 @@ function getEdgesWithChangedClasses(cy: Core, elements: CyElement[]): string[] {
  */
 function findReactExtraData(
   elements: CyElement[],
-  group: 'nodes' | 'edges',
+  group: "nodes" | "edges",
   id: string
 ): Record<string, unknown> | undefined {
-  const reactEl = elements.find(e =>
-    e.group === group && (e.data as Record<string, unknown>)?.id === id
+  const reactEl = elements.find(
+    (e) => e.group === group && (e.data as Record<string, unknown>)?.id === id
   );
   if (!reactEl) return undefined;
   return (reactEl.data as Record<string, unknown>).extraData as Record<string, unknown> | undefined;
@@ -264,12 +278,9 @@ function findReactExtraData(
 /**
  * Find a React element by group and ID and return its top-level data
  */
-function findReactNodeData(
-  elements: CyElement[],
-  id: string
-): Record<string, unknown> | undefined {
-  const reactEl = elements.find(e =>
-    e.group === 'nodes' && (e.data as Record<string, unknown>)?.id === id
+function findReactNodeData(elements: CyElement[], id: string): Record<string, unknown> | undefined {
+  const reactEl = elements.find(
+    (e) => e.group === "nodes" && (e.data as Record<string, unknown>)?.id === id
   );
   if (!reactEl) return undefined;
   return reactEl.data as Record<string, unknown>;
@@ -278,12 +289,9 @@ function findReactNodeData(
 /**
  * Find a React edge element by ID and return its classes
  */
-function findReactEdgeClasses(
-  elements: CyElement[],
-  edgeId: string
-): string | undefined {
-  const reactEl = elements.find(e =>
-    e.group === 'edges' && (e.data as Record<string, unknown>)?.id === edgeId
+function findReactEdgeClasses(elements: CyElement[], edgeId: string): string | undefined {
+  const reactEl = elements.find(
+    (e) => e.group === "edges" && (e.data as Record<string, unknown>)?.id === edgeId
   );
   return reactEl?.classes;
 }
@@ -305,7 +313,7 @@ function extractNodeVisualProps(
   return {
     topoViewerRole: reactExtraData?.topoViewerRole ?? reactNodeData?.topoViewerRole,
     iconColor: reactExtraData?.iconColor ?? reactNodeData?.iconColor,
-    iconCornerRadius: reactExtraData?.iconCornerRadius ?? reactNodeData?.iconCornerRadius,
+    iconCornerRadius: reactExtraData?.iconCornerRadius ?? reactNodeData?.iconCornerRadius
   };
 }
 
@@ -314,19 +322,19 @@ function extractNodeVisualProps(
  * @param customIconMap - Map of custom icon names to their data URIs
  */
 function applyNodeVisualProps(
-  cyEl: ReturnType<Core['getElementById']>,
+  cyEl: ReturnType<Core["getElementById"]>,
   props: NodeVisualProps,
   customIconMap?: Map<string, string>
 ): void {
   const { topoViewerRole, iconColor, iconCornerRadius } = props;
 
   // Update data properties
-  if (topoViewerRole !== undefined) cyEl.data('topoViewerRole', topoViewerRole);
-  if (iconColor !== undefined) cyEl.data('iconColor', iconColor);
-  if (iconCornerRadius !== undefined) cyEl.data('iconCornerRadius', iconCornerRadius);
+  if (topoViewerRole !== undefined) cyEl.data("topoViewerRole", topoViewerRole);
+  if (iconColor !== undefined) cyEl.data("iconColor", iconColor);
+  if (iconCornerRadius !== undefined) cyEl.data("iconCornerRadius", iconCornerRadius);
 
   // Update background-image style
-  const role = (topoViewerRole as string) || (cyEl.data('topoViewerRole') as string) || 'default';
+  const role = (topoViewerRole as string) || (cyEl.data("topoViewerRole") as string) || "default";
 
   // Check if this is a custom icon
   const customIconDataUri = customIconMap?.get(role);
@@ -337,14 +345,14 @@ function applyNodeVisualProps(
     const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
     if (svgType) {
       const color = (iconColor as string) || DEFAULT_ICON_COLOR;
-      cyEl.style('background-image', generateEncodedSVG(svgType, color));
+      cyEl.style("background-image", generateEncodedSVG(svgType, color));
     }
   }
 
   // Apply iconCornerRadius - requires round-rectangle shape
   if (iconCornerRadius !== undefined && (iconCornerRadius as number) > 0) {
-    cyEl.style('shape', 'round-rectangle');
-    cyEl.style('corner-radius', iconCornerRadius as number);
+    cyEl.style("shape", "round-rectangle");
+    cyEl.style("corner-radius", iconCornerRadius as number);
   }
 }
 
@@ -366,13 +374,13 @@ function updateNodeExtraData(
       const cyEl = cy.getElementById(nodeId);
       if (cyEl.empty()) continue;
 
-      const reactExtraData = findReactExtraData(elements, 'nodes', nodeId);
+      const reactExtraData = findReactExtraData(elements, "nodes", nodeId);
       const reactNodeData = findReactNodeData(elements, nodeId);
       if (reactExtraData === undefined && !reactNodeData) continue;
 
       // Update extraData on the Cytoscape element
       if (reactExtraData !== undefined) {
-        cyEl.data('extraData', reactExtraData || {});
+        cyEl.data("extraData", reactExtraData || {});
       }
 
       // Extract and apply visual properties
@@ -394,16 +402,16 @@ function updateEdgeExtraData(cy: Core, elements: CyElement[], edgeIds: string[])
       const cyEl = cy.getElementById(edgeId);
       if (cyEl.empty()) continue;
 
-      const reactExtraData = findReactExtraData(elements, 'edges', edgeId);
+      const reactExtraData = findReactExtraData(elements, "edges", edgeId);
       if (reactExtraData !== undefined) {
         // Update extraData on the Cytoscape element
-        cyEl.data('extraData', reactExtraData || {});
+        cyEl.data("extraData", reactExtraData || {});
       }
 
       // Sync classes (link-up/link-down) for edge state visualization
       const reactClasses = findReactEdgeClasses(elements, edgeId);
       if (reactClasses !== undefined) {
-        const cyClasses = cyEl.classes().join(' ');
+        const cyClasses = cyEl.classes().join(" ");
         if (reactClasses !== cyClasses) {
           // Clear existing classes and apply new ones
           cyEl.classes(reactClasses);
@@ -433,8 +441,8 @@ function setupLayoutstopListener(
   cy: Core,
   onInitialLayoutPositions?: (positions: NodePositions) => void
 ): void {
-  cy.one('layoutstop', () => {
-    cy.scratch('initialLayoutDone', true);
+  cy.one("layoutstop", () => {
+    cy.scratch("initialLayoutDone", true);
     if (onInitialLayoutPositions) {
       onInitialLayoutPositions(collectNodePositions(cy));
     }
@@ -448,14 +456,14 @@ function runInitialCoseLayout(
   cy: Core,
   onInitialLayoutPositions?: (positions: NodePositions) => void
 ): void {
-  log.info('[useElementsUpdate] Running COSE layout for elements without positions');
+  log.info("[useElementsUpdate] Running COSE layout for elements without positions");
   setupLayoutstopListener(cy, onInitialLayoutPositions);
-  cy.layout(getLayoutOptions('cose')).run();
+  cy.layout(getLayoutOptions("cose")).run();
 }
 
 function structureMatches(cy: Core, elements: CyElement[]): boolean {
-  const cyIds = new Set(cy.elements().map(el => el.id()));
-  const reactIds = new Set(elements.map(el => el.data?.id).filter(Boolean) as string[]);
+  const cyIds = new Set(cy.elements().map((el) => el.id()));
+  const reactIds = new Set(elements.map((el) => el.data?.id).filter(Boolean) as string[]);
   if (cyIds.size !== reactIds.size) return false;
   return idsMatch(cyIds, reactIds);
 }
@@ -470,9 +478,11 @@ function shouldApplyVisualProps(
   role: string,
   customIconMap?: Map<string, string>
 ): boolean {
-  return visualProps.iconColor !== undefined ||
+  return (
+    visualProps.iconColor !== undefined ||
     visualProps.iconCornerRadius !== undefined ||
-    Boolean(customIconMap?.has(role));
+    Boolean(customIconMap?.has(role))
+  );
 }
 
 function applyVisualPropsForElement(
@@ -480,7 +490,7 @@ function applyVisualPropsForElement(
   reactEl: CyElement,
   customIconMap?: Map<string, string>
 ): void {
-  if (reactEl.group !== 'nodes') return;
+  if (reactEl.group !== "nodes") return;
   const id = getElementId(reactEl);
   if (!id) return;
   const cyEl = cy.getElementById(id);
@@ -489,7 +499,8 @@ function applyVisualPropsForElement(
   const reactData = reactEl.data as Record<string, unknown>;
   const reactExtraData = reactData.extraData as Record<string, unknown> | undefined;
   const visualProps = extractNodeVisualProps(reactExtraData, reactData);
-  const role = (visualProps.topoViewerRole as string) || (reactData.topoViewerRole as string) || 'default';
+  const role =
+    (visualProps.topoViewerRole as string) || (reactData.topoViewerRole as string) || "default";
   if (!shouldApplyVisualProps(visualProps, role, customIconMap)) return;
 
   applyNodeVisualProps(cyEl, { ...visualProps, topoViewerRole: role }, customIconMap);
@@ -506,7 +517,7 @@ function indexElementsById(elements: CyElement[]): Map<string, CyElement> {
 }
 
 function removeUnknownElements(cy: Core, allowedIds: Set<string>): void {
-  const toRemove = cy.elements().filter(el => !allowedIds.has(el.id()));
+  const toRemove = cy.elements().filter((el) => !allowedIds.has(el.id()));
   if (toRemove.nonempty()) {
     toRemove.remove();
   }
@@ -519,19 +530,19 @@ function addMissingNodes(
   customIconMap?: Map<string, string>
 ): void {
   for (const el of elements) {
-    if (el.group !== 'nodes') continue;
+    if (el.group !== "nodes") continue;
     const id = getElementId(el);
     if (!id) continue;
     if (cy.getElementById(id).nonempty()) continue;
     const position = el.position ?? fallbackPosition;
-    cy.add({ group: 'nodes', data: el.data, position, classes: el.classes });
+    cy.add({ group: "nodes", data: el.data, position, classes: el.classes });
     applyVisualPropsForElement(cy, el, customIconMap);
   }
 }
 
 function addMissingEdges(cy: Core, elements: CyElement[]): void {
   for (const el of elements) {
-    if (el.group !== 'edges') continue;
+    if (el.group !== "edges") continue;
     const id = getElementId(el);
     if (!id) continue;
     if (cy.getElementById(id).nonempty()) continue;
@@ -543,7 +554,7 @@ function addMissingEdges(cy: Core, elements: CyElement[]): void {
       if (cy.getElementById(source).empty() || cy.getElementById(target).empty()) continue;
     }
 
-    cy.add({ group: 'edges', data: el.data, classes: el.classes });
+    cy.add({ group: "edges", data: el.data, classes: el.classes });
   }
 }
 
@@ -556,8 +567,8 @@ function updateSameStructure(
   elements: CyElement[],
   customIconMap?: Map<string, string>
 ): void {
-  const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'nodes');
-  const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, 'edges');
+  const nodesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, "nodes");
+  const edgesWithChangedExtraData = getElementsWithChangedExtraData(cy, elements, "edges");
   const edgesWithChangedClasses = getEdgesWithChangedClasses(cy, elements);
 
   // Merge edge IDs that need updating (extraData or classes changes)
@@ -574,7 +585,11 @@ function updateSameStructure(
   }
 }
 
-function reconcileStructure(cy: Core, elements: CyElement[], customIconMap?: Map<string, string>): void {
+function reconcileStructure(
+  cy: Core,
+  elements: CyElement[],
+  customIconMap?: Map<string, string>
+): void {
   const reactById = indexElementsById(elements);
   const reactIds = new Set(reactById.keys());
   const fallbackPosition = getFallbackPosition(cy);
@@ -594,9 +609,12 @@ function reconcileStructure(cy: Core, elements: CyElement[], customIconMap?: Map
  * Returns the old and new ID if it's a rename, null otherwise
  */
 function detectRename(cy: Core, elements: CyElement[]): { oldId: string; newId: string } | null {
-  const cyNodeIds = new Set(cy.nodes().map(n => n.id()));
+  const cyNodeIds = new Set(cy.nodes().map((n) => n.id()));
   const reactNodeIds = new Set(
-    elements.filter(e => e.group === 'nodes').map(e => (e.data as Record<string, unknown>)?.id as string).filter(Boolean)
+    elements
+      .filter((e) => e.group === "nodes")
+      .map((e) => (e.data as Record<string, unknown>)?.id as string)
+      .filter(Boolean)
   );
 
   // Must have same number of nodes
@@ -647,7 +665,7 @@ function handleRenameInPlace(
 
   // Get the new node element data from React state
   const newNodeEl = elements.find(
-    e => e.group === 'nodes' && (e.data as Record<string, unknown>)?.id === newId
+    (e) => e.group === "nodes" && (e.data as Record<string, unknown>)?.id === newId
   );
   if (!newNodeEl) return;
 
@@ -656,13 +674,17 @@ function handleRenameInPlace(
 
   // Save connected edges BEFORE removing the node (they'll be auto-removed with the node)
   // Update source/target references to point to the new node ID
-  const edgesToRestore: Array<{ group: 'edges'; data: Record<string, unknown> }> = [];
-  oldNode.connectedEdges().forEach(edge => {
-    const edgeData = { ...(edge.data() as Record<string, unknown>) } as { source?: string; target?: string; [key: string]: unknown };
+  const edgesToRestore: Array<{ group: "edges"; data: Record<string, unknown> }> = [];
+  oldNode.connectedEdges().forEach((edge) => {
+    const edgeData = { ...(edge.data() as Record<string, unknown>) } as {
+      source?: string;
+      target?: string;
+      [key: string]: unknown;
+    };
     // Update source/target to new node ID
     if (edgeData.source === oldId) edgeData.source = newId;
     if (edgeData.target === oldId) edgeData.target = newId;
-    edgesToRestore.push({ group: 'edges', data: edgeData });
+    edgesToRestore.push({ group: "edges", data: edgeData });
   });
 
   cy.batch(() => {
@@ -671,7 +693,7 @@ function handleRenameInPlace(
     // Add new node with preserved position
     cy.add({ ...newNodeEl, position });
     // Re-add the edges with updated references
-    edgesToRestore.forEach(edge => cy.add(edge));
+    edgesToRestore.forEach((edge) => cy.add(edge));
   });
 
   applyVisualPropsForElement(cy, newNodeEl, customIconMap);
@@ -694,9 +716,9 @@ function handleAlreadyInitialized(
     log.info(`[useElementsUpdate] Cytoscape already initialized with ${cy.nodes().length} nodes`);
 
     // Check if layout was already handled by cy.ready() in CytoscapeCanvas
-    const layoutDone = cy.scratch('initialLayoutDone') as boolean | undefined;
+    const layoutDone = cy.scratch("initialLayoutDone") as boolean | undefined;
     if (layoutDone) {
-      log.info('[useElementsUpdate] Layout already done, skipping');
+      log.info("[useElementsUpdate] Layout already done, skipping");
       return true;
     }
 
@@ -705,14 +727,16 @@ function handleAlreadyInitialized(
     if (needsAutoLayout) {
       runInitialCoseLayout(cy, onInitialLayoutPositions);
     } else {
-      cy.scratch('initialLayoutDone', true);
+      cy.scratch("initialLayoutDone", true);
     }
     return true; // Done, no reconcile needed
   }
 
   // Cytoscape has elements but they don't match React state.
   // This happens when elements changed before isInitializedRef was set.
-  log.info(`[useElementsUpdate] Cytoscape needs reconcile: cy=${cy.nodes().length + cy.edges().length}, react=${elements.length}`);
+  log.info(
+    `[useElementsUpdate] Cytoscape needs reconcile: cy=${cy.nodes().length + cy.edges().length}, react=${elements.length}`
+  );
   return false; // Need to reconcile
 }
 
@@ -727,7 +751,9 @@ function handleFirstInit(
   onInitialLayoutPositions?: (positions: NodePositions) => void,
   customIcons?: CustomIconInfo[]
 ): void {
-  log.info(`[useElementsUpdate] First init: hasPresetPositions=${_usePresetLayout}, elements=${elements.length}`);
+  log.info(
+    `[useElementsUpdate] First init: hasPresetPositions=${_usePresetLayout}, elements=${elements.length}`
+  );
   // Pass the callback to updateCytoscapeElements so positions are synced after any auto-layout
   updateCytoscapeElements(cy, elements, customIcons, onInitialLayoutPositions);
 }
@@ -753,7 +779,7 @@ export function useElementsUpdate(
   // Memoize custom icon map to prevent unnecessary re-renders
   const customIconMap = useMemo(() => {
     if (!customIcons || customIcons.length === 0) return undefined;
-    return new Map(customIcons.map(icon => [icon.name, icon.dataUri]));
+    return new Map(customIcons.map((icon) => [icon.name, icon.dataUri]));
   }, [customIcons]);
 
   useLayoutEffect(() => {
@@ -762,7 +788,7 @@ export function useElementsUpdate(
 
     if (!elements.length) {
       cy.elements().remove();
-      cy.scratch('initialLayoutDone', false);
+      cy.scratch("initialLayoutDone", false);
       isInitializedRef.current = false;
       return;
     }
@@ -772,7 +798,12 @@ export function useElementsUpdate(
       const usePresetLayout = hasPresetPositions(elements);
 
       if (cyHasElements) {
-        const initComplete = handleAlreadyInitialized(cy, elements, usePresetLayout, onInitialLayoutPositions);
+        const initComplete = handleAlreadyInitialized(
+          cy,
+          elements,
+          usePresetLayout,
+          onInitialLayoutPositions
+        );
         isInitializedRef.current = true;
         if (initComplete) return;
         // Fall through to reconcile logic below
@@ -803,7 +834,7 @@ export function useElementsUpdate(
     // After reconciling a significant structure change (e.g., file switch),
     // update initialLayoutDone based on whether the new elements have preset positions.
     if (hasPresetPositions(elements)) {
-      cy.scratch('initialLayoutDone', true);
+      cy.scratch("initialLayoutDone", true);
     }
   }, [cyRef, elements, customIcons, customIconMap]);
 }

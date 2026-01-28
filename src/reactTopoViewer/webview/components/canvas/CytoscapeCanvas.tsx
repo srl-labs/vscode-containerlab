@@ -2,16 +2,16 @@
  * Cytoscape Canvas Component
  * Renders the topology graph using Cytoscape.js
  */
-import React, { useRef, useCallback, useImperativeHandle, forwardRef, useEffect } from 'react';
-import type { Core } from 'cytoscape';
-import cytoscape from 'cytoscape';
+import React, { useRef, useCallback, useImperativeHandle, forwardRef, useEffect } from "react";
+import type { Core } from "cytoscape";
+import cytoscape from "cytoscape";
 
-import type { CyElement } from '../../../shared/types/messages';
-import type { CustomIconInfo } from '../../../shared/types/icons';
-import { useTopoViewerActions, useTopoViewerState } from '../../context/TopoViewerContext';
-import { useElementsUpdate } from '../../hooks/canvas';
-import { log } from '../../utils/logger';
-import { fitViewportToAll } from '../../utils/fitViewport';
+import type { CyElement } from "../../../shared/types/messages";
+import type { CustomIconInfo } from "../../../shared/types/icons";
+import { useTopoViewerActions, useTopoViewerState } from "../../context/TopoViewerContext";
+import { useElementsUpdate } from "../../hooks/canvas";
+import { log } from "../../utils/logger";
+import { fitViewportToAll } from "../../utils/fitViewport";
 
 import {
   ensureColaRegistered,
@@ -22,15 +22,15 @@ import {
   handleCytoscapeReady,
   collectNodePositions,
   type NodePositions
-} from './init';
-import { setupEventHandlers, attachCustomWheelZoom } from './events';
+} from "./init";
+import { setupEventHandlers, attachCustomWheelZoom } from "./events";
 
 type SelectCallback = (id: string | null) => void;
 
 interface CytoscapeInitOptions {
   editNode?: SelectCallback;
   editEdge?: SelectCallback;
-  getMode?: () => 'edit' | 'view';
+  getMode?: () => "edit" | "view";
   getIsLocked?: () => boolean;
 }
 
@@ -63,7 +63,7 @@ function setupDelayedInit(
   tryInit();
 
   if (!initialized) {
-    if (typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== "undefined") {
       resizeObserver = new ResizeObserver(() => tryInit());
       resizeObserver.observe(container);
     } else {
@@ -114,79 +114,82 @@ function useCytoscapeInitializer(
   const onCyReady = lifecycle?.onCyReady;
   const onCyDestroyed = lifecycle?.onCyDestroyed;
 
-  return useCallback((initialElements: CyElement[]) => {
-    const container = containerRef.current;
-    if (!container) return null;
+  return useCallback(
+    (initialElements: CyElement[]) => {
+      const container = containerRef.current;
+      if (!container) return null;
 
-    const rect = container.getBoundingClientRect();
-    log.info(`[CytoscapeCanvas] Container size: ${rect.width}x${rect.height}`);
-    log.info(`[CytoscapeCanvas] Initializing with ${initialElements.length} elements`);
+      const rect = container.getBoundingClientRect();
+      log.info(`[CytoscapeCanvas] Container size: ${rect.width}x${rect.height}`);
+      log.info(`[CytoscapeCanvas] Initializing with ${initialElements.length} elements`);
 
-    if (rect.width === 0 || rect.height === 0) {
-      log.warn('[CytoscapeCanvas] Container has zero dimensions, skipping init');
-      return null;
-    }
-
-    const usePresetLayout = hasPresetPositions(initialElements);
-    log.info(`[CytoscapeCanvas] Preset positions detected: ${usePresetLayout}`);
-
-    const cy = cytoscape(createCytoscapeConfig(container, initialElements));
-
-    cyRef.current = cy;
-    onCyReady?.(cy);
-    cy.userZoomingEnabled(false);
-    const detachWheel = attachCustomWheelZoom(cyRef, container);
-
-    setupEventHandlers(cy, selectNode, selectEdge, {
-      editNode: options?.editNode,
-      editEdge: options?.editEdge,
-      getMode: options?.getMode,
-      getIsLocked: options?.getIsLocked
-    });
-
-    cy.ready(() => {
-      handleCytoscapeReady(cy, usePresetLayout, customIcons);
-
-      // Run COSE layout if nodes don't have positions
-      const needsAutoLayout = !usePresetLayout || nodesNeedAutoLayout(cy);
-      if (needsAutoLayout) {
-        log.info('[CytoscapeCanvas] Running COSE layout for nodes without positions');
-        cy.one('layoutstop', () => {
-          cy.resize();
-          fitViewportToAll(cy, [], [], []);
-          cy.scratch('initialLayoutDone', true);
-          // Sync positions back to React state
-          if (onLayoutComplete) {
-            onLayoutComplete(collectNodePositions(cy));
-          }
-        });
-        cy.layout(getLayoutOptions('cose')).run();
-      } else {
-        fitViewportToAll(cy, [], [], []);
-        cy.scratch('initialLayoutDone', true);
+      if (rect.width === 0 || rect.height === 0) {
+        log.warn("[CytoscapeCanvas] Container has zero dimensions, skipping init");
+        return null;
       }
-    });
 
-    return () => {
-      detachWheel();
-      cy.destroy();
-      cyRef.current = null;
-      onCyDestroyed?.();
-    };
-  }, [
-    selectNode,
-    selectEdge,
-    containerRef,
-    cyRef,
-    customIcons,
-    options?.editNode,
-    options?.editEdge,
-    options?.getMode,
-    options?.getIsLocked,
-    onCyReady,
-    onCyDestroyed,
-    onLayoutComplete
-  ]);
+      const usePresetLayout = hasPresetPositions(initialElements);
+      log.info(`[CytoscapeCanvas] Preset positions detected: ${usePresetLayout}`);
+
+      const cy = cytoscape(createCytoscapeConfig(container, initialElements));
+
+      cyRef.current = cy;
+      onCyReady?.(cy);
+      cy.userZoomingEnabled(false);
+      const detachWheel = attachCustomWheelZoom(cyRef, container);
+
+      setupEventHandlers(cy, selectNode, selectEdge, {
+        editNode: options?.editNode,
+        editEdge: options?.editEdge,
+        getMode: options?.getMode,
+        getIsLocked: options?.getIsLocked
+      });
+
+      cy.ready(() => {
+        handleCytoscapeReady(cy, usePresetLayout, customIcons);
+
+        // Run COSE layout if nodes don't have positions
+        const needsAutoLayout = !usePresetLayout || nodesNeedAutoLayout(cy);
+        if (needsAutoLayout) {
+          log.info("[CytoscapeCanvas] Running COSE layout for nodes without positions");
+          cy.one("layoutstop", () => {
+            cy.resize();
+            fitViewportToAll(cy, [], [], []);
+            cy.scratch("initialLayoutDone", true);
+            // Sync positions back to React state
+            if (onLayoutComplete) {
+              onLayoutComplete(collectNodePositions(cy));
+            }
+          });
+          cy.layout(getLayoutOptions("cose")).run();
+        } else {
+          fitViewportToAll(cy, [], [], []);
+          cy.scratch("initialLayoutDone", true);
+        }
+      });
+
+      return () => {
+        detachWheel();
+        cy.destroy();
+        cyRef.current = null;
+        onCyDestroyed?.();
+      };
+    },
+    [
+      selectNode,
+      selectEdge,
+      containerRef,
+      cyRef,
+      customIcons,
+      options?.editNode,
+      options?.editEdge,
+      options?.getMode,
+      options?.getIsLocked,
+      onCyReady,
+      onCyDestroyed,
+      onLayoutComplete
+    ]
+  );
 }
 
 interface CytoscapeCanvasProps {
@@ -211,7 +214,7 @@ function createRefMethods(cyRef: React.RefObject<Core | null>): CytoscapeCanvasR
   return {
     fit: () => cyRef.current?.fit(undefined, 50),
     runLayout: (layoutName: string) => {
-      if (layoutName === 'cola') {
+      if (layoutName === "cola") {
         ensureColaRegistered();
       }
       if (cyRef.current) {
@@ -228,7 +231,8 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
     const cyRef = useRef<Core | null>(null);
     const cleanupRef = useRef<(() => void) | null>(null);
     const { state } = useTopoViewerState();
-    const { selectNode, selectEdge, editNode, editEdge, updateNodePositions } = useTopoViewerActions();
+    const { selectNode, selectEdge, editNode, editEdge, updateNodePositions } =
+      useTopoViewerActions();
     const initialElementsRef = useRef<CyElement[] | null>(null);
 
     // Store mode in ref to avoid stale closures in event handlers
@@ -259,25 +263,20 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
       updateNodePositions
     );
 
-    useDelayedCytoscapeInit(
-      containerRef,
-      initialElementsRef,
-      initCytoscape,
-      cleanupRef
-    );
+    useDelayedCytoscapeInit(containerRef, initialElementsRef, initCytoscape, cleanupRef);
 
-	    // Update elements when they change
-	    useElementsUpdate(cyRef, elements, updateNodePositions, state.customIcons);
+    // Update elements when they change
+    useElementsUpdate(cyRef, elements, updateNodePositions, state.customIcons);
 
-	    return (
-	      <div
+    return (
+      <div
         ref={containerRef}
         data-testid="cytoscape-canvas"
         className="cytoscape-container"
         style={{
-          width: '100%',
-          height: '100%',
-          position: 'absolute',
+          width: "100%",
+          height: "100%",
+          position: "absolute",
           top: 0,
           left: 0,
           right: 0,
@@ -289,4 +288,4 @@ export const CytoscapeCanvas = forwardRef<CytoscapeCanvasRef, CytoscapeCanvasPro
   }
 );
 
-CytoscapeCanvas.displayName = 'CytoscapeCanvas';
+CytoscapeCanvas.displayName = "CytoscapeCanvas";

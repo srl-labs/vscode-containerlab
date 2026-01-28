@@ -5,12 +5,20 @@
  * Ethereal greens and purples with floating firefly particles.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useEffect, useRef, useState } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { useStickerbushAudio } from '../audio';
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, applyNodeGlow, restoreNodeStyles, MuteButton } from '../shared';
-import type { RGBColor } from '../shared';
+import { useStickerbushAudio } from "../audio";
+import {
+  BTN_VISIBLE,
+  BTN_HIDDEN,
+  BTN_BLUR,
+  lerpColor,
+  applyNodeGlow,
+  restoreNodeStyles,
+  MuteButton
+} from "../shared";
+import type { RGBColor } from "../shared";
 
 interface StickerbushModeProps {
   isActive: boolean;
@@ -28,7 +36,7 @@ const COLORS = {
   purple: { r: 128, g: 0, b: 128 },
   lavender: { r: 150, g: 120, b: 182 },
   gold: { r: 255, g: 215, b: 0 },
-  warmWhite: { r: 255, g: 250, b: 240 },
+  warmWhite: { r: 255, g: 250, b: 240 }
 };
 
 /** Section to color mapping - cycling through forest colors */
@@ -36,7 +44,7 @@ const SECTION_COLORS: RGBColor[] = [
   COLORS.emerald,
   COLORS.forestGreen,
   COLORS.lavender,
-  COLORS.purple,
+  COLORS.purple
 ];
 
 /**
@@ -79,7 +87,7 @@ function initializeFireflies(width: number, height: number): void {
       brightness: 0.3 + Math.random() * 0.7,
       pulsePhase: Math.random() * Math.PI * 2,
       pulseSpeed: 0.02 + Math.random() * 0.03,
-      hue: 60 + Math.random() * 80, // Yellow to green range
+      hue: 60 + Math.random() * 80 // Yellow to green range
     });
     /* eslint-enable sonarjs/pseudo-random */
   }
@@ -104,7 +112,7 @@ const StickerbushCanvas: React.FC<{
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return undefined;
 
     const updateSize = (): void => {
@@ -112,7 +120,7 @@ const StickerbushCanvas: React.FC<{
       canvas.height = window.innerHeight;
     };
     updateSize();
-    window.addEventListener('resize', updateSize);
+    window.addEventListener("resize", updateSize);
 
     timeRef.current = 0;
     initializeFireflies(canvas.width, canvas.height);
@@ -151,7 +159,7 @@ const StickerbushCanvas: React.FC<{
     animationRef.current = window.requestAnimationFrame(animate);
 
     return () => {
-      window.removeEventListener('resize', updateSize);
+      window.removeEventListener("resize", updateSize);
       window.cancelAnimationFrame(animationRef.current);
     };
   }, [isActive, getFrequencyData, getBeatIntensity, getCurrentSection]);
@@ -162,7 +170,7 @@ const StickerbushCanvas: React.FC<{
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-[99998]"
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: "100%", height: "100%" }}
     />
   );
 };
@@ -185,16 +193,16 @@ function drawForestGlow(
   const pulseRadius = baseRadius + Math.sin(time * 0.01) * 30 + intensity * 40;
 
   // Central ethereal glow
-  const gradient = ctx.createRadialGradient(
-    centerX, centerY, 0,
-    centerX, centerY, pulseRadius
-  );
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius);
 
   const alpha = 0.06 + intensity * 0.04;
   gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 1.5})`);
   gradient.addColorStop(0.4, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
-  gradient.addColorStop(0.7, `rgba(${COLORS.deepGreen.r}, ${COLORS.deepGreen.g}, ${COLORS.deepGreen.b}, ${alpha * 0.5})`);
-  gradient.addColorStop(1, 'transparent');
+  gradient.addColorStop(
+    0.7,
+    `rgba(${COLORS.deepGreen.r}, ${COLORS.deepGreen.g}, ${COLORS.deepGreen.b}, ${alpha * 0.5})`
+  );
+  gradient.addColorStop(1, "transparent");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
@@ -203,19 +211,19 @@ function drawForestGlow(
 /**
  * Draw soft vignette around edges
  */
-function drawVignette(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number
-): void {
+function drawVignette(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   const gradient = ctx.createRadialGradient(
-    width / 2, height / 2, Math.min(width, height) * 0.3,
-    width / 2, height / 2, Math.max(width, height) * 0.8
+    width / 2,
+    height / 2,
+    Math.min(width, height) * 0.3,
+    width / 2,
+    height / 2,
+    Math.max(width, height) * 0.8
   );
 
-  gradient.addColorStop(0, 'transparent');
-  gradient.addColorStop(0.7, 'transparent');
-  gradient.addColorStop(1, 'rgba(0, 30, 20, 0.4)');
+  gradient.addColorStop(0, "transparent");
+  gradient.addColorStop(0.7, "transparent");
+  gradient.addColorStop(1, "rgba(0, 30, 20, 0.4)");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
@@ -242,9 +250,12 @@ function drawLightRays(
     const x = (i + 0.5) * baseWidth + offset;
 
     const gradient = ctx.createLinearGradient(x, 0, x, height * 0.7);
-    gradient.addColorStop(0, `rgba(${COLORS.warmWhite.r}, ${COLORS.warmWhite.g}, ${COLORS.warmWhite.b}, 0.8)`);
+    gradient.addColorStop(
+      0,
+      `rgba(${COLORS.warmWhite.r}, ${COLORS.warmWhite.g}, ${COLORS.warmWhite.b}, 0.8)`
+    );
     gradient.addColorStop(0.5, `rgba(${COLORS.gold.r}, ${COLORS.gold.g}, ${COLORS.gold.b}, 0.3)`);
-    gradient.addColorStop(1, 'transparent');
+    gradient.addColorStop(1, "transparent");
 
     ctx.beginPath();
     ctx.moveTo(x - 30, 0);
@@ -331,13 +342,10 @@ function drawFireflies(
 
     // Draw outer glow
     const glowSize = f.size * 4;
-    const gradient = ctx.createRadialGradient(
-      f.x, f.y, 0,
-      f.x, f.y, glowSize
-    );
+    const gradient = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, glowSize);
     gradient.addColorStop(0, `hsla(${f.hue}, 80%, 70%, ${currentBrightness * 0.6})`);
     gradient.addColorStop(0.3, `hsla(${f.hue}, 70%, 60%, ${currentBrightness * 0.3})`);
-    gradient.addColorStop(1, 'transparent');
+    gradient.addColorStop(1, "transparent");
 
     ctx.fillStyle = gradient;
     ctx.beginPath();
@@ -372,12 +380,12 @@ function useStickerbushNodeGlow(
     const nodes = cyInstance.nodes();
 
     // Store original styles
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        'background-color': node.style('background-color') as string,
-        'border-color': node.style('border-color') as string,
-        'border-width': node.style('border-width') as string,
+        "background-color": node.style("background-color") as string,
+        "border-color": node.style("border-color") as string,
+        "border-width": node.style("border-width") as string
       });
     });
 
@@ -412,7 +420,7 @@ export const StickerbushMode: React.FC<StickerbushModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance,
+  cyInstance
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useStickerbushAudio();
@@ -460,15 +468,16 @@ export const StickerbushMode: React.FC<StickerbushModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(128, 0, 128, 0.6) 0%, rgba(150, 120, 182, 0.6) 100%)',
-            border: '2px solid rgba(255, 215, 0, 0.5)',
-            color: '#ffd700',
-            cursor: 'pointer',
+            background:
+              "linear-gradient(135deg, rgba(128, 0, 128, 0.6) 0%, rgba(150, 120, 182, 0.6) 100%)",
+            border: "2px solid rgba(255, 215, 0, 0.5)",
+            color: "#ffd700",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(255, 215, 0, 0.8)',
-            boxShadow: '0 0 20px rgba(128, 0, 128, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.1)',
+            textShadow: "0 0 10px rgba(255, 215, 0, 0.8)",
+            boxShadow: "0 0 20px rgba(128, 0, 128, 0.5), inset 0 0 20px rgba(255, 215, 0, 0.1)"
           }}
           title={`Current: ${modeName}`}
         >
@@ -488,15 +497,16 @@ export const StickerbushMode: React.FC<StickerbushModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(34, 139, 34, 0.8) 0%, rgba(128, 0, 128, 0.8) 100%)',
-            border: '2px solid rgba(80, 200, 120, 0.5)',
-            color: '#50c878',
-            cursor: 'pointer',
+            background:
+              "linear-gradient(135deg, rgba(34, 139, 34, 0.8) 0%, rgba(128, 0, 128, 0.8) 100%)",
+            border: "2px solid rgba(80, 200, 120, 0.5)",
+            color: "#50c878",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(80, 200, 120, 0.8)',
-            boxShadow: '0 0 20px rgba(34, 139, 34, 0.5), inset 0 0 20px rgba(80, 200, 120, 0.1)',
+            textShadow: "0 0 10px rgba(80, 200, 120, 0.8)",
+            boxShadow: "0 0 20px rgba(34, 139, 34, 0.5), inset 0 0 20px rgba(80, 200, 120, 0.1)"
           }}
         >
           End Stickerbrush

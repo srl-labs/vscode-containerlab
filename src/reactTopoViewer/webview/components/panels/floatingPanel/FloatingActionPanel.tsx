@@ -2,10 +2,17 @@
  * Floating Action Panel Component for React TopoViewer
  * A draggable panel with deployment controls and editor tools
  */
-import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useImperativeHandle,
+  forwardRef,
+  useMemo
+} from "react";
 
-import type { CustomNodeTemplate } from '../../../../shared/types/editors';
-import { useTopoViewerActions, useTopoViewerState } from '../../../context/TopoViewerContext';
+import type { CustomNodeTemplate } from "../../../../shared/types/editors";
+import { useTopoViewerActions, useTopoViewerState } from "../../../context/TopoViewerContext";
 import {
   usePanelDrag,
   useDrawerSide,
@@ -13,11 +20,11 @@ import {
   savePanelState,
   buildLockButtonClass,
   PANEL_STORAGE_KEY
-} from '../../../hooks/ui/usePanelDrag';
+} from "../../../hooks/ui/usePanelDrag";
 
-import { PanelButton, DeployButtonGroup } from './DeployControls';
-import type { DropdownMenuItem, CustomNodeActions } from './DropdownMenu';
-import { PanelButtonWithDropdown } from './DropdownMenu';
+import { PanelButton, DeployButtonGroup } from "./DeployControls";
+import type { DropdownMenuItem, CustomNodeActions } from "./DropdownMenu";
+import { PanelButtonWithDropdown } from "./DropdownMenu";
 
 /** Network type definitions matching legacy topoViewer */
 interface NetworkTypeDefinition {
@@ -28,27 +35,27 @@ interface NetworkTypeDefinition {
 }
 
 const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
-  { type: 'host', label: 'Host network', isDefault: true },
-  { type: 'mgmt-net', label: 'Management network' },
-  { type: 'macvlan', label: 'Macvlan network' },
-  { type: 'vxlan', label: 'VXLAN network', addDivider: true },
-  { type: 'vxlan-stitch', label: 'VXLAN Stitch network' },
-  { type: 'dummy', label: 'Dummy network', addDivider: true },
-  { type: 'bridge', label: 'Bridge', addDivider: true },
-  { type: 'ovs-bridge', label: 'OVS bridge' }
+  { type: "host", label: "Host network", isDefault: true },
+  { type: "mgmt-net", label: "Management network" },
+  { type: "macvlan", label: "Macvlan network" },
+  { type: "vxlan", label: "VXLAN network", addDivider: true },
+  { type: "vxlan-stitch", label: "VXLAN Stitch network" },
+  { type: "dummy", label: "Dummy network", addDivider: true },
+  { type: "bridge", label: "Bridge", addDivider: true },
+  { type: "ovs-bridge", label: "OVS bridge" }
 ];
 
 /** Shape definitions for add shapes dropdown */
 interface ShapeDefinition {
-  readonly type: 'rectangle' | 'circle' | 'line';
+  readonly type: "rectangle" | "circle" | "line";
   readonly label: string;
   readonly icon: string;
 }
 
 const SHAPE_DEFINITIONS: readonly ShapeDefinition[] = [
-  { type: 'rectangle', label: 'Rectangle', icon: 'fa-square' },
-  { type: 'circle', label: 'Circle', icon: 'fa-circle' },
-  { type: 'line', label: 'Line', icon: 'fa-minus' }
+  { type: "rectangle", label: "Rectangle", icon: "fa-square" },
+  { type: "circle", label: "Circle", icon: "fa-circle" },
+  { type: "line", label: "Line", icon: "fa-minus" }
 ];
 
 interface FloatingActionPanelProps {
@@ -80,7 +87,7 @@ export interface FloatingActionPanelHandle {
 }
 
 /** Convert network definitions to dropdown menu items */
-const networkMenuItems: DropdownMenuItem[] = NETWORK_TYPE_DEFINITIONS.map(def => ({
+const networkMenuItems: DropdownMenuItem[] = NETWORK_TYPE_DEFINITIONS.map((def) => ({
   id: def.type,
   label: `${def.label} (${def.type})`,
   isDefault: def.isDefault,
@@ -88,7 +95,7 @@ const networkMenuItems: DropdownMenuItem[] = NETWORK_TYPE_DEFINITIONS.map(def =>
 }));
 
 /** Convert shape definitions to dropdown menu items */
-const shapeMenuItems: DropdownMenuItem[] = SHAPE_DEFINITIONS.map(def => ({
+const shapeMenuItems: DropdownMenuItem[] = SHAPE_DEFINITIONS.map((def) => ({
   id: def.type,
   label: def.label,
   icon: def.icon
@@ -102,7 +109,10 @@ function useLockAwareHandler(
   return useCallback(
     (handler: (() => void) | undefined) => (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (isLocked) { onLockedClick?.(); return; }
+      if (isLocked) {
+        onLockedClick?.();
+        return;
+      }
       handler?.();
     },
     [isLocked, onLockedClick]
@@ -111,16 +121,16 @@ function useLockAwareHandler(
 
 /** Convert custom node templates to dropdown menu items */
 function buildNodeMenuItems(customNodes: CustomNodeTemplate[]): DropdownMenuItem[] {
-  const items: DropdownMenuItem[] = customNodes.map(node => ({
+  const items: DropdownMenuItem[] = customNodes.map((node) => ({
     id: node.name,
     label: node.name,
     isDefault: node.setDefault,
     isCustomNode: true
   }));
   if (items.length > 0) {
-    items.push({ id: '__new_custom_node__', label: 'New custom node...', addDivider: true });
+    items.push({ id: "__new_custom_node__", label: "New custom node...", addDivider: true });
   } else {
-    items.push({ id: '__new_custom_node__', label: 'New custom node...' });
+    items.push({ id: "__new_custom_node__", label: "New custom node..." });
   }
   return items;
 }
@@ -129,7 +139,7 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
   (props, ref) => {
     const { state } = useTopoViewerState();
     const { toggleLock } = useTopoViewerActions();
-    const isViewerMode = state.mode === 'view';
+    const isViewerMode = state.mode === "view";
     const { isLocked } = state;
 
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -142,24 +152,33 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
     });
     const drawerSide = useDrawerSide(panelRef, position);
 
-    useImperativeHandle(ref, () => ({
-      triggerShake: triggerLockShake
-    }), [triggerLockShake]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        triggerShake: triggerLockShake
+      }),
+      [triggerLockShake]
+    );
 
     // Save collapsed state separately since the hook handles position
-    useEffect(() => { savePanelState(position, isCollapsed); }, [position, isCollapsed]);
+    useEffect(() => {
+      savePanelState(position, isCollapsed);
+    }, [position, isCollapsed]);
 
-    const handleLockClick = useCallback((e: React.MouseEvent) => {
-      e.stopPropagation();
-      toggleLock();
-    }, [toggleLock]);
+    const handleLockClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toggleLock();
+      },
+      [toggleLock]
+    );
 
     const handleCollapseClick = useCallback((e: React.MouseEvent) => {
       e.stopPropagation();
-      setIsCollapsed(prev => !prev);
+      setIsCollapsed((prev) => !prev);
     }, []);
 
-    const panelCursor = isLocked ? 'default' : 'grab';
+    const panelCursor = isLocked ? "default" : "grab";
 
     return (
       <div
@@ -172,11 +191,11 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
 
         <button
           className={buildLockButtonClass(isLocked, isShaking)}
-          title={isLocked ? 'Unlock Lab' : 'Lock Lab'}
+          title={isLocked ? "Unlock Lab" : "Lock Lab"}
           onClick={handleLockClick}
           data-testid="floating-panel-lock-btn"
         >
-          <i className={`fas ${isLocked ? 'fa-lock' : 'fa-unlock'}`}></i>
+          <i className={`fas ${isLocked ? "fa-lock" : "fa-unlock"}`}></i>
         </button>
 
         {!isCollapsed && (
@@ -192,8 +211,8 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
         <div className="floating-panel-divider" />
 
         <PanelButton
-          icon={isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'}
-          tooltip={isCollapsed ? 'Expand Panel' : 'Collapse Panel'}
+          icon={isCollapsed ? "fa-chevron-down" : "fa-chevron-up"}
+          tooltip={isCollapsed ? "Expand Panel" : "Collapse Panel"}
           onClick={handleCollapseClick}
           testId="floating-panel-collapse-btn"
         />
@@ -208,7 +227,7 @@ export const FloatingActionPanel = forwardRef<FloatingActionPanelHandle, Floatin
 interface PanelContentProps extends FloatingActionPanelProps {
   isViewerMode: boolean;
   isLocked: boolean;
-  drawerSide: 'left' | 'right';
+  drawerSide: "left" | "right";
   onLockedClick?: () => void;
 }
 
@@ -254,29 +273,33 @@ const PanelContent: React.FC<PanelContentProps> = ({
   const { isProcessing, processingMode } = state;
 
   const handleDeployClick = useCallback(() => {
-    const mode = isViewerMode ? 'destroy' : 'deploy';
+    const mode = isViewerMode ? "destroy" : "deploy";
     setProcessing(true, mode);
-    if (isViewerMode) { onDestroy?.(); } else { onDeploy?.(); }
+    if (isViewerMode) {
+      onDestroy?.();
+    } else {
+      onDeploy?.();
+    }
   }, [isViewerMode, onDeploy, onDestroy, setProcessing]);
 
   // Wrap cleanup/redeploy handlers to set processing state
   const handleDeployCleanup = useCallback(() => {
-    setProcessing(true, 'deploy');
+    setProcessing(true, "deploy");
     onDeployCleanup?.();
   }, [onDeployCleanup, setProcessing]);
 
   const handleDestroyCleanup = useCallback(() => {
-    setProcessing(true, 'destroy');
+    setProcessing(true, "destroy");
     onDestroyCleanup?.();
   }, [onDestroyCleanup, setProcessing]);
 
   const handleRedeploy = useCallback(() => {
-    setProcessing(true, 'deploy');
+    setProcessing(true, "deploy");
     onRedeploy?.();
   }, [onRedeploy, setProcessing]);
 
   const handleRedeployCleanup = useCallback(() => {
-    setProcessing(true, 'deploy');
+    setProcessing(true, "deploy");
     onRedeployCleanup?.();
   }, [onRedeployCleanup, setProcessing]);
 
@@ -287,13 +310,16 @@ const PanelContent: React.FC<PanelContentProps> = ({
     () => buildCustomNodeActions(onEditCustomNode, onDeleteCustomNode, onSetDefaultCustomNode),
     [onEditCustomNode, onDeleteCustomNode, onSetDefaultCustomNode]
   );
-  const handleNodeSelect = useCallback((id: string) => {
-    if (id === '__new_custom_node__') {
-      onAddNode?.('__new__');
-    } else {
-      onAddNode?.(id);
-    }
-  }, [onAddNode]);
+  const handleNodeSelect = useCallback(
+    (id: string) => {
+      if (id === "__new_custom_node__") {
+        onAddNode?.("__new__");
+      } else {
+        onAddNode?.(id);
+      }
+    },
+    [onAddNode]
+  );
   const handleNetworkSelect = useCallback((t: string) => onAddNetwork?.(t), [onAddNetwork]);
   const handleShapeSelect = useCallback((t: string) => onAddShapes?.(t), [onAddShapes]);
 
@@ -342,8 +368,21 @@ const PanelContent: React.FC<PanelContentProps> = ({
           clickAddsDefault
         />
       )}
-      <PanelButton icon="fa-layer-group" tooltip="Add Group" onClick={createLockAwareHandler(onAddGroup)} disabled={isLocked} testId="floating-panel-add-group-btn" />
-      <PanelButton icon="fa-font" tooltip="Add Text" onClick={createLockAwareHandler(onAddText)} disabled={isLocked} active={isAddTextMode} testId="floating-panel-add-text-btn" />
+      <PanelButton
+        icon="fa-layer-group"
+        tooltip="Add Group"
+        onClick={createLockAwareHandler(onAddGroup)}
+        disabled={isLocked}
+        testId="floating-panel-add-group-btn"
+      />
+      <PanelButton
+        icon="fa-font"
+        tooltip="Add Text"
+        onClick={createLockAwareHandler(onAddText)}
+        disabled={isLocked}
+        active={isAddTextMode}
+        testId="floating-panel-add-text-btn"
+      />
       <PanelButtonWithDropdown
         icon="fa-shapes"
         tooltip="Add Shapes"
@@ -357,10 +396,16 @@ const PanelContent: React.FC<PanelContentProps> = ({
         testId="floating-panel-add-shapes-btn"
       />
       {!isViewerMode && (
-        <PanelButton icon="fa-link" tooltip="Bulk Link Devices" onClick={createLockAwareHandler(onAddBulkLink)} disabled={isLocked} testId="floating-panel-bulk-link-btn" />
+        <PanelButton
+          icon="fa-link"
+          tooltip="Bulk Link Devices"
+          onClick={createLockAwareHandler(onAddBulkLink)}
+          disabled={isLocked}
+          testId="floating-panel-bulk-link-btn"
+        />
       )}
     </div>
   );
 };
 
-FloatingActionPanel.displayName = 'FloatingActionPanel';
+FloatingActionPanel.displayName = "FloatingActionPanel";

@@ -1,23 +1,27 @@
 /**
  * useNodeCreation - Hook for creating nodes via Shift+Click on canvas
  */
-import { useEffect, useCallback, useRef } from 'react';
-import type { Core, EventObject } from 'cytoscape';
+import { useEffect, useCallback, useRef } from "react";
+import type { Core, EventObject } from "cytoscape";
 
-import { log } from '../../utils/logger';
-import type { CyElement } from '../../../shared/types/messages';
-import type { CustomNodeTemplate } from '../../../shared/types/editors';
-import { getUniqueId } from '../../../shared/utilities/idUtils';
-import { convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
+import { log } from "../../utils/logger";
+import type { CyElement } from "../../../shared/types/messages";
+import type { CustomNodeTemplate } from "../../../shared/types/editors";
+import { getUniqueId } from "../../../shared/utilities/idUtils";
+import { convertEditorDataToYaml } from "../../../shared/utilities/nodeEditorConversions";
 
 interface NodeCreationOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
   getUsedNodeNames: () => Set<string>;
   getUsedNodeIds: () => Set<string>;
-  onNodeCreated: (nodeId: string, nodeElement: CyElement, position: { x: number; y: number }) => void;
+  onNodeCreated: (
+    nodeId: string,
+    nodeElement: CyElement,
+    position: { x: number; y: number }
+  ) => void;
   onLockedClick?: () => void;
 }
 
@@ -56,9 +60,9 @@ function initializeNodeCounter(nodeIds: Iterable<string>): void {
   if (nodeCounter !== 0) return;
 
   const maxId = [...nodeIds]
-    .filter(id => id.startsWith('nodeId-'))
-    .map(id => parseInt(id.replace('nodeId-', ''), 10))
-    .filter(num => !isNaN(num))
+    .filter((id) => id.startsWith("nodeId-"))
+    .map((id) => parseInt(id.replace("nodeId-", ""), 10))
+    .filter((num) => !isNaN(num))
     .reduce((max, current) => Math.max(max, current), 0);
   nodeCounter = maxId;
 }
@@ -75,7 +79,11 @@ function generateNodeId(): string {
  * Generate a unique node name based on template or default
  * Uses getUniqueId to match legacy behavior (srl → srl1, srl2, etc.)
  */
-function generateNodeName(defaultName: string, usedNames: Set<string>, template?: CustomNodeTemplate): string {
+function generateNodeName(
+  defaultName: string,
+  usedNames: Set<string>,
+  template?: CustomNodeTemplate
+): string {
   if (!template?.baseName) {
     return defaultName;
   }
@@ -91,7 +99,7 @@ function determineType(kind: string, template?: CustomNodeTemplate): string | un
     return template.type;
   }
 
-  const nokiaKinds = ['nokia_srlinux', 'nokia_srsim', 'nokia_sros'];
+  const nokiaKinds = ["nokia_srlinux", "nokia_srsim", "nokia_sros"];
   if (!nokiaKinds.includes(kind)) {
     return undefined;
   }
@@ -102,7 +110,7 @@ function determineType(kind: string, template?: CustomNodeTemplate): string | un
     return undefined;
   }
 
-  return 'ixr-d2l';
+  return "ixr-d2l";
 }
 
 /**
@@ -110,8 +118,17 @@ function determineType(kind: string, template?: CustomNodeTemplate): string | un
  * These are either top-level node properties or annotation-only fields.
  */
 const TEMPLATE_EXCLUDED_FIELDS = new Set([
-  'name', 'kind', 'type', 'image', 'icon', 'iconColor', 'iconCornerRadius',
-  'setDefault', 'baseName', 'interfacePattern', 'oldName'
+  "name",
+  "kind",
+  "type",
+  "image",
+  "icon",
+  "iconColor",
+  "iconCornerRadius",
+  "setDefault",
+  "baseName",
+  "interfacePattern",
+  "oldName"
 ]);
 
 /**
@@ -151,9 +168,9 @@ function createNodeData(
 ): NodeData {
   const extraData: NodeExtraData = {
     kind,
-    longname: '',
-    image: template?.image || '',
-    mgmtIpv4Address: '',
+    longname: "",
+    image: template?.image || "",
+    mgmtIpv4Address: "",
     fromCustomTemplate: Boolean(template?.name),
     ...extractExtraTemplate(template)
   };
@@ -170,14 +187,14 @@ function createNodeData(
 
   const nodeData: NodeData = {
     id: nodeId,
-    editor: 'true',
-    weight: '30',
+    editor: "true",
+    weight: "30",
     name: nodeName,
-    parent: '',
-    topoViewerRole: template?.icon || 'pe',
-    sourceEndpoint: '',
-    targetEndpoint: '',
-    containerDockerExtraAttribute: { state: '', status: '' },
+    parent: "",
+    topoViewerRole: template?.icon || "pe",
+    sourceEndpoint: "",
+    targetEndpoint: "",
+    containerDockerExtraAttribute: { state: "", status: "" },
     extraData
   };
 
@@ -226,7 +243,7 @@ function determinePosition(cy: Core, event: EventObject): { x: number; y: number
  */
 function nodeDataToCyElement(data: NodeData, position: { x: number; y: number }): CyElement {
   return {
-    group: 'nodes',
+    group: "nodes",
     data: data as unknown as Record<string, unknown>,
     position
   };
@@ -238,7 +255,9 @@ function nodeDataToCyElement(data: NodeData, position: { x: number; y: number })
 export function useNodeCreation(
   cy: Core | null,
   options: NodeCreationOptions
-): { createNodeAtPosition: (position: { x: number; y: number }, template?: CustomNodeTemplate) => void } {
+): {
+  createNodeAtPosition: (position: { x: number; y: number }, template?: CustomNodeTemplate) => void;
+} {
   const { onNodeCreated } = options;
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -262,31 +281,31 @@ export function useNodeCreation(
   /**
    * Create a node at a specific position
    */
-  const createNodeAtPosition = useCallback((
-    position: { x: number; y: number },
-    template?: CustomNodeTemplate
-  ) => {
-    if (!cy) return;
+  const createNodeAtPosition = useCallback(
+    (position: { x: number; y: number }, template?: CustomNodeTemplate) => {
+      if (!cy) return;
 
-    initializeNodeCounter(getUsedIds());
+      initializeNodeCounter(getUsedIds());
 
-    const generatedId = generateNodeId();
-    const usedNames = getUsedNames();
-    const nodeName = generateNodeName(generatedId, usedNames, template);
-    const nodeId = nodeName || generatedId;
+      const generatedId = generateNodeId();
+      const usedNames = getUsedNames();
+      const nodeName = generateNodeName(generatedId, usedNames, template);
+      const nodeId = nodeName || generatedId;
 
-    const kind = template?.kind || 'nokia_srlinux';
-    const nodeData = createNodeData(nodeId, nodeName, template, kind);
+      const kind = template?.kind || "nokia_srlinux";
+      const nodeData = createNodeData(nodeId, nodeName, template, kind);
 
-    // Create CyElement for state update
-    const cyElement = nodeDataToCyElement(nodeData, position);
+      // Create CyElement for state update
+      const cyElement = nodeDataToCyElement(nodeData, position);
 
-    log.info(`[NodeCreation] Created node: ${nodeId} at (${position.x}, ${position.y})`);
+      log.info(`[NodeCreation] Created node: ${nodeId} at (${position.x}, ${position.y})`);
 
-    reservedIdsRef.current.add(nodeId);
-    if (nodeName) reservedNamesRef.current.add(nodeName);
-    onNodeCreated(nodeId, cyElement, position);
-  }, [cy, onNodeCreated]);
+      reservedIdsRef.current.add(nodeId);
+      if (nodeName) reservedNamesRef.current.add(nodeName);
+      onNodeCreated(nodeId, cyElement, position);
+    },
+    [cy, onNodeCreated]
+  );
 
   useEffect(() => {
     if (!cy) return;
@@ -295,7 +314,7 @@ export function useNodeCreation(
       const { mode, isLocked, customNodes, defaultNode, onLockedClick } = optionsRef.current;
 
       // Only handle in edit mode
-      if (mode !== 'edit') return;
+      if (mode !== "edit") return;
 
       // Check if clicking on the canvas itself (not on an element)
       if (event.target !== cy) return;
@@ -307,7 +326,7 @@ export function useNodeCreation(
 
       // Check if locked
       if (isLocked) {
-        log.debug('[NodeCreation] Canvas is locked, cannot create node');
+        log.debug("[NodeCreation] Canvas is locked, cannot create node");
         onLockedClick?.();
         return;
       }
@@ -315,7 +334,7 @@ export function useNodeCreation(
       // Find the template to use
       let template: CustomNodeTemplate | undefined;
       if (defaultNode) {
-        template = customNodes.find(n => n.name === defaultNode);
+        template = customNodes.find((n) => n.name === defaultNode);
       }
 
       // Determine position
@@ -326,10 +345,10 @@ export function useNodeCreation(
       createNodeAtPosition(position, template);
     };
 
-    cy.on('tap', handleCanvasTap);
+    cy.on("tap", handleCanvasTap);
 
     return () => {
-      cy.off('tap', handleCanvasTap);
+      cy.off("tap", handleCanvasTap);
     };
   }, [cy, createNodeAtPosition]);
 

@@ -5,12 +5,20 @@
  * perspective grid, and dreamy smooth jazz vibes.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useEffect, useRef, useState } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { useVaporwaveAudio } from '../audio';
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, applyNodeGlow, restoreNodeStyles, MuteButton } from '../shared';
-import type { RGBColor } from '../shared';
+import { useVaporwaveAudio } from "../audio";
+import {
+  BTN_VISIBLE,
+  BTN_HIDDEN,
+  BTN_BLUR,
+  lerpColor,
+  applyNodeGlow,
+  restoreNodeStyles,
+  MuteButton
+} from "../shared";
+import type { RGBColor } from "../shared";
 
 interface VaporwaveModeProps {
   isActive: boolean;
@@ -21,16 +29,16 @@ interface VaporwaveModeProps {
 }
 
 /** Button border */
-const BTN_BORDER = '2px solid rgba(255, 255, 255, 0.4)';
+const BTN_BORDER = "2px solid rgba(255, 255, 255, 0.4)";
 
 /** Vaporwave color palette */
 const COLORS = {
-  pink: { r: 255, g: 113, b: 206 },       // Hot pink
-  cyan: { r: 1, g: 205, b: 254 },         // Neon cyan
-  purple: { r: 185, g: 103, b: 255 },     // Light purple
-  yellow: { r: 254, g: 255, b: 156 },     // Pastel yellow
-  blue: { r: 120, g: 129, b: 255 },       // Periwinkle
-  darkPurple: { r: 25, g: 4, b: 50 },     // Dark background
+  pink: { r: 255, g: 113, b: 206 }, // Hot pink
+  cyan: { r: 1, g: 205, b: 254 }, // Neon cyan
+  purple: { r: 185, g: 103, b: 255 }, // Light purple
+  yellow: { r: 254, g: 255, b: 156 }, // Pastel yellow
+  blue: { r: 120, g: 129, b: 255 }, // Periwinkle
+  darkPurple: { r: 25, g: 4, b: 50 } // Dark background
 };
 
 /** Section to color mapping - Lisa Frank 420 chord progression */
@@ -39,7 +47,7 @@ const SECTION_COLORS: Record<string, RGBColor> = {
   bm: COLORS.cyan,
   em: COLORS.purple,
   csm7: COLORS.yellow,
-  a: COLORS.blue,
+  a: COLORS.blue
 };
 
 /**
@@ -67,7 +75,7 @@ const VaporwaveCanvas: React.FC<{
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return undefined;
 
     const updateSize = (): void => {
@@ -75,7 +83,7 @@ const VaporwaveCanvas: React.FC<{
       canvas.height = window.innerHeight;
     };
     updateSize();
-    window.addEventListener('resize', updateSize);
+    window.addEventListener("resize", updateSize);
 
     timeRef.current = 0;
 
@@ -116,7 +124,7 @@ const VaporwaveCanvas: React.FC<{
     animationRef.current = window.requestAnimationFrame(animate);
 
     return () => {
-      window.removeEventListener('resize', updateSize);
+      window.removeEventListener("resize", updateSize);
       window.cancelAnimationFrame(animationRef.current);
     };
   }, [isActive, getFrequencyData, getCurrentSection]);
@@ -127,7 +135,7 @@ const VaporwaveCanvas: React.FC<{
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-[99998]"
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: "100%", height: "100%" }}
     />
   );
 };
@@ -160,16 +168,22 @@ function drawBackgroundGlow(
 
   // Top gradient - pink to transparent
   const topGrad = ctx.createLinearGradient(0, 0, 0, height * 0.4);
-  topGrad.addColorStop(0, `rgba(${COLORS.pink.r}, ${COLORS.pink.g}, ${COLORS.pink.b}, ${pulseAlpha * 1.2})`);
+  topGrad.addColorStop(
+    0,
+    `rgba(${COLORS.pink.r}, ${COLORS.pink.g}, ${COLORS.pink.b}, ${pulseAlpha * 1.2})`
+  );
   topGrad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${pulseAlpha * 0.6})`);
-  topGrad.addColorStop(1, 'transparent');
+  topGrad.addColorStop(1, "transparent");
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, width, height * 0.4);
 
   // Bottom gradient - cyan to transparent
   const botGrad = ctx.createLinearGradient(0, height, 0, height * 0.6);
-  botGrad.addColorStop(0, `rgba(${COLORS.cyan.r}, ${COLORS.cyan.g}, ${COLORS.cyan.b}, ${pulseAlpha})`);
-  botGrad.addColorStop(1, 'transparent');
+  botGrad.addColorStop(
+    0,
+    `rgba(${COLORS.cyan.r}, ${COLORS.cyan.g}, ${COLORS.cyan.b}, ${pulseAlpha})`
+  );
+  botGrad.addColorStop(1, "transparent");
   ctx.fillStyle = botGrad;
   ctx.fillRect(0, height * 0.6, width, height * 0.4);
 }
@@ -208,7 +222,7 @@ function drawPerspectiveGrid(
   // Horizontal lines with perspective (moving effect)
   const offset = (time * 0.5) % 40;
   for (let i = 0; i < 12; i++) {
-    const baseY = horizonY + (i * 40) + offset;
+    const baseY = horizonY + i * 40 + offset;
     if (baseY > height) continue;
 
     // Calculate perspective narrowing
@@ -245,12 +259,16 @@ function drawVaporwaveSun(
 
   // Outer glow
   const gradient = ctx.createRadialGradient(
-    centerX, centerY, radius * 0.3,
-    centerX, centerY, radius * 2
+    centerX,
+    centerY,
+    radius * 0.3,
+    centerX,
+    centerY,
+    radius * 2
   );
   gradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0.3)`);
   gradient.addColorStop(0.5, `rgba(${COLORS.pink.r}, ${COLORS.pink.g}, ${COLORS.pink.b}, 0.1)`);
-  gradient.addColorStop(1, 'transparent');
+  gradient.addColorStop(1, "transparent");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height * 0.6);
@@ -264,7 +282,10 @@ function drawVaporwaveSun(
   // Pink to cyan gradient
   const sunGrad = ctx.createLinearGradient(centerX, centerY - radius, centerX, centerY + radius);
   sunGrad.addColorStop(0, `rgba(${COLORS.pink.r}, ${COLORS.pink.g}, ${COLORS.pink.b}, 0.4)`);
-  sunGrad.addColorStop(0.5, `rgba(${COLORS.yellow.r}, ${COLORS.yellow.g}, ${COLORS.yellow.b}, 0.35)`);
+  sunGrad.addColorStop(
+    0.5,
+    `rgba(${COLORS.yellow.r}, ${COLORS.yellow.g}, ${COLORS.yellow.b}, 0.35)`
+  );
   sunGrad.addColorStop(1, `rgba(${COLORS.cyan.r}, ${COLORS.cyan.g}, ${COLORS.cyan.b}, 0.4)`);
 
   ctx.fillStyle = sunGrad;
@@ -361,7 +382,7 @@ const shapes: Array<{
   size: number;
   rotation: number;
   rotSpeed: number;
-  type: 'triangle' | 'circle' | 'diamond';
+  type: "triangle" | "circle" | "diamond";
   alpha: number;
   hue: number;
 }> = [];
@@ -378,7 +399,7 @@ function drawFloatingShapes(
 ): void {
   // Initialize shapes if needed
   if (shapes.length === 0) {
-    const shapeTypes: Array<'triangle' | 'circle' | 'diamond'> = ['triangle', 'circle', 'diamond'];
+    const shapeTypes: Array<"triangle" | "circle" | "diamond"> = ["triangle", "circle", "diamond"];
     for (let i = 0; i < 15; i++) {
       /* eslint-disable sonarjs/pseudo-random */
       shapes.push({
@@ -389,7 +410,7 @@ function drawFloatingShapes(
         rotSpeed: (Math.random() - 0.5) * 0.01,
         type: shapeTypes[Math.floor(Math.random() * 3)],
         alpha: 0.1 + Math.random() * 0.15,
-        hue: 280 + Math.random() * 100, // Pink to cyan range
+        hue: 280 + Math.random() * 100 // Pink to cyan range
       });
       /* eslint-enable sonarjs/pseudo-random */
     }
@@ -416,13 +437,13 @@ function drawFloatingShapes(
     ctx.lineWidth = 1.5;
 
     ctx.beginPath();
-    if (s.type === 'triangle') {
+    if (s.type === "triangle") {
       const h = s.size * 0.866;
       ctx.moveTo(0, -h / 2);
       ctx.lineTo(-s.size / 2, h / 2);
       ctx.lineTo(s.size / 2, h / 2);
       ctx.closePath();
-    } else if (s.type === 'circle') {
+    } else if (s.type === "circle") {
       ctx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
     } else {
       // Diamond
@@ -457,12 +478,12 @@ function useVaporwaveNodeGlow(
     const nodes = cyInstance.nodes();
 
     // Store original styles
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        'background-color': node.style('background-color') as string,
-        'border-color': node.style('border-color') as string,
-        'border-width': node.style('border-width') as string,
+        "background-color": node.style("background-color") as string,
+        "border-color": node.style("border-color") as string,
+        "border-width": node.style("border-width") as string
       });
     });
 
@@ -498,7 +519,7 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance,
+  cyInstance
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useVaporwaveAudio();
@@ -545,15 +566,16 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(120, 129, 255, 0.8) 0%, rgba(185, 103, 255, 0.8) 100%)',
+            background:
+              "linear-gradient(135deg, rgba(120, 129, 255, 0.8) 0%, rgba(185, 103, 255, 0.8) 100%)",
             border: BTN_BORDER,
-            color: '#ffffff',
-            cursor: 'pointer',
+            color: "#ffffff",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(185, 103, 255, 0.8)',
-            boxShadow: '0 0 20px rgba(120, 129, 255, 0.5), inset 0 0 20px rgba(185, 103, 255, 0.1)',
+            textShadow: "0 0 10px rgba(185, 103, 255, 0.8)",
+            boxShadow: "0 0 20px rgba(120, 129, 255, 0.5), inset 0 0 20px rgba(185, 103, 255, 0.1)"
           }}
           title={`Current: ${modeName}`}
         >
@@ -573,18 +595,19 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(255, 113, 206, 0.8) 0%, rgba(1, 205, 254, 0.8) 100%)',
+            background:
+              "linear-gradient(135deg, rgba(255, 113, 206, 0.8) 0%, rgba(1, 205, 254, 0.8) 100%)",
             border: BTN_BORDER,
-            color: '#ffffff',
-            cursor: 'pointer',
+            color: "#ffffff",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(255, 113, 206, 0.8)',
-            boxShadow: '0 0 20px rgba(1, 205, 254, 0.5), inset 0 0 20px rgba(255, 113, 206, 0.1)',
+            textShadow: "0 0 10px rgba(255, 113, 206, 0.8)",
+            boxShadow: "0 0 20px rgba(1, 205, 254, 0.5), inset 0 0 20px rgba(255, 113, 206, 0.1)"
           }}
         >
-          E X I T  V A P O R
+          E X I T V A P O R
         </button>
       </div>
     </>

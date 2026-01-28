@@ -2,16 +2,16 @@
  * App-level hook for group management.
  * Provides handlers for group operations with UI integration.
  */
-import type React from 'react';
-import { useCallback, useEffect, useRef } from 'react';
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
+import type React from "react";
+import { useCallback, useEffect, useRef } from "react";
+import type { Core as CyCore, NodeSingular } from "cytoscape";
 
-import type { GroupStyleAnnotation, NodeAnnotation } from '../../../shared/types/topology';
-import { log } from '../../utils/logger';
-import { subscribeToWebviewMessages, type TypedMessageEvent } from '../../utils/webviewMessageBus';
+import type { GroupStyleAnnotation, NodeAnnotation } from "../../../shared/types/topology";
+import { log } from "../../utils/logger";
+import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
 
-import { useGroups } from './useGroups';
-import { buildGroupId, parseGroupId, calculateBoundingBox } from './groupHelpers';
+import { useGroups } from "./useGroups";
+import { buildGroupId, parseGroupId, calculateBoundingBox } from "./groupHelpers";
 
 interface InitialData {
   groupStyleAnnotations?: unknown[];
@@ -19,7 +19,7 @@ interface InitialData {
 }
 
 interface TopologyDataMessage {
-  type: 'topology-data';
+  type: "topology-data";
   data: {
     groupStyleAnnotations?: GroupStyleAnnotation[];
     nodeAnnotations?: NodeAnnotation[];
@@ -38,7 +38,7 @@ function extractMemberships(
   if (!nodeAnnotations) return [];
 
   const groupKeyToIds = new Map<string, string[]>();
-  (groups ?? []).forEach(group => {
+  (groups ?? []).forEach((group) => {
     const key = buildGroupId(group.name, group.level);
     const list = groupKeyToIds.get(key) ?? [];
     list.push(group.id);
@@ -55,7 +55,9 @@ function extractMemberships(
       const key = buildGroupId(ann.group, ann.level);
       const ids = groupKeyToIds.get(key) ?? [];
       if (ids.length > 1) {
-        log.warn(`[Groups] Ambiguous membership for ${ann.id}: ${key} maps to ${ids.length} groups`);
+        log.warn(
+          `[Groups] Ambiguous membership for ${ann.id}: ${key} maps to ${ids.length} groups`
+        );
       }
       if (ids.length > 0) {
         memberships.push({ nodeId: ann.id, groupId: ids[0] });
@@ -79,7 +81,7 @@ function migrateLegacyGroups(
 ): GroupStyleAnnotation[] {
   if (!groups?.length) return [];
 
-  return groups.map(group => {
+  return groups.map((group) => {
     const labelColor = group.labelColor ?? group.color;
 
     // Already has geometry - just ensure name/level exist
@@ -97,8 +99,8 @@ function migrateLegacyGroups(
 
     // Find member nodes with positions
     const memberPositions = (nodeAnnotations || [])
-      .filter(ann => ann.group === name && ann.level === level && ann.position)
-      .map(ann => ann.position!);
+      .filter((ann) => ann.group === name && ann.level === level && ann.position)
+      .map((ann) => ann.position!);
 
     // Calculate bounding box from positions
     const bounds = calculateBoundingBox(memberPositions);
@@ -119,13 +121,13 @@ function migrateLegacyGroups(
  * Check if a node can be added to a group.
  */
 function canBeGrouped(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole') as string | undefined;
-  return role !== 'freeText' && role !== 'freeShape';
+  const role = node.data("topoViewerRole") as string | undefined;
+  return role !== "freeText" && role !== "freeShape";
 }
 
 interface UseAppGroupsOptions {
   cyInstance: CyCore | null;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
   /** Callback to reassign text annotations when group membership changes */
@@ -161,7 +163,7 @@ function useGroupDataLoader(
 
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as TopologyDataMessage | undefined;
-      if (!message || message.type !== 'topology-data' || !message.data) return;
+      if (!message || message.type !== "topology-data" || !message.data) return;
       const data = message.data;
 
       // Extract memberships for migration - always update from topology refresh
@@ -170,7 +172,8 @@ function useGroupDataLoader(
       // Only update membership when nodeAnnotations are present in the message.
       // Some topology refreshes omit nodeAnnotations; in that case we keep local membership state.
       const msgGroups = data.groupStyleAnnotations as GroupStyleAnnotation[] | undefined;
-      const membershipGroups = msgGroups && msgGroups.length > 0 ? msgGroups : currentGroupsRef.current;
+      const membershipGroups =
+        msgGroups && msgGroups.length > 0 ? msgGroups : currentGroupsRef.current;
       if (msgNodeAnnotations) {
         initializeMembership(extractMemberships(msgNodeAnnotations, membershipGroups));
       }
@@ -191,12 +194,19 @@ function useGroupDataLoader(
         }
       }
     };
-    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === 'topology-data');
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
   }, [loadGroups, initializeMembership, currentGroupsRef]);
 }
 
 export function useAppGroups(options: UseAppGroupsOptions) {
-  const { cyInstance, mode, isLocked, onLockedAction, onMigrateTextAnnotations, onMigrateShapeAnnotations } = options;
+  const {
+    cyInstance,
+    mode,
+    isLocked,
+    onLockedAction,
+    onMigrateTextAnnotations,
+    onMigrateShapeAnnotations
+  } = options;
 
   const groupsHook = useGroups({
     cy: cyInstance,
@@ -216,9 +226,9 @@ export function useAppGroups(options: UseAppGroupsOptions) {
   const handleAddGroup = useCallback(() => {
     if (!cyInstance) return;
     const selectedNodeIds = cyInstance
-      .nodes(':selected')
-      .filter(n => canBeGrouped(n as NodeSingular))
-      .map(n => n.id());
+      .nodes(":selected")
+      .filter((n) => canBeGrouped(n as NodeSingular))
+      .map((n) => n.id());
 
     const result = groupsHook.createGroup(selectedNodeIds.length > 0 ? selectedNodeIds : undefined);
     if (result) groupsHook.editGroup(result.groupId);

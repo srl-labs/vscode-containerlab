@@ -2,17 +2,25 @@
  * Editor handler hooks for node, link, and network editors.
  * Extracted from App.tsx to reduce file size.
  */
-import React from 'react';
-import type { Core as CyCore, Core as CytoscapeCore, EdgeSingular } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore, Core as CytoscapeCore, EdgeSingular } from "cytoscape";
 
-import type { NodeEditorData, LinkEditorData, NetworkEditorData, FloatingActionPanelHandle } from '../../components/panels';
-import type { CustomNodeTemplate } from '../../../shared/types/editors';
-import type { CustomIconInfo } from '../../../shared/types/icons';
-import type { EdgeAnnotation } from '../../../shared/types/topology';
-import type { MembershipEntry } from '../state/useUndoRedo';
-import { ROLE_SVG_MAP, type CytoscapeCanvasRef } from '../../components/canvas';
-import { convertEditorDataToNodeSaveData, convertEditorDataToYaml } from '../../../shared/utilities/nodeEditorConversions';
-import { convertEditorDataToLinkSaveData } from '../../utils/linkEditorConversions';
+import type {
+  NodeEditorData,
+  LinkEditorData,
+  NetworkEditorData,
+  FloatingActionPanelHandle
+} from "../../components/panels";
+import type { CustomNodeTemplate } from "../../../shared/types/editors";
+import type { CustomIconInfo } from "../../../shared/types/icons";
+import type { EdgeAnnotation } from "../../../shared/types/topology";
+import type { MembershipEntry } from "../state/useUndoRedo";
+import { ROLE_SVG_MAP, type CytoscapeCanvasRef } from "../../components/canvas";
+import {
+  convertEditorDataToNodeSaveData,
+  convertEditorDataToYaml
+} from "../../../shared/utilities/nodeEditorConversions";
+import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
 import {
   editNode as editNodeService,
   editLink as editLinkService,
@@ -20,10 +28,10 @@ import {
   isServicesInitialized,
   getAnnotationsIO,
   getTopologyIO
-} from '../../services';
-import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from '../../utils/edgeAnnotations';
-import { generateEncodedSVG, type NodeType } from '../../utils/SvgGenerator';
-import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from '../../utils/cytoscapeHelpers';
+} from "../../services";
+import { findEdgeAnnotation, upsertEdgeLabelOffsetAnnotation } from "../../utils/edgeAnnotations";
+import { generateEncodedSVG, type NodeType } from "../../utils/SvgGenerator";
+import { applyCustomIconStyles, DEFAULT_ICON_COLOR } from "../../utils/cytoscapeHelpers";
 
 /** Pending membership change during node drag */
 export interface PendingMembershipChange {
@@ -38,7 +46,7 @@ export interface PendingMembershipChange {
 
 /** Property edit action for undo/redo (matches UndoRedoActionPropertyEdit without 'type') */
 interface PropertyEditAction {
-  entityType: 'node' | 'link';
+  entityType: "node" | "link";
   entityId: string;
   before: Record<string, unknown>;
   after: Record<string, unknown>;
@@ -81,16 +89,16 @@ function updateCytoscapeEdgeData(
   const edge = cy.getElementById(edgeId);
   if (!edge || edge.empty()) return;
 
-  edge.data('sourceEndpoint', data.sourceEndpoint);
-  edge.data('targetEndpoint', data.targetEndpoint);
+  edge.data("sourceEndpoint", data.sourceEndpoint);
+  edge.data("targetEndpoint", data.targetEndpoint);
 
   // Build new extraData from editor data (same logic as convertEditorDataToLinkSaveData)
   const newExtraData: Record<string, unknown> = {};
 
-  if (data.type && data.type !== 'veth') {
+  if (data.type && data.type !== "veth") {
     newExtraData.extType = data.type;
   }
-  if (data.mtu !== undefined && data.mtu !== '') {
+  if (data.mtu !== undefined && data.mtu !== "") {
     newExtraData.extMtu = data.mtu;
   }
   if (data.sourceMac) {
@@ -107,8 +115,8 @@ function updateCytoscapeEdgeData(
   }
 
   // Merge with existing extraData to preserve other properties
-  const existingExtraData = (edge.data('extraData') as Record<string, unknown> | undefined) ?? {};
-  edge.data('extraData', { ...existingExtraData, ...newExtraData });
+  const existingExtraData = (edge.data("extraData") as Record<string, unknown> | undefined) ?? {};
+  edge.data("extraData", { ...existingExtraData, ...newExtraData });
 }
 
 /**
@@ -128,12 +136,12 @@ function updateCytoscapeNodeData(
   if (!node || node.empty()) return null;
 
   // Convert editor data to YAML format (kebab-case keys) and merge with existing
-  const existingExtraData = (node.data('extraData') as Record<string, unknown> | undefined) ?? {};
+  const existingExtraData = (node.data("extraData") as Record<string, unknown> | undefined) ?? {};
   const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
 
   const newExtraData: Record<string, unknown> = {
     ...existingExtraData,
-    ...yamlExtraData,
+    ...yamlExtraData
   };
 
   // Remove null values from the merged data - null signals "delete this property"
@@ -145,16 +153,16 @@ function updateCytoscapeNodeData(
   }
 
   // Update the node data
-  node.data('name', data.name);
-  node.data('topoViewerRole', data.icon);
-  node.data('iconColor', data.iconColor);
-  node.data('iconCornerRadius', data.iconCornerRadius);
-  node.data('extraData', newExtraData);
+  node.data("name", data.name);
+  node.data("topoViewerRole", data.icon);
+  node.data("iconColor", data.iconColor);
+  node.data("iconCornerRadius", data.iconCornerRadius);
+  node.data("extraData", newExtraData);
 
   // Update the background-image style to reflect the icon
   // Check for custom icon first
-  const role = data.icon || 'default';
-  const customIcon = customIcons?.find(ci => ci.name === role);
+  const role = data.icon || "default";
+  const customIcon = customIcons?.find((ci) => ci.name === role);
   if (customIcon) {
     applyCustomIconStyles(node, customIcon.dataUri, data.iconCornerRadius);
   } else {
@@ -162,17 +170,17 @@ function updateCytoscapeNodeData(
     const svgType = ROLE_SVG_MAP[role] as NodeType | undefined;
     if (svgType) {
       const color = data.iconColor || DEFAULT_ICON_COLOR;
-      node.style('background-image', generateEncodedSVG(svgType, color));
+      node.style("background-image", generateEncodedSVG(svgType, color));
     }
   }
 
   // Apply iconCornerRadius - requires round-rectangle shape
   if (data.iconCornerRadius !== undefined && data.iconCornerRadius > 0) {
-    node.style('shape', 'round-rectangle');
-    node.style('corner-radius', data.iconCornerRadius);
+    node.style("shape", "round-rectangle");
+    node.style("corner-radius", data.iconCornerRadius);
   } else {
     // Reset to default rectangle shape when corner radius is 0 or undefined
-    node.style('shape', 'rectangle');
+    node.style("shape", "rectangle");
   }
 
   // Return the new extraData so callers can sync React state
@@ -213,7 +221,7 @@ function handleNodeUpdate(
  * Record property edit for undo/redo if needed
  */
 function recordEdit<T extends { id: string }>(
-  entityType: 'node' | 'link',
+  entityType: "node" | "link",
   current: T | null,
   newData: T,
   recordPropertyEdit: ((action: PropertyEditAction) => void) | undefined,
@@ -320,23 +328,31 @@ export function useNodeEditorHandlers(
     [cyRef, renameNode, customIcons, updateNodeData, refreshEditorData]
   );
 
-  const handleSave = React.useCallback((data: NodeEditorData) => {
-    // Only record if there are actual changes (checkChanges = true)
-    recordEdit('node', initialDataRef.current, data, recordPropertyEdit, true);
-    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-    persistNodeChanges(data, oldName, persistDeps);
-    initialDataRef.current = null;
-    editNode(null);
-  }, [editNode, recordPropertyEdit, persistDeps]);
+  const handleSave = React.useCallback(
+    (data: NodeEditorData) => {
+      // Only record if there are actual changes (checkChanges = true)
+      recordEdit("node", initialDataRef.current, data, recordPropertyEdit, true);
+      const oldName =
+        initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
+      persistNodeChanges(data, oldName, persistDeps);
+      initialDataRef.current = null;
+      editNode(null);
+    },
+    [editNode, recordPropertyEdit, persistDeps]
+  );
 
-  const handleApply = React.useCallback((data: NodeEditorData) => {
-    const oldName = initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
-    const changed = recordEdit('node', initialDataRef.current, data, recordPropertyEdit, true);
-    if (changed) {
-      initialDataRef.current = { ...data };
-    }
-    persistNodeChanges(data, oldName, persistDeps);
-  }, [recordPropertyEdit, persistDeps]);
+  const handleApply = React.useCallback(
+    (data: NodeEditorData) => {
+      const oldName =
+        initialDataRef.current?.name !== data.name ? initialDataRef.current?.name : undefined;
+      const changed = recordEdit("node", initialDataRef.current, data, recordPropertyEdit, true);
+      if (changed) {
+        initialDataRef.current = { ...data };
+      }
+      persistNodeChanges(data, oldName, persistDeps);
+    },
+    [recordPropertyEdit, persistDeps]
+  );
 
   return { handleClose, handleSave, handleApply };
 }
@@ -374,7 +390,9 @@ function enableLinkEndpointOffset(data: LinkEditorData): LinkEditorData {
   return { ...data, endpointLabelOffsetEnabled: true };
 }
 
-function stripLinkOffsetFields(data: LinkEditorData): Omit<LinkEditorData, 'endpointLabelOffset' | 'endpointLabelOffsetEnabled'> {
+function stripLinkOffsetFields(
+  data: LinkEditorData
+): Omit<LinkEditorData, "endpointLabelOffset" | "endpointLabelOffsetEnabled"> {
   // Remove offset fields so we can detect offset-only edits.
   const { endpointLabelOffset, endpointLabelOffsetEnabled, ...rest } = data;
   return rest;
@@ -382,10 +400,15 @@ function stripLinkOffsetFields(data: LinkEditorData): Omit<LinkEditorData, 'endp
 
 function isOffsetOnlyChange(before: LinkEditorData | null, after: LinkEditorData): boolean {
   if (!before) return false;
-  return JSON.stringify(stripLinkOffsetFields(before)) === JSON.stringify(stripLinkOffsetFields(after));
+  return (
+    JSON.stringify(stripLinkOffsetFields(before)) === JSON.stringify(stripLinkOffsetFields(after))
+  );
 }
 
-function mergeOffsetBaseline(current: LinkEditorData | null, next: LinkEditorData): LinkEditorData | null {
+function mergeOffsetBaseline(
+  current: LinkEditorData | null,
+  next: LinkEditorData
+): LinkEditorData | null {
   if (!current) return current;
   return {
     ...current,
@@ -408,7 +431,10 @@ export function useLinkEditorHandlers(
   const edgeAnnotationSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingEdgeAnnotationsRef = React.useRef<EdgeAnnotation[] | null>(null);
   const offsetEditSaveRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingOffsetEditRef = React.useRef<{ before: LinkEditorData; after: LinkEditorData } | null>(null);
+  const pendingOffsetEditRef = React.useRef<{
+    before: LinkEditorData;
+    after: LinkEditorData;
+  } | null>(null);
 
   React.useEffect(() => {
     if (editingLinkData) {
@@ -430,70 +456,88 @@ export function useLinkEditorHandlers(
     offsetEditSaveRef.current = null;
   }, []);
 
-  const resolveOffsetBaseline = React.useCallback((before: LinkEditorData) => {
-    if (!edgeAnnotationHandlers) return before;
-    const existing = findEdgeAnnotation(edgeAnnotationHandlers.edgeAnnotations, before);
-    const hadOverride = existing
-      ? (existing.endpointLabelOffsetEnabled ?? existing.endpointLabelOffset !== undefined)
-      : false;
-    if (before.endpointLabelOffsetEnabled === hadOverride) return before;
-    return { ...before, endpointLabelOffsetEnabled: hadOverride };
-  }, [edgeAnnotationHandlers]);
+  const resolveOffsetBaseline = React.useCallback(
+    (before: LinkEditorData) => {
+      if (!edgeAnnotationHandlers) return before;
+      const existing = findEdgeAnnotation(edgeAnnotationHandlers.edgeAnnotations, before);
+      const hadOverride = existing
+        ? (existing.endpointLabelOffsetEnabled ?? existing.endpointLabelOffset !== undefined)
+        : false;
+      if (before.endpointLabelOffsetEnabled === hadOverride) return before;
+      return { ...before, endpointLabelOffsetEnabled: hadOverride };
+    },
+    [edgeAnnotationHandlers]
+  );
 
   const flushPendingOffsetEdit = React.useCallback(() => {
     clearOffsetEditSave();
     const pending = pendingOffsetEditRef.current;
     pendingOffsetEditRef.current = null;
     if (!pending) return false;
-    recordEdit('link', pending.before, pending.after, recordPropertyEdit, true);
+    recordEdit("link", pending.before, pending.after, recordPropertyEdit, true);
     return true;
   }, [clearOffsetEditSave, recordPropertyEdit]);
 
-  const queueOffsetEdit = React.useCallback((before: LinkEditorData | null, after: LinkEditorData) => {
-    if (!before) return;
-    const baseline = pendingOffsetEditRef.current?.before ?? resolveOffsetBaseline(before);
-    pendingOffsetEditRef.current = { before: baseline, after };
-    clearOffsetEditSave();
-    offsetEditSaveRef.current = setTimeout(() => {
-      flushPendingOffsetEdit();
-    }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
-  }, [clearOffsetEditSave, flushPendingOffsetEdit, resolveOffsetBaseline]);
+  const queueOffsetEdit = React.useCallback(
+    (before: LinkEditorData | null, after: LinkEditorData) => {
+      if (!before) return;
+      const baseline = pendingOffsetEditRef.current?.before ?? resolveOffsetBaseline(before);
+      pendingOffsetEditRef.current = { before: baseline, after };
+      clearOffsetEditSave();
+      offsetEditSaveRef.current = setTimeout(() => {
+        flushPendingOffsetEdit();
+      }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
+    },
+    [clearOffsetEditSave, flushPendingOffsetEdit, resolveOffsetBaseline]
+  );
 
-  const saveEdgeAnnotationsImmediate = React.useCallback((annotations: EdgeAnnotation[]) => {
-    clearEdgeAnnotationSave();
-    pendingEdgeAnnotationsRef.current = null;
-    void saveEdgeAnnotations(annotations);
-  }, [clearEdgeAnnotationSave]);
-
-  const saveEdgeAnnotationsDebounced = React.useCallback((annotations: EdgeAnnotation[]) => {
-    pendingEdgeAnnotationsRef.current = annotations;
-    clearEdgeAnnotationSave();
-    edgeAnnotationSaveRef.current = setTimeout(() => {
-      const pending = pendingEdgeAnnotationsRef.current;
+  const saveEdgeAnnotationsImmediate = React.useCallback(
+    (annotations: EdgeAnnotation[]) => {
+      clearEdgeAnnotationSave();
       pendingEdgeAnnotationsRef.current = null;
-      edgeAnnotationSaveRef.current = null;
-      if (!pending) return;
-      void saveEdgeAnnotations(pending);
-    }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
-  }, [clearEdgeAnnotationSave]);
+      void saveEdgeAnnotations(annotations);
+    },
+    [clearEdgeAnnotationSave]
+  );
 
-  React.useEffect(() => () => {
-    clearEdgeAnnotationSave();
-    pendingEdgeAnnotationsRef.current = null;
-    clearOffsetEditSave();
-    pendingOffsetEditRef.current = null;
-  }, [clearEdgeAnnotationSave, clearOffsetEditSave]);
+  const saveEdgeAnnotationsDebounced = React.useCallback(
+    (annotations: EdgeAnnotation[]) => {
+      pendingEdgeAnnotationsRef.current = annotations;
+      clearEdgeAnnotationSave();
+      edgeAnnotationSaveRef.current = setTimeout(() => {
+        const pending = pendingEdgeAnnotationsRef.current;
+        pendingEdgeAnnotationsRef.current = null;
+        edgeAnnotationSaveRef.current = null;
+        if (!pending) return;
+        void saveEdgeAnnotations(pending);
+      }, EDGE_OFFSET_SAVE_DEBOUNCE_MS);
+    },
+    [clearEdgeAnnotationSave]
+  );
 
-  const applyOffsetAnnotations = React.useCallback((
-    data: LinkEditorData,
-    saveAnnotations: (annotations: EdgeAnnotation[]) => void
-  ) => {
-    if (!edgeAnnotationHandlers) return;
-    const nextAnnotations = upsertEdgeLabelOffsetAnnotation(edgeAnnotationHandlers.edgeAnnotations, data);
-    if (!nextAnnotations) return;
-    edgeAnnotationHandlers.setEdgeAnnotations(nextAnnotations);
-    saveAnnotations(nextAnnotations);
-  }, [edgeAnnotationHandlers]);
+  React.useEffect(
+    () => () => {
+      clearEdgeAnnotationSave();
+      pendingEdgeAnnotationsRef.current = null;
+      clearOffsetEditSave();
+      pendingOffsetEditRef.current = null;
+    },
+    [clearEdgeAnnotationSave, clearOffsetEditSave]
+  );
+
+  const applyOffsetAnnotations = React.useCallback(
+    (data: LinkEditorData, saveAnnotations: (annotations: EdgeAnnotation[]) => void) => {
+      if (!edgeAnnotationHandlers) return;
+      const nextAnnotations = upsertEdgeLabelOffsetAnnotation(
+        edgeAnnotationHandlers.edgeAnnotations,
+        data
+      );
+      if (!nextAnnotations) return;
+      edgeAnnotationHandlers.setEdgeAnnotations(nextAnnotations);
+      saveAnnotations(nextAnnotations);
+    },
+    [edgeAnnotationHandlers]
+  );
 
   const handleClose = React.useCallback(() => {
     initialDataRef.current = null;
@@ -506,58 +550,95 @@ export function useLinkEditorHandlers(
     [cyRef, edgeAnnotationHandlers]
   );
 
-  const handleSave = React.useCallback((data: LinkEditorData) => {
-    clearEdgeAnnotationSave();
-    const offsetFlushed = flushPendingOffsetEdit();
-    const normalized = enableLinkEndpointOffset(data);
-    if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
-      if (!offsetFlushed) {
-        recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
+  const handleSave = React.useCallback(
+    (data: LinkEditorData) => {
+      clearEdgeAnnotationSave();
+      const offsetFlushed = flushPendingOffsetEdit();
+      const normalized = enableLinkEndpointOffset(data);
+      if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
+        if (!offsetFlushed) {
+          recordEdit("link", initialDataRef.current, normalized, recordPropertyEdit, true);
+        }
+        applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
+        initialDataRef.current = null;
+        editEdge(null);
+        return;
       }
-      applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
+      // Only record if there are actual changes (checkChanges = true)
+      recordEdit("link", initialDataRef.current, normalized, recordPropertyEdit, true);
+      persistLinkChanges(normalized, persistDeps);
       initialDataRef.current = null;
       editEdge(null);
-      return;
-    }
-    // Only record if there are actual changes (checkChanges = true)
-    recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
-    persistLinkChanges(normalized, persistDeps);
-    initialDataRef.current = null;
-    editEdge(null);
-  }, [applyOffsetAnnotations, clearEdgeAnnotationSave, editEdge, flushPendingOffsetEdit, recordPropertyEdit, saveEdgeAnnotationsImmediate, persistDeps]);
+    },
+    [
+      applyOffsetAnnotations,
+      clearEdgeAnnotationSave,
+      editEdge,
+      flushPendingOffsetEdit,
+      recordPropertyEdit,
+      saveEdgeAnnotationsImmediate,
+      persistDeps
+    ]
+  );
 
-  const handleApply = React.useCallback((data: LinkEditorData) => {
-    clearEdgeAnnotationSave();
-    const offsetFlushed = flushPendingOffsetEdit();
-    const normalized = enableLinkEndpointOffset(data);
-    if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
-      if (!offsetFlushed) {
-        const changed = recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
-        if (changed) {
-          initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
+  const handleApply = React.useCallback(
+    (data: LinkEditorData) => {
+      clearEdgeAnnotationSave();
+      const offsetFlushed = flushPendingOffsetEdit();
+      const normalized = enableLinkEndpointOffset(data);
+      if (isOffsetOnlyChange(initialDataRef.current, normalized)) {
+        if (!offsetFlushed) {
+          const changed = recordEdit(
+            "link",
+            initialDataRef.current,
+            normalized,
+            recordPropertyEdit,
+            true
+          );
+          if (changed) {
+            initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
+          }
         }
+        applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
+        return;
       }
-      applyOffsetAnnotations(normalized, saveEdgeAnnotationsImmediate);
-      return;
-    }
-    const changed = recordEdit('link', initialDataRef.current, normalized, recordPropertyEdit, true);
-    if (changed) {
-      initialDataRef.current = { ...normalized };
-    }
-    persistLinkChanges(normalized, persistDeps);
-  }, [applyOffsetAnnotations, clearEdgeAnnotationSave, flushPendingOffsetEdit, recordPropertyEdit, saveEdgeAnnotationsImmediate, persistDeps]);
+      const changed = recordEdit(
+        "link",
+        initialDataRef.current,
+        normalized,
+        recordPropertyEdit,
+        true
+      );
+      if (changed) {
+        initialDataRef.current = { ...normalized };
+      }
+      persistLinkChanges(normalized, persistDeps);
+    },
+    [
+      applyOffsetAnnotations,
+      clearEdgeAnnotationSave,
+      flushPendingOffsetEdit,
+      recordPropertyEdit,
+      saveEdgeAnnotationsImmediate,
+      persistDeps
+    ]
+  );
 
-  const handleAutoApplyOffset = React.useCallback((data: LinkEditorData) => {
-    if (!edgeAnnotationHandlers) return;
-    const normalized = enableLinkEndpointOffset(data);
-    const hasOffsetChange = !initialDataRef.current ||
-      normalized.endpointLabelOffset !== initialDataRef.current.endpointLabelOffset ||
-      normalized.endpointLabelOffsetEnabled !== initialDataRef.current.endpointLabelOffsetEnabled;
-    if (!hasOffsetChange) return;
-    applyOffsetAnnotations(normalized, saveEdgeAnnotationsDebounced);
-    queueOffsetEdit(initialDataRef.current, normalized);
-    initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
-  }, [applyOffsetAnnotations, edgeAnnotationHandlers, queueOffsetEdit, saveEdgeAnnotationsDebounced]);
+  const handleAutoApplyOffset = React.useCallback(
+    (data: LinkEditorData) => {
+      if (!edgeAnnotationHandlers) return;
+      const normalized = enableLinkEndpointOffset(data);
+      const hasOffsetChange =
+        !initialDataRef.current ||
+        normalized.endpointLabelOffset !== initialDataRef.current.endpointLabelOffset ||
+        normalized.endpointLabelOffsetEnabled !== initialDataRef.current.endpointLabelOffsetEnabled;
+      if (!hasOffsetChange) return;
+      applyOffsetAnnotations(normalized, saveEdgeAnnotationsDebounced);
+      queueOffsetEdit(initialDataRef.current, normalized);
+      initialDataRef.current = mergeOffsetBaseline(initialDataRef.current, normalized);
+    },
+    [applyOffsetAnnotations, edgeAnnotationHandlers, queueOffsetEdit, saveEdgeAnnotationsDebounced]
+  );
 
   return { handleClose, handleSave, handleApply, handleAutoApplyOffset };
 }
@@ -567,16 +648,23 @@ export function useLinkEditorHandlers(
 // ============================================================================
 
 /** VXLAN types that need link property updates */
-const VXLAN_NETWORK_TYPES = new Set(['vxlan', 'vxlan-stitch']);
+const VXLAN_NETWORK_TYPES = new Set(["vxlan", "vxlan-stitch"]);
 
 /** Host-like types that have host-interface property */
-const HOST_INTERFACE_TYPES = new Set(['host', 'mgmt-net', 'macvlan']);
+const HOST_INTERFACE_TYPES = new Set(["host", "mgmt-net", "macvlan"]);
 
 /** Network types that are stored as link types (not YAML nodes) */
-const LINK_BASED_NETWORK_TYPES = new Set(['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy']);
+const LINK_BASED_NETWORK_TYPES = new Set([
+  "host",
+  "mgmt-net",
+  "macvlan",
+  "vxlan",
+  "vxlan-stitch",
+  "dummy"
+]);
 
 /** Bridge types that are stored as YAML nodes */
-const BRIDGE_NETWORK_TYPES = new Set(['bridge', 'ovs-bridge']);
+const BRIDGE_NETWORK_TYPES = new Set(["bridge", "ovs-bridge"]);
 
 /**
  * Calculate the expected node ID based on network type and interface.
@@ -584,14 +672,14 @@ const BRIDGE_NETWORK_TYPES = new Set(['bridge', 'ovs-bridge']);
  * For bridges, the ID is the interfaceName (which is the bridge name).
  */
 function calculateExpectedNodeId(data: NetworkEditorData): string {
-  if (data.networkType === 'host') {
-    return `host:${data.interfaceName || 'eth0'}`;
+  if (data.networkType === "host") {
+    return `host:${data.interfaceName || "eth0"}`;
   }
-  if (data.networkType === 'mgmt-net') {
-    return `mgmt-net:${data.interfaceName || 'net0'}`;
+  if (data.networkType === "mgmt-net") {
+    return `mgmt-net:${data.interfaceName || "net0"}`;
   }
-  if (data.networkType === 'macvlan') {
-    return `macvlan:${data.interfaceName || 'eth1'}`;
+  if (data.networkType === "macvlan") {
+    return `macvlan:${data.interfaceName || "eth1"}`;
   }
   // For bridges, the interfaceName IS the YAML node name
   if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
@@ -619,11 +707,11 @@ function saveNetworkAnnotation(data: NetworkEditorData, newNodeId: string): void
   // Always use the user-provided label; fall back to newNodeId if label is empty
   const newLabel = data.label || newNodeId;
 
-  void annotationsIO.modifyAnnotations(yamlPath, annotations => {
+  void annotationsIO.modifyAnnotations(yamlPath, (annotations) => {
     if (!annotations.nodeAnnotations) annotations.nodeAnnotations = [];
 
     // Update nodeAnnotations - find by old ID for renames
-    const existing = annotations.nodeAnnotations.find(n => n.id === oldId);
+    const existing = annotations.nodeAnnotations.find((n) => n.id === oldId);
     if (existing) {
       if (isRename) existing.id = newNodeId;
       existing.label = newLabel;
@@ -634,7 +722,7 @@ function saveNetworkAnnotation(data: NetworkEditorData, newNodeId: string): void
 
     // Also update networkNodeAnnotations if present
     if (annotations.networkNodeAnnotations) {
-      const networkAnn = annotations.networkNodeAnnotations.find(n => n.id === oldId);
+      const networkAnn = annotations.networkNodeAnnotations.find((n) => n.id === oldId);
       if (networkAnn) {
         if (isRename) networkAnn.id = newNodeId;
         networkAnn.label = newLabel;
@@ -646,14 +734,16 @@ function saveNetworkAnnotation(data: NetworkEditorData, newNodeId: string): void
 }
 
 /** Convert string to number or undefined */
-const toNumOrUndef = (val: string | undefined): number | undefined => val ? Number(val) : undefined;
+const toNumOrUndef = (val: string | undefined): number | undefined =>
+  val ? Number(val) : undefined;
 
 /** Get non-empty string or undefined */
 const strOrUndef = (val: string | undefined): string | undefined => val || undefined;
 
 /** Get non-empty record or undefined */
-const recordOrUndef = (val: Record<string, string> | undefined): Record<string, string> | undefined =>
-  (val && Object.keys(val).length > 0) ? val : undefined;
+const recordOrUndef = (
+  val: Record<string, string> | undefined
+): Record<string, string> | undefined => (val && Object.keys(val).length > 0 ? val : undefined);
 
 /**
  * Build extraData for network link based on type.
@@ -668,11 +758,11 @@ function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown>
       extRemote: strOrUndef(data.vxlanRemote),
       extVni: toNumOrUndef(data.vxlanVni),
       extDstPort: toNumOrUndef(data.vxlanDstPort),
-      extSrcPort: toNumOrUndef(data.vxlanSrcPort),
+      extSrcPort: toNumOrUndef(data.vxlanSrcPort)
     });
   } else if (HOST_INTERFACE_TYPES.has(data.networkType)) {
     extraData.extHostInterface = strOrUndef(data.interfaceName);
-    extraData.extMode = (data.networkType === 'macvlan') ? strOrUndef(data.macvlanMode) : undefined;
+    extraData.extMode = data.networkType === "macvlan" ? strOrUndef(data.macvlanMode) : undefined;
   }
 
   // Common properties
@@ -680,7 +770,7 @@ function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown>
     extMtu: toNumOrUndef(data.mtu),
     extMac: strOrUndef(data.mac),
     extVars: recordOrUndef(data.vars),
-    extLabels: recordOrUndef(data.labels),
+    extLabels: recordOrUndef(data.labels)
   });
 
   return extraData;
@@ -690,18 +780,18 @@ function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown>
  * Update canvas elements when network node is renamed.
  */
 function updateCanvasForRename(
-  networkNode: ReturnType<CyCore['getElementById']>,
+  networkNode: ReturnType<CyCore["getElementById"]>,
   edge: EdgeSingular,
   oldId: string,
   newNodeId: string,
   newLabel: string
 ): void {
-  networkNode.data('id', newNodeId);
-  networkNode.data('name', newLabel);
+  networkNode.data("id", newNodeId);
+  networkNode.data("name", newLabel);
 
   const edgeData = edge.data() as { source: string; target: string };
-  if (edgeData.source === oldId) edge.data('source', newNodeId);
-  if (edgeData.target === oldId) edge.data('target', newNodeId);
+  if (edgeData.source === oldId) edge.data("source", newNodeId);
+  if (edgeData.target === oldId) edge.data("target", newNodeId);
 }
 
 /**
@@ -727,7 +817,13 @@ function saveNetworkLinkProperties(
   if (connectedEdges.empty()) return;
 
   const edge = connectedEdges.first();
-  const edgeData = edge.data() as { id: string; source: string; target: string; sourceEndpoint?: string; targetEndpoint?: string };
+  const edgeData = edge.data() as {
+    id: string;
+    source: string;
+    target: string;
+    sourceEndpoint?: string;
+    targetEndpoint?: string;
+  };
   const extraData = buildNetworkExtraData(data);
 
   // For YAML save: convert extMac to extSourceMac/extTargetMac based on which side is the real node
@@ -748,7 +844,7 @@ function saveNetworkLinkProperties(
     target: edgeData.target === oldId ? newNodeId : edgeData.target,
     sourceEndpoint: edgeData.sourceEndpoint,
     targetEndpoint: edgeData.targetEndpoint,
-    extraData: yamlExtraData,
+    extraData: yamlExtraData
   };
 
   void editLinkService(linkSaveData);
@@ -762,14 +858,14 @@ function saveNetworkLinkProperties(
   const cleanExtraData = Object.fromEntries(
     Object.entries(extraData).filter(([, v]) => v !== undefined)
   );
-  networkNode.data('extraData', cleanExtraData);
+  networkNode.data("extraData", cleanExtraData);
 
   // Update edge's extraData with YAML format (extSourceMac/extTargetMac)
   const cleanYamlExtra = Object.fromEntries(
     Object.entries(yamlExtraData).filter(([, v]) => v !== undefined)
   );
-  const existingEdgeExtra = (edge.data('extraData') as Record<string, unknown> | undefined) ?? {};
-  edge.data('extraData', { ...existingEdgeExtra, ...cleanYamlExtra });
+  const existingEdgeExtra = (edge.data("extraData") as Record<string, unknown> | undefined) ?? {};
+  edge.data("extraData", { ...existingEdgeExtra, ...cleanYamlExtra });
 }
 
 /**
@@ -794,8 +890,8 @@ function saveBridgeNodeProperties(
     id: oldId,
     name: newNodeId,
     extraData: {
-      kind: data.networkType,
-    },
+      kind: data.networkType
+    }
   };
 
   void editNodeService(saveData);
@@ -810,13 +906,13 @@ function saveBridgeNodeProperties(
       const bridgeNode = cy.getElementById(oldId);
       if (!bridgeNode.empty()) {
         // Update the node's displayed name
-        bridgeNode.data('name', data.label || newNodeId);
+        bridgeNode.data("name", data.label || newNodeId);
         // Update connected edge references
         const connectedEdges = bridgeNode.connectedEdges();
-        connectedEdges.forEach(edge => {
+        connectedEdges.forEach((edge) => {
           const edgeData = edge.data() as { source: string; target: string };
-          if (edgeData.source === oldId) edge.data('source', newNodeId);
-          if (edgeData.target === oldId) edge.data('target', newNodeId);
+          if (edgeData.source === oldId) edge.data("source", newNodeId);
+          if (edgeData.target === oldId) edge.data("target", newNodeId);
         });
       }
     }
@@ -826,7 +922,7 @@ function saveBridgeNodeProperties(
     // Even without rename, update the displayed name/label
     const bridgeNode = cy.getElementById(oldId);
     if (!bridgeNode.empty()) {
-      bridgeNode.data('name', data.label || newNodeId);
+      bridgeNode.data("name", data.label || newNodeId);
     }
   }
 }
@@ -844,20 +940,26 @@ export function useNetworkEditorHandlers(
     editNetwork(null);
   }, [editNetwork]);
 
-  const handleSave = React.useCallback((data: NetworkEditorData) => {
-    const newNodeId = calculateExpectedNodeId(data);
-    saveNetworkAnnotation(data, newNodeId);
-    saveNetworkLinkProperties(data, newNodeId, cyInstance);
-    saveBridgeNodeProperties(data, newNodeId, cyInstance, renameNode);
-    editNetwork(null);
-  }, [editNetwork, cyInstance, renameNode]);
+  const handleSave = React.useCallback(
+    (data: NetworkEditorData) => {
+      const newNodeId = calculateExpectedNodeId(data);
+      saveNetworkAnnotation(data, newNodeId);
+      saveNetworkLinkProperties(data, newNodeId, cyInstance);
+      saveBridgeNodeProperties(data, newNodeId, cyInstance, renameNode);
+      editNetwork(null);
+    },
+    [editNetwork, cyInstance, renameNode]
+  );
 
-  const handleApply = React.useCallback((data: NetworkEditorData) => {
-    const newNodeId = calculateExpectedNodeId(data);
-    saveNetworkAnnotation(data, newNodeId);
-    saveNetworkLinkProperties(data, newNodeId, cyInstance);
-    saveBridgeNodeProperties(data, newNodeId, cyInstance, renameNode);
-  }, [cyInstance, renameNode]);
+  const handleApply = React.useCallback(
+    (data: NetworkEditorData) => {
+      const newNodeId = calculateExpectedNodeId(data);
+      saveNetworkAnnotation(data, newNodeId);
+      saveNetworkLinkProperties(data, newNodeId, cyInstance);
+      saveBridgeNodeProperties(data, newNodeId, cyInstance, renameNode);
+    },
+    [cyInstance, renameNode]
+  );
 
   return { handleClose, handleSave, handleApply };
 }
@@ -876,34 +978,45 @@ export function useNodeCreationHandlers(
   createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void,
   onNewCustomNode: () => void
 ) {
-  const handleAddNodeFromPanel = React.useCallback((templateName?: string) => {
-    if (templateName === '__new__') {
-      onNewCustomNode();
-      return;
-    }
+  const handleAddNodeFromPanel = React.useCallback(
+    (templateName?: string) => {
+      if (templateName === "__new__") {
+        onNewCustomNode();
+        return;
+      }
 
-    if (!cyInstance) return;
+      if (!cyInstance) return;
 
-    if (state.isLocked) {
-      floatingPanelRef.current?.triggerShake();
-      return;
-    }
+      if (state.isLocked) {
+        floatingPanelRef.current?.triggerShake();
+        return;
+      }
 
-    let template: CustomNodeTemplate | undefined;
-    if (templateName) {
-      template = state.customNodes.find(n => n.name === templateName);
-    } else if (state.defaultNode) {
-      template = state.customNodes.find(n => n.name === state.defaultNode);
-    }
+      let template: CustomNodeTemplate | undefined;
+      if (templateName) {
+        template = state.customNodes.find((n) => n.name === templateName);
+      } else if (state.defaultNode) {
+        template = state.customNodes.find((n) => n.name === state.defaultNode);
+      }
 
-    const extent = cyInstance.extent();
-    const position: Position = {
-      x: (extent.x1 + extent.x2) / 2,
-      y: (extent.y1 + extent.y2) / 2
-    };
+      const extent = cyInstance.extent();
+      const position: Position = {
+        x: (extent.x1 + extent.x2) / 2,
+        y: (extent.y1 + extent.y2) / 2
+      };
 
-    createNodeAtPosition(position, template);
-  }, [cyInstance, state.isLocked, state.customNodes, state.defaultNode, createNodeAtPosition, floatingPanelRef, onNewCustomNode]);
+      createNodeAtPosition(position, template);
+    },
+    [
+      cyInstance,
+      state.isLocked,
+      state.customNodes,
+      state.defaultNode,
+      createNodeAtPosition,
+      floatingPanelRef,
+      onNewCustomNode
+    ]
+  );
 
   return { handleAddNodeFromPanel };
 }
@@ -924,19 +1037,25 @@ export function useMembershipCallbacks(
   groups: GroupsApi,
   pendingMembershipChangesRef: React.RefObject<Map<string, PendingMembershipChange>>
 ) {
-  const applyMembershipChange = React.useCallback((memberships: MembershipEntry[]) => {
-    for (const entry of memberships) {
-      if (entry.groupId) {
-        groups.addNodeToGroup(entry.nodeId, entry.groupId);
-      } else {
-        groups.removeNodeFromGroup(entry.nodeId);
+  const applyMembershipChange = React.useCallback(
+    (memberships: MembershipEntry[]) => {
+      for (const entry of memberships) {
+        if (entry.groupId) {
+          groups.addNodeToGroup(entry.nodeId, entry.groupId);
+        } else {
+          groups.removeNodeFromGroup(entry.nodeId);
+        }
       }
-    }
-  }, [groups]);
+    },
+    [groups]
+  );
 
-  const onMembershipWillChange = React.useCallback((nodeId: string, oldGroupId: string | null, newGroupId: string | null) => {
-    pendingMembershipChangesRef.current.set(nodeId, { nodeId, oldGroupId, newGroupId });
-  }, [pendingMembershipChangesRef]);
+  const onMembershipWillChange = React.useCallback(
+    (nodeId: string, oldGroupId: string | null, newGroupId: string | null) => {
+      pendingMembershipChangesRef.current.set(nodeId, { nodeId, oldGroupId, newGroupId });
+    },
+    [pendingMembershipChangesRef]
+  );
 
   return { applyMembershipChange, onMembershipWillChange };
 }

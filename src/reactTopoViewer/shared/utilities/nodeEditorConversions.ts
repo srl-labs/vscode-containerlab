@@ -3,10 +3,10 @@
  * YAML extraData format (kebab-case)
  */
 
-import type { NodeEditorData, HealthCheckConfig, SrosComponent } from '../types/editors';
-import type { NodeSaveData } from '../../shared/io/NodePersistenceIO';
+import type { NodeEditorData, HealthCheckConfig, SrosComponent } from "../types/editors";
+import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
 
-import { getString, getNumber, getBoolean, getStringArray, getRecord } from './typeHelpers';
+import { getString, getNumber, getBoolean, getStringArray, getRecord } from "./typeHelpers";
 
 // ============================================================================
 // YAML -> NodeEditorData (for loading into editor)
@@ -16,15 +16,18 @@ import { getString, getNumber, getBoolean, getStringArray, getRecord } from './t
 function parseBasicProps(
   rawData: Record<string, unknown>,
   extra: Record<string, unknown>
-): Pick<NodeEditorData, 'id' | 'name' | 'kind' | 'type' | 'image' | 'icon' | 'iconColor' | 'iconCornerRadius'> {
+): Pick<
+  NodeEditorData,
+  "id" | "name" | "kind" | "type" | "image" | "icon" | "iconColor" | "iconCornerRadius"
+> {
   return {
-    id: rawData.id as string || '',
-    name: rawData.name as string || rawData.id as string || '',
+    id: (rawData.id as string) || "",
+    name: (rawData.name as string) || (rawData.id as string) || "",
     // Check extraData first, then fall back to top-level data (for mock/dev mode)
     kind: getString(extra.kind) || getString(rawData.kind),
     type: getString(extra.type) || getString(rawData.type),
     image: getString(extra.image) || getString(rawData.image),
-    icon: rawData.topoViewerRole as string || '',
+    icon: (rawData.topoViewerRole as string) || "",
     iconColor: rawData.iconColor as string | undefined,
     iconCornerRadius: rawData.iconCornerRadius as number | undefined
   };
@@ -33,15 +36,25 @@ function parseBasicProps(
 /** Parse configuration properties from extraData */
 function parseConfigProps(
   extra: Record<string, unknown>
-): Pick<NodeEditorData, 'startupConfig' | 'enforceStartupConfig' | 'suppressStartupConfig' | 'license' | 'binds' | 'env' | 'envFiles' | 'labels'> {
+): Pick<
+  NodeEditorData,
+  | "startupConfig"
+  | "enforceStartupConfig"
+  | "suppressStartupConfig"
+  | "license"
+  | "binds"
+  | "env"
+  | "envFiles"
+  | "labels"
+> {
   return {
-    startupConfig: getString(extra['startup-config']),
-    enforceStartupConfig: getBoolean(extra['enforce-startup-config']),
-    suppressStartupConfig: getBoolean(extra['suppress-startup-config']),
+    startupConfig: getString(extra["startup-config"]),
+    enforceStartupConfig: getBoolean(extra["enforce-startup-config"]),
+    suppressStartupConfig: getBoolean(extra["suppress-startup-config"]),
     license: getString(extra.license),
     binds: getStringArray(extra.binds),
     env: getRecord(extra.env),
-    envFiles: getStringArray(extra['env-files']),
+    envFiles: getStringArray(extra["env-files"]),
     labels: getRecord(extra.labels)
   };
 }
@@ -49,26 +62,32 @@ function parseConfigProps(
 /** Parse runtime properties from extraData */
 function parseRuntimeProps(
   extra: Record<string, unknown>
-): Pick<NodeEditorData, 'user' | 'entrypoint' | 'cmd' | 'exec' | 'restartPolicy' | 'autoRemove' | 'startupDelay'> {
+): Pick<
+  NodeEditorData,
+  "user" | "entrypoint" | "cmd" | "exec" | "restartPolicy" | "autoRemove" | "startupDelay"
+> {
   return {
     user: getString(extra.user),
     entrypoint: getString(extra.entrypoint),
     cmd: getString(extra.cmd),
     exec: getStringArray(extra.exec),
-    restartPolicy: getString(extra['restart-policy']),
-    autoRemove: getBoolean(extra['auto-remove']),
-    startupDelay: getNumber(extra['startup-delay'])
+    restartPolicy: getString(extra["restart-policy"]),
+    autoRemove: getBoolean(extra["auto-remove"]),
+    startupDelay: getNumber(extra["startup-delay"])
   };
 }
 
 /** Parse network properties from extraData */
 function parseNetworkProps(
   extra: Record<string, unknown>
-): Pick<NodeEditorData, 'mgmtIpv4' | 'mgmtIpv6' | 'networkMode' | 'ports' | 'dnsServers' | 'aliases'> {
+): Pick<
+  NodeEditorData,
+  "mgmtIpv4" | "mgmtIpv6" | "networkMode" | "ports" | "dnsServers" | "aliases"
+> {
   return {
-    mgmtIpv4: getString(extra['mgmt-ipv4']),
-    mgmtIpv6: getString(extra['mgmt-ipv6']),
-    networkMode: getString(extra['network-mode']),
+    mgmtIpv4: getString(extra["mgmt-ipv4"]),
+    mgmtIpv6: getString(extra["mgmt-ipv6"]),
+    networkMode: getString(extra["network-mode"]),
     ports: getStringArray(extra.ports),
     dnsServers: getStringArray(extra.dns),
     aliases: getStringArray(extra.aliases)
@@ -78,16 +97,27 @@ function parseNetworkProps(
 /** Parse resource/advanced properties from extraData */
 function parseAdvancedProps(
   extra: Record<string, unknown>
-): Pick<NodeEditorData, 'cpu' | 'cpuSet' | 'memory' | 'shmSize' | 'capAdd' | 'sysctls' | 'devices' | 'imagePullPolicy' | 'runtime'> {
+): Pick<
+  NodeEditorData,
+  | "cpu"
+  | "cpuSet"
+  | "memory"
+  | "shmSize"
+  | "capAdd"
+  | "sysctls"
+  | "devices"
+  | "imagePullPolicy"
+  | "runtime"
+> {
   return {
     cpu: getNumber(extra.cpu),
-    cpuSet: getString(extra['cpu-set']),
+    cpuSet: getString(extra["cpu-set"]),
     memory: getString(extra.memory),
-    shmSize: getString(extra['shm-size']),
-    capAdd: getStringArray(extra['cap-add']),
+    shmSize: getString(extra["shm-size"]),
+    capAdd: getStringArray(extra["cap-add"]),
     sysctls: getRecord(extra.sysctls),
     devices: getStringArray(extra.devices),
-    imagePullPolicy: getString(extra['image-pull-policy']),
+    imagePullPolicy: getString(extra["image-pull-policy"]),
     runtime: getString(extra.runtime)
   };
 }
@@ -95,27 +125,29 @@ function parseAdvancedProps(
 /** Parse certificate properties from extraData */
 function parseCertProps(
   extra: Record<string, unknown>
-): Pick<NodeEditorData, 'certIssue' | 'certKeySize' | 'certValidity' | 'sans'> {
+): Pick<NodeEditorData, "certIssue" | "certKeySize" | "certValidity" | "sans"> {
   const certRaw = extra.certificate as Record<string, unknown> | undefined;
   if (!certRaw) return {};
 
   return {
     certIssue: certRaw.issue !== undefined ? Boolean(certRaw.issue) : undefined,
-    certKeySize: getString(certRaw['key-size']),
-    certValidity: getString(certRaw['validity-duration']),
+    certKeySize: getString(certRaw["key-size"]),
+    certValidity: getString(certRaw["validity-duration"]),
     sans: getStringArray(certRaw.SANs)
   };
 }
 
 /** Parse healthcheck properties from extraData */
-function parseHealthCheckProps(extra: Record<string, unknown>): { healthCheck?: HealthCheckConfig } {
+function parseHealthCheckProps(extra: Record<string, unknown>): {
+  healthCheck?: HealthCheckConfig;
+} {
   const healthcheckRaw = extra.healthcheck as Record<string, unknown> | undefined;
   if (!healthcheckRaw) return {};
 
   return {
     healthCheck: {
       test: getString(healthcheckRaw.test),
-      startPeriod: getNumber(healthcheckRaw['start-period']),
+      startPeriod: getNumber(healthcheckRaw["start-period"]),
       interval: getNumber(healthcheckRaw.interval),
       timeout: getNumber(healthcheckRaw.timeout),
       retries: getNumber(healthcheckRaw.retries)
@@ -126,8 +158,8 @@ function parseHealthCheckProps(extra: Record<string, unknown>): { healthCheck?: 
 /** Parse MDA items from an array */
 function parseMdaItems(arr: unknown[]): { slot?: number; type?: string }[] {
   return arr
-    .filter((m): m is Record<string, unknown> => m !== null && typeof m === 'object')
-    .map(m => ({
+    .filter((m): m is Record<string, unknown> => m !== null && typeof m === "object")
+    .map((m) => ({
       slot: getNumber(m.slot),
       type: getString(m.type)
     }));
@@ -139,7 +171,7 @@ function parseComponentsProps(extra: Record<string, unknown>): { components?: Sr
   if (!Array.isArray(componentsRaw)) return {};
 
   const components: SrosComponent[] = componentsRaw
-    .filter((c): c is Record<string, unknown> => c !== null && typeof c === 'object')
+    .filter((c): c is Record<string, unknown> => c !== null && typeof c === "object")
     .map((c: Record<string, unknown>) => ({
       slot: c.slot as string | number | undefined,
       type: getString(c.type),
@@ -147,8 +179,8 @@ function parseComponentsProps(extra: Record<string, unknown>): { components?: Sr
       mda: Array.isArray(c.mda) ? parseMdaItems(c.mda) : undefined,
       xiom: Array.isArray(c.xiom)
         ? (c.xiom as unknown[])
-            .filter((x): x is Record<string, unknown> => x !== null && typeof x === 'object')
-            .map(x => ({
+            .filter((x): x is Record<string, unknown> => x !== null && typeof x === "object")
+            .map((x) => ({
               slot: getNumber(x.slot),
               type: getString(x.type),
               mda: Array.isArray(x.mda) ? parseMdaItems(x.mda) : undefined
@@ -163,7 +195,9 @@ function parseComponentsProps(extra: Record<string, unknown>): { components?: Sr
  * Converts raw node data (from Cytoscape/YAML) to NodeEditorData format
  * Maps from YAML kebab-case properties (in extraData) to camelCase NodeEditorData
  */
-export function convertToEditorData(rawData: Record<string, unknown> | null): NodeEditorData | null {
+export function convertToEditorData(
+  rawData: Record<string, unknown> | null
+): NodeEditorData | null {
   if (!rawData) return null;
   const extra = (rawData.extraData as Record<string, unknown>) || {};
 
@@ -189,37 +223,37 @@ export interface YamlExtraData {
   type?: string;
   image?: string;
   group?: string;
-  'startup-config'?: string;
-  'enforce-startup-config'?: boolean;
-  'suppress-startup-config'?: boolean;
+  "startup-config"?: string;
+  "enforce-startup-config"?: boolean;
+  "suppress-startup-config"?: boolean;
   license?: string;
   binds?: string[];
   env?: Record<string, unknown>;
-  'env-files'?: string[];
+  "env-files"?: string[];
   labels?: Record<string, unknown>;
   user?: string;
   entrypoint?: string;
   cmd?: string;
   exec?: string[];
-  'restart-policy'?: string;
-  'auto-remove'?: boolean;
-  'startup-delay'?: number;
-  'mgmt-ipv4'?: string;
-  'mgmt-ipv6'?: string;
-  'network-mode'?: string;
+  "restart-policy"?: string;
+  "auto-remove"?: boolean;
+  "startup-delay"?: number;
+  "mgmt-ipv4"?: string;
+  "mgmt-ipv6"?: string;
+  "network-mode"?: string;
   ports?: string[];
   dns?: string[];
   aliases?: string[];
   cpu?: number;
-  'cpu-set'?: string;
+  "cpu-set"?: string;
   memory?: string;
-  'shm-size'?: string;
-  'cap-add'?: string[];
+  "shm-size"?: string;
+  "cap-add"?: string[];
   sysctls?: Record<string, unknown>;
   devices?: string[];
   certificate?: Record<string, unknown>;
   healthcheck?: Record<string, unknown>;
-  'image-pull-policy'?: string;
+  "image-pull-policy"?: string;
   runtime?: string;
   components?: unknown[];
   [key: string]: unknown;
@@ -259,7 +293,7 @@ function toBooleanOrNull(value: unknown): true | null {
  * Empty strings, 0, NaN, undefined all result in null (deletion).
  */
 function toNumberOrNull(value: unknown): number | null {
-  if (value === undefined || value === null || value === '') return null;
+  if (value === undefined || value === null || value === "") return null;
   const num = Number(value);
   // Only return if it's a valid non-NaN number (allow 0 for explicit zero values)
   // But for most fields, 0 is the default, so we delete it
@@ -272,33 +306,41 @@ function convertBasicToYaml(data: Record<string, unknown>, extraData: YamlExtraD
   if (data.kind) extraData.kind = String(data.kind);
   // String fields: set value if non-empty, null if empty string (to trigger deletion)
   // Use 'in' check to detect when user explicitly cleared the field (set to undefined)
-  if ('type' in data) extraData.type = toStringOrNull(data.type) as string;
-  if ('image' in data) extraData.image = toStringOrNull(data.image) as string;
-  if ('group' in data) extraData.group = toStringOrNull(data.group) as string;
+  if ("type" in data) extraData.type = toStringOrNull(data.type) as string;
+  if ("image" in data) extraData.image = toStringOrNull(data.image) as string;
+  if ("group" in data) extraData.group = toStringOrNull(data.group) as string;
 }
 
 /** Convert startup config properties to YAML format */
 function convertStartupConfigToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if ('startupConfig' in data) extraData['startup-config'] = toStringOrNull(data.startupConfig) as string;
+  if ("startupConfig" in data)
+    extraData["startup-config"] = toStringOrNull(data.startupConfig) as string;
   // Boolean fields: only write true, otherwise delete (null)
-  if ('enforceStartupConfig' in data) {
-    extraData['enforce-startup-config'] = toBooleanOrNull(data.enforceStartupConfig) as boolean;
+  if ("enforceStartupConfig" in data) {
+    extraData["enforce-startup-config"] = toBooleanOrNull(data.enforceStartupConfig) as boolean;
   }
-  if ('suppressStartupConfig' in data) {
-    extraData['suppress-startup-config'] = toBooleanOrNull(data.suppressStartupConfig) as boolean;
+  if ("suppressStartupConfig" in data) {
+    extraData["suppress-startup-config"] = toBooleanOrNull(data.suppressStartupConfig) as boolean;
   }
-  if ('license' in data) extraData.license = toStringOrNull(data.license) as string;
+  if ("license" in data) extraData.license = toStringOrNull(data.license) as string;
 }
 
 /** Convert container config properties to YAML format */
-function convertContainerConfigToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
+function convertContainerConfigToYaml(
+  data: Record<string, unknown>,
+  extraData: YamlExtraData
+): void {
   if (Array.isArray(data.binds)) extraData.binds = toArrayOrNull(data.binds) as string[];
-  if (typeof data.env === 'object' && data.env !== null) {
+  if (typeof data.env === "object" && data.env !== null) {
     extraData.env = toRecordOrNull(data.env as Record<string, unknown>) as Record<string, unknown>;
   }
-  if (Array.isArray(data.envFiles)) extraData['env-files'] = toArrayOrNull(data.envFiles) as string[];
-  if (typeof data.labels === 'object' && data.labels !== null) {
-    extraData.labels = toRecordOrNull(data.labels as Record<string, unknown>) as Record<string, unknown>;
+  if (Array.isArray(data.envFiles))
+    extraData["env-files"] = toArrayOrNull(data.envFiles) as string[];
+  if (typeof data.labels === "object" && data.labels !== null) {
+    extraData.labels = toRecordOrNull(data.labels as Record<string, unknown>) as Record<
+      string,
+      unknown
+    >;
   }
 }
 
@@ -310,48 +352,55 @@ function convertConfigToYaml(data: Record<string, unknown>, extraData: YamlExtra
 
 /** Convert runtime properties to YAML format */
 function convertRuntimeToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if ('user' in data) extraData.user = toStringOrNull(data.user) as string;
-  if ('entrypoint' in data) extraData.entrypoint = toStringOrNull(data.entrypoint) as string;
-  if ('cmd' in data) extraData.cmd = toStringOrNull(data.cmd) as string;
+  if ("user" in data) extraData.user = toStringOrNull(data.user) as string;
+  if ("entrypoint" in data) extraData.entrypoint = toStringOrNull(data.entrypoint) as string;
+  if ("cmd" in data) extraData.cmd = toStringOrNull(data.cmd) as string;
   if (Array.isArray(data.exec)) extraData.exec = toArrayOrNull(data.exec) as string[];
-  if ('restartPolicy' in data) extraData['restart-policy'] = toStringOrNull(data.restartPolicy) as string;
+  if ("restartPolicy" in data)
+    extraData["restart-policy"] = toStringOrNull(data.restartPolicy) as string;
   // Boolean field: only write true, otherwise delete (null)
-  if ('autoRemove' in data) {
-    extraData['auto-remove'] = toBooleanOrNull(data.autoRemove) as boolean;
+  if ("autoRemove" in data) {
+    extraData["auto-remove"] = toBooleanOrNull(data.autoRemove) as boolean;
   }
   // Number field: only write if non-zero, otherwise delete (null)
   // Use 'in' check to detect when user explicitly cleared the field (set to undefined)
-  if ('startupDelay' in data) {
-    extraData['startup-delay'] = toNumberOrNull(data.startupDelay) as number;
+  if ("startupDelay" in data) {
+    extraData["startup-delay"] = toNumberOrNull(data.startupDelay) as number;
   }
 }
 
 /** Convert network properties to YAML format */
 function convertNetworkToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if ('mgmtIpv4' in data) extraData['mgmt-ipv4'] = toStringOrNull(data.mgmtIpv4) as string;
-  if ('mgmtIpv6' in data) extraData['mgmt-ipv6'] = toStringOrNull(data.mgmtIpv6) as string;
-  if ('networkMode' in data) extraData['network-mode'] = toStringOrNull(data.networkMode) as string;
+  if ("mgmtIpv4" in data) extraData["mgmt-ipv4"] = toStringOrNull(data.mgmtIpv4) as string;
+  if ("mgmtIpv6" in data) extraData["mgmt-ipv6"] = toStringOrNull(data.mgmtIpv6) as string;
+  if ("networkMode" in data) extraData["network-mode"] = toStringOrNull(data.networkMode) as string;
   if (Array.isArray(data.ports)) extraData.ports = toArrayOrNull(data.ports) as string[];
   if (Array.isArray(data.dnsServers)) extraData.dns = toArrayOrNull(data.dnsServers) as string[];
   if (Array.isArray(data.aliases)) extraData.aliases = toArrayOrNull(data.aliases) as string[];
 }
 
 /** Convert resource limit properties to YAML format */
-function convertResourceLimitsToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
+function convertResourceLimitsToYaml(
+  data: Record<string, unknown>,
+  extraData: YamlExtraData
+): void {
   // Number field: only write if non-zero, otherwise delete (null)
-  if ('cpu' in data) {
+  if ("cpu" in data) {
     extraData.cpu = toNumberOrNull(data.cpu) as number;
   }
-  if ('cpuSet' in data) extraData['cpu-set'] = toStringOrNull(data.cpuSet) as string;
-  if ('memory' in data) extraData.memory = toStringOrNull(data.memory) as string;
-  if ('shmSize' in data) extraData['shm-size'] = toStringOrNull(data.shmSize) as string;
+  if ("cpuSet" in data) extraData["cpu-set"] = toStringOrNull(data.cpuSet) as string;
+  if ("memory" in data) extraData.memory = toStringOrNull(data.memory) as string;
+  if ("shmSize" in data) extraData["shm-size"] = toStringOrNull(data.shmSize) as string;
 }
 
 /** Convert container capabilities and sysctls to YAML format */
 function convertCapabilitiesToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
-  if (Array.isArray(data.capAdd)) extraData['cap-add'] = toArrayOrNull(data.capAdd) as string[];
-  if (typeof data.sysctls === 'object' && data.sysctls !== null) {
-    extraData.sysctls = toRecordOrNull(data.sysctls as Record<string, unknown>) as Record<string, unknown>;
+  if (Array.isArray(data.capAdd)) extraData["cap-add"] = toArrayOrNull(data.capAdd) as string[];
+  if (typeof data.sysctls === "object" && data.sysctls !== null) {
+    extraData.sysctls = toRecordOrNull(data.sysctls as Record<string, unknown>) as Record<
+      string,
+      unknown
+    >;
   }
   if (Array.isArray(data.devices)) extraData.devices = toArrayOrNull(data.devices) as string[];
 }
@@ -360,17 +409,19 @@ function convertCapabilitiesToYaml(data: Record<string, unknown>, extraData: Yam
 function convertAdvancedToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
   convertResourceLimitsToYaml(data, extraData);
   convertCapabilitiesToYaml(data, extraData);
-  if ('imagePullPolicy' in data) extraData['image-pull-policy'] = toStringOrNull(data.imagePullPolicy) as string;
-  if ('runtime' in data) extraData.runtime = toStringOrNull(data.runtime) as string;
+  if ("imagePullPolicy" in data)
+    extraData["image-pull-policy"] = toStringOrNull(data.imagePullPolicy) as string;
+  if ("runtime" in data) extraData.runtime = toStringOrNull(data.runtime) as string;
 }
 
 /** Convert certificate properties to YAML format */
 function convertCertToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
   // Check if ANY certificate field is defined (even if empty - we need to know if user touched them)
-  const hasCertFields = data.certIssue !== undefined ||
-                        data.certKeySize !== undefined ||
-                        data.certValidity !== undefined ||
-                        data.sans !== undefined;
+  const hasCertFields =
+    data.certIssue !== undefined ||
+    data.certKeySize !== undefined ||
+    data.certValidity !== undefined ||
+    data.sans !== undefined;
   if (!hasCertFields) return;
 
   const cert: Record<string, unknown> = {};
@@ -378,9 +429,9 @@ function convertCertToYaml(data: Record<string, unknown>, extraData: YamlExtraDa
   if (data.certIssue === true) cert.issue = true;
   // String fields
   const keySize = toStringOrNull(data.certKeySize);
-  if (keySize) cert['key-size'] = keySize;
+  if (keySize) cert["key-size"] = keySize;
   const validity = toStringOrNull(data.certValidity);
-  if (validity) cert['validity-duration'] = validity;
+  if (validity) cert["validity-duration"] = validity;
   // Array field
   const sansArr = Array.isArray(data.sans) ? toArrayOrNull(data.sans) : null;
   if (sansArr) cert.SANs = sansArr;
@@ -397,7 +448,7 @@ function convertCertToYaml(data: Record<string, unknown>, extraData: YamlExtraDa
 /** Convert healthcheck properties to YAML format */
 function convertHealthcheckToYaml(data: Record<string, unknown>, extraData: YamlExtraData): void {
   const hc = data.healthCheck as Record<string, unknown> | undefined;
-  if (!hc || typeof hc !== 'object') return;
+  if (!hc || typeof hc !== "object") return;
 
   const healthcheck: Record<string, unknown> = {};
   // String field
@@ -405,7 +456,7 @@ function convertHealthcheckToYaml(data: Record<string, unknown>, extraData: Yaml
   if (test) healthcheck.test = test;
   // Number fields - use toNumberOrNull for proper empty/zero handling
   const startPeriod = toNumberOrNull(hc.startPeriod);
-  if (startPeriod !== null) healthcheck['start-period'] = startPeriod;
+  if (startPeriod !== null) healthcheck["start-period"] = startPeriod;
   const interval = toNumberOrNull(hc.interval);
   if (interval !== null) healthcheck.interval = interval;
   const timeout = toNumberOrNull(hc.timeout);
@@ -428,9 +479,11 @@ function isNonEmptyComponent(comp: Record<string, unknown>): boolean {
 }
 
 /** Convert MDA array to YAML format */
-function convertMdaArray(mdaList: Array<{ slot?: string | number; type?: string }>): Array<Record<string, unknown>> {
+function convertMdaArray(
+  mdaList: Array<{ slot?: string | number; type?: string }>
+): Array<Record<string, unknown>> {
   return mdaList
-    .map(m => {
+    .map((m) => {
       const mda: Record<string, unknown> = {};
       if (m.slot !== undefined) mda.slot = m.slot;
       if (m.type) mda.type = m.type;
@@ -443,7 +496,7 @@ function convertMdaArray(mdaList: Array<{ slot?: string | number; type?: string 
 function convertSingleComponent(c: SrosComponent): Record<string, unknown> | null {
   const comp: Record<string, unknown> = {};
 
-  if (c.slot !== undefined && c.slot !== '') comp.slot = c.slot;
+  if (c.slot !== undefined && c.slot !== "") comp.slot = c.slot;
   if (c.type) comp.type = c.type;
   if (c.sfm) comp.sfm = c.sfm;
 
@@ -454,7 +507,7 @@ function convertSingleComponent(c: SrosComponent): Record<string, unknown> | nul
 
   if (c.xiom && c.xiom.length > 0) {
     const xiomList = c.xiom
-      .map(x => {
+      .map((x) => {
         const xiom: Record<string, unknown> = {};
         if (x.slot !== undefined) xiom.slot = x.slot;
         if (x.type) xiom.type = x.type;
@@ -477,7 +530,7 @@ function convertComponentsToYaml(data: Record<string, unknown>, extraData: YamlE
   const components = data.components as SrosComponent[] | undefined;
 
   // If kind is not nokia_srsim, delete any existing components
-  if (kind && kind !== 'nokia_srsim') {
+  if (kind && kind !== "nokia_srsim") {
     extraData.components = null as unknown as undefined[];
     return;
   }
@@ -534,23 +587,26 @@ export function convertEditorDataToYaml(data: Record<string, unknown>): YamlExtr
  * @param oldName - Optional original name if node is being renamed
  * @returns NodeSaveData for TopologyIO.editNode()
  */
-export function convertEditorDataToNodeSaveData(data: NodeEditorData, oldName?: string): NodeSaveData {
+export function convertEditorDataToNodeSaveData(
+  data: NodeEditorData,
+  oldName?: string
+): NodeSaveData {
   const yamlExtraData = convertEditorDataToYaml(data as unknown as Record<string, unknown>);
 
   // Build the extraData with annotation props (icon, iconColor, iconCornerRadius, interfacePattern)
-  const extraData: NodeSaveData['extraData'] = {
+  const extraData: NodeSaveData["extraData"] = {
     ...yamlExtraData,
     // Annotation properties (saved to annotations.json, not YAML)
     topoViewerRole: data.icon,
     iconColor: data.iconColor,
     iconCornerRadius: data.iconCornerRadius,
-    interfacePattern: data.interfacePattern,
+    interfacePattern: data.interfacePattern
   };
 
   const saveData: NodeSaveData = {
     id: data.id,
     name: data.name,
-    extraData,
+    extraData
   };
 
   // If renaming, include the old name so TopologyIO can find and rename the node

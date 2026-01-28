@@ -5,17 +5,19 @@
  * Used by both VS Code extension and dev server.
  */
 
-import * as YAML from 'yaml';
+import * as YAML from "yaml";
 
-import type { SaveResult, IOLogger} from './types';
-import { ERROR_LINKS_NOT_SEQ, noopLogger } from './types';
-import { createQuotedScalar, setOrDelete } from './YamlDocumentIO';
+import type { SaveResult, IOLogger } from "./types";
+import { ERROR_LINKS_NOT_SEQ, noopLogger } from "./types";
+import { createQuotedScalar, setOrDelete } from "./YamlDocumentIO";
 
 /**
  * Gets the links sequence from a YAML document, returning an error result if not found.
  */
-function getLinksSeqOrError(doc: YAML.Document.Parsed): { linksSeq: YAML.YAMLSeq } | { error: SaveResult } {
-  const linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+function getLinksSeqOrError(
+  doc: YAML.Document.Parsed
+): { linksSeq: YAML.YAMLSeq } | { error: SaveResult } {
+  const linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
   if (!linksSeq || !YAML.isSeq(linksSeq)) {
     return { error: { success: false, error: ERROR_LINKS_NOT_SEQ } };
   }
@@ -28,7 +30,7 @@ function getLinksSeqOrError(doc: YAML.Document.Parsed): { linksSeq: YAML.YAMLSeq
  */
 function getValidatedLinksSeq(doc: YAML.Document.Parsed): YAML.YAMLSeq | SaveResult {
   const result = getLinksSeqOrError(doc);
-  if ('error' in result) return result.error;
+  if ("error" in result) return result.error;
   return result.linksSeq;
 }
 
@@ -62,7 +64,14 @@ export interface LinkSaveData {
 }
 
 /** Link types that use single endpoint format (type + endpoint, not endpoints array) */
-const SINGLE_ENDPOINT_TYPES = new Set(['host', 'mgmt-net', 'macvlan', 'vxlan', 'vxlan-stitch', 'dummy']);
+const SINGLE_ENDPOINT_TYPES = new Set([
+  "host",
+  "mgmt-net",
+  "macvlan",
+  "vxlan",
+  "vxlan-stitch",
+  "dummy"
+]);
 
 /**
  * Creates a link entry in brief format: endpoints: ["node1:eth1", "node2:eth1"]
@@ -83,18 +92,25 @@ function createBriefLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YAMLM
   endpointsSeq.add(createQuotedScalar(doc, srcStr));
   endpointsSeq.add(createQuotedScalar(doc, dstStr));
 
-  linkMap.set('endpoints', endpointsSeq);
+  linkMap.set("endpoints", endpointsSeq);
   return linkMap;
 }
 
 /** Prefixes that indicate a special/visualization node (not a real YAML node) */
-const SPECIAL_NODE_PREFIXES = ['host:', 'mgmt-net:', 'macvlan:', 'vxlan:', 'vxlan-stitch:', 'dummy'];
+const SPECIAL_NODE_PREFIXES = [
+  "host:",
+  "mgmt-net:",
+  "macvlan:",
+  "vxlan:",
+  "vxlan-stitch:",
+  "dummy"
+];
 
 /**
  * Check if a node ID represents a special/visualization node.
  */
 function isSpecialNode(nodeId: string): boolean {
-  return SPECIAL_NODE_PREFIXES.some(prefix => nodeId.startsWith(prefix));
+  return SPECIAL_NODE_PREFIXES.some((prefix) => nodeId.startsWith(prefix));
 }
 
 /**
@@ -105,7 +121,7 @@ function isSpecialNode(nodeId: string): boolean {
 function createSingleEndpointMap(
   doc: YAML.Document,
   linkData: LinkSaveData,
-  extra: LinkSaveData['extraData'],
+  extra: LinkSaveData["extraData"],
   _linkType: string
 ): YAML.YAMLMap {
   const epMap = new YAML.YAMLMap();
@@ -119,12 +135,12 @@ function createSingleEndpointMap(
   const iface = useTarget ? linkData.targetEndpoint : linkData.sourceEndpoint;
   const mac = useTarget ? extra?.extTargetMac : extra?.extSourceMac;
 
-  epMap.set('node', createQuotedScalar(doc, node));
+  epMap.set("node", createQuotedScalar(doc, node));
   if (iface) {
-    epMap.set('interface', createQuotedScalar(doc, iface));
+    epMap.set("interface", createQuotedScalar(doc, iface));
   }
   if (mac) {
-    epMap.set('mac', doc.createNode(mac));
+    epMap.set("mac", doc.createNode(mac));
   }
   return epMap;
 }
@@ -134,7 +150,7 @@ function createSingleEndpointMap(
  * e.g., "host:eth0" → "eth0", "macvlan:0" → "0"
  */
 function extractSpecialNodeInterface(nodeId: string): string | undefined {
-  const colonIndex = nodeId.indexOf(':');
+  const colonIndex = nodeId.indexOf(":");
   if (colonIndex === -1) return undefined;
   return nodeId.slice(colonIndex + 1) || undefined;
 }
@@ -159,10 +175,10 @@ function extractVxlanProperties(nodeId: string): {
   dstPort?: string;
   srcPort?: string;
 } {
-  const colonIndex = nodeId.indexOf(':');
+  const colonIndex = nodeId.indexOf(":");
   if (colonIndex === -1) return {};
 
-  const parts = nodeId.slice(colonIndex + 1).split('/');
+  const parts = nodeId.slice(colonIndex + 1).split("/");
   // Only use remote if it looks like an IP address
   const remoteCandidate = parts[0];
   return {
@@ -174,7 +190,7 @@ function extractVxlanProperties(nodeId: string): {
 }
 
 /** Host/macvlan/mgmt-net link types that use host-interface */
-const HOST_INTERFACE_TYPES = new Set(['host', 'macvlan', 'mgmt-net']);
+const HOST_INTERFACE_TYPES = new Set(["host", "macvlan", "mgmt-net"]);
 
 /**
  * Apply host-interface properties for host/macvlan/mgmt-net link types
@@ -183,20 +199,20 @@ function applyHostInterfaceProperties(
   doc: YAML.Document,
   linkMap: YAML.YAMLMap,
   linkType: string,
-  extra: LinkSaveData['extraData'],
+  extra: LinkSaveData["extraData"],
   specialNodeId: string
 ): void {
   const hostInterface = extra?.extHostInterface || extractSpecialNodeInterface(specialNodeId);
   if (hostInterface) {
-    linkMap.set('host-interface', doc.createNode(hostInterface));
+    linkMap.set("host-interface", doc.createNode(hostInterface));
   }
-  if (linkType === 'macvlan' && extra?.extMode) {
-    linkMap.set('mode', doc.createNode(extra.extMode));
+  if (linkType === "macvlan" && extra?.extMode) {
+    linkMap.set("mode", doc.createNode(extra.extMode));
   }
 }
 
 /** Default values for required VXLAN properties */
-const VXLAN_DEFAULTS = { remote: '127.0.0.1', vni: 100, dstPort: 4789 };
+const VXLAN_DEFAULTS = { remote: "127.0.0.1", vni: 100, dstPort: 4789 };
 
 /** Converts a value to number, returns default if conversion fails */
 function toNumber(value: string | number | undefined, defaultValue: number): number {
@@ -211,7 +227,7 @@ function toNumber(value: string | number | undefined, defaultValue: number): num
 function applyVxlanProperties(
   doc: YAML.Document,
   linkMap: YAML.YAMLMap,
-  extra: LinkSaveData['extraData'],
+  extra: LinkSaveData["extraData"],
   specialNodeId: string
 ): void {
   const parsed = extractVxlanProperties(specialNodeId);
@@ -220,12 +236,12 @@ function applyVxlanProperties(
   const vni = toNumber(extra?.extVni ?? parsed.vni, VXLAN_DEFAULTS.vni);
   const dstPort = toNumber(extra?.extDstPort ?? parsed.dstPort, VXLAN_DEFAULTS.dstPort);
 
-  linkMap.set('remote', doc.createNode(remote));
-  linkMap.set('vni', doc.createNode(vni));
-  linkMap.set('dst-port', doc.createNode(dstPort));
+  linkMap.set("remote", doc.createNode(remote));
+  linkMap.set("vni", doc.createNode(vni));
+  linkMap.set("dst-port", doc.createNode(dstPort));
 
   const srcPort = extra?.extSrcPort || parsed.srcPort;
-  if (srcPort) linkMap.set('src-port', doc.createNode(toNumber(srcPort, 0)));
+  if (srcPort) linkMap.set("src-port", doc.createNode(toNumber(srcPort, 0)));
 }
 
 /**
@@ -235,7 +251,7 @@ function applySingleEndpointProperties(
   doc: YAML.Document,
   linkMap: YAML.YAMLMap,
   linkType: string,
-  extra: LinkSaveData['extraData'],
+  extra: LinkSaveData["extraData"],
   linkData: LinkSaveData
 ): void {
   // Get the special node ID (the one with the prefix like host:, vxlan:, etc.)
@@ -243,7 +259,7 @@ function applySingleEndpointProperties(
 
   if (HOST_INTERFACE_TYPES.has(linkType)) {
     applyHostInterfaceProperties(doc, linkMap, linkType, extra, specialNodeId);
-  } else if (linkType === 'vxlan' || linkType === 'vxlan-stitch') {
+  } else if (linkType === "vxlan" || linkType === "vxlan-stitch") {
     applyVxlanProperties(doc, linkMap, extra, specialNodeId);
   }
 }
@@ -254,29 +270,29 @@ function applySingleEndpointProperties(
 function createDualEndpointSeq(
   doc: YAML.Document,
   linkData: LinkSaveData,
-  extra: LinkSaveData['extraData']
+  extra: LinkSaveData["extraData"]
 ): YAML.YAMLSeq {
   const endpointsSeq = new YAML.YAMLSeq();
   endpointsSeq.flow = false;
 
   const srcEp = new YAML.YAMLMap();
   srcEp.flow = false;
-  srcEp.set('node', createQuotedScalar(doc, linkData.source));
+  srcEp.set("node", createQuotedScalar(doc, linkData.source));
   if (linkData.sourceEndpoint) {
-    srcEp.set('interface', createQuotedScalar(doc, linkData.sourceEndpoint));
+    srcEp.set("interface", createQuotedScalar(doc, linkData.sourceEndpoint));
   }
   if (extra?.extSourceMac) {
-    srcEp.set('mac', doc.createNode(extra.extSourceMac));
+    srcEp.set("mac", doc.createNode(extra.extSourceMac));
   }
 
   const dstEp = new YAML.YAMLMap();
   dstEp.flow = false;
-  dstEp.set('node', createQuotedScalar(doc, linkData.target));
+  dstEp.set("node", createQuotedScalar(doc, linkData.target));
   if (linkData.targetEndpoint) {
-    dstEp.set('interface', createQuotedScalar(doc, linkData.targetEndpoint));
+    dstEp.set("interface", createQuotedScalar(doc, linkData.targetEndpoint));
   }
   if (extra?.extTargetMac) {
-    dstEp.set('mac', doc.createNode(extra.extTargetMac));
+    dstEp.set("mac", doc.createNode(extra.extTargetMac));
   }
 
   endpointsSeq.add(srcEp);
@@ -292,21 +308,21 @@ function createExtendedLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YA
   linkMap.flow = false;
 
   const extra = linkData.extraData || {};
-  const linkType = extra.extType || 'veth';
+  const linkType = extra.extType || "veth";
 
-  linkMap.set('type', doc.createNode(linkType));
+  linkMap.set("type", doc.createNode(linkType));
 
   if (SINGLE_ENDPOINT_TYPES.has(linkType)) {
-    linkMap.set('endpoint', createSingleEndpointMap(doc, linkData, extra, linkType));
+    linkMap.set("endpoint", createSingleEndpointMap(doc, linkData, extra, linkType));
     applySingleEndpointProperties(doc, linkMap, linkType, extra, linkData);
   } else {
-    linkMap.set('endpoints', createDualEndpointSeq(doc, linkData, extra));
+    linkMap.set("endpoints", createDualEndpointSeq(doc, linkData, extra));
   }
 
   // Common extended properties
-  setOrDelete(doc, linkMap, 'mtu', extra.extMtu);
-  setOrDelete(doc, linkMap, 'vars', extra.extVars);
-  setOrDelete(doc, linkMap, 'labels', extra.extLabels);
+  setOrDelete(doc, linkMap, "mtu", extra.extMtu);
+  setOrDelete(doc, linkMap, "vars", extra.extVars);
+  setOrDelete(doc, linkMap, "labels", extra.extLabels);
 
   return linkMap;
 }
@@ -317,14 +333,27 @@ function createExtendedLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YA
 function hasExtendedProperties(linkData: LinkSaveData): boolean {
   const extra = linkData.extraData || {};
   const extendedKeys = [
-    'extMtu', 'extSourceMac', 'extTargetMac', 'extHostInterface',
-    'extMode', 'extRemote', 'extVni', 'extDstPort', 'extSrcPort'
+    "extMtu",
+    "extSourceMac",
+    "extTargetMac",
+    "extHostInterface",
+    "extMode",
+    "extRemote",
+    "extVni",
+    "extDstPort",
+    "extSrcPort"
   ];
 
-  if (extendedKeys.some(k => extra[k] !== undefined && extra[k] !== '')) return true;
-  if (extra.extVars && typeof extra.extVars === 'object' && Object.keys(extra.extVars).length > 0) return true;
-  if (extra.extLabels && typeof extra.extLabels === 'object' && Object.keys(extra.extLabels).length > 0) return true;
-  if (extra.extType && extra.extType !== 'veth') return true;
+  if (extendedKeys.some((k) => extra[k] !== undefined && extra[k] !== "")) return true;
+  if (extra.extVars && typeof extra.extVars === "object" && Object.keys(extra.extVars).length > 0)
+    return true;
+  if (
+    extra.extLabels &&
+    typeof extra.extLabels === "object" &&
+    Object.keys(extra.extLabels).length > 0
+  )
+    return true;
+  if (extra.extType && extra.extType !== "veth") return true;
 
   return false;
 }
@@ -334,10 +363,10 @@ function hasExtendedProperties(linkData: LinkSaveData): boolean {
  * E.g., "vxlan:vxlan0" -> "vxlan", "host:eth0" -> "host"
  */
 function extractLinkTypeFromSpecialNode(nodeId: string): string | null {
-  const colonIdx = nodeId.indexOf(':');
+  const colonIdx = nodeId.indexOf(":");
   if (colonIdx === -1) {
     // Handle dummy nodes which don't have a colon prefix
-    if (nodeId.startsWith('dummy')) return 'dummy';
+    if (nodeId.startsWith("dummy")) return "dummy";
     return null;
   }
   return nodeId.substring(0, colonIdx);
@@ -358,18 +387,26 @@ function getLinkKey(linkData: LinkSaveData): string {
   if (sourceIsSpecial) {
     const linkType = extractLinkTypeFromSpecialNode(linkData.source);
     src = linkType || linkData.source;
-    dst = linkData.targetEndpoint ? `${linkData.target}:${linkData.targetEndpoint}` : linkData.target;
+    dst = linkData.targetEndpoint
+      ? `${linkData.target}:${linkData.targetEndpoint}`
+      : linkData.target;
   } else if (targetIsSpecial) {
     const linkType = extractLinkTypeFromSpecialNode(linkData.target);
-    src = linkData.sourceEndpoint ? `${linkData.source}:${linkData.sourceEndpoint}` : linkData.source;
+    src = linkData.sourceEndpoint
+      ? `${linkData.source}:${linkData.sourceEndpoint}`
+      : linkData.source;
     dst = linkType || linkData.target;
   } else {
-    src = linkData.sourceEndpoint ? `${linkData.source}:${linkData.sourceEndpoint}` : linkData.source;
-    dst = linkData.targetEndpoint ? `${linkData.target}:${linkData.targetEndpoint}` : linkData.target;
+    src = linkData.sourceEndpoint
+      ? `${linkData.source}:${linkData.sourceEndpoint}`
+      : linkData.source;
+    dst = linkData.targetEndpoint
+      ? `${linkData.target}:${linkData.targetEndpoint}`
+      : linkData.target;
   }
 
   // Sort to ensure consistent key regardless of direction
-  return [src, dst].toSorted().join('|');
+  return [src, dst].toSorted().join("|");
 }
 
 /**
@@ -380,8 +417,8 @@ function extractEndpointString(ep: unknown): string | null {
     return String(ep.value);
   }
   if (YAML.isMap(ep)) {
-    const node = (ep as YAML.YAMLMap).get('node');
-    const iface = (ep as YAML.YAMLMap).get('interface');
+    const node = (ep as YAML.YAMLMap).get("node");
+    const iface = (ep as YAML.YAMLMap).get("interface");
     return iface ? `${node}:${iface}` : String(node);
   }
   return null;
@@ -394,7 +431,7 @@ function getYamlLinkKey(linkMap: YAML.YAMLMap): string | null {
   const endpoints: string[] = [];
 
   // Check endpoints array
-  const endpointsSeq = linkMap.get('endpoints', true);
+  const endpointsSeq = linkMap.get("endpoints", true);
   if (YAML.isSeq(endpointsSeq)) {
     for (const ep of endpointsSeq.items) {
       const epStr = extractEndpointString(ep);
@@ -403,7 +440,7 @@ function getYamlLinkKey(linkMap: YAML.YAMLMap): string | null {
   }
 
   // Check single endpoint
-  const endpoint = linkMap.get('endpoint', true);
+  const endpoint = linkMap.get("endpoint", true);
   if (YAML.isMap(endpoint)) {
     const epStr = extractEndpointString(endpoint);
     if (epStr) endpoints.push(epStr);
@@ -412,12 +449,12 @@ function getYamlLinkKey(linkMap: YAML.YAMLMap): string | null {
   if (endpoints.length < 1) return null;
 
   // For single-endpoint types, the second endpoint is the type (host, mgmt-net, etc.)
-  const linkType = linkMap.get('type');
+  const linkType = linkMap.get("type");
   if (endpoints.length === 1 && linkType) {
     endpoints.push(String(linkType));
   }
 
-  return [...endpoints].sort().join('|');
+  return [...endpoints].sort().join("|");
 }
 
 /**
@@ -455,7 +492,7 @@ function getLookupKey(linkData: LinkSaveData): string {
     dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
   }
 
-  return [src, dst].toSorted().join('|');
+  return [src, dst].toSorted().join("|");
 }
 
 /**
@@ -468,15 +505,15 @@ export function addLinkToDoc(
 ): SaveResult {
   try {
     // Ensure links array exists
-    let linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+    let linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
     if (!linksSeq) {
       linksSeq = new YAML.YAMLSeq();
       linksSeq.flow = false;
-      const topoMap = doc.getIn(['topology'], true) as YAML.YAMLMap;
+      const topoMap = doc.getIn(["topology"], true) as YAML.YAMLMap;
       if (topoMap && YAML.isMap(topoMap)) {
-        topoMap.set('links', linksSeq);
+        topoMap.set("links", linksSeq);
       } else {
-        return { success: false, error: 'YAML topology is not a map' };
+        return { success: false, error: "YAML topology is not a map" };
       }
     }
 
@@ -486,7 +523,7 @@ export function addLinkToDoc(
       if (YAML.isMap(item)) {
         const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
         if (existingKey === newKey) {
-          return { success: false, error: 'Link already exists' };
+          return { success: false, error: "Link already exists" };
         }
       }
     }
@@ -545,7 +582,9 @@ export function editLinkInDoc(
       return { success: false, error: `Link not found (lookup key: ${lookupKey})` };
     }
 
-    logger.info(`[SaveTopology] Updated link: ${linkData.source}:${linkData.sourceEndpoint} <-> ${linkData.target}:${linkData.targetEndpoint}`);
+    logger.info(
+      `[SaveTopology] Updated link: ${linkData.source}:${linkData.sourceEndpoint} <-> ${linkData.target}:${linkData.targetEndpoint}`
+    );
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -568,14 +607,14 @@ export function deleteLinkFromDoc(
     const targetKey = getLinkKey(linkData);
     const initialLength = linksSeq.items.length;
 
-    linksSeq.items = linksSeq.items.filter(item => {
+    linksSeq.items = linksSeq.items.filter((item) => {
       if (!YAML.isMap(item)) return true;
       const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
       return existingKey !== targetKey;
     });
 
     if (linksSeq.items.length === initialLength) {
-      return { success: false, error: 'Link not found' };
+      return { success: false, error: "Link not found" };
     }
 
     logger.info(`[SaveTopology] Deleted link: ${linkData.source} <-> ${linkData.target}`);

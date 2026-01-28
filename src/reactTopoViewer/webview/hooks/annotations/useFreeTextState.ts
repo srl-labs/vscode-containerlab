@@ -1,12 +1,12 @@
 /**
  * State management hook for free text annotations
  */
-import type React from 'react';
-import { useState, useCallback, useRef } from 'react';
+import type React from "react";
+import { useState, useCallback, useRef } from "react";
 
-import type { FreeTextAnnotation } from '../../../shared/types/topology';
-import { saveFreeTextAnnotations as saveFreeTextToIO } from '../../services';
-import { log } from '../../utils/logger';
+import type { FreeTextAnnotation } from "../../../shared/types/topology";
+import { saveFreeTextAnnotations as saveFreeTextToIO } from "../../services";
+import { log } from "../../utils/logger";
 
 import {
   SAVE_DEBOUNCE_MS,
@@ -16,15 +16,18 @@ import {
   updateAnnotationPosition,
   updateAnnotationRotation,
   duplicateAnnotations
-} from './freeText';
-import type { AnnotationActionMethods, AnnotationSelectionMethods } from './freeText';
+} from "./freeText";
+import type { AnnotationActionMethods, AnnotationSelectionMethods } from "./freeText";
 import {
   useDebouncedSave,
   useDeleteAnnotation,
   useStandardUpdates,
   useGenericAnnotationUpdates
-} from './sharedAnnotationHelpers';
-import { useAnnotationListSelection, useAnnotationListCopyPaste } from './useAnnotationListOperations';
+} from "./sharedAnnotationHelpers";
+import {
+  useAnnotationListSelection,
+  useAnnotationListCopyPaste
+} from "./useAnnotationListOperations";
 
 export interface UseFreeTextStateReturn {
   annotations: FreeTextAnnotation[];
@@ -60,7 +63,7 @@ export function useFreeTextState(): UseFreeTextStateReturn {
   const pasteCounterRef = useRef<number>(0);
 
   const { saveDebounced: saveAnnotationsToExtension, saveImmediate: saveAnnotationsImmediate } =
-    useDebouncedSave(saveFreeTextToIO, 'FreeText', SAVE_DEBOUNCE_MS);
+    useDebouncedSave(saveFreeTextToIO, "FreeText", SAVE_DEBOUNCE_MS);
 
   return {
     annotations,
@@ -81,19 +84,20 @@ export function useFreeTextState(): UseFreeTextStateReturn {
 
 export interface UseFreeTextActionsOptions {
   state: UseFreeTextStateReturn;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
 }
 
-export interface UseFreeTextActionsReturn extends AnnotationActionMethods, AnnotationSelectionMethods {
+export interface UseFreeTextActionsReturn
+  extends AnnotationActionMethods, AnnotationSelectionMethods {
   enableAddTextMode: () => void;
   disableAddTextMode: () => void;
 }
 
 // Hook for mode toggle actions
 function useModeActions(
-  _mode: 'edit' | 'view',
+  _mode: "edit" | "view",
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   setIsAddTextMode: React.Dispatch<React.SetStateAction<boolean>>
@@ -105,12 +109,12 @@ function useModeActions(
       return;
     }
     setIsAddTextMode(true);
-    log.info('[FreeText] Add text mode enabled');
+    log.info("[FreeText] Add text mode enabled");
   }, [isLocked, onLockedAction, setIsAddTextMode]);
 
   const disableAddTextMode = useCallback(() => {
     setIsAddTextMode(false);
-    log.info('[FreeText] Add text mode disabled');
+    log.info("[FreeText] Add text mode disabled");
   }, [setIsAddTextMode]);
 
   return { enableAddTextMode, disableAddTextMode };
@@ -125,27 +129,37 @@ function useAnnotationCrud(
 ) {
   const closeEditor = useCallback(() => setEditingAnnotation(null), [setEditingAnnotation]);
 
-  const saveAnnotation = useCallback((annotation: FreeTextAnnotation) => {
-    if (!annotation.text.trim()) {
+  const saveAnnotation = useCallback(
+    (annotation: FreeTextAnnotation) => {
+      if (!annotation.text.trim()) {
+        closeEditor();
+        return;
+      }
+      lastStyleRef.current = extractStyleFromAnnotation(annotation);
+      setAnnotations((prev) => {
+        const updated = saveAnnotationToList(prev, annotation);
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
       closeEditor();
-      return;
-    }
-    lastStyleRef.current = extractStyleFromAnnotation(annotation);
-    setAnnotations(prev => {
-      const updated = saveAnnotationToList(prev, annotation);
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    closeEditor();
-    log.info(`[FreeText] Saved annotation: ${annotation.id}`);
-  }, [closeEditor, lastStyleRef, setAnnotations, saveAnnotationsToExtension]);
+      log.info(`[FreeText] Saved annotation: ${annotation.id}`);
+    },
+    [closeEditor, lastStyleRef, setAnnotations, saveAnnotationsToExtension]
+  );
 
-  const deleteAnnotation = useDeleteAnnotation('FreeText', setAnnotations, saveAnnotationsToExtension);
+  const deleteAnnotation = useDeleteAnnotation(
+    "FreeText",
+    setAnnotations,
+    saveAnnotationsToExtension
+  );
 
-  const loadAnnotations = useCallback((loadedAnnotations: FreeTextAnnotation[]) => {
-    setAnnotations(loadedAnnotations);
-    log.info(`[FreeText] Loaded ${loadedAnnotations.length} annotations`);
-  }, [setAnnotations]);
+  const loadAnnotations = useCallback(
+    (loadedAnnotations: FreeTextAnnotation[]) => {
+      setAnnotations(loadedAnnotations);
+      log.info(`[FreeText] Loaded ${loadedAnnotations.length} annotations`);
+    },
+    [setAnnotations]
+  );
 
   return { closeEditor, saveAnnotation, deleteAnnotation, loadAnnotations };
 }
@@ -163,23 +177,38 @@ function useAnnotationUpdates(
     updateAnnotationRotation
   );
 
-  const updateGeoPosition = useCallback((id: string, geoCoords: { lat: number; lng: number }) => {
-    setAnnotations(prev => {
-      const updated = updateAnnotationInList(prev, id, a => ({ ...a, geoCoordinates: geoCoords }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[FreeText] Updated geo position for annotation ${id}: ${geoCoords.lat}, ${geoCoords.lng}`);
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  const updateGeoPosition = useCallback(
+    (id: string, geoCoords: { lat: number; lng: number }) => {
+      setAnnotations((prev) => {
+        const updated = updateAnnotationInList(prev, id, (a) => ({
+          ...a,
+          geoCoordinates: geoCoords
+        }));
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+      log.info(
+        `[FreeText] Updated geo position for annotation ${id}: ${geoCoords.lat}, ${geoCoords.lng}`
+      );
+    },
+    [setAnnotations, saveAnnotationsToExtension]
+  );
 
   const { updateAnnotation, migrateGroupId } = useGenericAnnotationUpdates(
-    'FreeText',
+    "FreeText",
     setAnnotations,
     saveAnnotationsToExtension,
     updateAnnotationInList
   );
 
-  return { updatePosition, updateSize, updateRotation, updateGeoPosition, updateAnnotation, migrateGroupId };
+  return {
+    updatePosition,
+    updateSize,
+    updateRotation,
+    updateGeoPosition,
+    updateAnnotation,
+    migrateGroupId
+  };
 }
 
 // Hook for basic selection operations (select, toggle, clear)
@@ -203,18 +232,23 @@ export function useFreeTextActions(options: UseFreeTextActionsOptions): UseFreeT
   } = state;
 
   const modeActions = useModeActions(mode, isLocked, onLockedAction, setIsAddTextMode);
-  const crudActions = useAnnotationCrud(setAnnotations, setEditingAnnotation, lastStyleRef, saveAnnotationsToExtension);
+  const crudActions = useAnnotationCrud(
+    setAnnotations,
+    setEditingAnnotation,
+    lastStyleRef,
+    saveAnnotationsToExtension
+  );
   const updateActions = useAnnotationUpdates(setAnnotations, saveAnnotationsToExtension);
   const selectionActions = useAnnotationListSelection({
-    logPrefix: 'FreeText',
+    logPrefix: "FreeText",
     annotations,
     setAnnotations,
     selectedAnnotationIds,
     setSelectedAnnotationIds,
-    saveAnnotationsToExtension,
+    saveAnnotationsToExtension
   });
   const copyPasteActions = useAnnotationListCopyPaste({
-    logPrefix: 'FreeText',
+    logPrefix: "FreeText",
     annotations,
     setAnnotations,
     selectedAnnotationIds,
@@ -223,7 +257,7 @@ export function useFreeTextActions(options: UseFreeTextActionsOptions): UseFreeT
     pasteCounterRef,
     duplicateAnnotations,
     saveAnnotationsToExtension,
-    saveAnnotationsImmediate,
+    saveAnnotationsImmediate
   });
 
   return {

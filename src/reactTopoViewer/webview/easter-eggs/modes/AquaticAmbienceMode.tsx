@@ -5,12 +5,19 @@
  * Deep blues, teals, floating bubbles, and soft light rays.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useEffect, useRef, useState } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { useAquaticAmbienceAudio } from '../audio';
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, applyNodeGlow, restoreNodeStyles, MuteButton } from '../shared';
-import type { RGBColor } from '../shared';
+import { useAquaticAmbienceAudio } from "../audio";
+import {
+  BTN_VISIBLE,
+  BTN_HIDDEN,
+  BTN_BLUR,
+  applyNodeGlow,
+  restoreNodeStyles,
+  MuteButton
+} from "../shared";
+import type { RGBColor } from "../shared";
 
 interface AquaticAmbienceModeProps {
   isActive: boolean;
@@ -27,17 +34,17 @@ const COLORS = {
   teal: { r: 0, g: 128, b: 128 },
   aqua: { r: 0, g: 180, b: 200 },
   lightBlue: { r: 135, g: 206, b: 235 },
-  white: { r: 255, g: 255, b: 255 },
+  white: { r: 255, g: 255, b: 255 }
 };
 
 /** Section to color mapping */
 const SECTION_COLORS: RGBColor[] = [
-  COLORS.teal,       // Cm(add9)
-  COLORS.oceanBlue,  // Abm(add9)
-  COLORS.teal,       // Cm(add9)
-  COLORS.oceanBlue,  // Abm(add9)
-  COLORS.aqua,       // Fmaj7
-  COLORS.lightBlue,  // Bdim(add9)
+  COLORS.teal, // Cm(add9)
+  COLORS.oceanBlue, // Abm(add9)
+  COLORS.teal, // Cm(add9)
+  COLORS.oceanBlue, // Abm(add9)
+  COLORS.aqua, // Fmaj7
+  COLORS.lightBlue // Bdim(add9)
 ];
 
 /**
@@ -76,7 +83,7 @@ function initializeBubbles(width: number, height: number): void {
       speed: 0.3 + Math.random() * 0.5,
       wobblePhase: Math.random() * Math.PI * 2,
       wobbleSpeed: 0.01 + Math.random() * 0.02,
-      alpha: 0.3 + Math.random() * 0.4,
+      alpha: 0.3 + Math.random() * 0.4
     });
     /* eslint-enable sonarjs/pseudo-random */
   }
@@ -101,7 +108,7 @@ const AquaticCanvas: React.FC<{
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return undefined;
 
     const updateSize = (): void => {
@@ -109,7 +116,7 @@ const AquaticCanvas: React.FC<{
       canvas.height = window.innerHeight;
     };
     updateSize();
-    window.addEventListener('resize', updateSize);
+    window.addEventListener("resize", updateSize);
 
     timeRef.current = 0;
     initializeBubbles(canvas.width, canvas.height);
@@ -148,7 +155,7 @@ const AquaticCanvas: React.FC<{
     animationRef.current = window.requestAnimationFrame(animate);
 
     return () => {
-      window.removeEventListener('resize', updateSize);
+      window.removeEventListener("resize", updateSize);
       window.cancelAnimationFrame(animationRef.current);
     };
   }, [isActive, getFrequencyData, getBeatIntensity, getCurrentSection]);
@@ -159,7 +166,7 @@ const AquaticCanvas: React.FC<{
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-[99998]"
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: "100%", height: "100%" }}
     />
   );
 };
@@ -183,10 +190,19 @@ function drawUnderwaterGlow(
   const alpha = 0.06 + intensity * 0.04;
   const pulse = Math.sin(time * 0.008) * 0.02;
 
-  gradient.addColorStop(0, `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, ${alpha + pulse})`);
+  gradient.addColorStop(
+    0,
+    `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, ${alpha + pulse})`
+  );
   gradient.addColorStop(0.3, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`);
-  gradient.addColorStop(0.7, `rgba(${COLORS.oceanBlue.r}, ${COLORS.oceanBlue.g}, ${COLORS.oceanBlue.b}, ${alpha * 0.8})`);
-  gradient.addColorStop(1, `rgba(${COLORS.deepBlue.r}, ${COLORS.deepBlue.g}, ${COLORS.deepBlue.b}, ${alpha * 0.6})`);
+  gradient.addColorStop(
+    0.7,
+    `rgba(${COLORS.oceanBlue.r}, ${COLORS.oceanBlue.g}, ${COLORS.oceanBlue.b}, ${alpha * 0.8})`
+  );
+  gradient.addColorStop(
+    1,
+    `rgba(${COLORS.deepBlue.r}, ${COLORS.deepBlue.g}, ${COLORS.deepBlue.b}, ${alpha * 0.6})`
+  );
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
@@ -218,9 +234,12 @@ function drawCausticRays(
 
     const gradient = ctx.createLinearGradient(x, 0, x, height * 0.8);
     gradient.addColorStop(0, `rgba(${COLORS.white.r}, ${COLORS.white.g}, ${COLORS.white.b}, 0.6)`);
-    gradient.addColorStop(0.3, `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, 0.3)`);
+    gradient.addColorStop(
+      0.3,
+      `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, 0.3)`
+    );
     gradient.addColorStop(0.7, `rgba(${COLORS.aqua.r}, ${COLORS.aqua.g}, ${COLORS.aqua.b}, 0.1)`);
-    gradient.addColorStop(1, 'transparent');
+    gradient.addColorStop(1, "transparent");
 
     ctx.beginPath();
     ctx.moveTo(x - pulseWidth, 0);
@@ -239,17 +258,16 @@ function drawCausticRays(
 /**
  * Draw subtle water surface distortion at top
  */
-function drawWaterSurface(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  time: number
-): void {
+function drawWaterSurface(ctx: CanvasRenderingContext2D, width: number, time: number): void {
   ctx.save();
   ctx.globalAlpha = 0.08;
 
   const gradient = ctx.createLinearGradient(0, 0, 0, 50);
-  gradient.addColorStop(0, `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, 1)`);
-  gradient.addColorStop(1, 'transparent');
+  gradient.addColorStop(
+    0,
+    `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, 1)`
+  );
+  gradient.addColorStop(1, "transparent");
 
   ctx.fillStyle = gradient;
 
@@ -306,7 +324,12 @@ function drawWaveVisualizer(
       // Smooth curve between points
       const prevX = startX + (i - 1) * segmentWidth;
       const cpX = (prevX + x) / 2;
-      ctx.quadraticCurveTo(prevX, baseY - (freqData[i - 1] || 0) / 255 * 35, cpX, (baseY - (freqData[i - 1] || 0) / 255 * 35 + y) / 2);
+      ctx.quadraticCurveTo(
+        prevX,
+        baseY - ((freqData[i - 1] || 0) / 255) * 35,
+        cpX,
+        (baseY - ((freqData[i - 1] || 0) / 255) * 35 + y) / 2
+      );
     }
   }
 
@@ -352,14 +375,24 @@ function drawBubbles(
 
     // Draw bubble
     const gradient = ctx.createRadialGradient(
-      b.x - b.size * 0.3, b.y - b.size * 0.3, 0,
-      b.x, b.y, b.size
+      b.x - b.size * 0.3,
+      b.y - b.size * 0.3,
+      0,
+      b.x,
+      b.y,
+      b.size
     );
 
     const alpha = b.alpha + intensity * 0.15;
     gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.8})`);
-    gradient.addColorStop(0.5, `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, ${alpha * 0.4})`);
-    gradient.addColorStop(1, `rgba(${COLORS.aqua.r}, ${COLORS.aqua.g}, ${COLORS.aqua.b}, ${alpha * 0.1})`);
+    gradient.addColorStop(
+      0.5,
+      `rgba(${COLORS.lightBlue.r}, ${COLORS.lightBlue.g}, ${COLORS.lightBlue.b}, ${alpha * 0.4})`
+    );
+    gradient.addColorStop(
+      1,
+      `rgba(${COLORS.aqua.r}, ${COLORS.aqua.g}, ${COLORS.aqua.b}, ${alpha * 0.1})`
+    );
 
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
@@ -394,12 +427,12 @@ function useAquaticNodeGlow(
     const nodes = cyInstance.nodes();
 
     // Store original styles
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const id = node.id();
       styles.set(id, {
-        'background-color': node.style('background-color') as string,
-        'border-color': node.style('border-color') as string,
-        'border-width': node.style('border-width') as string,
+        "background-color": node.style("background-color") as string,
+        "border-color": node.style("border-color") as string,
+        "border-width": node.style("border-width") as string
       });
     });
 
@@ -433,7 +466,7 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
   onClose,
   onSwitchMode,
   modeName,
-  cyInstance,
+  cyInstance
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useAquaticAmbienceAudio();
@@ -481,15 +514,16 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(135, 206, 235, 0.6) 0%, rgba(0, 180, 200, 0.6) 100%)',
-            border: '2px solid rgba(255, 255, 255, 0.5)',
-            color: '#ffffff',
-            cursor: 'pointer',
+            background:
+              "linear-gradient(135deg, rgba(135, 206, 235, 0.6) 0%, rgba(0, 180, 200, 0.6) 100%)",
+            border: "2px solid rgba(255, 255, 255, 0.5)",
+            color: "#ffffff",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(135, 206, 235, 0.8)',
-            boxShadow: '0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1)',
+            textShadow: "0 0 10px rgba(135, 206, 235, 0.8)",
+            boxShadow: "0 0 20px rgba(0, 180, 200, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1)"
           }}
           title={`Current: ${modeName}`}
         >
@@ -508,15 +542,16 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
             visible ? BTN_VISIBLE : BTN_HIDDEN
           }`}
           style={{
-            background: 'linear-gradient(135deg, rgba(0, 128, 128, 0.8) 0%, rgba(30, 80, 140, 0.8) 100%)',
-            border: '2px solid rgba(0, 180, 200, 0.5)',
-            color: '#00b4c8',
-            cursor: 'pointer',
+            background:
+              "linear-gradient(135deg, rgba(0, 128, 128, 0.8) 0%, rgba(30, 80, 140, 0.8) 100%)",
+            border: "2px solid rgba(0, 180, 200, 0.5)",
+            color: "#00b4c8",
+            cursor: "pointer",
             backdropFilter: BTN_BLUR,
-            fontSize: '14px',
+            fontSize: "14px",
             fontWeight: 600,
-            textShadow: '0 0 10px rgba(0, 180, 200, 0.8)',
-            boxShadow: '0 0 20px rgba(0, 128, 128, 0.5), inset 0 0 20px rgba(0, 180, 200, 0.1)',
+            textShadow: "0 0 10px rgba(0, 180, 200, 0.8)",
+            boxShadow: "0 0 20px rgba(0, 128, 128, 0.5), inset 0 0 20px rgba(0, 180, 200, 0.1)"
           }}
         >
           Surface

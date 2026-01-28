@@ -147,7 +147,10 @@
     border-radius: 4px;
     padding: 2px 6px;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      opacity 0.15s ease;
   }
 
   .tab-scroll-btn:hover {
@@ -200,7 +203,7 @@
   }
 
   .panel-resize-handle::before {
-    content: '';
+    content: "";
     position: absolute;
     right: 3px;
     bottom: 3px;
@@ -254,4 +257,3 @@
     background-color: var(--vscode-scrollbarSlider-hoverBackground);
   }
 }
-

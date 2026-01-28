@@ -34,16 +34,16 @@ export interface ClabLinkEndpointMap {
 export interface ClabLink {
   endpoints?: (string | ClabLinkEndpointMap)[];
   endpoint?: ClabLinkEndpointMap;
-  type?: 'veth' | 'host' | 'mgmt-net' | 'macvlan' | 'dummy' | 'vxlan' | 'vxlan-stitch' | string;
+  type?: "veth" | "host" | "mgmt-net" | "macvlan" | "dummy" | "vxlan" | "vxlan-stitch" | string;
   mtu?: number | string;
   vars?: unknown;
   labels?: unknown;
-  'host-interface'?: string;
+  "host-interface"?: string;
   mode?: string;
   remote?: string;
   vni?: number | string;
-  'dst-port'?: number | string;
-  'src-port'?: number | string;
+  "dst-port"?: number | string;
+  "src-port"?: number | string;
 }
 
 /**
@@ -69,7 +69,7 @@ export interface ClabTopology {
  * Represents a single Cytoscape element, either a node or an edge.
  */
 export interface CyElement {
-  group: 'nodes' | 'edges';
+  group: "nodes" | "edges";
   data: Record<string, unknown>;
   position?: { x: number; y: number };
   removed?: boolean;
@@ -102,10 +102,10 @@ export interface FreeTextAnnotation {
   fontSize?: number;
   fontColor?: string;
   backgroundColor?: string;
-  fontWeight?: 'normal' | 'bold';
-  fontStyle?: 'normal' | 'italic';
-  textDecoration?: 'none' | 'underline';
-  textAlign?: 'left' | 'center' | 'right';
+  fontWeight?: "normal" | "bold";
+  fontStyle?: "normal" | "italic";
+  textDecoration?: "none" | "underline";
+  textAlign?: "left" | "center" | "right";
   fontFamily?: string;
   rotation?: number;
   width?: number;
@@ -120,7 +120,7 @@ export interface FreeTextAnnotation {
  */
 export interface FreeShapeAnnotation {
   id: string;
-  shapeType: 'rectangle' | 'circle' | 'line';
+  shapeType: "rectangle" | "circle" | "line";
   position: { x: number; y: number };
   geoCoordinates?: { lat: number; lng: number };
   groupId?: string; // Parent group ID for hierarchy membership
@@ -132,7 +132,7 @@ export interface FreeShapeAnnotation {
   fillOpacity?: number;
   borderColor?: string;
   borderWidth?: number;
-  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  borderStyle?: "solid" | "dashed" | "dotted";
   rotation?: number;
   zIndex?: number;
   lineStartArrow?: boolean;
@@ -164,7 +164,7 @@ export interface GroupStyleAnnotation {
   backgroundOpacity?: number;
   borderColor?: string;
   borderWidth?: number;
-  borderStyle?: 'solid' | 'dotted' | 'dashed' | 'double';
+  borderStyle?: "solid" | "dotted" | "dashed" | "double";
   borderRadius?: number;
   labelColor?: string;
   labelPosition?: string;
@@ -178,7 +178,7 @@ export interface GroupStyleAnnotation {
  */
 export interface CloudNodeAnnotation {
   id: string;
-  type: 'host' | 'mgmt-net' | 'macvlan';
+  type: "host" | "mgmt-net" | "macvlan";
   label: string;
   position: { x: number; y: number };
   group?: string;
@@ -192,7 +192,15 @@ export interface CloudNodeAnnotation {
  */
 export interface NetworkNodeAnnotation {
   id: string;
-  type: 'host' | 'mgmt-net' | 'macvlan' | 'vxlan' | 'vxlan-stitch' | 'dummy' | 'bridge' | 'ovs-bridge';
+  type:
+    | "host"
+    | "mgmt-net"
+    | "macvlan"
+    | "vxlan"
+    | "vxlan-stitch"
+    | "dummy"
+    | "bridge"
+    | "ovs-bridge";
   label?: string;
   position: { x: number; y: number };
   geoCoordinates?: { lat: number; lng: number };
@@ -271,7 +279,7 @@ export interface TopologyAnnotations {
 // Deployment State
 // ============================================================================
 
-export type DeploymentState = 'deployed' | 'undeployed' | 'unknown';
+export type DeploymentState = "deployed" | "undeployed" | "unknown";
 
 // ============================================================================
 // Interface Statistics Types

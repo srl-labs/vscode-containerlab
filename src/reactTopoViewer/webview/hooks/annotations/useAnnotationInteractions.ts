@@ -2,14 +2,14 @@
  * useAnnotationInteractions - Combined hook for annotation interaction state
  * Wraps drag, rotation, and resize hooks for cleaner component code
  */
-import type React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import type React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { FreeTextAnnotation } from '../../../shared/types/topology';
-import type { MapLibreState } from '../canvas/maplibreUtils';
+import type { FreeTextAnnotation } from "../../../shared/types/topology";
+import type { MapLibreState } from "../canvas/maplibreUtils";
 
-import { useAnnotationDrag } from './useAnnotationDrag';
-import { useRotationDrag, useResizeDrag } from './useAnnotationHandles';
+import { useAnnotationDrag } from "./useAnnotationDrag";
+import { useRotationDrag, useResizeDrag } from "./useAnnotationHandles";
 
 interface UseAnnotationInteractionsOptions {
   cy: CyCore;
@@ -20,7 +20,7 @@ interface UseAnnotationInteractionsOptions {
   onSizeChange: (width: number, height: number) => void;
   contentRef: React.RefObject<HTMLDivElement | null>;
   isGeoMode?: boolean;
-  geoMode?: 'pan' | 'edit';
+  geoMode?: "pan" | "edit";
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
   /** Called when drag starts (for reparenting) */

@@ -3,16 +3,16 @@
  * Groups are rendered as HTML overlays, not Cytoscape nodes.
  * Supports hierarchical nesting via parentId.
  */
-import type React from 'react';
-import { useCallback, useMemo, useRef } from 'react';
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
+import type React from "react";
+import { useCallback, useMemo, useRef } from "react";
+import type { Core as CyCore, NodeSingular } from "cytoscape";
 
-import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { log } from '../../utils/logger';
-import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from '../../services';
-import { applyMembershipUpdates, type MembershipUpdateEntry } from '../shared/membershipHelpers';
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import { log } from "../../utils/logger";
+import { getAnnotationsIO, getTopologyIO, isServicesInitialized } from "../../services";
+import { applyMembershipUpdates, type MembershipUpdateEntry } from "../shared/membershipHelpers";
 
-import { useGroupState } from './useGroupState';
+import { useGroupState } from "./useGroupState";
 // Note: saveNodeMembership is imported from groupHelpers for single node membership updates
 import {
   generateGroupId,
@@ -22,7 +22,7 @@ import {
   removeGroupFromList,
   calculateBoundingBox,
   saveNodeMembership
-} from './groupHelpers';
+} from "./groupHelpers";
 import {
   getDescendantGroups,
   getChildGroups as getChildGroupsUtil,
@@ -30,7 +30,7 @@ import {
   getGroupDepth as getGroupDepthUtil,
   findDeepestGroupAtPosition,
   validateNoCircularReference
-} from './hierarchyUtils';
+} from "./hierarchyUtils";
 import {
   DEFAULT_GROUP_WIDTH,
   DEFAULT_GROUP_HEIGHT,
@@ -38,7 +38,7 @@ import {
   type UseGroupsReturn,
   type GroupEditorData,
   type GroupUndoAction
-} from './groupTypes';
+} from "./groupTypes";
 
 export interface UseGroupsHookOptions extends UseGroupsOptions {
   cy: CyCore | null;
@@ -49,7 +49,7 @@ export interface UseGroupsHookOptions extends UseGroupsOptions {
  */
 function saveBatchMemberships(memberships: MembershipUpdateEntry[]): void {
   if (!isServicesInitialized()) {
-    log.warn('[Groups] Services not initialized for batch membership save');
+    log.warn("[Groups] Services not initialized for batch membership save");
     return;
   }
 
@@ -58,16 +58,18 @@ function saveBatchMemberships(memberships: MembershipUpdateEntry[]): void {
 
   const yamlPath = topologyIO.getYamlFilePath();
   if (!yamlPath) {
-    log.warn('[Groups] No YAML path for batch membership save');
+    log.warn("[Groups] No YAML path for batch membership save");
     return;
   }
 
-  annotationsIO.modifyAnnotations(yamlPath, annotations => {
-    applyMembershipUpdates(annotations, memberships);
-    return annotations;
-  }).catch(err => {
-    log.error(`[Groups] Failed to save batch memberships: ${err}`);
-  });
+  annotationsIO
+    .modifyAnnotations(yamlPath, (annotations) => {
+      applyMembershipUpdates(annotations, memberships);
+      return annotations;
+    })
+    .catch((err) => {
+      log.error(`[Groups] Failed to save batch memberships: ${err}`);
+    });
 }
 
 /**
@@ -75,7 +77,7 @@ function saveBatchMemberships(memberships: MembershipUpdateEntry[]): void {
  */
 function getNodePositions(cy: CyCore, nodeIds: string[]): { x: number; y: number }[] {
   return nodeIds
-    .map(id => {
+    .map((id) => {
       const node = cy.getElementById(id) as NodeSingular;
       if (node.length > 0) {
         return node.position();
@@ -112,7 +114,7 @@ function getDefaultGroupName(groupId: string): string {
  */
 function useCreateGroup(
   cy: CyCore | null,
-  mode: 'edit' | 'view',
+  mode: "edit" | "view",
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   groups: GroupStyleAnnotation[],
@@ -121,8 +123,8 @@ function useCreateGroup(
   lastStyleRef: React.RefObject<Partial<GroupStyleAnnotation>>
 ) {
   const isGroupFullyInside = (
-    child: Pick<GroupStyleAnnotation, 'position' | 'width' | 'height'>,
-    parent: Pick<GroupStyleAnnotation, 'position' | 'width' | 'height'>,
+    child: Pick<GroupStyleAnnotation, "position" | "width" | "height">,
+    parent: Pick<GroupStyleAnnotation, "position" | "width" | "height">,
     margin = 2
   ): boolean => {
     const childHalfW = child.width / 2;
@@ -140,11 +142,19 @@ function useCreateGroup(
     const parentTop = parent.position.y - parentHalfH + margin;
     const parentBottom = parent.position.y + parentHalfH - margin;
 
-    return childLeft >= parentLeft && childRight <= parentRight && childTop >= parentTop && childBottom <= parentBottom;
+    return (
+      childLeft >= parentLeft &&
+      childRight <= parentRight &&
+      childTop >= parentTop &&
+      childBottom <= parentBottom
+    );
   };
 
   return useCallback(
-    (selectedNodeIds?: string[], parentId?: string | null): { groupId: string; group: GroupStyleAnnotation } | null => {
+    (
+      selectedNodeIds?: string[],
+      parentId?: string | null
+    ): { groupId: string; group: GroupStyleAnnotation } | null => {
       // Only check isLocked - allows group creation in viewer mode when explicitly unlocked
       if (isLocked || !cy) {
         if (isLocked) onLockedAction?.();
@@ -153,7 +163,7 @@ function useCreateGroup(
 
       const groupId = generateGroupId(groups);
       const groupName = getDefaultGroupName(groupId);
-      const groupLevel = '1';
+      const groupLevel = "1";
       let position: { x: number; y: number };
       let width: number;
       let height: number;
@@ -166,7 +176,7 @@ function useCreateGroup(
         width = bounds.width;
         height = bounds.height;
 
-        selectedNodeIds.forEach(nodeId => {
+        selectedNodeIds.forEach((nodeId) => {
           saveNodeMembership(nodeId, { id: groupId, name: groupName, level: groupLevel });
         });
       } else {
@@ -176,7 +186,13 @@ function useCreateGroup(
         height = DEFAULT_GROUP_HEIGHT;
       }
 
-      const newGroup = createDefaultGroup(groupId, groupName, groupLevel, position, lastStyleRef.current);
+      const newGroup = createDefaultGroup(
+        groupId,
+        groupName,
+        groupLevel,
+        position,
+        lastStyleRef.current
+      );
       newGroup.width = width;
       newGroup.height = height;
       // Ensure newly created groups are on top by default, regardless of lastStyle zIndex.
@@ -200,14 +216,14 @@ function useCreateGroup(
         }
       }
 
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = [...prev, newGroup];
         saveGroupsToExtension(updated);
         return updated;
       });
 
-      const parentInfo = newGroup.parentId ? ' (parent: ' + newGroup.parentId + ')' : '';
-      log.info('[Groups] Created overlay group: ' + groupId + parentInfo);
+      const parentInfo = newGroup.parentId ? " (parent: " + newGroup.parentId + ")" : "";
+      log.info("[Groups] Created overlay group: " + groupId + parentInfo);
       return { groupId, group: newGroup };
     },
     [cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef]
@@ -219,12 +235,12 @@ function useCreateGroup(
  * Promotes child groups to the deleted group's parent level.
  */
 interface UseDeleteGroupOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: (() => void) | undefined;
   editingGroup: GroupEditorData | null;
   groups: GroupStyleAnnotation[];
-  membership: Pick<UseGroupsReturn, 'getGroupMembers' | 'addNodeToGroup' | 'removeNodeFromGroup'>;
+  membership: Pick<UseGroupsReturn, "getGroupMembers" | "addNodeToGroup" | "removeNodeFromGroup">;
   setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>;
   setEditingGroup: React.Dispatch<React.SetStateAction<GroupEditorData | null>>;
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void;
@@ -254,16 +270,16 @@ function useDeleteGroup(options: UseDeleteGroupOptions) {
         return;
       }
 
-      const deletedGroup = groups.find(g => g.id === groupId);
+      const deletedGroup = groups.find((g) => g.id === groupId);
       if (!deletedGroup) return;
 
       const parentId = deletedGroup.parentId ?? null;
       const memberIds = membership.getGroupMembers(groupId);
       if (memberIds.length > 0) {
         if (parentId) {
-          memberIds.forEach(nodeId => membership.addNodeToGroup(nodeId, parentId));
+          memberIds.forEach((nodeId) => membership.addNodeToGroup(nodeId, parentId));
         } else {
-          memberIds.forEach(nodeId => membership.removeNodeFromGroup(nodeId));
+          memberIds.forEach((nodeId) => membership.removeNodeFromGroup(nodeId));
         }
       }
 
@@ -271,12 +287,12 @@ function useDeleteGroup(options: UseDeleteGroupOptions) {
       onMigrateTextAnnotations?.(groupId, parentId);
       onMigrateShapeAnnotations?.(groupId, parentId);
 
-      setGroups(prev => {
+      setGroups((prev) => {
         // Get the parent ID to promote children to
         const newParentId = deletedGroup.parentId;
 
         // Promote child groups to the deleted group's parent
-        const updated = prev.map(g => {
+        const updated = prev.map((g) => {
           if (g.parentId === groupId) {
             // This is a direct child - promote to grandparent
             return { ...g, parentId: newParentId };
@@ -288,7 +304,9 @@ function useDeleteGroup(options: UseDeleteGroupOptions) {
         const final = removeGroupFromList(updated, groupId);
         saveGroupsToExtension(final);
 
-        log.info(`[Groups] Deleted group ${groupId}, promoted children to parent: ${newParentId ?? 'root'}`);
+        log.info(
+          `[Groups] Deleted group ${groupId}, promoted children to parent: ${newParentId ?? "root"}`
+        );
         return final;
       });
 
@@ -316,7 +334,7 @@ function useDeleteGroup(options: UseDeleteGroupOptions) {
  * Hook for editing a group.
  */
 function useEditGroup(
-  mode: 'edit' | 'view',
+  mode: "edit" | "view",
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   groups: GroupStyleAnnotation[],
@@ -330,7 +348,7 @@ function useEditGroup(
         return;
       }
 
-      const group = groups.find(g => g.id === groupId);
+      const group = groups.find((g) => g.id === groupId);
       if (!group) {
         log.warn(`[Groups] Group not found: ${groupId}`);
         return;
@@ -355,7 +373,7 @@ function useEditGroup(
  */
 interface SaveGroupOptions {
   cy: CyCore | null;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: (() => void) | undefined;
   groups: GroupStyleAnnotation[];
@@ -390,14 +408,14 @@ function useSaveGroup(options: SaveGroupOptions) {
       const groupId = data.id;
       lastStyleRef.current = { ...data.style };
 
-      const existing = groups.find(g => g.id === groupId);
+      const existing = groups.find((g) => g.id === groupId);
       if (!existing) {
         log.warn(`[Groups] Group not found: ${groupId}`);
         return;
       }
       const nameLevelChanged = existing.name !== data.name || existing.level !== data.level;
 
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = updateGroupInList(prev, groupId, {
           ...data.style,
           name: data.name,
@@ -413,7 +431,7 @@ function useSaveGroup(options: SaveGroupOptions) {
       if (nameLevelChanged) {
         const memberIds = getGroupMembers(groupId);
         if (memberIds.length > 0) {
-          const updates = memberIds.map(nodeId => ({
+          const updates = memberIds.map((nodeId) => ({
             nodeId,
             groupId,
             groupName: data.name,
@@ -423,12 +441,14 @@ function useSaveGroup(options: SaveGroupOptions) {
         }
 
         if (cy) {
-          memberIds.forEach(nodeId => {
+          memberIds.forEach((nodeId) => {
             const node = cy.getElementById(nodeId);
             if (node.length > 0) {
-              const annotation = node.data('clabAnnotation') as { group?: string; level?: string; groupId?: string } | undefined;
+              const annotation = node.data("clabAnnotation") as
+                | { group?: string; level?: string; groupId?: string }
+                | undefined;
               if (annotation) {
-                node.data('clabAnnotation', {
+                node.data("clabAnnotation", {
                   ...annotation,
                   groupId,
                   group: data.name,
@@ -461,7 +481,7 @@ function useSaveGroup(options: SaveGroupOptions) {
  * Hook for updating group properties.
  */
 function useUpdateGroup(
-  mode: 'edit' | 'view',
+  mode: "edit" | "view",
   isLocked: boolean,
   setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
@@ -471,7 +491,7 @@ function useUpdateGroup(
       // Only check isLocked - allows group updates in viewer mode when explicitly unlocked
       if (isLocked) return;
 
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = updateGroupInList(prev, groupId, updates);
         saveGroupsToExtension(updated);
         return updated;
@@ -485,7 +505,7 @@ function useUpdateGroup(
  * Hook for updating group position.
  */
 function useUpdateGroupPosition(
-  mode: 'edit' | 'view',
+  mode: "edit" | "view",
   isLocked: boolean,
   setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
@@ -495,7 +515,7 @@ function useUpdateGroupPosition(
       // Only check isLocked - allows position updates in viewer mode when explicitly unlocked
       if (isLocked) return;
 
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = updateGroupInList(prev, groupId, { position });
         saveGroupsToExtension(updated);
         return updated;
@@ -509,7 +529,7 @@ function useUpdateGroupPosition(
  * Hook for updating group size.
  */
 function useUpdateGroupSize(
-  mode: 'edit' | 'view',
+  mode: "edit" | "view",
   isLocked: boolean,
   setGroups: React.Dispatch<React.SetStateAction<GroupStyleAnnotation[]>>,
   saveGroupsToExtension: (groups: GroupStyleAnnotation[]) => void
@@ -519,7 +539,7 @@ function useUpdateGroupSize(
       // Only check isLocked - allows size updates in viewer mode when explicitly unlocked
       if (isLocked) return;
 
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = updateGroupInList(prev, groupId, { width, height });
         saveGroupsToExtension(updated);
         return updated;
@@ -540,7 +560,7 @@ function useUpdateGroupGeoPosition(
 ) {
   return useCallback(
     (groupId: string, geoCoordinates: { lat: number; lng: number }): void => {
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = updateGroupInList(prev, groupId, { geoCoordinates });
         saveGroupsToExtension(updated);
         return updated;
@@ -563,7 +583,10 @@ function addNodeToGroupHelper(
   // The membership is stored immediately; the group will exist by the time
   // the UI needs to display it.
   membershipRef.current.set(nodeId, groupId);
-  saveNodeMembership(nodeId, group ? { id: groupId, name: group.name, level: group.level } : { id: groupId });
+  saveNodeMembership(
+    nodeId,
+    group ? { id: groupId, name: group.name, level: group.level } : { id: groupId }
+  );
   log.info(`[Groups] Added node ${nodeId} to group ${groupId}`);
 }
 
@@ -581,7 +604,7 @@ function removeNodeFromGroupHelper(
  * Hook for managing node group membership.
  */
 function useNodeGroupMembership(
-  _mode: 'edit' | 'view',
+  _mode: "edit" | "view",
   isLocked: boolean,
   groups: GroupStyleAnnotation[]
 ) {
@@ -603,7 +626,7 @@ function useNodeGroupMembership(
       // Avoid clobbering local membership changes with stale topology refresh messages.
       // Saves are async/debounced; during that window, incoming nodeAnnotations can lag behind.
       if (Date.now() < membershipDirtyUntilRef.current) {
-        log.info('[Groups] Skipped membership init (local changes pending)');
+        log.info("[Groups] Skipped membership init (local changes pending)");
         return;
       }
       membershipRef.current.clear();
@@ -617,52 +640,85 @@ function useNodeGroupMembership(
 
   const getGroupMembers = useCallback((groupId: string): string[] => {
     const members: string[] = [];
-    membershipRef.current.forEach((gId, nodeId) => { if (gId === groupId) members.push(nodeId); });
+    membershipRef.current.forEach((gId, nodeId) => {
+      if (gId === groupId) members.push(nodeId);
+    });
     return members;
   }, []);
 
-  const getNodeMembership = useCallback((nodeId: string): string | null => membershipRef.current.get(nodeId) ?? null, []);
+  const getNodeMembership = useCallback(
+    (nodeId: string): string | null => membershipRef.current.get(nodeId) ?? null,
+    []
+  );
 
-  const addNodeToGroup = useCallback((nodeId: string, groupId: string): void => {
-    // Only check isLocked - allows membership changes in viewer mode when explicitly unlocked
-    if (isLocked) return;
-    markMembershipDirty();
-    const group = groups.find(g => g.id === groupId);
-    addNodeToGroupHelper(membershipRef, nodeId, groupId, group);
-  }, [isLocked, markMembershipDirty, groups]);
+  const addNodeToGroup = useCallback(
+    (nodeId: string, groupId: string): void => {
+      // Only check isLocked - allows membership changes in viewer mode when explicitly unlocked
+      if (isLocked) return;
+      markMembershipDirty();
+      const group = groups.find((g) => g.id === groupId);
+      addNodeToGroupHelper(membershipRef, nodeId, groupId, group);
+    },
+    [isLocked, markMembershipDirty, groups]
+  );
 
   /** Add node to group locally (in-memory only, no extension notification) */
-  const addNodeToGroupLocal = useCallback((nodeId: string, groupId: string): void => {
-    markMembershipDirty();
-    membershipRef.current.set(nodeId, groupId);
-  }, [markMembershipDirty]);
+  const addNodeToGroupLocal = useCallback(
+    (nodeId: string, groupId: string): void => {
+      markMembershipDirty();
+      membershipRef.current.set(nodeId, groupId);
+    },
+    [markMembershipDirty]
+  );
 
-  const removeNodeFromGroup = useCallback((nodeId: string): void => {
-    // Only check isLocked - allows membership changes in viewer mode when explicitly unlocked
-    if (isLocked) return;
-    markMembershipDirty();
-    removeNodeFromGroupHelper(membershipRef, nodeId);
-  }, [isLocked, markMembershipDirty]);
+  const removeNodeFromGroup = useCallback(
+    (nodeId: string): void => {
+      // Only check isLocked - allows membership changes in viewer mode when explicitly unlocked
+      if (isLocked) return;
+      markMembershipDirty();
+      removeNodeFromGroupHelper(membershipRef, nodeId);
+    },
+    [isLocked, markMembershipDirty]
+  );
 
   /** Reassign all node memberships from one groupId to another (legacy migrations) */
-  const migrateMemberships = useCallback((oldGroupId: string, newGroupId: string): void => {
-    markMembershipDirty();
-    membershipRef.current.forEach((gId, nodeId) => {
-      if (gId === oldGroupId) {
-        membershipRef.current.set(nodeId, newGroupId);
-      }
-    });
-    log.info(`[Groups] Migrated node memberships from ${oldGroupId} to ${newGroupId}`);
-  }, [markMembershipDirty]);
+  const migrateMemberships = useCallback(
+    (oldGroupId: string, newGroupId: string): void => {
+      markMembershipDirty();
+      membershipRef.current.forEach((gId, nodeId) => {
+        if (gId === oldGroupId) {
+          membershipRef.current.set(nodeId, newGroupId);
+        }
+      });
+      log.info(`[Groups] Migrated node memberships from ${oldGroupId} to ${newGroupId}`);
+    },
+    [markMembershipDirty]
+  );
 
-  return { findGroupAtPosition, getGroupMembers, getNodeMembership, addNodeToGroup, addNodeToGroupLocal, removeNodeFromGroup, initializeMembership, migrateMemberships };
+  return {
+    findGroupAtPosition,
+    getGroupMembers,
+    getNodeMembership,
+    addNodeToGroup,
+    addNodeToGroupLocal,
+    removeNodeFromGroup,
+    initializeMembership,
+    migrateMemberships
+  };
 }
 
 /**
  * Main hook for overlay-based group management.
  */
 export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
-  const { cy, mode, isLocked, onLockedAction, onMigrateTextAnnotations, onMigrateShapeAnnotations } = options;
+  const {
+    cy,
+    mode,
+    isLocked,
+    onLockedAction,
+    onMigrateTextAnnotations,
+    onMigrateShapeAnnotations
+  } = options;
 
   const state = useGroupState();
   const {
@@ -683,7 +739,14 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   const membership = useNodeGroupMembership(mode, isLocked, groups);
 
   const createGroup = useCreateGroup(
-    cy, mode, isLocked, onLockedAction, groups, setGroups, saveGroupsToExtension, lastStyleRef
+    cy,
+    mode,
+    isLocked,
+    onLockedAction,
+    groups,
+    setGroups,
+    saveGroupsToExtension,
+    lastStyleRef
   );
 
   const deleteGroup = useDeleteGroup({
@@ -704,17 +767,20 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
 
   const closeEditor = useCallback((): void => {
     setEditingGroup(null);
-    log.info('[Groups] Editor closed');
+    log.info("[Groups] Editor closed");
   }, [setEditingGroup]);
 
   // Wrap createGroup to also update in-memory membership when creating with nodes
   // This ensures getNodeMembership() returns correct results immediately after group creation
   const createGroupWithMembership = useCallback(
-    (selectedNodeIds?: string[], parentId?: string | null): { groupId: string; group: GroupStyleAnnotation } | null => {
+    (
+      selectedNodeIds?: string[],
+      parentId?: string | null
+    ): { groupId: string; group: GroupStyleAnnotation } | null => {
       let effectiveParentId = parentId;
 
       if (effectiveParentId === undefined && selectedNodeIds && selectedNodeIds.length > 0) {
-        const memberships = selectedNodeIds.map(nodeId => membership.getNodeMembership(nodeId));
+        const memberships = selectedNodeIds.map((nodeId) => membership.getNodeMembership(nodeId));
         const nonNullMemberships = memberships.filter((m): m is string => Boolean(m));
         const uniqueMemberships = new Set(nonNullMemberships);
 
@@ -735,7 +801,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       const result = createGroup(selectedNodeIds, effectiveParentId);
       if (result && selectedNodeIds && selectedNodeIds.length > 0) {
         // Update in-memory membership map (the extension is already notified by createGroup)
-        selectedNodeIds.forEach(nodeId => {
+        selectedNodeIds.forEach((nodeId) => {
           // Directly set the membership ref without re-notifying extension
           // Note: createGroup already saved membership for each node
           membership.addNodeToGroupLocal?.(nodeId, result.groupId);
@@ -760,17 +826,24 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   });
 
   const updateGroup = useUpdateGroup(mode, isLocked, setGroups, saveGroupsToExtension);
-  const updateGroupPosition = useUpdateGroupPosition(mode, isLocked, setGroups, saveGroupsToExtension);
+  const updateGroupPosition = useUpdateGroupPosition(
+    mode,
+    isLocked,
+    setGroups,
+    saveGroupsToExtension
+  );
   const updateGroupSize = useUpdateGroupSize(mode, isLocked, setGroups, saveGroupsToExtension);
   const updateGroupGeoPosition = useUpdateGroupGeoPosition(setGroups, saveGroupsToExtension);
 
   const loadGroups = useCallback(
     (
-      loadedGroups: GroupStyleAnnotation[] | ((prev: GroupStyleAnnotation[]) => GroupStyleAnnotation[]),
+      loadedGroups:
+        | GroupStyleAnnotation[]
+        | ((prev: GroupStyleAnnotation[]) => GroupStyleAnnotation[]),
       persistToExtension = true
     ): void => {
-      setGroups(prev => {
-        const next = typeof loadedGroups === 'function' ? loadedGroups(prev) : loadedGroups;
+      setGroups((prev) => {
+        const next = typeof loadedGroups === "function" ? loadedGroups(prev) : loadedGroups;
         // Persist to extension unless this is initial data loading
         if (persistToExtension) {
           saveGroupsToExtension(next);
@@ -785,7 +858,7 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
   /** Add a single group (used by clipboard paste) */
   const addGroup = useCallback(
     (group: GroupStyleAnnotation): void => {
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = [...prev, group];
         saveGroupsToExtension(updated);
         return updated;
@@ -797,8 +870,8 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
 
   const getUndoRedoAction = useCallback(
     (before: GroupStyleAnnotation | null, after: GroupStyleAnnotation | null): GroupUndoAction => ({
-      type: 'annotation',
-      annotationType: 'group',
+      type: "annotation",
+      annotationType: "group",
       before,
       after
     }),
@@ -817,13 +890,13 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
         return;
       }
 
-      setGroups(prev => {
+      setGroups((prev) => {
         const updated = updateGroupInList(prev, groupId, { parentId: parentId ?? undefined });
         saveGroupsToExtension(updated);
         return updated;
       });
 
-      log.info(`[Groups] Updated parent of ${groupId} to ${parentId ?? 'root'}`);
+      log.info(`[Groups] Updated parent of ${groupId} to ${parentId ?? "root"}`);
     },
     [mode, isLocked, groups, setGroups, saveGroupsToExtension]
   );
@@ -892,11 +965,31 @@ export function useGroups(options: UseGroupsHookOptions): UseGroupsReturn {
       getGroupDepth
     }),
     [
-      groups, editingGroup, createGroupWithMembership, deleteGroup, editGroup, closeEditor,
-      saveGroup, updateGroup, updateGroupPosition, updateGroupSize, updateGroupGeoPosition, loadGroups,
-      addGroup, getUndoRedoAction, membership, selectedGroupIds, selectGroup, toggleGroupSelection,
-      boxSelectGroups, clearGroupSelection, updateGroupParent, getChildGroups, getDescendantGroupsMethod,
-      getParentGroup, getGroupDepth
+      groups,
+      editingGroup,
+      createGroupWithMembership,
+      deleteGroup,
+      editGroup,
+      closeEditor,
+      saveGroup,
+      updateGroup,
+      updateGroupPosition,
+      updateGroupSize,
+      updateGroupGeoPosition,
+      loadGroups,
+      addGroup,
+      getUndoRedoAction,
+      membership,
+      selectedGroupIds,
+      selectGroup,
+      toggleGroupSelection,
+      boxSelectGroups,
+      clearGroupSelection,
+      updateGroupParent,
+      getChildGroups,
+      getDescendantGroupsMethod,
+      getParentGroup,
+      getGroupDepth
     ]
   );
 }

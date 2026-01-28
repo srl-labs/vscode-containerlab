@@ -2,14 +2,14 @@
  * GroupEditorPanel - Draggable editor panel for group properties
  * Uses BasePanel for consistent look and feel
  */
-import React, { useCallback } from 'react';
+import React, { useCallback } from "react";
 
-import { BasePanel } from '../../shared/editor/BasePanel';
-import type { GroupStyleAnnotation } from '../../../../shared/types/topology';
-import type { GroupEditorData } from '../../../hooks/groups';
-import { useGenericFormState, useEditorHandlers } from '../../../hooks/panels/useGenericFormState';
+import { BasePanel } from "../../shared/editor/BasePanel";
+import type { GroupStyleAnnotation } from "../../../../shared/types/topology";
+import type { GroupEditorData } from "../../../hooks/groups";
+import { useGenericFormState, useEditorHandlers } from "../../../hooks/panels/useGenericFormState";
 
-import { GroupFormContent } from './GroupFormContent';
+import { GroupFormContent } from "./GroupFormContent";
 
 interface GroupEditorPanelProps {
   isVisible: boolean;
@@ -29,10 +29,13 @@ export const GroupEditorPanel: React.FC<GroupEditorPanelProps> = ({
   onStyleChange
 }) => {
   // Transform data to deep clone the style object
-  const transformData = useCallback((data: GroupEditorData) => ({
-    ...data,
-    style: { ...data.style }
-  }), []);
+  const transformData = useCallback(
+    (data: GroupEditorData) => ({
+      ...data,
+      style: { ...data.style }
+    }),
+    []
+  );
 
   const { formData, updateField, hasChanges, resetInitialData, setFormData } = useGenericFormState(
     groupData,
@@ -40,22 +43,22 @@ export const GroupEditorPanel: React.FC<GroupEditorPanelProps> = ({
   );
 
   // Custom updateStyle that also triggers live preview
-  const updateStyle = useCallback(<K extends keyof GroupStyleAnnotation>(
-    field: K,
-    value: GroupStyleAnnotation[K]
-  ) => {
-    setFormData(prev => {
-      if (!prev) return null;
-      // Apply live style change to Cytoscape node
-      if (onStyleChange) {
-        onStyleChange(prev.id, { [field]: value });
-      }
-      return {
-        ...prev,
-        style: { ...prev.style, [field]: value }
-      };
-    });
-  }, [setFormData, onStyleChange]);
+  const updateStyle = useCallback(
+    <K extends keyof GroupStyleAnnotation>(field: K, value: GroupStyleAnnotation[K]) => {
+      setFormData((prev) => {
+        if (!prev) return null;
+        // Apply live style change to Cytoscape node
+        if (onStyleChange) {
+          onStyleChange(prev.id, { [field]: value });
+        }
+        return {
+          ...prev,
+          style: { ...prev.style, [field]: value }
+        };
+      });
+    },
+    [setFormData, onStyleChange]
+  );
 
   const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
     formData,

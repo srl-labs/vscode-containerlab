@@ -3,7 +3,11 @@
  * Provides tree traversal, validation, and hierarchy calculations.
  */
 
-import type { GroupStyleAnnotation, FreeTextAnnotation, FreeShapeAnnotation } from '../../../shared/types/topology';
+import type {
+  GroupStyleAnnotation,
+  FreeTextAnnotation,
+  FreeShapeAnnotation
+} from "../../../shared/types/topology";
 
 /**
  * Build a map of parent ID to child groups.
@@ -49,11 +53,8 @@ export function getDescendantGroups(
 /**
  * Get all descendant group IDs recursively.
  */
-export function getDescendantGroupIds(
-  groupId: string,
-  groups: GroupStyleAnnotation[]
-): string[] {
-  return getDescendantGroups(groupId, groups).map(g => g.id);
+export function getDescendantGroupIds(groupId: string, groups: GroupStyleAnnotation[]): string[] {
+  return getDescendantGroups(groupId, groups).map((g) => g.id);
 }
 
 /**
@@ -63,17 +64,14 @@ export function getChildGroups(
   groupId: string,
   groups: GroupStyleAnnotation[]
 ): GroupStyleAnnotation[] {
-  return groups.filter(g => g.parentId === groupId);
+  return groups.filter((g) => g.parentId === groupId);
 }
 
 /**
  * Get direct child group IDs.
  */
-export function getChildGroupIds(
-  groupId: string,
-  groups: GroupStyleAnnotation[]
-): string[] {
-  return getChildGroups(groupId, groups).map(g => g.id);
+export function getChildGroupIds(groupId: string, groups: GroupStyleAnnotation[]): string[] {
+  return getChildGroups(groupId, groups).map((g) => g.id);
 }
 
 /**
@@ -83,7 +81,7 @@ export function getAncestorGroups(
   groupId: string,
   groups: GroupStyleAnnotation[]
 ): GroupStyleAnnotation[] {
-  const groupMap = new Map(groups.map(g => [g.id, g]));
+  const groupMap = new Map(groups.map((g) => [g.id, g]));
   const ancestors: GroupStyleAnnotation[] = [];
 
   let current = groupMap.get(groupId);
@@ -107,19 +105,16 @@ export function getParentGroup(
   groupId: string,
   groups: GroupStyleAnnotation[]
 ): GroupStyleAnnotation | null {
-  const group = groups.find(g => g.id === groupId);
+  const group = groups.find((g) => g.id === groupId);
   if (!group?.parentId) return null;
-  return groups.find(g => g.id === group.parentId) ?? null;
+  return groups.find((g) => g.id === group.parentId) ?? null;
 }
 
 /**
  * Calculate the nesting depth of a group.
  * Root groups have depth 0.
  */
-export function getGroupDepth(
-  groupId: string,
-  groups: GroupStyleAnnotation[]
-): number {
+export function getGroupDepth(groupId: string, groups: GroupStyleAnnotation[]): number {
   const ancestors = getAncestorGroups(groupId, groups);
   return ancestors.length;
 }
@@ -128,7 +123,7 @@ export function getGroupDepth(
  * Get all root groups (groups with no parent).
  */
 export function findRootGroups(groups: GroupStyleAnnotation[]): GroupStyleAnnotation[] {
-  return groups.filter(g => !g.parentId);
+  return groups.filter((g) => !g.parentId);
 }
 
 /**
@@ -163,8 +158,8 @@ export function getAnnotationsInGroup(
   shapes: FreeShapeAnnotation[];
 } {
   return {
-    texts: textAnnotations.filter(t => t.groupId === groupId),
-    shapes: shapeAnnotations.filter(s => s.groupId === groupId)
+    texts: textAnnotations.filter((t) => t.groupId === groupId),
+    shapes: shapeAnnotations.filter((s) => s.groupId === groupId)
   };
 }
 
@@ -184,8 +179,8 @@ export function getAllAnnotationsInHierarchy(
   const groupIds = [groupId, ...getDescendantGroupIds(groupId, groups)];
 
   return {
-    texts: textAnnotations.filter(t => t.groupId && groupIds.includes(t.groupId)),
-    shapes: shapeAnnotations.filter(s => s.groupId && groupIds.includes(s.groupId))
+    texts: textAnnotations.filter((t) => t.groupId && groupIds.includes(t.groupId)),
+    shapes: shapeAnnotations.filter((s) => s.groupId && groupIds.includes(s.groupId))
   };
 }
 
@@ -275,7 +270,7 @@ export function findDeepestGroupAtPosition(
   const indexById = new Map<string, number>(groups.map((g, i) => [g.id, i]));
 
   // Get all groups containing the position
-  const containingGroups = groups.filter(g => isPositionInGroup(position, g));
+  const containingGroups = groups.filter((g) => isPositionInGroup(position, g));
 
   if (containingGroups.length === 0) return null;
 
@@ -286,13 +281,15 @@ export function findDeepestGroupAtPosition(
   const getAncestorIds = (groupId: string): Set<string> => {
     const cached = ancestorIdsCache.get(groupId);
     if (cached) return cached;
-    const ids = new Set(getAncestorGroups(groupId, groups).map(g => g.id));
+    const ids = new Set(getAncestorGroups(groupId, groups).map((g) => g.id));
     ancestorIdsCache.set(groupId, ids);
     return ids;
   };
 
-  const deepestCandidates = containingGroups.filter(candidate => {
-    return !containingGroups.some(other => other.id !== candidate.id && getAncestorIds(other.id).has(candidate.id));
+  const deepestCandidates = containingGroups.filter((candidate) => {
+    return !containingGroups.some(
+      (other) => other.id !== candidate.id && getAncestorIds(other.id).has(candidate.id)
+    );
   });
 
   const sorted = [...deepestCandidates].sort((a, b) => {

@@ -3,12 +3,7 @@
  */
 
 // Base command classes and utilities
-export {
-  Command,
-  execCommandInTerminal,
-  execCommandInOutput,
-  ClabCommand
-} from "./base";
+export { Command, execCommandInTerminal, execCommandInOutput, ClabCommand } from "./base";
 export type {
   SpinnerOptions,
   TerminalOptions,
@@ -19,22 +14,38 @@ export type {
 
 // Lifecycle commands (deploy, destroy, redeploy, save)
 export {
-  deploy, deployCleanup, deploySpecificFile,
-  destroy, destroyCleanup,
-  redeploy, redeployCleanup,
-  saveLab, saveNode,
+  deploy,
+  deployCleanup,
+  deploySpecificFile,
+  destroy,
+  destroyCleanup,
+  redeploy,
+  redeployCleanup,
+  saveLab,
+  saveNode,
   runClabAction
 } from "./lifecycle";
 
 // Node-related commands
 export {
-  startNode, stopNode, pauseNode, unpauseNode,
-  attachShell, telnetToNode,
-  sshToNode, sshToLab,
+  startNode,
+  stopNode,
+  pauseNode,
+  unpauseNode,
+  attachShell,
+  telnetToNode,
+  sshToNode,
+  sshToLab,
   manageNodeImpairments,
   showLogs,
-  sshxAttach, sshxDetach, sshxReattach, sshxCopyLink,
-  gottyAttach, gottyDetach, gottyReattach, gottyCopyLink
+  sshxAttach,
+  sshxDetach,
+  sshxReattach,
+  sshxCopyLink,
+  gottyAttach,
+  gottyDetach,
+  gottyReattach,
+  gottyCopyLink
 } from "./node";
 
 // Network and interface commands
@@ -84,7 +95,8 @@ export {
   getCurrentTopoViewer,
   notifyCurrentTopoViewerOfCommandSuccess,
   notifyCurrentTopoViewerOfCommandFailure,
-  inspectAllLabs, inspectOneLab,
+  inspectAllLabs,
+  inspectOneLab,
   openBrowser,
   cloneRepo,
   cloneRepoFromUrl,

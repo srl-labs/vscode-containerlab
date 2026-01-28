@@ -2,11 +2,11 @@
  * Watchers - Handles file system and docker image watching for ReactTopoViewer
  */
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { log } from '../services/logger';
-import { nodeFsAdapter } from '../../shared/io';
-import { onDockerImagesUpdated } from '../../../utils/docker/images';
+import { log } from "../services/logger";
+import { nodeFsAdapter } from "../../shared/io";
+import { onDockerImagesUpdated } from "../../../utils/docker/images";
 
 /**
  * Callback for loading topology data
@@ -77,7 +77,7 @@ export class WatcherManager {
 
     this.fileWatcher.onDidChange(() => {
       void this.handleExternalYamlChange(
-        'change',
+        "change",
         yamlFilePath,
         updateController,
         loadTopologyData,
@@ -103,7 +103,7 @@ export class WatcherManager {
     this.saveListener = vscode.workspace.onDidSaveTextDocument((doc) => {
       if (doc.uri.fsPath !== yamlFilePath) return;
       void this.handleExternalYamlChange(
-        'save',
+        "save",
         yamlFilePath,
         updateController,
         loadTopologyData,
@@ -120,7 +120,7 @@ export class WatcherManager {
     this.dockerImagesSubscription?.dispose();
     this.dockerImagesSubscription = onDockerImagesUpdated((images) => {
       panel.webview.postMessage({
-        type: 'docker-images-updated',
+        type: "docker-images-updated",
         dockerImages: images
       });
       log.info(`[ReactTopoViewer] Docker images updated, found ${images.length} images`);
@@ -138,7 +138,7 @@ export class WatcherManager {
    * Reload topology data after external YAML edits and push to webview
    */
   private async handleExternalYamlChange(
-    trigger: 'change' | 'save',
+    trigger: "change" | "save",
     yamlFilePath: string,
     updateController: InternalUpdateController,
     loadTopologyData: TopologyDataLoader,
@@ -160,7 +160,9 @@ export class WatcherManager {
     try {
       const currentContent = await nodeFsAdapter.readFile(yamlFilePath);
       if (this.lastYamlContent === currentContent) {
-        log.debug(`[ReactTopoViewer] YAML ${trigger} detected but content unchanged, skipping refresh`);
+        log.debug(
+          `[ReactTopoViewer] YAML ${trigger} detected but content unchanged, skipping refresh`
+        );
         return;
       }
 

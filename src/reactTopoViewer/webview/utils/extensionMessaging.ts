@@ -24,9 +24,9 @@
  *    - Custom node templates: save-custom-node, delete-custom-node, set-default-custom-node
  *      (stored in VS Code settings, not annotations)
  */
-import type { SaveCustomNodeData } from '../../shared/utilities/customNodeConversions';
+import type { SaveCustomNodeData } from "../../shared/utilities/customNodeConversions";
 
-import { log } from './logger';
+import { log } from "./logger";
 
 declare global {
   interface Window {
@@ -38,7 +38,7 @@ declare global {
  * Get VS Code API instance exposed by the extension host.
  */
 function getVscodeApi(): { postMessage(data: unknown): void } | undefined {
-  return typeof window !== 'undefined' ? window.vscode : undefined;
+  return typeof window !== "undefined" ? window.vscode : undefined;
 }
 
 /**
@@ -78,7 +78,7 @@ export function sendCommandToExtension(command: string, payload?: Record<string,
  * Handled by: extension `MessageRouter`
  */
 export function sendDeleteCustomNode(nodeName: string): void {
-  sendCommandToExtension('delete-custom-node', { name: nodeName });
+  sendCommandToExtension("delete-custom-node", { name: nodeName });
 }
 
 /**
@@ -88,7 +88,7 @@ export function sendDeleteCustomNode(nodeName: string): void {
  * Handled by: extension `MessageRouter`
  */
 export function sendSetDefaultCustomNode(nodeName: string): void {
-  sendCommandToExtension('set-default-custom-node', { name: nodeName });
+  sendCommandToExtension("set-default-custom-node", { name: nodeName });
 }
 
 /**
@@ -101,7 +101,7 @@ export function sendSetDefaultCustomNode(nodeName: string): void {
  * Handled by: extension `MessageRouter`
  */
 export function sendSaveCustomNode(data: SaveCustomNodeData): void {
-  sendCommandToExtension('save-custom-node', data);
+  sendCommandToExtension("save-custom-node", data);
 }
 
 /**

@@ -41,7 +41,7 @@ function ensureStarted(): void {
     }
   };
 
-  window.addEventListener('message', windowListener);
+  window.addEventListener("message", windowListener);
   started = true;
 }
 
@@ -49,7 +49,7 @@ function maybeStop(): void {
   if (!started) return;
   if (subscribers.size > 0) return;
   if (!windowListener) return;
-  window.removeEventListener('message', windowListener);
+  window.removeEventListener("message", windowListener);
   windowListener = null;
   started = false;
 }
@@ -66,4 +66,3 @@ export function subscribeToWebviewMessages(
     maybeStop();
   };
 }
-

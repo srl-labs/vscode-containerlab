@@ -2,26 +2,26 @@
  * LabSettingsPanel - Configure lab settings with tabs for Basic and Management
  * Migrated from legacy TopoViewer panel-lab-settings.html
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
-import { BasePanel } from '../../shared/editor/BasePanel';
-import { useLabSettingsState } from '../../../hooks/panels/useLabSettings';
+import { BasePanel } from "../../shared/editor/BasePanel";
+import { useLabSettingsState } from "../../../hooks/panels/useLabSettings";
 
-import { BasicTab } from './BasicTab';
-import { MgmtTab } from './MgmtTab';
-import type { LabSettings, TabId } from './types';
+import { BasicTab } from "./BasicTab";
+import { MgmtTab } from "./MgmtTab";
+import type { LabSettings, TabId } from "./types";
 
 interface LabSettingsPanelProps {
   isVisible: boolean;
   onClose: () => void;
-  mode: 'view' | 'edit';
+  mode: "view" | "edit";
   isLocked?: boolean;
   labSettings?: LabSettings;
 }
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'basic-lab', label: 'Basic' },
-  { id: 'mgmt', label: 'Management' }
+  { id: "basic-lab", label: "Basic" },
+  { id: "mgmt", label: "Management" }
 ];
 
 export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
@@ -31,9 +31,9 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
   isLocked = true,
   labSettings
 }) => {
-  const [activeTab, setActiveTab] = useState<TabId>('basic-lab');
+  const [activeTab, setActiveTab] = useState<TabId>("basic-lab");
   // Fields are read-only in view mode OR when locked in edit mode
-  const isReadOnly = mode === 'view' || isLocked;
+  const isReadOnly = mode === "view" || isLocked;
 
   const state = useLabSettingsState(labSettings);
 
@@ -48,15 +48,15 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
     if (!isVisible) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         onClose();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isVisible, onClose]);
 
   return (
@@ -78,12 +78,12 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
       testId="lab-settings"
     >
       {/* Tab Navigation */}
-      <div className="panel-tabs mb-3" style={{ justifyContent: 'flex-start' }}>
-        {TABS.map(tab => (
+      <div className="panel-tabs mb-3" style={{ justifyContent: "flex-start" }}>
+        {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`panel-tab-button ${activeTab === tab.id ? 'tab-active' : ''}`}
+            className={`panel-tab-button ${activeTab === tab.id ? "tab-active" : ""}`}
             onClick={() => setActiveTab(tab.id)}
             data-testid={`panel-tab-${tab.id}`}
           >
@@ -93,7 +93,7 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
       </div>
 
       {/* Basic Tab */}
-      {activeTab === 'basic-lab' && (
+      {activeTab === "basic-lab" && (
         <BasicTab
           labName={state.basic.labName}
           prefixType={state.basic.prefixType}
@@ -106,7 +106,7 @@ export const LabSettingsPanel: React.FC<LabSettingsPanelProps> = ({
       )}
 
       {/* Management Tab */}
-      {activeTab === 'mgmt' && (
+      {activeTab === "mgmt" && (
         <MgmtTab
           networkName={state.mgmt.networkName}
           ipv4Type={state.mgmt.ipv4Type}

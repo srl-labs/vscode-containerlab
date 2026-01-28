@@ -1,21 +1,21 @@
 /**
  * BulkLinkPanel - Create multiple links based on name patterns
  */
-import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { BasePanel } from '../../shared/editor/BasePanel';
-import type { GraphChange } from '../../../hooks/state';
-import type { CyElement } from '../../../../shared/types/messages';
+import { BasePanel } from "../../shared/editor/BasePanel";
+import type { GraphChange } from "../../../hooks/state";
+import type { CyElement } from "../../../../shared/types/messages";
 
-import { CopyableCode } from './CopyableCode';
-import { ConfirmBulkLinksModal } from './ConfirmBulkLinksModal';
-import type { LinkCandidate } from './bulkLinkUtils';
-import { computeAndValidateCandidates, confirmAndCreateLinks } from './bulkLinkHandlers';
+import { CopyableCode } from "./CopyableCode";
+import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
+import type { LinkCandidate } from "./bulkLinkUtils";
+import { computeAndValidateCandidates, confirmAndCreateLinks } from "./bulkLinkHandlers";
 
 interface BulkLinkPanelProps {
   isVisible: boolean;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   cy: CyCore | null;
   onClose: () => void;
@@ -33,7 +33,9 @@ const ExamplesSection: React.FC = () => (
         <span className="shrink-0 text-[var(--vscode-symbolIcon-variableForeground)]">1.</span>
         <div>
           <span>All leaves to all spines:</span>
-          <div className="mt-0.5"><CopyableCode>leaf*</CopyableCode> → <CopyableCode>spine*</CopyableCode></div>
+          <div className="mt-0.5">
+            <CopyableCode>leaf*</CopyableCode> → <CopyableCode>spine*</CopyableCode>
+          </div>
         </div>
       </div>
 
@@ -41,7 +43,9 @@ const ExamplesSection: React.FC = () => (
         <span className="shrink-0 text-[var(--vscode-symbolIcon-variableForeground)]">2.</span>
         <div>
           <span>Pair by number (leaf1→spine1):</span>
-          <div className="mt-0.5"><CopyableCode>leaf(\d+)</CopyableCode> → <CopyableCode>spine$1</CopyableCode></div>
+          <div className="mt-0.5">
+            <CopyableCode>leaf(\d+)</CopyableCode> → <CopyableCode>spine$1</CopyableCode>
+          </div>
         </div>
       </div>
 
@@ -49,23 +53,33 @@ const ExamplesSection: React.FC = () => (
         <span className="shrink-0 text-[var(--vscode-symbolIcon-variableForeground)]">3.</span>
         <div>
           <span>Single char match:</span>
-          <div className="mt-0.5"><CopyableCode>srl?</CopyableCode> → <CopyableCode>client*</CopyableCode></div>
+          <div className="mt-0.5">
+            <CopyableCode>srl?</CopyableCode> → <CopyableCode>client*</CopyableCode>
+          </div>
         </div>
       </div>
     </div>
 
     <div className="border-t border-[var(--vscode-panel-border)] pt-2 text-sm text-secondary">
       <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-        <div><CopyableCode>*</CopyableCode> any chars</div>
-        <div><CopyableCode>?</CopyableCode> single char</div>
-        <div><CopyableCode>#</CopyableCode> single digit</div>
-        <div><CopyableCode>$1</CopyableCode> capture group</div>
+        <div>
+          <CopyableCode>*</CopyableCode> any chars
+        </div>
+        <div>
+          <CopyableCode>?</CopyableCode> single char
+        </div>
+        <div>
+          <CopyableCode>#</CopyableCode> single digit
+        </div>
+        <div>
+          <CopyableCode>$1</CopyableCode> capture group
+        </div>
       </div>
     </div>
   </div>
 );
 
-type UseBulkLinkPanelOptions = Omit<BulkLinkPanelProps, 'storageKey'>;
+type UseBulkLinkPanelOptions = Omit<BulkLinkPanelProps, "storageKey">;
 
 function useBulkLinkPanel({
   isVisible,
@@ -76,8 +90,8 @@ function useBulkLinkPanel({
   recordGraphChanges,
   addEdge
 }: UseBulkLinkPanelOptions) {
-  const [sourcePattern, setSourcePattern] = React.useState('');
-  const [targetPattern, setTargetPattern] = React.useState('');
+  const [sourcePattern, setSourcePattern] = React.useState("");
+  const [targetPattern, setTargetPattern] = React.useState("");
   const [status, setStatus] = React.useState<string | null>(null);
   const [pendingCandidates, setPendingCandidates] = React.useState<LinkCandidate[] | null>(null);
   const sourceInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -90,7 +104,7 @@ function useBulkLinkPanel({
     }
   }, [isVisible]);
 
-  const canApply = mode === 'edit' && !isLocked;
+  const canApply = mode === "edit" && !isLocked;
 
   const handleCancel = React.useCallback(() => {
     setPendingCandidates(null);
@@ -143,7 +157,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
   onClose,
   recordGraphChanges,
   addEdge,
-  storageKey = 'bulk-link'
+  storageKey = "bulk-link"
 }) => {
   const {
     sourcePattern,
@@ -175,16 +189,15 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
         onSecondaryClick={handleCancel}
       >
         <div className="space-y-3">
-          <p className="helper-text">
-            Create multiple links by matching node names with patterns.
-          </p>
+          <p className="helper-text">Create multiple links by matching node names with patterns.</p>
 
           <ExamplesSection />
 
           <div className="space-y-2">
             <div className="form-group">
               <label className="block field-label mb-1">
-                Source Pattern<span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
+                Source Pattern
+                <span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
               </label>
               <input
                 ref={sourceInputRef}
@@ -193,13 +206,14 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
                 value={sourcePattern}
                 onChange={(e) => setSourcePattern(e.target.value)}
                 placeholder="e.g. leaf*, srl(\d+)"
-                disabled={mode !== 'edit'}
+                disabled={mode !== "edit"}
               />
             </div>
 
             <div className="form-group">
               <label className="block field-label mb-1">
-                Target Pattern<span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
+                Target Pattern
+                <span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
               </label>
               <input
                 type="text"
@@ -207,7 +221,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
                 value={targetPattern}
                 onChange={(e) => setTargetPattern(e.target.value)}
                 placeholder="e.g. spine*, client$1"
-                disabled={mode !== 'edit'}
+                disabled={mode !== "edit"}
               />
             </div>
           </div>

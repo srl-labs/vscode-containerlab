@@ -10,9 +10,9 @@
  * Tempo: ~70 BPM (slow and dreamy)
  */
 
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
-import { getBMinorFrequency, useAudioEngine, type MelodyNote } from './core';
+import { getBMinorFrequency, useAudioEngine, type MelodyNote } from "./core";
 
 /** ~70 BPM for that slowed down vaporwave feel */
 const BEAT = 0.857; // seconds per beat
@@ -50,27 +50,52 @@ function buildMelody(): MelodyNote[] {
     { sd: 4, octave: -1, beat: 31, duration: 0.5 },
     { sd: 4, octave: -1, beat: 31.5, duration: 0.5 },
     { sd: 7, octave: -3, beat: 32, duration: 0.5 },
-    { sd: 3, octave: 0, beat: 32.5, duration: 0.5 },
+    { sd: 3, octave: 0, beat: 32.5, duration: 0.5 }
   ];
 
-  return rawNotes.map(note => ({
+  return rawNotes.map((note) => ({
     frequency: getBMinorFrequency(note.sd, note.octave),
     beat: note.beat,
-    duration: note.duration,
+    duration: note.duration
   }));
 }
 
 const FULL_MELODY = buildMelody();
 
 const CHORD_PADS = {
-  Em7: [getBMinorFrequency(4, -1), getBMinorFrequency(6, -1), getBMinorFrequency(1, 0), getBMinorFrequency(3, 0)],
-  Bm: [getBMinorFrequency(1, -1), getBMinorFrequency(3, -1), getBMinorFrequency(5, -1), getBMinorFrequency(1, 0)],
-  Em: [getBMinorFrequency(4, -1), getBMinorFrequency(6, -1), getBMinorFrequency(1, 0), getBMinorFrequency(4, 0)],
-  Csm7: [getBMinorFrequency(2, -1), getBMinorFrequency(4, -1), getBMinorFrequency(6, -1), getBMinorFrequency(1, 0)],
-  A: [getBMinorFrequency(7, -2), getBMinorFrequency(2, -1), getBMinorFrequency(4, -1), getBMinorFrequency(7, -1)],
+  Em7: [
+    getBMinorFrequency(4, -1),
+    getBMinorFrequency(6, -1),
+    getBMinorFrequency(1, 0),
+    getBMinorFrequency(3, 0)
+  ],
+  Bm: [
+    getBMinorFrequency(1, -1),
+    getBMinorFrequency(3, -1),
+    getBMinorFrequency(5, -1),
+    getBMinorFrequency(1, 0)
+  ],
+  Em: [
+    getBMinorFrequency(4, -1),
+    getBMinorFrequency(6, -1),
+    getBMinorFrequency(1, 0),
+    getBMinorFrequency(4, 0)
+  ],
+  Csm7: [
+    getBMinorFrequency(2, -1),
+    getBMinorFrequency(4, -1),
+    getBMinorFrequency(6, -1),
+    getBMinorFrequency(1, 0)
+  ],
+  A: [
+    getBMinorFrequency(7, -2),
+    getBMinorFrequency(2, -1),
+    getBMinorFrequency(4, -1),
+    getBMinorFrequency(7, -1)
+  ]
 };
 
-type VaporwaveSection = 'em7' | 'bm' | 'em' | 'csm7' | 'a';
+type VaporwaveSection = "em7" | "bm" | "em" | "csm7" | "a";
 
 // Module-level cache for pre-rendered audio buffer
 let cachedBuffer: AudioBuffer | null = null;
@@ -86,15 +111,15 @@ function createNoteOffline(
   volume: number = 0.15
 ): void {
   const mainOsc = ctx.createOscillator();
-  mainOsc.type = 'sine';
+  mainOsc.type = "sine";
   mainOsc.frequency.value = frequency;
 
   const subOsc = ctx.createOscillator();
-  subOsc.type = 'sine';
+  subOsc.type = "sine";
   subOsc.frequency.value = frequency / 2;
 
   const bodyOsc = ctx.createOscillator();
-  bodyOsc.type = 'triangle';
+  bodyOsc.type = "triangle";
   bodyOsc.frequency.value = frequency;
 
   const mainGain = ctx.createGain();
@@ -102,7 +127,7 @@ function createNoteOffline(
   const bodyGain = ctx.createGain();
 
   const lfo = ctx.createOscillator();
-  lfo.type = 'sine';
+  lfo.type = "sine";
   lfo.frequency.value = 3;
   const lfoGain = ctx.createGain();
   lfoGain.gain.value = 2;
@@ -112,7 +137,7 @@ function createNoteOffline(
   lfoGain.connect(bodyOsc.frequency);
 
   const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
+  filter.type = "lowpass";
   filter.frequency.value = 1500;
   filter.Q.value = 0.7;
 
@@ -191,7 +216,7 @@ async function renderLoop(): Promise<AudioBuffer> {
     chorusDelay.delayTime.value = 0.015;
 
     const chorusLfo = ctx.createOscillator();
-    chorusLfo.type = 'sine';
+    chorusLfo.type = "sine";
     chorusLfo.frequency.value = 0.3;
     const chorusDepth = ctx.createGain();
     chorusDepth.gain.value = 0.004;
@@ -252,7 +277,7 @@ async function renderLoop(): Promise<AudioBuffer> {
     outputMixer.connect(ctx.destination);
 
     const startTime = 0;
-    FULL_MELODY.forEach(note => {
+    FULL_MELODY.forEach((note) => {
       const noteStart = startTime + (note.beat - 1) * BEAT;
       createNoteOffline(ctx, note.frequency, noteStart, note.duration * BEAT, masterGain, 0.18);
     });
@@ -291,25 +316,25 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
   const engine = useAudioEngine(renderLoop, {
     loop: true,
     loopEnd: LOOP_DURATION,
-    fftSize: 256,
+    fftSize: 256
   });
 
   const getCurrentSection = useCallback((): VaporwaveSection => {
     const { audioContextRef, startTimeRef } = engine.refs;
-    if (!audioContextRef.current || !engine.isPlaying) return 'em7';
+    if (!audioContextRef.current || !engine.isPlaying) return "em7";
 
     const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
     const positionInLoop = elapsed % LOOP_DURATION;
     const currentBeat = positionInLoop / BEAT;
 
-    if (currentBeat < 4) return 'em7';
-    if (currentBeat < 8) return 'bm';
-    if (currentBeat < 12) return 'em';
-    if (currentBeat < 16) return 'bm';
-    if (currentBeat < 20) return 'em';
-    if (currentBeat < 24) return 'bm';
-    if (currentBeat < 28) return 'csm7';
-    return 'a';
+    if (currentBeat < 4) return "em7";
+    if (currentBeat < 8) return "bm";
+    if (currentBeat < 12) return "em";
+    if (currentBeat < 16) return "bm";
+    if (currentBeat < 20) return "em";
+    if (currentBeat < 24) return "bm";
+    if (currentBeat < 28) return "csm7";
+    return "a";
   }, [engine.isPlaying, engine.refs]);
 
   return {
@@ -321,6 +346,6 @@ export function useVaporwaveAudio(): UseVaporwaveAudioReturn {
     toggleMute: engine.toggleMute,
     getFrequencyData: engine.getFrequencyData,
     getTimeDomainData: engine.getTimeDomainData,
-    getCurrentSection,
+    getCurrentSection
   };
 }

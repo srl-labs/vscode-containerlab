@@ -3,7 +3,7 @@
  * These helpers provide type-safe access to element data.
  */
 
-import type { CyElement } from '../../shared/types/topology';
+import type { CyElement } from "../../shared/types/topology";
 
 /**
  * Node data properties from CyElement.data
@@ -35,14 +35,14 @@ export interface CyEdgeData {
  * Type guard to check if an element is a node
  */
 export function isNodeElement(el: CyElement): boolean {
-  return el.group === 'nodes';
+  return el.group === "nodes";
 }
 
 /**
  * Type guard to check if an element is an edge
  */
 export function isEdgeElement(el: CyElement): boolean {
-  return el.group === 'edges';
+  return el.group === "edges";
 }
 
 /**
@@ -83,7 +83,7 @@ export function getEdgeTarget(el: CyElement): string | undefined {
 /**
  * Default icon color for built-in icons
  */
-export const DEFAULT_ICON_COLOR = '#005aff';
+export const DEFAULT_ICON_COLOR = "#005aff";
 
 /**
  * Common style properties for custom icon nodes.
@@ -92,14 +92,14 @@ export const DEFAULT_ICON_COLOR = '#005aff';
  * Matches legacy topoViewer behavior.
  */
 export const CUSTOM_ICON_STYLES = {
-  width: '14',
-  height: '14',
-  'background-fit': 'contain',
-  'background-position-x': '50%',
-  'background-position-y': '50%',
-  'background-repeat': 'no-repeat',
-  'background-color': 'rgba(0, 0, 0, 0)',
-  'background-opacity': 0,
+  width: "14",
+  height: "14",
+  "background-fit": "contain",
+  "background-position-x": "50%",
+  "background-position-y": "50%",
+  "background-repeat": "no-repeat",
+  "background-color": "rgba(0, 0, 0, 0)",
+  "background-opacity": 0
   // Note: background-clip is set dynamically based on corner radius
 } as const;
 
@@ -125,16 +125,16 @@ export function applyCustomIconStyles(
 ): void {
   // Custom icons render as-is (no color tinting)
   // Apply layout styles that built-in roles get from stylesheet selectors
-  node.style('background-image', dataUri);
-  node.style('width', CUSTOM_ICON_STYLES.width);
-  node.style('height', CUSTOM_ICON_STYLES.height);
-  node.style('background-fit', CUSTOM_ICON_STYLES['background-fit']);
-  node.style('background-position-x', CUSTOM_ICON_STYLES['background-position-x']);
-  node.style('background-position-y', CUSTOM_ICON_STYLES['background-position-y']);
-  node.style('background-repeat', CUSTOM_ICON_STYLES['background-repeat']);
-  node.style('background-color', CUSTOM_ICON_STYLES['background-color']);
-  node.style('background-opacity', CUSTOM_ICON_STYLES['background-opacity']);
+  node.style("background-image", dataUri);
+  node.style("width", CUSTOM_ICON_STYLES.width);
+  node.style("height", CUSTOM_ICON_STYLES.height);
+  node.style("background-fit", CUSTOM_ICON_STYLES["background-fit"]);
+  node.style("background-position-x", CUSTOM_ICON_STYLES["background-position-x"]);
+  node.style("background-position-y", CUSTOM_ICON_STYLES["background-position-y"]);
+  node.style("background-repeat", CUSTOM_ICON_STYLES["background-repeat"]);
+  node.style("background-color", CUSTOM_ICON_STYLES["background-color"]);
+  node.style("background-opacity", CUSTOM_ICON_STYLES["background-opacity"]);
   // Use 'node' clip when corner radius is set so icon gets clipped to rounded shape
-  const clipMode = (iconCornerRadius !== undefined && iconCornerRadius > 0) ? 'node' : 'none';
-  node.style('background-clip', clipMode);
+  const clipMode = iconCornerRadius !== undefined && iconCornerRadius > 0 ? "node" : "none";
+  node.style("background-clip", clipMode);
 }

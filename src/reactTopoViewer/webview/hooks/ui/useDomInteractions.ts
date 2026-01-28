@@ -2,8 +2,8 @@
  * DOM Interaction Hooks - Consolidated hooks for common DOM interactions
  * Includes: useEscapeKey, useClickOutside, useDelayedHover
  */
-import type { RefObject } from 'react';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import type { RefObject } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 // ============================================================================
 // useEscapeKey - Hook for handling ESC key to close modals/panels
@@ -15,10 +15,10 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 export function useEscapeKey(isOpen: boolean, onClose: () => void): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) onClose();
+      if (e.key === "Escape" && isOpen) onClose();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 }
 
@@ -43,8 +43,8 @@ export function useClickOutside(
       }
     };
 
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, [ref, callback, enabled]);
 }
 

@@ -43,7 +43,7 @@ function upsertMembershipAnnotation(
   entry: MembershipUpdateEntry,
   resolved: { name?: string; level?: string }
 ): void {
-  const existing = nodeAnnotations.find(n => n.id === entry.nodeId);
+  const existing = nodeAnnotations.find((n) => n.id === entry.nodeId);
   if (existing) {
     existing.groupId = entry.groupId ?? undefined;
     existing.group = resolved.name ?? undefined;
@@ -68,9 +68,7 @@ export function applyMembershipUpdates(
     annotations.nodeAnnotations = nodeAnnotations;
   }
 
-  const groupLookup = new Map(
-    (annotations.groupStyleAnnotations ?? []).map(g => [g.id, g])
-  );
+  const groupLookup = new Map((annotations.groupStyleAnnotations ?? []).map((g) => [g.id, g]));
 
   for (const entry of entries) {
     const resolved = resolveMembershipInfo(groupLookup, entry);

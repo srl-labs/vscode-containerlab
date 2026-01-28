@@ -1,13 +1,13 @@
 /**
  * Combined hook for annotation effects (background clear, group move)
  */
-import type React from 'react';
-import { useCallback, useEffect, useRef } from 'react';
-import type { Core as CyCore, EventObject, NodeSingular } from 'cytoscape';
+import type React from "react";
+import { useCallback, useEffect, useRef } from "react";
+import type { Core as CyCore, EventObject, NodeSingular } from "cytoscape";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
-import type { FreeTextAnnotation } from './freeText';
+import type { FreeTextAnnotation } from "./freeText";
 
 // ============================================================================
 // Annotation Group Move (internal)
@@ -56,13 +56,15 @@ function createGrabHandler(
 
     const nodePos = node.position();
     refs.nodeStartPos.current = { x: nodePos.x, y: nodePos.y };
-    refs.startPositions.current = selectedAnnotations.map(a => ({
+    refs.startPositions.current = selectedAnnotations.map((a) => ({
       id: a.id,
       x: a.position.x,
       y: a.position.y
     }));
 
-    log.info(`[AnnotationGroupMove] Drag started, tracking ${selectedAnnotations.length} annotations`);
+    log.info(
+      `[AnnotationGroupMove] Drag started, tracking ${selectedAnnotations.length} annotations`
+    );
   };
 }
 
@@ -91,7 +93,9 @@ function createDragHandler(
 function createDragFreeHandler(refs: DragTrackingRefs) {
   return () => {
     if (refs.startPositions.current.length > 0) {
-      log.info(`[AnnotationGroupMove] Drag ended, moved ${refs.startPositions.current.length} annotations`);
+      log.info(
+        `[AnnotationGroupMove] Drag ended, moved ${refs.startPositions.current.length} annotations`
+      );
     }
     refs.startPositions.current = [];
     refs.nodeStartPos.current = null;
@@ -106,10 +110,13 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
 
   const startPositionsRef = useRef<AnnotationStartPosition[]>([]);
   const nodeStartPosRef = useRef<{ x: number; y: number } | null>(null);
-  const refs: DragTrackingRefs = { startPositions: startPositionsRef, nodeStartPos: nodeStartPosRef };
+  const refs: DragTrackingRefs = {
+    startPositions: startPositionsRef,
+    nodeStartPos: nodeStartPosRef
+  };
 
   const getSelectedAnnotations = useCallback(() => {
-    return annotations.filter(a => selectedAnnotationIds.has(a.id));
+    return annotations.filter((a) => selectedAnnotationIds.has(a.id));
   }, [annotations, selectedAnnotationIds]);
 
   const handleGrab = useCallback(
@@ -126,13 +133,13 @@ function useAnnotationGroupMove(options: UseAnnotationGroupMoveOptions): void {
 
   useEffect(() => {
     if (!cy) return;
-    cy.on('grab', 'node', handleGrab);
-    cy.on('drag', 'node', handleDrag);
-    cy.on('dragfree', 'node', handleDragFree);
+    cy.on("grab", "node", handleGrab);
+    cy.on("drag", "node", handleDrag);
+    cy.on("dragfree", "node", handleDragFree);
     return () => {
-      cy.off('grab', 'node', handleGrab);
-      cy.off('drag', 'node', handleDrag);
-      cy.off('dragfree', 'node', handleDragFree);
+      cy.off("grab", "node", handleGrab);
+      cy.off("drag", "node", handleDrag);
+      cy.off("dragfree", "node", handleDragFree);
     };
   }, [cy, handleGrab, handleDrag, handleDragFree]);
 }
@@ -153,24 +160,27 @@ interface UseAnnotationBackgroundClearOptions {
 function useAnnotationBackgroundClear(options: UseAnnotationBackgroundClearOptions): void {
   const { cy, selectedAnnotationIds, onClearSelection } = options;
 
-  const handleBackgroundTap = useCallback((event: EventObject) => {
-    // Only handle clicks directly on the cytoscape canvas (not on nodes/edges)
-    if (event.target !== cy) return;
+  const handleBackgroundTap = useCallback(
+    (event: EventObject) => {
+      // Only handle clicks directly on the cytoscape canvas (not on nodes/edges)
+      if (event.target !== cy) return;
 
-    // Only clear if there are selected annotations
-    if (selectedAnnotationIds.size > 0) {
-      log.info('[AnnotationBackgroundClear] Clearing annotation selection on background tap');
-      onClearSelection();
-    }
-  }, [cy, selectedAnnotationIds, onClearSelection]);
+      // Only clear if there are selected annotations
+      if (selectedAnnotationIds.size > 0) {
+        log.info("[AnnotationBackgroundClear] Clearing annotation selection on background tap");
+        onClearSelection();
+      }
+    },
+    [cy, selectedAnnotationIds, onClearSelection]
+  );
 
   useEffect(() => {
     if (!cy) return;
 
-    cy.on('tap', handleBackgroundTap);
+    cy.on("tap", handleBackgroundTap);
 
     return () => {
-      cy.off('tap', handleBackgroundTap);
+      cy.off("tap", handleBackgroundTap);
     };
   }, [cy, handleBackgroundTap]);
 }

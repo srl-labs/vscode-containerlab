@@ -4,12 +4,12 @@
  * Fields shown when creating/editing custom node templates:
  * - Template Name, Base Name, Interface Pattern, Set as default
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 
-import { FormField, InputField, CheckboxField, Section } from '../../shared/form';
-import { copyToClipboard } from '../../../utils/clipboard';
+import { FormField, InputField, CheckboxField, Section } from "../../shared/form";
+import { copyToClipboard } from "../../../utils/clipboard";
 
-import type { TabProps } from './types';
+import type { TabProps } from "./types";
 
 /**
  * Interface pattern example with description
@@ -21,16 +21,20 @@ interface PatternExample {
 }
 
 const PATTERN_EXAMPLES: PatternExample[] = [
-  { pattern: 'e1-{n}', description: 'Sequential from 1', result: 'e1-1, e1-2, e1-3...' },
-  { pattern: 'eth{n:0}', description: 'Sequential from 0', result: 'eth0, eth1, eth2...' },
-  { pattern: 'Gi0/0/{n:1-4}', description: 'Range 1-4 only', result: 'Gi0/0/1, Gi0/0/2, Gi0/0/3, Gi0/0/4' },
-  { pattern: 'xe-0/0/{n:0}', description: 'Juniper style', result: 'xe-0/0/0, xe-0/0/1...' },
+  { pattern: "e1-{n}", description: "Sequential from 1", result: "e1-1, e1-2, e1-3..." },
+  { pattern: "eth{n:0}", description: "Sequential from 0", result: "eth0, eth1, eth2..." },
+  {
+    pattern: "Gi0/0/{n:1-4}",
+    description: "Range 1-4 only",
+    result: "Gi0/0/1, Gi0/0/2, Gi0/0/3, Gi0/0/4"
+  },
+  { pattern: "xe-0/0/{n:0}", description: "Juniper style", result: "xe-0/0/0, xe-0/0/1..." }
 ];
 
 /**
  * Copyable code snippet with copy button
  */
-const CopyableCode: React.FC<{ text: string; className?: string }> = ({ text, className = '' }) => {
+const CopyableCode: React.FC<{ text: string; className?: string }> = ({ text, className = "" }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
@@ -54,7 +58,9 @@ const CopyableCode: React.FC<{ text: string; className?: string }> = ({ text, cl
       title="Click to copy"
     >
       <span>{text}</span>
-      <i className={`fas ${copied ? 'fa-check text-green-500' : 'fa-copy opacity-60'} text-[10px]`} />
+      <i
+        className={`fas ${copied ? "fa-check text-green-500" : "fa-copy opacity-60"} text-[10px]`}
+      />
     </button>
   );
 };
@@ -77,10 +83,16 @@ const InterfacePatternInfo: React.FC<{ isExpanded: boolean; onToggle: () => void
           hover:bg-[var(--vscode-list-hoverBackground)]
           transition-colors"
       >
-        <i className={`fas fa-chevron-right text-[10px] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+        <i
+          className={`fas fa-chevron-right text-[10px] transition-transform ${isExpanded ? "rotate-90" : ""}`}
+        />
         <i className="fas fa-info-circle text-[var(--vscode-textLink-foreground)]" />
         <span className="text-[var(--vscode-descriptionForeground)]">
-          Pattern syntax: Use <code className="px-1 bg-[var(--vscode-textCodeBlock-background)] rounded-sm">{'{n}'}</code> for sequential numbering
+          Pattern syntax: Use{" "}
+          <code className="px-1 bg-[var(--vscode-textCodeBlock-background)] rounded-sm">
+            {"{n}"}
+          </code>{" "}
+          for sequential numbering
         </span>
       </button>
 
@@ -129,7 +141,7 @@ export const CustomNodeTemplateFields: React.FC<TabProps> = ({ data, onChange })
         <FormField label="Template Name">
           <InputField
             id="node-custom-name"
-            value={data.customName || ''}
+            value={data.customName || ""}
             onChange={(value) => onChange({ customName: value })}
             placeholder="Template name"
           />
@@ -137,7 +149,7 @@ export const CustomNodeTemplateFields: React.FC<TabProps> = ({ data, onChange })
         <FormField label="Base Name (for canvas)">
           <InputField
             id="node-base-name"
-            value={data.baseName || ''}
+            value={data.baseName || ""}
             onChange={(value) => onChange({ baseName: value })}
             placeholder="e.g., srl (will become srl1, srl2, etc.)"
           />
@@ -152,7 +164,7 @@ export const CustomNodeTemplateFields: React.FC<TabProps> = ({ data, onChange })
           <FormField label="Interface Pattern">
             <InputField
               id="node-interface-pattern"
-              value={data.interfacePattern || ''}
+              value={data.interfacePattern || ""}
               onChange={(value) => onChange({ interfacePattern: value })}
               placeholder="e.g., e1-{n} or Gi0/0/{n:0}"
             />

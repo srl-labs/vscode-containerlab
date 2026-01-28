@@ -2,30 +2,52 @@
  * IconSelectorModal - Modal for selecting and customizing node icons
  * Built on top of BasePanel. Supports both built-in and custom icons.
  */
-import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
 
-import type { NodeType } from '../../utils/SvgGenerator';
-import { generateEncodedSVG } from '../../utils/SvgGenerator';
-import { useEscapeKey } from '../../hooks/ui/useDomInteractions';
-import { useTopoViewerState } from '../../context/TopoViewerContext';
-import { postCommand } from '../../utils/extensionMessaging';
-import { isBuiltInIcon } from '../../../shared/types/icons';
+import type { NodeType } from "../../utils/SvgGenerator";
+import { generateEncodedSVG } from "../../utils/SvgGenerator";
+import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
+import { useTopoViewerState } from "../../context/TopoViewerContext";
+import { postCommand } from "../../utils/extensionMessaging";
+import { isBuiltInIcon } from "../../../shared/types/icons";
 
-import { BasePanel } from './editor/BasePanel';
+import { BasePanel } from "./editor/BasePanel";
 
 const AVAILABLE_ICONS: NodeType[] = [
-  'pe', 'dcgw', 'leaf', 'switch', 'bridge', 'spine',
-  'super-spine', 'server', 'pon', 'controller', 'rgw', 'ue', 'cloud', 'client'
+  "pe",
+  "dcgw",
+  "leaf",
+  "switch",
+  "bridge",
+  "spine",
+  "super-spine",
+  "server",
+  "pon",
+  "controller",
+  "rgw",
+  "ue",
+  "cloud",
+  "client"
 ];
 
 const ICON_LABELS: Record<string, string> = {
-  'pe': 'PE Router', 'dcgw': 'DC Gateway', 'leaf': 'Leaf', 'switch': 'Switch',
-  'bridge': 'Bridge', 'spine': 'Spine', 'super-spine': 'Super Spine',
-  'server': 'Server', 'pon': 'PON', 'controller': 'Controller',
-  'rgw': 'RGW', 'ue': 'User Equipment', 'cloud': 'Cloud', 'client': 'Client'
+  pe: "PE Router",
+  dcgw: "DC Gateway",
+  leaf: "Leaf",
+  switch: "Switch",
+  bridge: "Bridge",
+  spine: "Spine",
+  "super-spine": "Super Spine",
+  server: "Server",
+  pon: "PON",
+  controller: "Controller",
+  rgw: "RGW",
+  ue: "User Equipment",
+  cloud: "Cloud",
+  client: "Client"
 };
 
-const DEFAULT_COLOR = '#1a73e8';
+const DEFAULT_COLOR = "#1a73e8";
 const MAX_RADIUS = 40;
 const COLOR_DEBOUNCE_MS = 50;
 
@@ -38,8 +60,11 @@ function getIconSrc(icon: string, color: string, customIconDataUri?: string): st
     return customIconDataUri;
   }
   // Built-in icons with color
-  try { return generateEncodedSVG(icon as NodeType, color); }
-  catch { return generateEncodedSVG('pe', color); }
+  try {
+    return generateEncodedSVG(icon as NodeType, color);
+  } catch {
+    return generateEncodedSVG("pe", color);
+  }
 }
 
 /**
@@ -95,7 +120,18 @@ function useIconSelectorState(
   const displayColor = useColor ? color : DEFAULT_COLOR;
   const resultColor = useColor && color !== DEFAULT_COLOR ? color : null;
 
-  return { icon, setIcon, color, setColor, radius, setRadius, useColor, setUseColor, displayColor, resultColor };
+  return {
+    icon,
+    setIcon,
+    color,
+    setColor,
+    radius,
+    setRadius,
+    useColor,
+    setUseColor,
+    displayColor,
+    resultColor
+  };
 }
 
 interface IconSelectorModalProps {
@@ -115,30 +151,49 @@ interface IconButtonProps {
   onClick: () => void;
   onDelete?: () => void;
   isCustom?: boolean;
-  source?: 'workspace' | 'global';
+  source?: "workspace" | "global";
 }
 
 const IconButton = React.memo<IconButtonProps>(function IconButton({
-  icon, isSelected, iconSrc, cornerRadius, onClick, onDelete, isCustom, source
+  icon,
+  isSelected,
+  iconSrc,
+  cornerRadius,
+  onClick,
+  onDelete,
+  isCustom,
+  source
 }) {
   return (
     <div className="relative group">
       <button
         type="button"
         className={`flex w-full flex-col items-center gap-0.5 rounded-sm p-1.5 transition-colors ${
-          isSelected ? 'bg-[var(--vscode-list-activeSelectionBackground)]' : 'hover:bg-[var(--vscode-list-hoverBackground)]'
+          isSelected
+            ? "bg-[var(--vscode-list-activeSelectionBackground)]"
+            : "hover:bg-[var(--vscode-list-hoverBackground)]"
         }`}
         onClick={onClick}
-        title={(ICON_LABELS[icon] || icon) + (source ? ' (' + source + ')' : '')}
+        title={(ICON_LABELS[icon] || icon) + (source ? " (" + source + ")" : "")}
       >
-        <img src={iconSrc} alt={icon} className="rounded-sm" style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }} />
-        <span className="max-w-full truncate text-[10px] text-[var(--vscode-foreground)]">{ICON_LABELS[icon] || icon}</span>
+        <img
+          src={iconSrc}
+          alt={icon}
+          className="rounded-sm"
+          style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }}
+        />
+        <span className="max-w-full truncate text-[10px] text-[var(--vscode-foreground)]">
+          {ICON_LABELS[icon] || icon}
+        </span>
       </button>
       {/* Delete button for global custom icons */}
-      {isCustom && source === 'global' && onDelete && (
+      {isCustom && source === "global" && onDelete && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
           className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--vscode-errorForeground)] text-white rounded-sm text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
           title={`Delete ${icon}`}
         >
@@ -150,36 +205,88 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
 });
 
 const ColorPicker: React.FC<{
-  color: string; enabled: boolean; onColorChange: (c: string) => void; onToggle: (e: boolean) => void;
+  color: string;
+  enabled: boolean;
+  onColorChange: (c: string) => void;
+  onToggle: (e: boolean) => void;
 }> = ({ color, enabled, onColorChange, onToggle }) => (
   <div className="space-y-1">
     <label className="field-label">Icon Color</label>
     <div className="flex items-center gap-2">
-      <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} className="h-4 w-4" />
-      <input type="color" value={color} onChange={(e) => { onColorChange(e.target.value); onToggle(true); }}
-        className="h-7 w-12 cursor-pointer rounded-sm border border-[var(--vscode-panel-border)] p-0.5" disabled={!enabled} />
-      <input type="text" value={enabled ? color : ''} onChange={(e) => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) { onColorChange(e.target.value); onToggle(true); } }}
-        className="input-field flex-1 text-xs" placeholder={DEFAULT_COLOR} maxLength={7} disabled={!enabled} />
+      <input
+        type="checkbox"
+        checked={enabled}
+        onChange={(e) => onToggle(e.target.checked)}
+        className="h-4 w-4"
+      />
+      <input
+        type="color"
+        value={color}
+        onChange={(e) => {
+          onColorChange(e.target.value);
+          onToggle(true);
+        }}
+        className="h-7 w-12 cursor-pointer rounded-sm border border-[var(--vscode-panel-border)] p-0.5"
+        disabled={!enabled}
+      />
+      <input
+        type="text"
+        value={enabled ? color : ""}
+        onChange={(e) => {
+          if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) {
+            onColorChange(e.target.value);
+            onToggle(true);
+          }
+        }}
+        className="input-field flex-1 text-xs"
+        placeholder={DEFAULT_COLOR}
+        maxLength={7}
+        disabled={!enabled}
+      />
     </div>
   </div>
 );
 
-const RadiusSlider: React.FC<{ value: number; onChange: (v: number) => void }> = ({ value, onChange }) => (
+const RadiusSlider: React.FC<{ value: number; onChange: (v: number) => void }> = ({
+  value,
+  onChange
+}) => (
   <div className="space-y-1">
     <label className="field-label">Corner Radius: {value}px</label>
-    <input type="range" min={0} max={MAX_RADIUS} value={value} onChange={(e) => onChange(Number(e.target.value))}
-      className="h-2 w-full cursor-pointer appearance-none rounded-sm bg-[var(--vscode-input-background)]" />
+    <input
+      type="range"
+      min={0}
+      max={MAX_RADIUS}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="h-2 w-full cursor-pointer appearance-none rounded-sm bg-[var(--vscode-input-background)]"
+    />
   </div>
 );
 
 export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
-  isOpen, onClose, onSave, initialIcon = 'pe', initialColor = null, initialCornerRadius = 0
+  isOpen,
+  onClose,
+  onSave,
+  initialIcon = "pe",
+  initialColor = null,
+  initialCornerRadius = 0
 }) => {
   const { state } = useTopoViewerState();
   const customIcons = state.customIcons;
 
-  const { icon, setIcon, color, setColor, radius, setRadius, useColor, setUseColor, displayColor, resultColor } =
-    useIconSelectorState(isOpen, initialIcon, initialColor, initialCornerRadius);
+  const {
+    icon,
+    setIcon,
+    color,
+    setColor,
+    radius,
+    setRadius,
+    useColor,
+    setUseColor,
+    displayColor,
+    resultColor
+  } = useIconSelectorState(isOpen, initialIcon, initialColor, initialCornerRadius);
 
   useEscapeKey(isOpen, onClose);
 
@@ -188,7 +295,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
 
   // Check if current icon is a custom icon
   const currentCustomIcon = useMemo(() => {
-    return customIcons.find(ci => ci.name === icon);
+    return customIcons.find((ci) => ci.name === icon);
   }, [customIcons, icon]);
 
   // Memoize icon sources for built-in icons - only regenerate when debounced color changes
@@ -218,11 +325,11 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
   }, [icon, resultColor, radius, onSave, onClose]);
 
   const handleUploadIcon = useCallback(() => {
-    postCommand('icon-upload');
+    postCommand("icon-upload");
   }, []);
 
   const handleDeleteIcon = useCallback((iconName: string) => {
-    postCommand('icon-delete', { iconName });
+    postCommand("icon-delete", { iconName });
   }, []);
 
   // Get preview icon source
@@ -304,7 +411,12 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
         <div className="space-y-3">
           {/* Only show color picker for built-in icons */}
           {isBuiltInIcon(icon) ? (
-            <ColorPicker color={color} enabled={useColor} onColorChange={setColor} onToggle={setUseColor} />
+            <ColorPicker
+              color={color}
+              enabled={useColor}
+              onColorChange={setColor}
+              onToggle={setUseColor}
+            />
           ) : (
             <div className="text-xs text-[var(--vscode-descriptionForeground)] italic">
               Custom icons use their original colors
@@ -325,7 +437,11 @@ const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc,
   <div className="space-y-1">
     <label className="field-label">Preview</label>
     <div className="flex items-center justify-center rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-3">
-      <img src={iconSrc} alt="Preview" style={{ width: 56, height: 56, borderRadius: `${(radius / 48) * 56}px` }} />
+      <img
+        src={iconSrc}
+        alt="Preview"
+        style={{ width: 56, height: 56, borderRadius: `${(radius / 48) * 56}px` }}
+      />
     </div>
   </div>
 );

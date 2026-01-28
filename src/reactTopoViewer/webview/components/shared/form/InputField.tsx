@@ -1,14 +1,14 @@
 /**
  * InputField - Text or number input
  */
-import React from 'react';
+import React from "react";
 
 interface InputFieldProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  type?: 'text' | 'number';
+  type?: "text" | "number";
   min?: number;
   max?: number;
   step?: number;
@@ -21,11 +21,11 @@ export const InputField: React.FC<InputFieldProps> = ({
   value,
   onChange,
   placeholder,
-  type = 'text',
+  type = "text",
   min,
   max,
   step,
-  className = '',
+  className = "",
   disabled
 }) => (
   <input
