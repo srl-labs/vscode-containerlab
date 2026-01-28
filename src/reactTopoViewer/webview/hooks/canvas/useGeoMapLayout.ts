@@ -66,7 +66,7 @@ const DEFAULT_SHAPE_SIZE = { width: 120, height: 120 };
 
 const POSITION_EPSILON = 0.25;
 
-const AUTO_GEO_TYPES = new Set(["topology-node", "cloud-node"]);
+const AUTO_GEO_TYPES = new Set(["topology-node", "network-node"]);
 
 const LINE_PADDING = 20;
 

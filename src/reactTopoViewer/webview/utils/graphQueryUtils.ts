@@ -55,7 +55,7 @@ export function searchNodes(nodes: TopoNode[], query: string): TopoNode[] {
     const kind = data.kind;
     if (typeof kind === "string" && kind.toLowerCase().includes(lowerQuery)) return true;
 
-    // Check cloud node type
+    // Check network node type
     const nodeType = data.nodeType;
     if (typeof nodeType === "string" && nodeType.toLowerCase().includes(lowerQuery)) return true;
 

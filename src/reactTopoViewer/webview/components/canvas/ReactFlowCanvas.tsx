@@ -210,8 +210,8 @@ function handleLinkCreationClick(
 ): boolean {
   if (!linkSourceNode) return false;
   const isLoopLink = linkSourceNode === node.id;
-  const isCloudNode = node.type === "cloud-node";
-  if (isLoopLink && isCloudNode) {
+  const isNetworkNode = node.type === "network-node";
+  if (isLoopLink && isNetworkNode) {
     return true;
   }
   event.stopPropagation();

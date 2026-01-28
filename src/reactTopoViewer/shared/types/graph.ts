@@ -30,9 +30,9 @@ export interface TopologyNodeData {
 }
 
 /**
- * Node data for cloud/external endpoint nodes (host, mgmt-net, macvlan, vxlan, bridge)
+ * Node data for network endpoint nodes (host, mgmt-net, macvlan, vxlan, bridge)
  */
-export interface CloudNodeData {
+export interface NetworkNodeData {
   label: string;
   nodeType:
     | "host"
@@ -123,7 +123,7 @@ export interface TopologyEdgeData {
  */
 export type RFNodeData =
   | TopologyNodeData
-  | CloudNodeData
+  | NetworkNodeData
   | GroupNodeData
   | FreeTextNodeData
   | FreeShapeNodeData;
@@ -133,7 +133,7 @@ export type RFNodeData =
  */
 export type RFNodeType =
   | "topology-node"
-  | "cloud-node"
+  | "network-node"
   | "group-node"
   | "free-text-node"
   | "free-shape-node";
@@ -146,7 +146,7 @@ export type RFNodeType =
  * React Flow node with topology data
  */
 export type TopologyRFNode = Node<TopologyNodeData, "topology-node">;
-export type CloudRFNode = Node<CloudNodeData, "cloud-node">;
+export type NetworkRFNode = Node<NetworkNodeData, "network-node">;
 export type GroupRFNode = Node<GroupNodeData, "group-node">;
 export type FreeTextRFNode = Node<FreeTextNodeData, "free-text-node">;
 export type FreeShapeRFNode = Node<FreeShapeNodeData, "free-shape-node">;
@@ -156,7 +156,7 @@ export type FreeShapeRFNode = Node<FreeShapeNodeData, "free-shape-node">;
  */
 export type TopoNode =
   | TopologyRFNode
-  | CloudRFNode
+  | NetworkRFNode
   | GroupRFNode
   | FreeTextRFNode
   | FreeShapeRFNode;

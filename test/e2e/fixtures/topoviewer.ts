@@ -11,7 +11,7 @@ const APP_SELECTOR = '[data-testid="topoviewer-app"]';
 
 // Node type constants (used in browser-side code)
 const TOPOLOGY_NODE_TYPE = "topology-node";
-const CLOUD_NODE_TYPE = "cloud-node";
+const NETWORK_NODE_TYPE = "network-node";
 
 // Topologies directory path (must match dev server config)
 const TOPOLOGIES_DIR = path.resolve(__dirname, "../../../dev/topologies");
@@ -475,11 +475,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
                   const nodes = rf.getNodes?.() ?? [];
                   // Prefer topology nodes, but fall back to any node count
                   const topoNodes = nodes.filter(
-                    (n: any) => n.type === types.topo || n.type === types.cloud
+                    (n: any) => n.type === types.topo || n.type === types.network
                   );
                   return topoNodes.length > 0 || nodes.length > 0;
                 },
-                { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE },
+                { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE },
                 { timeout: 5000 }
               );
             }
@@ -597,9 +597,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               const rf = dev?.rfInstance;
               if (!rf) return false;
               const nodes = rf.getNodes?.() ?? [];
-              return nodes.some((n: any) => n.type === types.topo || n.type === types.cloud);
+              return nodes.some((n: any) => n.type === types.topo || n.type === types.network);
             },
-            { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE },
+            { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE },
             { timeout: 10000, polling: 200 }
           );
         }
@@ -612,11 +612,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             if (!rf) return null;
             const nodes = rf.getNodes?.() ?? [];
             const topoNode = nodes.find(
-              (n: any) => n.type === types.topo || n.type === types.cloud
+              (n: any) => n.type === types.topo || n.type === types.network
             );
             return topoNode?.id ?? null;
           },
-          { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+          { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
         );
 
         if (firstNodeId) {
@@ -688,9 +688,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             if (!rf) return 0;
             const nodes = rf.getNodes?.() ?? [];
             // Filter out non-topology nodes (annotations, etc.)
-            return nodes.filter((n: any) => n.type === types.topo || n.type === types.cloud).length;
+            return nodes.filter((n: any) => n.type === types.topo || n.type === types.network).length;
           },
-          { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+          { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
         );
       },
 
@@ -806,10 +806,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             if (!rf) return [];
             const nodes = rf.getNodes?.() ?? [];
             return nodes
-              .filter((n: any) => n.type === types.topo || n.type === types.cloud)
+              .filter((n: any) => n.type === types.topo || n.type === types.network)
               .map((n: any) => n.id);
           },
-          { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+          { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
         );
       },
 
@@ -1315,7 +1315,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           if (!rf) return [];
           const nodes = rf.getNodes?.() ?? [];
           return nodes.filter((n: any) => n.type === cloudType).map((n: any) => n.id);
-        }, CLOUD_NODE_TYPE);
+        }, NETWORK_NODE_TYPE);
       },
 
       dragNode: async (nodeId: string, delta: { x: number; y: number }) => {

@@ -22,7 +22,7 @@ import { nullLogger } from "./types";
 import { computeFullPrefix, getLabName, getTopologyNodeIds, isPresetLayout } from "./utils";
 import { addNodeElements } from "./NodeElementBuilder";
 import { addEdgeElements } from "./EdgeElementBuilder";
-import { collectSpecialNodes, addCloudNodes } from "./SpecialNodeHandler";
+import { collectSpecialNodes, addNetworkNodes } from "./SpecialNodeHandler";
 import {
   addAliasNodesFromAnnotations,
   applyAliasMappingsToEdges,
@@ -189,7 +189,7 @@ export class TopologyParser {
     const ctx: DummyContext = createDummyContext();
     const { specialNodes, specialNodeProps } = collectSpecialNodes(parsed, ctx);
     const yamlNodeIds = getTopologyNodeIds(parsed);
-    addCloudNodes(specialNodes, specialNodeProps, options.annotations, elements, yamlNodeIds);
+    addNetworkNodes(specialNodes, specialNodeProps, options.annotations, elements, yamlNodeIds);
 
     // Add edge elements
     addEdgeElements(

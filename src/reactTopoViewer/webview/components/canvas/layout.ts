@@ -15,7 +15,7 @@ import {
 /**
  * Node types that participate in layout algorithms
  */
-const LAYOUTABLE_NODE_TYPES = ["topology-node", "cloud-node"];
+const LAYOUTABLE_NODE_TYPES = ["topology-node", "network-node"];
 
 /**
  * Check if a node should be included in layout

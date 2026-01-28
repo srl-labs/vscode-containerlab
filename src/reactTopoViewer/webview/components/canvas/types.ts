@@ -4,7 +4,7 @@
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import type {
-  CloudNodeData,
+  NetworkNodeData,
   FreeShapeNodeData,
   FreeTextNodeData,
   GroupNodeData,
@@ -15,7 +15,7 @@ import type {
   TopologyEdgeData,
   TopologyNodeData,
   TopologyRFNode,
-  CloudRFNode,
+  NetworkRFNode,
   FreeTextRFNode,
   FreeShapeRFNode,
   GroupRFNode
@@ -27,7 +27,7 @@ export type EdgeLabelMode = "show-all" | "on-select" | "hide";
 
 export type {
   TopologyNodeData,
-  CloudNodeData,
+  NetworkNodeData,
   FreeTextNodeData,
   FreeShapeNodeData,
   GroupNodeData,
@@ -35,7 +35,7 @@ export type {
   RFNodeData,
   RFNodeType,
   TopologyRFNode,
-  CloudRFNode,
+  NetworkRFNode,
   FreeTextRFNode,
   FreeShapeRFNode,
   GroupRFNode

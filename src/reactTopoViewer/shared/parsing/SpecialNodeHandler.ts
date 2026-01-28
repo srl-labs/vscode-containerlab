@@ -237,7 +237,7 @@ export function collectSpecialNodes(
 }
 
 // ============================================================================
-// Cloud Node Creation
+// Network Node Creation
 // ============================================================================
 
 interface PlacementResult {
@@ -251,7 +251,7 @@ interface PlacementResult {
 /**
  * Checks if a special node should be skipped (already created by addNodeElements).
  */
-function shouldSkipCloudNode(
+function shouldSkipNetworkNode(
   nodeId: string,
   nodeInfo: SpecialNodeInfo,
   yamlNodeIds?: Set<string>
@@ -276,7 +276,7 @@ function extractNetworkPlacement(saved: NetworkNodeAnnotation): PlacementResult 
 /**
  * Resolves position and label from network node annotations.
  */
-function resolveCloudNodePlacement(
+function resolveNetworkNodePlacement(
   nodeId: string,
   annotations?: TopologyAnnotations
 ): PlacementResult {
@@ -289,9 +289,9 @@ function resolveCloudNodePlacement(
 }
 
 /**
- * Creates a cloud node element.
+ * Creates a network node element.
  */
-function createCloudNodeElement(
+function createNetworkNodeElement(
   nodeId: string,
   nodeInfo: SpecialNodeInfo,
   placement: PlacementResult,
@@ -304,7 +304,7 @@ function createCloudNodeElement(
       id: nodeId,
       weight: "30",
       name: displayLabel,
-      topoViewerRole: "cloud",
+      topoViewerRole: nodeInfo.type as string,
       lat: placement.geoCoordinates?.lat?.toString() || "",
       lng: placement.geoCoordinates?.lng?.toString() || "",
       extraData: {
@@ -357,7 +357,7 @@ function networkTypeToSpecialInfo(id: string, type: string, label?: string): Spe
 }
 
 /**
- * Adds cloud nodes from networkNodeAnnotations that don't have corresponding YAML links.
+ * Adds network nodes from networkNodeAnnotations that don't have corresponding YAML links.
  * This allows network nodes to persist even when their links are deleted.
  */
 function addOrphanedNetworkNodes(
@@ -377,19 +377,19 @@ function addOrphanedNetworkNodes(
     if (existingIds.has(annotation.id)) continue;
     if (specialNodes?.has(annotation.id)) continue;
 
-    // Create cloud node from annotation
+    // Create network node from annotation
     const nodeInfo = networkTypeToSpecialInfo(annotation.id, annotation.type, annotation.label);
     const placement = extractNetworkPlacement(annotation);
     const extraProps = specialNodeProps?.get(annotation.id) || {};
-    const cloudNodeEl = createCloudNodeElement(annotation.id, nodeInfo, placement, extraProps);
-    result.push(cloudNodeEl);
+    const networkNodeEl = createNetworkNodeElement(annotation.id, nodeInfo, placement, extraProps);
+    result.push(networkNodeEl);
   }
 }
 
 /**
- * Adds cloud nodes (special nodes) to the elements array.
+ * Adds network nodes (special nodes) to the elements array.
  */
-export function addCloudNodes(
+export function addNetworkNodes(
   specialNodes: Map<string, SpecialNodeInfo>,
   specialNodeProps: Map<string, Record<string, unknown>>,
   annotations?: TopologyAnnotations,
@@ -398,12 +398,12 @@ export function addCloudNodes(
 ): ParsedElement[] {
   const result = elements ?? [];
   for (const [nodeId, nodeInfo] of specialNodes) {
-    if (shouldSkipCloudNode(nodeId, nodeInfo, yamlNodeIds)) continue;
+    if (shouldSkipNetworkNode(nodeId, nodeInfo, yamlNodeIds)) continue;
 
-    const placement = resolveCloudNodePlacement(nodeId, annotations);
+    const placement = resolveNetworkNodePlacement(nodeId, annotations);
     const extraProps = specialNodeProps.get(nodeId) || {};
-    const cloudNodeEl = createCloudNodeElement(nodeId, nodeInfo, placement, extraProps);
-    result.push(cloudNodeEl);
+    const networkNodeEl = createNetworkNodeElement(nodeId, nodeInfo, placement, extraProps);
+    result.push(networkNodeEl);
   }
 
   // Also add network nodes from annotations that don't have YAML links

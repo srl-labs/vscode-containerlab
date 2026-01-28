@@ -116,7 +116,7 @@ export function computeCandidates(
   // Build target filter (with backreference support)
   const targetRegex = FilterUtils.tryCreateRegExp(targetFilterText);
 
-  // Filter topology nodes (exclude cloud/network nodes)
+  // Filter topology nodes (exclude network nodes)
   const topologyNodes = nodes.filter((node) => node.type === "topology-node");
 
   for (const sourceNode of topologyNodes) {

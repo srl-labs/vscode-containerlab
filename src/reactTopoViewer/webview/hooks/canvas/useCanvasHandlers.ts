@@ -122,7 +122,7 @@ interface CanvasHandlers {
   closeContextMenu: () => void;
 }
 
-const EDITABLE_NODE_TYPES = ["topology-node", "cloud-node"];
+const EDITABLE_NODE_TYPES = ["topology-node", "network-node"];
 
 // ============================================================================
 // Node drag stop helpers (extracted for complexity reduction)
@@ -644,7 +644,7 @@ function useConnectionHandler(
 }
 
 /** Node types that can be selected via box selection and synced to context */
-const SELECTABLE_NODE_TYPES = ["topology-node", "cloud-node"];
+const SELECTABLE_NODE_TYPES = ["topology-node", "network-node"];
 
 /** Hook for selection change handler (box selection support) */
 function useSelectionChangeHandler(
@@ -653,7 +653,7 @@ function useSelectionChangeHandler(
 ): OnSelectionChangeFunc {
   return useCallback(
     ({ nodes, edges }) => {
-      // Filter to only topology/cloud nodes (ignore annotation nodes for context selection)
+      // Filter to only topology/network nodes (ignore annotation nodes for context selection)
       const selectableNodes = nodes.filter((n) => SELECTABLE_NODE_TYPES.includes(n.type || ""));
 
       // If exactly one selectable node is selected, sync to context

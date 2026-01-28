@@ -1,10 +1,10 @@
 /**
- * CloudNode - Custom React Flow node for cloud/external endpoint nodes
+ * NetworkNode - Custom React Flow node for network endpoint nodes
  */
 import React, { useMemo, memo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
-import type { CloudNodeData } from "../types";
+import type { NetworkNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import {
@@ -45,10 +45,10 @@ const HANDLE_POSITIONS = [
 ] as const;
 
 /**
- * CloudNode component renders external endpoint nodes (host, mgmt-net, etc.)
+ * NetworkNode component renders network endpoint nodes (host, mgmt-net, etc.)
  */
-const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
-  const nodeData = data as CloudNodeData;
+const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
+  const nodeData = data as NetworkNodeData;
   const { label, nodeType } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
@@ -56,11 +56,11 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   // Check if this node is a valid link target (in link creation mode and not the source node)
-  // Cloud nodes do not support loop/self-referencing links
+  // Network nodes do not support loop/self-referencing links
   const isLinkTarget = linkSourceNode !== null && linkSourceNode !== id;
   const showLinkTargetHighlight = isLinkTarget && isHovered;
 
-  // Generate the SVG icon URL (cloud icon for all external nodes)
+  // Generate the SVG icon URL (cloud icon for all network nodes)
   const svgUrl = useMemo(() => {
     const color = getNodeTypeColor(nodeType);
     return generateEncodedSVG("cloud", color);
@@ -129,7 +129,7 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   return (
     <div
       style={containerStyle}
-      className="cloud-node"
+      className="network-node"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -154,11 +154,11 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
       ))}
 
       {/* Node icon */}
-      <div style={iconStyle} className="cloud-node-icon" />
+      <div style={iconStyle} className="network-node-icon" />
 
       {/* Node label */}
       {!suppressLabels && (
-        <div style={labelStyle} className="cloud-node-label">
+        <div style={labelStyle} className="network-node-label">
           {label}
         </div>
       )}
@@ -166,9 +166,9 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   );
 };
 
-function areCloudNodePropsEqual(prev: NodeProps, next: NodeProps): boolean {
+function areNetworkNodePropsEqual(prev: NodeProps, next: NodeProps): boolean {
   return prev.data === next.data && prev.selected === next.selected;
 }
 
 // Memoize to prevent unnecessary re-renders
-export const CloudNode = memo(CloudNodeComponent, areCloudNodePropsEqual);
+export const NetworkNode = memo(NetworkNodeComponent, areNetworkNodePropsEqual);

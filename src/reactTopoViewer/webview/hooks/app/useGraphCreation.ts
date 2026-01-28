@@ -108,8 +108,8 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   const getExistingNetworkNodes = React.useCallback(() => {
     const nodes: Array<{ id: string; kind: NetworkType }> = [];
     for (const node of state.nodes) {
+      if (node.type !== "network-node") continue;
       const data = node.data as Record<string, unknown>;
-      if (data.role !== "cloud" && data.topoViewerRole !== "cloud") continue;
       const kind = data.kind || data.nodeType;
       if (typeof kind === "string") {
         nodes.push({ id: node.id, kind: kind as NetworkType });
@@ -165,7 +165,7 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
   const handleNetworkCreatedCallback = React.useCallback(
     (networkId: string, networkElement: TopoNode, position: Position) => {
       // Delegate to the node created handler which handles persistence and undo/redo
-      // The handler detects network nodes by role='cloud' and persists appropriately:
+      // The handler detects network nodes by type='network-node' and persists appropriately:
       // - Bridge types (bridge, ovs-bridge): saved to YAML nodes + nodeAnnotations
       // - Other network types (host, vxlan, etc.): saved to networkNodeAnnotations only
       onNodeCreated(networkId, networkElement, position);

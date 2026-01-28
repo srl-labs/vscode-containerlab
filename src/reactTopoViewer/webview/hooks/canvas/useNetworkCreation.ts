@@ -2,12 +2,12 @@
  * useNetworkCreation - Hook for creating network nodes (host, mgmt-net, macvlan, vxlan, etc.)
  *
  * Networks are external endpoints that connect to resources outside the containerlab topology.
- * They are rendered as "cloud" nodes with special styling and dashed link connections.
+ * They are rendered as network nodes with special styling and dashed link connections.
  */
 import { useCallback, useRef } from "react";
 
 import { log } from "../../utils/logger";
-import type { TopoNode, CloudNodeData } from "../../../shared/types/graph";
+import type { TopoNode, NetworkNodeData } from "../../../shared/types/graph";
 
 /** Network type definitions */
 export type NetworkType =
@@ -212,19 +212,19 @@ function createNetworkData(networkId: string, networkType: NetworkType): Network
 }
 
 /**
- * Convert NetworkData to TopoNode format (CloudRFNode)
+ * Convert NetworkData to TopoNode format (NetworkRFNode)
  */
 function networkDataToTopoNode(data: NetworkData, position: { x: number; y: number }): TopoNode {
-  const cloudData: CloudNodeData = {
+  const networkNodeData: NetworkNodeData = {
     label: data.name,
     nodeType: data.kind,
     extraData: data.extraData
   };
   return {
     id: data.id,
-    type: "cloud-node",
+    type: "network-node",
     position,
-    data: cloudData
+    data: networkNodeData
   };
 }
 

@@ -99,9 +99,8 @@ function toNodeSaveData(node: TopoNode): NodeSaveData {
 }
 
 function isSpecialNetworkNode(node: TopoNode): boolean {
+  if (node.type !== "network-node") return false;
   const data = (node.data ?? {}) as Record<string, unknown>;
-  const isNetwork = data.role === "cloud" || data.topoViewerRole === "cloud";
-  if (!isNetwork) return false;
   const type = getNetworkType(data);
   return Boolean(type && SPECIAL_NETWORK_TYPES.has(type));
 }

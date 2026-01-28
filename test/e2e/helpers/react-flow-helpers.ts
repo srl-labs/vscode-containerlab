@@ -3,7 +3,7 @@ import type { Page, Locator } from "@playwright/test";
 // Constants for browser-side code
 const RF_SELECTOR = ".react-flow";
 const TOPOLOGY_NODE_TYPE = "topology-node";
-const CLOUD_NODE_TYPE = "cloud-node";
+const NETWORK_NODE_TYPE = "network-node";
 
 /**
  * Convert React Flow model coordinates to page/screen coordinates.
@@ -105,10 +105,10 @@ export async function getAllNodeIds(page: Page): Promise<string[]> {
       if (!rf) return [];
       const nodes = rf.getNodes?.() ?? [];
       return nodes
-        .filter((n: any) => n.type === types.topo || n.type === types.cloud)
+        .filter((n: any) => n.type === types.topo || n.type === types.network)
         .map((n: any) => n.id);
     },
-    { topo: TOPOLOGY_NODE_TYPE, cloud: CLOUD_NODE_TYPE }
+    { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
   );
 }
 

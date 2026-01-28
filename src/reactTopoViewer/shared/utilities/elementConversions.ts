@@ -9,7 +9,7 @@ import type {
   TopoEdge,
   TopologyData,
   TopologyNodeData,
-  CloudNodeData,
+  NetworkNodeData,
   TopologyEdgeData
 } from "../types/graph";
 
@@ -20,7 +20,7 @@ import type {
 /**
  * Converts a ParsedElement node to a ReactFlow Node (TopoNode).
  */
-const CLOUD_NODE_ROLES = new Set([
+const NETWORK_NODE_ROLES = new Set([
   "host",
   "mgmt-net",
   "macvlan",
@@ -60,21 +60,21 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
   const geoCoordinates = getGeoCoordinates(data);
 
   // Determine node type based on role
-  const isCloudNode = CLOUD_NODE_ROLES.has(role);
+  const isNetworkNode = NETWORK_NODE_ROLES.has(role);
 
-  if (isCloudNode) {
-    const cloudData: CloudNodeData = {
+  if (isNetworkNode) {
+    const networkNodeData: NetworkNodeData = {
       label: getNodeLabel(data),
-      nodeType: role as CloudNodeData["nodeType"],
+      nodeType: role as NetworkNodeData["nodeType"],
       ...(geoCoordinates ? { geoCoordinates } : {}),
       extraData: extraData
     };
 
     return {
       id: data.id as string,
-      type: "cloud-node",
+      type: "network-node",
       position: element.position ?? { x: 0, y: 0 },
-      data: cloudData
+      data: networkNodeData
     } as TopoNode;
   }
 

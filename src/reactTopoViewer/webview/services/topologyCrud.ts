@@ -25,8 +25,7 @@ export type { NodeSaveData, LinkSaveData };
 const WARN_COMMAND_FAILED = "[Host] Topology command failed";
 
 function isNetworkNode(node: Node): boolean {
-  const data = node.data as Record<string, unknown> | undefined;
-  return data?.role === "cloud" || data?.topoViewerRole === "cloud";
+  return node.type === "network-node";
 }
 
 function buildNetworkNodeAnnotations(nodes: Node[]): NetworkNodeAnnotation[] {
