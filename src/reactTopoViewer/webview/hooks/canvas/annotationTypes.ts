@@ -36,7 +36,7 @@ export interface AnnotationActions {
   updateGroupGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
   addNodeToGroup: (nodeId: string, groupId: string) => void;
   getNodeMembership: (nodeId: string) => string | null;
-  getGroupMembers: (groupId: string) => string[];
+  getGroupMembers: (groupId: string, options?: { includeNested?: boolean }) => string[];
   handleAddGroup: () => void;
   generateGroupId: () => string;
   addGroup: (group: GroupStyleAnnotation) => void;

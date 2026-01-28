@@ -29,6 +29,7 @@ export interface GroupNodeData {
   labelPosition?: string;
   members?: string[];
   parentId?: string;
+  groupId?: string;
   zIndex?: number;
   [key: string]: unknown;
 }

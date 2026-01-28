@@ -120,7 +120,7 @@ export interface AnnotationHandlers {
   /** Delete a group annotation */
   onDeleteGroup?: (id: string) => void;
   /** Get members of a group (for group dragging) */
-  getGroupMembers?: (groupId: string) => string[];
+  getGroupMembers?: (groupId: string, options?: { includeNested?: boolean }) => string[];
 }
 
 /** Position entry for undo/redo move tracking */

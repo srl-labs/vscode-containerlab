@@ -138,6 +138,7 @@ export interface GroupStyleAnnotation {
   name: string;
   level: string;
   parentId?: string; // Parent group ID for nested groups
+  groupId?: string; // Parent group ID (legacy/alternate field for nested groups)
   // Geometry
   position: { x: number; y: number };
   width: number;

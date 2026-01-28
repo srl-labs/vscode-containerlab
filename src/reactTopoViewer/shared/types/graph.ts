@@ -56,6 +56,8 @@ export interface GroupNodeData {
   label: string;
   name: string;
   level: string;
+  parentId?: string;
+  groupId?: string;
   backgroundColor?: string;
   backgroundOpacity?: number;
   borderColor?: string;

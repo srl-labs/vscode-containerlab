@@ -65,7 +65,7 @@ export interface UseDerivedAnnotationsReturn {
   addNodeToGroup: (nodeId: string, groupId: string) => void;
   removeNodeFromGroup: (nodeId: string) => void;
   getNodeMembership: (nodeId: string) => string | null;
-  getGroupMembers: (groupId: string) => string[];
+  getGroupMembers: (groupId: string, options?: { includeNested?: boolean }) => string[];
 }
 
 const isGroupNode = (node: Node): node is Node<GroupNodeData> => node.type === GROUP_NODE_TYPE;
@@ -260,23 +260,62 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
   );
 
   const getGroupMembers = useCallback(
-    (groupId: string): string[] => {
+    (groupId: string, options?: { includeNested?: boolean }): string[] => {
       const members = new Set<string>();
-      for (const [nodeId, gId] of membershipMap) {
-        if (gId === groupId) {
-          members.add(nodeId);
+      const includeNested = options?.includeNested ?? false;
+
+      const addDirectMembers = (id: string) => {
+        for (const [nodeId, gId] of membershipMap) {
+          if (gId === id) {
+            members.add(nodeId);
+          }
+        }
+        // Also include text/shape annotations with this groupId (from node data)
+        for (const text of textAnnotations) {
+          if (text.groupId === id) members.add(text.id);
+        }
+        for (const shape of shapeAnnotations) {
+          if (shape.groupId === id) members.add(shape.id);
+        }
+      };
+
+      if (!includeNested) {
+        addDirectMembers(groupId);
+        return Array.from(members);
+      }
+
+      const childMap = new Map<string, string[]>();
+      for (const group of groups) {
+        const parentId =
+          typeof group.parentId === "string"
+            ? group.parentId
+            : typeof group.groupId === "string"
+              ? group.groupId
+              : undefined;
+        if (!parentId) continue;
+        const list = childMap.get(parentId) ?? [];
+        list.push(group.id);
+        childMap.set(parentId, list);
+      }
+
+      const visited = new Set<string>();
+      const stack = [groupId];
+      while (stack.length > 0) {
+        const current = stack.pop();
+        if (!current || visited.has(current)) continue;
+        visited.add(current);
+        addDirectMembers(current);
+        const children = childMap.get(current) ?? [];
+        for (const child of children) {
+          members.add(child);
+          stack.push(child);
         }
       }
-      // Also include text/shape annotations with this groupId (from node data)
-      for (const text of textAnnotations) {
-        if (text.groupId === groupId) members.add(text.id);
-      }
-      for (const shape of shapeAnnotations) {
-        if (shape.groupId === groupId) members.add(shape.id);
-      }
+
+      members.delete(groupId);
       return Array.from(members);
     },
-    [membershipMap, textAnnotations, shapeAnnotations]
+    [membershipMap, textAnnotations, shapeAnnotations, groups]
   );
 
   return useMemo(

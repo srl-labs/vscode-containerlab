@@ -11,9 +11,14 @@ import { useGraphStore } from "../../stores/graphStore";
 import { useIsLocked, useMode } from "../../stores/topoViewerStore";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { AnnotationContextValue } from "./annotationTypes";
 import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHelpers";
-import { findDeepestGroupAtPosition, generateGroupId } from "./groupUtils";
+import {
+  findDeepestGroupAtPosition,
+  findParentGroupForBounds,
+  generateGroupId
+} from "./groupUtils";
 import { useDerivedAnnotations } from "./useDerivedAnnotations";
 import { useGroupAnnotations } from "./useGroupAnnotations";
 import { useShapeAnnotations } from "./useShapeAnnotations";
@@ -68,9 +73,60 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     uiActions
   });
 
+  const getGroupParentId = useCallback((group: GroupStyleAnnotation): string | null => {
+    if (typeof group.parentId === "string") return group.parentId;
+    if (typeof group.groupId === "string") return group.groupId;
+    return null;
+  }, []);
+
+  const getGroupDescendants = useCallback(
+    (rootId: string): Set<string> => {
+      const descendants = new Set<string>();
+      const stack = [rootId];
+
+      while (stack.length > 0) {
+        const current = stack.pop();
+        if (!current) continue;
+        for (const group of derived.groups) {
+          const parentId = getGroupParentId(group);
+          if (!parentId || parentId !== current) continue;
+          if (!descendants.has(group.id)) {
+            descendants.add(group.id);
+            stack.push(group.id);
+          }
+        }
+      }
+
+      return descendants;
+    },
+    [derived.groups, getGroupParentId]
+  );
+
   const onNodeDropped = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
-      if (nodeId.startsWith("group-")) return;
+      const droppedGroup = derived.groups.find((group) => group.id === nodeId);
+      if (droppedGroup) {
+        const bounds = {
+          x: position.x,
+          y: position.y,
+          width: droppedGroup.width ?? 200,
+          height: droppedGroup.height ?? 150
+        };
+        const excluded = getGroupDescendants(nodeId);
+        excluded.add(nodeId);
+        const candidateGroups = derived.groups.filter((group) => !excluded.has(group.id));
+        const parentGroup = findParentGroupForBounds(bounds, candidateGroups, nodeId);
+        const nextParentId = parentGroup?.id ?? null;
+        const currentParentId = getGroupParentId(droppedGroup);
+
+        if (currentParentId !== nextParentId) {
+          derived.updateGroup(nodeId, {
+            parentId: nextParentId ?? undefined,
+            groupId: nextParentId ?? undefined
+          });
+        }
+        return;
+      }
 
       const targetGroup = findDeepestGroupAtPosition(position, derived.groups);
       const targetGroupId = targetGroup?.id ?? null;
@@ -110,7 +166,13 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
         void saveNodeGroupMembership(nodeId, targetGroupId);
       }
     },
-    [derived, saveAnnotationNodesFromGraph, saveNodeGroupMembership]
+    [
+      derived,
+      getGroupDescendants,
+      getGroupParentId,
+      saveAnnotationNodesFromGraph,
+      saveNodeGroupMembership
+    ]
   );
 
   const deleteAllSelected = useCallback(() => {
@@ -177,7 +239,10 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       deleteGroup: groupActions.deleteGroup,
       updateGroup: derived.updateGroup,
       updateGroupParent: (id, parentId) => {
-        derived.updateGroup(id, { parentId: parentId ?? undefined });
+        derived.updateGroup(id, {
+          parentId: parentId ?? undefined,
+          groupId: parentId ?? undefined
+        });
         persistAnnotationNodes();
       },
       updateGroupGeoPosition: (id, coords) => {

@@ -50,7 +50,7 @@ export function snapToGrid(position: XYPosition): XYPosition {
 /** Handlers for group member movement during drag */
 export interface GroupMemberHandlers {
   /** Get member node IDs for a group */
-  getGroupMembers?: (groupId: string) => string[];
+  getGroupMembers?: (groupId: string, options?: { includeNested?: boolean }) => string[];
   /** Handle node dropped (for group membership updates) */
   onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
 }
@@ -183,7 +183,7 @@ function useNodeDragHandlers(
 
       // If dragging a group node, capture members and their initial positions
       if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
-        const memberIds = groupMemberHandlers.getGroupMembers(node.id);
+        const memberIds = groupMemberHandlers.getGroupMembers(node.id, { includeNested: true });
         groupMembersRef.current.set(node.id, memberIds);
         groupLastPositionRef.current.set(node.id, { ...node.position });
       }
@@ -339,8 +339,8 @@ function useNodeDragHandlers(
       onNodesChangeBase(changes);
       log.info(`[ReactFlowCanvas] Node ${node.id} moved to ${finalPosition.x}, ${finalPosition.y}`);
 
-      // Notify group member handler for non-group nodes
-      if (!isGroupNode && groupMemberHandlers?.onNodeDropped) {
+      // Notify group member handler for membership updates
+      if (groupMemberHandlers?.onNodeDropped) {
         groupMemberHandlers.onNodeDropped(node.id, finalPosition);
       }
 

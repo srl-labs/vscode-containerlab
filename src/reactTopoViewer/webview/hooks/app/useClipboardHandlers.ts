@@ -24,7 +24,7 @@ interface AnnotationsClipboardSubset {
   textAnnotations: FreeTextAnnotation[];
   shapeAnnotations: FreeShapeAnnotation[];
   getNodeMembership: (nodeId: string) => string | null;
-  getGroupMembers: (groupId: string) => string[];
+  getGroupMembers: (groupId: string, options?: { includeNested?: boolean }) => string[];
   selectedGroupIds: Set<string>;
   selectedTextIds: Set<string>;
   selectedShapeIds: Set<string>;

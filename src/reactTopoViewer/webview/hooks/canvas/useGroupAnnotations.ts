@@ -162,7 +162,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       borderStyle: "dashed",
       borderRadius: 8,
       members,
-      ...(parentGroup ? { parentId: parentGroup.id } : {})
+      ...(parentGroup ? { parentId: parentGroup.id, groupId: parentGroup.id } : {})
     };
 
     derived.addGroup(newGroup);

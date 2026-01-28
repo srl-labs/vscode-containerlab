@@ -211,6 +211,18 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
  * Groups are rendered with zIndex: -1 so they appear behind topology nodes
  */
 export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
+  const resolvedParentId =
+    typeof group.parentId === "string"
+      ? group.parentId
+      : typeof group.groupId === "string"
+        ? group.groupId
+        : undefined;
+  const resolvedGroupId =
+    typeof group.groupId === "string"
+      ? group.groupId
+      : typeof group.parentId === "string"
+        ? group.parentId
+        : undefined;
   return {
     id: group.id,
     type: GROUP_NODE_TYPE,
@@ -236,7 +248,8 @@ export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
       borderRadius: group.borderRadius,
       labelColor: group.labelColor,
       labelPosition: group.labelPosition,
-      parentId: group.parentId,
+      parentId: resolvedParentId,
+      groupId: resolvedGroupId,
       zIndex: group.zIndex,
       geoCoordinates: group.geoCoordinates
     }
@@ -329,7 +342,10 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
  */
 export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
   const data = node.data;
-  const parentId = typeof data.parentId === "string" ? data.parentId : undefined;
+  const rawParentId = typeof data.parentId === "string" ? data.parentId : undefined;
+  const rawGroupId = typeof data.groupId === "string" ? data.groupId : undefined;
+  const parentId = rawParentId ?? rawGroupId;
+  const groupId = rawGroupId ?? rawParentId;
   const zIndex = typeof data.zIndex === "number" ? data.zIndex : node.zIndex;
   return {
     id: node.id,
@@ -347,6 +363,7 @@ export function nodeToGroup(node: Node<GroupNodeData>): GroupStyleAnnotation {
     labelColor: data.labelColor,
     labelPosition: data.labelPosition,
     parentId,
+    groupId,
     zIndex,
     geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined
   };
