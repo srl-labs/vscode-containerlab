@@ -1,14 +1,17 @@
 /**
  * Easter Egg Renderer - Renders the active easter egg mode component.
  * Extracts duplicated conditional rendering logic from App.tsx.
- *
- * NOTE: Easter eggs are temporarily disabled during ReactFlow migration.
- * They require cyCompat for visual effects and will be re-enabled after
- * proper ReactFlow integration is complete.
  */
 
-import type React from "react";
+import React from "react";
 
+import {
+  NightcallMode,
+  StickerbushMode,
+  AquaticAmbienceMode,
+  VaporwaveMode,
+  DeusExMode
+} from "./modes";
 import type { UseEasterEggReturn } from "./useEasterEgg";
 
 interface EasterEggRendererProps {
@@ -17,10 +20,32 @@ interface EasterEggRendererProps {
 
 /**
  * Renders the appropriate easter egg mode based on current state.
- * Currently disabled during ReactFlow migration.
  */
-export const EasterEggRenderer: React.FC<EasterEggRendererProps> = (_props) => {
-  // Easter eggs temporarily disabled - they require cyCompat for visual effects
-  // Re-enable after ReactFlow integration is complete
-  return null;
+export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg }) => {
+  const { state, endPartyMode, nextMode, getModeName } = easterEgg;
+  const { isPartyMode, easterEggMode } = state;
+
+  if (!isPartyMode) return null;
+
+  const commonProps = {
+    isActive: isPartyMode,
+    onClose: endPartyMode,
+    onSwitchMode: nextMode,
+    modeName: getModeName()
+  };
+
+  switch (easterEggMode) {
+    case "nightcall":
+      return <NightcallMode {...commonProps} />;
+    case "stickerbrush":
+      return <StickerbushMode {...commonProps} />;
+    case "aquatic":
+      return <AquaticAmbienceMode {...commonProps} />;
+    case "vaporwave":
+      return <VaporwaveMode {...commonProps} />;
+    case "deusex":
+      return <DeusExMode {...commonProps} />;
+    default:
+      return null;
+  }
 };

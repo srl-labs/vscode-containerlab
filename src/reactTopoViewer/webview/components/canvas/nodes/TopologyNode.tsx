@@ -8,7 +8,11 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { TopologyNodeData } from "../types";
 import { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../types";
 import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
-import { useLinkCreationContext, useNodeRenderConfig } from "../../../stores/canvasStore";
+import {
+  useLinkCreationContext,
+  useNodeRenderConfig,
+  useEasterEggGlow
+} from "../../../stores/canvasStore";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE } from "./nodeStyles";
 
@@ -63,6 +67,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const { label, role, iconColor, iconCornerRadius } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
+  const easterEggGlow = useEasterEggGlow();
 
   // Check if this node is a valid link target (in link creation mode)
   const isLinkTarget = linkSourceNode !== null;
@@ -85,8 +90,16 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
       outlineOffset: 1
     };
 
+    // Apply easter egg glow effect if active
+    if (easterEggGlow) {
+      const { color, intensity } = easterEggGlow;
+      const glowRadius = Math.round(8 + intensity * 12);
+      const glowAlpha = (0.4 + intensity * 0.4).toFixed(2);
+      style.boxShadow = `0 0 ${glowRadius}px rgba(${color.r}, ${color.g}, ${color.b}, ${glowAlpha})`;
+    }
+
     return style;
-  }, [svgUrl, iconCornerRadius, selected]);
+  }, [svgUrl, iconCornerRadius, selected, easterEggGlow]);
 
   // Container style based on link target mode
   const containerStyle = isLinkTarget ? CONTAINER_STYLE_LINK_TARGET : CONTAINER_STYLE_BASE;

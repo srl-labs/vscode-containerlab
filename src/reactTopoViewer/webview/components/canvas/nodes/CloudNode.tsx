@@ -7,7 +7,11 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { CloudNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
-import { useLinkCreationContext, useNodeRenderConfig } from "../../../stores/canvasStore";
+import {
+  useLinkCreationContext,
+  useNodeRenderConfig,
+  useEasterEggGlow
+} from "../../../stores/canvasStore";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE } from "./nodeStyles";
 
@@ -41,6 +45,7 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const { label, nodeType } = nodeData;
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
+  const easterEggGlow = useEasterEggGlow();
   const [isHovered, setIsHovered] = useState(false);
 
   // Check if this node is a valid link target (in link creation mode and not the source node)
@@ -68,6 +73,17 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   // Determine outline based on state - use outline to avoid layout shift
   const getOutlineStyle = (): React.CSSProperties => {
+    // Easter egg glow takes priority
+    if (easterEggGlow) {
+      const { color, intensity } = easterEggGlow;
+      const glowRadius = Math.round(8 + intensity * 12);
+      const glowAlpha = (0.4 + intensity * 0.4).toFixed(2);
+      return {
+        outline: selected ? `2px solid ${SELECTION_COLOR}` : "none",
+        outlineOffset: 1,
+        boxShadow: `0 0 ${glowRadius}px rgba(${color.r}, ${color.g}, ${color.b}, ${glowAlpha})`
+      };
+    }
     if (showLinkTargetHighlight) {
       return {
         outline: `2px solid ${SELECTION_COLOR}`,

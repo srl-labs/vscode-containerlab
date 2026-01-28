@@ -8,7 +8,6 @@ import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../shared/types/graph";
 import { generateEncodedSVG, type NodeType } from "../../icons/SvgGenerator";
 import { useCustomNodes, useTopoViewerStore } from "../../stores/topoViewerStore";
-
 import { BasePanel } from "../ui/editor/BasePanel";
 
 interface NodePalettePanelProps {
@@ -295,22 +294,21 @@ export const NodePalettePanel: React.FC<NodePalettePanelProps> = ({
             Node Templates
           </h4>
           <div className="node-palette-grid">
-            {filteredNodes.length === 0 && !filter ? (
-              <div className="node-palette-empty">No node templates defined</div>
-            ) : filteredNodes.length === 0 ? (
-              <div className="node-palette-empty">No matching templates</div>
-            ) : (
-              filteredNodes.map((template) => (
-                <DraggableNode
-                  key={template.name}
-                  template={template}
-                  isDefault={template.name === defaultNode || template.setDefault}
-                  onEdit={onEditCustomNode}
-                  onDelete={onDeleteCustomNode}
-                  onSetDefault={onSetDefaultCustomNode}
-                />
-              ))
+            {filteredNodes.length === 0 && (
+              <div className="node-palette-empty">
+                {filter ? "No matching templates" : "No node templates defined"}
+              </div>
             )}
+            {filteredNodes.map((template) => (
+              <DraggableNode
+                key={template.name}
+                template={template}
+                isDefault={template.name === defaultNode || template.setDefault}
+                onEdit={onEditCustomNode}
+                onDelete={onDeleteCustomNode}
+                onSetDefault={onSetDefaultCustomNode}
+              />
+            ))}
           </div>
           {/* New custom node button */}
           {!filter && <NewCustomNodeButton onAddNew={handleAddNewNode} />}

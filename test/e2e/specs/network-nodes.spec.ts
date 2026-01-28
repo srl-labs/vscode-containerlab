@@ -185,11 +185,10 @@ test.describe("Network Nodes E2E Tests", () => {
   // Increase timeout for comprehensive test (3 minutes)
   test.setTimeout(180000);
 
-  // eslint-disable-next-line complexity, sonarjs/cognitive-complexity
-  test("comprehensive network nodes workflow with schema validation", async ({
-    page,
-    topoViewerPage
-  }) => {
+  test(
+    "comprehensive network nodes workflow with schema validation",
+    // eslint-disable-next-line complexity, sonarjs/cognitive-complexity
+    async ({ page, topoViewerPage }) => {
     // ============================================================================
     // SETUP: Reset files and load empty topology
     // ============================================================================

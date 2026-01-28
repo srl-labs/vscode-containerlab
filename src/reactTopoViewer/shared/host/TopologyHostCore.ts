@@ -209,63 +209,95 @@ export class TopologyHostCore implements TopologyHost {
   // Command execution
   // ---------------------------------------------------------------------------
 
+  private readonly commandHandlers: Record<
+    TopologyHostCommand["command"],
+    (command: TopologyHostCommand) => Promise<void>
+  > = {
+    addNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
+    editNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
+    deleteNode: (cmd) => this.handleNodeCommand(cmd as Parameters<typeof this.handleNodeCommand>[0]),
+    addLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
+    editLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
+    deleteLink: (cmd) => this.handleLinkCommand(cmd as Parameters<typeof this.handleLinkCommand>[0]),
+    savePositions: (cmd) => this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
+    savePositionsAndAnnotations: (cmd) => this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
+    setAnnotations: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
+    setEdgeAnnotations: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
+    setViewerSettings: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
+    setNodeGroupMembership: (cmd) => this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
+    setNodeGroupMemberships: (cmd) => this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
+    setLabSettings: (cmd) => this.applyLabSettings((cmd as Extract<TopologyHostCommand, { command: "setLabSettings" }>).payload),
+    // undo/redo are handled specially before executeCommand is called; these should never be reached
+    undo: () => Promise.reject(new Error("undo handled before executeCommand")),
+    redo: () => Promise.reject(new Error("redo handled before executeCommand"))
+  };
+
   private async executeCommand(command: TopologyHostCommand): Promise<void> {
+    const handler = this.commandHandlers[command.command];
+    if (!handler) {
+      throw new Error(`Unknown command: ${command.command}`);
+    }
+    await handler(command);
+  }
+
+  private async handleNodeCommand(
+    command: Extract<TopologyHostCommand, { command: "addNode" | "editNode" | "deleteNode" }>
+  ): Promise<void> {
     switch (command.command) {
       case "addNode":
         await this.topologyIO.addNode(command.payload);
-        return;
+        break;
       case "editNode":
         await this.topologyIO.editNode(command.payload);
-        return;
+        break;
       case "deleteNode":
         await this.topologyIO.deleteNode(command.payload.id);
-        return;
+        break;
+    }
+  }
+
+  private async handleLinkCommand(
+    command: Extract<TopologyHostCommand, { command: "addLink" | "editLink" | "deleteLink" }>
+  ): Promise<void> {
+    switch (command.command) {
       case "addLink":
         await this.topologyIO.addLink(command.payload);
-        return;
+        break;
       case "editLink":
         await this.topologyIO.editLink(command.payload);
-        return;
+        break;
       case "deleteLink":
         await this.topologyIO.deleteLink(command.payload);
-        return;
-      case "savePositions":
-        await this.topologyIO.savePositions(command.payload);
-        return;
-      case "savePositionsAndAnnotations":
-        await this.topologyIO.savePositions(command.payload.positions);
-        if (command.payload.annotations) {
-          const annotations = command.payload.annotations;
-          await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => {
-            const merged: TopologyAnnotations = { ...current, ...annotations };
-            if (annotations.viewerSettings) {
-              merged.viewerSettings = {
-                ...(current.viewerSettings ?? {}),
-                ...annotations.viewerSettings,
-              };
-            }
-            return merged;
-          });
-        }
-        return;
+        break;
+    }
+  }
+
+  private async handleSaveCommand(
+    command: Extract<TopologyHostCommand, { command: "savePositions" | "savePositionsAndAnnotations" }>
+  ): Promise<void> {
+    if (command.command === "savePositions") {
+      await this.topologyIO.savePositions(command.payload);
+    } else {
+      await this.topologyIO.savePositions(command.payload.positions);
+      if (command.payload.annotations) {
+        await this.mergeAnnotations(command.payload.annotations);
+      }
+    }
+  }
+
+  private async handleAnnotationSettingsCommand(
+    command: Extract<TopologyHostCommand, { command: "setAnnotations" | "setEdgeAnnotations" | "setViewerSettings" }>
+  ): Promise<void> {
+    switch (command.command) {
       case "setAnnotations":
-        await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => {
-          const merged: TopologyAnnotations = { ...current, ...command.payload };
-          if (command.payload.viewerSettings) {
-            merged.viewerSettings = {
-              ...(current.viewerSettings ?? {}),
-              ...command.payload.viewerSettings
-            };
-          }
-          return merged;
-        });
-        return;
+        await this.mergeAnnotations(command.payload);
+        break;
       case "setEdgeAnnotations":
         await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => ({
           ...current,
           edgeAnnotations: command.payload
         }));
-        return;
+        break;
       case "setViewerSettings":
         await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => ({
           ...current,
@@ -274,20 +306,30 @@ export class TopologyHostCore implements TopologyHost {
             ...command.payload
           }
         }));
-        return;
-      case "setNodeGroupMembership":
-        await this.applyNodeGroupMembership(command.payload.nodeId, command.payload.groupId);
-        return;
-      case "setNodeGroupMemberships":
-        await this.applyNodeGroupMemberships(command.payload);
-        return;
-      case "setLabSettings":
-        await this.applyLabSettings(command.payload);
-        return;
-      default:
-        throw new Error(
-          `Unknown command: ${(command as { command?: string }).command ?? "unknown"}`
-        );
+        break;
+    }
+  }
+
+  private async mergeAnnotations(annotations: Partial<TopologyAnnotations>): Promise<void> {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => {
+      const merged: TopologyAnnotations = { ...current, ...annotations };
+      if (annotations.viewerSettings) {
+        merged.viewerSettings = {
+          ...(current.viewerSettings ?? {}),
+          ...annotations.viewerSettings
+        };
+      }
+      return merged;
+    });
+  }
+
+  private async handleNodeGroupMemberships(
+    command: Extract<TopologyHostCommand, { command: "setNodeGroupMembership" | "setNodeGroupMemberships" }>
+  ): Promise<void> {
+    if (command.command === "setNodeGroupMembership") {
+      await this.applyNodeGroupMembership(command.payload.nodeId, command.payload.groupId);
+    } else {
+      await this.applyNodeGroupMemberships(command.payload);
     }
   }
 

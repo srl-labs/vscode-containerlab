@@ -23,6 +23,21 @@ interface SelectionStateSlice {
   endpointLabelOffset: number;
 }
 
+type EdgeRawData = { id: string; source: string; target: string } & Record<string, unknown>;
+
+/** Extract edge raw data by ID */
+function getEdgeRawData(edgeId: string | null, edges: TopoEdge[]): EdgeRawData | null {
+  if (!edgeId) return null;
+  const edge = edges.find((e) => e.id === edgeId);
+  if (!edge) return null;
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    ...(edge.data as Record<string, unknown>)
+  };
+}
+
 export function useCustomNodeErrorToast(
   customNodeError: unknown,
   addToast: (message: string, type?: "success" | "error" | "info", duration?: number) => void,
@@ -70,17 +85,10 @@ export function useSelectionData(
     return { id: node.id, ...(node.data as Record<string, unknown>) };
   }, [state.selectedNode, nodes]);
 
-  const selectedLinkData = React.useMemo(() => {
-    if (!state.selectedEdge) return null;
-    const edge = edges.find((e) => e.id === state.selectedEdge);
-    if (!edge) return null;
-    return {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      ...(edge.data as Record<string, unknown>)
-    };
-  }, [state.selectedEdge, edges]);
+  const selectedLinkData = React.useMemo(
+    () => getEdgeRawData(state.selectedEdge, edges),
+    [state.selectedEdge, edges]
+  );
 
   const editingNodeRawData = React.useMemo(() => {
     if (!state.editingNode) return null;
@@ -96,17 +104,10 @@ export function useSelectionData(
     return { id: node.id, ...(node.data as Record<string, unknown>) };
   }, [state.editingNetwork, nodes]);
 
-  const editingLinkRawData = React.useMemo(() => {
-    if (!state.editingEdge) return null;
-    const edge = edges.find((e) => e.id === state.editingEdge);
-    if (!edge) return null;
-    return {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      ...(edge.data as Record<string, unknown>)
-    };
-  }, [state.editingEdge, edges]);
+  const editingLinkRawData = React.useMemo(
+    () => getEdgeRawData(state.editingEdge, edges),
+    [state.editingEdge, edges]
+  );
 
   const editingNodeData = React.useMemo(
     () => convertToEditorData(editingNodeRawData),

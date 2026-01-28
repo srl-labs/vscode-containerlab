@@ -10,8 +10,8 @@ import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annot
 import { useGraphStore } from "../../stores/graphStore";
 import { useIsLocked, useMode } from "../../stores/topoViewerStore";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
-
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+
 import type { AnnotationContextValue } from "./annotationTypes";
 import { handleAnnotationNodeDrop, handleTopologyNodeDrop } from "./annotationHelpers";
 import {

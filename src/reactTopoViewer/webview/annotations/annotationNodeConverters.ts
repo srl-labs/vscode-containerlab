@@ -55,6 +55,19 @@ export function isAnnotationNodeType(type: string | undefined): boolean {
   return type !== undefined && ANNOTATION_NODE_TYPES.has(type);
 }
 
+/**
+ * Resolve the parent ID from a group annotation.
+ * Handles legacy field naming where both parentId and groupId may be used.
+ */
+export function resolveGroupParentId(
+  parentId: string | undefined,
+  groupId: string | undefined
+): string | undefined {
+  if (typeof parentId === "string") return parentId;
+  if (typeof groupId === "string") return groupId;
+  return undefined;
+}
+
 // ============================================================================
 // Line Bounding Box Computation
 // ============================================================================
@@ -211,18 +224,8 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
  * Groups are rendered with zIndex: -1 so they appear behind topology nodes
  */
 export function groupToNode(group: GroupStyleAnnotation): Node<GroupNodeData> {
-  const resolvedParentId =
-    typeof group.parentId === "string"
-      ? group.parentId
-      : typeof group.groupId === "string"
-        ? group.groupId
-        : undefined;
-  const resolvedGroupId =
-    typeof group.groupId === "string"
-      ? group.groupId
-      : typeof group.parentId === "string"
-        ? group.parentId
-        : undefined;
+  const resolvedParentId = resolveGroupParentId(group.parentId, group.groupId);
+  const resolvedGroupId = resolveGroupParentId(group.groupId, group.parentId);
   return {
     id: group.id,
     type: GROUP_NODE_TYPE,

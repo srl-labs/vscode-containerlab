@@ -1,9 +1,12 @@
 /**
  * Easter Eggs - Hidden visual modes
  *
- * NOTE: Easter egg modes have been temporarily disabled during ReactFlow migration.
- * They required the cyCompat layer for visual effects and will be re-enabled
- * after proper ReactFlow integration is complete.
+ * Click the Containerlab logo 10 times to trigger one of five easter eggs:
+ * - Nightcall: 80s synthwave vibe (Kavinsky inspired)
+ * - Stickerbrush Symphony: Dreamy forest ambient (DKC2 inspired)
+ * - Aquatic Ambience: Underwater serenity (DKC inspired)
+ * - Vaporwave: Slowed down smooth jazz aesthetic
+ * - Deus Ex: 3D rotating logo with metallic theme (silent mode)
  */
 
 // Main easter egg hook
@@ -15,5 +18,14 @@ export type {
   UseEasterEggReturn
 } from "./useEasterEgg";
 
-// Renderer component (currently returns null - modes disabled)
+// Renderer component
 export { EasterEggRenderer } from "./EasterEggRenderer";
+
+// Mode components (for direct use if needed)
+export {
+  NightcallMode,
+  StickerbushMode,
+  AquaticAmbienceMode,
+  VaporwaveMode,
+  DeusExMode
+} from "./modes";

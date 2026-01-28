@@ -19,6 +19,19 @@ export interface NodeRenderConfig {
   suppressLabels: boolean;
 }
 
+/** RGB color for easter egg glow effects */
+export interface RGBColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/** Easter egg glow state for node visual effects */
+export interface EasterEggGlow {
+  color: RGBColor;
+  intensity: number;
+}
+
 export interface ParallelEdgeInfo {
   /** Index of this edge within its parallel group */
   index: number;
@@ -43,6 +56,7 @@ export interface CanvasState {
   edgeRenderConfig: EdgeRenderConfig;
   nodeRenderConfig: NodeRenderConfig;
   annotationHandlers: AnnotationHandlers | null;
+  easterEggGlow: EasterEggGlow | null;
 }
 
 export interface CanvasActions {
@@ -50,6 +64,7 @@ export interface CanvasActions {
   setEdgeRenderConfig: (config: EdgeRenderConfig) => void;
   setNodeRenderConfig: (config: NodeRenderConfig) => void;
   setAnnotationHandlers: (handlers: AnnotationHandlers | null) => void;
+  setEasterEggGlow: (glow: EasterEggGlow | null) => void;
 }
 
 export type CanvasStore = CanvasState & CanvasActions;
@@ -150,7 +165,8 @@ const initialState: CanvasState = {
   linkSourceNode: null,
   edgeRenderConfig: defaultEdgeRenderConfig,
   nodeRenderConfig: defaultNodeRenderConfig,
-  annotationHandlers: null
+  annotationHandlers: null,
+  easterEggGlow: null
 };
 
 // ============================================================================
@@ -186,6 +202,10 @@ export const useCanvasStore = createWithEqualityFn<CanvasStore>((set) => ({
 
   setAnnotationHandlers: (annotationHandlers) => {
     set({ annotationHandlers });
+  },
+
+  setEasterEggGlow: (easterEggGlow) => {
+    set({ easterEggGlow });
   }
 }));
 
@@ -223,6 +243,12 @@ export const useNodeRenderConfig = () => useCanvasStore((state) => state.nodeRen
 
 /** Get annotation handlers */
 export const useAnnotationHandlers = () => useCanvasStore((state) => state.annotationHandlers);
+
+/** Get easter egg glow state */
+export const useEasterEggGlow = () => useCanvasStore((state) => state.easterEggGlow);
+
+/** Get set easter egg glow action */
+export const useSetEasterEggGlow = () => useCanvasStore((state) => state.setEasterEggGlow);
 
 /** Get link creation context (legacy API shape) */
 export const useLinkCreationContext = () => {

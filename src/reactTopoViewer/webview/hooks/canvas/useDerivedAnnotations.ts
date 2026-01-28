@@ -31,6 +31,7 @@ import {
   freeTextToNode,
   freeShapeToNode,
   groupToNode,
+  resolveGroupParentId,
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE
@@ -286,12 +287,7 @@ export function useDerivedAnnotations(): UseDerivedAnnotationsReturn {
 
       const childMap = new Map<string, string[]>();
       for (const group of groups) {
-        const parentId =
-          typeof group.parentId === "string"
-            ? group.parentId
-            : typeof group.groupId === "string"
-              ? group.groupId
-              : undefined;
+        const parentId = resolveGroupParentId(group.parentId, group.groupId);
         if (!parentId) continue;
         const list = childMap.get(parentId) ?? [];
         list.push(group.id);

@@ -109,6 +109,30 @@ function buildApiUrl(path: string, sessionId?: string): string {
   return `${path}${delimiter}sessionId=${encodeURIComponent(sessionId)}`;
 }
 
+/** Send a message to VS Code with timeout handling */
+function sendVsCodeRequest<T>(
+  message: Record<string, unknown>,
+  expectedType: "snapshot" | "command",
+  timeoutMs = 30000
+): Promise<T> {
+  ensureListener();
+  const requestId = globalThis.crypto.randomUUID();
+  return new Promise((resolve, reject) => {
+    pending.set(requestId, {
+      resolve: resolve as PendingRequest["resolve"],
+      reject,
+      expectedType
+    });
+    window.vscode?.postMessage({ ...message, requestId });
+    setTimeout(() => {
+      if (pending.has(requestId)) {
+        pending.delete(requestId);
+        reject(new Error(`${expectedType === "snapshot" ? "Snapshot" : "Command"} request timed out`));
+      }
+    }, timeoutMs);
+  });
+}
+
 export function setHostContext(update: Partial<HostContext>): void {
   hostContext = { ...hostContext, ...update };
 }
@@ -127,26 +151,10 @@ export function setHostRevision(nextRevision: number): void {
 
 export async function requestSnapshot(): Promise<TopologySnapshot> {
   if (isVsCode()) {
-    ensureListener();
-    const requestId = globalThis.crypto.randomUUID();
-    return new Promise((resolve, reject) => {
-      pending.set(requestId, {
-        resolve: resolve as PendingRequest["resolve"],
-        reject,
-        expectedType: "snapshot"
-      });
-      window.vscode?.postMessage({
-        type: "topology-host:get-snapshot",
-        protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-        requestId
-      });
-      setTimeout(() => {
-        if (pending.has(requestId)) {
-          pending.delete(requestId);
-          reject(new Error("Snapshot request timed out"));
-        }
-      }, 30000);
-    }) as Promise<TopologySnapshot>;
+    return sendVsCodeRequest<TopologySnapshot>(
+      { type: "topology-host:get-snapshot", protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION },
+      "snapshot"
+    );
   }
 
   if (!hostContext.path) {
@@ -175,28 +183,15 @@ export async function dispatchTopologyCommand(
   command: TopologyHostCommand
 ): Promise<TopologyHostResponseMessage> {
   if (isVsCode()) {
-    ensureListener();
-    const requestId = globalThis.crypto.randomUUID();
-    return new Promise((resolve, reject) => {
-      pending.set(requestId, {
-        resolve: resolve as PendingRequest["resolve"],
-        reject,
-        expectedType: "command"
-      });
-      window.vscode?.postMessage({
+    return sendVsCodeRequest<TopologyHostResponseMessage>(
+      {
         type: "topology-host:command",
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
-        requestId,
         baseRevision: revision,
         command
-      });
-      setTimeout(() => {
-        if (pending.has(requestId)) {
-          pending.delete(requestId);
-          reject(new Error("Command request timed out"));
-        }
-      }, 30000);
-    }) as Promise<TopologyHostResponseMessage>;
+      },
+      "command"
+    );
   }
 
   if (!hostContext.path) {
