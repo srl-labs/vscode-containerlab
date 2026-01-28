@@ -13,6 +13,8 @@ export {
 export { useCanvasHandlers, snapToGrid, GRID_SIZE } from "./useCanvasHandlers";
 export { useAnnotationCanvasHandlers } from "./useAnnotationCanvasHandlers";
 export { useGeoMapLayout } from "./useGeoMapLayout";
+export { useHelperLines, calculateAlignments } from "./useHelperLines";
+export type { HelperLinePositions, AlignmentResult } from "./useHelperLines";
 
 // Annotation hooks
 export { useAnnotations } from "./useAnnotations";

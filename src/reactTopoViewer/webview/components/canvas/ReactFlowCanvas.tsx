@@ -38,8 +38,10 @@ import {
   useCanvasHandlers,
   useAnnotationCanvasHandlers,
   useGeoMapLayout,
+  useHelperLines,
   GRID_SIZE
 } from "../../hooks/canvas";
+import { HelperLines } from "./HelperLines";
 
 import {
   buildNodeContextMenu,
@@ -352,11 +354,17 @@ function useRenderConfig(nodeCount: number, edgeCount: number, linkLabelMode: Ed
   return { isLargeGraph, isLowDetail, edgeRenderConfig, nodeRenderConfig };
 }
 
-/** Hook for node drag handler wrappers */
+/** Hook for node drag handler wrappers with helper line support */
 function useDragHandlers(
   onNodeDrag: (event: React.MouseEvent, node: Node) => void,
   wrappedOnNodeDragStart: (event: React.MouseEvent, node: Node) => void,
-  wrappedOnNodeDragStop: (event: React.MouseEvent, node: Node) => void
+  wrappedOnNodeDragStop: (event: React.MouseEvent, node: Node) => void,
+  helperLineHandlers?: {
+    updateHelperLines: (node: Node, allNodes: Node[]) => void;
+    clearHelperLines: () => void;
+    allNodes: Node[];
+    isGeoLayout: boolean;
+  }
 ) {
   const handleNodeDragStart = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -368,15 +376,23 @@ function useDragHandlers(
   const handleNodeDrag = useCallback(
     (event: React.MouseEvent, node: Node) => {
       onNodeDrag(event, node);
+      // Update helper lines during drag (skip in geo layout)
+      if (helperLineHandlers && !helperLineHandlers.isGeoLayout) {
+        helperLineHandlers.updateHelperLines(node, helperLineHandlers.allNodes);
+      }
     },
-    [onNodeDrag]
+    [onNodeDrag, helperLineHandlers]
   );
 
   const handleNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node) => {
       wrappedOnNodeDragStop(event, node);
+      // Clear helper lines when drag ends
+      if (helperLineHandlers) {
+        helperLineHandlers.clearHelperLines();
+      }
     },
-    [wrappedOnNodeDragStop]
+    [wrappedOnNodeDragStop, helperLineHandlers]
   );
 
   return { handleNodeDragStart, handleNodeDrag, handleNodeDragStop };
@@ -546,6 +562,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     );
     const sourceNodePosition = useSourceNodePosition(linkSourceNode, allNodes);
 
+    // Helper lines for node alignment during drag
+    const { helperLines, updateHelperLines, clearHelperLines } = useHelperLines();
+
     // Sync linkSourceNode to canvas store
     useEffect(() => {
       setLinkSourceNode(linkSourceNode);
@@ -639,7 +658,13 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const { handleNodeDragStart, handleNodeDrag, handleNodeDragStop } = useDragHandlers(
       handlers.onNodeDrag,
       wrappedOnNodeDragStart,
-      wrappedOnNodeDragStop
+      wrappedOnNodeDragStop,
+      {
+        updateHelperLines,
+        clearHelperLines,
+        allNodes,
+        isGeoLayout
+      }
     );
 
     const wrappedOnInit = useWrappedOnInit(handlers.onInit, onInitProp);
@@ -761,6 +786,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           items={contextMenuItems}
           onClose={handlers.closeContextMenu}
         />
+
+        {/* Helper lines for node alignment during drag */}
+        <HelperLines lines={helperLines} />
 
         {linkSourceNode && sourceNodePosition && handlers.reactFlowInstance.current && (
           <LinkCreationLine
