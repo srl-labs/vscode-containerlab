@@ -9,18 +9,31 @@ import * as React from "react";
 import { useState, useEffect, useCallback } from "react";
 import type { DevStateManager } from "../mock/DevState";
 import type { LatencySimulator, LatencyProfile } from "../mock/LatencySimulator";
-import type { SplitViewPanel } from "../mock/SplitViewPanel";
-import type { MessageHandler } from "../mock/MessageHandler";
 
 // ============================================================================
 // Types
 // ============================================================================
 
+/** Interface for split view panel control */
+export interface SplitViewPanel {
+  getIsOpen(): boolean;
+  toggle(): void;
+  getYaml(): string;
+  copyYamlToClipboard(): void;
+  getAnnotationsJson(): string;
+  copyAnnotationsToClipboard(): void;
+}
+
+/** Interface for message handler */
+export interface MessageHandler {
+  // Currently unused placeholder
+}
+
 export interface DevToolbarProps {
   stateManager: DevStateManager;
   latencySimulator: LatencySimulator;
   splitViewPanel: SplitViewPanel;
-  messageHandler: MessageHandler;
+  messageHandler?: MessageHandler;
   loadTopology: (name: TopologyName) => void;
 }
 
@@ -57,7 +70,6 @@ export function DevToolbar({
     const unsubscribe = stateManager.subscribe((state) => {
       setMode(state.mode);
       setDeploymentState(state.deploymentState);
-      setSplitViewOpen(state.splitViewOpen);
     });
     return unsubscribe;
   }, [stateManager]);

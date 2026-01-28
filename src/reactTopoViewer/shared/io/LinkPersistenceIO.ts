@@ -406,7 +406,7 @@ function getLinkKey(linkData: LinkSaveData): string {
   }
 
   // Sort to ensure consistent key regardless of direction
-  return [src, dst].toSorted().join("|");
+  return [src, dst].slice().sort().join("|");
 }
 
 /**
@@ -492,7 +492,7 @@ function getLookupKey(linkData: LinkSaveData): string {
     dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
   }
 
-  return [src, dst].toSorted().join("|");
+  return [src, dst].slice().sort().join("|");
 }
 
 /**

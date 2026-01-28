@@ -80,7 +80,7 @@ export class SessionFsAdapter implements FileSystemAdapter {
       // Check session cache
       if (this.annotationsStorage.has(yamlFilename)) {
         const content = this.annotationsStorage.get(yamlFilename);
-        if (content === null) {
+        if (content === null || content === undefined) {
           throw new Error(`ENOENT: no such file ${filePath}`);
         }
         return content;

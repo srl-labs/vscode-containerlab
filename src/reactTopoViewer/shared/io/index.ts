@@ -11,10 +11,8 @@
  */
 
 // Types
+export type { FileSystemAdapter, SaveResult, IOLogger } from "./types";
 export {
-  FileSystemAdapter,
-  SaveResult,
-  IOLogger,
   noopLogger,
   ERROR_NODES_NOT_MAP,
   ERROR_LINKS_NOT_SEQ,
@@ -30,6 +28,7 @@ export { NodeFsAdapter, nodeFsAdapter } from "./NodeFsAdapter";
 export { TransactionalFileSystemAdapter } from "./TransactionalFileSystemAdapter";
 
 // YAML utilities
+export type { YamlWriteOptions } from "./YamlDocumentIO";
 export {
   createQuotedScalar,
   deepEqual,
@@ -37,18 +36,17 @@ export {
   setOrDelete,
   parseYamlDocument,
   stringifyYamlDocument,
-  writeYamlFile,
-  YamlWriteOptions
+  writeYamlFile
 } from "./YamlDocumentIO";
 
 // Annotations I/O
-export { AnnotationsIO, AnnotationsIOOptions } from "./AnnotationsIO";
+export type { AnnotationsIOOptions } from "./AnnotationsIO";
+export { AnnotationsIO } from "./AnnotationsIO";
 export { createEmptyAnnotations } from "../annotations/types";
 
 // Node persistence
+export type { NodeSaveData, NodeAnnotationData } from "./NodePersistenceIO";
 export {
-  NodeSaveData,
-  NodeAnnotationData,
   resolveInheritedConfig,
   addNodeToDoc,
   editNodeInDoc,
@@ -58,7 +56,9 @@ export {
 } from "./NodePersistenceIO";
 
 // Link persistence
-export { LinkSaveData, addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from "./LinkPersistenceIO";
+export type { LinkSaveData } from "./LinkPersistenceIO";
+export { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from "./LinkPersistenceIO";
 
 // Topology I/O orchestration
-export { TopologyIO, TopologyIOOptions } from "./TopologyIO";
+export type { TopologyIOOptions } from "./TopologyIO";
+export { TopologyIO } from "./TopologyIO";

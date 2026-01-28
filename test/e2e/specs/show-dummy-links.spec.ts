@@ -23,7 +23,7 @@ test.describe("Show Dummy Links Toggle", () => {
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test("network.clab.yml has dummy link visible by default", async ({ page, topoViewerPage }) => {
+  test("network.clab.yml has dummy link visible by default", async ({ topoViewerPage }) => {
     // Get initial node count - should include dummy nodes
     const nodeIds = await topoViewerPage.getNodeIds();
     console.log("[DEBUG] Initial nodes:", nodeIds);

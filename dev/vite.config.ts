@@ -9,10 +9,7 @@ const nodeModules = path.resolve(__dirname, "../node_modules");
 
 export default defineConfig({
   plugins: [
-    react({
-      // Disable Fast Refresh to avoid hook-related HMR issues
-      fastRefresh: false
-    }),
+    react(),
     // File API middleware for YAML and annotation file operations
     fileApiPlugin()
   ],

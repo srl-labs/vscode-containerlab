@@ -35,10 +35,17 @@ type GroupPromotionSnapshot = {
 
 type AnnotationsApi = {
   getAnnotationsFromFile: (filename: string) => Promise<{
-    nodeAnnotations?: Array<{ id: string; groupId?: string }>;
+    nodeAnnotations?: Array<{ id: string; groupId?: string; group?: string; level?: string }>;
     freeTextAnnotations?: Array<{ id: string; text: string; groupId?: string }>;
     freeShapeAnnotations?: Array<{ id: string; shapeType: string; groupId?: string }>;
-    groupStyleAnnotations?: Array<{ id: string; name: string; parentId?: string }>;
+    groupStyleAnnotations?: Array<{
+      id: string;
+      name: string;
+      parentId?: string;
+      position?: { x: number; y: number };
+      zIndex?: number;
+      level?: string;
+    }>;
   }>;
 };
 

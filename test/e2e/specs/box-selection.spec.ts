@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/topoviewer";
-import { drag, boxSelect } from "../helpers/react-flow-helpers";
+import { boxSelect } from "../helpers/react-flow-helpers";
 
 const SIMPLE_FILE = "simple.clab.yml";
 

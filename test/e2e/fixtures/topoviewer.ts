@@ -45,20 +45,6 @@ interface GroupDebugInfo {
   stateManagerGroupIds: string[];
 }
 
-// Browser helper functions for page.evaluate() (must be inlined, not referenced)
-const getSelectedNodeIds = (rfInstance: unknown): string[] => {
-  if (!rfInstance) return [];
-  const rf = rfInstance as { getNodes?: () => Array<{ id: string; selected?: boolean }> };
-  const nodes = rf.getNodes?.() ?? [];
-  return nodes.filter((n) => n.selected).map((n) => n.id);
-};
-
-const getReactGroupCount = (d: unknown): number => {
-  const dev = d as { getReactGroups?: () => unknown[] } | undefined;
-  const groups = dev?.getReactGroups?.();
-  return groups?.length ?? -1;
-};
-
 const dispatchGroupKeyboardEvent = (): void => {
   const event = new KeyboardEvent("keydown", {
     key: "g",
@@ -156,8 +142,10 @@ interface TopologyAnnotations {
   nodeAnnotations?: Array<{
     id: string;
     position?: { x: number; y: number };
+    groupId?: string;
     group?: string;
     level?: string;
+    icon?: string;
   }>;
   freeTextAnnotations?: Array<{ id: string; text: string; position: { x: number; y: number } }>;
   freeShapeAnnotations?: Array<{
@@ -165,7 +153,13 @@ interface TopologyAnnotations {
     shapeType: string;
     position: { x: number; y: number };
   }>;
-  groupStyleAnnotations?: Array<{ id: string; name: string; parentId?: string }>;
+  groupStyleAnnotations?: Array<{
+    id: string;
+    name: string;
+    parentId?: string;
+    position?: { x: number; y: number };
+    zIndex?: number;
+  }>;
   networkNodeAnnotations?: Array<{
     id: string;
     type: string;

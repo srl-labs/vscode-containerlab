@@ -10,7 +10,7 @@
  * Clipboard is handled locally by useUnifiedClipboard (React refs).
  */
 
-import type { CustomNodeTemplate } from "../../src/reactTopoViewer/webview/context/TopoViewerContext";
+import type { CustomNodeTemplate } from "@shared/types/editors";
 
 // ============================================================================
 // Types

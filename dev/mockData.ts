@@ -2,7 +2,7 @@
  * Mock data for standalone development of React TopoViewer.
  */
 
-import type { CustomNodeTemplate } from "@webview/context/TopoViewerContext";
+import type { CustomNodeTemplate } from "@shared/types/editors";
 import type { CustomIconInfo } from "@shared/types/icons";
 
 /**

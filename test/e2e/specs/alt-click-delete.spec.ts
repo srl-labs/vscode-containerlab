@@ -282,7 +282,7 @@ test.describe("Alt+Click Delete", () => {
       expect(initialShapeCount).toBeGreaterThan(0);
 
       // Get the position of the shape from annotations file
-      const shapeAnnotation = beforeAnnotations.freeShapeAnnotations[0];
+      const shapeAnnotation = beforeAnnotations.freeShapeAnnotations![0];
 
       const shapeBox = await topoViewerPage.getNodeBoundingBox(shapeAnnotation.id);
       expect(shapeBox).not.toBeNull();

@@ -114,7 +114,7 @@ interface TopoViewerPage {
   paste(): Promise<void>;
 }
 
-async function setupTopology(page: Page, topoViewerPage: TopoViewerPage): Promise<void> {
+async function setupTopology(_page: Page, topoViewerPage: TopoViewerPage): Promise<void> {
   await topoViewerPage.resetFiles();
   await topoViewerPage.gotoFile(TOPOLOGY_FILE);
   await topoViewerPage.waitForCanvasReady();
