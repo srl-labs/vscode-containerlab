@@ -64,14 +64,17 @@ export function useLinkCreation(
   ) => void
 ) {
   const [linkSourceNode, setLinkSourceNode] = useState<string | null>(null);
+  const linkCreationSeedRef = useRef<number | null>(null);
 
   const startLinkCreation = useCallback((nodeId: string) => {
     log.info(`[ReactFlowCanvas] Starting link creation from: ${nodeId}`);
+    linkCreationSeedRef.current = Date.now();
     setLinkSourceNode(nodeId);
   }, []);
 
   const cancelLinkCreation = useCallback(() => {
     log.info("[ReactFlowCanvas] Cancelling link creation");
+    linkCreationSeedRef.current = null;
     setLinkSourceNode(null);
   }, []);
 
@@ -90,7 +93,13 @@ export function useLinkCreation(
         linkSourceNode,
         targetNodeId
       );
-      const edgeId = buildEdgeId(linkSourceNode, targetNodeId, sourceEndpoint, targetEndpoint);
+      const edgeId = buildEdgeId(
+        linkSourceNode,
+        targetNodeId,
+        sourceEndpoint,
+        targetEndpoint,
+        linkCreationSeedRef.current ?? Date.now()
+      );
 
       const edgeData = {
         id: edgeId,
@@ -108,6 +117,7 @@ export function useLinkCreation(
         onEdgeCreated(linkSourceNode, targetNodeId, edgeData);
       }
 
+      linkCreationSeedRef.current = null;
       setLinkSourceNode(null);
     },
     [linkSourceNode, onEdgeCreated]
@@ -126,7 +136,8 @@ export function useLinkCreation(
     linkSourceNode,
     startLinkCreation,
     completeLinkCreation,
-    cancelLinkCreation
+    cancelLinkCreation,
+    linkCreationSeed: linkCreationSeedRef.current
   };
 }
 
@@ -136,6 +147,7 @@ export function useLinkCreation(
  * Uses the node's initial position when link creation starts.
  */
 export function useSourceNodePosition(linkSourceNode: string | null, nodes: Node[]) {
+  const ICON_SIZE = 40;
   // Store position and the linkSourceNode it was calculated for
   const positionRef = useRef<{ x: number; y: number } | null>(null);
   const lastSourceNodeRef = useRef<string | null>(null);
@@ -148,11 +160,10 @@ export function useSourceNodePosition(linkSourceNode: string | null, nodes: Node
     } else {
       const node = nodes.find((n) => n.id === linkSourceNode);
       if (node) {
-        const nodeWidth = 60;
-        const nodeHeight = 60;
+        const nodeWidth = node.measured?.width ?? ICON_SIZE;
         positionRef.current = {
           x: node.position.x + nodeWidth / 2,
-          y: node.position.y + nodeHeight / 2
+          y: node.position.y + ICON_SIZE / 2
         };
       }
     }
