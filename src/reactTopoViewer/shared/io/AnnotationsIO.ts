@@ -5,8 +5,8 @@
  * Environment-agnostic: works in both VS Code extension and dev server.
  */
 
-// eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
 import type {
+  // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
   CloudNodeAnnotation,
   NetworkNodeAnnotation,
   TopologyAnnotations
@@ -40,6 +40,7 @@ export function migrateAnnotations(annotations: TopologyAnnotations): TopologyAn
   if (annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0) {
     // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
     annotations.networkNodeAnnotations = annotations.cloudNodeAnnotations.map(
+      // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated type for migration
       (cloud: CloudNodeAnnotation): NetworkNodeAnnotation => ({
         id: cloud.id,
         type: cloud.type,

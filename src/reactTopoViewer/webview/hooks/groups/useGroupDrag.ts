@@ -9,6 +9,45 @@ import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import { addMouseMoveUpListeners } from "../shared/dragHelpers";
 
 // ============================================================================
+// Shared callback types for drag and resize operations
+// ============================================================================
+
+/** Callback for position changes with delta */
+type PositionChangeCallback = (
+  id: string,
+  position: { x: number; y: number },
+  delta: { dx: number; dy: number }
+) => void;
+
+/** Callback for drag move with incremental delta */
+type DragMoveCallback = (id: string, delta: { dx: number; dy: number }) => void;
+
+/** Callback for visual position updates */
+type VisualPositionCallback = (id: string, position: { x: number; y: number }) => void;
+
+/** Callback for visual position clear */
+type VisualPositionClearCallback = (id: string) => void;
+
+/** Callback for drag/resize end */
+type DragEndCallback = (id: string, finalPosition: { x: number; y: number }) => void;
+
+/** Callback for resize operations */
+type ResizeCallback = (
+  id: string,
+  width: number,
+  height: number,
+  position: { x: number; y: number }
+) => void;
+
+/** Callback for resize end with final dimensions */
+type ResizeEndCallback = (
+  id: string,
+  finalWidth: number,
+  finalHeight: number,
+  finalPosition: { x: number; y: number }
+) => void;
+
+// ============================================================================
 // useDragPositionOverrides - Manage drag position overrides during group dragging
 // ============================================================================
 
@@ -59,16 +98,12 @@ export interface UseGroupDragInteractionOptions {
   isLocked: boolean;
   position: { x: number; y: number };
   onDragStart?: (id: string) => void;
-  onPositionChange: (
-    id: string,
-    position: { x: number; y: number },
-    delta: { dx: number; dy: number }
-  ) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
-  onVisualPositionClear?: (id: string) => void;
+  onPositionChange: PositionChangeCallback;
+  onDragMove?: DragMoveCallback;
+  onVisualPositionChange?: VisualPositionCallback;
+  onVisualPositionClear?: VisualPositionClearCallback;
   /** Called when drag ends, allowing parent to detect drop target for reparenting */
-  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
+  onDragEnd?: DragEndCallback;
 }
 
 export interface UseGroupDragInteractionReturn {
@@ -87,15 +122,11 @@ interface GroupDragEventsOptions {
   dragRef: React.RefObject<DragState | null>;
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
   setDragPos: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
-  onPositionChange: (
-    id: string,
-    position: { x: number; y: number },
-    delta: { dx: number; dy: number }
-  ) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
-  onVisualPositionClear?: (id: string) => void;
-  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
+  onPositionChange: PositionChangeCallback;
+  onDragMove?: DragMoveCallback;
+  onVisualPositionChange?: VisualPositionCallback;
+  onVisualPositionClear?: VisualPositionClearCallback;
+  onDragEnd?: DragEndCallback;
 }
 
 function useGroupDragEvents(options: GroupDragEventsOptions): void {
@@ -294,18 +325,8 @@ function useGroupResizeEvents(
   groupId: string,
   dragRef: React.RefObject<ResizeState | null>,
   setIsResizing: React.Dispatch<React.SetStateAction<boolean>>,
-  onResizeMove: (
-    id: string,
-    width: number,
-    height: number,
-    position: { x: number; y: number }
-  ) => void,
-  onResizeEnd: (
-    id: string,
-    finalWidth: number,
-    finalHeight: number,
-    finalPosition: { x: number; y: number }
-  ) => void
+  onResizeMove: ResizeCallback,
+  onResizeEnd: ResizeEndCallback
 ): void {
   useEffect(() => {
     if (!isResizing) return;
@@ -337,18 +358,8 @@ export function useGroupResize(
   groupId: string,
   isLocked: boolean,
   onResizeStart: (id: string) => void,
-  onResizeMove: (
-    id: string,
-    width: number,
-    height: number,
-    position: { x: number; y: number }
-  ) => void,
-  onResizeEnd: (
-    id: string,
-    finalWidth: number,
-    finalHeight: number,
-    finalPosition: { x: number; y: number }
-  ) => void,
+  onResizeMove: ResizeCallback,
+  onResizeEnd: ResizeEndCallback,
   getMinimumBounds: (groupId: string) => { minWidth: number; minHeight: number }
 ): UseGroupResizeReturn {
   const [isResizing, setIsResizing] = useState(false);

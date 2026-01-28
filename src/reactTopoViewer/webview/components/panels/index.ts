@@ -73,8 +73,6 @@ export {
   DeployButtonGroup,
   PanelButtonWithDropdown,
   filterDropdownItems,
-  buildMenuClass,
-  buildItemClass,
   DropdownItem
 } from "./floatingPanel";
 export type { FloatingActionPanelHandle, DropdownMenuItem } from "./floatingPanel";

@@ -1,10 +1,10 @@
 import * as path from "path";
 import * as fs from "fs";
-import * as https from "https";
 
 import * as vscode from "vscode";
 
 import { extensionVersion } from "./globals";
+import { fallbackRepos, fetchPopularRepos, type PopularRepo } from "./helpers/popularLabs";
 
 /**
  * Message types sent from the webview to the extension
@@ -12,23 +12,6 @@ import { extensionVersion } from "./globals";
 interface WebviewMessage {
   command: "createExample" | "dontShowAgain" | "getRepos";
   value?: boolean;
-}
-
-/**
- * GitHub repository data structure
- */
-interface GitHubRepo {
-  name: string;
-  html_url: string;
-  description: string | null;
-  stargazers_count: number;
-}
-
-/**
- * GitHub API search response
- */
-interface GitHubSearchResponse {
-  items: GitHubRepo[];
 }
 
 /**
@@ -89,106 +72,26 @@ export class WelcomePage {
     });
   }
 
-  // Fallback repository list in case GitHub API is rate-limited
-  private readonly fallbackRepos: GitHubRepo[] = [
-    {
-      name: "srl-telemetry-lab",
-      html_url: "https://github.com/srl-labs/srl-telemetry-lab",
-      description: "A lab demonstrating the telemetry stack with SR Linux.",
-      stargazers_count: 85
-    },
-    {
-      name: "netbox-nrx-clab",
-      html_url: "https://github.com/srl-labs/netbox-nrx-clab",
-      description: "NetBox NRX Containerlab integration, enabling network automation use cases.",
-      stargazers_count: 65
-    },
-    {
-      name: "sros-anysec-macsec-lab",
-      html_url: "https://github.com/srl-labs/sros-anysec-macsec-lab",
-      description: "SR OS Anysec & MACsec lab with containerlab.",
-      stargazers_count: 42
-    },
-    {
-      name: "intent-based-ansible-lab",
-      html_url: "https://github.com/srl-labs/intent-based-ansible-lab",
-      description: "Intent-based networking lab with Ansible and SR Linux.",
-      stargazers_count: 38
-    },
-    {
-      name: "multivendor-evpn-lab",
-      html_url: "https://github.com/srl-labs/multivendor-evpn-lab",
-      description: "Multivendor EVPN lab with Nokia, Arista, and Cisco network operating systems.",
-      stargazers_count: 78
-    }
-  ];
-
   /**
    * Fetches repositories from GitHub with the clab-topo topic.
    */
   private async fetchGitHubRepos(): Promise<void> {
-    const url =
-      "https://api.github.com/search/repositories?q=topic:clab-topo+org:srl-labs+fork:true&sort=stars&order=desc";
+    const postRepos = (repos: PopularRepo[], usingFallback: boolean) => {
+      if (this.panel) {
+        this.panel.webview.postMessage({
+          command: "reposLoaded",
+          repos,
+          usingFallback
+        });
+      }
+    };
 
-    this.fetchJson(url)
-      .then((data) => {
-        if (this.panel) {
-          this.panel.webview.postMessage({
-            command: "reposLoaded",
-            repos: data.items || [],
-            usingFallback: false
-          });
-        }
-      })
+    fetchPopularRepos()
+      .then((repos) => postRepos(repos, false))
       .catch((error) => {
         console.error("Error fetching GitHub repositories:", error);
-        if (this.panel) {
-          this.panel.webview.postMessage({
-            command: "reposLoaded",
-            repos: this.fallbackRepos,
-            usingFallback: true
-          });
-        }
+        postRepos(fallbackRepos, true);
       });
-  }
-
-  /**
-   * Helper to fetch JSON data from a URL.
-   */
-  private fetchJson(url: string): Promise<GitHubSearchResponse> {
-    return new Promise((resolve, reject) => {
-      const req = https
-        .get(
-          url,
-          {
-            headers: {
-              "User-Agent": "VSCode-Containerlab-Extension",
-              Accept: "application/vnd.github.v3+json"
-            }
-          },
-          (res) => {
-            let data = "";
-
-            res.on("data", (chunk) => {
-              data += chunk;
-            });
-
-            res.on("end", () => {
-              try {
-                const parsedData = JSON.parse(data) as GitHubSearchResponse;
-                resolve(parsedData);
-              } catch (e) {
-                reject(e);
-              }
-            });
-          }
-        )
-        .on("error", (err) => {
-          reject(err);
-        });
-
-      req.end();
-    });
   }
 
   /**

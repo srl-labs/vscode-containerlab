@@ -3,12 +3,12 @@
  * Pure functions - no VS Code dependencies.
  */
 
-// eslint-disable-next-line sonarjs/deprecation
 import type {
   ClabNode,
   CyElement,
   ClabTopology,
   NetworkNodeAnnotation,
+  // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
   CloudNodeAnnotation,
   TopologyAnnotations
 } from "../types/topology";

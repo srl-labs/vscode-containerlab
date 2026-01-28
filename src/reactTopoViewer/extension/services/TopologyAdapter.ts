@@ -162,21 +162,11 @@ export class TopoViewerAdaptorClab {
     annotations: Record<string, unknown> | undefined,
     migrations: GraphLabelMigration[]
   ): Promise<void> {
-    type NodeAnnotation = {
-      id: string;
-      position?: { x: number; y: number };
-      icon?: string;
-      group?: string;
-      level?: string;
-      groupLabelPos?: string;
-      geoCoordinates?: { lat: number; lng: number };
-    };
-
     const localAnnotations = (annotations ?? {
       freeTextAnnotations: [],
       groupStyleAnnotations: [],
       nodeAnnotations: []
-    }) as { nodeAnnotations: NodeAnnotation[] };
+    }) as { nodeAnnotations: NodeAnnotationShape[] };
     localAnnotations.nodeAnnotations = localAnnotations.nodeAnnotations ?? [];
 
     const existingIds = new Set(localAnnotations.nodeAnnotations.map((na) => na.id));
@@ -193,10 +183,8 @@ export class TopoViewerAdaptorClab {
   }
 }
 
-/**
- * Builds a NodeAnnotation from a GraphLabelMigration.
- */
-function buildAnnotationFromMigration(migration: GraphLabelMigration): {
+/** Node annotation shape used for graph label migration */
+interface NodeAnnotationShape {
   id: string;
   position?: { x: number; y: number };
   icon?: string;
@@ -204,16 +192,13 @@ function buildAnnotationFromMigration(migration: GraphLabelMigration): {
   level?: string;
   groupLabelPos?: string;
   geoCoordinates?: { lat: number; lng: number };
-} {
-  const annotation: {
-    id: string;
-    position?: { x: number; y: number };
-    icon?: string;
-    group?: string;
-    level?: string;
-    groupLabelPos?: string;
-    geoCoordinates?: { lat: number; lng: number };
-  } = { id: migration.nodeId };
+}
+
+/**
+ * Builds a NodeAnnotation from a GraphLabelMigration.
+ */
+function buildAnnotationFromMigration(migration: GraphLabelMigration): NodeAnnotationShape {
+  const annotation: NodeAnnotationShape = { id: migration.nodeId };
   if (migration.position) annotation.position = migration.position;
   if (migration.icon) annotation.icon = migration.icon;
   if (migration.group) annotation.group = migration.group;

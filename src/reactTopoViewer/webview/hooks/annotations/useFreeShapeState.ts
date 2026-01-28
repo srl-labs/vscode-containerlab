@@ -23,7 +23,8 @@ import {
   useDebouncedSave,
   useDeleteAnnotation,
   useStandardUpdates,
-  useGenericAnnotationUpdates
+  useGenericAnnotationUpdates,
+  useGeoPositionUpdate
 } from "./sharedAnnotationHelpers";
 import {
   useAnnotationListSelection,
@@ -217,19 +218,11 @@ function useGeoUpdates(
   setAnnotations: React.Dispatch<React.SetStateAction<FreeShapeAnnotation[]>>,
   saveAnnotationsToExtension: (annotations: FreeShapeAnnotation[]) => void
 ) {
-  const updateGeoPosition = useCallback(
-    (id: string, geoCoords: { lat: number; lng: number }) => {
-      setAnnotations((prev) => {
-        const updated = updateAnnotationInList(prev, id, (a) => ({
-          ...a,
-          geoCoordinates: geoCoords
-        }));
-        saveAnnotationsToExtension(updated);
-        return updated;
-      });
-      log.info(`[FreeShape] Updated geo position for annotation ${id}`);
-    },
-    [setAnnotations, saveAnnotationsToExtension]
+  const updateGeoPosition = useGeoPositionUpdate(
+    "FreeShape",
+    setAnnotations,
+    saveAnnotationsToExtension,
+    updateAnnotationInList
   );
 
   const updateEndGeoPosition = useCallback(

@@ -254,6 +254,36 @@ export function useStandardUpdates<T extends BaseAnnotationWithGroupId>(
   return { updatePosition: updatePositionFn, updateSize, updateRotation: updateRotationFn };
 }
 
+/** Annotation with optional geoCoordinates */
+interface AnnotationWithGeo extends BaseAnnotationWithGroupId {
+  geoCoordinates?: { lat: number; lng: number };
+}
+
+/**
+ * Creates a geo position update callback
+ */
+export function useGeoPositionUpdate<T extends AnnotationWithGeo>(
+  logPrefix: string,
+  setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
+  saveAnnotationsToExtension: (annotations: T[]) => void,
+  updateInList: (annotations: T[], id: string, updater: (annotation: T) => T) => T[]
+) {
+  return useCallback(
+    (id: string, geoCoords: { lat: number; lng: number }) => {
+      setAnnotations((prev) => {
+        const updated = updateInList(prev, id, (a) => ({
+          ...a,
+          geoCoordinates: geoCoords
+        }));
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+      log.info(`[${logPrefix}] Updated geo position for annotation ${id}`);
+    },
+    [setAnnotations, saveAnnotationsToExtension, updateInList]
+  );
+}
+
 /**
  * Creates generic annotation update and group migration callbacks
  */

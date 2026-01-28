@@ -22,7 +22,8 @@ import {
   useDebouncedSave,
   useDeleteAnnotation,
   useStandardUpdates,
-  useGenericAnnotationUpdates
+  useGenericAnnotationUpdates,
+  useGeoPositionUpdate
 } from "./sharedAnnotationHelpers";
 import {
   useAnnotationListSelection,
@@ -177,21 +178,11 @@ function useAnnotationUpdates(
     updateAnnotationRotation
   );
 
-  const updateGeoPosition = useCallback(
-    (id: string, geoCoords: { lat: number; lng: number }) => {
-      setAnnotations((prev) => {
-        const updated = updateAnnotationInList(prev, id, (a) => ({
-          ...a,
-          geoCoordinates: geoCoords
-        }));
-        saveAnnotationsToExtension(updated);
-        return updated;
-      });
-      log.info(
-        `[FreeText] Updated geo position for annotation ${id}: ${geoCoords.lat}, ${geoCoords.lng}`
-      );
-    },
-    [setAnnotations, saveAnnotationsToExtension]
+  const updateGeoPosition = useGeoPositionUpdate(
+    "FreeText",
+    setAnnotations,
+    saveAnnotationsToExtension,
+    updateAnnotationInList
   );
 
   const { updateAnnotation, migrateGroupId } = useGenericAnnotationUpdates(
