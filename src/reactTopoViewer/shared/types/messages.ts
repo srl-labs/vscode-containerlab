@@ -51,6 +51,17 @@ export type TopologyHostCommand =
         geoCoordinates?: { lat: number; lng: number };
       }>;
     }
+  | {
+      command: "savePositionsAndAnnotations";
+      payload: {
+        positions: Array<{
+          id: string;
+          position?: { x: number; y: number };
+          geoCoordinates?: { lat: number; lng: number };
+        }>;
+        annotations?: Partial<TopologyAnnotations>;
+      };
+    }
   | { command: "setAnnotations"; payload: Partial<TopologyAnnotations> }
   | { command: "setEdgeAnnotations"; payload: EdgeAnnotation[] }
   | { command: "setViewerSettings"; payload: NonNullable<TopologyAnnotations["viewerSettings"]> }

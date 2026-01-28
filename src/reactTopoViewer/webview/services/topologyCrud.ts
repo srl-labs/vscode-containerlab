@@ -9,6 +9,7 @@ import type { Node } from "@xyflow/react";
 import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
 import type { NetworkNodeAnnotation } from "../../shared/types/topology";
+import { nodesToAnnotations } from "../annotations/annotationNodeConverters";
 import { useGraphStore } from "../stores/graphStore";
 import {
   BRIDGE_NETWORK_TYPES,
@@ -168,5 +169,39 @@ export async function saveNodePositions(
     );
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: savePositions`, err);
+  }
+}
+
+/**
+ * Save node positions and annotation nodes in a single host command.
+ * This keeps related moves (e.g., groups + members) as one undo entry.
+ */
+export async function saveNodePositionsWithAnnotations(
+  positions: Array<{
+    id: string;
+    position?: { x: number; y: number };
+    geoCoordinates?: { lat: number; lng: number };
+  }>,
+  nodes?: Node[]
+): Promise<void> {
+  try {
+    const graphNodes = nodes ?? useGraphStore.getState().nodes;
+    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    await executeTopologyCommand(
+      {
+        command: "savePositionsAndAnnotations",
+        payload: {
+          positions,
+          annotations: {
+            freeTextAnnotations,
+            freeShapeAnnotations,
+            groupStyleAnnotations: groups
+          }
+        }
+      },
+      { applySnapshot: false }
+    );
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: savePositionsAndAnnotations`, err);
   }
 }

@@ -18,7 +18,8 @@ export {
   createLink,
   deleteLink,
   saveNetworkNodesFromGraph,
-  saveNodePositions
+  saveNodePositions,
+  saveNodePositionsWithAnnotations
 } from "./topologyCrud";
 
 export type { NodeSaveData, LinkSaveData, NetworkNodeData } from "./topologyCrud";

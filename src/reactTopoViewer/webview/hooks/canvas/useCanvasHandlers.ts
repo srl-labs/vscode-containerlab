@@ -27,7 +27,11 @@ import {
   GROUP_NODE_TYPE,
   isAnnotationNodeType
 } from "../../annotations/annotationNodeConverters";
-import { saveAnnotationNodesFromGraph, saveNodePositions } from "../../services";
+import {
+  saveAnnotationNodesFromGraph,
+  saveNodePositions,
+  saveNodePositionsWithAnnotations
+} from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
 import { buildEdgeId } from "../../utils/edgeId";
@@ -352,6 +356,11 @@ function useNodeDragHandlers(
       const movedAnnotations = movedPositions.some((pos) =>
         isAnnotationNodeType(nodeTypeMap.get(pos.id))
       );
+
+      if (topoPositions.length > 0 && movedAnnotations) {
+        void saveNodePositionsWithAnnotations(topoPositions, currentNodes);
+        return;
+      }
 
       if (topoPositions.length > 0) {
         void saveNodePositions(topoPositions);

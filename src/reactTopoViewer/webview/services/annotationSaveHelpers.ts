@@ -93,10 +93,12 @@ export async function saveNodeGroupMembership(
   groupId: string | null
 ): Promise<void> {
   try {
-    await executeTopologyCommand({
-      command: "setNodeGroupMembership",
-      payload: { nodeId, groupId }
-    });
+    // Avoid snapshot re-apply here to prevent position snapback when membership changes
+    // are sent separately from position saves during drag/drop.
+    await executeTopologyCommand(
+      { command: "setNodeGroupMembership", payload: { nodeId, groupId } },
+      { applySnapshot: false }
+    );
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setNodeGroupMembership`, err);
   }
@@ -106,10 +108,14 @@ export async function saveAllNodeGroupMemberships(
   memberships: Array<{ id: string; groupId?: string }>
 ): Promise<void> {
   try {
-    await executeTopologyCommand({
-      command: "setNodeGroupMemberships",
-      payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
-    });
+    // Avoid snapshot re-apply here for the same reason as saveNodeGroupMembership.
+    await executeTopologyCommand(
+      {
+        command: "setNodeGroupMemberships",
+        payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
+      },
+      { applySnapshot: false }
+    );
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setNodeGroupMemberships`, err);
   }
