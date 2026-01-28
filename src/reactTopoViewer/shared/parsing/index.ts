@@ -36,7 +36,7 @@
  */
 
 // Main parser API
-export { TopologyParser, parseTopology, parseTopologyForEditor } from './TopologyParser';
+export { TopologyParser, parseTopology, parseTopologyForEditor } from "./TopologyParser";
 
 // Core types
 export type {
@@ -50,33 +50,23 @@ export type {
   GraphLabelMigration,
   NodeBuildContext,
   EdgeBuildContext,
-  NodeRole,
-} from './types';
+  NodeRole
+} from "./types";
 
 // Re-export topology types for convenience
-export type {
-  ClabTopology,
-  CyElement,
-  TopologyAnnotations,
-  NodeAnnotation,
-} from './types';
+export type { ClabTopology, CyElement, TopologyAnnotations, NodeAnnotation } from "./types";
 
 // Constants and utilities from types
-export { nullLogger, ROUTER_KINDS, CLIENT_KINDS, detectRole } from './types';
+export { nullLogger, ROUTER_KINDS, CLIENT_KINDS, detectRole } from "./types";
 
 // Node config resolver (commonly used)
-export { resolveNodeConfig } from './NodeConfigResolver';
+export { resolveNodeConfig } from "./NodeConfigResolver";
 
 // Commonly used utilities
-export {
-  computeFullPrefix,
-  getLabName,
-  getTopologyNodeIds,
-  isPresetLayout,
-} from './utils';
+export { computeFullPrefix, getLabName, getTopologyNodeIds, isPresetLayout } from "./utils";
 
 // Edge stats (used by EdgeStatsBuilder)
-export { extractEdgeInterfaceStats, computeEdgeClassFromStates } from './EdgeElementBuilder';
+export { extractEdgeInterfaceStats, computeEdgeClassFromStates } from "./EdgeElementBuilder";
 
 // Interface patterns
-export { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
+export { DEFAULT_INTERFACE_PATTERNS } from "../constants/interfacePatterns";

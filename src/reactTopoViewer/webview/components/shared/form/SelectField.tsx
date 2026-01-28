@@ -1,7 +1,7 @@
 /**
  * SelectField - Dropdown select
  */
-import React from 'react';
+import React from "react";
 
 export interface SelectOption {
   value: string;
@@ -24,7 +24,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   onChange,
   options,
   placeholder,
-  className = '',
+  className = "",
   disabled
 }) => (
   <select
@@ -36,7 +36,9 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   >
     {placeholder && <option value="">{placeholder}</option>}
     {options.map((opt) => (
-      <option key={opt.value} value={opt.value}>{opt.label}</option>
+      <option key={opt.value} value={opt.value}>
+        {opt.label}
+      </option>
     ))}
   </select>
 );

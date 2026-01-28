@@ -3,24 +3,25 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import type { ClabNode, CyElement, ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
-import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
+import type {
+  ClabNode,
+  CyElement,
+  ClabTopology,
+  NodeAnnotation,
+  TopologyAnnotations
+} from "../types/topology";
+import { DEFAULT_INTERFACE_PATTERNS } from "../constants/interfacePatterns";
 
-import { resolveNodeConfig } from './NodeConfigResolver';
-import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from './LinkNormalizer';
-import { isDistributedSrosNode, findDistributedSrosContainer } from './DistributedSrosMapper';
-import {
-  extractIconVisuals,
-  sanitizeLabels,
-  getNodeLatLng,
-  computeLongname,
-} from './utils';
+import { resolveNodeConfig } from "./NodeConfigResolver";
+import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from "./LinkNormalizer";
+import { isDistributedSrosNode, findDistributedSrosContainer } from "./DistributedSrosMapper";
+import { extractIconVisuals, sanitizeLabels, getNodeLatLng, computeLongname } from "./utils";
 import type {
   ContainerDataProvider,
   ContainerInfo,
   InterfacePatternMigration,
-  ParserLogger,
-} from './types';
+  ParserLogger
+} from "./types";
 
 // ============================================================================
 // Build Options
@@ -66,7 +67,7 @@ function resolveInterfacePattern(
 ): InterfacePatternResult {
   // First check if the annotation has an interface pattern (node-specific)
   const annPattern = nodeAnn?.interfacePattern;
-  if (typeof annPattern === 'string' && annPattern) {
+  if (typeof annPattern === "string" && annPattern) {
     return { pattern: annPattern, needsMigration: false };
   }
   // Fall back to kind-based mapping - this needs migration
@@ -110,7 +111,7 @@ export function getContainerData(
     fullPrefix,
     labName,
     provider: opts.containerDataProvider,
-    components: ((resolvedNode as Record<string, unknown>).components as unknown[]) ?? [],
+    components: ((resolvedNode as Record<string, unknown>).components as unknown[]) ?? []
   });
 }
 
@@ -126,12 +127,12 @@ function buildContainerFields(
   containerData: ContainerInfo | undefined
 ): { mgmtIpv4Address: string; mgmtIpv6Address: string; state: string } {
   if (!includeContainerData || !containerData) {
-    return { mgmtIpv4Address: '', mgmtIpv6Address: '', state: '' };
+    return { mgmtIpv4Address: "", mgmtIpv6Address: "", state: "" };
   }
   return {
-    mgmtIpv4Address: containerData.IPv4Address ?? '',
-    mgmtIpv6Address: containerData.IPv6Address ?? '',
-    state: containerData.state ?? '',
+    mgmtIpv4Address: containerData.IPv4Address ?? "",
+    mgmtIpv6Address: containerData.IPv6Address ?? "",
+    state: containerData.state ?? ""
   };
 }
 
@@ -169,10 +170,10 @@ export function createNodeExtraData(params: {
     cleanedLabels,
     includeContainerData,
     interfacePatternMapping,
-    nodeAnn,
+    nodeAnn
   } = params;
 
-  const kind = mergedNode.kind ?? '';
+  const kind = mergedNode.kind ?? "";
   const { pattern: interfacePattern, needsMigration } = resolveInterfacePattern(
     nodeAnn,
     kind,
@@ -183,34 +184,34 @@ export function createNodeExtraData(params: {
   const extraData = {
     ...mergedNode,
     inherited: inheritedProps,
-    clabServerUsername: 'asad',
+    clabServerUsername: "asad",
     fqdn: `${nodeName}.${labName}.io`,
-    group: mergedNode.group ?? '',
+    group: mergedNode.group ?? "",
     id: nodeName,
-    image: mergedNode.image ?? '',
+    image: mergedNode.image ?? "",
     index: nodeIndex.toString(),
     kind,
-    type: mergedNode.type ?? '',
-    labdir: fullPrefix ? `${fullPrefix}/` : '',
+    type: mergedNode.type ?? "",
+    labdir: fullPrefix ? `${fullPrefix}/` : "",
     labels: cleanedLabels,
     longname: computeLongname(containerData?.name, fullPrefix, nodeName),
-    macAddress: '',
-    mgmtIntf: '',
+    macAddress: "",
+    mgmtIntf: "",
     mgmtIpv4AddressLength: 0,
     mgmtIpv4Address: containerFields.mgmtIpv4Address,
     mgmtIpv6Address: containerFields.mgmtIpv6Address,
     mgmtIpv6AddressLength: 0,
-    mgmtNet: '',
+    mgmtNet: "",
     name: nodeName,
     shortname: nodeName,
     state: containerFields.state,
-    weight: '3',
-    ...(interfacePattern && { interfacePattern }),
+    weight: "3",
+    ...(interfacePattern && { interfacePattern })
   };
 
   return {
     extraData,
-    migrationPattern: needsMigration ? interfacePattern : undefined,
+    migrationPattern: needsMigration ? interfacePattern : undefined
   };
 }
 
@@ -248,7 +249,7 @@ export function buildNodeElement(params: {
     labName,
     nodeAnn,
     nodeIndex,
-    interfacePatternMapping,
+    interfacePatternMapping
   } = params;
   const mergedNode = resolveNodeConfig(parsed, nodeObj || {});
   const nodePropKeys = new Set(Object.keys(nodeObj || {}));
@@ -269,29 +270,29 @@ export function buildNodeElement(params: {
     cleanedLabels,
     includeContainerData: opts.includeContainerData ?? false,
     interfacePatternMapping,
-    nodeAnn,
+    nodeAnn
   });
 
   const labels = mergedNode.labels as Record<string, unknown> | undefined;
   const topoViewerRole =
     nodeAnn?.icon ||
-    (labels?.['topoViewer-role'] as string) ||
+    (labels?.["topoViewer-role"] as string) ||
     (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE
       ? NODE_KIND_BRIDGE
-      : 'pe');
+      : "pe");
 
   const iconVisuals = extractIconVisuals(nodeAnn);
   const element: CyElement = {
-    group: 'nodes',
+    group: "nodes",
     data: {
       id: nodeName,
-      weight: '30',
+      weight: "30",
       name: nodeName,
       topoViewerRole,
       ...iconVisuals,
       lat,
       lng,
-      extraData,
+      extraData
     },
     position,
     removed: false,
@@ -300,7 +301,7 @@ export function buildNodeElement(params: {
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: '',
+    classes: ""
   };
 
   return { element, migrationPattern };
@@ -346,7 +347,7 @@ export function addNodeElements(
       labName,
       nodeAnn,
       nodeIndex,
-      interfacePatternMapping,
+      interfacePatternMapping
     });
     elements.push(element);
     // Track migrations for nodes that need interfacePattern written to annotations

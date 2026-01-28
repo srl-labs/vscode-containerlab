@@ -1,10 +1,14 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 import * as utils from "../utils";
-import type { ClabContainerTreeNode, ClabInterfaceTreeNode, ClabLabTreeNode } from "../treeView/common";
+import type {
+  ClabContainerTreeNode,
+  ClabInterfaceTreeNode,
+  ClabLabTreeNode
+} from "../treeView/common";
 
-const ERR_NO_LAB_NODE = 'No lab node selected.';
-const ERR_NO_IFACE_NODE = 'No interface node selected.';
+const ERR_NO_LAB_NODE = "No lab node selected.";
+const ERR_NO_IFACE_NODE = "No interface node selected.";
 
 export function copyLabPath(node: ClabLabTreeNode) {
   if (!node) {
@@ -14,7 +18,7 @@ export function copyLabPath(node: ClabLabTreeNode) {
 
   const labPath = node.labPath.absolute;
   if (!labPath) {
-    vscode.window.showErrorMessage('No labPath found.');
+    vscode.window.showErrorMessage("No labPath found.");
     return;
   }
 
@@ -40,7 +44,9 @@ export function copyContainerIPv4Address(node: ClabContainerTreeNode) {
   }
 
   vscode.env.clipboard.writeText(data).then(() => {
-    vscode.window.showInformationMessage(`${containerName}: Copied IPv4 address to clipboard succesfully.`);
+    vscode.window.showInformationMessage(
+      `${containerName}: Copied IPv4 address to clipboard succesfully.`
+    );
   });
 }
 
@@ -59,7 +65,9 @@ export function copyContainerIPv6Address(node: ClabContainerTreeNode) {
   }
 
   vscode.env.clipboard.writeText(data).then(() => {
-    vscode.window.showInformationMessage(`${containerName}: Copied IPv6 address to clipboard succesfully.`);
+    vscode.window.showInformationMessage(
+      `${containerName}: Copied IPv6 address to clipboard succesfully.`
+    );
   });
 }
 
@@ -77,7 +85,9 @@ export function copyContainerName(node: ClabContainerTreeNode) {
   }
 
   vscode.env.clipboard.writeText(containerName).then(() => {
-    vscode.window.showInformationMessage(`${containerName}: Copied hostname to clipboard succesfully.`);
+    vscode.window.showInformationMessage(
+      `${containerName}: Copied hostname to clipboard succesfully.`
+    );
   });
 }
 
@@ -134,7 +144,9 @@ export function copyContainerImage(node: ClabContainerTreeNode) {
   }
 
   vscode.env.clipboard.writeText(data).then(() => {
-    vscode.window.showInformationMessage(`${containerName}: Copied image to clipboard succesfully.`);
+    vscode.window.showInformationMessage(
+      `${containerName}: Copied image to clipboard succesfully.`
+    );
   });
 }
 
@@ -153,6 +165,8 @@ export function copyMACAddress(node: ClabInterfaceTreeNode) {
   }
 
   vscode.env.clipboard.writeText(data).then(() => {
-    vscode.window.showInformationMessage(`${intfName}: Copied MAC address to clipboard succesfully.`);
+    vscode.window.showInformationMessage(
+      `${intfName}: Copied MAC address to clipboard succesfully.`
+    );
   });
 }

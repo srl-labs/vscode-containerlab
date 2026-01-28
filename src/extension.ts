@@ -1,9 +1,9 @@
-import * as path from 'path';
-import * as fs from 'fs';
-import { execSync } from 'child_process';
+import * as path from "path";
+import * as fs from "fs";
+import { execSync } from "child_process";
 
-import * as vscode from 'vscode';
-import Docker from 'dockerode';
+import * as vscode from "vscode";
+import Docker from "dockerode";
 
 import * as cmd from "./commands";
 import * as utils from "./utils";
@@ -25,13 +25,18 @@ import {
   setLocalTreeView,
   setRunningTreeView,
   setHelpTreeView,
-  setHideNonOwnedLabsState,
-} from './globals';
-import { WelcomePage } from './welcomePage';
-import { registerClabImageCompletion } from './yaml/imageCompletion';
+  setHideNonOwnedLabsState
+} from "./globals";
+import { WelcomePage } from "./welcomePage";
+import { registerClabImageCompletion } from "./yaml/imageCompletion";
 import * as ins from "./treeView/inspector";
-import type * as c from './treeView/common';
-import { LocalLabTreeDataProvider, RunningLabTreeDataProvider, HelpFeedbackProvider, isPollingMode } from './treeView';
+import type * as c from "./treeView/common";
+import {
+  LocalLabTreeDataProvider,
+  RunningLabTreeDataProvider,
+  HelpFeedbackProvider,
+  isPollingMode
+} from "./treeView";
 import {
   refreshSshxSessions,
   refreshGottySessions,
@@ -61,23 +66,23 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
         vscode.TreeItemCollapsibleState.None
       );
       item.description = "Features are disabled on this platform.";
-      item.iconPath = new vscode.ThemeIcon('warning');
+      item.iconPath = new vscode.ThemeIcon("warning");
       item.command = {
-        command: 'vscode.open',
-        title: 'Open docs',
-        arguments: [vscode.Uri.parse('https://containerlab.dev/manual/vsc-extension/')]
+        command: "vscode.open",
+        title: "Open docs",
+        arguments: [vscode.Uri.parse("https://containerlab.dev/manual/vsc-extension/")]
       };
       return [item];
     }
   };
 
-  ['runningLabs', 'localLabs', 'helpFeedback'].forEach(viewId => {
+  ["runningLabs", "localLabs", "helpFeedback"].forEach((viewId) => {
     const view = vscode.window.createTreeView(viewId, {
       treeDataProvider: unsupportedProvider,
       canSelectMany: false
     });
     context.subscriptions.push(
-      view.onDidChangeVisibility(e => {
+      view.onDidChangeVisibility((e) => {
         if (e.visible) {
           showWarningOnce();
         }
@@ -89,8 +94,6 @@ function registerUnsupportedViews(context: vscode.ExtensionContext) {
 
 // Session refresh functions are available from ./services/sessionRefresh directly
 
-
-
 function showOutputChannel() {
   outputChannel.show(true);
 }
@@ -98,7 +101,9 @@ function showOutputChannel() {
 async function refreshLabViews() {
   await ins.update();
   localLabsProvider.forceRefresh();
-  Promise.resolve(runningLabsProvider.refresh()).catch(() => { /* ignore */ });
+  Promise.resolve(runningLabsProvider.refresh()).catch(() => {
+    /* ignore */
+  });
 }
 
 function manageImpairments(node: c.ClabContainerTreeNode) {
@@ -120,13 +125,13 @@ async function createTopoViewerTemplateFileCommand() {
     return;
   }
   const uri = await vscode.window.showSaveDialog({
-    title: 'Enter containerlab topology template file name',
+    title: "Enter containerlab topology template file name",
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
-    saveLabel: 'Create Containerlab topology template file',
-    filters: { 'Containerlab YAML': ['clab.yml', 'clab.yaml'], 'YAML': ['yaml', 'yml'] }
+    saveLabel: "Create Containerlab topology template file",
+    filters: { "Containerlab YAML": ["clab.yml", "clab.yaml"], YAML: ["yaml", "yml"] }
   });
   if (!uri) {
-    vscode.window.showWarningMessage('No file path selected. Operation canceled.');
+    vscode.window.showWarningMessage("No file path selected. Operation canceled.");
     return;
   }
 
@@ -134,12 +139,12 @@ async function createTopoViewerTemplateFileCommand() {
   let filePath = uri.fsPath;
   if (!/\.clab\.(yml|yaml)$/i.test(filePath)) {
     // Replace .yml/.yaml with .clab.yml, or append if no extension
-    filePath = filePath.replace(/\.(yml|yaml)$/i, '') + '.clab.yml';
+    filePath = filePath.replace(/\.(yml|yaml)$/i, "") + ".clab.yml";
   }
 
   // Create a starter template file with example nodes
   const baseName = path.basename(filePath);
-  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, '').replace(/\.(yml|yaml)$/i, '');
+  const labName = baseName.replace(/\.clab\.(yml|yaml)$/i, "").replace(/\.(yml|yaml)$/i, "");
   const template = `name: ${labName}
 
 topology:
@@ -171,7 +176,7 @@ topology:
 
 function updateHideNonOwnedLabs(hide: boolean) {
   setHideNonOwnedLabsState(hide);
-  vscode.commands.executeCommand('setContext', 'containerlab:nonOwnedLabsHidden', hide);
+  vscode.commands.executeCommand("setContext", "containerlab:nonOwnedLabsHidden", hide);
 }
 
 function hideNonOwnedLabsCommand() {
@@ -186,7 +191,7 @@ function showNonOwnedLabsCommand() {
 
 async function filterRunningLabsCommand() {
   const val = await vscode.window.showInputBox({
-    placeHolder: 'Filter running labs',
+    placeHolder: "Filter running labs",
     prompt: 'use * for wildcard, # for numbers: "srl*", "spine#-leaf*", "^spine.*"'
   });
   if (val !== undefined) {
@@ -200,7 +205,7 @@ function clearRunningLabsFilterCommand() {
 
 async function filterLocalLabsCommand() {
   const val = await vscode.window.showInputBox({
-    placeHolder: 'Filter local labs',
+    placeHolder: "Filter local labs",
     prompt: 'use * for wildcard, # for numbers: "spine", "*test*", "lab#", "^my-.*"'
   });
   if (val !== undefined) {
@@ -213,7 +218,7 @@ function clearLocalLabsFilterCommand() {
 }
 
 function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
-  if (e.affectsConfiguration('containerlab.autoSync')) {
+  if (e.affectsConfiguration("containerlab.autoSync")) {
     // Setting changed; no action required here
   }
 }
@@ -221,92 +226,148 @@ function onDidChangeConfiguration(e: vscode.ConfigurationChangeEvent) {
 function registerCommands(context: vscode.ExtensionContext) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const commands: Array<[string, (...args: any[]) => unknown]> = [
-    ['containerlab.lab.openFile', cmd.openLabFile],
-    ['containerlab.lab.addToWorkspace', cmd.addLabFolderToWorkspace],
-    ['containerlab.lab.openFolderInNewWindow', cmd.openFolderInNewWindow],
-    ['containerlab.lab.copyPath', cmd.copyLabPath],
-    ['containerlab.lab.cloneRepo', cmd.cloneRepo],
-    ['containerlab.lab.clonePopularRepo', cmd.clonePopularRepo],
-    ['containerlab.lab.toggleFavorite', cmd.toggleFavorite],
-    ['containerlab.lab.delete', cmd.deleteLab],
-    ['containerlab.lab.deploy', cmd.deploy],
-    ['containerlab.lab.deploy.cleanup', cmd.deployCleanup],
-    ['containerlab.lab.deploy.specificFile', cmd.deploySpecificFile],
-    ['containerlab.lab.deployPopular', cmd.deployPopularLab],
-    ['containerlab.lab.redeploy', cmd.redeploy],
-    ['containerlab.lab.redeploy.cleanup', cmd.redeployCleanup],
-    ['containerlab.lab.destroy', cmd.destroy],
-    ['containerlab.lab.destroy.cleanup', cmd.destroyCleanup],
-    ['containerlab.lab.save', cmd.saveLab],
-    ['containerlab.lab.sshx.attach', cmd.sshxAttach],
-    ['containerlab.lab.sshx.detach', cmd.sshxDetach],
-    ['containerlab.lab.sshx.reattach', cmd.sshxReattach],
-    ['containerlab.lab.sshx.copyLink', cmd.sshxCopyLink],
-    ['containerlab.lab.gotty.attach', cmd.gottyAttach],
-    ['containerlab.lab.gotty.detach', cmd.gottyDetach],
-    ['containerlab.lab.gotty.reattach', cmd.gottyReattach],
-    ['containerlab.lab.gotty.copyLink', cmd.gottyCopyLink],
-    ['containerlab.lab.sshToAllNodes', cmd.sshToLab],
-    ['containerlab.lab.graph.drawio.horizontal', cmd.graphDrawIOHorizontal],
-    ['containerlab.lab.graph.drawio.vertical', cmd.graphDrawIOVertical],
-    ['containerlab.lab.graph.drawio.interactive', cmd.graphDrawIOInteractive],
-    ['containerlab.node.start', cmd.startNode],
-    ['containerlab.node.stop', cmd.stopNode],
-    ['containerlab.node.pause', cmd.pauseNode],
-    ['containerlab.node.unpause', cmd.unpauseNode],
-    ['containerlab.node.save', cmd.saveNode],
-    ['containerlab.node.attachShell', cmd.attachShell],
-    ['containerlab.node.ssh', cmd.sshToNode],
-    ['containerlab.node.telnet', cmd.telnetToNode],
-    ['containerlab.node.showLogs', cmd.showLogs],
-    ['containerlab.node.openBrowser', cmd.openBrowser],
-    ['containerlab.node.copyIPv4Address', cmd.copyContainerIPv4Address],
-    ['containerlab.node.copyIPv6Address', cmd.copyContainerIPv6Address],
-    ['containerlab.node.copyName', cmd.copyContainerName],
-    ['containerlab.node.copyID', cmd.copyContainerID],
-    ['containerlab.node.copyKind', cmd.copyContainerKind],
-    ['containerlab.node.copyImage', cmd.copyContainerImage],
-    ['containerlab.interface.capture', cmd.captureInterface],
-    ['containerlab.interface.captureWithEdgeshark', cmd.captureInterfaceWithPacketflix],
-    ['containerlab.interface.captureWithEdgesharkVNC', cmd.captureEdgesharkVNC],
-    ['containerlab.interface.setDelay', cmd.setLinkDelay],
-    ['containerlab.interface.setJitter', cmd.setLinkJitter],
-    ['containerlab.interface.setLoss', cmd.setLinkLoss],
-    ['containerlab.interface.setRate', cmd.setLinkRate],
-    ['containerlab.interface.setCorruption', cmd.setLinkCorruption],
-    ['containerlab.interface.copyMACAddress', cmd.copyMACAddress],
-    ['containerlab.install.edgeshark', cmd.installEdgeshark],
-    ['containerlab.uninstall.edgeshark', cmd.uninstallEdgeshark],
-    ['containerlab.capture.killAllWiresharkVNC', cmd.killAllWiresharkVNCCtrs],
-    ['containerlab.set.sessionHostname', cmd.setSessionHostname],
-    ['containerlab.openLink', cmd.openLink],
-    ['containerlab.lab.fcli.bgpPeers', cmd.fcliBgpPeers],
-    ['containerlab.lab.fcli.bgpRib', cmd.fcliBgpRib],
-    ['containerlab.lab.fcli.ipv4Rib', cmd.fcliIpv4Rib],
-    ['containerlab.lab.fcli.lldp', cmd.fcliLldp],
-    ['containerlab.lab.fcli.mac', cmd.fcliMac],
-    ['containerlab.lab.fcli.ni', cmd.fcliNi],
-    ['containerlab.lab.fcli.subif', cmd.fcliSubif],
-    ['containerlab.lab.fcli.sysInfo', cmd.fcliSysInfo],
-    ['containerlab.lab.fcli.custom', cmd.fcliCustom]
+    ["containerlab.lab.openFile", cmd.openLabFile],
+    ["containerlab.lab.addToWorkspace", cmd.addLabFolderToWorkspace],
+    ["containerlab.lab.openFolderInNewWindow", cmd.openFolderInNewWindow],
+    ["containerlab.lab.copyPath", cmd.copyLabPath],
+    ["containerlab.lab.cloneRepo", cmd.cloneRepo],
+    ["containerlab.lab.clonePopularRepo", cmd.clonePopularRepo],
+    ["containerlab.lab.toggleFavorite", cmd.toggleFavorite],
+    ["containerlab.lab.delete", cmd.deleteLab],
+    ["containerlab.lab.deploy", cmd.deploy],
+    ["containerlab.lab.deploy.cleanup", cmd.deployCleanup],
+    ["containerlab.lab.deploy.specificFile", cmd.deploySpecificFile],
+    ["containerlab.lab.deployPopular", cmd.deployPopularLab],
+    ["containerlab.lab.redeploy", cmd.redeploy],
+    ["containerlab.lab.redeploy.cleanup", cmd.redeployCleanup],
+    ["containerlab.lab.destroy", cmd.destroy],
+    ["containerlab.lab.destroy.cleanup", cmd.destroyCleanup],
+    ["containerlab.lab.save", cmd.saveLab],
+    ["containerlab.lab.sshx.attach", cmd.sshxAttach],
+    ["containerlab.lab.sshx.detach", cmd.sshxDetach],
+    ["containerlab.lab.sshx.reattach", cmd.sshxReattach],
+    ["containerlab.lab.sshx.copyLink", cmd.sshxCopyLink],
+    ["containerlab.lab.gotty.attach", cmd.gottyAttach],
+    ["containerlab.lab.gotty.detach", cmd.gottyDetach],
+    ["containerlab.lab.gotty.reattach", cmd.gottyReattach],
+    ["containerlab.lab.gotty.copyLink", cmd.gottyCopyLink],
+    ["containerlab.lab.sshToAllNodes", cmd.sshToLab],
+    ["containerlab.lab.graph.drawio.horizontal", cmd.graphDrawIOHorizontal],
+    ["containerlab.lab.graph.drawio.vertical", cmd.graphDrawIOVertical],
+    ["containerlab.lab.graph.drawio.interactive", cmd.graphDrawIOInteractive],
+    ["containerlab.node.start", cmd.startNode],
+    ["containerlab.node.stop", cmd.stopNode],
+    ["containerlab.node.pause", cmd.pauseNode],
+    ["containerlab.node.unpause", cmd.unpauseNode],
+    ["containerlab.node.save", cmd.saveNode],
+    ["containerlab.node.attachShell", cmd.attachShell],
+    ["containerlab.node.ssh", cmd.sshToNode],
+    ["containerlab.node.telnet", cmd.telnetToNode],
+    ["containerlab.node.showLogs", cmd.showLogs],
+    ["containerlab.node.openBrowser", cmd.openBrowser],
+    ["containerlab.node.copyIPv4Address", cmd.copyContainerIPv4Address],
+    ["containerlab.node.copyIPv6Address", cmd.copyContainerIPv6Address],
+    ["containerlab.node.copyName", cmd.copyContainerName],
+    ["containerlab.node.copyID", cmd.copyContainerID],
+    ["containerlab.node.copyKind", cmd.copyContainerKind],
+    ["containerlab.node.copyImage", cmd.copyContainerImage],
+    ["containerlab.interface.capture", cmd.captureInterface],
+    ["containerlab.interface.captureWithEdgeshark", cmd.captureInterfaceWithPacketflix],
+    ["containerlab.interface.captureWithEdgesharkVNC", cmd.captureEdgesharkVNC],
+    ["containerlab.interface.setDelay", cmd.setLinkDelay],
+    ["containerlab.interface.setJitter", cmd.setLinkJitter],
+    ["containerlab.interface.setLoss", cmd.setLinkLoss],
+    ["containerlab.interface.setRate", cmd.setLinkRate],
+    ["containerlab.interface.setCorruption", cmd.setLinkCorruption],
+    ["containerlab.interface.copyMACAddress", cmd.copyMACAddress],
+    ["containerlab.install.edgeshark", cmd.installEdgeshark],
+    ["containerlab.uninstall.edgeshark", cmd.uninstallEdgeshark],
+    ["containerlab.capture.killAllWiresharkVNC", cmd.killAllWiresharkVNCCtrs],
+    ["containerlab.set.sessionHostname", cmd.setSessionHostname],
+    ["containerlab.openLink", cmd.openLink],
+    ["containerlab.lab.fcli.bgpPeers", cmd.fcliBgpPeers],
+    ["containerlab.lab.fcli.bgpRib", cmd.fcliBgpRib],
+    ["containerlab.lab.fcli.ipv4Rib", cmd.fcliIpv4Rib],
+    ["containerlab.lab.fcli.lldp", cmd.fcliLldp],
+    ["containerlab.lab.fcli.mac", cmd.fcliMac],
+    ["containerlab.lab.fcli.ni", cmd.fcliNi],
+    ["containerlab.lab.fcli.subif", cmd.fcliSubif],
+    ["containerlab.lab.fcli.sysInfo", cmd.fcliSysInfo],
+    ["containerlab.lab.fcli.custom", cmd.fcliCustom]
   ];
   commands.forEach(([name, handler]) => {
     context.subscriptions.push(vscode.commands.registerCommand(name, handler));
   });
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.refresh', refreshLabViews));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.viewLogs', showOutputChannel));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.node.manageImpairments', manageImpairments));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.lab.graph.topoViewer', graphTopoViewer));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor.open', openTopoViewerEditorCommand));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.editor.topoViewerEditor', createTopoViewerTemplateFileCommand));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectAll', () => cmd.inspectAllLabs(extensionContext)));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.inspectOneLab', (node: c.ClabLabTreeNode) => cmd.inspectOneLab(node, extensionContext)));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.hideNonOwnedLabs', hideNonOwnedLabsCommand));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.showNonOwnedLabs', showNonOwnedLabsCommand));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.filter', filterRunningLabsCommand));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.runningLabs.clearFilter', clearRunningLabsFilterCommand));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.localLabs.filter', filterLocalLabsCommand));
-  context.subscriptions.push(vscode.commands.registerCommand('containerlab.treeView.localLabs.clearFilter', clearLocalLabsFilterCommand));
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.refresh", refreshLabViews)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.viewLogs", showOutputChannel)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.node.manageImpairments", manageImpairments)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.lab.graph.topoViewer", graphTopoViewer)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.editor.topoViewerEditor.open",
+      openTopoViewerEditorCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.editor.topoViewerEditor",
+      createTopoViewerTemplateFileCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.inspectAll", () =>
+      cmd.inspectAllLabs(extensionContext)
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("containerlab.inspectOneLab", (node: c.ClabLabTreeNode) =>
+      cmd.inspectOneLab(node, extensionContext)
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.treeView.runningLabs.hideNonOwnedLabs",
+      hideNonOwnedLabsCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.treeView.runningLabs.showNonOwnedLabs",
+      showNonOwnedLabsCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.treeView.runningLabs.filter",
+      filterRunningLabsCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.treeView.runningLabs.clearFilter",
+      clearRunningLabsFilterCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.treeView.localLabs.filter",
+      filterLocalLabsCommand
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "containerlab.treeView.localLabs.clearFilter",
+      clearLocalLabsFilterCommand
+    )
+  );
 }
 
 function registerRealtimeUpdates(context: vscode.ExtensionContext) {
@@ -343,7 +404,9 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
   const disposeStateChange = onContainerStateChanged((containerShortId, newState) => {
     if (!isPollingMode() && runningLabsProvider) {
       runningLabsProvider.refreshContainer(containerShortId, newState).catch((err: unknown) => {
-        outputChannel.debug(`Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`);
+        outputChannel.debug(
+          `Failed to refresh container ${containerShortId}: ${err instanceof Error ? err.message : String(err)}`
+        );
       });
     }
   });
@@ -360,13 +423,15 @@ function registerRealtimeUpdates(context: vscode.ExtensionContext) {
 }
 
 function setClabBinPath(): boolean {
-  const configPath = vscode.workspace.getConfiguration('containerlab').get<string>('binaryPath', '');
+  const configPath = vscode.workspace
+    .getConfiguration("containerlab")
+    .get<string>("binaryPath", "");
 
   // if empty fall back to resolving from PATH
-  if (!configPath || configPath.trim() === '') {
+  if (!configPath || configPath.trim() === "") {
     try {
       // eslint-disable-next-line sonarjs/no-os-command-from-path
-      const stdout = execSync('which containerlab', { encoding: 'utf-8' });
+      const stdout = execSync("which containerlab", { encoding: "utf-8" });
       const resolvedPath = stdout.trim();
       if (resolvedPath) {
         setContainerlabBinaryPath(resolvedPath);
@@ -376,7 +441,7 @@ function setClabBinPath(): boolean {
     } catch (err) {
       outputChannel.warn(`Could not resolve containerlab bin path from sys PATH: ${err}`);
     }
-    setContainerlabBinaryPath('containerlab');
+    setContainerlabBinaryPath("containerlab");
     return true;
   }
 
@@ -401,13 +466,13 @@ function setClabBinPath(): boolean {
  */
 export async function activate(context: vscode.ExtensionContext) {
   // Create and register the output channel
-  const channel = vscode.window.createOutputChannel('Containerlab', { log: true });
+  const channel = vscode.window.createOutputChannel("Containerlab", { log: true });
   setOutputChannel(channel);
   context.subscriptions.push(channel);
-  outputChannel.info('Registered output channel sucessfully.');
+  outputChannel.info("Registered output channel sucessfully.");
   outputChannel.info(`Detected platform: ${process.platform}`);
 
-  const config = vscode.workspace.getConfiguration('containerlab');
+  const config = vscode.workspace.getConfiguration("containerlab");
   const isSupportedPlatform = process.platform === "linux" || vscode.env.remoteName === "wsl";
 
   // Allow activation only on Linux or when connected via WSL.
@@ -424,44 +489,50 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   // Ensure clab is installed if the binpath was unable to be set.
-  if (containerlabBinaryPath === 'containerlab') {
+  if (containerlabBinaryPath === "containerlab") {
     const installChoice = await vscode.window.showWarningMessage(
-      'Containerlab is not installed. Would you like to install it?',
-      'Install',
-      'Cancel'
+      "Containerlab is not installed. Would you like to install it?",
+      "Install",
+      "Cancel"
     );
-    if (installChoice === 'Install') {
+    if (installChoice === "Install") {
       utils.installContainerlab();
-      vscode.window.showInformationMessage(
-        'Please complete the installation in the terminal, then reload the window.',
-        'Reload Window'
-      ).then(choice => {
-        if (choice === 'Reload Window') {
-          vscode.commands.executeCommand('workbench.action.reloadWindow');
-        }
-      });
+      vscode.window
+        .showInformationMessage(
+          "Please complete the installation in the terminal, then reload the window.",
+          "Reload Window"
+        )
+        .then((choice) => {
+          if (choice === "Reload Window") {
+            vscode.commands.executeCommand("workbench.action.reloadWindow");
+          }
+        });
     }
     return;
   }
 
-  outputChannel.info('Containerlab extension activated.');
+  outputChannel.info("Containerlab extension activated.");
 
   outputChannel.debug(`Starting user permissions check`);
   // 1) Check if user has required permissions
   const userInfo = utils.getUserInfo();
   setUsername(userInfo.username);
   if (!userInfo.hasPermission) {
-    outputChannel.error(`User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`);
+    outputChannel.error(
+      `User '${userInfo.username}' (id:${userInfo.uid}) has insufficient permissions`
+    );
 
     vscode.window.showErrorMessage(
       `Extension activation failed. Insufficient permissions.\nEnsure ${userInfo.username} is in the 'clab_admins' and 'docker' groups.`
-    )
+    );
     return;
   }
-  outputChannel.debug(`Permission check success for user '${userInfo.username}' (id:${userInfo.uid})`);
+  outputChannel.debug(
+    `Permission check success for user '${userInfo.username}' (id:${userInfo.uid})`
+  );
 
   // 2) Check for updates
-  const skipUpdateCheck = config.get<boolean>('skipUpdateCheck', false);
+  const skipUpdateCheck = config.get<boolean>("skipUpdateCheck", false);
   if (!skipUpdateCheck) {
     utils.checkAndUpdateClabIfNeeded(outputChannel, context).catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
@@ -473,11 +544,11 @@ export async function activate(context: vscode.ExtensionContext) {
    * CONNECT TO DOCKER SOCKET VIA DOCKERODE
    */
   try {
-    const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+    const docker = new Docker({ socketPath: "/var/run/docker.sock" });
     setDockerClient(docker);
     // verify we are connected
     await docker.ping();
-    outputChannel.info('Successfully connected to Docker socket');
+    outputChannel.info("Successfully connected to Docker socket");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     outputChannel.error(`Failed to connect to Docker socket: ${message}`);
@@ -505,7 +576,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Tree data provider
   setExtensionContext(context);
-  setFavoriteLabs(new Set(context.globalState.get<string[]>('favoriteLabs', [])));
+  setFavoriteLabs(new Set(context.globalState.get<string[]>("favoriteLabs", [])));
 
   const newLocalProvider = new LocalLabTreeDataProvider();
   const newRunningProvider = new RunningLabTreeDataProvider(context);
@@ -518,30 +589,34 @@ export async function activate(context: vscode.ExtensionContext) {
   await refreshGottySessions();
   // Docker images are refreshed on TopoViewer open to avoid unnecessary calls
 
+  setLocalTreeView(
+    vscode.window.createTreeView("localLabs", {
+      treeDataProvider: newLocalProvider,
+      canSelectMany: true
+    })
+  );
 
-  setLocalTreeView(vscode.window.createTreeView('localLabs', {
-    treeDataProvider: newLocalProvider,
-    canSelectMany: true
-  }));
+  setRunningTreeView(
+    vscode.window.createTreeView("runningLabs", {
+      treeDataProvider: newRunningProvider,
+      canSelectMany: true
+    })
+  );
 
-  setRunningTreeView(vscode.window.createTreeView('runningLabs', {
-    treeDataProvider: newRunningProvider,
-    canSelectMany: true
-  }));
-
-  setHelpTreeView(vscode.window.createTreeView('helpFeedback', {
-    treeDataProvider: newHelpProvider,
-    canSelectMany: false
-  }));
+  setHelpTreeView(
+    vscode.window.createTreeView("helpFeedback", {
+      treeDataProvider: newHelpProvider,
+      canSelectMany: false
+    })
+  );
 
   registerRealtimeUpdates(context);
 
   // Determine if local capture is allowed.
-  const isLocalCaptureAllowed =
-    vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack();
+  const isLocalCaptureAllowed = vscode.env.remoteName !== "ssh-remote" && !utils.isOrbstack();
   vscode.commands.executeCommand(
-    'setContext',
-    'containerlab:isLocalCaptureAllowed',
+    "setContext",
+    "containerlab:isLocalCaptureAllowed",
     isLocalCaptureAllowed
   );
 
@@ -555,12 +630,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // Expose a stable API surface for other extensions to access providers safely.
   return {
     getLocalLabsProvider: () => localLabsProvider,
-    getRunningLabsProvider: () => runningLabsProvider,
+    getRunningLabsProvider: () => runningLabsProvider
   };
 }
 
 export function deactivate() {
   if (outputChannel) {
-    outputChannel.info('Deactivating Containerlab extension.');
+    outputChannel.info("Deactivating Containerlab extension.");
   }
 }

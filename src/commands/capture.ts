@@ -1,11 +1,15 @@
-import * as vscode from "vscode"
+import * as vscode from "vscode";
 
 import { outputChannel, dockerClient, username } from "../globals";
 import * as utils from "../utils";
 import type { ClabInterfaceTreeNode } from "../treeView/common";
 import { genPacketflixURI, getHostname, setSessionHostname } from "../utils/packetflix";
-import type { ImagePullPolicy} from "../utils/consts";
-import { DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE, DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY, WIRESHARK_VNC_CTR_NAME_PREFIX } from "../utils/consts";
+import type { ImagePullPolicy } from "../utils/consts";
+import {
+  DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE,
+  DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY,
+  WIRESHARK_VNC_CTR_NAME_PREFIX
+} from "../utils/consts";
 
 export { getHostname, setSessionHostname };
 
@@ -20,11 +24,17 @@ export async function captureInterface(
     return vscode.window.showErrorMessage("No interface to capture found.");
   }
 
-  outputChannel.debug(`captureInterface() called for node=${node.parentName}, interface=${node.name}`);
-  outputChannel.debug(`remoteName = ${vscode.env.remoteName || "(none)"}; isOrbstack=${utils.isOrbstack()}`);
+  outputChannel.debug(
+    `captureInterface() called for node=${node.parentName}, interface=${node.name}`
+  );
+  outputChannel.debug(
+    `remoteName = ${vscode.env.remoteName || "(none)"}; isOrbstack=${utils.isOrbstack()}`
+  );
 
   // Settings override
-  const preferredCaptureMethod = vscode.workspace.getConfiguration("containerlab").get<string>("capture.preferredAction");
+  const preferredCaptureMethod = vscode.workspace
+    .getConfiguration("containerlab")
+    .get<string>("capture.preferredAction");
   switch (preferredCaptureMethod) {
     case "Edgeshark":
       return captureInterfaceWithPacketflix(node, allSelectedNodes);
@@ -36,7 +46,6 @@ export async function captureInterface(
   return captureEdgesharkVNC(node, allSelectedNodes);
 }
 
-
 async function buildPacketflixUri(
   node: ClabInterfaceTreeNode,
   allSelectedNodes?: ClabInterfaceTreeNode[],
@@ -47,14 +56,14 @@ async function buildPacketflixUri(
     return undefined;
   }
 
-  const selected = allSelectedNodes && allSelectedNodes.length > 0
-    ? allSelectedNodes
-    : [node];
+  const selected = allSelectedNodes && allSelectedNodes.length > 0 ? allSelectedNodes : [node];
 
   if (selected.length > 1) {
-    const uniqueContainers = new Set(selected.map(i => i.parentName));
+    const uniqueContainers = new Set(selected.map((i) => i.parentName));
     if (uniqueContainers.size > 1) {
-      outputChannel.debug("Edgeshark multi selection => multiple containers => launching individually");
+      outputChannel.debug(
+        "Edgeshark multi selection => multiple containers => launching individually"
+      );
       for (const nd of selected) {
         if (forVNC) {
           await captureEdgesharkVNC(nd);
@@ -69,19 +78,17 @@ async function buildPacketflixUri(
   return await genPacketflixURI(selected, forVNC);
 }
 
-
 /**
  * Start capture on an interface using edgeshark/packetflix.
  * This method builds a 'packetflix:' URI that calls edgeshark.
  */
 export async function captureInterfaceWithPacketflix(
   node: ClabInterfaceTreeNode,
-  allSelectedNodes?: ClabInterfaceTreeNode[]  // [CHANGED]
+  allSelectedNodes?: ClabInterfaceTreeNode[] // [CHANGED]
 ) {
-
-  const packetflixUri = await buildPacketflixUri(node, allSelectedNodes)
+  const packetflixUri = await buildPacketflixUri(node, allSelectedNodes);
   if (!packetflixUri) {
-    return
+    return;
   }
 
   vscode.env.openExternal(vscode.Uri.parse(packetflixUri[0]));
@@ -90,15 +97,15 @@ export async function captureInterfaceWithPacketflix(
 function isDarkModeEnabled(themeSetting?: string): boolean {
   switch (themeSetting) {
     case "Dark":
-      return true
+      return true;
     case "Light":
-      return false
+      return false;
     default: {
-      const vscThemeKind = vscode.window.activeColorTheme.kind
+      const vscThemeKind = vscode.window.activeColorTheme.kind;
       return (
         vscThemeKind === vscode.ColorThemeKind.Dark ||
         vscThemeKind === vscode.ColorThemeKind.HighContrast
-      )
+      );
     }
   }
 }
@@ -106,12 +113,12 @@ function isDarkModeEnabled(themeSetting?: string): boolean {
 async function getEdgesharkNetwork(): Promise<string> {
   try {
     if (!dockerClient) {
-      outputChannel.debug("getEdgesharkNetwork() failed: docker client unavailable.")
+      outputChannel.debug("getEdgesharkNetwork() failed: docker client unavailable.");
       return "";
     }
     // List containers using edgeshark as name filter
     const containers = await dockerClient.listContainers({
-      filters: { name: ['edgeshark'] }
+      filters: { name: ["edgeshark"] }
     });
 
     if (containers.length === 0) {
@@ -147,41 +154,41 @@ async function getEdgesharkNetwork(): Promise<string> {
   } catch {
     // ignore
   }
-  return ""
+  return "";
 }
 
 async function getVolumeMount(nodeName: string): Promise<string> {
   try {
     if (!dockerClient) {
-      outputChannel.debug("getVolumeMount() failed: docker client unavailable.")
+      outputChannel.debug("getVolumeMount() failed: docker client unavailable.");
       return "";
     }
 
     const container = dockerClient.getContainer(nodeName);
     const containerInfo = await container.inspect();
-    const labDir = containerInfo.Config.Labels?.['clab-node-lab-dir'];
+    const labDir = containerInfo.Config.Labels?.["clab-node-lab-dir"];
 
-    if (labDir && labDir !== '<no value>') {
-      const pathParts = labDir.split('/')
-      pathParts.pop()
-      pathParts.pop()
-      const labRootDir = pathParts.join('/')
-      outputChannel.debug(`Mounting lab directory: ${labRootDir} as /pcaps`)
-      return `-v "${labRootDir}:/pcaps"`
+    if (labDir && labDir !== "<no value>") {
+      const pathParts = labDir.split("/");
+      pathParts.pop();
+      pathParts.pop();
+      const labRootDir = pathParts.join("/");
+      outputChannel.debug(`Mounting lab directory: ${labRootDir} as /pcaps`);
+      return `-v "${labRootDir}:/pcaps"`;
     }
   } catch {
     // ignore
   }
-  return ""
+  return "";
 }
 
 function adjustPacketflixHost(uri: string, edgesharkNetwork: string): string {
-  if (uri.includes('localhost') || uri.includes('127.0.0.1')) {
+  if (uri.includes("localhost") || uri.includes("127.0.0.1")) {
     return edgesharkNetwork
-      ? uri.replace(/localhost|127\.0\.0\.1/g, 'edgeshark-edgeshark-1')
-      : uri.replace(/localhost|127\.0\.0\.1/g, 'host.docker.internal')
+      ? uri.replace(/localhost|127\.0\.0\.1/g, "edgeshark-edgeshark-1")
+      : uri.replace(/localhost|127\.0\.0\.1/g, "host.docker.internal");
   }
-  return uri
+  return uri;
 }
 
 const VOLUME_MOUNT_REGEX = /-v\s+"?([^"]+)"?/;
@@ -197,7 +204,7 @@ function buildVolumeBinds(volumeMount?: string): string[] {
 function buildWiresharkEnvVars(packetflixLink: string, themeSetting?: string): string[] {
   const env = [`PACKETFLIX_LINK=${packetflixLink}`];
   if (isDarkModeEnabled(themeSetting)) {
-    env.push('DARK_MODE=1');
+    env.push("DARK_MODE=1");
   }
   return env;
 }
@@ -213,17 +220,19 @@ type WiresharkContainerOptions = {
   port: number;
 };
 
-async function startWiresharkContainer(options: WiresharkContainerOptions): Promise<string | undefined> {
+async function startWiresharkContainer(
+  options: WiresharkContainerOptions
+): Promise<string | undefined> {
   if (!dockerClient) {
-    outputChannel.debug("captureEdgesharkVNC() failed: docker client unavailable.")
-    vscode.window.showErrorMessage("Unable to start capture: Docker client unavailable")
+    outputChannel.debug("captureEdgesharkVNC() failed: docker client unavailable.");
+    vscode.window.showErrorMessage("Unable to start capture: Docker client unavailable");
     return undefined;
   }
 
   try {
     await utils.checkAndPullDockerImage(options.dockerImage, options.dockerPullPolicy);
 
-    const networkName = options.edgesharkNetwork.replace('--network ', '').trim();
+    const networkName = options.edgesharkNetwork.replace("--network ", "").trim();
     const volumeBinds = buildVolumeBinds(options.volumeMount);
     const env = buildWiresharkEnvVars(options.packetflixUri, options.themeSetting);
 
@@ -234,9 +243,9 @@ async function startWiresharkContainer(options: WiresharkContainerOptions): Prom
       HostConfig: {
         AutoRemove: true,
         PortBindings: {
-          '5800/tcp': [{ HostIp: '127.0.0.1', HostPort: options.port.toString() }]
+          "5800/tcp": [{ HostIp: "127.0.0.1", HostPort: options.port.toString() }]
         },
-        NetworkMode: networkName || 'bridge',
+        NetworkMode: networkName || "bridge",
         Binds: volumeBinds.length > 0 ? volumeBinds : undefined
       }
     });
@@ -251,25 +260,34 @@ async function startWiresharkContainer(options: WiresharkContainerOptions): Prom
 }
 
 // Capture using Edgeshark + Wireshark via VNC in a webview
-export async function captureEdgesharkVNC(node: ClabInterfaceTreeNode, allSelectedNodes?: ClabInterfaceTreeNode[]) {
-
+export async function captureEdgesharkVNC(
+  node: ClabInterfaceTreeNode,
+  allSelectedNodes?: ClabInterfaceTreeNode[]
+) {
   // Handle settings
   const wsConfig = vscode.workspace.getConfiguration("containerlab");
-  const dockerImage = wsConfig.get<string>("capture.wireshark.dockerImage", DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE);
-  const dockerPullPolicy = wsConfig.get<ImagePullPolicy.Always | ImagePullPolicy.Missing | ImagePullPolicy.Never>("capture.wireshark.pullPolicy", DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY);
+  const dockerImage = wsConfig.get<string>(
+    "capture.wireshark.dockerImage",
+    DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE
+  );
+  const dockerPullPolicy = wsConfig.get<
+    ImagePullPolicy.Always | ImagePullPolicy.Missing | ImagePullPolicy.Never
+  >("capture.wireshark.pullPolicy", DEFAULT_WIRESHARK_VNC_DOCKER_PULL_POLICY);
   const wiresharkThemeSetting = wsConfig.get<string>("capture.wireshark.theme");
   const keepOpenInBackground = wsConfig.get<boolean>("capture.wireshark.stayOpenInBackground");
 
-  const packetflixUri = await buildPacketflixUri(node, allSelectedNodes, true)
+  const packetflixUri = await buildPacketflixUri(node, allSelectedNodes, true);
   if (!packetflixUri) {
-    return
+    return;
   }
-  const edgesharkNetwork = await getEdgesharkNetwork()
-  const volumeMount = await getVolumeMount(node.parentName)
-  const modifiedPacketflixUri = adjustPacketflixHost(packetflixUri[0], edgesharkNetwork)
+  const edgesharkNetwork = await getEdgesharkNetwork();
+  const volumeMount = await getVolumeMount(node.parentName);
+  const modifiedPacketflixUri = adjustPacketflixHost(packetflixUri[0], edgesharkNetwork);
 
-  const port = await utils.getFreePort()
-  const ctrName = utils.sanitize(`${WIRESHARK_VNC_CTR_NAME_PREFIX}-${username}-${node.parentName}_${node.name}-${Date.now()}`)
+  const port = await utils.getFreePort();
+  const ctrName = utils.sanitize(
+    `${WIRESHARK_VNC_CTR_NAME_PREFIX}-${username}-${node.parentName}_${node.name}-${Date.now()}`
+  );
   const containerId = await startWiresharkContainer({
     dockerImage,
     dockerPullPolicy,
@@ -289,7 +307,7 @@ export async function captureEdgesharkVNC(node: ClabInterfaceTreeNode, allSelect
   const externalUri = (await vscode.env.asExternalUri(localUri)).toString();
 
   const panel = vscode.window.createWebviewPanel(
-    'clabWiresharkVNC',
+    "clabWiresharkVNC",
     `Wireshark (${node.parentName}:${node.name})`,
     vscode.ViewColumn.One,
     {
@@ -301,11 +319,13 @@ export async function captureEdgesharkVNC(node: ClabInterfaceTreeNode, allSelect
   panel.onDidDispose(async () => {
     try {
       if (!dockerClient) {
-        outputChannel.debug("captureEdgesharkVNC() VNC webview dispose failed: docker client unavailable.")
+        outputChannel.debug(
+          "captureEdgesharkVNC() VNC webview dispose failed: docker client unavailable."
+        );
         return;
       }
       if (!containerId) {
-        outputChannel.debug("captureEdgesharkVNC() VNC webview dispose failed: nil container ID.")
+        outputChannel.debug("captureEdgesharkVNC() VNC webview dispose failed: nil container ID.");
         return;
       }
       const container = dockerClient.getContainer(containerId);
@@ -314,7 +334,7 @@ export async function captureEdgesharkVNC(node: ClabInterfaceTreeNode, allSelect
     } catch {
       // ignore
     }
-  })
+  });
 
   const iframeUrl = externalUri;
 
@@ -329,12 +349,12 @@ export async function captureEdgesharkVNC(node: ClabInterfaceTreeNode, allSelect
 
   const readinessMonitor = createVncReadinessMonitor(panel, localUri.toString(), iframeUrl);
 
-  panel.webview.onDidReceiveMessage(message => {
-    if (!message || typeof message !== 'object') {
+  panel.webview.onDidReceiveMessage((message) => {
+    if (!message || typeof message !== "object") {
       return;
     }
 
-    if ((message as { type?: string }).type === 'retry-check') {
+    if ((message as { type?: string }).type === "retry-check") {
       readinessMonitor.start(true);
     }
   });
@@ -345,7 +365,7 @@ export async function captureEdgesharkVNC(node: ClabInterfaceTreeNode, allSelect
 function buildWiresharkVncHtml(iframeUrl: string, showVolumeTip: boolean): string {
   const volumeTip = showVolumeTip
     ? '<div class="info">Tip: Save pcap files to /pcaps to persist them in the lab directory</div>'
-    : ''
+    : "";
 
   return `
     <!DOCTYPE html>
@@ -489,46 +509,49 @@ function buildWiresharkVncHtml(iframeUrl: string, showVolumeTip: boolean): strin
         </script>
       </body>
     </html>
-  `
+  `;
 }
 
-type VncMonitorToken = { cancelled: boolean }
+type VncMonitorToken = { cancelled: boolean };
 
-function createVncReadinessMonitor(panel: vscode.WebviewPanel, localUrl: string, iframeUrl: string) {
-  let disposed = false
-  let currentToken: VncMonitorToken | undefined
+function createVncReadinessMonitor(
+  panel: vscode.WebviewPanel,
+  localUrl: string,
+  iframeUrl: string
+) {
+  let disposed = false;
+  let currentToken: VncMonitorToken | undefined;
 
   panel.onDidDispose(() => {
-    disposed = true
+    disposed = true;
     if (currentToken) {
-      currentToken.cancelled = true
+      currentToken.cancelled = true;
     }
-  })
+  });
 
   const start = (force = false) => {
     if (disposed) {
-      return
+      return;
     }
     if (currentToken && !force) {
-      return
+      return;
     }
 
     if (currentToken) {
-      currentToken.cancelled = true
+      currentToken.cancelled = true;
     }
 
-    const token: VncMonitorToken = { cancelled: false }
-    currentToken = token
+    const token: VncMonitorToken = { cancelled: false };
+    currentToken = token;
 
-    void runVncReadinessLoop(panel, localUrl, iframeUrl, token, () => disposed)
-      .finally(() => {
-        if (currentToken === token) {
-          currentToken = undefined
-        }
-      })
-  }
+    void runVncReadinessLoop(panel, localUrl, iframeUrl, token, () => disposed).finally(() => {
+      if (currentToken === token) {
+        currentToken = undefined;
+      }
+    });
+  };
 
-  return { start }
+  return { start };
 }
 
 async function runVncReadinessLoop(
@@ -538,44 +561,46 @@ async function runVncReadinessLoop(
   token: VncMonitorToken,
   isDisposed: () => boolean
 ): Promise<void> {
-  const maxAttempts = 60
-  const delayMs = 1000
+  const maxAttempts = 60;
+  const delayMs = 1000;
 
   if (isDisposed() || token.cancelled) {
-    return
+    return;
   }
 
-  await utils.tryPostMessage(panel, { type: 'vnc-progress', attempt: 0, maxAttempts })
+  await utils.tryPostMessage(panel, { type: "vnc-progress", attempt: 0, maxAttempts });
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (isDisposed() || token.cancelled) {
-      return
+      return;
     }
 
-    const ready = await utils.isHttpEndpointReady(localUrl)
+    const ready = await utils.isHttpEndpointReady(localUrl);
     if (isDisposed() || token.cancelled) {
-      return
+      return;
     }
 
     if (ready) {
-      await utils.tryPostMessage(panel, { type: 'vnc-ready', url: iframeUrl })
-      return
+      await utils.tryPostMessage(panel, { type: "vnc-ready", url: iframeUrl });
+      return;
     }
 
-    await utils.tryPostMessage(panel, { type: 'vnc-progress', attempt, maxAttempts })
-    await utils.delay(delayMs)
+    await utils.tryPostMessage(panel, { type: "vnc-progress", attempt, maxAttempts });
+    await utils.delay(delayMs);
   }
 
   if (!isDisposed() && !token.cancelled) {
-    await utils.tryPostMessage(panel, { type: 'vnc-timeout', url: iframeUrl })
+    await utils.tryPostMessage(panel, { type: "vnc-timeout", url: iframeUrl });
   }
 }
 
 export async function killAllWiresharkVNCCtrs() {
-  const dockerImage = vscode.workspace.getConfiguration("containerlab").get<string>("capture.wireshark.dockerImage", DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE)
+  const dockerImage = vscode.workspace
+    .getConfiguration("containerlab")
+    .get<string>("capture.wireshark.dockerImage", DEFAULT_WIRESHARK_VNC_DOCKER_IMAGE);
   try {
     if (!dockerClient) {
-      outputChannel.debug("killAllWiresharkVNCCtrs() failed: docker client unavailable.")
+      outputChannel.debug("killAllWiresharkVNCCtrs() failed: docker client unavailable.");
     }
 
     const ctrNamePrefix = `${WIRESHARK_VNC_CTR_NAME_PREFIX}-${username}`;
@@ -594,11 +619,9 @@ export async function killAllWiresharkVNCCtrs() {
         containers.map(async (containerInfo) => {
           try {
             const container = dockerClient.getContainer(containerInfo.Id);
-            await container.remove(
-              {
-                force: true
-              }
-            );
+            await container.remove({
+              force: true
+            });
             outputChannel.info(`Removed Wireshark VNC container: ${containerInfo.Id}`);
           } catch (err) {
             outputChannel.warn(`Failed to remove container ${containerInfo.Id}: ${err}`);

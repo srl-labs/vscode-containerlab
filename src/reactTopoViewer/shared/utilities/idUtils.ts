@@ -3,7 +3,7 @@
  * Mirrors the logic from legacy topoViewer IdUtils.ts
  */
 
-import { isSpecialEndpointId } from './LinkTypes';
+import { isSpecialEndpointId } from "./LinkTypes";
 
 /**
  * Generate unique ID for dummy nodes (dummy1, dummy2, etc.)
@@ -11,8 +11,8 @@ import { isSpecialEndpointId } from './LinkTypes';
 export function generateDummyId(baseName: string, usedIds: Set<string>): string {
   const re = /^(dummy)(\d*)$/;
   const match = re.exec(baseName);
-  const base = match?.[1] || 'dummy';
-  let num = parseInt(match?.[2] || '1') || 1;
+  const base = match?.[1] || "dummy";
+  let num = parseInt(match?.[2] || "1") || 1;
   while (usedIds.has(`${base}${num}`)) num++;
   return `${base}${num}`;
 }
@@ -21,7 +21,7 @@ export function generateDummyId(baseName: string, usedIds: Set<string>): string 
  * Generate unique ID for adapter nodes (host:eth1, macvlan:eth1, etc.)
  */
 export function generateAdapterNodeId(baseName: string, usedIds: Set<string>): string {
-  const [nodeType, adapter] = baseName.split(':');
+  const [nodeType, adapter] = baseName.split(":");
   const adapterRe = /^([a-zA-Z]+)(\d+)$/;
   const adapterMatch = adapterRe.exec(adapter);
   if (adapterMatch) {
@@ -50,7 +50,7 @@ export function generateSpecialNodeId(baseName: string, usedIds: Set<string>): s
   let name = baseName;
   while (usedIds.has(name)) {
     let i = name.length - 1;
-    while (i >= 0 && name[i] >= '0' && name[i] <= '9') i--;
+    while (i >= 0 && name[i] >= "0" && name[i] <= "9") i--;
     const base = name.slice(0, i + 1) || name;
     const digits = name.slice(i + 1);
     let num = digits ? parseInt(digits, 10) : 0;
@@ -68,7 +68,7 @@ export function generateSpecialNodeId(baseName: string, usedIds: Set<string>): s
 export function generateRegularNodeId(baseName: string, usedIds: Set<string>): string {
   // Find trailing digits in baseName
   let i = baseName.length - 1;
-  while (i >= 0 && baseName[i] >= '0' && baseName[i] <= '9') i--;
+  while (i >= 0 && baseName[i] >= "0" && baseName[i] <= "9") i--;
   const hasNumber = i < baseName.length - 1;
   const base = hasNumber ? baseName.slice(0, i + 1) : baseName;
   let num: number;
@@ -87,10 +87,10 @@ export function generateRegularNodeId(baseName: string, usedIds: Set<string>): s
  */
 export function getUniqueId(baseName: string, usedIds: Set<string>): string {
   if (isSpecialEndpointId(baseName)) {
-    if (baseName.startsWith('dummy')) {
+    if (baseName.startsWith("dummy")) {
       return generateDummyId(baseName, usedIds);
     }
-    if (baseName.includes(':')) {
+    if (baseName.includes(":")) {
       return generateAdapterNodeId(baseName, usedIds);
     }
     return generateSpecialNodeId(baseName, usedIds);

@@ -4,7 +4,7 @@
  * Provides unified scale frequency lookup for different keys.
  */
 
-import type { ScaleDefinition } from './types';
+import type { ScaleDefinition } from "./types";
 
 /**
  * Get frequency for a scale degree in the given scale
@@ -42,7 +42,7 @@ export const A_MINOR_SCALE: ScaleDefinition = {
   [-2]: [55.0, 61.74, 65.41, 73.42, 82.41, 87.31, 98.0],
   [-1]: [110.0, 123.47, 130.81, 146.83, 164.81, 174.61, 196.0],
   [0]: [220.0, 246.94, 261.63, 293.66, 329.63, 349.23, 392.0],
-  [1]: [440.0, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99],
+  [1]: [440.0, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99]
 };
 
 /**
@@ -50,12 +50,12 @@ export const A_MINOR_SCALE: ScaleDefinition = {
  * Scale degrees: 1=B, 2=C#, 3=D, 4=E, 5=F#, 6=G, 7=A
  */
 export const B_MINOR_SCALE: ScaleDefinition = {
-  [-3]: [30.87, 34.65, 36.71, 41.20, 46.25, 49.00, 55.00],
-  [-2]: [61.74, 69.30, 73.42, 82.41, 92.50, 98.00, 110.00],
-  [-1]: [123.47, 138.59, 146.83, 164.81, 185.00, 196.00, 220.00],
-  [0]: [246.94, 277.18, 293.66, 329.63, 369.99, 392.00, 440.00],
-  [1]: [493.88, 554.37, 587.33, 659.25, 739.99, 783.99, 880.00],
-  [2]: [987.77, 1108.73, 1174.66, 1318.51, 1479.98, 1567.98, 1760.00],
+  [-3]: [30.87, 34.65, 36.71, 41.2, 46.25, 49.0, 55.0],
+  [-2]: [61.74, 69.3, 73.42, 82.41, 92.5, 98.0, 110.0],
+  [-1]: [123.47, 138.59, 146.83, 164.81, 185.0, 196.0, 220.0],
+  [0]: [246.94, 277.18, 293.66, 329.63, 369.99, 392.0, 440.0],
+  [1]: [493.88, 554.37, 587.33, 659.25, 739.99, 783.99, 880.0],
+  [2]: [987.77, 1108.73, 1174.66, 1318.51, 1479.98, 1567.98, 1760.0]
 };
 
 /**
@@ -64,9 +64,9 @@ export const B_MINOR_SCALE: ScaleDefinition = {
  */
 export const C_MINOR_SCALE: ScaleDefinition = {
   [3]: [130.81, 146.83, 155.56, 174.61, 196.0, 207.65, 233.08],
-  [4]: [261.63, 293.66, 311.13, 349.23, 392.0, 415.30, 466.16],
+  [4]: [261.63, 293.66, 311.13, 349.23, 392.0, 415.3, 466.16],
   [5]: [523.25, 587.33, 622.25, 698.46, 783.99, 830.61, 932.33],
-  [6]: [1046.50, 1174.66, 1244.51, 0, 0, 0, 1864.66], // Sparse - only some notes defined
+  [6]: [1046.5, 1174.66, 1244.51, 0, 0, 0, 1864.66] // Sparse - only some notes defined
 };
 
 /**
@@ -76,7 +76,7 @@ export const C_MINOR_SCALE: ScaleDefinition = {
  * so we provide a wrapper that matches that behavior.
  */
 export function getCMinorFrequency(scaleDegree: string | number, octaveOffset: number): number {
-  const sd = typeof scaleDegree === 'string' ? parseInt(scaleDegree, 10) : scaleDegree;
+  const sd = typeof scaleDegree === "string" ? parseInt(scaleDegree, 10) : scaleDegree;
   const baseOctave = 4;
   const actualOctave = baseOctave + octaveOffset;
   return getScaleFrequency(sd, actualOctave, C_MINOR_SCALE, 261.63);

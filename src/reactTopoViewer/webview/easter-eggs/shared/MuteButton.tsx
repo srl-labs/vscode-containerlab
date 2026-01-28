@@ -2,9 +2,9 @@
  * Shared Mute Button component for Easter Egg modes
  */
 
-import React from 'react';
+import React from "react";
 
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR } from './buttonConstants';
+import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR } from "./buttonConstants";
 
 export interface MuteButtonProps {
   isMuted: boolean;
@@ -55,11 +55,10 @@ const UnmutedIcon: React.FC = () => (
 
 /** Muted state background */
 const MUTED_BACKGROUND =
-  'linear-gradient(135deg, rgba(100, 100, 100, 0.8) 0%, rgba(60, 60, 60, 0.8) 100%)';
+  "linear-gradient(135deg, rgba(100, 100, 100, 0.8) 0%, rgba(60, 60, 60, 0.8) 100%)";
 
 /** Muted state shadow */
-const MUTED_SHADOW =
-  '0 0 20px rgba(100, 100, 100, 0.5), inset 0 0 20px rgba(60, 60, 60, 0.1)';
+const MUTED_SHADOW = "0 0 20px rgba(100, 100, 100, 0.5), inset 0 0 20px rgba(60, 60, 60, 0.1)";
 
 /**
  * Shared mute button component with consistent styling across all modes
@@ -70,7 +69,7 @@ export const MuteButton: React.FC<MuteButtonProps> = ({
   visible,
   unmutedBackground,
   unmutedShadow,
-  borderColor = 'rgba(255, 255, 255, 0.5)',
+  borderColor = "rgba(255, 255, 255, 0.5)"
 }) => {
   return (
     <button
@@ -81,11 +80,11 @@ export const MuteButton: React.FC<MuteButtonProps> = ({
       style={{
         background: isMuted ? MUTED_BACKGROUND : unmutedBackground,
         border: `2px solid ${borderColor}`,
-        cursor: 'pointer',
+        cursor: "pointer",
         backdropFilter: BTN_BLUR,
-        boxShadow: isMuted ? MUTED_SHADOW : unmutedShadow,
+        boxShadow: isMuted ? MUTED_SHADOW : unmutedShadow
       }}
-      title={isMuted ? 'Unmute' : 'Mute'}
+      title={isMuted ? "Unmute" : "Mute"}
     >
       {isMuted ? <MutedIcon /> : <UnmutedIcon />}
     </button>

@@ -8,7 +8,7 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation
-} from '../../shared/types/topology';
+} from "../../shared/types/topology";
 
 /**
  * Represents an axis-aligned bounding box.
@@ -32,7 +32,7 @@ const DEFAULT_TEXT_HEIGHT = 20;
  */
 function estimateTextDimensions(annotation: FreeTextAnnotation): { width: number; height: number } {
   const fontSize = annotation.fontSize ?? 14;
-  const text = annotation.text || '';
+  const text = annotation.text || "";
   // Rough estimate: each character is about 0.6x font size wide
   const estimatedWidth = Math.max(DEFAULT_TEXT_WIDTH, text.length * fontSize * 0.6);
   // Height based on font size with some padding
@@ -68,7 +68,7 @@ export function getTextAnnotationBounds(annotation: FreeTextAnnotation): Boundin
 export function getShapeAnnotationBounds(annotation: FreeShapeAnnotation): BoundingBox {
   const { x, y } = annotation.position;
 
-  if (annotation.shapeType === 'line') {
+  if (annotation.shapeType === "line") {
     // Lines have start position and end position (not center-based)
     const endX = annotation.endPosition?.x ?? x;
     const endY = annotation.endPosition?.y ?? y;
@@ -174,8 +174,7 @@ export function getCombinedBounds(
   groups: GroupStyleAnnotation[]
 ): BoundingBox | null {
   // Start with Cytoscape extent if valid
-  let result: BoundingBox | null =
-    cyExtent && isValidBounds(cyExtent) ? { ...cyExtent } : null;
+  let result: BoundingBox | null = cyExtent && isValidBounds(cyExtent) ? { ...cyExtent } : null;
 
   // Collect and merge all annotation bounds
   const allBounds = collectAnnotationBounds(textAnnotations, shapeAnnotations, groups);

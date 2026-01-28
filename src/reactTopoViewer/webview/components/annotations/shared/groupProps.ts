@@ -2,7 +2,7 @@
  * Shared group-related props for annotation layers
  * Used by FreeShapeLayer and FreeTextLayer for drag-to-reparent functionality
  */
-import type { GroupStyleAnnotation } from '../../../../shared/types/topology';
+import type { GroupStyleAnnotation } from "../../../../shared/types/topology";
 
 /** Group-related props that are shared across annotation layers */
 export interface GroupRelatedProps {

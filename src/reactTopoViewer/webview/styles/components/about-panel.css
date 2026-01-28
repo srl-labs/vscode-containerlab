@@ -227,7 +227,9 @@
   .about-repo-arrow {
     font-size: 0.75rem;
     color: var(--text-secondary);
-    transition: transform 0.15s ease, color 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      color 0.15s ease;
   }
 
   .about-repo-card:hover .about-repo-arrow {
@@ -255,6 +257,11 @@
 }
 
 @keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
 }

@@ -6,19 +6,24 @@
  * Used by both VS Code extension and dev server.
  */
 
-import * as YAML from 'yaml';
+import * as YAML from "yaml";
 
-import type { ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
-import { applyInterfacePatternMigrations } from '../utilities';
+import type { ClabTopology, NodeAnnotation, TopologyAnnotations } from "../types/topology";
+import { applyInterfacePatternMigrations } from "../utilities";
 
-import type { FileSystemAdapter, SaveResult, IOLogger} from './types';
-import { noopLogger, ERROR_SERVICE_NOT_INIT, ERROR_NO_YAML_PATH } from './types';
-import type { AnnotationsIO } from './AnnotationsIO';
-import { writeYamlFile, parseYamlDocument } from './YamlDocumentIO';
-import type { NodeSaveData, NodeAnnotationData} from './NodePersistenceIO';
-import { addNodeToDoc, editNodeInDoc, deleteNodeFromDoc, applyAnnotationData } from './NodePersistenceIO';
-import type { LinkSaveData} from './LinkPersistenceIO';
-import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenceIO';
+import type { FileSystemAdapter, SaveResult, IOLogger } from "./types";
+import { noopLogger, ERROR_SERVICE_NOT_INIT, ERROR_NO_YAML_PATH } from "./types";
+import type { AnnotationsIO } from "./AnnotationsIO";
+import { writeYamlFile, parseYamlDocument } from "./YamlDocumentIO";
+import type { NodeSaveData, NodeAnnotationData } from "./NodePersistenceIO";
+import {
+  addNodeToDoc,
+  editNodeInDoc,
+  deleteNodeFromDoc,
+  applyAnnotationData
+} from "./NodePersistenceIO";
+import type { LinkSaveData } from "./LinkPersistenceIO";
+import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from "./LinkPersistenceIO";
 
 // Types are available from ./NodePersistenceIO and ./LinkPersistenceIO directly
 
@@ -28,7 +33,10 @@ import { addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from './LinkPersistenc
  * only geo coordinates without overwriting the preset position.
  */
 function updateNodeAnnotationPosition(
-  annotation: { position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } },
+  annotation: {
+    position?: { x: number; y: number };
+    geoCoordinates?: { lat: number; lng: number };
+  },
   position?: { x: number; y: number },
   geoCoordinates?: { lat: number; lng: number }
 ): void {
@@ -85,7 +93,7 @@ export class TopologyIO {
 
   // State
   private doc: YAML.Document.Parsed | null = null;
-  private yamlFilePath: string = '';
+  private yamlFilePath: string = "";
   private batchDepth = 0;
   private pendingSave = false;
   private saveQueue: Promise<SaveResult> = Promise.resolve({ success: true });
@@ -124,7 +132,7 @@ export class TopologyIO {
    * Checks if the service is initialized
    */
   isInitialized(): boolean {
-    return this.doc !== null && this.yamlFilePath !== '';
+    return this.doc !== null && this.yamlFilePath !== "";
   }
 
   /**
@@ -188,12 +196,14 @@ export class TopologyIO {
       // Save position and annotation data to annotations if provided
       const nodeId = nodeData.name || nodeData.id;
       if (nodeData.position && nodeId) {
-        const annotationData: NodeAnnotationData | undefined = nodeData.extraData ? {
-          icon: nodeData.extraData.topoViewerRole as string | undefined,
-          iconColor: nodeData.extraData.iconColor as string | undefined,
-          iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
-          interfacePattern: nodeData.extraData.interfacePattern as string | undefined
-        } : undefined;
+        const annotationData: NodeAnnotationData | undefined = nodeData.extraData
+          ? {
+              icon: nodeData.extraData.topoViewerRole as string | undefined,
+              iconColor: nodeData.extraData.iconColor as string | undefined,
+              iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
+              interfacePattern: nodeData.extraData.interfacePattern as string | undefined
+            }
+          : undefined;
         await this.saveNodePosition(nodeId, nodeData.position, annotationData);
       }
     }
@@ -228,7 +238,12 @@ export class TopologyIO {
           interfacePattern: nodeData.extraData.interfacePattern as string | undefined
         };
         // Only save if there's actual annotation data to save
-        if (annotationData.icon || annotationData.iconColor || annotationData.iconCornerRadius !== undefined || annotationData.interfacePattern) {
+        if (
+          annotationData.icon ||
+          annotationData.iconColor ||
+          annotationData.iconCornerRadius !== undefined ||
+          annotationData.interfacePattern
+        ) {
           await this.saveNodeAnnotations(nodeId, annotationData);
         }
       }
@@ -239,15 +254,12 @@ export class TopologyIO {
   /**
    * Helper to find or create a node annotation entry
    */
-  private ensureNodeAnnotation(
-    annotations: TopologyAnnotations,
-    nodeId: string
-  ): NodeAnnotation {
+  private ensureNodeAnnotation(annotations: TopologyAnnotations, nodeId: string): NodeAnnotation {
     if (!annotations.nodeAnnotations) {
       annotations.nodeAnnotations = [];
     }
 
-    let existing = annotations.nodeAnnotations.find(n => n.id === nodeId);
+    let existing = annotations.nodeAnnotations.find((n) => n.id === nodeId);
     if (!existing) {
       existing = { id: nodeId };
       annotations.nodeAnnotations.push(existing);
@@ -258,8 +270,11 @@ export class TopologyIO {
   /**
    * Saves annotation data for a node (icon, color, etc.) without changing position
    */
-  private async saveNodeAnnotations(nodeId: string, annotationData: NodeAnnotationData): Promise<void> {
-    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+  private async saveNodeAnnotations(
+    nodeId: string,
+    annotationData: NodeAnnotationData
+  ): Promise<void> {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
       const node = this.ensureNodeAnnotation(annotations, nodeId);
       applyAnnotationData(node, annotationData);
       return annotations;
@@ -270,9 +285,9 @@ export class TopologyIO {
    * Renames a node's annotations from old ID to new ID
    */
   private async renameNodeAnnotations(oldId: string, newId: string): Promise<void> {
-    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
       if (annotations.nodeAnnotations) {
-        const nodeAnnotation = annotations.nodeAnnotations.find(n => n.id === oldId);
+        const nodeAnnotation = annotations.nodeAnnotations.find((n) => n.id === oldId);
         if (nodeAnnotation) {
           nodeAnnotation.id = newId;
         }
@@ -325,13 +340,13 @@ export class TopologyIO {
       return { success: false, error: ERROR_SERVICE_NOT_INIT };
     }
 
-    const linksSeq = this.doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+    const linksSeq = this.doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
     if (!linksSeq || !YAML.isSeq(linksSeq)) {
       return { success: false, error: `Network node '${nodeId}' not found (no links in topology)` };
     }
 
     const initialCount = linksSeq.items.length;
-    linksSeq.items = linksSeq.items.filter(item => !this.linkMatchesNetworkNode(item, nodeId));
+    linksSeq.items = linksSeq.items.filter((item) => !this.linkMatchesNetworkNode(item, nodeId));
 
     const deleted = initialCount - linksSeq.items.length;
     if (deleted === 0) {
@@ -349,7 +364,7 @@ export class TopologyIO {
     if (!YAML.isMap(item)) return false;
     const linkMap = item as YAML.YAMLMap;
 
-    const linkType = linkMap.get('type');
+    const linkType = linkMap.get("type");
     if (!linkType) return false;
     const typeStr = YAML.isScalar(linkType) ? String(linkType.value) : String(linkType);
 
@@ -360,11 +375,17 @@ export class TopologyIO {
   /**
    * Builds the expected cloud node ID for a link based on its type.
    */
-  private buildExpectedCloudNodeId(typeStr: string, linkMap: YAML.YAMLMap, nodeId: string): string | null {
-    if (typeStr === 'host') {
-      const hostInterface = linkMap.get('host-interface');
+  private buildExpectedCloudNodeId(
+    typeStr: string,
+    linkMap: YAML.YAMLMap,
+    nodeId: string
+  ): string | null {
+    if (typeStr === "host") {
+      const hostInterface = linkMap.get("host-interface");
       if (hostInterface) {
-        const ifaceStr = YAML.isScalar(hostInterface) ? String(hostInterface.value) : String(hostInterface);
+        const ifaceStr = YAML.isScalar(hostInterface)
+          ? String(hostInterface.value)
+          : String(hostInterface);
         return `host:${ifaceStr}`;
       }
       return null;
@@ -372,11 +393,11 @@ export class TopologyIO {
 
     // For counter-based types, match by prefix
     const prefixMatches: Record<string, string> = {
-      'mgmt-net': 'mgmt-net:',
-      'macvlan': 'macvlan:',
-      'vxlan': 'vxlan:',
-      'vxlan-stitch': 'vxlan-stitch:',
-      'dummy': 'dummy'
+      "mgmt-net": "mgmt-net:",
+      macvlan: "macvlan:",
+      vxlan: "vxlan:",
+      "vxlan-stitch": "vxlan-stitch:",
+      dummy: "dummy"
     };
 
     const prefix = prefixMatches[typeStr];
@@ -391,9 +412,9 @@ export class TopologyIO {
    * Removes a node's annotations
    */
   private async removeNodeAnnotations(nodeId: string): Promise<void> {
-    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
       if (annotations.nodeAnnotations) {
-        annotations.nodeAnnotations = annotations.nodeAnnotations.filter(n => n.id !== nodeId);
+        annotations.nodeAnnotations = annotations.nodeAnnotations.filter((n) => n.id !== nodeId);
       }
       return annotations;
     });
@@ -403,9 +424,11 @@ export class TopologyIO {
    * Removes a network node's annotations
    */
   private async removeNetworkNodeAnnotations(nodeId: string): Promise<void> {
-    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
       if (annotations.networkNodeAnnotations) {
-        annotations.networkNodeAnnotations = annotations.networkNodeAnnotations.filter(n => n.id !== nodeId);
+        annotations.networkNodeAnnotations = annotations.networkNodeAnnotations.filter(
+          (n) => n.id !== nodeId
+        );
       }
       return annotations;
     });
@@ -464,16 +487,18 @@ export class TopologyIO {
       return { success: false, error: ERROR_SERVICE_NOT_INIT };
     }
     // Queue saves to prevent concurrent writes that corrupt the file
-    this.saveQueue = this.saveQueue.then(async () => {
-      if (!this.doc) {
-        return { success: false, error: ERROR_SERVICE_NOT_INIT };
-      }
-      return writeYamlFile(this.doc, this.yamlFilePath, {
-        fs: this.fs,
-        setInternalUpdate: this.setInternalUpdate,
-        logger: this.logger,
-      });
-    }).catch(() => ({ success: false, error: 'Save queue error' }));
+    this.saveQueue = this.saveQueue
+      .then(async () => {
+        if (!this.doc) {
+          return { success: false, error: ERROR_SERVICE_NOT_INIT };
+        }
+        return writeYamlFile(this.doc, this.yamlFilePath, {
+          fs: this.fs,
+          setInternalUpdate: this.setInternalUpdate,
+          logger: this.logger
+        });
+      })
+      .catch(() => ({ success: false, error: "Save queue error" }));
     return this.saveQueue;
   }
 
@@ -485,7 +510,7 @@ export class TopologyIO {
     position: { x: number; y: number },
     annotationData?: NodeAnnotationData
   ): Promise<void> {
-    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
       const node = this.ensureNodeAnnotation(annotations, nodeId);
       node.position = position;
       applyAnnotationData(node, annotationData);
@@ -500,31 +525,39 @@ export class TopologyIO {
    * In GeoMap mode, only geoCoordinates should be provided (position is omitted)
    * to avoid overwriting the preset position.
    */
-  async savePositions(positions: Array<{ id: string; position?: { x: number; y: number }; geoCoordinates?: { lat: number; lng: number } }>): Promise<SaveResult> {
+  async savePositions(
+    positions: Array<{
+      id: string;
+      position?: { x: number; y: number };
+      geoCoordinates?: { lat: number; lng: number };
+    }>
+  ): Promise<SaveResult> {
     if (!this.yamlFilePath) {
       return { success: false, error: ERROR_NO_YAML_PATH };
     }
 
     try {
-      await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+      await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
         if (!annotations.nodeAnnotations) {
           annotations.nodeAnnotations = [];
         }
 
         for (const { id, position, geoCoordinates } of positions) {
           // Check if this is a network node (exists in networkNodeAnnotations)
-          const networkNode = annotations.networkNodeAnnotations?.find(n => n.id === id);
+          const networkNode = annotations.networkNodeAnnotations?.find((n) => n.id === id);
           if (networkNode) {
             updateNodeAnnotationPosition(networkNode, position, geoCoordinates);
             continue;
           }
 
           // Update or add to nodeAnnotations
-          const existing = annotations.nodeAnnotations.find(n => n.id === id);
+          const existing = annotations.nodeAnnotations.find((n) => n.id === id);
           if (existing) {
             updateNodeAnnotationPosition(existing, position, geoCoordinates);
           } else {
-            annotations.nodeAnnotations.push(createNodeAnnotationWithPosition(id, position, geoCoordinates));
+            annotations.nodeAnnotations.push(
+              createNodeAnnotationWithPosition(id, position, geoCoordinates)
+            );
           }
         }
 
@@ -545,7 +578,7 @@ export class TopologyIO {
   ): Promise<void> {
     if (migrations.length === 0) return;
 
-    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, annotations => {
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (annotations) => {
       const result = applyInterfacePatternMigrations(annotations, migrations);
 
       if (result.modified) {

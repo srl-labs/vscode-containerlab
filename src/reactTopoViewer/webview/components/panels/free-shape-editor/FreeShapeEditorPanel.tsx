@@ -2,13 +2,13 @@
  * Free Shape Editor Panel - Draggable editor panel for shape annotations
  * Uses BasePanel directly (no tabs needed)
  */
-import React from 'react';
+import React from "react";
 
-import { BasePanel } from '../../shared/editor/BasePanel';
-import type { FreeShapeAnnotation } from '../../../../shared/types/topology';
-import { useGenericFormState, useEditorHandlers } from '../../../hooks/panels/useGenericFormState';
+import { BasePanel } from "../../shared/editor/BasePanel";
+import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
+import { useGenericFormState, useEditorHandlers } from "../../../hooks/panels/useGenericFormState";
 
-import { FreeShapeFormContent } from './FreeShapeFormContent';
+import { FreeShapeFormContent } from "./FreeShapeFormContent";
 
 interface FreeShapeEditorPanelProps {
   isVisible: boolean;
@@ -25,7 +25,8 @@ export const FreeShapeEditorPanel: React.FC<FreeShapeEditorPanelProps> = ({
   onSave,
   onDelete
 }) => {
-  const { formData, updateField, hasChanges, resetInitialData, isNew } = useGenericFormState(annotation);
+  const { formData, updateField, hasChanges, resetInitialData, isNew } =
+    useGenericFormState(annotation);
 
   const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
     formData,

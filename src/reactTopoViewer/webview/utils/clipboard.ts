@@ -8,7 +8,7 @@
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
   // Try modern clipboard API first
-  if (typeof window !== 'undefined' && window.navigator?.clipboard) {
+  if (typeof window !== "undefined" && window.navigator?.clipboard) {
     try {
       await window.navigator.clipboard.writeText(text);
       return true;
@@ -18,15 +18,15 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 
   // Fallback using selection (for older browsers or restricted contexts)
-  if (typeof document !== 'undefined') {
-    const textarea = document.createElement('textarea');
+  if (typeof document !== "undefined") {
+    const textarea = document.createElement("textarea");
     textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
     document.body.appendChild(textarea);
     textarea.select();
     try {
-      document.execCommand('copy'); // eslint-disable-line sonarjs/deprecation
+      document.execCommand("copy"); // eslint-disable-line sonarjs/deprecation
       return true;
     } finally {
       document.body.removeChild(textarea);

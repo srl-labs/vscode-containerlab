@@ -2,9 +2,9 @@
  * Free shape annotation types and helpers
  * Consolidated from: freeShapeTypes.ts + freeShapeHelpers.ts
  */
-import type { Core as CyCore } from 'cytoscape';
+import type { Core as CyCore } from "cytoscape";
 
-import type { FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation, GroupStyleAnnotation } from "../../../shared/types/topology";
 
 import {
   generateAnnotationId as generateId,
@@ -13,8 +13,8 @@ import {
   updateAnnotationInList as genericUpdateInList,
   updateAnnotationRotation as genericUpdateRotation,
   saveAnnotationToList as genericSaveToList,
-  duplicateAnnotations as genericDuplicateAnnotations,
-} from './sharedAnnotationHelpers';
+  duplicateAnnotations as genericDuplicateAnnotations
+} from "./sharedAnnotationHelpers";
 
 // Re-export for consumers
 export type { FreeShapeAnnotation };
@@ -27,11 +27,11 @@ export { SAVE_DEBOUNCE_MS, PASTE_OFFSET };
 export const DEFAULT_SHAPE_WIDTH = 50;
 export const DEFAULT_SHAPE_HEIGHT = 50;
 export const DEFAULT_LINE_LENGTH = 150;
-export const DEFAULT_FILL_COLOR = '#ffffff';
+export const DEFAULT_FILL_COLOR = "#ffffff";
 export const DEFAULT_FILL_OPACITY = 0;
-export const DEFAULT_BORDER_COLOR = '#646464';
+export const DEFAULT_BORDER_COLOR = "#646464";
 export const DEFAULT_BORDER_WIDTH = 2;
-export const DEFAULT_BORDER_STYLE: NonNullable<FreeShapeAnnotation['borderStyle']> = 'solid';
+export const DEFAULT_BORDER_STYLE: NonNullable<FreeShapeAnnotation["borderStyle"]> = "solid";
 export const DEFAULT_ARROW_SIZE = 10;
 export const DEFAULT_CORNER_RADIUS = 0;
 export const MIN_SHAPE_SIZE = 5;
@@ -42,7 +42,7 @@ export const MIN_SHAPE_SIZE = 5;
 
 export interface UseFreeShapeAnnotationsOptions {
   cy: CyCore | null;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
   groups?: GroupStyleAnnotation[];
@@ -64,9 +64,9 @@ export interface AnnotationSelectionActions {
 export interface UseFreeShapeAnnotationsReturn extends AnnotationSelectionActions {
   annotations: FreeShapeAnnotation[];
   isAddShapeMode: boolean;
-  pendingShapeType: FreeShapeAnnotation['shapeType'];
+  pendingShapeType: FreeShapeAnnotation["shapeType"];
   editingAnnotation: FreeShapeAnnotation | null;
-  enableAddShapeMode: (shapeType?: FreeShapeAnnotation['shapeType']) => void;
+  enableAddShapeMode: (shapeType?: FreeShapeAnnotation["shapeType"]) => void;
   disableAddShapeMode: () => void;
   handleCanvasClick: (position: { x: number; y: number }) => FreeShapeAnnotation | null;
   editAnnotation: (id: string) => void;
@@ -82,13 +82,16 @@ export interface UseFreeShapeAnnotationsReturn extends AnnotationSelectionAction
   updateEndGeoPosition: (id: string, geoCoords: { lat: number; lng: number }) => void;
   migrateGroupId: (oldGroupId: string, newGroupId: string | null) => void;
   loadAnnotations: (annotations: FreeShapeAnnotation[]) => void;
-  getUndoRedoAction: (before: FreeShapeAnnotation | null, after: FreeShapeAnnotation | null) => AnnotationUndoAction;
+  getUndoRedoAction: (
+    before: FreeShapeAnnotation | null,
+    after: FreeShapeAnnotation | null
+  ) => AnnotationUndoAction;
   selectedAnnotationIds: Set<string>;
 }
 
 export interface AnnotationUndoAction {
-  type: 'annotation';
-  annotationType: 'freeShape';
+  type: "annotation";
+  annotationType: "freeShape";
   before: FreeShapeAnnotation | null;
   after: FreeShapeAnnotation | null;
   [key: string]: unknown;
@@ -99,7 +102,7 @@ export interface AnnotationUndoAction {
 // ============================================================================
 
 export function generateAnnotationId(): string {
-  return generateId('freeShape');
+  return generateId("freeShape");
 }
 
 // ============================================================================
@@ -121,7 +124,7 @@ export function getLineCenter(annotation: FreeShapeAnnotation): { x: number; y: 
 
 export function createDefaultAnnotation(
   position: { x: number; y: number },
-  shapeType: FreeShapeAnnotation['shapeType'],
+  shapeType: FreeShapeAnnotation["shapeType"],
   lastStyle: Partial<FreeShapeAnnotation> = {}
 ): FreeShapeAnnotation {
   const id = generateAnnotationId();
@@ -140,7 +143,7 @@ export function createDefaultAnnotation(
     zIndex: lastStyle.zIndex
   };
 
-  if (shapeType === 'line') {
+  if (shapeType === "line") {
     const halfLength = DEFAULT_LINE_LENGTH / 2;
     base.position = { x: Math.round(position.x - halfLength), y: Math.round(position.y) };
     base.endPosition = { x: Math.round(position.x + halfLength), y: Math.round(position.y) };
@@ -150,7 +153,7 @@ export function createDefaultAnnotation(
   } else {
     base.width = lastStyle.width ?? DEFAULT_SHAPE_WIDTH;
     base.height = lastStyle.height ?? DEFAULT_SHAPE_HEIGHT;
-    if (shapeType === 'rectangle') {
+    if (shapeType === "rectangle") {
       base.cornerRadius = lastStyle.cornerRadius ?? DEFAULT_CORNER_RADIUS;
     }
   }
@@ -162,7 +165,9 @@ export function createDefaultAnnotation(
 // Style Extraction
 // ============================================================================
 
-export function extractStyleFromAnnotation(annotation: FreeShapeAnnotation): Partial<FreeShapeAnnotation> {
+export function extractStyleFromAnnotation(
+  annotation: FreeShapeAnnotation
+): Partial<FreeShapeAnnotation> {
   return {
     fillColor: annotation.fillColor,
     fillOpacity: annotation.fillOpacity,
@@ -191,7 +196,10 @@ export function updateAnnotationInList(
   return genericUpdateInList(annotations, id, updater);
 }
 
-export function updateAnnotationRotation(annotation: FreeShapeAnnotation, rotation: number): FreeShapeAnnotation {
+export function updateAnnotationRotation(
+  annotation: FreeShapeAnnotation,
+  rotation: number
+): FreeShapeAnnotation {
   return genericUpdateRotation(annotation, rotation);
 }
 
@@ -199,7 +207,7 @@ export function updateAnnotationPosition(
   annotation: FreeShapeAnnotation,
   newCenter: { x: number; y: number }
 ): FreeShapeAnnotation {
-  if (annotation.shapeType !== 'line') {
+  if (annotation.shapeType !== "line") {
     return {
       ...annotation,
       position: { x: Math.round(newCenter.x), y: Math.round(newCenter.y) }
@@ -234,7 +242,7 @@ export function updateAnnotationEndPosition(
   annotation: FreeShapeAnnotation,
   endPosition: { x: number; y: number }
 ): FreeShapeAnnotation {
-  if (annotation.shapeType !== 'line') return annotation;
+  if (annotation.shapeType !== "line") return annotation;
   const start = annotation.position;
   let dx = endPosition.x - start.x;
   let dy = endPosition.y - start.y;
@@ -261,8 +269,11 @@ export function saveAnnotationToList(
 // Copy/Paste Operations
 // ============================================================================
 
-export function duplicateAnnotation(annotation: FreeShapeAnnotation, offset = PASTE_OFFSET): FreeShapeAnnotation {
-  if (annotation.shapeType === 'line') {
+export function duplicateAnnotation(
+  annotation: FreeShapeAnnotation,
+  offset = PASTE_OFFSET
+): FreeShapeAnnotation {
+  if (annotation.shapeType === "line") {
     const end = annotation.endPosition;
     return {
       ...annotation,
@@ -271,9 +282,7 @@ export function duplicateAnnotation(annotation: FreeShapeAnnotation, offset = PA
         x: annotation.position.x + offset,
         y: annotation.position.y + offset
       },
-      endPosition: end
-        ? { x: end.x + offset, y: end.y + offset }
-        : undefined
+      endPosition: end ? { x: end.x + offset, y: end.y + offset } : undefined
     };
   }
 

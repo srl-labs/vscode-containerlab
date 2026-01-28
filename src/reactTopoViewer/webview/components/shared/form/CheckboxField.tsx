@@ -1,7 +1,7 @@
 /**
  * CheckboxField - Checkbox with label
  */
-import React from 'react';
+import React from "react";
 
 interface CheckboxFieldProps {
   id: string;
@@ -17,7 +17,7 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
   label,
   checked,
   onChange,
-  className = '',
+  className = "",
   disabled
 }) => (
   <div className={`flex items-center ${className}`}>
@@ -29,6 +29,8 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
       className="vscode-checkbox mr-2"
       disabled={disabled}
     />
-    <label htmlFor={id} className="checkbox-label">{label}</label>
+    <label htmlFor={id} className="checkbox-label">
+      {label}
+    </label>
   </div>
 );

@@ -2,12 +2,12 @@
  * Context Menu Hook for Cytoscape Elements
  * Manages context menu state for nodes and edges using React-based menu
  */
-import React, { useEffect, useCallback, useState } from 'react';
-import type { Core, EventObject, NodeSingular, EdgeSingular } from 'cytoscape';
+import React, { useEffect, useCallback, useState } from "react";
+import type { Core, EventObject, NodeSingular, EdgeSingular } from "cytoscape";
 
-import { log } from '../../utils/logger';
-import type { ContextMenuItem } from '../../components/context-menu/ContextMenu';
-import { WiresharkIcon } from '../../components/context-menu/WiresharkIcon';
+import { log } from "../../utils/logger";
+import type { ContextMenuItem } from "../../components/context-menu/ContextMenu";
+import { WiresharkIcon } from "../../components/context-menu/WiresharkIcon";
 
 /**
  * VS Code API interface
@@ -20,7 +20,7 @@ declare const vscode: {
  * Context menu options
  */
 export interface ContextMenuOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onEditNode?: (nodeId: string) => void;
   onEditNetwork?: (nodeId: string) => void;
@@ -37,7 +37,7 @@ export interface ContextMenuState {
   isVisible: boolean;
   position: { x: number; y: number };
   elementId: string | null;
-  elementType: 'node' | 'edge' | null;
+  elementType: "node" | "edge" | null;
 }
 
 /** Initial context menu state */
@@ -49,15 +49,15 @@ const INITIAL_STATE: ContextMenuState = {
 };
 
 // Scratch key for context menu state (must match events.ts)
-const CONTEXT_MENU_SCRATCH_KEY = '_isContextMenuActive';
+const CONTEXT_MENU_SCRATCH_KEY = "_isContextMenuActive";
 
 // Icon constants for context menu items
-const ICON_EDIT = 'fas fa-pen';
-const ICON_DELETE = 'fas fa-trash';
-const ICON_LINK = 'fas fa-link';
+const ICON_EDIT = "fas fa-pen";
+const ICON_DELETE = "fas fa-trash";
+const ICON_LINK = "fas fa-link";
 
 // Divider ID for menu separation
-const DIVIDER_DELETE_ID = 'divider-delete';
+const DIVIDER_DELETE_ID = "divider-delete";
 
 /** Creates a "Create Link" menu item for nodes */
 function createLinkMenuItem(
@@ -66,8 +66,8 @@ function createLinkMenuItem(
   options: ContextMenuOptions
 ): ContextMenuItem {
   return {
-    id: 'link-node',
-    label: 'Create Link',
+    id: "link-node",
+    label: "Create Link",
     icon: ICON_LINK,
     onClick: () => {
       log.info(`[ContextMenu] Add link from ${nodeContext}: ${nodeId}`);
@@ -86,10 +86,10 @@ function computeEdgeCaptureEndpoints(edgeData: Record<string, unknown>): {
   dstIf: string;
 } {
   const extraData = (edgeData.extraData || {}) as Record<string, unknown>;
-  const srcNode = (extraData.clabSourceLongName as string) || (edgeData.source as string) || '';
-  const dstNode = (extraData.clabTargetLongName as string) || (edgeData.target as string) || '';
-  const srcIf = (edgeData.sourceEndpoint as string) || '';
-  const dstIf = (edgeData.targetEndpoint as string) || '';
+  const srcNode = (extraData.clabSourceLongName as string) || (edgeData.source as string) || "";
+  const dstNode = (extraData.clabTargetLongName as string) || (edgeData.target as string) || "";
+  const srcIf = (edgeData.sourceEndpoint as string) || "";
+  const dstIf = (edgeData.targetEndpoint as string) || "";
   return { srcNode, srcIf, dstNode, dstIf };
 }
 
@@ -97,7 +97,7 @@ function computeEdgeCaptureEndpoints(edgeData: Record<string, unknown>): {
  * Send message to VS Code extension
  */
 function sendToExtension(command: string, data: Record<string, unknown>): void {
-  if (typeof vscode !== 'undefined') {
+  if (typeof vscode !== "undefined") {
     vscode.postMessage({ command, ...data });
     log.info(`[ContextMenu] Sent command: ${command}`);
   }
@@ -110,7 +110,7 @@ function sendToExtension(command: string, data: Record<string, unknown>): void {
  */
 function isNetworkNode(nodeData: Record<string, unknown>): boolean {
   const role = nodeData.topoViewerRole;
-  return role === 'cloud' || role === 'bridge';
+  return role === "cloud" || role === "bridge";
 }
 
 /**
@@ -127,19 +127,19 @@ function buildNodeEditMenuItems(
   if (isNetworkNode(nodeData)) {
     return [
       {
-        id: 'edit-network',
-        label: 'Edit Network',
+        id: "edit-network",
+        label: "Edit Network",
         icon: ICON_EDIT,
         onClick: () => {
           log.info(`[ContextMenu] Edit network: ${nodeId}`);
           options.onEditNetwork?.(nodeId);
         }
       },
-      createLinkMenuItem(nodeId, 'network', options),
-      { id: DIVIDER_DELETE_ID, label: '', divider: true },
+      createLinkMenuItem(nodeId, "network", options),
+      { id: DIVIDER_DELETE_ID, label: "", divider: true },
       {
-        id: 'delete-node',
-        label: 'Delete',
+        id: "delete-node",
+        label: "Delete",
         icon: ICON_DELETE,
         danger: true,
         onClick: () => {
@@ -153,19 +153,19 @@ function buildNodeEditMenuItems(
   // Regular nodes get the standard menu
   return [
     {
-      id: 'edit-node',
-      label: 'Edit',
+      id: "edit-node",
+      label: "Edit",
       icon: ICON_EDIT,
       onClick: () => {
         log.info(`[ContextMenu] Edit node: ${nodeId}`);
         options.onEditNode?.(nodeId);
       }
     },
-    createLinkMenuItem(nodeId, 'node', options),
-    { id: DIVIDER_DELETE_ID, label: '', divider: true },
+    createLinkMenuItem(nodeId, "node", options),
+    { id: DIVIDER_DELETE_ID, label: "", divider: true },
     {
-      id: 'delete-node',
-      label: 'Delete',
+      id: "delete-node",
+      label: "Delete",
       icon: ICON_DELETE,
       danger: true,
       onClick: () => {
@@ -202,45 +202,45 @@ function buildNodeViewMenuItems(
   const nodeName = getNodeName(nodeData, nodeId);
   return [
     {
-      id: 'ssh-node',
-      label: 'SSH',
-      icon: 'fas fa-terminal',
+      id: "ssh-node",
+      label: "SSH",
+      icon: "fas fa-terminal",
       onClick: () => {
         log.info(`[ContextMenu] SSH to node: ${nodeName}`);
-        sendToExtension('clab-node-connect-ssh', {
+        sendToExtension("clab-node-connect-ssh", {
           nodeName,
           labName: nodeData.labName
         });
       }
     },
     {
-      id: 'shell-node',
-      label: 'Shell',
-      icon: 'fas fa-cube',
+      id: "shell-node",
+      label: "Shell",
+      icon: "fas fa-cube",
       onClick: () => {
         log.info(`[ContextMenu] Shell to node: ${nodeName}`);
-        sendToExtension('clab-node-attach-shell', {
+        sendToExtension("clab-node-attach-shell", {
           nodeName,
           labName: nodeData.labName
         });
       }
     },
     {
-      id: 'logs-node',
-      label: 'Logs',
-      icon: 'fas fa-file-alt',
+      id: "logs-node",
+      label: "Logs",
+      icon: "fas fa-file-alt",
       onClick: () => {
         log.info(`[ContextMenu] View logs for: ${nodeName}`);
-        sendToExtension('clab-node-view-logs', {
+        sendToExtension("clab-node-view-logs", {
           nodeName,
           labName: nodeData.labName
         });
       }
     },
     {
-      id: 'info-node',
-      label: 'Info',
-      icon: 'fas fa-info-circle',
+      id: "info-node",
+      label: "Info",
+      icon: "fas fa-info-circle",
       onClick: () => {
         log.info(`[ContextMenu] Show properties for: ${nodeId}`);
         options.onShowNodeProperties?.(nodeId);
@@ -252,26 +252,23 @@ function buildNodeViewMenuItems(
 /**
  * Build menu items for edge in edit mode
  */
-function buildEdgeEditMenuItems(
-  edgeId: string,
-  options: ContextMenuOptions
-): ContextMenuItem[] {
+function buildEdgeEditMenuItems(edgeId: string, options: ContextMenuOptions): ContextMenuItem[] {
   if (options.isLocked) return [];
 
   return [
     {
-      id: 'edit-edge',
-      label: 'Edit',
-      icon: 'fas fa-pen',
+      id: "edit-edge",
+      label: "Edit",
+      icon: "fas fa-pen",
       onClick: () => {
         log.info(`[ContextMenu] Edit link: ${edgeId}`);
         options.onEditLink?.(edgeId);
       }
     },
-    { id: DIVIDER_DELETE_ID, label: '', divider: true },
+    { id: DIVIDER_DELETE_ID, label: "", divider: true },
     {
-      id: 'delete-edge',
-      label: 'Delete',
+      id: "delete-edge",
+      label: "Delete",
       icon: ICON_DELETE,
       danger: true,
       onClick: () => {
@@ -297,12 +294,12 @@ function buildEdgeViewMenuItems(
   // Add capture item for source endpoint
   if (srcNode && srcIf) {
     items.push({
-      id: 'capture-source',
+      id: "capture-source",
       label: `${srcNode} - ${srcIf}`,
       iconComponent: React.createElement(WiresharkIcon),
       onClick: () => {
         log.info(`[ContextMenu] Capture source: ${srcNode}/${srcIf}`);
-        sendToExtension('clab-interface-capture', { nodeName: srcNode, interfaceName: srcIf });
+        sendToExtension("clab-interface-capture", { nodeName: srcNode, interfaceName: srcIf });
       }
     });
   }
@@ -310,21 +307,21 @@ function buildEdgeViewMenuItems(
   // Add capture item for target endpoint
   if (dstNode && dstIf) {
     items.push({
-      id: 'capture-target',
+      id: "capture-target",
       label: `${dstNode} - ${dstIf}`,
       iconComponent: React.createElement(WiresharkIcon),
       onClick: () => {
         log.info(`[ContextMenu] Capture target: ${dstNode}/${dstIf}`);
-        sendToExtension('clab-interface-capture', { nodeName: dstNode, interfaceName: dstIf });
+        sendToExtension("clab-interface-capture", { nodeName: dstNode, interfaceName: dstIf });
       }
     });
   }
 
   // Add info item
   items.push({
-    id: 'info-edge',
-    label: 'Info',
-    icon: 'fas fa-info-circle',
+    id: "info-edge",
+    label: "Info",
+    icon: "fas fa-info-circle",
     onClick: () => {
       log.info(`[ContextMenu] Show link properties: ${edgeId}`);
       options.onShowLinkProperties?.(edgeId);
@@ -357,15 +354,21 @@ function useMenuState(cy: Core | null) {
     if (cy) cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
   }, [cy]);
 
-  const openNodeMenu = useCallback((nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
-    setNodeData(data);
-    setMenuState({ isVisible: true, position, elementId: nodeId, elementType: 'node' });
-  }, []);
+  const openNodeMenu = useCallback(
+    (nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
+      setNodeData(data);
+      setMenuState({ isVisible: true, position, elementId: nodeId, elementType: "node" });
+    },
+    []
+  );
 
-  const openEdgeMenu = useCallback((edgeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
-    setEdgeData(data);
-    setMenuState({ isVisible: true, position, elementId: edgeId, elementType: 'edge' });
-  }, []);
+  const openEdgeMenu = useCallback(
+    (edgeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => {
+      setEdgeData(data);
+      setMenuState({ isVisible: true, position, elementId: edgeId, elementType: "edge" });
+    },
+    []
+  );
 
   return { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu };
 }
@@ -374,21 +377,31 @@ function useMenuState(cy: Core | null) {
 function useMenuEvents(
   cy: Core | null,
   options: ContextMenuOptions,
-  openNodeMenu: (nodeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => void,
-  openEdgeMenu: (edgeId: string, data: Record<string, unknown>, position: { x: number; y: number }) => void
+  openNodeMenu: (
+    nodeId: string,
+    data: Record<string, unknown>,
+    position: { x: number; y: number }
+  ) => void,
+  openEdgeMenu: (
+    edgeId: string,
+    data: Record<string, unknown>,
+    position: { x: number; y: number }
+  ) => void
 ) {
   useEffect(() => {
     if (!cy) return;
 
-    log.info(`[ContextMenu] Setting up context menu listeners (mode: ${options.mode}, locked: ${options.isLocked})`);
+    log.info(
+      `[ContextMenu] Setting up context menu listeners (mode: ${options.mode}, locked: ${options.isLocked})`
+    );
 
     const handleNodeContextMenu = (evt: EventObject) => {
       const node = evt.target as NodeSingular;
-      const role = node.data('topoViewerRole') as string | undefined;
-      if (role === 'freeText' || role === 'freeShape') return;
+      const role = node.data("topoViewerRole") as string | undefined;
+      if (role === "freeText" || role === "freeShape") return;
 
       // Network nodes have no context menu in view mode
-      if (role === 'cloud' && options.mode === 'view') {
+      if (role === "cloud" && options.mode === "view") {
         return;
       }
 
@@ -407,14 +420,14 @@ function useMenuEvents(
       log.info(`[ContextMenu] Edge context menu opened for: ${edgeId}`);
     };
 
-    cy.on('cxttap', 'node', handleNodeContextMenu);
-    cy.on('cxttap', 'edge', handleEdgeContextMenu);
+    cy.on("cxttap", "node", handleNodeContextMenu);
+    cy.on("cxttap", "edge", handleEdgeContextMenu);
 
     return () => {
-      cy.off('cxttap', 'node', handleNodeContextMenu);
-      cy.off('cxttap', 'edge', handleEdgeContextMenu);
+      cy.off("cxttap", "node", handleNodeContextMenu);
+      cy.off("cxttap", "edge", handleEdgeContextMenu);
       cy.scratch(CONTEXT_MENU_SCRATCH_KEY, false);
-      log.info('[ContextMenu] Context menu listeners cleaned up');
+      log.info("[ContextMenu] Context menu listeners cleaned up");
     };
   }, [cy, options.mode, options.isLocked, openNodeMenu, openEdgeMenu]);
 }
@@ -428,14 +441,14 @@ function buildMenuItems(
 ): ContextMenuItem[] {
   if (!menuState.isVisible || !menuState.elementId) return [];
 
-  if (menuState.elementType === 'node') {
-    return options.mode === 'edit'
+  if (menuState.elementType === "node") {
+    return options.mode === "edit"
       ? buildNodeEditMenuItems(menuState.elementId, nodeData, options)
       : buildNodeViewMenuItems(menuState.elementId, nodeData, options);
   }
 
-  if (menuState.elementType === 'edge') {
-    return options.mode === 'edit'
+  if (menuState.elementType === "edge") {
+    return options.mode === "edit"
       ? buildEdgeEditMenuItems(menuState.elementId, options)
       : buildEdgeViewMenuItems(menuState.elementId, edgeData, options);
   }
@@ -447,10 +460,7 @@ function buildMenuItems(
  * Hook to manage context menus for Cytoscape elements
  * Returns state and handlers for rendering a React-based context menu
  */
-export function useContextMenu(
-  cy: Core | null,
-  options: ContextMenuOptions
-): UseContextMenuReturn {
+export function useContextMenu(cy: Core | null, options: ContextMenuOptions): UseContextMenuReturn {
   const { menuState, nodeData, edgeData, closeMenu, openNodeMenu, openEdgeMenu } = useMenuState(cy);
   useMenuEvents(cy, options, openNodeMenu, openEdgeMenu);
   const menuItems = buildMenuItems(menuState, nodeData, edgeData, options);

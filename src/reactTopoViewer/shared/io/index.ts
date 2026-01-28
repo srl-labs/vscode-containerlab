@@ -19,14 +19,14 @@ export {
   ERROR_NODES_NOT_MAP,
   ERROR_LINKS_NOT_SEQ,
   ERROR_SERVICE_NOT_INIT,
-  ERROR_NO_YAML_PATH,
-} from './types';
+  ERROR_NO_YAML_PATH
+} from "./types";
 
 // Re-export TopologyAnnotations from types module
-export type { TopologyAnnotations } from '../types/topology';
+export type { TopologyAnnotations } from "../types/topology";
 
 // File system adapters
-export { NodeFsAdapter, nodeFsAdapter } from './NodeFsAdapter';
+export { NodeFsAdapter, nodeFsAdapter } from "./NodeFsAdapter";
 
 // YAML utilities
 export {
@@ -37,16 +37,12 @@ export {
   parseYamlDocument,
   stringifyYamlDocument,
   writeYamlFile,
-  YamlWriteOptions,
-} from './YamlDocumentIO';
+  YamlWriteOptions
+} from "./YamlDocumentIO";
 
 // Annotations I/O
-export {
-  AnnotationsIO,
-  AnnotationsIOOptions,
-  migrateAnnotations,
-} from './AnnotationsIO';
-export { createEmptyAnnotations } from '../annotations/types';
+export { AnnotationsIO, AnnotationsIOOptions, migrateAnnotations } from "./AnnotationsIO";
+export { createEmptyAnnotations } from "../annotations/types";
 
 // Node persistence
 export {
@@ -57,19 +53,11 @@ export {
   editNodeInDoc,
   deleteNodeFromDoc,
   applyAnnotationData,
-  buildAnnotationProps,
-} from './NodePersistenceIO';
+  buildAnnotationProps
+} from "./NodePersistenceIO";
 
 // Link persistence
-export {
-  LinkSaveData,
-  addLinkToDoc,
-  editLinkInDoc,
-  deleteLinkFromDoc,
-} from './LinkPersistenceIO';
+export { LinkSaveData, addLinkToDoc, editLinkInDoc, deleteLinkFromDoc } from "./LinkPersistenceIO";
 
 // Topology I/O orchestration
-export {
-  TopologyIO,
-  TopologyIOOptions,
-} from './TopologyIO';
+export { TopologyIO, TopologyIOOptions } from "./TopologyIO";

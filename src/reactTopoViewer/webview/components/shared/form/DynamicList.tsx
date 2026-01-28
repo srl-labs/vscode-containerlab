@@ -1,9 +1,9 @@
 /**
  * DynamicList - Array of string inputs with add/remove
  */
-import React from 'react';
+import React from "react";
 
-import { AddItemButton, DeleteItemButton } from './ListButtons';
+import { AddItemButton, DeleteItemButton } from "./ListButtons";
 
 interface DynamicListProps {
   items: string[];
@@ -17,11 +17,11 @@ export const DynamicList: React.FC<DynamicListProps> = ({
   items,
   onChange,
   placeholder,
-  addLabel = 'Add',
+  addLabel = "Add",
   disabled
 }) => {
   const handleAdd = () => {
-    onChange([...items, '']);
+    onChange([...items, ""]);
   };
 
   const handleRemove = (index: number) => {

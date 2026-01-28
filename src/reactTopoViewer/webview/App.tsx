@@ -4,51 +4,76 @@
  * Uses context-based architecture for undo/redo and annotations.
  */
 /* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
-import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { convertToEditorData, convertToNetworkEditorData } from '../shared/utilities';
+import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
 
-import type { CytoscapeCanvasRef } from './components/canvas/CytoscapeCanvas';
-import { useTopoViewerActions, useTopoViewerState } from './context/TopoViewerContext';
-import { UndoRedoProvider, useUndoRedoContext } from './context/UndoRedoContext';
-import { AnnotationProvider, useAnnotations, type PendingMembershipChange } from './context/AnnotationContext';
-import { Navbar } from './components/navbar/Navbar';
-import { CytoscapeCanvas } from './components/canvas/CytoscapeCanvas';
-import { ShortcutDisplay } from './components/ShortcutDisplay';
-import { ContextMenu } from './components/context-menu/ContextMenu';
-import { FloatingActionPanel, type FloatingActionPanelHandle } from './components/panels';
-import { AnnotationLayers } from './components/AnnotationLayers';
-import { EditorPanels } from './components/EditorPanels';
-import { ViewPanels } from './components/ViewPanels';
-import { ToastContainer, useToasts } from './components/Toast';
-import { useEasterEgg, EasterEggRenderer } from './easter-eggs';
+import type { CytoscapeCanvasRef } from "./components/canvas/CytoscapeCanvas";
+import { useTopoViewerActions, useTopoViewerState } from "./context/TopoViewerContext";
+import { UndoRedoProvider, useUndoRedoContext } from "./context/UndoRedoContext";
+import {
+  AnnotationProvider,
+  useAnnotations,
+  type PendingMembershipChange
+} from "./context/AnnotationContext";
+import { Navbar } from "./components/navbar/Navbar";
+import { CytoscapeCanvas } from "./components/canvas/CytoscapeCanvas";
+import { ShortcutDisplay } from "./components/ShortcutDisplay";
+import { ContextMenu } from "./components/context-menu/ContextMenu";
+import { FloatingActionPanel, type FloatingActionPanelHandle } from "./components/panels";
+import { AnnotationLayers } from "./components/AnnotationLayers";
+import { EditorPanels } from "./components/EditorPanels";
+import { ViewPanels } from "./components/ViewPanels";
+import { ToastContainer, useToasts } from "./components/Toast";
+import { useEasterEgg, EasterEggRenderer } from "./easter-eggs";
 import {
   // Graph manipulation
   useNodeDragging,
   // State management
-  useGraphHandlersWithContext, useCustomTemplateEditor, filterEntriesWithPosition,
+  useGraphHandlersWithContext,
+  useCustomTemplateEditor,
+  filterEntriesWithPosition,
   // Canvas/App state
-  useCytoscapeInstance, useSelectionData, useNavbarActions, useContextMenuHandlers,
-  useLayoutControls, useEndpointLabelOffset, useLinkLabelVisibility, useGeoMap,
+  useCytoscapeInstance,
+  useSelectionData,
+  useNavbarActions,
+  useContextMenuHandlers,
+  useLayoutControls,
+  useEndpointLabelOffset,
+  useLinkLabelVisibility,
+  useGeoMap,
   // Panel handlers
-  useNodeEditorHandlers, useLinkEditorHandlers, useNetworkEditorHandlers,
+  useNodeEditorHandlers,
+  useLinkEditorHandlers,
+  useNetworkEditorHandlers,
   // UI hooks
-  useContextMenu, useFloatingPanelCommands,
-  usePanelVisibility, useShortcutDisplay, useAppHandlers,
+  useContextMenu,
+  useFloatingPanelCommands,
+  usePanelVisibility,
+  useShortcutDisplay,
+  useAppHandlers,
   // App helper hooks
-  useCustomNodeCommands, useNavbarCommands, useShapeLayer, useTextLayer, useE2ETestingExposure, useGeoCoordinateSync,
+  useCustomNodeCommands,
+  useNavbarCommands,
+  useShapeLayer,
+  useTextLayer,
+  useE2ETestingExposure,
+  useGeoCoordinateSync,
   // NEW: Composed hooks
-  useAnnotationLayerProps, useClipboardHandlers, useAppKeyboardShortcuts, useGraphCreation,
+  useAnnotationLayerProps,
+  useClipboardHandlers,
+  useAppKeyboardShortcuts,
+  useGraphCreation,
   // External file change
   useExternalFileChange,
   // Types
   type GraphChange
-} from './hooks/internal';
-import { useAltClickDelete, useShiftClickEdgeCreation } from './hooks/graph';
-import { convertToLinkEditorData } from './utils/linkEditorConversions';
-import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from './utils/edgeAnnotations';
-import { parseEndpointLabelOffset } from './utils/endpointLabelOffset';
+} from "./hooks/internal";
+import { useAltClickDelete, useShiftClickEdgeCreation } from "./hooks/graph";
+import { convertToLinkEditorData } from "./utils/linkEditorConversions";
+import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "./utils/edgeAnnotations";
+import { parseEndpointLabelOffset } from "./utils/endpointLabelOffset";
 
 /** Inner component that uses contexts */
 const AppContent: React.FC<{
@@ -59,10 +84,21 @@ const AppContent: React.FC<{
   onCyReady: (cy: CyCore) => void;
   onCyDestroyed: () => void;
   layoutControls: ReturnType<typeof useLayoutControls>;
-  mapLibreState: ReturnType<typeof useGeoMap>['mapLibreState'];
+  mapLibreState: ReturnType<typeof useGeoMap>["mapLibreState"];
   shapeLayerNode: HTMLElement | null;
   textLayerNode: HTMLElement | null;
-}> = ({ floatingPanelRef, pendingMembershipChangesRef, cytoscapeRef, cyInstance, onCyReady, onCyDestroyed, layoutControls, mapLibreState, shapeLayerNode, textLayerNode }) => {
+}> = ({
+  floatingPanelRef,
+  pendingMembershipChangesRef,
+  cytoscapeRef,
+  cyInstance,
+  onCyReady,
+  onCyDestroyed,
+  layoutControls,
+  mapLibreState,
+  shapeLayerNode,
+  textLayerNode
+}) => {
   const { state, dispatch } = useTopoViewerState();
   const {
     selectNode,
@@ -90,10 +126,9 @@ const AppContent: React.FC<{
   // Show toast when custom node save fails
   React.useEffect(() => {
     if (state.customNodeError) {
-      const errorMsg = typeof state.customNodeError === 'string'
-        ? state.customNodeError
-        : 'Unknown error';
-      addToast(`Failed to save custom node: ${errorMsg}`, 'error', 5000);
+      const errorMsg =
+        typeof state.customNodeError === "string" ? state.customNodeError : "Unknown error";
+      addToast(`Failed to save custom node: ${errorMsg}`, "error", 5000);
       clearCustomNodeError();
     }
   }, [state.customNodeError, addToast, clearCustomNodeError]);
@@ -102,12 +137,15 @@ const AppContent: React.FC<{
   useExternalFileChange({
     undoRedo,
     addToast,
-    enabled: state.mode === 'edit'
+    enabled: state.mode === "edit"
   });
 
-  const renameNodeInGraph = React.useCallback((oldId: string, newId: string, name?: string) => {
-    dispatch({ type: 'RENAME_NODE', payload: { oldId, newId, name } });
-  }, [dispatch]);
+  const renameNodeInGraph = React.useCallback(
+    (oldId: string, newId: string, name?: string) => {
+      dispatch({ type: "RENAME_NODE", payload: { oldId, newId, name } });
+    },
+    [dispatch]
+  );
 
   useLinkLabelVisibility(cyInstance, state.linkLabelMode);
   useEndpointLabelOffset(cyInstance, {
@@ -131,35 +169,63 @@ const AppContent: React.FC<{
     // Identify dummy nodes (IDs starting with "dummy")
     const dummyNodeIds = new Set(
       state.elements
-        .filter(el => el.group === 'nodes' && (el.data?.id as string)?.startsWith('dummy'))
-        .map(el => el.data?.id as string)
+        .filter((el) => el.group === "nodes" && (el.data?.id as string)?.startsWith("dummy"))
+        .map((el) => el.data?.id as string)
     );
 
     // Filter out dummy nodes and edges connected to them
-    return state.elements.filter(el => {
-      if (el.group === 'nodes') {
+    return state.elements.filter((el) => {
+      if (el.group === "nodes") {
         return !dummyNodeIds.has(el.data?.id as string);
       }
-      if (el.group === 'edges') {
+      if (el.group === "edges") {
         const data = el.data as { source?: string; target?: string };
-        return !dummyNodeIds.has(data.source ?? '') && !dummyNodeIds.has(data.target ?? '');
+        return !dummyNodeIds.has(data.source ?? "") && !dummyNodeIds.has(data.target ?? "");
       }
       return true;
     });
   }, [state.elements, state.showDummyLinks]);
 
   // Selection and editing data
-  const { selectedNodeData, selectedLinkData } = useSelectionData(cytoscapeRef, state.selectedNode, state.selectedEdge, state.elements);
-  const { selectedNodeData: editingNodeRawData } = useSelectionData(cytoscapeRef, state.editingNode, null, state.editorDataVersion);
-  const { selectedNodeData: editingNetworkRawData } = useSelectionData(cytoscapeRef, state.editingNetwork, null, state.editorDataVersion);
-  const { selectedLinkData: editingLinkRawData } = useSelectionData(cytoscapeRef, null, state.editingEdge, state.editorDataVersion);
-  const editingNodeData = React.useMemo(() => convertToEditorData(editingNodeRawData), [editingNodeRawData]);
+  const { selectedNodeData, selectedLinkData } = useSelectionData(
+    cytoscapeRef,
+    state.selectedNode,
+    state.selectedEdge,
+    state.elements
+  );
+  const { selectedNodeData: editingNodeRawData } = useSelectionData(
+    cytoscapeRef,
+    state.editingNode,
+    null,
+    state.editorDataVersion
+  );
+  const { selectedNodeData: editingNetworkRawData } = useSelectionData(
+    cytoscapeRef,
+    state.editingNetwork,
+    null,
+    state.editorDataVersion
+  );
+  const { selectedLinkData: editingLinkRawData } = useSelectionData(
+    cytoscapeRef,
+    null,
+    state.editingEdge,
+    state.editorDataVersion
+  );
+  const editingNodeData = React.useMemo(
+    () => convertToEditorData(editingNodeRawData),
+    [editingNodeRawData]
+  );
   const editingNodeInheritedProps = React.useMemo(() => {
     const extra = editingNodeRawData?.extraData as Record<string, unknown> | undefined;
     const inherited = extra?.inherited;
-    return Array.isArray(inherited) ? inherited.filter((p): p is string => typeof p === 'string') : [];
+    return Array.isArray(inherited)
+      ? inherited.filter((p): p is string => typeof p === "string")
+      : [];
   }, [editingNodeRawData]);
-  const editingNetworkData = React.useMemo(() => convertToNetworkEditorData(editingNetworkRawData), [editingNetworkRawData]);
+  const editingNetworkData = React.useMemo(
+    () => convertToNetworkEditorData(editingNetworkRawData),
+    [editingNetworkRawData]
+  );
   const editingLinkData = React.useMemo(() => {
     const base = convertToLinkEditorData(editingLinkRawData);
     if (!base) return null;
@@ -170,8 +236,10 @@ const AppContent: React.FC<{
       sourceEndpoint: base.sourceEndpoint,
       targetEndpoint: base.targetEndpoint
     });
-    const offset = parseEndpointLabelOffset(annotation?.endpointLabelOffset) ?? state.endpointLabelOffset;
-    const enabled = annotation?.endpointLabelOffsetEnabled ??
+    const offset =
+      parseEndpointLabelOffset(annotation?.endpointLabelOffset) ?? state.endpointLabelOffset;
+    const enabled =
+      annotation?.endpointLabelOffsetEnabled ??
       (annotation?.endpointLabelOffset !== undefined ? true : false);
     return {
       ...base,
@@ -193,7 +261,7 @@ const AppContent: React.FC<{
     if (!cyInstance || initialFitDoneRef.current) return;
 
     // Check if initial layout is done
-    const layoutDone = cyInstance.scratch('initialLayoutDone') as boolean | undefined;
+    const layoutDone = cyInstance.scratch("initialLayoutDone") as boolean | undefined;
     if (!layoutDone) return;
 
     // Do the fit with annotations
@@ -202,7 +270,15 @@ const AppContent: React.FC<{
   }, [cyInstance, handleZoomToFit]);
 
   const navbarCommands = useNavbarCommands();
-  const menuHandlers = useContextMenuHandlers(cytoscapeRef, { selectNode, selectEdge, editNode, editEdge, editNetwork, removeNodeAndEdges, removeEdge });
+  const menuHandlers = useContextMenuHandlers(cytoscapeRef, {
+    selectNode,
+    selectEdge,
+    editNode,
+    editEdge,
+    editNetwork,
+    removeNodeAndEdges,
+    removeEdge
+  });
   const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(state.customNodes, editCustomTemplate);
 
@@ -241,12 +317,24 @@ const AppContent: React.FC<{
   });
 
   // Callback to update node data in React state (triggers icon reconciliation)
-  const updateNodeData = React.useCallback((nodeId: string, extraData: Record<string, unknown>) => {
-    dispatch({ type: 'UPDATE_NODE_DATA', payload: { nodeId, extraData } });
-  }, [dispatch]);
+  const updateNodeData = React.useCallback(
+    (nodeId: string, extraData: Record<string, unknown>) => {
+      dispatch({ type: "UPDATE_NODE_DATA", payload: { nodeId, extraData } });
+    },
+    [dispatch]
+  );
 
   // Editor handlers
-  const nodeEditorHandlers = useNodeEditorHandlers(editNode, editingNodeData, recordPropertyEdit, cytoscapeRef, renameNodeInGraph, state.customIcons, updateNodeData, refreshEditorData);
+  const nodeEditorHandlers = useNodeEditorHandlers(
+    editNode,
+    editingNodeData,
+    recordPropertyEdit,
+    cytoscapeRef,
+    renameNodeInGraph,
+    state.customIcons,
+    updateNodeData,
+    refreshEditorData
+  );
   const linkEditorHandlers = useLinkEditorHandlers(
     editEdge,
     editingLinkData,
@@ -257,11 +345,19 @@ const AppContent: React.FC<{
       setEdgeAnnotations
     }
   );
-  const networkEditorHandlers = useNetworkEditorHandlers(editNetwork, editingNetworkData, cyInstance, renameNodeInGraph);
+  const networkEditorHandlers = useNetworkEditorHandlers(
+    editNetwork,
+    editingNetworkData,
+    cyInstance,
+    renameNodeInGraph
+  );
 
-  const recordGraphChanges = React.useCallback((before: GraphChange[], after: GraphChange[]) => {
-    undoRedo.pushAction({ type: 'graph', before, after });
-  }, [undoRedo]);
+  const recordGraphChanges = React.useCallback(
+    (before: GraphChange[], after: GraphChange[]) => {
+      undoRedo.pushAction({ type: "graph", before, after });
+    },
+    [undoRedo]
+  );
 
   const { editorData: customTemplateEditorData, handlers: customTemplateHandlers } =
     useCustomTemplateEditor(state.editingCustomTemplate, editCustomTemplate);
@@ -370,10 +466,13 @@ const AppContent: React.FC<{
     handleEdgeCreated
   });
 
-  const handleSaveTextAnnotationWithUndo = React.useCallback((annotation: Parameters<typeof annotations.saveTextAnnotation>[0]) => {
-    const isNew = annotations.editingTextAnnotation?.text === '';
-    annotations.saveTextAnnotationWithUndo(annotation, isNew);
-  }, [annotations]);
+  const handleSaveTextAnnotationWithUndo = React.useCallback(
+    (annotation: Parameters<typeof annotations.saveTextAnnotation>[0]) => {
+      const isNew = annotations.editingTextAnnotation?.text === "";
+      annotations.saveTextAnnotationWithUndo(annotation, isNew);
+    },
+    [annotations]
+  );
 
   // Keyboard shortcuts - composed hook
   useAppKeyboardShortcuts({
@@ -453,30 +552,119 @@ const AppContent: React.FC<{
         isPartyMode={easterEgg.state.isPartyMode}
       />
       <main className="topoviewer-main">
-        <CytoscapeCanvas ref={cytoscapeRef} elements={filteredElements} onCyReady={onCyReady} onCyDestroyed={onCyDestroyed} />
+        <CytoscapeCanvas
+          ref={cytoscapeRef}
+          elements={filteredElements}
+          onCyReady={onCyReady}
+          onCyDestroyed={onCyDestroyed}
+        />
         <AnnotationLayers
           groupLayerProps={groupLayerProps}
           freeTextLayerProps={freeTextLayerProps}
           freeShapeLayerProps={freeShapeLayerProps}
         />
         <ViewPanels
-          nodeInfo={{ isVisible: !!state.selectedNode && state.mode === 'view', nodeData: selectedNodeData, onClose: menuHandlers.handleCloseNodePanel }}
-          linkInfo={{ isVisible: !!state.selectedEdge && state.mode === 'view', linkData: selectedLinkData, onClose: menuHandlers.handleCloseLinkPanel }}
-          shortcuts={{ isVisible: panelVisibility.showShortcutsPanel, onClose: panelVisibility.handleCloseShortcuts }}
-          about={{ isVisible: panelVisibility.showAboutPanel, onClose: panelVisibility.handleCloseAbout }}
-          findNode={{ isVisible: panelVisibility.showFindNodePanel, onClose: panelVisibility.handleCloseFindNode, cy: cyInstance }}
-          svgExport={{ isVisible: panelVisibility.showSvgExportPanel, onClose: panelVisibility.handleCloseSvgExport, cy: cyInstance, textAnnotations: annotations.textAnnotations, shapeAnnotations: annotations.shapeAnnotations, groups: annotations.groups }}
+          nodeInfo={{
+            isVisible: !!state.selectedNode && state.mode === "view",
+            nodeData: selectedNodeData,
+            onClose: menuHandlers.handleCloseNodePanel
+          }}
+          linkInfo={{
+            isVisible: !!state.selectedEdge && state.mode === "view",
+            linkData: selectedLinkData,
+            onClose: menuHandlers.handleCloseLinkPanel
+          }}
+          shortcuts={{
+            isVisible: panelVisibility.showShortcutsPanel,
+            onClose: panelVisibility.handleCloseShortcuts
+          }}
+          about={{
+            isVisible: panelVisibility.showAboutPanel,
+            onClose: panelVisibility.handleCloseAbout
+          }}
+          findNode={{
+            isVisible: panelVisibility.showFindNodePanel,
+            onClose: panelVisibility.handleCloseFindNode,
+            cy: cyInstance
+          }}
+          svgExport={{
+            isVisible: panelVisibility.showSvgExportPanel,
+            onClose: panelVisibility.handleCloseSvgExport,
+            cy: cyInstance,
+            textAnnotations: annotations.textAnnotations,
+            shapeAnnotations: annotations.shapeAnnotations,
+            groups: annotations.groups
+          }}
         />
         <EditorPanels
-          nodeEditor={{ isVisible: !!state.editingNode, nodeData: editingNodeData, inheritedProps: editingNodeInheritedProps, onClose: nodeEditorHandlers.handleClose, onSave: nodeEditorHandlers.handleSave, onApply: nodeEditorHandlers.handleApply }}
-          networkEditor={{ isVisible: !!state.editingNetwork, nodeData: editingNetworkData, onClose: networkEditorHandlers.handleClose, onSave: networkEditorHandlers.handleSave, onApply: networkEditorHandlers.handleApply }}
-          customTemplateEditor={{ isVisible: !!state.editingCustomTemplate, nodeData: customTemplateEditorData, onClose: customTemplateHandlers.handleClose, onSave: customTemplateHandlers.handleSave, onApply: customTemplateHandlers.handleApply }}
-          linkEditor={{ isVisible: !!state.editingEdge, linkData: editingLinkData, onClose: linkEditorHandlers.handleClose, onSave: linkEditorHandlers.handleSave, onApply: linkEditorHandlers.handleApply, onAutoApplyOffset: linkEditorHandlers.handleAutoApplyOffset }}
-          bulkLink={{ isVisible: showBulkLinkPanel, mode: state.mode, isLocked: state.isLocked, cy: cyInstance, onClose: () => setShowBulkLinkPanel(false), recordGraphChanges, addEdge }}
-          freeTextEditor={{ isVisible: !!annotations.editingTextAnnotation, annotation: annotations.editingTextAnnotation, onSave: handleSaveTextAnnotationWithUndo, onClose: annotations.closeTextEditor, onDelete: annotations.deleteTextAnnotationWithUndo }}
-          freeShapeEditor={{ isVisible: !!annotations.editingShapeAnnotation, annotation: annotations.editingShapeAnnotation, onSave: annotations.saveShapeAnnotation, onClose: annotations.closeShapeEditor, onDelete: annotations.deleteShapeAnnotation }}
-          groupEditor={{ isVisible: !!annotations.editingGroup, groupData: annotations.editingGroup, onSave: annotations.saveGroup, onClose: annotations.closeGroupEditor, onDelete: annotations.deleteGroup, onStyleChange: annotations.updateGroup }}
-          labSettings={{ isVisible: panelVisibility.showLabSettingsPanel, mode: state.mode, isLocked: state.isLocked, labSettings: { name: state.labName }, onClose: panelVisibility.handleCloseLabSettings }}
+          nodeEditor={{
+            isVisible: !!state.editingNode,
+            nodeData: editingNodeData,
+            inheritedProps: editingNodeInheritedProps,
+            onClose: nodeEditorHandlers.handleClose,
+            onSave: nodeEditorHandlers.handleSave,
+            onApply: nodeEditorHandlers.handleApply
+          }}
+          networkEditor={{
+            isVisible: !!state.editingNetwork,
+            nodeData: editingNetworkData,
+            onClose: networkEditorHandlers.handleClose,
+            onSave: networkEditorHandlers.handleSave,
+            onApply: networkEditorHandlers.handleApply
+          }}
+          customTemplateEditor={{
+            isVisible: !!state.editingCustomTemplate,
+            nodeData: customTemplateEditorData,
+            onClose: customTemplateHandlers.handleClose,
+            onSave: customTemplateHandlers.handleSave,
+            onApply: customTemplateHandlers.handleApply
+          }}
+          linkEditor={{
+            isVisible: !!state.editingEdge,
+            linkData: editingLinkData,
+            onClose: linkEditorHandlers.handleClose,
+            onSave: linkEditorHandlers.handleSave,
+            onApply: linkEditorHandlers.handleApply,
+            onAutoApplyOffset: linkEditorHandlers.handleAutoApplyOffset
+          }}
+          bulkLink={{
+            isVisible: showBulkLinkPanel,
+            mode: state.mode,
+            isLocked: state.isLocked,
+            cy: cyInstance,
+            onClose: () => setShowBulkLinkPanel(false),
+            recordGraphChanges,
+            addEdge
+          }}
+          freeTextEditor={{
+            isVisible: !!annotations.editingTextAnnotation,
+            annotation: annotations.editingTextAnnotation,
+            onSave: handleSaveTextAnnotationWithUndo,
+            onClose: annotations.closeTextEditor,
+            onDelete: annotations.deleteTextAnnotationWithUndo
+          }}
+          freeShapeEditor={{
+            isVisible: !!annotations.editingShapeAnnotation,
+            annotation: annotations.editingShapeAnnotation,
+            onSave: annotations.saveShapeAnnotation,
+            onClose: annotations.closeShapeEditor,
+            onDelete: annotations.deleteShapeAnnotation
+          }}
+          groupEditor={{
+            isVisible: !!annotations.editingGroup,
+            groupData: annotations.editingGroup,
+            onSave: annotations.saveGroup,
+            onClose: annotations.closeGroupEditor,
+            onDelete: annotations.deleteGroup,
+            onStyleChange: annotations.updateGroup
+          }}
+          labSettings={{
+            isVisible: panelVisibility.showLabSettingsPanel,
+            mode: state.mode,
+            isLocked: state.isLocked,
+            labSettings: { name: state.labName },
+            onClose: panelVisibility.handleCloseLabSettings
+          }}
         />
         <FloatingActionPanel
           ref={floatingPanelRef}
@@ -499,7 +687,12 @@ const AppContent: React.FC<{
           isAddShapeMode={annotations.isAddShapeMode}
         />
         <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
-        <ContextMenu isVisible={menuState.isVisible} position={menuState.position} items={menuItems} onClose={closeMenu} />
+        <ContextMenu
+          isVisible={menuState.isVisible}
+          position={menuState.position}
+          items={menuItems}
+          onClose={closeMenu}
+        />
         <EasterEggRenderer easterEgg={easterEgg} cyInstance={cyInstance} />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       </main>
@@ -524,7 +717,7 @@ export const App: React.FC = () => {
   });
 
   return (
-    <UndoRedoProvider cy={cyInstance} enabled={state.mode === 'edit'}>
+    <UndoRedoProvider cy={cyInstance} enabled={state.mode === "edit"}>
       <AnnotationProvider
         cy={cyInstance}
         mode={state.mode}

@@ -4,9 +4,9 @@
  * Docker images are loaded by the extension and passed via window.__DOCKER_IMAGES__
  * Updates are received via the 'docker-images-updated' custom event
  */
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from "react";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
 declare global {
   interface Window {
@@ -34,8 +34,8 @@ interface UseDockerImagesResult {
  */
 function sortVersions(versions: string[]): void {
   versions.sort((a, b) => {
-    if (a === 'latest') return -1;
-    if (b === 'latest') return 1;
+    if (a === "latest") return -1;
+    if (b === "latest") return 1;
     return b.localeCompare(a);
   });
 }
@@ -45,8 +45,8 @@ function sortVersions(versions: string[]): void {
  */
 function sortBaseImages(images: string[]): string[] {
   return images.sort((a, b) => {
-    const aIsNokia = a.includes('nokia');
-    const bIsNokia = b.includes('nokia');
+    const aIsNokia = a.includes("nokia");
+    const bIsNokia = b.includes("nokia");
     if (aIsNokia && !bIsNokia) return -1;
     if (!aIsNokia && bIsNokia) return 1;
     return a.localeCompare(b);
@@ -57,7 +57,7 @@ function sortBaseImages(images: string[]): string[] {
  * Parse a single docker image string into base and version
  */
 function parseImageTag(image: string, versionsByImage: Map<string, string[]>): void {
-  const lastColonIndex = image.lastIndexOf(':');
+  const lastColonIndex = image.lastIndexOf(":");
   if (lastColonIndex > 0) {
     const baseImage = image.substring(0, lastColonIndex);
     const version = image.substring(lastColonIndex + 1);
@@ -66,7 +66,7 @@ function parseImageTag(image: string, versionsByImage: Map<string, string[]>): v
     }
     versionsByImage.get(baseImage)!.push(version);
   } else if (!versionsByImage.has(image)) {
-    versionsByImage.set(image, ['latest']);
+    versionsByImage.set(image, ["latest"]);
   }
 }
 
@@ -91,25 +91,28 @@ function parseDockerImages(images: string[]): ImageVersionMap {
 /**
  * Parse full image string into base and version components
  */
-function splitImageString(fullImage: string, defaultBase: string): { base: string; version: string } {
+function splitImageString(
+  fullImage: string,
+  defaultBase: string
+): { base: string; version: string } {
   if (!fullImage) {
-    return { base: defaultBase, version: 'latest' };
+    return { base: defaultBase, version: "latest" };
   }
-  const lastColonIndex = fullImage.lastIndexOf(':');
+  const lastColonIndex = fullImage.lastIndexOf(":");
   if (lastColonIndex > 0) {
     return {
       base: fullImage.substring(0, lastColonIndex),
       version: fullImage.substring(lastColonIndex + 1)
     };
   }
-  return { base: fullImage, version: 'latest' };
+  return { base: fullImage, version: "latest" };
 }
 
 /**
  * Combine base image and version into full image string
  */
 function joinImageVersion(base: string, version: string): string {
-  return base ? `${base}:${version || 'latest'}` : '';
+  return base ? `${base}:${version || "latest"}` : "";
 }
 
 /**
@@ -123,19 +126,22 @@ export function useDockerImages(): UseDockerImagesResult {
       log.info(`[useDockerImages] Received update with ${event.detail.length} images`);
       setDockerImages(event.detail);
     };
-    window.addEventListener('docker-images-updated', handleUpdate as EventListener);
-    return () => window.removeEventListener('docker-images-updated', handleUpdate as EventListener);
+    window.addEventListener("docker-images-updated", handleUpdate as EventListener);
+    return () => window.removeEventListener("docker-images-updated", handleUpdate as EventListener);
   }, []);
 
-  const { baseImages, versionsByImage } = useMemo(() => parseDockerImages(dockerImages), [dockerImages]);
+  const { baseImages, versionsByImage } = useMemo(
+    () => parseDockerImages(dockerImages),
+    [dockerImages]
+  );
 
   const getVersionsForImage = useCallback(
-    (baseImage: string): string[] => versionsByImage.get(baseImage) || ['latest'],
+    (baseImage: string): string[] => versionsByImage.get(baseImage) || ["latest"],
     [versionsByImage]
   );
 
   const parseImageString = useCallback(
-    (fullImage: string) => splitImageString(fullImage, baseImages[0] || ''),
+    (fullImage: string) => splitImageString(fullImage, baseImages[0] || ""),
     [baseImages]
   );
 
@@ -147,7 +153,7 @@ export function useDockerImages(): UseDockerImagesResult {
     getVersionsForImage,
     parseImageString,
     combineImageVersion,
-    isLoaded: dockerImages.length > 0 || typeof window.__DOCKER_IMAGES__ !== 'undefined',
+    isLoaded: dockerImages.length > 0 || typeof window.__DOCKER_IMAGES__ !== "undefined",
     hasImages: baseImages.length > 0
   };
 }

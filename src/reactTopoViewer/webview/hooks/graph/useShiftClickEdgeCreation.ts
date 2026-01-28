@@ -1,15 +1,15 @@
 /**
  * useShiftClickEdgeCreation - Hook for starting edge creation via Shift+Click on node
  */
-import { useEffect } from 'react';
-import type { Core, EventObject, NodeSingular } from 'cytoscape';
+import { useEffect } from "react";
+import type { Core, EventObject, NodeSingular } from "cytoscape";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
-import { getModifierTapTarget } from './graphClickHelpers';
+import { getModifierTapTarget } from "./graphClickHelpers";
 
 interface ShiftClickEdgeCreationOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   startEdgeCreation: (nodeId: string) => void;
 }
@@ -31,7 +31,7 @@ export function useShiftClickEdgeCreation(
       const node = getModifierTapTarget<NodeSingular>(evt, cy, {
         mode,
         isLocked,
-        modifier: 'shift'
+        modifier: "shift"
       });
       if (!node) return;
 
@@ -39,7 +39,9 @@ export function useShiftClickEdgeCreation(
       startEdgeCreation(node.id());
     };
 
-    cy.on('tap', 'node', handleTap);
-    return () => { cy.off('tap', 'node', handleTap); };
+    cy.on("tap", "node", handleTap);
+    return () => {
+      cy.off("tap", "node", handleTap);
+    };
   }, [cy, mode, isLocked, startEdgeCreation]);
 }

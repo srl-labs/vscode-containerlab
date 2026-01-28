@@ -14,8 +14,8 @@ export type {
   NetworkNodeAnnotation,
   NodeAnnotation,
   AliasEndpointAnnotation,
-  TopologyAnnotations,
-} from './types';
+  TopologyAnnotations
+} from "./types";
 
 // Utilities
-export { createEmptyAnnotations } from './types';
+export { createEmptyAnnotations } from "./types";

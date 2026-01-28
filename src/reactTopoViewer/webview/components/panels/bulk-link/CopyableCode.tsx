@@ -1,16 +1,16 @@
 /**
  * CopyableCode - Inline code with click-to-copy functionality
  */
-import React from 'react';
+import React from "react";
 
-import { copyToClipboard } from '../../../utils/clipboard';
+import { copyToClipboard } from "../../../utils/clipboard";
 
 interface CopyableCodeProps {
   children: string;
   className?: string;
 }
 
-export const CopyableCode: React.FC<CopyableCodeProps> = ({ children, className = '' }) => {
+export const CopyableCode: React.FC<CopyableCodeProps> = ({ children, className = "" }) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = React.useCallback(async () => {
@@ -25,9 +25,9 @@ export const CopyableCode: React.FC<CopyableCodeProps> = ({ children, className 
     <code
       onClick={() => void handleCopy()}
       title="Click to copy"
-      className={`cursor-pointer select-text rounded-sm bg-[var(--vscode-textCodeBlock-background)] px-1 py-0.5 font-mono text-xs transition-colors hover:bg-[var(--vscode-list-hoverBackground)] ${copied ? 'ring-1 ring-[var(--vscode-focusBorder)]' : ''} ${className}`}
+      className={`cursor-pointer select-text rounded-sm bg-[var(--vscode-textCodeBlock-background)] px-1 py-0.5 font-mono text-xs transition-colors hover:bg-[var(--vscode-list-hoverBackground)] ${copied ? "ring-1 ring-[var(--vscode-focusBorder)]" : ""} ${className}`}
     >
-      {copied ? 'Copied!' : children}
+      {copied ? "Copied!" : children}
     </code>
   );
 };

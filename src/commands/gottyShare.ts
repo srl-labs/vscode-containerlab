@@ -1,7 +1,12 @@
 import * as vscode from "vscode";
 
 import type { ClabLabTreeNode } from "../treeView/common";
-import { outputChannel, gottySessions, runningLabsProvider, containerlabBinaryPath } from "../globals";
+import {
+  outputChannel,
+  gottySessions,
+  runningLabsProvider,
+  containerlabBinaryPath
+} from "../globals";
 import { refreshGottySessions, refreshRunningLabsProvider } from "../services/sessionRefresh";
 import { runCommand } from "../utils/utils";
 
@@ -25,8 +30,8 @@ interface GottySession {
 }
 
 function tryParseLinkFromJson(output: string, bracketedHost?: string): string | undefined {
-  const start = output.indexOf('[');
-  const end = output.lastIndexOf(']');
+  const start = output.indexOf("[");
+  const end = output.lastIndexOf("]");
   if (start === -1 || end === -1 || end <= start) return undefined;
   try {
     const payload = output.slice(start, end + 1);
@@ -44,8 +49,8 @@ function tryParseLinkFromText(output: string, bracketedHost?: string): string | 
   const urlMatch = /(https?:\/\/\S+)/.exec(output);
   if (!urlMatch) return undefined;
   const url = urlMatch[1];
-  if (url.includes('HOST_IP') && bracketedHost) {
-    return url.replace('HOST_IP', bracketedHost);
+  if (url.includes("HOST_IP") && bracketedHost) {
+    return url.replace("HOST_IP", bracketedHost);
   }
   return url;
 }
@@ -62,25 +67,25 @@ async function gottyStart(action: "attach" | "reattach", node: ClabLabTreeNode) 
     return;
   }
   try {
-    const port = vscode.workspace.getConfiguration('containerlab').get<number>('gotty.port', 8080);
+    const port = vscode.workspace.getConfiguration("containerlab").get<number>("gotty.port", 8080);
     const command = `${containerlabBinaryPath} tools gotty ${action} -l ${node.name} --port ${port}`;
-    const out = await runCommand(
-      command,
-      `GoTTY ${action}`,
-      outputChannel,
-      true,
-      true
-    ) as string;
-    const link = await parseGottyLink(out || '');
+    const out = (await runCommand(command, `GoTTY ${action}`, outputChannel, true, true)) as string;
+    const link = await parseGottyLink(out || "");
     if (link) {
       gottySessions.set(node.name, link);
       await vscode.env.clipboard.writeText(link);
-      const choice = await vscode.window.showInformationMessage('GoTTY link copied to clipboard. Default credentials: admin/admin', 'Open Link');
-      if (choice === 'Open Link') {
+      const choice = await vscode.window.showInformationMessage(
+        "GoTTY link copied to clipboard. Default credentials: admin/admin",
+        "Open Link"
+      );
+      if (choice === "Open Link") {
         vscode.env.openExternal(vscode.Uri.parse(link));
       }
     } else {
-      const msg = action === 'attach' ? 'GoTTY session started but no link found.' : 'GoTTY session reattached';
+      const msg =
+        action === "attach"
+          ? "GoTTY session started but no link found."
+          : "GoTTY session reattached";
       vscode.window.showInformationMessage(msg);
     }
   } catch (err: unknown) {
@@ -92,7 +97,7 @@ async function gottyStart(action: "attach" | "reattach", node: ClabLabTreeNode) 
 }
 
 export async function gottyAttach(node: ClabLabTreeNode) {
-  await gottyStart('attach', node);
+  await gottyStart("attach", node);
 }
 
 export async function gottyDetach(node: ClabLabTreeNode) {
@@ -102,15 +107,9 @@ export async function gottyDetach(node: ClabLabTreeNode) {
   }
   try {
     const command = `${containerlabBinaryPath} tools gotty detach -l ${node.name}`;
-    await runCommand(
-      command,
-      'GoTTY detach',
-      outputChannel,
-      false,
-      false
-    );
+    await runCommand(command, "GoTTY detach", outputChannel, false, false);
     gottySessions.delete(node.name);
-    vscode.window.showInformationMessage('GoTTY session detached');
+    vscode.window.showInformationMessage("GoTTY session detached");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(`Failed to detach GoTTY: ${message}`);
@@ -125,10 +124,10 @@ export async function gottyDetach(node: ClabLabTreeNode) {
 }
 
 export async function gottyReattach(node: ClabLabTreeNode) {
-  await gottyStart('reattach', node);
+  await gottyStart("reattach", node);
 }
 
 export function gottyCopyLink(link: string) {
   vscode.env.clipboard.writeText(link);
-  vscode.window.showInformationMessage('GoTTY link copied to clipboard');
+  vscode.window.showInformationMessage("GoTTY link copied to clipboard");
 }

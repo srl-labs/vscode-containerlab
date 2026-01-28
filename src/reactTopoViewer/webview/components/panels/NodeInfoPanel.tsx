@@ -2,11 +2,11 @@
  * Node Info Panel Component
  * Shows properties of a selected node with selectable/copyable values
  */
-import React, { useCallback } from 'react';
+import React, { useCallback } from "react";
 
-import type { NodeData } from '../../hooks/useAppState';
+import type { NodeData } from "../../hooks/useAppState";
 
-import { FloatingPanel } from './InfoFloatingPanel';
+import { FloatingPanel } from "./InfoFloatingPanel";
 
 interface NodeInfoPanelProps {
   isVisible: boolean;
@@ -23,7 +23,7 @@ function getNodeProperty(
   extraKey: string,
   topLevelKey: keyof NodeData
 ): string {
-  return (extraData[extraKey] as string) || (nodeData[topLevelKey] as string) || '';
+  return (extraData[extraKey] as string) || (nodeData[topLevelKey] as string) || "";
 }
 
 /**
@@ -33,20 +33,23 @@ function extractNodeDisplayProps(nodeData: NodeData) {
   const extraData = (nodeData.extraData as Record<string, unknown>) || {};
 
   return {
-    nodeName: nodeData.label || nodeData.name || nodeData.id || 'Unknown',
-    kind: getNodeProperty(extraData, nodeData, 'kind', 'kind'),
-    state: getNodeProperty(extraData, nodeData, 'state', 'state'),
-    image: getNodeProperty(extraData, nodeData, 'image', 'image'),
-    mgmtIpv4: getNodeProperty(extraData, nodeData, 'mgmtIpv4Address', 'mgmtIpv4'),
-    mgmtIpv6: getNodeProperty(extraData, nodeData, 'mgmtIpv6Address', 'mgmtIpv6'),
-    fqdn: getNodeProperty(extraData, nodeData, 'fqdn', 'fqdn'),
+    nodeName: nodeData.label || nodeData.name || nodeData.id || "Unknown",
+    kind: getNodeProperty(extraData, nodeData, "kind", "kind"),
+    state: getNodeProperty(extraData, nodeData, "state", "state"),
+    image: getNodeProperty(extraData, nodeData, "image", "image"),
+    mgmtIpv4: getNodeProperty(extraData, nodeData, "mgmtIpv4Address", "mgmtIpv4"),
+    mgmtIpv6: getNodeProperty(extraData, nodeData, "mgmtIpv6Address", "mgmtIpv6"),
+    fqdn: getNodeProperty(extraData, nodeData, "fqdn", "fqdn")
   };
 }
 
 /**
  * Copyable value component with hover effect
  */
-const CopyableValue: React.FC<{ value: string; className?: string }> = ({ value, className = '' }) => {
+const CopyableValue: React.FC<{ value: string; className?: string }> = ({
+  value,
+  className = ""
+}) => {
   const handleCopy = useCallback(() => {
     if (value) {
       window.navigator.clipboard.writeText(value).catch(() => {});
@@ -82,8 +85,8 @@ const InfoRow: React.FC<{
   value: string;
   valueClassName?: string;
   fullWidth?: boolean;
-}> = ({ label, value, valueClassName = '', fullWidth = false }) => (
-  <div className={`flex flex-col gap-0.5 ${fullWidth ? 'col-span-full' : ''}`}>
+}> = ({ label, value, valueClassName = "", fullWidth = false }) => (
+  <div className={`flex flex-col gap-0.5 ${fullWidth ? "col-span-full" : ""}`}>
     <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)] font-medium">
       {label}
     </span>
@@ -95,13 +98,13 @@ const InfoRow: React.FC<{
  * Get state indicator dot color
  */
 function getStateIndicatorColor(lowerState: string): string {
-  if (lowerState === 'running' || lowerState === 'healthy') {
-    return 'bg-green-400';
+  if (lowerState === "running" || lowerState === "healthy") {
+    return "bg-green-400";
   }
-  if (lowerState === 'stopped' || lowerState === 'exited') {
-    return 'bg-red-400';
+  if (lowerState === "stopped" || lowerState === "exited") {
+    return "bg-red-400";
   }
-  return 'bg-[var(--vscode-badge-foreground)]';
+  return "bg-[var(--vscode-badge-foreground)]";
 }
 
 /**
@@ -114,38 +117,37 @@ const StateBadge: React.FC<{ state: string }> = ({ state }) => {
 
   const lowerState = state.toLowerCase();
 
-  let bgColor = 'bg-[var(--vscode-badge-background)]';
-  let textColor = 'text-[var(--vscode-badge-foreground)]';
+  let bgColor = "bg-[var(--vscode-badge-background)]";
+  let textColor = "text-[var(--vscode-badge-foreground)]";
 
-  if (lowerState === 'running' || lowerState === 'healthy') {
-    bgColor = 'bg-green-500/20';
-    textColor = 'text-green-400';
-  } else if (lowerState === 'stopped' || lowerState === 'exited') {
-    bgColor = 'bg-red-500/20';
-    textColor = 'text-red-400';
+  if (lowerState === "running" || lowerState === "healthy") {
+    bgColor = "bg-green-500/20";
+    textColor = "text-green-400";
+  } else if (lowerState === "stopped" || lowerState === "exited") {
+    bgColor = "bg-red-500/20";
+    textColor = "text-red-400";
   }
 
   const indicatorColor = getStateIndicatorColor(lowerState);
 
   return (
-    <span className={`
+    <span
+      className={`
       inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
       ${bgColor} ${textColor}
-    `}>
+    `}
+    >
       <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${indicatorColor}`} />
       {state}
     </span>
   );
 };
 
-export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
-  isVisible,
-  nodeData,
-  onClose
-}) => {
+export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({ isVisible, nodeData, onClose }) => {
   if (!nodeData) return null;
 
-  const { nodeName, kind, state, image, mgmtIpv4, mgmtIpv6, fqdn } = extractNodeDisplayProps(nodeData);
+  const { nodeName, kind, state, image, mgmtIpv4, mgmtIpv6, fqdn } =
+    extractNodeDisplayProps(nodeData);
 
   return (
     <FloatingPanel

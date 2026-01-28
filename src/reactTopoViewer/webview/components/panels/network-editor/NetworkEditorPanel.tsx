@@ -2,14 +2,18 @@
  * Network Editor Panel
  * Editor for network node configuration (host, mgmt-net, vxlan, bridge, etc.)
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 
-import { EditorPanel } from '../../shared/editor';
-import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from '../../shared/form';
+import { EditorPanel } from "../../shared/editor";
+import {
+  FormField,
+  InputField,
+  FilterableDropdown,
+  Section,
+  KeyValueList
+} from "../../shared/form";
 
-import type {
-  NetworkEditorData,
-  NetworkType} from './types';
+import type { NetworkEditorData, NetworkType } from "./types";
 import {
   NETWORK_TYPES,
   VXLAN_TYPES,
@@ -19,7 +23,7 @@ import {
   getInterfacePlaceholder,
   showInterfaceField,
   supportsExtendedProps
-} from './types';
+} from "./types";
 
 interface NetworkEditorPanelProps {
   isVisible: boolean;
@@ -30,13 +34,13 @@ interface NetworkEditorPanelProps {
 }
 
 /** Network type dropdown options */
-const NETWORK_TYPE_OPTIONS = NETWORK_TYPES.map(type => ({
+const NETWORK_TYPE_OPTIONS = NETWORK_TYPES.map((type) => ({
   value: type,
   label: type
 }));
 
 /** MACVLAN mode dropdown options */
-const MACVLAN_MODE_OPTIONS = MACVLAN_MODES.map(mode => ({
+const MACVLAN_MODE_OPTIONS = MACVLAN_MODES.map((mode) => ({
   value: mode,
   label: mode
 }));
@@ -56,7 +60,7 @@ function useNetworkEditorForm(nodeData: NetworkEditorData | null) {
   }, [nodeData]);
 
   const handleChange = useCallback((updates: Partial<NetworkEditorData>) => {
-    setFormData(prev => prev ? { ...prev, ...updates } : null);
+    setFormData((prev) => (prev ? { ...prev, ...updates } : null));
   }, []);
 
   const resetInitialData = useCallback(() => {
@@ -65,9 +69,7 @@ function useNetworkEditorForm(nodeData: NetworkEditorData | null) {
     }
   }, [formData]);
 
-  const hasChanges = formData && initialData
-    ? JSON.stringify(formData) !== initialData
-    : false;
+  const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
 
   return { formData, handleChange, hasChanges, resetInitialData };
 }
@@ -161,7 +163,7 @@ const VxlanFields: React.FC<{
       <FormField label="Remote">
         <InputField
           id="vxlan-remote"
-          value={data.vxlanRemote || ''}
+          value={data.vxlanRemote || ""}
           onChange={(v) => onChange({ vxlanRemote: v })}
           placeholder="Remote endpoint IP address"
         />
@@ -170,7 +172,7 @@ const VxlanFields: React.FC<{
         <FormField label="VNI">
           <InputField
             id="vxlan-vni"
-            value={data.vxlanVni || ''}
+            value={data.vxlanVni || ""}
             onChange={(v) => onChange({ vxlanVni: v })}
             placeholder="e.g., 100"
           />
@@ -178,7 +180,7 @@ const VxlanFields: React.FC<{
         <FormField label="Dst Port">
           <InputField
             id="vxlan-dst-port"
-            value={data.vxlanDstPort || ''}
+            value={data.vxlanDstPort || ""}
             onChange={(v) => onChange({ vxlanDstPort: v })}
             placeholder="e.g., 4789"
           />
@@ -186,7 +188,7 @@ const VxlanFields: React.FC<{
         <FormField label="Src Port">
           <InputField
             id="vxlan-src-port"
-            value={data.vxlanSrcPort || ''}
+            value={data.vxlanSrcPort || ""}
             onChange={(v) => onChange({ vxlanSrcPort: v })}
             placeholder="e.g., 0"
           />
@@ -204,7 +206,7 @@ const MacvlanModeField: React.FC<{
   value: string | undefined;
   onChange: (value: string) => void;
 }> = ({ networkType, value, onChange }) => {
-  if (networkType !== 'macvlan') {
+  if (networkType !== "macvlan") {
     return null;
   }
 
@@ -213,7 +215,7 @@ const MacvlanModeField: React.FC<{
       <FilterableDropdown
         id="macvlan-mode"
         options={MACVLAN_MODE_OPTIONS}
-        value={value || 'bridge'}
+        value={value || "bridge"}
         onChange={onChange}
         placeholder="Select mode..."
         allowFreeText={false}
@@ -232,7 +234,7 @@ const MacAddressField: React.FC<{
   <FormField label="MAC Address">
     <InputField
       id="network-mac"
-      value={value || ''}
+      value={value || ""}
       onChange={onChange}
       placeholder="e.g., 00:11:22:33:44:55 (optional)"
     />
@@ -261,7 +263,7 @@ const ExtendedPropertiesSection: React.FC<{
         <InputField
           id="network-mtu"
           type="number"
-          value={data.mtu || ''}
+          value={data.mtu || ""}
           onChange={(v) => onChange({ mtu: v })}
           placeholder="e.g., 9000"
           min={1}
@@ -298,31 +300,31 @@ const NetworkEditorContent: React.FC<{
   onChange: (updates: Partial<NetworkEditorData>) => void;
 }> = ({ formData, onChange }) => {
   // Handle network type change - may need to clear type-specific fields
-  const handleNetworkTypeChange = useCallback((newType: NetworkType) => {
-    const updates: Partial<NetworkEditorData> = { networkType: newType };
+  const handleNetworkTypeChange = useCallback(
+    (newType: NetworkType) => {
+      const updates: Partial<NetworkEditorData> = { networkType: newType };
 
-    // Clear VXLAN fields if switching away from VXLAN types
-    if (!VXLAN_TYPES.includes(newType)) {
-      updates.vxlanRemote = undefined;
-      updates.vxlanVni = undefined;
-      updates.vxlanDstPort = undefined;
-      updates.vxlanSrcPort = undefined;
-    }
+      // Clear VXLAN fields if switching away from VXLAN types
+      if (!VXLAN_TYPES.includes(newType)) {
+        updates.vxlanRemote = undefined;
+        updates.vxlanVni = undefined;
+        updates.vxlanDstPort = undefined;
+        updates.vxlanSrcPort = undefined;
+      }
 
-    // Clear MACVLAN mode if switching away from macvlan
-    if (newType !== 'macvlan') {
-      updates.macvlanMode = undefined;
-    }
+      // Clear MACVLAN mode if switching away from macvlan
+      if (newType !== "macvlan") {
+        updates.macvlanMode = undefined;
+      }
 
-    onChange(updates);
-  }, [onChange]);
+      onChange(updates);
+    },
+    [onChange]
+  );
 
   return (
     <div className="space-y-3">
-      <NetworkTypeField
-        value={formData.networkType}
-        onChange={handleNetworkTypeChange}
-      />
+      <NetworkTypeField value={formData.networkType} onChange={handleNetworkTypeChange} />
 
       <InterfaceField
         networkType={formData.networkType}
@@ -342,16 +344,9 @@ const NetworkEditorContent: React.FC<{
         onChange={(v) => onChange({ macvlanMode: v })}
       />
 
-      <VxlanFields
-        networkType={formData.networkType}
-        data={formData}
-        onChange={onChange}
-      />
+      <VxlanFields networkType={formData.networkType} data={formData} onChange={onChange} />
 
-      <MacAddressField
-        value={formData.mac}
-        onChange={(v) => onChange({ mac: v })}
-      />
+      <MacAddressField value={formData.mac} onChange={(v) => onChange({ mac: v })} />
 
       <ExtendedPropertiesSection
         networkType={formData.networkType}

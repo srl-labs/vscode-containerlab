@@ -1,13 +1,13 @@
 /**
  * useAnnotationSelection - Consolidated hooks for annotation click handling and box selection
  */
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import type React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
-import { renderedToModel } from './freeText';
+import { renderedToModel } from "./freeText";
 
 /**
  * Hook for annotation click handlers including selection and context menu
@@ -26,36 +26,45 @@ export function useAnnotationClickHandlers(
 ) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    // Don't select on right-click
-    if (e.button === 2) return;
-    e.stopPropagation();
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      // Don't select on right-click
+      if (e.button === 2) return;
+      e.stopPropagation();
 
-    // Alt+Click deletes the annotation (only in edit mode, i.e. not locked)
-    if (e.altKey && onDelete && !isLocked) {
-      onDelete();
-      return;
-    }
+      // Alt+Click deletes the annotation (only in edit mode, i.e. not locked)
+      if (e.altKey && onDelete && !isLocked) {
+        onDelete();
+        return;
+      }
 
-    if (e.ctrlKey || e.metaKey) {
-      onToggleSelect();
-    } else {
-      onSelect();
-    }
-  }, [isLocked, onSelect, onToggleSelect, onDelete]);
+      if (e.ctrlKey || e.metaKey) {
+        onToggleSelect();
+      } else {
+        onSelect();
+      }
+    },
+    [isLocked, onSelect, onToggleSelect, onDelete]
+  );
 
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    if (!onDoubleClick) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isLocked) onDoubleClick();
-  }, [isLocked, onDoubleClick]);
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onDoubleClick) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isLocked) onDoubleClick();
+    },
+    [isLocked, onDoubleClick]
+  );
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isLocked) setContextMenu({ x: e.clientX, y: e.clientY });
-  }, [isLocked]);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isLocked) setContextMenu({ x: e.clientX, y: e.clientY });
+    },
+    [isLocked]
+  );
 
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
@@ -71,17 +80,20 @@ export function useAnnotationClickHandlers(
 export function useLayerClickHandler(
   cy: CyCore | null,
   onCanvasClick: (pos: { x: number; y: number }) => void,
-  layerName: string = 'Layer'
+  layerName: string = "Layer"
 ) {
-  return useCallback((e: React.MouseEvent) => {
-    if (!cy) return;
-    const container = cy.container();
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const modelPos = renderedToModel(cy, e.clientX - rect.left, e.clientY - rect.top);
-    onCanvasClick(modelPos);
-    log.info(`[${layerName}] Canvas clicked at model (${modelPos.x}, ${modelPos.y})`);
-  }, [cy, onCanvasClick, layerName]);
+  return useCallback(
+    (e: React.MouseEvent) => {
+      if (!cy) return;
+      const container = cy.container();
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const modelPos = renderedToModel(cy, e.clientX - rect.left, e.clientY - rect.top);
+      onCanvasClick(modelPos);
+      log.info(`[${layerName}] Canvas clicked at model (${modelPos.x}, ${modelPos.y})`);
+    },
+    [cy, onCanvasClick, layerName]
+  );
 }
 
 interface AnnotationWithPosition {
@@ -120,7 +132,7 @@ export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
   annotations: T[],
   onBoxSelect?: (ids: string[]) => void,
   getCenter?: (a: T) => { x: number; y: number },
-  layerName: string = 'Layer'
+  layerName: string = "Layer"
 ) {
   const boxStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -140,7 +152,9 @@ export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
         y2: event.position.y
       };
 
-      const selectedIds = annotations.filter(a => isAnnotationInBox(a, box, getCenter)).map(a => a.id);
+      const selectedIds = annotations
+        .filter((a) => isAnnotationInBox(a, box, getCenter))
+        .map((a) => a.id);
       if (selectedIds.length > 0) {
         log.info(`[${layerName}] Box selected ${selectedIds.length} annotations`);
         onBoxSelect(selectedIds);
@@ -148,11 +162,11 @@ export function useAnnotationBoxSelection<T extends AnnotationWithPosition>(
       boxStartRef.current = null;
     };
 
-    cy.on('boxstart', handleBoxStart);
-    cy.on('boxend', handleBoxEnd);
+    cy.on("boxstart", handleBoxStart);
+    cy.on("boxend", handleBoxEnd);
     return () => {
-      cy.off('boxstart', handleBoxStart);
-      cy.off('boxend', handleBoxEnd);
+      cy.off("boxstart", handleBoxStart);
+      cy.off("boxend", handleBoxEnd);
     };
   }, [cy, annotations, onBoxSelect, getCenter, layerName]);
 }

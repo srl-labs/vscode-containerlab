@@ -3,9 +3,9 @@
  *
  * Schema data is loaded by the extension and passed via window.__SCHEMA_DATA__
  */
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from "react";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
 /**
  * SROS component types for nokia_srsim nodes
@@ -31,7 +31,12 @@ declare global {
 }
 
 const EMPTY_SROS_TYPES: SrosComponentTypes = {
-  sfm: [], cpm: [], card: [], mda: [], xiom: [], xiomMda: []
+  sfm: [],
+  cpm: [],
+  card: [],
+  mda: [],
+  xiom: [],
+  xiomMda: []
 };
 
 interface SchemaData {
@@ -66,8 +71,8 @@ export function useSchema(): UseSchemaResult {
     const data = window.__SCHEMA_DATA__;
 
     if (!data) {
-      log.warn('Schema data not available');
-      setSchemaData(prev => ({ ...prev, isLoaded: true }));
+      log.warn("Schema data not available");
+      setSchemaData((prev) => ({ ...prev, isLoaded: true }));
       return;
     }
 
@@ -86,7 +91,9 @@ export function useSchema(): UseSchemaResult {
     // Get SROS component types
     const srosComponentTypes = data.srosComponentTypes || EMPTY_SROS_TYPES;
 
-    log.info(`Schema loaded: ${kinds.length} kinds, ${typesByKind.size} kinds with type options, SROS types: sfm=${srosComponentTypes.sfm.length}, cpm=${srosComponentTypes.cpm.length}, card=${srosComponentTypes.card.length}, mda=${srosComponentTypes.mda.length}`);
+    log.info(
+      `Schema loaded: ${kinds.length} kinds, ${typesByKind.size} kinds with type options, SROS types: sfm=${srosComponentTypes.sfm.length}, cpm=${srosComponentTypes.cpm.length}, card=${srosComponentTypes.card.length}, mda=${srosComponentTypes.mda.length}`
+    );
 
     setSchemaData({
       kinds,
@@ -99,18 +106,27 @@ export function useSchema(): UseSchemaResult {
   }, []);
 
   // Get types for a specific kind
-  const getTypesForKind = useCallback((kind: string): string[] => {
-    return schemaData.typesByKind.get(kind) || [];
-  }, [schemaData.typesByKind]);
+  const getTypesForKind = useCallback(
+    (kind: string): string[] => {
+      return schemaData.typesByKind.get(kind) || [];
+    },
+    [schemaData.typesByKind]
+  );
 
   // Check if a kind supports type field
-  const kindSupportsType = useCallback((kind: string): boolean => {
-    return schemaData.kindsWithTypeSupport.has(kind);
-  }, [schemaData.kindsWithTypeSupport]);
+  const kindSupportsType = useCallback(
+    (kind: string): boolean => {
+      return schemaData.kindsWithTypeSupport.has(kind);
+    },
+    [schemaData.kindsWithTypeSupport]
+  );
 
-  return useMemo(() => ({
-    ...schemaData,
-    getTypesForKind,
-    kindSupportsType
-  }), [schemaData, getTypesForKind, kindSupportsType]);
+  return useMemo(
+    () => ({
+      ...schemaData,
+      getTypesForKind,
+      kindSupportsType
+    }),
+    [schemaData, getTypesForKind, kindSupportsType]
+  );
 }

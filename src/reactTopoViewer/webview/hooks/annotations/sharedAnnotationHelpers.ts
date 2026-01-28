@@ -2,10 +2,10 @@
  * Shared helper functions and hooks for annotations (both FreeShape and FreeText)
  * Consolidates: pure helper functions + React hook factories for annotation state management
  */
-import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
 // ============================================================================
 // Constants
@@ -59,7 +59,7 @@ export function updateAnnotationInList<T extends BaseAnnotation>(
   id: string,
   updater: (annotation: T) => T
 ): T[] {
-  return annotations.map(a => (a.id === id ? updater(a) : a));
+  return annotations.map((a) => (a.id === id ? updater(a) : a));
 }
 
 /**
@@ -86,7 +86,7 @@ export function saveAnnotationToList<T extends BaseAnnotation>(
   annotations: T[],
   annotation: T
 ): T[] {
-  const exists = annotations.some(a => a.id === annotation.id);
+  const exists = annotations.some((a) => a.id === annotation.id);
   if (exists) {
     return updateAnnotationInList(annotations, annotation.id, () => annotation);
   }
@@ -106,7 +106,7 @@ export function duplicateAnnotations<T extends BaseAnnotation>(
   pasteCount: number = 0
 ): T[] {
   const offset = PASTE_OFFSET * (pasteCount + 1);
-  return annotations.map(a => duplicateFn(a, offset));
+  return annotations.map((a) => duplicateFn(a, offset));
 }
 
 // ============================================================================
@@ -124,7 +124,7 @@ export function duplicateAnnotations<T extends BaseAnnotation>(
  * @returns The edit annotation callback
  */
 export function createEditAnnotationCallback<T extends BaseAnnotation>(
-  _mode: 'view' | 'edit',
+  _mode: "view" | "edit",
   isLocked: boolean,
   onLockedAction: (() => void) | undefined,
   annotations: T[],
@@ -137,7 +137,7 @@ export function createEditAnnotationCallback<T extends BaseAnnotation>(
       onLockedAction?.();
       return;
     }
-    const annotation = annotations.find(a => a.id === id);
+    const annotation = annotations.find((a) => a.id === id);
     if (annotation) {
       setEditingAnnotation({ ...annotation });
       log.info(`[${logPrefix}] Editing annotation: ${id}`);
@@ -169,7 +169,7 @@ export interface CommonSelectionActions<T> {
  */
 export function createCommonSelectionReturn<T>(
   selectedAnnotationIds: Set<string>,
-  actions: Omit<CommonSelectionActions<T>, 'selectedAnnotationIds'>
+  actions: Omit<CommonSelectionActions<T>, "selectedAnnotationIds">
 ): CommonSelectionActions<T> {
   return {
     selectedAnnotationIds,
@@ -195,14 +195,17 @@ export function useDeleteAnnotation<T extends BaseAnnotationWithGroupId>(
   setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
   saveAnnotationsToExtension: (annotations: T[]) => void
 ) {
-  return useCallback((id: string) => {
-    setAnnotations(prev => {
-      const updated = prev.filter(a => a.id !== id);
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-    log.info(`[${logPrefix}] Deleted annotation: ${id}`);
-  }, [setAnnotations, saveAnnotationsToExtension]);
+  return useCallback(
+    (id: string) => {
+      setAnnotations((prev) => {
+        const updated = prev.filter((a) => a.id !== id);
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+      log.info(`[${logPrefix}] Deleted annotation: ${id}`);
+    },
+    [setAnnotations, saveAnnotationsToExtension]
+  );
 }
 
 /**
@@ -211,39 +214,74 @@ export function useDeleteAnnotation<T extends BaseAnnotationWithGroupId>(
 export function useStandardUpdates<T extends BaseAnnotationWithGroupId>(
   setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
   saveAnnotationsToExtension: (annotations: T[]) => void,
-  updateInList: (
-    annotations: T[],
-    id: string,
-    updater: (annotation: T) => T
-  ) => T[],
+  updateInList: (annotations: T[], id: string, updater: (annotation: T) => T) => T[],
   updatePosition: (annotation: T, position: { x: number; y: number }) => T,
   updateRotation: (annotation: T, rotation: number) => T
 ) {
-  const updatePositionFn = useCallback((id: string, position: { x: number; y: number }) => {
-    setAnnotations(prev => {
-      const updated = updateInList(prev, id, a => updatePosition(a, position));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension, updateInList, updatePosition]);
+  const updatePositionFn = useCallback(
+    (id: string, position: { x: number; y: number }) => {
+      setAnnotations((prev) => {
+        const updated = updateInList(prev, id, (a) => updatePosition(a, position));
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+    },
+    [setAnnotations, saveAnnotationsToExtension, updateInList, updatePosition]
+  );
 
-  const updateSize = useCallback((id: string, width: number, height: number) => {
-    setAnnotations(prev => {
-      const updated = updateInList(prev, id, a => ({ ...a, width, height } as T));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension, updateInList]);
+  const updateSize = useCallback(
+    (id: string, width: number, height: number) => {
+      setAnnotations((prev) => {
+        const updated = updateInList(prev, id, (a) => ({ ...a, width, height }) as T);
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+    },
+    [setAnnotations, saveAnnotationsToExtension, updateInList]
+  );
 
-  const updateRotationFn = useCallback((id: string, rotation: number) => {
-    setAnnotations(prev => {
-      const updated = updateInList(prev, id, a => updateRotation(a, rotation));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension, updateInList, updateRotation]);
+  const updateRotationFn = useCallback(
+    (id: string, rotation: number) => {
+      setAnnotations((prev) => {
+        const updated = updateInList(prev, id, (a) => updateRotation(a, rotation));
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+    },
+    [setAnnotations, saveAnnotationsToExtension, updateInList, updateRotation]
+  );
 
   return { updatePosition: updatePositionFn, updateSize, updateRotation: updateRotationFn };
+}
+
+/** Annotation with optional geoCoordinates */
+interface AnnotationWithGeo extends BaseAnnotationWithGroupId {
+  geoCoordinates?: { lat: number; lng: number };
+}
+
+/**
+ * Creates a geo position update callback
+ */
+export function useGeoPositionUpdate<T extends AnnotationWithGeo>(
+  logPrefix: string,
+  setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
+  saveAnnotationsToExtension: (annotations: T[]) => void,
+  updateInList: (annotations: T[], id: string, updater: (annotation: T) => T) => T[]
+) {
+  return useCallback(
+    (id: string, geoCoords: { lat: number; lng: number }) => {
+      setAnnotations((prev) => {
+        const updated = updateInList(prev, id, (a) => ({
+          ...a,
+          geoCoordinates: geoCoords
+        }));
+        saveAnnotationsToExtension(updated);
+        return updated;
+      });
+      log.info(`[${logPrefix}] Updated geo position for annotation ${id}`);
+    },
+    [setAnnotations, saveAnnotationsToExtension, updateInList]
+  );
 }
 
 /**
@@ -253,35 +291,39 @@ export function useGenericAnnotationUpdates<T extends BaseAnnotationWithGroupId>
   logPrefix: string,
   setAnnotations: React.Dispatch<React.SetStateAction<T[]>>,
   saveAnnotationsToExtension: (annotations: T[]) => void,
-  updateInList: (
-    annotations: T[],
-    id: string,
-    updater: (annotation: T) => T
-  ) => T[]
+  updateInList: (annotations: T[], id: string, updater: (annotation: T) => T) => T[]
 ) {
-  const updateAnnotation = useCallback((id: string, updates: Partial<T>) => {
-    setAnnotations(prev => {
-      const updated = updateInList(prev, id, a => ({ ...a, ...updates }));
-      saveAnnotationsToExtension(updated);
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension, updateInList]);
-
-  const migrateGroupId = useCallback((oldGroupId: string, newGroupId: string | null) => {
-    setAnnotations(prev => {
-      const updated = prev.map(a =>
-        a.groupId === oldGroupId ? { ...a, groupId: newGroupId ?? undefined } : a
-      );
-      // Only save if something actually changed
-      const hasChanges = updated.some((a, i) => a !== prev[i]);
-      if (hasChanges) {
+  const updateAnnotation = useCallback(
+    (id: string, updates: Partial<T>) => {
+      setAnnotations((prev) => {
+        const updated = updateInList(prev, id, (a) => ({ ...a, ...updates }));
         saveAnnotationsToExtension(updated);
-        const targetLabel = newGroupId ?? 'root';
-        log.info(`[${logPrefix}] Migrated annotations from group ${oldGroupId} to ${targetLabel}`);
-      }
-      return updated;
-    });
-  }, [setAnnotations, saveAnnotationsToExtension]);
+        return updated;
+      });
+    },
+    [setAnnotations, saveAnnotationsToExtension, updateInList]
+  );
+
+  const migrateGroupId = useCallback(
+    (oldGroupId: string, newGroupId: string | null) => {
+      setAnnotations((prev) => {
+        const updated = prev.map((a) =>
+          a.groupId === oldGroupId ? { ...a, groupId: newGroupId ?? undefined } : a
+        );
+        // Only save if something actually changed
+        const hasChanges = updated.some((a, i) => a !== prev[i]);
+        if (hasChanges) {
+          saveAnnotationsToExtension(updated);
+          const targetLabel = newGroupId ?? "root";
+          log.info(
+            `[${logPrefix}] Migrated annotations from group ${oldGroupId} to ${targetLabel}`
+          );
+        }
+        return updated;
+      });
+    },
+    [setAnnotations, saveAnnotationsToExtension]
+  );
 
   return { updateAnnotation, migrateGroupId };
 }
@@ -311,23 +353,29 @@ export function useDebouncedSave<T>(
     timeoutRef.current = null;
   }, []);
 
-  const saveDebounced = useCallback((items: T[]) => {
-    clear();
-    timeoutRef.current = setTimeout(() => {
+  const saveDebounced = useCallback(
+    (items: T[]) => {
+      clear();
+      timeoutRef.current = setTimeout(() => {
+        save(items).catch((err) => {
+          log.error(`[${logPrefix}] Failed to save annotations: ${err}`);
+        });
+        log.info(`[${logPrefix}] Saved ${items.length} annotations`);
+      }, debounceMs);
+    },
+    [clear, debounceMs, logPrefix, save]
+  );
+
+  const saveImmediate = useCallback(
+    (items: T[]) => {
+      clear();
       save(items).catch((err) => {
         log.error(`[${logPrefix}] Failed to save annotations: ${err}`);
       });
-      log.info(`[${logPrefix}] Saved ${items.length} annotations`);
-    }, debounceMs);
-  }, [clear, debounceMs, logPrefix, save]);
-
-  const saveImmediate = useCallback((items: T[]) => {
-    clear();
-    save(items).catch((err) => {
-      log.error(`[${logPrefix}] Failed to save annotations: ${err}`);
-    });
-    log.info(`[${logPrefix}] Saved ${items.length} annotations (immediate)`);
-  }, [clear, logPrefix, save]);
+      log.info(`[${logPrefix}] Saved ${items.length} annotations (immediate)`);
+    },
+    [clear, logPrefix, save]
+  );
 
   useEffect(() => clear, [clear]);
 

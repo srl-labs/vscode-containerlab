@@ -2,13 +2,13 @@
  * Components Tab for Node Editor - Nokia SROS component management
  * Handles CPM, Card, SFM, MDA, XIOM configuration for nokia_srsim nodes
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from "react";
 
-import { FormField, InputField, SelectField, Section } from '../../shared/form';
-import { useSchema, type SrosComponentTypes } from '../../../hooks/data/useSchema';
+import { FormField, InputField, SelectField, Section } from "../../shared/form";
+import { useSchema, type SrosComponentTypes } from "../../../hooks/data/useSchema";
 
-import type { TabProps, SrosComponent, SrosMda, SrosXiom} from './types';
-import { INTEGRATED_SROS_TYPES } from './types';
+import type { TabProps, SrosComponent, SrosMda, SrosXiom } from "./types";
+import { INTEGRATED_SROS_TYPES } from "./types";
 
 /** Check if type is integrated mode (simpler chassis) */
 const isIntegratedType = (type: string | undefined): boolean => {
@@ -20,15 +20,12 @@ const isIntegratedType = (type: string | undefined): boolean => {
 const isCpmSlot = (slot: string | number | undefined): boolean => {
   if (slot === undefined) return false;
   const s = String(slot).trim().toUpperCase();
-  return s === 'A' || s === 'B';
+  return s === "A" || s === "B";
 };
 
 /** Convert string array to select options */
 const toSelectOptions = (types: string[]): Array<{ value: string; label: string }> => {
-  return [
-    { value: '', label: 'Select type...' },
-    ...types.map(t => ({ value: t, label: t }))
-  ];
+  return [{ value: "", label: "Select type..." }, ...types.map((t) => ({ value: t, label: t }))];
 };
 
 // ============================================================================
@@ -36,15 +33,20 @@ const toSelectOptions = (types: string[]): Array<{ value: string; label: string 
 // ============================================================================
 
 const cardStyles = {
-  container: 'bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-sm overflow-hidden',
-  header: 'flex items-center justify-between px-3 py-2 bg-[var(--vscode-sideBar-background)] cursor-pointer select-none hover:bg-[var(--vscode-list-hoverBackground)] transition-colors',
-  headerTitle: 'flex items-center gap-2 font-medium text-sm',
-  body: 'p-3 space-y-3 border-t border-[var(--vscode-panel-border)]',
-  deleteBtn: 'flex items-center justify-center w-6 h-6 rounded-sm hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-errorForeground)] transition-colors',
-  addBtn: 'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-  subSection: 'mt-3 pt-3 border-t border-[var(--vscode-panel-border)]',
-  subSectionTitle: 'text-xs font-medium text-[var(--vscode-foreground)] mb-2',
-  badge: 'px-1.5 py-0.5 text-[10px] font-medium rounded-sm bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]',
+  container:
+    "bg-[var(--vscode-editor-background)] border border-[var(--vscode-panel-border)] rounded-sm overflow-hidden",
+  header:
+    "flex items-center justify-between px-3 py-2 bg-[var(--vscode-sideBar-background)] cursor-pointer select-none hover:bg-[var(--vscode-list-hoverBackground)] transition-colors",
+  headerTitle: "flex items-center gap-2 font-medium text-sm",
+  body: "p-3 space-y-3 border-t border-[var(--vscode-panel-border)]",
+  deleteBtn:
+    "flex items-center justify-center w-6 h-6 rounded-sm hover:bg-[var(--vscode-toolbar-hoverBackground)] text-[var(--vscode-errorForeground)] transition-colors",
+  addBtn:
+    "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-sm bg-[var(--vscode-button-secondaryBackground)] text-[var(--vscode-button-secondaryForeground)] hover:bg-[var(--vscode-button-secondaryHoverBackground)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+  subSection: "mt-3 pt-3 border-t border-[var(--vscode-panel-border)]",
+  subSectionTitle: "text-xs font-medium text-[var(--vscode-foreground)] mb-2",
+  badge:
+    "px-1.5 py-0.5 text-[10px] font-medium rounded-sm bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)]"
 };
 
 // ============================================================================
@@ -60,16 +62,21 @@ interface MdaEntryProps {
   slotPrefix?: string;
 }
 
-const MdaEntry: React.FC<MdaEntryProps> = ({ mda, index, mdaTypes, onUpdate, onRemove, slotPrefix = '' }) => (
+const MdaEntry: React.FC<MdaEntryProps> = ({
+  mda,
+  index,
+  mdaTypes,
+  onUpdate,
+  onRemove,
+  slotPrefix = ""
+}) => (
   <div className="flex items-center gap-2 py-2 px-2 rounded-sm bg-[var(--vscode-input-background)] border border-[var(--vscode-input-border)]">
-    {slotPrefix && (
-      <span className={cardStyles.badge}>{slotPrefix}</span>
-    )}
+    {slotPrefix && <span className={cardStyles.badge}>{slotPrefix}</span>}
     <div className="w-14">
       <InputField
         id={`mda-slot-${index}`}
         type="number"
-        value={String(mda.slot ?? '')}
+        value={String(mda.slot ?? "")}
         onChange={(v) => onUpdate(index, { slot: v ? parseInt(v, 10) : undefined })}
         placeholder="Slot"
         min={1}
@@ -78,7 +85,7 @@ const MdaEntry: React.FC<MdaEntryProps> = ({ mda, index, mdaTypes, onUpdate, onR
     <div className="flex-1">
       <SelectField
         id={`mda-type-${index}`}
-        value={mda.type || ''}
+        value={mda.type || ""}
         onChange={(v) => onUpdate(index, { type: v })}
         options={toSelectOptions(mdaTypes)}
       />
@@ -108,7 +115,12 @@ interface MdaListSectionProps {
 }
 
 const MdaListSection: React.FC<MdaListSectionProps> = ({
-  mdas, mdaTypes, slotPrefix, onUpdate, onRemove, onAdd
+  mdas,
+  mdaTypes,
+  slotPrefix,
+  onUpdate,
+  onRemove,
+  onAdd
 }) => (
   <>
     <div className="space-y-2">
@@ -124,11 +136,7 @@ const MdaListSection: React.FC<MdaListSectionProps> = ({
         />
       ))}
     </div>
-    <button
-      type="button"
-      onClick={onAdd}
-      className={`${cardStyles.addBtn} mt-2`}
-    >
+    <button type="button" onClick={onAdd} className={`${cardStyles.addBtn} mt-2`}>
       <i className="fas fa-plus" />
       Add MDA
     </button>
@@ -150,7 +158,13 @@ interface MdaSectionWrapperProps {
 }
 
 const MdaSectionWrapper: React.FC<MdaSectionWrapperProps> = ({
-  mdas, mdaTypes, slotPrefix, parentIndex, onAddMda, onUpdateMda, onRemoveMda
+  mdas,
+  mdaTypes,
+  slotPrefix,
+  parentIndex,
+  onAddMda,
+  onUpdateMda,
+  onRemoveMda
 }) => (
   <ComponentSubSection title="MDA Modules">
     <MdaListSection
@@ -181,7 +195,15 @@ interface XiomEntryProps {
 }
 
 const XiomEntry: React.FC<XiomEntryProps> = ({
-  xiom, index, cardSlot, srosTypes, onUpdate, onRemove, onAddMda, onUpdateMda, onRemoveMda
+  xiom,
+  index,
+  cardSlot,
+  srosTypes,
+  onUpdate,
+  onRemove,
+  onAddMda,
+  onUpdateMda,
+  onRemoveMda
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const slotLabel = `${cardSlot}/x${xiom.slot ?? index + 1}`;
@@ -191,18 +213,21 @@ const XiomEntry: React.FC<XiomEntryProps> = ({
     <div className={cardStyles.container}>
       <div className={cardStyles.header} onClick={() => setIsExpanded(!isExpanded)}>
         <div className={cardStyles.headerTitle}>
-          <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} text-xs`} />
+          <i className={`fas fa-chevron-${isExpanded ? "down" : "right"} text-xs`} />
           <span className={cardStyles.badge}>{slotLabel}</span>
           <span>XIOM</span>
           {mdaCount > 0 && (
             <span className="text-xs text-[var(--vscode-descriptionForeground)]">
-              ({mdaCount} MDA{mdaCount !== 1 ? 's' : ''})
+              ({mdaCount} MDA{mdaCount !== 1 ? "s" : ""})
             </span>
           )}
         </div>
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onRemove(index); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(index);
+          }}
           className={cardStyles.deleteBtn}
           title="Remove XIOM"
         >
@@ -219,15 +244,15 @@ const XiomEntry: React.FC<XiomEntryProps> = ({
                 value={String(xiom.slot ?? 1)}
                 onChange={(v) => onUpdate(index, { slot: parseInt(v, 10) })}
                 options={[
-                  { value: '1', label: 'x1' },
-                  { value: '2', label: 'x2' }
+                  { value: "1", label: "x1" },
+                  { value: "2", label: "x2" }
                 ]}
               />
             </FormField>
             <FormField label="Type">
               <SelectField
                 id={`xiom-type-${index}`}
-                value={xiom.type || ''}
+                value={xiom.type || ""}
                 onChange={(v) => onUpdate(index, { type: v })}
                 options={toSelectOptions(srosTypes.xiom)}
               />
@@ -262,7 +287,12 @@ interface ComponentCallbacks {
   onUpdateXiom: (compIndex: number, xiomIndex: number, updates: Partial<SrosXiom>) => void;
   onRemoveXiom: (compIndex: number, xiomIndex: number) => void;
   onAddXiomMda: (compIndex: number, xiomIndex: number) => void;
-  onUpdateXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
+  onUpdateXiomMda: (
+    compIndex: number,
+    xiomIndex: number,
+    mdaIndex: number,
+    updates: Partial<SrosMda>
+  ) => void;
   onRemoveXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number) => void;
 }
 
@@ -286,9 +316,9 @@ const ComponentHeader: React.FC<{
 }> = ({ slot, isCpm, mdaCount, xiomCount, isExpanded, onToggle, onRemove }) => (
   <div className={cardStyles.header} onClick={onToggle}>
     <div className={cardStyles.headerTitle}>
-      <i className={`fas fa-chevron-${isExpanded ? 'down' : 'right'} text-xs`} />
+      <i className={`fas fa-chevron-${isExpanded ? "down" : "right"} text-xs`} />
       <span className={cardStyles.badge}>{slot}</span>
-      <span>{isCpm ? 'Control Processing Module' : 'Line Card'}</span>
+      <span>{isCpm ? "Control Processing Module" : "Line Card"}</span>
       {!isCpm && (mdaCount > 0 || xiomCount > 0) && (
         <span className="text-xs text-[var(--vscode-descriptionForeground)]">
           ({mdaCount} MDA, {xiomCount} XIOM)
@@ -297,7 +327,10 @@ const ComponentHeader: React.FC<{
     </div>
     <button
       type="button"
-      onClick={(e) => { e.stopPropagation(); onRemove(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove();
+      }}
       className={cardStyles.deleteBtn}
       title="Remove component"
     >
@@ -318,13 +351,13 @@ const ComponentSubSection: React.FC<{
 );
 
 /** MDA section for a component */
-const ComponentMdaSection: React.FC<{
-  component: SrosComponent;
-  index: number;
-  srosTypes: SrosComponentTypes;
-} & Pick<ComponentCallbacks, 'onAddMda' | 'onUpdateMda' | 'onRemoveMda'>> = ({
-  component, index, srosTypes, onAddMda, onUpdateMda, onRemoveMda
-}) => (
+const ComponentMdaSection: React.FC<
+  {
+    component: SrosComponent;
+    index: number;
+    srosTypes: SrosComponentTypes;
+  } & Pick<ComponentCallbacks, "onAddMda" | "onUpdateMda" | "onRemoveMda">
+> = ({ component, index, srosTypes, onAddMda, onUpdateMda, onRemoveMda }) => (
   <MdaSectionWrapper
     mdas={component.mda || []}
     mdaTypes={srosTypes.mda}
@@ -337,12 +370,30 @@ const ComponentMdaSection: React.FC<{
 );
 
 /** XIOM section for a component */
-const ComponentXiomSection: React.FC<{
-  component: SrosComponent;
-  index: number;
-  srosTypes: SrosComponentTypes;
-} & Pick<ComponentCallbacks, 'onAddXiom' | 'onUpdateXiom' | 'onRemoveXiom' | 'onAddXiomMda' | 'onUpdateXiomMda' | 'onRemoveXiomMda'>> = ({
-  component, index, srosTypes, onAddXiom, onUpdateXiom, onRemoveXiom, onAddXiomMda, onUpdateXiomMda, onRemoveXiomMda
+const ComponentXiomSection: React.FC<
+  {
+    component: SrosComponent;
+    index: number;
+    srosTypes: SrosComponentTypes;
+  } & Pick<
+    ComponentCallbacks,
+    | "onAddXiom"
+    | "onUpdateXiom"
+    | "onRemoveXiom"
+    | "onAddXiomMda"
+    | "onUpdateXiomMda"
+    | "onRemoveXiomMda"
+  >
+> = ({
+  component,
+  index,
+  srosTypes,
+  onAddXiom,
+  onUpdateXiom,
+  onRemoveXiom,
+  onAddXiomMda,
+  onUpdateXiomMda,
+  onRemoveXiomMda
 }) => (
   <ComponentSubSection title="XIOM Extension Modules">
     <div className="space-y-2">
@@ -351,7 +402,7 @@ const ComponentXiomSection: React.FC<{
           key={xiomIdx}
           xiom={xiom}
           index={xiomIdx}
-          cardSlot={component.slot ?? ''}
+          cardSlot={component.slot ?? ""}
           srosTypes={srosTypes}
           onUpdate={(idx, updates) => onUpdateXiom(index, idx, updates)}
           onRemove={(idx) => onRemoveXiom(index, idx)}
@@ -362,7 +413,11 @@ const ComponentXiomSection: React.FC<{
       ))}
     </div>
     {(component.xiom?.length ?? 0) < 2 && (
-      <button type="button" onClick={() => onAddXiom(index)} className={`${cardStyles.addBtn} mt-2`}>
+      <button
+        type="button"
+        onClick={() => onAddXiom(index)}
+        className={`${cardStyles.addBtn} mt-2`}
+      >
         <i className="fas fa-plus" />
         Add XIOM
       </button>
@@ -389,7 +444,12 @@ interface ComponentSectionProps {
   updateXiom: (compIndex: number, xiomIndex: number, updates: Partial<SrosXiom>) => void;
   removeXiom: (compIndex: number, xiomIndex: number) => void;
   addXiomMda: (compIndex: number, xiomIndex: number) => void;
-  updateXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => void;
+  updateXiomMda: (
+    compIndex: number,
+    xiomIndex: number,
+    mdaIndex: number,
+    updates: Partial<SrosMda>
+  ) => void;
   removeXiomMda: (compIndex: number, xiomIndex: number, mdaIndex: number) => void;
   addButtonLabel: string;
   onAdd: () => void;
@@ -419,12 +479,10 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
   onAdd,
   addDisabled,
   addDisabledTitle,
-  hasBorder = true,
+  hasBorder = true
 }) => (
   <Section title={title} hasBorder={hasBorder}>
-    <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-3">
-      {description}
-    </p>
+    <p className="text-xs text-[var(--vscode-descriptionForeground)] mb-3">{description}</p>
     <div className="space-y-2">
       {filteredComponents.map((comp) => {
         const realIndex = allComponents.indexOf(comp);
@@ -490,15 +548,15 @@ const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
             <FormField label="Slot">
               <InputField
                 id={`comp-slot-${index}`}
-                value={String(component.slot ?? '')}
+                value={String(component.slot ?? "")}
                 onChange={(v) => onUpdate(index, { slot: v })}
-                placeholder={isCpm ? 'A or B' : '1, 2, ...'}
+                placeholder={isCpm ? "A or B" : "1, 2, ..."}
               />
             </FormField>
             <FormField label="Type">
               <SelectField
                 id={`comp-type-${index}`}
-                value={component.type || ''}
+                value={component.type || ""}
                 onChange={(v) => onUpdate(index, { type: v })}
                 options={toSelectOptions(typeOptions)}
               />
@@ -523,8 +581,14 @@ interface IntegratedModeSectionProps {
   onChange: (components: SrosComponent[]) => void;
 }
 
-const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({ components, srosTypes, onChange }) => {
-  const integratedComp = components.find(c => c.slot === undefined || c.slot === '') || { mda: [] };
+const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({
+  components,
+  srosTypes,
+  onChange
+}) => {
+  const integratedComp = components.find((c) => c.slot === undefined || c.slot === "") || {
+    mda: []
+  };
   const mdas = integratedComp.mda || [];
 
   const updateMda = (index: number, updates: Partial<SrosMda>) => {
@@ -539,7 +603,7 @@ const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({ component
   };
 
   const addMda = () => {
-    const nextSlot = mdas.length > 0 ? Math.max(...mdas.map(m => m.slot ?? 0)) + 1 : 1;
+    const nextSlot = mdas.length > 0 ? Math.max(...mdas.map((m) => m.slot ?? 0)) + 1 : 1;
     onChange([{ ...integratedComp, mda: [...mdas, { slot: nextSlot }] }]);
   };
 
@@ -572,28 +636,40 @@ interface DistributedModeSectionProps {
 }
 
 const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
-  components, sfmValue, srosTypes, onComponentsChange, onSfmChange
+  components,
+  sfmValue,
+  srosTypes,
+  onComponentsChange,
+  onSfmChange
 }) => {
-  const cpmComponents = components.filter(c => isCpmSlot(c.slot));
-  const cardComponents = components.filter(c => !isCpmSlot(c.slot) && c.slot !== undefined && c.slot !== '');
+  const cpmComponents = components.filter((c) => isCpmSlot(c.slot));
+  const cardComponents = components.filter(
+    (c) => !isCpmSlot(c.slot) && c.slot !== undefined && c.slot !== ""
+  );
 
-  const updateComponent = useCallback((index: number, updates: Partial<SrosComponent>) => {
-    const newComponents = [...components];
-    newComponents[index] = { ...newComponents[index], ...updates };
-    onComponentsChange(newComponents);
-  }, [components, onComponentsChange]);
+  const updateComponent = useCallback(
+    (index: number, updates: Partial<SrosComponent>) => {
+      const newComponents = [...components];
+      newComponents[index] = { ...newComponents[index], ...updates };
+      onComponentsChange(newComponents);
+    },
+    [components, onComponentsChange]
+  );
 
-  const removeComponent = useCallback((index: number) => {
-    onComponentsChange(components.filter((_, i) => i !== index));
-  }, [components, onComponentsChange]);
+  const removeComponent = useCallback(
+    (index: number) => {
+      onComponentsChange(components.filter((_, i) => i !== index));
+    },
+    [components, onComponentsChange]
+  );
 
   const addCpm = () => {
-    const usedSlots = cpmComponents.map(c => String(c.slot).toUpperCase());
+    const usedSlots = cpmComponents.map((c) => String(c.slot).toUpperCase());
     let newSlot: string | null = null;
-    if (!usedSlots.includes('A')) {
-      newSlot = 'A';
-    } else if (!usedSlots.includes('B')) {
-      newSlot = 'B';
+    if (!usedSlots.includes("A")) {
+      newSlot = "A";
+    } else if (!usedSlots.includes("B")) {
+      newSlot = "B";
     }
     if (newSlot) {
       onComponentsChange([...components, { slot: newSlot }]);
@@ -601,7 +677,7 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
   };
 
   const addCard = () => {
-    const usedSlots = cardComponents.map(c => Number(c.slot)).filter(n => !isNaN(n));
+    const usedSlots = cardComponents.map((c) => Number(c.slot)).filter((n) => !isNaN(n));
     const newSlot = usedSlots.length > 0 ? Math.max(...usedSlots) + 1 : 1;
     onComponentsChange([...components, { slot: newSlot }]);
   };
@@ -610,7 +686,7 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
   const addMda = (compIndex: number) => {
     const comp = components[compIndex];
     const mdas = comp.mda || [];
-    const nextSlot = mdas.length > 0 ? Math.max(...mdas.map(m => m.slot ?? 0)) + 1 : 1;
+    const nextSlot = mdas.length > 0 ? Math.max(...mdas.map((m) => m.slot ?? 0)) + 1 : 1;
     updateComponent(compIndex, { mda: [...mdas, { slot: nextSlot }] });
   };
 
@@ -630,7 +706,7 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
   const addXiom = (compIndex: number) => {
     const comp = components[compIndex];
     const xioms = comp.xiom || [];
-    const usedSlots = xioms.map(x => x.slot ?? 0);
+    const usedSlots = xioms.map((x) => x.slot ?? 0);
     const nextSlot = usedSlots.includes(1) && !usedSlots.includes(2) ? 2 : 1;
     updateComponent(compIndex, { xiom: [...xioms, { slot: nextSlot }] });
   };
@@ -653,13 +729,18 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
     const xiom = (comp.xiom || [])[xiomIndex];
     if (!xiom) return;
     const mdas = xiom.mda || [];
-    const nextSlot = mdas.length > 0 ? Math.max(...mdas.map(m => m.slot ?? 0)) + 1 : 1;
+    const nextSlot = mdas.length > 0 ? Math.max(...mdas.map((m) => m.slot ?? 0)) + 1 : 1;
     const newXioms = [...(comp.xiom || [])];
     newXioms[xiomIndex] = { ...xiom, mda: [...mdas, { slot: nextSlot }] };
     updateComponent(compIndex, { xiom: newXioms });
   };
 
-  const updateXiomMda = (compIndex: number, xiomIndex: number, mdaIndex: number, updates: Partial<SrosMda>) => {
+  const updateXiomMda = (
+    compIndex: number,
+    xiomIndex: number,
+    mdaIndex: number,
+    updates: Partial<SrosMda>
+  ) => {
     const comp = components[compIndex];
     const xiom = (comp.xiom || [])[xiomIndex];
     if (!xiom) return;
@@ -693,7 +774,7 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
     removeXiom,
     addXiomMda,
     updateXiomMda,
-    removeXiomMda,
+    removeXiomMda
   };
 
   return (
@@ -753,7 +834,7 @@ export const ComponentsTab: React.FC<TabProps> = ({ data, onChange }) => {
   const components = data.components || [];
 
   // Extract shared SFM value from first component that has it
-  const sfmValue = components.find(c => c.sfm)?.sfm || '';
+  const sfmValue = components.find((c) => c.sfm)?.sfm || "";
 
   const handleComponentsChange = (newComponents: SrosComponent[]) => {
     onChange({ components: newComponents });
@@ -761,7 +842,7 @@ export const ComponentsTab: React.FC<TabProps> = ({ data, onChange }) => {
 
   const handleSfmChange = (sfm: string) => {
     // Apply SFM to all components
-    const newComponents = components.map(c => ({ ...c, sfm: sfm || undefined }));
+    const newComponents = components.map((c) => ({ ...c, sfm: sfm || undefined }));
     onChange({ components: newComponents.length > 0 ? newComponents : [{ sfm }] });
   };
 
@@ -769,15 +850,17 @@ export const ComponentsTab: React.FC<TabProps> = ({ data, onChange }) => {
     <div className="space-y-3">
       {/* Mode indicator */}
       <div className="flex items-center gap-2 px-3 py-2 rounded-sm bg-[var(--vscode-textBlockQuote-background)] border border-[var(--vscode-textBlockQuote-border)]">
-        <i className={`fas ${isIntegrated ? 'fa-server' : 'fa-network-wired'} text-[var(--vscode-textLink-foreground)]`} />
+        <i
+          className={`fas ${isIntegrated ? "fa-server" : "fa-network-wired"} text-[var(--vscode-textLink-foreground)]`}
+        />
         <div>
           <div className="text-sm font-medium">
-            {isIntegrated ? 'Integrated Chassis' : 'Distributed Chassis'}
+            {isIntegrated ? "Integrated Chassis" : "Distributed Chassis"}
           </div>
           <div className="text-xs text-[var(--vscode-descriptionForeground)]">
             {isIntegrated
               ? `Simplified MDA configuration for ${data.type}`
-              : 'Full component configuration with CPM, Cards, MDA, and XIOM'}
+              : "Full component configuration with CPM, Cards, MDA, and XIOM"}
           </div>
         </div>
       </div>

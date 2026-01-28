@@ -3,41 +3,41 @@
  * Groups are rendered as overlay annotations (not Cytoscape nodes).
  * Groups support hierarchical nesting via parentId.
  */
-import type React from 'react';
+import type React from "react";
 
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
-} from '../../../shared/types/topology';
-import type { NodePositionEntry } from '../state/useUndoRedo';
+} from "../../../shared/types/topology";
+import type { NodePositionEntry } from "../state/useUndoRedo";
 
 /**
  * Label position options for groups.
  */
 export const GROUP_LABEL_POSITIONS = [
-  'top-left',
-  'top-center',
-  'top-right',
-  'bottom-left',
-  'bottom-center',
-  'bottom-right'
+  "top-left",
+  "top-center",
+  "top-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right"
 ] as const;
 
-export type GroupLabelPosition = typeof GROUP_LABEL_POSITIONS[number];
+export type GroupLabelPosition = (typeof GROUP_LABEL_POSITIONS)[number];
 
 /**
  * Default group style values (excluding required fields that vary per group).
  */
 export const DEFAULT_GROUP_STYLE = {
-  backgroundColor: '#d9d9d9',
+  backgroundColor: "#d9d9d9",
   backgroundOpacity: 20,
-  borderColor: '#dddddd',
+  borderColor: "#dddddd",
   borderWidth: 0.5,
-  borderStyle: 'solid' as const,
+  borderStyle: "solid" as const,
   borderRadius: 0,
-  labelColor: '#ebecf0',
-  labelPosition: 'top-center',
+  labelColor: "#ebecf0",
+  labelPosition: "top-center",
   zIndex: 5
 };
 
@@ -60,7 +60,7 @@ export interface GroupEditorData {
  * Options for useGroupState hook.
  */
 export interface UseGroupStateOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
 }
@@ -87,8 +87,8 @@ export interface UseGroupStateReturn {
  * Undo action type for groups.
  */
 export interface GroupUndoAction {
-  type: 'annotation';
-  annotationType: 'group';
+  type: "annotation";
+  annotationType: "group";
   before: GroupStyleAnnotation | null;
   after: GroupStyleAnnotation | null;
   [key: string]: unknown;
@@ -103,7 +103,7 @@ export interface GroupUndoAction {
  */
 export interface AnnotationMembership {
   annotationId: string;
-  annotationType: 'freeText' | 'freeShape';
+  annotationType: "freeText" | "freeShape";
   groupId: string;
 }
 
@@ -146,7 +146,7 @@ export interface PastedGroupResult {
  * Undo action for hierarchical group moves.
  */
 export interface HierarchicalMoveUndoAction {
-  type: 'hierarchical-move';
+  type: "hierarchical-move";
   rootGroupId: string;
   groupsBefore: GroupStyleAnnotation[];
   groupsAfter: GroupStyleAnnotation[];
@@ -162,12 +162,12 @@ export interface HierarchicalMoveUndoAction {
  * Undo action for group deletion with child promotion.
  */
 export interface GroupDeleteUndoAction {
-  type: 'group-delete';
+  type: "group-delete";
   deletedGroup: GroupStyleAnnotation;
   promotedGroups: Array<{ groupId: string; previousParentId: string | null }>;
   promotedAnnotations: Array<{
     id: string;
-    type: 'freeText' | 'freeShape';
+    type: "freeText" | "freeShape";
     previousGroupId: string;
   }>;
   promotedNodes: Array<{ nodeId: string; previousGroupId: string }>;
@@ -177,7 +177,7 @@ export interface GroupDeleteUndoAction {
  * Undo action for pasting a group hierarchy.
  */
 export interface GroupPasteUndoAction {
-  type: 'group-paste';
+  type: "group-paste";
   createdGroups: GroupStyleAnnotation[];
   createdTextAnnotations: FreeTextAnnotation[];
   createdShapeAnnotations: FreeShapeAnnotation[];
@@ -197,7 +197,7 @@ export interface GroupDragOffset {
  * Options for useGroups hook.
  */
 export interface UseGroupsOptions {
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction?: () => void;
   // For group membership reassignment (e.g., delete/promotion) in related annotations
@@ -212,7 +212,10 @@ export interface UseGroupsReturn {
   groups: GroupStyleAnnotation[];
   editingGroup: GroupEditorData | null;
   /** Create a group; pass `null` to force root (no parent inference). */
-  createGroup: (selectedNodeIds?: string[], parentId?: string | null) => { groupId: string; group: GroupStyleAnnotation } | null;
+  createGroup: (
+    selectedNodeIds?: string[],
+    parentId?: string | null
+  ) => { groupId: string; group: GroupStyleAnnotation } | null;
   deleteGroup: (groupId: string) => void;
   editGroup: (groupId: string) => void;
   closeEditor: () => void;

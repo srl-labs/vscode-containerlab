@@ -3,11 +3,17 @@
  * Pure functions - no VS Code dependencies.
  */
 
-// eslint-disable-next-line sonarjs/deprecation
-import type { ClabNode, CyElement, ClabTopology, NetworkNodeAnnotation, CloudNodeAnnotation, TopologyAnnotations } from '../types/topology';
-
 import type {
-  SpecialNodeType} from './LinkNormalizer';
+  ClabNode,
+  CyElement,
+  ClabTopology,
+  NetworkNodeAnnotation,
+  // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
+  CloudNodeAnnotation,
+  TopologyAnnotations
+} from "../types/topology";
+
+import type { SpecialNodeType } from "./LinkNormalizer";
 import {
   TYPES,
   PREFIX_MACVLAN,
@@ -16,9 +22,9 @@ import {
   NODE_KIND_OVS_BRIDGE,
   splitEndpoint,
   normalizeLinkToTwoEndpoints,
-  createDummyContext,
-} from './LinkNormalizer';
-import type { DummyContext, SpecialNodeInfo } from './types';
+  createDummyContext
+} from "./LinkNormalizer";
+import type { DummyContext, SpecialNodeInfo } from "./types";
 
 // ============================================================================
 // Special Node Initialization
@@ -27,17 +33,15 @@ import type { DummyContext, SpecialNodeInfo } from './types';
 /**
  * Initializes special nodes from the topology nodes (bridges).
  */
-export function initSpecialNodes(
-  nodes?: Record<string, ClabNode>
-): Map<string, SpecialNodeInfo> {
+export function initSpecialNodes(nodes?: Record<string, ClabNode>): Map<string, SpecialNodeInfo> {
   const specialNodes = new Map<string, SpecialNodeInfo>();
   if (!nodes) return specialNodes;
   for (const [nodeName, nodeData] of Object.entries(nodes)) {
     if (nodeData?.kind === NODE_KIND_BRIDGE || nodeData?.kind === NODE_KIND_OVS_BRIDGE) {
       specialNodes.set(nodeName, {
         id: nodeName,
-        type: nodeData.kind as SpecialNodeInfo['type'],
-        label: nodeName,
+        type: nodeData.kind as SpecialNodeInfo["type"],
+        label: nodeName
       });
     }
   }
@@ -55,15 +59,15 @@ export function determineSpecialNode(
   node: string,
   iface: string
 ): { id: string; type: SpecialNodeType; label: string } | null {
-  if (node === 'host')
-    return { id: `host:${iface}`, type: 'host', label: `host:${iface || 'host'}` };
-  if (node === 'mgmt-net')
-    return { id: `mgmt-net:${iface}`, type: 'mgmt-net', label: `mgmt-net:${iface || 'mgmt-net'}` };
-  if (node.startsWith(PREFIX_MACVLAN)) return { id: node, type: 'macvlan', label: node };
+  if (node === "host")
+    return { id: `host:${iface}`, type: "host", label: `host:${iface || "host"}` };
+  if (node === "mgmt-net")
+    return { id: `mgmt-net:${iface}`, type: "mgmt-net", label: `mgmt-net:${iface || "mgmt-net"}` };
+  if (node.startsWith(PREFIX_MACVLAN)) return { id: node, type: "macvlan", label: node };
   if (node.startsWith(PREFIX_VXLAN_STITCH))
     return { id: node, type: TYPES.VXLAN_STITCH as SpecialNodeType, label: node };
-  if (node.startsWith('vxlan:')) return { id: node, type: 'vxlan', label: node };
-  if (node.startsWith('dummy')) return { id: node, type: 'dummy', label: node };
+  if (node.startsWith("vxlan:")) return { id: node, type: "vxlan", label: node };
+  if (node.startsWith("dummy")) return { id: node, type: "dummy", label: node };
   return null;
 }
 
@@ -82,7 +86,11 @@ export function registerEndpoint(
     specialNodes.set(info.id, { id: info.id, type: info.type, label: info.label });
   } else if (!iface && !topologyNodeNames?.has(node) && !specialNodes.has(node)) {
     // Bare endpoint not in topology nodes - treat as implicit bridge
-    specialNodes.set(node, { id: node, type: NODE_KIND_BRIDGE as SpecialNodeInfo['type'], label: node });
+    specialNodes.set(node, {
+      id: node,
+      type: NODE_KIND_BRIDGE as SpecialNodeInfo["type"],
+      label: node
+    });
   }
 }
 
@@ -91,12 +99,12 @@ export function registerEndpoint(
  */
 export function getSpecialId(end: unknown): string | null {
   const { node, iface } = splitEndpoint(end as string | { node: string; interface?: string });
-  if (node === 'host') return `host:${iface}`;
-  if (node === 'mgmt-net') return `mgmt-net:${iface}`;
+  if (node === "host") return `host:${iface}`;
+  if (node === "mgmt-net") return `mgmt-net:${iface}`;
   if (node.startsWith(PREFIX_MACVLAN)) return node;
   if (node.startsWith(PREFIX_VXLAN_STITCH)) return node;
-  if (node.startsWith('vxlan:')) return node;
-  if (node.startsWith('dummy')) return node;
+  if (node.startsWith("vxlan:")) return node;
+  if (node.startsWith("dummy")) return node;
   return null;
 }
 
@@ -108,9 +116,9 @@ export function getSpecialId(end: unknown): string | null {
  * Converts a value to string. Handles numbers, strings, and other types.
  */
 function toStr(val: unknown): string {
-  if (val === undefined || val === null) return '';
-  if (typeof val === 'string') return val;
-  if (typeof val === 'number') return String(val);
+  if (val === undefined || val === null) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return String(val);
   return String(val);
 }
 
@@ -135,10 +143,10 @@ export function assignHostMgmtProps(
   linkObj: Record<string, unknown>,
   baseProps: Record<string, unknown>
 ): void {
-  if (!['host', 'mgmt-net', 'macvlan'].includes(linkType)) return;
-  if (linkObj?.['host-interface'] !== undefined)
-    baseProps.extHostInterface = linkObj['host-interface'];
-  if (linkType === 'macvlan' && linkObj?.mode !== undefined) baseProps.extMode = linkObj.mode;
+  if (!["host", "mgmt-net", "macvlan"].includes(linkType)) return;
+  if (linkObj?.["host-interface"] !== undefined)
+    baseProps.extHostInterface = linkObj["host-interface"];
+  if (linkType === "macvlan" && linkObj?.mode !== undefined) baseProps.extMode = linkObj.mode;
 }
 
 /**
@@ -153,8 +161,8 @@ export function assignVxlanProps(
   if (![TYPES.VXLAN, TYPES.VXLAN_STITCH].includes(linkType as typeof TYPES.VXLAN)) return;
   if (linkObj?.remote !== undefined) baseProps.extRemote = toStr(linkObj.remote);
   if (linkObj?.vni !== undefined) baseProps.extVni = toStr(linkObj.vni);
-  if (linkObj?.['dst-port'] !== undefined) baseProps.extDstPort = toStr(linkObj['dst-port']);
-  if (linkObj?.['src-port'] !== undefined) baseProps.extSrcPort = toStr(linkObj['src-port']);
+  if (linkObj?.["dst-port"] !== undefined) baseProps.extDstPort = toStr(linkObj["dst-port"]);
+  if (linkObj?.["src-port"] !== undefined) baseProps.extSrcPort = toStr(linkObj["src-port"]);
 }
 
 /**
@@ -183,8 +191,8 @@ export function mergeSpecialNodeProps(
   endB: unknown,
   specialNodeProps: Map<string, Record<string, unknown>>
 ): void {
-  const linkType = typeof linkObj?.type === 'string' ? String(linkObj.type) : '';
-  if (!linkType || linkType === 'veth') return;
+  const linkType = typeof linkObj?.type === "string" ? String(linkObj.type) : "";
+  if (!linkType || linkType === "veth") return;
 
   const ids = [getSpecialId(endA), getSpecialId(endB)];
   const baseProps = buildBaseProps(linkObj, linkType);
@@ -263,7 +271,7 @@ function extractNetworkPlacement(saved: NetworkNodeAnnotation): PlacementResult 
     label: saved.label,
     geoCoordinates: saved.geoCoordinates,
     group: saved.group,
-    level: saved.level,
+    level: saved.level
   };
 }
 
@@ -276,7 +284,7 @@ function extractCloudPlacement(saved: CloudNodeAnnotation | undefined): Placemen
     position: saved?.position || { x: 0, y: 0 },
     label: saved?.label,
     group: saved?.group,
-    level: saved?.level,
+    level: saved?.level
   };
 }
 
@@ -311,40 +319,40 @@ function createCloudNodeElement(
 ): CyElement {
   const displayLabel = placement.label || nodeInfo.label || nodeId;
   return {
-    group: 'nodes',
+    group: "nodes",
     data: {
       id: nodeId,
-      weight: '30',
+      weight: "30",
       name: displayLabel,
-      topoViewerRole: 'cloud',
-      lat: placement.geoCoordinates?.lat?.toString() || '',
-      lng: placement.geoCoordinates?.lng?.toString() || '',
+      topoViewerRole: "cloud",
+      lat: placement.geoCoordinates?.lat?.toString() || "",
+      lng: placement.geoCoordinates?.lng?.toString() || "",
       extraData: {
-        clabServerUsername: '',
-        fqdn: '',
-        group: placement.group || '',
-        level: placement.level || '',
+        clabServerUsername: "",
+        fqdn: "",
+        group: placement.group || "",
+        level: placement.level || "",
         id: nodeId,
-        image: '',
-        index: '999',
+        image: "",
+        index: "999",
         kind: nodeInfo.type,
         type: nodeInfo.type,
-        labdir: '',
+        labdir: "",
         labels: {},
         longname: nodeId,
-        macAddress: '',
-        mgmtIntf: '',
+        macAddress: "",
+        mgmtIntf: "",
         mgmtIpv4AddressLength: 0,
-        mgmtIpv4Address: '',
-        mgmtIpv6Address: '',
+        mgmtIpv4Address: "",
+        mgmtIpv6Address: "",
         mgmtIpv6AddressLength: 0,
-        mgmtNet: '',
+        mgmtNet: "",
         name: displayLabel,
         shortname: displayLabel,
-        state: '',
-        weight: '3',
-        ...extraProps,
-      },
+        state: "",
+        weight: "3",
+        ...extraProps
+      }
     },
     position: placement.position,
     removed: false,
@@ -353,22 +361,18 @@ function createCloudNodeElement(
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: 'special-endpoint',
+    classes: "special-endpoint"
   };
 }
 
 /**
  * Creates a SpecialNodeInfo from a network annotation type.
  */
-function networkTypeToSpecialInfo(
-  id: string,
-  type: string,
-  label?: string
-): SpecialNodeInfo {
+function networkTypeToSpecialInfo(id: string, type: string, label?: string): SpecialNodeInfo {
   return {
     id,
-    type: type as SpecialNodeInfo['type'],
-    label: label || id,
+    type: type as SpecialNodeInfo["type"],
+    label: label || id
   };
 }
 
@@ -394,11 +398,7 @@ function addOrphanedNetworkNodes(
     if (specialNodes?.has(annotation.id)) continue;
 
     // Create cloud node from annotation
-    const nodeInfo = networkTypeToSpecialInfo(
-      annotation.id,
-      annotation.type,
-      annotation.label
-    );
+    const nodeInfo = networkTypeToSpecialInfo(annotation.id, annotation.type, annotation.label);
     const placement = extractNetworkPlacement(annotation);
     const extraProps = specialNodeProps?.get(annotation.id) || {};
     const cloudNodeEl = createCloudNodeElement(annotation.id, nodeInfo, placement, extraProps);
@@ -440,11 +440,11 @@ export function isSpecialNode(
   specialNodes?: Map<string, SpecialNodeInfo>
 ): boolean {
   if (specialNodes?.has(nodeId)) return true;
-  if (nodeId.startsWith('host:')) return true;
-  if (nodeId.startsWith('mgmt-net:')) return true;
+  if (nodeId.startsWith("host:")) return true;
+  if (nodeId.startsWith("mgmt-net:")) return true;
   if (nodeId.startsWith(PREFIX_MACVLAN)) return true;
   if (nodeId.startsWith(PREFIX_VXLAN_STITCH)) return true;
-  if (nodeId.startsWith('vxlan:')) return true;
-  if (nodeId.startsWith('dummy')) return true;
+  if (nodeId.startsWith("vxlan:")) return true;
+  if (nodeId.startsWith("dummy")) return true;
   return false;
 }

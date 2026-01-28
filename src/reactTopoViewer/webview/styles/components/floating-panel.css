@@ -209,7 +209,7 @@
 
   /* Invisible hover bridge to maintain hover state across the gap */
   .deploy-drawer::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     height: 100%;
@@ -240,7 +240,9 @@
     padding: 0.25rem 0;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.15s ease, transform 0.15s ease;
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease;
   }
 
   .floating-panel-dropdown-menu.visible {

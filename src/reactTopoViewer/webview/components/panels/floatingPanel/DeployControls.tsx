@@ -1,7 +1,7 @@
 /**
  * Deploy button controls and drawer for FloatingActionPanel
  */
-import React from 'react';
+import React from "react";
 
 /**
  * Panel Button Component
@@ -11,7 +11,7 @@ interface PanelButtonProps {
   tooltip: string;
   onClick?: (e: React.MouseEvent) => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: "primary" | "secondary" | "danger";
   testId?: string;
   /** When true, applies active/highlighted styling to indicate the tool is selected */
   active?: boolean;
@@ -22,20 +22,26 @@ export const PanelButton: React.FC<PanelButtonProps> = ({
   tooltip,
   onClick,
   disabled = false,
-  variant = 'secondary',
+  variant = "secondary",
   testId,
   active = false
 }) => {
   const getClass = () => {
-    if (disabled) return 'floating-panel-btn disabled';
-    if (active) return 'floating-panel-btn active';
-    if (variant === 'primary') return 'floating-panel-btn primary';
-    if (variant === 'danger') return 'floating-panel-btn danger';
-    return 'floating-panel-btn';
+    if (disabled) return "floating-panel-btn disabled";
+    if (active) return "floating-panel-btn active";
+    if (variant === "primary") return "floating-panel-btn primary";
+    if (variant === "danger") return "floating-panel-btn danger";
+    return "floating-panel-btn";
   };
 
   return (
-    <button className={getClass()} title={tooltip} onClick={onClick} disabled={disabled} data-testid={testId}>
+    <button
+      className={getClass()}
+      title={tooltip}
+      onClick={onClick}
+      disabled={disabled}
+      data-testid={testId}
+    >
       <i className={`fas ${icon}`}></i>
     </button>
   );
@@ -48,7 +54,7 @@ interface DrawerButtonProps {
   icon: string;
   tooltip: string;
   onClick?: () => void;
-  variant?: 'default' | 'danger';
+  variant?: "default" | "danger";
   testId?: string;
 }
 
@@ -56,7 +62,7 @@ export const DrawerButton: React.FC<DrawerButtonProps> = ({
   icon,
   tooltip,
   onClick,
-  variant = 'default',
+  variant = "default",
   testId
 }) => {
   const handleClick = (e: React.MouseEvent) => {
@@ -66,7 +72,7 @@ export const DrawerButton: React.FC<DrawerButtonProps> = ({
 
   return (
     <button
-      className={`floating-panel-btn ${variant === 'danger' ? 'danger' : ''}`}
+      className={`floating-panel-btn ${variant === "danger" ? "danger" : ""}`}
       title={tooltip}
       onClick={handleClick}
       data-testid={testId}
@@ -79,14 +85,14 @@ export const DrawerButton: React.FC<DrawerButtonProps> = ({
 /**
  * Processing mode type
  */
-type ProcessingMode = 'deploy' | 'destroy' | null;
+type ProcessingMode = "deploy" | "destroy" | null;
 
 /**
  * Deploy Button Group with hover drawer
  */
 interface DeployButtonGroupProps {
   isViewerMode: boolean;
-  drawerSide: 'left' | 'right';
+  drawerSide: "left" | "right";
   onDeployClick: () => void;
   onDeployCleanup?: () => void;
   onDestroyCleanup?: () => void;
@@ -109,40 +115,55 @@ export const DeployButtonGroup: React.FC<DeployButtonGroupProps> = ({
 }) => {
   // Build button class with processing state
   const getButtonClass = () => {
-    const classes = ['floating-panel-btn', 'primary'];
+    const classes = ["floating-panel-btn", "primary"];
     if (isProcessing) {
-      classes.push('processing');
-      if (processingMode === 'deploy') {
-        classes.push('processing--deploy');
-      } else if (processingMode === 'destroy') {
-        classes.push('processing--destroy');
+      classes.push("processing");
+      if (processingMode === "deploy") {
+        classes.push("processing--deploy");
+      } else if (processingMode === "destroy") {
+        classes.push("processing--destroy");
       }
     }
-    return classes.join(' ');
+    return classes.join(" ");
   };
 
   return (
     <div className={`deploy-button-group drawer-${drawerSide}`}>
       <button
         className={getButtonClass()}
-        title={isViewerMode ? 'Destroy Lab' : 'Deploy Lab'}
+        title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}
         onClick={onDeployClick}
         disabled={isProcessing}
       >
-        <i className={`fas ${isViewerMode ? 'fa-stop' : 'fa-play'}`}></i>
+        <i className={`fas ${isViewerMode ? "fa-stop" : "fa-play"}`}></i>
       </button>
 
       {/* Hide drawer when processing */}
       {!isProcessing && (
         <div className="deploy-drawer">
           {!isViewerMode && (
-            <DrawerButton icon="fa-broom" tooltip="Deploy (cleanup)" onClick={onDeployCleanup} variant="danger" />
+            <DrawerButton
+              icon="fa-broom"
+              tooltip="Deploy (cleanup)"
+              onClick={onDeployCleanup}
+              variant="danger"
+            />
           )}
           {isViewerMode && (
             <>
-              <DrawerButton icon="fa-broom" tooltip="Destroy (cleanup)" onClick={onDestroyCleanup} variant="danger" />
+              <DrawerButton
+                icon="fa-broom"
+                tooltip="Destroy (cleanup)"
+                onClick={onDestroyCleanup}
+                variant="danger"
+              />
               <DrawerButton icon="fa-redo" tooltip="Redeploy" onClick={onRedeploy} />
-              <DrawerButton icon="fa-redo" tooltip="Redeploy (cleanup)" onClick={onRedeployCleanup} variant="danger" />
+              <DrawerButton
+                icon="fa-redo"
+                tooltip="Redeploy (cleanup)"
+                onClick={onRedeployCleanup}
+                variant="danger"
+              />
             </>
           )}
         </div>

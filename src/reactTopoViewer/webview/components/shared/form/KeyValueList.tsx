@@ -1,9 +1,9 @@
 /**
  * KeyValueList - Dynamic key-value pairs
  */
-import React from 'react';
+import React from "react";
 
-import { AddItemButton, DeleteItemButton } from './ListButtons';
+import { AddItemButton, DeleteItemButton } from "./ListButtons";
 
 interface KeyValueListProps {
   items: Record<string, string>;
@@ -17,16 +17,16 @@ interface KeyValueListProps {
 export const KeyValueList: React.FC<KeyValueListProps> = ({
   items,
   onChange,
-  keyPlaceholder = 'Key',
-  valuePlaceholder = 'Value',
-  addLabel = 'Add',
+  keyPlaceholder = "Key",
+  valuePlaceholder = "Value",
+  addLabel = "Add",
   disabled
 }) => {
   const entries = Object.entries(items);
 
   const handleAdd = () => {
     const newKey = `key${entries.length + 1}`;
-    onChange({ ...items, [newKey]: '' });
+    onChange({ ...items, [newKey]: "" });
   };
 
   const handleRemove = (key: string) => {

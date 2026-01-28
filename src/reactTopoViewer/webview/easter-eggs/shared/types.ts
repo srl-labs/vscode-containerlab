@@ -2,7 +2,7 @@
  * Shared types for Easter Egg modes
  */
 
-import type { Core as CyCore } from 'cytoscape';
+import type { Core as CyCore } from "cytoscape";
 
 /** RGB color type */
 export interface RGBColor {

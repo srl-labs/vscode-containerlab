@@ -1,19 +1,19 @@
 /**
  * Conversions for link editor data.
  */
-import type { LinkEditorData } from '../components/panels/link-editor/types';
-import type { LinkSaveData } from '../../shared/io/LinkPersistenceIO';
-import { isSpecialEndpointId } from '../../shared/utilities/LinkTypes';
+import type { LinkEditorData } from "../components/panels/link-editor/types";
+import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
+import { isSpecialEndpointId } from "../../shared/utilities/LinkTypes";
 
 /** Parse MTU from raw value (can be string or number) */
 function parseMtu(raw: unknown): number | undefined {
-  if (raw === undefined || raw === '') return undefined;
-  const parsed = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+  if (raw === undefined || raw === "") return undefined;
+  const parsed = typeof raw === "number" ? raw : parseInt(String(raw), 10);
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 /** Get string value from object with fallback */
-function getStr(obj: Record<string, unknown>, key: string, fallback = ''): string {
+function getStr(obj: Record<string, unknown>, key: string, fallback = ""): string {
   return (obj[key] as string) || fallback;
 }
 
@@ -27,7 +27,7 @@ function getMac(
   const extVal = extraData[extKey] as string | undefined;
   if (extVal) return extVal;
   const endpoint = rawData[endpointKey] as Record<string, unknown> | undefined;
-  return (endpoint?.mac as string) || '';
+  return (endpoint?.mac as string) || "";
 }
 
 /** Get key-value map from extended data or raw data */
@@ -37,34 +37,39 @@ function getMap(
   rawData: Record<string, unknown>,
   rawKey: string
 ): Record<string, string> {
-  return (extraData[extKey] as Record<string, string>) ||
-         (rawData[rawKey] as Record<string, string>) || {};
+  return (
+    (extraData[extKey] as Record<string, string>) ||
+    (rawData[rawKey] as Record<string, string>) ||
+    {}
+  );
 }
 
 /**
  * Converts raw Cytoscape edge data to LinkEditorData.
  */
-export function convertToLinkEditorData(rawData: Record<string, unknown> | null): LinkEditorData | null {
+export function convertToLinkEditorData(
+  rawData: Record<string, unknown> | null
+): LinkEditorData | null {
   if (!rawData) return null;
 
-  const source = getStr(rawData, 'source');
-  const target = getStr(rawData, 'target');
-  const sourceEndpoint = getStr(rawData, 'sourceEndpoint');
-  const targetEndpoint = getStr(rawData, 'targetEndpoint');
+  const source = getStr(rawData, "source");
+  const target = getStr(rawData, "target");
+  const sourceEndpoint = getStr(rawData, "sourceEndpoint");
+  const targetEndpoint = getStr(rawData, "targetEndpoint");
   const extraData = (rawData.extraData as Record<string, unknown>) || {};
 
   return {
-    id: getStr(rawData, 'id'),
+    id: getStr(rawData, "id"),
     source,
     target,
     sourceEndpoint,
     targetEndpoint,
-    type: getStr(extraData, 'extType') || getStr(rawData, 'linkType', 'veth'),
-    sourceMac: getMac(extraData, 'extSourceMac', rawData, 'endpointA'),
-    targetMac: getMac(extraData, 'extTargetMac', rawData, 'endpointB'),
+    type: getStr(extraData, "extType") || getStr(rawData, "linkType", "veth"),
+    sourceMac: getMac(extraData, "extSourceMac", rawData, "endpointA"),
+    targetMac: getMac(extraData, "extTargetMac", rawData, "endpointB"),
     mtu: parseMtu(extraData.extMtu),
-    vars: getMap(extraData, 'extVars', rawData, 'vars'),
-    labels: getMap(extraData, 'extLabels', rawData, 'labels'),
+    vars: getMap(extraData, "extVars", rawData, "vars"),
+    labels: getMap(extraData, "extLabels", rawData, "labels"),
     originalSource: source,
     originalTarget: target,
     originalSourceEndpoint: sourceEndpoint,
@@ -83,12 +88,12 @@ export function convertToLinkEditorData(rawData: Record<string, unknown> | null)
  */
 export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveData {
   // Build extraData with extended properties
-  const extraData: LinkSaveData['extraData'] = {};
+  const extraData: LinkSaveData["extraData"] = {};
 
-  if (data.type && data.type !== 'veth') {
+  if (data.type && data.type !== "veth") {
     extraData.extType = data.type;
   }
-  if (data.mtu !== undefined && data.mtu !== '') {
+  if (data.mtu !== undefined && data.mtu !== "") {
     extraData.extMtu = data.mtu;
   }
   if (data.sourceMac) {
@@ -115,9 +120,8 @@ export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveD
     originalSource: data.originalSource,
     originalTarget: data.originalTarget,
     originalSourceEndpoint: data.originalSourceEndpoint,
-    originalTargetEndpoint: data.originalTargetEndpoint,
+    originalTargetEndpoint: data.originalTargetEndpoint
   };
 
   return saveData;
 }
-

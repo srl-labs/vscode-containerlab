@@ -2,26 +2,22 @@
  * Shared node glow utilities for Easter Egg modes
  */
 
-import { useEffect, useRef } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import { useEffect, useRef } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { RGBColor } from './types';
+import type { RGBColor } from "./types";
 
 /**
  * Apply glow effect to cytoscape nodes
  */
-export function applyNodeGlow(
-  cyInstance: CyCore,
-  color: RGBColor,
-  intensity: number
-): void {
+export function applyNodeGlow(cyInstance: CyCore, color: RGBColor, intensity: number): void {
   const borderWidth = `${2 + intensity * 2}px`;
   const borderColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.6 + intensity * 0.4})`;
 
-  cyInstance.nodes().forEach(node => {
+  cyInstance.nodes().forEach((node) => {
     node.style({
-      'border-width': borderWidth,
-      'border-color': borderColor,
+      "border-width": borderWidth,
+      "border-color": borderColor
     });
   });
 }
@@ -33,12 +29,12 @@ export function restoreNodeStyles(
   cyInstance: CyCore,
   originalStyles: Map<string, Record<string, string>>
 ): void {
-  cyInstance.nodes().forEach(node => {
+  cyInstance.nodes().forEach((node) => {
     const original = originalStyles.get(node.id());
     if (original) {
       node.style({
-        'border-width': original['border-width'],
-        'border-color': original['border-color'],
+        "border-width": original["border-width"],
+        "border-color": original["border-color"]
       });
     }
   });
@@ -67,12 +63,12 @@ export function useNodeGlow(
     const nodes = cyInstance.nodes();
 
     // Store original styles
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const id = node.id();
       originalStylesRef.current.set(id, {
-        'background-color': node.style('background-color') as string,
-        'border-color': node.style('border-color') as string,
-        'border-width': node.style('border-width') as string,
+        "background-color": node.style("background-color") as string,
+        "border-color": node.style("border-color") as string,
+        "border-width": node.style("border-width") as string
       });
     });
 

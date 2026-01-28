@@ -3,17 +3,17 @@
  * Extracts duplicated conditional rendering logic from App.tsx.
  */
 
-import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { UseEasterEggReturn } from './useEasterEgg';
+import type { UseEasterEggReturn } from "./useEasterEgg";
 import {
   NightcallMode,
   StickerbushMode,
   AquaticAmbienceMode,
   VaporwaveMode,
-  DeusExMode,
-} from './modes';
+  DeusExMode
+} from "./modes";
 
 interface EasterEggRendererProps {
   easterEgg: UseEasterEggReturn;
@@ -24,10 +24,7 @@ interface EasterEggRendererProps {
  * Renders the appropriate easter egg mode based on current state.
  * All modes receive identical props, so we use a switch for cleaner code.
  */
-export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({
-  easterEgg,
-  cyInstance,
-}) => {
+export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg, cyInstance }) => {
   const { state, endPartyMode, nextMode, getModeName } = easterEgg;
 
   const commonProps = {
@@ -35,19 +32,19 @@ export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({
     onClose: endPartyMode,
     onSwitchMode: nextMode,
     modeName: getModeName(),
-    cyInstance,
+    cyInstance
   };
 
   switch (state.easterEggMode) {
-    case 'nightcall':
+    case "nightcall":
       return <NightcallMode {...commonProps} />;
-    case 'stickerbrush':
+    case "stickerbrush":
       return <StickerbushMode {...commonProps} />;
-    case 'aquatic':
+    case "aquatic":
       return <AquaticAmbienceMode {...commonProps} />;
-    case 'vaporwave':
+    case "vaporwave":
       return <VaporwaveMode {...commonProps} />;
-    case 'deusex':
+    case "deusex":
       return <DeusExMode {...commonProps} />;
     default:
       return null;

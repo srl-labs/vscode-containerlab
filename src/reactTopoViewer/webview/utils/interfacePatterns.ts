@@ -1,9 +1,9 @@
 /**
  * Shared utilities for interface pattern handling in edge/link creation
  */
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
+import type { Core as CyCore, NodeSingular } from "cytoscape";
 
-import { DEFAULT_INTERFACE_PATTERNS } from '../../shared/constants/interfacePatterns';
+import { DEFAULT_INTERFACE_PATTERNS } from "../../shared/constants/interfacePatterns";
 
 // Re-export for consumers
 export { DEFAULT_INTERFACE_PATTERNS };
@@ -13,7 +13,7 @@ export { DEFAULT_INTERFACE_PATTERNS };
 // ============================================================================
 
 /** Default interface pattern when no specific pattern is configured */
-export const DEFAULT_INTERFACE_PATTERN = 'eth{n}';
+export const DEFAULT_INTERFACE_PATTERN = "eth{n}";
 
 /** Regex for parsing interface patterns like "eth{n}" or "Gi0/0/{n:0}" */
 export const INTERFACE_PATTERN_REGEX = /^(.+)?\{n(?::(\d+))?\}(.+)?$/;
@@ -41,9 +41,9 @@ export function parseInterfacePattern(pattern: string): ParsedInterfacePattern {
   if (!match) {
     // No {n} placeholder - treat the whole pattern as prefix
     // This handles patterns like "lo" -> lo0, lo1, etc.
-    return { prefix: pattern || 'eth', suffix: '', startIndex: 0 };
+    return { prefix: pattern || "eth", suffix: "", startIndex: 0 };
   }
-  const [, prefix = '', startStr, suffix = ''] = match;
+  const [, prefix = "", startStr, suffix = ""] = match;
   const startIndex = startStr ? parseInt(startStr, 10) : 1;
   return { prefix, suffix, startIndex };
 }
@@ -62,8 +62,8 @@ export function generateInterfaceName(parsed: ParsedInterfacePattern, index: num
  */
 export function extractInterfaceIndex(endpoint: string, parsed: ParsedInterfacePattern): number {
   // Build regex to match the pattern
-  const escapedPrefix = parsed.prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const escapedSuffix = parsed.suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedPrefix = parsed.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedSuffix = parsed.suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(`^${escapedPrefix}(\\d+)${escapedSuffix}$`);
   const match = regex.exec(endpoint);
   if (match) {
@@ -84,7 +84,9 @@ export function getNodeInterfacePattern(
   node: NodeSingular,
   interfacePatternMapping: Record<string, string> = DEFAULT_INTERFACE_PATTERNS
 ): string {
-  const extraData = node.data('extraData') as { interfacePattern?: string; kind?: string } | undefined;
+  const extraData = node.data("extraData") as
+    | { interfacePattern?: string; kind?: string }
+    | undefined;
 
   // Priority 1: Node-specific interface pattern (from template or annotation)
   if (extraData?.interfacePattern) {
@@ -108,15 +110,19 @@ export function getNodeInterfacePattern(
 /**
  * Collect used interface indices for a node using its interface pattern
  */
-export function collectUsedIndices(cy: CyCore, nodeId: string, parsed: ParsedInterfacePattern): Set<number> {
+export function collectUsedIndices(
+  cy: CyCore,
+  nodeId: string,
+  parsed: ParsedInterfacePattern
+): Set<number> {
   const usedIndices = new Set<number>();
   const edges = cy.edges(`[source = "${nodeId}"], [target = "${nodeId}"]`);
 
   edges.forEach((edge) => {
-    const src = edge.data('source') as string;
-    const tgt = edge.data('target') as string;
-    const epSrc = edge.data('sourceEndpoint') as string | undefined;
-    const epTgt = edge.data('targetEndpoint') as string | undefined;
+    const src = edge.data("source") as string;
+    const tgt = edge.data("target") as string;
+    const epSrc = edge.data("sourceEndpoint") as string | undefined;
+    const epTgt = edge.data("targetEndpoint") as string | undefined;
 
     if (src === nodeId && epSrc) {
       const idx = extractInterfaceIndex(epSrc, parsed);
@@ -146,7 +152,7 @@ export function getNextEndpointForNode(
 ): string {
   // Network nodes don't have interface endpoints
   if (isNetworkNode && isNetworkNode(node)) {
-    return '';
+    return "";
   }
 
   const pattern = getNodeInterfacePattern(node, interfacePatternMapping);

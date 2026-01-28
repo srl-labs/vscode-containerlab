@@ -5,17 +5,17 @@
  * Document.Parsed AST, which preserves comments and formatting.
  */
 
-import * as YAML from 'yaml';
+import * as YAML from "yaml";
 
-import type { FileSystemAdapter, SaveResult, IOLogger} from './types';
-import { noopLogger } from './types';
+import type { FileSystemAdapter, SaveResult, IOLogger } from "./types";
+import { noopLogger } from "./types";
 
 /**
  * Creates a YAML scalar with double quotes for endpoint values
  */
 export function createQuotedScalar(doc: YAML.Document, value: string): YAML.Scalar {
   const scalar = doc.createNode(value) as YAML.Scalar;
-  scalar.type = 'QUOTE_DOUBLE';
+  scalar.type = "QUOTE_DOUBLE";
   return scalar;
 }
 
@@ -32,7 +32,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return a.every((item, i) => deepEqual(item, b[i]));
   }
 
-  if (typeof a === 'object' && typeof b === 'object') {
+  if (typeof a === "object" && typeof b === "object") {
     const aObj = a as Record<string, unknown>;
     const bObj = b as Record<string, unknown>;
     const aKeys = Object.keys(aObj).sort();
@@ -48,16 +48,21 @@ export function deepEqual(a: unknown, b: unknown): boolean {
  * Checks if a value should be persisted (not empty/undefined)
  */
 export function shouldPersist(value: unknown): boolean {
-  if (value === undefined || value === null || value === '') return false;
+  if (value === undefined || value === null || value === "") return false;
   if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === 'object') return Object.keys(value).length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
   return true;
 }
 
 /**
  * Sets or deletes a key in a YAML map based on the value
  */
-export function setOrDelete(doc: YAML.Document, map: YAML.YAMLMap, key: string, value: unknown): void {
+export function setOrDelete(
+  doc: YAML.Document,
+  map: YAML.YAMLMap,
+  key: string,
+  value: unknown
+): void {
   if (!shouldPersist(value)) {
     if (map.has(key)) map.delete(key);
     return;
@@ -105,7 +110,7 @@ export async function writeYamlFile(
     try {
       const existingContent = await fs.readFile(yamlFilePath);
       if (existingContent === newContent) {
-        logger.info('[SaveTopology] No changes detected, skipping write');
+        logger.info("[SaveTopology] No changes detected, skipping write");
         return { success: true };
       }
     } catch {
@@ -121,7 +126,7 @@ export async function writeYamlFile(
 
     if (setInternalUpdate) {
       // Small delay before clearing flag
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
       setInternalUpdate(false);
     }
 

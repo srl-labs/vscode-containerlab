@@ -1,7 +1,7 @@
 /**
  * ColorField - Color picker input with hex display
  */
-import React from 'react';
+import React from "react";
 
 interface ColorFieldProps {
   id: string;
@@ -15,7 +15,7 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   id,
   value,
   onChange,
-  className = '',
+  className = "",
   showHex = true
 }) => {
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,14 +34,14 @@ export const ColorField: React.FC<ColorFieldProps> = ({
       <input
         type="color"
         id={id}
-        value={value || '#000000'}
+        value={value || "#000000"}
         onChange={handleColorChange}
         className="input-field h-8 w-14 cursor-pointer border border-gray-500 p-1"
       />
       {showHex && (
         <input
           type="text"
-          value={value || ''}
+          value={value || ""}
           onChange={handleHexChange}
           className="input-field flex-1"
           placeholder="#000000"

@@ -3,13 +3,18 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import type { CyElement, ClabTopology, TopologyAnnotations, NodeAnnotation } from '../types/topology';
+import type {
+  CyElement,
+  ClabTopology,
+  TopologyAnnotations,
+  NodeAnnotation
+} from "../types/topology";
 
-import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from './LinkNormalizer';
-import type { ParserLogger } from './types';
-import { nullLogger } from './types';
+import { NODE_KIND_BRIDGE, NODE_KIND_OVS_BRIDGE } from "./LinkNormalizer";
+import type { ParserLogger } from "./types";
+import { nullLogger } from "./types";
 
-export const CLASS_ALIASED_BASE_BRIDGE = 'aliased-base-bridge' as const;
+export const CLASS_ALIASED_BASE_BRIDGE = "aliased-base-bridge" as const;
 
 export interface AliasEntry {
   yamlNodeId: string;
@@ -38,7 +43,7 @@ export function buildNodeAnnotationIndex(
   const nodeAnns = annotations?.nodeAnnotations;
   if (!Array.isArray(nodeAnns)) return m;
   for (const na of nodeAnns) {
-    if (na && typeof na.id === 'string') m.set(na.id, na);
+    if (na && typeof na.id === "string") m.set(na.id, na);
   }
   return m;
 }
@@ -47,7 +52,7 @@ export function buildNodeAnnotationIndex(
  * Safely converts a value to a trimmed string.
  */
 export function asTrimmedString(val: unknown): string {
-  return typeof val === 'string' ? val.trim() : '';
+  return typeof val === "string" ? val.trim() : "";
 }
 
 /**
@@ -55,7 +60,7 @@ export function asTrimmedString(val: unknown): string {
  */
 export function toPosition(ann: NodeAnnotation | undefined): { x: number; y: number } {
   const pos = ann?.position;
-  if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+  if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
     return { x: pos.x, y: pos.y };
   }
   return { x: 0, y: 0 };
@@ -136,39 +141,39 @@ export function buildBridgeAliasElement(
   displayName: string
 ): CyElement {
   return {
-    group: 'nodes',
+    group: "nodes",
     data: {
       id: aliasId,
-      weight: '30',
+      weight: "30",
       name: displayName,
-      topoViewerRole: 'bridge',
-      lat: '',
-      lng: '',
+      topoViewerRole: "bridge",
+      lat: "",
+      lng: "",
       extraData: {
-        clabServerUsername: '',
-        fqdn: '',
-        group: '',
+        clabServerUsername: "",
+        fqdn: "",
+        group: "",
         id: aliasId,
-        image: '',
-        index: '999',
+        image: "",
+        index: "999",
         kind,
         type: kind,
-        labdir: '',
+        labdir: "",
         labels: {},
         longname: displayName,
-        macAddress: '',
-        mgmtIntf: '',
+        macAddress: "",
+        mgmtIntf: "",
         mgmtIpv4AddressLength: 0,
-        mgmtIpv4Address: '',
-        mgmtIpv6Address: '',
+        mgmtIpv4Address: "",
+        mgmtIpv6Address: "",
         mgmtIpv6AddressLength: 0,
-        mgmtNet: '',
+        mgmtNet: "",
         name: displayName,
         shortname: displayName,
-        state: '',
-        weight: '3',
-        extYamlNodeId: yamlRefId,
-      },
+        state: "",
+        weight: "3",
+        extYamlNodeId: yamlRefId
+      }
     },
     position,
     removed: false,
@@ -177,7 +182,7 @@ export function buildBridgeAliasElement(
     locked: false,
     grabbed: false,
     grabbable: true,
-    classes: '',
+    classes: ""
   };
 }
 
@@ -196,7 +201,7 @@ export function createAliasElement(
   const baseAnn = nodeAnnById.get(yamlRefId);
   const { position } = deriveAliasPlacement(aliasAnn, baseAnn);
   const aliasDisplayName =
-    aliasAnn && typeof aliasAnn.label === 'string' && aliasAnn.label.trim()
+    aliasAnn && typeof aliasAnn.label === "string" && aliasAnn.label.trim()
       ? aliasAnn.label.trim()
       : aliasId;
   return buildBridgeAliasElement(
@@ -250,15 +255,15 @@ export function addAliasNodesFromAnnotations(
  */
 export function rewireEdges(elements: CyElement[], mapping: Map<string, string>): void {
   for (const el of elements) {
-    if (el.group !== 'edges') continue;
+    if (el.group !== "edges") continue;
     const data = el.data as {
       source?: string;
       target?: string;
       sourceEndpoint?: string;
       targetEndpoint?: string;
     };
-    const srcAlias = mapping.get(`${data.source}|${data.sourceEndpoint || ''}`);
-    const tgtAlias = mapping.get(`${data.target}|${data.targetEndpoint || ''}`);
+    const srcAlias = mapping.get(`${data.source}|${data.sourceEndpoint || ""}`);
+    const tgtAlias = mapping.get(`${data.target}|${data.targetEndpoint || ""}`);
     if (!srcAlias && !tgtAlias) continue;
     if (srcAlias) data.source = srcAlias;
     if (tgtAlias) data.target = tgtAlias;
@@ -289,11 +294,11 @@ export function applyAliasMappingsToEdges(
 export function collectAliasGroups(elements: CyElement[]): Map<string, string[]> {
   const groups = new Map<string, string[]>();
   for (const el of elements) {
-    if (el.group !== 'nodes') continue;
+    if (el.group !== "nodes") continue;
     const data = el.data as { id?: string; extraData?: { extYamlNodeId?: string; kind?: string } };
     const extra = data.extraData || {};
-    const yamlRef = typeof extra.extYamlNodeId === 'string' ? extra.extYamlNodeId.trim() : '';
-    const kind = String(extra.kind || '');
+    const yamlRef = typeof extra.extYamlNodeId === "string" ? extra.extYamlNodeId.trim() : "";
+    const kind = String(extra.kind || "");
     if (!yamlRef || yamlRef === data.id) continue;
     if (!isBridgeKind(kind)) continue;
     const list = groups.get(yamlRef) || [];
@@ -312,10 +317,10 @@ export function collectStillReferencedBaseBridges(
 ): Set<string> {
   const stillReferenced = new Set<string>();
   for (const el of elements) {
-    if (el.group !== 'edges') continue;
+    if (el.group !== "edges") continue;
     const d = el.data as { source?: string; target?: string };
-    const s = String(d.source || '');
-    const t = String(d.target || '');
+    const s = String(d.source || "");
+    const t = String(d.target || "");
     if (aliasGroups.has(s)) stillReferenced.add(s);
     if (aliasGroups.has(t)) stillReferenced.add(t);
   }
@@ -330,8 +335,8 @@ export function addClass(nodeEl: CyElement, className: string): void {
   if (!existing) {
     nodeEl.classes = className;
   } else if (Array.isArray(existing)) {
-    if (!existing.includes(className)) nodeEl.classes = [...existing, className].join(' ');
-  } else if (typeof existing === 'string' && !existing.includes(className)) {
+    if (!existing.includes(className)) nodeEl.classes = [...existing, className].join(" ");
+  } else if (typeof existing === "string" && !existing.includes(className)) {
     nodeEl.classes = `${existing} ${className}`;
   }
 }
@@ -350,9 +355,9 @@ export function hideBaseBridgeNodesWithAliases(
   const stillReferenced = collectStillReferencedBaseBridges(elements, aliasGroups);
 
   for (const el of elements) {
-    if (el.group !== 'nodes') continue;
+    if (el.group !== "nodes") continue;
     const data = el.data as { id?: string; extraData?: { kind?: string } };
-    const id = String(data.id || '');
+    const id = String(data.id || "");
     if (!aliasGroups.has(id)) continue;
     if (stillReferenced.has(id)) {
       if (!loggedUnmappedBaseBridges.has(id)) {

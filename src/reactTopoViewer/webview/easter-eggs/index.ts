@@ -10,13 +10,13 @@
  */
 
 // Main easter egg hook
-export { useEasterEgg } from './useEasterEgg';
+export { useEasterEgg } from "./useEasterEgg";
 export type {
   EasterEggMode,
   EasterEggState,
   UseEasterEggOptions,
-  UseEasterEggReturn,
-} from './useEasterEgg';
+  UseEasterEggReturn
+} from "./useEasterEgg";
 
 // Mode components
 export {
@@ -24,27 +24,27 @@ export {
   VaporwaveMode,
   NightcallMode,
   StickerbushMode,
-  DeusExMode,
-} from './modes';
+  DeusExMode
+} from "./modes";
 
 // Renderer component
-export { EasterEggRenderer } from './EasterEggRenderer';
+export { EasterEggRenderer } from "./EasterEggRenderer";
 
 // Audio hooks
 export {
   useAquaticAmbienceAudio,
   useVaporwaveAudio,
   useNightcallAudio,
-  useStickerbushAudio,
-} from './audio';
+  useStickerbushAudio
+} from "./audio";
 
 export type {
   UseAquaticAmbienceAudioReturn,
   UseVaporwaveAudioReturn,
   UseNightcallAudioReturn,
-  UseStickerbushAudioReturn,
-} from './audio';
+  UseStickerbushAudioReturn
+} from "./audio";
 
 // Shared utilities (re-export for convenience)
-export type { RGBColor, BaseModeProps, BaseAudioReturn } from './shared';
-export { lerpColor, BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, useNodeGlow, MuteButton } from './shared';
+export type { RGBColor, BaseModeProps, BaseAudioReturn } from "./shared";
+export { lerpColor, BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, useNodeGlow, MuteButton } from "./shared";

@@ -53,7 +53,7 @@ async function pickPortMapping(portMappings: PortMapping[]): Promise<PortMapping
     return portMappings[0];
   }
 
-  const quickPickItems = portMappings.map(mapping => ({
+  const quickPickItems = portMappings.map((mapping) => ({
     label: `${mapping.hostPort}:${mapping.containerPort}/${mapping.protocol}`,
     description: mapping.description || "",
     detail: `Open in browser`,
@@ -72,7 +72,7 @@ async function pickPortMapping(portMappings: PortMapping[]): Promise<PortMapping
  */
 async function getExposedPorts(containerId: string): Promise<PortMapping[]> {
   if (!dockerClient) {
-    outputChannel.error('Docker client not initialized');
+    outputChannel.error("Docker client not initialized");
     return [];
   }
 
@@ -127,7 +127,9 @@ function addBindingsForPort(
   }
 }
 
-function parseContainerPort(portProto: string): { containerPort: string; protocol: string } | undefined {
+function parseContainerPort(
+  portProto: string
+): { containerPort: string; protocol: string } | undefined {
   const match = /^(\d+)\/(\w+)$/.exec(portProto);
   if (!match) {
     return undefined;
@@ -165,7 +167,7 @@ function openPortInBrowser(mapping: PortMapping, containerName: string) {
   // Ensure the URL has a proper protocol so the system opens it in a browser
   vscode.env.openExternal(vscode.Uri.parse(url));
 
-  const desc = mapping.description ? ` (${mapping.description})` : '';
+  const desc = mapping.description ? ` (${mapping.description})` : "";
   vscode.window.showInformationMessage(`Opening port ${mapping.hostPort} in browser${desc}`);
 }
 
@@ -174,22 +176,22 @@ function openPortInBrowser(mapping: PortMapping, containerName: string) {
  */
 function getPortDescription(port: string): string {
   const portMap: Record<string, string> = {
-    '22': 'SSH',
-    '23': 'Telnet',
-    '25': 'SMTP',
-    '53': 'DNS',
-    '80': 'HTTP',
-    '443': 'HTTPS',
-    '1880': 'Node-RED',
-    '3000': 'Grafana',
-    '5432': 'PostgreSQL',
-    '5601': 'Kibana',
-    '8080': 'Web Server',
-    '8443': 'HTTPS (Alt)',
-    '9000': 'Web Server',
-    '9090': 'Prometheus',
-    '9200': 'Elasticsearch'
+    "22": "SSH",
+    "23": "Telnet",
+    "25": "SMTP",
+    "53": "DNS",
+    "80": "HTTP",
+    "443": "HTTPS",
+    "1880": "Node-RED",
+    "3000": "Grafana",
+    "5432": "PostgreSQL",
+    "5601": "Kibana",
+    "8080": "Web Server",
+    "8443": "HTTPS (Alt)",
+    "9000": "Web Server",
+    "9090": "Prometheus",
+    "9200": "Elasticsearch"
   };
 
-  return portMap[port] || '';
+  return portMap[port] || "";
 }

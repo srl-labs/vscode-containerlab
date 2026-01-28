@@ -3,7 +3,7 @@
  *
  * Uses React.ComponentProps to match actual component prop types.
  */
-import React from 'react';
+import React from "react";
 
 import {
   NodeEditorPanel,
@@ -14,7 +14,7 @@ import {
   FreeShapeEditorPanel,
   GroupEditorPanel,
   LabSettingsPanel
-} from './panels';
+} from "./panels";
 
 /** Props passed directly to each panel */
 type NodeEditorProps = React.ComponentProps<typeof NodeEditorPanel>;

@@ -1,11 +1,11 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import type { EndpointResult } from '../../shared/types/endpoint';
-import type { CustomNodeTemplate } from '../../shared/types/editors';
+import type { EndpointResult } from "../../shared/types/endpoint";
+import type { CustomNodeTemplate } from "../../shared/types/editors";
 
-import { log } from './logger';
+import { log } from "./logger";
 
-const CONFIG_SECTION = 'containerlab.editor';
+const CONFIG_SECTION = "containerlab.editor";
 
 /**
  * Custom node configuration stored in VS Code settings
@@ -31,7 +31,7 @@ export class CustomNodeConfigManager {
   async saveCustomNode(data: CustomNodeData): Promise<EndpointResult> {
     try {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      let customNodes = config.get<CustomNodeConfig[]>('customNodes', []);
+      let customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
       const { oldName, ...nodeData } = data;
 
       if (data.setDefault) {
@@ -54,10 +54,10 @@ export class CustomNodeConfigManager {
         }
       }
 
-      await config.update('customNodes', customNodes, vscode.ConfigurationTarget.Global);
+      await config.update("customNodes", customNodes, vscode.ConfigurationTarget.Global);
       const defaultCustomNode = customNodes.find((n) => n.setDefault === true);
       log.info(`Saved custom node ${data.name}`);
-      return { result: { customNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
+      return { result: { customNodes, defaultNode: defaultCustomNode?.name || "" }, error: null };
     } catch (err) {
       const error = `Error saving custom node: ${err}`;
       log.error(`Error saving custom node: ${JSON.stringify(err, null, 2)}`);
@@ -71,11 +71,11 @@ export class CustomNodeConfigManager {
   async setDefaultCustomNode(name: string): Promise<EndpointResult> {
     try {
       if (!name) {
-        throw new Error('Missing custom node name');
+        throw new Error("Missing custom node name");
       }
 
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<CustomNodeConfig[]>('customNodes', []);
+      const customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
 
       let found = false;
       const updatedNodes = customNodes.map((node) => {
@@ -91,12 +91,12 @@ export class CustomNodeConfigManager {
         throw new Error(`Custom node ${name} not found`);
       }
 
-      await config.update('customNodes', updatedNodes, vscode.ConfigurationTarget.Global);
+      await config.update("customNodes", updatedNodes, vscode.ConfigurationTarget.Global);
       const defaultCustomNode = updatedNodes.find((n) => n.setDefault === true);
       log.info(`Set default custom node ${name}`);
 
       return {
-        result: { customNodes: updatedNodes, defaultNode: defaultCustomNode?.name || '' },
+        result: { customNodes: updatedNodes, defaultNode: defaultCustomNode?.name || "" },
         error: null
       };
     } catch (err) {
@@ -112,12 +112,15 @@ export class CustomNodeConfigManager {
   async deleteCustomNode(name: string): Promise<EndpointResult> {
     try {
       const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
-      const customNodes = config.get<CustomNodeConfig[]>('customNodes', []);
+      const customNodes = config.get<CustomNodeConfig[]>("customNodes", []);
       const filteredNodes = customNodes.filter((n) => n.name !== name);
-      await config.update('customNodes', filteredNodes, vscode.ConfigurationTarget.Global);
+      await config.update("customNodes", filteredNodes, vscode.ConfigurationTarget.Global);
       const defaultCustomNode = filteredNodes.find((n) => n.setDefault === true);
       log.info(`Deleted custom node ${name}`);
-      return { result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || '' }, error: null };
+      return {
+        result: { customNodes: filteredNodes, defaultNode: defaultCustomNode?.name || "" },
+        error: null
+      };
     } catch (err) {
       const error = `Error deleting custom node: ${err}`;
       log.error(`Error deleting custom node: ${JSON.stringify(err, null, 2)}`);
@@ -135,9 +138,9 @@ export class CustomNodeConfigManager {
   } {
     const defaultCustomNode = customNodes.find((node) => node.setDefault === true);
     return {
-      defaultNode: defaultCustomNode?.name || '',
-      defaultKind: defaultCustomNode?.kind || 'nokia_srlinux',
-      defaultType: defaultCustomNode?.type || '',
+      defaultNode: defaultCustomNode?.name || "",
+      defaultKind: defaultCustomNode?.kind || "nokia_srlinux",
+      defaultType: defaultCustomNode?.type || ""
     };
   }
 
@@ -153,7 +156,6 @@ export class CustomNodeConfigManager {
     }
     return imageMapping;
   }
-
 }
 
 // Export a singleton instance

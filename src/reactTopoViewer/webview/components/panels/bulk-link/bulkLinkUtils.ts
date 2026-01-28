@@ -1,19 +1,19 @@
 /**
  * Utility functions for bulk link creation
  */
-import type { Core as CyCore, NodeSingular } from 'cytoscape';
+import type { Core as CyCore, NodeSingular } from "cytoscape";
 
-import { FilterUtils } from '../../../../../helpers/filterUtils';
-import { isSpecialEndpointId } from '../../../../shared/utilities/LinkTypes';
-import type { CyElement } from '../../../../shared/types/messages';
-import type { GraphChange } from '../../../hooks/state/useUndoRedo';
+import { FilterUtils } from "../../../../../helpers/filterUtils";
+import { isSpecialEndpointId } from "../../../../shared/utilities/LinkTypes";
+import type { CyElement } from "../../../../shared/types/messages";
+import type { GraphChange } from "../../../hooks/state/useUndoRedo";
 import {
   type ParsedInterfacePattern,
   parseInterfacePattern,
   generateInterfaceName,
   getNodeInterfacePattern,
   collectUsedIndices
-} from '../../../utils/interfacePatterns';
+} from "../../../utils/interfacePatterns";
 
 export type LinkCandidate = { sourceId: string; targetId: string };
 
@@ -44,7 +44,7 @@ function allocateEndpoint(
   cy: CyCore,
   node: NodeSingular
 ): string {
-  if (isSpecialEndpointId(node.id())) return '';
+  if (isSpecialEndpointId(node.id())) return "";
 
   const allocator = getOrCreateAllocator(allocators, cy, node);
   let nextIndex = 0;
@@ -59,12 +59,16 @@ function applyBackreferences(pattern: string, match: RegExpMatchArray | null): s
   return pattern.replace(
     /\$\$|\$<([^>]+)>|\$(\d+)/g,
     (fullMatch: string, namedGroup?: string, numberedGroup?: string) => {
-      if (fullMatch === '$$') return '$';
+      if (fullMatch === "$$") return "$";
       if (!match) return fullMatch;
 
-      if (fullMatch.startsWith('$<')) {
-        if (namedGroup && match.groups && Object.prototype.hasOwnProperty.call(match.groups, namedGroup)) {
-          return match.groups[namedGroup] ?? '';
+      if (fullMatch.startsWith("$<")) {
+        if (
+          namedGroup &&
+          match.groups &&
+          Object.prototype.hasOwnProperty.call(match.groups, namedGroup)
+        ) {
+          return match.groups[namedGroup] ?? "";
         }
         return fullMatch;
       }
@@ -72,7 +76,7 @@ function applyBackreferences(pattern: string, match: RegExpMatchArray | null): s
       if (numberedGroup) {
         const index = Number(numberedGroup);
         if (!Number.isNaN(index) && index < match.length) {
-          return match[index] ?? '';
+          return match[index] ?? "";
         }
         return fullMatch;
       }
@@ -108,7 +112,7 @@ export function computeCandidates(
   const sourceFallbackFilter = sourceRegex ? null : FilterUtils.createFilter(sourceFilterText);
 
   nodes.forEach((sourceNode) => {
-    const sourceName = sourceNode.data('name') as string;
+    const sourceName = sourceNode.data("name") as string;
     const match = getSourceMatch(sourceName, sourceRegex, sourceFallbackFilter);
     if (match === undefined) return;
 
@@ -117,7 +121,7 @@ export function computeCandidates(
 
     nodes.forEach((targetNode) => {
       if (sourceNode.id() === targetNode.id()) return;
-      if (!targetFilter(targetNode.data('name') as string)) return;
+      if (!targetFilter(targetNode.data("name") as string)) return;
       if (sourceNode.edgesWith(targetNode).nonempty()) return;
 
       candidates.push({ sourceId: sourceNode.id(), targetId: targetNode.id() });
@@ -141,28 +145,31 @@ export function buildBulkEdges(cy: CyCore, candidates: LinkCandidate[]): CyEleme
     const edgeId = `${sourceId}-${targetId}`;
 
     edges.push({
-      group: 'edges',
+      group: "edges",
       data: {
         id: edgeId,
         source: sourceId,
         target: targetId,
         sourceEndpoint,
         targetEndpoint,
-        editor: 'true'
+        editor: "true"
       },
-      classes: isSpecialEndpointId(sourceId) || isSpecialEndpointId(targetId) ? 'stub-link' : ''
+      classes: isSpecialEndpointId(sourceId) || isSpecialEndpointId(targetId) ? "stub-link" : ""
     });
   }
 
   return edges;
 }
 
-export function buildUndoRedoEntries(edges: CyElement[]): { before: GraphChange[]; after: GraphChange[] } {
+export function buildUndoRedoEntries(edges: CyElement[]): {
+  before: GraphChange[];
+  after: GraphChange[];
+} {
   const before: GraphChange[] = [];
   const after: GraphChange[] = [];
   for (const edge of edges) {
-    before.push({ entity: 'edge', kind: 'delete', before: { ...edge, data: { ...edge.data } } });
-    after.push({ entity: 'edge', kind: 'add', after: { ...edge, data: { ...edge.data } } });
+    before.push({ entity: "edge", kind: "delete", before: { ...edge, data: { ...edge.data } } });
+    after.push({ entity: "edge", kind: "add", after: { ...edge, data: { ...edge.data } } });
   }
   return { before, after };
 }

@@ -28,8 +28,8 @@ export async function deploySpecificFile() {
     const opts: vscode.OpenDialogOptions = {
       title: "Select containerlab topology file",
       filters: {
-        yaml: ["yaml", "yml"],
-      },
+        yaml: ["yaml", "yml"]
+      }
     };
 
     const uri = await vscode.window.showOpenDialog(opts);
@@ -41,7 +41,7 @@ export async function deploySpecificFile() {
     labRef = await vscode.window.showInputBox({
       title: "Git/HTTP URL",
       placeHolder: "https://github.com/user/repo or https://example.com/lab.yml",
-      prompt: "Provide a repository or file URL",
+      prompt: "Provide a repository or file URL"
     });
     if (!labRef) {
       return;
@@ -53,10 +53,9 @@ export async function deploySpecificFile() {
     return;
   }
 
-  const tempNode = new ClabLabTreeNode(
-    "",
-    vscode.TreeItemCollapsibleState.None,
-    { absolute: labRef, relative: "" }
-  );
+  const tempNode = new ClabLabTreeNode("", vscode.TreeItemCollapsibleState.None, {
+    absolute: labRef,
+    relative: ""
+  });
   void deploy(tempNode);
 }

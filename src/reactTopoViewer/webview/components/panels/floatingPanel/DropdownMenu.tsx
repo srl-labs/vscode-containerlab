@@ -1,9 +1,13 @@
 /**
  * Dropdown menu components for FloatingActionPanel
  */
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback } from "react";
 
-import { useDropdownState, useFloatingDropdownKeyboard, useFocusOnOpen } from '../../../hooks/ui/useDropdown';
+import {
+  useDropdownState,
+  useFloatingDropdownKeyboard,
+  useFocusOnOpen
+} from "../../../hooks/ui/useDropdown";
 
 /**
  * Dropdown menu item interface
@@ -23,27 +27,27 @@ export interface DropdownMenuItem {
  */
 export function filterDropdownItems(items: DropdownMenuItem[], filter: string): DropdownMenuItem[] {
   const search = filter.toLowerCase();
-  return items.filter(item => item.label.toLowerCase().includes(search));
+  return items.filter((item) => item.label.toLowerCase().includes(search));
 }
 
 /**
  * Build CSS class for menu positioning
  */
-export function buildMenuClass(isOpen: boolean, drawerSide: 'left' | 'right'): string {
-  const classes = ['floating-panel-dropdown-menu'];
-  if (isOpen) classes.push('visible');
-  classes.push(drawerSide === 'left' ? 'position-left' : 'position-right');
-  return classes.join(' ');
+export function buildMenuClass(isOpen: boolean, drawerSide: "left" | "right"): string {
+  const classes = ["floating-panel-dropdown-menu"];
+  if (isOpen) classes.push("visible");
+  classes.push(drawerSide === "left" ? "position-left" : "position-right");
+  return classes.join(" ");
 }
 
 /**
  * Build CSS class for dropdown item
  */
 export function buildItemClass(item: DropdownMenuItem, isFocused: boolean): string {
-  const classes = ['floating-panel-dropdown-item'];
-  if (item.isDefault) classes.push('default');
-  if (isFocused) classes.push('focused');
-  return classes.join(' ');
+  const classes = ["floating-panel-dropdown-item"];
+  if (item.isDefault) classes.push("default");
+  if (isFocused) classes.push("focused");
+  return classes.join(" ");
 }
 
 /**
@@ -57,10 +61,10 @@ export interface CustomNodeActions {
 
 /** Shared button style for action buttons */
 const ACTION_BUTTON_STYLE: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: '2px 4px',
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  padding: "2px 4px",
   opacity: 0.6
 };
 
@@ -73,38 +77,65 @@ interface CustomNodeActionButtonsProps {
   actions: CustomNodeActions;
 }
 
-const CustomNodeActionButtons: React.FC<CustomNodeActionButtonsProps> = ({ itemId, isDefault, actions }) => {
-  const handleEditClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    actions.onEdit?.(itemId);
-  }, [actions, itemId]);
+const CustomNodeActionButtons: React.FC<CustomNodeActionButtonsProps> = ({
+  itemId,
+  isDefault,
+  actions
+}) => {
+  const handleEditClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      actions.onEdit?.(itemId);
+    },
+    [actions, itemId]
+  );
 
-  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    actions.onDelete?.(itemId);
-  }, [actions, itemId]);
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      actions.onDelete?.(itemId);
+    },
+    [actions, itemId]
+  );
 
-  const handleSetDefaultClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isDefault) {
-      actions.onSetDefault?.(itemId);
-    }
-  }, [actions, itemId, isDefault]);
+  const handleSetDefaultClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!isDefault) {
+        actions.onSetDefault?.(itemId);
+      }
+    },
+    [actions, itemId, isDefault]
+  );
 
   return (
-    <div className="floating-panel-dropdown-item-actions" style={{ display: 'flex', gap: '2px' }}>
+    <div className="floating-panel-dropdown-item-actions" style={{ display: "flex", gap: "2px" }}>
       <button
-        className={`add-node-default-btn${isDefault ? ' is-default' : ''}`}
-        title={isDefault ? 'Default node' : 'Set as default node'}
+        className={`add-node-default-btn${isDefault ? " is-default" : ""}`}
+        title={isDefault ? "Default node" : "Set as default node"}
         onClick={handleSetDefaultClick}
-        style={{ ...ACTION_BUTTON_STYLE, cursor: isDefault ? 'default' : 'pointer', opacity: isDefault ? 1 : 0.6 }}
+        style={{
+          ...ACTION_BUTTON_STYLE,
+          cursor: isDefault ? "default" : "pointer",
+          opacity: isDefault ? 1 : 0.6
+        }}
       >
-        {isDefault ? '★' : '☆'}
+        {isDefault ? "★" : "☆"}
       </button>
-      <button className="add-node-edit-btn" title="Edit custom node" onClick={handleEditClick} style={ACTION_BUTTON_STYLE}>
+      <button
+        className="add-node-edit-btn"
+        title="Edit custom node"
+        onClick={handleEditClick}
+        style={ACTION_BUTTON_STYLE}
+      >
         ✎
       </button>
-      <button className="add-node-delete-btn" title="Delete custom node" onClick={handleDeleteClick} style={ACTION_BUTTON_STYLE}>
+      <button
+        className="add-node-delete-btn"
+        title="Delete custom node"
+        onClick={handleDeleteClick}
+        style={ACTION_BUTTON_STYLE}
+      >
         ×
       </button>
     </div>
@@ -133,18 +164,31 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
     {item.addDivider && index > 0 && <div className="floating-panel-dropdown-divider" />}
     <div
       className={buildItemClass(item, focusedIndex === index)}
-      style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+      style={{ display: "flex", alignItems: "center", gap: "4px" }}
     >
       <button
         className="floating-panel-dropdown-item-label"
         onClick={() => onSelect(item.id)}
-        style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
+        style={{
+          flex: 1,
+          textAlign: "left",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: "inherit",
+          font: "inherit",
+          padding: 0
+        }}
       >
-        {item.icon && <i className={`fas ${item.icon}`} style={{ marginRight: '6px' }}></i>}
+        {item.icon && <i className={`fas ${item.icon}`} style={{ marginRight: "6px" }}></i>}
         <span>{item.label}</span>
       </button>
       {item.isCustomNode && customNodeActions && (
-        <CustomNodeActionButtons itemId={item.id} isDefault={item.isDefault} actions={customNodeActions} />
+        <CustomNodeActionButtons
+          itemId={item.id}
+          isDefault={item.isDefault}
+          actions={customNodeActions}
+        />
       )}
     </div>
   </React.Fragment>
@@ -157,7 +201,7 @@ interface PanelButtonWithDropdownProps {
   icon: string;
   tooltip: string;
   disabled?: boolean;
-  drawerSide: 'left' | 'right';
+  drawerSide: "left" | "right";
   items: DropdownMenuItem[];
   filterPlaceholder?: string;
   onSelect: (itemId: string) => void;
@@ -177,7 +221,7 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   disabled = false,
   drawerSide,
   items,
-  filterPlaceholder = 'Filter...',
+  filterPlaceholder = "Filter...",
   onSelect,
   onLockedClick,
   customNodeActions,
@@ -186,19 +230,27 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
   active = false
 }) => {
   const {
-    isOpen, filter, focusedIndex,
-    setFilter, setFocusedIndex,
-    resetState, handleMouseEnter, handleMouseLeave
+    isOpen,
+    filter,
+    focusedIndex,
+    setFilter,
+    setFocusedIndex,
+    resetState,
+    handleMouseEnter,
+    handleMouseLeave
   } = useDropdownState(disabled);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const filterInputRef = useRef<HTMLInputElement>(null);
   const filteredItems = filterDropdownItems(items, filter);
 
-  const handleSelect = useCallback((itemId: string) => {
-    onSelect(itemId);
-    resetState();
-  }, [onSelect, resetState]);
+  const handleSelect = useCallback(
+    (itemId: string) => {
+      onSelect(itemId);
+      resetState();
+    },
+    [onSelect, resetState]
+  );
 
   const handleKeyDown = useFloatingDropdownKeyboard({
     isOpen,
@@ -216,7 +268,7 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
     }
     if (clickAddsDefault && !disabled) {
       // Find the default item, or use the first item if no default
-      const defaultItem = items.find(item => item.isDefault) ?? items[0];
+      const defaultItem = items.find((item) => item.isDefault) ?? items[0];
       if (defaultItem) {
         onSelect(defaultItem.id);
       }
@@ -233,7 +285,7 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
       onMouseLeave={handleMouseLeave}
     >
       <button
-        className={`floating-panel-btn ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`}
+        className={`floating-panel-btn ${disabled ? "disabled" : ""} ${active ? "active" : ""}`}
         title={tooltip}
         disabled={false}
         onClick={handleButtonClick}
@@ -249,7 +301,10 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
             type="text"
             placeholder={filterPlaceholder}
             value={filter}
-            onChange={e => { setFilter(e.target.value); setFocusedIndex(-1); }}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setFocusedIndex(-1);
+            }}
           />
         </div>
         <div>
@@ -264,7 +319,10 @@ export const PanelButtonWithDropdown: React.FC<PanelButtonWithDropdownProps> = (
             />
           ))}
           {filteredItems.length === 0 && (
-            <div className="floating-panel-dropdown-item" style={{ opacity: 0.6, cursor: 'default' }}>
+            <div
+              className="floating-panel-dropdown-item"
+              style={{ opacity: 0.6, cursor: "default" }}
+            >
               No matches found
             </div>
           )}

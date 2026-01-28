@@ -3,20 +3,21 @@ import * as path from "path";
 
 import * as vscode from "vscode";
 
-
 import type { ClabLabTreeNode } from "../treeView/common";
-import type { ReactTopoViewer} from "../reactTopoViewer";
+import type { ReactTopoViewer } from "../reactTopoViewer";
 import { ReactTopoViewerProvider } from "../reactTopoViewer";
 import { getSelectedLabNode } from "../utils/utils";
 import * as ins from "../treeView/inspector";
 
 import { ClabCommand } from "./clabCommand";
 
-
 /**
  * Core routine for generating draw.io graphs.
  */
-async function runGraphDrawIO(node: ClabLabTreeNode | undefined, layout: "horizontal" | "vertical") {
+async function runGraphDrawIO(
+  node: ClabLabTreeNode | undefined,
+  layout: "horizontal" | "vertical"
+) {
   node = await getSelectedLabNode(node);
   if (!node) {
     return;
@@ -39,18 +40,18 @@ async function runGraphDrawIO(node: ClabLabTreeNode | undefined, layout: "horizo
 
   // Wait for containerlab to finish generating the .drawio file,
   // passing the theme argument.
-    await graphCmd
-      .run(["--drawio", "--drawio-args", `--theme ${drawioTheme} --layout ${layout}`])
-      .then(() => {
-        // Verify the file exists.
-        if (!fs.existsSync(drawioPath)) {
-          vscode.window.showErrorMessage(
-            `Containerlab failed to generate .drawio file for lab: ${node.name}.`
-          );
-          return;
-        }
-        vscode.commands.executeCommand("vscode.open", drawioUri);
-      });
+  await graphCmd
+    .run(["--drawio", "--drawio-args", `--theme ${drawioTheme} --layout ${layout}`])
+    .then(() => {
+      // Verify the file exists.
+      if (!fs.existsSync(drawioPath)) {
+        vscode.window.showErrorMessage(
+          `Containerlab failed to generate .drawio file for lab: ${node.name}.`
+        );
+        return;
+      }
+      vscode.commands.executeCommand("vscode.open", drawioUri);
+    });
 }
 
 export async function graphDrawIOHorizontal(node?: ClabLabTreeNode) {
@@ -75,14 +76,13 @@ export async function graphDrawIOInteractive(node?: ClabLabTreeNode) {
   void graphCmd.run(["--drawio", "--drawio-args", `"-I"`]);
 }
 
-
 /**
  * Graph Lab (TopoViewer)
  */
 
 let currentTopoViewer: ReactTopoViewer | undefined;
 
-type LifecycleCommandType = 'deploy' | 'destroy' | 'redeploy';
+type LifecycleCommandType = "deploy" | "destroy" | "redeploy";
 
 /**
  * Check if a lab is running by looking up its path in the inspector data.
@@ -99,7 +99,7 @@ function isLabRunning(labPath: string): boolean {
     if (Array.isArray(containers) && containers.length > 0) {
       // Check the first container's lab path (all containers in a lab share the same path)
       const container = containers[0];
-      const containerLabPath = container.Labels?.['clab-topo-file'];
+      const containerLabPath = container.Labels?.["clab-topo-file"];
       if (containerLabPath === labPath) {
         return true;
       }
@@ -108,11 +108,16 @@ function isLabRunning(labPath: string): boolean {
   return false;
 }
 
-function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: boolean } | undefined {
-  if (node && node.contextValue &&
-      (node.contextValue === 'containerlabLabDeployed' ||
-       node.contextValue === 'containerlabLabDeployedFavorite')) {
-    return { labPath: node.labPath?.absolute || '', isViewMode: true };
+function resolveLabInfo(
+  node?: ClabLabTreeNode
+): { labPath: string; isViewMode: boolean } | undefined {
+  if (
+    node &&
+    node.contextValue &&
+    (node.contextValue === "containerlabLabDeployed" ||
+      node.contextValue === "containerlabLabDeployedFavorite")
+  ) {
+    return { labPath: node.labPath?.absolute || "", isViewMode: true };
   }
 
   if (node?.labPath?.absolute) {
@@ -129,7 +134,7 @@ function resolveLabInfo(node?: ClabLabTreeNode): { labPath: string; isViewMode: 
     return { labPath: editor.document.uri.fsPath, isViewMode: isRunning };
   }
 
-  vscode.window.showErrorMessage('No lab node or topology file selected');
+  vscode.window.showErrorMessage("No lab node or topology file selected");
   return undefined;
 }
 
@@ -144,16 +149,14 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   const { labPath, isViewMode } = labInfo;
 
   if (!context) {
-    vscode.window.showErrorMessage('Extension context not available');
+    vscode.window.showErrorMessage("Extension context not available");
     return;
   }
 
   // Derive the lab name
   const labName =
     node?.name ||
-    (labPath
-      ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, '')
-      : 'Unknown Lab');
+    (labPath ? path.basename(labPath).replace(/\.clab\.(yml|yaml)$/i, "") : "Unknown Lab");
 
   // Use the provider to create/get the viewer
   const provider = ReactTopoViewerProvider.getInstance(context);
@@ -162,13 +165,13 @@ export async function graphTopoviewer(node?: ClabLabTreeNode, context?: vscode.E
   currentTopoViewer = viewer;
 
   // Set context for any UI state
-  vscode.commands.executeCommand('setContext', 'isTopoviewerActive', true);
+  vscode.commands.executeCommand("setContext", "isTopoviewerActive", true);
 
   // Handle disposal
   if (viewer.currentPanel) {
     viewer.currentPanel.onDidDispose(() => {
       currentTopoViewer = undefined;
-      vscode.commands.executeCommand('setContext', 'isTopoviewerActive', false);
+      vscode.commands.executeCommand("setContext", "isTopoviewerActive", false);
     });
   }
 }
@@ -179,7 +182,7 @@ export function getCurrentTopoViewer(): ReactTopoViewer | undefined {
 
 async function postLifecycleStatus(
   commandType: LifecycleCommandType,
-  status: 'success' | 'error',
+  status: "success" | "error",
   errorMessage?: string
 ): Promise<void> {
   if (!currentTopoViewer?.currentPanel) {
@@ -188,7 +191,7 @@ async function postLifecycleStatus(
 
   try {
     await currentTopoViewer.currentPanel.webview.postMessage({
-      type: 'lab-lifecycle-status',
+      type: "lab-lifecycle-status",
       data: { commandType, status, errorMessage }
     });
   } catch (err) {
@@ -206,16 +209,16 @@ export async function notifyCurrentTopoViewerOfCommandSuccess(commandType: Lifec
   }
 
   // Determine the new state based on the command
-  const newDeploymentState = commandType === 'destroy' ? 'undeployed' : 'deployed';
+  const newDeploymentState = commandType === "destroy" ? "undeployed" : "deployed";
 
   try {
-    if (typeof currentTopoViewer.refreshAfterExternalCommand === 'function') {
+    if (typeof currentTopoViewer.refreshAfterExternalCommand === "function") {
       await currentTopoViewer.refreshAfterExternalCommand(newDeploymentState);
     }
   } catch (error) {
     console.error(`Failed to update TopoViewer after ${commandType}:`, error);
   } finally {
-    await postLifecycleStatus(commandType, 'success');
+    await postLifecycleStatus(commandType, "success");
   }
 }
 
@@ -224,5 +227,5 @@ export async function notifyCurrentTopoViewerOfCommandFailure(
   error: unknown
 ): Promise<void> {
   const errorMessage = error instanceof Error ? error.message : String(error);
-  await postLifecycleStatus(commandType, 'error', errorMessage);
+  await postLifecycleStatus(commandType, "error", errorMessage);
 }

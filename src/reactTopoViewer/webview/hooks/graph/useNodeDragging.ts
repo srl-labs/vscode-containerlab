@@ -2,19 +2,19 @@
  * Node Dragging Hook
  * Manages node drag-and-drop functionality based on lock state
  */
-import { useEffect, useCallback, useRef } from 'react';
-import type { Core, NodeSingular, EventObject } from 'cytoscape';
+import { useEffect, useCallback, useRef } from "react";
+import type { Core, NodeSingular, EventObject } from "cytoscape";
 
-import { log } from '../../utils/logger';
-import type { NodePositionEntry } from '../state/useUndoRedo';
-import { getTopologyIO } from '../../services';
+import { log } from "../../utils/logger";
+import type { NodePositionEntry } from "../state/useUndoRedo";
+import { getTopologyIO } from "../../services";
 
 /**
  * Options for the node dragging hook
  */
 export interface NodeDraggingOptions {
   isLocked: boolean;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   onPositionChange?: () => void;
   onLockedDrag?: () => void;
   /** Callback to record move for undo/redo - receives node IDs and before positions */
@@ -29,7 +29,7 @@ export interface NodeDraggingOptions {
 async function savePositions(positions: NodePositionEntry[]): Promise<void> {
   const topologyIO = getTopologyIO();
   if (!topologyIO) {
-    log.warn('[NodeDragging] TopologyIO not initialized');
+    log.warn("[NodeDragging] TopologyIO not initialized");
     return;
   }
 
@@ -55,8 +55,8 @@ function getNodePosition(node: NodeSingular): NodePositionEntry {
   };
 
   // Include geo coordinates if the node has them (set by GeoMap mode)
-  const lat = node.data('lat') as string | undefined;
-  const lng = node.data('lng') as string | undefined;
+  const lat = node.data("lat") as string | undefined;
+  const lng = node.data("lng") as string | undefined;
   if (lat !== undefined && lng !== undefined) {
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
@@ -73,7 +73,7 @@ function getNodePosition(node: NodeSingular): NodePositionEntry {
  */
 function lockNodes(cy: Core): void {
   cy.nodes().lock();
-  log.info('[NodeDragging] Nodes locked');
+  log.info("[NodeDragging] Nodes locked");
 }
 
 /**
@@ -81,15 +81,15 @@ function lockNodes(cy: Core): void {
  */
 function unlockNodes(cy: Core): void {
   cy.nodes().unlock();
-  log.info('[NodeDragging] Nodes unlocked');
+  log.info("[NodeDragging] Nodes unlocked");
 }
 
 /**
  * Check if a node is a regular draggable node (not an annotation)
  */
 function isDraggableNode(node: NodeSingular): boolean {
-  const role = node.data('topoViewerRole') as string | undefined;
-  return role !== 'freeText' && role !== 'freeShape';
+  const role = node.data("topoViewerRole") as string | undefined;
+  return role !== "freeText" && role !== "freeShape";
 }
 
 /** Hook to apply lock state to nodes */
@@ -99,13 +99,17 @@ function useLockState(cy: Core | null, isLocked: boolean): void {
 
     // Don't lock nodes until initial layout is done
     // Otherwise COSE layout can't move nodes
-    const layoutDone = cy.scratch('initialLayoutDone') as boolean | undefined;
+    const layoutDone = cy.scratch("initialLayoutDone") as boolean | undefined;
     if (!layoutDone) {
       // Wait for layout to complete before applying lock state
       const checkLayout = () => {
-        const done = cy.scratch('initialLayoutDone') as boolean | undefined;
+        const done = cy.scratch("initialLayoutDone") as boolean | undefined;
         if (done) {
-          if (isLocked) { lockNodes(cy); } else { unlockNodes(cy); }
+          if (isLocked) {
+            lockNodes(cy);
+          } else {
+            unlockNodes(cy);
+          }
         } else {
           // Check again after a short delay
           setTimeout(checkLayout, 100);
@@ -115,7 +119,11 @@ function useLockState(cy: Core | null, isLocked: boolean): void {
       return;
     }
 
-    if (isLocked) { lockNodes(cy); } else { unlockNodes(cy); }
+    if (isLocked) {
+      lockNodes(cy);
+    } else {
+      unlockNodes(cy);
+    }
   }, [cy, isLocked]);
 }
 
@@ -147,11 +155,11 @@ function refreshGeoCoordinates(cy: Core | null, position: NodePositionEntry): No
   if (!node || node.empty() || !node.isNode()) return position;
 
   // Check if GeoMap is active
-  const isGeoMapActive = cy.scratch('geoMapActive') === true;
+  const isGeoMapActive = cy.scratch("geoMapActive") === true;
 
   // Re-read lat/lng from node data (may have been updated by useGeoMap after drag)
-  const lat = node.data('lat') as string | undefined;
-  const lng = node.data('lng') as string | undefined;
+  const lat = node.data("lat") as string | undefined;
+  const lng = node.data("lng") as string | undefined;
   if (lat !== undefined && lng !== undefined) {
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
@@ -169,7 +177,7 @@ function refreshGeoCoordinates(cy: Core | null, position: NodePositionEntry): No
 /** Create flush handler for batched drags */
 function createFlushHandler(
   refs: DragBatchRefs,
-  _mode: 'edit' | 'view',
+  _mode: "edit" | "view",
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
   onPositionsCommitted?: (positions: NodePositionEntry[]) => void,
   cy?: Core | null
@@ -178,10 +186,10 @@ function createFlushHandler(
     const pending = refs.pendingDrags.current;
     if (pending.length === 0) return;
 
-    const nodeIds = pending.map(p => p.nodeId);
-    const beforePositions = pending.map(p => p.before);
+    const nodeIds = pending.map((p) => p.nodeId);
+    const beforePositions = pending.map((p) => p.before);
     // Re-read geo coordinates at flush time to capture updates from useGeoMap
-    const afterPositions = pending.map(p => refreshGeoCoordinates(cy ?? null, p.after));
+    const afterPositions = pending.map((p) => refreshGeoCoordinates(cy ?? null, p.after));
 
     log.info(`[NodeDragging] Flushing batch of ${pending.length} node drag(s)`);
 
@@ -201,9 +209,9 @@ function createFlushHandler(
 }
 
 /** Create drag start handler */
-function createDragStartHandler(
-  dragStartPositions: { current: Map<string, NodePositionEntry> }
-): (event: EventObject) => void {
+function createDragStartHandler(dragStartPositions: {
+  current: Map<string, NodePositionEntry>;
+}): (event: EventObject) => void {
   return (event: EventObject) => {
     const node = event.target as NodeSingular;
 
@@ -211,7 +219,9 @@ function createDragStartHandler(
 
     const position = getNodePosition(node);
     dragStartPositions.current.set(node.id(), position);
-    log.info(`[NodeDragging] Drag started for node ${node.id()} at (${position.position?.x ?? 0}, ${position.position?.y ?? 0})`);
+    log.info(
+      `[NodeDragging] Drag started for node ${node.id()} at (${position.position?.x ?? 0}, ${position.position?.y ?? 0})`
+    );
   };
 }
 
@@ -230,7 +240,9 @@ function createDragFreeHandler(
     const beforePosition = refs.dragStartPositions.current.get(nodeId);
     const afterPosition = getNodePosition(node);
 
-    log.info(`[NodeDragging] Node ${nodeId} dragged to (${afterPosition.position?.x ?? 0}, ${afterPosition.position?.y ?? 0})`);
+    log.info(
+      `[NodeDragging] Node ${nodeId} dragged to (${afterPosition.position?.x ?? 0}, ${afterPosition.position?.y ?? 0})`
+    );
 
     if (beforePosition && beforePosition.position && afterPosition.position) {
       const positionChanged =
@@ -255,7 +267,7 @@ function createDragFreeHandler(
 /** Hook for drag start/completion event handling with undo/redo support */
 function useDragHandlers(
   cy: Core | null,
-  mode: 'edit' | 'view',
+  mode: "edit" | "view",
   onPositionChange?: () => void,
   onMoveComplete?: (nodeIds: string[], beforePositions: NodePositionEntry[]) => void,
   onPositionsCommitted?: (positions: NodePositionEntry[]) => void
@@ -275,10 +287,7 @@ function useDragHandlers(
     [cy, mode, onMoveComplete, onPositionsCommitted]
   );
 
-  const handleDragStart = useCallback(
-    createDragStartHandler(dragStartPositionsRef),
-    []
-  );
+  const handleDragStart = useCallback(createDragStartHandler(dragStartPositionsRef), []);
 
   const handleDragFree = useCallback(
     (event: EventObject) => createDragFreeHandler(refs, flushPendingDrags, onPositionChange)(event),
@@ -293,23 +302,27 @@ function useDragHandlers(
 
   useEffect(() => {
     if (!cy) return;
-    cy.on('grab', 'node', handleDragStart);
-    cy.on('dragfree', 'node', handleDragFree);
+    cy.on("grab", "node", handleDragStart);
+    cy.on("dragfree", "node", handleDragFree);
     return () => {
-      cy.off('grab', 'node', handleDragStart);
-      cy.off('dragfree', 'node', handleDragFree);
+      cy.off("grab", "node", handleDragStart);
+      cy.off("dragfree", "node", handleDragFree);
     };
   }, [cy, handleDragStart, handleDragFree]);
 }
 
 /** Hook for detecting locked node grab attempts */
 function useLockedGrabHandler(cy: Core | null, isLocked: boolean, onLockedDrag?: () => void): void {
-  const handleLockedGrab = useCallback(() => { onLockedDrag?.(); }, [onLockedDrag]);
+  const handleLockedGrab = useCallback(() => {
+    onLockedDrag?.();
+  }, [onLockedDrag]);
 
   useEffect(() => {
     if (!cy || !isLocked) return;
-    cy.on('tapstart', 'node', handleLockedGrab);
-    return () => { cy.off('tapstart', 'node', handleLockedGrab); };
+    cy.on("tapstart", "node", handleLockedGrab);
+    return () => {
+      cy.off("tapstart", "node", handleLockedGrab);
+    };
   }, [cy, isLocked, handleLockedGrab]);
 }
 
@@ -317,7 +330,8 @@ function useLockedGrabHandler(cy: Core | null, isLocked: boolean, onLockedDrag?:
  * Hook to manage node dragging based on lock state
  */
 export function useNodeDragging(cy: Core | null, options: NodeDraggingOptions): void {
-  const { isLocked, mode, onPositionChange, onLockedDrag, onMoveComplete, onPositionsCommitted } = options;
+  const { isLocked, mode, onPositionChange, onLockedDrag, onMoveComplete, onPositionsCommitted } =
+    options;
 
   useLockState(cy, isLocked);
   useDragHandlers(cy, mode, onPositionChange, onMoveComplete, onPositionsCommitted);

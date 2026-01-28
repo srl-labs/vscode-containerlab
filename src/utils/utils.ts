@@ -14,10 +14,7 @@ const execAsync = promisify(exec);
 
 export function stripAnsi(input: string): string {
   const esc = String.fromCharCode(27);
-  const escapeSeq = new RegExp(
-    esc + String.fromCharCode(91) + "[0-?]*[ -/]*[@-~]",
-    "g",
-  );
+  const escapeSeq = new RegExp(esc + String.fromCharCode(91) + "[0-?]*[ -/]*[@-~]", "g");
   const controlSeq = new RegExp(`${esc}[@-Z\\-_]`, "g");
   return input.replace(escapeSeq, "").replace(controlSeq, "");
 }
@@ -51,7 +48,7 @@ export function normalizeLabPath(labPath: string, singleFolderBase?: string): st
   }
   labPath = path.normalize(labPath);
 
-  if (labPath.startsWith('~')) {
+  if (labPath.startsWith("~")) {
     const homedir = os.homedir();
     const sub = labPath.replace(/^~[/\\]?/, "");
     labPath = path.normalize(path.join(homedir, sub));
@@ -94,18 +91,18 @@ export function getUserInfo(): {
   try {
     // Check if running as root
     // eslint-disable-next-line sonarjs/no-os-command-from-path
-    const uidOut = execSync('id -u', { encoding: 'utf-8' });
+    const uidOut = execSync("id -u", { encoding: "utf-8" });
     const uid = parseInt(uidOut.trim(), 10);
     const isRoot = uid === 0;
 
     // Get username
     // eslint-disable-next-line sonarjs/no-os-command-from-path
-    const usernameOut = execSync('id -un', { encoding: 'utf-8' });
+    const usernameOut = execSync("id -un", { encoding: "utf-8" });
     const username = usernameOut.trim();
 
     // Check group membership
     // eslint-disable-next-line sonarjs/no-os-command-from-path
-    const groupsOut = execSync('id -nG', { encoding: 'utf-8' });
+    const groupsOut = execSync("id -nG", { encoding: "utf-8" });
     const userGroups = groupsOut.trim().split(/\s+/);
 
     if (isRoot) {
@@ -118,8 +115,8 @@ export function getUserInfo(): {
       };
     }
 
-    const isMemberOfClabAdmins = userGroups.includes('clab_admins');
-    const isMemberOfDocker = userGroups.includes('docker');
+    const isMemberOfClabAdmins = userGroups.includes("clab_admins");
+    const isMemberOfDocker = userGroups.includes("docker");
 
     if (isMemberOfClabAdmins && isMemberOfDocker) {
       return {
@@ -140,12 +137,12 @@ export function getUserInfo(): {
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    outputChannel.error(`User info check failed: ${errorMessage}`)
+    outputChannel.error(`User info check failed: ${errorMessage}`);
     return {
       hasPermission: false,
       isRoot: false,
       userGroups: [],
-      username: '',
+      username: "",
       uid: -1
     };
   }
@@ -168,17 +165,17 @@ export function isOrbstack(): boolean {
 export async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
-    server.listen(0, '127.0.0.1');
-    server.on('listening', () => {
+    server.listen(0, "127.0.0.1");
+    server.on("listening", () => {
       const address = server.address();
       server.close();
-      if (typeof address === 'object' && address?.port) {
+      if (typeof address === "object" && address?.port) {
         resolve(address.port);
       } else {
-        reject(new Error('Could not get free port'));
+        reject(new Error("Could not get free port"));
       }
     });
-    server.on('error', reject);
+    server.on("error", reject);
   });
 }
 
@@ -208,9 +205,8 @@ async function runAndLog(
   const { stdout: cmdOut, stderr: cmdErr } = await execAsync(cmd);
   if (cmdOut) outputChannel.info(cmdOut);
   if (cmdErr) outputChannel.warn(`[${description} stderr]: ${cmdErr}`);
-  const combined = includeStderr && returnOutput
-    ? [cmdOut, cmdErr].filter(Boolean).join("\n")
-    : cmdOut;
+  const combined =
+    includeStderr && returnOutput ? [cmdOut, cmdErr].filter(Boolean).join("\n") : cmdOut;
   return returnOutput ? combined : undefined;
 }
 
@@ -233,10 +229,9 @@ export async function runCommand(
   }
 }
 
-
 // Launch clab install script in a terminal. Let the shell handle sudo passwords.
 export function installContainerlab(): void {
-  const terminal = vscode.window.createTerminal('Containerlab Installation');
+  const terminal = vscode.window.createTerminal("Containerlab Installation");
   terminal.show();
   terminal.sendText('curl -sL https://containerlab.dev/setup | sudo bash -s "all"');
 }
@@ -252,14 +247,14 @@ export async function checkAndUpdateClabIfNeeded(
   try {
     const versionOutputRaw = await runCommand(
       `${containerlabBinaryPath} version check`,
-      'containerlab version check',
+      "containerlab version check",
       outputChannel,
       true,
       true
     );
     const versionOutput = (versionOutputRaw || "").trim();
     if (!versionOutput) {
-      throw new Error('No output from containerlab version check command.');
+      throw new Error("No output from containerlab version check command.");
     }
 
     if (versionOutput.includes("Version check timed out")) {
@@ -268,38 +263,40 @@ export async function checkAndUpdateClabIfNeeded(
     }
 
     // Register update command if there's a new version
-    if (versionOutput.includes("newer containerlab version") || versionOutput.includes("version:")) {
+    if (
+      versionOutput.includes("newer containerlab version") ||
+      versionOutput.includes("version:")
+    ) {
       // Register command for performing the update
-      const updateCommandId = 'containerlab.updateClab';
+      const updateCommandId = "containerlab.updateClab";
       context.subscriptions.push(
         vscode.commands.registerCommand(updateCommandId, () => {
-          const terminal = vscode.window.createTerminal('Containerlab Update');
+          const terminal = vscode.window.createTerminal("Containerlab Update");
           terminal.show();
           terminal.sendText(`${containerlabBinaryPath} version upgrade`);
-          vscode.window.showInformationMessage(`Containerlab update started in terminal 'Containerlab Update'. Please follow the prompts.`);
+          vscode.window.showInformationMessage(
+            `Containerlab update started in terminal 'Containerlab Update'. Please follow the prompts.`
+          );
         })
       );
 
       // Show non-modal notification with options
-      vscode.window.showInformationMessage(
-        versionOutput,
-        'Update Now',
-        'View Release Notes',
-        'Dismiss'
-      ).then(selection => {
-        if (selection === 'Update Now') {
-          vscode.commands.executeCommand(updateCommandId);
-        } else if (selection === 'View Release Notes') {
-          const urlRegex = /(https?:\/\/\S+)/;
-          const m = urlRegex.exec(versionOutput);
-          if (m) {
-            vscode.env.openExternal(vscode.Uri.parse(m[1]));
-          } else {
-            vscode.window.showInformationMessage("No release notes URL found.");
+      vscode.window
+        .showInformationMessage(versionOutput, "Update Now", "View Release Notes", "Dismiss")
+        .then((selection) => {
+          if (selection === "Update Now") {
+            vscode.commands.executeCommand(updateCommandId);
+          } else if (selection === "View Release Notes") {
+            const urlRegex = /(https?:\/\/\S+)/;
+            const m = urlRegex.exec(versionOutput);
+            if (m) {
+              vscode.env.openExternal(vscode.Uri.parse(m[1]));
+            } else {
+              vscode.window.showInformationMessage("No release notes URL found.");
+            }
           }
-        }
-        // For 'Dismiss' we do nothing
-      });
+          // For 'Dismiss' we do nothing
+        });
     } else {
       log("Containerlab is up to date.", outputChannel);
     }
@@ -307,7 +304,7 @@ export async function checkAndUpdateClabIfNeeded(
     const errorMessage = err instanceof Error ? err.message : String(err);
     log(`containerlab version check failed: ${errorMessage}`, outputChannel);
     vscode.window.showErrorMessage(
-      'Unable to detect containerlab version. Please check your installation.'
+      "Unable to detect containerlab version. Please check your installation."
     );
   }
 }
@@ -316,7 +313,9 @@ export async function checkAndUpdateClabIfNeeded(
 // Command helper functions
 // ----------------------------------------------------------
 
-export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLabTreeNode | undefined> {
+export async function getSelectedLabNode(
+  node?: ClabLabTreeNode
+): Promise<ClabLabTreeNode | undefined> {
   if (node) {
     return node;
   }
@@ -347,7 +346,7 @@ export async function getSelectedLabNode(node?: ClabLabTreeNode): Promise<ClabLa
 // Rules: only [A-Za-z0-9_.-], must start with alnum, no trailing '.'/'-'.
 export function sanitize(
   raw: string,
-  { maxLen = 128, lower = false }: { maxLen?: number; lower?: boolean } = {},
+  { maxLen = 128, lower = false }: { maxLen?: number; lower?: boolean } = {}
 ): string {
   if (!raw) return "container";
 

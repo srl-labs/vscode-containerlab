@@ -5,36 +5,36 @@
  * - A regular node: Node Name + Kind/Type/Image/Version/Icon fields
  * - A custom node template: Custom Node Name, Base Name, Interface Pattern, Set as default + Kind/Type/Image/Version/Icon fields
  */
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 
-import { FormField, InputField, FilterableDropdown } from '../../shared/form';
-import { IconSelectorModal } from '../../shared/IconSelectorModal';
-import type { NodeType } from '../../../utils/SvgGenerator';
-import { generateEncodedSVG } from '../../../utils/SvgGenerator';
-import { useSchema, useDockerImages } from '../../../hooks/data';
-import { useTopoViewerState } from '../../../context/TopoViewerContext';
+import { FormField, InputField, FilterableDropdown } from "../../shared/form";
+import { IconSelectorModal } from "../../shared/IconSelectorModal";
+import type { NodeType } from "../../../utils/SvgGenerator";
+import { generateEncodedSVG } from "../../../utils/SvgGenerator";
+import { useSchema, useDockerImages } from "../../../hooks/data";
+import { useTopoViewerState } from "../../../context/TopoViewerContext";
 
-import type { TabProps } from './types';
-import { CustomNodeTemplateFields } from './CustomNodeTemplateFields';
+import type { TabProps } from "./types";
+import { CustomNodeTemplateFields } from "./CustomNodeTemplateFields";
 
-const DEFAULT_ICON_COLOR = '#1a73e8';
+const DEFAULT_ICON_COLOR = "#1a73e8";
 
 // Icon options for dropdown (static, defined outside component)
 const ICON_OPTIONS = [
-  { value: 'pe', label: 'PE Router' },
-  { value: 'dcgw', label: 'DC Gateway' },
-  { value: 'leaf', label: 'Leaf' },
-  { value: 'switch', label: 'Switch' },
-  { value: 'bridge', label: 'Bridge' },
-  { value: 'spine', label: 'Spine' },
-  { value: 'super-spine', label: 'Super Spine' },
-  { value: 'server', label: 'Server' },
-  { value: 'pon', label: 'PON' },
-  { value: 'controller', label: 'Controller' },
-  { value: 'rgw', label: 'RGW' },
-  { value: 'ue', label: 'User Equipment' },
-  { value: 'cloud', label: 'Cloud' },
-  { value: 'client', label: 'Client' }
+  { value: "pe", label: "PE Router" },
+  { value: "dcgw", label: "DC Gateway" },
+  { value: "leaf", label: "Leaf" },
+  { value: "switch", label: "Switch" },
+  { value: "bridge", label: "Bridge" },
+  { value: "spine", label: "Spine" },
+  { value: "super-spine", label: "Super Spine" },
+  { value: "server", label: "Server" },
+  { value: "pon", label: "PON" },
+  { value: "controller", label: "Controller" },
+  { value: "rgw", label: "RGW" },
+  { value: "ue", label: "User Equipment" },
+  { value: "cloud", label: "Cloud" },
+  { value: "client", label: "Client" }
 ];
 
 /**
@@ -44,7 +44,7 @@ function getIconSrc(icon: string, color: string): string {
   try {
     return generateEncodedSVG(icon as NodeType, color);
   } catch {
-    return generateEncodedSVG('pe', color);
+    return generateEncodedSVG("pe", color);
   }
 }
 
@@ -62,12 +62,11 @@ const NodeNameField: React.FC<TabProps> = ({ data, onChange }) => (
   <FormField label="Node Name">
     <InputField
       id="node-name"
-      value={data.name || ''}
+      value={data.name || ""}
       onChange={(value) => onChange({ name: value })}
     />
   </FormField>
 );
-
 
 /**
  * Kind field with filterable dropdown - options from schema
@@ -77,23 +76,29 @@ interface KindFieldProps extends TabProps {
   onKindChange: (kind: string) => void;
 }
 
-const KindField: React.FC<KindFieldProps> = ({ data, onChange, kinds, onKindChange, inheritedProps = [] }) => {
-  const kindOptions = useMemo(() =>
-    kinds.map(kind => ({ value: kind, label: kind })),
-    [kinds]
+const KindField: React.FC<KindFieldProps> = ({
+  data,
+  onChange,
+  kinds,
+  onKindChange,
+  inheritedProps = []
+}) => {
+  const kindOptions = useMemo(() => kinds.map((kind) => ({ value: kind, label: kind })), [kinds]);
+
+  const handleKindChange = useCallback(
+    (value: string) => {
+      onChange({ kind: value });
+      onKindChange(value);
+    },
+    [onChange, onKindChange]
   );
 
-  const handleKindChange = useCallback((value: string) => {
-    onChange({ kind: value });
-    onKindChange(value);
-  }, [onChange, onKindChange]);
-
   return (
-    <FormField label="Kind" inherited={inheritedProps.includes('kind')}>
+    <FormField label="Kind" inherited={inheritedProps.includes("kind")}>
       <FilterableDropdown
         id="node-kind"
         options={kindOptions}
-        value={data.kind || ''}
+        value={data.kind || ""}
         onChange={handleKindChange}
         placeholder="Search or type kind..."
         allowFreeText={true}
@@ -109,20 +114,27 @@ interface TypeFieldProps extends TabProps {
   availableTypes: string[];
 }
 
-const TypeField: React.FC<TypeFieldProps> = ({ data, onChange, availableTypes, inheritedProps = [] }) => {
-  const typeOptions = useMemo(() =>
-    availableTypes.map(type => ({ value: type, label: type })),
+const TypeField: React.FC<TypeFieldProps> = ({
+  data,
+  onChange,
+  availableTypes,
+  inheritedProps = []
+}) => {
+  const typeOptions = useMemo(
+    () => availableTypes.map((type) => ({ value: type, label: type })),
     [availableTypes]
   );
 
   return (
-    <FormField label="Type" inherited={inheritedProps.includes('type')}>
+    <FormField label="Type" inherited={inheritedProps.includes("type")}>
       <FilterableDropdown
         id="node-type"
         options={typeOptions}
-        value={data.type || ''}
+        value={data.type || ""}
         onChange={(value) => onChange({ type: value })}
-        placeholder={availableTypes.length > 0 ? 'Search or type...' : 'Type value (no predefined types)'}
+        placeholder={
+          availableTypes.length > 0 ? "Search or type..." : "Type value (no predefined types)"
+        }
         allowFreeText={true}
       />
     </FormField>
@@ -154,7 +166,7 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
 }) => {
   // Parse the current image into base and version
   const { base: currentBase, version: currentVersion } = useMemo(() => {
-    return parseImageString(data.image || '');
+    return parseImageString(data.image || "");
   }, [data.image, parseImageString]);
 
   // Track version separately for better UX when changing base image
@@ -171,33 +183,39 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
   }, [currentBase, getVersionsForImage]);
 
   // Build options for base image dropdown
-  const imageOptions = useMemo(() =>
-    baseImages.map(img => ({ value: img, label: img })),
+  const imageOptions = useMemo(
+    () => baseImages.map((img) => ({ value: img, label: img })),
     [baseImages]
   );
 
   // Build options for version dropdown
-  const versionOptions = useMemo(() =>
-    availableVersions.map(v => ({ value: v, label: v })),
+  const versionOptions = useMemo(
+    () => availableVersions.map((v) => ({ value: v, label: v })),
     [availableVersions]
   );
 
   // Handle base image change
-  const handleBaseChange = useCallback((newBase: string) => {
-    // Get first available version for the new base, or keep current if custom
-    const versions = getVersionsForImage(newBase);
-    const newVersion = versions.length > 0 ? versions[0] : localVersion;
-    setLocalVersion(newVersion);
-    onChange({ image: combineImageVersion(newBase, newVersion) });
-  }, [getVersionsForImage, localVersion, onChange, combineImageVersion]);
+  const handleBaseChange = useCallback(
+    (newBase: string) => {
+      // Get first available version for the new base, or keep current if custom
+      const versions = getVersionsForImage(newBase);
+      const newVersion = versions.length > 0 ? versions[0] : localVersion;
+      setLocalVersion(newVersion);
+      onChange({ image: combineImageVersion(newBase, newVersion) });
+    },
+    [getVersionsForImage, localVersion, onChange, combineImageVersion]
+  );
 
   // Handle version change
-  const handleVersionChange = useCallback((newVersion: string) => {
-    setLocalVersion(newVersion);
-    onChange({ image: combineImageVersion(currentBase, newVersion) });
-  }, [currentBase, onChange, combineImageVersion]);
+  const handleVersionChange = useCallback(
+    (newVersion: string) => {
+      setLocalVersion(newVersion);
+      onChange({ image: combineImageVersion(currentBase, newVersion) });
+    },
+    [currentBase, onChange, combineImageVersion]
+  );
 
-  const isImageInherited = inheritedProps.includes('image');
+  const isImageInherited = inheritedProps.includes("image");
 
   // If we have docker images, show dropdowns
   if (hasImages) {
@@ -262,8 +280,8 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const color = data.iconColor || DEFAULT_ICON_COLOR;
   // Don't apply default for dropdown value - show actual value (or empty)
   // Only use fallback for preview image rendering
-  const icon = data.icon || '';
-  const previewIcon = icon || 'pe';
+  const icon = data.icon || "";
+  const previewIcon = icon || "pe";
 
   // Build custom icon map for efficient lookup
   const customIconMap = useMemo(() => {
@@ -276,29 +294,35 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
 
   // Build combined icon options (built-in + custom)
   const allIconOptions = useMemo(() => {
-    const customOptions = customIcons.map(ci => ({
+    const customOptions = customIcons.map((ci) => ({
       value: ci.name,
-      label: ci.name + ' (custom)'
+      label: ci.name + " (custom)"
     }));
     return [...ICON_OPTIONS, ...customOptions];
   }, [customIcons]);
 
   // Get icon source - check custom icons first, then built-in
-  const getIconSource = useCallback((iconName: string, iconColor: string): string => {
-    const customDataUri = customIconMap.get(iconName);
-    if (customDataUri) {
-      return customDataUri;
-    }
-    return getIconSrc(iconName, iconColor);
-  }, [customIconMap]);
+  const getIconSource = useCallback(
+    (iconName: string, iconColor: string): string => {
+      const customDataUri = customIconMap.get(iconName);
+      if (customDataUri) {
+        return customDataUri;
+      }
+      return getIconSrc(iconName, iconColor);
+    },
+    [customIconMap]
+  );
 
-  const handleIconSave = useCallback((newIcon: string, newColor: string | null, cornerRadius: number) => {
-    onChange({
-      icon: newIcon,
-      iconColor: newColor ?? undefined,
-      iconCornerRadius: cornerRadius
-    });
-  }, [onChange]);
+  const handleIconSave = useCallback(
+    (newIcon: string, newColor: string | null, cornerRadius: number) => {
+      onChange({
+        icon: newIcon,
+        iconColor: newColor ?? undefined,
+        iconCornerRadius: cornerRadius
+      });
+    },
+    [onChange]
+  );
 
   // Render icon option with preview
   const renderOption = useCallback(
@@ -367,31 +391,29 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
   const { kinds, getTypesForKind, kindSupportsType, isLoaded } = useSchema();
 
   // Get docker images data
-  const {
-    baseImages,
-    hasImages,
-    getVersionsForImage,
-    parseImageString,
-    combineImageVersion
-  } = useDockerImages();
+  const { baseImages, hasImages, getVersionsForImage, parseImageString, combineImageVersion } =
+    useDockerImages();
 
   // Track available types based on selected kind
   const availableTypes = useMemo(() => {
-    return getTypesForKind(data.kind || '');
+    return getTypesForKind(data.kind || "");
   }, [data.kind, getTypesForKind]);
 
   // Check if the current kind supports the type field
   const showTypeField = useMemo(() => {
-    return kindSupportsType(data.kind || '');
+    return kindSupportsType(data.kind || "");
   }, [data.kind, kindSupportsType]);
 
   // Handler for kind changes - always clear type since different kinds have different type options
-  const handleKindChange = useCallback((_newKind: string) => {
-    // Always clear type when kind changes - types are kind-specific
-    if (data.type) {
-      onChange({ type: undefined });
-    }
-  }, [data.type, onChange]);
+  const handleKindChange = useCallback(
+    (_newKind: string) => {
+      // Always clear type when kind changes - types are kind-specific
+      if (data.type) {
+        onChange({ type: undefined });
+      }
+    },
+    [data.type, onChange]
+  );
 
   return (
     <div className="space-y-3">
@@ -413,7 +435,12 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
 
       {/* Only show Type field for kinds that support it */}
       {showTypeField && (
-        <TypeField data={data} onChange={onChange} availableTypes={availableTypes} inheritedProps={inheritedProps} />
+        <TypeField
+          data={data}
+          onChange={onChange}
+          availableTypes={availableTypes}
+          inheritedProps={inheritedProps}
+        />
       )}
 
       {/* Image and Version in 2-column grid */}
@@ -433,11 +460,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
       <IconField data={data} onChange={onChange} />
 
       {/* Show loading indicator if schema not yet loaded */}
-      {!isLoaded && (
-        <div className="helper-text opacity-60">
-          Loading schema...
-        </div>
-      )}
+      {!isLoaded && <div className="helper-text opacity-60">Loading schema...</div>}
     </div>
   );
 };

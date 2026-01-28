@@ -3,22 +3,21 @@
  * This is the VS Code integration layer that wraps the shared parser.
  */
 
-import * as YAML from 'yaml';
+import * as YAML from "yaml";
 
-import type { ClabTopology, CyElement, TopologyAnnotations } from '../../shared/types/topology';
-import type { ClabLabTreeNode } from '../../../treeView/common';
+import type { ClabTopology, CyElement, TopologyAnnotations } from "../../shared/types/topology";
+import type { ClabLabTreeNode } from "../../../treeView/common";
 import {
   TopologyParser,
   computeEdgeClassFromStates as computeEdgeClassFromStatesImpl,
   type ParserLogger,
-  type GraphLabelMigration,
-} from '../../shared/parsing';
-import { applyInterfacePatternMigrations } from '../../shared/utilities';
+  type GraphLabelMigration
+} from "../../shared/parsing";
+import { applyInterfacePatternMigrations } from "../../shared/utilities";
 
-import { log } from './logger';
-import { annotationsIO } from './annotations';
-import { ContainerDataAdapter } from './ContainerDataAdapter';
-
+import { log } from "./logger";
+import { annotationsIO } from "./annotations";
+import { ContainerDataAdapter } from "./ContainerDataAdapter";
 
 /**
  * Adapter that wraps log to implement ParserLogger.
@@ -27,7 +26,7 @@ const parserLogger: ParserLogger = {
   info: (msg) => log.info(`[Parser] ${msg}`),
   warn: (msg) => log.warn(`[Parser] ${msg}`),
   debug: (msg) => log.debug(`[Parser] ${msg}`),
-  error: (msg) => log.error(`[Parser] ${msg}`),
+  error: (msg) => log.error(`[Parser] ${msg}`)
 };
 
 /**
@@ -78,14 +77,16 @@ export class TopoViewerAdaptorClab {
     this.currentClabTopo = parsed;
 
     // Load annotations
-    const annotations = yamlFilePath ? await annotationsIO.loadAnnotations(yamlFilePath) : undefined;
+    const annotations = yamlFilePath
+      ? await annotationsIO.loadAnnotations(yamlFilePath)
+      : undefined;
 
     // Parse with the shared parser (with or without container data)
     const result = containerDataProvider
       ? TopologyParser.parse(yamlContent, {
           annotations: annotations as TopologyAnnotations | undefined,
           containerDataProvider,
-          logger: parserLogger,
+          logger: parserLogger
         })
       : TopologyParser.parseForEditor(yamlContent, annotations as TopologyAnnotations | undefined);
 
@@ -96,12 +97,16 @@ export class TopoViewerAdaptorClab {
 
     // Handle graph label migrations (persist to annotations file)
     if (yamlFilePath && result.graphLabelMigrations.length > 0) {
-      await this.persistGraphLabelMigrations(yamlFilePath, annotations, result.graphLabelMigrations);
+      await this.persistGraphLabelMigrations(
+        yamlFilePath,
+        annotations,
+        result.graphLabelMigrations
+      );
     }
 
     // Migrate interface patterns to annotations for nodes that don't have them
     if (yamlFilePath && result.pendingMigrations.length > 0) {
-      this.migrateInterfacePatterns(yamlFilePath, result.pendingMigrations).catch(err => {
+      this.migrateInterfacePatterns(yamlFilePath, result.pendingMigrations).catch((err) => {
         log.warn(`[TopologyAdapter] Failed to migrate interface patterns: ${err}`);
       });
     }
@@ -113,13 +118,19 @@ export class TopoViewerAdaptorClab {
    * Computes edge class based on interface states (public API).
    */
   public computeEdgeClassFromStates(
-    topology: NonNullable<ClabTopology['topology']>,
+    topology: NonNullable<ClabTopology["topology"]>,
     sourceNode: string,
     targetNode: string,
     sourceState?: string,
     targetState?: string
   ): string {
-    return computeEdgeClassFromStatesImpl(topology, sourceNode, targetNode, sourceState, targetState);
+    return computeEdgeClassFromStatesImpl(
+      topology,
+      sourceNode,
+      targetNode,
+      sourceState,
+      targetState
+    );
   }
 
   /**
@@ -151,13 +162,11 @@ export class TopoViewerAdaptorClab {
     annotations: Record<string, unknown> | undefined,
     migrations: GraphLabelMigration[]
   ): Promise<void> {
-    type NodeAnnotation = { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } };
-
     const localAnnotations = (annotations ?? {
       freeTextAnnotations: [],
       groupStyleAnnotations: [],
       nodeAnnotations: []
-    }) as { nodeAnnotations: NodeAnnotation[] };
+    }) as { nodeAnnotations: NodeAnnotationShape[] };
     localAnnotations.nodeAnnotations = localAnnotations.nodeAnnotations ?? [];
 
     const existingIds = new Set(localAnnotations.nodeAnnotations.map((na) => na.id));
@@ -170,15 +179,26 @@ export class TopoViewerAdaptorClab {
     }
 
     await annotationsIO.saveAnnotations(yamlFilePath, localAnnotations as Record<string, unknown>);
-    log.info('Saved migrated graph-* labels to annotations.json');
+    log.info("Saved migrated graph-* labels to annotations.json");
   }
+}
+
+/** Node annotation shape used for graph label migration */
+interface NodeAnnotationShape {
+  id: string;
+  position?: { x: number; y: number };
+  icon?: string;
+  group?: string;
+  level?: string;
+  groupLabelPos?: string;
+  geoCoordinates?: { lat: number; lng: number };
 }
 
 /**
  * Builds a NodeAnnotation from a GraphLabelMigration.
  */
-function buildAnnotationFromMigration(migration: GraphLabelMigration): { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } } {
-  const annotation: { id: string; position?: { x: number; y: number }; icon?: string; group?: string; level?: string; groupLabelPos?: string; geoCoordinates?: { lat: number; lng: number } } = { id: migration.nodeId };
+function buildAnnotationFromMigration(migration: GraphLabelMigration): NodeAnnotationShape {
+  const annotation: NodeAnnotationShape = { id: migration.nodeId };
   if (migration.position) annotation.position = migration.position;
   if (migration.icon) annotation.icon = migration.icon;
   if (migration.group) annotation.group = migration.group;

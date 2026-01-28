@@ -9,17 +9,17 @@
  * Individual audio hooks compose this with their specific audio generation.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { AudioEngineConfig, AudioEngineRefs, AudioEngineReturn } from './types';
+import type { AudioEngineConfig, AudioEngineRefs, AudioEngineReturn } from "./types";
 
 /**
  * Default configuration values
  */
-const DEFAULTS: Required<Omit<AudioEngineConfig, 'onPlay' | 'onStop' | 'loopEnd'>> = {
+const DEFAULTS: Required<Omit<AudioEngineConfig, "onPlay" | "onStop" | "loopEnd">> = {
   loop: false,
   fftSize: 256,
-  smoothingTimeConstant: 0.85,
+  smoothingTimeConstant: 0.85
 };
 
 /**
@@ -45,7 +45,7 @@ export function useAudioEngine(
     fftSize = DEFAULTS.fftSize,
     smoothingTimeConstant = DEFAULTS.smoothingTimeConstant,
     onPlay,
-    onStop,
+    onStop
   } = config;
 
   // React state - initialize mute from global state
@@ -92,11 +92,11 @@ export function useAudioEngine(
         return;
       }
 
-      const ctx = new AudioContext({ latencyHint: 'playback' });
+      const ctx = new AudioContext({ latencyHint: "playback" });
       audioContextRef.current = ctx;
 
       // Resume if suspended (mobile browsers)
-      if (ctx.state === 'suspended') {
+      if (ctx.state === "suspended") {
         await ctx.resume();
       }
 
@@ -222,7 +222,7 @@ export function useAudioEngine(
     refs: {
       audioContextRef,
       startTimeRef,
-      analyserRef,
-    },
+      analyserRef
+    }
   };
 }

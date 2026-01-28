@@ -12,8 +12,8 @@ import {
   SINGLE_ENDPOINT_TYPES,
   HOSTY_TYPES,
   splitEndpointLike,
-  isSpecialEndpointId,
-} from '../utilities/LinkTypes';
+  isSpecialEndpointId
+} from "../utilities/LinkTypes";
 
 // Re-export for convenience
 export {
@@ -23,24 +23,24 @@ export {
   PREFIX_VXLAN,
   PREFIX_VXLAN_STITCH,
   splitEndpointLike,
-  isSpecialEndpointId,
+  isSpecialEndpointId
 };
 
-import type { DummyContext } from './types';
+import type { DummyContext } from "./types";
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 export const TYPES = {
-  HOST: 'host',
-  MGMT_NET: 'mgmt-net',
-  MACVLAN: 'macvlan',
-  VXLAN: 'vxlan',
-  VXLAN_STITCH: 'vxlan-stitch',
-  BRIDGE: 'bridge',
-  OVS_BRIDGE: 'ovs-bridge',
-  DUMMY: 'dummy',
+  HOST: "host",
+  MGMT_NET: "mgmt-net",
+  MACVLAN: "macvlan",
+  VXLAN: "vxlan",
+  VXLAN_STITCH: "vxlan-stitch",
+  BRIDGE: "bridge",
+  OVS_BRIDGE: "ovs-bridge",
+  DUMMY: "dummy"
 } as const;
 
 export type SpecialNodeType = (typeof TYPES)[keyof typeof TYPES];
@@ -54,7 +54,7 @@ export const SINGLE_ENDPOINT_TYPE_LIST: string[] = [
   TYPES.MACVLAN,
   TYPES.DUMMY,
   TYPES.VXLAN,
-  TYPES.VXLAN_STITCH,
+  TYPES.VXLAN_STITCH
 ];
 
 // ============================================================================
@@ -93,7 +93,7 @@ export function splitEndpoint(
  * Builds a host/mgmt-net/macvlan ID.
  */
 function buildHostyId(t: string, linkObj: Record<string, unknown>): string {
-  return `${t}:${linkObj?.['host-interface'] ?? ''}`;
+  return `${t}:${linkObj?.["host-interface"] ?? ""}`;
 }
 
 /**
@@ -144,10 +144,10 @@ export function normalizeSingleTypeToSpecialId(
   ctx: DummyContext
 ): string {
   if (HOSTY_TYPES.has(t)) return buildHostyId(t, linkObj);
-  if (t === 'vxlan') return buildVxlanId(linkObj, ctx);
-  if (t === 'vxlan-stitch') return buildVxlanStitchId(linkObj, ctx);
-  if (t === 'dummy') return buildDummyId(linkObj, ctx);
-  return '';
+  if (t === "vxlan") return buildVxlanId(linkObj, ctx);
+  if (t === "vxlan-stitch") return buildVxlanStitchId(linkObj, ctx);
+  if (t === "dummy") return buildDummyId(linkObj, ctx);
+  return "";
 }
 
 // ============================================================================
@@ -162,14 +162,14 @@ export function normalizeLinkToTwoEndpoints(
   ctx: DummyContext
 ): NormalizedLink | null {
   const t = linkObj?.type as string | undefined;
-  if (t === 'veth') {
+  if (t === "veth") {
     const endpoints = linkObj?.endpoints as unknown[] | undefined;
     const [a, b] = endpoints ?? [];
     if (!a || !b) return null;
     return { endA: a, endB: b, type: t };
   }
 
-  if (SINGLE_ENDPOINT_TYPES.has(t ?? '')) {
+  if (SINGLE_ENDPOINT_TYPES.has(t ?? "")) {
     const a = linkObj?.endpoint;
     if (!a) return null;
     const special = normalizeSingleTypeToSpecialId(t!, linkObj, ctx);
@@ -190,30 +190,26 @@ export function normalizeLinkToTwoEndpoints(
  * Resolves the actual node ID for special endpoint types.
  */
 export function resolveActualNode(node: string, iface: string): string {
-  if (node === 'host') return `host:${iface}`;
-  if (node === 'mgmt-net') return `mgmt-net:${iface}`;
+  if (node === "host") return `host:${iface}`;
+  if (node === "mgmt-net") return `mgmt-net:${iface}`;
   if (node.startsWith(PREFIX_MACVLAN)) return node;
   if (node.startsWith(PREFIX_VXLAN_STITCH)) return node;
-  if (node.startsWith('vxlan:')) return node;
-  if (node.startsWith('dummy')) return node;
+  if (node.startsWith("vxlan:")) return node;
+  if (node.startsWith("dummy")) return node;
   return node;
 }
 
 /**
  * Builds the container name for a node.
  */
-export function buildContainerName(
-  node: string,
-  actualNode: string,
-  fullPrefix: string
-): string {
+export function buildContainerName(node: string, actualNode: string, fullPrefix: string): string {
   if (
-    node === 'host' ||
-    node === 'mgmt-net' ||
+    node === "host" ||
+    node === "mgmt-net" ||
     node.startsWith(PREFIX_MACVLAN) ||
-    node.startsWith('vxlan:') ||
+    node.startsWith("vxlan:") ||
     node.startsWith(PREFIX_VXLAN_STITCH) ||
-    node.startsWith('dummy')
+    node.startsWith("dummy")
   ) {
     return actualNode;
   }
@@ -225,10 +221,10 @@ export function buildContainerName(
  */
 export function shouldOmitEndpoint(node: string): boolean {
   return (
-    node === 'host' ||
-    node === 'mgmt-net' ||
+    node === "host" ||
+    node === "mgmt-net" ||
     node.startsWith(PREFIX_MACVLAN) ||
-    node.startsWith('dummy')
+    node.startsWith("dummy")
   );
 }
 
@@ -236,9 +232,9 @@ export function shouldOmitEndpoint(node: string): boolean {
  * Extracts MAC address from an endpoint object.
  */
 export function extractEndpointMac(endpoint: unknown): string {
-  return typeof endpoint === 'object' && endpoint !== null
-    ? ((endpoint as Record<string, unknown>)?.mac as string) ?? ''
-    : '';
+  return typeof endpoint === "object" && endpoint !== null
+    ? (((endpoint as Record<string, unknown>)?.mac as string) ?? "")
+    : "";
 }
 
 // ============================================================================
@@ -255,6 +251,6 @@ export function createDummyContext(): DummyContext {
     vxlanCounter: 0,
     vxlanLinkMap: new Map(),
     vxlanStitchCounter: 0,
-    vxlanStitchLinkMap: new Map(),
+    vxlanStitchLinkMap: new Map()
   };
 }

@@ -16,7 +16,7 @@ export {
   useClipboardHandlers,
   useAppKeyboardShortcuts,
   useGraphCreation
-} from './app';
+} from "./app";
 export type {
   CustomNodeCommands,
   NavbarCommands,
@@ -31,4 +31,4 @@ export type {
   AppKeyboardShortcutsConfig,
   GraphCreationConfig,
   GraphCreationReturn
-} from './app';
+} from "./app";

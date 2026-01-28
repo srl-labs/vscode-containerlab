@@ -13,11 +13,11 @@ interface ContainerPort {
  */
 interface ContainerLabels {
   containerlab?: string;
-  'clab-topo-file'?: string;
-  'clab-node-longname'?: string;
-  'clab-node-kind'?: string;
-  'clab-node-type'?: string;
-  'clab-owner'?: string;
+  "clab-topo-file"?: string;
+  "clab-node-longname"?: string;
+  "clab-node-kind"?: string;
+  "clab-node-type"?: string;
+  "clab-owner"?: string;
   [key: string]: string | undefined;
 }
 
@@ -100,9 +100,9 @@ function buildPortsHtml(
         const portId = `port-${containerId}-${p.port}-${p.protocol}`;
         return `<a href="#" class="port-link" data-container-name="${containerName}" data-container-id="${containerId}" data-port="${p.port}" data-protocol="${p.protocol}" id="${portId}">${p.port}/${p.protocol}</a>`;
       })
-      .join(', ');
+      .join(", ");
   }
-  return '-';
+  return "-";
 }
 
 export function getInspectHtml(
@@ -117,11 +117,12 @@ export function getInspectHtml(
   // Group containers by lab name - check multiple possible locations
   const grouped: Record<string, ContainerData[]> = {};
   containers.forEach((c) => {
-    const key = c.lab_name ||
-                c.labPath ||
-                c.Labels?.['containerlab'] ||
-                c.Labels?.['clab-topo-file']?.split('/').slice(-1)[0]?.replace('.clab.yml', '') ||
-                "unknown-lab";
+    const key =
+      c.lab_name ||
+      c.labPath ||
+      c.Labels?.["containerlab"] ||
+      c.Labels?.["clab-topo-file"]?.split("/").slice(-1)[0]?.replace(".clab.yml", "") ||
+      "unknown-lab";
     if (!grouped[key]) {
       grouped[key] = [];
     }

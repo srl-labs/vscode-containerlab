@@ -1,26 +1,41 @@
 /**
  * App helper hooks - extracted from App.tsx to reduce file size
  */
-import React from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { CustomNodeTemplate, CustomTemplateEditorData, NetworkType } from '../../../shared/types/editors';
+import type {
+  CustomNodeTemplate,
+  CustomTemplateEditorData,
+  NetworkType
+} from "../../../shared/types/editors";
 import {
   createNewTemplateEditorData,
   convertTemplateToEditorData
-} from '../../../shared/utilities/customNodeConversions';
+} from "../../../shared/utilities/customNodeConversions";
 import {
   ensureCytoscapeLayersRegistered,
   getCytoscapeLayers,
   configureLayerNode,
   type IHTMLLayer
-} from '../shared/cytoscapeLayers';
-import { log } from '../../utils/logger';
-import { sendDeleteCustomNode, sendSetDefaultCustomNode, sendCommandToExtension } from '../../utils/extensionMessaging';
-import type { UseUndoRedoReturn } from '../state/useUndoRedo';
-import type { FreeTextAnnotation, FreeShapeAnnotation, GroupStyleAnnotation } from '../../../shared/types/topology';
-import type { MapLibreState } from '../canvas/maplibreUtils';
-import { assignMissingGeoCoordinatesToAnnotations, assignMissingGeoCoordinatesToShapeAnnotations } from '../canvas/maplibreUtils';
+} from "../shared/cytoscapeLayers";
+import { log } from "../../utils/logger";
+import {
+  sendDeleteCustomNode,
+  sendSetDefaultCustomNode,
+  sendCommandToExtension
+} from "../../utils/extensionMessaging";
+import type { UseUndoRedoReturn } from "../state/useUndoRedo";
+import type {
+  FreeTextAnnotation,
+  FreeShapeAnnotation,
+  GroupStyleAnnotation
+} from "../../../shared/types/topology";
+import type { MapLibreState } from "../canvas/maplibreUtils";
+import {
+  assignMissingGeoCoordinatesToAnnotations,
+  assignMissingGeoCoordinatesToShapeAnnotations
+} from "../canvas/maplibreUtils";
 
 /**
  * Custom node template UI commands interface
@@ -44,12 +59,15 @@ export function useCustomNodeCommands(
     editCustomTemplate(templateData);
   }, [editCustomTemplate]);
 
-  const onEditCustomNode = React.useCallback((nodeName: string) => {
-    const template = customNodes.find(n => n.name === nodeName);
-    if (!template) return;
-    const templateData = convertTemplateToEditorData(template);
-    editCustomTemplate(templateData);
-  }, [customNodes, editCustomTemplate]);
+  const onEditCustomNode = React.useCallback(
+    (nodeName: string) => {
+      const template = customNodes.find((n) => n.name === nodeName);
+      if (!template) return;
+      const templateData = convertTemplateToEditorData(template);
+      editCustomTemplate(templateData);
+    },
+    [customNodes, editCustomTemplate]
+  );
 
   const onDeleteCustomNode = React.useCallback((nodeName: string) => {
     sendDeleteCustomNode(nodeName);
@@ -84,7 +102,7 @@ export function useNavbarCommands(): NavbarCommands {
   }, []);
 
   const onToggleSplit = React.useCallback(() => {
-    sendCommandToExtension('topo-toggle-split-view');
+    sendCommandToExtension("topo-toggle-split-view");
   }, []);
 
   return {
@@ -116,17 +134,17 @@ export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
 
     try {
       const layers = getCytoscapeLayers(cy);
-      log.info('[ShapeLayer] Creating shape layer below nodes');
+      log.info("[ShapeLayer] Creating shape layer below nodes");
 
       // Create layer BELOW the node layer
-      const shapeLayer = layers.nodeLayer.insertBefore('html');
+      const shapeLayer = layers.nodeLayer.insertBefore("html");
       layerRef.current = shapeLayer;
 
       // Configure the layer node - pointer events NONE on container so clicks pass through
       // to layers below (like GroupLayer). Individual shape items set pointerEvents: 'auto'.
-      configureLayerNode(shapeLayer.node, 'none', 'shape-layer-container');
+      configureLayerNode(shapeLayer.node, "none", "shape-layer-container");
 
-      log.info('[ShapeLayer] Shape layer created');
+      log.info("[ShapeLayer] Shape layer created");
       setShapeLayerNode(shapeLayer.node);
     } catch (err) {
       log.error(`[ShapeLayer] Failed to create layer: ${err}`);
@@ -169,17 +187,17 @@ export function useTextLayer(cy: CyCore | null): UseTextLayerReturn {
 
     try {
       const layers = getCytoscapeLayers(cy);
-      log.info('[TextLayer] Creating text layer above nodes');
+      log.info("[TextLayer] Creating text layer above nodes");
 
       // Create layer ABOVE all other layers (on top)
-      const textLayer = layers.append('html');
+      const textLayer = layers.append("html");
       layerRef.current = textLayer;
 
       // Configure the layer node - pointer events NONE on container so clicks pass through
       // to layers below (like GroupLayer). Individual text items set pointerEvents: 'auto'.
-      configureLayerNode(textLayer.node, 'none', 'text-layer-container');
+      configureLayerNode(textLayer.node, "none", "text-layer-container");
 
-      log.info('[TextLayer] Text layer created');
+      log.info("[TextLayer] Text layer created");
       setTextLayerNode(textLayer.node);
     } catch (err) {
       log.error(`[TextLayer] Failed to create layer: ${err}`);
@@ -196,7 +214,7 @@ export function useTextLayer(cy: CyCore | null): UseTextLayerReturn {
 }
 
 /** Layout option type for E2E testing */
-export type LayoutOption = 'preset' | 'cose' | 'cola' | 'radial' | 'hierarchical' | 'geo';
+export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
 
 /**
  * E2E testing exposure configuration
@@ -204,21 +222,43 @@ export type LayoutOption = 'preset' | 'cose' | 'cola' | 'radial' | 'hierarchical
 export interface E2ETestingConfig {
   cyInstance: CyCore | null;
   isLocked: boolean;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   toggleLock: () => void;
   undoRedo: UseUndoRedoReturn;
-  handleEdgeCreated: (sourceId: string, targetId: string, edgeData: { id: string; source: string; target: string; sourceEndpoint: string; targetEndpoint: string }) => void;
-  handleNodeCreatedCallback: (nodeId: string, nodeElement: { group: 'nodes' | 'edges'; data: Record<string, unknown>; position?: { x: number; y: number }; classes?: string }, position: { x: number; y: number }) => void;
+  handleEdgeCreated: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void;
+  handleNodeCreatedCallback: (
+    nodeId: string,
+    nodeElement: {
+      group: "nodes" | "edges";
+      data: Record<string, unknown>;
+      position?: { x: number; y: number };
+      classes?: string;
+    },
+    position: { x: number; y: number }
+  ) => void;
   handleAddGroupWithUndo: () => void;
-  createNetworkAtPosition: (position: { x: number; y: number }, networkType: NetworkType) => string | null;
+  createNetworkAtPosition: (
+    position: { x: number; y: number },
+    networkType: NetworkType
+  ) => string | null;
   editNetwork?: (nodeId: string | null) => void;
   groups: GroupStyleAnnotation[];
   elements: unknown[];
   /** Layout controls for E2E testing */
   setLayout?: (layout: LayoutOption) => void;
-  setGeoMode?: (mode: 'pan' | 'edit') => void;
+  setGeoMode?: (mode: "pan" | "edit") => void;
   isGeoLayout?: boolean;
-  geoMode?: 'pan' | 'edit';
+  geoMode?: "pan" | "edit";
 }
 
 /**
@@ -227,14 +267,27 @@ export interface E2ETestingConfig {
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
   const {
-    cyInstance, isLocked, mode, toggleLock, undoRedo, handleEdgeCreated, handleNodeCreatedCallback,
-    handleAddGroupWithUndo, createNetworkAtPosition, editNetwork, groups, elements,
-    setLayout, setGeoMode, isGeoLayout, geoMode
+    cyInstance,
+    isLocked,
+    mode,
+    toggleLock,
+    undoRedo,
+    handleEdgeCreated,
+    handleNodeCreatedCallback,
+    handleAddGroupWithUndo,
+    createNetworkAtPosition,
+    editNetwork,
+    groups,
+    elements,
+    setLayout,
+    setGeoMode,
+    isGeoLayout,
+    geoMode
   } = config;
 
   // Core E2E exposure (cy, isLocked, mode, setLocked)
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
+    if (typeof window !== "undefined" && window.__DEV__) {
       if (cyInstance) window.__DEV__.cy = cyInstance;
       window.__DEV__.isLocked = () => isLocked;
       window.__DEV__.mode = () => mode;
@@ -246,18 +299,25 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
 
   // Undo/redo E2E exposure
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
+    if (typeof window !== "undefined" && window.__DEV__) {
       window.__DEV__.undoRedo = { canUndo: undoRedo.canUndo, canRedo: undoRedo.canRedo };
       window.__DEV__.handleEdgeCreated = handleEdgeCreated;
       window.__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
       window.__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
       window.__DEV__.createNetworkAtPosition = createNetworkAtPosition;
     }
-  }, [undoRedo.canUndo, undoRedo.canRedo, handleEdgeCreated, handleNodeCreatedCallback, handleAddGroupWithUndo, createNetworkAtPosition]);
+  }, [
+    undoRedo.canUndo,
+    undoRedo.canRedo,
+    handleEdgeCreated,
+    handleNodeCreatedCallback,
+    handleAddGroupWithUndo,
+    createNetworkAtPosition
+  ]);
 
   // Network editor E2E exposure
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__ && editNetwork) {
+    if (typeof window !== "undefined" && window.__DEV__ && editNetwork) {
       window.__DEV__.openNetworkEditor = (nodeId: string | null) => {
         editNetwork(nodeId);
       };
@@ -266,7 +326,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
 
   // Groups E2E exposure
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
+    if (typeof window !== "undefined" && window.__DEV__) {
       window.__DEV__.getReactGroups = () => groups;
       window.__DEV__.groupsCount = groups.length;
     }
@@ -274,18 +334,18 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
 
   // Elements E2E exposure
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
+    if (typeof window !== "undefined" && window.__DEV__) {
       window.__DEV__.getElements = () => elements;
     }
   }, [elements]);
 
   // Layout controls E2E exposure
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.__DEV__) {
+    if (typeof window !== "undefined" && window.__DEV__) {
       if (setLayout) window.__DEV__.setLayout = setLayout;
       if (setGeoMode) window.__DEV__.setGeoMode = setGeoMode;
       window.__DEV__.isGeoLayout = () => isGeoLayout ?? false;
-      window.__DEV__.geoMode = () => geoMode ?? 'pan';
+      window.__DEV__.geoMode = () => geoMode ?? "pan";
     }
   }, [setLayout, setGeoMode, isGeoLayout, geoMode]);
 }
@@ -311,8 +371,15 @@ export interface GeoCoordinateSyncConfig {
  */
 export function useGeoCoordinateSync(config: GeoCoordinateSyncConfig): void {
   const {
-    mapLibreState, isGeoLayout, textAnnotations, shapeAnnotations, groups,
-    updateTextGeoPosition, updateShapeGeoPosition, updateShapeEndGeoPosition, updateGroupGeoPosition
+    mapLibreState,
+    isGeoLayout,
+    textAnnotations,
+    shapeAnnotations,
+    groups,
+    updateTextGeoPosition,
+    updateShapeGeoPosition,
+    updateShapeEndGeoPosition,
+    updateGroupGeoPosition
   } = config;
 
   const geoAssignedRef = React.useRef(false);
@@ -332,11 +399,14 @@ export function useGeoCoordinateSync(config: GeoCoordinateSyncConfig): void {
       });
     }
 
-    const shapeResult = assignMissingGeoCoordinatesToShapeAnnotations(mapLibreState, shapeAnnotations);
+    const shapeResult = assignMissingGeoCoordinatesToShapeAnnotations(
+      mapLibreState,
+      shapeAnnotations
+    );
     if (shapeResult.hasChanges) {
       shapeResult.updated.forEach((ann: FreeShapeAnnotation) => {
         if (ann.geoCoordinates) updateShapeGeoPosition(ann.id, ann.geoCoordinates);
-        if ('endGeoCoordinates' in ann && ann.endGeoCoordinates) {
+        if ("endGeoCoordinates" in ann && ann.endGeoCoordinates) {
           updateShapeEndGeoPosition(ann.id, ann.endGeoCoordinates);
         }
       });
@@ -349,7 +419,14 @@ export function useGeoCoordinateSync(config: GeoCoordinateSyncConfig): void {
       });
     }
   }, [
-    mapLibreState, isGeoLayout, textAnnotations, shapeAnnotations, groups,
-    updateTextGeoPosition, updateShapeGeoPosition, updateShapeEndGeoPosition, updateGroupGeoPosition
+    mapLibreState,
+    isGeoLayout,
+    textAnnotations,
+    shapeAnnotations,
+    groups,
+    updateTextGeoPosition,
+    updateShapeGeoPosition,
+    updateShapeEndGeoPosition,
+    updateGroupGeoPosition
   ]);
 }

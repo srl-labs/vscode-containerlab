@@ -6,10 +6,10 @@ export {
   useUnifiedClipboard,
   createHasClipboardData,
   createClearClipboard
-} from './useUnifiedClipboard';
+} from "./useUnifiedClipboard";
 export type {
   UnifiedClipboardData,
   PasteResult,
   UseUnifiedClipboardOptions,
   UseUnifiedClipboardReturn
-} from './useUnifiedClipboard';
+} from "./useUnifiedClipboard";

@@ -3,10 +3,10 @@
  * Pure functions - no VS Code dependencies, no I/O.
  */
 
-import type { NodeAnnotation } from '../types/topology';
-import { DEFAULT_INTERFACE_PATTERNS } from '../constants/interfacePatterns';
+import type { NodeAnnotation } from "../types/topology";
+import { DEFAULT_INTERFACE_PATTERNS } from "../constants/interfacePatterns";
 
-import type { InterfacePatternMigration } from './types';
+import type { InterfacePatternMigration } from "./types";
 
 // ============================================================================
 // Interface Pattern Resolution
@@ -38,7 +38,7 @@ export function resolveInterfacePattern(
 ): InterfacePatternResult {
   // First check if the annotation has an interface pattern (node-specific)
   const annPattern = nodeAnn?.interfacePattern;
-  if (typeof annPattern === 'string' && annPattern) {
+  if (typeof annPattern === "string" && annPattern) {
     return { pattern: annPattern, needsMigration: false };
   }
 
@@ -64,7 +64,7 @@ export function needsInterfacePatternMigration(
 ): boolean {
   // Node already has pattern in annotation - no migration needed
   const annPattern = nodeAnn?.interfacePattern;
-  if (typeof annPattern === 'string' && annPattern) {
+  if (typeof annPattern === "string" && annPattern) {
     return false;
   }
 
@@ -101,7 +101,7 @@ export function collectInterfacePatternMigrations(
   }
 
   for (const [nodeId, node] of Object.entries(nodes)) {
-    const kind = node.kind || '';
+    const kind = node.kind || "";
     const ann = annotationMap.get(nodeId);
 
     if (needsInterfacePatternMigration(ann, kind)) {

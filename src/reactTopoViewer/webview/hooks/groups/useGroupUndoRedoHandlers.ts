@@ -2,14 +2,14 @@
  * Hook that wraps group actions with undo/redo recording.
  * Similar pattern to useFreeShapeUndoRedoHandlers.
  */
-import React from 'react';
+import React from "react";
 
-import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import type { RelatedAnnotationChange, UndoRedoActionAnnotation } from '../state/useUndoRedo';
-import { type UndoRedoApi, updateWithUndo, createPushUndoFn } from '../shared/undoHelpers';
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import type { RelatedAnnotationChange, UndoRedoActionAnnotation } from "../state/useUndoRedo";
+import { type UndoRedoApi, updateWithUndo, createPushUndoFn } from "../shared/undoHelpers";
 
-import type { UseGroupsReturn } from './groupTypes';
-import { createGroupInserter, createGroupRemover, createGroupUpserter } from './groupHelpers';
+import type { UseGroupsReturn } from "./groupTypes";
+import { createGroupInserter, createGroupRemover, createGroupUpserter } from "./groupHelpers";
 
 export interface UseGroupUndoRedoHandlersReturn {
   createGroupWithUndo: (selectedNodeIds?: string[]) => string | null;
@@ -26,22 +26,28 @@ function cloneGroup(group: GroupStyleAnnotation | undefined): GroupStyleAnnotati
 }
 
 /** Transform group position */
-function transformPosition(group: GroupStyleAnnotation, position: { x: number; y: number }): GroupStyleAnnotation {
+function transformPosition(
+  group: GroupStyleAnnotation,
+  position: { x: number; y: number }
+): GroupStyleAnnotation {
   return { ...group, position: { ...position } };
 }
 
 /** Transform group size */
-function transformSize(group: GroupStyleAnnotation, size: { width: number; height: number }): GroupStyleAnnotation {
+function transformSize(
+  group: GroupStyleAnnotation,
+  size: { width: number; height: number }
+): GroupStyleAnnotation {
   return { ...group, ...size };
 }
 
 function applyGroupAnnotationChangeInternal(
   action: UndoRedoActionAnnotation,
   isUndo: boolean,
-  groupsApi: Pick<UseGroupsReturn, 'createGroup' | 'deleteGroup' | 'loadGroups' | 'groups'>,
+  groupsApi: Pick<UseGroupsReturn, "createGroup" | "deleteGroup" | "loadGroups" | "groups">,
   isApplyingRef: React.RefObject<boolean>
 ): void {
-  if (action.annotationType !== 'group') return;
+  if (action.annotationType !== "group") return;
   const target = (isUndo ? action.before : action.after) as GroupStyleAnnotation | null;
   const opposite = (isUndo ? action.after : action.before) as GroupStyleAnnotation | null;
 
@@ -82,11 +88,11 @@ export function useGroupUndoRedoHandlers(
         if (after && !isApplyingGroupUndoRedo.current) {
           const action = groupsApi.getUndoRedoAction(null, after);
           if (selectedNodeIds && selectedNodeIds.length > 0) {
-            action.membershipBefore = selectedNodeIds.map(nodeId => ({
+            action.membershipBefore = selectedNodeIds.map((nodeId) => ({
               nodeId,
               groupId: groupsApi.getNodeMembership(nodeId)
             }));
-            action.membershipAfter = selectedNodeIds.map(nodeId => ({
+            action.membershipAfter = selectedNodeIds.map((nodeId) => ({
               nodeId,
               groupId: result.groupId
             }));
@@ -102,18 +108,18 @@ export function useGroupUndoRedoHandlers(
 
   const deleteGroupWithUndo = React.useCallback(
     (groupId: string): void => {
-      const beforeGroup = cloneGroup(groupsApi.groups.find(g => g.id === groupId));
+      const beforeGroup = cloneGroup(groupsApi.groups.find((g) => g.id === groupId));
       if (beforeGroup && !isApplyingGroupUndoRedo.current) {
         const action = groupsApi.getUndoRedoAction(beforeGroup, null);
         const relatedAnnotations: RelatedAnnotationChange[] = [];
         const childGroups = groupsApi.getChildGroups(groupId);
         if (childGroups.length > 0) {
           const promotedParentId = beforeGroup.parentId;
-          childGroups.forEach(child => {
+          childGroups.forEach((child) => {
             const beforeChild = cloneGroup(child);
             if (!beforeChild) return;
             relatedAnnotations.push({
-              annotationType: 'group',
+              annotationType: "group",
               before: beforeChild,
               after: { ...beforeChild, parentId: promotedParentId }
             });
@@ -122,8 +128,8 @@ export function useGroupUndoRedoHandlers(
         const memberIds = groupsApi.getGroupMembers(groupId);
         if (memberIds.length > 0) {
           const parentId = groupsApi.getParentGroup(groupId)?.id ?? null;
-          action.membershipBefore = memberIds.map(nodeId => ({ nodeId, groupId }));
-          action.membershipAfter = memberIds.map(nodeId => ({ nodeId, groupId: parentId }));
+          action.membershipBefore = memberIds.map((nodeId) => ({ nodeId, groupId }));
+          action.membershipAfter = memberIds.map((nodeId) => ({ nodeId, groupId: parentId }));
         }
         if (relatedAnnotations.length > 0) {
           action.relatedAnnotations = relatedAnnotations;
@@ -138,8 +144,13 @@ export function useGroupUndoRedoHandlers(
   const updateGroupPositionWithUndo = React.useCallback(
     (groupId: string, position: { x: number; y: number }): void => {
       updateWithUndo(
-        groupId, groupsApi.groups, cloneGroup, transformPosition,
-        pushUndoFn, groupsApi.updateGroupPosition, position
+        groupId,
+        groupsApi.groups,
+        cloneGroup,
+        transformPosition,
+        pushUndoFn,
+        groupsApi.updateGroupPosition,
+        position
       );
     },
     [groupsApi.groups, groupsApi.updateGroupPosition, pushUndoFn]
@@ -148,8 +159,12 @@ export function useGroupUndoRedoHandlers(
   const updateGroupSizeWithUndo = React.useCallback(
     (groupId: string, width: number, height: number): void => {
       updateWithUndo(
-        groupId, groupsApi.groups, cloneGroup, transformSize,
-        pushUndoFn, (id, size) => groupsApi.updateGroupSize(id, size.width, size.height),
+        groupId,
+        groupsApi.groups,
+        cloneGroup,
+        transformSize,
+        pushUndoFn,
+        (id, size) => groupsApi.updateGroupSize(id, size.width, size.height),
         { width, height }
       );
     },

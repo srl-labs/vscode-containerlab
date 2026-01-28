@@ -2,11 +2,11 @@
  * EdgeStatsBuilder - Builds edge statistics updates from lab inspection data
  */
 
-import type { ClabLabTreeNode } from '../../../treeView/common';
-import type { CyElement, ClabTopology } from '../../shared/types/topology';
-import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from '../../shared/parsing';
+import type { ClabLabTreeNode } from "../../../treeView/common";
+import type { CyElement, ClabTopology } from "../../shared/types/topology";
+import { extractEdgeInterfaceStats, computeEdgeClassFromStates } from "../../shared/parsing";
 
-import { findInterfaceNode } from './TreeUtils';
+import { findInterfaceNode } from "./TreeUtils";
 
 export interface EdgeStatsUpdate {
   id: string;
@@ -16,7 +16,7 @@ export interface EdgeStatsUpdate {
 
 export interface EdgeStatsBuilderContext {
   currentLabName: string;
-  topology: ClabTopology['topology'] | undefined;
+  topology: ClabTopology["topology"] | undefined;
 }
 
 /**
@@ -34,7 +34,7 @@ export function buildEdgeStatsUpdates(
   const updates: EdgeStatsUpdate[] = [];
 
   for (const el of elements) {
-    if (el.group !== 'edges') continue;
+    if (el.group !== "edges") continue;
     const update = buildSingleEdgeUpdate(el, labs, context);
     if (update) {
       updates.push(update);
@@ -57,14 +57,23 @@ function buildSingleEdgeUpdate(
   const extraData = (data.extraData ?? {}) as Record<string, unknown>;
 
   // Look up fresh interface data
-  const { sourceIface, targetIface } = lookupEdgeInterfaces(data, extraData, labs, context.currentLabName);
+  const { sourceIface, targetIface } = lookupEdgeInterfaces(
+    data,
+    extraData,
+    labs,
+    context.currentLabName
+  );
 
   // Build updated extraData from interfaces
   const updatedExtraData = buildInterfaceExtraData(sourceIface, targetIface);
 
   // Compute edge class based on interface states
   const edgeClass = computeEdgeClassForUpdate(
-    context.topology, extraData, data, sourceIface?.state, targetIface?.state
+    context.topology,
+    extraData,
+    data,
+    sourceIface?.state,
+    targetIface?.state
   );
 
   // Only return update if we have something to update
@@ -83,15 +92,24 @@ function lookupEdgeInterfaces(
   extraData: Record<string, unknown>,
   labs: Record<string, ClabLabTreeNode>,
   currentLabName: string
-): { sourceIface: ReturnType<typeof findInterfaceNode>; targetIface: ReturnType<typeof findInterfaceNode> } {
+): {
+  sourceIface: ReturnType<typeof findInterfaceNode>;
+  targetIface: ReturnType<typeof findInterfaceNode>;
+} {
   const sourceIfaceName = normalizeInterfaceName(extraData.clabSourcePort, data.sourceEndpoint);
   const targetIfaceName = normalizeInterfaceName(extraData.clabTargetPort, data.targetEndpoint);
 
   const sourceIface = findInterfaceNode(
-    labs, (extraData.clabSourceLongName as string) ?? '', sourceIfaceName, currentLabName
+    labs,
+    (extraData.clabSourceLongName as string) ?? "",
+    sourceIfaceName,
+    currentLabName
   );
   const targetIface = findInterfaceNode(
-    labs, (extraData.clabTargetLongName as string) ?? '', targetIfaceName, currentLabName
+    labs,
+    (extraData.clabTargetLongName as string) ?? "",
+    targetIfaceName,
+    currentLabName
   );
 
   return { sourceIface, targetIface };
@@ -107,10 +125,10 @@ function buildInterfaceExtraData(
   const updatedExtraData: Record<string, unknown> = {};
 
   if (sourceIface) {
-    applyInterfaceToExtraData(updatedExtraData, 'Source', sourceIface);
+    applyInterfaceToExtraData(updatedExtraData, "Source", sourceIface);
   }
   if (targetIface) {
-    applyInterfaceToExtraData(updatedExtraData, 'Target', targetIface);
+    applyInterfaceToExtraData(updatedExtraData, "Target", targetIface);
   }
 
   return updatedExtraData;
@@ -121,13 +139,13 @@ function buildInterfaceExtraData(
  */
 function applyInterfaceToExtraData(
   extraData: Record<string, unknown>,
-  prefix: 'Source' | 'Target',
+  prefix: "Source" | "Target",
   iface: NonNullable<ReturnType<typeof findInterfaceNode>>
 ): void {
-  extraData[`clab${prefix}InterfaceState`] = iface.state || '';
-  extraData[`clab${prefix}MacAddress`] = iface.mac ?? '';
-  extraData[`clab${prefix}Mtu`] = iface.mtu ?? '';
-  extraData[`clab${prefix}Type`] = iface.type ?? '';
+  extraData[`clab${prefix}InterfaceState`] = iface.state || "";
+  extraData[`clab${prefix}MacAddress`] = iface.mac ?? "";
+  extraData[`clab${prefix}Mtu`] = iface.mtu ?? "";
+  extraData[`clab${prefix}Type`] = iface.type ?? "";
   const stats = extractEdgeInterfaceStats(iface);
   if (stats) {
     extraData[`clab${prefix}Stats`] = stats;
@@ -138,7 +156,7 @@ function applyInterfaceToExtraData(
  * Compute edge class for an update.
  */
 function computeEdgeClassForUpdate(
-  topology: ClabTopology['topology'] | undefined,
+  topology: ClabTopology["topology"] | undefined,
   extraData: Record<string, unknown>,
   data: Record<string, unknown>,
   sourceState?: string,
@@ -154,11 +172,11 @@ function computeEdgeClassForUpdate(
  * Normalize interface name, using fallback if primary is empty.
  */
 function normalizeInterfaceName(value: unknown, fallback: unknown): string {
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof value === "string" && value.trim()) {
     return value;
   }
-  if (typeof fallback === 'string' && fallback.trim()) {
+  if (typeof fallback === "string" && fallback.trim()) {
     return fallback;
   }
-  return '';
+  return "";
 }

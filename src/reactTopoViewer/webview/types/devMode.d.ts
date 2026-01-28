@@ -4,13 +4,13 @@
  * to support E2E testing and debugging.
  */
 
-import type { Core as CyCore } from 'cytoscape';
+import type { Core as CyCore } from "cytoscape";
 
-import type { GroupStyleAnnotation, EdgeAnnotation } from '../../shared/types/topology';
-import type { NetworkType } from '../../shared/types/editors';
+import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/topology";
+import type { NetworkType } from "../../shared/types/editors";
 
 /** Layout option type */
-type LayoutOption = 'preset' | 'cose' | 'cola' | 'radial' | 'hierarchical' | 'geo';
+type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
 
 /**
  * Development mode interface for E2E testing and debugging.
@@ -22,7 +22,7 @@ export interface DevModeInterface {
   /** Check if topology is locked */
   isLocked?: () => boolean;
   /** Get current mode */
-  mode?: () => 'edit' | 'view';
+  mode?: () => "edit" | "view";
   /** Set locked state */
   setLocked?: (locked: boolean) => void;
   /** Undo/redo state */
@@ -46,7 +46,7 @@ export interface DevModeInterface {
   handleNodeCreatedCallback?: (
     nodeId: string,
     nodeElement: {
-      group: 'nodes' | 'edges';
+      group: "nodes" | "edges";
       data: Record<string, unknown>;
       position?: { x: number; y: number };
       classes?: string;
@@ -71,11 +71,11 @@ export interface DevModeInterface {
   /** Set layout for the graph (for E2E testing) */
   setLayout?: (layout: LayoutOption) => void;
   /** Set geo mode (pan/edit) for GeoMap layout */
-  setGeoMode?: (mode: 'pan' | 'edit') => void;
+  setGeoMode?: (mode: "pan" | "edit") => void;
   /** Check if currently in geo layout mode */
   isGeoLayout?: () => boolean;
   /** Get current geo mode */
-  geoMode?: () => 'pan' | 'edit';
+  geoMode?: () => "pan" | "edit";
 }
 
 /**
@@ -83,7 +83,7 @@ export interface DevModeInterface {
  */
 export interface WebviewInitialData {
   elements?: Array<{
-    group: 'nodes' | 'edges';
+    group: "nodes" | "edges";
     data: Record<string, unknown>;
     position?: { x: number; y: number };
     classes?: string;

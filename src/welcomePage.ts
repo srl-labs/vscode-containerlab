@@ -1,34 +1,17 @@
-import * as path from 'path';
-import * as fs from 'fs';
-import * as https from 'https';
+import * as path from "path";
+import * as fs from "fs";
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { extensionVersion } from './globals';
+import { extensionVersion } from "./globals";
+import { fallbackRepos, fetchPopularRepos, type PopularRepo } from "./helpers/popularLabs";
 
 /**
  * Message types sent from the webview to the extension
  */
 interface WebviewMessage {
-  command: 'createExample' | 'dontShowAgain' | 'getRepos';
+  command: "createExample" | "dontShowAgain" | "getRepos";
   value?: boolean;
-}
-
-/**
- * GitHub repository data structure
- */
-interface GitHubRepo {
-  name: string;
-  html_url: string;
-  description: string | null;
-  stargazers_count: number;
-}
-
-/**
- * GitHub API search response
- */
-interface GitHubSearchResponse {
-  items: GitHubRepo[];
 }
 
 /**
@@ -47,8 +30,8 @@ export class WelcomePage {
    */
   public async show(): Promise<void> {
     // Check if welcome page should be shown
-    const config = vscode.workspace.getConfiguration('containerlab');
-    const showWelcomePage = config.get<boolean>('showWelcomePage', true);
+    const config = vscode.workspace.getConfiguration("containerlab");
+    const showWelcomePage = config.get<boolean>("showWelcomePage", true);
 
     if (!showWelcomePage) {
       return;
@@ -56,19 +39,17 @@ export class WelcomePage {
 
     // Create and show the webview panel
     this.panel = vscode.window.createWebviewPanel(
-      'containerlabWelcome',
-      'Welcome to Containerlab',
+      "containerlabWelcome",
+      "Welcome to Containerlab",
       vscode.ViewColumn.One,
       {
         enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.file(path.join(this.context.extensionPath, 'resources'))
-        ]
+        localResourceRoots: [vscode.Uri.file(path.join(this.context.extensionPath, "resources"))]
       }
     );
 
     const iconUri = vscode.Uri.file(
-      path.join(this.context.extensionPath, 'resources', 'containerlab.svg')
+      path.join(this.context.extensionPath, "resources", "containerlab.svg")
     );
     this.panel.iconPath = iconUri;
 
@@ -78,112 +59,39 @@ export class WelcomePage {
     // Handle webview messages
     this.panel.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       switch (message.command) {
-        case 'createExample':
+        case "createExample":
           this.createExampleTopology();
           break;
-        case 'dontShowAgain':
+        case "dontShowAgain":
           this.saveWelcomePageSetting(!message.value);
           break;
-        case 'getRepos':
+        case "getRepos":
           void this.fetchGitHubRepos();
           break;
       }
     });
   }
 
-  // Fallback repository list in case GitHub API is rate-limited
-  private readonly fallbackRepos: GitHubRepo[] = [
-    {
-      name: "srl-telemetry-lab",
-      html_url: "https://github.com/srl-labs/srl-telemetry-lab",
-      description: "A lab demonstrating the telemetry stack with SR Linux.",
-      stargazers_count: 85
-    },
-    {
-      name: "netbox-nrx-clab",
-      html_url: "https://github.com/srl-labs/netbox-nrx-clab",
-      description: "NetBox NRX Containerlab integration, enabling network automation use cases.",
-      stargazers_count: 65
-    },
-    {
-      name: "sros-anysec-macsec-lab",
-      html_url: "https://github.com/srl-labs/sros-anysec-macsec-lab",
-      description: "SR OS Anysec & MACsec lab with containerlab.",
-      stargazers_count: 42
-    },
-    {
-      name: "intent-based-ansible-lab",
-      html_url: "https://github.com/srl-labs/intent-based-ansible-lab",
-      description: "Intent-based networking lab with Ansible and SR Linux.",
-      stargazers_count: 38
-    },
-    {
-      name: "multivendor-evpn-lab",
-      html_url: "https://github.com/srl-labs/multivendor-evpn-lab",
-      description: "Multivendor EVPN lab with Nokia, Arista, and Cisco network operating systems.",
-      stargazers_count: 78
-    }
-  ];
-
   /**
    * Fetches repositories from GitHub with the clab-topo topic.
    */
   private async fetchGitHubRepos(): Promise<void> {
-    const url = 'https://api.github.com/search/repositories?q=topic:clab-topo+org:srl-labs+fork:true&sort=stars&order=desc';
-
-    this.fetchJson(url)
-      .then(data => {
-        if (this.panel) {
-          this.panel.webview.postMessage({
-            command: 'reposLoaded',
-            repos: data.items || [],
-            usingFallback: false
-          });
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching GitHub repositories:', error);
-        if (this.panel) {
-          this.panel.webview.postMessage({
-            command: 'reposLoaded',
-            repos: this.fallbackRepos,
-            usingFallback: true
-          });
-        }
-      });
-  }
-
-  /**
-   * Helper to fetch JSON data from a URL.
-   */
-  private fetchJson(url: string): Promise<GitHubSearchResponse> {
-    return new Promise((resolve, reject) => {
-      const req = https.get(url, {
-        headers: {
-          'User-Agent': 'VSCode-Containerlab-Extension',
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      }, (res) => {
-        let data = '';
-
-        res.on('data', (chunk) => {
-          data += chunk;
+    const postRepos = (repos: PopularRepo[], usingFallback: boolean) => {
+      if (this.panel) {
+        this.panel.webview.postMessage({
+          command: "reposLoaded",
+          repos,
+          usingFallback
         });
+      }
+    };
 
-        res.on('end', () => {
-          try {
-            const parsedData = JSON.parse(data) as GitHubSearchResponse;
-            resolve(parsedData);
-          } catch (e) {
-            reject(e);
-          }
-        });
-      }).on('error', (err) => {
-        reject(err);
+    fetchPopularRepos()
+      .then((repos) => postRepos(repos, false))
+      .catch((error) => {
+        console.error("Error fetching GitHub repositories:", error);
+        postRepos(fallbackRepos, true);
       });
-
-      req.end();
-    });
   }
 
   /**
@@ -193,17 +101,17 @@ export class WelcomePage {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     if (!workspaceFolders) {
-      vscode.window.showErrorMessage('No workspace folder is open. Please open a folder first.');
+      vscode.window.showErrorMessage("No workspace folder is open. Please open a folder first.");
       return;
     }
 
     const rootPath = workspaceFolders[0].uri.fsPath;
-    const filePath = path.join(rootPath, 'example.clab.yml');
+    const filePath = path.join(rootPath, "example.clab.yml");
 
     // Check if file already exists
     if (fs.existsSync(filePath)) {
-      vscode.window.showWarningMessage('example.clab.yml already exists in the workspace.');
-      vscode.workspace.openTextDocument(filePath).then(doc => {
+      vscode.window.showWarningMessage("example.clab.yml already exists in the workspace.");
+      vscode.workspace.openTextDocument(filePath).then((doc) => {
         vscode.window.showTextDocument(doc);
       });
       return;
@@ -232,9 +140,9 @@ topology:
     fs.writeFileSync(filePath, content);
 
     // Open the file in editor
-    vscode.workspace.openTextDocument(filePath).then(doc => {
+    vscode.workspace.openTextDocument(filePath).then((doc) => {
       vscode.window.showTextDocument(doc);
-      vscode.window.showInformationMessage('Created example.clab.yml in your workspace.');
+      vscode.window.showInformationMessage("Created example.clab.yml in your workspace.");
     });
   }
 
@@ -242,16 +150,19 @@ topology:
    * Save the welcome page setting
    */
   private saveWelcomePageSetting(show: boolean): void {
-    const config = vscode.workspace.getConfiguration('containerlab');
-    config.update('showWelcomePage', show, vscode.ConfigurationTarget.Global);
+    const config = vscode.workspace.getConfiguration("containerlab");
+    config.update("showWelcomePage", show, vscode.ConfigurationTarget.Global);
   }
 
   /**
    * Get the webview HTML content
    */
   private async getWebviewContent(): Promise<string> {
-
-    const cssURI = this.panel?.webview.asWebviewUri(vscode.Uri.file(path.join(this.context.extensionPath, 'resources', 'tailwind.js'))).toString();
+    const cssURI = this.panel?.webview
+      .asWebviewUri(
+        vscode.Uri.file(path.join(this.context.extensionPath, "resources", "tailwind.js"))
+      )
+      .toString();
 
     return `<!DOCTYPE html>
 <html lang="en">

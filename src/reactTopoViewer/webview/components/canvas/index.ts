@@ -1,9 +1,9 @@
 /**
  * Canvas module exports
  */
-export { CytoscapeCanvas } from './CytoscapeCanvas';
-export type { CytoscapeCanvasRef } from './CytoscapeCanvas';
-export { cytoscapeStyles, generateRoleStyles, ROLE_SVG_MAP } from './styles';
+export { CytoscapeCanvas } from "./CytoscapeCanvas";
+export type { CytoscapeCanvasRef } from "./CytoscapeCanvas";
+export { cytoscapeStyles, generateRoleStyles, ROLE_SVG_MAP } from "./styles";
 export {
   ensureColaRegistered,
   hasPresetPositions,
@@ -12,7 +12,7 @@ export {
   updateCytoscapeElements,
   handleCytoscapeReady,
   applyStubLinkClasses
-} from './init';
+} from "./init";
 export {
   isCreatingEdge,
   isContextMenuActive,
@@ -20,4 +20,4 @@ export {
   setupEventHandlers,
   createCustomWheelHandler,
   attachCustomWheelZoom
-} from './events';
+} from "./events";

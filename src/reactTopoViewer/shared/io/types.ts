@@ -29,7 +29,7 @@ export const noopLogger: IOLogger = {
   debug: () => {},
   info: () => {},
   warn: () => {},
-  error: () => {},
+  error: () => {}
 };
 
 /**
@@ -80,7 +80,7 @@ export interface FileSystemAdapter {
 }
 
 /** Common error messages */
-export const ERROR_NODES_NOT_MAP = 'YAML topology.nodes is not a map';
-export const ERROR_LINKS_NOT_SEQ = 'YAML topology.links is not a sequence';
-export const ERROR_SERVICE_NOT_INIT = 'Service not initialized';
-export const ERROR_NO_YAML_PATH = 'No YAML file path set';
+export const ERROR_NODES_NOT_MAP = "YAML topology.nodes is not a map";
+export const ERROR_LINKS_NOT_SEQ = "YAML topology.links is not a sequence";
+export const ERROR_SERVICE_NOT_INIT = "Service not initialized";
+export const ERROR_NO_YAML_PATH = "No YAML file path set";

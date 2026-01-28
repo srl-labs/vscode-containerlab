@@ -4,15 +4,15 @@
  * including annotations that belong to groups.
  */
 
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
-} from '../../../shared/types/topology';
+} from "../../../shared/types/topology";
 
-import type { GroupDragOffset } from './groupTypes';
+import type { GroupDragOffset } from "./groupTypes";
 import {
   getDescendantGroups as getDescendantsUtil,
   getChildGroups as getChildrenUtil,
@@ -23,7 +23,7 @@ import {
   getAnnotationsInGroup,
   getAllAnnotationsInHierarchy,
   sortGroupsByDepthThenZIndex
-} from './hierarchyUtils';
+} from "./hierarchyUtils";
 
 export interface UseGroupHierarchyOptions {
   groups: GroupStyleAnnotation[];
@@ -57,7 +57,7 @@ export interface UseGroupHierarchyReturn {
   setGroupParent: (groupId: string, parentId: string | null) => boolean;
   setAnnotationGroup: (
     annotationId: string,
-    annotationType: 'freeText' | 'freeShape',
+    annotationType: "freeText" | "freeShape",
     groupId: string | null
   ) => void;
 
@@ -66,11 +66,7 @@ export interface UseGroupHierarchyReturn {
 
   // Rendering helpers
   getSortedGroups: () => GroupStyleAnnotation[];
-  calculateDragOffsets: (
-    rootGroupId: string,
-    dx: number,
-    dy: number
-  ) => GroupDragOffset[];
+  calculateDragOffsets: (rootGroupId: string, dx: number, dy: number) => GroupDragOffset[];
 
   // Hierarchy snapshot for undo/redo
   captureHierarchyState: (groupId: string) => {
@@ -130,7 +126,7 @@ export function useGroupHierarchy({
   const isDescendantOf = useCallback(
     (groupId: string, potentialAncestorId: string): boolean => {
       const ancestors = getAncestorGroups(groupId, groups);
-      return ancestors.some(a => a.id === potentialAncestorId);
+      return ancestors.some((a) => a.id === potentialAncestorId);
     },
     [groups]
   );
@@ -177,12 +173,12 @@ export function useGroupHierarchy({
   const setAnnotationGroup = useCallback(
     (
       annotationId: string,
-      annotationType: 'freeText' | 'freeShape',
+      annotationType: "freeText" | "freeShape",
       groupId: string | null
     ): void => {
-      if (annotationType === 'freeText' && onUpdateTextAnnotation) {
+      if (annotationType === "freeText" && onUpdateTextAnnotation) {
         onUpdateTextAnnotation(annotationId, { groupId: groupId ?? undefined });
-      } else if (annotationType === 'freeShape' && onUpdateShapeAnnotation) {
+      } else if (annotationType === "freeShape" && onUpdateShapeAnnotation) {
         onUpdateShapeAnnotation(annotationId, { groupId: groupId ?? undefined });
       }
     },
@@ -222,7 +218,7 @@ export function useGroupHierarchy({
       shapeAnnotations: FreeShapeAnnotation[];
     } => {
       // Get the group and all descendants
-      const rootGroup = groups.find(g => g.id === groupId);
+      const rootGroup = groups.find((g) => g.id === groupId);
       if (!rootGroup) {
         return { groups: [], textAnnotations: [], shapeAnnotations: [] };
       }
@@ -238,9 +234,9 @@ export function useGroupHierarchy({
       );
 
       return {
-        groups: [rootGroup, ...descendantGroups].map(g => ({ ...g })),
-        textAnnotations: texts.map(t => ({ ...t })),
-        shapeAnnotations: shapes.map(s => ({ ...s }))
+        groups: [rootGroup, ...descendantGroups].map((g) => ({ ...g })),
+        textAnnotations: texts.map((t) => ({ ...t })),
+        shapeAnnotations: shapes.map((s) => ({ ...s }))
       };
     },
     [groups, textAnnotations, shapeAnnotations]

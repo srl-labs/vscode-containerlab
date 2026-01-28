@@ -10,9 +10,9 @@
  * Tempo: ~91 BPM
  */
 
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
-import { getAMinorFrequency, useAudioEngine, type MelodyNote } from './core';
+import { getAMinorFrequency, useAudioEngine, type MelodyNote } from "./core";
 
 const BEAT = 0.659;
 const SIXTEENTH = BEAT / 4;
@@ -34,13 +34,13 @@ function buildMelody(): MelodyNote[] {
     { sd: 6, octave: -1, beat: 24.5, duration: 3.5 },
     { sd: 5, octave: -1, beat: 28, duration: 0.5 },
     { sd: 4, octave: -1, beat: 28.5, duration: 4 },
-    { sd: 3, octave: -1, beat: 32.5, duration: 0.5 },
+    { sd: 3, octave: -1, beat: 32.5, duration: 0.5 }
   ];
 
-  return rawNotes.map(note => ({
+  return rawNotes.map((note) => ({
     frequency: getAMinorFrequency(note.sd, note.octave),
     beat: note.beat,
-    duration: note.duration,
+    duration: note.duration
   }));
 }
 
@@ -48,39 +48,87 @@ const FULL_MELODY = buildMelody();
 
 const ARPEGGIO_PATTERNS = {
   Am: [
-    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
-    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
-    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
-    { sd: 1, octave: -1 }, { sd: 5, octave: -1 }, { sd: 1, octave: 0 }, { sd: 5, octave: -1 },
+    { sd: 1, octave: -1 },
+    { sd: 5, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 5, octave: -1 },
+    { sd: 1, octave: -1 },
+    { sd: 5, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 5, octave: -1 },
+    { sd: 1, octave: -1 },
+    { sd: 5, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 5, octave: -1 },
+    { sd: 1, octave: -1 },
+    { sd: 5, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 5, octave: -1 }
   ],
   GB: [
-    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
-    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
-    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
-    { sd: 2, octave: -1 }, { sd: 7, octave: -1 }, { sd: 2, octave: 0 }, { sd: 7, octave: -1 },
+    { sd: 2, octave: -1 },
+    { sd: 7, octave: -1 },
+    { sd: 2, octave: 0 },
+    { sd: 7, octave: -1 },
+    { sd: 2, octave: -1 },
+    { sd: 7, octave: -1 },
+    { sd: 2, octave: 0 },
+    { sd: 7, octave: -1 },
+    { sd: 2, octave: -1 },
+    { sd: 7, octave: -1 },
+    { sd: 2, octave: 0 },
+    { sd: 7, octave: -1 },
+    { sd: 2, octave: -1 },
+    { sd: 7, octave: -1 },
+    { sd: 2, octave: 0 },
+    { sd: 7, octave: -1 }
   ],
   F: [
-    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
-    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
-    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
-    { sd: 6, octave: -2 }, { sd: 3, octave: -1 }, { sd: 6, octave: -1 }, { sd: 3, octave: -1 },
+    { sd: 6, octave: -2 },
+    { sd: 3, octave: -1 },
+    { sd: 6, octave: -1 },
+    { sd: 3, octave: -1 },
+    { sd: 6, octave: -2 },
+    { sd: 3, octave: -1 },
+    { sd: 6, octave: -1 },
+    { sd: 3, octave: -1 },
+    { sd: 6, octave: -2 },
+    { sd: 3, octave: -1 },
+    { sd: 6, octave: -1 },
+    { sd: 3, octave: -1 },
+    { sd: 6, octave: -2 },
+    { sd: 3, octave: -1 },
+    { sd: 6, octave: -1 },
+    { sd: 3, octave: -1 }
   ],
   Dm: [
-    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
-    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
-    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
-    { sd: 4, octave: -1 }, { sd: 1, octave: 0 }, { sd: 4, octave: 0 }, { sd: 1, octave: 0 },
-  ],
+    { sd: 4, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 4, octave: 0 },
+    { sd: 1, octave: 0 },
+    { sd: 4, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 4, octave: 0 },
+    { sd: 1, octave: 0 },
+    { sd: 4, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 4, octave: 0 },
+    { sd: 1, octave: 0 },
+    { sd: 4, octave: -1 },
+    { sd: 1, octave: 0 },
+    { sd: 4, octave: 0 },
+    { sd: 1, octave: 0 }
+  ]
 };
 
 const BASS_NOTES = {
   Am: getAMinorFrequency(1, -2),
   GB: getAMinorFrequency(7, -2),
   F: getAMinorFrequency(6, -2),
-  Dm: getAMinorFrequency(4, -2),
+  Dm: getAMinorFrequency(4, -2)
 };
 
-type NightcallChord = 'Am' | 'GB' | 'F' | 'Dm';
+type NightcallChord = "Am" | "GB" | "F" | "Dm";
 
 // Module-level cache for pre-rendered audio buffer
 let cachedBuffer: AudioBuffer | null = null;
@@ -96,19 +144,19 @@ function createLeadNoteOffline(
   volume: number = 0.15
 ): void {
   const saw1 = ctx.createOscillator();
-  saw1.type = 'sawtooth';
+  saw1.type = "sawtooth";
   saw1.frequency.value = frequency;
 
   const saw2 = ctx.createOscillator();
-  saw2.type = 'sawtooth';
+  saw2.type = "sawtooth";
   saw2.frequency.value = frequency * 1.007;
 
   const saw3 = ctx.createOscillator();
-  saw3.type = 'sawtooth';
+  saw3.type = "sawtooth";
   saw3.frequency.value = frequency * 0.993;
 
   const sub = ctx.createOscillator();
-  sub.type = 'sine';
+  sub.type = "sine";
   sub.frequency.value = frequency / 2;
 
   const saw1Gain = ctx.createGain();
@@ -117,7 +165,7 @@ function createLeadNoteOffline(
   const subGain = ctx.createGain();
 
   const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
+  filter.type = "lowpass";
   filter.Q.value = 2;
 
   filter.frequency.setValueAtTime(400, startTime);
@@ -185,18 +233,18 @@ function createArpNoteOffline(
   const duration = SIXTEENTH * 0.9;
 
   const osc1 = ctx.createOscillator();
-  osc1.type = 'square';
+  osc1.type = "square";
   osc1.frequency.value = frequency;
 
   const osc2 = ctx.createOscillator();
-  osc2.type = 'sawtooth';
+  osc2.type = "sawtooth";
   osc2.frequency.value = frequency * 1.003;
 
   const osc1Gain = ctx.createGain();
   const osc2Gain = ctx.createGain();
 
   const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
+  filter.type = "lowpass";
   filter.Q.value = 4;
 
   filter.frequency.setValueAtTime(300, startTime);
@@ -235,18 +283,18 @@ function createBassNoteOffline(
   volume: number = 0.2
 ): void {
   const sub = ctx.createOscillator();
-  sub.type = 'sine';
+  sub.type = "sine";
   sub.frequency.value = frequency;
 
   const punch = ctx.createOscillator();
-  punch.type = 'square';
+  punch.type = "square";
   punch.frequency.value = frequency;
 
   const subGain = ctx.createGain();
   const punchGain = ctx.createGain();
 
   const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
+  filter.type = "lowpass";
   filter.frequency.value = 200;
   filter.Q.value = 1;
 
@@ -296,7 +344,7 @@ async function renderLoop(): Promise<AudioBuffer> {
     chorusDelay.delayTime.value = 0.018;
 
     const chorusLfo = ctx.createOscillator();
-    chorusLfo.type = 'sine';
+    chorusLfo.type = "sine";
     chorusLfo.frequency.value = 0.5;
     const chorusDepth = ctx.createGain();
     chorusDepth.gain.value = 0.003;
@@ -324,7 +372,7 @@ async function renderLoop(): Promise<AudioBuffer> {
     reverb3Gain.gain.value = 0.2;
 
     const reverbFilter = ctx.createBiquadFilter();
-    reverbFilter.type = 'lowpass';
+    reverbFilter.type = "lowpass";
     reverbFilter.frequency.value = 1500;
 
     const outputMixer = ctx.createGain();
@@ -355,13 +403,13 @@ async function renderLoop(): Promise<AudioBuffer> {
     const startTime = 0;
 
     // Schedule melody
-    FULL_MELODY.forEach(note => {
+    FULL_MELODY.forEach((note) => {
       const noteStart = startTime + (note.beat - 1) * BEAT;
       createLeadNoteOffline(ctx, note.frequency, noteStart, note.duration * BEAT, masterGain, 0.12);
     });
 
     // Schedule arpeggios
-    const chords: NightcallChord[] = ['Am', 'GB', 'F', 'Dm', 'Am', 'GB', 'F', 'Dm'];
+    const chords: NightcallChord[] = ["Am", "GB", "F", "Dm", "Am", "GB", "F", "Dm"];
     chords.forEach((chord, i) => {
       const chordStart = startTime + i * 4 * BEAT;
       const pattern = ARPEGGIO_PATTERNS[chord];
@@ -406,25 +454,25 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     loop: true,
     loopEnd: LOOP_DURATION,
     fftSize: 256,
-    smoothingTimeConstant: 0.85,
+    smoothingTimeConstant: 0.85
   });
 
   const getCurrentChord = useCallback((): string => {
     const { audioContextRef, startTimeRef } = engine.refs;
-    if (!audioContextRef.current || !engine.isPlaying) return 'Am';
+    if (!audioContextRef.current || !engine.isPlaying) return "Am";
 
     const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
     const positionInLoop = elapsed % LOOP_DURATION;
     const currentBeat = positionInLoop / BEAT;
 
-    if (currentBeat < 4) return 'Am';
-    if (currentBeat < 8) return 'GB';
-    if (currentBeat < 12) return 'F';
-    if (currentBeat < 16) return 'Dm';
-    if (currentBeat < 20) return 'Am';
-    if (currentBeat < 24) return 'GB';
-    if (currentBeat < 28) return 'F';
-    return 'Dm';
+    if (currentBeat < 4) return "Am";
+    if (currentBeat < 8) return "GB";
+    if (currentBeat < 12) return "F";
+    if (currentBeat < 16) return "Dm";
+    if (currentBeat < 20) return "Am";
+    if (currentBeat < 24) return "GB";
+    if (currentBeat < 28) return "F";
+    return "Dm";
   }, [engine.isPlaying, engine.refs]);
 
   const getBeatIntensity = useCallback((): number => {
@@ -448,6 +496,6 @@ export function useNightcallAudio(): UseNightcallAudioReturn {
     getFrequencyData: engine.getFrequencyData,
     getTimeDomainData: engine.getTimeDomainData,
     getBeatIntensity,
-    getCurrentChord,
+    getCurrentChord
   };
 }

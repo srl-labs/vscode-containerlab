@@ -1,21 +1,21 @@
 /**
  * Configuration Tab for Node Editor
  */
-import React from 'react';
+import React from "react";
 
-import { FormField, InputField, CheckboxField, DynamicList, KeyValueList } from '../../shared/form';
+import { FormField, InputField, CheckboxField, DynamicList, KeyValueList } from "../../shared/form";
 
-import type { TabProps } from './types';
+import type { TabProps } from "./types";
 
 /** Helper to check if a property is inherited */
 const isInherited = (prop: string, inheritedProps: string[] = []) => inheritedProps.includes(prop);
 
 const StartupConfigSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
   <>
-    <FormField label="Startup Config" inherited={isInherited('startup-config', inheritedProps)}>
+    <FormField label="Startup Config" inherited={isInherited("startup-config", inheritedProps)}>
       <InputField
         id="node-startup-config"
-        value={data.startupConfig || ''}
+        value={data.startupConfig || ""}
         onChange={(value) => onChange({ startupConfig: value })}
         placeholder="Path to config file"
       />
@@ -32,10 +32,10 @@ const StartupConfigSection: React.FC<TabProps> = ({ data, onChange, inheritedPro
       checked={data.suppressStartupConfig || false}
       onChange={(checked) => onChange({ suppressStartupConfig: checked })}
     />
-    <FormField label="License File" inherited={isInherited('license', inheritedProps)}>
+    <FormField label="License File" inherited={isInherited("license", inheritedProps)}>
       <InputField
         id="node-license"
-        value={data.license || ''}
+        value={data.license || ""}
         onChange={(value) => onChange({ license: value })}
         placeholder="Path to license file"
       />
@@ -45,7 +45,7 @@ const StartupConfigSection: React.FC<TabProps> = ({ data, onChange, inheritedPro
 
 const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
   <>
-    <FormField label="Bind Mounts" inherited={isInherited('binds', inheritedProps)}>
+    <FormField label="Bind Mounts" inherited={isInherited("binds", inheritedProps)}>
       <DynamicList
         items={data.binds || []}
         onChange={(items) => onChange({ binds: items })}
@@ -53,7 +53,7 @@ const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange, inheritedProps
         addLabel="Add Bind"
       />
     </FormField>
-    <FormField label="Environment Variables" inherited={isInherited('env', inheritedProps)}>
+    <FormField label="Environment Variables" inherited={isInherited("env", inheritedProps)}>
       <KeyValueList
         items={data.env || {}}
         onChange={(items) => onChange({ env: items })}
@@ -62,7 +62,7 @@ const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange, inheritedProps
         addLabel="Add Variable"
       />
     </FormField>
-    <FormField label="Environment Files" inherited={isInherited('env-files', inheritedProps)}>
+    <FormField label="Environment Files" inherited={isInherited("env-files", inheritedProps)}>
       <DynamicList
         items={data.envFiles || []}
         onChange={(items) => onChange({ envFiles: items })}
@@ -70,7 +70,7 @@ const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange, inheritedProps
         addLabel="Add Env File"
       />
     </FormField>
-    <FormField label="Labels" inherited={isInherited('labels', inheritedProps)}>
+    <FormField label="Labels" inherited={isInherited("labels", inheritedProps)}>
       <KeyValueList
         items={data.labels || {}}
         onChange={(items) => onChange({ labels: items })}

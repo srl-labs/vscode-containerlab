@@ -2,8 +2,8 @@
  * Generic form state hook for editor panels
  * Provides formData, updateField, hasChanges, and resetInitialData
  */
-import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import type React from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface UseGenericFormStateOptions<T> {
   /** Calculate isNew based on data */
@@ -43,11 +43,8 @@ export function useGenericFormState<T extends { id: string }>(
     }
   }, [data, transformData]);
 
-  const updateField = useCallback(<K extends keyof T>(
-    field: K,
-    value: T[K]
-  ) => {
-    setFormData(prev => prev ? { ...prev, [field]: value } : null);
+  const updateField = useCallback(<K extends keyof T>(field: K, value: T[K]) => {
+    setFormData((prev) => (prev ? { ...prev, [field]: value } : null));
   }, []);
 
   const resetInitialData = useCallback(() => {

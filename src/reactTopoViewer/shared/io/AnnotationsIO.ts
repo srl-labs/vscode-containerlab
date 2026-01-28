@@ -5,12 +5,16 @@
  * Environment-agnostic: works in both VS Code extension and dev server.
  */
 
-// eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
-import type { CloudNodeAnnotation, NetworkNodeAnnotation, TopologyAnnotations } from '../types/topology';
-import { createEmptyAnnotations } from '../annotations/types';
+import type {
+  // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
+  CloudNodeAnnotation,
+  NetworkNodeAnnotation,
+  TopologyAnnotations
+} from "../types/topology";
+import { createEmptyAnnotations } from "../annotations/types";
 
-import type { FileSystemAdapter, IOLogger} from './types';
-import { noopLogger } from './types';
+import type { FileSystemAdapter, IOLogger } from "./types";
+import { noopLogger } from "./types";
 
 /**
  * Options for creating an AnnotationsIO instance
@@ -35,14 +39,17 @@ export function migrateAnnotations(annotations: TopologyAnnotations): TopologyAn
   // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
   if (annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0) {
     // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
-    annotations.networkNodeAnnotations = annotations.cloudNodeAnnotations.map((cloud: CloudNodeAnnotation): NetworkNodeAnnotation => ({
-      id: cloud.id,
-      type: cloud.type,
-      label: cloud.label,
-      position: cloud.position,
-      group: cloud.group,
-      level: cloud.level
-    }));
+    annotations.networkNodeAnnotations = annotations.cloudNodeAnnotations.map(
+      // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated type for migration
+      (cloud: CloudNodeAnnotation): NetworkNodeAnnotation => ({
+        id: cloud.id,
+        type: cloud.type,
+        label: cloud.label,
+        position: cloud.position,
+        group: cloud.group,
+        level: cloud.level
+      })
+    );
 
     // Clear the old format (will be written as new format on next save)
     // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
@@ -81,7 +88,7 @@ export class AnnotationsIO {
   getAnnotationsFilePath(yamlFilePath: string): string {
     const dir = this.fs.dirname(yamlFilePath);
     const fullBasename = this.fs.basename(yamlFilePath);
-    const filename = fullBasename + '.annotations.json';
+    const filename = fullBasename + ".annotations.json";
     return this.fs.join(dir, filename);
   }
 
@@ -100,10 +107,13 @@ export class AnnotationsIO {
     // Acquire modification lock for this file
     const currentLock = this.modificationLocks.get(annotationsPath) || Promise.resolve();
     let releaseLock: () => void;
-    const newLock = new Promise<void>(resolve => {
+    const newLock = new Promise<void>((resolve) => {
       releaseLock = resolve;
     });
-    this.modificationLocks.set(annotationsPath, currentLock.then(() => newLock));
+    this.modificationLocks.set(
+      annotationsPath,
+      currentLock.then(() => newLock)
+    );
 
     // Wait for previous modification to complete
     await currentLock;
@@ -175,41 +185,43 @@ export class AnnotationsIO {
 
     // Queue saves per file to prevent concurrent writes
     const currentQueue = this.saveQueues.get(annotationsPath) || Promise.resolve();
-    const newQueue = currentQueue.then(async () => {
-      this.cache.delete(annotationsPath);
+    const newQueue = currentQueue
+      .then(async () => {
+        this.cache.delete(annotationsPath);
 
-      try {
-        const shouldSave = this.shouldSaveAnnotations(annotations);
-        if (shouldSave) {
-          const content = JSON.stringify(annotations, null, 2);
-          let shouldWrite = true;
+        try {
+          const shouldSave = this.shouldSaveAnnotations(annotations);
+          if (shouldSave) {
+            const content = JSON.stringify(annotations, null, 2);
+            let shouldWrite = true;
 
-          try {
-            const existing = await this.fs.readFile(annotationsPath);
-            if (existing === content) {
-              shouldWrite = false;
-              this.logger.debug(`Annotations unchanged, skipping save for ${annotationsPath}`);
+            try {
+              const existing = await this.fs.readFile(annotationsPath);
+              if (existing === content) {
+                shouldWrite = false;
+                this.logger.debug(`Annotations unchanged, skipping save for ${annotationsPath}`);
+              }
+            } catch {
+              // File might not exist, so we need to write
             }
-          } catch {
-            // File might not exist, so we need to write
-          }
 
-          if (shouldWrite) {
-            await this.fs.writeFile(annotationsPath, content);
-            this.logger.info(`Saved annotations to ${annotationsPath}`);
+            if (shouldWrite) {
+              await this.fs.writeFile(annotationsPath, content);
+              this.logger.info(`Saved annotations to ${annotationsPath}`);
+            }
+          } else {
+            // Delete the file if no annotations exist
+            await this.fs.unlink(annotationsPath);
+            this.logger.info(`Removed empty annotations file ${annotationsPath}`);
           }
-        } else {
-          // Delete the file if no annotations exist
-          await this.fs.unlink(annotationsPath);
-          this.logger.info(`Removed empty annotations file ${annotationsPath}`);
+        } catch (error) {
+          this.logger.error(`Failed to save annotations to ${annotationsPath}: ${error}`);
+          throw error;
         }
-      } catch (error) {
-        this.logger.error(`Failed to save annotations to ${annotationsPath}: ${error}`);
-        throw error;
-      }
-    }).catch(err => {
-      this.logger.error(`Annotations save queue error: ${err}`);
-    });
+      })
+      .catch((err) => {
+        this.logger.error(`Annotations save queue error: ${err}`);
+      });
 
     this.saveQueues.set(annotationsPath, newQueue);
     return newQueue;
@@ -246,7 +258,8 @@ export class AnnotationsIO {
     if (this.hasContent(annotations.nodeAnnotations)) return true;
     if (this.hasContent(annotations.edgeAnnotations)) return true;
     if (this.hasContent(annotations.aliasEndpointAnnotations)) return true;
-    if (annotations.viewerSettings && Object.keys(annotations.viewerSettings).length > 0) return true;
+    if (annotations.viewerSettings && Object.keys(annotations.viewerSettings).length > 0)
+      return true;
     return false;
   }
 }

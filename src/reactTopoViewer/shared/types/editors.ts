@@ -10,13 +10,24 @@
 // Node Editor Types
 // ============================================================================
 
-export type NodeEditorTabId = 'basic' | 'components' | 'config' | 'runtime' | 'network' | 'advanced';
+export type NodeEditorTabId =
+  | "basic"
+  | "components"
+  | "config"
+  | "runtime"
+  | "network"
+  | "advanced";
 
 /**
  * Integrated SROS types (simpler chassis with just MDA slots)
  */
 export const INTEGRATED_SROS_TYPES = new Set([
-  'sr-1', 'sr-1s', 'ixr-r6', 'ixr-ec', 'ixr-e2', 'ixr-e2c'
+  "sr-1",
+  "sr-1s",
+  "ixr-r6",
+  "ixr-ec",
+  "ixr-e2",
+  "ixr-e2c"
 ]);
 
 /**
@@ -135,14 +146,14 @@ export interface NodeEditorData extends AdvancedNodeFields {
  * Network endpoint types supported by containerlab
  */
 export type NetworkType =
-  | 'host'
-  | 'mgmt-net'
-  | 'macvlan'
-  | 'vxlan'
-  | 'vxlan-stitch'
-  | 'dummy'
-  | 'bridge'
-  | 'ovs-bridge';
+  | "host"
+  | "mgmt-net"
+  | "macvlan"
+  | "vxlan"
+  | "vxlan-stitch"
+  | "dummy"
+  | "bridge"
+  | "ovs-bridge";
 
 /**
  * Data structure for editing network nodes
@@ -178,39 +189,39 @@ export interface NetworkEditorData {
 
 /** All available network types */
 export const NETWORK_TYPES: NetworkType[] = [
-  'host',
-  'mgmt-net',
-  'macvlan',
-  'vxlan',
-  'vxlan-stitch',
-  'dummy',
-  'bridge',
-  'ovs-bridge'
+  "host",
+  "mgmt-net",
+  "macvlan",
+  "vxlan",
+  "vxlan-stitch",
+  "dummy",
+  "bridge",
+  "ovs-bridge"
 ];
 
 /** VXLAN network types */
-export const VXLAN_TYPES: NetworkType[] = ['vxlan', 'vxlan-stitch'];
+export const VXLAN_TYPES: NetworkType[] = ["vxlan", "vxlan-stitch"];
 
 /** Bridge network types */
-export const BRIDGE_TYPES: NetworkType[] = ['bridge', 'ovs-bridge'];
+export const BRIDGE_TYPES: NetworkType[] = ["bridge", "ovs-bridge"];
 
 /** Host-like network types (use host interface) */
-export const HOST_TYPES: NetworkType[] = ['host', 'mgmt-net', 'macvlan'];
+export const HOST_TYPES: NetworkType[] = ["host", "mgmt-net", "macvlan"];
 
 /** MACVLAN mode options */
-export const MACVLAN_MODES = ['bridge', 'vepa', 'private', 'passthru'] as const;
+export const MACVLAN_MODES = ["bridge", "vepa", "private", "passthru"] as const;
 
 /**
  * Get the interface field label based on network type
  */
 export function getInterfaceLabel(networkType: NetworkType): string {
   if (BRIDGE_TYPES.includes(networkType)) {
-    return 'Bridge Name';
+    return "Bridge Name";
   }
   if (HOST_TYPES.includes(networkType)) {
-    return 'Host Interface';
+    return "Host Interface";
   }
-  return 'Interface';
+  return "Interface";
 }
 
 /**
@@ -218,22 +229,22 @@ export function getInterfaceLabel(networkType: NetworkType): string {
  */
 export function getInterfacePlaceholder(networkType: NetworkType): string {
   if (BRIDGE_TYPES.includes(networkType)) {
-    return 'Enter bridge name';
+    return "Enter bridge name";
   }
-  if (networkType === 'macvlan') {
-    return 'Parent interface (e.g., eth0)';
+  if (networkType === "macvlan") {
+    return "Parent interface (e.g., eth0)";
   }
   if (HOST_TYPES.includes(networkType)) {
-    return 'e.g., eth0, eth1';
+    return "e.g., eth0, eth1";
   }
-  return 'Enter interface name';
+  return "Enter interface name";
 }
 
 /**
  * Check if interface field should be shown for the network type
  */
 export function showInterfaceField(networkType: NetworkType): boolean {
-  return networkType !== 'dummy' && !VXLAN_TYPES.includes(networkType);
+  return networkType !== "dummy" && !VXLAN_TYPES.includes(networkType);
 }
 
 /**
@@ -249,7 +260,7 @@ export function supportsExtendedProps(type: NetworkType): boolean {
 // Link Editor Types
 // ============================================================================
 
-export type LinkEditorTabId = 'basic' | 'extended';
+export type LinkEditorTabId = "basic" | "extended";
 
 /**
  * Link endpoint data structure
@@ -269,7 +280,7 @@ export interface LinkEditorData {
   target: string;
   sourceEndpoint: string;
   targetEndpoint: string;
-  type?: 'veth' | 'host' | 'mgmt-net' | 'macvlan' | 'dummy' | 'vxlan' | 'vxlan-stitch' | string;
+  type?: "veth" | "host" | "mgmt-net" | "macvlan" | "dummy" | "vxlan" | "vxlan-stitch" | string;
   // Extended properties
   sourceMac?: string;
   targetMac?: string;
@@ -316,7 +327,7 @@ export interface CustomNodeTemplate {
  * for license, startup-config, env, binds, etc.
  */
 export interface CustomTemplateEditorData extends AdvancedNodeFields {
-  id: string;  // 'temp-custom-node' for new, 'edit-custom-node' for editing
+  id: string; // 'temp-custom-node' for new, 'edit-custom-node' for editing
   isCustomTemplate: true;
   customName: string;
   kind: string;

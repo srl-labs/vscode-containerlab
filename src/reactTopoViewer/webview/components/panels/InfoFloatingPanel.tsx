@@ -3,10 +3,10 @@
  * A draggable, closeable panel that floats over the canvas.
  * Uses BasePanel for shared drag/persistence behavior.
  */
-import type { ReactNode } from 'react';
-import React from 'react';
+import type { ReactNode } from "react";
+import React from "react";
 
-import { BasePanel } from '../shared/editor/BasePanel';
+import { BasePanel } from "../shared/editor/BasePanel";
 
 interface FloatingPanelProps {
   title: string;
@@ -69,11 +69,11 @@ interface PropertyRowProps {
   className?: string;
 }
 
-export const PropertyRow: React.FC<PropertyRowProps> = ({ label, value, className = '' }) => (
+export const PropertyRow: React.FC<PropertyRowProps> = ({ label, value, className = "" }) => (
   <div className={`flex flex-col items-center ${className}`}>
     <span className="field-label mb-1">{label}</span>
     <span className="text-sm text-[var(--vscode-foreground)] text-center break-all">
-      {value || 'N/A'}
+      {value || "N/A"}
     </span>
   </div>
 );

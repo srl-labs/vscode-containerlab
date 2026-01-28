@@ -1,7 +1,7 @@
 /**
  * TabNavigation - Scrollable tab strip with arrow buttons
  */
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from "react";
 
 export interface TabDefinition {
   id: string;
@@ -32,32 +32,32 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, o
     updateScrollButtons();
     const viewport = viewportRef.current;
     if (!viewport) return;
-    viewport.addEventListener('scroll', updateScrollButtons);
+    viewport.addEventListener("scroll", updateScrollButtons);
     // Also listen for resize events
     const resizeObserver = new ResizeObserver(updateScrollButtons);
     resizeObserver.observe(viewport);
     return () => {
-      viewport.removeEventListener('scroll', updateScrollButtons);
+      viewport.removeEventListener("scroll", updateScrollButtons);
       resizeObserver.disconnect();
     };
   }, [updateScrollButtons, tabs]); // Re-run when tabs change
 
-  const scroll = (direction: 'left' | 'right') => {
+  const scroll = (direction: "left" | "right") => {
     if (!viewportRef.current) return;
     const scrollAmount = 100;
     viewportRef.current.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
-      behavior: 'smooth'
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth"
     });
   };
 
-  const visibleTabs = tabs.filter(t => !t.hidden);
+  const visibleTabs = tabs.filter((t) => !t.hidden);
 
   return (
     <div className="panel-tabs panel-tabs--with-arrows">
       <button
         className="tab-scroll-btn"
-        onClick={() => scroll('left')}
+        onClick={() => scroll("left")}
         disabled={!canScrollLeft}
         aria-label="Scroll tabs left"
         title="Scroll left"
@@ -69,7 +69,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, o
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
-              className={`panel-tab-button ${activeTab === tab.id ? 'tab-active' : ''}`}
+              className={`panel-tab-button ${activeTab === tab.id ? "tab-active" : ""}`}
               onClick={() => onTabChange(tab.id)}
               data-tab={tab.id}
               data-testid={`panel-tab-${tab.id}`}
@@ -81,7 +81,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, o
       </div>
       <button
         className="tab-scroll-btn"
-        onClick={() => scroll('right')}
+        onClick={() => scroll("right")}
         disabled={!canScrollRight}
         aria-label="Scroll tabs right"
         title="Scroll right"

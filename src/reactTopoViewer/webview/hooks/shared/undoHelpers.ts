@@ -1,9 +1,9 @@
 /**
  * Shared helpers for undo/redo operations across different annotation types.
  */
-import type React from 'react';
+import type React from "react";
 
-import type { UndoRedoAction } from '../state/useUndoRedo';
+import type { UndoRedoAction } from "../state/useUndoRedo";
 
 /**
  * Common interface for undo/redo API
@@ -32,7 +32,7 @@ export function updateWithUndo<T extends { id: string }, V>(
   applyFn: (id: string, value: V) => void,
   value: V
 ): void {
-  const beforeCopy = cloneFn(items.find(item => item.id === id));
+  const beforeCopy = cloneFn(items.find((item) => item.id === id));
   if (beforeCopy) {
     const after = transformFn(beforeCopy, value);
     pushUndoFn(beforeCopy, after);

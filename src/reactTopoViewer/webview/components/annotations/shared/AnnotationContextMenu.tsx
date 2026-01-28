@@ -1,7 +1,7 @@
 /**
  * Shared context menu for annotations
  */
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 
 interface AnnotationContextMenuProps {
   position: { x: number; y: number };
@@ -11,37 +11,37 @@ interface AnnotationContextMenuProps {
 }
 
 const menuStyle: React.CSSProperties = {
-  position: 'fixed',
+  position: "fixed",
   zIndex: 10000,
-  backgroundColor: 'rgba(30, 30, 30, 0.95)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  borderRadius: '6px',
-  padding: '4px 0',
-  minWidth: '120px',
-  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-  pointerEvents: 'auto'
+  backgroundColor: "rgba(30, 30, 30, 0.95)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  borderRadius: "6px",
+  padding: "4px 0",
+  minWidth: "120px",
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+  pointerEvents: "auto"
 };
 
 const itemStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  width: '100%',
-  padding: '8px 12px',
-  border: 'none',
-  background: 'none',
-  color: 'white',
-  fontSize: '13px',
-  cursor: 'pointer',
-  textAlign: 'left'
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  width: "100%",
+  padding: "8px 12px",
+  border: "none",
+  background: "none",
+  color: "white",
+  fontSize: "13px",
+  cursor: "pointer",
+  textAlign: "left"
 };
 
 // Shared hover handlers for menu items
 const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+  e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)";
 };
 const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-  e.currentTarget.style.backgroundColor = 'transparent';
+  e.currentTarget.style.backgroundColor = "transparent";
 };
 
 export const AnnotationContextMenu: React.FC<AnnotationContextMenuProps> = ({
@@ -59,13 +59,13 @@ export const AnnotationContextMenu: React.FC<AnnotationContextMenuProps> = ({
       }
     };
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === "Escape") onClose();
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [onClose]);
 
@@ -75,7 +75,10 @@ export const AnnotationContextMenu: React.FC<AnnotationContextMenuProps> = ({
         style={itemStyle}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={() => { onEdit(); onClose(); }}
+        onClick={() => {
+          onEdit();
+          onClose();
+        }}
       >
         <i className="fas fa-pen" style={{ width: 16 }} />
         Edit
@@ -84,7 +87,10 @@ export const AnnotationContextMenu: React.FC<AnnotationContextMenuProps> = ({
         style={itemStyle}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onClick={() => { onDelete(); onClose(); }}
+        onClick={() => {
+          onDelete();
+          onClose();
+        }}
       >
         <i className="fas fa-trash" style={{ width: 16 }} />
         Delete

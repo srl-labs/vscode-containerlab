@@ -1,9 +1,9 @@
 /**
  * Badge components for form fields
  */
-import React from 'react';
+import React from "react";
 
-import { quoteBlockStyle } from '../../../styles/cssVariables';
+import { quoteBlockStyle } from "../../../styles/cssVariables";
 
 /**
  * Inheritance badge - shown when a field value comes from defaults, kinds, or groups

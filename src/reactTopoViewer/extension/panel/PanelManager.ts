@@ -2,9 +2,9 @@
  * PanelManager - Handles webview panel lifecycle and HTML generation
  */
 
-import * as crypto from 'crypto';
+import * as crypto from "crypto";
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 /**
  * Configuration for creating a webview panel
@@ -33,8 +33,8 @@ export function createPanel(config: PanelConfig): vscode.WebviewPanel {
     enableScripts: true,
     retainContextWhenHidden: true,
     localResourceRoots: [
-      vscode.Uri.joinPath(config.extensionUri, 'dist'),
-      vscode.Uri.joinPath(config.extensionUri, 'resources')
+      vscode.Uri.joinPath(config.extensionUri, "dist"),
+      vscode.Uri.joinPath(config.extensionUri, "resources")
     ]
   };
 
@@ -46,11 +46,7 @@ export function createPanel(config: PanelConfig): vscode.WebviewPanel {
   );
 
   // Set icon (same as legacy TopoViewer)
-  panel.iconPath = vscode.Uri.joinPath(
-    config.extensionUri,
-    'resources',
-    'containerlab.png'
-  );
+  panel.iconPath = vscode.Uri.joinPath(config.extensionUri, "resources", "containerlab.png");
 
   return panel;
 }
@@ -59,7 +55,7 @@ export function createPanel(config: PanelConfig): vscode.WebviewPanel {
  * Generate a nonce for CSP using crypto
  */
 export function generateNonce(): string {
-  return crypto.randomBytes(16).toString('base64');
+  return crypto.randomBytes(16).toString("base64");
 }
 
 /**
@@ -79,16 +75,16 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
 
   // Get URIs for resources
   const scriptUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'dist', 'reactTopoViewerWebview.js')
+    vscode.Uri.joinPath(extensionUri, "dist", "reactTopoViewerWebview.js")
   );
   const styleUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'dist', 'reactTopoViewerStyles.css')
+    vscode.Uri.joinPath(extensionUri, "dist", "reactTopoViewerStyles.css")
   );
 
   // Get schema URI for kind/type dropdowns
-  const schemaUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'schema', 'clab.schema.json')
-  ).toString();
+  const schemaUri = webview
+    .asWebviewUri(vscode.Uri.joinPath(extensionUri, "schema", "clab.schema.json"))
+    .toString();
 
   // CSP nonce for security
   const nonce = generateNonce();

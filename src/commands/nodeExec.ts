@@ -38,7 +38,9 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
   const defaultMapping = execCmdMapping as Record<string, string>;
   let execCmd = defaultMapping[ctx.containerKind] ?? DEFAULT_ATTACH_SHELL_CMD;
   const config = vscode.workspace.getConfiguration("containerlab");
-  const userExecMapping = config.get("node.execCommandMapping") as Record<string, string> | undefined;
+  const userExecMapping = config.get("node.execCommandMapping") as
+    | Record<string, string>
+    | undefined;
   const runtime = config.get<string>("runtime", "docker");
 
   execCmd = userExecMapping?.[ctx.containerKind] ?? execCmd;
@@ -46,7 +48,7 @@ export function attachShell(node: ClabContainerTreeNode | undefined): void {
   execCommandInTerminal(
     `${runtime} exec -it ${ctx.containerId} ${execCmd}`,
     `Shell - ${ctx.container}`,
-    true  // If terminal exists, just focus it
+    true // If terminal exists, just focus it
   );
 }
 
@@ -59,6 +61,6 @@ export function telnetToNode(node: ClabContainerTreeNode | undefined): void {
   execCommandInTerminal(
     `${runtime} exec -it ${ctx.containerId} telnet 127.0.0.1 ${port}`,
     `Telnet - ${ctx.container}`,
-    true  // If terminal exists, just focus it
+    true // If terminal exists, just focus it
   );
 }

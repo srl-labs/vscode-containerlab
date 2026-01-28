@@ -2,10 +2,10 @@
  * App-level handlers hook
  * Combines common handlers to reduce App.tsx complexity
  */
-import React from 'react';
+import React from "react";
 
-import type { FloatingActionPanelHandle } from '../../components/panels/floatingPanel';
-import type { NodePositionEntry, MembershipEntry } from '../state';
+import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel";
+import type { NodePositionEntry, MembershipEntry } from "../state";
 
 interface SelectionCallbacks {
   selectNode: (id: string | null) => void;
@@ -15,7 +15,12 @@ interface SelectionCallbacks {
 }
 
 interface UndoRedoRecorder {
-  recordMove: (nodeIds: string[], beforePositions: NodePositionEntry[], membershipBefore?: MembershipEntry[], membershipAfter?: MembershipEntry[]) => void;
+  recordMove: (
+    nodeIds: string[],
+    beforePositions: NodePositionEntry[],
+    membershipBefore?: MembershipEntry[],
+    membershipAfter?: MembershipEntry[]
+  ) => void;
 }
 
 /** Ref for tracking pending membership changes during node drag */
@@ -66,8 +71,8 @@ export function useAppHandlers({
           }
         }
         if (changes.length > 0) {
-          membershipBefore = changes.map(c => ({ nodeId: c.nodeId, groupId: c.oldGroupId }));
-          membershipAfter = changes.map(c => ({ nodeId: c.nodeId, groupId: c.newGroupId }));
+          membershipBefore = changes.map((c) => ({ nodeId: c.nodeId, groupId: c.oldGroupId }));
+          membershipAfter = changes.map((c) => ({ nodeId: c.nodeId, groupId: c.newGroupId }));
         }
       }
 

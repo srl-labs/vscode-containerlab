@@ -15,7 +15,7 @@ export function getDockerImages(): string[] {
 // Internal func to fetch all docker images
 async function fetchDockerImages(): Promise<string[]> {
   if (!dockerClient) {
-    outputChannel.debug("getDockerImages() failed: docker client unavailable.")
+    outputChannel.debug("getDockerImages() failed: docker client unavailable.");
     return [];
   }
 
@@ -36,7 +36,7 @@ async function fetchDockerImages(): Promise<string[]> {
   }
 
   entries.sort((a, b) => b.created - a.created || a.tag.localeCompare(b.tag));
-  return entries.map(entry => entry.tag);
+  return entries.map((entry) => entry.tag);
 }
 
 function updateDockerImagesCache(images: string[]) {
@@ -52,11 +52,11 @@ function updateDockerImagesCache(images: string[]) {
 }
 
 export async function refreshDockerImages() {
-  outputChannel.debug("Refreshing docker image cache.")
+  outputChannel.debug("Refreshing docker image cache.");
   try {
     const images = await fetchDockerImages();
     updateDockerImagesCache(images);
-    outputChannel.debug("SUCCESS! Refreshed docker image cache.")
+    outputChannel.debug("SUCCESS! Refreshed docker image cache.");
   } catch {
     // Leave existing cache untouched.
   }
@@ -71,7 +71,9 @@ export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
   }
 
   // Start a 'docker events' but only for image events.
-  dockerClient.getEvents({ filters:{ type: ["image"] }}).then(stream => {
+  dockerClient
+    .getEvents({ filters: { type: ["image"] } })
+    .then((stream) => {
       const onData = () => {
         // upon any event, the cache should be updated.
         void refreshDockerImages();
@@ -94,7 +96,6 @@ export function startDockerImageEventMonitor(context: vscode.ExtensionContext) {
         }
       };
       context.subscriptions.push(monitorHandle);
-
     })
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);

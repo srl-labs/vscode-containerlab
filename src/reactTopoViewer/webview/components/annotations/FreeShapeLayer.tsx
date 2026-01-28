@@ -2,11 +2,11 @@
  * FreeShapeLayer - SVG overlay layer for rendering free shape annotations
  * Renders shape visuals below nodes (via cytoscape-layers) and interaction handles above nodes.
  */
-import React, { useRef, useState, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import type { Core as CyCore } from 'cytoscape';
+import React, { useRef, useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
+import type { Core as CyCore } from "cytoscape";
 
-import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import {
   useAnnotationDrag,
   useRotationDrag,
@@ -18,11 +18,11 @@ import {
   useAnnotationReparent,
   getLineCenter,
   useDebouncedHover
-} from '../../hooks/annotations';
-import type { MapLibreState} from '../../hooks/canvas/maplibreUtils';
-import { projectAnnotationGeoCoords, calculateScale } from '../../hooks/canvas/maplibreUtils';
+} from "../../hooks/annotations";
+import type { MapLibreState } from "../../hooks/canvas/maplibreUtils";
+import { projectAnnotationGeoCoords, calculateScale } from "../../hooks/canvas/maplibreUtils";
 
-import { buildShapeSvg } from './FreeShapeLayerHelpers';
+import { buildShapeSvg } from "./FreeShapeLayerHelpers";
 import {
   HANDLE_SIZE,
   HANDLE_BORDER,
@@ -37,7 +37,7 @@ import {
   type BaseAnnotationHandlers,
   type GroupRelatedProps,
   type ResizeCorner
-} from './shared';
+} from "./shared";
 
 // ============================================================================
 // Types
@@ -48,7 +48,7 @@ interface FreeShapeLayerProps extends GroupRelatedProps {
   annotations: FreeShapeAnnotation[];
   isLocked: boolean;
   isAddShapeMode: boolean;
-  mode: 'edit' | 'view';
+  mode: "edit" | "view";
   onAnnotationEdit: (id: string) => void;
   onAnnotationDelete: (id: string) => void;
   onPositionChange: (id: string, position: { x: number; y: number }) => void;
@@ -64,7 +64,7 @@ interface FreeShapeLayerProps extends GroupRelatedProps {
   shapeLayerNode?: HTMLElement | null;
   // Geo mode props
   isGeoMode?: boolean;
-  geoMode?: 'pan' | 'edit';
+  geoMode?: "pan" | "edit";
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
   onEndGeoPositionChange?: (id: string, geoCoords: { lat: number; lng: number }) => void;
@@ -89,36 +89,57 @@ interface ShapeHandlesProps {
 
 /** Renders shape handles based on shape type (line vs box) */
 const ShapeHandles: React.FC<ShapeHandlesProps> = ({
-  isLine, endHandlePos, handleRotationMouseDown, handleResizeMouseDown, handleLineResizeMouseDown, hoverHandlers
+  isLine,
+  endHandlePos,
+  handleRotationMouseDown,
+  handleResizeMouseDown,
+  handleLineResizeMouseDown,
+  hoverHandlers
 }) => {
   if (isLine) {
     return (
       <>
         <SelectionOutline />
-        <RotationHandle onMouseDown={handleRotationMouseDown} onMouseEnter={hoverHandlers.onMouseEnter} onMouseLeave={hoverHandlers.onMouseLeave} />
-        {endHandlePos && <LineEndHandle position={endHandlePos} onMouseDown={handleLineResizeMouseDown} />}
+        <RotationHandle
+          onMouseDown={handleRotationMouseDown}
+          onMouseEnter={hoverHandlers.onMouseEnter}
+          onMouseLeave={hoverHandlers.onMouseLeave}
+        />
+        {endHandlePos && (
+          <LineEndHandle position={endHandlePos} onMouseDown={handleLineResizeMouseDown} />
+        )}
       </>
     );
   }
-  return <AnnotationHandles onRotation={handleRotationMouseDown} onResize={handleResizeMouseDown} onMouseEnter={hoverHandlers.onMouseEnter} onMouseLeave={hoverHandlers.onMouseLeave} />;
+  return (
+    <AnnotationHandles
+      onRotation={handleRotationMouseDown}
+      onResize={handleResizeMouseDown}
+      onMouseEnter={hoverHandlers.onMouseEnter}
+      onMouseLeave={hoverHandlers.onMouseLeave}
+    />
+  );
 };
 
-const LineEndHandle: React.FC<{ position: { x: number; y: number }; onMouseDown: (e: React.MouseEvent) => void }> = ({ position, onMouseDown }) => (
+const LineEndHandle: React.FC<{
+  position: { x: number; y: number };
+  onMouseDown: (e: React.MouseEvent) => void;
+}> = ({ position, onMouseDown }) => (
   <div
     onMouseDown={onMouseDown}
     style={{
-      position: 'absolute',
+      position: "absolute",
       left: position.x,
       top: position.y,
       width: `${HANDLE_SIZE}px`,
       height: `${HANDLE_SIZE}px`,
-      backgroundColor: 'white',
+      backgroundColor: "white",
       border: HANDLE_BORDER,
-      borderRadius: '2px',
+      borderRadius: "2px",
       transform: CENTER_TRANSLATE,
       boxShadow: HANDLE_BOX_SHADOW,
-      cursor: 'nwse-resize',
-      pointerEvents: 'auto'
+      cursor: "nwse-resize",
+      pointerEvents: "auto"
     }}
     title="Drag to resize line"
   />
@@ -129,15 +150,20 @@ const LineEndHandle: React.FC<{ position: { x: number; y: number }; onMouseDown:
 // ============================================================================
 
 function getCursorStyle(isLocked: boolean, isDragging: boolean): string {
-  if (isLocked) return 'default';
-  return isDragging ? 'grabbing' : 'grab';
+  if (isLocked) return "default";
+  return isDragging ? "grabbing" : "grab";
 }
 
 function getModelPosition(annotation: FreeShapeAnnotation): { x: number; y: number } {
-  return annotation.shapeType === 'line' ? getLineCenter(annotation) : annotation.position;
+  return annotation.shapeType === "line" ? getLineCenter(annotation) : annotation.position;
 }
 
-function computeShowHandles(params: { isHovered: boolean; isInteracting: boolean; isSelected: boolean; isLocked: boolean }): boolean {
+function computeShowHandles(params: {
+  isHovered: boolean;
+  isInteracting: boolean;
+  isSelected: boolean;
+  isLocked: boolean;
+}): boolean {
   const { isHovered, isInteracting, isSelected, isLocked } = params;
   return (isHovered || isInteracting || isSelected) && !isLocked;
 }
@@ -164,7 +190,7 @@ function computeShapeRenderedPosition(
   return { x: modelPos.x, y: modelPos.y, scale: 1 };
 }
 
-const UNLOCKED_ANNOTATION_TOOLTIP = 'Click to select, drag to move, right-click for menu';
+const UNLOCKED_ANNOTATION_TOOLTIP = "Click to select, drag to move, right-click for menu";
 
 /**
  * Apply group drag offset to a position if present
@@ -188,7 +214,11 @@ interface ShapeBackgroundItemProps {
   groupDragOffset?: { dx: number; dy: number };
 }
 
-const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({ annotation, position, groupDragOffset }) => {
+const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({
+  annotation,
+  position,
+  groupDragOffset
+}) => {
   const { svg, width, height } = useMemo(() => buildShapeSvg(annotation), [annotation]);
 
   // Apply group drag offset if present
@@ -198,15 +228,15 @@ const ShapeBackgroundItem: React.FC<ShapeBackgroundItemProps> = ({ annotation, p
   return (
     <div
       style={{
-        position: 'absolute',
+        position: "absolute",
         left: finalX,
         top: finalY,
         transform: `translate(-50%, -50%) rotate(${annotation.rotation ?? 0}deg) scale(${position.scale})`,
-        transformOrigin: 'center center',
+        transformOrigin: "center center",
         width: `${width}px`,
         height: `${height}px`,
         zIndex: annotation.zIndex ?? 10,
-        pointerEvents: 'none'
+        pointerEvents: "none"
       }}
     >
       {svg}
@@ -235,7 +265,7 @@ interface ShapeInteractionItemProps {
   onVisualPositionChange?: (position: { x: number; y: number }) => void;
   onVisualPositionClear?: () => void;
   isGeoMode?: boolean;
-  geoMode?: 'pan' | 'edit';
+  geoMode?: "pan" | "edit";
   mapLibreState?: MapLibreState | null;
   onGeoPositionChange?: (geoCoords: { lat: number; lng: number }) => void;
   // Deferred undo callbacks for drag operations
@@ -277,15 +307,18 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const { isHovered, hoverHandlers } = useDebouncedHover();
 
-  const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === 'pan');
+  const effectivelyLocked = isLocked || (isGeoMode === true && geoMode === "pan");
   const modelPosition = getModelPosition(annotation);
-  const isLine = annotation.shapeType === 'line';
+  const isLine = annotation.shapeType === "line";
 
   // Compose drag end handlers: clear visual position AND call reparent callback
-  const handleDragEnd = useCallback((finalPosition: { x: number; y: number }) => {
-    onVisualPositionClear?.();
-    onReparentDragEnd?.(finalPosition);
-  }, [onVisualPositionClear, onReparentDragEnd]);
+  const handleDragEnd = useCallback(
+    (finalPosition: { x: number; y: number }) => {
+      onVisualPositionClear?.();
+      onReparentDragEnd?.(finalPosition);
+    },
+    [onVisualPositionClear, onReparentDragEnd]
+  );
 
   const { isDragging, renderedPos, handleMouseDown } = useAnnotationDrag({
     cy,
@@ -323,19 +356,26 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
     onDragEnd
   });
 
-  const { isResizing: isLineResizing, handleMouseDown: handleLineResizeMouseDown } = useLineResizeDrag({
-    cy,
-    annotation,
-    isLocked: effectivelyLocked,
-    onEndPositionChange,
-    onDragStart,
-    onDragEnd
-  });
+  const { isResizing: isLineResizing, handleMouseDown: handleLineResizeMouseDown } =
+    useLineResizeDrag({
+      cy,
+      annotation,
+      isLocked: effectivelyLocked,
+      onEndPositionChange,
+      onDragStart,
+      onDragEnd
+    });
 
-  const { contextMenu, handleClick, handleContextMenu, closeContextMenu } = useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, undefined, onDelete);
+  const { contextMenu, handleClick, handleContextMenu, closeContextMenu } =
+    useAnnotationClickHandlers(effectivelyLocked, onSelect, onToggleSelect, undefined, onDelete);
 
   const isInteracting = [isDragging, isRotating, isBoxResizing, isLineResizing].some(Boolean);
-  const showHandles = computeShowHandles({ isHovered, isInteracting, isSelected, isLocked: effectivelyLocked });
+  const showHandles = computeShowHandles({
+    isHovered,
+    isInteracting,
+    isSelected,
+    isLocked: effectivelyLocked
+  });
 
   const { width, height, endHandlePos } = useMemo(() => buildShapeSvg(annotation), [annotation]);
 
@@ -348,27 +388,27 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
   // Wrapper has pointerEvents: 'none' - clicks pass through to nodes
   // Only border edges and handles have pointerEvents: 'auto'
   const wrapperStyle: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     left: finalPos.x,
     top: finalPos.y,
     transform: `translate(-50%, -50%) rotate(${annotation.rotation ?? 0}deg) scale(${renderedPos.zoom})`,
-    transformOrigin: 'center center',
+    transformOrigin: "center center",
     width: `${width}px`,
     height: `${height}px`,
     zIndex: annotation.zIndex ?? 10,
-    pointerEvents: 'none'
+    pointerEvents: "none"
   };
 
   const cursor = getCursorStyle(effectivelyLocked, isDragging);
 
   // Frame style using clip-path to create a hollow rectangle (only edges are interactive)
   const frameStyle: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    pointerEvents: effectivelyLocked ? 'none' : 'auto',
+    pointerEvents: effectivelyLocked ? "none" : "auto",
     cursor,
     // Clip to create a frame: outer rectangle minus inner rectangle
     clipPath: `polygon(
@@ -383,10 +423,7 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
 
   return (
     <>
-      <div
-        ref={contentRef}
-        style={wrapperStyle}
-      >
+      <div ref={contentRef} style={wrapperStyle}>
         {/* Single frame element for hover/interaction - no flicker between edges */}
         <div
           style={frameStyle}
@@ -409,7 +446,12 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
         )}
       </div>
       {contextMenu && (
-        <AnnotationContextMenu position={contextMenu} onEdit={onEdit} onDelete={onDelete} onClose={closeContextMenu} />
+        <AnnotationContextMenu
+          position={contextMenu}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onClose={closeContextMenu}
+        />
       )}
     </>
   );
@@ -420,30 +462,30 @@ const ShapeInteractionItem: React.FC<ShapeInteractionItemProps> = ({
 // ============================================================================
 
 const PORTAL_CONTENT_STYLE: React.CSSProperties = {
-  position: 'absolute',
+  position: "absolute",
   top: 0,
   left: 0,
-  width: '100%',
-  height: '100%',
-  pointerEvents: 'none',
-  overflow: 'visible'
+  width: "100%",
+  height: "100%",
+  pointerEvents: "none",
+  overflow: "visible"
 };
 
 const INTERACTION_LAYER_STYLE: React.CSSProperties = {
-  position: 'absolute',
+  position: "absolute",
   top: 0,
   left: 0,
   right: 0,
   bottom: 0,
-  pointerEvents: 'none',
+  pointerEvents: "none",
   zIndex: 9,
-  overflow: 'hidden'
+  overflow: "hidden"
 };
 
-const CLICK_CAPTURE_STYLE = createClickCaptureStyle('crosshair');
+const CLICK_CAPTURE_STYLE = createClickCaptureStyle("crosshair");
 
 function getShapeCenter(annotation: FreeShapeAnnotation): { x: number; y: number } {
-  return annotation.shapeType === 'line' ? getLineCenter(annotation) : annotation.position;
+  return annotation.shapeType === "line" ? getLineCenter(annotation) : annotation.position;
 }
 
 interface ShapeAnnotationHandlers extends BaseAnnotationHandlers {
@@ -462,9 +504,14 @@ function createAnnotationCallbacks(
   return {
     ...baseCallbacks,
     onEdit: () => handlers.onAnnotationEdit(id),
-    onEndPositionChange: (endPos: { x: number; y: number }) => handlers.onEndPositionChange(id, endPos),
-    onDragStart: handlers.onCaptureAnnotationBefore ? () => handlers.onCaptureAnnotationBefore!(id) : undefined,
-    onDragEnd: handlers.onFinalizeWithUndo ? (before: FreeShapeAnnotation | null) => handlers.onFinalizeWithUndo!(before, id) : undefined
+    onEndPositionChange: (endPos: { x: number; y: number }) =>
+      handlers.onEndPositionChange(id, endPos),
+    onDragStart: handlers.onCaptureAnnotationBefore
+      ? () => handlers.onCaptureAnnotationBefore!(id)
+      : undefined,
+    onDragEnd: handlers.onFinalizeWithUndo
+      ? (before: FreeShapeAnnotation | null) => handlers.onFinalizeWithUndo!(before, id)
+      : undefined
   };
 }
 
@@ -500,17 +547,17 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   groups = [],
   onUpdateGroupId
 }) => {
-  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, 'FreeShapeLayer');
+  const handleLayerClick = useLayerClickHandler(cy, onCanvasClick, "FreeShapeLayer");
 
   // Track drag positions for syncing background layer during drag
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({});
 
   const setDragPosition = React.useCallback((id: string, position: { x: number; y: number }) => {
-    setDragPositions(prev => ({ ...prev, [id]: position }));
+    setDragPositions((prev) => ({ ...prev, [id]: position }));
   }, []);
 
   const clearDragPosition = React.useCallback((id: string) => {
-    setDragPositions(prev => {
+    setDragPositions((prev) => {
       if (!(id in prev)) return prev;
       const next = { ...prev };
       delete next[id];
@@ -518,7 +565,13 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
     });
   }, []);
 
-  useAnnotationBoxSelection(cy, annotations, onAnnotationBoxSelect, getShapeCenter, 'FreeShapeLayer');
+  useAnnotationBoxSelection(
+    cy,
+    annotations,
+    onAnnotationBoxSelect,
+    getShapeCenter,
+    "FreeShapeLayer"
+  );
 
   // Reparenting hook - allows dragging annotations into/out of groups
   const reparent = useAnnotationReparent({
@@ -529,23 +582,35 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   });
 
   // Create stable callbacks for reparenting
-  const createReparentCallbacks = useCallback((annotation: FreeShapeAnnotation) => ({
-    onReparentDragStart: () => reparent.onDragStart(annotation.id, annotation.groupId),
-    onReparentDragEnd: (finalPosition: { x: number; y: number }) => reparent.onDragEnd(annotation.id, finalPosition)
-  }), [reparent]);
+  const createReparentCallbacks = useCallback(
+    (annotation: FreeShapeAnnotation) => ({
+      onReparentDragStart: () => reparent.onDragStart(annotation.id, annotation.groupId),
+      onReparentDragEnd: (finalPosition: { x: number; y: number }) =>
+        reparent.onDragEnd(annotation.id, finalPosition)
+    }),
+    [reparent]
+  );
 
   if (!cy || (annotations.length === 0 && !isAddShapeMode)) return null;
 
   const handlers = {
-    onAnnotationEdit, onAnnotationDelete, onPositionChange, onRotationChange,
-    onSizeChange, onEndPositionChange, onAnnotationSelect, onAnnotationToggleSelect,
-    onGeoPositionChange, onCaptureAnnotationBefore, onFinalizeWithUndo
+    onAnnotationEdit,
+    onAnnotationDelete,
+    onPositionChange,
+    onRotationChange,
+    onSizeChange,
+    onEndPositionChange,
+    onAnnotationSelect,
+    onAnnotationToggleSelect,
+    onGeoPositionChange,
+    onCaptureAnnotationBefore,
+    onFinalizeWithUndo
   };
 
   // Background content: shape visuals rendered into cytoscape-layer (below nodes)
   const backgroundContent = shapeLayerNode && (
     <div className="free-shape-layer-background" style={PORTAL_CONTENT_STYLE}>
-      {annotations.map(annotation => {
+      {annotations.map((annotation) => {
         // Use drag position if available, otherwise compute from model/geo
         const dragPos = dragPositions[annotation.id];
         const pos = dragPos
@@ -568,7 +633,7 @@ export const FreeShapeLayer: React.FC<FreeShapeLayerProps> = ({
   // Interaction content: handles and hit areas (above nodes in main DOM)
   const interactionContent = (
     <div className="free-shape-layer-interaction" style={INTERACTION_LAYER_STYLE}>
-      {annotations.map(annotation => {
+      {annotations.map((annotation) => {
         const callbacks = createAnnotationCallbacks(annotation, handlers);
         const reparentCallbacks = createReparentCallbacks(annotation);
         // Get offset for this annotation if its group is being dragged

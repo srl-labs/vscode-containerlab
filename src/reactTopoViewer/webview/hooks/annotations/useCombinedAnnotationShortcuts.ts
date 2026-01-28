@@ -2,14 +2,14 @@
  * Hook that combines free text + free shape annotation + group selection and clipboard shortcuts.
  * Extracted from App.tsx to keep App complexity low.
  */
-import React from 'react';
+import React from "react";
 
-import type { UseGroupClipboardReturn } from '../groups';
-import { log } from '../../utils/logger';
+import type { UseGroupClipboardReturn } from "../groups";
+import { log } from "../../utils/logger";
 
-import type { UseAppFreeTextAnnotationsReturn } from './useAppFreeTextAnnotations';
-import type { UseFreeShapeAnnotationsReturn } from './freeShape';
-import type { UseFreeShapeUndoRedoHandlersReturn } from './useFreeShapeUndoRedoHandlers';
+import type { UseAppFreeTextAnnotationsReturn } from "./useAppFreeTextAnnotations";
+import type { UseFreeShapeAnnotationsReturn } from "./freeShape";
+import type { UseFreeShapeUndoRedoHandlersReturn } from "./useFreeShapeUndoRedoHandlers";
 
 export interface UseCombinedAnnotationShortcutsReturn {
   selectedAnnotationIds: Set<string>;
@@ -30,16 +30,16 @@ export interface GroupClipboardOptions {
 }
 
 function pasteBoth(
-  freeText: Pick<UseAppFreeTextAnnotationsReturn, 'hasClipboardContent' | 'pasteAnnotations'>,
-  freeShape: Pick<UseFreeShapeAnnotationsReturn, 'hasClipboardContent' | 'pasteAnnotations'>
+  freeText: Pick<UseAppFreeTextAnnotationsReturn, "hasClipboardContent" | "pasteAnnotations">,
+  freeShape: Pick<UseFreeShapeAnnotationsReturn, "hasClipboardContent" | "pasteAnnotations">
 ): void {
   if (freeText.hasClipboardContent()) freeText.pasteAnnotations();
   if (freeShape.hasClipboardContent()) freeShape.pasteAnnotations();
 }
 
 function hasClipboardBoth(
-  freeText: Pick<UseAppFreeTextAnnotationsReturn, 'hasClipboardContent'>,
-  freeShape: Pick<UseFreeShapeAnnotationsReturn, 'hasClipboardContent'>
+  freeText: Pick<UseAppFreeTextAnnotationsReturn, "hasClipboardContent">,
+  freeShape: Pick<UseFreeShapeAnnotationsReturn, "hasClipboardContent">
 ): boolean {
   return freeText.hasClipboardContent() || freeShape.hasClipboardContent();
 }
@@ -47,7 +47,7 @@ function hasClipboardBoth(
 export function useCombinedAnnotationShortcuts(
   freeTextAnnotations: UseAppFreeTextAnnotationsReturn,
   freeShapeAnnotations: UseFreeShapeAnnotationsReturn,
-  freeShapeUndoHandlers: Pick<UseFreeShapeUndoRedoHandlersReturn, 'deleteSelectedWithUndo'>,
+  freeShapeUndoHandlers: Pick<UseFreeShapeUndoRedoHandlersReturn, "deleteSelectedWithUndo">,
   groupOptions?: GroupClipboardOptions
 ): UseCombinedAnnotationShortcutsReturn {
   // Use refs to ensure we always have the latest values in callbacks
@@ -62,19 +62,25 @@ export function useCombinedAnnotationShortcuts(
     ]);
     // Also include group IDs in the combined selection for keyboard shortcut detection
     if (groupOptions) {
-      groupOptions.selectedGroupIds.forEach(id => combined.add(id));
+      groupOptions.selectedGroupIds.forEach((id) => combined.add(id));
     }
     return combined;
-  }, [freeTextAnnotations.selectedAnnotationIds, freeShapeAnnotations.selectedAnnotationIds, groupOptions]);
+  }, [
+    freeTextAnnotations.selectedAnnotationIds,
+    freeShapeAnnotations.selectedAnnotationIds,
+    groupOptions
+  ]);
 
   const copySelectedAnnotations = React.useCallback(() => {
     const opts = groupOptionsRef.current;
-    log.info(`[CombinedAnnotations] Copy triggered. Groups selected: ${opts?.selectedGroupIds.size ?? 0}`);
+    log.info(
+      `[CombinedAnnotations] Copy triggered. Groups selected: ${opts?.selectedGroupIds.size ?? 0}`
+    );
 
     // Copy groups if any are selected
     if (opts && opts.selectedGroupIds.size > 0) {
       const groupIds = Array.from(opts.selectedGroupIds);
-      log.info(`[CombinedAnnotations] Copying groups: ${groupIds.join(', ')}`);
+      log.info(`[CombinedAnnotations] Copying groups: ${groupIds.join(", ")}`);
       if (groupIds.length > 0) {
         const success = opts.groupClipboard.copyGroup(groupIds[0]);
         if (success) {
@@ -95,7 +101,7 @@ export function useCombinedAnnotationShortcuts(
     const opts = groupOptionsRef.current;
     // Paste groups first if clipboard has group data
     if (opts && opts.groupClipboard.hasClipboardData()) {
-      log.info('[CombinedAnnotations] Pasting group');
+      log.info("[CombinedAnnotations] Pasting group");
       const center = opts.getViewportCenter();
       opts.groupClipboard.pasteGroup(center);
     }
@@ -124,7 +130,7 @@ export function useCombinedAnnotationShortcuts(
     // Delete groups if any are selected
     if (opts && opts.selectedGroupIds.size > 0) {
       const groupIds = Array.from(opts.selectedGroupIds);
-      groupIds.forEach(id => opts.deleteGroup(id));
+      groupIds.forEach((id) => opts.deleteGroup(id));
       opts.clearGroupSelection();
     }
     // Also delete annotations
@@ -158,4 +164,3 @@ export function useCombinedAnnotationShortcuts(
     hasAnnotationClipboard
   };
 }
-

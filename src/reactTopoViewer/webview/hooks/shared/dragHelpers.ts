@@ -1,9 +1,9 @@
 /**
  * Shared drag operation helpers
  */
-import type React from 'react';
+import type React from "react";
 
-import type { FreeShapeAnnotation } from '../../../shared/types/topology';
+import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 
 /**
  * Handle common drag start logic:
@@ -39,10 +39,10 @@ export function addMouseMoveUpListeners(
   handleMouseMove: (e: MouseEvent) => void,
   handleMouseUp: (e: MouseEvent) => void
 ): () => void {
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
+  document.addEventListener("mousemove", handleMouseMove);
+  document.addEventListener("mouseup", handleMouseUp);
   return () => {
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
   };
 }

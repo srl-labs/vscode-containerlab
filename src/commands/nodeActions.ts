@@ -1,9 +1,11 @@
 import * as vscode from "vscode";
 
 import type { ClabContainerTreeNode } from "../treeView/common";
-import * as utils from '../utils';
+import * as utils from "../utils";
 
-async function runNodeAction(action: utils.ContainerAction, node: ClabContainerTreeNode
+async function runNodeAction(
+  action: utils.ContainerAction,
+  node: ClabContainerTreeNode
 ): Promise<void> {
   if (!node) {
     vscode.window.showErrorMessage("No container node selected.");

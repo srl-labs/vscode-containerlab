@@ -3,7 +3,7 @@
  *
  * Uses React.ComponentProps to match actual component prop types.
  */
-import React from 'react';
+import React from "react";
 
 import {
   NodeInfoPanel,
@@ -12,7 +12,7 @@ import {
   AboutPanel,
   FindNodePanel,
   SvgExportPanel
-} from './panels';
+} from "./panels";
 
 /** Props passed directly to each panel */
 type NodeInfoProps = React.ComponentProps<typeof NodeInfoPanel>;

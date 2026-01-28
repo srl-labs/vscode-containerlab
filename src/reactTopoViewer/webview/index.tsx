@@ -1,16 +1,16 @@
 /**
  * React TopoViewer Webview Entry Point
  */
-import React from 'react';
-import { createRoot } from 'react-dom/client';
+import React from "react";
+import { createRoot } from "react-dom/client";
 
-import { App } from './App';
-import { TopoViewerProvider } from './context/TopoViewerContext';
-import { log } from './utils/logger';
-import './styles/tailwind.css';
-import { PostMessageFsAdapter } from './adapters';
-import { initializeServices, getTopologyIO } from './services';
-import { subscribeToWebviewMessages } from './utils/webviewMessageBus';
+import { App } from "./App";
+import { TopoViewerProvider } from "./context/TopoViewerContext";
+import { log } from "./utils/logger";
+import "./styles/tailwind.css";
+import { PostMessageFsAdapter } from "./adapters";
+import { initializeServices, getTopologyIO } from "./services";
+import { subscribeToWebviewMessages } from "./utils/webviewMessageBus";
 
 const fsAdapter = new PostMessageFsAdapter();
 initializeServices(fsAdapter, { verbose: false });
@@ -34,11 +34,11 @@ if (initialData.dockerImages) {
 subscribeToWebviewMessages((event) => {
   // VS Code webviews are sandboxed - messages come from the extension host
   const message = event.data as { type?: string; dockerImages?: string[] } | undefined;
-  if (message?.type === 'docker-images-updated' && message.dockerImages) {
+  if (message?.type === "docker-images-updated" && message.dockerImages) {
     window.__DOCKER_IMAGES__ = message.dockerImages;
     // Dispatch a custom event so hooks can react to the update
     window.dispatchEvent(
-      new CustomEvent('docker-images-updated', {
+      new CustomEvent("docker-images-updated", {
         detail: message.dockerImages
       })
     );
@@ -46,7 +46,9 @@ subscribeToWebviewMessages((event) => {
 });
 
 // Log initial data
-log.info(`[ReactTopoViewer] Initial data received, elements count: ${initialData?.elements?.length || 0}`);
+log.info(
+  `[ReactTopoViewer] Initial data received, elements count: ${initialData?.elements?.length || 0}`
+);
 
 /**
  * Bootstrap the application:
@@ -55,9 +57,9 @@ log.info(`[ReactTopoViewer] Initial data received, elements count: ${initialData
  */
 async function bootstrap(): Promise<void> {
   // Find the root element
-  const container = document.getElementById('root');
+  const container = document.getElementById("root");
   if (!container) {
-    throw new Error('Root element not found');
+    throw new Error("Root element not found");
   }
 
   // Initialize TopologyIO if we have a YAML file path (required for lab settings editing)

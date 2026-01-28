@@ -2,13 +2,19 @@
  * Utility functions for converting between CustomTemplateEditorData and NodeEditorData/SaveCustomNodeData
  */
 
-import type { NodeEditorData, CustomTemplateEditorData, CustomNodeTemplate, HealthCheckConfig, SrosComponent } from '../types/editors';
+import type {
+  NodeEditorData,
+  CustomTemplateEditorData,
+  CustomNodeTemplate,
+  HealthCheckConfig,
+  SrosComponent
+} from "../types/editors";
 
 /**
  * Data format for saving custom node to extension.
  * Extends CustomNodeTemplate with oldName for update operations.
  */
-export interface SaveCustomNodeData extends Omit<CustomNodeTemplate, 'name'> {
+export interface SaveCustomNodeData extends Omit<CustomNodeTemplate, "name"> {
   name: string;
   oldName?: string;
 }
@@ -17,10 +23,12 @@ export interface SaveCustomNodeData extends Omit<CustomNodeTemplate, 'name'> {
  * Convert CustomTemplateEditorData to NodeEditorData for the node editor panel.
  * Includes all configurable fields so they appear in the editor.
  */
-export function convertCustomTemplateToEditorData(template: CustomTemplateEditorData): NodeEditorData {
+export function convertCustomTemplateToEditorData(
+  template: CustomTemplateEditorData
+): NodeEditorData {
   return {
     id: template.id,
-    name: '', // Not used for custom templates
+    name: "", // Not used for custom templates
     isCustomTemplate: true,
     customName: template.customName,
     kind: template.kind,
@@ -82,7 +90,7 @@ export function convertCustomTemplateToEditorData(template: CustomTemplateEditor
 
     // Components tab fields (SROS)
     isDistributed: template.isDistributed,
-    components: template.components,
+    components: template.components
   };
 }
 
@@ -97,9 +105,9 @@ export function convertEditorDataToSaveData(
 ): SaveCustomNodeData {
   return {
     // Required fields
-    name: data.customName || '',
+    name: data.customName || "",
     oldName: originalName,
-    kind: data.kind || '',
+    kind: data.kind || "",
 
     // Basic tab fields
     type: data.type,
@@ -158,7 +166,7 @@ export function convertEditorDataToSaveData(
 
     // Components tab fields (SROS)
     isDistributed: data.isDistributed,
-    components: data.components,
+    components: data.components
   };
 }
 
@@ -166,12 +174,14 @@ export function convertEditorDataToSaveData(
  * Convert CustomNodeTemplate to CustomTemplateEditorData for editing.
  * Loads all saved template properties so they appear in the editor.
  */
-export function convertTemplateToEditorData(template: CustomNodeTemplate): CustomTemplateEditorData {
+export function convertTemplateToEditorData(
+  template: CustomNodeTemplate
+): CustomTemplateEditorData {
   // Use type assertion for accessing extended properties
   const t = template as Record<string, unknown>;
 
   return {
-    id: 'edit-custom-node',
+    id: "edit-custom-node",
     isCustomTemplate: true,
     customName: template.name,
     kind: template.kind,
@@ -234,24 +244,26 @@ export function convertTemplateToEditorData(template: CustomNodeTemplate): Custo
 
     // Components tab fields (SROS)
     isDistributed: t.isDistributed as boolean | undefined,
-    components: t.components as SrosComponent[] | undefined,
+    components: t.components as SrosComponent[] | undefined
   };
 }
 
 /**
  * Create a new empty CustomTemplateEditorData
  */
-export function createNewTemplateEditorData(defaultKind = 'nokia_srlinux'): CustomTemplateEditorData {
+export function createNewTemplateEditorData(
+  defaultKind = "nokia_srlinux"
+): CustomTemplateEditorData {
   return {
-    id: 'temp-custom-node',
+    id: "temp-custom-node",
     isCustomTemplate: true,
-    customName: '',
+    customName: "",
     kind: defaultKind,
-    type: '',
-    image: '',
-    icon: 'pe',
-    baseName: '',
-    interfacePattern: '',
+    type: "",
+    image: "",
+    icon: "pe",
+    baseName: "",
+    interfacePattern: "",
     isDefaultCustomNode: false
   };
 }

@@ -3,9 +3,9 @@
  *
  * Merged from usePanelVisibility.ts - manages panel visibility for shortcuts, about, find node, SVG export, and lab settings.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useState } from "react";
 
-import { sendCommandToExtension } from '../../utils/extensionMessaging';
+import { sendCommandToExtension } from "../../utils/extensionMessaging";
 
 export interface DeploymentCommands {
   onDeploy: () => void;
@@ -19,21 +19,12 @@ export interface DeploymentCommands {
 // Keep deployment commands - they need extension to run containerlab CLI
 export function useDeploymentCommands(): DeploymentCommands {
   return {
-    onDeploy: useCallback(() => sendCommandToExtension('deployLab'), []),
-    onDeployCleanup: useCallback(
-      () => sendCommandToExtension('deployLabCleanup'),
-      []
-    ),
-    onDestroy: useCallback(() => sendCommandToExtension('destroyLab'), []),
-    onDestroyCleanup: useCallback(
-      () => sendCommandToExtension('destroyLabCleanup'),
-      []
-    ),
-    onRedeploy: useCallback(() => sendCommandToExtension('redeployLab'), []),
-    onRedeployCleanup: useCallback(
-      () => sendCommandToExtension('redeployLabCleanup'),
-      []
-    )
+    onDeploy: useCallback(() => sendCommandToExtension("deployLab"), []),
+    onDeployCleanup: useCallback(() => sendCommandToExtension("deployLabCleanup"), []),
+    onDestroy: useCallback(() => sendCommandToExtension("destroyLab"), []),
+    onDestroyCleanup: useCallback(() => sendCommandToExtension("destroyLabCleanup"), []),
+    onRedeploy: useCallback(() => sendCommandToExtension("redeployLab"), []),
+    onRedeployCleanup: useCallback(() => sendCommandToExtension("redeployLabCleanup"), [])
   };
 }
 
@@ -110,18 +101,25 @@ function useInfoPanels() {
 
   const handleShowShortcuts = useCallback(() => {
     setShowAboutPanel(false);
-    setShowShortcutsPanel(prev => !prev);
+    setShowShortcutsPanel((prev) => !prev);
   }, []);
 
   const handleShowAbout = useCallback(() => {
     setShowShortcutsPanel(false);
-    setShowAboutPanel(prev => !prev);
+    setShowAboutPanel((prev) => !prev);
   }, []);
 
   const handleCloseShortcuts = useCallback(() => setShowShortcutsPanel(false), []);
   const handleCloseAbout = useCallback(() => setShowAboutPanel(false), []);
 
-  return { showShortcutsPanel, showAboutPanel, handleShowShortcuts, handleShowAbout, handleCloseShortcuts, handleCloseAbout };
+  return {
+    showShortcutsPanel,
+    showAboutPanel,
+    handleShowShortcuts,
+    handleShowAbout,
+    handleCloseShortcuts,
+    handleCloseAbout
+  };
 }
 
 /** Hook for utility panels (find node, SVG export, lab settings) */
@@ -130,18 +128,24 @@ function useUtilityPanels() {
   const [showSvgExportPanel, setShowSvgExportPanel] = useState(false);
   const [showLabSettingsPanel, setShowLabSettingsPanel] = useState(false);
 
-  const handleShowFindNode = useCallback(() => setShowFindNodePanel(prev => !prev), []);
-  const handleShowSvgExport = useCallback(() => setShowSvgExportPanel(prev => !prev), []);
-  const handleShowLabSettings = useCallback(() => setShowLabSettingsPanel(prev => !prev), []);
+  const handleShowFindNode = useCallback(() => setShowFindNodePanel((prev) => !prev), []);
+  const handleShowSvgExport = useCallback(() => setShowSvgExportPanel((prev) => !prev), []);
+  const handleShowLabSettings = useCallback(() => setShowLabSettingsPanel((prev) => !prev), []);
 
   const handleCloseFindNode = useCallback(() => setShowFindNodePanel(false), []);
   const handleCloseSvgExport = useCallback(() => setShowSvgExportPanel(false), []);
   const handleCloseLabSettings = useCallback(() => setShowLabSettingsPanel(false), []);
 
   return {
-    showFindNodePanel, showSvgExportPanel, showLabSettingsPanel,
-    handleShowFindNode, handleShowSvgExport, handleShowLabSettings,
-    handleCloseFindNode, handleCloseSvgExport, handleCloseLabSettings
+    showFindNodePanel,
+    showSvgExportPanel,
+    showLabSettingsPanel,
+    handleShowFindNode,
+    handleShowSvgExport,
+    handleShowLabSettings,
+    handleCloseFindNode,
+    handleCloseSvgExport,
+    handleCloseLabSettings
   };
 }
 

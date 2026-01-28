@@ -1,11 +1,11 @@
 /**
  * useFilterableDropdown - Hook to manage filterable dropdown state and behavior
  */
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import type React from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
-import { useClickOutside } from './useDomInteractions';
-import { useDropdownKeyboard } from './useDropdown';
+import { useClickOutside } from "./useDomInteractions";
+import { useDropdownKeyboard } from "./useDropdown";
 
 export interface FilterableDropdownOption {
   value: string;
@@ -23,22 +23,36 @@ interface UseFilterableDropdownProps {
 /**
  * Find the best matching option for the given text
  */
-function findBestMatch(text: string, options: FilterableDropdownOption[]): FilterableDropdownOption | null {
+function findBestMatch(
+  text: string,
+  options: FilterableDropdownOption[]
+): FilterableDropdownOption | null {
   if (!text.trim()) return null;
   const lower = text.toLowerCase();
 
-  return options.find(o => o.value.toLowerCase() === lower || o.label.toLowerCase() === lower)
-    || options.find(o => o.value.toLowerCase().startsWith(lower) || o.label.toLowerCase().startsWith(lower))
-    || options.find(o => o.value.toLowerCase().includes(lower) || o.label.toLowerCase().includes(lower))
-    || null;
+  return (
+    options.find((o) => o.value.toLowerCase() === lower || o.label.toLowerCase() === lower) ||
+    options.find(
+      (o) => o.value.toLowerCase().startsWith(lower) || o.label.toLowerCase().startsWith(lower)
+    ) ||
+    options.find(
+      (o) => o.value.toLowerCase().includes(lower) || o.label.toLowerCase().includes(lower)
+    ) ||
+    null
+  );
 }
 
 /**
  * Filter options based on filter text
  */
-function filterOptions(options: FilterableDropdownOption[], filterText: string): FilterableDropdownOption[] {
+function filterOptions(
+  options: FilterableDropdownOption[],
+  filterText: string
+): FilterableDropdownOption[] {
   const lower = filterText.toLowerCase();
-  return options.filter(o => o.label.toLowerCase().includes(lower) || o.value.toLowerCase().includes(lower));
+  return options.filter(
+    (o) => o.label.toLowerCase().includes(lower) || o.value.toLowerCase().includes(lower)
+  );
 }
 
 /**
@@ -55,7 +69,10 @@ function resolveCommitValue(
   }
   const match = findBestMatch(filterText, options);
   if (match) {
-    return { newFilterText: match.value, newValue: match.value !== currentValue ? match.value : null };
+    return {
+      newFilterText: match.value,
+      newValue: match.value !== currentValue ? match.value : null
+    };
   }
   return { newFilterText: currentValue, newValue: null };
 }
@@ -79,15 +96,24 @@ function useDropdownOpenState(value: string) {
       setIsOpen(false);
       setIsFiltering(false);
     };
-    window.addEventListener('blur', closeDropdown);
-    document.addEventListener('visibilitychange', closeDropdown);
+    window.addEventListener("blur", closeDropdown);
+    document.addEventListener("visibilitychange", closeDropdown);
     return () => {
-      window.removeEventListener('blur', closeDropdown);
-      document.removeEventListener('visibilitychange', closeDropdown);
+      window.removeEventListener("blur", closeDropdown);
+      document.removeEventListener("visibilitychange", closeDropdown);
     };
   }, []);
 
-  return { isOpen, setIsOpen, filterText, setFilterText, highlightedIndex, setHighlightedIndex, isFiltering, setIsFiltering };
+  return {
+    isOpen,
+    setIsOpen,
+    filterText,
+    setFilterText,
+    highlightedIndex,
+    setHighlightedIndex,
+    isFiltering,
+    setIsFiltering
+  };
 }
 
 /**
@@ -121,18 +147,24 @@ function useSelectionHandlers(
   setHighlightedIndex: (index: number) => void,
   setIsFiltering: (filtering: boolean) => void
 ) {
-  const handleSelect = useCallback((option: FilterableDropdownOption) => {
-    setFilterText(option.value);
-    onChange(option.value);
-    setIsOpen(false);
-    setHighlightedIndex(-1);
-    setIsFiltering(false);
-  }, [onChange, setFilterText, setIsOpen, setHighlightedIndex, setIsFiltering]);
+  const handleSelect = useCallback(
+    (option: FilterableDropdownOption) => {
+      setFilterText(option.value);
+      onChange(option.value);
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+      setIsFiltering(false);
+    },
+    [onChange, setFilterText, setIsOpen, setHighlightedIndex, setIsFiltering]
+  );
 
-  const handleSelectByIndex = useCallback((index: number) => {
-    const option = filteredOptions[index];
-    if (option) handleSelect(option);
-  }, [filteredOptions, handleSelect]);
+  const handleSelectByIndex = useCallback(
+    (index: number) => {
+      const option = filteredOptions[index];
+      if (option) handleSelect(option);
+    },
+    [filteredOptions, handleSelect]
+  );
 
   return { handleSelect, handleSelectByIndex };
 }
@@ -164,20 +196,41 @@ export function useFilterableDropdown({
   allowFreeText
 }: UseFilterableDropdownProps): UseFilterableDropdownReturn {
   const state = useDropdownOpenState(value);
-  const { isOpen, setIsOpen, filterText, setFilterText, highlightedIndex, setHighlightedIndex, isFiltering, setIsFiltering } = state;
+  const {
+    isOpen,
+    setIsOpen,
+    filterText,
+    setFilterText,
+    highlightedIndex,
+    setHighlightedIndex,
+    isFiltering,
+    setIsFiltering
+  } = state;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const filteredOptions = useMemo(
-    () => isFiltering ? filterOptions(options, filterText) : options,
+    () => (isFiltering ? filterOptions(options, filterText) : options),
     [isFiltering, options, filterText]
   );
 
-  const commitValue = useCommitValue(filterText, value, options, allowFreeText, onChange, setFilterText);
+  const commitValue = useCommitValue(
+    filterText,
+    value,
+    options,
+    allowFreeText,
+    onChange,
+    setFilterText
+  );
   const { handleSelect, handleSelectByIndex } = useSelectionHandlers(
-    filteredOptions, onChange, setFilterText, setIsOpen, setHighlightedIndex, setIsFiltering
+    filteredOptions,
+    onChange,
+    setFilterText,
+    setIsOpen,
+    setHighlightedIndex,
+    setIsFiltering
   );
 
   const handleKeyDown = useDropdownKeyboard(
@@ -195,8 +248,10 @@ export function useFilterableDropdown({
 
   useEffect(() => {
     if (highlightedIndex >= 0 && menuRef.current) {
-      const item = menuRef.current.querySelectorAll('[data-dropdown-item]')[highlightedIndex] as HTMLElement;
-      item?.scrollIntoView({ block: 'nearest' });
+      const item = menuRef.current.querySelectorAll("[data-dropdown-item]")[
+        highlightedIndex
+      ] as HTMLElement;
+      item?.scrollIntoView({ block: "nearest" });
     }
   }, [highlightedIndex]);
 
@@ -210,12 +265,15 @@ export function useFilterableDropdown({
     }, 150);
   }, [commitValue, setIsOpen, setIsFiltering]);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilterText(e.target.value);
-    setIsOpen(true);
-    setHighlightedIndex(-1);
-    setIsFiltering(true);
-  }, [setFilterText, setIsOpen, setHighlightedIndex, setIsFiltering]);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFilterText(e.target.value);
+      setIsOpen(true);
+      setHighlightedIndex(-1);
+      setIsFiltering(true);
+    },
+    [setFilterText, setIsOpen, setHighlightedIndex, setIsFiltering]
+  );
 
   const handleToggle = useCallback(() => {
     setIsOpen(!isOpen);
@@ -225,9 +283,19 @@ export function useFilterableDropdown({
   const handleFocus = useCallback(() => setIsOpen(true), [setIsOpen]);
 
   return {
-    containerRef, inputRef, menuRef,
-    isOpen, filterText, highlightedIndex, filteredOptions,
-    handleSelect, handleKeyDown, handleBlur, handleInputChange, handleToggle, handleFocus,
+    containerRef,
+    inputRef,
+    menuRef,
+    isOpen,
+    filterText,
+    highlightedIndex,
+    filteredOptions,
+    handleSelect,
+    handleKeyDown,
+    handleBlur,
+    handleInputChange,
+    handleToggle,
+    handleFocus,
     setHighlightedIndex
   };
 }

@@ -4,8 +4,8 @@
  * Provides undo/redo functionality that can be shared across components.
  * Handlers are registered via refs to avoid circular dependencies.
  */
-import React, { createContext, useContext, useRef, useCallback, useMemo } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import React, { createContext, useContext, useRef, useCallback, useMemo } from "react";
+import type { Core as CyCore } from "cytoscape";
 
 import {
   useUndoRedo,
@@ -15,13 +15,22 @@ import {
   type UndoRedoActionGroupMove,
   type GraphChange,
   type MembershipEntry
-} from '../hooks/state/useUndoRedo';
+} from "../hooks/state/useUndoRedo";
 
 /** Handler types for undo/redo callbacks */
 export type ApplyGraphChangesHandler = (changes: GraphChange[]) => void;
-export type ApplyPropertyEditHandler = (action: UndoRedoActionPropertyEdit, isUndo: boolean) => void;
-export type ApplyAnnotationChangeHandler = (action: UndoRedoActionAnnotation, isUndo: boolean) => void;
-export type ApplyGroupMoveChangeHandler = (action: UndoRedoActionGroupMove, isUndo: boolean) => void;
+export type ApplyPropertyEditHandler = (
+  action: UndoRedoActionPropertyEdit,
+  isUndo: boolean
+) => void;
+export type ApplyAnnotationChangeHandler = (
+  action: UndoRedoActionAnnotation,
+  isUndo: boolean
+) => void;
+export type ApplyGroupMoveChangeHandler = (
+  action: UndoRedoActionGroupMove,
+  isUndo: boolean
+) => void;
 export type ApplyMembershipChangeHandler = (memberships: MembershipEntry[]) => void;
 
 /** Context value shape */
@@ -50,11 +59,7 @@ interface UndoRedoProviderProps {
 }
 
 /** Provider component for undo/redo context */
-export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
-  cy,
-  enabled,
-  children
-}) => {
+export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({ cy, enabled, children }) => {
   // Refs to hold the registered handlers
   const graphHandlerRef = useRef<ApplyGraphChangesHandler | undefined>(undefined);
   const propertyEditHandlerRef = useRef<ApplyPropertyEditHandler | undefined>(undefined);
@@ -115,34 +120,33 @@ export const UndoRedoProvider: React.FC<UndoRedoProviderProps> = ({
     membershipHandlerRef.current = handler;
   }, []);
 
-  const value = useMemo<UndoRedoContextValue>(() => ({
-    undoRedo,
-    registerGraphHandler,
-    registerPropertyEditHandler,
-    registerAnnotationHandler,
-    registerGroupMoveHandler,
-    registerMembershipHandler
-  }), [
-    undoRedo,
-    registerGraphHandler,
-    registerPropertyEditHandler,
-    registerAnnotationHandler,
-    registerGroupMoveHandler,
-    registerMembershipHandler
-  ]);
-
-  return (
-    <UndoRedoContext.Provider value={value}>
-      {children}
-    </UndoRedoContext.Provider>
+  const value = useMemo<UndoRedoContextValue>(
+    () => ({
+      undoRedo,
+      registerGraphHandler,
+      registerPropertyEditHandler,
+      registerAnnotationHandler,
+      registerGroupMoveHandler,
+      registerMembershipHandler
+    }),
+    [
+      undoRedo,
+      registerGraphHandler,
+      registerPropertyEditHandler,
+      registerAnnotationHandler,
+      registerGroupMoveHandler,
+      registerMembershipHandler
+    ]
   );
+
+  return <UndoRedoContext.Provider value={value}>{children}</UndoRedoContext.Provider>;
 };
 
 /** Hook to access undo/redo context */
 export function useUndoRedoContext(): UndoRedoContextValue {
   const context = useContext(UndoRedoContext);
   if (!context) {
-    throw new Error('useUndoRedoContext must be used within an UndoRedoProvider');
+    throw new Error("useUndoRedoContext must be used within an UndoRedoProvider");
   }
   return context;
 }

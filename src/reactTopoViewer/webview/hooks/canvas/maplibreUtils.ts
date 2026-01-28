@@ -2,10 +2,10 @@
  * MapLibre GL Integration for React TopoViewer
  * Replaces Leaflet with MapLibre GL for smoother, WebGL-powered map rendering
  */
-import type { Core, NodeSingular, EdgeSingular, EventObject, NodeCollection } from 'cytoscape';
-import maplibregl from 'maplibre-gl';
+import type { Core, NodeSingular, EdgeSingular, EventObject, NodeCollection } from "cytoscape";
+import maplibregl from "maplibre-gl";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
 /**
  * Cytoscape element with data accessor for geo map functionality
@@ -13,8 +13,8 @@ import { log } from '../../utils/logger';
 type CytoscapeElement = NodeSingular | EdgeSingular;
 
 // Constants
-export const CLASS_MAPLIBRE_ACTIVE = 'maplibre-active';
-export const ID_GEO_MAP_CONTAINER = 'react-topoviewer-geo-map';
+export const CLASS_MAPLIBRE_ACTIVE = "maplibre-active";
+export const ID_GEO_MAP_CONTAINER = "react-topoviewer-geo-map";
 const DEFAULT_LAT = 48.684826888402256;
 const DEFAULT_LNG = 9.007895390625677;
 const DEFAULT_INITIAL_ZOOM = 4;
@@ -22,11 +22,11 @@ const INITIAL_FIT_MAX_ZOOM = 15;
 const RETINA_TILE_DPR_THRESHOLD = 1.5;
 
 // Style keys for scaling
-const STYLE_FONT_SIZE = 'font-size';
-const STYLE_BORDER_WIDTH = 'border-width';
-const STYLE_ARROW_SCALE = 'arrow-scale';
-const STYLE_WIDTH = 'width';
-const STYLE_HEIGHT = 'height';
+const STYLE_FONT_SIZE = "font-size";
+const STYLE_BORDER_WIDTH = "border-width";
+const STYLE_ARROW_SCALE = "arrow-scale";
+const STYLE_WIDTH = "width";
+const STYLE_HEIGHT = "height";
 
 // Minimum sizes to prevent nodes from becoming too small when zoomed out
 const MIN_NODE_SIZE = 20;
@@ -38,8 +38,8 @@ const MIN_BORDER_WIDTH = 1;
 const DEFAULT_FIT_PADDING = 50;
 
 function getCartoVoyagerTileUrls(): string[] {
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
-  const suffix = dpr >= RETINA_TILE_DPR_THRESHOLD ? '@2x' : '';
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio : 1;
+  const suffix = dpr >= RETINA_TILE_DPR_THRESHOLD ? "@2x" : "";
 
   return [
     `https://a.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}${suffix}.png`,
@@ -100,8 +100,8 @@ function computeLatLngStats(cy: Core): LatLngStats {
   const lngs: number[] = [];
 
   cy.nodes().forEach((node) => {
-    const lat = parseFloat(node.data('lat'));
-    const lng = parseFloat(node.data('lng'));
+    const lat = parseFloat(node.data("lat"));
+    const lng = parseFloat(node.data("lng"));
     if (!isNaN(lat)) lats.push(lat);
     if (!isNaN(lng)) lngs.push(lng);
   });
@@ -115,22 +115,22 @@ function computeLatLngStats(cy: Core): LatLngStats {
 }
 
 function applyLatLngToNode(node: NodeSingular, stats: LatLngStats): void {
-  let lat = parseFloat(node.data('lat') as string);
-  if (!node.data('lat') || isNaN(lat)) {
+  let lat = parseFloat(node.data("lat") as string);
+  if (!node.data("lat") || isNaN(lat)) {
     const idx = node.id().length % 5;
     const offset = (idx - 2) * 0.05;
     lat = (stats.useDefaultLat ? DEFAULT_LAT : stats.avgLat) + offset;
   }
 
-  let lng = parseFloat(node.data('lng') as string);
-  if (!node.data('lng') || isNaN(lng)) {
+  let lng = parseFloat(node.data("lng") as string);
+  if (!node.data("lng") || isNaN(lng)) {
     const idx = (node.id().charCodeAt(0) || 0) % 7;
     const offset = (idx - 3) * 0.05;
     lng = (stats.useDefaultLng ? DEFAULT_LNG : stats.avgLng) + offset;
   }
 
-  node.data('lat', lat.toFixed(15));
-  node.data('lng', lng.toFixed(15));
+  node.data("lat", lat.toFixed(15));
+  node.data("lng", lng.toFixed(15));
 }
 
 /**
@@ -138,9 +138,11 @@ function applyLatLngToNode(node: NodeSingular, stats: LatLngStats): void {
  */
 export function hideGridOverlay(container: Element | null): void {
   if (!container) return;
-  const gridOverlay = container.querySelector('.react-topoviewer-grid-overlay') as HTMLCanvasElement | null;
+  const gridOverlay = container.querySelector(
+    ".react-topoviewer-grid-overlay"
+  ) as HTMLCanvasElement | null;
   if (gridOverlay) {
-    gridOverlay.style.display = 'none';
+    gridOverlay.style.display = "none";
   }
 }
 
@@ -149,9 +151,11 @@ export function hideGridOverlay(container: Element | null): void {
  */
 export function showGridOverlay(container: Element | null): void {
   if (!container) return;
-  const gridOverlay = container.querySelector('.react-topoviewer-grid-overlay') as HTMLCanvasElement | null;
+  const gridOverlay = container.querySelector(
+    ".react-topoviewer-grid-overlay"
+  ) as HTMLCanvasElement | null;
   if (gridOverlay) {
-    gridOverlay.style.display = 'block';
+    gridOverlay.style.display = "block";
   }
 }
 
@@ -159,8 +163,8 @@ export function showGridOverlay(container: Element | null): void {
  * Get node's LngLat position
  */
 function getNodeLngLat(node: NodeSingular): maplibregl.LngLat | null {
-  const lat = parseFloat(node.data('lat') as string);
-  const lng = parseFloat(node.data('lng') as string);
+  const lat = parseFloat(node.data("lat") as string);
+  const lng = parseFloat(node.data("lng") as string);
   if (isNaN(lat) || isNaN(lng)) return null;
   return new maplibregl.LngLat(lng, lat);
 }
@@ -229,7 +233,7 @@ function processAnnotationsForGeoAssignment<T>(
   if (!state.map || !state.isInitialized) return { updated: annotations, hasChanges: false };
 
   let hasChanges = false;
-  const updated = annotations.map(ann => {
+  const updated = annotations.map((ann) => {
     const result = processItem(ann);
     if (result.changed) hasChanges = true;
     return result.modified;
@@ -250,7 +254,7 @@ export function assignMissingGeoCoordinatesToAnnotations<T extends GeoCapableAnn
   state: MapLibreState,
   annotations: T[]
 ): AssignGeoResult<T> {
-  return processAnnotationsForGeoAssignment(state, annotations, ann => {
+  return processAnnotationsForGeoAssignment(state, annotations, (ann) => {
     if (!ann.geoCoordinates) {
       const geoCoords = unprojectToGeoCoords(state, ann.position);
       if (geoCoords) {
@@ -272,7 +276,7 @@ export function assignMissingGeoCoordinatesToShapeAnnotations<T extends GeoCapab
   state: MapLibreState,
   annotations: T[]
 ): AssignGeoResult<T> {
-  return processAnnotationsForGeoAssignment(state, annotations, ann => {
+  return processAnnotationsForGeoAssignment(state, annotations, (ann) => {
     let modified = { ...ann };
     let changed = false;
 
@@ -360,7 +364,12 @@ function updateNodePositions(cy: Core, state: MapLibreState): void {
  * For font-size, always use the fallback since the stylesheet uses relative units (em)
  * that don't work well with the geo map scaling system.
  */
-function setDefaultNumericData(target: CytoscapeElement, dataKey: string, styleKey: string, fallback: number): void {
+function setDefaultNumericData(
+  target: CytoscapeElement,
+  dataKey: string,
+  styleKey: string,
+  fallback: number
+): void {
   if (target.data(dataKey) !== undefined) return;
 
   // For font-size, always use fallback since stylesheet uses em units
@@ -376,21 +385,21 @@ function setDefaultNumericData(target: CytoscapeElement, dataKey: string, styleK
 }
 
 function cacheNodeOriginalStyles(node: NodeSingular): void {
-  setDefaultNumericData(node, '_origWidth', STYLE_WIDTH, 50);
-  setDefaultNumericData(node, '_origHeight', STYLE_HEIGHT, 50);
+  setDefaultNumericData(node, "_origWidth", STYLE_WIDTH, 50);
+  setDefaultNumericData(node, "_origHeight", STYLE_HEIGHT, 50);
   // Use small value similar to what 0.58em would parse to, since labelFactor multiplies by 8*scaleFactor
-  setDefaultNumericData(node, '_origFont', STYLE_FONT_SIZE, 0.5);
+  setDefaultNumericData(node, "_origFont", STYLE_FONT_SIZE, 0.5);
 
-  if (node.data('topoViewerRole') === 'group') {
-    setDefaultNumericData(node, '_origBorderWidth', STYLE_BORDER_WIDTH, 2);
+  if (node.data("topoViewerRole") === "group") {
+    setDefaultNumericData(node, "_origBorderWidth", STYLE_BORDER_WIDTH, 2);
   }
 }
 
 function cacheEdgeOriginalStyles(edge: EdgeSingular): void {
-  setDefaultNumericData(edge, '_origWidth', STYLE_WIDTH, 2);
+  setDefaultNumericData(edge, "_origWidth", STYLE_WIDTH, 2);
   // Use small value similar to what 0.42em would parse to, since labelFactor multiplies by 8*scaleFactor
-  setDefaultNumericData(edge, '_origFont', STYLE_FONT_SIZE, 0.4);
-  setDefaultNumericData(edge, '_origArrow', STYLE_ARROW_SCALE, 1);
+  setDefaultNumericData(edge, "_origFont", STYLE_FONT_SIZE, 0.4);
+  setDefaultNumericData(edge, "_origArrow", STYLE_ARROW_SCALE, 1);
 }
 
 function ensureOriginalSizes(cy: Core): void {
@@ -425,20 +434,22 @@ export function applyScale(cy: Core, state: MapLibreState, factor: number): void
 
   cy.batch(() => {
     cy.nodes().forEach((n) => {
-      const origW = n.data('_origWidth') as number | undefined;
-      const origH = n.data('_origHeight') as number | undefined;
-      const origFont = n.data('_origFont') as number | undefined;
+      const origW = n.data("_origWidth") as number | undefined;
+      const origH = n.data("_origHeight") as number | undefined;
+      const origFont = n.data("_origFont") as number | undefined;
 
       if (origW !== undefined && origH !== undefined) {
         n.style({
           [STYLE_WIDTH]: Math.max(origW * factor, MIN_NODE_SIZE),
           [STYLE_HEIGHT]: Math.max(origH * factor, MIN_NODE_SIZE),
-          [STYLE_FONT_SIZE]: origFont ? `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px` : undefined
+          [STYLE_FONT_SIZE]: origFont
+            ? `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px`
+            : undefined
         });
       }
 
-      if (n.data('topoViewerRole') === 'group') {
-        const origBorder = n.data('_origBorderWidth') as number | undefined;
+      if (n.data("topoViewerRole") === "group") {
+        const origBorder = n.data("_origBorderWidth") as number | undefined;
         if (origBorder !== undefined) {
           n.style(STYLE_BORDER_WIDTH, Math.max(origBorder * factor, MIN_BORDER_WIDTH));
         }
@@ -446,12 +457,14 @@ export function applyScale(cy: Core, state: MapLibreState, factor: number): void
     });
 
     cy.edges().forEach((e) => {
-      const origWidth = e.data('_origWidth') as number | undefined;
-      const origFont = e.data('_origFont') as number | undefined;
-      const origArrow = e.data('_origArrow') as number | undefined;
+      const origWidth = e.data("_origWidth") as number | undefined;
+      const origFont = e.data("_origFont") as number | undefined;
+      const origArrow = e.data("_origArrow") as number | undefined;
 
-      if (origWidth !== undefined) e.style(STYLE_WIDTH, Math.max(origWidth * factor, MIN_EDGE_WIDTH));
-      if (origFont !== undefined) e.style(STYLE_FONT_SIZE, `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px`);
+      if (origWidth !== undefined)
+        e.style(STYLE_WIDTH, Math.max(origWidth * factor, MIN_EDGE_WIDTH));
+      if (origFont !== undefined)
+        e.style(STYLE_FONT_SIZE, `${Math.max(origFont * labelFactor, MIN_FONT_SIZE)}px`);
       if (origArrow !== undefined) e.style(STYLE_ARROW_SCALE, Math.max(origArrow * factor, 0.3));
     });
   });
@@ -472,15 +485,15 @@ function resetStyles(cy: Core): void {
       n.removeStyle(STYLE_WIDTH);
       n.removeStyle(STYLE_HEIGHT);
       n.removeStyle(STYLE_FONT_SIZE);
-      if (n.data('topoViewerRole') === 'group') {
+      if (n.data("topoViewerRole") === "group") {
         n.removeStyle(STYLE_BORDER_WIDTH);
       }
 
       // Clean up cached data
-      n.removeData('_origWidth');
-      n.removeData('_origHeight');
-      n.removeData('_origFont');
-      n.removeData('_origBorderWidth');
+      n.removeData("_origWidth");
+      n.removeData("_origHeight");
+      n.removeData("_origFont");
+      n.removeData("_origBorderWidth");
     });
 
     cy.edges().forEach((e) => {
@@ -490,9 +503,9 @@ function resetStyles(cy: Core): void {
       e.removeStyle(STYLE_ARROW_SCALE);
 
       // Clean up cached data
-      e.removeData('_origWidth');
-      e.removeData('_origFont');
-      e.removeData('_origArrow');
+      e.removeData("_origWidth");
+      e.removeData("_origFont");
+      e.removeData("_origArrow");
     });
   });
 }
@@ -504,8 +517,8 @@ function updateNodeGeoData(node: NodeSingular, state: MapLibreState): void {
   if (!state.map) return;
   const pos = node.position();
   const lngLat = state.map.unproject([pos.x, pos.y]);
-  node.data('lat', lngLat.lat.toFixed(15));
-  node.data('lng', lngLat.lng.toFixed(15));
+  node.data("lat", lngLat.lat.toFixed(15));
+  node.data("lng", lngLat.lng.toFixed(15));
 }
 
 function cleanupMapInitializationFailure(
@@ -516,14 +529,14 @@ function cleanupMapInitializationFailure(
   onDragFree: (event: EventObject) => void
 ): void {
   try {
-    cy.off('dragfree', onDragFree);
+    cy.off("dragfree", onDragFree);
   } catch {
     // ignore
   }
 
   if (state.map) {
     try {
-      state.map.off('move', onMove);
+      state.map.off("move", onMove);
       state.map.remove();
     } catch {
       // ignore
@@ -537,8 +550,8 @@ function cleanupMapInitializationFailure(
   }
 
   container.classList.remove(CLASS_MAPLIBRE_ACTIVE);
-  (container as HTMLElement).style.background = '';
-  (container as HTMLElement).style.pointerEvents = '';
+  (container as HTMLElement).style.background = "";
+  (container as HTMLElement).style.pointerEvents = "";
 
   cy.nodes().forEach((node) => {
     const origPos = state.originalPositions.get(node.id());
@@ -565,11 +578,11 @@ export async function initializeMapLibre(
   onMove: () => void,
   onDragFree: (event: EventObject) => void
 ): Promise<void> {
-  log.info('[MapLibre] Initializing geo map');
+  log.info("[MapLibre] Initializing geo map");
 
   const container = cy.container();
   if (!container) {
-    log.error('[MapLibre] Missing container');
+    log.error("[MapLibre] Missing container");
     return;
   }
 
@@ -589,10 +602,10 @@ export async function initializeMapLibre(
     hideGridOverlay(container);
 
     container.classList.add(CLASS_MAPLIBRE_ACTIVE);
-    (container as HTMLElement).style.background = 'transparent';
+    (container as HTMLElement).style.background = "transparent";
 
     // Create map container as sibling behind Cytoscape (so pointer-events toggling on Cytoscape doesn't block the map)
-    const mapContainer = document.createElement('div');
+    const mapContainer = document.createElement("div");
     mapContainer.id = ID_GEO_MAP_CONTAINER;
     mapContainer.style.cssText = `
       position: absolute;
@@ -621,8 +634,8 @@ export async function initializeMapLibre(
       style: {
         version: 8,
         sources: {
-          'carto-voyager': {
-            type: 'raster',
+          "carto-voyager": {
+            type: "raster",
             tiles: getCartoVoyagerTileUrls(),
             tileSize: 256,
             attribution:
@@ -631,13 +644,13 @@ export async function initializeMapLibre(
         },
         layers: [
           {
-            id: 'carto-voyager-layer',
-            type: 'raster',
-            source: 'carto-voyager',
+            id: "carto-voyager-layer",
+            type: "raster",
+            source: "carto-voyager",
             minzoom: 0,
             maxzoom: 20,
             paint: {
-              'raster-fade-duration': 0
+              "raster-fade-duration": 0
             }
           }
         ]
@@ -646,13 +659,13 @@ export async function initializeMapLibre(
       zoom: DEFAULT_INITIAL_ZOOM,
       ...(bounds
         ? {
-          bounds,
-          fitBoundsOptions: {
-            padding: DEFAULT_FIT_PADDING,
-            maxZoom: INITIAL_FIT_MAX_ZOOM,
-            animate: false
+            bounds,
+            fitBoundsOptions: {
+              padding: DEFAULT_FIT_PADDING,
+              maxZoom: INITIAL_FIT_MAX_ZOOM,
+              animate: false
+            }
           }
-        }
         : {}),
       attributionControl: false
     });
@@ -663,8 +676,8 @@ export async function initializeMapLibre(
     const mapLoaded = new Promise<void>((resolve) => {
       // MapLibre's once() returns `this` when callback is provided, not a Promise
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      map.once('load', () => {
-        log.info('[MapLibre] Map loaded');
+      map.once("load", () => {
+        log.info("[MapLibre] Map loaded");
         resolve();
       });
     });
@@ -672,7 +685,7 @@ export async function initializeMapLibre(
     await Promise.race([
       mapLoaded,
       new Promise<void>((_, reject) => {
-        window.setTimeout(() => reject(new Error('MapLibre load timeout')), loadTimeoutMs);
+        window.setTimeout(() => reject(new Error("MapLibre load timeout")), loadTimeoutMs);
       })
     ]);
 
@@ -692,16 +705,16 @@ export async function initializeMapLibre(
     applyScale(cy, state, factor);
 
     // Map move handler - updates node positions on pan/zoom
-    map.on('move', onMove);
+    map.on("move", onMove);
 
     // Setup drag handler for node position updates
-    cy.on('dragfree', onDragFree);
+    cy.on("dragfree", onDragFree);
 
     // Mark GeoMap as active on Cytoscape (for external wheel handlers)
-    cy.scratch('geoMapActive', true);
+    cy.scratch("geoMapActive", true);
 
     state.isInitialized = true;
-    log.info('[MapLibre] Geo map initialization complete');
+    log.info("[MapLibre] Geo map initialization complete");
   } catch (err) {
     log.error(`[MapLibre] Failed to initialize geo map: ${err}`);
     cleanupMapInitializationFailure(cy, state, container, onMove, onDragFree);
@@ -763,16 +776,16 @@ export function switchToPanMode(cy: Core, state: MapLibreState): void {
   if (!state.map) return;
   const container = cy.container();
   if (container) {
-    (container as HTMLElement).style.pointerEvents = 'none';
+    (container as HTMLElement).style.pointerEvents = "none";
 
     // Remove wheel handler from edit mode
     if (editModeWheelHandler) {
-      container.removeEventListener('wheel', editModeWheelHandler);
+      container.removeEventListener("wheel", editModeWheelHandler);
       editModeWheelHandler = null;
     }
   }
   enableMapNavigation(state.map);
-  log.info('[MapLibre] Switched to pan mode');
+  log.info("[MapLibre] Switched to pan mode");
 }
 
 /**
@@ -783,11 +796,11 @@ export function switchToEditMode(cy: Core, state: MapLibreState): void {
   if (!state.map) return;
   const container = cy.container();
   if (container) {
-    (container as HTMLElement).style.pointerEvents = '';
+    (container as HTMLElement).style.pointerEvents = "";
 
     // Remove any existing wheel handler
     if (editModeWheelHandler) {
-      container.removeEventListener('wheel', editModeWheelHandler);
+      container.removeEventListener("wheel", editModeWheelHandler);
       editModeWheelHandler = null;
     }
 
@@ -798,10 +811,10 @@ export function switchToEditMode(cy: Core, state: MapLibreState): void {
       e.preventDefault();
 
       // Get the map canvas and forward the wheel event
-      const mapCanvas = state.mapContainer?.querySelector('canvas');
+      const mapCanvas = state.mapContainer?.querySelector("canvas");
       if (mapCanvas) {
         // Create and dispatch a synthetic wheel event to the map
-        const syntheticEvent = new WheelEvent('wheel', {
+        const syntheticEvent = new WheelEvent("wheel", {
           deltaX: e.deltaX,
           deltaY: e.deltaY,
           deltaZ: e.deltaZ,
@@ -820,19 +833,23 @@ export function switchToEditMode(cy: Core, state: MapLibreState): void {
         mapCanvas.dispatchEvent(syntheticEvent);
       }
     };
-    container.addEventListener('wheel', editModeWheelHandler, { passive: false });
+    container.addEventListener("wheel", editModeWheelHandler, { passive: false });
   }
   disableMapDrag(state.map);
-  log.info('[MapLibre] Switched to edit mode');
+  log.info("[MapLibre] Switched to edit mode");
 }
 
 /**
  * Handle geo mode change
  */
-export function handleGeoModeChange(cy: Core | null, state: MapLibreState, geoMode: 'pan' | 'edit'): void {
+export function handleGeoModeChange(
+  cy: Core | null,
+  state: MapLibreState,
+  geoMode: "pan" | "edit"
+): void {
   if (!state.isInitialized || !cy) return;
 
-  if (geoMode === 'pan') {
+  if (geoMode === "pan") {
     switchToPanMode(cy, state);
   } else {
     switchToEditMode(cy, state);
@@ -850,32 +867,32 @@ export function cleanupMapLibreState(
 ): void {
   if (!state.isInitialized || !cy) return;
 
-  log.info('[MapLibre] Cleaning up geo map');
+  log.info("[MapLibre] Cleaning up geo map");
 
   const container = cy.container();
 
   // Remove container styling and wheel handler
   if (container) {
     container.classList.remove(CLASS_MAPLIBRE_ACTIVE);
-    (container as HTMLElement).style.pointerEvents = '';
-    (container as HTMLElement).style.background = '';
+    (container as HTMLElement).style.pointerEvents = "";
+    (container as HTMLElement).style.background = "";
 
     // Remove wheel handler if present
     if (editModeWheelHandler) {
-      container.removeEventListener('wheel', editModeWheelHandler);
+      container.removeEventListener("wheel", editModeWheelHandler);
       editModeWheelHandler = null;
     }
   }
 
   // Remove Cytoscape event listener
-  cy.off('dragfree', onDragFree);
+  cy.off("dragfree", onDragFree);
 
   // Clear GeoMap active marker
-  cy.scratch('geoMapActive', false);
+  cy.scratch("geoMapActive", false);
 
   // Remove map event listener and destroy map
   if (state.map) {
-    state.map.off('move', onMove);
+    state.map.off("move", onMove);
     state.map.remove();
     state.map = null;
   }

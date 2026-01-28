@@ -3,15 +3,15 @@
  * Handles opening/closing YAML files in a split view alongside the webview.
  */
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { log } from './logger';
+import { log } from "./logger";
 
 /**
  * Simple sleep utility.
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -33,12 +33,12 @@ export class SplitViewManager {
 
       await vscode.window.showTextDocument(document, {
         preview: false,
-        viewColumn: vscode.ViewColumn.Beside,
+        viewColumn: vscode.ViewColumn.Beside
       });
 
       await sleep(100);
 
-      await vscode.commands.executeCommand('vscode.setEditorLayout', {
+      await vscode.commands.executeCommand("vscode.setEditorLayout", {
         orientation: 0,
         groups: [{ size: 0.6 }, { size: 0.4 }]
       });
@@ -62,7 +62,7 @@ export class SplitViewManager {
   ): Promise<boolean> {
     try {
       if (!yamlFilePath) {
-        vscode.window.showWarningMessage('No YAML file associated with this topology');
+        vscode.window.showWarningMessage("No YAML file associated with this topology");
         return this.isSplitViewOpen;
       }
 
@@ -83,10 +83,7 @@ export class SplitViewManager {
   /**
    * Closes the split view.
    */
-  private async closeSplitView(
-    yamlFilePath: string,
-    panel?: vscode.WebviewPanel
-  ): Promise<void> {
+  private async closeSplitView(yamlFilePath: string, panel?: vscode.WebviewPanel): Promise<void> {
     const yamlUri = vscode.Uri.file(yamlFilePath);
     const editors = vscode.window.visibleTextEditors;
     let yamlEditor: vscode.TextEditor | undefined;
@@ -100,10 +97,10 @@ export class SplitViewManager {
 
     if (yamlEditor) {
       await vscode.window.showTextDocument(yamlEditor.document, yamlEditor.viewColumn);
-      await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
     }
 
-    await vscode.commands.executeCommand('vscode.setEditorLayout', {
+    await vscode.commands.executeCommand("vscode.setEditorLayout", {
       orientation: 0,
       groups: [{ size: 1 }]
     });

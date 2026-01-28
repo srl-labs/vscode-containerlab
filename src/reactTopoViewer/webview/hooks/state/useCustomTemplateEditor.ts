@@ -1,15 +1,15 @@
 /**
  * Hook for managing custom node template editor state and handlers
  */
-import { useMemo } from 'react';
+import { useMemo } from "react";
 
-import type { NodeEditorData } from '../../components/panels/node-editor/types';
-import type { CustomTemplateEditorData } from '../../../shared/types/editors';
+import type { NodeEditorData } from "../../components/panels/node-editor/types";
+import type { CustomTemplateEditorData } from "../../../shared/types/editors";
 import {
   convertCustomTemplateToEditorData,
   convertEditorDataToSaveData
-} from '../../../shared/utilities/customNodeConversions';
-import { sendSaveCustomNode } from '../../utils/extensionMessaging';
+} from "../../../shared/utilities/customNodeConversions";
+import { sendSaveCustomNode } from "../../utils/extensionMessaging";
 
 export interface CustomTemplateEditorHandlers {
   handleClose: () => void;
@@ -38,18 +38,21 @@ export function useCustomTemplateEditor(
     return convertCustomTemplateToEditorData(editingCustomTemplate);
   }, [editingCustomTemplate]);
 
-  const handlers = useMemo<CustomTemplateEditorHandlers>(() => ({
-    handleClose: () => editCustomTemplate(null),
-    handleSave: (data: NodeEditorData) => {
-      const saveData = convertEditorDataToSaveData(data, editingCustomTemplate?.originalName);
-      sendSaveCustomNode(saveData);
-      editCustomTemplate(null);
-    },
-    handleApply: (data: NodeEditorData) => {
-      const saveData = convertEditorDataToSaveData(data, editingCustomTemplate?.originalName);
-      sendSaveCustomNode(saveData);
-    }
-  }), [editingCustomTemplate, editCustomTemplate]);
+  const handlers = useMemo<CustomTemplateEditorHandlers>(
+    () => ({
+      handleClose: () => editCustomTemplate(null),
+      handleSave: (data: NodeEditorData) => {
+        const saveData = convertEditorDataToSaveData(data, editingCustomTemplate?.originalName);
+        sendSaveCustomNode(saveData);
+        editCustomTemplate(null);
+      },
+      handleApply: (data: NodeEditorData) => {
+        const saveData = convertEditorDataToSaveData(data, editingCustomTemplate?.originalName);
+        sendSaveCustomNode(saveData);
+      }
+    }),
+    [editingCustomTemplate, editCustomTemplate]
+  );
 
   return { editorData, handlers };
 }

@@ -1,12 +1,51 @@
 /**
  * Hook for group drag and resize interactions
  */
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import type { Core as CyCore } from 'cytoscape';
+import type React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { Core as CyCore } from "cytoscape";
 
-import type { GroupStyleAnnotation } from '../../../shared/types/topology';
-import { addMouseMoveUpListeners } from '../shared/dragHelpers';
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import { addMouseMoveUpListeners } from "../shared/dragHelpers";
+
+// ============================================================================
+// Shared callback types for drag and resize operations
+// ============================================================================
+
+/** Callback for position changes with delta */
+type PositionChangeCallback = (
+  id: string,
+  position: { x: number; y: number },
+  delta: { dx: number; dy: number }
+) => void;
+
+/** Callback for drag move with incremental delta */
+type DragMoveCallback = (id: string, delta: { dx: number; dy: number }) => void;
+
+/** Callback for visual position updates */
+type VisualPositionCallback = (id: string, position: { x: number; y: number }) => void;
+
+/** Callback for visual position clear */
+type VisualPositionClearCallback = (id: string) => void;
+
+/** Callback for drag/resize end */
+type DragEndCallback = (id: string, finalPosition: { x: number; y: number }) => void;
+
+/** Callback for resize operations */
+type ResizeCallback = (
+  id: string,
+  width: number,
+  height: number,
+  position: { x: number; y: number }
+) => void;
+
+/** Callback for resize end with final dimensions */
+type ResizeEndCallback = (
+  id: string,
+  finalWidth: number,
+  finalHeight: number,
+  finalPosition: { x: number; y: number }
+) => void;
 
 // ============================================================================
 // useDragPositionOverrides - Manage drag position overrides during group dragging
@@ -25,11 +64,11 @@ export function useDragPositionOverrides(): UseDragPositionOverridesReturn {
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({});
 
   const setDragPosition = useCallback((groupId: string, position: { x: number; y: number }) => {
-    setDragPositions(prev => ({ ...prev, [groupId]: position }));
+    setDragPositions((prev) => ({ ...prev, [groupId]: position }));
   }, []);
 
   const clearDragPosition = useCallback((groupId: string) => {
-    setDragPositions(prev => {
+    setDragPositions((prev) => {
       if (!(groupId in prev)) return prev;
       const next = { ...prev };
       delete next[groupId];
@@ -59,12 +98,12 @@ export interface UseGroupDragInteractionOptions {
   isLocked: boolean;
   position: { x: number; y: number };
   onDragStart?: (id: string) => void;
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
-  onVisualPositionClear?: (id: string) => void;
+  onPositionChange: PositionChangeCallback;
+  onDragMove?: DragMoveCallback;
+  onVisualPositionChange?: VisualPositionCallback;
+  onVisualPositionClear?: VisualPositionClearCallback;
   /** Called when drag ends, allowing parent to detect drop target for reparenting */
-  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
+  onDragEnd?: DragEndCallback;
 }
 
 export interface UseGroupDragInteractionReturn {
@@ -83,11 +122,11 @@ interface GroupDragEventsOptions {
   dragRef: React.RefObject<DragState | null>;
   setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
   setDragPos: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
-  onPositionChange: (id: string, position: { x: number; y: number }, delta: { dx: number; dy: number }) => void;
-  onDragMove?: (id: string, delta: { dx: number; dy: number }) => void;
-  onVisualPositionChange?: (id: string, position: { x: number; y: number }) => void;
-  onVisualPositionClear?: (id: string) => void;
-  onDragEnd?: (id: string, finalPosition: { x: number; y: number }) => void;
+  onPositionChange: PositionChangeCallback;
+  onDragMove?: DragMoveCallback;
+  onVisualPositionChange?: VisualPositionCallback;
+  onVisualPositionClear?: VisualPositionClearCallback;
+  onDragEnd?: DragEndCallback;
 }
 
 function useGroupDragEvents(options: GroupDragEventsOptions): void {
@@ -147,10 +186,24 @@ function useGroupDragEvents(options: GroupDragEventsOptions): void {
     };
 
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
-  }, [isDragging, cy, groupId, dragRef, setIsDragging, setDragPos, onPositionChange, onDragMove, onVisualPositionChange, onVisualPositionClear, onDragEnd]);
+  }, [
+    isDragging,
+    cy,
+    groupId,
+    dragRef,
+    setIsDragging,
+    setDragPos,
+    onPositionChange,
+    onDragMove,
+    onVisualPositionChange,
+    onVisualPositionClear,
+    onDragEnd
+  ]);
 }
 
-export function useGroupDragInteraction(options: UseGroupDragInteractionOptions): UseGroupDragInteractionReturn {
+export function useGroupDragInteraction(
+  options: UseGroupDragInteractionOptions
+): UseGroupDragInteractionReturn {
   const {
     cy,
     groupId,
@@ -186,21 +239,24 @@ export function useGroupDragInteraction(options: UseGroupDragInteractionOptions)
     onDragEnd
   });
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      lastX: e.clientX,
-      lastY: e.clientY,
-      modelX: position.x,
-      modelY: position.y
-    };
-    onDragStart?.(groupId);
-    setIsDragging(true);
-  }, [isLocked, position.x, position.y, onDragStart, groupId]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (isLocked || e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        modelX: position.x,
+        modelY: position.y
+      };
+      onDragStart?.(groupId);
+      setIsDragging(true);
+    },
+    [isLocked, position.x, position.y, onDragStart, groupId]
+  );
 
   return { isDragging, dragPos, handleMouseDown };
 }
@@ -210,7 +266,7 @@ export function useGroupDragInteraction(options: UseGroupDragInteractionOptions)
 // ============================================================================
 
 /** Corner type alias for resize handles */
-export type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
+export type ResizeCorner = "nw" | "ne" | "sw" | "se";
 
 interface ResizeState {
   corner: ResizeCorner;
@@ -230,8 +286,8 @@ export interface UseGroupResizeReturn {
 }
 
 function calcResizedDimensions(ref: ResizeState, dx: number, dy: number): { w: number; h: number } {
-  const isEast = ref.corner === 'se' || ref.corner === 'ne';
-  const isSouth = ref.corner === 'se' || ref.corner === 'sw';
+  const isEast = ref.corner === "se" || ref.corner === "ne";
+  const isSouth = ref.corner === "se" || ref.corner === "sw";
   // Use dynamic minimum based on contained objects (calculated at resize start)
   const w = Math.max(ref.minWidth, ref.width + dx * (isEast ? 1 : -1));
   const h = Math.max(ref.minHeight, ref.height + dy * (isSouth ? 1 : -1));
@@ -241,8 +297,8 @@ function calcResizedDimensions(ref: ResizeState, dx: number, dy: number): { w: n
 function calcResizedPosition(ref: ResizeState, w: number, h: number): { x: number; y: number } {
   const dw = (w - ref.width) / 2;
   const dh = (h - ref.height) / 2;
-  const xMult = ref.corner.includes('e') ? 1 : -1;
-  const yMult = ref.corner.includes('s') ? 1 : -1;
+  const xMult = ref.corner.includes("e") ? 1 : -1;
+  const yMult = ref.corner.includes("s") ? 1 : -1;
   return { x: ref.posX + dw * xMult, y: ref.posY + dh * yMult };
 }
 
@@ -269,8 +325,8 @@ function useGroupResizeEvents(
   groupId: string,
   dragRef: React.RefObject<ResizeState | null>,
   setIsResizing: React.Dispatch<React.SetStateAction<boolean>>,
-  onResizeMove: (id: string, width: number, height: number, position: { x: number; y: number }) => void,
-  onResizeEnd: (id: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void
+  onResizeMove: ResizeCallback,
+  onResizeEnd: ResizeEndCallback
 ): void {
   useEffect(() => {
     if (!isResizing) return;
@@ -302,8 +358,8 @@ export function useGroupResize(
   groupId: string,
   isLocked: boolean,
   onResizeStart: (id: string) => void,
-  onResizeMove: (id: string, width: number, height: number, position: { x: number; y: number }) => void,
-  onResizeEnd: (id: string, finalWidth: number, finalHeight: number, finalPosition: { x: number; y: number }) => void,
+  onResizeMove: ResizeCallback,
+  onResizeEnd: ResizeEndCallback,
   getMinimumBounds: (groupId: string) => { minWidth: number; minHeight: number }
 ): UseGroupResizeReturn {
   const [isResizing, setIsResizing] = useState(false);
@@ -311,27 +367,30 @@ export function useGroupResize(
 
   useGroupResizeEvents(isResizing, cy, groupId, dragRef, setIsResizing, onResizeMove, onResizeEnd);
 
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent, corner: ResizeCorner) => {
-    if (isLocked || e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    // Calculate minimum bounds at resize start (based on contained objects)
-    const { minWidth, minHeight } = getMinimumBounds(groupId);
-    dragRef.current = {
-      corner,
-      startX: e.clientX,
-      startY: e.clientY,
-      width: group.width,
-      height: group.height,
-      posX: group.position.x,
-      posY: group.position.y,
-      minWidth,
-      minHeight
-    };
-    // Notify resize start to capture initial state for undo
-    onResizeStart(groupId);
-    setIsResizing(true);
-  }, [isLocked, group, groupId, onResizeStart, getMinimumBounds]);
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent, corner: ResizeCorner) => {
+      if (isLocked || e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Calculate minimum bounds at resize start (based on contained objects)
+      const { minWidth, minHeight } = getMinimumBounds(groupId);
+      dragRef.current = {
+        corner,
+        startX: e.clientX,
+        startY: e.clientY,
+        width: group.width,
+        height: group.height,
+        posX: group.position.x,
+        posY: group.position.y,
+        minWidth,
+        minHeight
+      };
+      // Notify resize start to capture initial state for undo
+      onResizeStart(groupId);
+      setIsResizing(true);
+    },
+    [isLocked, group, groupId, onResizeStart, getMinimumBounds]
+  );
 
   return { isResizing, handleResizeMouseDown };
 }

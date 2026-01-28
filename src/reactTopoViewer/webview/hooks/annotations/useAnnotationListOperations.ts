@@ -2,10 +2,10 @@
  * Annotation list operations: selection, copy/paste, and deletion
  * Consolidated from: useAnnotationListSelection.ts + useAnnotationListCopyPaste.ts
  */
-import { useCallback } from 'react';
-import type { Dispatch, SetStateAction, RefObject } from 'react';
+import { useCallback } from "react";
+import type { Dispatch, SetStateAction, RefObject } from "react";
 
-import { log } from '../../utils/logger';
+import { log } from "../../utils/logger";
 
 // ============================================================================
 // Types
@@ -58,42 +58,51 @@ export function useAnnotationListSelection<T extends AnnotationWithId>(params: {
     setAnnotations,
     selectedAnnotationIds,
     setSelectedAnnotationIds,
-    saveAnnotationsToExtension,
+    saveAnnotationsToExtension
   } = params;
 
-  const selectAnnotation = useCallback((id: string) => {
-    setSelectedAnnotationIds(new Set([id]));
-    log.info(`[${logPrefix}] Selected annotation: ${id}`);
-  }, [logPrefix, setSelectedAnnotationIds]);
+  const selectAnnotation = useCallback(
+    (id: string) => {
+      setSelectedAnnotationIds(new Set([id]));
+      log.info(`[${logPrefix}] Selected annotation: ${id}`);
+    },
+    [logPrefix, setSelectedAnnotationIds]
+  );
 
-  const toggleAnnotationSelection = useCallback((id: string) => {
-    setSelectedAnnotationIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        log.info(`[${logPrefix}] Deselected annotation: ${id}`);
-      } else {
-        next.add(id);
-        log.info(`[${logPrefix}] Added annotation to selection: ${id}`);
-      }
-      return next;
-    });
-  }, [logPrefix, setSelectedAnnotationIds]);
+  const toggleAnnotationSelection = useCallback(
+    (id: string) => {
+      setSelectedAnnotationIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+          log.info(`[${logPrefix}] Deselected annotation: ${id}`);
+        } else {
+          next.add(id);
+          log.info(`[${logPrefix}] Added annotation to selection: ${id}`);
+        }
+        return next;
+      });
+    },
+    [logPrefix, setSelectedAnnotationIds]
+  );
 
   const clearAnnotationSelection = useCallback(() => {
     setSelectedAnnotationIds(new Set());
     log.info(`[${logPrefix}] Cleared annotation selection`);
   }, [logPrefix, setSelectedAnnotationIds]);
 
-  const boxSelectAnnotations = useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    setSelectedAnnotationIds((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => next.add(id));
-      return next;
-    });
-    log.info(`[${logPrefix}] Box selected ${ids.length} annotations`);
-  }, [logPrefix, setSelectedAnnotationIds]);
+  const boxSelectAnnotations = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      setSelectedAnnotationIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.add(id));
+        return next;
+      });
+      log.info(`[${logPrefix}] Box selected ${ids.length} annotations`);
+    },
+    [logPrefix, setSelectedAnnotationIds]
+  );
 
   const deleteSelectedAnnotations = useCallback(() => {
     if (selectedAnnotationIds.size === 0) return;
@@ -104,7 +113,13 @@ export function useAnnotationListSelection<T extends AnnotationWithId>(params: {
     });
     log.info(`[${logPrefix}] Deleted ${selectedAnnotationIds.size} selected annotations`);
     setSelectedAnnotationIds(new Set());
-  }, [logPrefix, saveAnnotationsToExtension, selectedAnnotationIds, setAnnotations, setSelectedAnnotationIds]);
+  }, [
+    logPrefix,
+    saveAnnotationsToExtension,
+    selectedAnnotationIds,
+    setAnnotations,
+    setSelectedAnnotationIds
+  ]);
 
   const getSelectedAnnotations = useCallback(() => {
     return getSelectedByIds(annotations, selectedAnnotationIds);
@@ -116,7 +131,7 @@ export function useAnnotationListSelection<T extends AnnotationWithId>(params: {
     clearAnnotationSelection,
     boxSelectAnnotations,
     deleteSelectedAnnotations,
-    getSelectedAnnotations,
+    getSelectedAnnotations
   };
 }
 
@@ -146,7 +161,7 @@ export function useAnnotationListCopyPaste<T extends AnnotationWithId>(params: {
     pasteCounterRef,
     duplicateAnnotations,
     saveAnnotationsToExtension,
-    saveAnnotationsImmediate,
+    saveAnnotationsImmediate
   } = params;
 
   const copySelectedAnnotations = useCallback(() => {
@@ -175,7 +190,7 @@ export function useAnnotationListCopyPaste<T extends AnnotationWithId>(params: {
     pasteCounterRef,
     saveAnnotationsImmediate,
     setAnnotations,
-    setSelectedAnnotationIds,
+    setSelectedAnnotationIds
   ]);
 
   const duplicateSelectedAnnotations = useCallback(() => {
@@ -196,7 +211,7 @@ export function useAnnotationListCopyPaste<T extends AnnotationWithId>(params: {
     saveAnnotationsToExtension,
     selectedAnnotationIds,
     setAnnotations,
-    setSelectedAnnotationIds,
+    setSelectedAnnotationIds
   ]);
 
   const hasClipboardContent = useCallback(() => {
@@ -207,6 +222,6 @@ export function useAnnotationListCopyPaste<T extends AnnotationWithId>(params: {
     copySelectedAnnotations,
     pasteAnnotations,
     duplicateSelectedAnnotations,
-    hasClipboardContent,
+    hasClipboardContent
   };
 }

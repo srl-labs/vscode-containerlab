@@ -3,7 +3,7 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import type { ClabTopology, NodeAnnotation, TopologyAnnotations } from '../types/topology';
+import type { ClabTopology, NodeAnnotation, TopologyAnnotations } from "../types/topology";
 
 /**
  * Computes the full prefix for container names.
@@ -16,8 +16,8 @@ export function computeFullPrefix(parsed: ClabTopology, clabName: string): strin
   if (parsed.prefix === undefined) {
     return `clab-${clabName}`;
   }
-  if (parsed.prefix === '' || parsed.prefix.trim() === '') {
-    return '';
+  if (parsed.prefix === "" || parsed.prefix.trim() === "") {
+    return "";
   }
   return `${parsed.prefix.trim()}-${clabName}`;
 }
@@ -29,10 +29,7 @@ export function computeFullPrefix(parsed: ClabTopology, clabName: string): strin
  * @param annotations - Optional annotations object
  * @returns True if all nodes have positions in annotations
  */
-export function isPresetLayout(
-  parsed: ClabTopology,
-  annotations?: TopologyAnnotations
-): boolean {
+export function isPresetLayout(parsed: ClabTopology, annotations?: TopologyAnnotations): boolean {
   const topology = parsed.topology;
   if (!topology || !topology.nodes) return false;
   const nodeAnnotations = annotations?.nodeAnnotations;
@@ -48,14 +45,12 @@ export function isPresetLayout(
  * @param nodeAnn - The node annotation
  * @returns Object with iconColor and/or iconCornerRadius if present
  */
-export function extractIconVisuals(
-  nodeAnn: NodeAnnotation | undefined
-): Record<string, unknown> {
+export function extractIconVisuals(nodeAnn: NodeAnnotation | undefined): Record<string, unknown> {
   const visuals: Record<string, unknown> = {};
-  if (typeof nodeAnn?.iconColor === 'string') {
+  if (typeof nodeAnn?.iconColor === "string") {
     visuals.iconColor = nodeAnn.iconColor;
   }
-  if (typeof nodeAnn?.iconCornerRadius === 'number') {
+  if (typeof nodeAnn?.iconCornerRadius === "number") {
     visuals.iconCornerRadius = nodeAnn.iconCornerRadius;
   }
   return visuals;
@@ -72,14 +67,14 @@ export function sanitizeLabels(
   labels: Record<string, unknown> | undefined
 ): Record<string, unknown> {
   const cleaned = { ...(labels ?? {}) };
-  delete cleaned['graph-posX'];
-  delete cleaned['graph-posY'];
-  delete cleaned['graph-icon'];
-  delete cleaned['graph-geoCoordinateLat'];
-  delete cleaned['graph-geoCoordinateLng'];
-  delete cleaned['graph-groupLabelPos'];
-  delete cleaned['graph-group'];
-  delete cleaned['graph-level'];
+  delete cleaned["graph-posX"];
+  delete cleaned["graph-posY"];
+  delete cleaned["graph-icon"];
+  delete cleaned["graph-geoCoordinateLat"];
+  delete cleaned["graph-geoCoordinateLng"];
+  delete cleaned["graph-groupLabelPos"];
+  delete cleaned["graph-group"];
+  delete cleaned["graph-level"];
   return cleaned;
 }
 
@@ -89,12 +84,10 @@ export function sanitizeLabels(
  * @param nodeAnn - The node annotation
  * @returns Object with lat and lng strings (empty if not present)
  */
-export function getNodeLatLng(
-  nodeAnn: NodeAnnotation | undefined
-): { lat: string; lng: string } {
+export function getNodeLatLng(nodeAnn: NodeAnnotation | undefined): { lat: string; lng: string } {
   const geoCoords = nodeAnn?.geoCoordinates;
-  const lat = geoCoords?.lat !== undefined ? String(geoCoords.lat) : '';
-  const lng = geoCoords?.lng !== undefined ? String(geoCoords.lng) : '';
+  const lat = geoCoords?.lat !== undefined ? String(geoCoords.lat) : "";
+  const lng = geoCoords?.lng !== undefined ? String(geoCoords.lng) : "";
   return { lat, lng };
 }
 
@@ -139,7 +132,7 @@ export function createNodeAnnotationsMap(
  * @returns The lab name or 'topology' as fallback
  */
 export function getLabName(parsed: ClabTopology): string {
-  return parsed.name || 'topology';
+  return parsed.name || "topology";
 }
 
 /**

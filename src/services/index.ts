@@ -1,15 +1,15 @@
 /**
  * Services barrel file
  */
-export { refreshSshxSessions, refreshGottySessions } from './sessionRefresh';
+export { refreshSshxSessions, refreshGottySessions } from "./sessionRefresh";
 
 // Re-export with renamed conflicting functions
 export {
   onDataChanged as onEventsDataChanged,
   onContainerStateChanged
-} from './containerlabEvents';
+} from "./containerlabEvents";
 
 export {
   onDataChanged as onFallbackDataChanged,
   stopPolling as stopFallbackPolling
-} from './containerlabInspectFallback';
+} from "./containerlabInspectFallback";

@@ -2,8 +2,8 @@
  * Dropdown hooks for various dropdown patterns in the UI
  * Consolidates: simple toggle, hover-based with filter, and keyboard navigation
  */
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import type React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 // ============================================================================
 // Simple Toggle Dropdown (used by Navbar)
@@ -30,13 +30,13 @@ export function useDropdown(): UseDropdownReturn {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return {
     isOpen,
-    toggle: () => setIsOpen(prev => !prev),
+    toggle: () => setIsOpen((prev) => !prev),
     close: () => setIsOpen(false),
     ref
   };
@@ -52,13 +52,13 @@ export function useDropdown(): UseDropdownReturn {
  */
 export function useDropdownState(disabled: boolean) {
   const [isOpen, setIsOpen] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState("");
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetState = useCallback(() => {
     setIsOpen(false);
-    setFilter('');
+    setFilter("");
     setFocusedIndex(-1);
   }, []);
 
@@ -82,9 +82,14 @@ export function useDropdownState(disabled: boolean) {
   }, []);
 
   return {
-    isOpen, filter, focusedIndex,
-    setFilter, setFocusedIndex,
-    resetState, handleMouseEnter, handleMouseLeave
+    isOpen,
+    filter,
+    focusedIndex,
+    setFilter,
+    setFocusedIndex,
+    resetState,
+    handleMouseEnter,
+    handleMouseLeave
   };
 }
 
@@ -104,27 +109,33 @@ interface FloatingDropdownKeyboardParams {
 export function useFloatingDropdownKeyboard(params: FloatingDropdownKeyboardParams) {
   const { isOpen, itemCount, focusedIndex, setFocusedIndex, onSelectFocused, onEscape } = params;
 
-  return useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setFocusedIndex(prev => Math.min(prev + 1, itemCount - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedIndex(prev => Math.max(prev - 1, -1));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (focusedIndex >= 0 && focusedIndex < itemCount) onSelectFocused();
-    } else if (e.key === 'Escape') {
-      onEscape();
-    }
-  }, [isOpen, itemCount, focusedIndex, setFocusedIndex, onSelectFocused, onEscape]);
+  return useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.min(prev + 1, itemCount - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.max(prev - 1, -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < itemCount) onSelectFocused();
+      } else if (e.key === "Escape") {
+        onEscape();
+      }
+    },
+    [isOpen, itemCount, focusedIndex, setFocusedIndex, onSelectFocused, onEscape]
+  );
 }
 
 /**
  * Focus input when dropdown opens
  */
-export function useFocusOnOpen(isOpen: boolean, inputRef: React.RefObject<HTMLInputElement | null>) {
+export function useFocusOnOpen(
+  isOpen: boolean,
+  inputRef: React.RefObject<HTMLInputElement | null>
+) {
   useEffect(() => {
     if (isOpen && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -160,35 +171,46 @@ export function useDropdownKeyboard(
   const { highlightedIndex, optionsLength, allowFreeText } = state;
   const { setIsOpen, setHighlightedIndex, onSelect, onCommit } = actions;
 
-  return useCallback((e: React.KeyboardEvent) => {
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setIsOpen(true);
-        setHighlightedIndex(Math.min(highlightedIndex + 1, optionsLength - 1));
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setIsOpen(true);
-        setHighlightedIndex(Math.max(highlightedIndex - 1, 0));
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (highlightedIndex >= 0) {
-          onSelect(highlightedIndex);
-        } else if (allowFreeText) {
+  return useCallback(
+    (e: React.KeyboardEvent) => {
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setIsOpen(true);
+          setHighlightedIndex(Math.min(highlightedIndex + 1, optionsLength - 1));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setIsOpen(true);
+          setHighlightedIndex(Math.max(highlightedIndex - 1, 0));
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (highlightedIndex >= 0) {
+            onSelect(highlightedIndex);
+          } else if (allowFreeText) {
+            onCommit();
+            setIsOpen(false);
+          }
+          break;
+        case "Escape":
+          setIsOpen(false);
+          setHighlightedIndex(-1);
+          break;
+        case "Tab":
           onCommit();
           setIsOpen(false);
-        }
-        break;
-      case 'Escape':
-        setIsOpen(false);
-        setHighlightedIndex(-1);
-        break;
-      case 'Tab':
-        onCommit();
-        setIsOpen(false);
-        break;
-    }
-  }, [highlightedIndex, optionsLength, allowFreeText, setIsOpen, setHighlightedIndex, onSelect, onCommit]);
+          break;
+      }
+    },
+    [
+      highlightedIndex,
+      optionsLength,
+      allowFreeText,
+      setIsOpen,
+      setHighlightedIndex,
+      onSelect,
+      onCommit
+    ]
+  );
 }

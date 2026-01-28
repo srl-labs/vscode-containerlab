@@ -4,9 +4,9 @@
  * Uses HTTP fetch to communicate with the dev server for file operations.
  * Supports session isolation for parallel test execution.
  */
-import type { FileSystemAdapter } from '../../shared/io/types';
+import type { FileSystemAdapter } from "../../shared/io/types";
 
-import { createPathMethods } from './pathMethods';
+import { createPathMethods } from "./pathMethods";
 
 /**
  * FileSystemAdapter that uses HTTP to read/write files via the dev server.
@@ -25,7 +25,7 @@ export class HttpFsAdapter implements FileSystemAdapter {
    * @param baseUrl - Base URL for the dev server (e.g., '' for same origin)
    * @param sessionId - Optional session ID for test isolation
    */
-  constructor(baseUrl: string = '', sessionId?: string | null) {
+  constructor(baseUrl: string = "", sessionId?: string | null) {
     this.baseUrl = baseUrl;
     this.sessionId = sessionId ?? null;
 
@@ -53,8 +53,8 @@ export class HttpFsAdapter implements FileSystemAdapter {
   async writeFile(filePath: string, content: string): Promise<void> {
     const url = this.buildUrl(filePath);
     const response = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      method: "PUT",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
       body: content
     });
 
@@ -65,7 +65,7 @@ export class HttpFsAdapter implements FileSystemAdapter {
 
   async unlink(filePath: string): Promise<void> {
     const url = this.buildUrl(filePath);
-    const response = await fetch(url, { method: 'DELETE' });
+    const response = await fetch(url, { method: "DELETE" });
 
     // Don't throw if file doesn't exist (matches FileSystemAdapter contract)
     if (!response.ok && response.status !== 404) {
@@ -75,7 +75,7 @@ export class HttpFsAdapter implements FileSystemAdapter {
 
   async exists(filePath: string): Promise<boolean> {
     const url = this.buildUrl(filePath);
-    const response = await fetch(url, { method: 'HEAD' });
+    const response = await fetch(url, { method: "HEAD" });
     return response.ok;
   }
 
@@ -110,17 +110,17 @@ export class HttpFsAdapter implements FileSystemAdapter {
 
     const eventSource = new EventSource(url);
 
-    eventSource.addEventListener('connected', () => {
+    eventSource.addEventListener("connected", () => {
       // SSE connection established - no action needed
     });
 
-    eventSource.addEventListener('file-changed', (e) => {
+    eventSource.addEventListener("file-changed", (e) => {
       const data = JSON.parse((e as MessageEvent<string>).data) as { path: string };
       callback(data.path);
     });
 
-    eventSource.addEventListener('error', () => {
-      console.warn('[HttpFsAdapter] SSE connection error, will retry...');
+    eventSource.addEventListener("error", () => {
+      console.warn("[HttpFsAdapter] SSE connection error, will retry...");
     });
 
     // Return unsubscribe function

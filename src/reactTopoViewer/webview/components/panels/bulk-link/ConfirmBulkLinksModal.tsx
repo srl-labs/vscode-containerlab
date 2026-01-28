@@ -1,9 +1,9 @@
 /**
  * ConfirmBulkLinksModal - Confirmation dialog for bulk link creation
  */
-import React from 'react';
+import React from "react";
 
-import { BasePanel } from '../../shared/editor/BasePanel';
+import { BasePanel } from "../../shared/editor/BasePanel";
 
 interface ConfirmBulkLinksModalProps {
   isOpen: boolean;
@@ -35,11 +35,15 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
     <div className="space-y-3">
       <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2">
         <div className="text-sm">
-          Create <span className="font-semibold">{count}</span> new link{count === 1 ? '' : 's'}?
+          Create <span className="font-semibold">{count}</span> new link{count === 1 ? "" : "s"}?
         </div>
         <div className="mt-1 text-xs text-secondary">
-          <div>Source: <code className="select-text">{sourcePattern}</code></div>
-          <div>Target: <code className="select-text">{targetPattern}</code></div>
+          <div>
+            Source: <code className="select-text">{sourcePattern}</code>
+          </div>
+          <div>
+            Target: <code className="select-text">{targetPattern}</code>
+          </div>
         </div>
       </div>
 

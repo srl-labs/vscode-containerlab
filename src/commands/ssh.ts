@@ -7,17 +7,21 @@ import { execCommandInTerminal } from "./command";
 
 export function sshToNode(node: ClabContainerTreeNode | undefined): void {
   if (!node) {
-    vscode.window.showErrorMessage('No container node selected.');
+    vscode.window.showErrorMessage("No container node selected.");
     return;
   }
 
   let sshTarget: string | undefined;
 
-  if (node.name) { sshTarget = node.name; }
-  else if (node.v6Address) { sshTarget = node.v6Address; }
-  else if (node.v4Address) { sshTarget = node.v4Address; }
-  else if (node.cID) { sshTarget = node.cID; }
-  else {
+  if (node.name) {
+    sshTarget = node.name;
+  } else if (node.v6Address) {
+    sshTarget = node.v6Address;
+  } else if (node.v4Address) {
+    sshTarget = node.v4Address;
+  } else if (node.cID) {
+    sshTarget = node.cID;
+  } else {
     vscode.window.showErrorMessage("No target to connect to container");
     return;
   }
@@ -37,7 +41,7 @@ export function sshToNode(node: ClabContainerTreeNode | undefined): void {
 
 export function sshToLab(node: ClabLabTreeNode | undefined): void {
   if (!node) {
-    vscode.window.showErrorMessage('No lab node selected.');
+    vscode.window.showErrorMessage("No lab node selected.");
     return;
   }
 

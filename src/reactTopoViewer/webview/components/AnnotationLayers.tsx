@@ -4,11 +4,11 @@
  * Encapsulates the annotation layer components.
  * Uses React.ComponentProps to match actual component prop types.
  */
-import React from 'react';
+import React from "react";
 
-import { GroupLayer } from './annotations/GroupLayer';
-import { FreeTextLayer } from './annotations/FreeTextLayer';
-import { FreeShapeLayer } from './annotations/FreeShapeLayer';
+import { GroupLayer } from "./annotations/GroupLayer";
+import { FreeTextLayer } from "./annotations/FreeTextLayer";
+import { FreeShapeLayer } from "./annotations/FreeShapeLayer";
 
 /** Props passed directly to GroupLayer */
 type GroupLayerPassthroughProps = React.ComponentProps<typeof GroupLayer>;

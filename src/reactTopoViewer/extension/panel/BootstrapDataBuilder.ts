@@ -2,7 +2,7 @@
  * BootstrapDataBuilder - Assembles initial data for React TopoViewer webview
  */
 
-import type * as vscode from 'vscode';
+import type * as vscode from "vscode";
 
 import type {
   CyElement,
@@ -12,12 +12,12 @@ import type {
   NodeAnnotation,
   EdgeAnnotation,
   TopologyAnnotations
-} from '../../shared/types/topology';
-import type { CustomIconInfo } from '../../shared/types/icons';
-import { getDockerImages } from '../../../utils/docker/images';
-import type { CustomNodeTemplate, SchemaData } from '../../shared/schema';
-import { getCustomNodesFromConfig, loadSchemaData } from '../services/schema';
-import { iconService } from '../services/IconService';
+} from "../../shared/types/topology";
+import type { CustomIconInfo } from "../../shared/types/icons";
+import { getDockerImages } from "../../../utils/docker/images";
+import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
+import { getCustomNodesFromConfig, loadSchemaData } from "../services/schema";
+import { iconService } from "../services/IconService";
 
 /**
  * Bootstrap data sent to the webview on initialization
@@ -25,8 +25,8 @@ import { iconService } from '../services/IconService';
 export interface BootstrapData {
   elements: CyElement[];
   labName: string;
-  mode: 'view' | 'edit';
-  deploymentState: 'deployed' | 'undeployed' | 'unknown';
+  mode: "view" | "edit";
+  deploymentState: "deployed" | "undeployed" | "unknown";
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
   schemaData: SchemaData;
@@ -37,7 +37,7 @@ export interface BootstrapData {
   groupStyleAnnotations: GroupStyleAnnotation[];
   nodeAnnotations: NodeAnnotation[];
   edgeAnnotations: EdgeAnnotation[];
-  viewerSettings?: TopologyAnnotations['viewerSettings'];
+  viewerSettings?: TopologyAnnotations["viewerSettings"];
   yamlFilePath: string;
 }
 
@@ -48,7 +48,7 @@ export interface BootstrapDataInput {
   elements: CyElement[];
   labName: string;
   isViewMode: boolean;
-  deploymentState: 'deployed' | 'undeployed' | 'unknown';
+  deploymentState: "deployed" | "undeployed" | "unknown";
   extensionUri: vscode.Uri;
   yamlFilePath: string;
   freeTextAnnotations?: FreeTextAnnotation[];
@@ -56,7 +56,7 @@ export interface BootstrapDataInput {
   groupStyleAnnotations?: GroupStyleAnnotation[];
   nodeAnnotations?: NodeAnnotation[];
   edgeAnnotations?: EdgeAnnotation[];
-  viewerSettings?: TopologyAnnotations['viewerSettings'];
+  viewerSettings?: TopologyAnnotations["viewerSettings"];
 }
 
 /**
@@ -80,7 +80,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
 
   // Get custom nodes from VS Code configuration
   const customNodes = getCustomNodesFromConfig();
-  const defaultNode = customNodes.find(n => n.setDefault)?.name || '';
+  const defaultNode = customNodes.find((n) => n.setDefault)?.name || "";
 
   // Load schema data for kind/type dropdowns
   const schemaData = await loadSchemaData(extensionUri);
@@ -94,7 +94,7 @@ export async function buildBootstrapData(input: BootstrapDataInput): Promise<Boo
   return {
     elements,
     labName,
-    mode: isViewMode ? 'view' : 'edit',
+    mode: isViewMode ? "view" : "edit",
     deploymentState,
     customNodes,
     defaultNode,

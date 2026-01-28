@@ -5,21 +5,21 @@
  * Used by the VS Code extension for direct file operations.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
-import type { FileSystemAdapter } from './types';
+import type { FileSystemAdapter } from "./types";
 
 /**
  * File system adapter using Node.js fs.promises
  */
 export class NodeFsAdapter implements FileSystemAdapter {
   async readFile(filePath: string): Promise<string> {
-    return fs.promises.readFile(filePath, 'utf8');
+    return fs.promises.readFile(filePath, "utf8");
   }
 
   async writeFile(filePath: string, content: string): Promise<void> {
-    await fs.promises.writeFile(filePath, content, 'utf8');
+    await fs.promises.writeFile(filePath, content, "utf8");
   }
 
   async unlink(filePath: string): Promise<void> {
@@ -28,7 +28,7 @@ export class NodeFsAdapter implements FileSystemAdapter {
     } catch (err) {
       // Ignore ENOENT (file doesn't exist)
       const errWithCode = err as { code?: string };
-      if (errWithCode.code !== 'ENOENT') {
+      if (errWithCode.code !== "ENOENT") {
         throw err;
       }
     }

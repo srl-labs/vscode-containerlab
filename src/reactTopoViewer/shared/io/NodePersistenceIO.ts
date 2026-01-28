@@ -5,19 +5,21 @@
  * Used by both VS Code extension and dev server.
  */
 
-import * as YAML from 'yaml';
+import * as YAML from "yaml";
 
-import type { ClabTopology } from '../types/topology';
+import type { ClabTopology } from "../types/topology";
 
-import type { SaveResult, IOLogger} from './types';
-import { ERROR_NODES_NOT_MAP, noopLogger } from './types';
-import { deepEqual, setOrDelete } from './YamlDocumentIO';
+import type { SaveResult, IOLogger } from "./types";
+import { ERROR_NODES_NOT_MAP, noopLogger } from "./types";
+import { deepEqual, setOrDelete } from "./YamlDocumentIO";
 
 /**
  * Gets the nodes map from a YAML document, returning an error result if not found.
  */
-function getNodesMapOrError(doc: YAML.Document.Parsed): { nodesMap: YAML.YAMLMap } | { error: SaveResult } {
-  const nodesMap = doc.getIn(['topology', 'nodes'], true) as YAML.YAMLMap | undefined;
+function getNodesMapOrError(
+  doc: YAML.Document.Parsed
+): { nodesMap: YAML.YAMLMap } | { error: SaveResult } {
+  const nodesMap = doc.getIn(["topology", "nodes"], true) as YAML.YAMLMap | undefined;
   if (!nodesMap || !YAML.isMap(nodesMap)) {
     return { error: { success: false, error: ERROR_NODES_NOT_MAP } };
   }
@@ -33,9 +35,9 @@ export interface NodeSaveData {
     type?: string;
     image?: string;
     group?: string;
-    'startup-config'?: string;
-    'mgmt-ipv4'?: string;
-    'mgmt-ipv6'?: string;
+    "startup-config"?: string;
+    "mgmt-ipv4"?: string;
+    "mgmt-ipv6"?: string;
     labels?: Record<string, unknown>;
     env?: Record<string, unknown>;
     binds?: string[];
@@ -56,44 +58,44 @@ export interface NodeAnnotationData {
 
 /** Node properties that can be saved to YAML */
 const NODE_YAML_PROPERTIES = [
-  'kind',
-  'type',
-  'image',
-  'group',
-  'startup-config',
-  'enforce-startup-config',
-  'suppress-startup-config',
-  'license',
-  'binds',
-  'env',
-  'env-files',
-  'labels',
-  'user',
-  'entrypoint',
-  'cmd',
-  'exec',
-  'restart-policy',
-  'auto-remove',
-  'startup-delay',
-  'mgmt-ipv4',
-  'mgmt-ipv6',
-  'network-mode',
-  'ports',
-  'dns',
-  'aliases',
-  'memory',
-  'cpu',
-  'cpu-set',
-  'shm-size',
-  'cap-add',
-  'sysctls',
-  'devices',
-  'certificate',
-  'healthcheck',
-  'image-pull-policy',
-  'runtime',
-  'components',
-  'stages',
+  "kind",
+  "type",
+  "image",
+  "group",
+  "startup-config",
+  "enforce-startup-config",
+  "suppress-startup-config",
+  "license",
+  "binds",
+  "env",
+  "env-files",
+  "labels",
+  "user",
+  "entrypoint",
+  "cmd",
+  "exec",
+  "restart-policy",
+  "auto-remove",
+  "startup-delay",
+  "mgmt-ipv4",
+  "mgmt-ipv6",
+  "network-mode",
+  "ports",
+  "dns",
+  "aliases",
+  "memory",
+  "cpu",
+  "cpu-set",
+  "shm-size",
+  "cap-add",
+  "sysctls",
+  "devices",
+  "certificate",
+  "healthcheck",
+  "image-pull-policy",
+  "runtime",
+  "components",
+  "stages"
 ] as const;
 
 /**
@@ -138,7 +140,7 @@ function setNodeProperty(
   if (value === undefined || value === null) return;
 
   // Handle string values - trim whitespace
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
     if (trimmed) nodeMap.set(prop, doc.createNode(trimmed));
     return;
@@ -151,7 +153,7 @@ function setNodeProperty(
   }
 
   // Handle objects - set if non-empty
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     if (Object.keys(value).length > 0) setOrDelete(doc, nodeMap, prop, value);
     return;
   }
@@ -170,12 +172,12 @@ function createNodeYaml(doc: YAML.Document, nodeData: NodeSaveData): YAML.YAMLMa
   const extra = nodeData.extraData || {};
 
   // Set kind (required, defaults to nokia_srlinux)
-  const kind = extra.kind?.trim() || 'nokia_srlinux';
-  nodeMap.set('kind', doc.createNode(kind));
+  const kind = extra.kind?.trim() || "nokia_srlinux";
+  nodeMap.set("kind", doc.createNode(kind));
 
   // Set all other supported properties from NODE_YAML_PROPERTIES
   for (const prop of NODE_YAML_PROPERTIES) {
-    if (prop !== 'kind') {
+    if (prop !== "kind") {
       setNodeProperty(doc, nodeMap, prop, extra[prop]);
     }
   }
@@ -231,7 +233,7 @@ function endpointReferencesNode(ep: unknown, nodeId: string): boolean {
     return str === nodeId || str.startsWith(`${nodeId}:`);
   }
   if (YAML.isMap(ep)) {
-    return (ep as YAML.YAMLMap).get('node') === nodeId;
+    return (ep as YAML.YAMLMap).get("node") === nodeId;
   }
   return false;
 }
@@ -241,17 +243,17 @@ function endpointReferencesNode(ep: unknown, nodeId: string): boolean {
  */
 function linkReferencesNode(linkMap: YAML.YAMLMap, nodeId: string): boolean {
   // Check endpoints array
-  const endpoints = linkMap.get('endpoints', true);
+  const endpoints = linkMap.get("endpoints", true);
   if (YAML.isSeq(endpoints)) {
-    if (endpoints.items.some(ep => endpointReferencesNode(ep, nodeId))) {
+    if (endpoints.items.some((ep) => endpointReferencesNode(ep, nodeId))) {
       return true;
     }
   }
 
   // Check single endpoint
-  const endpoint = linkMap.get('endpoint', true);
+  const endpoint = linkMap.get("endpoint", true);
   if (YAML.isMap(endpoint)) {
-    return (endpoint as YAML.YAMLMap).get('node') === nodeId;
+    return (endpoint as YAML.YAMLMap).get("node") === nodeId;
   }
 
   return false;
@@ -271,8 +273,8 @@ function updateEndpointReferences(ep: unknown, oldId: string, newId: string): vo
     }
   } else if (YAML.isMap(ep)) {
     const epMap = ep as YAML.YAMLMap;
-    if (epMap.get('node') === oldId) {
-      epMap.set('node', newId);
+    if (epMap.get("node") === oldId) {
+      epMap.set("node", newId);
     }
   }
 }
@@ -281,7 +283,7 @@ function updateEndpointReferences(ep: unknown, oldId: string, newId: string): vo
  * Updates all link references when a node is renamed
  */
 function updateLinksForRename(doc: YAML.Document.Parsed, oldId: string, newId: string): void {
-  const linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+  const linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
   if (!linksSeq || !YAML.isSeq(linksSeq)) {
     return;
   }
@@ -291,7 +293,7 @@ function updateLinksForRename(doc: YAML.Document.Parsed, oldId: string, newId: s
     const linkMap = item as YAML.YAMLMap;
 
     // Check endpoints array
-    const endpoints = linkMap.get('endpoints', true);
+    const endpoints = linkMap.get("endpoints", true);
     if (YAML.isSeq(endpoints)) {
       for (const ep of endpoints.items) {
         updateEndpointReferences(ep, oldId, newId);
@@ -299,11 +301,11 @@ function updateLinksForRename(doc: YAML.Document.Parsed, oldId: string, newId: s
     }
 
     // Check single endpoint (less common)
-    const endpoint = linkMap.get('endpoint', true);
+    const endpoint = linkMap.get("endpoint", true);
     if (YAML.isMap(endpoint)) {
       const epMap = endpoint as YAML.YAMLMap;
-      if (epMap.get('node') === oldId) {
-        epMap.set('node', newId);
+      if (epMap.get("node") === oldId) {
+        epMap.set("node", newId);
       }
     }
   }
@@ -328,13 +330,18 @@ function findNodeForEdit(
   // Node doesn't exist with originalId
   // For renames (undo/redo), check if target already exists (rename may have already happened)
   if (isRename && nodesMap.has(newName)) {
-    logger.info(`[SaveTopology] Node "${originalId}" not found, but "${newName}" exists - rename may already be applied`);
+    logger.info(
+      `[SaveTopology] Node "${originalId}" not found, but "${newName}" exists - rename may already be applied`
+    );
     return { nodeMap: null, earlyResult: { success: true } };
   }
 
   // Node truly doesn't exist - fail for renames, create for simple edits
   if (isRename) {
-    return { nodeMap: null, earlyResult: { success: false, error: `Cannot rename: source node "${originalId}" not found` } };
+    return {
+      nodeMap: null,
+      earlyResult: { success: false, error: `Cannot rename: source node "${originalId}" not found` }
+    };
   }
 
   // For non-rename edits, create a new node
@@ -355,12 +362,12 @@ export function addNodeToDoc(
 ): SaveResult {
   try {
     const result = getNodesMapOrError(doc);
-    if ('error' in result) return result.error;
+    if ("error" in result) return result.error;
     const { nodesMap } = result;
 
     const nodeId = nodeData.name || nodeData.id;
     if (!nodeId) {
-      return { success: false, error: 'Node must have a name or id' };
+      return { success: false, error: "Node must have a name or id" };
     }
 
     // Check if node already exists
@@ -391,28 +398,38 @@ export function editNodeInDoc(
 ): SaveResult {
   try {
     const result = getNodesMapOrError(doc);
-    if ('error' in result) return result.error;
+    if ("error" in result) return result.error;
     const { nodesMap } = result;
 
     const originalId = nodeData.id;
     const newName = nodeData.name || nodeData.id;
 
     if (!originalId) {
-      return { success: false, error: 'Node must have an id' };
+      return { success: false, error: "Node must have an id" };
     }
 
     const isRename = newName !== originalId;
-    const { nodeMap, earlyResult } = findNodeForEdit(nodesMap, originalId, newName, isRename, logger);
+    const { nodeMap, earlyResult } = findNodeForEdit(
+      nodesMap,
+      originalId,
+      newName,
+      isRename,
+      logger
+    );
 
     if (earlyResult) {
       return earlyResult;
     }
 
     if (!nodeMap) {
-      return { success: false, error: 'Failed to find or create node' };
+      return { success: false, error: "Failed to find or create node" };
     }
 
-    const inheritedConfig = resolveInheritedConfig(topoObj, nodeData.extraData?.group, nodeData.extraData?.kind);
+    const inheritedConfig = resolveInheritedConfig(
+      topoObj,
+      nodeData.extraData?.group,
+      nodeData.extraData?.kind
+    );
 
     if (isRename) {
       if (nodesMap.has(newName)) {
@@ -446,7 +463,7 @@ export function deleteNodeFromDoc(
 ): SaveResult {
   try {
     const result = getNodesMapOrError(doc);
-    if ('error' in result) return result.error;
+    if ("error" in result) return result.error;
     const { nodesMap } = result;
 
     if (!nodesMap.has(nodeId)) {
@@ -456,9 +473,9 @@ export function deleteNodeFromDoc(
     nodesMap.delete(nodeId);
 
     // Also remove any links connected to this node
-    const linksSeq = doc.getIn(['topology', 'links'], true) as YAML.YAMLSeq | undefined;
+    const linksSeq = doc.getIn(["topology", "links"], true) as YAML.YAMLSeq | undefined;
     if (linksSeq && YAML.isSeq(linksSeq)) {
-      linksSeq.items = linksSeq.items.filter(item => {
+      linksSeq.items = linksSeq.items.filter((item) => {
         if (!YAML.isMap(item)) return true;
         return !linkReferencesNode(item as YAML.YAMLMap, nodeId);
       });
@@ -474,7 +491,12 @@ export function deleteNodeFromDoc(
 
 /** Apply annotation data to an annotation object */
 export function applyAnnotationData(
-  annotation: { icon?: string; iconColor?: string; iconCornerRadius?: number; interfacePattern?: string },
+  annotation: {
+    icon?: string;
+    iconColor?: string;
+    iconCornerRadius?: number;
+    interfacePattern?: string;
+  },
   data?: NodeAnnotationData
 ): void {
   if (!data) return;

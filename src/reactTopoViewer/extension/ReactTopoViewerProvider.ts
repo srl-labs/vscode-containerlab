@@ -8,21 +8,21 @@
  * - Topology data loading (via TopologyAdapter)
  */
 
-import * as path from 'path';
+import * as path from "path";
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-import { nodeFsAdapter } from '../shared/io';
-import type { CyElement, ClabTopology } from '../shared/types/topology';
-import type { ClabLabTreeNode } from '../../treeView/common';
-import { runningLabsProvider } from '../../globals';
+import { nodeFsAdapter } from "../shared/io";
+import type { CyElement, ClabTopology } from "../shared/types/topology";
+import type { ClabLabTreeNode } from "../../treeView/common";
+import { runningLabsProvider } from "../../globals";
 
-import { log } from './services/logger';
-import { TopoViewerAdaptorClab } from './services/TopologyAdapter';
-import { deploymentStateChecker } from './services/DeploymentStateChecker';
-import { annotationsIO } from './services/annotations';
-import { buildEdgeStatsUpdates } from './services/EdgeStatsBuilder';
-import { SplitViewManager } from './services/SplitViewManager';
+import { log } from "./services/logger";
+import { TopoViewerAdaptorClab } from "./services/TopologyAdapter";
+import { deploymentStateChecker } from "./services/DeploymentStateChecker";
+import { annotationsIO } from "./services/annotations";
+import { buildEdgeStatsUpdates } from "./services/EdgeStatsBuilder";
+import { SplitViewManager } from "./services/SplitViewManager";
 import {
   createPanel,
   generateWebviewHtml,
@@ -30,27 +30,26 @@ import {
   MessageRouter,
   WatcherManager,
   buildBootstrapData
-} from './panel';
-
+} from "./panel";
 
 /** Message type for topology data updates sent to webview */
-const MSG_TOPOLOGY_DATA = 'topology-data';
+const MSG_TOPOLOGY_DATA = "topology-data";
 
 /** Message type for incremental edge stats updates */
-const MSG_EDGE_STATS_UPDATE = 'edge-stats-update';
+const MSG_EDGE_STATS_UPDATE = "edge-stats-update";
 
 /**
  * React TopoViewer class that manages the webview panel
  */
 export class ReactTopoViewer {
   public currentPanel: vscode.WebviewPanel | undefined;
-  private readonly viewType = 'reactTopoViewer';
+  private readonly viewType = "reactTopoViewer";
   private adaptor: TopoViewerAdaptorClab;
   public context: vscode.ExtensionContext;
-  public lastYamlFilePath: string = '';
-  public currentLabName: string = '';
+  public lastYamlFilePath: string = "";
+  public currentLabName: string = "";
   public isViewMode: boolean = false;
-  public deploymentState: 'deployed' | 'undeployed' | 'unknown' = 'unknown';
+  public deploymentState: "deployed" | "undeployed" | "unknown" = "unknown";
   private cacheClabTreeDataToTopoviewer: Record<string, ClabLabTreeNode> | undefined;
   private lastTopologyElements: CyElement[] = [];
   private watcherManager: WatcherManager;
@@ -83,7 +82,9 @@ export class ReactTopoViewer {
   /**
    * Reconcile annotations when nodes are renamed in YAML
    */
-  private async reconcileAnnotationsForRenamedNodes(parsedTopo: ClabTopology | undefined): Promise<boolean> {
+  private async reconcileAnnotationsForRenamedNodes(
+    parsedTopo: ClabTopology | undefined
+  ): Promise<boolean> {
     if (!this.lastYamlFilePath || !parsedTopo?.topology?.nodes) {
       return false;
     }
@@ -92,19 +93,21 @@ export class ReactTopoViewer {
     try {
       const annotations = await annotationsIO.loadAnnotations(this.lastYamlFilePath);
       const nodeAnnotations = annotations.nodeAnnotations ?? [];
-      const missingIds = [...yamlNodeIds].filter(id => !nodeAnnotations.some(n => n.id === id));
-      const orphanAnnotations = nodeAnnotations.filter(n => !yamlNodeIds.has(n.id));
+      const missingIds = [...yamlNodeIds].filter((id) => !nodeAnnotations.some((n) => n.id === id));
+      const orphanAnnotations = nodeAnnotations.filter((n) => !yamlNodeIds.has(n.id));
 
       if (missingIds.length === 1 && orphanAnnotations.length > 0) {
         const newId = missingIds[0];
         const newPrefix = this.getIdPrefix(newId);
-        const prefixMatches = orphanAnnotations.filter(n => this.getIdPrefix(n.id) === newPrefix);
+        const prefixMatches = orphanAnnotations.filter((n) => this.getIdPrefix(n.id) === newPrefix);
         const candidate = prefixMatches[0] || orphanAnnotations[0];
         if (candidate) {
           const oldId = candidate.id;
           candidate.id = newId;
           await annotationsIO.saveAnnotations(this.lastYamlFilePath, annotations);
-          log.info(`[ReactTopoViewer] Migrated annotation id from ${oldId} to ${newId} after YAML rename`);
+          log.info(
+            `[ReactTopoViewer] Migrated annotation id from ${oldId} to ${newId} after YAML rename`
+          );
           return true;
         }
       }
@@ -124,7 +127,7 @@ export class ReactTopoViewer {
       panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data });
     };
     const notifyExternalChange = () => {
-      panel.webview.postMessage({ type: 'external-file-change' });
+      panel.webview.postMessage({ type: "external-file-change" });
     };
 
     this.watcherManager.setupFileWatcher(
@@ -148,11 +151,15 @@ export class ReactTopoViewer {
    * Set up panel event handlers
    */
   private setupPanelHandlers(panel: vscode.WebviewPanel, context: vscode.ExtensionContext): void {
-    panel.onDidDispose(() => {
-      this.currentPanel = undefined;
-      this.internalUpdateDepth = 0;
-      this.watcherManager.dispose();
-    }, null, context.subscriptions);
+    panel.onDidDispose(
+      () => {
+        this.currentPanel = undefined;
+        this.internalUpdateDepth = 0;
+        this.watcherManager.dispose();
+      },
+      null,
+      context.subscriptions
+    );
 
     panel.webview.onDidReceiveMessage(
       async (message: unknown) => {
@@ -166,6 +173,19 @@ export class ReactTopoViewer {
   }
 
   /**
+   * Load running lab data for view mode
+   */
+  private async loadRunningLabData(): Promise<void> {
+    try {
+      this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
+        | Record<string, ClabLabTreeNode>
+        | undefined;
+    } catch (err) {
+      log.warn(`Failed to load running lab data: ${err}`);
+    }
+  }
+
+  /**
    * Initialize the deployment state and lab data
    */
   private async initializeLabState(labName: string): Promise<void> {
@@ -173,15 +193,11 @@ export class ReactTopoViewer {
       this.deploymentState = await this.checkDeploymentState(labName, this.lastYamlFilePath);
     } catch (err) {
       log.warn(`Failed to check deployment state: ${err}`);
-      this.deploymentState = 'unknown';
+      this.deploymentState = "unknown";
     }
 
     if (this.isViewMode) {
-      try {
-        this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs() as Record<string, ClabLabTreeNode> | undefined;
-      } catch (err) {
-        log.warn(`Failed to load running lab data: ${err}`);
-      }
+      await this.loadRunningLabData();
     }
   }
 
@@ -265,7 +281,9 @@ export class ReactTopoViewer {
         this.cacheClabTreeDataToTopoviewer,
         this.lastYamlFilePath
       );
-      const annotationsUpdated = await this.reconcileAnnotationsForRenamedNodes(this.adaptor.currentClabTopo);
+      const annotationsUpdated = await this.reconcileAnnotationsForRenamedNodes(
+        this.adaptor.currentClabTopo
+      );
       if (annotationsUpdated) {
         elements = await this.adaptor.clabYamlToCytoscapeElements(
           yamlContent,
@@ -325,12 +343,10 @@ export class ReactTopoViewer {
   private async checkDeploymentState(
     labName: string,
     topoFilePath: string | undefined
-  ): Promise<'deployed' | 'undeployed' | 'unknown'> {
-    return deploymentStateChecker.checkDeploymentState(
-      labName,
-      topoFilePath,
-      (newName: string) => { this.currentLabName = newName; }
-    );
+  ): Promise<"deployed" | "undeployed" | "unknown"> {
+    return deploymentStateChecker.checkDeploymentState(labName, topoFilePath, (newName: string) => {
+      this.currentLabName = newName;
+    });
   }
 
   /**
@@ -360,7 +376,7 @@ export class ReactTopoViewer {
    * This is called by the command system after a lifecycle operation finishes.
    */
   public async refreshAfterExternalCommand(
-    newDeploymentState: 'deployed' | 'undeployed'
+    newDeploymentState: "deployed" | "undeployed"
   ): Promise<boolean> {
     if (!this.currentPanel) {
       return false;
@@ -369,7 +385,7 @@ export class ReactTopoViewer {
     try {
       // Update internal state
       this.deploymentState = newDeploymentState;
-      this.isViewMode = newDeploymentState === 'deployed';
+      this.isViewMode = newDeploymentState === "deployed";
 
       // Update message router context
       if (this.messageRouter) {
@@ -378,11 +394,7 @@ export class ReactTopoViewer {
 
       // Reload running lab data if switching to view mode
       if (this.isViewMode) {
-        try {
-          this.cacheClabTreeDataToTopoviewer = await runningLabsProvider.discoverInspectLabs() as Record<string, ClabLabTreeNode> | undefined;
-        } catch (err) {
-          log.warn(`Failed to load running lab data: ${err}`);
-        }
+        await this.loadRunningLabData();
       } else {
         this.cacheClabTreeDataToTopoviewer = undefined;
       }
@@ -399,7 +411,9 @@ export class ReactTopoViewer {
       // Notify webview of mode change
       await this.notifyWebviewModeChanged();
 
-      log.info(`[ReactTopoViewer] Refreshed after ${newDeploymentState === 'deployed' ? 'deploy' : 'destroy'}`);
+      log.info(
+        `[ReactTopoViewer] Refreshed after ${newDeploymentState === "deployed" ? "deploy" : "destroy"}`
+      );
       return true;
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh after external command: ${err}`);
@@ -415,10 +429,10 @@ export class ReactTopoViewer {
       return;
     }
 
-    const mode = this.isViewMode ? 'viewer' : 'editor';
+    const mode = this.isViewMode ? "viewer" : "editor";
 
     this.currentPanel.webview.postMessage({
-      type: 'topo-mode-changed',
+      type: "topo-mode-changed",
       data: {
         mode,
         deploymentState: this.deploymentState
@@ -445,14 +459,10 @@ export class ReactTopoViewer {
       this.cacheClabTreeDataToTopoviewer = labsData;
 
       // Build edge stats updates from cached elements using extracted builder
-      const edgeUpdates = buildEdgeStatsUpdates(
-        this.lastTopologyElements,
-        labsData,
-        {
-          currentLabName: this.currentLabName,
-          topology: this.adaptor.currentClabTopo?.topology
-        }
-      );
+      const edgeUpdates = buildEdgeStatsUpdates(this.lastTopologyElements, labsData, {
+        currentLabName: this.currentLabName,
+        topology: this.adaptor.currentClabTopo?.topology
+      });
 
       if (edgeUpdates.length > 0) {
         // Send only edge stats updates (not full topology)
@@ -505,7 +515,7 @@ export class ReactTopoViewerProvider {
     const viewer = new ReactTopoViewer(this.context);
     await viewer.createWebviewPanel(
       this.context,
-      labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(''),
+      labPath ? vscode.Uri.file(labPath) : vscode.Uri.parse(""),
       labName,
       isViewMode
     );

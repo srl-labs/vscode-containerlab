@@ -5,7 +5,7 @@
 /* eslint-disable import-x/max-dependencies -- Barrel file aggregates exports from many modules */
 
 // Import from shared utilities to avoid duplication
-import { getGroupBounds } from '../../utils/boundingBox';
+import { getGroupBounds } from "../../utils/boundingBox";
 // Re-export with alias for backwards compatibility
 export { getGroupBounds as getGroupBoundingBox };
 
@@ -18,7 +18,7 @@ export {
   DEFAULT_GROUP_WIDTH,
   DEFAULT_GROUP_HEIGHT,
   MIN_GROUP_SIZE
-} from './groupTypes';
+} from "./groupTypes";
 export type {
   GroupLabelPosition,
   GroupEditorData,
@@ -35,53 +35,65 @@ export type {
   GroupDragOffset,
   UseGroupsOptions,
   UseGroupsReturn
-} from './groupTypes';
+} from "./groupTypes";
 
 // ============================================================================
 // Core State Hooks
 // ============================================================================
-export { useGroupState } from './useGroupState';
-export { useGroups } from './useGroups';
-export type { UseGroupsHookOptions } from './useGroups';
-export { useGroupHierarchy } from './useGroupHierarchy';
-export type { UseGroupHierarchyOptions, UseGroupHierarchyReturn } from './useGroupHierarchy';
+export { useGroupState } from "./useGroupState";
+export { useGroups } from "./useGroups";
+export type { UseGroupsHookOptions } from "./useGroups";
+export { useGroupHierarchy } from "./useGroupHierarchy";
+export type { UseGroupHierarchyOptions, UseGroupHierarchyReturn } from "./useGroupHierarchy";
 
 // ============================================================================
 // Interaction Hooks (drag, resize, clipboard, UI)
 // ============================================================================
-export { useGroupClipboard } from './useGroupClipboard';
-export type { UseGroupClipboardOptions, UseGroupClipboardReturn } from './useGroupClipboard';
-export { useNodeReparent } from './useNodeReparent';
-export type { UseNodeReparentOptions, UseNodeReparentDeps } from './useNodeReparent';
-export { useGroupDragInteraction, useDragPositionOverrides, useGroupResize } from './useGroupDrag';
-export type { UseGroupDragInteractionOptions, UseGroupDragInteractionReturn, UseDragPositionOverridesReturn, ResizeCorner, UseGroupResizeReturn } from './useGroupDrag';
+export { useGroupClipboard } from "./useGroupClipboard";
+export type { UseGroupClipboardOptions, UseGroupClipboardReturn } from "./useGroupClipboard";
+export { useNodeReparent } from "./useNodeReparent";
+export type { UseNodeReparentOptions, UseNodeReparentDeps } from "./useNodeReparent";
+export { useGroupDragInteraction, useDragPositionOverrides, useGroupResize } from "./useGroupDrag";
+export type {
+  UseGroupDragInteractionOptions,
+  UseGroupDragInteractionReturn,
+  UseDragPositionOverridesReturn,
+  ResizeCorner,
+  UseGroupResizeReturn
+} from "./useGroupDrag";
 
 // ============================================================================
 // App-level Hooks
 // ============================================================================
-export { useAppGroups } from './useAppGroups';
+export { useAppGroups } from "./useAppGroups";
 export {
   useAppGroupUndoHandlers,
   useGroupPositionHandler,
   useGroupDragMoveHandler
-} from './useAppGroupHandlers';
+} from "./useAppGroupHandlers";
 export type {
   UseAppGroupUndoHandlersReturn,
   GroupPositionChangeHandler,
   GroupDragMoveHandler
-} from './useAppGroupHandlers';
+} from "./useAppGroupHandlers";
 
 // ============================================================================
 // Undo/Redo Hooks
 // ============================================================================
-export { useGroupUndoRedoHandlers } from './useGroupUndoRedoHandlers';
-export type { UseGroupUndoRedoHandlersReturn } from './useGroupUndoRedoHandlers';
-export { useGroupAnnotationApplier, useCombinedAnnotationApplier } from './useCombinedAnnotationApplier';
-export type { UseGroupAnnotationApplierReturn, UseCombinedAnnotationApplierReturn } from './useCombinedAnnotationApplier';
-export { useGroupDragUndo } from './useGroupDragUndo';
-export type { UseGroupDragUndoOptions, UseGroupDragUndoReturn } from './useGroupDragUndo';
-export { useGroupResizeUndo } from './useGroupResizeUndo';
-export type { UseGroupResizeUndoOptions, UseGroupResizeUndoReturn } from './useGroupResizeUndo';
+export { useGroupUndoRedoHandlers } from "./useGroupUndoRedoHandlers";
+export type { UseGroupUndoRedoHandlersReturn } from "./useGroupUndoRedoHandlers";
+export {
+  useGroupAnnotationApplier,
+  useCombinedAnnotationApplier
+} from "./useCombinedAnnotationApplier";
+export type {
+  UseGroupAnnotationApplierReturn,
+  UseCombinedAnnotationApplierReturn
+} from "./useCombinedAnnotationApplier";
+export { useGroupDragUndo } from "./useGroupDragUndo";
+export type { UseGroupDragUndoOptions, UseGroupDragUndoReturn } from "./useGroupDragUndo";
+export { useGroupResizeUndo } from "./useGroupResizeUndo";
+export type { UseGroupResizeUndoOptions, UseGroupResizeUndoReturn } from "./useGroupResizeUndo";
 
 // ============================================================================
 // Utility Functions
@@ -101,7 +113,7 @@ export {
   removeGroupFromList,
   isGroupInSelectionBox,
   getLabelPositionStyles
-} from './groupHelpers';
+} from "./groupHelpers";
 
 export {
   buildGroupTree,
@@ -123,4 +135,4 @@ export {
   isPositionInGroup,
   findDeepestGroupAtPosition,
   cloneGroup
-} from './hierarchyUtils';
+} from "./hierarchyUtils";

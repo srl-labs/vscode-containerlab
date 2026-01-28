@@ -4,8 +4,8 @@
  *
  * Provider types use a minimal interface to avoid importing from treeView modules.
  */
-import * as vscode from 'vscode';
-import type Docker from 'dockerode';
+import * as vscode from "vscode";
+import type Docker from "dockerode";
 
 /**
  * Minimal interfaces for providers to avoid circular imports.
@@ -46,66 +46,70 @@ export let helpFeedbackProvider: unknown;
 export let sshxSessions: Map<string, string> = new Map();
 export let gottySessions: Map<string, string> = new Map();
 
-export const extensionVersion = (vscode.extensions.getExtension('srl-labs.vscode-containerlab')?.packageJSON as { version?: string } | undefined)?.version;
+export const extensionVersion = (
+  vscode.extensions.getExtension("srl-labs.vscode-containerlab")?.packageJSON as
+    | { version?: string }
+    | undefined
+)?.version;
 
-export let containerlabBinaryPath: string = 'containerlab';
+export let containerlabBinaryPath: string = "containerlab";
 export let dockerClient: Docker;
 
 // JSON config mappings
-import * as execCmdJson from '../resources/exec_cmd.json';
-import * as sshUserJson from '../resources/ssh_users.json';
+import * as execCmdJson from "../resources/exec_cmd.json";
+import * as sshUserJson from "../resources/ssh_users.json";
 export const execCmdMapping = execCmdJson;
 export const sshUserMapping = sshUserJson;
 
 // Setter functions for globals that need to be modified from extension.ts
 export function setOutputChannel(channel: vscode.LogOutputChannel) {
-    outputChannel = channel;
+  outputChannel = channel;
 }
 
 export function setUsername(name: string) {
-    username = name;
+  username = name;
 }
 
 export function setDockerClient(client: Docker) {
-    dockerClient = client;
+  dockerClient = client;
 }
 
 export function setContainerlabBinaryPath(path: string) {
-    containerlabBinaryPath = path;
+  containerlabBinaryPath = path;
 }
 
 export function setExtensionContext(context: vscode.ExtensionContext) {
-    extensionContext = context;
+  extensionContext = context;
 }
 
 export function setFavoriteLabs(labs: Set<string>) {
-    favoriteLabs = labs;
+  favoriteLabs = labs;
 }
 
 export function setLocalLabsProvider(provider: LocalLabsProviderInterface) {
-    localLabsProvider = provider;
+  localLabsProvider = provider;
 }
 
 export function setRunningLabsProvider(provider: RunningLabsProviderInterface) {
-    runningLabsProvider = provider;
+  runningLabsProvider = provider;
 }
 
 export function setHelpFeedbackProvider(provider: unknown) {
-    helpFeedbackProvider = provider;
+  helpFeedbackProvider = provider;
 }
 
 export function setLocalTreeView(view: vscode.TreeView<unknown>) {
-    localTreeView = view;
+  localTreeView = view;
 }
 
 export function setRunningTreeView(view: vscode.TreeView<unknown>) {
-    runningTreeView = view;
+  runningTreeView = view;
 }
 
 export function setHelpTreeView(view: vscode.TreeView<unknown>) {
-    helpTreeView = view;
+  helpTreeView = view;
 }
 
 export function setHideNonOwnedLabsState(hide: boolean) {
-    hideNonOwnedLabsState = hide;
+  hideNonOwnedLabsState = hide;
 }

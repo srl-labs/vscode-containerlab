@@ -2,10 +2,10 @@
  * Consolidated hook for panel position and dragging
  * Combines features from both floating panel and editor panel drag implementations
  */
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import type React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
-import { addMouseMoveUpListeners } from '../shared/dragHelpers';
+import { addMouseMoveUpListeners } from "../shared/dragHelpers";
 
 export interface Position {
   x: number;
@@ -56,7 +56,10 @@ interface ConstraintOptions {
 function constrainPosition(pos: Position, opts: ConstraintOptions): Position {
   const { panelWidth, topMargin, minVisibleWidth, minVisibleHeight } = opts;
   return {
-    x: Math.max(-(panelWidth - minVisibleWidth), Math.min(pos.x, window.innerWidth - minVisibleWidth)),
+    x: Math.max(
+      -(panelWidth - minVisibleWidth),
+      Math.min(pos.x, window.innerWidth - minVisibleWidth)
+    ),
     y: Math.max(topMargin, Math.min(pos.y, window.innerHeight - minVisibleHeight))
   };
 }
@@ -85,7 +88,11 @@ function parseSavedPosition(saved: string, defaultPos: Position): Position {
 /**
  * Load position from localStorage, or calculate centered position if not cached
  */
-function loadPosition(storageKey: string | undefined, defaultPos: Position | undefined, opts: ConstraintOptions): Position {
+function loadPosition(
+  storageKey: string | undefined,
+  defaultPos: Position | undefined,
+  opts: ConstraintOptions
+): Position {
   // If a specific initial position was provided, use it
   const fallbackPos = defaultPos ?? getCenteredPosition(opts.panelWidth);
 
@@ -95,7 +102,9 @@ function loadPosition(storageKey: string | undefined, defaultPos: Position | und
     if (saved) {
       return constrainPosition(parseSavedPosition(saved, fallbackPos), opts);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   // No cached position - use fallback (provided initialPosition or centered)
   return constrainPosition(fallbackPos, opts);
 }
@@ -107,7 +116,9 @@ function savePosition(storageKey: string | undefined, pos: Position): void {
   if (!storageKey) return;
   try {
     window.localStorage.setItem(`panel-pos-${storageKey}`, JSON.stringify(pos));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
@@ -115,10 +126,10 @@ function savePosition(storageKey: string | undefined, pos: Position): void {
  */
 function shouldPreventDrag(target: HTMLElement): boolean {
   return (
-    target.tagName === 'BUTTON' ||
-    target.tagName === 'I' ||
-    target.closest('.panel-close-btn') !== null ||
-    target.closest('button') !== null
+    target.tagName === "BUTTON" ||
+    target.tagName === "I" ||
+    target.closest(".panel-close-btn") !== null ||
+    target.closest("button") !== null
   );
 }
 
@@ -146,7 +157,10 @@ function useDragEvents(
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      setPosition(prev => { savePosition(storageKey, prev); return prev; });
+      setPosition((prev) => {
+        savePosition(storageKey, prev);
+        return prev;
+      });
     };
 
     return addMouseMoveUpListeners(handleMouseMove, handleMouseUp);
@@ -165,10 +179,10 @@ function useResizeHandler(
   useEffect(() => {
     const handleResize = () => {
       const actualWidth = panelRef.current?.offsetWidth || widthRef.current!;
-      setPosition(prev => constrainPosition(prev, { ...opts, panelWidth: actualWidth }));
+      setPosition((prev) => constrainPosition(prev, { ...opts, panelWidth: actualWidth }));
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [panelRef, widthRef, opts, setPosition]);
 }
 
@@ -189,20 +203,34 @@ export function usePanelDrag(options: UsePanelDragOptions = {}): UsePanelDragRet
   const opts: ConstraintOptions = { panelWidth, topMargin, minVisibleWidth, minVisibleHeight };
 
   const panelRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<Position>(() => loadPosition(storageKey, initialPosition, opts));
+  const [position, setPosition] = useState<Position>(() =>
+    loadPosition(storageKey, initialPosition, opts)
+  );
   const [isDragging, setIsDragging] = useState(false);
   const startRef = useRef({ x: 0, y: 0 });
   const widthRef = useRef(panelWidth);
   widthRef.current = panelWidth;
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isLocked || shouldPreventDrag(e.target as HTMLElement)) return;
-    setIsDragging(true);
-    startRef.current = { x: e.clientX - position.x, y: e.clientY - position.y };
-    e.preventDefault();
-  }, [isLocked, position]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (isLocked || shouldPreventDrag(e.target as HTMLElement)) return;
+      setIsDragging(true);
+      startRef.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+      e.preventDefault();
+    },
+    [isLocked, position]
+  );
 
-  useDragEvents(isDragging, startRef, panelRef, widthRef, storageKey, opts, setPosition, setIsDragging);
+  useDragEvents(
+    isDragging,
+    startRef,
+    panelRef,
+    widthRef,
+    storageKey,
+    opts,
+    setPosition,
+    setIsDragging
+  );
   useResizeHandler(panelRef, widthRef, opts, setPosition);
 
   return { panelRef, position, isDragging, handleMouseDown };
@@ -214,18 +242,18 @@ export function usePanelDrag(options: UsePanelDragOptions = {}): UsePanelDragRet
 export function useDrawerSide(
   panelRef: React.RefObject<HTMLDivElement | null>,
   position: Position
-): 'left' | 'right' {
-  const [drawerSide, setDrawerSide] = useState<'left' | 'right'>('right');
+): "left" | "right" {
+  const [drawerSide, setDrawerSide] = useState<"left" | "right">("right");
 
   useEffect(() => {
     const updateDrawerDirection = () => {
       if (!panelRef.current) return;
       const rect = panelRef.current.getBoundingClientRect();
-      setDrawerSide(rect.left + rect.width / 2 > window.innerWidth / 2 ? 'left' : 'right');
+      setDrawerSide(rect.left + rect.width / 2 > window.innerWidth / 2 ? "left" : "right");
     };
     updateDrawerDirection();
-    window.addEventListener('resize', updateDrawerDirection);
-    return () => window.removeEventListener('resize', updateDrawerDirection);
+    window.addEventListener("resize", updateDrawerDirection);
+    return () => window.removeEventListener("resize", updateDrawerDirection);
   }, [panelRef, position]);
 
   return drawerSide;
@@ -247,14 +275,14 @@ export function useShakeAnimation() {
  * Build lock button CSS class
  */
 export function buildLockButtonClass(isLocked: boolean, isShaking: boolean): string {
-  const classes = ['floating-panel-btn'];
-  if (isLocked) classes.push('danger');
-  if (isShaking) classes.push('lock-shake');
-  return classes.join(' ');
+  const classes = ["floating-panel-btn"];
+  if (isLocked) classes.push("danger");
+  if (isShaking) classes.push("lock-shake");
+  return classes.join(" ");
 }
 
 // Legacy exports for backwards compatibility
-export const PANEL_STORAGE_KEY = 'unifiedPanelState';
+export const PANEL_STORAGE_KEY = "unifiedPanelState";
 
 /**
  * Save panel state to localStorage including collapsed state

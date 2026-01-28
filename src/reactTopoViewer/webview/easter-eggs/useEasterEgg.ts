@@ -11,7 +11,7 @@
  * 20/20/20/20/20 random chance between the five modes.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Number of clicks required to trigger easter egg */
 const CLICKS_REQUIRED = 10;
@@ -20,7 +20,7 @@ const CLICKS_REQUIRED = 10;
 const CLICK_TIMEOUT = 2000;
 
 /** Available easter egg modes */
-export type EasterEggMode = 'nightcall' | 'stickerbrush' | 'aquatic' | 'vaporwave' | 'deusex';
+export type EasterEggMode = "nightcall" | "stickerbrush" | "aquatic" | "vaporwave" | "deusex";
 
 export interface EasterEggState {
   /** Whether easter egg mode is currently active */
@@ -41,7 +41,7 @@ export interface UseEasterEggOptions {
 }
 
 /** All available modes in order */
-const ALL_MODES: EasterEggMode[] = ['nightcall', 'stickerbrush', 'aquatic', 'vaporwave', 'deusex'];
+const ALL_MODES: EasterEggMode[] = ["nightcall", "stickerbrush", "aquatic", "vaporwave", "deusex"];
 
 export interface UseEasterEggReturn {
   /** Current easter egg state */
@@ -65,7 +65,7 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
   const { onActivate, onDeactivate } = options;
 
   const [isPartyMode, setIsPartyMode] = useState(false);
-  const [easterEggMode, setEasterEggMode] = useState<EasterEggMode>('nightcall');
+  const [easterEggMode, setEasterEggMode] = useState<EasterEggMode>("nightcall");
   const [progress, setProgress] = useState(0);
 
   const clickCountRef = useRef(0);
@@ -95,11 +95,11 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
    */
   const getModeName = useCallback((): string => {
     const names: Record<EasterEggMode, string> = {
-      nightcall: 'Nightcall',
-      stickerbrush: 'Stickerbrush',
-      aquatic: 'Aquatic',
-      vaporwave: 'Vaporwave',
-      deusex: 'Deus Ex',
+      nightcall: "Nightcall",
+      stickerbrush: "Stickerbrush",
+      aquatic: "Aquatic",
+      vaporwave: "Vaporwave",
+      deusex: "Deus Ex"
     };
     return names[easterEggMode];
   }, [easterEggMode]);
@@ -115,15 +115,15 @@ export function useEasterEgg(options: UseEasterEggOptions): UseEasterEggReturn {
     const rand = Math.random();
     let mode: EasterEggMode;
     if (rand < 0.2) {
-      mode = 'nightcall';
+      mode = "nightcall";
     } else if (rand < 0.4) {
-      mode = 'stickerbrush';
+      mode = "stickerbrush";
     } else if (rand < 0.6) {
-      mode = 'aquatic';
+      mode = "aquatic";
     } else if (rand < 0.8) {
-      mode = 'vaporwave';
+      mode = "vaporwave";
     } else {
-      mode = 'deusex';
+      mode = "deusex";
     }
     setEasterEggMode(mode);
 

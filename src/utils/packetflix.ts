@@ -2,7 +2,6 @@ import * as os from "os";
 
 import * as vscode from "vscode";
 
-
 import type * as c from "../treeView/common";
 import { outputChannel } from "../globals";
 
@@ -95,7 +94,7 @@ async function ensureEdgesharkAvailable(): Promise<boolean> {
       } catch {
         // wait and retry
       }
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
 
     vscode.window.showErrorMessage("Edgeshark did not start in time. Please try again.");
@@ -105,10 +104,14 @@ async function ensureEdgesharkAvailable(): Promise<boolean> {
 }
 
 // Capture multiple interfaces with Edgeshark
-async function captureMultipleEdgeshark(nodes: c.ClabInterfaceTreeNode[]): Promise<[string, string]> {
+async function captureMultipleEdgeshark(
+  nodes: c.ClabInterfaceTreeNode[]
+): Promise<[string, string]> {
   const base = nodes[0];
-  const ifNames = nodes.map(n => n.name);
-  outputChannel.debug(`multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`);
+  const ifNames = nodes.map((n) => n.name);
+  outputChannel.debug(
+    `multi-interface edgeshark for container=${base.parentName} ifaces=[${ifNames.join(", ")}]`
+  );
 
   // Type guard: netns property may exist on runtime objects but isn't in the type definition
   const baseWithNetns = base as c.ClabInterfaceTreeNode & { netns?: number };
@@ -170,11 +173,7 @@ function resolveOrbstackIPv4(): string | undefined {
     const nets = os.networkInterfaces();
     const eth0 = nets["eth0"] ?? [];
     // Type guard: find IPv4 network interface that is not internal
-    const v4 = eth0.find(
-      (n): n is os.NetworkInterfaceInfo =>
-        n.family === "IPv4" &&
-        !n.internal
-    );
+    const v4 = eth0.find((n): n is os.NetworkInterfaceInfo => n.family === "IPv4" && !n.internal);
     return v4?.address;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -191,9 +190,7 @@ export async function getHostname(): Promise<string> {
     .getConfiguration("containerlab")
     .get<string>("capture.remoteHostname", "");
   if (cfgHost) {
-    outputChannel.debug(
-      `Using containerlab.capture.remoteHostname from settings: ${cfgHost}`
-    );
+    outputChannel.debug(`Using containerlab.capture.remoteHostname from settings: ${cfgHost}`);
     return cfgHost;
   }
 
@@ -218,9 +215,7 @@ export async function getHostname(): Promise<string> {
       const parts = sshConnection.split(" ");
       if (parts.length >= 3) {
         const remoteIp = parts[2];
-        outputChannel.debug(
-          `(SSH non-Orb) Using remote IP from SSH_CONNECTION: ${remoteIp}`
-        );
+        outputChannel.debug(`(SSH non-Orb) Using remote IP from SSH_CONNECTION: ${remoteIp}`);
         return remoteIp;
       }
     }

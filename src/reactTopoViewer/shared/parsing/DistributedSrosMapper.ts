@@ -3,16 +3,16 @@
  * Pure functions - no VS Code dependencies.
  */
 
-import type { ClabNode } from '../types/topology';
+import type { ClabNode } from "../types/topology";
 
-import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from './types';
+import type { ContainerDataProvider, ContainerInfo, InterfaceInfo } from "./types";
 
 /**
  * Checks if a node is a distributed SROS node (nokia_srsim with components).
  */
 export function isDistributedSrosNode(node: ClabNode | undefined): boolean {
   if (!node) return false;
-  if (node.kind !== 'nokia_srsim') return false;
+  if (node.kind !== "nokia_srsim") return false;
   const components = (node as Record<string, unknown>).components;
   return Array.isArray(components) && components.length > 0;
 }
@@ -25,7 +25,7 @@ export function mapSrosInterfaceName(ifaceName: string): string | undefined {
   if (!ifaceName) return undefined;
   const trimmed = ifaceName.trim();
   if (!trimmed) return undefined;
-  if (trimmed.startsWith('eth')) {
+  if (trimmed.startsWith("eth")) {
     return trimmed;
   }
   const regex = /^(\d+)\/(?:x(\d+)\/)?(\d+)(?:\/c(\d+))?\/(\d+)$/;
@@ -74,7 +74,7 @@ export function matchInterfaceInContainer(
   if (!container.interfaces) return undefined;
   const candidates = getCandidateInterfaceNames(ifaceName);
   for (const iface of container.interfaces) {
-    const labelStr = container.label || '';
+    const labelStr = container.label || "";
     if (
       candidates.includes(iface.name) ||
       candidates.includes(iface.alias) ||
@@ -99,7 +99,7 @@ export function containerBelongsToDistributedNode(
   return (
     container.name.startsWith(`${prefix}-`) ||
     container.name_short.startsWith(`${shortPrefix}-`) ||
-    (typeof container.label === 'string' && container.label.startsWith(`${shortPrefix}-`))
+    (typeof container.label === "string" && container.label.startsWith(`${shortPrefix}-`))
   );
 }
 
@@ -114,7 +114,7 @@ export function buildDistributedCandidateNames(
   const names: string[] = [];
   for (const comp of components) {
     const compObj = comp as Record<string, unknown>;
-    const slotRaw = typeof compObj?.slot === 'string' ? compObj.slot.trim() : '';
+    const slotRaw = typeof compObj?.slot === "string" ? compObj.slot.trim() : "";
     if (!slotRaw) continue;
     const suffix = slotRaw.toLowerCase();
     const longName = fullPrefix
@@ -138,7 +138,7 @@ export function extractSrosComponentInfo(
       continue;
     }
 
-    const lastDash = trimmed.lastIndexOf('-');
+    const lastDash = trimmed.lastIndexOf("-");
     if (lastDash === -1) {
       continue;
     }
@@ -160,10 +160,10 @@ export function extractSrosComponentInfo(
  */
 export function srosSlotPriority(slot: string): number {
   const normalized = slot.toLowerCase();
-  if (normalized === 'a') {
+  if (normalized === "a") {
     return 0;
   }
-  if (normalized === 'b') {
+  if (normalized === "b") {
     return 1;
   }
   return 2;
@@ -217,7 +217,7 @@ export function findDistributedSrosInterface(params: {
       ifaceName,
       fullPrefix,
       labName,
-      components,
+      components
     });
   }
 
@@ -227,7 +227,7 @@ export function findDistributedSrosInterface(params: {
     candidateNames,
     ifaceName,
     provider,
-    labName,
+    labName
   });
 }
 
@@ -252,7 +252,7 @@ export function findDistributedSrosContainer(params: {
       baseNodeName,
       fullPrefix,
       labName,
-      components,
+      components
     });
   }
 

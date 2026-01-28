@@ -2,20 +2,20 @@
  * App State Hook
  * Manages cytoscape instance and selection data
  */
-import type React from 'react';
-import { useRef, useCallback, useEffect, useState } from 'react';
-import type { Core, EventObject, NodeSingular } from 'cytoscape';
+import type React from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
+import type { Core, EventObject, NodeSingular } from "cytoscape";
 
-import type { CytoscapeCanvasRef } from '../components/canvas/CytoscapeCanvas';
-import { log } from '../utils/logger';
-import { deleteNode, deleteLink } from '../services';
-import type { CyEdgeData } from '../utils/cytoscapeHelpers';
+import type { CytoscapeCanvasRef } from "../components/canvas/CytoscapeCanvas";
+import { log } from "../utils/logger";
+import { deleteNode, deleteLink } from "../services";
+import type { CyEdgeData } from "../utils/cytoscapeHelpers";
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation
-} from '../../shared/types/topology';
-import { fitViewportToAll } from '../utils/fitViewport';
+} from "../../shared/types/topology";
+import { fitViewportToAll } from "../utils/fitViewport";
 
 /**
  * Grid overlay handle interface for managing custom grid canvas
@@ -28,13 +28,13 @@ interface GridOverlayHandleType {
 /**
  * Extend Cytoscape Core interface to include custom properties
  */
-declare module 'cytoscape' {
+declare module "cytoscape" {
   interface Core {
     __reactGridOverlay?: GridOverlayHandleType;
   }
 }
 
-export type LayoutOption = 'preset' | 'cola' | 'radial' | 'hierarchical' | 'cose' | 'geo';
+export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose" | "geo";
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
 
 export interface NodeData {
@@ -82,8 +82,12 @@ function getLinkDataFromCy(cy: Core | null, edgeId: string | null): LinkData | n
     id: data.id,
     source: data.source,
     target: data.target,
-    sourceEndpoint: data.sourceEndpoint || (data as Record<string, unknown>).sourceInterface as string | undefined,
-    targetEndpoint: data.targetEndpoint || (data as Record<string, unknown>).targetInterface as string | undefined
+    sourceEndpoint:
+      data.sourceEndpoint ||
+      ((data as Record<string, unknown>).sourceInterface as string | undefined),
+    targetEndpoint:
+      data.targetEndpoint ||
+      ((data as Record<string, unknown>).targetInterface as string | undefined)
   } as LinkData;
 }
 
@@ -156,7 +160,7 @@ export function useNavbarActions(
     if (!cy) return;
 
     // Skip if GeoMap is active - GeoMap requires cy.zoom()=1 and cy.pan()={0,0}
-    if (cy.scratch('geoMapActive') === true) return;
+    if (cy.scratch("geoMapActive") === true) return;
 
     // Use custom fit that includes annotations
     if (annotations) {
@@ -172,22 +176,25 @@ export function useNavbarActions(
     }
   }, [cytoscapeRef, annotations]);
 
-  const handleToggleLayout = useCallback(() => cytoscapeRef.current?.runLayout('cose'), [cytoscapeRef]);
+  const handleToggleLayout = useCallback(
+    () => cytoscapeRef.current?.runLayout("cose"),
+    [cytoscapeRef]
+  );
   return { handleZoomToFit, handleToggleLayout };
 }
 
 function normalizeLayoutName(option: LayoutOption): string {
-  if (option === 'radial') return 'concentric';
-  if (option === 'hierarchical') return 'breadthfirst';
-  if (option === 'geo') return 'preset';
+  if (option === "radial") return "concentric";
+  if (option === "hierarchical") return "breadthfirst";
+  if (option === "geo") return "preset";
   return option;
 }
 
 const GRID_SPACING = 14;
-const GRID_COLOR = 'rgba(204,204,204,0.58)';
+const GRID_COLOR = "rgba(204,204,204,0.58)";
 const GRID_LINE_WIDTH_MIN = 0.00001;
 const GRID_LINE_WIDTH_MAX = 2;
-const GRID_LINE_WIDTH_STORAGE_KEY = 'react-topoviewer-grid-line-width';
+const GRID_LINE_WIDTH_STORAGE_KEY = "react-topoviewer-grid-line-width";
 
 function clampLineWidth(width: number): number {
   const w = Number(width);
@@ -221,21 +228,21 @@ type GridOverlayHandle = {
 };
 
 function normalizeContainerPosition(container: HTMLElement): void {
-  if (window.getComputedStyle(container).position === 'static') {
-    container.style.position = 'relative';
+  if (window.getComputedStyle(container).position === "static") {
+    container.style.position = "relative";
   }
 }
 
 function createGridCanvas(container: HTMLElement): HTMLCanvasElement | null {
-  const canvas = document.createElement('canvas');
-  canvas.classList.add('react-topoviewer-grid-overlay');
-  canvas.style.position = 'absolute';
-  canvas.style.top = '0';
-  canvas.style.left = '0';
-  canvas.style.width = '100%';
-  canvas.style.height = '100%';
-  canvas.style.pointerEvents = 'none';
-  canvas.style.zIndex = '0';
+  const canvas = document.createElement("canvas");
+  canvas.classList.add("react-topoviewer-grid-overlay");
+  canvas.style.position = "absolute";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.pointerEvents = "none";
+  canvas.style.zIndex = "0";
   // Insert as first child so it's below cytoscape-layers in DOM order
   if (container.firstChild) {
     container.insertBefore(canvas, container.firstChild);
@@ -245,7 +252,10 @@ function createGridCanvas(container: HTMLElement): HTMLCanvasElement | null {
   return canvas;
 }
 
-function resizeGridCanvas(canvas: HTMLCanvasElement, container: HTMLElement): { width: number; height: number; ratio: number } {
+function resizeGridCanvas(
+  canvas: HTMLCanvasElement,
+  container: HTMLElement
+): { width: number; height: number; ratio: number } {
   const width = container.clientWidth;
   const height = container.clientHeight;
   const ratio = window.devicePixelRatio || 1;
@@ -319,10 +329,10 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
 
   const canvas = createGridCanvas(container);
   if (!canvas) return null;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   if (!ctx) {
     if (canvas.parentElement) canvas.parentElement.removeChild(canvas);
-    log.warn('[GridGuide] Unable to acquire grid overlay context');
+    log.warn("[GridGuide] Unable to acquire grid overlay context");
     return null;
   }
 
@@ -331,26 +341,26 @@ function ensureGridOverlay(cy: Core | null, lineWidth: number): GridOverlayHandl
   const requestRedraw = createGridRedraw(draw);
   const handleResize = () => requestRedraw();
 
-  cy.on('pan', requestRedraw);
-  cy.on('zoom', requestRedraw);
-  cy.on('render', requestRedraw);
-  cy.on('resize', handleResize);
-  window.addEventListener('resize', handleResize, { passive: true });
+  cy.on("pan", requestRedraw);
+  cy.on("zoom", requestRedraw);
+  cy.on("render", requestRedraw);
+  cy.on("resize", handleResize);
+  window.addEventListener("resize", handleResize, { passive: true });
   requestRedraw();
 
   const cleanup = () => {
-    cy.off('pan', requestRedraw);
-    cy.off('zoom', requestRedraw);
-    cy.off('render', requestRedraw);
-    cy.off('resize', handleResize);
-    window.removeEventListener('resize', handleResize);
+    cy.off("pan", requestRedraw);
+    cy.off("zoom", requestRedraw);
+    cy.off("render", requestRedraw);
+    cy.off("resize", handleResize);
+    window.removeEventListener("resize", handleResize);
     if (canvas.parentElement) {
       canvas.parentElement.removeChild(canvas);
     }
     cy.__reactGridOverlay = undefined;
   };
 
-  cy.one('destroy', cleanup);
+  cy.one("destroy", cleanup);
   const handle: GridOverlayHandle = {
     cleanup,
     setLineWidth: (width: number) => {
@@ -387,8 +397,8 @@ function setupPerNodeSnapping(cy: Core): () => void {
   const handleDragFree = (evt: EventObject) => {
     const node = evt.target as NodeSingular;
     // Skip special nodes (groups, annotations)
-    const role = node.data('topoViewerRole') as string | undefined;
-    if (role === 'group' || role === 'freeText' || role === 'freeShape') return;
+    const role = node.data("topoViewerRole") as string | undefined;
+    if (role === "group" || role === "freeText" || role === "freeShape") return;
 
     const pos = node.position();
     const snappedX = snapToGrid(pos.x);
@@ -399,8 +409,8 @@ function setupPerNodeSnapping(cy: Core): () => void {
     }
   };
 
-  cy.on('dragfree', 'node', handleDragFree);
-  return () => cy.off('dragfree', 'node', handleDragFree);
+  cy.on("dragfree", "node", handleDragFree);
+  return () => cy.off("dragfree", "node", handleDragFree);
 }
 
 export function useLayoutControls(
@@ -409,14 +419,14 @@ export function useLayoutControls(
 ): {
   layout: LayoutOption;
   setLayout: (layout: LayoutOption) => void;
-  geoMode: 'pan' | 'edit';
-  setGeoMode: (mode: 'pan' | 'edit') => void;
+  geoMode: "pan" | "edit";
+  setGeoMode: (mode: "pan" | "edit") => void;
   isGeoLayout: boolean;
   gridLineWidth: number;
   setGridLineWidth: (width: number) => void;
 } {
-  const [layout, setLayoutState] = useState<LayoutOption>('preset');
-  const [geoMode, setGeoModeState] = useState<'pan' | 'edit'>('pan');
+  const [layout, setLayoutState] = useState<LayoutOption>("preset");
+  const [geoMode, setGeoModeState] = useState<"pan" | "edit">("pan");
   const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
 
   useEffect(() => {
@@ -427,46 +437,55 @@ export function useLayoutControls(
     return setupPerNodeSnapping(cyInstance);
   }, [cyInstance, gridLineWidth]);
 
-  const setGridLineWidth = useCallback((width: number) => {
-    const clamped = clampLineWidth(width);
-    setGridLineWidthState(clamped);
-    storeGridLineWidth(clamped);
-    applyGridSettings(cyInstance, clamped);
-  }, [cyInstance]);
+  const setGridLineWidth = useCallback(
+    (width: number) => {
+      const clamped = clampLineWidth(width);
+      setGridLineWidthState(clamped);
+      storeGridLineWidth(clamped);
+      applyGridSettings(cyInstance, clamped);
+    },
+    [cyInstance]
+  );
 
-  const setGeoMode = useCallback((mode: 'pan' | 'edit') => {
-    setGeoModeState(mode);
-    if (layout !== 'geo') return;
-    const cy = cytoscapeRef.current?.getCy();
-    if (!cy) return;
-    cy.autoungrabify(mode === 'pan');
-    cy.boxSelectionEnabled(mode === 'edit');
-  }, [cytoscapeRef, layout]);
+  const setGeoMode = useCallback(
+    (mode: "pan" | "edit") => {
+      setGeoModeState(mode);
+      if (layout !== "geo") return;
+      const cy = cytoscapeRef.current?.getCy();
+      if (!cy) return;
+      cy.autoungrabify(mode === "pan");
+      cy.boxSelectionEnabled(mode === "edit");
+    },
+    [cytoscapeRef, layout]
+  );
 
-  const setLayout = useCallback((nextLayout: LayoutOption) => {
-    setLayoutState(nextLayout);
-    const cyApi = cytoscapeRef.current;
-    if (!cyApi) return;
-    const cy = cyApi.getCy();
-    if (!cy) return;
-    if (nextLayout === 'geo') {
-      cy.fit(undefined, 50);
-      cy.autoungrabify(geoMode === 'pan');
-      cy.boxSelectionEnabled(geoMode === 'edit');
-      return;
-    }
-    const normalized = normalizeLayoutName(nextLayout);
-    cy.autoungrabify(false);
-    cy.boxSelectionEnabled(true);
-    cyApi.runLayout(normalized);
-  }, [cytoscapeRef, geoMode]);
+  const setLayout = useCallback(
+    (nextLayout: LayoutOption) => {
+      setLayoutState(nextLayout);
+      const cyApi = cytoscapeRef.current;
+      if (!cyApi) return;
+      const cy = cyApi.getCy();
+      if (!cy) return;
+      if (nextLayout === "geo") {
+        cy.fit(undefined, 50);
+        cy.autoungrabify(geoMode === "pan");
+        cy.boxSelectionEnabled(geoMode === "edit");
+        return;
+      }
+      const normalized = normalizeLayoutName(nextLayout);
+      cy.autoungrabify(false);
+      cy.boxSelectionEnabled(true);
+      cyApi.runLayout(normalized);
+    },
+    [cytoscapeRef, geoMode]
+  );
 
   return {
     layout,
     setLayout,
     geoMode,
     setGeoMode,
-    isGeoLayout: layout === 'geo',
+    isGeoLayout: layout === "geo",
     gridLineWidth,
     setGridLineWidth
   };
@@ -502,58 +521,88 @@ export function useContextMenuHandlers(
   cytoscapeRef: React.RefObject<CytoscapeCanvasRef | null>,
   callbacks: SelectionCallbacks
 ): ContextMenuHandlersResult {
-  const { selectNode, selectEdge, editNode, editEdge, editNetwork, removeNodeAndEdges, removeEdge } = callbacks;
+  const {
+    selectNode,
+    selectEdge,
+    editNode,
+    editEdge,
+    editNetwork,
+    removeNodeAndEdges,
+    removeEdge
+  } = callbacks;
 
-  const handleEditNode = useCallback((nodeId: string) => {
-    editNode(nodeId);
-  }, [editNode]);
+  const handleEditNode = useCallback(
+    (nodeId: string) => {
+      editNode(nodeId);
+    },
+    [editNode]
+  );
 
-  const handleEditNetwork = useCallback((nodeId: string) => {
-    editNetwork(nodeId);
-  }, [editNetwork]);
+  const handleEditNetwork = useCallback(
+    (nodeId: string) => {
+      editNetwork(nodeId);
+    },
+    [editNetwork]
+  );
 
   const handleCreateLinkFromNode = useCallback((_nodeId: string) => {
     // Link creation is handled by edge handles in cytoscape
   }, []);
 
-  const handleShowNodeProperties = useCallback((nodeId: string) => {
-    selectNode(nodeId);
-  }, [selectNode]);
+  const handleShowNodeProperties = useCallback(
+    (nodeId: string) => {
+      selectNode(nodeId);
+    },
+    [selectNode]
+  );
 
-  const handleShowLinkProperties = useCallback((edgeId: string) => {
-    selectEdge(edgeId);
-  }, [selectEdge]);
+  const handleShowLinkProperties = useCallback(
+    (edgeId: string) => {
+      selectEdge(edgeId);
+    },
+    [selectEdge]
+  );
 
-  const handleEditLink = useCallback((edgeId: string) => {
-    editEdge(edgeId);
-  }, [editEdge]);
+  const handleEditLink = useCallback(
+    (edgeId: string) => {
+      editEdge(edgeId);
+    },
+    [editEdge]
+  );
   const handleCloseNodePanel = useCallback(() => selectNode(null), [selectNode]);
   const handleCloseLinkPanel = useCallback(() => selectEdge(null), [selectEdge]);
 
-  const handleDeleteNode = useCallback((nodeId: string) => {
-    void deleteNode(nodeId);  // Persist to YAML and annotations
-    removeNodeAndEdges(nodeId);
-    selectNode(null);
-  }, [selectNode, removeNodeAndEdges]);
+  const handleDeleteNode = useCallback(
+    (nodeId: string) => {
+      void deleteNode(nodeId); // Persist to YAML and annotations
+      removeNodeAndEdges(nodeId);
+      selectNode(null);
+    },
+    [selectNode, removeNodeAndEdges]
+  );
 
-  const handleDeleteLink = useCallback((edgeId: string) => {
-    const cy = cytoscapeRef.current?.getCy();
-    if (cy) {
-      const edge = cy.getElementById(edgeId);
-      if (edge.length > 0) {
-        const edgeData = edge.data() as CyEdgeData;
-        void deleteLink({  // Persist to YAML
-          id: edgeId,
-          source: edgeData.source,
-          target: edgeData.target,
-          sourceEndpoint: edgeData.sourceEndpoint || '',
-          targetEndpoint: edgeData.targetEndpoint || ''
-        });
+  const handleDeleteLink = useCallback(
+    (edgeId: string) => {
+      const cy = cytoscapeRef.current?.getCy();
+      if (cy) {
+        const edge = cy.getElementById(edgeId);
+        if (edge.length > 0) {
+          const edgeData = edge.data() as CyEdgeData;
+          void deleteLink({
+            // Persist to YAML
+            id: edgeId,
+            source: edgeData.source,
+            target: edgeData.target,
+            sourceEndpoint: edgeData.sourceEndpoint || "",
+            targetEndpoint: edgeData.targetEndpoint || ""
+          });
+        }
       }
-    }
-    removeEdge(edgeId);
-    selectEdge(null);
-  }, [selectEdge, removeEdge, cytoscapeRef]);
+      removeEdge(edgeId);
+      selectEdge(null);
+    },
+    [selectEdge, removeEdge, cytoscapeRef]
+  );
 
   return {
     handleEditNode,

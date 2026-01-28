@@ -2,9 +2,9 @@
  * ShortcutsPanel - Displays keyboard shortcuts and interactions
  * Migrated from legacy TopoViewer shortcuts-modal.html
  */
-import React from 'react';
+import React from "react";
 
-import { BasePanel } from '../shared/editor/BasePanel';
+import { BasePanel } from "../shared/editor/BasePanel";
 
 interface ShortcutsPanelProps {
   isVisible: boolean;
@@ -12,12 +12,15 @@ interface ShortcutsPanelProps {
 }
 
 /** Platform detection for keyboard symbols */
-const isMac = typeof window !== 'undefined' && typeof window.navigator !== 'undefined' && /macintosh/i.test(window.navigator.userAgent);
+const isMac =
+  typeof window !== "undefined" &&
+  typeof window.navigator !== "undefined" &&
+  /macintosh/i.test(window.navigator.userAgent);
 
 /** Converts modifier keys based on platform */
 function formatKey(key: string): string {
   if (!isMac) return key;
-  return key.replace(/Ctrl/g, 'Cmd').replace(/Alt/g, 'Option');
+  return key.replace(/Ctrl/g, "Cmd").replace(/Alt/g, "Option");
 }
 
 interface ShortcutRowProps {
@@ -45,9 +48,7 @@ const ShortcutSection: React.FC<ShortcutSectionProps> = ({ title, icon, colorCla
       <i className={`fas ${icon}`} aria-hidden="true"></i>
       {title}
     </h4>
-    <div className="space-y-1 text-sm">
-      {children}
-    </div>
+    <div className="space-y-1 text-sm">{children}</div>
   </section>
 );
 
@@ -101,7 +102,9 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
           <ul className="list-disc list-inside text-secondary space-y-1.5 text-sm">
             <li>Use layout algorithms to auto-arrange</li>
             <li>
-              Box select nodes, then <kbd className="shortcuts-kbd-inline">Ctrl</kbd> + <kbd className="shortcuts-kbd-inline">G</kbd> to group or <kbd className="shortcuts-kbd-inline">Del</kbd> to delete
+              Box select nodes, then <kbd className="shortcuts-kbd-inline">Ctrl</kbd> +{" "}
+              <kbd className="shortcuts-kbd-inline">G</kbd> to group or{" "}
+              <kbd className="shortcuts-kbd-inline">Del</kbd> to delete
             </li>
             <li>Double-click any item to directly edit</li>
             <li>Shift+Click a node to start creating a link</li>
