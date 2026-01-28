@@ -235,12 +235,13 @@ export class TopologyHostCore implements TopologyHost {
       case "savePositionsAndAnnotations":
         await this.topologyIO.savePositions(command.payload.positions);
         if (command.payload.annotations) {
+          const annotations = command.payload.annotations;
           await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => {
-            const merged: TopologyAnnotations = { ...current, ...command.payload.annotations };
-            if (command.payload.annotations.viewerSettings) {
+            const merged: TopologyAnnotations = { ...current, ...annotations };
+            if (annotations.viewerSettings) {
               merged.viewerSettings = {
                 ...(current.viewerSettings ?? {}),
-                ...command.payload.annotations.viewerSettings
+                ...annotations.viewerSettings,
               };
             }
             return merged;
