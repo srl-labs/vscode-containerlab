@@ -14,11 +14,8 @@ import { getUniqueId } from "../../../shared/utilities/idUtils";
 import { convertEditorDataToYaml } from "../../../shared/utilities/nodeEditorConversions";
 
 interface NodeCreationOptions {
-  mode: "edit" | "view";
-  isLocked: boolean;
   customNodes: CustomNodeTemplate[];
   defaultNode: string;
-  getUsedNodeNames: () => Set<string>;
   getUsedNodeIds: () => Set<string>;
   onNodeCreated: (
     nodeId: string,
@@ -54,44 +51,32 @@ interface NodeExtraData {
   [key: string]: unknown;
 }
 
-let nodeCounter = 0;
-
-/**
- * Initialize node counter based on existing nodes
- */
-function initializeNodeCounter(nodeIds: Iterable<string>): void {
-  if (nodeCounter !== 0) return;
-
-  const maxId = [...nodeIds]
-    .filter((id) => id.startsWith("nodeId-"))
-    .map((id) => parseInt(id.replace("nodeId-", ""), 10))
-    .filter((num) => !isNaN(num))
-    .reduce((max, current) => Math.max(max, current), 0);
-  nodeCounter = maxId;
-}
-
-/**
- * Generate a unique node ID
- */
-function generateNodeId(): string {
-  nodeCounter++;
-  return `nodeId-${nodeCounter}`;
-}
-
 /**
  * Generate a unique node name based on template or default
  * Uses getUniqueId to match legacy behavior (srl → srl1, srl2, etc.)
  */
 function generateNodeName(
-  defaultName: string,
-  usedNames: Set<string>,
-  template?: CustomNodeTemplate
+  baseName: string,
+  usedIds: Set<string>
 ): string {
-  if (!template?.baseName) {
-    return defaultName;
-  }
+  return getUniqueId(baseName, usedIds);
+}
 
-  return getUniqueId(template.baseName, usedNames);
+function resolveTemplate(
+  template: CustomNodeTemplate | undefined,
+  options: NodeCreationOptions
+): CustomNodeTemplate | undefined {
+  if (template) return template;
+  if (options.defaultNode) {
+    const defaultTemplate = options.customNodes.find((node) => node.name === options.defaultNode);
+    if (defaultTemplate) return defaultTemplate;
+  }
+  return options.customNodes[0];
+}
+
+function resolveBaseName(template: CustomNodeTemplate): string | null {
+  const baseName = (template.baseName || template.name).trim();
+  return baseName ? baseName : null;
 }
 
 /**
@@ -250,14 +235,6 @@ export function useNodeCreation(
   const optionsRef = useRef(options);
   optionsRef.current = options;
   const reservedIdsRef = useRef<Set<string>>(new Set());
-  const reservedNamesRef = useRef<Set<string>>(new Set());
-
-  const getUsedNames = () => {
-    const base = optionsRef.current.getUsedNodeNames();
-    const combined = new Set<string>(base);
-    for (const name of reservedNamesRef.current) combined.add(name);
-    return combined;
-  };
 
   const getUsedIds = () => {
     const base = optionsRef.current.getUsedNodeIds();
@@ -271,15 +248,22 @@ export function useNodeCreation(
    */
   const createNodeAtPosition = useCallback(
     (position: { x: number; y: number }, template?: CustomNodeTemplate) => {
-      initializeNodeCounter(getUsedIds());
+      const resolvedTemplate = resolveTemplate(template, optionsRef.current);
+      if (!resolvedTemplate) {
+        log.warn("[NodeCreation] No custom node templates available for creation");
+        return;
+      }
 
-      const generatedId = generateNodeId();
-      const usedNames = getUsedNames();
-      const nodeName = generateNodeName(generatedId, usedNames, template);
-      const nodeId = nodeName || generatedId;
+      const baseName = resolveBaseName(resolvedTemplate);
+      if (!baseName) {
+        log.warn(`[NodeCreation] Custom node template '${resolvedTemplate.name}' has no base name`);
+        return;
+      }
 
-      const kind = template?.kind || "nokia_srlinux";
-      const nodeData = createNodeData(nodeId, nodeName, template, kind);
+      const nodeId = generateNodeName(baseName, getUsedIds());
+      const nodeName = nodeId;
+      const kind = resolvedTemplate.kind || "nokia_srlinux";
+      const nodeData = createNodeData(nodeId, nodeName, resolvedTemplate, kind);
 
       // Create TopoNode for state update
       const topoNode = nodeDataToTopoNode(nodeData, position);
@@ -287,7 +271,6 @@ export function useNodeCreation(
       log.info(`[NodeCreation] Created node: ${nodeId} at (${position.x}, ${position.y})`);
 
       reservedIdsRef.current.add(nodeId);
-      if (nodeName) reservedNamesRef.current.add(nodeName);
       onNodeCreated(nodeId, topoNode, position);
     },
     [onNodeCreated]

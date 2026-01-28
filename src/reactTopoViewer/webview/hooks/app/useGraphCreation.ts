@@ -105,16 +105,6 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     return ids;
   }, [state.nodes]);
 
-  const getUsedNodeNames = React.useCallback(() => {
-    const names = new Set<string>();
-    for (const node of state.nodes) {
-      const data = node.data as Record<string, unknown>;
-      const name = data?.label || data?.name;
-      if (typeof name === "string" && name) names.add(name);
-    }
-    return names;
-  }, [state.nodes]);
-
   const getExistingNetworkNodes = React.useCallback(() => {
     const nodes: Array<{ id: string; kind: NetworkType }> = [];
     for (const node of state.nodes) {
@@ -154,11 +144,8 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
 
   // Node creation
   const { createNodeAtPosition } = useNodeCreation(rfInstance, {
-    mode: state.mode,
-    isLocked: state.isLocked,
     customNodes: state.customNodes,
     defaultNode: state.defaultNode,
-    getUsedNodeNames,
     getUsedNodeIds,
     onNodeCreated,
     onLockedClick: () => floatingPanelRef.current?.triggerShake()
