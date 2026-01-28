@@ -87,7 +87,9 @@ function readLabSettingsFromDocument(): LabSettings | undefined {
     // Read name, prefix, and mgmt from root level (per clab schema)
     const name = doc.get("name") as string | undefined;
     const prefix = doc.get("prefix") as string | undefined;
-    const mgmt = doc.get("mgmt") as Record<string, unknown> | undefined;
+    const mgmt = (doc.get("mgmt") as YAML.YAMLMap | undefined)?.toJSON() as
+      | Record<string, unknown>
+      | undefined;
 
     const settings: LabSettings = {};
     if (name) settings.name = name;
