@@ -45,6 +45,12 @@ export function useCustomNodeCommands(
 
   const onEditCustomNode = React.useCallback(
     (nodeName: string) => {
+      // Handle special "__new__" case for creating new custom nodes
+      if (nodeName === "__new__") {
+        const templateData = createNewTemplateEditorData();
+        editCustomTemplate(templateData);
+        return;
+      }
       const template = customNodes.find((n) => n.name === nodeName);
       if (!template) return;
       const templateData = convertTemplateToEditorData(template);

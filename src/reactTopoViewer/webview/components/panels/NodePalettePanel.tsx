@@ -34,6 +34,8 @@ const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
   { type: "mgmt-net", label: "Mgmt Net", icon: "fa-network-wired" },
   { type: "macvlan", label: "Macvlan", icon: "fa-ethernet" },
   { type: "vxlan", label: "VXLAN", icon: "fa-project-diagram" },
+  { type: "vxlan-stitch", label: "VXLAN Stitch", icon: "fa-link" },
+  { type: "dummy", label: "Dummy", icon: "fa-plug" },
   { type: "bridge", label: "Bridge", icon: "fa-bezier-curve" },
   { type: "ovs-bridge", label: "OVS Bridge", icon: "fa-code-branch" }
 ];
@@ -132,7 +134,6 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
       />
       <div className="node-palette-label">
         <span className="node-palette-name">{template.name}</span>
-        {isDefault && <span className="node-palette-default-badge">default</span>}
       </div>
       <div className="node-palette-kind">{template.kind}</div>
       <div className="node-palette-actions">

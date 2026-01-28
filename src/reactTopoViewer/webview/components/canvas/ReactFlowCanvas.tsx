@@ -74,13 +74,12 @@ interface ContextMenuItemsParams {
   handleDeleteNode: (nodeId: string) => void;
   handleDeleteEdge: (edgeId: string) => void;
   nodesRef: React.RefObject<Node[]>;
-  edgesRef: React.RefObject<Edge[]>;
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
   linkSourceNode: string | null;
   startLinkCreation: (nodeId: string) => void;
   cancelLinkCreation: () => void;
   annotationHandlers?: AnnotationHandlers;
   onOpenNodePalette?: () => void;
+  onAddDefaultNode?: (position: { x: number; y: number }) => void;
 }
 
 /**
@@ -95,21 +94,19 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     handleDeleteNode,
     handleDeleteEdge,
     nodesRef,
-    edgesRef,
-    setNodes,
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation,
     annotationHandlers,
-    onOpenNodePalette
+    onOpenNodePalette,
+    onAddDefaultNode
   } = params;
-  const { type, targetId } = handlers.contextMenu;
+  const { type, targetId, position: menuPosition } = handlers.contextMenu;
 
   return useMemo(() => {
     const isEditMode = state.mode === "edit";
     const isLocked = state.isLocked;
     const nodes = nodesRef.current ?? [];
-    const edges = edgesRef.current ?? [];
 
     if (type === "node" && targetId) {
       const targetNode = nodes.find((n) => n.id === targetId);
@@ -150,16 +147,16 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
         isLocked,
         closeContextMenu: handlers.closeContextMenu,
         reactFlowInstance: handlers.reactFlowInstance,
-        nodes,
-        edges,
-        setNodes,
-        onOpenNodePalette
+        onOpenNodePalette,
+        onAddDefaultNode,
+        menuPosition
       });
     }
     return [];
   }, [
     type,
     targetId,
+    menuPosition,
     state.mode,
     state.isLocked,
     handlers.closeContextMenu,
@@ -169,13 +166,12 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     handleDeleteNode,
     handleDeleteEdge,
     nodesRef,
-    edgesRef,
-    setNodes,
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation,
     annotationHandlers,
-    onOpenNodePalette
+    onOpenNodePalette,
+    onAddDefaultNode
   ]);
 }
 
@@ -715,7 +711,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     useGeoWheelZoom(geoLayout, isGeoLayout, isGeoEdit, canvasContainerRef);
 
     // Refs for context menu (to avoid re-renders)
-    const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
+    const { nodesRef } = useGraphRefs(allNodes, allEdges);
 
     const handlers = useCanvasHandlers({
       selectNode,
@@ -817,13 +813,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       handleDeleteNode,
       handleDeleteEdge,
       nodesRef,
-      edgesRef,
-      setNodes,
       linkSourceNode,
       startLinkCreation,
       cancelLinkCreation,
       annotationHandlers,
-      onOpenNodePalette
+      onOpenNodePalette,
+      onAddDefaultNode: onShiftClickCreate
     });
 
     const {

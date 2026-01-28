@@ -2,7 +2,7 @@
  * Context menu item builders for ReactFlowCanvas
  */
 import type React from "react";
-import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import {
   FREE_TEXT_NODE_TYPE,
@@ -11,8 +11,6 @@ import {
 } from "../../annotations/annotationNodeConverters";
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
-
-import { applyLayout } from "./layout";
 
 interface MenuBuilderContext {
   targetId: string;
@@ -56,11 +54,12 @@ interface PaneMenuBuilderContext {
   isLocked: boolean;
   closeContextMenu: () => void;
   reactFlowInstance: React.RefObject<ReactFlowInstance | null>;
-  nodes: Node[];
-  edges: Edge[];
-  setNodes: (nodes: Node[]) => void;
   /** Callback to open the node palette panel */
   onOpenNodePalette?: () => void;
+  /** Callback to add a default node at a position */
+  onAddDefaultNode?: (position: { x: number; y: number }) => void;
+  /** Context menu screen position for coordinate conversion */
+  menuPosition?: { x: number; y: number };
 }
 
 /**
@@ -324,15 +323,26 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     isLocked,
     closeContextMenu,
     reactFlowInstance,
-    nodes,
-    edges,
-    setNodes,
-    onOpenNodePalette
+    onOpenNodePalette,
+    onAddDefaultNode,
+    menuPosition
   } = ctx;
   return [
     {
       id: "add-node",
       label: "Add Node",
+      disabled: !isEditMode || isLocked,
+      onClick: () => {
+        if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
+          const flowPosition = reactFlowInstance.current.screenToFlowPosition(menuPosition);
+          onAddDefaultNode(flowPosition);
+        }
+        closeContextMenu();
+      }
+    },
+    {
+      id: "open-node-palette",
+      label: "Open Node Palette",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         onOpenNodePalette?.();
@@ -347,20 +357,6 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
           /* ignore */
         });
-        closeContextMenu();
-      }
-    },
-    {
-      id: "reset-layout",
-      label: "Reset Layout",
-      onClick: () => {
-        const newNodes = applyLayout("force", nodes, edges);
-        setNodes(newNodes);
-        setTimeout(() => {
-          reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
-            /* ignore */
-          });
-        }, 100);
         closeContextMenu();
       }
     }
