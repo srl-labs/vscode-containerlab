@@ -12,6 +12,7 @@ import type {
 
 import { dispatchTopologyCommand, requestSnapshot, setHostRevision } from "./topologyHostClient";
 import { applySnapshotToStores } from "./topologyHostSync";
+import { useTopoViewerStore } from "../stores/topoViewerStore";
 
 interface ExecuteOptions {
   applySnapshot?: boolean;
@@ -23,12 +24,20 @@ async function handleHostResponse(
   response: TopologyHostResponseMessage,
   applySnapshot: boolean
 ): Promise<TopologyHostResponseMessage> {
+  const syncUndoRedo = (snapshot: TopologySnapshot) => {
+    useTopoViewerStore.getState().setInitialData({
+      canUndo: snapshot.canUndo,
+      canRedo: snapshot.canRedo
+    });
+  };
+
   if (response.type === "topology-host:ack") {
     if (response.snapshot) {
       if (applySnapshot) {
         applySnapshotToStores(response.snapshot);
       } else {
         setHostRevision(response.snapshot.revision);
+        syncUndoRedo(response.snapshot);
       }
       return response;
     }
@@ -47,6 +56,7 @@ async function handleHostResponse(
       applySnapshotToStores(response.snapshot);
     } else {
       setHostRevision(response.snapshot.revision);
+      syncUndoRedo(response.snapshot);
     }
     return response;
   }

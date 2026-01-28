@@ -68,12 +68,8 @@ export interface DevModeInterface {
   getElements?: () => unknown[];
   /** Set layout for the graph (for E2E testing) */
   setLayout?: (layout: LayoutOption) => void;
-  /** Set geo mode (pan/edit) for GeoMap layout */
-  setGeoMode?: (mode: "pan" | "edit") => void;
   /** Check if currently in geo layout mode */
   isGeoLayout?: () => boolean;
-  /** Get current geo mode */
-  geoMode?: () => "pan" | "edit";
   /** React Flow instance for E2E testing (replaces Cytoscape cy) */
   rfInstance?: ReactFlowInstance;
   /** Get current selected node ID */

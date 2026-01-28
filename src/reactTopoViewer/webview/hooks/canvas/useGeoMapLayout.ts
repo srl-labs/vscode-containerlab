@@ -9,6 +9,7 @@ import type { Node, ReactFlowInstance, XYPosition } from "@xyflow/react";
 
 import { log } from "../../utils/logger";
 import { FREE_SHAPE_NODE_TYPE } from "../../annotations/annotationNodeConverters";
+import { saveNodePositions } from "../../services";
 
 interface GeoCoordinates {
   lat: number;
@@ -17,7 +18,7 @@ interface GeoCoordinates {
 
 interface GeoMapLayoutParams {
   isGeoLayout: boolean;
-  geoMode: "pan" | "edit";
+  isEditable: boolean;
   nodes: Node[];
   setNodes: Dispatch<SetStateAction<Node[]>>;
   reactFlowInstanceRef: RefObject<ReactFlowInstance | null>;
@@ -196,9 +197,89 @@ function buildGeoBounds(nodes: Node[]): LngLatBounds | null {
   return bounds;
 }
 
+function boundsCenter(bounds: LngLatBounds): GeoCoordinates {
+  const center = bounds.getCenter();
+  return roundGeo({ lat: center.lat, lng: center.lng });
+}
+
+function assignAutoGeoCoordinates(
+  nodes: Node[],
+  center: GeoCoordinates
+): { nodes: Node[]; assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }> } {
+  let nodeIndex = 0;
+  const assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }> = [];
+
+  const nextNodes = nodes.map((node) => {
+    if (!AUTO_GEO_TYPES.has(node.type ?? "")) return node;
+    if (extractGeoCoordinates(node)) return node;
+
+    const idHash1 = node.id.length % 5;
+    const idHash2 = (node.id.charCodeAt(0) || 0) % 7;
+    const latOffset = (idHash1 - 2) * GEO_OFFSET_MULTIPLIER;
+    const lngOffset = (idHash2 - 3) * GEO_OFFSET_MULTIPLIER;
+
+    const geo = roundGeo({
+      lat: center.lat + latOffset + nodeIndex * 0.03,
+      lng: center.lng + lngOffset + nodeIndex * 0.035
+    });
+
+    nodeIndex++;
+    assignments.push({ id: node.id, geoCoordinates: geo });
+    const data = (node.data ?? {}) as Record<string, unknown>;
+    return { ...node, data: { ...data, geoCoordinates: geo } };
+  });
+
+  return { nodes: nextNodes, assignments };
+}
+
+function syncNodesToMap(map: MapLibreMap, nodes: Node[]): { nodes: Node[]; changed: boolean } {
+  let changed = false;
+  const nextNodes = nodes.map((node) => {
+    const data = (node.data ?? {}) as Record<string, unknown>;
+    if (node.type === FREE_SHAPE_NODE_TYPE && data.shapeType === "line") {
+      const startGeo = extractGeoCoordinates(node);
+      const endGeo = extractEndGeoCoordinates(node);
+      if (!startGeo || !endGeo) return node;
+      const start = map.project([startGeo.lng, startGeo.lat]);
+      const end = map.project([endGeo.lng, endGeo.lat]);
+      const boundsInfo = computeLineBounds({ x: start.x, y: start.y }, { x: end.x, y: end.y });
+      if (
+        positionEquals(node.position, boundsInfo.nodePosition) &&
+        node.width === boundsInfo.width &&
+        node.height === boundsInfo.height
+      ) {
+        return node;
+      }
+      changed = true;
+      return {
+        ...node,
+        position: boundsInfo.nodePosition,
+        width: boundsInfo.width,
+        height: boundsInfo.height,
+        data: {
+          ...data,
+          startPosition: { x: start.x, y: start.y },
+          endPosition: { x: end.x, y: end.y },
+          relativeEndPosition: boundsInfo.relativeEndPosition,
+          lineStartInNode: boundsInfo.lineStartInNode
+        }
+      };
+    }
+
+    const geo = extractGeoCoordinates(node);
+    if (!geo) return node;
+    const position = projectGeoToPosition(map, node, geo);
+    if (positionEquals(node.position, position)) return node;
+    changed = true;
+    return { ...node, position };
+  });
+
+  return { nodes: changed ? nextNodes : nodes, changed };
+}
+
 export function useGeoMapLayout({
   isGeoLayout,
-  geoMode,
+  isEditable,
   nodes,
   setNodes,
   reactFlowInstanceRef,
@@ -209,7 +290,6 @@ export function useGeoMapLayout({
   const [isReady, setIsReady] = useState(false);
   const nodesRef = useRef<Node[]>(nodes);
   const setNodesRef = useRef(setNodes);
-  const geoModeRef = useRef<"pan" | "edit">(geoMode);
   const wasGeoRef = useRef(false);
   const originalPositionsRef = useRef<Map<string, XYPosition>>(new Map());
   const previousViewportRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
@@ -218,7 +298,6 @@ export function useGeoMapLayout({
 
   nodesRef.current = nodes;
   setNodesRef.current = setNodes;
-  geoModeRef.current = geoMode;
 
   useEffect(() => {
     if (!isGeoLayout || mapRef.current || !containerRef.current) return;
@@ -278,7 +357,7 @@ export function useGeoMapLayout({
     const map = mapRef.current;
     if (!map) return;
     if (isGeoLayout) {
-      if (geoMode === "pan") {
+      if (!isEditable) {
         map.dragPan.enable();
       } else {
         map.dragPan.disable();
@@ -292,7 +371,7 @@ export function useGeoMapLayout({
       map.doubleClickZoom.disable();
       map.keyboard.disable();
     }
-  }, [isGeoLayout, geoMode, isReady]);
+  }, [isGeoLayout, isEditable, isReady]);
 
   useEffect(() => {
     if (!isGeoLayout || wasGeoRef.current) return;
@@ -343,154 +422,64 @@ export function useGeoMapLayout({
     const map = mapRef.current;
     if (!map || !isReady) return;
 
-    const applySync = () => {
-      // Skip sync in edit mode - user may be actively positioning nodes
-      if (geoModeRef.current === "edit") {
-        return;
-      }
-      setNodesRef.current((current) => {
-        let changed = false;
-        const next = current.map((node) => {
-          const data = (node.data ?? {}) as Record<string, unknown>;
-          if (node.type === FREE_SHAPE_NODE_TYPE && data.shapeType === "line") {
-            const startGeo = extractGeoCoordinates(node);
-            const endGeo = extractEndGeoCoordinates(node);
-            if (!startGeo || !endGeo) return node;
-            const start = map.project([startGeo.lng, startGeo.lat]);
-            const end = map.project([endGeo.lng, endGeo.lat]);
-            const boundsInfo = computeLineBounds(
-              { x: start.x, y: start.y },
-              { x: end.x, y: end.y }
-            );
-            if (
-              positionEquals(node.position, boundsInfo.nodePosition) &&
-              node.width === boundsInfo.width &&
-              node.height === boundsInfo.height
-            ) {
-              return node;
-            }
-            changed = true;
-            return {
-              ...node,
-              position: boundsInfo.nodePosition,
-              width: boundsInfo.width,
-              height: boundsInfo.height,
-              data: {
-                ...data,
-                startPosition: { x: start.x, y: start.y },
-                endPosition: { x: end.x, y: end.y },
-                relativeEndPosition: boundsInfo.relativeEndPosition,
-                lineStartInNode: boundsInfo.lineStartInNode
-              }
-            };
-          }
-
-          const geo = extractGeoCoordinates(node);
-          if (!geo) return node;
-          const position = projectGeoToPosition(map, node, geo);
-          if (positionEquals(node.position, position)) return node;
-          changed = true;
-          return { ...node, position };
-        });
-        return changed ? next : current;
-      });
-    };
-
-    // First, check if any nodes already have geo coordinates
-    const existingBounds = buildGeoBounds(nodesRef.current);
+    const currentNodes = nodesRef.current;
+    const existingBounds = buildGeoBounds(currentNodes);
+    let boundsToFit = existingBounds;
+    let nodesWithGeo = currentNodes;
+    let assignments: Array<{ id: string; geoCoordinates: GeoCoordinates }> = [];
 
     if (existingBounds) {
-      // Some nodes have geo coordinates - fit to those bounds, then ensure all have coords
-      map.fitBounds(existingBounds, { padding: 120, duration: 0, maxZoom: 12 });
-      // Assign geo coords to nodes that don't have them (using existing center)
-      setNodesRef.current((current) => {
-        const existingCoords: GeoCoordinates[] = [];
-        for (const node of current) {
-          if (!AUTO_GEO_TYPES.has(node.type ?? "")) continue;
-          const data = (node.data ?? {}) as Record<string, unknown>;
-          const geo = (data.geoCoordinates ??
-            (data.extraData as Record<string, unknown> | undefined)?.geoCoordinates) as
-            | GeoCoordinates
-            | undefined;
-          if (geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lng)) {
-            existingCoords.push(geo);
-          }
-        }
-        const centerLat = existingCoords.reduce((sum, c) => sum + c.lat, 0) / existingCoords.length;
-        const centerLng = existingCoords.reduce((sum, c) => sum + c.lng, 0) / existingCoords.length;
-
-        let nodeIndex = 0;
-        return current.map((node) => {
-          if (!AUTO_GEO_TYPES.has(node.type ?? "")) return node;
-          const data = (node.data ?? {}) as Record<string, unknown>;
-          const existingGeo =
-            data.geoCoordinates ??
-            (data.extraData as Record<string, unknown> | undefined)?.geoCoordinates;
-          if (existingGeo) return node;
-
-          const idHash1 = node.id.length % 5;
-          const idHash2 = (node.id.charCodeAt(0) || 0) % 7;
-          const latOffset = (idHash1 - 2) * GEO_OFFSET_MULTIPLIER;
-          const lngOffset = (idHash2 - 3) * GEO_OFFSET_MULTIPLIER;
-
-          const geo = roundGeo({
-            lat: centerLat + latOffset + nodeIndex * 0.03,
-            lng: centerLng + lngOffset + nodeIndex * 0.035
-          });
-          nodeIndex++;
-          return { ...node, data: { ...data, geoCoordinates: geo } };
-        });
-      });
-      // Call applySync after a frame to ensure map state is settled
-      requestAnimationFrame(() => {
-        applySync();
-      });
+      const center = boundsCenter(existingBounds);
+      const assigned = assignAutoGeoCoordinates(currentNodes, center);
+      nodesWithGeo = assigned.nodes;
+      assignments = assigned.assignments;
     } else {
-      // No nodes have geo coordinates - assign them all in Europe, then fit
-      // First compute the new nodes with geo coordinates
-      const currentNodes = nodesRef.current;
-      let nodeIndex = 0;
-      const nodesWithGeo = currentNodes.map((node) => {
-        if (!AUTO_GEO_TYPES.has(node.type ?? "")) return node;
-        const data = (node.data ?? {}) as Record<string, unknown>;
-        const existingGeo =
-          data.geoCoordinates ??
-          (data.extraData as Record<string, unknown> | undefined)?.geoCoordinates;
-        if (existingGeo) return node;
-
-        const idHash1 = node.id.length % 5;
-        const idHash2 = (node.id.charCodeAt(0) || 0) % 7;
-        const latOffset = (idHash1 - 2) * GEO_OFFSET_MULTIPLIER;
-        const lngOffset = (idHash2 - 3) * GEO_OFFSET_MULTIPLIER;
-
-        const geo = roundGeo({
-          lat: DEFAULT_LAT + latOffset + nodeIndex * 0.03,
-          lng: DEFAULT_LNG + lngOffset + nodeIndex * 0.035
-        });
-        nodeIndex++;
-        return { ...node, data: { ...data, geoCoordinates: geo } };
+      const assigned = assignAutoGeoCoordinates(currentNodes, {
+        lat: DEFAULT_LAT,
+        lng: DEFAULT_LNG
       });
-
-      // Compute bounds from the nodes we just created (before setNodes)
-      const newBounds = buildGeoBounds(nodesWithGeo);
-
-      // Update state with new nodes
-      setNodesRef.current(nodesWithGeo);
-
-      // Fit map to bounds and sync positions
-      if (newBounds) {
-        map.fitBounds(newBounds, { padding: 120, duration: 0, maxZoom: 12 });
-      } else {
-        // Fallback: center on Europe
-        map.setCenter(DEFAULT_CENTER);
-        map.setZoom(DEFAULT_ZOOM);
-      }
-      // Always call applySync after a frame to ensure map state is settled
-      requestAnimationFrame(() => {
-        applySync();
-      });
+      nodesWithGeo = assigned.nodes;
+      assignments = assigned.assignments;
+      boundsToFit = buildGeoBounds(nodesWithGeo);
     }
+
+    if (boundsToFit) {
+      map.fitBounds(boundsToFit, { padding: 120, duration: 0, maxZoom: 12 });
+    } else {
+      map.setCenter(DEFAULT_CENTER);
+      map.setZoom(DEFAULT_ZOOM);
+    }
+
+    if (assignments.length > 0) {
+      void saveNodePositions(assignments);
+    }
+
+    requestAnimationFrame(() => {
+      const { nodes: syncedNodes, changed } = syncNodesToMap(map, nodesWithGeo);
+      if (changed || assignments.length > 0) {
+        setNodesRef.current(syncedNodes);
+      }
+    });
   }, [isGeoLayout, isReady]);
+
+  useEffect(() => {
+    if (!isGeoLayout || !isReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (nodes.some((node) => node.dragging)) return;
+
+    const center = map.getCenter();
+    const assigned = assignAutoGeoCoordinates(nodes, { lat: center.lat, lng: center.lng });
+    const { nodes: syncedNodes, changed } = syncNodesToMap(map, assigned.nodes);
+
+    if (changed || assigned.assignments.length > 0) {
+      setNodesRef.current(syncedNodes);
+    }
+
+    if (assigned.assignments.length > 0) {
+      void saveNodePositions(assigned.assignments);
+    }
+  }, [isGeoLayout, isReady, nodes]);
 
   useEffect(() => {
     if (!isGeoLayout) return;
@@ -502,54 +491,11 @@ export function useGeoMapLayout({
       rafRef.current = window.requestAnimationFrame(() => {
         rafRef.current = null;
         const currentMap = mapRef.current;
-        // Skip sync in edit mode - user is actively positioning nodes
-        if (!isGeoLayout || !currentMap || geoModeRef.current === "edit") return;
-        setNodesRef.current((current) => {
-          let changed = false;
-          const next = current.map((node) => {
-            const data = (node.data ?? {}) as Record<string, unknown>;
-            if (node.type === FREE_SHAPE_NODE_TYPE && data.shapeType === "line") {
-              const startGeo = extractGeoCoordinates(node);
-              const endGeo = extractEndGeoCoordinates(node);
-              if (!startGeo || !endGeo) return node;
-              const start = currentMap.project([startGeo.lng, startGeo.lat]);
-              const end = currentMap.project([endGeo.lng, endGeo.lat]);
-              const boundsInfo = computeLineBounds(
-                { x: start.x, y: start.y },
-                { x: end.x, y: end.y }
-              );
-              if (
-                positionEquals(node.position, boundsInfo.nodePosition) &&
-                node.width === boundsInfo.width &&
-                node.height === boundsInfo.height
-              ) {
-                return node;
-              }
-              changed = true;
-              return {
-                ...node,
-                position: boundsInfo.nodePosition,
-                width: boundsInfo.width,
-                height: boundsInfo.height,
-                data: {
-                  ...data,
-                  startPosition: { x: start.x, y: start.y },
-                  endPosition: { x: end.x, y: end.y },
-                  relativeEndPosition: boundsInfo.relativeEndPosition,
-                  lineStartInNode: boundsInfo.lineStartInNode
-                }
-              };
-            }
-
-            const geo = extractGeoCoordinates(node);
-            if (!geo) return node;
-            const position = projectGeoToPosition(currentMap, node, geo);
-            if (positionEquals(node.position, position)) return node;
-            changed = true;
-            return { ...node, position };
-          });
-          return changed ? next : current;
-        });
+        if (!isGeoLayout || !currentMap) return;
+        const { nodes: syncedNodes, changed } = syncNodesToMap(currentMap, nodesRef.current);
+        if (changed) {
+          setNodesRef.current(syncedNodes);
+        }
       });
     };
 

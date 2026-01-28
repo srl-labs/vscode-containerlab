@@ -136,9 +136,7 @@ export interface E2ETestingConfig {
   elements: unknown[];
   /** Layout controls for E2E testing */
   setLayout?: (layout: LayoutOption) => void;
-  setGeoMode?: (mode: "pan" | "edit") => void;
   isGeoLayout?: boolean;
-  geoMode?: "pan" | "edit";
   /** React Flow instance for E2E testing */
   rfInstance?: ReactFlowInstance | null;
   /** Selection state for E2E testing */
@@ -168,9 +166,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     groups,
     elements,
     setLayout,
-    setGeoMode,
     isGeoLayout,
-    geoMode,
     rfInstance,
     selectedNode,
     selectedEdge,
@@ -240,11 +236,9 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.__DEV__) {
       if (setLayout) window.__DEV__.setLayout = setLayout;
-      if (setGeoMode) window.__DEV__.setGeoMode = setGeoMode;
       window.__DEV__.isGeoLayout = () => isGeoLayout ?? false;
-      window.__DEV__.geoMode = () => geoMode ?? "pan";
     }
-  }, [setLayout, setGeoMode, isGeoLayout, geoMode]);
+  }, [setLayout, isGeoLayout]);
 
   // React Flow instance E2E exposure (replaces Cytoscape cy)
   React.useEffect(() => {

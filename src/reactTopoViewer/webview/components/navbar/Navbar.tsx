@@ -34,9 +34,6 @@ interface NavbarProps {
   onLayoutChange: (layout: LayoutOption) => void;
   gridLineWidth: number;
   onGridLineWidthChange: (width: number) => void;
-  geoMode: "pan" | "edit";
-  onGeoModeChange: (mode: "pan" | "edit") => void;
-  isGeoLayout: boolean;
   onLabSettings?: () => void;
   onToggleSplit?: () => void;
   onFindNode?: () => void;
@@ -66,9 +63,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLayoutChange,
   gridLineWidth,
   onGridLineWidthChange,
-  geoMode,
-  onGeoModeChange,
-  isGeoLayout,
   onLabSettings,
   onToggleSplit,
   onFindNode,
@@ -269,9 +263,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={onShowAbout}
           testId="navbar-about"
         />
-
-        {/* Geo mode toggle (when applicable) */}
-        {isGeoLayout && <GeoModeToggle mode={geoMode} onChange={onGeoModeChange} />}
       </div>
 
       {/* Loading Indicator - shows during deployment/destroy operations */}
@@ -449,33 +440,6 @@ const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({ value, onChange }) 
     </div>
   );
 };
-
-interface GeoModeToggleProps {
-  mode: "pan" | "edit";
-  onChange: (mode: "pan" | "edit") => void;
-}
-
-const GeoModeToggle: React.FC<GeoModeToggleProps> = ({ mode, onChange }) => (
-  <div className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--vscode-panel-border,#3c3c3c)] bg-[var(--vscode-editor-background,#1e1e1e)]">
-    <span className="text-xs text-[var(--text-secondary,#9ca3af)]">Geo mode</span>
-    <div className="inline-flex rounded overflow-hidden border border-[var(--vscode-panel-border,#3c3c3c)]">
-      <button
-        type="button"
-        className={`px-2 py-1 text-xs ${mode === "pan" ? "bg-[var(--accent,#3b82f6)] text-white" : "bg-transparent text-[var(--text-secondary,#9ca3af)]"}`}
-        onClick={() => onChange("pan")}
-      >
-        Pan
-      </button>
-      <button
-        type="button"
-        className={`px-2 py-1 text-xs ${mode === "edit" ? "bg-[var(--accent,#3b82f6)] text-white" : "bg-transparent text-[var(--text-secondary,#9ca3af)]"}`}
-        onClick={() => onChange("edit")}
-      >
-        Edit
-      </button>
-    </div>
-  </div>
-);
 
 /**
  * Navbar Button Component

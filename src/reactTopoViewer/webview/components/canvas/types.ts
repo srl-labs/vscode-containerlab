@@ -141,8 +141,6 @@ export interface ReactFlowCanvasProps {
   layout?: "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
   /** Geo layout active */
   isGeoLayout?: boolean;
-  /** Geo layout mode */
-  geoMode?: "pan" | "edit";
   /** Annotation add mode state */
   annotationMode?: AnnotationModeState;
   /** Annotation event handlers */

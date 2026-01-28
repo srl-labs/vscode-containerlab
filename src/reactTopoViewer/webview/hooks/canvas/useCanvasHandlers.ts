@@ -80,7 +80,7 @@ interface CanvasHandlersConfig {
   /** Geo layout support */
   geoLayout?: {
     isGeoLayout: boolean;
-    geoMode: "pan" | "edit";
+    isEditable: boolean;
     getGeoUpdateForNode?: (node: Node) => {
       geoCoordinates?: { lat: number; lng: number };
       endGeoCoordinates?: { lat: number; lng: number };
@@ -243,7 +243,7 @@ function useNodeDragHandlers(
         return;
       }
 
-      const isGeoEdit = geoLayout?.isGeoLayout && geoLayout.geoMode === "edit";
+      const isGeoEdit = geoLayout?.isGeoLayout && geoLayout.isEditable;
 
       // In geo edit mode: commit the drag via onNodesChangeBase AND update geo coordinates
       // The preset position is preserved in originalPositionsRef by useGeoMapLayout

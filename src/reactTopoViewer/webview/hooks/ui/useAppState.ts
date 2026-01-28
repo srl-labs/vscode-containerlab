@@ -94,14 +94,11 @@ export function snapToGrid(value: number): number {
 export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>): {
   layout: LayoutOption;
   setLayout: (layout: LayoutOption) => void;
-  geoMode: "pan" | "edit";
-  setGeoMode: (mode: "pan" | "edit") => void;
   isGeoLayout: boolean;
   gridLineWidth: number;
   setGridLineWidth: (width: number) => void;
 } {
   const [layout, setLayoutState] = useState<LayoutOption>("preset");
-  const [geoMode, setGeoModeState] = useState<"pan" | "edit">("pan");
   const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
 
   const setGridLineWidth = useCallback((width: number) => {
@@ -109,10 +106,6 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
     setGridLineWidthState(clamped);
     storeGridLineWidth(clamped);
     // Grid overlay is now handled by ReactFlow's grid component
-  }, []);
-
-  const setGeoMode = useCallback((mode: "pan" | "edit") => {
-    setGeoModeState(mode);
   }, []);
 
   const setLayout = useCallback(
@@ -129,8 +122,6 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
   return {
     layout,
     setLayout,
-    geoMode,
-    setGeoMode,
     isGeoLayout: layout === "geo",
     gridLineWidth,
     setGridLineWidth

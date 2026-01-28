@@ -11,6 +11,36 @@ import { test, expect } from "../fixtures/topoviewer";
 const TEST_FILE = "simple.clab.yml";
 
 test.describe("GeoMap Layout", () => {
+  const getNodeGeoFromStore = async (page: any, nodeId: string) => {
+    return page.evaluate((id: string) => {
+      const dev = (window as any).__DEV__;
+      const rf = dev?.rfInstance;
+      if (!rf) return null;
+      const node = (rf.getNodes?.() ?? []).find((n: any) => n.id === id);
+      if (!node?.data?.geoCoordinates) return null;
+      const { lat, lng } = node.data.geoCoordinates;
+      return { lat, lng };
+    }, nodeId);
+  };
+
+  const getNodeGeoFromFile = async (topoViewerPage: any, nodeId: string) => {
+    const annotations = await topoViewerPage.getAnnotationsFromFile(TEST_FILE);
+    const nodeAnnotation = annotations.nodeAnnotations?.find(
+      (ann: { id: string }) => ann.id === nodeId
+    ) as { geoCoordinates?: { lat: number; lng: number } } | undefined;
+    return nodeAnnotation?.geoCoordinates ?? null;
+  };
+
+  const expectGeoClose = (
+    actual: { lat: number; lng: number } | null,
+    expected: { lat: number; lng: number } | null
+  ) => {
+    expect(actual).not.toBeNull();
+    expect(expected).not.toBeNull();
+    expect(actual!.lat).toBeCloseTo(expected!.lat, 5);
+    expect(actual!.lng).toBeCloseTo(expected!.lng, 5);
+  };
+
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.gotoFile(TEST_FILE);
     await topoViewerPage.waitForCanvasReady();
@@ -60,7 +90,7 @@ test.describe("GeoMap Layout", () => {
       .not.toBeNull();
   });
 
-  test("dragging node in geo edit mode updates geo coordinates only", async ({
+  test("dragging node in geo layout updates geo coordinates only", async ({
     page,
     topoViewerPage
   }) => {
@@ -92,15 +122,6 @@ test.describe("GeoMap Layout", () => {
     });
 
     await page.waitForSelector("#react-topoviewer-geo-map canvas");
-
-    // Switch to geo edit mode (state only)
-    await page.evaluate(() => {
-      const dev = (window as any).__DEV__;
-      dev?.setGeoMode?.("edit");
-    });
-
-    // Wait for mode to be applied
-    await page.waitForTimeout(500);
 
     // Capture initial node position from React Flow
     const initialPosition = await topoViewerPage.getNodePosition(testNodeId);
@@ -170,8 +191,15 @@ test.describe("GeoMap Layout", () => {
     }
   });
 
-  test("geo mode toggle works correctly", async ({ page, topoViewerPage }) => {
-    // Enable geo layout
+  test("undo/redo restores geo coordinates in store and annotations", async ({
+    page,
+    topoViewerPage
+  }) => {
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    const testNodeId = "srl2";
+
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       dev?.setLayout?.("geo");
@@ -179,37 +207,49 @@ test.describe("GeoMap Layout", () => {
 
     await page.waitForSelector("#react-topoviewer-geo-map canvas");
 
-    // Check initial mode is 'pan' (state-only)
-    const initialMode = await page.evaluate(() => {
-      return (window as any).__DEV__?.geoMode?.();
-    });
-    expect(initialMode).toBe("pan");
+    await expect
+      .poll(
+        async () => {
+          return getNodeGeoFromStore(page, testNodeId);
+        },
+        { timeout: 5000, message: "initial geo coordinates should be assigned" }
+      )
+      .not.toBeNull();
 
-    // Switch to edit mode
-    await page.evaluate(() => {
-      const dev = (window as any).__DEV__;
-      dev?.setGeoMode?.("edit");
-    });
+    const initialGeoStore = await getNodeGeoFromStore(page, testNodeId);
+    const initialGeoFile = await getNodeGeoFromFile(topoViewerPage, testNodeId);
+    expectGeoClose(initialGeoFile, initialGeoStore);
 
-    await page.waitForSelector("#react-topoviewer-geo-map canvas");
+    await topoViewerPage.dragNode(testNodeId, { x: 160, y: 90 });
+    await page.waitForTimeout(1500);
 
-    const editMode = await page.evaluate(() => {
-      return (window as any).__DEV__?.geoMode?.();
-    });
-    expect(editMode).toBe("edit");
+    const movedGeoStore = await getNodeGeoFromStore(page, testNodeId);
+    const movedGeoFile = await getNodeGeoFromFile(topoViewerPage, testNodeId);
+    expect(movedGeoStore).not.toBeNull();
+    expect(movedGeoFile).not.toBeNull();
+    expect(movedGeoStore!.lat).not.toBeCloseTo(initialGeoStore!.lat, 5);
+    expect(movedGeoStore!.lng).not.toBeCloseTo(initialGeoStore!.lng, 5);
+    expectGeoClose(movedGeoFile, movedGeoStore);
 
-    // Switch back to pan mode
-    await page.evaluate(() => {
-      const dev = (window as any).__DEV__;
-      dev?.setGeoMode?.("pan");
-    });
+    await expect.poll(() => topoViewerPage.canUndo(), { timeout: 3000 }).toBe(true);
 
-    await page.waitForTimeout(200);
+    await topoViewerPage.undo();
+    await page.waitForTimeout(800);
 
-    const panMode = await page.evaluate(() => {
-      return (window as any).__DEV__?.geoMode?.();
-    });
-    expect(panMode).toBe("pan");
+    const undoGeoStore = await getNodeGeoFromStore(page, testNodeId);
+    const undoGeoFile = await getNodeGeoFromFile(topoViewerPage, testNodeId);
+    expectGeoClose(undoGeoStore, initialGeoStore);
+    expectGeoClose(undoGeoFile, initialGeoStore);
+
+    await expect.poll(() => topoViewerPage.canRedo(), { timeout: 3000 }).toBe(true);
+
+    await topoViewerPage.redo();
+    await page.waitForTimeout(800);
+
+    const redoGeoStore = await getNodeGeoFromStore(page, testNodeId);
+    const redoGeoFile = await getNodeGeoFromFile(topoViewerPage, testNodeId);
+    expectGeoClose(redoGeoStore, movedGeoStore);
+    expectGeoClose(redoGeoFile, movedGeoStore);
   });
 
   test("disabling geo layout restores normal view", async ({ page, topoViewerPage }) => {

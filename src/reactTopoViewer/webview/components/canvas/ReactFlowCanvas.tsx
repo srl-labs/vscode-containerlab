@@ -459,7 +459,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       edges: propEdges,
       layout = "preset",
       isGeoLayout = false,
-      geoMode = "pan",
       annotationMode,
       annotationHandlers,
       onNodeDelete,
@@ -478,6 +477,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     // Get setters from graph store - these update the single source of truth
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
     const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+    const canvasContainerRef = useRef<HTMLDivElement | null>(null);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
 
@@ -491,9 +491,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const allNodes = (propNodes as Node[]) ?? [];
     const allEdges = (propEdges as Edge[]) ?? [];
 
+    const isGeoEditable = isGeoLayout && mode === "edit" && !isLocked;
+
     const geoLayout = useGeoMapLayout({
       isGeoLayout,
-      geoMode,
+      isEditable: isGeoEditable,
       nodes: allNodes,
       setNodes,
       reactFlowInstanceRef,
@@ -522,7 +524,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       reactFlowInstanceRef,
       geoLayout: {
         isGeoLayout,
-        geoMode,
+        isEditable: isGeoEditable,
         getGeoUpdateForNode: geoLayout.getGeoUpdateForNode
       }
     });
@@ -642,7 +644,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const wrappedOnInit = useWrappedOnInit(handlers.onInit, onInitProp);
 
-    const isGeoEdit = isGeoLayout && geoMode === "edit";
+    const isGeoEdit = isGeoEditable;
     const allowPanOnDrag = !isInAddMode && !isGeoLayout;
     const allowSelectionOnDrag = !isInAddMode && (!isGeoLayout || isGeoEdit);
     const nodesDraggable = mode === "edit" && !isLocked && (!isGeoLayout || isGeoEdit);
@@ -659,8 +661,32 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         }
       : undefined;
 
+    useEffect(() => {
+      if (!isGeoLayout || !isGeoEdit) return;
+      const map = geoLayout.mapRef.current;
+      const container = canvasContainerRef.current;
+      if (!map || !container) return;
+
+      const handleWheel = (event: WheelEvent) => {
+        if (!isGeoLayout || !isGeoEdit) return;
+        event.preventDefault();
+
+        const rect = container.getBoundingClientRect();
+        const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
+
+        const around = map.unproject(point);
+        const zoomDelta = -event.deltaY * 0.002;
+        const nextZoom = map.getZoom() + zoomDelta;
+        map.zoomTo(nextZoom, { duration: 0, around });
+      };
+
+      container.addEventListener("wheel", handleWheel, { passive: false });
+      return () => container.removeEventListener("wheel", handleWheel);
+    }, [geoLayout.mapRef, isGeoLayout, isGeoEdit]);
+
     return (
       <div
+        ref={canvasContainerRef}
         style={canvasStyle}
         className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}`}
       >
