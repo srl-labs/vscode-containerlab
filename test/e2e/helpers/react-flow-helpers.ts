@@ -425,43 +425,47 @@ export async function getEdgeMidpoint(
 ): Promise<{ x: number; y: number } | null> {
   return await page.evaluate(
     ({ id, sel }) => {
-      const interactionId = `${id}-interaction`;
-      const pathEl = document.getElementById(interactionId) || document.getElementById(id);
-      if (pathEl) {
+      const getPathMidpoint = (): { x: number; y: number } | null => {
+        const interactionId = `${id}-interaction`;
+        const pathEl = document.getElementById(interactionId) || document.getElementById(id);
+        if (!pathEl) return null;
         const rect = pathEl.getBoundingClientRect();
-        if (rect.width > 0 || rect.height > 0) {
-          return {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2
-          };
-        }
-      }
-
-      const dev = (window as any).__DEV__;
-      const rf = dev?.rfInstance;
-      if (!rf) return null;
-
-      const edges = rf.getEdges?.() ?? [];
-      const edge = edges.find((e: any) => e.id === id);
-      if (!edge) return null;
-
-      const nodes = rf.getNodes?.() ?? [];
-      const sourceNode = nodes.find((n: any) => n.id === edge.source);
-      const targetNode = nodes.find((n: any) => n.id === edge.target);
-      if (!sourceNode || !targetNode) return null;
-
-      const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-      const container = document.querySelector(sel);
-      const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
-
-      // Calculate geometric midpoint (adding 30 for node center offset)
-      const midX = (sourceNode.position.x + targetNode.position.x) / 2 + 30;
-      const midY = (sourceNode.position.y + targetNode.position.y) / 2 + 30;
-
-      return {
-        x: rect.left + midX * viewport.zoom + viewport.x,
-        y: rect.top + midY * viewport.zoom + viewport.y
+        if (rect.width <= 0 && rect.height <= 0) return null;
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        };
       };
+
+      const getGraphMidpoint = (): { x: number; y: number } | null => {
+        const dev = (window as any).__DEV__;
+        const rf = dev?.rfInstance;
+        if (!rf) return null;
+
+        const edges = rf.getEdges?.() ?? [];
+        const edge = edges.find((e: any) => e.id === id);
+        if (!edge) return null;
+
+        const nodes = rf.getNodes?.() ?? [];
+        const sourceNode = nodes.find((n: any) => n.id === edge.source);
+        const targetNode = nodes.find((n: any) => n.id === edge.target);
+        if (!sourceNode || !targetNode) return null;
+
+        const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+        const container = document.querySelector(sel);
+        const rect = container?.getBoundingClientRect() ?? { left: 0, top: 0 };
+
+        // Calculate geometric midpoint (adding 30 for node center offset)
+        const midX = (sourceNode.position.x + targetNode.position.x) / 2 + 30;
+        const midY = (sourceNode.position.y + targetNode.position.y) / 2 + 30;
+
+        return {
+          x: rect.left + midX * viewport.zoom + viewport.x,
+          y: rect.top + midY * viewport.zoom + viewport.y
+        };
+      };
+
+      return getPathMidpoint() ?? getGraphMidpoint();
     },
     { id: edgeId, sel: RF_SELECTOR }
   );

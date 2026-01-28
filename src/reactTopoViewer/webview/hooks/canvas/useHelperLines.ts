@@ -51,6 +51,94 @@ function getNodeEdges(node: Node) {
   };
 }
 
+type AxisAlignmentResult = {
+  line: number | null;
+  snap: number | null;
+  distance: number;
+};
+
+function findClosestAxisAlignment(
+  dragPositions: Array<{ value: number; snapOffset: number }>,
+  targetPositions: number[],
+  threshold: number
+): AxisAlignmentResult {
+  let bestDistance = threshold + 1;
+  let bestLine: number | null = null;
+  let bestSnap: number | null = null;
+
+  for (const drag of dragPositions) {
+    for (const target of targetPositions) {
+      const dist = Math.abs(drag.value - target);
+      if (dist < bestDistance) {
+        bestDistance = dist;
+        bestLine = target;
+        bestSnap = target + drag.snapOffset;
+      }
+    }
+  }
+
+  return {
+    line: bestDistance <= threshold ? bestLine : null,
+    snap: bestDistance <= threshold ? bestSnap : null,
+    distance: bestDistance
+  };
+}
+
+type MidpointAlignmentResult = {
+  horizontalMidpoint: number | null;
+  verticalMidpoint: number | null;
+  snapX: number | null;
+  snapY: number | null;
+  distanceX: number;
+  distanceY: number;
+};
+
+function computeMidpointAlignments(
+  draggingEdges: ReturnType<typeof getNodeEdges>,
+  draggingDims: { width: number; height: number },
+  otherNodes: Node[],
+  threshold: number
+): MidpointAlignmentResult {
+  let closestMidpointXDist = threshold + 1;
+  let closestMidpointYDist = threshold + 1;
+  let midpointSnapX: number | null = null;
+  let midpointSnapY: number | null = null;
+  let horizontalMidpoint: number | null = null;
+  let verticalMidpoint: number | null = null;
+
+  for (let i = 0; i < otherNodes.length; i++) {
+    const edgesA = getNodeEdges(otherNodes[i]);
+    for (let j = i + 1; j < otherNodes.length; j++) {
+      const edgesB = getNodeEdges(otherNodes[j]);
+      const midpointX = (edgesA.centerX + edgesB.centerX) / 2;
+      const midpointY = (edgesA.centerY + edgesB.centerY) / 2;
+
+      const midpointYDist = Math.abs(draggingEdges.centerY - midpointY);
+      if (midpointYDist < closestMidpointYDist) {
+        closestMidpointYDist = midpointYDist;
+        horizontalMidpoint = midpointY;
+        midpointSnapY = midpointY - draggingDims.height / 2;
+      }
+
+      const midpointXDist = Math.abs(draggingEdges.centerX - midpointX);
+      if (midpointXDist < closestMidpointXDist) {
+        closestMidpointXDist = midpointXDist;
+        verticalMidpoint = midpointX;
+        midpointSnapX = midpointX - draggingDims.width / 2;
+      }
+    }
+  }
+
+  return {
+    horizontalMidpoint: closestMidpointYDist <= threshold ? horizontalMidpoint : null,
+    verticalMidpoint: closestMidpointXDist <= threshold ? verticalMidpoint : null,
+    snapX: closestMidpointXDist <= threshold ? midpointSnapX : null,
+    snapY: closestMidpointYDist <= threshold ? midpointSnapY : null,
+    distanceX: closestMidpointXDist,
+    distanceY: closestMidpointYDist
+  };
+}
+
 /**
  * Calculate alignment helper lines and snap position for a dragged node
  *
@@ -73,150 +161,58 @@ export function calculateAlignments(
   const draggingEdges = getNodeEdges(draggingNode);
   const draggingDims = getNodeDimensions(draggingNode);
 
-  // Track the closest alignments found
-  let closestHorizontalDist = threshold + 1;
-  let closestVerticalDist = threshold + 1;
-  let snapX: number | null = null;
-  let snapY: number | null = null;
-
-  // Check alignment against all other nodes
-  for (const node of allNodes) {
-    // Skip the dragging node itself
-    if (node.id === draggingNode.id) continue;
-    // Skip hidden nodes
-    if (node.hidden) continue;
-
-    const targetEdges = getNodeEdges(node);
-
-    // Check horizontal alignments (Y axis - top, center, bottom)
-    const horizontalChecks = [
-      { dragY: draggingEdges.top, targetY: targetEdges.top, label: "top-top" },
-      { dragY: draggingEdges.top, targetY: targetEdges.centerY, label: "top-center" },
-      { dragY: draggingEdges.top, targetY: targetEdges.bottom, label: "top-bottom" },
-      { dragY: draggingEdges.centerY, targetY: targetEdges.top, label: "center-top" },
-      { dragY: draggingEdges.centerY, targetY: targetEdges.centerY, label: "center-center" },
-      { dragY: draggingEdges.centerY, targetY: targetEdges.bottom, label: "center-bottom" },
-      { dragY: draggingEdges.bottom, targetY: targetEdges.top, label: "bottom-top" },
-      { dragY: draggingEdges.bottom, targetY: targetEdges.centerY, label: "bottom-center" },
-      { dragY: draggingEdges.bottom, targetY: targetEdges.bottom, label: "bottom-bottom" }
-    ];
-
-    for (const check of horizontalChecks) {
-      const dist = Math.abs(check.dragY - check.targetY);
-      if (dist < closestHorizontalDist) {
-        closestHorizontalDist = dist;
-        result.lines.horizontal = check.targetY;
-        // Calculate snap position based on which edge aligned
-        if (check.label.startsWith("top-")) {
-          snapY = check.targetY;
-        } else if (check.label.startsWith("center-")) {
-          snapY = check.targetY - draggingDims.height / 2;
-        } else {
-          snapY = check.targetY - draggingDims.height;
-        }
-      }
-    }
-
-    // Check vertical alignments (X axis - left, center, right)
-    const verticalChecks = [
-      { dragX: draggingEdges.left, targetX: targetEdges.left, label: "left-left" },
-      { dragX: draggingEdges.left, targetX: targetEdges.centerX, label: "left-center" },
-      { dragX: draggingEdges.left, targetX: targetEdges.right, label: "left-right" },
-      { dragX: draggingEdges.centerX, targetX: targetEdges.left, label: "center-left" },
-      { dragX: draggingEdges.centerX, targetX: targetEdges.centerX, label: "center-center" },
-      { dragX: draggingEdges.centerX, targetX: targetEdges.right, label: "center-right" },
-      { dragX: draggingEdges.right, targetX: targetEdges.left, label: "right-left" },
-      { dragX: draggingEdges.right, targetX: targetEdges.centerX, label: "right-center" },
-      { dragX: draggingEdges.right, targetX: targetEdges.right, label: "right-right" }
-    ];
-
-    for (const check of verticalChecks) {
-      const dist = Math.abs(check.dragX - check.targetX);
-      if (dist < closestVerticalDist) {
-        closestVerticalDist = dist;
-        result.lines.vertical = check.targetX;
-        // Calculate snap position based on which edge aligned
-        if (check.label.startsWith("left-")) {
-          snapX = check.targetX;
-        } else if (check.label.startsWith("center-")) {
-          snapX = check.targetX - draggingDims.width / 2;
-        } else {
-          snapX = check.targetX - draggingDims.width;
-        }
-      }
-    }
-  }
-
-  // Clear lines if no alignment within threshold
-  if (closestHorizontalDist > threshold) {
-    result.lines.horizontal = null;
-    snapY = null;
-  }
-  if (closestVerticalDist > threshold) {
-    result.lines.vertical = null;
-    snapX = null;
-  }
-
-  // Check midpoints between pairs of nodes
-  // Collect visible nodes (excluding the dragging node)
   const otherNodes = allNodes.filter((n) => n.id !== draggingNode.id && !n.hidden);
 
-  // Only check midpoints if we have at least 2 other nodes
+  const dragYPositions = [
+    { value: draggingEdges.top, snapOffset: 0 },
+    { value: draggingEdges.centerY, snapOffset: -draggingDims.height / 2 },
+    { value: draggingEdges.bottom, snapOffset: -draggingDims.height }
+  ];
+  const dragXPositions = [
+    { value: draggingEdges.left, snapOffset: 0 },
+    { value: draggingEdges.centerX, snapOffset: -draggingDims.width / 2 },
+    { value: draggingEdges.right, snapOffset: -draggingDims.width }
+  ];
+
+  const targetYPositions = otherNodes.flatMap((node) => {
+    const edges = getNodeEdges(node);
+    return [edges.top, edges.centerY, edges.bottom];
+  });
+  const targetXPositions = otherNodes.flatMap((node) => {
+    const edges = getNodeEdges(node);
+    return [edges.left, edges.centerX, edges.right];
+  });
+
+  const horizontalResult = findClosestAxisAlignment(dragYPositions, targetYPositions, threshold);
+  const verticalResult = findClosestAxisAlignment(dragXPositions, targetXPositions, threshold);
+
+  result.lines.horizontal = horizontalResult.line;
+  result.lines.vertical = verticalResult.line;
+
+  let snapX = verticalResult.snap;
+  let snapY = horizontalResult.snap;
+
   if (otherNodes.length >= 2) {
-    let closestMidpointXDist = threshold + 1;
-    let closestMidpointYDist = threshold + 1;
-    let midpointSnapX: number | null = null;
-    let midpointSnapY: number | null = null;
+    const midpointResult = computeMidpointAlignments(
+      draggingEdges,
+      draggingDims,
+      otherNodes,
+      threshold
+    );
+    result.lines.horizontalMidpoint = midpointResult.horizontalMidpoint;
+    result.lines.verticalMidpoint = midpointResult.verticalMidpoint;
 
-    // Check all pairs of nodes for midpoint alignment
-    for (let i = 0; i < otherNodes.length; i++) {
-      for (let j = i + 1; j < otherNodes.length; j++) {
-        const nodeA = otherNodes[i];
-        const nodeB = otherNodes[j];
-        const edgesA = getNodeEdges(nodeA);
-        const edgesB = getNodeEdges(nodeB);
-
-        // Calculate midpoint between the two nodes' centers
-        const midpointX = (edgesA.centerX + edgesB.centerX) / 2;
-        const midpointY = (edgesA.centerY + edgesB.centerY) / 2;
-
-        // Check if dragging node's center aligns with horizontal midpoint (Y axis)
-        const midpointYDist = Math.abs(draggingEdges.centerY - midpointY);
-        if (midpointYDist < closestMidpointYDist) {
-          closestMidpointYDist = midpointYDist;
-          result.lines.horizontalMidpoint = midpointY;
-          midpointSnapY = midpointY - draggingDims.height / 2;
-        }
-
-        // Check if dragging node's center aligns with vertical midpoint (X axis)
-        const midpointXDist = Math.abs(draggingEdges.centerX - midpointX);
-        if (midpointXDist < closestMidpointXDist) {
-          closestMidpointXDist = midpointXDist;
-          result.lines.verticalMidpoint = midpointX;
-          midpointSnapX = midpointX - draggingDims.width / 2;
-        }
-      }
-    }
-
-    // Clear midpoint lines if no alignment within threshold
-    if (closestMidpointYDist > threshold) {
-      result.lines.horizontalMidpoint = null;
-      midpointSnapY = null;
-    }
-    if (closestMidpointXDist > threshold) {
-      result.lines.verticalMidpoint = null;
-      midpointSnapX = null;
-    }
-
-    // Update snap position with midpoint snaps (midpoint takes precedence if closer)
-    if (midpointSnapX !== null && (snapX === null || closestMidpointXDist < closestVerticalDist)) {
-      snapX = midpointSnapX;
+    if (
+      midpointResult.snapX !== null &&
+      (snapX === null || midpointResult.distanceX < verticalResult.distance)
+    ) {
+      snapX = midpointResult.snapX;
     }
     if (
-      midpointSnapY !== null &&
-      (snapY === null || closestMidpointYDist < closestHorizontalDist)
+      midpointResult.snapY !== null &&
+      (snapY === null || midpointResult.distanceY < horizontalResult.distance)
     ) {
-      snapY = midpointSnapY;
+      snapY = midpointResult.snapY;
     }
   }
 

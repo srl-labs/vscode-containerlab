@@ -3,6 +3,7 @@
  * Combines common handlers to reduce App.tsx complexity
  */
 import React from "react";
+import type { Edge, Node } from "@xyflow/react";
 
 interface SelectionCallbacks {
   selectNode: (id: string | null) => void;
@@ -14,10 +15,10 @@ interface SelectionCallbacks {
 interface UseAppHandlersOptions {
   selectionCallbacks: SelectionCallbacks;
   rfInstance?: {
-    getNodes?: () => Array<{ selected?: boolean }>;
-    getEdges?: () => Array<{ selected?: boolean }>;
-    setNodes?: (updater: any) => void;
-    setEdges?: (updater: any) => void;
+    getNodes?: () => Node[];
+    getEdges?: () => Edge[];
+    setNodes?: (payload: Node[] | ((nodes: Node[]) => Node[])) => void;
+    setEdges?: (payload: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   } | null;
 }
 

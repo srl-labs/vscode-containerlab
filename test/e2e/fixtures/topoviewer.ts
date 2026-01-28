@@ -715,27 +715,31 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // Fallback to React Flow calculation (simplified - use default size)
-        return await page.evaluate((id) => {
-          const rf = (window as any).__DEV__?.rfInstance;
-          if (!rf) return null;
+        return await page.evaluate(
+          (id, sel) => {
+            const rf = (window as any).__DEV__?.rfInstance;
+            if (!rf) return null;
 
-          const nodes = rf.getNodes?.() ?? [];
-          const node = nodes.find((n: any) => n.id === id);
-          if (!node) return null;
+            const nodes = rf.getNodes?.() ?? [];
+            const node = nodes.find((n: any) => n.id === id);
+            if (!node) return null;
 
-          const vp = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-          const container = document.querySelector(".react-flow");
-          const rect = container?.getBoundingClientRect();
-          const ox = rect?.left ?? 0;
-          const oy = rect?.top ?? 0;
+            const vp = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+            const container = document.querySelector(sel);
+            const rect = container?.getBoundingClientRect();
+            const ox = rect?.left ?? 0;
+            const oy = rect?.top ?? 0;
 
-          return {
-            x: ox + node.position.x * vp.zoom + vp.x,
-            y: oy + node.position.y * vp.zoom + vp.y,
-            width: 60 * vp.zoom,
-            height: 60 * vp.zoom
-          };
-        }, nodeId);
+            return {
+              x: ox + node.position.x * vp.zoom + vp.x,
+              y: oy + node.position.y * vp.zoom + vp.y,
+              width: 60 * vp.zoom,
+              height: 60 * vp.zoom
+            };
+          },
+          nodeId,
+          CANVAS_SELECTOR
+        );
       },
 
       getCanvas: () => {
@@ -985,24 +989,28 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       setZoom: async (zoom: number) => {
-        await page.evaluate((z) => {
-          const dev = (window as any).__DEV__;
-          const rf = dev?.rfInstance;
-          if (rf?.setViewport) {
-            const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-            const container = document.querySelector(".react-flow") as HTMLElement | null;
-            const rect = container?.getBoundingClientRect();
-            const centerX = rect ? rect.width / 2 : 0;
-            const centerY = rect ? rect.height / 2 : 0;
-            const modelCenterX = (centerX - viewport.x) / viewport.zoom;
-            const modelCenterY = (centerY - viewport.y) / viewport.zoom;
-            rf.setViewport({
-              x: centerX - modelCenterX * z,
-              y: centerY - modelCenterY * z,
-              zoom: z
-            });
-          }
-        }, zoom);
+        await page.evaluate(
+          (z, sel) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (rf?.setViewport) {
+              const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+              const container = document.querySelector(sel) as HTMLElement | null;
+              const rect = container?.getBoundingClientRect();
+              const centerX = rect ? rect.width / 2 : 0;
+              const centerY = rect ? rect.height / 2 : 0;
+              const modelCenterX = (centerX - viewport.x) / viewport.zoom;
+              const modelCenterY = (centerY - viewport.y) / viewport.zoom;
+              rf.setViewport({
+                x: centerX - modelCenterX * z,
+                y: centerY - modelCenterY * z,
+                zoom: z
+              });
+            }
+          },
+          zoom,
+          CANVAS_SELECTOR
+        );
         await page.waitForTimeout(100);
       },
 

@@ -9,6 +9,7 @@ import type { TopologyEdgeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { useEdgeInfo, useEdgeRenderConfig } from "../../../stores/canvasStore";
 import { useEdges } from "../../../stores/graphStore";
+import { calculateControlPoint, getEdgePoints, getLabelPosition } from "../edgeGeometry";
 
 // Edge style constants
 const EDGE_COLOR_DEFAULT = "#969799";
@@ -88,182 +89,7 @@ function getStrokeColor(linkStatus: string | undefined, selected: boolean): stri
   }
 }
 
-/**
- * Calculate the intersection point of a line from center to target with a rectangle
- */
-function getNodeIntersection(
-  nodeX: number,
-  nodeY: number,
-  nodeWidth: number,
-  nodeHeight: number,
-  targetX: number,
-  targetY: number
-): { x: number; y: number } {
-  const w = nodeWidth / 2;
-  const h = nodeHeight / 2;
-  const dx = targetX - nodeX;
-  const dy = targetY - nodeY;
-
-  if (dx === 0 && dy === 0) {
-    return { x: nodeX, y: nodeY };
-  }
-
-  // Calculate intersection with rectangle bounds
-  const absDx = Math.abs(dx);
-  const absDy = Math.abs(dy);
-
-  // Determine which edge of the rectangle the line intersects
-  if (absDx * h > absDy * w) {
-    // Intersects left or right edge
-    const sign = dx > 0 ? 1 : -1;
-    return {
-      x: nodeX + sign * w,
-      y: nodeY + (dy * w) / absDx
-    };
-  } else {
-    // Intersects top or bottom edge
-    const sign = dy > 0 ? 1 : -1;
-    return {
-      x: nodeX + (dx * h) / absDy,
-      y: nodeY + sign * h
-    };
-  }
-}
-
-/**
- * Get edge connection points between two nodes (between source and target nodes)
- */
-function getEdgePoints(
-  sourceNode: { x: number; y: number; width: number; height: number },
-  targetNode: { x: number; y: number; width: number; height: number }
-): { sx: number; sy: number; tx: number; ty: number } {
-  const sourceCenter = {
-    x: sourceNode.x + sourceNode.width / 2,
-    y: sourceNode.y + sourceNode.height / 2
-  };
-  const targetCenter = {
-    x: targetNode.x + targetNode.width / 2,
-    y: targetNode.y + targetNode.height / 2
-  };
-
-  const sourcePoint = getNodeIntersection(
-    sourceCenter.x,
-    sourceCenter.y,
-    sourceNode.width,
-    sourceNode.height,
-    targetCenter.x,
-    targetCenter.y
-  );
-
-  const targetPoint = getNodeIntersection(
-    targetCenter.x,
-    targetCenter.y,
-    targetNode.width,
-    targetNode.height,
-    sourceCenter.x,
-    sourceCenter.y
-  );
-
-  return {
-    sx: sourcePoint.x,
-    sy: sourcePoint.y,
-    tx: targetPoint.x,
-    ty: targetPoint.y
-  };
-}
-
-/**
- * Calculate label position along the edge (supports curved paths)
- * For curved edges, labels are placed further along the curve where they've separated
- */
-function getLabelPosition(
-  startX: number,
-  startY: number,
-  endX: number,
-  endY: number,
-  offset: number,
-  controlPoint?: { x: number; y: number }
-): { x: number; y: number } {
-  const dx = endX - startX;
-  const dy = endY - startY;
-  const length = Math.sqrt(dx * dx + dy * dy);
-
-  if (length === 0) return { x: startX, y: startY };
-
-  // For curved edges, use a larger t-value so labels are placed where curves have separated
-  // This prevents overlapping labels on parallel horizontal edges
-  const baseRatio = Math.min(offset / length, 0.4);
-  const ratio = controlPoint ? Math.max(baseRatio, 0.15) : baseRatio;
-
-  // For curved edges, calculate position along the quadratic bezier curve
-  if (controlPoint) {
-    const t = ratio;
-    // Quadratic bezier: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
-    const oneMinusT = 1 - t;
-    return {
-      x: oneMinusT * oneMinusT * startX + 2 * oneMinusT * t * controlPoint.x + t * t * endX,
-      y: oneMinusT * oneMinusT * startY + 2 * oneMinusT * t * controlPoint.y + t * t * endY
-    };
-  }
-
-  return {
-    x: startX + dx * ratio,
-    y: startY + dy * ratio
-  };
-}
-
 // Parallel edge info is now provided via CanvasContext
-
-/**
- * Calculate the bezier control point for a curved edge
- * Returns null for single edges (straight line)
- *
- * @param isCanonicalDirection - true if the edge goes from the canonical source to target
- *                               (used to ensure consistent curvature for parallel edges)
- */
-function calculateControlPoint(
-  sx: number,
-  sy: number,
-  tx: number,
-  ty: number,
-  edgeIndex: number,
-  totalEdges: number,
-  isCanonicalDirection: boolean
-): { x: number; y: number } | null {
-  // Single edge - use straight line
-  if (totalEdges <= 1) return null;
-
-  // Calculate midpoint
-  const midX = (sx + tx) / 2;
-  const midY = (sy + ty) / 2;
-
-  // Calculate perpendicular direction from source to target
-  const dx = tx - sx;
-  const dy = ty - sy;
-  const length = Math.sqrt(dx * dx + dy * dy);
-
-  if (length === 0) return null;
-
-  // Perpendicular unit vector (rotated 90 degrees)
-  const normalX = -dy / length;
-  const normalY = dx / length;
-
-  // Calculate offset: distribute edges evenly around the center
-  // For 2 edges: offsets are -0.5 and +0.5 times step size
-  // For 3 edges: offsets are -1, 0, +1 times step size
-  let offset = (edgeIndex - (totalEdges - 1) / 2) * CONTROL_POINT_STEP_SIZE;
-
-  // If this edge is NOT in the canonical direction, flip the offset
-  // This ensures parallel edges in opposite directions curve to opposite sides
-  if (!isCanonicalDirection) {
-    offset = -offset;
-  }
-
-  return {
-    x: midX + normalX * offset,
-    y: midY + normalY * offset
-  };
-}
 
 /**
  * Calculate loop edge geometry for self-referencing edges
@@ -426,7 +252,8 @@ function computeRegularGeometry(
     points.ty,
     index,
     total,
-    isCanonicalDirection
+    isCanonicalDirection,
+    CONTROL_POINT_STEP_SIZE
   );
 
   const path = controlPoint

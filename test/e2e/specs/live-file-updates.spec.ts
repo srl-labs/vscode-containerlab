@@ -7,7 +7,20 @@
  * This proves the SSE-based live update mechanism works correctly.
  */
 
+import type { Page } from "@playwright/test";
+
 import { test, expect } from "../fixtures/topoviewer";
+
+const getNodeKindFromStore = async (page: Page, nodeId: string) => {
+  return page.evaluate((id: string) => {
+    const dev = (window as any).__DEV__;
+    const rf = dev?.rfInstance;
+    if (!rf) return null;
+    const nodes = rf.getNodes?.() ?? [];
+    const node = nodes.find((n: any) => n.id === id);
+    return node?.data?.extraData?.kind ?? node?.data?.kind ?? null;
+  }, nodeId);
+};
 
 test.describe.serial("Live File Updates", () => {
   // Use simple.clab.yml as our test file
@@ -149,22 +162,10 @@ topology:
 
     // Wait for the node kind to be updated
     await expect
-      .poll(
-        async () => {
-          return await page.evaluate(() => {
-            const dev = (window as any).__DEV__;
-            const rf = dev?.rfInstance;
-            if (!rf) return null;
-            const nodes = rf.getNodes?.() ?? [];
-            const node = nodes.find((n: any) => n.id === "srl1");
-            return node?.data?.extraData?.kind ?? node?.data?.kind ?? null;
-          });
-        },
-        {
-          timeout: 5000,
-          message: "Expected node kind to update after external edit"
-        }
-      )
+      .poll(() => getNodeKindFromStore(page, "srl1"), {
+        timeout: 5000,
+        message: "Expected node kind to update after external edit"
+      })
       .toBe("linux");
   });
 

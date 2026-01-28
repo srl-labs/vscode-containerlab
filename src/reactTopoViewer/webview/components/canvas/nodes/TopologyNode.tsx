@@ -10,6 +10,8 @@ import { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP } from "../types";
 import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
 import { useLinkCreationContext, useNodeRenderConfig } from "../../../stores/canvasStore";
 
+import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE } from "./nodeStyles";
+
 /**
  * Map role to SVG node type
  */
@@ -19,31 +21,7 @@ function getRoleSvgType(role: string): NodeType {
   return "pe"; // Default to PE router icon
 }
 
-const LABEL_STYLE: React.CSSProperties = {
-  marginTop: -2,
-  fontSize: "0.7rem",
-  fontWeight: 500,
-  color: "#F5F5F5",
-  textAlign: "center",
-  textShadow: "0 0 3px #3C3E41",
-  backgroundColor: "rgba(0, 0, 0, 0.7)",
-  padding: "1px 4px",
-  borderRadius: 3,
-  flexShrink: 0,
-  maxWidth: 80,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap"
-};
-
-// Hidden handle style - only need one source and one target handle
-// The floating edge calculates its own connection points
-const HIDDEN_HANDLE_STYLE: React.CSSProperties = {
-  opacity: 0,
-  pointerEvents: "none",
-  width: 1,
-  height: 1
-};
+const LABEL_STYLE = buildNodeLabelStyle({ marginTop: -2, fontSize: "0.7rem" });
 
 // Icon style constants
 const ICON_SIZE = 40;

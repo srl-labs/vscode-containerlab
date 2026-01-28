@@ -20,6 +20,35 @@ import type {
 /**
  * Converts a ParsedElement node to a ReactFlow Node (TopoNode).
  */
+const CLOUD_NODE_ROLES = new Set([
+  "host",
+  "mgmt-net",
+  "macvlan",
+  "vxlan",
+  "vxlan-stitch",
+  "dummy",
+  "bridge"
+]);
+
+function getGeoCoordinates(
+  data: Record<string, unknown>
+): { lat: number; lng: number } | undefined {
+  const latValue = data.lat;
+  const lngValue = data.lng;
+  const latRaw =
+    latValue === "" || latValue === null || latValue === undefined ? NaN : Number(latValue);
+  const lngRaw =
+    lngValue === "" || lngValue === null || lngValue === undefined ? NaN : Number(lngValue);
+  if (!Number.isFinite(latRaw) || !Number.isFinite(lngRaw)) {
+    return undefined;
+  }
+  return { lat: latRaw, lng: lngRaw };
+}
+
+function getNodeLabel(data: Record<string, unknown>): string {
+  return (data.name as string) ?? (data.id as string) ?? "";
+}
+
 export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
   if (element.group !== "nodes") {
     throw new Error("Cannot convert edge element to node");
@@ -28,29 +57,14 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
   const data = element.data as Record<string, unknown>;
   const extraData = (data.extraData ?? {}) as Record<string, unknown>;
   const role = (data.topoViewerRole as string) ?? "pe";
-  const latValue = data.lat;
-  const lngValue = data.lng;
-  const latRaw =
-    latValue === "" || latValue === null || latValue === undefined ? NaN : Number(latValue);
-  const lngRaw =
-    lngValue === "" || lngValue === null || lngValue === undefined ? NaN : Number(lngValue);
-  const geoCoordinates =
-    Number.isFinite(latRaw) && Number.isFinite(lngRaw) ? { lat: latRaw, lng: lngRaw } : undefined;
+  const geoCoordinates = getGeoCoordinates(data);
 
   // Determine node type based on role
-  const isCloudNode = [
-    "host",
-    "mgmt-net",
-    "macvlan",
-    "vxlan",
-    "vxlan-stitch",
-    "dummy",
-    "bridge"
-  ].includes(role);
+  const isCloudNode = CLOUD_NODE_ROLES.has(role);
 
   if (isCloudNode) {
     const cloudData: CloudNodeData = {
-      label: (data.name as string) ?? (data.id as string) ?? "",
+      label: getNodeLabel(data),
       nodeType: role as CloudNodeData["nodeType"],
       ...(geoCoordinates ? { geoCoordinates } : {}),
       extraData: extraData
@@ -66,7 +80,7 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
 
   // Regular topology node
   const nodeData: TopologyNodeData = {
-    label: (data.name as string) ?? (data.id as string) ?? "",
+    label: getNodeLabel(data),
     role,
     kind: extraData.kind as string | undefined,
     image: extraData.image as string | undefined,

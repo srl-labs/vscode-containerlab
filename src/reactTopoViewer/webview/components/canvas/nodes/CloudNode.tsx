@@ -9,6 +9,8 @@ import { SELECTION_COLOR } from "../types";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import { useLinkCreationContext, useNodeRenderConfig } from "../../../stores/canvasStore";
 
+import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE } from "./nodeStyles";
+
 /**
  * Get icon color based on node type
  */
@@ -99,31 +101,7 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     ...getOutlineStyle()
   };
 
-  // Label styles
-  const labelStyle: React.CSSProperties = {
-    marginTop: 4,
-    fontSize: "0.65rem",
-    fontWeight: 500,
-    color: "#F5F5F5",
-    textAlign: "center",
-    textShadow: "0 0 3px #3C3E41",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    padding: "1px 4px",
-    borderRadius: 3,
-    flexShrink: 0,
-    maxWidth: 80,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap"
-  };
-
-  // Hidden handle style - needed for edge connections but not interactive
-  const hiddenHandleStyle: React.CSSProperties = {
-    opacity: 0,
-    pointerEvents: "none",
-    width: 1,
-    height: 1
-  };
+  const labelStyle = useMemo(() => buildNodeLabelStyle({ marginTop: 4, fontSize: "0.65rem" }), []);
 
   return (
     <div
@@ -137,56 +115,56 @@ const CloudNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
         type="source"
         position={Position.Top}
         id="top"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
       <Handle
         type="target"
         position={Position.Top}
         id="top-target"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
       <Handle
         type="target"
         position={Position.Right}
         id="right-target"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
       <Handle
         type="target"
         position={Position.Bottom}
         id="bottom-target"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left-target"
-        style={hiddenHandleStyle}
+        style={HIDDEN_HANDLE_STYLE}
         isConnectable={false}
       />
 

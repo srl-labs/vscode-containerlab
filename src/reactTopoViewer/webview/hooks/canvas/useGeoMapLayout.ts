@@ -81,6 +81,12 @@ function roundGeo(coords: GeoCoordinates): GeoCoordinates {
   return { lat: roundCoord(coords.lat), lng: roundCoord(coords.lng) };
 }
 
+const DEFAULT_SIZE_BY_TYPE: Record<string, { width: number; height: number }> = {
+  "group-node": DEFAULT_GROUP_SIZE,
+  "free-text-node": DEFAULT_TEXT_SIZE,
+  "free-shape-node": DEFAULT_SHAPE_SIZE
+};
+
 function getNodeSize(node: Node): { width: number; height: number } {
   const data = (node.data ?? {}) as Record<string, unknown>;
   const width = node.width ?? (typeof data.width === "number" ? data.width : undefined);
@@ -90,28 +96,11 @@ function getNodeSize(node: Node): { width: number; height: number } {
     return { width, height };
   }
 
-  switch (node.type) {
-    case "group-node":
-      return {
-        width: width ?? DEFAULT_GROUP_SIZE.width,
-        height: height ?? DEFAULT_GROUP_SIZE.height
-      };
-    case "free-text-node":
-      return {
-        width: width ?? DEFAULT_TEXT_SIZE.width,
-        height: height ?? DEFAULT_TEXT_SIZE.height
-      };
-    case "free-shape-node":
-      return {
-        width: width ?? DEFAULT_SHAPE_SIZE.width,
-        height: height ?? DEFAULT_SHAPE_SIZE.height
-      };
-    default:
-      return {
-        width: width ?? DEFAULT_NODE_SIZE.width,
-        height: height ?? DEFAULT_NODE_SIZE.height
-      };
-  }
+  const fallback = DEFAULT_SIZE_BY_TYPE[node.type ?? ""] ?? DEFAULT_NODE_SIZE;
+  return {
+    width: width ?? fallback.width,
+    height: height ?? fallback.height
+  };
 }
 
 function extractGeoCoordinates(node: Node): GeoCoordinates | null {
@@ -322,8 +311,8 @@ export function useGeoMapLayout({
         setIsReady(true);
       });
 
-      map.on("error", (event) => {
-        const message = event?.error?.message ?? "Unknown map error";
+      map.on("error", (event: { error?: Error }) => {
+        const message = event.error?.message ?? "Unknown map error";
         log.error(`[GeoMap] MapLibre error: ${message}`);
       });
 
@@ -383,10 +372,12 @@ export function useGeoMapLayout({
     if (rf) {
       previousViewportRef.current = rf.getViewport();
       log.info("[GeoMap] Setting viewport to {x:0, y:0, zoom:1}");
-      rf.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 0 });
+      void rf.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 0 });
       // Re-set multiple times with delays to override any pending fitView operations
-      const setGeoViewport = () => rf.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 0 });
-      requestAnimationFrame(setGeoViewport);
+      const setGeoViewport = () => {
+        void rf.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 0 });
+      };
+      window.requestAnimationFrame(setGeoViewport);
       setTimeout(setGeoViewport, 50);
       setTimeout(setGeoViewport, 150);
       setTimeout(setGeoViewport, 300);
@@ -400,7 +391,7 @@ export function useGeoMapLayout({
     wasGeoRef.current = false;
     const previousViewport = previousViewportRef.current;
     if (previousViewport && reactFlowInstanceRef.current) {
-      reactFlowInstanceRef.current.setViewport(previousViewport, { duration: 0 });
+      void reactFlowInstanceRef.current.setViewport(previousViewport, { duration: 0 });
       previousViewportRef.current = null;
     }
 
@@ -454,7 +445,7 @@ export function useGeoMapLayout({
       void saveNodePositions(assignments);
     }
 
-    requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       const { nodes: syncedNodes, changed } = syncNodesToMap(map, nodesWithGeo);
       if (changed || assignments.length > 0) {
         setNodesRef.current(syncedNodes);

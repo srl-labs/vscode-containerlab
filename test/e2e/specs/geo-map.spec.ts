@@ -9,6 +9,8 @@ import { test, expect } from "../fixtures/topoviewer";
  * - Dragging nodes in geo mode updates their lat/lng
  */
 const TEST_FILE = "simple.clab.yml";
+const GEO_LAYOUT = "geo";
+const GEO_MAP_CANVAS_SELECTOR = "#react-topoviewer-geo-map canvas";
 
 test.describe("GeoMap Layout", () => {
   const getNodeGeoFromStore = async (page: any, nodeId: string) => {
@@ -51,16 +53,16 @@ test.describe("GeoMap Layout", () => {
     topoViewerPage
   }) => {
     // Enable geo layout
-    await page.evaluate(() => {
+    await page.evaluate((layout) => {
       const dev = (window as any).__DEV__;
       if (dev?.setLayout) {
-        dev.setLayout("geo");
+        dev.setLayout(layout);
       } else {
         throw new Error("setLayout not available");
       }
-    });
+    }, GEO_LAYOUT);
 
-    await page.waitForSelector("#react-topoviewer-geo-map canvas");
+    await page.waitForSelector(GEO_MAP_CANVAS_SELECTOR);
 
     // Geo layout should be active
     const isGeoLayout = await page.evaluate(() => {
@@ -74,19 +76,10 @@ test.describe("GeoMap Layout", () => {
 
     // Wait for geo coordinates to be assigned (async after map loads)
     await expect
-      .poll(
-        async () => {
-          return page.evaluate((nodeId) => {
-            const dev = (window as any).__DEV__;
-            const rf = dev?.rfInstance;
-            if (!rf) return null;
-            const node = (rf.getNodes?.() ?? []).find((n: any) => n.id === nodeId);
-            if (!node) return null;
-            return node.data?.geoCoordinates ?? null;
-          }, nodeIds[0]);
-        },
-        { timeout: 5000, message: "geo coordinates should be assigned" }
-      )
+      .poll(() => getNodeGeoFromStore(page, nodeIds[0]), {
+        timeout: 5000,
+        message: "geo coordinates should be assigned"
+      })
       .not.toBeNull();
   });
 
@@ -116,12 +109,12 @@ test.describe("GeoMap Layout", () => {
     console.log(`[DEBUG] Original annotation position: ${JSON.stringify(originalPosition)}`);
 
     // Enable geo layout
-    await page.evaluate(() => {
+    await page.evaluate((layout) => {
       const dev = (window as any).__DEV__;
-      dev?.setLayout?.("geo");
-    });
+      dev?.setLayout?.(layout);
+    }, GEO_LAYOUT);
 
-    await page.waitForSelector("#react-topoviewer-geo-map canvas");
+    await page.waitForSelector(GEO_MAP_CANVAS_SELECTOR);
 
     // Capture initial node position from React Flow
     const initialPosition = await topoViewerPage.getNodePosition(testNodeId);
@@ -200,12 +193,12 @@ test.describe("GeoMap Layout", () => {
 
     const testNodeId = "srl2";
 
-    await page.evaluate(() => {
+    await page.evaluate((layout) => {
       const dev = (window as any).__DEV__;
-      dev?.setLayout?.("geo");
-    });
+      dev?.setLayout?.(layout);
+    }, GEO_LAYOUT);
 
-    await page.waitForSelector("#react-topoviewer-geo-map canvas");
+    await page.waitForSelector(GEO_MAP_CANVAS_SELECTOR);
 
     await expect
       .poll(
@@ -254,10 +247,10 @@ test.describe("GeoMap Layout", () => {
 
   test("disabling geo layout restores normal view", async ({ page, topoViewerPage }) => {
     // Enable geo layout
-    await page.evaluate(() => {
+    await page.evaluate((layout) => {
       const dev = (window as any).__DEV__;
-      dev?.setLayout?.("geo");
-    });
+      dev?.setLayout?.(layout);
+    }, GEO_LAYOUT);
 
     await page.waitForTimeout(200);
 

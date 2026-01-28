@@ -50,7 +50,7 @@ export function snapToGrid(position: XYPosition): XYPosition {
 /** Handlers for group member movement during drag */
 export interface GroupMemberHandlers {
   /** Get member node IDs for a group */
-  getGroupMembers?: (groupId: string, options?: { includeNested?: boolean }) => string[];
+  getGroupMembers?: (groupId: string) => string[];
   /** Handle node dropped (for group membership updates) */
   onNodeDropped?: (nodeId: string, position: { x: number; y: number }) => void;
 }
@@ -163,6 +163,129 @@ function cleanupGroupRefs(
   groupLastPositionRef.current?.delete(nodeId);
 }
 
+function updateNodeWithGeoData(
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
+  nodeId: string,
+  update: {
+    geoCoordinates?: { lat: number; lng: number };
+    endGeoCoordinates?: { lat: number; lng: number };
+  }
+) {
+  if (!setNodes) return;
+  setNodes((latestNodes) => applyGeoUpdateToNodeList(latestNodes, nodeId, update));
+}
+
+function applyGeoUpdateToNodeList(
+  nodes: Node[],
+  nodeId: string,
+  update: {
+    geoCoordinates?: { lat: number; lng: number };
+    endGeoCoordinates?: { lat: number; lng: number };
+  }
+): Node[] {
+  return nodes.map((n) => {
+    if (n.id !== nodeId) return n;
+    const data = (n.data ?? {}) as Record<string, unknown>;
+    return {
+      ...n,
+      data: {
+        ...data,
+        ...(update.geoCoordinates ? { geoCoordinates: update.geoCoordinates } : {}),
+        ...(update.endGeoCoordinates ? { endGeoCoordinates: update.endGeoCoordinates } : {})
+      }
+    };
+  });
+}
+
+function saveGeoUpdate(
+  currentNodes: Node[],
+  nodeId: string,
+  update: {
+    geoCoordinates?: { lat: number; lng: number };
+    endGeoCoordinates?: { lat: number; lng: number };
+  }
+) {
+  const nodeTypeMap = new Map(currentNodes.map((n) => [n.id, n.type]));
+  const isAnnotation = isAnnotationNodeType(nodeTypeMap.get(nodeId));
+
+  if (isAnnotation) {
+    const nodesForSave = applyGeoUpdateToNodeList(currentNodes, nodeId, update);
+    void saveAnnotationNodesFromGraph(nodesForSave);
+    return;
+  }
+
+  if (update.geoCoordinates) {
+    void saveNodePositions([{ id: nodeId, geoCoordinates: update.geoCoordinates }]);
+  }
+}
+
+function handleGeoDragStop(
+  node: Node,
+  onNodesChangeBase: OnNodesChange,
+  setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
+  geoLayout: CanvasHandlersConfig["geoLayout"]
+): boolean {
+  const isGeoEdit = geoLayout?.isGeoLayout && geoLayout.isEditable;
+  if (!isGeoEdit || !geoLayout?.getGeoUpdateForNode) return false;
+
+  const draggedPosition = node.position;
+  log.info(
+    `[ReactFlowCanvas] Node ${node.id} dragged to geo position ${draggedPosition.x}, ${draggedPosition.y}`
+  );
+
+  const changes: NodeChange[] = [
+    { type: "position", id: node.id, position: draggedPosition, dragging: false }
+  ];
+  onNodesChangeBase(changes);
+
+  const currentNodes = useGraphStore.getState().nodes;
+  const storeNode = currentNodes.find((n) => n.id === node.id);
+  if (!storeNode) return true;
+
+  const movedNode = { ...storeNode, position: draggedPosition };
+  const update = geoLayout.getGeoUpdateForNode(movedNode);
+  if (!update?.geoCoordinates && !update?.endGeoCoordinates) return true;
+
+  updateNodeWithGeoData(setNodes, node.id, update);
+  saveGeoUpdate(currentNodes, node.id, update);
+  return true;
+}
+
+function finalizeGroupChanges(
+  node: Node,
+  nodes: Node[] | undefined,
+  groupMembersRef: React.RefObject<Map<string, string[]>>,
+  groupLastPositionRef: React.RefObject<Map<string, XYPosition>>
+): NodeChange[] {
+  const memberIds = groupMembersRef.current.get(node.id) ?? [];
+  const memberChanges = buildGroupMemberChanges(node, memberIds, nodes);
+  cleanupGroupRefs(node.id, groupMembersRef, groupLastPositionRef);
+  return memberChanges;
+}
+
+function persistPositionChanges(changes: NodeChange[]) {
+  const currentNodes = useGraphStore.getState().nodes;
+  const nodeTypeMap = new Map(currentNodes.map((n) => [n.id, n.type]));
+  const movedPositions = changes
+    .filter(isNodePositionChange)
+    .map((change) => ({ id: change.id, position: change.position }));
+
+  const topoPositions = movedPositions.filter(
+    (pos) => !isAnnotationNodeType(nodeTypeMap.get(pos.id))
+  );
+  const movedAnnotations = movedPositions.some((pos) =>
+    isAnnotationNodeType(nodeTypeMap.get(pos.id))
+  );
+
+  if (topoPositions.length > 0) {
+    void saveNodePositions(topoPositions);
+  }
+
+  if (movedAnnotations) {
+    void saveAnnotationNodesFromGraph(currentNodes);
+  }
+}
+
 /** Hook for node drag handlers with group member movement */
 function useNodeDragHandlers(
   modeRef: React.RefObject<"view" | "edit">,
@@ -183,7 +306,7 @@ function useNodeDragHandlers(
 
       // If dragging a group node, capture members and their initial positions
       if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
-        const memberIds = groupMemberHandlers.getGroupMembers(node.id, { includeNested: true });
+        const memberIds = groupMemberHandlers.getGroupMembers(node.id);
         groupMembersRef.current.set(node.id, memberIds);
         groupLastPositionRef.current.set(node.id, { ...node.position });
       }
@@ -246,80 +369,7 @@ function useNodeDragHandlers(
         return;
       }
 
-      const isGeoEdit = geoLayout?.isGeoLayout && geoLayout.isEditable;
-
-      // In geo edit mode: commit the drag via onNodesChangeBase AND update geo coordinates
-      // The preset position is preserved in originalPositionsRef by useGeoMapLayout
-      if (isGeoEdit && geoLayout?.getGeoUpdateForNode) {
-        const draggedPosition = node.position;
-        log.info(
-          `[ReactFlowCanvas] Node ${node.id} dragged to geo position ${draggedPosition.x}, ${draggedPosition.y}`
-        );
-
-        // Commit the drag position to React Flow via onNodesChange
-        // This tells React Flow "yes, accept this drag"
-        const changes: NodeChange[] = [
-          { type: "position", id: node.id, position: draggedPosition, dragging: false }
-        ];
-        onNodesChangeBase(changes);
-
-        // Calculate new geo coordinates from the dragged position
-        const currentNodes = useGraphStore.getState().nodes;
-        const storeNode = currentNodes.find((n) => n.id === node.id);
-        if (!storeNode) return;
-
-        const movedNode = { ...storeNode, position: draggedPosition };
-        const update = geoLayout.getGeoUpdateForNode(movedNode);
-
-        if (update?.geoCoordinates || update?.endGeoCoordinates) {
-          // Update geo coordinates in state (position is already committed above)
-          if (setNodes) {
-            setNodes((latestNodes) =>
-              latestNodes.map((n) => {
-                if (n.id !== node.id) return n;
-                const data = (n.data ?? {}) as Record<string, unknown>;
-                return {
-                  ...n,
-                  data: {
-                    ...data,
-                    ...(update.geoCoordinates ? { geoCoordinates: update.geoCoordinates } : {}),
-                    ...(update.endGeoCoordinates
-                      ? { endGeoCoordinates: update.endGeoCoordinates }
-                      : {})
-                  }
-                };
-              })
-            );
-          }
-
-          // Save geo coordinates to file (only geoCoordinates, not preset position)
-          const nodeTypeMap = new Map(currentNodes.map((n) => [n.id, n.type]));
-          const isAnnotation = isAnnotationNodeType(nodeTypeMap.get(node.id));
-
-          if (isAnnotation) {
-            // For annotation nodes, save with geo data
-            const nodesForSave = currentNodes.map((n) => {
-              if (n.id !== node.id) return n;
-              const data = (n.data ?? {}) as Record<string, unknown>;
-              return {
-                ...n,
-                data: {
-                  ...data,
-                  ...(update.geoCoordinates ? { geoCoordinates: update.geoCoordinates } : {}),
-                  ...(update.endGeoCoordinates
-                    ? { endGeoCoordinates: update.endGeoCoordinates }
-                    : {})
-                }
-              };
-            });
-            void saveAnnotationNodesFromGraph(nodesForSave);
-          } else if (update.geoCoordinates) {
-            // For topology nodes, save only geo coordinates (not preset position)
-            void saveNodePositions([{ id: node.id, geoCoordinates: update.geoCoordinates }]);
-          }
-        }
-        return;
-      }
+      if (handleGeoDragStop(node, onNodesChangeBase, setNodes, geoLayout)) return;
 
       // Normal (non-geo) mode: update preset position
       const isGroupNode = node.type === GROUP_NODE_TYPE;
@@ -330,45 +380,18 @@ function useNodeDragHandlers(
 
       // Handle group node members
       if (isGroupNode) {
-        const memberIds = groupMembersRef.current.get(node.id) ?? [];
-        const memberChanges = buildGroupMemberChanges(node, memberIds, nodes);
-        changes.push(...memberChanges);
-        cleanupGroupRefs(node.id, groupMembersRef, groupLastPositionRef);
+        changes.push(...finalizeGroupChanges(node, nodes, groupMembersRef, groupLastPositionRef));
       }
 
       onNodesChangeBase(changes);
       log.info(`[ReactFlowCanvas] Node ${node.id} moved to ${finalPosition.x}, ${finalPosition.y}`);
 
-      // Notify group member handler for membership updates
-      if (groupMemberHandlers?.onNodeDropped) {
+      // Notify group member handler for non-group nodes
+      if (!isGroupNode && groupMemberHandlers?.onNodeDropped) {
         groupMemberHandlers.onNodeDropped(node.id, finalPosition);
       }
 
-      const currentNodes = useGraphStore.getState().nodes;
-      const nodeTypeMap = new Map(currentNodes.map((n) => [n.id, n.type]));
-      const movedPositions = changes
-        .filter(isNodePositionChange)
-        .map((change) => ({ id: change.id, position: change.position }));
-
-      const topoPositions = movedPositions.filter(
-        (pos) => !isAnnotationNodeType(nodeTypeMap.get(pos.id))
-      );
-      const movedAnnotations = movedPositions.some((pos) =>
-        isAnnotationNodeType(nodeTypeMap.get(pos.id))
-      );
-
-      if (topoPositions.length > 0 && movedAnnotations) {
-        void saveNodePositionsWithAnnotations(topoPositions, currentNodes);
-        return;
-      }
-
-      if (topoPositions.length > 0) {
-        void saveNodePositions(topoPositions);
-      }
-
-      if (movedAnnotations) {
-        void saveAnnotationNodesFromGraph(currentNodes);
-      }
+      persistPositionChanges(changes);
     },
     [modeRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes]
   );

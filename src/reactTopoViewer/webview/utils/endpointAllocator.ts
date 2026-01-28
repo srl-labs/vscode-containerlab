@@ -4,6 +4,7 @@
 import { isSpecialEndpointId } from "../../shared/utilities/LinkTypes";
 import { DEFAULT_INTERFACE_PATTERNS } from "../../shared/constants/interfacePatterns";
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
+
 import { getNodeById, getConnectedEdges } from "./graphQueryUtils";
 
 const DEFAULT_INTERFACE_PATTERN = "eth{n}";
@@ -79,6 +80,16 @@ function readEndpointFromEdge(
   return typeof fromTopLevel === "string" && fromTopLevel.length > 0 ? fromTopLevel : undefined;
 }
 
+function tryAddIndexForEndpoint(
+  usedIndices: Set<number>,
+  endpoint: string | undefined,
+  parsed: ParsedInterfacePattern
+) {
+  if (!endpoint) return;
+  const idx = extractInterfaceIndex(endpoint, parsed);
+  if (idx >= 0) usedIndices.add(idx);
+}
+
 function collectUsedIndices(
   edges: TopoEdge[],
   nodeId: string,
@@ -89,17 +100,11 @@ function collectUsedIndices(
   for (const edge of edges) {
     if (edge.source === nodeId) {
       const sourceEndpoint = readEndpointFromEdge(edge, "sourceEndpoint");
-      if (sourceEndpoint) {
-        const idx = extractInterfaceIndex(sourceEndpoint, parsed);
-        if (idx >= 0) usedIndices.add(idx);
-      }
+      tryAddIndexForEndpoint(usedIndices, sourceEndpoint, parsed);
     }
     if (edge.target === nodeId) {
       const targetEndpoint = readEndpointFromEdge(edge, "targetEndpoint");
-      if (targetEndpoint) {
-        const idx = extractInterfaceIndex(targetEndpoint, parsed);
-        if (idx >= 0) usedIndices.add(idx);
-      }
+      tryAddIndexForEndpoint(usedIndices, targetEndpoint, parsed);
     }
   }
 

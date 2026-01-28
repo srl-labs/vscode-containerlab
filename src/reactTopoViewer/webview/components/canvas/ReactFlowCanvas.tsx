@@ -14,41 +14,49 @@ import React, {
   useState
 } from "react";
 import {
-  ReactFlow,
-  ReactFlowProvider,
   Background,
   BackgroundVariant,
-  SelectionMode,
   ConnectionMode,
-  useStore
+  ReactFlow,
+  ReactFlowProvider,
+  SelectionMode,
+  useStore,
+  type Edge,
+  type Node,
+  type ReactFlowInstance
 } from "@xyflow/react";
-import type { Node, Edge, ReactFlowInstance, ConnectionLineComponentProps } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
 
-import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
-import { useGraphActions, useEdges } from "../../stores/graphStore";
-import { useCanvasStore } from "../../stores/canvasStore";
-import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 import {
-  useDeleteHandlers,
-  useLinkCreation,
-  useSourceNodePosition,
-  useCanvasRefMethods,
-  useCanvasHandlers,
+  FREE_SHAPE_NODE_TYPE,
+  FREE_TEXT_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
+import {
   useAnnotationCanvasHandlers,
+  useCanvasHandlers,
+  useCanvasRefMethods,
+  useDeleteHandlers,
   useGeoMapLayout,
   useHelperLines,
+  useLinkCreation,
+  useSourceNodePosition,
   GRID_SIZE
 } from "../../hooks/canvas";
-import { HelperLines } from "./HelperLines";
+import { useCanvasStore } from "../../stores/canvasStore";
+import { useGraphActions } from "../../stores/graphStore";
+import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
+import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
 
+import { HelperLines } from "./HelperLines";
 import {
-  buildNodeContextMenu,
   buildEdgeContextMenu,
+  buildNodeContextMenu,
   buildPaneContextMenu
 } from "./contextMenuBuilders";
 import { edgeTypes } from "./edges";
+import { CustomConnectionLine, LinkCreationLine } from "./LinkPreview";
 import { nodeTypes } from "./nodes";
 import type {
   AnnotationHandlers,
@@ -56,43 +64,6 @@ import type {
   ReactFlowCanvasProps,
   ReactFlowCanvasRef
 } from "./types";
-import {
-  FREE_SHAPE_NODE_TYPE,
-  FREE_TEXT_NODE_TYPE,
-  GROUP_NODE_TYPE
-} from "../../annotations/annotationNodeConverters";
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
-import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
-import { buildEdgeId } from "../../utils/edgeId";
-
-type RafThrottled<Args extends unknown[]> = ((...args: Args) => void) & { cancel: () => void };
-
-function rafThrottle<Args extends unknown[]>(func: (...args: Args) => void): RafThrottled<Args> {
-  let rafId: number | null = null;
-  let lastArgs: Args | null = null;
-
-  const throttled = (...args: Args) => {
-    lastArgs = args;
-    if (rafId === null) {
-      rafId = window.requestAnimationFrame(() => {
-        if (lastArgs) {
-          func(...lastArgs);
-          lastArgs = null;
-        }
-        rafId = null;
-      });
-    }
-  };
-
-  throttled.cancel = () => {
-    if (rafId !== null) {
-      window.cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-  };
-
-  return throttled as RafThrottled<Args>;
-}
 
 /** Parameters for useContextMenuItems hook */
 interface ContextMenuItemsParams {
@@ -205,6 +176,49 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
 }
 
 /** Hook for wrapped node click handling */
+function handleAltDelete(
+  event: React.MouseEvent,
+  node: { id: string; type?: string },
+  mode: "view" | "edit",
+  isLocked: boolean,
+  handleDeleteNode: (nodeId: string) => void,
+  annotationHandlers?: AnnotationHandlers
+): boolean {
+  if (!event.altKey || mode !== "edit" || isLocked) return false;
+  event.stopPropagation();
+  if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onDeleteFreeText) {
+    annotationHandlers.onDeleteFreeText(node.id);
+    return true;
+  }
+  if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onDeleteFreeShape) {
+    annotationHandlers.onDeleteFreeShape(node.id);
+    return true;
+  }
+  if (node.type === GROUP_NODE_TYPE && annotationHandlers?.onDeleteGroup) {
+    annotationHandlers.onDeleteGroup(node.id);
+    return true;
+  }
+  handleDeleteNode(node.id);
+  return true;
+}
+
+function handleLinkCreationClick(
+  event: React.MouseEvent,
+  node: { id: string; type?: string },
+  linkSourceNode: string | null,
+  completeLinkCreation: (nodeId: string) => void
+): boolean {
+  if (!linkSourceNode) return false;
+  const isLoopLink = linkSourceNode === node.id;
+  const isCloudNode = node.type === "cloud-node";
+  if (isLoopLink && isCloudNode) {
+    return true;
+  }
+  event.stopPropagation();
+  completeLinkCreation(node.id);
+  return true;
+}
+
 function useWrappedNodeClick(
   linkSourceNode: string | null,
   completeLinkCreation: (nodeId: string) => void,
@@ -216,33 +230,9 @@ function useWrappedNodeClick(
 ) {
   return useCallback(
     (event: React.MouseEvent, node: { id: string; type?: string }) => {
-      if (event.altKey && mode === "edit" && !isLocked) {
-        event.stopPropagation();
-        if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers?.onDeleteFreeText) {
-          annotationHandlers.onDeleteFreeText(node.id);
-          return;
-        }
-        if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers?.onDeleteFreeShape) {
-          annotationHandlers.onDeleteFreeShape(node.id);
-          return;
-        }
-        if (node.type === GROUP_NODE_TYPE && annotationHandlers?.onDeleteGroup) {
-          annotationHandlers.onDeleteGroup(node.id);
-          return;
-        }
-        handleDeleteNode(node.id);
+      if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
         return;
-      }
-      if (linkSourceNode) {
-        const isLoopLink = linkSourceNode === node.id;
-        const isCloudNode = node.type === "cloud-node";
-        if (isLoopLink && isCloudNode) {
-          return;
-        }
-        event.stopPropagation();
-        completeLinkCreation(node.id);
-        return;
-      }
+      if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
       onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
     },
     [
@@ -285,367 +275,6 @@ const canvasStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   bottom: 0
-};
-
-// Link preview style (match TopologyEdge defaults)
-const LINK_PREVIEW_COLOR = "#969799";
-const LINK_PREVIEW_WIDTH = 2.5;
-const LINK_PREVIEW_OPACITY = 0.5;
-const LINK_PREVIEW_ICON_SIZE = 40;
-const LINK_PREVIEW_CONTROL_POINT_STEP_SIZE = 40;
-const LINK_PREVIEW_LOOP_EDGE_SIZE = 50;
-const LINK_PREVIEW_LOOP_EDGE_OFFSET = 10;
-const LINK_LABEL_OFFSET = 30;
-const LINK_LABEL_FONT_SIZE = 10;
-const LINK_LABEL_BG_COLOR = "rgba(202, 203, 204, 0.5)";
-const LINK_LABEL_TEXT_COLOR = "rgba(0, 0, 0, 0.7)";
-const LINK_LABEL_OUTLINE_COLOR = "rgba(255, 255, 255, 0.7)";
-const LINK_LABEL_PADDING_X = 2;
-const LINK_LABEL_PADDING_Y = 0;
-const LINK_LABEL_BORDER_RADIUS = 4;
-const LINK_LABEL_SHADOW_SMALL = 2;
-const LINK_LABEL_SHADOW_LARGE = 3;
-
-function buildLinkLabelStyle(zoom: number): React.CSSProperties {
-  const scaledFont = Math.max(1, LINK_LABEL_FONT_SIZE * zoom);
-  const padX = LINK_LABEL_PADDING_X * zoom;
-  const padY = LINK_LABEL_PADDING_Y * zoom;
-  const radius = LINK_LABEL_BORDER_RADIUS * zoom;
-  const shadowSmall = LINK_LABEL_SHADOW_SMALL * zoom;
-  const shadowLarge = LINK_LABEL_SHADOW_LARGE * zoom;
-
-  return {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    fontSize: `${scaledFont}px`,
-    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-    color: LINK_LABEL_TEXT_COLOR,
-    backgroundColor: LINK_LABEL_BG_COLOR,
-    padding: `${padY}px ${padX}px`,
-    borderRadius: radius,
-    pointerEvents: "none",
-    whiteSpace: "nowrap",
-    textShadow: `0 0 ${shadowSmall}px ${LINK_LABEL_OUTLINE_COLOR}, 0 0 ${shadowSmall}px ${LINK_LABEL_OUTLINE_COLOR}, 0 0 ${shadowLarge}px ${LINK_LABEL_OUTLINE_COLOR}`,
-    lineHeight: 1.2,
-    zIndex: 1
-  };
-}
-
-interface PreviewNodeRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-function getNodeIntersection(
-  nodeX: number,
-  nodeY: number,
-  nodeWidth: number,
-  nodeHeight: number,
-  targetX: number,
-  targetY: number
-): { x: number; y: number } {
-  const w = nodeWidth / 2;
-  const h = nodeHeight / 2;
-  const dx = targetX - nodeX;
-  const dy = targetY - nodeY;
-
-  if (dx === 0 && dy === 0) {
-    return { x: nodeX, y: nodeY };
-  }
-
-  const absDx = Math.abs(dx);
-  const absDy = Math.abs(dy);
-
-  if (absDx * h > absDy * w) {
-    const sign = dx > 0 ? 1 : -1;
-    return {
-      x: nodeX + sign * w,
-      y: nodeY + (dy * w) / absDx
-    };
-  }
-
-  const sign = dy > 0 ? 1 : -1;
-  return {
-    x: nodeX + (dx * h) / absDy,
-    y: nodeY + sign * h
-  };
-}
-
-function getNodePosition(node: Node): { x: number; y: number } {
-  const internal = (node as Node & { internals?: { positionAbsolute: { x: number; y: number } } })
-    .internals;
-  return internal?.positionAbsolute ?? node.position;
-}
-
-function getEdgePoints(sourceNode: PreviewNodeRect, targetNode: PreviewNodeRect) {
-  const sourceCenter = {
-    x: sourceNode.x + sourceNode.width / 2,
-    y: sourceNode.y + sourceNode.height / 2
-  };
-  const targetCenter = {
-    x: targetNode.x + targetNode.width / 2,
-    y: targetNode.y + targetNode.height / 2
-  };
-
-  const sourcePoint = getNodeIntersection(
-    sourceCenter.x,
-    sourceCenter.y,
-    sourceNode.width,
-    sourceNode.height,
-    targetCenter.x,
-    targetCenter.y
-  );
-
-  const targetPoint = getNodeIntersection(
-    targetCenter.x,
-    targetCenter.y,
-    targetNode.width,
-    targetNode.height,
-    sourceCenter.x,
-    sourceCenter.y
-  );
-
-  return {
-    sx: sourcePoint.x,
-    sy: sourcePoint.y,
-    tx: targetPoint.x,
-    ty: targetPoint.y
-  };
-}
-
-function calculateControlPoint(
-  sx: number,
-  sy: number,
-  tx: number,
-  ty: number,
-  edgeIndex: number,
-  totalEdges: number,
-  isCanonicalDirection: boolean,
-  stepSize: number
-): { x: number; y: number } | null {
-  if (totalEdges <= 1) return null;
-
-  const midX = (sx + tx) / 2;
-  const midY = (sy + ty) / 2;
-
-  const dx = tx - sx;
-  const dy = ty - sy;
-  const length = Math.sqrt(dx * dx + dy * dy);
-
-  if (length === 0) return null;
-
-  const normalX = -dy / length;
-  const normalY = dx / length;
-
-  let offset = (edgeIndex - (totalEdges - 1) / 2) * stepSize;
-  if (!isCanonicalDirection) {
-    offset = -offset;
-  }
-
-  return {
-    x: midX + normalX * offset,
-    y: midY + normalY * offset
-  };
-}
-
-function getLabelPosition(
-  startX: number,
-  startY: number,
-  endX: number,
-  endY: number,
-  offset: number,
-  controlPoint?: { x: number; y: number }
-): { x: number; y: number } {
-  const dx = endX - startX;
-  const dy = endY - startY;
-  const length = Math.sqrt(dx * dx + dy * dy);
-
-  if (length === 0) return { x: startX, y: startY };
-
-  const baseRatio = Math.min(offset / length, 0.4);
-  const ratio = controlPoint ? Math.max(baseRatio, 0.15) : baseRatio;
-
-  if (controlPoint) {
-    const t = ratio;
-    const oneMinusT = 1 - t;
-    return {
-      x: oneMinusT * oneMinusT * startX + 2 * oneMinusT * t * controlPoint.x + t * t * endX,
-      y: oneMinusT * oneMinusT * startY + 2 * oneMinusT * t * controlPoint.y + t * t * endY
-    };
-  }
-
-  return {
-    x: startX + dx * ratio,
-    y: startY + dy * ratio
-  };
-}
-
-function buildPath(
-  sx: number,
-  sy: number,
-  tx: number,
-  ty: number,
-  controlPoint: { x: number; y: number } | null
-): string {
-  if (!controlPoint) {
-    return `M ${sx} ${sy} L ${tx} ${ty}`;
-  }
-  return `M ${sx} ${sy} Q ${controlPoint.x} ${controlPoint.y} ${tx} ${ty}`;
-}
-
-function isSameEdgePair(edge: Edge, sourceId: string, targetId: string): boolean {
-  return (
-    (edge.source === sourceId && edge.target === targetId) ||
-    (edge.source === targetId && edge.target === sourceId)
-  );
-}
-
-function getPreviewParallelInfo(
-  edges: Edge[],
-  sourceId: string,
-  targetId: string,
-  previewId?: string | null
-): { index: number; total: number; isCanonicalDirection: boolean } {
-  const existingIds = edges
-    .filter((edge) => edge.source !== edge.target && isSameEdgePair(edge, sourceId, targetId))
-    .map((edge) => edge.id);
-
-  if (previewId) {
-    const ids = [...existingIds, previewId].sort((a, b) => a.localeCompare(b));
-    const index = Math.max(0, ids.indexOf(previewId));
-    return {
-      index,
-      total: ids.length,
-      isCanonicalDirection: sourceId.localeCompare(targetId) <= 0
-    };
-  }
-
-  return {
-    index: existingIds.length,
-    total: existingIds.length + 1,
-    isCanonicalDirection: sourceId.localeCompare(targetId) <= 0
-  };
-}
-
-interface LoopPreviewGeometry {
-  path: string;
-  sourceLabelPos: { x: number; y: number };
-  targetLabelPos: { x: number; y: number };
-}
-
-function calculateLoopEdgeGeometry(
-  nodeX: number,
-  nodeY: number,
-  nodeSize: number,
-  loopIndex: number,
-  scale: number
-): LoopPreviewGeometry {
-  const centerX = nodeX + nodeSize / 2;
-  const centerY = nodeY + nodeSize / 2;
-  const size = (LINK_PREVIEW_LOOP_EDGE_SIZE + loopIndex * LINK_PREVIEW_LOOP_EDGE_OFFSET) * scale;
-
-  const startX = centerX + nodeSize / 2;
-  const startY = centerY - nodeSize / 4;
-  const endX = centerX + nodeSize / 2;
-  const endY = centerY + nodeSize / 4;
-
-  const cp1X = startX + size;
-  const cp1Y = startY - size * 0.5;
-  const cp2X = endX + size;
-  const cp2Y = endY + size * 0.5;
-
-  const path = `M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}`;
-  const labelX = centerX + nodeSize / 2 + size * 0.8;
-  const labelY = centerY;
-  const labelOffset = 10 * scale;
-
-  return {
-    path,
-    sourceLabelPos: { x: labelX, y: labelY - labelOffset },
-    targetLabelPos: { x: labelX, y: labelY + labelOffset }
-  };
-}
-
-/**
- * Custom connection line component
- */
-const CustomConnectionLine: React.FC<ConnectionLineComponentProps> = ({
-  fromX,
-  fromY,
-  toX,
-  toY,
-  fromNode,
-  toNode
-}) => {
-  const edges = useEdges();
-
-  let path = buildPath(fromX, fromY, toX, toY, null);
-
-  if (toNode) {
-    const sourceId = fromNode.id;
-    const targetId = toNode.id;
-    const iconSize = LINK_PREVIEW_ICON_SIZE;
-
-    if (sourceId === targetId) {
-      const nodeWidth = fromNode.measured?.width ?? iconSize;
-      const nodePos = getNodePosition(fromNode);
-      const nodeX = nodePos.x + (nodeWidth - iconSize) / 2;
-      const nodeY = nodePos.y;
-      const loopIndex = edges.filter(
-        (edge) => edge.source === sourceId && edge.target === sourceId
-      ).length;
-      path = calculateLoopEdgeGeometry(nodeX, nodeY, iconSize, loopIndex, 1).path;
-    } else {
-      const sourceWidth = fromNode.measured?.width ?? iconSize;
-      const targetWidth = toNode.measured?.width ?? iconSize;
-      const sourcePos = getNodePosition(fromNode);
-      const targetPos = getNodePosition(toNode);
-
-      const points = getEdgePoints(
-        {
-          x: sourcePos.x + (sourceWidth - iconSize) / 2,
-          y: sourcePos.y,
-          width: iconSize,
-          height: iconSize
-        },
-        {
-          x: targetPos.x + (targetWidth - iconSize) / 2,
-          y: targetPos.y,
-          width: iconSize,
-          height: iconSize
-        }
-      );
-
-      const parallelInfo = getPreviewParallelInfo(edges, sourceId, targetId);
-      const controlPoint = calculateControlPoint(
-        points.sx,
-        points.sy,
-        points.tx,
-        points.ty,
-        parallelInfo.index,
-        parallelInfo.total,
-        parallelInfo.isCanonicalDirection,
-        LINK_PREVIEW_CONTROL_POINT_STEP_SIZE
-      );
-      path = buildPath(points.sx, points.sy, points.tx, points.ty, controlPoint);
-    }
-  }
-
-  return (
-    <path
-      d={path}
-      fill="none"
-      className="react-flow__edge-path"
-      style={{
-        stroke: LINK_PREVIEW_COLOR,
-        strokeWidth: LINK_PREVIEW_WIDTH,
-        opacity: LINK_PREVIEW_OPACITY
-      }}
-    />
-  );
 };
 
 // Constants
@@ -806,6 +435,217 @@ function useGraphRefs(nodes: Node[], edges: Edge[]) {
   return { nodesRef, edgesRef };
 }
 
+function useLinkTargetHover(linkSourceNode: string | null) {
+  const [linkTargetNodeId, setLinkTargetNodeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!linkSourceNode) {
+      setLinkTargetNodeId(null);
+    }
+  }, [linkSourceNode]);
+
+  const handleNodeMouseEnter = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (!linkSourceNode) return;
+      setLinkTargetNodeId(node.id);
+    },
+    [linkSourceNode]
+  );
+
+  const handleNodeMouseLeave = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (!linkSourceNode) return;
+      setLinkTargetNodeId((current) => (current === node.id ? null : current));
+    },
+    [linkSourceNode]
+  );
+
+  return { linkTargetNodeId, handleNodeMouseEnter, handleNodeMouseLeave };
+}
+
+function useGeoWheelZoom(
+  geoLayout: ReturnType<typeof useGeoMapLayout>,
+  isGeoLayout: boolean,
+  isGeoEdit: boolean,
+  canvasContainerRef: React.RefObject<HTMLDivElement | null>
+) {
+  useEffect(() => {
+    if (!isGeoLayout || !isGeoEdit) return;
+    const map = geoLayout.mapRef.current;
+    const container = canvasContainerRef.current;
+    if (!map || !container) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      if (!isGeoLayout || !isGeoEdit) return;
+      event.preventDefault();
+
+      const rect = container.getBoundingClientRect();
+      const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
+
+      const around = map.unproject(point);
+      const zoomDelta = -event.deltaY * 0.002;
+      const nextZoom = map.getZoom() + zoomDelta;
+      map.zoomTo(nextZoom, { duration: 0, around });
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [geoLayout.mapRef, isGeoLayout, isGeoEdit, canvasContainerRef]);
+}
+
+function useSyncCanvasStore(params: {
+  linkSourceNode: string | null;
+  setLinkSourceNode: (id: string | null) => void;
+  edgeRenderConfig: { labelMode: EdgeLabelMode; suppressLabels: boolean; suppressHitArea: boolean };
+  setEdgeRenderConfig: (config: {
+    labelMode: EdgeLabelMode;
+    suppressLabels: boolean;
+    suppressHitArea: boolean;
+  }) => void;
+  nodeRenderConfig: { suppressLabels: boolean };
+  setNodeRenderConfig: (config: { suppressLabels: boolean }) => void;
+  annotationHandlers?: AnnotationHandlers;
+  setAnnotationHandlers: (handlers: AnnotationHandlers | null) => void;
+}) {
+  const {
+    linkSourceNode,
+    setLinkSourceNode,
+    edgeRenderConfig,
+    setEdgeRenderConfig,
+    nodeRenderConfig,
+    setNodeRenderConfig,
+    annotationHandlers,
+    setAnnotationHandlers
+  } = params;
+
+  useEffect(() => {
+    setLinkSourceNode(linkSourceNode);
+  }, [linkSourceNode, setLinkSourceNode]);
+
+  useEffect(() => {
+    setEdgeRenderConfig(edgeRenderConfig);
+  }, [edgeRenderConfig, setEdgeRenderConfig]);
+
+  useEffect(() => {
+    setNodeRenderConfig(nodeRenderConfig);
+  }, [nodeRenderConfig, setNodeRenderConfig]);
+
+  useEffect(() => {
+    setAnnotationHandlers(annotationHandlers ?? null);
+  }, [annotationHandlers, setAnnotationHandlers]);
+}
+
+function getCanvasInteractionConfig(params: {
+  mode: "view" | "edit";
+  isLocked: boolean;
+  isGeoLayout: boolean;
+  isGeoEdit: boolean;
+  isInAddMode: boolean;
+}): {
+  allowPanOnDrag: boolean;
+  allowSelectionOnDrag: boolean;
+  nodesDraggable: boolean;
+  nodesConnectable: boolean;
+  reactFlowStyle: React.CSSProperties | undefined;
+} {
+  const { mode, isLocked, isGeoLayout, isGeoEdit, isInAddMode } = params;
+  const allowPanOnDrag = !isInAddMode && !isGeoLayout;
+  const allowSelectionOnDrag = !isInAddMode && (!isGeoLayout || isGeoEdit);
+  const nodesDraggable = mode === "edit" && !isLocked && (!isGeoLayout || isGeoEdit);
+  const nodesConnectable = mode === "edit" && !isLocked;
+  const reactFlowStyle: React.CSSProperties | undefined = isGeoLayout
+    ? {
+        background: "transparent",
+        pointerEvents: isGeoEdit ? "auto" : "none",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        zIndex: 1
+      }
+    : undefined;
+  return { allowPanOnDrag, allowSelectionOnDrag, nodesDraggable, nodesConnectable, reactFlowStyle };
+}
+
+function buildCanvasOverlays(params: {
+  isGeoLayout: boolean;
+  isLowDetail: boolean;
+  geoContainerRef: React.RefObject<HTMLDivElement | null>;
+  linkSourceNode: string | null;
+  linkTargetNodeId: string | null;
+  nodes: Node[];
+  edges: Edge[];
+  sourcePosition: { x: number; y: number } | null;
+  linkCreationSeed: number | null | undefined;
+  reactFlowInstance: ReactFlowInstance | null;
+  isInAddMode: boolean;
+  addModeMessage?: string | null;
+}): {
+  geoMapLayer: React.ReactNode;
+  backgroundLayer: React.ReactNode;
+  linkCreationLine: React.ReactNode;
+  linkIndicator: React.ReactNode;
+  annotationIndicator: React.ReactNode;
+} {
+  const {
+    isGeoLayout,
+    isLowDetail,
+    geoContainerRef,
+    linkSourceNode,
+    linkTargetNodeId,
+    nodes,
+    edges,
+    sourcePosition,
+    linkCreationSeed,
+    reactFlowInstance,
+    isInAddMode,
+    addModeMessage
+  } = params;
+
+  const geoMapLayer = isGeoLayout ? (
+    <div
+      id="react-topoviewer-geo-map"
+      ref={geoContainerRef}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        zIndex: 0
+      }}
+    />
+  ) : null;
+
+  const backgroundLayer =
+    !isLowDetail && !isGeoLayout ? (
+      <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
+    ) : null;
+
+  const linkCreationLine =
+    linkSourceNode && reactFlowInstance ? (
+      <LinkCreationLine
+        linkSourceNodeId={linkSourceNode}
+        linkTargetNodeId={linkTargetNodeId}
+        nodes={nodes}
+        edges={edges}
+        sourcePosition={sourcePosition}
+        linkCreationSeed={linkCreationSeed}
+        reactFlowInstance={reactFlowInstance}
+      />
+    ) : null;
+
+  const linkIndicator = linkSourceNode ? (
+    <LinkCreationIndicator linkSourceNode={linkSourceNode} />
+  ) : null;
+
+  const annotationIndicator =
+    isInAddMode && addModeMessage ? <AnnotationModeIndicator message={addModeMessage} /> : null;
+
+  return { geoMapLayer, backgroundLayer, linkCreationLine, linkIndicator, annotationIndicator };
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -864,6 +704,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       reactFlowInstanceRef,
       restoreOnExit: layout === "preset"
     });
+    const isGeoEdit = isGeoEditable;
+    useGeoWheelZoom(geoLayout, isGeoLayout, isGeoEdit, canvasContainerRef);
 
     // Refs for context menu (to avoid re-renders)
     const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
@@ -909,35 +751,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onEdgeCreated
     );
     const sourceNodePosition = useSourceNodePosition(linkSourceNode, allNodes);
-    const [linkTargetNodeId, setLinkTargetNodeId] = useState<string | null>(null);
-
-    useEffect(() => {
-      if (!linkSourceNode) setLinkTargetNodeId(null);
-    }, [linkSourceNode]);
-
-    const handleNodeMouseEnter = useCallback(
-      (_event: React.MouseEvent, node: Node) => {
-        if (!linkSourceNode) return;
-        setLinkTargetNodeId(node.id);
-      },
-      [linkSourceNode]
-    );
-
-    const handleNodeMouseLeave = useCallback(
-      (_event: React.MouseEvent, node: Node) => {
-        if (!linkSourceNode) return;
-        setLinkTargetNodeId((current) => (current === node.id ? null : current));
-      },
-      [linkSourceNode]
-    );
+    const { linkTargetNodeId, handleNodeMouseEnter, handleNodeMouseLeave } =
+      useLinkTargetHover(linkSourceNode);
 
     // Helper lines for node alignment during drag
     const { helperLines, updateHelperLines, clearHelperLines } = useHelperLines();
-
-    // Sync linkSourceNode to canvas store
-    useEffect(() => {
-      setLinkSourceNode(linkSourceNode);
-    }, [linkSourceNode, setLinkSourceNode]);
 
     // Use extracted hooks for render config and drag handlers
     const { isLowDetail, edgeRenderConfig, nodeRenderConfig } = useRenderConfig(
@@ -945,20 +763,16 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       allEdges.length,
       linkLabelMode
     );
-
-    // Sync render config to canvas store
-    useEffect(() => {
-      setEdgeRenderConfig(edgeRenderConfig);
-    }, [edgeRenderConfig, setEdgeRenderConfig]);
-
-    useEffect(() => {
-      setNodeRenderConfig(nodeRenderConfig);
-    }, [nodeRenderConfig, setNodeRenderConfig]);
-
-    // Sync annotation handlers to canvas store
-    useEffect(() => {
-      setAnnotationHandlers(annotationHandlers ?? null);
-    }, [annotationHandlers, setAnnotationHandlers]);
+    useSyncCanvasStore({
+      linkSourceNode,
+      setLinkSourceNode,
+      edgeRenderConfig,
+      setEdgeRenderConfig,
+      nodeRenderConfig,
+      setNodeRenderConfig,
+      annotationHandlers,
+      setAnnotationHandlers
+    });
 
     // Note: Keyboard delete handling is done by useAppKeyboardShortcuts in App.tsx
     // which uses handleDeleteNode for proper undo/redo support.
@@ -1038,45 +852,35 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const wrappedOnInit = useWrappedOnInit(handlers.onInit, onInitProp);
 
-    const isGeoEdit = isGeoEditable;
-    const allowPanOnDrag = !isInAddMode && !isGeoLayout;
-    const allowSelectionOnDrag = !isInAddMode && (!isGeoLayout || isGeoEdit);
-    const nodesDraggable = mode === "edit" && !isLocked && (!isGeoLayout || isGeoEdit);
-    const reactFlowStyle: React.CSSProperties | undefined = isGeoLayout
-      ? {
-          background: "transparent",
-          pointerEvents: isGeoEdit ? "auto" : "none",
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          zIndex: 1
-        }
-      : undefined;
-
-    useEffect(() => {
-      if (!isGeoLayout || !isGeoEdit) return;
-      const map = geoLayout.mapRef.current;
-      const container = canvasContainerRef.current;
-      if (!map || !container) return;
-
-      const handleWheel = (event: WheelEvent) => {
-        if (!isGeoLayout || !isGeoEdit) return;
-        event.preventDefault();
-
-        const rect = container.getBoundingClientRect();
-        const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
-
-        const around = map.unproject(point);
-        const zoomDelta = -event.deltaY * 0.002;
-        const nextZoom = map.getZoom() + zoomDelta;
-        map.zoomTo(nextZoom, { duration: 0, around });
-      };
-
-      container.addEventListener("wheel", handleWheel, { passive: false });
-      return () => container.removeEventListener("wheel", handleWheel);
-    }, [geoLayout.mapRef, isGeoLayout, isGeoEdit]);
+    const interactionConfig = getCanvasInteractionConfig({
+      mode,
+      isLocked,
+      isGeoLayout,
+      isGeoEdit,
+      isInAddMode
+    });
+    const {
+      allowPanOnDrag,
+      allowSelectionOnDrag,
+      nodesDraggable,
+      nodesConnectable,
+      reactFlowStyle
+    } = interactionConfig;
+    const overlays = buildCanvasOverlays({
+      isGeoLayout,
+      isLowDetail,
+      geoContainerRef: geoLayout.containerRef,
+      linkSourceNode,
+      linkTargetNodeId,
+      nodes: allNodes,
+      edges: allEdges,
+      sourcePosition: sourceNodePosition,
+      linkCreationSeed: linkCreationSeed ?? null,
+      reactFlowInstance: handlers.reactFlowInstance.current,
+      isInAddMode,
+      addModeMessage
+    });
+    const contextMenuVisible = handlers.contextMenu.type !== null;
 
     return (
       <div
@@ -1084,20 +888,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         style={canvasStyle}
         className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}`}
       >
-        {isGeoLayout && (
-          <div
-            id="react-topoviewer-geo-map"
-            ref={geoLayout.containerRef}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              zIndex: 0
-            }}
-          />
-        )}
+        {overlays.geoMapLayer}
         <ReactFlow
           nodes={allNodes}
           edges={allEdges}
@@ -1138,7 +929,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           deleteKeyCode={null}
           multiSelectionKeyCode="Shift"
           nodesDraggable={nodesDraggable}
-          nodesConnectable={mode === "edit" && !isLocked}
+          nodesConnectable={nodesConnectable}
           elementsSelectable
           zoomOnScroll={!isGeoLayout}
           zoomOnPinch={!isGeoLayout}
@@ -1146,13 +937,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           panOnScroll={false}
           style={reactFlowStyle}
         >
-          {!isLowDetail && !isGeoLayout && (
-            <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
-          )}
+          {overlays.backgroundLayer}
         </ReactFlow>
 
         <ContextMenu
-          isVisible={handlers.contextMenu.type !== null}
+          isVisible={contextMenuVisible}
           position={handlers.contextMenu.position}
           items={contextMenuItems}
           onClose={handlers.closeContextMenu}
@@ -1161,21 +950,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         {/* Helper lines for node alignment during drag */}
         <HelperLines lines={helperLines} />
 
-        {linkSourceNode && handlers.reactFlowInstance.current && (
-          <LinkCreationLine
-            linkSourceNodeId={linkSourceNode}
-            linkTargetNodeId={linkTargetNodeId}
-            nodes={allNodes}
-            edges={allEdges}
-            sourcePosition={sourceNodePosition}
-            linkCreationSeed={linkCreationSeed}
-            reactFlowInstance={handlers.reactFlowInstance.current}
-          />
-        )}
+        {overlays.linkCreationLine}
 
-        {linkSourceNode && <LinkCreationIndicator linkSourceNode={linkSourceNode} />}
+        {overlays.linkIndicator}
 
-        {isInAddMode && addModeMessage && <AnnotationModeIndicator message={addModeMessage} />}
+        {overlays.annotationIndicator}
       </div>
     );
   }
@@ -1226,273 +1005,6 @@ const LinkCreationIndicator: React.FC<{ linkSourceNode: string }> = ({ linkSourc
   </div>
 );
 
-/** Visual line component for link creation mode */
-interface LinkCreationLineProps {
-  linkSourceNodeId: string;
-  linkTargetNodeId: string | null;
-  nodes: Node[];
-  edges: Edge[];
-  sourcePosition: { x: number; y: number } | null;
-  linkCreationSeed?: number | null;
-  reactFlowInstance: ReactFlowInstance;
-}
-
-const LINK_LINE_SVG_STYLE: React.CSSProperties = {
-  position: "absolute",
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  pointerEvents: "none",
-  zIndex: 999
-};
-
-let cachedContainerBounds: DOMRect | null = null;
-let boundsLastUpdated = 0;
-const BOUNDS_CACHE_DURATION = 100;
-
-function getContainerBounds(): DOMRect | null {
-  const now = Date.now();
-  if (cachedContainerBounds && now - boundsLastUpdated < BOUNDS_CACHE_DURATION) {
-    return cachedContainerBounds;
-  }
-  const container = document.querySelector(".react-flow-canvas");
-  if (!container) return null;
-  cachedContainerBounds = container.getBoundingClientRect();
-  boundsLastUpdated = now;
-  return cachedContainerBounds;
-}
-
-const LinkCreationLine = React.memo<LinkCreationLineProps>(
-  ({
-    linkSourceNodeId,
-    linkTargetNodeId,
-    nodes,
-    edges,
-    sourcePosition,
-    linkCreationSeed,
-    reactFlowInstance
-  }) => {
-    const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
-
-    useEffect(() => {
-      const throttledSetPosition = rafThrottle((x: number, y: number) => {
-        setMousePosition({ x, y });
-      });
-
-      const handleMouseMove = (e: MouseEvent) => {
-        throttledSetPosition(e.clientX, e.clientY);
-      };
-
-      window.addEventListener("mousemove", handleMouseMove);
-      return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        throttledSetPosition.cancel();
-      };
-    }, []);
-
-    const sourceNode = useMemo(
-      () => nodes.find((node) => node.id === linkSourceNodeId) ?? null,
-      [nodes, linkSourceNodeId]
-    );
-    const targetNode = useMemo(
-      () =>
-        linkTargetNodeId ? (nodes.find((node) => node.id === linkTargetNodeId) ?? null) : null,
-      [nodes, linkTargetNodeId]
-    );
-    const viewport = reactFlowInstance.getViewport();
-    const bounds = getContainerBounds();
-    const relativeMouseX = bounds && mousePosition ? mousePosition.x - bounds.left : null;
-    const relativeMouseY = bounds && mousePosition ? mousePosition.y - bounds.top : null;
-    const labelStyle = useMemo(() => buildLinkLabelStyle(viewport.zoom), [viewport.zoom]);
-
-    const previewLinkInfo = useMemo(() => {
-      if (!sourceNode || !targetNode) return null;
-
-      const { sourceEndpoint, targetEndpoint } = allocateEndpointsForLink(
-        nodes as TopoNode[],
-        edges as TopoEdge[],
-        linkSourceNodeId,
-        targetNode.id
-      );
-      const previewId = linkCreationSeed
-        ? buildEdgeId(
-            linkSourceNodeId,
-            targetNode.id,
-            sourceEndpoint,
-            targetEndpoint,
-            linkCreationSeed
-          )
-        : null;
-
-      const parallelInfo = getPreviewParallelInfo(
-        edges,
-        linkSourceNodeId,
-        targetNode.id,
-        previewId
-      );
-      const loopIndex = edges.filter(
-        (edge) => edge.source === sourceNode.id && edge.target === sourceNode.id
-      ).length;
-
-      return { previewId, parallelInfo, loopIndex, sourceEndpoint, targetEndpoint };
-    }, [sourceNode, targetNode, edges, nodes, linkSourceNodeId, linkCreationSeed]);
-
-    const previewGeometry = useMemo(() => {
-      if (!sourceNode || !mousePosition || !bounds) return null;
-
-      const zoom = viewport.zoom;
-      const iconSize = LINK_PREVIEW_ICON_SIZE * zoom;
-      const stepSize = LINK_PREVIEW_CONTROL_POINT_STEP_SIZE * zoom;
-      const labelOffset = LINK_LABEL_OFFSET * zoom;
-
-      if (targetNode) {
-        const sourcePos = getNodePosition(sourceNode);
-        const targetPos = getNodePosition(targetNode);
-        const sourceLabel = previewLinkInfo?.sourceEndpoint ?? "";
-        const targetLabel = previewLinkInfo?.targetEndpoint ?? "";
-
-        if (sourceNode.id === targetNode.id) {
-          const nodeWidth = (sourceNode.measured?.width ?? LINK_PREVIEW_ICON_SIZE) * zoom;
-          const nodeX = sourcePos.x * zoom + viewport.x + (nodeWidth - iconSize) / 2;
-          const nodeY = sourcePos.y * zoom + viewport.y;
-          const loopIndex = previewLinkInfo?.loopIndex ?? 0;
-          const loopGeometry = calculateLoopEdgeGeometry(nodeX, nodeY, iconSize, loopIndex, zoom);
-          return {
-            path: loopGeometry.path,
-            sourceLabelPos: sourceLabel ? loopGeometry.sourceLabelPos : null,
-            targetLabelPos: targetLabel ? loopGeometry.targetLabelPos : null,
-            sourceLabel,
-            targetLabel
-          };
-        }
-
-        const sourceWidth = (sourceNode.measured?.width ?? LINK_PREVIEW_ICON_SIZE) * zoom;
-        const targetWidth = (targetNode.measured?.width ?? LINK_PREVIEW_ICON_SIZE) * zoom;
-        const sourceRect = {
-          x: sourcePos.x * zoom + viewport.x + (sourceWidth - iconSize) / 2,
-          y: sourcePos.y * zoom + viewport.y,
-          width: iconSize,
-          height: iconSize
-        };
-        const targetRect = {
-          x: targetPos.x * zoom + viewport.x + (targetWidth - iconSize) / 2,
-          y: targetPos.y * zoom + viewport.y,
-          width: iconSize,
-          height: iconSize
-        };
-
-        const points = getEdgePoints(sourceRect, targetRect);
-        const parallelInfo =
-          previewLinkInfo?.parallelInfo ??
-          getPreviewParallelInfo(edges, linkSourceNodeId, targetNode.id);
-        const controlPoint = calculateControlPoint(
-          points.sx,
-          points.sy,
-          points.tx,
-          points.ty,
-          parallelInfo.index,
-          parallelInfo.total,
-          parallelInfo.isCanonicalDirection,
-          stepSize
-        );
-
-        return {
-          path: buildPath(points.sx, points.sy, points.tx, points.ty, controlPoint),
-          sourceLabelPos: sourceLabel
-            ? getLabelPosition(
-                points.sx,
-                points.sy,
-                points.tx,
-                points.ty,
-                labelOffset,
-                controlPoint ?? undefined
-              )
-            : null,
-          targetLabelPos: targetLabel
-            ? getLabelPosition(
-                points.tx,
-                points.ty,
-                points.sx,
-                points.sy,
-                labelOffset,
-                controlPoint ?? undefined
-              )
-            : null,
-          sourceLabel,
-          targetLabel
-        };
-      }
-
-      if (!sourcePosition || relativeMouseX === null || relativeMouseY === null) return null;
-      const screenSourceX = sourcePosition.x * zoom + viewport.x;
-      const screenSourceY = sourcePosition.y * zoom + viewport.y;
-      return {
-        path: `M ${screenSourceX} ${screenSourceY} L ${relativeMouseX} ${relativeMouseY}`,
-        sourceLabelPos: null,
-        targetLabelPos: null,
-        sourceLabel: "",
-        targetLabel: ""
-      };
-    }, [
-      sourceNode,
-      targetNode,
-      previewLinkInfo,
-      edges,
-      linkSourceNodeId,
-      sourcePosition,
-      viewport.x,
-      viewport.y,
-      viewport.zoom,
-      relativeMouseX,
-      relativeMouseY,
-      mousePosition,
-      bounds
-    ]);
-
-    if (!previewGeometry) return null;
-
-    const strokeWidth = LINK_PREVIEW_WIDTH * viewport.zoom;
-
-    return (
-      <div style={LINK_LINE_SVG_STYLE}>
-        <svg style={{ width: "100%", height: "100%" }}>
-          <path
-            d={previewGeometry.path}
-            fill="none"
-            style={{
-              stroke: LINK_PREVIEW_COLOR,
-              strokeWidth,
-              opacity: LINK_PREVIEW_OPACITY
-            }}
-          />
-        </svg>
-        {previewGeometry.sourceLabel && previewGeometry.sourceLabelPos && (
-          <div
-            style={{
-              ...labelStyle,
-              transform: `translate(-50%, -50%) translate(${previewGeometry.sourceLabelPos.x}px, ${previewGeometry.sourceLabelPos.y}px)`
-            }}
-          >
-            {previewGeometry.sourceLabel}
-          </div>
-        )}
-        {previewGeometry.targetLabel && previewGeometry.targetLabelPos && (
-          <div
-            style={{
-              ...labelStyle,
-              transform: `translate(-50%, -50%) translate(${previewGeometry.targetLabelPos.x}px, ${previewGeometry.targetLabelPos.y}px)`
-            }}
-          >
-            {previewGeometry.targetLabel}
-          </div>
-        )}
-      </div>
-    );
-  }
-);
-
-LinkCreationLine.displayName = "LinkCreationLine";
 ReactFlowCanvasInner.displayName = "ReactFlowCanvasInner";
 
 /**

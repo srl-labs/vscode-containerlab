@@ -10,8 +10,8 @@ import {
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
-
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
+
 import { applyLayout } from "./layout";
 
 interface MenuBuilderContext {

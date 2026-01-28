@@ -9,10 +9,10 @@ import type {
   TopologyHostResponseMessage,
   TopologySnapshot
 } from "../../shared/types/messages";
+import { useTopoViewerStore } from "../stores/topoViewerStore";
 
 import { dispatchTopologyCommand, requestSnapshot, setHostRevision } from "./topologyHostClient";
 import { applySnapshotToStores } from "./topologyHostSync";
-import { useTopoViewerStore } from "../stores/topoViewerStore";
 
 interface ExecuteOptions {
   applySnapshot?: boolean;
