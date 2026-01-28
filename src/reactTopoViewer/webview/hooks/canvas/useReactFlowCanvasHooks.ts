@@ -6,7 +6,11 @@ import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import type { Node, Edge, ReactFlowInstance } from "@xyflow/react";
 
 import { applyLayout, type LayoutName } from "../../components/canvas/layout";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
+import { useGraphStore } from "../../stores/graphStore";
 import { log } from "../../utils/logger";
+import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
+import { buildEdgeId } from "../../utils/edgeId";
 
 /**
  * Hook for delete node/edge handlers
@@ -79,14 +83,21 @@ export function useLinkCreation(
       log.info(
         `[ReactFlowCanvas] Completing ${isLoopLink ? "loop " : ""}link: ${linkSourceNode} -> ${targetNodeId}`
       );
-      const edgeId = `${linkSourceNode}:eth1-${targetNodeId}:eth1`;
+      const { nodes, edges } = useGraphStore.getState();
+      const { sourceEndpoint, targetEndpoint } = allocateEndpointsForLink(
+        nodes as TopoNode[],
+        edges as TopoEdge[],
+        linkSourceNode,
+        targetNodeId
+      );
+      const edgeId = buildEdgeId(linkSourceNode, targetNodeId, sourceEndpoint, targetEndpoint);
 
       const edgeData = {
         id: edgeId,
         source: linkSourceNode,
         target: targetNodeId,
-        sourceEndpoint: "eth1",
-        targetEndpoint: "eth1"
+        sourceEndpoint,
+        targetEndpoint
       };
 
       // Use the unified callback which handles:

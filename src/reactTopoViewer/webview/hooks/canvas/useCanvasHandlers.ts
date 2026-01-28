@@ -19,6 +19,7 @@ import {
   type XYPosition
 } from "@xyflow/react";
 
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import { log } from "../../utils/logger";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 import {
@@ -28,6 +29,8 @@ import {
 } from "../../annotations/annotationNodeConverters";
 import { saveAnnotationNodesFromGraph, saveNodePositions } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
+import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
+import { buildEdgeId } from "../../utils/edgeId";
 
 // Grid size for snapping
 export const GRID_SIZE = 20;
@@ -116,10 +119,6 @@ interface CanvasHandlers {
 }
 
 const EDITABLE_NODE_TYPES = ["topology-node", "cloud-node"];
-
-function generateEdgeId(source: string, target: string): string {
-  return `${source}-${target}-${Date.now()}`;
-}
 
 // ============================================================================
 // Node drag stop helpers (extracted for complexity reduction)
@@ -571,14 +570,26 @@ function useConnectionHandler(
       log.info(
         `[ReactFlowCanvas] Creating edge via drag-connect: ${connection.source} -> ${connection.target}`
       );
-      const edgeId = generateEdgeId(connection.source, connection.target);
+      const { nodes, edges } = useGraphStore.getState();
+      const { sourceEndpoint, targetEndpoint } = allocateEndpointsForLink(
+        nodes as TopoNode[],
+        edges as TopoEdge[],
+        connection.source,
+        connection.target
+      );
+      const edgeId = buildEdgeId(
+        connection.source,
+        connection.target,
+        sourceEndpoint,
+        targetEndpoint
+      );
 
       const edgeData = {
         id: edgeId,
         source: connection.source,
         target: connection.target,
-        sourceEndpoint: "eth1",
-        targetEndpoint: "eth1"
+        sourceEndpoint,
+        targetEndpoint
       };
 
       // Use unified callback which handles:
