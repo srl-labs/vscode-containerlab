@@ -75,6 +75,17 @@ interface CanvasHandlersConfig {
   ) => void;
   /** Handlers for group member movement */
   groupMemberHandlers?: GroupMemberHandlers;
+  /** Optional shared React Flow instance ref */
+  reactFlowInstanceRef?: React.RefObject<ReactFlowInstance | null>;
+  /** Geo layout support */
+  geoLayout?: {
+    isGeoLayout: boolean;
+    geoMode: "pan" | "edit";
+    getGeoUpdateForNode?: (node: Node) => {
+      geoCoordinates?: { lat: number; lng: number };
+      endGeoCoordinates?: { lat: number; lng: number };
+    } | null;
+  };
 }
 
 interface ContextMenuState {
@@ -155,7 +166,8 @@ function useNodeDragHandlers(
   nodes: Node[] | undefined,
   onNodesChangeBase: OnNodesChange,
   setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
-  groupMemberHandlers?: GroupMemberHandlers
+  groupMemberHandlers?: GroupMemberHandlers,
+  geoLayout?: CanvasHandlersConfig["geoLayout"]
 ) {
   // Track the last position of a dragging group to compute delta
   const groupLastPositionRef = useRef<Map<string, XYPosition>>(new Map());
@@ -231,6 +243,82 @@ function useNodeDragHandlers(
         return;
       }
 
+      const isGeoEdit = geoLayout?.isGeoLayout && geoLayout.geoMode === "edit";
+
+      // In geo edit mode: commit the drag via onNodesChangeBase AND update geo coordinates
+      // The preset position is preserved in originalPositionsRef by useGeoMapLayout
+      if (isGeoEdit && geoLayout?.getGeoUpdateForNode) {
+        const draggedPosition = node.position;
+        log.info(
+          `[ReactFlowCanvas] Node ${node.id} dragged to geo position ${draggedPosition.x}, ${draggedPosition.y}`
+        );
+
+        // Commit the drag position to React Flow via onNodesChange
+        // This tells React Flow "yes, accept this drag"
+        const changes: NodeChange[] = [
+          { type: "position", id: node.id, position: draggedPosition, dragging: false }
+        ];
+        onNodesChangeBase(changes);
+
+        // Calculate new geo coordinates from the dragged position
+        const currentNodes = useGraphStore.getState().nodes;
+        const storeNode = currentNodes.find((n) => n.id === node.id);
+        if (!storeNode) return;
+
+        const movedNode = { ...storeNode, position: draggedPosition };
+        const update = geoLayout.getGeoUpdateForNode(movedNode);
+
+        if (update?.geoCoordinates || update?.endGeoCoordinates) {
+          // Update geo coordinates in state (position is already committed above)
+          if (setNodes) {
+            setNodes((latestNodes) =>
+              latestNodes.map((n) => {
+                if (n.id !== node.id) return n;
+                const data = (n.data ?? {}) as Record<string, unknown>;
+                return {
+                  ...n,
+                  data: {
+                    ...data,
+                    ...(update.geoCoordinates ? { geoCoordinates: update.geoCoordinates } : {}),
+                    ...(update.endGeoCoordinates
+                      ? { endGeoCoordinates: update.endGeoCoordinates }
+                      : {})
+                  }
+                };
+              })
+            );
+          }
+
+          // Save geo coordinates to file (only geoCoordinates, not preset position)
+          const nodeTypeMap = new Map(currentNodes.map((n) => [n.id, n.type]));
+          const isAnnotation = isAnnotationNodeType(nodeTypeMap.get(node.id));
+
+          if (isAnnotation) {
+            // For annotation nodes, save with geo data
+            const nodesForSave = currentNodes.map((n) => {
+              if (n.id !== node.id) return n;
+              const data = (n.data ?? {}) as Record<string, unknown>;
+              return {
+                ...n,
+                data: {
+                  ...data,
+                  ...(update.geoCoordinates ? { geoCoordinates: update.geoCoordinates } : {}),
+                  ...(update.endGeoCoordinates
+                    ? { endGeoCoordinates: update.endGeoCoordinates }
+                    : {})
+                }
+              };
+            });
+            void saveAnnotationNodesFromGraph(nodesForSave);
+          } else if (update.geoCoordinates) {
+            // For topology nodes, save only geo coordinates (not preset position)
+            void saveNodePositions([{ id: node.id, geoCoordinates: update.geoCoordinates }]);
+          }
+        }
+        return;
+      }
+
+      // Normal (non-geo) mode: update preset position
       const isGroupNode = node.type === GROUP_NODE_TYPE;
       const finalPosition = isGroupNode ? node.position : snapToGrid(node.position);
       const changes: NodeChange[] = [
@@ -274,7 +362,7 @@ function useNodeDragHandlers(
         void saveAnnotationNodesFromGraph(currentNodes);
       }
     },
-    [modeRef, nodes, onNodesChangeBase, groupMemberHandlers]
+    [modeRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };
@@ -562,10 +650,12 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     nodes,
     setNodes,
     onEdgeCreated,
-    groupMemberHandlers
+    groupMemberHandlers,
+    reactFlowInstanceRef,
+    geoLayout
   } = config;
 
-  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  const reactFlowInstance = reactFlowInstanceRef ?? useRef<ReactFlowInstance | null>(null);
   const modeRef = useRef(mode);
   const isLockedRef = useRef(isLocked);
   modeRef.current = mode;
@@ -576,13 +666,19 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     useContextMenuState();
 
   // Initialize
-  const onInit = useCallback((instance: ReactFlowInstance) => {
-    reactFlowInstance.current = instance;
-    log.info("[ReactFlowCanvas] React Flow initialized");
-    setTimeout(() => {
-      void instance.fitView({ padding: 0.2 });
-    }, 100);
-  }, []);
+  const onInit = useCallback(
+    (instance: ReactFlowInstance) => {
+      reactFlowInstance.current = instance;
+      log.info("[ReactFlowCanvas] React Flow initialized");
+      // Don't auto-fitView in geo layout mode - map controls the viewport
+      if (!geoLayout?.isGeoLayout) {
+        setTimeout(() => {
+          void instance.fitView({ padding: 0.2 });
+        }, 100);
+      }
+    },
+    [geoLayout?.isGeoLayout]
+  );
 
   // Click handlers (extracted hooks)
   const { onNodeClick, onNodeDoubleClick } = useNodeClickHandlers(
@@ -629,7 +725,8 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     nodes,
     onNodesChangeBase,
     setNodes,
-    groupMemberHandlers
+    groupMemberHandlers,
+    geoLayout
   );
 
   // Context menu handlers (extracted hook)

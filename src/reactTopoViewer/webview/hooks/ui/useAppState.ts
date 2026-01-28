@@ -12,7 +12,7 @@ export interface CanvasRef {
   runLayout(name: string): void;
 }
 
-export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose";
+export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose" | "geo";
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
 
 /**
@@ -46,6 +46,7 @@ export interface LinkData {
 function normalizeLayoutName(option: LayoutOption): string {
   if (option === "radial") return "concentric";
   if (option === "hierarchical") return "breadthfirst";
+  if (option === "geo") return "preset";
   return option;
 }
 
@@ -112,7 +113,6 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
 
   const setGeoMode = useCallback((mode: "pan" | "edit") => {
     setGeoModeState(mode);
-    // Geo mode would require MapLibre integration
   }, []);
 
   const setLayout = useCallback(
@@ -131,7 +131,7 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
     setLayout,
     geoMode,
     setGeoMode,
-    isGeoLayout: false, // Geo layout requires MapLibre integration
+    isGeoLayout: layout === "geo",
     gridLineWidth,
     setGridLineWidth
   };

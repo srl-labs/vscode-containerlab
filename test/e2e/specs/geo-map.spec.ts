@@ -16,7 +16,7 @@ test.describe("GeoMap Layout", () => {
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test("geo layout is currently disabled in ReactFlow (no geo coordinates assigned)", async ({
+  test("geo layout enables map mode and assigns geo coordinates", async ({
     page,
     topoViewerPage
   }) => {
@@ -30,31 +30,37 @@ test.describe("GeoMap Layout", () => {
       }
     });
 
-    await page.waitForTimeout(500);
+    await page.waitForSelector("#react-topoviewer-geo-map canvas");
 
-    // Geo layout is not yet available in ReactFlow migration
+    // Geo layout should be active
     const isGeoLayout = await page.evaluate(() => {
       return (window as any).__DEV__?.isGeoLayout?.() ?? false;
     });
-    expect(isGeoLayout).toBe(false);
+    expect(isGeoLayout).toBe(true);
 
-    // Verify nodes do NOT have geo coordinates assigned
+    // Verify nodes have geo coordinates assigned (wait for async assignment)
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
-    const nodeGeo = await page.evaluate((nodeId) => {
-      const dev = (window as any).__DEV__;
-      const rf = dev?.rfInstance;
-      if (!rf) return null;
-      const node = (rf.getNodes?.() ?? []).find((n: any) => n.id === nodeId);
-      if (!node) return null;
-      return node.data?.geoCoordinates ?? node.data?.extraData?.geoCoordinates ?? null;
-    }, nodeIds[0]);
-
-    expect(nodeGeo).toBeNull();
+    // Wait for geo coordinates to be assigned (async after map loads)
+    await expect
+      .poll(
+        async () => {
+          return page.evaluate((nodeId) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return null;
+            const node = (rf.getNodes?.() ?? []).find((n: any) => n.id === nodeId);
+            if (!node) return null;
+            return node.data?.geoCoordinates ?? null;
+          }, nodeIds[0]);
+        },
+        { timeout: 5000, message: "geo coordinates should be assigned" }
+      )
+      .not.toBeNull();
   });
 
-  test("dragging node after geo mode request does not create geo coordinates", async ({
+  test("dragging node in geo edit mode updates geo coordinates only", async ({
     page,
     topoViewerPage
   }) => {
@@ -79,13 +85,13 @@ test.describe("GeoMap Layout", () => {
     const originalPosition = originalNodeAnnotation?.position;
     console.log(`[DEBUG] Original annotation position: ${JSON.stringify(originalPosition)}`);
 
-    // Enable geo layout (currently a no-op in ReactFlow migration)
+    // Enable geo layout
     await page.evaluate(() => {
       const dev = (window as any).__DEV__;
       dev?.setLayout?.("geo");
     });
 
-    await page.waitForTimeout(500);
+    await page.waitForSelector("#react-topoviewer-geo-map canvas");
 
     // Switch to geo edit mode (state only)
     await page.evaluate(() => {
@@ -127,7 +133,7 @@ test.describe("GeoMap Layout", () => {
     console.log(`[DEBUG] Updated position: (${updatedPosition.x}, ${updatedPosition.y})`);
     expect(updatedPosition.x).not.toBeCloseTo(initialPosition.x, 0);
 
-    // Verify geo coordinates were NOT added to annotations
+    // Verify geo coordinates were added to annotations
     const annotations = await topoViewerPage.getAnnotationsFromFile(TEST_FILE);
 
     expect(annotations.nodeAnnotations).toBeDefined();
@@ -147,7 +153,7 @@ test.describe("GeoMap Layout", () => {
     console.log(`[DEBUG] Annotation for ${testNodeId}: ${JSON.stringify(nodeAnnotation)}`);
 
     expect(nodeAnnotation).toBeDefined();
-    expect(nodeAnnotation!.geoCoordinates).toBeUndefined();
+    expect(nodeAnnotation!.geoCoordinates).toBeDefined();
 
     // CRITICAL: Verify that the preset x/y position did NOT change
     // In GeoMap mode, only geo coordinates should be updated, not the preset position
@@ -171,7 +177,7 @@ test.describe("GeoMap Layout", () => {
       dev?.setLayout?.("geo");
     });
 
-    await page.waitForTimeout(200);
+    await page.waitForSelector("#react-topoviewer-geo-map canvas");
 
     // Check initial mode is 'pan' (state-only)
     const initialMode = await page.evaluate(() => {
@@ -185,7 +191,7 @@ test.describe("GeoMap Layout", () => {
       dev?.setGeoMode?.("edit");
     });
 
-    await page.waitForTimeout(200);
+    await page.waitForSelector("#react-topoviewer-geo-map canvas");
 
     const editMode = await page.evaluate(() => {
       return (window as any).__DEV__?.geoMode?.();
@@ -215,11 +221,11 @@ test.describe("GeoMap Layout", () => {
 
     await page.waitForTimeout(200);
 
-    // Verify geo layout is not active
+    // Verify geo layout is active
     let isGeoLayout = await page.evaluate(() => {
       return (window as any).__DEV__?.isGeoLayout?.() ?? false;
     });
-    expect(isGeoLayout).toBe(false);
+    expect(isGeoLayout).toBe(true);
 
     // Switch back to preset layout
     await page.evaluate(() => {
@@ -229,7 +235,7 @@ test.describe("GeoMap Layout", () => {
 
     await page.waitForTimeout(1000);
 
-    // Verify geo layout is still not active
+    // Verify geo layout is not active after switching back
     isGeoLayout = await page.evaluate(() => {
       return (window as any).__DEV__?.isGeoLayout?.() ?? false;
     });

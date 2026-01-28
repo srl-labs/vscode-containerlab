@@ -13,7 +13,7 @@ import type { CustomIconInfo } from "../../shared/types/icons";
 import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
 
 /** Layout option type */
-type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical";
+type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
 
 /**
  * Development mode interface for E2E testing and debugging.
@@ -26,6 +26,8 @@ export interface DevModeInterface {
   mode?: () => "edit" | "view";
   /** Set locked state */
   setLocked?: (locked: boolean) => void;
+  /** Set mode state directly */
+  setModeState?: (mode: "edit" | "view") => void;
   /** Undo/redo state */
   undoRedo?: {
     canUndo: boolean;
@@ -106,5 +108,6 @@ declare global {
     __INITIAL_DATA__?: WebviewInitialData;
     // Note: __SCHEMA_DATA__ is typed in hooks/editor/useSchema.ts
     __DOCKER_IMAGES__?: string[];
+    maplibreWorkerUrl?: string;
   }
 }

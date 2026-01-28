@@ -151,6 +151,8 @@ export async function createNetworkNode(data: NetworkNodeData): Promise<void> {
 
 /**
  * Save node positions via host command.
+ * Note: We set applySnapshot: false because position-only changes should not
+ * trigger a full topology reload, which would reset geo-mode positions.
  */
 export async function saveNodePositions(
   positions: Array<{
@@ -160,7 +162,10 @@ export async function saveNodePositions(
   }>
 ): Promise<void> {
   try {
-    await executeTopologyCommand({ command: "savePositions", payload: positions });
+    await executeTopologyCommand(
+      { command: "savePositions", payload: positions },
+      { applySnapshot: false }
+    );
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: savePositions`, err);
   }

@@ -37,6 +37,7 @@ import {
   useCanvasRefMethods,
   useCanvasHandlers,
   useAnnotationCanvasHandlers,
+  useGeoMapLayout,
   GRID_SIZE
 } from "../../hooks/canvas";
 
@@ -456,6 +457,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     {
       nodes: propNodes,
       edges: propEdges,
+      layout = "preset",
+      isGeoLayout = false,
+      geoMode = "pan",
       annotationMode,
       annotationHandlers,
       onNodeDelete,
@@ -473,6 +477,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     // Get setters from graph store - these update the single source of truth
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
+    const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
 
@@ -485,6 +490,15 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     // All nodes (topology + annotation) are now unified in propNodes
     const allNodes = (propNodes as Node[]) ?? [];
     const allEdges = (propEdges as Edge[]) ?? [];
+
+    const geoLayout = useGeoMapLayout({
+      isGeoLayout,
+      geoMode,
+      nodes: allNodes,
+      setNodes,
+      reactFlowInstanceRef,
+      restoreOnExit: layout === "preset"
+    });
 
     // Refs for context menu (to avoid re-renders)
     const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
@@ -504,6 +518,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       groupMemberHandlers: {
         getGroupMembers: annotationHandlers?.getGroupMembers,
         onNodeDropped: annotationHandlers?.onNodeDropped
+      },
+      reactFlowInstanceRef,
+      geoLayout: {
+        isGeoLayout,
+        geoMode,
+        getGeoUpdateForNode: geoLayout.getGeoUpdateForNode
       }
     });
 
@@ -622,8 +642,42 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
     const wrappedOnInit = useWrappedOnInit(handlers.onInit, onInitProp);
 
+    const isGeoEdit = isGeoLayout && geoMode === "edit";
+    const allowPanOnDrag = !isInAddMode && !isGeoLayout;
+    const allowSelectionOnDrag = !isInAddMode && (!isGeoLayout || isGeoEdit);
+    const nodesDraggable = mode === "edit" && !isLocked && (!isGeoLayout || isGeoEdit);
+    const reactFlowStyle: React.CSSProperties | undefined = isGeoLayout
+      ? {
+          background: "transparent",
+          pointerEvents: isGeoEdit ? "auto" : "none",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 1
+        }
+      : undefined;
+
     return (
-      <div style={canvasStyle} className="react-flow-canvas">
+      <div
+        style={canvasStyle}
+        className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}`}
+      >
+        {isGeoLayout && (
+          <div
+            id="react-topoviewer-geo-map"
+            ref={geoLayout.containerRef}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              zIndex: 0
+            }}
+          />
+        )}
         <ReactFlow
           nodes={allNodes}
           edges={allEdges}
@@ -646,7 +700,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           onConnect={handlers.onConnect}
           onSelectionChange={handlers.onSelectionChange}
           connectionLineComponent={CustomConnectionLine}
-          fitView
+          fitView={!isGeoLayout}
           fitViewOptions={fitViewOptions}
           defaultViewport={defaultViewport}
           minZoom={0.1}
@@ -654,18 +708,23 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           onlyRenderVisibleElements={!isLowDetail}
           selectionMode={SelectionMode.Partial}
           selectNodesOnDrag={false}
-          panOnDrag={!isInAddMode}
-          selectionOnDrag={!isInAddMode}
+          panOnDrag={allowPanOnDrag}
+          selectionOnDrag={allowSelectionOnDrag}
           selectionKeyCode="Shift"
           connectionMode={ConnectionMode.Loose}
           proOptions={proOptions}
           deleteKeyCode={null}
           multiSelectionKeyCode="Shift"
-          nodesDraggable={mode === "edit" && !isLocked}
+          nodesDraggable={nodesDraggable}
           nodesConnectable={mode === "edit" && !isLocked}
           elementsSelectable
+          zoomOnScroll={!isGeoLayout}
+          zoomOnPinch={!isGeoLayout}
+          zoomOnDoubleClick={!isGeoLayout}
+          panOnScroll={false}
+          style={reactFlowStyle}
         >
-          {!isLowDetail && (
+          {!isLowDetail && !isGeoLayout && (
             <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
           )}
         </ReactFlow>

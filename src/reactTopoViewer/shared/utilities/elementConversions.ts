@@ -28,6 +28,14 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
   const data = element.data as Record<string, unknown>;
   const extraData = (data.extraData ?? {}) as Record<string, unknown>;
   const role = (data.topoViewerRole as string) ?? "pe";
+  const latValue = data.lat;
+  const lngValue = data.lng;
+  const latRaw =
+    latValue === "" || latValue === null || latValue === undefined ? NaN : Number(latValue);
+  const lngRaw =
+    lngValue === "" || lngValue === null || lngValue === undefined ? NaN : Number(lngValue);
+  const geoCoordinates =
+    Number.isFinite(latRaw) && Number.isFinite(lngRaw) ? { lat: latRaw, lng: lngRaw } : undefined;
 
   // Determine node type based on role
   const isCloudNode = [
@@ -44,6 +52,7 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
     const cloudData: CloudNodeData = {
       label: (data.name as string) ?? (data.id as string) ?? "",
       nodeType: role as CloudNodeData["nodeType"],
+      ...(geoCoordinates ? { geoCoordinates } : {}),
       extraData: extraData
     };
 
@@ -67,6 +76,7 @@ export function parsedElementToTopoNode(element: ParsedElement): TopoNode {
     mgmtIpv4Address: extraData.mgmtIpv4Address as string | undefined,
     mgmtIpv6Address: extraData.mgmtIpv6Address as string | undefined,
     longname: extraData.longname as string | undefined,
+    ...(geoCoordinates ? { geoCoordinates } : {}),
     extraData
   };
 
@@ -140,6 +150,12 @@ export function convertElementsToTopologyData(elements: ParsedElement[]): Topolo
  */
 export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
   const data = node.data as Record<string, unknown>;
+  const geo = (data.geoCoordinates ??
+    (data.extraData as Record<string, unknown> | undefined)?.geoCoordinates) as
+    | { lat?: number; lng?: number }
+    | undefined;
+  const lat = typeof geo?.lat === "number" ? String(geo.lat) : "";
+  const lng = typeof geo?.lng === "number" ? String(geo.lng) : "";
 
   return {
     group: "nodes",
@@ -150,8 +166,8 @@ export function topoNodeToParsedElement(node: TopoNode): ParsedElement {
       topoViewerRole: data.role ?? data.nodeType ?? "pe",
       iconColor: data.iconColor,
       iconCornerRadius: data.iconCornerRadius,
-      lat: "",
-      lng: "",
+      lat,
+      lng,
       extraData: data.extraData ?? {}
     },
     position: node.position ?? { x: 0, y: 0 },

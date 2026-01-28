@@ -137,6 +137,12 @@ export interface ReactFlowCanvasProps {
   nodes?: TopoNode[];
   /** ReactFlow edges */
   edges?: TopoEdge[];
+  /** Current layout (used for geo layout transitions) */
+  layout?: "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
+  /** Geo layout active */
+  isGeoLayout?: boolean;
+  /** Geo layout mode */
+  geoMode?: "pan" | "edit";
   /** Annotation add mode state */
   annotationMode?: AnnotationModeState;
   /** Annotation event handlers */

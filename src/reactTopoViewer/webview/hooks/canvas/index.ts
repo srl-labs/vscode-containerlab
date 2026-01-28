@@ -12,6 +12,7 @@ export {
 // Canvas event handlers (React Flow integration)
 export { useCanvasHandlers, snapToGrid, GRID_SIZE } from "./useCanvasHandlers";
 export { useAnnotationCanvasHandlers } from "./useAnnotationCanvasHandlers";
+export { useGeoMapLayout } from "./useGeoMapLayout";
 
 // Annotation hooks
 export { useAnnotations } from "./useAnnotations";

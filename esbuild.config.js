@@ -62,6 +62,14 @@ async function copyFonts() {
   }
 }
 
+// Copy MapLibre CSP worker to dist for webview CSP compatibility
+async function copyMapLibreWorker() {
+  const srcPath = path.join(__dirname, "node_modules/maplibre-gl/dist/maplibre-gl-csp-worker.js");
+  const destPath = path.join(__dirname, "dist/maplibre-gl-csp-worker.js");
+  if (!fs.existsSync(srcPath)) return;
+  await fs.promises.copyFile(srcPath, destPath);
+}
+
 // Build CSS with PostCSS (Tailwind v4 requires proper postcss processing)
 async function buildCss() {
   console.log("Building CSS with PostCSS...");
@@ -138,7 +146,7 @@ async function build() {
   });
 
   // Run all builds in parallel
-  await Promise.all([extensionBuild, webviewBuild, copyFonts(), buildCss()]);
+  await Promise.all([extensionBuild, webviewBuild, copyFonts(), copyMapLibreWorker(), buildCss()]);
 
   console.log("Build complete!");
 

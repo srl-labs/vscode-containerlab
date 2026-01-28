@@ -24,6 +24,7 @@ export interface TopologyNodeData {
   mgmtIpv4Address?: string;
   mgmtIpv6Address?: string;
   longname?: string;
+  geoCoordinates?: { lat: number; lng: number };
   extraData?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -43,6 +44,7 @@ export interface CloudNodeData {
     | "bridge"
     | "ovs-bridge"
     | string;
+  geoCoordinates?: { lat: number; lng: number };
   extraData?: Record<string, unknown>;
   [key: string]: unknown;
 }
