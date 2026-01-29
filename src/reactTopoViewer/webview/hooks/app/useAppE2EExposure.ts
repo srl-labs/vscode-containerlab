@@ -18,7 +18,7 @@ interface AppE2EExposureParams {
   state: Pick<TopoViewerState, "isLocked" | "mode" | "selectedNode" | "selectedEdge">;
   actions: Pick<
     TopoViewerActions,
-    "toggleLock" | "editNetwork" | "selectNode" | "selectEdge" | "setMode"
+    "toggleLock" | "editNode" | "editNetwork" | "selectNode" | "selectEdge" | "setMode"
   >;
   undoRedo: Pick<UndoRedoControls, "canUndo" | "canRedo">;
   graphHandlers: Pick<AppGraphHandlers, "handleEdgeCreated" | "handleNodeCreatedCallback">;
@@ -48,6 +48,7 @@ export function useAppE2EExposure({
     handleNodeCreatedCallback: graphHandlers.handleNodeCreatedCallback,
     handleAddGroup: annotations.handleAddGroup,
     createNetworkAtPosition: graphCreation.createNetworkAtPosition,
+    editNode: actions.editNode,
     editNetwork: actions.editNetwork,
     groups: annotations.groups,
     elements: [],

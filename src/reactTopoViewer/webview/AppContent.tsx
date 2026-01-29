@@ -199,6 +199,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     actions: {
       toggleLock: topoActions.toggleLock,
       setMode: topoActions.setMode,
+      editNode: topoActions.editNode,
       editNetwork: topoActions.editNetwork,
       selectNode: topoActions.selectNode,
       selectEdge: topoActions.selectEdge

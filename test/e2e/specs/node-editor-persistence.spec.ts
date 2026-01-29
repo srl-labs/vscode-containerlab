@@ -27,32 +27,151 @@ const SEL_KIND_FIELD = "#node-kind";
  * Helper to reliably open node editor via double-click on a specific node
  * Uses node ID to fetch fresh bounding box immediately before clicking.
  */
-async function openNodeEditorByNodeId(page: Page, nodeId: string, maxRetries = 3): Promise<void> {
+async function openNodeEditorByNodeId(
+  page: Page,
+  topoViewerPage: {
+    getNodeBoundingBox: (nodeId: string) => Promise<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>;
+    fit: () => Promise<void>;
+  },
+  nodeId: string,
+  maxRetries = 3
+): Promise<void> {
   const editorPanel = page.locator(SEL_NODE_EDITOR);
+  const panelTab = page.locator('[data-testid="panel-tab-basic"]');
+  const floatingContent = page.locator(".floating-panel-content");
+  const collapsePanelButton = page.locator('[data-testid="floating-panel-collapse-btn"]');
+  const closeEditorPanel = async () => {
+    if (await editorPanel.isVisible()) {
+      await page.locator(`${SEL_NODE_EDITOR} [data-testid="panel-close-btn"]`).click();
+      await expect(editorPanel).toBeHidden({ timeout: 2000 });
+    }
+  };
+  const collapseFloatingPanel = async () => {
+    if (await floatingContent.isVisible()) {
+      await collapsePanelButton.click();
+      await expect(floatingContent).toBeHidden({ timeout: 2000 });
+    }
+  };
+  const waitForStableNodeBox = async (nodeHandle: ReturnType<Page["locator"]>) => {
+    let prev = await nodeHandle.boundingBox();
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(120);
+      const next = await nodeHandle.boundingBox();
+      if (!prev || !next) {
+        prev = next;
+        continue;
+      }
+      const stable =
+        Math.abs(next.x - prev.x) < 1 &&
+        Math.abs(next.y - prev.y) < 1 &&
+        Math.abs(next.width - prev.width) < 1 &&
+        Math.abs(next.height - prev.height) < 1;
+      if (stable) return next;
+      prev = next;
+    }
+    return prev;
+  };
+
+  const separateOverlappingNode = async () => {
+    let moved = false;
+    for (let i = 0; i < 2; i++) {
+      const blockingId = await page.evaluate((targetId) => {
+        const target = document.querySelector(`[data-id="${targetId}"]`) as HTMLElement | null;
+        if (!target) return null;
+        const targetRect = target.getBoundingClientRect();
+        const nodes = Array.from(document.querySelectorAll(".react-flow__node"));
+        for (const node of nodes) {
+          const id = node.getAttribute("data-id");
+          if (!id || id === targetId) continue;
+          const rect = (node as HTMLElement).getBoundingClientRect();
+          const overlaps =
+            targetRect.left < rect.right &&
+            targetRect.right > rect.left &&
+            targetRect.top < rect.bottom &&
+            targetRect.bottom > rect.top;
+          if (overlaps) return id;
+        }
+        return null;
+      }, nodeId);
+
+      if (!blockingId) break;
+
+      const blockingHandle = page.locator(`[data-id="${blockingId}"]`);
+      const blockingBox = await blockingHandle.boundingBox();
+      if (!blockingBox) break;
+
+      const startX = blockingBox.x + blockingBox.width / 2;
+      const startY = blockingBox.y + blockingBox.height / 2;
+      await page.mouse.move(startX, startY);
+      await page.mouse.down();
+      await page.mouse.move(startX + 120, startY, { steps: 8 });
+      await page.mouse.up();
+      await page.waitForTimeout(200);
+      moved = true;
+    }
+    return moved;
+  };
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
-    const nodeBox = await nodeHandle.boundingBox();
+    await closeEditorPanel();
+    await collapseFloatingPanel();
+    if (attempt === 1) {
+      await topoViewerPage.fit();
+    }
+    await page.keyboard.press("Escape");
+    await page.waitForSelector(`[data-id="${nodeId}"]`, { timeout: 5000 });
+    await page.waitForTimeout(150);
 
+    const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
+    await nodeHandle.scrollIntoViewIfNeeded();
+    await expect(nodeHandle).toBeVisible({ timeout: 2000 });
+    await separateOverlappingNode();
+
+    const nodeBox = (await waitForStableNodeBox(nodeHandle)) ?? (await topoViewerPage.getNodeBoundingBox(nodeId));
     if (!nodeBox) {
       throw new Error(`Node ${nodeId} not found or has no bounding box`);
     }
-
     const centerX = nodeBox.x + nodeBox.width / 2;
     const centerY = nodeBox.y + nodeBox.height / 2;
 
-    await page.mouse.click(centerX, centerY);
-    await page.waitForTimeout(150);
-    await page.mouse.dblclick(centerX, centerY);
+    try {
+      const hitsTarget = await page.evaluate(
+        ({ x, y, id }) => {
+          const el = document.elementFromPoint(x, y);
+          return !!el?.closest(`[data-id="${id}"]`);
+        },
+        { x: centerX, y: centerY, id: nodeId }
+      );
+      if (!hitsTarget) {
+        await separateOverlappingNode();
+        continue;
+      }
+      await page.mouse.move(centerX, centerY);
+      await page.mouse.click(centerX, centerY, { delay: 60 });
+      await page.waitForTimeout(150);
+      await page.mouse.dblclick(centerX, centerY, { delay: 80 });
+    } catch {
+      await separateOverlappingNode();
+      continue;
+    }
 
     try {
       await expect(editorPanel).toBeVisible({ timeout: 2000 });
+      await expect(panelTab).toBeVisible({ timeout: 2000 });
+      const nameInput = page.locator("#node-name");
+      if ((await nameInput.count()) > 0) {
+        await expect(nameInput).toHaveValue(nodeId, { timeout: 1000 });
+      }
       return;
     } catch {
+      await closeEditorPanel();
       if (attempt === maxRetries) {
-        throw new Error(
-          `Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`
-        );
+        throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
       }
       await page.waitForTimeout(300);
     }
@@ -66,6 +185,7 @@ type TabName = (typeof TAB)[keyof typeof TAB];
  */
 async function navigateToTab(page: Page, tabName: TabName): Promise<void> {
   const tab = page.locator(`[data-testid="panel-tab-${tabName}"]`);
+  await expect(tab).toBeVisible({ timeout: 2000 });
   await tab.click();
   await page.waitForTimeout(200);
 }
@@ -130,20 +250,22 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and change kind
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.BASIC);
     await fillField(page, "node-kind", TEST_KIND);
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => topoViewerPage.getYamlFromFile(TEST_TOPOLOGY), { timeout: 5000 })
+      .toContain(`kind: ${TEST_KIND}`);
 
     // Close editor
     await page.locator(SEL_CLOSE_BTN).click();
-    await page.waitForTimeout(300);
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeHidden({ timeout: 3000 });
 
     // Reopen editor
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.BASIC);
 
     // Verify kind is still linux
@@ -156,17 +278,19 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and change startup-config
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.CONFIG);
     await fillField(page, "node-startup-config", "/path/to/config.txt");
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => topoViewerPage.getYamlFromFile(TEST_TOPOLOGY), { timeout: 5000 })
+      .toContain("startup-config: /path/to/config.txt");
 
     // Close editor
     await page.locator(SEL_CLOSE_BTN).click();
-    await page.waitForTimeout(300);
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeHidden({ timeout: 3000 });
 
     // Verify YAML file contains startup-config
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -179,13 +303,15 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and set user
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.RUNTIME);
     await fillField(page, "node-user", TEST_USER);
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => topoViewerPage.getYamlFromFile(TEST_TOPOLOGY), { timeout: 5000 })
+      .toContain(`user: ${TEST_USER}`);
 
     // Verify YAML file contains user
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -197,7 +323,7 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     // Set multiple fields across tabs
     await navigateToTab(page, TAB.BASIC);
@@ -215,14 +341,25 @@ test.describe("Node Editor Persistence", () => {
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => {
+        const yaml = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
+        return (
+          yaml.includes(`kind: ${TEST_KIND}`) &&
+          yaml.includes("image: alpine:latest") &&
+          yaml.includes("user: root") &&
+          yaml.includes("mgmt-ipv4: 172.20.20.10") &&
+          yaml.includes("memory: 512m")
+        );
+      }, { timeout: 5000 })
+      .toBe(true);
 
     // Close editor
     await page.locator(SEL_CLOSE_BTN).click();
-    await page.waitForTimeout(300);
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeHidden({ timeout: 3000 });
 
     // Reopen editor and verify all fields
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     await navigateToTab(page, TAB.BASIC);
     await expect(page.locator(SEL_KIND_FIELD)).toHaveValue(TEST_KIND);
@@ -243,7 +380,7 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and set restart-policy
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.RUNTIME);
     await selectOption(page, "node-restart-policy", "always");
 
@@ -261,7 +398,7 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and set enforce-startup-config
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.CONFIG);
     await setCheckbox(page, "node-enforce-startup-config", true);
 
@@ -274,7 +411,7 @@ test.describe("Node Editor Persistence", () => {
     await page.waitForTimeout(300);
 
     // Reopen editor and verify checkbox is checked
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.CONFIG);
     await expect(page.locator("#node-enforce-startup-config")).toBeChecked();
 
@@ -288,7 +425,7 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and set network-mode
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.NETWORK);
     await selectOption(page, "node-network-mode", "host");
 
@@ -306,7 +443,7 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and set image-pull-policy
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.ADVANCED);
     await selectOption(page, "node-image-pull-policy", "always");
 
@@ -324,7 +461,7 @@ test.describe("Node Editor Persistence", () => {
     const nodeId = nodeIds[0];
 
     // Open editor and set multiple fields
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     await navigateToTab(page, TAB.BASIC);
     await fillField(page, "node-kind", TEST_KIND);
@@ -349,7 +486,7 @@ test.describe("Node Editor Persistence", () => {
     expect(newNodeIds).toContain(nodeId);
 
     // Open editor and verify fields persisted
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     await navigateToTab(page, TAB.BASIC);
     await expect(page.locator(SEL_KIND_FIELD)).toHaveValue(TEST_KIND);

@@ -123,6 +123,7 @@ export interface E2ETestingConfig {
     position: { x: number; y: number },
     networkType: NetworkType
   ) => string | null;
+  editNode?: (nodeId: string | null) => void;
   editNetwork?: (nodeId: string | null) => void;
   groups: GroupStyleAnnotation[];
   elements: unknown[];
@@ -154,6 +155,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     handleNodeCreatedCallback,
     handleAddGroup,
     createNetworkAtPosition,
+    editNode,
     editNetwork,
     groups,
     elements,
@@ -199,6 +201,15 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     handleAddGroup,
     createNetworkAtPosition
   ]);
+
+  // Node editor E2E exposure
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.__DEV__ && editNode) {
+      window.__DEV__.openNodeEditor = (nodeId: string | null) => {
+        editNode(nodeId);
+      };
+    }
+  }, [editNode]);
 
   // Network editor E2E exposure
   React.useEffect(() => {

@@ -4,9 +4,7 @@
 import React from "react";
 
 import type { LinkEditorData } from "../../../shared/types/editors";
-import type { EdgeAnnotation } from "../../../shared/types/topology";
 import type { TopoViewerActions, TopoViewerState } from "../../stores/topoViewerStore";
-import { saveEdgeAnnotations } from "../../services";
 import {
   useNodeEditorHandlers,
   useLinkEditorHandlers,
@@ -58,20 +56,12 @@ export function useAppEditorBindings({
     refreshEditorData
   );
 
-  const persistEdgeAnnotations = React.useCallback(
-    (next: EdgeAnnotation[]) => {
-      setEdgeAnnotations(next);
-      void saveEdgeAnnotations(next);
-    },
-    [setEdgeAnnotations]
-  );
-
   const linkEditorHandlers = useLinkEditorHandlers(
     editEdge,
     selectionData.editingLinkData,
     {
       edgeAnnotations: state.edgeAnnotations,
-      setEdgeAnnotations: persistEdgeAnnotations
+      setEdgeAnnotations
     },
     handleUpdateEdgeData
   );

@@ -107,6 +107,7 @@ test.describe("Endpoint Label Offset", () => {
         offset: entry?.endpointLabelOffset
       };
     };
+    const initialOffsetState = await getOffsetState();
 
     await expect
       .poll(getOffsetState, {
@@ -121,7 +122,7 @@ test.describe("Endpoint Label Offset", () => {
         timeout: 5000,
         message: "undo should revert per-link endpoint offset override"
       })
-      .toEqual({ enabled: false, offset: initialValue });
+      .toEqual(initialOffsetState);
 
     await topoViewerPage.redo();
     await expect

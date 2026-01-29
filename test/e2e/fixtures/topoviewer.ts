@@ -748,7 +748,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Call fitView to ensure proper viewport
         await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          dev?.rfInstance?.fitView?.({ padding: 0.2 });
+          dev?.rfInstance?.fitView?.({ padding: 0.2, maxZoom: 1.2 });
         });
 
         // Wait for fitView animation
@@ -1074,7 +1074,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       setZoom: async (zoom: number) => {
         await page.evaluate(
-          (z, sel) => {
+          ({ z, sel }) => {
             const dev = (window as any).__DEV__;
             const rf = dev?.rfInstance;
             if (rf?.setViewport) {
@@ -1092,8 +1092,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
               });
             }
           },
-          zoom,
-          CANVAS_SELECTOR
+          { z: zoom, sel: CANVAS_SELECTOR }
         );
         await page.waitForTimeout(100);
       },
@@ -1116,7 +1115,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       fit: async () => {
         await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          dev?.rfInstance?.fitView?.({ padding: 0.1 });
+          dev?.rfInstance?.fitView?.({ padding: 0.1, maxZoom: 1.2 });
         });
         await page.waitForTimeout(300);
       },
