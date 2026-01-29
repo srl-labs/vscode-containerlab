@@ -45,6 +45,13 @@ interface GroupDebugInfo {
   stateManagerGroupIds: string[];
 }
 
+interface EdgeMatchParams {
+  sourceId: string;
+  targetId: string;
+  sourceEndpoint: string;
+  targetEndpoint: string;
+}
+
 const dispatchGroupKeyboardEvent = (): void => {
   const event = new KeyboardEvent("keydown", {
     key: "g",
@@ -102,6 +109,61 @@ function browserCreateGroup(): CreateGroupResult {
     reactGroupsAfter: getGroupCount(),
     hasRf: !!rf
   };
+}
+
+/**
+ * Browser-side edge matcher for createLink waitForFunction.
+ * Note: Helper functions must be inlined because page.waitForFunction() serializes only the function body.
+ */
+function browserHasMatchingEdge({
+  sourceId,
+  targetId,
+  sourceEndpoint,
+  targetEndpoint
+}: EdgeMatchParams): boolean {
+  const dev = (window as any).__DEV__;
+  const rf = dev?.rfInstance;
+  if (!rf) return false;
+  const edges = rf.getEdges?.() ?? [];
+  const specialPrefixes = [
+    "host:",
+    "mgmt-net:",
+    "macvlan:",
+    "vxlan:",
+    "vxlan-stitch:",
+    "dummy"
+  ];
+  const isSpecial = (id: string) => specialPrefixes.some((prefix) => id.startsWith(prefix));
+  const matchNode = (edgeNode: string, expected: string) => {
+    if (edgeNode === expected) return true;
+    return isSpecial(expected) && edgeNode.startsWith(`${expected}:`);
+  };
+  const matches = (
+    edge: any,
+    expectedSource: string,
+    expectedTarget: string,
+    expectedSourceEndpoint: string,
+    expectedTargetEndpoint: string
+  ) => {
+    if (!matchNode(edge.source, expectedSource) || !matchNode(edge.target, expectedTarget)) {
+      return false;
+    }
+    const edgeSourceEndpoint = edge.data?.sourceEndpoint ?? edge.sourceEndpoint;
+    const edgeTargetEndpoint = edge.data?.targetEndpoint ?? edge.targetEndpoint;
+    const sourceEndpointMatches =
+      edgeSourceEndpoint === expectedSourceEndpoint ||
+      (isSpecial(expectedSource) && (edgeSourceEndpoint === "" || edgeSourceEndpoint == null));
+    const targetEndpointMatches =
+      edgeTargetEndpoint === expectedTargetEndpoint ||
+      (isSpecial(expectedTarget) && (edgeTargetEndpoint === "" || edgeTargetEndpoint == null));
+    return sourceEndpointMatches && targetEndpointMatches;
+  };
+
+  return edges.some(
+    (edge: any) =>
+      matches(edge, sourceId, targetId, sourceEndpoint, targetEndpoint) ||
+      matches(edge, targetId, sourceId, targetEndpoint, sourceEndpoint)
+  );
 }
 
 /**
@@ -1260,53 +1322,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         // Wait for matching edge to appear (ID may be re-written by snapshot sync)
         await page.waitForFunction(
-          ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
-            const dev = (window as any).__DEV__;
-            const rf = dev?.rfInstance;
-            if (!rf) return false;
-            const edges = rf.getEdges?.() ?? [];
-            const specialPrefixes = [
-              "host:",
-              "mgmt-net:",
-              "macvlan:",
-              "vxlan:",
-              "vxlan-stitch:",
-              "dummy"
-            ];
-            const isSpecial = (id: string) => specialPrefixes.some((prefix) => id.startsWith(prefix));
-            const matchNode = (edgeNode: string, expected: string) => {
-              if (edgeNode === expected) return true;
-              return isSpecial(expected) && edgeNode.startsWith(`${expected}:`);
-            };
-            const matches = (
-              edge: any,
-              expectedSource: string,
-              expectedTarget: string,
-              expectedSourceEndpoint: string,
-              expectedTargetEndpoint: string
-            ) => {
-              if (!matchNode(edge.source, expectedSource) || !matchNode(edge.target, expectedTarget)) {
-                return false;
-              }
-              const edgeSourceEndpoint = edge.data?.sourceEndpoint ?? edge.sourceEndpoint;
-              const edgeTargetEndpoint = edge.data?.targetEndpoint ?? edge.targetEndpoint;
-              const sourceEndpointMatches =
-                edgeSourceEndpoint === expectedSourceEndpoint ||
-                (isSpecial(expectedSource) &&
-                  (edgeSourceEndpoint === "" || edgeSourceEndpoint == null));
-              const targetEndpointMatches =
-                edgeTargetEndpoint === expectedTargetEndpoint ||
-                (isSpecial(expectedTarget) &&
-                  (edgeTargetEndpoint === "" || edgeTargetEndpoint == null));
-              return sourceEndpointMatches && targetEndpointMatches;
-            };
-
-            return edges.some(
-              (edge: any) =>
-                matches(edge, sourceId, targetId, sourceEndpoint, targetEndpoint) ||
-                matches(edge, targetId, sourceId, targetEndpoint, sourceEndpoint)
-            );
-          },
+          browserHasMatchingEdge,
           { sourceId, targetId, sourceEndpoint, targetEndpoint },
           { timeout: 5000 }
         );

@@ -14,6 +14,7 @@ import {
   useEasterEggGlow
 } from "../../../stores/canvasStore";
 import { useCustomIcons } from "../../../stores/topoViewerStore";
+import { buildCustomIconMap } from "../../../utils/iconUtils";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE } from "./nodeStyles";
 
@@ -75,13 +76,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const isLinkTarget = linkSourceNode !== null;
 
   // Build custom icon map for efficient lookup
-  const customIconMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const ci of customIcons) {
-      map.set(ci.name, ci.dataUri);
-    }
-    return map;
-  }, [customIcons]);
+  const customIconMap = useMemo(() => buildCustomIconMap(customIcons), [customIcons]);
 
   // Generate the icon URL - check custom icons first, then built-in
   const iconUrl = useMemo(() => {

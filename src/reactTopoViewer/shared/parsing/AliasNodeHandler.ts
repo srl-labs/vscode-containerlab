@@ -213,6 +213,65 @@ export function createAliasElement(
   );
 }
 
+function getAliasElementFromEntry(
+  entry: AliasEntry,
+  created: Set<string>,
+  nodeMap: Record<string, { kind?: string }>,
+  nodeAnnById: Map<string, NodeAnnotation>
+): { aliasId: string; element: ParsedElement } | null {
+  const aliasId = String(entry.aliasNodeId);
+  const yamlRefId = String(entry.yamlNodeId);
+  if (created.has(aliasId)) return null;
+  if (aliasId === yamlRefId) return null;
+  const element = createAliasElement(nodeMap, aliasId, yamlRefId, nodeAnnById);
+  if (!element) return null;
+  return { aliasId, element };
+}
+
+function appendAliasElements(
+  aliasList: AliasEntry[],
+  created: Set<string>,
+  nodeMap: Record<string, { kind?: string }>,
+  nodeAnnById: Map<string, NodeAnnotation>,
+  result: ParsedElement[]
+): void {
+  for (const entry of aliasList) {
+    const next = getAliasElementFromEntry(entry, created, nodeMap, nodeAnnById);
+    if (!next) continue;
+    result.push(next.element);
+    created.add(next.aliasId);
+  }
+}
+
+function applyAliasToEdgeData(
+  data: {
+    source?: string;
+    target?: string;
+    sourceEndpoint?: string;
+    targetEndpoint?: string;
+    extraData?: Record<string, unknown>;
+  },
+  srcAlias: string | undefined,
+  tgtAlias: string | undefined
+): void {
+  const originalSource = data.source;
+  const originalTarget = data.target;
+  const extra = { ...(data.extraData ?? {}) };
+  if (srcAlias) {
+    data.source = srcAlias;
+    if (originalSource) {
+      extra.yamlSourceNodeId = originalSource;
+    }
+  }
+  if (tgtAlias) {
+    data.target = tgtAlias;
+    if (originalTarget) {
+      extra.yamlTargetNodeId = originalTarget;
+    }
+  }
+  data.extraData = extra;
+}
+
 /**
  * Adds alias nodes from annotations to the elements array.
  */
@@ -228,21 +287,13 @@ export function addAliasNodesFromAnnotations(
   if (aliasList.length === 0) return result;
 
   const created = new Set<string>();
-  for (const a of aliasList) {
-    const aliasId = String(a.aliasNodeId);
-    const yamlRefId = String(a.yamlNodeId);
-    if (created.has(aliasId)) continue;
-    if (aliasId === yamlRefId) continue;
-    const element = createAliasElement(
-      nodeMap as Record<string, { kind?: string }>,
-      aliasId,
-      yamlRefId,
-      nodeAnnById
-    );
-    if (!element) continue;
-    result.push(element);
-    created.add(aliasId);
-  }
+  appendAliasElements(
+    aliasList,
+    created,
+    nodeMap as Record<string, { kind?: string }>,
+    nodeAnnById,
+    result
+  );
   return result;
 }
 
@@ -263,25 +314,10 @@ export function rewireEdges(elements: ParsedElement[], mapping: Map<string, stri
       targetEndpoint?: string;
       extraData?: Record<string, unknown>;
     };
-    const originalSource = data.source;
-    const originalTarget = data.target;
     const srcAlias = mapping.get(`${data.source}|${data.sourceEndpoint || ""}`);
     const tgtAlias = mapping.get(`${data.target}|${data.targetEndpoint || ""}`);
     if (!srcAlias && !tgtAlias) continue;
-    const extra = { ...(data.extraData ?? {}) };
-    if (srcAlias) {
-      data.source = srcAlias;
-      if (originalSource) {
-        extra.yamlSourceNodeId = originalSource;
-      }
-    }
-    if (tgtAlias) {
-      data.target = tgtAlias;
-      if (originalTarget) {
-        extra.yamlTargetNodeId = originalTarget;
-      }
-    }
-    data.extraData = extra;
+    applyAliasToEdgeData(data, srcAlias, tgtAlias);
   }
 }
 

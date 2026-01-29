@@ -19,6 +19,68 @@ export interface SaveCustomNodeData extends Omit<CustomNodeTemplate, "name"> {
   oldName?: string;
 }
 
+function buildCommonTemplateFields(data: NodeEditorData) {
+  return {
+    // Basic tab fields
+    type: data.type,
+    image: data.image,
+    icon: data.icon,
+    iconColor: data.iconColor,
+    iconCornerRadius: data.iconCornerRadius,
+
+    // Custom template specific
+    baseName: data.baseName,
+    interfacePattern: data.interfacePattern,
+
+    // Configuration tab fields
+    license: data.license,
+    startupConfig: data.startupConfig,
+    enforceStartupConfig: data.enforceStartupConfig,
+    suppressStartupConfig: data.suppressStartupConfig,
+    binds: data.binds,
+    env: data.env,
+    envFiles: data.envFiles,
+    labels: data.labels,
+
+    // Runtime tab fields
+    user: data.user,
+    entrypoint: data.entrypoint,
+    cmd: data.cmd,
+    exec: data.exec,
+    restartPolicy: data.restartPolicy,
+    autoRemove: data.autoRemove,
+    startupDelay: data.startupDelay,
+
+    // Network tab fields
+    mgmtIpv4: data.mgmtIpv4,
+    mgmtIpv6: data.mgmtIpv6,
+    networkMode: data.networkMode,
+    ports: data.ports,
+    dnsServers: data.dnsServers,
+    aliases: data.aliases,
+
+    // Advanced tab fields
+    cpu: data.cpu,
+    cpuSet: data.cpuSet,
+    memory: data.memory,
+    shmSize: data.shmSize,
+    capAdd: data.capAdd,
+    sysctls: data.sysctls,
+    devices: data.devices,
+    certIssue: data.certIssue,
+    certKeySize: data.certKeySize,
+    certValidity: data.certValidity,
+    sans: data.sans,
+    healthCheck: data.healthCheck,
+    imagePullPolicy: data.imagePullPolicy,
+    runtime: data.runtime,
+
+    // Components tab fields (SROS)
+    isDistributed: data.isDistributed,
+    components: data.components
+  };
+}
+
 /**
  * Convert CustomTemplateEditorData to NodeEditorData for the node editor panel.
  * Includes all configurable fields so they appear in the editor.
@@ -109,64 +171,27 @@ export function convertEditorDataToSaveData(
     oldName: originalName,
     kind: data.kind || "",
 
-    // Basic tab fields
-    type: data.type,
-    image: data.image,
-    icon: data.icon,
-    iconColor: data.iconColor,
-    iconCornerRadius: data.iconCornerRadius,
-
-    // Custom template specific
-    baseName: data.baseName,
-    interfacePattern: data.interfacePattern,
     setDefault: data.isDefaultCustomNode,
+    ...buildCommonTemplateFields(data)
+  };
+}
 
-    // Configuration tab fields
-    license: data.license,
-    startupConfig: data.startupConfig,
-    enforceStartupConfig: data.enforceStartupConfig,
-    suppressStartupConfig: data.suppressStartupConfig,
-    binds: data.binds,
-    env: data.env,
-    envFiles: data.envFiles,
-    labels: data.labels,
-
-    // Runtime tab fields
-    user: data.user,
-    entrypoint: data.entrypoint,
-    cmd: data.cmd,
-    exec: data.exec,
-    restartPolicy: data.restartPolicy,
-    autoRemove: data.autoRemove,
-    startupDelay: data.startupDelay,
-
-    // Network tab fields
-    mgmtIpv4: data.mgmtIpv4,
-    mgmtIpv6: data.mgmtIpv6,
-    networkMode: data.networkMode,
-    ports: data.ports,
-    dnsServers: data.dnsServers,
-    aliases: data.aliases,
-
-    // Advanced tab fields
-    cpu: data.cpu,
-    cpuSet: data.cpuSet,
-    memory: data.memory,
-    shmSize: data.shmSize,
-    capAdd: data.capAdd,
-    sysctls: data.sysctls,
-    devices: data.devices,
-    certIssue: data.certIssue,
-    certKeySize: data.certKeySize,
-    certValidity: data.certValidity,
-    sans: data.sans,
-    healthCheck: data.healthCheck,
-    imagePullPolicy: data.imagePullPolicy,
-    runtime: data.runtime,
-
-    // Components tab fields (SROS)
-    isDistributed: data.isDistributed,
-    components: data.components
+/**
+ * Convert NodeEditorData back to CustomTemplateEditorData for editor state.
+ * This keeps the custom template editor in sync after Apply.
+ */
+export function convertEditorDataToTemplateData(
+  data: NodeEditorData,
+  originalTemplate: CustomTemplateEditorData | null
+): CustomTemplateEditorData {
+  return {
+    id: originalTemplate?.id || data.id,
+    isCustomTemplate: true,
+    customName: data.customName || "",
+    kind: data.kind || "",
+    originalName: originalTemplate?.originalName,
+    isDefaultCustomNode: data.isDefaultCustomNode,
+    ...buildCommonTemplateFields(data)
   };
 }
 

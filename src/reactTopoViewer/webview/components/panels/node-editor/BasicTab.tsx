@@ -13,6 +13,7 @@ import type { NodeType } from "../../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
 import { useSchema, useDockerImages } from "../../../hooks/editor";
 import { useCustomIcons } from "../../../stores/topoViewerStore";
+import { buildCustomIconMap } from "../../../utils/iconUtils";
 import { DEFAULT_ICON_COLOR } from "../../canvas/types";
 
 import type { TabProps } from "./types";
@@ -282,13 +283,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const previewIcon = icon || "pe";
 
   // Build custom icon map for efficient lookup
-  const customIconMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const ci of customIcons) {
-      map.set(ci.name, ci.dataUri);
-    }
-    return map;
-  }, [customIcons]);
+  const customIconMap = useMemo(() => buildCustomIconMap(customIcons), [customIcons]);
 
   // Build combined icon options (built-in + custom)
   const allIconOptions = useMemo(() => {

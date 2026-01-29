@@ -123,7 +123,9 @@ interface CanvasHandlers {
   closeContextMenu: () => void;
 }
 
-const EDITABLE_NODE_TYPES = ["topology-node", "network-node"];
+const NODE_TYPE_TOPOLOGY = "topology-node";
+const NODE_TYPE_NETWORK = "network-node";
+const EDITABLE_NODE_TYPES = [NODE_TYPE_TOPOLOGY, NODE_TYPE_NETWORK];
 
 // ============================================================================
 // Node drag stop helpers (extracted for complexity reduction)
@@ -507,7 +509,7 @@ function useNodeClickHandlers(
           onLockedAction?.();
           return;
         }
-        if (node.type === "network-node") {
+        if (node.type === NODE_TYPE_NETWORK) {
           editNetwork(node.id);
           return;
         }
@@ -650,7 +652,7 @@ function useConnectionHandler(
 }
 
 /** Node types that can be selected via box selection and synced to context */
-const SELECTABLE_NODE_TYPES = ["topology-node", "network-node"];
+const SELECTABLE_NODE_TYPES = [NODE_TYPE_TOPOLOGY, NODE_TYPE_NETWORK];
 
 /** Hook for selection change handler (box selection support) */
 function useSelectionChangeHandler(

@@ -74,6 +74,8 @@ const NODE_FALLBACK_PROPS = [
   "interfacePattern"
 ] as const;
 
+const NETWORK_NODE_TYPE = "network-node";
+
 function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
   const ed = (data.extraData ?? {}) as Record<string, unknown>;
   const result: Record<string, unknown> = { ...ed };
@@ -100,7 +102,7 @@ function toNodeSaveData(node: TopoNode): NodeSaveData {
 }
 
 function isSpecialNetworkNode(node: TopoNode): boolean {
-  if (node.type !== "network-node") return false;
+  if (node.type !== NETWORK_NODE_TYPE) return false;
   const data = (node.data ?? {}) as Record<string, unknown>;
   const type = getNetworkType(data);
   return Boolean(type && SPECIAL_NETWORK_TYPES.has(type));
@@ -123,7 +125,7 @@ function detectSpecialLinkType(
   targetId: string
 ): LinkTypeDetectionResult {
   const sourceNode = nodes.find((node) => node.id === sourceId);
-  if (sourceNode?.type === "network-node") {
+  if (sourceNode?.type === NETWORK_NODE_TYPE) {
     const data = (sourceNode.data ?? {}) as Record<string, unknown>;
     const type = getNetworkType(data);
     if (type && SPECIAL_NETWORK_TYPES.has(type)) {
@@ -132,7 +134,7 @@ function detectSpecialLinkType(
   }
 
   const targetNode = nodes.find((node) => node.id === targetId);
-  if (targetNode?.type === "network-node") {
+  if (targetNode?.type === NETWORK_NODE_TYPE) {
     const data = (targetNode.data ?? {}) as Record<string, unknown>;
     const type = getNetworkType(data);
     if (type && SPECIAL_NETWORK_TYPES.has(type)) {

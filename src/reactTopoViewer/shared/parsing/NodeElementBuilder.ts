@@ -226,6 +226,52 @@ interface NodeElementResult {
   migrationPattern?: string;
 }
 
+function resolveTopoViewerRole(
+  mergedNode: ClabNode,
+  nodeAnn: NodeAnnotation | undefined,
+  labels: Record<string, unknown> | undefined
+): string {
+  return (
+    nodeAnn?.icon ||
+    (labels?.["topoViewer-role"] as string) ||
+    (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE
+      ? NODE_KIND_BRIDGE
+      : "pe")
+  );
+}
+
+function resolveDisplayName(
+  nodeName: string,
+  nodeAnn: NodeAnnotation | undefined,
+  isBridgeNode: boolean
+): string {
+  const annotatedLabel = nodeAnn?.label?.trim();
+  return isBridgeNode && annotatedLabel ? annotatedLabel : nodeName;
+}
+
+function resolveNodeAnnotation(
+  nodeName: string,
+  nodeAnnotations?: NodeAnnotation[],
+  networkNodeAnnotations?: NodeAnnotation[]
+): NodeAnnotation | undefined {
+  const nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName);
+  if (nodeAnn) return nodeAnn;
+  const networkAnn = networkNodeAnnotations?.find((na) => na.id === nodeName);
+  return networkAnn ? { id: networkAnn.id, position: networkAnn.position } : undefined;
+}
+
+function shouldSkipAliasBridgeNode(
+  nodeName: string,
+  nodeAnn: NodeAnnotation | undefined,
+  nodeObj: ClabNode
+): boolean {
+  return Boolean(
+    nodeAnn?.yamlNodeId &&
+      nodeAnn.yamlNodeId !== nodeName &&
+      (nodeObj?.kind === NODE_KIND_BRIDGE || nodeObj?.kind === NODE_KIND_OVS_BRIDGE)
+  );
+}
+
 /**
  * Builds a single node element.
  */
@@ -274,18 +320,12 @@ export function buildNodeElement(params: {
   });
 
   const labels = mergedNode.labels as Record<string, unknown> | undefined;
-  const topoViewerRole =
-    nodeAnn?.icon ||
-    (labels?.["topoViewer-role"] as string) ||
-    (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE
-      ? NODE_KIND_BRIDGE
-      : "pe");
+  const topoViewerRole = resolveTopoViewerRole(mergedNode, nodeAnn, labels);
 
   const iconVisuals = extractIconVisuals(nodeAnn);
   const isBridgeNode =
     mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE;
-  const annotatedLabel = nodeAnn?.label?.trim();
-  const displayName = isBridgeNode && annotatedLabel ? annotatedLabel : nodeName;
+  const displayName = resolveDisplayName(nodeName, nodeAnn, isBridgeNode);
   const element: ParsedElement = {
     group: "nodes",
     data: {
@@ -334,21 +374,10 @@ export function addNodeElements(
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
     // Check nodeAnnotations first, then fallback to networkNodeAnnotations for bridges
     // (backwards compatibility - bridges were previously saved to networkNodeAnnotations)
-    let nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName);
-    if (!nodeAnn) {
-      const networkAnn = networkNodeAnnotations?.find((na) => na.id === nodeName);
-      if (networkAnn) {
-        // Convert network annotation to node annotation format
-        nodeAnn = { id: networkAnn.id, position: networkAnn.position };
-      }
-    }
+    const nodeAnn = resolveNodeAnnotation(nodeName, nodeAnnotations, networkNodeAnnotations);
     // If this bridge node is configured as an alias (yamlNodeId points elsewhere),
     // skip rendering the base YAML node to avoid duplicate visuals.
-    if (
-      nodeAnn?.yamlNodeId &&
-      nodeAnn.yamlNodeId !== nodeName &&
-      (nodeObj?.kind === NODE_KIND_BRIDGE || nodeObj?.kind === NODE_KIND_OVS_BRIDGE)
-    ) {
+    if (shouldSkipAliasBridgeNode(nodeName, nodeAnn, nodeObj)) {
       continue;
     }
     const { element, migrationPattern } = buildNodeElement({
