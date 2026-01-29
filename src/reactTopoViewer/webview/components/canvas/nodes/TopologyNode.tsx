@@ -101,7 +101,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     const style: React.CSSProperties = {
       ...ICON_STYLE_BASE,
       backgroundImage: `url(${iconUrl})`,
-      borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 0,
+      borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 4,
       // Use outline for selection - doesn't affect layout
       outline: selected ? SELECTED_OUTLINE : "none",
       outlineOffset: 1

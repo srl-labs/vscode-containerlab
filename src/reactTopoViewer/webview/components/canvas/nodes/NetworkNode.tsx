@@ -121,7 +121,6 @@ const NetworkNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
     backgroundRepeat: "no-repeat",
     backgroundColor: "#E8E8E8",
     borderRadius: 4,
-    border: "1px solid #969799",
     ...getOutlineStyle()
   };
 
