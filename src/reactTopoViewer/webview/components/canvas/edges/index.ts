@@ -2,4 +2,5 @@
  * Edge components barrel export
  */
 export { TopologyEdge } from "./TopologyEdge";
-export { edgeTypes } from "./edgeTypes";
+export { TopologyEdgeLite } from "./TopologyEdgeLite";
+export { edgeTypes, edgeTypesLite } from "./edgeTypes";

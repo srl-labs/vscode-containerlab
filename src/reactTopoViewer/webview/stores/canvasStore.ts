@@ -57,6 +57,7 @@ export interface CanvasState {
   nodeRenderConfig: NodeRenderConfig;
   annotationHandlers: AnnotationHandlers | null;
   easterEggGlow: EasterEggGlow | null;
+  fitViewRequestId: number;
 }
 
 export interface CanvasActions {
@@ -65,6 +66,7 @@ export interface CanvasActions {
   setNodeRenderConfig: (config: NodeRenderConfig) => void;
   setAnnotationHandlers: (handlers: AnnotationHandlers | null) => void;
   setEasterEggGlow: (glow: EasterEggGlow | null) => void;
+  requestFitView: () => void;
 }
 
 export type CanvasStore = CanvasState & CanvasActions;
@@ -166,7 +168,8 @@ const initialState: CanvasState = {
   edgeRenderConfig: defaultEdgeRenderConfig,
   nodeRenderConfig: defaultNodeRenderConfig,
   annotationHandlers: null,
-  easterEggGlow: null
+  easterEggGlow: null,
+  fitViewRequestId: 0
 };
 
 // ============================================================================
@@ -206,6 +209,9 @@ export const useCanvasStore = createWithEqualityFn<CanvasStore>((set) => ({
 
   setEasterEggGlow: (easterEggGlow) => {
     set({ easterEggGlow });
+  },
+  requestFitView: () => {
+    set((state) => ({ fitViewRequestId: state.fitViewRequestId + 1 }));
   }
 }));
 
@@ -249,6 +255,9 @@ export const useEasterEggGlow = () => useCanvasStore((state) => state.easterEggG
 
 /** Get set easter egg glow action */
 export const useSetEasterEggGlow = () => useCanvasStore((state) => state.setEasterEggGlow);
+
+/** Get fitView request id */
+export const useFitViewRequestId = () => useCanvasStore((state) => state.fitViewRequestId);
 
 /** Get link creation context (legacy API shape) */
 export const useLinkCreationContext = () => {

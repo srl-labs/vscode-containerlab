@@ -15,6 +15,7 @@ import type {
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 import { useGraphStore } from "../stores/graphStore";
 import { useTopoViewerStore } from "../stores/topoViewerStore";
+import { useCanvasStore } from "../stores/canvasStore";
 import { applyGroupMembershipToNodes } from "../annotations/groupMembership";
 import { annotationsToNodes } from "../annotations/annotationNodeConverters";
 import { pruneEdgeAnnotations } from "../annotations/edgeAnnotations";
@@ -101,8 +102,7 @@ export function applySnapshotToStores(
   const cleanedEdgeAnnotations = pruneEdgeAnnotations(annotations.edgeAnnotations, edges);
 
   const graphStore = useGraphStore.getState();
-  graphStore.setNodes(mergedNodes);
-  graphStore.setEdges(edges as unknown as Edge[]);
+  graphStore.setGraph(mergedNodes, edges as unknown as Edge[]);
 
   const offset = parseEndpointLabelOffset(annotations.viewerSettings.endpointLabelOffset);
 
@@ -116,4 +116,8 @@ export function applySnapshotToStores(
     canUndo: snapshot.canUndo,
     canRedo: snapshot.canRedo
   });
+
+  if (options.isInitialLoad) {
+    useCanvasStore.getState().requestFitView();
+  }
 }

@@ -32,9 +32,9 @@ export function computeFullPrefix(parsed: ClabTopology, clabName: string): strin
 export function isPresetLayout(parsed: ClabTopology, annotations?: TopologyAnnotations): boolean {
   const topology = parsed.topology;
   if (!topology || !topology.nodes) return false;
-  const nodeAnnotations = annotations?.nodeAnnotations;
+  const annotationMap = createNodeAnnotationsMap(annotations);
   return Object.keys(topology.nodes).every((nodeName) => {
-    const ann = nodeAnnotations?.find((na) => na.id === nodeName);
+    const ann = annotationMap.get(nodeName);
     return ann?.position !== undefined;
   });
 }

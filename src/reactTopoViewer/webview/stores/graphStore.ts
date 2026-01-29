@@ -24,6 +24,7 @@ export interface GraphActions {
   // Core setters
   setNodes: (nodesOrUpdater: Node[] | ((prev: Node[]) => Node[])) => void;
   setEdges: (edgesOrUpdater: Edge[] | ((prev: Edge[]) => Edge[])) => void;
+  setGraph: (nodes: Node[], edges: Edge[]) => void;
 
   // React Flow change handlers
   onNodesChange: (changes: NodeChange[]) => void;
@@ -70,6 +71,10 @@ export const useGraphStore = createWithEqualityFn<GraphStore>((set, get) => ({
     set((state) => ({
       edges: typeof edgesOrUpdater === "function" ? edgesOrUpdater(state.edges) : edgesOrUpdater
     }));
+  },
+
+  setGraph: (nodes, edges) => {
+    set({ nodes, edges });
   },
 
   // React Flow change handlers
@@ -231,6 +236,7 @@ export const useGraphActions = () =>
     (state) => ({
       setNodes: state.setNodes,
       setEdges: state.setEdges,
+      setGraph: state.setGraph,
       onNodesChange: state.onNodesChange,
       onEdgesChange: state.onEdgesChange,
       addNode: state.addNode,

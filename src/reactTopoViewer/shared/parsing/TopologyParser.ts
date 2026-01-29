@@ -62,11 +62,17 @@ export class TopologyParser {
    * @returns Parse result with elements, migrations, and metadata
    */
   static parse(yamlContent: string, options: ParseOptions = {}): ParseResult {
-    const log = options.logger ?? nullLogger;
-
-    // Parse YAML
     const doc = YAML.parseDocument(yamlContent);
     const parsed = doc.toJS() as ClabTopology;
+    return TopologyParser.parseFromParsed(parsed, options);
+  }
+
+  /**
+   * Parses a pre-parsed topology object into parsed elements (internal format).
+   * Use this to avoid redundant YAML parsing when a document has already been parsed.
+   */
+  static parseFromParsed(parsed: ClabTopology, options: ParseOptions = {}): ParseResult {
+    const log = options.logger ?? nullLogger;
 
     // Get basic info
     const labName = options.labName ?? getLabName(parsed);
@@ -129,10 +135,40 @@ export class TopologyParser {
   }
 
   /**
+   * Parses a pre-parsed topology object into ReactFlow nodes/edges.
+   */
+  static parseToReactFlowFromParsed(
+    parsed: ClabTopology,
+    options: ParseOptions = {}
+  ): ParseResultRF {
+    const result = TopologyParser.parseFromParsed(parsed, options);
+    const topology = convertElementsToTopologyData(result.elements);
+
+    return {
+      topology,
+      labName: result.labName,
+      prefix: result.prefix,
+      isPresetLayout: result.isPresetLayout,
+      pendingMigrations: result.pendingMigrations,
+      graphLabelMigrations: result.graphLabelMigrations
+    };
+  }
+
+  /**
    * Parses YAML for editor mode and returns ReactFlow format.
    */
   static parseForEditorRF(yamlContent: string, annotations?: TopologyAnnotations): ParseResultRF {
     return TopologyParser.parseToReactFlow(yamlContent, { annotations });
+  }
+
+  /**
+   * Parses a pre-parsed topology object for editor mode and returns ReactFlow format.
+   */
+  static parseForEditorRFParsed(
+    parsed: ClabTopology,
+    annotations?: TopologyAnnotations
+  ): ParseResultRF {
+    return TopologyParser.parseToReactFlowFromParsed(parsed, { annotations });
   }
 
   // ============================================================================
@@ -240,6 +276,16 @@ export function parseTopologyToReactFlow(
 }
 
 /**
+ * Parses a pre-parsed topology object to ReactFlow format.
+ */
+export function parseTopologyToReactFlowFromParsed(
+  parsed: ClabTopology,
+  options?: ParseOptions
+): ParseResultRF {
+  return TopologyParser.parseToReactFlowFromParsed(parsed, options);
+}
+
+/**
  * Parses a topology for editor mode to ReactFlow format.
  * Convenience function that wraps TopologyParser.parseForEditorRF().
  */
@@ -248,4 +294,14 @@ export function parseTopologyForEditorRF(
   annotations?: TopologyAnnotations
 ): ParseResultRF {
   return TopologyParser.parseForEditorRF(yamlContent, annotations);
+}
+
+/**
+ * Parses a pre-parsed topology object for editor mode.
+ */
+export function parseTopologyForEditorRFParsed(
+  parsed: ClabTopology,
+  annotations?: TopologyAnnotations
+): ParseResultRF {
+  return TopologyParser.parseForEditorRFParsed(parsed, annotations);
 }

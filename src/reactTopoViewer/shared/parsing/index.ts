@@ -40,7 +40,9 @@
 export {
   TopologyParser,
   parseTopologyToReactFlow,
-  parseTopologyForEditorRF
+  parseTopologyToReactFlowFromParsed,
+  parseTopologyForEditorRF,
+  parseTopologyForEditorRFParsed
 } from "./TopologyParser";
 
 // Core types

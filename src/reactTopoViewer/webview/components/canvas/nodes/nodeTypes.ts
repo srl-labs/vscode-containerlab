@@ -10,7 +10,9 @@ import {
 } from "../../../annotations/annotationNodeConverters";
 
 import { TopologyNode } from "./TopologyNode";
+import { TopologyNodeLite } from "./TopologyNodeLite";
 import { NetworkNode } from "./NetworkNode";
+import { NetworkNodeLite } from "./NetworkNodeLite";
 import { FreeTextNode } from "./FreeTextNode";
 import { FreeShapeNode } from "./FreeShapeNode";
 import { GroupNode } from "./GroupNode";
@@ -21,6 +23,17 @@ import { GroupNode } from "./GroupNode";
 export const nodeTypes: NodeTypes = {
   "topology-node": TopologyNode,
   "network-node": NetworkNode,
+  [FREE_TEXT_NODE_TYPE]: FreeTextNode,
+  [FREE_SHAPE_NODE_TYPE]: FreeShapeNode,
+  [GROUP_NODE_TYPE]: GroupNode
+};
+
+/**
+ * Lightweight node registry for large/zoomed-out graphs.
+ */
+export const nodeTypesLite: NodeTypes = {
+  "topology-node": TopologyNodeLite,
+  "network-node": NetworkNodeLite,
   [FREE_TEXT_NODE_TYPE]: FreeTextNode,
   [FREE_SHAPE_NODE_TYPE]: FreeShapeNode,
   [GROUP_NODE_TYPE]: GroupNode

@@ -44,7 +44,7 @@ import {
   useSourceNodePosition,
   GRID_SIZE
 } from "../../hooks/canvas";
-import { useCanvasStore } from "../../stores/canvasStore";
+import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
 import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
@@ -55,9 +55,9 @@ import {
   buildNodeContextMenu,
   buildPaneContextMenu
 } from "./contextMenuBuilders";
-import { edgeTypes } from "./edges";
+import { edgeTypes, edgeTypesLite } from "./edges";
 import { CustomConnectionLine, LinkCreationLine } from "./LinkPreview";
-import { nodeTypes } from "./nodes";
+import { nodeTypes, nodeTypesLite } from "./nodes";
 import type {
   AnnotationHandlers,
   EdgeLabelMode,
@@ -688,6 +688,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
     const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
     const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+    const fitViewRequestId = useFitViewRequestId();
+    const lastFitViewRequestRef = useRef(0);
+    const [isReactFlowReady, setIsReactFlowReady] = useState(false);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
 
@@ -713,6 +716,16 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     });
     const isGeoEdit = isGeoEditable;
     useGeoWheelZoom(geoLayout, isGeoLayout, isGeoEdit, canvasContainerRef);
+
+    useEffect(() => {
+      if (fitViewRequestId <= lastFitViewRequestRef.current) return;
+      if (!isReactFlowReady || !reactFlowInstanceRef.current || allNodes.length === 0) return;
+      if (isGeoLayout) return;
+      lastFitViewRequestRef.current = fitViewRequestId;
+      setTimeout(() => {
+        void reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 });
+      }, 50);
+    }, [fitViewRequestId, allNodes.length, isGeoLayout, isReactFlowReady]);
 
     // Refs for context menu (to avoid re-renders)
     const { nodesRef } = useGraphRefs(allNodes, allEdges);
@@ -770,6 +783,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       allNodes.length,
       allEdges.length,
       linkLabelMode
+    );
+    const activeNodeTypes = useMemo(
+      () => (isLowDetail ? nodeTypesLite : nodeTypes),
+      [isLowDetail]
+    );
+    const activeEdgeTypes = useMemo(
+      () => (isLowDetail ? edgeTypesLite : edgeTypes),
+      [isLowDetail]
     );
     useSyncCanvasStore({
       linkSourceNode,
@@ -859,7 +880,15 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       }
     );
 
-    const wrappedOnInit = useWrappedOnInit(handlers.onInit, onInitProp);
+    const handleCanvasInit = useCallback(
+      (instance: ReactFlowInstance) => {
+        handlers.onInit(instance);
+        setIsReactFlowReady(true);
+      },
+      [handlers.onInit]
+    );
+
+    const wrappedOnInit = useWrappedOnInit(handleCanvasInit, onInitProp);
 
     // Drag-drop handlers for node palette
     const handleDragOver = useCallback((event: React.DragEvent) => {
@@ -947,8 +976,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         <ReactFlow
           nodes={allNodes}
           edges={allEdges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
+          nodeTypes={activeNodeTypes}
+          edgeTypes={activeEdgeTypes}
           onNodesChange={handlers.handleNodesChange}
           onEdgesChange={onEdgesChange}
           onInit={wrappedOnInit}

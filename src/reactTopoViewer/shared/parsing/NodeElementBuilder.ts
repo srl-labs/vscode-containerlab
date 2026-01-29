@@ -8,6 +8,7 @@ import type {
   ParsedElement,
   ClabTopology,
   NodeAnnotation,
+  NetworkNodeAnnotation,
   TopologyAnnotations
 } from "../types/topology";
 import { DEFAULT_INTERFACE_PATTERNS } from "../constants/interfacePatterns";
@@ -249,15 +250,24 @@ function resolveDisplayName(
   return isBridgeNode && annotatedLabel ? annotatedLabel : nodeName;
 }
 
-function resolveNodeAnnotation(
-  nodeName: string,
+function buildNodeAnnotationLookup(
   nodeAnnotations?: NodeAnnotation[],
-  networkNodeAnnotations?: NodeAnnotation[]
-): NodeAnnotation | undefined {
-  const nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName);
-  if (nodeAnn) return nodeAnn;
-  const networkAnn = networkNodeAnnotations?.find((na) => na.id === nodeName);
-  return networkAnn ? { id: networkAnn.id, position: networkAnn.position } : undefined;
+  networkNodeAnnotations?: NetworkNodeAnnotation[]
+): Map<string, NodeAnnotation> {
+  const lookup = new Map<string, NodeAnnotation>();
+  if (nodeAnnotations) {
+    for (const annotation of nodeAnnotations) {
+      lookup.set(annotation.id, annotation);
+    }
+  }
+  if (networkNodeAnnotations) {
+    for (const annotation of networkNodeAnnotations) {
+      if (!lookup.has(annotation.id)) {
+        lookup.set(annotation.id, { id: annotation.id, position: annotation.position });
+      }
+    }
+  }
+  return lookup;
 }
 
 function shouldSkipAliasBridgeNode(
@@ -368,13 +378,14 @@ export function addNodeElements(
 
   const nodeAnnotations = opts.annotations?.nodeAnnotations;
   const networkNodeAnnotations = opts.annotations?.networkNodeAnnotations;
+  const nodeAnnotationLookup = buildNodeAnnotationLookup(nodeAnnotations, networkNodeAnnotations);
   const interfacePatternMapping = buildInterfacePatternMapping();
   let nodeIndex = 0;
 
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
     // Check nodeAnnotations first, then fallback to networkNodeAnnotations for bridges
     // (backwards compatibility - bridges were previously saved to networkNodeAnnotations)
-    const nodeAnn = resolveNodeAnnotation(nodeName, nodeAnnotations, networkNodeAnnotations);
+    const nodeAnn = nodeAnnotationLookup.get(nodeName);
     // If this bridge node is configured as an alias (yamlNodeId points elsewhere),
     // skip rendering the base YAML node to avoid duplicate visuals.
     if (shouldSkipAliasBridgeNode(nodeName, nodeAnn, nodeObj)) {

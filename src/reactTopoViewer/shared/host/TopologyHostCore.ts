@@ -508,7 +508,7 @@ export class TopologyHostCore implements TopologyHost {
       annotations = await this.annotationsIO.loadAnnotations(this.yamlFilePath, true);
     }
 
-    const parseResult = this.parseTopology(yamlContent, annotations);
+    const parseResult = this.parseTopology(yamlContent, annotations, parsed);
 
     const migrationsApplied = await this.applyMigrations(
       annotations,
@@ -520,7 +520,7 @@ export class TopologyHostCore implements TopologyHost {
     }
 
     const finalParseResult = migrationsApplied
-      ? this.parseTopology(yamlContent, annotations)
+      ? this.parseTopology(yamlContent, annotations, parsed)
       : parseResult;
     const topology = finalParseResult.topology;
     const labName = finalParseResult.labName;
@@ -544,7 +544,8 @@ export class TopologyHostCore implements TopologyHost {
 
   private parseTopology(
     yamlContent: string,
-    annotations: TopologyAnnotations
+    annotations: TopologyAnnotations,
+    parsed?: ClabTopology
   ): {
     topology: TopologyData;
     labName?: string;
@@ -552,13 +553,21 @@ export class TopologyHostCore implements TopologyHost {
     graphLabelMigrations: GraphLabelMigration[];
   } {
     if (this.mode === "view") {
-      return TopologyParser.parseToReactFlow(yamlContent, {
-        annotations,
-        containerDataProvider: this.containerDataProvider,
-        logger: this.parserLogger
-      });
+      return parsed
+        ? TopologyParser.parseToReactFlowFromParsed(parsed, {
+            annotations,
+            containerDataProvider: this.containerDataProvider,
+            logger: this.parserLogger
+          })
+        : TopologyParser.parseToReactFlow(yamlContent, {
+            annotations,
+            containerDataProvider: this.containerDataProvider,
+            logger: this.parserLogger
+          });
     }
-    return TopologyParser.parseForEditorRF(yamlContent, annotations);
+    return parsed
+      ? TopologyParser.parseForEditorRFParsed(parsed, annotations)
+      : TopologyParser.parseForEditorRF(yamlContent, annotations);
   }
 
   private async applyMigrations(
