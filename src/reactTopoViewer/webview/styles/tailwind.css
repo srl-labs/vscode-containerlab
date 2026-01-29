@@ -7,6 +7,7 @@
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 @import "maplibre-gl/dist/maplibre-gl.css";
 @import "uplot/dist/uPlot.min.css";
+@import "@xyflow/react/dist/style.css";
 
 /* Custom CSS imports (must come before tailwindcss for proper processing) */
 @import "./base.css";

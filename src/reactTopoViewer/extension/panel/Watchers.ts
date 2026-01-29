@@ -76,6 +76,9 @@ export class WatcherManager {
     const fileUri = vscode.Uri.file(yamlFilePath);
     this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
+    // Initialize content caches to prevent false-positive external change detection
+    void this.initializeContentCaches(yamlFilePath);
+
     this.fileWatcher.onDidChange(() => {
       void this.handleExternalYamlChange(
         "change",
@@ -100,6 +103,25 @@ export class WatcherManager {
     this.annotationsWatcher.onDidChange(() => handleAnnotations("change"));
     this.annotationsWatcher.onDidCreate(() => handleAnnotations("create"));
     this.annotationsWatcher.onDidDelete(() => handleAnnotations("delete"));
+  }
+
+  /**
+   * Initialize content caches with current file contents
+   * This prevents the first internal save from being detected as an external change
+   */
+  private async initializeContentCaches(yamlFilePath: string): Promise<void> {
+    try {
+      this.lastYamlContent = await nodeFsAdapter.readFile(yamlFilePath);
+    } catch {
+      this.lastYamlContent = undefined;
+    }
+
+    const annotationsPath = `${yamlFilePath}.annotations.json`;
+    try {
+      this.lastAnnotationsContent = await nodeFsAdapter.readFile(annotationsPath);
+    } catch {
+      this.lastAnnotationsContent = undefined;
+    }
   }
 
   /**

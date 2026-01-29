@@ -52,18 +52,38 @@ export class ReactTopoViewer {
   private messageRouter: MessageRouter | undefined;
   private splitViewManager: SplitViewManager = new SplitViewManager();
   private internalUpdateDepth = 0;
+  private internalUpdateDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.watcherManager = new WatcherManager();
   }
 
+  /**
+   * Set internal update flag with debounced clearing.
+   * When setting to false, we delay the actual clearing to give file watchers
+   * time to fire and be ignored (since they check isInternalUpdate).
+   */
   private setInternalUpdate(updating: boolean): void {
     if (updating) {
+      // Clear any pending debounce timer when starting a new internal update
+      if (this.internalUpdateDebounceTimer) {
+        clearTimeout(this.internalUpdateDebounceTimer);
+        this.internalUpdateDebounceTimer = undefined;
+      }
       this.internalUpdateDepth += 1;
       return;
     }
-    this.internalUpdateDepth = Math.max(0, this.internalUpdateDepth - 1);
+
+    // Debounce the clearing of internal update flag to allow file watchers
+    // to fire and be ignored. File system events can be delayed by 100-200ms.
+    if (this.internalUpdateDebounceTimer) {
+      clearTimeout(this.internalUpdateDebounceTimer);
+    }
+    this.internalUpdateDebounceTimer = setTimeout(() => {
+      this.internalUpdateDepth = Math.max(0, this.internalUpdateDepth - 1);
+      this.internalUpdateDebounceTimer = undefined;
+    }, 250);
   }
 
   private async loadRunningLabsData(): Promise<Record<string, ClabLabTreeNode> | undefined> {
@@ -114,6 +134,10 @@ export class ReactTopoViewer {
       () => {
         this.currentPanel = undefined;
         this.internalUpdateDepth = 0;
+        if (this.internalUpdateDebounceTimer) {
+          clearTimeout(this.internalUpdateDebounceTimer);
+          this.internalUpdateDebounceTimer = undefined;
+        }
         this.topologyHost?.dispose();
         this.topologyHost = undefined;
         this.watcherManager.dispose();
