@@ -27,7 +27,8 @@ function parseBasicProps(
     kind: getString(extra.kind) || getString(rawData.kind),
     type: getString(extra.type) || getString(rawData.type),
     image: getString(extra.image) || getString(rawData.image),
-    icon: (rawData.topoViewerRole as string) || "",
+    // ReactFlow node data uses "role", parsed element format uses "topoViewerRole"
+    icon: (rawData.role as string) || (rawData.topoViewerRole as string) || "",
     iconColor: rawData.iconColor as string | undefined,
     iconCornerRadius: rawData.iconCornerRadius as number | undefined
   };

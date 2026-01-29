@@ -69,6 +69,17 @@ function updateNodeExtraData(data: NodeEditorData): Record<string, unknown> {
       delete newExtraData[key];
     }
   }
+  // Include annotation properties for visual updates (icon, color, corner radius)
+  // These are needed by graphStore.updateNodeData to update the canvas rendering
+  if (data.icon !== undefined) {
+    newExtraData.topoViewerRole = data.icon;
+  }
+  if (data.iconColor !== undefined) {
+    newExtraData.iconColor = data.iconColor;
+  }
+  if (data.iconCornerRadius !== undefined) {
+    newExtraData.iconCornerRadius = data.iconCornerRadius;
+  }
   return newExtraData;
 }
 

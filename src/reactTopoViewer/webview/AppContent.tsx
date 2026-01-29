@@ -30,6 +30,7 @@ import {
   useClipboardHandlers,
   useCustomNodeCommands,
   useGraphCreation,
+  useIconReconciliation,
   useNavbarCommands,
   useUndoRedoControls
 } from "./hooks/app";
@@ -254,6 +255,9 @@ export const AppContent: React.FC<AppContentProps> = ({
   });
 
   const easterEgg = useEasterEgg({});
+
+  // Track used custom icons and copy them to workspace .clab-icons/ folder
+  useIconReconciliation(nodes);
 
   const handleZoomToFit = React.useCallback(() => {
     rfInstance?.fitView({ padding: 0.1 }).catch(() => {

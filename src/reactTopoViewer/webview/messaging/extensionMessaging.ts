@@ -79,3 +79,17 @@ export function sendSaveCustomNode(data: SaveCustomNodeData): void {
  * Alias for sendCommandToExtension - simpler name for common use cases.
  */
 export const postCommand = sendCommandToExtension;
+
+// ============================================================================
+// ICON RECONCILIATION
+// ============================================================================
+
+/**
+ * Trigger icon reconciliation on the extension side.
+ * This copies used custom icons from global to workspace, and removes unused ones.
+ *
+ * @param usedIcons - Array of custom icon names currently used by nodes
+ */
+export function sendIconReconcile(usedIcons: string[]): void {
+  sendCommandToExtension("icon-reconcile", { usedIcons });
+}

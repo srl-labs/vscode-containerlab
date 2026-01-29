@@ -62,21 +62,31 @@ export function generateSpecialNodeId(baseName: string, usedIds: Set<string>): s
 
 /**
  * Generate unique ID for regular nodes
- * Finds the highest existing number for the base name and continues from there.
- * E.g., if "srl1", "srl2", "srl4" exist and baseName is "srl1", returns "srl5"
+ * If baseName ends with digits, treat the entire baseName as the base and use "-N" suffix.
+ * Otherwise, append just "N" directly.
+ * E.g., "srl" → srl1, srl2; "iol-l2" → iol-l2-1, iol-l2-2
  */
 export function generateRegularNodeId(baseName: string, usedIds: Set<string>): string {
-  // Find trailing digits in baseName to extract the base
-  let i = baseName.length - 1;
-  while (i >= 0 && baseName[i] >= "0" && baseName[i] <= "9") i--;
-  const base = i < baseName.length - 1 ? baseName.slice(0, i + 1) : baseName;
+  // Check if baseName ends with a digit
+  const endsWithDigit = /\d$/.test(baseName);
 
+  if (endsWithDigit) {
+    // Use baseName as-is with "-N" suffix pattern
+    const separator = "-";
+    let num = 1;
+    while (usedIds.has(`${baseName}${separator}${num}`)) {
+      num++;
+    }
+    return `${baseName}${separator}${num}`;
+  }
+
+  // Original behavior for names not ending with digits
   // Find the highest number used for this base across ALL existing IDs
   let maxNum = 0;
   for (const id of usedIds) {
     // Check if this ID starts with the same base
-    if (id.startsWith(base)) {
-      const suffix = id.slice(base.length);
+    if (id.startsWith(baseName)) {
+      const suffix = id.slice(baseName.length);
       // Check if suffix is entirely digits
       if (suffix.length > 0 && /^\d+$/.test(suffix)) {
         const num = parseInt(suffix, 10);
@@ -88,7 +98,7 @@ export function generateRegularNodeId(baseName: string, usedIds: Set<string>): s
   }
 
   // Return the next number in sequence
-  return `${base}${maxNum + 1}`;
+  return `${baseName}${maxNum + 1}`;
 }
 
 /**

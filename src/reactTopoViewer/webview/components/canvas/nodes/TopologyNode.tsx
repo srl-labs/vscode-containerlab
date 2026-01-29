@@ -13,11 +13,12 @@ import {
   useNodeRenderConfig,
   useEasterEggGlow
 } from "../../../stores/canvasStore";
+import { useCustomIcons } from "../../../stores/topoViewerStore";
 
 import { buildNodeLabelStyle, HIDDEN_HANDLE_STYLE } from "./nodeStyles";
 
 /**
- * Map role to SVG node type
+ * Map role to SVG node type (for built-in icons only)
  */
 function getRoleSvgType(role: string): NodeType {
   const mapped = ROLE_SVG_MAP[role];
@@ -68,22 +69,38 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const { linkSourceNode } = useLinkCreationContext();
   const { suppressLabels } = useNodeRenderConfig();
   const easterEggGlow = useEasterEggGlow();
+  const customIcons = useCustomIcons();
 
   // Check if this node is a valid link target (in link creation mode)
   const isLinkTarget = linkSourceNode !== null;
 
-  // Generate the SVG icon URL (cached at module level in SvgGenerator)
-  const svgUrl = useMemo(() => {
+  // Build custom icon map for efficient lookup
+  const customIconMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ci of customIcons) {
+      map.set(ci.name, ci.dataUri);
+    }
+    return map;
+  }, [customIcons]);
+
+  // Generate the icon URL - check custom icons first, then built-in
+  const iconUrl = useMemo(() => {
+    // Check if role matches a custom icon
+    const customDataUri = customIconMap.get(role);
+    if (customDataUri) {
+      return customDataUri;
+    }
+    // Fall back to built-in SVG icons
     const svgType = getRoleSvgType(role);
     const color = iconColor || DEFAULT_ICON_COLOR;
     return generateEncodedSVG(svgType, color);
-  }, [role, iconColor]);
+  }, [role, iconColor, customIconMap]);
 
   // Build icon style with dynamic properties
   const iconStyle = useMemo((): React.CSSProperties => {
     const style: React.CSSProperties = {
       ...ICON_STYLE_BASE,
-      backgroundImage: `url(${svgUrl})`,
+      backgroundImage: `url(${iconUrl})`,
       borderRadius: iconCornerRadius ? `${iconCornerRadius}px` : 0,
       // Use outline for selection - doesn't affect layout
       outline: selected ? SELECTED_OUTLINE : "none",
@@ -99,7 +116,7 @@ const TopologyNodeComponent: React.FC<NodeProps> = ({ data, selected }) => {
     }
 
     return style;
-  }, [svgUrl, iconCornerRadius, selected, easterEggGlow]);
+  }, [iconUrl, iconCornerRadius, selected, easterEggGlow]);
 
   // Container style based on link target mode
   const containerStyle = isLinkTarget ? CONTAINER_STYLE_LINK_TARGET : CONTAINER_STYLE_BASE;
