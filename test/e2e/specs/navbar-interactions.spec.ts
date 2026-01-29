@@ -203,6 +203,30 @@ test.describe("Navbar Interactions", () => {
       // State should have changed
       expect(hasActiveClass).not.toBe(hasActiveClassAfter);
     });
+
+    test("shortcut display shows keypresses when enabled", async ({ page, topoViewerPage }) => {
+      const shortcutDisplayBtn = page.locator('[data-testid="navbar-shortcut-display"]');
+
+      // Enable shortcut display
+      await shortcutDisplayBtn.click();
+      await page.waitForTimeout(200);
+
+      // Verify button is active
+      await expect(shortcutDisplayBtn).toHaveClass(/active/);
+
+      // Click on canvas to ensure focus is not on input
+      const canvasCenter = await topoViewerPage.getCanvasCenter();
+      await page.mouse.click(canvasCenter.x, canvasCenter.y);
+      await page.waitForTimeout(100);
+
+      // Press a key
+      await page.keyboard.press("a");
+      await page.waitForTimeout(100);
+
+      // Shortcut display should show the key (may have multiple items including "Left Click" from mouse)
+      const keyDisplay = page.locator('.shortcut-display-item:has-text("A")');
+      await expect(keyDisplay).toBeVisible();
+    });
   });
 
   test.describe("Mode Badge Display", () => {
