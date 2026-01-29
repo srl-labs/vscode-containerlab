@@ -49,6 +49,7 @@ export interface NodeSaveData {
 
 /** Node annotation data that can be saved to annotations file */
 export interface NodeAnnotationData {
+  label?: string | null;
   icon?: string;
   iconColor?: string;
   iconCornerRadius?: number;
@@ -494,6 +495,7 @@ export function deleteNodeFromDoc(
 /** Apply annotation data to an annotation object */
 export function applyAnnotationData(
   annotation: {
+    label?: string;
     icon?: string;
     iconColor?: string;
     iconCornerRadius?: number;
@@ -503,6 +505,11 @@ export function applyAnnotationData(
   data?: NodeAnnotationData
 ): void {
   if (!data) return;
+  if (data.label === null) {
+    delete annotation.label;
+  } else if (data.label !== undefined) {
+    annotation.label = data.label;
+  }
   if (data.icon) annotation.icon = data.icon;
   if (data.iconColor) annotation.iconColor = data.iconColor;
   if (data.iconCornerRadius !== undefined) annotation.iconCornerRadius = data.iconCornerRadius;

@@ -198,6 +198,7 @@ export class TopologyIO {
       if (nodeData.position && nodeId) {
         const annotationData: NodeAnnotationData | undefined = nodeData.extraData
           ? {
+              label: nodeData.extraData.label as string | null | undefined,
               icon: nodeData.extraData.topoViewerRole as string | undefined,
               iconColor: nodeData.extraData.iconColor as string | undefined,
               iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
@@ -233,6 +234,7 @@ export class TopologyIO {
       const nodeId = result.renamed?.newId || nodeData.name || nodeData.id;
       if (nodeData.extraData && nodeId) {
         const annotationData: NodeAnnotationData = {
+          label: nodeData.extraData.label as string | null | undefined,
           icon: nodeData.extraData.topoViewerRole as string | undefined,
           iconColor: nodeData.extraData.iconColor as string | undefined,
           iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
@@ -240,6 +242,7 @@ export class TopologyIO {
         };
         // Only save if there's actual annotation data to save
         if (
+          annotationData.label !== undefined ||
           annotationData.icon ||
           annotationData.iconColor ||
           annotationData.iconCornerRadius !== undefined ||

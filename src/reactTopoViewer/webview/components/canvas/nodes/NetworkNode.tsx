@@ -29,6 +29,7 @@ function getNodeTypeColor(nodeType: string): string {
     case "vxlan":
       return "#8B5CF6"; // Purple
     case "bridge":
+    case "ovs-bridge":
       return "#F59E0B"; // Amber
     default:
       return "#6B7280"; // Gray

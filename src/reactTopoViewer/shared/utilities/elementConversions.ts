@@ -27,7 +27,8 @@ const NETWORK_NODE_ROLES = new Set([
   "vxlan",
   "vxlan-stitch",
   "dummy",
-  "bridge"
+  "bridge",
+  "ovs-bridge"
 ]);
 
 function getGeoCoordinates(

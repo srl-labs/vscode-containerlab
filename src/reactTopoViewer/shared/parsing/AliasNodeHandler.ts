@@ -261,12 +261,27 @@ export function rewireEdges(elements: ParsedElement[], mapping: Map<string, stri
       target?: string;
       sourceEndpoint?: string;
       targetEndpoint?: string;
+      extraData?: Record<string, unknown>;
     };
+    const originalSource = data.source;
+    const originalTarget = data.target;
     const srcAlias = mapping.get(`${data.source}|${data.sourceEndpoint || ""}`);
     const tgtAlias = mapping.get(`${data.target}|${data.targetEndpoint || ""}`);
     if (!srcAlias && !tgtAlias) continue;
-    if (srcAlias) data.source = srcAlias;
-    if (tgtAlias) data.target = tgtAlias;
+    const extra = { ...(data.extraData ?? {}) };
+    if (srcAlias) {
+      data.source = srcAlias;
+      if (originalSource) {
+        extra.yamlSourceNodeId = originalSource;
+      }
+    }
+    if (tgtAlias) {
+      data.target = tgtAlias;
+      if (originalTarget) {
+        extra.yamlTargetNodeId = originalTarget;
+      }
+    }
+    data.extraData = extra;
   }
 }
 

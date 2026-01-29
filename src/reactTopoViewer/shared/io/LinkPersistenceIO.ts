@@ -308,7 +308,9 @@ function createExtendedLink(doc: YAML.Document, linkData: LinkSaveData): YAML.YA
   linkMap.flow = false;
 
   const extra = linkData.extraData || {};
-  const linkType = extra.extType || "veth";
+  const inferredType = inferSpecialLinkType(linkData);
+  const rawType = typeof extra.extType === "string" ? extra.extType.trim() : "";
+  const linkType = rawType && rawType !== "veth" ? rawType : inferredType || "veth";
 
   linkMap.set("type", doc.createNode(linkType));
 
@@ -354,6 +356,8 @@ function hasExtendedProperties(linkData: LinkSaveData): boolean {
   )
     return true;
   if (extra.extType && extra.extType !== "veth") return true;
+  const inferredType = inferSpecialLinkType(linkData);
+  if (inferredType && inferredType !== "veth") return true;
 
   return false;
 }
@@ -370,6 +374,18 @@ function extractLinkTypeFromSpecialNode(nodeId: string): string | null {
     return null;
   }
   return nodeId.substring(0, colonIdx);
+}
+
+function inferSpecialLinkType(linkData: LinkSaveData): string | null {
+  if (isSpecialNode(linkData.source)) {
+    const sourceType = extractLinkTypeFromSpecialNode(linkData.source);
+    if (sourceType) return sourceType;
+  }
+  if (isSpecialNode(linkData.target)) {
+    const targetType = extractLinkTypeFromSpecialNode(linkData.target);
+    if (targetType) return targetType;
+  }
+  return null;
 }
 
 /**
@@ -496,6 +512,22 @@ function getLookupKey(linkData: LinkSaveData): string {
 }
 
 /**
+ * Builds a lookup key that treats all endpoints literally.
+ * This is used as a fallback for legacy links that used special node IDs
+ * directly in endpoints arrays (e.g. "host:eth0") instead of type-based links.
+ */
+function getLegacyLookupKey(linkData: LinkSaveData): string {
+  const source = linkData.originalSource || linkData.source;
+  const target = linkData.originalTarget || linkData.target;
+  const sourceEndpoint = linkData.originalSourceEndpoint ?? linkData.sourceEndpoint;
+  const targetEndpoint = linkData.originalTargetEndpoint ?? linkData.targetEndpoint;
+
+  const src = sourceEndpoint ? `${source}:${sourceEndpoint}` : source;
+  const dst = targetEndpoint ? `${target}:${targetEndpoint}` : target;
+  return [src, dst].slice().sort().join("|");
+}
+
+/**
  * Adds a new link to the topology
  */
 export function addLinkToDoc(
@@ -561,20 +593,32 @@ export function editLinkInDoc(
 
     logger.info(`[SaveTopology] Looking for link with key: ${lookupKey}`);
 
-    for (let i = 0; i < linksSeq.items.length; i++) {
-      const item = linksSeq.items[i];
-      if (!YAML.isMap(item)) continue;
+    const tryUpdateWithKey = (key: string): boolean => {
+      for (let i = 0; i < linksSeq.items.length; i++) {
+        const item = linksSeq.items[i];
+        if (!YAML.isMap(item)) continue;
 
-      const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
-      if (existingKey === lookupKey) {
-        // Replace with updated link (using the new values)
-        const updatedLink = hasExtendedProperties(linkData)
-          ? createExtendedLink(doc, linkData)
-          : createBriefLink(doc, linkData);
-        linksSeq.items[i] = updatedLink;
-        found = true;
-        logger.info(`[SaveTopology] Found and updated link at index ${i}`);
-        break;
+        const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
+        if (existingKey === key) {
+          // Replace with updated link (using the new values)
+          const updatedLink = hasExtendedProperties(linkData)
+            ? createExtendedLink(doc, linkData)
+            : createBriefLink(doc, linkData);
+          linksSeq.items[i] = updatedLink;
+          logger.info(`[SaveTopology] Found and updated link at index ${i}`);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    found = tryUpdateWithKey(lookupKey);
+
+    if (!found) {
+      const legacyKey = getLegacyLookupKey(linkData);
+      if (legacyKey !== lookupKey) {
+        logger.info(`[SaveTopology] Falling back to legacy link key: ${legacyKey}`);
+        found = tryUpdateWithKey(legacyKey);
       }
     }
 
@@ -612,6 +656,17 @@ export function deleteLinkFromDoc(
       const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
       return existingKey !== targetKey;
     });
+
+    if (linksSeq.items.length === initialLength) {
+      const legacyKey = getLegacyLookupKey(linkData);
+      if (legacyKey !== targetKey) {
+        linksSeq.items = linksSeq.items.filter((item) => {
+          if (!YAML.isMap(item)) return true;
+          const existingKey = getYamlLinkKey(item as YAML.YAMLMap);
+          return existingKey !== legacyKey;
+        });
+      }
+    }
 
     if (linksSeq.items.length === initialLength) {
       return { success: false, error: "Link not found" };

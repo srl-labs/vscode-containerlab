@@ -10,7 +10,7 @@ import type {
   NetworkEditorData,
   NodeEditorData
 } from "../../../shared/types/editors";
-import type { EdgeAnnotation } from "../../../shared/types/topology";
+import type { EdgeAnnotation, NodeAnnotation } from "../../../shared/types/topology";
 import {
   convertEditorDataToYaml,
   convertEditorDataToNodeSaveData,
@@ -23,13 +23,14 @@ import {
   saveEdgeAnnotations,
   saveNetworkNodesFromGraph
 } from "../../services";
+import { requestSnapshot } from "../../services/topologyHostClient";
 import { useGraphState, useGraphStore } from "../../stores/graphStore";
 import {
   findEdgeAnnotation,
   upsertEdgeLabelOffsetAnnotation
 } from "../../annotations/edgeAnnotations";
 import { convertEditorDataToLinkSaveData } from "../../utils/linkEditorConversions";
-import { BRIDGE_NETWORK_TYPES } from "../../utils/networkNodeTypes";
+import { BRIDGE_NETWORK_TYPES, getNetworkType } from "../../utils/networkNodeTypes";
 import { getViewportCenter } from "../../utils/viewportUtils";
 
 // ============================================================================
@@ -465,12 +466,22 @@ function buildNetworkExtraData(data: NetworkEditorData): Record<string, unknown>
   return extraData;
 }
 
+function sanitizeLinkExtraData(
+  extraData?: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  if (!extraData) return undefined;
+  const cleaned = { ...extraData };
+  delete cleaned.yamlSourceNodeId;
+  delete cleaned.yamlTargetNodeId;
+  return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
 export function useNetworkEditorHandlers(
   editNetwork: (id: string | null) => void,
   editingNetworkData: NetworkEditorData | null,
   renameNode?: RenameNodeCallback
 ) {
-  const { edges } = useGraphState();
+  const { edges, nodes } = useGraphState();
   const initialDataRef = React.useRef<NetworkEditorData | null>(null);
 
   React.useEffect(() => {
@@ -488,14 +499,40 @@ export function useNetworkEditorHandlers(
 
   const applyGraphUpdates = React.useCallback(
     (data: NetworkEditorData, newNodeId: string) => {
-      const label = data.label || newNodeId;
+      let label = data.label || newNodeId;
+      if (HOST_INTERFACE_TYPES.has(data.networkType)) {
+        const isDefaultLabel = !data.label || data.label === data.id;
+        if (isDefaultLabel) {
+          label = newNodeId;
+        }
+      }
       if (data.id !== newNodeId && renameNode) {
         renameNode(data.id, newNodeId, label);
       }
-      const extraData = convertNetworkEditorDataToYaml(data);
-      const updateNode = useGraphStore.getState().updateNode;
+      const graphState = useGraphStore.getState();
+      const updateNode = graphState.updateNode;
+      const updateNodeData = graphState.updateNodeData;
+      const existingNode =
+        graphState.nodes.find((node) => node.id === newNodeId) ??
+        graphState.nodes.find((node) => node.id === data.id);
+      const existingExtra =
+        ((existingNode?.data as Record<string, unknown> | undefined)?.extraData as
+          | Record<string, unknown>
+          | undefined) ?? {};
+
+      let nextExtraData: Record<string, unknown>;
+      if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
+        // Preserve bridge metadata (e.g., extYamlNodeId) while updating kind.
+        nextExtraData = { ...existingExtra, ...convertNetworkEditorDataToYaml(data) };
+      } else if (LINK_BASED_NETWORK_TYPES.has(data.networkType)) {
+        // Mirror main-branch behavior: keep only network link properties on the node.
+        nextExtraData = buildNetworkExtraData(data);
+      } else {
+        nextExtraData = convertNetworkEditorDataToYaml(data);
+      }
+
       updateNode(newNodeId, { data: { label, name: label } });
-      useGraphStore.getState().updateNodeData(newNodeId, extraData);
+      updateNodeData(newNodeId, nextExtraData);
     },
     [renameNode]
   );
@@ -547,11 +584,188 @@ export function useNetworkEditorHandlers(
       id: data.id,
       name: newNodeId,
       extraData: {
-        kind: data.networkType
+        kind: data.networkType,
+        label: data.label?.trim() ? data.label.trim() : null
       }
     };
     void executeTopologyCommand({ command: "editNode", payload: saveData });
   }, []);
+
+  const persistBridgeAlias = React.useCallback(
+    async (data: NetworkEditorData, newNodeId: string) => {
+      if (!BRIDGE_NETWORK_TYPES.has(data.networkType)) return false;
+      if (!newNodeId || newNodeId === data.id) return false;
+
+      const baseNode = nodes.find((node) => node.id === newNodeId);
+      if (!baseNode) return false;
+      const baseType = getNetworkType((baseNode.data ?? {}) as Record<string, unknown>);
+      if (!baseType || !BRIDGE_NETWORK_TYPES.has(baseType)) return false;
+
+      const aliasId = data.id;
+      const connectedEdges = edges.filter(
+        (edge) => edge.source === aliasId || edge.target === aliasId
+      );
+
+      const edgeInfos = connectedEdges.map((edge) => {
+        const edgeData = (edge.data ?? {}) as {
+          sourceEndpoint?: string;
+          targetEndpoint?: string;
+          extraData?: Record<string, unknown>;
+        };
+        const interfaceName =
+          edge.source === aliasId ? edgeData.sourceEndpoint : edgeData.targetEndpoint;
+        return {
+          edge,
+          interfaceName
+        };
+      });
+
+      const interfaceSet = new Set(
+        edgeInfos
+          .map((info) => info.interfaceName)
+          .filter((iface): iface is string => typeof iface === "string" && iface.length > 0)
+      );
+
+      const snapshot = await requestSnapshot();
+      const annotations = snapshot.annotations ?? {};
+      const nodeAnnotations = [...(annotations.nodeAnnotations ?? [])];
+      const existingAnn = nodeAnnotations.find((ann) => ann.id === aliasId);
+      const existingInterface =
+        typeof existingAnn?.yamlInterface === "string" && existingAnn.yamlInterface.trim()
+          ? existingAnn.yamlInterface.trim()
+          : undefined;
+      const aliasAlreadyMapped =
+        existingAnn?.yamlNodeId === newNodeId && Boolean(existingInterface);
+      const interfaceCandidates = interfaceSet.size > 0 ? Array.from(interfaceSet) : [];
+      const primaryInterface =
+        (existingInterface && interfaceSet.has(existingInterface)) ||
+        (existingInterface && interfaceSet.size === 0)
+          ? existingInterface
+          : interfaceCandidates[0];
+
+      if (!primaryInterface) {
+        return false;
+      }
+
+      const graphState = useGraphStore.getState();
+      const aliasNode = graphState.nodes.find((node) => node.id === aliasId);
+      const aliasLabel = data.label?.trim() || aliasId;
+      const existingExtra =
+        ((aliasNode?.data as Record<string, unknown> | undefined)?.extraData as
+          | Record<string, unknown>
+          | undefined) ?? {};
+      const nextExtra = {
+        ...existingExtra,
+        ...convertNetworkEditorDataToYaml(data),
+        extYamlNodeId: newNodeId
+      };
+
+      graphState.updateNode(aliasId, { data: { label: aliasLabel, name: aliasLabel } });
+      graphState.updateNodeData(aliasId, nextExtra);
+
+      const updatedAnnotations: NodeAnnotation[] = nodeAnnotations.filter(
+        (ann) => ann.id !== aliasId
+      );
+      const aliasAnnotation: NodeAnnotation = {
+        ...(existingAnn ?? { id: aliasId }),
+        id: aliasId,
+        yamlNodeId: newNodeId,
+        yamlInterface: primaryInterface,
+        label: aliasLabel
+      };
+      if (!aliasAnnotation.position && aliasNode?.position) {
+        aliasAnnotation.position = aliasNode.position;
+      }
+      updatedAnnotations.push(aliasAnnotation);
+
+      const linkCommands = edgeInfos.map((info) => {
+        const edgeData = info.edge.data as
+          | {
+              sourceEndpoint?: string;
+              targetEndpoint?: string;
+              extraData?: Record<string, unknown>;
+            }
+          | undefined;
+        const extra = edgeData?.extraData;
+        const yamlSource =
+          typeof extra?.yamlSourceNodeId === "string" && extra.yamlSourceNodeId.length > 0
+            ? extra.yamlSourceNodeId
+            : aliasAlreadyMapped && info.edge.source === aliasId
+              ? newNodeId
+              : info.edge.source;
+        const yamlTarget =
+          typeof extra?.yamlTargetNodeId === "string" && extra.yamlTargetNodeId.length > 0
+            ? extra.yamlTargetNodeId
+            : aliasAlreadyMapped && info.edge.target === aliasId
+              ? newNodeId
+              : info.edge.target;
+        const nextSource = info.edge.source === aliasId ? newNodeId : info.edge.source;
+        const nextTarget = info.edge.target === aliasId ? newNodeId : info.edge.target;
+        return {
+          command: "editLink" as const,
+          payload: {
+            id: info.edge.id,
+            source: nextSource,
+            target: nextTarget,
+            sourceEndpoint: edgeData?.sourceEndpoint,
+            targetEndpoint: edgeData?.targetEndpoint,
+            extraData: sanitizeLinkExtraData(extra),
+            originalSource: yamlSource,
+            originalTarget: yamlTarget,
+            originalSourceEndpoint: edgeData?.sourceEndpoint,
+            originalTargetEndpoint: edgeData?.targetEndpoint
+          }
+        };
+      });
+
+      if (linkCommands.length > 0) {
+        await executeTopologyCommands(linkCommands, { applySnapshot: false });
+      }
+
+      await executeTopologyCommand(
+        { command: "deleteNode", payload: { id: aliasId } },
+        { applySnapshot: false }
+      );
+
+      await executeTopologyCommand(
+        { command: "setAnnotations", payload: { nodeAnnotations: updatedAnnotations } },
+        { applySnapshot: false }
+      );
+
+      edgeInfos.forEach((info) => {
+        const edgeData = (info.edge.data ?? {}) as Record<string, unknown>;
+        const extra = { ...(edgeData.extraData as Record<string, unknown> | undefined) };
+        const shouldStayOnAlias = info.interfaceName === primaryInterface;
+        const nextSource =
+          !shouldStayOnAlias && info.edge.source === aliasId ? newNodeId : info.edge.source;
+        const nextTarget =
+          !shouldStayOnAlias && info.edge.target === aliasId ? newNodeId : info.edge.target;
+        if (info.edge.source === aliasId) {
+          if (shouldStayOnAlias) {
+            extra.yamlSourceNodeId = newNodeId;
+          } else {
+            delete extra.yamlSourceNodeId;
+          }
+        }
+        if (info.edge.target === aliasId) {
+          if (shouldStayOnAlias) {
+            extra.yamlTargetNodeId = newNodeId;
+          } else {
+            delete extra.yamlTargetNodeId;
+          }
+        }
+
+        graphState.updateEdge(info.edge.id, {
+          source: nextSource,
+          target: nextTarget,
+          data: { ...edgeData, extraData: extra }
+        });
+      });
+
+      return true;
+    },
+    [edges, nodes]
+  );
 
   const persistNetworkEdits = React.useCallback(
     async (data: NetworkEditorData, closeAfterSave: boolean) => {
@@ -565,6 +779,19 @@ export function useNetworkEditorHandlers(
       }
 
       const newNodeId = calculateExpectedNodeId(data);
+
+      if (BRIDGE_NETWORK_TYPES.has(data.networkType)) {
+        const aliasHandled = await persistBridgeAlias(data, newNodeId);
+        if (aliasHandled) {
+          if (closeAfterSave) {
+            initialDataRef.current = null;
+            editNetwork(null);
+            return;
+          }
+          initialDataRef.current = { ...data };
+          return;
+        }
+      }
 
       applyGraphUpdates(data, newNodeId);
 
@@ -582,7 +809,13 @@ export function useNetworkEditorHandlers(
 
       initialDataRef.current = { ...data };
     },
-    [editNetwork, applyGraphUpdates, persistLinkBasedNetwork, persistBridgeNetwork]
+    [
+      editNetwork,
+      applyGraphUpdates,
+      persistLinkBasedNetwork,
+      persistBridgeNetwork,
+      persistBridgeAlias
+    ]
   );
 
   const handleSave = React.useCallback(

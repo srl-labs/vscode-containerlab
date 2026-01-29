@@ -115,7 +115,7 @@ export function convertToNetworkEditorData(
     id: nodeId,
     networkType,
     interfaceName: parseInterfaceName(nodeId, networkType, extra),
-    label: getStringOrEmpty(rawData.name) || nodeId,
+    label: getStringOrEmpty(rawData.name) || getStringOrEmpty(rawData.label) || nodeId,
     // VXLAN fields
     vxlanRemote: getStringOrEmpty(extra.extRemote),
     vxlanVni: getStringOrEmpty(extra.extVni),

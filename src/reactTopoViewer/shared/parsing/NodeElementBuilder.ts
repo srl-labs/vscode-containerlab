@@ -282,12 +282,16 @@ export function buildNodeElement(params: {
       : "pe");
 
   const iconVisuals = extractIconVisuals(nodeAnn);
+  const isBridgeNode =
+    mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE;
+  const annotatedLabel = nodeAnn?.label?.trim();
+  const displayName = isBridgeNode && annotatedLabel ? annotatedLabel : nodeName;
   const element: ParsedElement = {
     group: "nodes",
     data: {
       id: nodeName,
       weight: "30",
-      name: nodeName,
+      name: displayName,
       topoViewerRole,
       ...iconVisuals,
       lat,
@@ -337,6 +341,15 @@ export function addNodeElements(
         // Convert network annotation to node annotation format
         nodeAnn = { id: networkAnn.id, position: networkAnn.position };
       }
+    }
+    // If this bridge node is configured as an alias (yamlNodeId points elsewhere),
+    // skip rendering the base YAML node to avoid duplicate visuals.
+    if (
+      nodeAnn?.yamlNodeId &&
+      nodeAnn.yamlNodeId !== nodeName &&
+      (nodeObj?.kind === NODE_KIND_BRIDGE || nodeObj?.kind === NODE_KIND_OVS_BRIDGE)
+    ) {
+      continue;
     }
     const { element, migrationPattern } = buildNodeElement({
       parsed,

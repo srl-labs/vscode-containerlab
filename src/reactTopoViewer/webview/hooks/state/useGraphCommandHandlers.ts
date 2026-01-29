@@ -28,6 +28,7 @@ import {
   SPECIAL_NETWORK_TYPES,
   getNetworkType
 } from "../../utils/networkNodeTypes";
+import { useGraphStore } from "../../stores/graphStore";
 
 // ============================================================================
 // Types
@@ -111,6 +112,49 @@ function isBridgeNetworkNode(node: TopoNode): boolean {
   return Boolean(type && BRIDGE_NETWORK_TYPES.has(type));
 }
 
+const VXLAN_NETWORK_TYPES = new Set(["vxlan", "vxlan-stitch"]);
+const VXLAN_DEFAULTS = { extRemote: "127.0.0.1", extVni: "100", extDstPort: "4789" };
+
+type LinkTypeDetectionResult = { linkType: string; networkNodeId: string } | undefined;
+
+function detectSpecialLinkType(
+  nodes: TopoNode[],
+  sourceId: string,
+  targetId: string
+): LinkTypeDetectionResult {
+  const sourceNode = nodes.find((node) => node.id === sourceId);
+  if (sourceNode?.type === "network-node") {
+    const data = (sourceNode.data ?? {}) as Record<string, unknown>;
+    const type = getNetworkType(data);
+    if (type && SPECIAL_NETWORK_TYPES.has(type)) {
+      return { linkType: type, networkNodeId: sourceId };
+    }
+  }
+
+  const targetNode = nodes.find((node) => node.id === targetId);
+  if (targetNode?.type === "network-node") {
+    const data = (targetNode.data ?? {}) as Record<string, unknown>;
+    const type = getNetworkType(data);
+    if (type && SPECIAL_NETWORK_TYPES.has(type)) {
+      return { linkType: type, networkNodeId: targetId };
+    }
+  }
+
+  return undefined;
+}
+
+function getAliasYamlNodeId(node: TopoNode | undefined): string | undefined {
+  if (!node) return undefined;
+  const data = (node.data ?? {}) as Record<string, unknown>;
+  const extraData = (data.extraData ?? {}) as Record<string, unknown>;
+  const yamlNodeId =
+    typeof extraData.extYamlNodeId === "string" ? extraData.extYamlNodeId.trim() : "";
+  if (!yamlNodeId || yamlNodeId === node.id) return undefined;
+  const type = getNetworkType(data);
+  if (!type || !BRIDGE_NETWORK_TYPES.has(type)) return undefined;
+  return yamlNodeId;
+}
+
 // ============================================================================
 // Core handlers
 // ============================================================================
@@ -123,6 +167,25 @@ export function useGraphHandlersWithContext(
 
   const handleEdgeCreated = React.useCallback(
     (_sourceId: string, _targetId: string, edgeData: EdgeCreatedData) => {
+      const nodes = getNodes();
+      const detection = detectSpecialLinkType(nodes as TopoNode[], edgeData.source, edgeData.target);
+      const edgeExtraData: Record<string, unknown> = {};
+      if (detection) {
+        edgeExtraData.extType = detection.linkType;
+      }
+      const sourceAliasYaml = getAliasYamlNodeId(
+        nodes.find((node) => node.id === edgeData.source) as TopoNode | undefined
+      );
+      const targetAliasYaml = getAliasYamlNodeId(
+        nodes.find((node) => node.id === edgeData.target) as TopoNode | undefined
+      );
+      if (sourceAliasYaml) {
+        edgeExtraData.yamlSourceNodeId = sourceAliasYaml;
+      }
+      if (targetAliasYaml) {
+        edgeExtraData.yamlTargetNodeId = targetAliasYaml;
+      }
+      const extraData = Object.keys(edgeExtraData).length > 0 ? edgeExtraData : undefined;
       const edge: TopoEdge = {
         id: edgeData.id,
         source: edgeData.source,
@@ -130,13 +193,29 @@ export function useGraphHandlersWithContext(
         type: "topology-edge",
         data: {
           sourceEndpoint: edgeData.sourceEndpoint,
-          targetEndpoint: edgeData.targetEndpoint
+          targetEndpoint: edgeData.targetEndpoint,
+          ...(extraData ? { extraData } : {})
         } as TopologyEdgeData
       };
       addEdge(edge);
       void createLink(toLinkSaveData(edge));
+
+      if (detection && VXLAN_NETWORK_TYPES.has(detection.linkType)) {
+        const node = nodes.find((n) => n.id === detection.networkNodeId);
+        const existingExtra =
+          ((node?.data as Record<string, unknown> | undefined)?.extraData as
+            | Record<string, unknown>
+            | undefined) ?? {};
+        const nextExtra = {
+          ...existingExtra,
+          extRemote: existingExtra.extRemote ?? VXLAN_DEFAULTS.extRemote,
+          extVni: existingExtra.extVni ?? VXLAN_DEFAULTS.extVni,
+          extDstPort: existingExtra.extDstPort ?? VXLAN_DEFAULTS.extDstPort
+        };
+        useGraphStore.getState().updateNodeData(detection.networkNodeId, nextExtra);
+      }
     },
-    [addEdge]
+    [addEdge, getNodes]
   );
 
   const handleNodeCreatedCallback = React.useCallback(

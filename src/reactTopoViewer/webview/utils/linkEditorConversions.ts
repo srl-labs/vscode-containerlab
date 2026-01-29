@@ -57,6 +57,14 @@ export function convertToLinkEditorData(
   const sourceEndpoint = getStr(rawData, "sourceEndpoint");
   const targetEndpoint = getStr(rawData, "targetEndpoint");
   const extraData = (rawData.extraData as Record<string, unknown>) || {};
+  const yamlSource =
+    typeof extraData.yamlSourceNodeId === "string" && extraData.yamlSourceNodeId.length > 0
+      ? extraData.yamlSourceNodeId
+      : source;
+  const yamlTarget =
+    typeof extraData.yamlTargetNodeId === "string" && extraData.yamlTargetNodeId.length > 0
+      ? extraData.yamlTargetNodeId
+      : target;
 
   return {
     id: getStr(rawData, "id"),
@@ -70,8 +78,8 @@ export function convertToLinkEditorData(
     mtu: parseMtu(extraData.extMtu),
     vars: getMap(extraData, "extVars", rawData, "vars"),
     labels: getMap(extraData, "extLabels", rawData, "labels"),
-    originalSource: source,
-    originalTarget: target,
+    originalSource: yamlSource,
+    originalTarget: yamlTarget,
     originalSourceEndpoint: sourceEndpoint,
     originalTargetEndpoint: targetEndpoint,
     sourceIsNetwork: isSpecialEndpointId(source),

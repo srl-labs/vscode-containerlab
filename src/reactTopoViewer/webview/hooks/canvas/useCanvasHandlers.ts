@@ -59,6 +59,7 @@ interface CanvasHandlersConfig {
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
   editNode: (id: string | null) => void;
+  editNetwork: (id: string | null) => void;
   editEdge: (id: string | null) => void;
   mode: "view" | "edit";
   isLocked: boolean;
@@ -481,6 +482,7 @@ function useNodeClickHandlers(
   selectNode: (id: string | null) => void,
   selectEdge: (id: string | null) => void,
   editNode: (id: string | null) => void,
+  editNetwork: (id: string | null) => void,
   closeContextMenu: () => void,
   modeRef: React.RefObject<"view" | "edit">,
   isLockedRef: React.RefObject<boolean>,
@@ -505,10 +507,14 @@ function useNodeClickHandlers(
           onLockedAction?.();
           return;
         }
+        if (node.type === "network-node") {
+          editNetwork(node.id);
+          return;
+        }
         editNode(node.id);
       }
     },
-    [editNode, onLockedAction, modeRef, isLockedRef]
+    [editNetwork, editNode, onLockedAction, modeRef, isLockedRef]
   );
 
   return { onNodeClick, onNodeDoubleClick };
@@ -692,6 +698,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     selectNode,
     selectEdge,
     editNode,
+    editNetwork,
     editEdge,
     mode,
     isLocked,
@@ -735,6 +742,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     selectNode,
     selectEdge,
     editNode,
+    editNetwork,
     closeContextMenu,
     modeRef,
     isLockedRef,

@@ -19,6 +19,7 @@ interface MenuBuilderContext {
   isLocked: boolean;
   closeContextMenu: () => void;
   editNode: (id: string) => void;
+  editNetwork?: (id: string) => void;
   handleDeleteNode: (id: string) => void;
   /** Node ID that link creation started from (if in link creation mode) */
   linkSourceNode?: string | null;
@@ -198,6 +199,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     isLocked,
     closeContextMenu,
     editNode,
+    editNetwork,
     handleDeleteNode,
     linkSourceNode,
     startLinkCreation,
@@ -224,6 +226,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   }
 
   const items: ContextMenuItem[] = [];
+  const isNetworkNode = targetNodeType === "network-node";
 
   // If in link creation mode, show cancel option
   if (linkSourceNode) {
@@ -240,9 +243,14 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
 
   items.push({
     id: "edit-node",
-    label: "Edit Node",
+    label: isNetworkNode ? "Edit NetworkNode" : "Edit Node",
     disabled: !isEditMode || isLocked,
     onClick: () => {
+      if (isNetworkNode) {
+        editNetwork?.(targetId);
+        closeContextMenu();
+        return;
+      }
       editNode(targetId);
       closeContextMenu();
     }

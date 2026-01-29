@@ -70,6 +70,7 @@ interface ContextMenuItemsParams {
   handlers: ReturnType<typeof useCanvasHandlers>;
   state: { mode: "view" | "edit"; isLocked: boolean };
   editNode: (id: string | null) => void;
+  editNetwork: (id: string | null) => void;
   editEdge: (id: string | null) => void;
   handleDeleteNode: (nodeId: string) => void;
   handleDeleteEdge: (edgeId: string) => void;
@@ -90,6 +91,7 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     handlers,
     state,
     editNode,
+    editNetwork,
     editEdge,
     handleDeleteNode,
     handleDeleteEdge,
@@ -119,6 +121,7 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
         isLocked,
         closeContextMenu: handlers.closeContextMenu,
         editNode,
+        editNetwork,
         handleDeleteNode,
         linkSourceNode,
         startLinkCreation,
@@ -162,6 +165,7 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     handlers.closeContextMenu,
     handlers.reactFlowInstance,
     editNode,
+    editNetwork,
     editEdge,
     handleDeleteNode,
     handleDeleteEdge,
@@ -678,7 +682,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
   ) => {
     const mode = useMode();
     const isLocked = useIsLocked();
-    const { selectNode, selectEdge, editNode, editEdge } = useTopoViewerActions();
+    const { selectNode, selectEdge, editNode, editNetwork, editEdge } = useTopoViewerActions();
 
     // Get setters from graph store - these update the single source of truth
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
@@ -717,6 +721,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       selectNode,
       selectEdge,
       editNode,
+      editNetwork,
       editEdge,
       mode,
       isLocked,
@@ -809,6 +814,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       handlers,
       state: topoState,
       editNode,
+      editNetwork,
       editEdge,
       handleDeleteNode,
       handleDeleteEdge,
