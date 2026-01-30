@@ -28,7 +28,7 @@ function isNetworkNode(node: Node): boolean {
   return node.type === "network-node";
 }
 
-function buildNetworkNodeAnnotations(nodes: Node[]): NetworkNodeAnnotation[] {
+export function buildNetworkNodeAnnotations(nodes: Node[]): NetworkNodeAnnotation[] {
   const annotations: NetworkNodeAnnotation[] = [];
 
   for (const node of nodes) {

@@ -19,9 +19,8 @@ import {
 import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
 import {
   executeTopologyCommand,
-  executeTopologyCommands,
   saveEdgeAnnotations,
-  saveNetworkNodesFromGraph
+  buildNetworkNodeAnnotations
 } from "../../services";
 import { requestSnapshot } from "../../services/topologyHostClient";
 import { useGraphState, useGraphStore } from "../../stores/graphStore";
@@ -780,7 +779,7 @@ export function useNetworkEditorHandlers(
       if (!LINK_BASED_NETWORK_TYPES.has(data.networkType)) return;
 
       const extraData = buildNetworkExtraData(data);
-      const commands = edges
+      const linkCommands = edges
         .filter((edge) => edge.source === data.id || edge.target === data.id)
         .map((edge) => {
           const sourceEndpoint = (edge.data as Record<string, unknown> | undefined)
@@ -806,11 +805,22 @@ export function useNetworkEditorHandlers(
           };
         });
 
-      if (commands.length > 0) {
-        await executeTopologyCommands(commands, { applySnapshot: false });
-      }
+      const graphNodes = useGraphStore.getState().nodes;
+      const networkNodeAnnotations = buildNetworkNodeAnnotations(graphNodes);
+      const commands = [
+        ...linkCommands,
+        {
+          command: "setAnnotations" as const,
+          payload: { networkNodeAnnotations }
+        }
+      ];
 
-      await saveNetworkNodesFromGraph();
+      if (commands.length > 0) {
+        await executeTopologyCommand(
+          { command: "batch", payload: { commands } },
+          { applySnapshot: false }
+        );
+      }
     },
     [edges]
   );
@@ -880,17 +890,14 @@ export function useNetworkEditorHandlers(
         buildAliasLinkCommand(info, aliasId, newNodeId, aliasAlreadyMapped)
       );
 
-      if (linkCommands.length > 0) {
-        await executeTopologyCommands(linkCommands, { applySnapshot: false });
-      }
+      const aliasCommands = [
+        ...linkCommands,
+        { command: "deleteNode" as const, payload: { id: aliasId } },
+        { command: "setAnnotations" as const, payload: { nodeAnnotations: updatedAnnotations } }
+      ];
 
       await executeTopologyCommand(
-        { command: "deleteNode", payload: { id: aliasId } },
-        { applySnapshot: false }
-      );
-
-      await executeTopologyCommand(
-        { command: "setAnnotations", payload: { nodeAnnotations: updatedAnnotations } },
+        { command: "batch", payload: { commands: aliasCommands } },
         { applySnapshot: false }
       );
 

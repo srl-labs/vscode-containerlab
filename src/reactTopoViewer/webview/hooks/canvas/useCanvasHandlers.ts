@@ -420,7 +420,9 @@ function useNodeDragHandlers(
       }
 
       // Include other selected nodes for multi-drag persistence (and snap with same delta)
-      const excludeIds = new Set(changes.map((change) => change.id));
+      const excludeIds = new Set(
+        changes.filter((c): c is NodeChange & { id: string } => "id" in c).map((c) => c.id)
+      );
       changes.push(
         ...buildSelectedNodeChanges(
           node.id,

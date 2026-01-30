@@ -18,6 +18,7 @@ export {
   deleteNode,
   createLink,
   deleteLink,
+  buildNetworkNodeAnnotations,
   saveNetworkNodesFromGraph,
   saveNodePositions,
   saveNodePositionsWithAnnotations

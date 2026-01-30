@@ -22,6 +22,7 @@ import { TopologyParser } from "../parsing/TopologyParser";
 import { applyInterfacePatternMigrations } from "../utilities";
 import type { FileSystemAdapter, IOLogger } from "../io/types";
 import { AnnotationsIO, TopologyIO, TransactionalFileSystemAdapter } from "../io";
+import type { NodeSaveData } from "../io";
 import { createEmptyAnnotations } from "../annotations/types";
 
 interface TopologyHostCoreOptions {
@@ -42,6 +43,7 @@ interface HistoryEntry {
 
 const DEFAULT_HISTORY_LIMIT = 50;
 const TOPOLOGY_HOST_ACK = "topology-host:ack";
+const RENAME_HISTORY_MERGE_WINDOW_MS = 800;
 
 /** Migration entry for graph label data (position, icon, group info) */
 interface GraphLabelMigration {
@@ -80,6 +82,7 @@ export class TopologyHostCore implements TopologyHost {
   private past: HistoryEntry[] = [];
   private future: HistoryEntry[] = [];
   private historyLimit: number;
+  private historyMergeUntil: number | null = null;
 
   public currentClabTopology: ClabTopology | undefined;
 
@@ -151,9 +154,11 @@ export class TopologyHostCore implements TopologyHost {
     }
 
     if (command.command === "undo") {
+      this.historyMergeUntil = null;
       return this.handleUndoRedo("undo");
     }
     if (command.command === "redo") {
+      this.historyMergeUntil = null;
       return this.handleUndoRedo("redo");
     }
 
@@ -171,6 +176,7 @@ export class TopologyHostCore implements TopologyHost {
       this.transactionalFs.rollbackTransaction();
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`[TopologyHost] Command ${commandName} failed: ${message}`);
+      this.historyMergeUntil = null;
       return {
         type: "topology-host:error",
         protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION,
@@ -181,7 +187,18 @@ export class TopologyHostCore implements TopologyHost {
       this.setInternalUpdate?.(false);
     }
 
-    this.pushHistory(beforeState);
+    const now = Date.now();
+    const mergeHistory = this.historyMergeUntil !== null && now <= this.historyMergeUntil;
+
+    if (!mergeHistory) {
+      this.pushHistory(beforeState);
+    }
+
+    if (isRenameEditCommand(command as TopologyHostCommand)) {
+      this.historyMergeUntil = now + RENAME_HISTORY_MERGE_WINDOW_MS;
+    } else if (this.historyMergeUntil !== null && now > this.historyMergeUntil) {
+      this.historyMergeUntil = null;
+    }
     this.future = [];
     this.revision += 1;
     this.snapshot = await this.buildSnapshot();
@@ -694,6 +711,14 @@ export class TopologyHostCore implements TopologyHost {
 // ---------------------------------------------------------------------------
 // Helper utilities (shared with lab settings + migrations)
 // ---------------------------------------------------------------------------
+
+function isRenameEditCommand(command: TopologyHostCommand): boolean {
+  if (command.command !== "editNode") return false;
+  const payload = command.payload as NodeSaveData & { oldName?: string };
+  const oldName = typeof payload.oldName === "string" ? payload.oldName.trim() : "";
+  const nextName = typeof payload.name === "string" ? payload.name.trim() : "";
+  return Boolean(oldName && nextName && oldName !== nextName);
+}
 
 function getIdPrefix(id: string): string {
   const match = /^([a-zA-Z]+)/.exec(id);
