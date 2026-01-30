@@ -569,6 +569,7 @@ export function useContextMenuHandlers(
     },
     [editEdge]
   );
+
   const handleCloseNodePanel = useCallback(() => selectNode(null), [selectNode]);
   const handleCloseLinkPanel = useCallback(() => selectEdge(null), [selectEdge]);
 

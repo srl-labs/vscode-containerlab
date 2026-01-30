@@ -8,6 +8,7 @@ import type { Core as CyCore, Core as CytoscapeCore, EdgeSingular } from "cytosc
 import type {
   NodeEditorData,
   LinkEditorData,
+  LinkImpairmentData,
   NetworkEditorData,
   FloatingActionPanelHandle
 } from "../../components/panels";
@@ -1058,4 +1059,55 @@ export function useMembershipCallbacks(
   );
 
   return { applyMembershipChange, onMembershipWillChange };
+}
+
+// ============================================================================
+// useLinkImpairmentHandlers
+// ============================================================================
+
+function updateCytoscapeNetemData(
+  netemData: LinkImpairmentData,
+  cyRef?: React.RefObject<CytoscapeCanvasRef | null>
+) {
+  const cy = cyRef?.current?.getCy();
+  const edge = cy?.getElementById(netemData.id);
+  if (!edge || edge.empty()) return;
+
+  edge.data("sourceNetem", netemData.sourceNetem);
+  edge.data("targetNetem", netemData.targetNetem);
+}
+
+/**
+ * Hook for link impairment handlers
+ */
+export function useLinkImpairmentHandlers(
+  editImpairment: (id: string | null) => void,
+  cyRef?: React.RefObject<CytoscapeCanvasRef | null>
+) {
+  const handleEditImpairment = React.useCallback(
+    (edgeId: string) => {
+      editImpairment(edgeId);
+    },
+    [editImpairment]
+  );
+
+  const handleClose = React.useCallback(() => {
+    editImpairment(null);
+  }, [editImpairment]);
+
+  const handleSave = React.useCallback((data: LinkImpairmentData) => {
+    updateCytoscapeNetemData(data, cyRef);
+    editImpairment(null);
+  }, []);
+
+  const handleApply = React.useCallback((data: LinkImpairmentData) => {
+    updateCytoscapeNetemData(data, cyRef);
+  }, []);
+
+  return {
+    handleEditImpairment,
+    handleClose,
+    handleSave,
+    handleApply
+  };
 }

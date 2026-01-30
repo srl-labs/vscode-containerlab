@@ -4,7 +4,7 @@
  * Uses context-based architecture for undo/redo and annotations.
  */
 /* eslint-disable import-x/max-dependencies -- App.tsx is the composition root and naturally has many imports */
-import React from "react";
+import React, { useCallback } from "react";
 import type { Core as CyCore } from "cytoscape";
 
 import { convertToEditorData, convertToNetworkEditorData } from "../shared/utilities";
@@ -74,6 +74,7 @@ import { useAltClickDelete, useShiftClickEdgeCreation } from "./hooks/graph";
 import { convertToLinkEditorData } from "./utils/linkEditorConversions";
 import { buildEdgeAnnotationLookup, findEdgeAnnotationInLookup } from "./utils/edgeAnnotations";
 import { parseEndpointLabelOffset } from "./utils/endpointLabelOffset";
+import { useLinkImpairmentHandlers } from "./hooks/panels/useEditorHandlers";
 
 /** Inner component that uses contexts */
 const AppContent: React.FC<{
@@ -103,6 +104,7 @@ const AppContent: React.FC<{
   const {
     selectNode,
     selectEdge,
+    editImpairment,
     editNode,
     editEdge,
     editNetwork,
@@ -203,6 +205,12 @@ const AppContent: React.FC<{
     cytoscapeRef,
     state.editingNetwork,
     null,
+    state.editorDataVersion
+  );
+  const { selectedLinkData: selectedLinkImpairmentData } = useSelectionData(
+    cytoscapeRef,
+    null,
+    state.editingImpairment,
     state.editorDataVersion
   );
   const { selectedLinkData: editingLinkRawData } = useSelectionData(
@@ -351,6 +359,7 @@ const AppContent: React.FC<{
     cyInstance,
     renameNodeInGraph
   );
+  const linkImpairmentHandlers = useLinkImpairmentHandlers(editImpairment, cytoscapeRef);
 
   const recordGraphChanges = React.useCallback(
     (before: GraphChange[], after: GraphChange[]) => {
@@ -419,7 +428,8 @@ const AppContent: React.FC<{
     onEditLink: menuHandlers.handleEditLink,
     onDeleteLink: handleDeleteLinkWithUndo,
     onShowNodeProperties: menuHandlers.handleShowNodeProperties,
-    onShowLinkProperties: menuHandlers.handleShowLinkProperties
+    onShowLinkProperties: menuHandlers.handleShowLinkProperties,
+    onShowLinkImpairment: linkImpairmentHandlers.handleEditImpairment
   });
 
   // Node dragging
@@ -523,6 +533,14 @@ const AppContent: React.FC<{
     textLayerNode
   });
 
+  // toast for error
+  const errorToast = useCallback(
+    (error: string) => {
+      addToast(error, "error");
+    },
+    [addToast]
+  );
+
   return (
     <div className="topoviewer-app" data-testid="topoviewer-app">
       <Navbar
@@ -573,6 +591,14 @@ const AppContent: React.FC<{
             isVisible: !!state.selectedEdge && state.mode === "view",
             linkData: selectedLinkData,
             onClose: menuHandlers.handleCloseLinkPanel
+          }}
+          linkImpairment={{
+            isVisible: !!state.editingImpairment && state.mode === "view",
+            linkData: selectedLinkImpairmentData,
+            onError: errorToast,
+            onApply: linkImpairmentHandlers.handleApply,
+            onSave: linkImpairmentHandlers.handleSave,
+            onClose: linkImpairmentHandlers.handleClose
           }}
           shortcuts={{
             isVisible: panelVisibility.showShortcutsPanel,

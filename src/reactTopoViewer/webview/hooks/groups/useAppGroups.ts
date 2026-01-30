@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef } from "react";
 import type { Core as CyCore, NodeSingular } from "cytoscape";
 
 import type { GroupStyleAnnotation, NodeAnnotation } from "../../../shared/types/topology";
+import { MSG_TOPOLOGY_DATA } from "../../../shared/messages/webview";
 import { log } from "../../utils/logger";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
 
@@ -19,7 +20,7 @@ interface InitialData {
 }
 
 interface TopologyDataMessage {
-  type: "topology-data";
+  type: typeof MSG_TOPOLOGY_DATA;
   data: {
     groupStyleAnnotations?: GroupStyleAnnotation[];
     nodeAnnotations?: NodeAnnotation[];
@@ -163,7 +164,7 @@ function useGroupDataLoader(
 
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as TopologyDataMessage | undefined;
-      if (!message || message.type !== "topology-data" || !message.data) return;
+      if (!message || message.type !== MSG_TOPOLOGY_DATA || !message.data) return;
       const data = message.data;
 
       // Extract memberships for migration - always update from topology refresh
@@ -194,7 +195,7 @@ function useGroupDataLoader(
         }
       }
     };
-    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === MSG_TOPOLOGY_DATA);
   }, [loadGroups, initializeMembership, currentGroupsRef]);
 }
 

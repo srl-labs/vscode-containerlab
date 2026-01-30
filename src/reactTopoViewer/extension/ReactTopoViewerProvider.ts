@@ -16,6 +16,18 @@ import { nodeFsAdapter } from "../shared/io";
 import type { CyElement, ClabTopology } from "../shared/types/topology";
 import type { ClabLabTreeNode } from "../../treeView/common";
 import { runningLabsProvider } from "../../globals";
+import {
+  MSG_EDGE_STATS_UPDATE,
+  MSG_EXTERNAL_FILE_CHANGE,
+  MSG_TOPO_MODE_CHANGE,
+  MSG_TOPOLOGY_DATA
+} from "../shared/messages/webview";
+import type {
+  EdgeStatsUpdateMessage,
+  ExternalFileChangeMessage,
+  ModeChangedMessage,
+  TopologyDataMessage
+} from "../shared/types/messages";
 
 import { log } from "./services/logger";
 import { TopoViewerAdaptorClab } from "./services/TopologyAdapter";
@@ -31,12 +43,6 @@ import {
   WatcherManager,
   buildBootstrapData
 } from "./panel";
-
-/** Message type for topology data updates sent to webview */
-const MSG_TOPOLOGY_DATA = "topology-data";
-
-/** Message type for incremental edge stats updates */
-const MSG_EDGE_STATS_UPDATE = "edge-stats-update";
 
 /**
  * React TopoViewer class that manages the webview panel
@@ -124,10 +130,10 @@ export class ReactTopoViewer {
   private initializeWatchers(panel: vscode.WebviewPanel): void {
     const updateController = { isInternalUpdate: () => this.internalUpdateDepth > 0 };
     const postTopologyData = (data: unknown) => {
-      panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data });
+      panel.webview.postMessage({ type: MSG_TOPOLOGY_DATA, data } as TopologyDataMessage);
     };
     const notifyExternalChange = () => {
-      panel.webview.postMessage({ type: "external-file-change" });
+      panel.webview.postMessage({ type: MSG_EXTERNAL_FILE_CHANGE } as ExternalFileChangeMessage);
     };
 
     this.watcherManager.setupFileWatcher(
@@ -173,19 +179,6 @@ export class ReactTopoViewer {
   }
 
   /**
-   * Load running lab data for view mode
-   */
-  private async loadRunningLabData(): Promise<void> {
-    try {
-      this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
-        | Record<string, ClabLabTreeNode>
-        | undefined;
-    } catch (err) {
-      log.warn(`Failed to load running lab data: ${err}`);
-    }
-  }
-
-  /**
    * Initialize the deployment state and lab data
    */
   private async initializeLabState(labName: string): Promise<void> {
@@ -197,7 +190,13 @@ export class ReactTopoViewer {
     }
 
     if (this.isViewMode) {
-      await this.loadRunningLabData();
+      try {
+        this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
+          | Record<string, ClabLabTreeNode>
+          | undefined;
+      } catch (err) {
+        log.warn(`Failed to load running lab data: ${err}`);
+      }
     }
   }
 
@@ -394,7 +393,13 @@ export class ReactTopoViewer {
 
       // Reload running lab data if switching to view mode
       if (this.isViewMode) {
-        await this.loadRunningLabData();
+        try {
+          this.cacheClabTreeDataToTopoviewer = (await runningLabsProvider.discoverInspectLabs()) as
+            | Record<string, ClabLabTreeNode>
+            | undefined;
+        } catch (err) {
+          log.warn(`Failed to load running lab data: ${err}`);
+        }
       } else {
         this.cacheClabTreeDataToTopoviewer = undefined;
       }
@@ -406,7 +411,7 @@ export class ReactTopoViewer {
       this.currentPanel.webview.postMessage({
         type: MSG_TOPOLOGY_DATA,
         data: topologyData
-      });
+      } as TopologyDataMessage);
 
       // Notify webview of mode change
       await this.notifyWebviewModeChanged();
@@ -432,12 +437,12 @@ export class ReactTopoViewer {
     const mode = this.isViewMode ? "viewer" : "editor";
 
     this.currentPanel.webview.postMessage({
-      type: "topo-mode-changed",
+      type: MSG_TOPO_MODE_CHANGE,
       data: {
         mode,
         deploymentState: this.deploymentState
       }
-    });
+    } as ModeChangedMessage);
 
     log.info(`[ReactTopoViewer] Mode changed to: ${mode}`);
   }
@@ -469,7 +474,7 @@ export class ReactTopoViewer {
         this.currentPanel.webview.postMessage({
           type: MSG_EDGE_STATS_UPDATE,
           data: { edgeUpdates }
-        });
+        } as EdgeStatsUpdateMessage);
       }
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh link states: ${err}`);

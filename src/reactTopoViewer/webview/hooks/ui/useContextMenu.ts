@@ -8,6 +8,7 @@ import type { Core, EventObject, NodeSingular, EdgeSingular } from "cytoscape";
 import { log } from "../../utils/logger";
 import type { ContextMenuItem } from "../../components/context-menu/ContextMenu";
 import { WiresharkIcon } from "../../components/context-menu/WiresharkIcon";
+import type { ExtensionCommandType } from "../../../shared/messages/extension";
 
 /**
  * VS Code API interface
@@ -30,6 +31,7 @@ export interface ContextMenuOptions {
   onDeleteLink?: (edgeId: string) => void;
   onShowNodeProperties?: (nodeId: string) => void;
   onShowLinkProperties?: (edgeId: string) => void;
+  onShowLinkImpairment?: (edgeId: string) => void;
 }
 
 /** Context menu state */
@@ -96,7 +98,7 @@ function computeEdgeCaptureEndpoints(edgeData: Record<string, unknown>): {
 /**
  * Send message to VS Code extension
  */
-function sendToExtension(command: string, data: Record<string, unknown>): void {
+function sendToExtension(command: ExtensionCommandType, data: Record<string, unknown>): void {
   if (typeof vscode !== "undefined") {
     vscode.postMessage({ command, ...data });
     log.info(`[ContextMenu] Sent command: ${command}`);
@@ -316,6 +318,17 @@ function buildEdgeViewMenuItems(
       }
     });
   }
+
+  // Add netem item
+  items.push({
+    id: "netem-edge",
+    label: "Link impairments",
+    icon: "fas fa-sliders",
+    onClick: () => {
+      log.info(`[ContextMenu] Show link impairment: ${edgeId}`);
+      options.onShowLinkImpairment?.(edgeId);
+    }
+  });
 
   // Add info item
   items.push({

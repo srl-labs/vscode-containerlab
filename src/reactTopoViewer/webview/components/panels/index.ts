@@ -1,10 +1,15 @@
 /**
  * Panel components barrel file
  */
+/* eslint-disable import-x/max-dependencies -- Barrel file aggregates exports from many modules */
 
 // Info panels
 export { NodeInfoPanel } from "./NodeInfoPanel";
 export { LinkInfoPanel } from "./LinkInfoPanel";
+
+// Netem panel
+export { LinkImpairmentPanel } from "./link-impairment/LinkImpairmentPanel";
+export type { LinkImpairmentData } from "./link-impairment/types";
 
 // Node editor
 export { NodeEditorPanel, ComponentsTab, INTEGRATED_SROS_TYPES } from "./node-editor";

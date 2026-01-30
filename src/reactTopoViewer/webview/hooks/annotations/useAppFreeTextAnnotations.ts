@@ -9,6 +9,7 @@ import type { FreeTextAnnotation, GroupStyleAnnotation } from "../../../shared/t
 import { log } from "../../utils/logger";
 import { subscribeToWebviewMessages, type TypedMessageEvent } from "../../utils/webviewMessageBus";
 import { findDeepestGroupAtPosition } from "../groups";
+import { MSG_TOPOLOGY_DATA } from "../../../shared/messages/webview";
 
 import { createDefaultAnnotation } from "./freeText";
 import {
@@ -29,7 +30,7 @@ interface InitialData {
 }
 
 interface TopologyDataMessage {
-  type: "topology-data";
+  type: typeof MSG_TOPOLOGY_DATA;
   data: {
     freeTextAnnotations?: FreeTextAnnotation[];
   };
@@ -205,12 +206,12 @@ export function useAppFreeTextAnnotations(
     // Also listen for topology data updates
     const handleMessage = (event: TypedMessageEvent) => {
       const message = event.data as TopologyDataMessage | undefined;
-      if (message?.type === "topology-data") {
+      if (message?.type === MSG_TOPOLOGY_DATA) {
         // Always load to clear old annotations if empty
         loadAnnotations(message.data?.freeTextAnnotations || []);
       }
     };
-    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === "topology-data");
+    return subscribeToWebviewMessages(handleMessage, (e) => e.data?.type === MSG_TOPOLOGY_DATA);
   }, [loadAnnotations]);
 
   return {

@@ -164,6 +164,15 @@ export class ContainerDataAdapter implements ContainerDataProvider {
             txPackets: iface.stats.txPackets,
             statsIntervalSeconds: iface.stats.statsIntervalSeconds
           }
+        : undefined,
+      netemState: iface.netemState
+        ? {
+            delay: iface.netemState.delay,
+            jitter: iface.netemState.jitter,
+            loss: iface.netemState.loss,
+            rate: iface.netemState.rate,
+            corruption: iface.netemState.corruption
+          }
         : undefined
     };
   }
