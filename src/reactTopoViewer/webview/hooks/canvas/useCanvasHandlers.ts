@@ -318,7 +318,7 @@ function persistPositionChanges(changes: NodeChange[]) {
 
 /** Hook for node drag handlers with group member movement */
 function useNodeDragHandlers(
-  modeRef: React.RefObject<"view" | "edit">,
+  isLockedRef: React.RefObject<boolean>,
   nodes: Node[] | undefined,
   onNodesChangeBase: OnNodesChange,
   setNodes: React.Dispatch<React.SetStateAction<Node[]>> | undefined,
@@ -332,7 +332,7 @@ function useNodeDragHandlers(
 
   const onNodeDragStart: NodeMouseHandler = useCallback(
     (_event, node) => {
-      if (modeRef.current !== "edit" || !nodes) return;
+      if (isLockedRef.current || !nodes) return;
 
       // If dragging a group node, capture members and their initial positions
       if (node.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
@@ -343,13 +343,13 @@ function useNodeDragHandlers(
 
       log.info("[ReactFlowCanvas] Drag started");
     },
-    [modeRef, nodes, groupMemberHandlers]
+    [isLockedRef, nodes, groupMemberHandlers]
   );
 
   // Called during drag - moves members with group using direct state update
   const onNodeDrag: NodeMouseHandler = useCallback(
     (_event, node) => {
-      if (modeRef.current !== "edit" || !setNodes) return;
+      if (isLockedRef.current || !setNodes) return;
 
       // Handle group member movement during drag
       if (node.type === GROUP_NODE_TYPE) {
@@ -387,12 +387,12 @@ function useNodeDragHandlers(
         groupLastPositionRef.current.set(node.id, { ...node.position });
       }
     },
-    [modeRef, setNodes]
+    [isLockedRef, setNodes]
   );
 
   const onNodeDragStop: NodeMouseHandler = useCallback(
     (_event, node) => {
-      if (modeRef.current !== "edit") return;
+      if (isLockedRef.current) return;
 
       // Skip for shape nodes with active line handle
       if (node.type === FREE_SHAPE_NODE_TYPE && isLineHandleActive()) {
@@ -442,7 +442,7 @@ function useNodeDragHandlers(
 
       persistPositionChanges(changes);
     },
-    [modeRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes]
+    [isLockedRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes]
   );
 
   return { onNodeDragStart, onNodeDrag, onNodeDragStop };
@@ -820,7 +820,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
 
   // Drag handlers (extracted hook)
   const { onNodeDragStart, onNodeDrag, onNodeDragStop } = useNodeDragHandlers(
-    modeRef,
+    isLockedRef,
     nodes,
     onNodesChangeBase,
     setNodes,

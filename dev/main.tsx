@@ -7,8 +7,8 @@ import type { CustomNodeTemplate } from "@shared/types/editors";
 import type { CustomIconInfo } from "@shared/types/icons";
 import "@webview/styles/tailwind.css";
 
-import { setHostContext } from "../src/reactTopoViewer/webview/services/topologyHostClient";
-import { refreshTopologySnapshot } from "../src/reactTopoViewer/webview/services/topologyHostCommands";
+import { setHostContext } from "@webview/services/topologyHostClient";
+import { refreshTopologySnapshot } from "@webview/services/topologyHostCommands";
 
 import { DevStateManager } from "./mock/DevState";
 import { sampleCustomNodes, sampleCustomIcons } from "./mockData";

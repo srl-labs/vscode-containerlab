@@ -8,7 +8,6 @@ import { log } from "../../utils/logger";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
 interface UseShapeAnnotationsParams {
-  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
   derived: UseDerivedAnnotationsReturn;
@@ -35,7 +34,8 @@ export interface ShapeAnnotationActions {
 }
 
 export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnnotationActions {
-  const { mode, isLocked, onLockedAction, derived, uiState, uiActions } = params;
+  const { isLocked, onLockedAction, derived, uiState, uiActions } = params;
+  const canEditAnnotations = !isLocked;
 
   const lastShapeStyleRef = useRef<Partial<FreeShapeAnnotation>>({});
   const pendingRotationRef = useRef<string | null>(null);
@@ -46,8 +46,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
 
   const handleAddShapes = useCallback(
     (shapeType?: string) => {
-      if (mode !== "edit") return;
-      if (isLocked) {
+      if (!canEditAnnotations) {
         onLockedAction();
         return;
       }
@@ -57,13 +56,12 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
           : "rectangle";
       uiActions.setAddShapeMode(true, normalizedShape);
     },
-    [mode, isLocked, onLockedAction, uiActions]
+    [canEditAnnotations, onLockedAction, uiActions]
   );
 
   const editShapeAnnotation = useCallback(
     (id: string) => {
-      if (mode !== "edit") return;
-      if (isLocked) {
+      if (!canEditAnnotations) {
         onLockedAction();
         return;
       }
@@ -72,7 +70,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         uiActions.setEditingShapeAnnotation(annotation);
       }
     },
-    [mode, isLocked, onLockedAction, derived.shapeAnnotations, uiActions]
+    [canEditAnnotations, onLockedAction, derived.shapeAnnotations, uiActions]
   );
 
   const saveShapeAnnotation = useCallback(

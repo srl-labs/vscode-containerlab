@@ -8,7 +8,7 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 import type { FreeShapeNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 import { DEFAULT_LINE_LENGTH } from "../../../annotations/constants";
-import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
+import { useIsLocked } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
 import { LineResizeHandle, RotationHandle } from "./AnnotationHandles";
@@ -428,10 +428,9 @@ function BoxNode({
 
 const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as FreeShapeNodeData;
-  const mode = useMode();
   const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
-  const isEditMode = mode === "edit" && !isLocked;
+  const canEditAnnotations = !isLocked;
   const isSelected = selected ?? false;
 
   // Track rotation state to keep handles visible during rotation
@@ -449,7 +448,7 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
   }, [id, annotationHandlers]);
 
   // Show handles when selected in edit mode, or when actively rotating
-  const showHandles = (isSelected || isRotating) && isEditMode;
+  const showHandles = (isSelected || isRotating) && canEditAnnotations;
 
   // Only save at end of resize to avoid creating undo entries for each pixel
   const handleResizeEnd = useCallback(

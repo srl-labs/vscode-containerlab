@@ -22,7 +22,6 @@ import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./
 import { findParentGroupForBounds, generateGroupId } from "./groupUtils";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 interface UseGroupAnnotationsParams {
-  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
   rfInstance: ReactFlowInstance | null;
@@ -121,7 +120,8 @@ function reassignGroupMembers(
 }
 
 export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnnotationActions {
-  const { mode, isLocked, onLockedAction, rfInstance, derived, uiActions } = params;
+  const { isLocked, onLockedAction, rfInstance, derived, uiActions } = params;
+  const canEditAnnotations = !isLocked;
 
   const persist = useCallback(() => {
     void saveAnnotationNodesFromGraph();
@@ -134,8 +134,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
 
   const editGroup = useCallback(
     (id: string) => {
-      if (mode !== "edit") return;
-      if (isLocked) {
+      if (!canEditAnnotations) {
         onLockedAction();
         return;
       }
@@ -161,7 +160,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         height: group.height ?? 150
       });
     },
-    [mode, isLocked, onLockedAction, derived.groups, uiActions]
+    [canEditAnnotations, onLockedAction, derived.groups, uiActions]
   );
 
   const saveGroup = useCallback(
@@ -214,8 +213,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
   );
 
   const handleAddGroup = useCallback(() => {
-    if (mode !== "edit") return;
-    if (isLocked) {
+    if (!canEditAnnotations) {
       onLockedAction();
       return;
     }
@@ -263,7 +261,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
 
     persist();
     persistMemberships();
-  }, [mode, isLocked, onLockedAction, rfInstance, derived, persist, persistMemberships]);
+  }, [canEditAnnotations, onLockedAction, rfInstance, derived, persist, persistMemberships]);
 
   const addGroup = useCallback(
     (group: GroupStyleAnnotation) => {

@@ -7,7 +7,7 @@ import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import type { FreeTextNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
-import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
+import { useIsLocked } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
 
@@ -82,10 +82,9 @@ function handleWheelEvent(e: React.WheelEvent): void {
  */
 const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as FreeTextNodeData;
-  const mode = useMode();
   const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
-  const isEditMode = mode === "edit" && !isLocked;
+  const canEditAnnotations = !isLocked;
   const rotation = nodeData.rotation ?? 0;
 
   // Track resize/rotate state to keep selection border and handles visible
@@ -133,7 +132,7 @@ const FreeTextNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   );
   const textStyle = useMemo(() => buildTextStyle(nodeData), [nodeData]);
   // Show handles when selected in edit mode, or when actively resizing/rotating
-  const showHandles = (isSelected || isResizing || isRotating) && isEditMode;
+  const showHandles = (isSelected || isResizing || isRotating) && canEditAnnotations;
 
   return (
     <div style={wrapperStyle} className="free-text-node">

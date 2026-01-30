@@ -141,14 +141,13 @@ function useWrappedPaneClick(
  * Hook for wrapping node double-click handler for annotations
  */
 function useWrappedNodeDoubleClick(
-  mode: "view" | "edit",
   isLocked: boolean,
   annotationHandlers: AnnotationHandlers | undefined,
   baseOnNodeDoubleClick: (event: React.MouseEvent, node: Node) => void
 ) {
   return useCallback(
     (event: React.MouseEvent, node: Node) => {
-      if (mode !== "edit" || isLocked || !annotationHandlers) {
+      if (isLocked || !annotationHandlers) {
         baseOnNodeDoubleClick(event, node);
         return;
       }
@@ -173,7 +172,7 @@ function useWrappedNodeDoubleClick(
 
       baseOnNodeDoubleClick(event, node);
     },
-    [mode, isLocked, annotationHandlers, baseOnNodeDoubleClick]
+    [isLocked, annotationHandlers, baseOnNodeDoubleClick]
   );
 }
 
@@ -234,7 +233,6 @@ export function useAnnotationCanvasHandlers(
     onShiftClickCreate
   );
   const wrappedOnNodeDoubleClick = useWrappedNodeDoubleClick(
-    mode,
     isLocked,
     annotationHandlers,
     baseOnNodeDoubleClick

@@ -131,6 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon="fa-gear"
           title="Lab Settings"
           onClick={onLabSettings}
+          disabled={mode === "view"}
           testId="navbar-lab-settings"
         />
 

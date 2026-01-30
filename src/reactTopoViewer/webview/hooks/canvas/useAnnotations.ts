@@ -8,7 +8,7 @@ import {
 } from "../../services";
 import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
 import { useGraphStore } from "../../stores/graphStore";
-import { useIsLocked, useMode } from "../../stores/topoViewerStore";
+import { useIsLocked } from "../../stores/topoViewerStore";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 
@@ -33,14 +33,12 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
   const rfInstance = params?.rfInstance ?? null;
   const onLockedAction = params?.onLockedAction ?? (() => {});
 
-  const mode = useMode();
   const isLocked = useIsLocked();
   const uiState = useAnnotationUIState();
   const uiActions = useAnnotationUIActions();
   const derived = useDerivedAnnotations();
 
   const groupActions = useGroupAnnotations({
-    mode,
     isLocked,
     onLockedAction,
     rfInstance,
@@ -49,7 +47,6 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
   });
 
   const textActions = useTextAnnotations({
-    mode,
     isLocked,
     onLockedAction,
     derived,
@@ -61,7 +58,6 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
   });
 
   const shapeActions = useShapeAnnotations({
-    mode,
     isLocked,
     onLockedAction,
     derived,

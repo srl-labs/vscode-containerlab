@@ -6,7 +6,7 @@ import React, { memo, useCallback } from "react";
 import { type NodeProps, NodeResizer, type ResizeParams } from "@xyflow/react";
 
 import { SELECTION_COLOR } from "../types";
-import { useIsLocked, useMode } from "../../../stores/topoViewerStore";
+import { useIsLocked } from "../../../stores/topoViewerStore";
 import { useAnnotationHandlers } from "../../../stores/canvasStore";
 
 // ============================================================================
@@ -105,12 +105,11 @@ function getLabelPositionStyle(position: string | undefined): React.CSSPropertie
 
 const GroupNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => {
   const nodeData = data as GroupNodeData;
-  const mode = useMode();
   const isLocked = useIsLocked();
   const annotationHandlers = useAnnotationHandlers();
-  const isEditMode = mode === "edit" && !isLocked;
+  const canEditAnnotations = !isLocked;
   const isSelected = selected ?? false;
-  const showResizer = isSelected && isEditMode;
+  const showResizer = isSelected && canEditAnnotations;
 
   // Only save at end of resize to avoid creating undo entries for each pixel
   const handleResizeEnd = useCallback(

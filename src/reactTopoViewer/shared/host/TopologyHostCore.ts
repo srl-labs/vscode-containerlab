@@ -118,10 +118,21 @@ export class TopologyHostCore implements TopologyHost {
       Pick<TopologyHostCoreOptions, "mode" | "deploymentState" | "containerDataProvider">
     >
   ): void {
+    const modeChanged = context.mode !== undefined && context.mode !== this.mode;
+    const deploymentChanged =
+      context.deploymentState !== undefined && context.deploymentState !== this.deploymentState;
+    const containerChanged =
+      context.containerDataProvider !== undefined &&
+      context.containerDataProvider !== this.containerDataProvider;
+
     if (context.mode) this.mode = context.mode;
     if (context.deploymentState) this.deploymentState = context.deploymentState;
     if (context.containerDataProvider !== undefined) {
       this.containerDataProvider = context.containerDataProvider;
+    }
+
+    if (modeChanged || deploymentChanged || containerChanged) {
+      this.snapshot = null;
     }
   }
 

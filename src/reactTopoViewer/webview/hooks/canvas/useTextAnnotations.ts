@@ -8,7 +8,6 @@ import { log } from "../../utils/logger";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
 interface UseTextAnnotationsParams {
-  mode: "edit" | "view";
   isLocked: boolean;
   onLockedAction: () => void;
   derived: UseDerivedAnnotationsReturn;
@@ -35,24 +34,23 @@ export interface TextAnnotationActions {
 }
 
 export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnotationActions {
-  const { mode, isLocked, onLockedAction, derived, uiState, uiActions } = params;
+  const { isLocked, onLockedAction, derived, uiState, uiActions } = params;
+  const canEditAnnotations = !isLocked;
 
   const lastTextStyleRef = useRef<Partial<FreeTextAnnotation>>({});
   const pendingRotationRef = useRef<string | null>(null);
 
   const handleAddText = useCallback(() => {
-    if (mode !== "edit") return;
-    if (isLocked) {
+    if (!canEditAnnotations) {
       onLockedAction();
       return;
     }
     uiActions.setAddTextMode(true);
-  }, [mode, isLocked, onLockedAction, uiActions]);
+  }, [canEditAnnotations, onLockedAction, uiActions]);
 
   const editTextAnnotation = useCallback(
     (id: string) => {
-      if (mode !== "edit") return;
-      if (isLocked) {
+      if (!canEditAnnotations) {
         onLockedAction();
         return;
       }
@@ -61,7 +59,7 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         uiActions.setEditingTextAnnotation(annotation);
       }
     },
-    [mode, isLocked, onLockedAction, derived.textAnnotations, uiActions]
+    [canEditAnnotations, onLockedAction, derived.textAnnotations, uiActions]
   );
 
   const persist = useCallback(() => {

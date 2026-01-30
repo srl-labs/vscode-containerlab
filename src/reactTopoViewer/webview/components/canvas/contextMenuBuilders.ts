@@ -21,6 +21,7 @@ interface MenuBuilderContext {
   editNode: (id: string) => void;
   editNetwork?: (id: string) => void;
   handleDeleteNode: (id: string) => void;
+  showNodeInfo?: (id: string) => void;
   /** Node ID that link creation started from (if in link creation mode) */
   linkSourceNode?: string | null;
   /** Start link creation from this node */
@@ -48,6 +49,7 @@ interface EdgeMenuBuilderContext {
   closeContextMenu: () => void;
   editEdge: (id: string) => void;
   handleDeleteEdge: (id: string) => void;
+  showLinkInfo?: (id: string) => void;
 }
 
 interface PaneMenuBuilderContext {
@@ -67,13 +69,13 @@ interface PaneMenuBuilderContext {
  * Build context menu for free text annotations
  */
 function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
+  const { targetId, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
 
   return [
     {
       id: "edit-text",
       label: "Edit Text",
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         editFreeText?.(targetId);
         closeContextMenu();
@@ -83,7 +85,7 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "delete-text",
       label: "Delete Text",
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         deleteFreeText?.(targetId);
         closeContextMenu();
@@ -96,13 +98,13 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
  * Build context menu for free shape annotations
  */
 function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
+  const { targetId, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
 
   return [
     {
       id: "edit-shape",
       label: "Edit Shape",
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         editFreeShape?.(targetId);
         closeContextMenu();
@@ -112,7 +114,7 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "delete-shape",
       label: "Delete Shape",
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         deleteFreeShape?.(targetId);
         closeContextMenu();
@@ -125,13 +127,13 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
  * Build context menu for group annotations
  */
 function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
+  const { targetId, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
 
   return [
     {
       id: "edit-group",
       label: "Edit Group",
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         editGroup?.(targetId);
         closeContextMenu();
@@ -141,7 +143,7 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "delete-group",
       label: "Delete Group",
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         deleteGroup?.(targetId);
         closeContextMenu();
@@ -151,7 +153,7 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
 }
 
 function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, closeContextMenu } = ctx;
+  const { targetId, closeContextMenu, showNodeInfo } = ctx;
   return [
     {
       id: "ssh-node",
@@ -182,6 +184,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
       id: "info-node",
       label: "Info",
       onClick: () => {
+        showNodeInfo?.(targetId);
         closeContextMenu();
       }
     }
@@ -284,7 +287,15 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
  * Build edge context menu items
  */
 export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isEditMode, isLocked, closeContextMenu, editEdge, handleDeleteEdge } = ctx;
+  const {
+    targetId,
+    isEditMode,
+    isLocked,
+    closeContextMenu,
+    editEdge,
+    handleDeleteEdge,
+    showLinkInfo
+  } = ctx;
   if (isEditMode && isLocked) {
     return [];
   }
@@ -294,6 +305,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
         id: "info-edge",
         label: "Link Info",
         onClick: () => {
+          showLinkInfo?.(targetId);
           closeContextMenu();
         }
       }

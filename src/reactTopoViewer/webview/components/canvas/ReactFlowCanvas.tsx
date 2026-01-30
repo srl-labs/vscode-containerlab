@@ -74,6 +74,8 @@ interface ContextMenuItemsParams {
   editEdge: (id: string | null) => void;
   handleDeleteNode: (nodeId: string) => void;
   handleDeleteEdge: (edgeId: string) => void;
+  showNodeInfo: (nodeId: string) => void;
+  showLinkInfo: (edgeId: string) => void;
   nodesRef: React.RefObject<Node[]>;
   linkSourceNode: string | null;
   startLinkCreation: (nodeId: string) => void;
@@ -95,6 +97,8 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     editEdge,
     handleDeleteNode,
     handleDeleteEdge,
+    showNodeInfo,
+    showLinkInfo,
     nodesRef,
     linkSourceNode,
     startLinkCreation,
@@ -123,6 +127,7 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
         editNode,
         editNetwork,
         handleDeleteNode,
+        showNodeInfo,
         linkSourceNode,
         startLinkCreation,
         cancelLinkCreation,
@@ -141,7 +146,8 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
         isLocked,
         closeContextMenu: handlers.closeContextMenu,
         editEdge,
-        handleDeleteEdge
+        handleDeleteEdge,
+        showLinkInfo
       });
     }
     if (type === "pane") {
@@ -169,6 +175,8 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     editEdge,
     handleDeleteNode,
     handleDeleteEdge,
+    showNodeInfo,
+    showLinkInfo,
     nodesRef,
     linkSourceNode,
     startLinkCreation,
@@ -555,7 +563,7 @@ function getCanvasInteractionConfig(params: {
   const { mode, isLocked, isGeoLayout, isGeoEdit, isInAddMode } = params;
   const allowPanOnDrag = !isInAddMode && !isGeoLayout;
   const allowSelectionOnDrag = !isInAddMode && (!isGeoLayout || isGeoEdit);
-  const nodesDraggable = mode === "edit" && !isLocked && (!isGeoLayout || isGeoEdit);
+  const nodesDraggable = !isLocked && (!isGeoLayout || isGeoEdit);
   const nodesConnectable = mode === "edit" && !isLocked;
   const reactFlowStyle: React.CSSProperties | undefined = isGeoLayout
     ? {
@@ -704,7 +712,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const allNodes = (propNodes as Node[]) ?? [];
     const allEdges = (propEdges as Edge[]) ?? [];
 
-    const isGeoEditable = isGeoLayout && mode === "edit" && !isLocked;
+    const isGeoEditable = isGeoLayout && !isLocked;
 
     const geoLayout = useGeoMapLayout({
       isGeoLayout,
@@ -843,6 +851,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       editEdge,
       handleDeleteNode,
       handleDeleteEdge,
+      showNodeInfo: selectNode,
+      showLinkInfo: selectEdge,
       nodesRef,
       linkSourceNode,
       startLinkCreation,
