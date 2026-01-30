@@ -149,7 +149,7 @@ export function setHostRevision(nextRevision: number): void {
   revision = nextRevision;
 }
 
-export async function requestSnapshot(): Promise<TopologySnapshot> {
+export async function requestSnapshot(options: { externalChange?: boolean } = {}): Promise<TopologySnapshot> {
   if (isVsCode()) {
     return sendVsCodeRequest<TopologySnapshot>(
       { type: "topology-host:get-snapshot", protocolVersion: TOPOLOGY_HOST_PROTOCOL_VERSION },
@@ -167,7 +167,8 @@ export async function requestSnapshot(): Promise<TopologySnapshot> {
     body: JSON.stringify({
       path: hostContext.path,
       mode: hostContext.mode,
-      deploymentState: hostContext.deploymentState
+      deploymentState: hostContext.deploymentState,
+      externalChange: options.externalChange ?? false
     })
   });
 

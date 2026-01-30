@@ -70,10 +70,14 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
 }
 
 /**
- * Check if nodes have preset positions (non-zero coordinates)
+ * Check if layoutable nodes have preset positions (non-zero coordinates)
  */
 export function hasPresetPositions(nodes: Node[]): boolean {
-  return nodes.some((node) => node.position && (node.position.x !== 0 || node.position.y !== 0));
+  const layoutNodes = nodes.filter(isLayoutableNode);
+  if (layoutNodes.length === 0) return false;
+  return layoutNodes.some(
+    (node) => node.position && (node.position.x !== 0 || node.position.y !== 0)
+  );
 }
 
 /**

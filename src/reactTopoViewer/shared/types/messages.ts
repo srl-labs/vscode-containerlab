@@ -70,6 +70,14 @@ export type TopologyHostCommand =
       command: "setNodeGroupMemberships";
       payload: Array<{ nodeId: string; groupId: string | null }>;
     }
+  | {
+      command: "setAnnotationsWithMemberships";
+      payload: {
+        annotations: Partial<TopologyAnnotations>;
+        memberships: Array<{ nodeId: string; groupId: string | null }>;
+      };
+    }
+  | { command: "batch"; payload: { commands: TopologyHostCommand[] } }
   | { command: "setLabSettings"; payload: LabSettings }
   | { command: "undo" }
   | { command: "redo" };

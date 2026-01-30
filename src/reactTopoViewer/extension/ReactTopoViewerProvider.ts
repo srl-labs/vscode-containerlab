@@ -33,6 +33,8 @@ import {
 
 /** Message type for incremental edge stats updates */
 const MSG_EDGE_STATS_UPDATE = "edge-stats-update";
+const INTERNAL_UPDATE_GRACE_MS = 250;
+const INTERNAL_UPDATE_CACHE_SYNC_DELAY_MS = 50;
 
 /**
  * React TopoViewer class that manages the webview panel
@@ -52,7 +54,9 @@ export class ReactTopoViewer {
   private messageRouter: MessageRouter | undefined;
   private splitViewManager: SplitViewManager = new SplitViewManager();
   private internalUpdateDepth = 0;
-  private internalUpdateDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  private internalUpdateGraceUntil = 0;
+  private internalUpdateGraceTimer: ReturnType<typeof setTimeout> | undefined;
+  private internalUpdateCacheSyncTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -60,30 +64,47 @@ export class ReactTopoViewer {
   }
 
   /**
-   * Set internal update flag with debounced clearing.
-   * When setting to false, we delay the actual clearing to give file watchers
-   * time to fire and be ignored (since they check isInternalUpdate).
+   * Track internal updates and provide a short grace window for file watchers.
+   * This prevents internal writes from being treated as external changes.
    */
   private setInternalUpdate(updating: boolean): void {
     if (updating) {
-      // Clear any pending debounce timer when starting a new internal update
-      if (this.internalUpdateDebounceTimer) {
-        clearTimeout(this.internalUpdateDebounceTimer);
-        this.internalUpdateDebounceTimer = undefined;
+      // Clear any pending timers when starting a new internal update
+      if (this.internalUpdateGraceTimer) {
+        clearTimeout(this.internalUpdateGraceTimer);
+        this.internalUpdateGraceTimer = undefined;
+      }
+      if (this.internalUpdateCacheSyncTimer) {
+        clearTimeout(this.internalUpdateCacheSyncTimer);
+        this.internalUpdateCacheSyncTimer = undefined;
       }
       this.internalUpdateDepth += 1;
       return;
     }
 
-    // Debounce the clearing of internal update flag to allow file watchers
-    // to fire and be ignored. File system events can be delayed by 100-200ms.
-    if (this.internalUpdateDebounceTimer) {
-      clearTimeout(this.internalUpdateDebounceTimer);
+    this.internalUpdateDepth = Math.max(0, this.internalUpdateDepth - 1);
+    if (this.internalUpdateDepth > 0) return;
+
+    // Grace window to ignore delayed file watcher events from internal writes.
+    this.internalUpdateGraceUntil = Date.now() + INTERNAL_UPDATE_GRACE_MS;
+    if (this.internalUpdateGraceTimer) {
+      clearTimeout(this.internalUpdateGraceTimer);
     }
-    this.internalUpdateDebounceTimer = setTimeout(() => {
-      this.internalUpdateDepth = Math.max(0, this.internalUpdateDepth - 1);
-      this.internalUpdateDebounceTimer = undefined;
-    }, 250);
+    this.internalUpdateGraceTimer = setTimeout(() => {
+      this.internalUpdateGraceUntil = 0;
+      this.internalUpdateGraceTimer = undefined;
+    }, INTERNAL_UPDATE_GRACE_MS);
+
+    // Refresh caches after internal writes settle.
+    if (this.internalUpdateCacheSyncTimer) {
+      clearTimeout(this.internalUpdateCacheSyncTimer);
+    }
+    this.internalUpdateCacheSyncTimer = setTimeout(() => {
+      if (this.lastYamlFilePath) {
+        void this.watcherManager.refreshContentCaches(this.lastYamlFilePath);
+      }
+      this.internalUpdateCacheSyncTimer = undefined;
+    }, INTERNAL_UPDATE_CACHE_SYNC_DELAY_MS);
   }
 
   private async loadRunningLabsData(): Promise<Record<string, ClabLabTreeNode> | undefined> {
@@ -101,7 +122,10 @@ export class ReactTopoViewer {
    * Initialize watchers for file changes and docker images
    */
   private initializeWatchers(panel: vscode.WebviewPanel): void {
-    const updateController = { isInternalUpdate: () => this.internalUpdateDepth > 0 };
+    const updateController = {
+      isInternalUpdate: () =>
+        this.internalUpdateDepth > 0 || Date.now() < this.internalUpdateGraceUntil
+    };
     const postSnapshot = (snapshot: unknown) => {
       panel.webview.postMessage({
         type: "topology-host:snapshot",
@@ -134,9 +158,14 @@ export class ReactTopoViewer {
       () => {
         this.currentPanel = undefined;
         this.internalUpdateDepth = 0;
-        if (this.internalUpdateDebounceTimer) {
-          clearTimeout(this.internalUpdateDebounceTimer);
-          this.internalUpdateDebounceTimer = undefined;
+        this.internalUpdateGraceUntil = 0;
+        if (this.internalUpdateGraceTimer) {
+          clearTimeout(this.internalUpdateGraceTimer);
+          this.internalUpdateGraceTimer = undefined;
+        }
+        if (this.internalUpdateCacheSyncTimer) {
+          clearTimeout(this.internalUpdateCacheSyncTimer);
+          this.internalUpdateCacheSyncTimer = undefined;
         }
         this.topologyHost?.dispose();
         this.topologyHost = undefined;

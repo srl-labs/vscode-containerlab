@@ -280,6 +280,7 @@ export function useGeoMapLayout({
   const nodesRef = useRef<Node[]>(nodes);
   const setNodesRef = useRef(setNodes);
   const wasGeoRef = useRef(false);
+  const initialAssignmentRef = useRef(false);
   const originalPositionsRef = useRef<Map<string, XYPosition>>(new Map());
   const previousViewportRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -412,6 +413,7 @@ export function useGeoMapLayout({
     if (!isGeoLayout) return;
     const map = mapRef.current;
     if (!map || !isReady) return;
+    initialAssignmentRef.current = true;
 
     const currentNodes = nodesRef.current;
     const existingBounds = buildGeoBounds(currentNodes);
@@ -450,13 +452,21 @@ export function useGeoMapLayout({
       if (changed || assignments.length > 0) {
         setNodesRef.current(syncedNodes);
       }
+      initialAssignmentRef.current = false;
     });
+
+    if (assignments.length === 0) {
+      setTimeout(() => {
+        initialAssignmentRef.current = false;
+      }, 0);
+    }
   }, [isGeoLayout, isReady]);
 
   useEffect(() => {
     if (!isGeoLayout || !isReady) return;
     const map = mapRef.current;
     if (!map) return;
+    if (initialAssignmentRef.current) return;
     if (nodes.some((node) => node.dragging)) return;
 
     const center = map.getCenter();

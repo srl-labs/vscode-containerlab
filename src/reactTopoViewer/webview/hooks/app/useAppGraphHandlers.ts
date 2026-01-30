@@ -40,6 +40,7 @@ interface AppGraphHandlersConfig {
 export interface AppGraphHandlers {
   handleEdgeCreated: EdgeCreatedHandler;
   handleNodeCreatedCallback: NodeCreatedHandler;
+  handleBatchPaste: (payload: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
   handleDeleteNode: (nodeId: string) => void;
   handleDeleteLink: (edgeId: string) => void;
   handleUpdateNodeData: (nodeId: string, extraData: Record<string, unknown>) => void;
@@ -84,7 +85,13 @@ export function useAppGraphHandlers({
     [rfInstance]
   );
 
-  const { handleEdgeCreated, handleNodeCreatedCallback, handleDeleteNode, handleDeleteLink } =
+  const {
+    handleEdgeCreated,
+    handleNodeCreatedCallback,
+    handleBatchPaste,
+    handleDeleteNode,
+    handleDeleteLink
+  } =
     useGraphHandlersWithContext({
       getNodes,
       getEdges,
@@ -128,6 +135,7 @@ export function useAppGraphHandlers({
   return {
     handleEdgeCreated,
     handleNodeCreatedCallback,
+    handleBatchPaste,
     handleDeleteNode,
     handleDeleteLink,
     handleUpdateNodeData,

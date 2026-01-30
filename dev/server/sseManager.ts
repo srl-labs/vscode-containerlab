@@ -8,6 +8,7 @@
 import type { ServerResponse } from "http";
 import * as path from "path";
 import { watch } from "chokidar";
+import { isInternalUpdate } from "./internalUpdateTracker";
 
 // Type for SSE client connection
 interface SSEClient {
@@ -176,10 +177,14 @@ export function startFileWatcher(topologiesDir: string): void {
 
   fileWatcher.on("change", (filePath) => {
     // Only watch .clab.yml and .annotations.json files
-    if (filePath.endsWith(".clab.yml") || filePath.endsWith(".annotations.json")) {
-      console.log(`[SSE] Disk file changed: ${filePath}`);
-      broadcastFileChangeToAll(filePath);
+    if (!filePath.endsWith(".clab.yml") && !filePath.endsWith(".annotations.json")) {
+      return;
     }
+    if (isInternalUpdate(filePath)) {
+      return;
+    }
+    console.log(`[SSE] Disk file changed: ${filePath}`);
+    broadcastFileChangeToAll(filePath);
   });
 
   fileWatcher.on("error", (error) => {

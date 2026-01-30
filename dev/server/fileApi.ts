@@ -25,6 +25,7 @@ import type { TopologyHostCommand } from "../../src/reactTopoViewer/shared/types
 import type { DeploymentState } from "../../src/reactTopoViewer/shared/types/topology";
 import { SessionFsAdapter, SessionMaps, createSessionMaps, resetSession } from "./SessionFsAdapter";
 import { addClient, broadcastFileChange, startFileWatcher } from "./sseManager";
+import { beginInternalUpdate, endInternalUpdate } from "./internalUpdateTracker";
 
 const TOPOLOGIES_DIR = path.join(__dirname, "../topologies");
 const TOPOLOGIES_ORIGINAL_DIR = path.join(__dirname, "../topologies-original");
@@ -72,6 +73,13 @@ function getTopologyHost(
       yamlFilePath: normalizedPath,
       mode: context?.mode ?? "edit",
       deploymentState: context?.deploymentState ?? "undeployed",
+      setInternalUpdate: (updating: boolean) => {
+        if (updating) {
+          beginInternalUpdate(normalizedPath);
+        } else {
+          endInternalUpdate(normalizedPath);
+        }
+      },
       logger: console
     });
     topologyHosts.set(key, host);
@@ -392,6 +400,7 @@ export function fileApiPlugin(): Plugin {
               path?: string;
               mode?: "edit" | "view";
               deploymentState?: DeploymentState;
+              externalChange?: boolean;
             };
 
             if (!payload.path) {
@@ -405,7 +414,7 @@ export function fileApiPlugin(): Plugin {
               mode: payload.mode,
               deploymentState: payload.deploymentState
             });
-            const snapshot = await host.getSnapshot();
+            const snapshot = payload.externalChange ? await host.onExternalChange() : await host.getSnapshot();
 
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ snapshot }));

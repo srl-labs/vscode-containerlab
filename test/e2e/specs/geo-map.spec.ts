@@ -44,6 +44,7 @@ test.describe("GeoMap Layout", () => {
   };
 
   test.beforeEach(async ({ topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(TEST_FILE);
     await topoViewerPage.waitForCanvasReady();
   });
@@ -227,14 +228,12 @@ test.describe("GeoMap Layout", () => {
     await expect.poll(() => topoViewerPage.canUndo(), { timeout: 3000 }).toBe(true);
 
     await topoViewerPage.undo();
-    await page.waitForTimeout(800);
+    await expect.poll(() => topoViewerPage.canRedo(), { timeout: 3000 }).toBe(true);
 
     const undoGeoStore = await getNodeGeoFromStore(page, testNodeId);
     const undoGeoFile = await getNodeGeoFromFile(topoViewerPage, testNodeId);
     expectGeoClose(undoGeoStore, initialGeoStore);
     expectGeoClose(undoGeoFile, initialGeoStore);
-
-    await expect.poll(() => topoViewerPage.canRedo(), { timeout: 3000 }).toBe(true);
 
     await topoViewerPage.redo();
     await page.waitForTimeout(800);

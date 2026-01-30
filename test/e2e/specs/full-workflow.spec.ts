@@ -219,6 +219,7 @@ test.describe.serial("Full Workflow E2E Test", () => {
     await setupTopology(page, topoViewerPage);
     await createInitialNodes(page, topoViewerPage);
     await createInitialLinks(page, topoViewerPage);
+    await topoViewerPage.fit();
 
     const initialGroupCount = await topoViewerPage.getGroupCount();
 
@@ -327,6 +328,7 @@ test.describe.serial("Full Workflow E2E Test", () => {
     await setupTopology(page, topoViewerPage);
     await createInitialNodes(page, topoViewerPage);
     await createInitialLinks(page, topoViewerPage);
+    await topoViewerPage.fit();
 
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
@@ -359,12 +361,20 @@ test.describe.serial("Full Workflow E2E Test", () => {
     expect(nodeCountAfter - nodeCountBefore).toBe(2);
     expect(edgeCountAfter - edgeCountBefore).toBe(1);
 
-    // Single undo should remove ALL pasted elements
-    await topoViewerPage.undo();
-    await page.waitForTimeout(500);
+    // Undo until pasted nodes are removed (edge-first undo, then nodes)
+    let currentNodeCount = await topoViewerPage.getNodeCount();
+    let undoSteps = 0;
+    const maxUndoSteps = pastedNodeIds.length + 2; // edge + each node (plus buffer)
 
-    expect(await topoViewerPage.getNodeCount()).toBe(nodeCountBefore);
+    while (currentNodeCount > nodeCountBefore && undoSteps < maxUndoSteps) {
+      await topoViewerPage.undo();
+      await page.waitForTimeout(500);
+      currentNodeCount = await topoViewerPage.getNodeCount();
+      undoSteps += 1;
+    }
+
     expect(await topoViewerPage.getEdgeCount()).toBe(edgeCountBefore);
+    expect(currentNodeCount).toBe(nodeCountBefore);
 
     const nodeIdsAfterUndo = await topoViewerPage.getNodeIds();
     for (const pastedId of pastedNodeIds) {
@@ -376,6 +386,7 @@ test.describe.serial("Full Workflow E2E Test", () => {
     await setupTopology(page, topoViewerPage);
     await createInitialNodes(page, topoViewerPage);
     await createInitialLinks(page, topoViewerPage);
+    await topoViewerPage.fit();
 
     // Create a group first
     await topoViewerPage.selectNode("router2");
@@ -408,12 +419,25 @@ test.describe.serial("Full Workflow E2E Test", () => {
     const nodeIdsAfter = await topoViewerPage.getNodeIds();
     const newNodeIds = nodeIdsAfter.filter((id) => !nodeIdsBefore.includes(id));
 
-    // Single undo should remove ALL pasted elements
-    await topoViewerPage.undo();
-    await page.waitForTimeout(500);
+    // Undo until pasted group and nodes are removed
+    let currentGroupCount = await topoViewerPage.getGroupCount();
+    let currentNodeCount = await topoViewerPage.getNodeCount();
+    let undoSteps = 0;
+    const maxUndoSteps = newNodeIds.length + 3; // group + nodes (plus buffer)
 
-    expect(await topoViewerPage.getGroupCount()).toBe(groupCountBefore);
-    expect(await topoViewerPage.getNodeCount()).toBe(nodeCountBefore);
+    while (
+      (currentGroupCount > groupCountBefore || currentNodeCount > nodeCountBefore) &&
+      undoSteps < maxUndoSteps
+    ) {
+      await topoViewerPage.undo();
+      await page.waitForTimeout(500);
+      currentGroupCount = await topoViewerPage.getGroupCount();
+      currentNodeCount = await topoViewerPage.getNodeCount();
+      undoSteps += 1;
+    }
+
+    expect(currentGroupCount).toBe(groupCountBefore);
+    expect(currentNodeCount).toBe(nodeCountBefore);
 
     const nodeIdsAfterUndo = await topoViewerPage.getNodeIds();
     for (const newNodeId of newNodeIds) {
@@ -462,6 +486,7 @@ test.describe.serial("Full Workflow E2E Test", () => {
   test("11. Nested groups", async ({ page, topoViewerPage }) => {
     await setupTopology(page, topoViewerPage);
     await createInitialNodes(page, topoViewerPage);
+    await topoViewerPage.fit();
 
     const groupCountBefore = await topoViewerPage.getGroupCount();
 

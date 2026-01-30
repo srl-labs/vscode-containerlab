@@ -249,9 +249,13 @@ function subscribeToFileChanges(): void {
       const filename = currentFilePath.split("/").pop();
       if (!filename) return;
 
-      // Refresh topology on YAML changes
-      if (payload.type === "yaml" && payload.path === filename) {
-        void refreshTopologySnapshot();
+      const isYamlChange = payload.type === "yaml" && payload.path === filename;
+      const isAnnotationsChange =
+        payload.type === "annotations" && payload.path === `${filename}.annotations.json`;
+
+      // Refresh topology on YAML or annotations changes
+      if (isYamlChange || isAnnotationsChange) {
+        void refreshTopologySnapshot({ externalChange: true });
       }
 
       // Refresh split view on any file change for current topology

@@ -105,11 +105,14 @@ async function createGroupFromNodes(
 }
 
 async function openGroupContextMenu(page: Page, groupId: string): Promise<void> {
-  const label = page.locator(`[data-testid="group-label-${groupId}"]`);
-  await label.waitFor({ state: "visible", timeout: 5000 });
-  const box = await label.boundingBox();
+  const groupNode = page.locator(`[data-testid="group-node-${groupId}"]`);
+  await groupNode.waitFor({ state: "visible", timeout: 5000 });
+  const box = await groupNode.boundingBox();
   expect(box).not.toBeNull();
-  await rightClick(page, box!.x + box!.width / 2, box!.y + box!.height / 2);
+  // Click inside the group container away from the top-left label to avoid overlapping child groups.
+  const clickX = box!.x + Math.min(10, box!.width / 4);
+  const clickY = box!.y + box!.height / 2;
+  await rightClick(page, clickX, clickY);
 }
 
 function findById<T extends { id: string }>(items: T[], id: string): T | undefined {
@@ -369,7 +372,7 @@ test.describe("Group Operations - Membership promotions", () => {
       .toBe(innerGroupId);
 
     await openGroupContextMenu(page, innerGroupId);
-    await page.getByRole("button", { name: "Delete" }).click();
+    await page.locator('[data-testid="context-menu-item-delete-group"]').click();
 
     await expect
       .poll(
@@ -438,7 +441,7 @@ test.describe("Group Operations - Membership promotions", () => {
     expect(secondGroup).toBeDefined();
 
     await openGroupContextMenu(page, secondGroupId);
-    await page.getByRole("button", { name: "Edit" }).first().click();
+    await page.locator('[data-testid="context-menu-item-edit-group"]').click();
 
     const groupEditor = page.locator('[data-testid="group-editor"]');
     await expect(groupEditor).toBeVisible({ timeout: 3000 });

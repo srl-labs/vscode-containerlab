@@ -77,7 +77,7 @@ export class WatcherManager {
     this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
 
     // Initialize content caches to prevent false-positive external change detection
-    void this.initializeContentCaches(yamlFilePath);
+    void this.refreshContentCaches(yamlFilePath);
 
     this.fileWatcher.onDidChange(() => {
       void this.handleExternalYamlChange(
@@ -106,10 +106,11 @@ export class WatcherManager {
   }
 
   /**
-   * Initialize content caches with current file contents
-   * This prevents the first internal save from being detected as an external change
+   * Refresh content caches with current file contents.
+   * Used to prevent internal saves from being detected as external changes.
    */
-  private async initializeContentCaches(yamlFilePath: string): Promise<void> {
+  async refreshContentCaches(yamlFilePath: string): Promise<void> {
+    if (!yamlFilePath) return;
     try {
       this.lastYamlContent = await nodeFsAdapter.readFile(yamlFilePath);
     } catch {
@@ -120,7 +121,8 @@ export class WatcherManager {
     try {
       this.lastAnnotationsContent = await nodeFsAdapter.readFile(annotationsPath);
     } catch {
-      this.lastAnnotationsContent = undefined;
+      // Use empty string to match handleExternalAnnotationsChange fallback
+      this.lastAnnotationsContent = "";
     }
   }
 
@@ -175,6 +177,7 @@ export class WatcherManager {
     if (!yamlFilePath) return;
     if (updateController.isInternalUpdate()) {
       log.debug(`[ReactTopoViewer] Ignoring ${trigger} event during internal update`);
+      void this.refreshContentCaches(yamlFilePath);
       return;
     }
 
@@ -230,6 +233,8 @@ export class WatcherManager {
     if (!annotationsPath) return;
     if (updateController.isInternalUpdate()) {
       log.debug(`[ReactTopoViewer] Ignoring annotations ${trigger} during internal update`);
+      const yamlPath = annotationsPath.replace(/\.annotations\.json$/, "");
+      void this.refreshContentCaches(yamlPath);
       return;
     }
 

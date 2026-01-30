@@ -229,7 +229,8 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotations,
     rfInstance,
     handleNodeCreatedCallback: graphHandlers.handleNodeCreatedCallback,
-    handleEdgeCreated: graphHandlers.handleEdgeCreated
+    handleEdgeCreated: graphHandlers.handleEdgeCreated,
+    handleBatchPaste: graphHandlers.handleBatchPaste
   });
 
   useAppKeyboardShortcuts({
@@ -357,7 +358,8 @@ export const AppContent: React.FC<AppContentProps> = ({
             onClose: panelVisibility.handleCloseSvgExport,
             textAnnotations: annotations.textAnnotations,
             shapeAnnotations: annotations.shapeAnnotations,
-            groups: annotations.groups
+            groups: annotations.groups,
+            rfInstance
           }}
         />
         <EditorPanels

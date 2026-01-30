@@ -12,7 +12,7 @@ import type {
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from "../../../shared/types/topology";
-import type { TopoNode } from "../../../shared/types/graph";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 
 import { useClipboard, type UseClipboardOptions } from "./useClipboard";
 /**
@@ -63,6 +63,8 @@ export interface ClipboardHandlersConfig {
       targetEndpoint: string;
     }
   ) => void;
+  /** Batch paste handler for unified undo/redo */
+  handleBatchPaste?: (result: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
 }
 
 /**
@@ -85,7 +87,13 @@ export interface ClipboardHandlersReturn {
  * Hook that provides debounced clipboard operations.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { annotations, handleNodeCreatedCallback, handleEdgeCreated, rfInstance } = config;
+  const {
+    annotations,
+    handleNodeCreatedCallback,
+    handleEdgeCreated,
+    handleBatchPaste,
+    rfInstance
+  } = config;
 
   // Build clipboard options with persistence callbacks
   const clipboardOptions: UseClipboardOptions = React.useMemo(
@@ -94,12 +102,14 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
       onNodeCreated: handleNodeCreatedCallback,
       onEdgeCreated: handleEdgeCreated,
       getNodeMembership: annotations.getNodeMembership,
-      addNodeToGroup: annotations.addNodeToGroup
+      addNodeToGroup: annotations.addNodeToGroup,
+      onPasteComplete: handleBatchPaste
     }),
     [
       rfInstance,
       handleNodeCreatedCallback,
       handleEdgeCreated,
+      handleBatchPaste,
       annotations.getNodeMembership,
       annotations.addNodeToGroup
     ]

@@ -1,11 +1,21 @@
 import { useCallback, useMemo } from "react";
-import type { ReactFlowInstance } from "@xyflow/react";
+import type { Node, ReactFlowInstance } from "@xyflow/react";
 
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
+import type { GroupNodeData } from "../../components/canvas/types";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
-import { saveAllNodeGroupMemberships, saveAnnotationNodesFromGraph } from "../../services";
+import {
+  saveAllNodeGroupMemberships,
+  saveAnnotationNodesFromGraph,
+  saveAnnotationNodesWithMemberships
+} from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
+import {
+  GROUP_NODE_TYPE,
+  nodeToGroup,
+  resolveGroupParentId
+} from "../../annotations/annotationNodeConverters";
 
 import type { GroupEditorData } from "./groupTypes";
 import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";
@@ -104,24 +114,56 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
 
   const deleteGroup = useCallback(
     (id: string) => {
-      const group = derived.groups.find((g) => g.id === id);
+      const graphNodes = useGraphStore.getState().nodes;
+      const groupsSnapshot =
+        derived.groups.length > 0
+          ? derived.groups
+          : graphNodes
+              .filter((node) => node.type === GROUP_NODE_TYPE)
+              .map((node) => nodeToGroup(node as Node<GroupNodeData>));
+      const group = groupsSnapshot.find((g) => g.id === id);
+      const parentId = group ? resolveGroupParentId(group.parentId, group.groupId) : null;
       const memberIds = derived.getGroupMembers(id);
+      const childGroups = groupsSnapshot.filter(
+        (g) => resolveGroupParentId(g.parentId, g.groupId) === id
+      );
+      const textIds = new Set(derived.textAnnotations.map((t) => t.id));
+      const shapeIds = new Set(derived.shapeAnnotations.map((s) => s.id));
 
       derived.deleteGroup(id);
       uiActions.removeFromGroupSelection(id);
 
+      // Promote child groups to parent (or clear parent if none)
+      for (const child of childGroups) {
+        derived.updateGroup(child.id, {
+          parentId: parentId ?? undefined,
+          groupId: parentId ?? undefined
+        });
+      }
+
       if (memberIds.length > 0) {
         for (const memberId of memberIds) {
-          derived.removeNodeFromGroup(memberId);
+          if (textIds.has(memberId)) {
+            derived.updateTextAnnotation(memberId, { groupId: parentId ?? undefined });
+            continue;
+          }
+          if (shapeIds.has(memberId)) {
+            derived.updateShapeAnnotation(memberId, { groupId: parentId ?? undefined });
+            continue;
+          }
+
+          if (parentId) {
+            derived.addNodeToGroup(memberId, parentId);
+          } else {
+            derived.removeNodeFromGroup(memberId);
+          }
         }
       }
 
-      if (group) {
-        persist();
-        persistMemberships();
-      }
+      const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
+      void saveAnnotationNodesWithMemberships(memberships);
     },
-    [derived, uiActions, persist, persistMemberships]
+    [derived, uiActions]
   );
 
   const handleAddGroup = useCallback(() => {

@@ -46,6 +46,29 @@ export async function saveAnnotationNodesFromGraph(nodes?: Node[]): Promise<void
   }
 }
 
+export async function saveAnnotationNodesWithMemberships(
+  memberships: Array<{ id: string; groupId?: string }>,
+  nodes?: Node[]
+): Promise<void> {
+  try {
+    const graphNodes = nodes ?? useGraphStore.getState().nodes;
+    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    await executeTopologyCommand({
+      command: "setAnnotationsWithMemberships",
+      payload: {
+        annotations: {
+          freeTextAnnotations,
+          freeShapeAnnotations,
+          groupStyleAnnotations: groups
+        },
+        memberships: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
+      }
+    });
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: setAnnotationsWithMemberships`, err);
+  }
+}
+
 export async function saveFreeShapeAnnotations(annotations: FreeShapeAnnotation[]): Promise<void> {
   try {
     await executeTopologyCommand({

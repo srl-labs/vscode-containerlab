@@ -10,6 +10,7 @@ import type {
   FreeShapeAnnotation,
   GroupStyleAnnotation,
   NodeAnnotation,
+  NetworkNodeAnnotation,
   TopologyAnnotations
 } from "../../shared/types/topology";
 import type { TopoNode, TopoEdge } from "../../shared/types/graph";
@@ -32,14 +33,20 @@ export interface ApplySnapshotOptions {
 function buildMergedNodes(
   newNodes: TopoNode[],
   nodeAnnotations: NodeAnnotation[] | undefined,
+  networkNodeAnnotations: NetworkNodeAnnotation[] | undefined,
   groupStyleAnnotations: GroupStyleAnnotation[],
   freeTextAnnotations: FreeTextAnnotation[],
   freeShapeAnnotations: FreeShapeAnnotation[]
 ): Node[] {
-  const topoWithMembership = applyGroupMembershipToNodes(
+  let topoWithMembership = applyGroupMembershipToNodes(
     newNodes,
     nodeAnnotations,
     groupStyleAnnotations
+  );
+  topoWithMembership = applyGeoCoordinatesToNodes(
+    topoWithMembership,
+    nodeAnnotations,
+    networkNodeAnnotations
   );
   const annotationNodes = annotationsToNodes(
     freeTextAnnotations,
@@ -73,6 +80,47 @@ function normalizeAnnotations(annotations?: TopologyAnnotations): Required<Topol
   };
 }
 
+function applyGeoCoordinatesToNodes(
+  nodes: TopoNode[],
+  nodeAnnotations: NodeAnnotation[] | undefined,
+  networkNodeAnnotations: NetworkNodeAnnotation[] | undefined
+): TopoNode[] {
+  if ((!nodeAnnotations || nodeAnnotations.length === 0) && (!networkNodeAnnotations || networkNodeAnnotations.length === 0)) {
+    return nodes;
+  }
+
+  const geoMap = new Map<string, { lat: number; lng: number }>();
+  for (const annotation of nodeAnnotations ?? []) {
+    if (annotation.geoCoordinates) {
+      geoMap.set(annotation.id, annotation.geoCoordinates);
+    }
+  }
+  for (const annotation of networkNodeAnnotations ?? []) {
+    if (annotation.geoCoordinates) {
+      geoMap.set(annotation.id, annotation.geoCoordinates);
+    }
+  }
+
+  if (geoMap.size === 0) return nodes;
+
+  return nodes.map((node) => {
+    const geo = geoMap.get(node.id);
+    if (!geo) return node;
+    const data = (node.data ?? {}) as Record<string, unknown>;
+    return {
+      ...node,
+      data: { ...data, geoCoordinates: geo }
+    } as TopoNode;
+  });
+}
+
+function hasGeoCoordinates(annotations: Required<TopologyAnnotations>): boolean {
+  return (
+    annotations.nodeAnnotations.some((ann) => Boolean(ann.geoCoordinates)) ||
+    annotations.networkNodeAnnotations.some((ann) => Boolean(ann.geoCoordinates))
+  );
+}
+
 export function applySnapshotToStores(
   snapshot: TopologySnapshot,
   options: ApplySnapshotOptions = {}
@@ -88,14 +136,15 @@ export function applySnapshotToStores(
   let mergedNodes = buildMergedNodes(
     nodes,
     annotations.nodeAnnotations,
+    annotations.networkNodeAnnotations,
     annotations.groupStyleAnnotations,
     annotations.freeTextAnnotations,
     annotations.freeShapeAnnotations
   );
 
-  // On initial load, apply force layout if nodes don't have preset positions
-  // This handles the case when annotation.json doesn't exist or nodes have no saved positions
-  if (options.isInitialLoad && !hasPresetPositions(mergedNodes)) {
+  // Apply force layout when no preset positions exist and geo coordinates are not driving layout.
+  // This handles the case when annotation.json doesn't exist or positions were cleared (e.g. undo).
+  if (!hasPresetPositions(mergedNodes) && !hasGeoCoordinates(annotations)) {
     mergedNodes = applyForceLayout(mergedNodes, edges as unknown as Edge[]);
   }
 

@@ -120,8 +120,10 @@ export async function executeTopologyCommands(
   return queued;
 }
 
-export async function refreshTopologySnapshot(): Promise<TopologySnapshot> {
-  const snapshot = await requestSnapshot();
+export async function refreshTopologySnapshot(
+  options: { externalChange?: boolean } = {}
+): Promise<TopologySnapshot> {
+  const snapshot = await requestSnapshot(options);
   applySnapshotToStores(snapshot);
   return snapshot;
 }

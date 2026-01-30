@@ -233,6 +233,11 @@ export class TopologyHostCore implements TopologyHost {
     savePositions: (cmd) => this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
     savePositionsAndAnnotations: (cmd) => this.handleSaveCommand(cmd as Parameters<typeof this.handleSaveCommand>[0]),
     setAnnotations: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
+    setAnnotationsWithMemberships: (cmd) =>
+      this.handleAnnotationSettingsCommand(
+        cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]
+      ),
+    batch: (cmd) => this.handleBatchCommand(cmd as Extract<TopologyHostCommand, { command: "batch" }>),
     setEdgeAnnotations: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
     setViewerSettings: (cmd) => this.handleAnnotationSettingsCommand(cmd as Parameters<typeof this.handleAnnotationSettingsCommand>[0]),
     setNodeGroupMembership: (cmd) => this.handleNodeGroupMemberships(cmd as Parameters<typeof this.handleNodeGroupMemberships>[0]),
@@ -296,13 +301,50 @@ export class TopologyHostCore implements TopologyHost {
     }
   }
 
+  private async handleBatchCommand(
+    command: Extract<TopologyHostCommand, { command: "batch" }>
+  ): Promise<void> {
+    const commands = command.payload.commands ?? [];
+    this.topologyIO.beginBatch();
+    try {
+      for (const entry of commands) {
+        if (entry.command === "batch") {
+          throw new Error("Nested batch commands are not supported");
+        }
+        if (entry.command === "undo" || entry.command === "redo") {
+          throw new Error("undo/redo not allowed inside batch");
+        }
+        await this.executeCommand(entry);
+      }
+    } finally {
+      await this.topologyIO.endBatch();
+    }
+  }
+
   private async handleAnnotationSettingsCommand(
-    command: Extract<TopologyHostCommand, { command: "setAnnotations" | "setEdgeAnnotations" | "setViewerSettings" }>
+    command: Extract<
+      TopologyHostCommand,
+      {
+        command:
+          | "setAnnotations"
+          | "setAnnotationsWithMemberships"
+          | "setEdgeAnnotations"
+          | "setViewerSettings";
+      }
+    >
   ): Promise<void> {
     switch (command.command) {
       case "setAnnotations":
         await this.mergeAnnotations(command.payload);
         break;
+      case "setAnnotationsWithMemberships": {
+        const { annotations, memberships } = command.payload;
+        await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => {
+          const merged = mergeAnnotationsPayload(current, annotations);
+          return applyNodeGroupMembershipsToAnnotations(merged, memberships);
+        });
+        break;
+      }
       case "setEdgeAnnotations":
         await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => ({
           ...current,
@@ -323,14 +365,7 @@ export class TopologyHostCore implements TopologyHost {
 
   private async mergeAnnotations(annotations: Partial<TopologyAnnotations>): Promise<void> {
     await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => {
-      const merged: TopologyAnnotations = { ...current, ...annotations };
-      if (annotations.viewerSettings) {
-        merged.viewerSettings = {
-          ...(current.viewerSettings ?? {}),
-          ...annotations.viewerSettings
-        };
-      }
-      return merged;
+      return mergeAnnotationsPayload(current, annotations);
     });
   }
 
@@ -407,37 +442,9 @@ export class TopologyHostCore implements TopologyHost {
   private async applyNodeGroupMemberships(
     memberships: Array<{ nodeId: string; groupId: string | null }>
   ): Promise<void> {
-    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) => {
-      const membershipMap = new Map(
-        memberships.filter((m) => m.groupId).map((m) => [m.nodeId, m.groupId!])
-      );
-
-      const existingAnnotations = current.nodeAnnotations ?? [];
-      const existingMap = new Map(existingAnnotations.map((a) => [a.id, a]));
-      const result: Array<{ id: string; groupId?: string }> = [];
-
-      for (const [nodeId, groupId] of membershipMap) {
-        const existing = existingMap.get(nodeId);
-        if (existing) {
-          const rest = omitGroupOnly(existing);
-          result.push({ ...rest, groupId });
-          existingMap.delete(nodeId);
-        } else {
-          result.push({ id: nodeId, groupId });
-        }
-      }
-
-      for (const [nodeId, annotation] of existingMap) {
-        if (!membershipMap.has(nodeId)) {
-          const rest = omitGroupFields(annotation);
-          if (Object.keys(rest).length > 1 || (Object.keys(rest).length === 1 && rest.id)) {
-            result.push(rest);
-          }
-        }
-      }
-
-      return { ...current, nodeAnnotations: result };
-    });
+    await this.annotationsIO.modifyAnnotations(this.yamlFilePath, (current) =>
+      applyNodeGroupMembershipsToAnnotations(current, memberships)
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -763,6 +770,55 @@ function omitGroupFields<T extends NodeAnnotationLike>(
 
 function omitGroupOnly<T extends NodeAnnotationLike>(obj: T): Omit<T, "group"> {
   return omitKeys(obj, ["group"]) as Omit<T, "group">;
+}
+
+function mergeAnnotationsPayload(
+  current: TopologyAnnotations,
+  annotations: Partial<TopologyAnnotations>
+): TopologyAnnotations {
+  const merged: TopologyAnnotations = { ...current, ...annotations };
+  if (annotations.viewerSettings) {
+    merged.viewerSettings = {
+      ...(current.viewerSettings ?? {}),
+      ...annotations.viewerSettings
+    };
+  }
+  return merged;
+}
+
+function applyNodeGroupMembershipsToAnnotations(
+  annotations: TopologyAnnotations,
+  memberships: Array<{ nodeId: string; groupId: string | null }>
+): TopologyAnnotations {
+  const membershipMap = new Map(
+    memberships.filter((m) => m.groupId).map((m) => [m.nodeId, m.groupId!])
+  );
+
+  const existingAnnotations = annotations.nodeAnnotations ?? [];
+  const existingMap = new Map(existingAnnotations.map((a) => [a.id, a]));
+  const result: Array<{ id: string; groupId?: string }> = [];
+
+  for (const [nodeId, groupId] of membershipMap) {
+    const existing = existingMap.get(nodeId);
+    if (existing) {
+      const rest = omitGroupOnly(existing);
+      result.push({ ...rest, groupId });
+      existingMap.delete(nodeId);
+    } else {
+      result.push({ id: nodeId, groupId });
+    }
+  }
+
+  for (const [nodeId, annotation] of existingMap) {
+    if (!membershipMap.has(nodeId)) {
+      const rest = omitGroupFields(annotation);
+      if (Object.keys(rest).length > 1 || (Object.keys(rest).length === 1 && rest.id)) {
+        result.push(rest);
+      }
+    }
+  }
+
+  return { ...annotations, nodeAnnotations: result };
 }
 
 function setKeyAfter(map: YAML.YAMLMap, key: string, value: YAML.Node, afterKey: string): void {

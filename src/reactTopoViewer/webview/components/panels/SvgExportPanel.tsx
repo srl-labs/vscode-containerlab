@@ -3,12 +3,18 @@
  * Modern, sleek design matching other annotation editors
  */
 import React, { useState, useCallback } from "react";
+import type { ReactFlowInstance, Node, Edge } from "@xyflow/react";
 
 import type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation
 } from "../../../shared/types/topology";
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE
+} from "../../annotations/annotationNodeConverters";
 import type { NodeType } from "../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../icons/SvgGenerator";
 import { log } from "../../utils/logger";
@@ -22,6 +28,108 @@ export interface SvgExportPanelProps {
   textAnnotations?: FreeTextAnnotation[];
   shapeAnnotations?: FreeShapeAnnotation[];
   groups?: GroupStyleAnnotation[];
+  rfInstance: ReactFlowInstance | null;
+}
+
+const DEFAULT_NODE_SIZE = 60;
+const DEFAULT_NODE_RADIUS = 6;
+
+const ANNOTATION_NODE_TYPES: Set<string> = new Set([FREE_TEXT_NODE_TYPE, FREE_SHAPE_NODE_TYPE, GROUP_NODE_TYPE]);
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getViewportSize(): { width: number; height: number } | null {
+  const container = document.querySelector(".react-flow") as HTMLElement | null;
+  if (!container) return null;
+  const rect = container.getBoundingClientRect();
+  if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height)) return null;
+  return { width: rect.width, height: rect.height };
+}
+
+function getNodeSize(node: Node): { width: number; height: number } {
+  const width =
+    node.measured?.width ??
+    node.width ??
+    (typeof (node.data as Record<string, unknown>)?.width === "number"
+      ? ((node.data as Record<string, unknown>).width as number)
+      : undefined) ??
+    DEFAULT_NODE_SIZE;
+  const height =
+    node.measured?.height ??
+    node.height ??
+    (typeof (node.data as Record<string, unknown>)?.height === "number"
+      ? ((node.data as Record<string, unknown>).height as number)
+      : undefined) ??
+    DEFAULT_NODE_SIZE;
+  return { width, height };
+}
+
+function buildGraphSvg(
+  rfInstance: ReactFlowInstance,
+  zoomPercent: number
+): { svg: string; transform: string } | null {
+  const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+  const size = getViewportSize();
+  if (!size) return null;
+
+  const scaleFactor = Math.max(0.1, zoomPercent / 100);
+  const width = Math.max(1, Math.round(size.width * scaleFactor));
+  const height = Math.max(1, Math.round(size.height * scaleFactor));
+  const transform = `translate(${viewport.x * scaleFactor}, ${viewport.y * scaleFactor}) scale(${
+    viewport.zoom * scaleFactor
+  })`;
+
+  const nodes = rfInstance.getNodes?.() ?? [];
+  const edges = rfInstance.getEdges?.() ?? [];
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+  svg += `<g transform="${transform}">`;
+
+  // Render edges (simple straight lines between node centers)
+  for (const edge of edges as Edge[]) {
+    const source = nodeMap.get(edge.source);
+    const target = nodeMap.get(edge.target);
+    if (!source || !target) continue;
+    if (ANNOTATION_NODE_TYPES.has(source.type ?? "") || ANNOTATION_NODE_TYPES.has(target.type ?? "")) {
+      continue;
+    }
+
+    const sourceSize = getNodeSize(source);
+    const targetSize = getNodeSize(target);
+    const x1 = source.position.x + sourceSize.width / 2;
+    const y1 = source.position.y + sourceSize.height / 2;
+    const x2 = target.position.x + targetSize.width / 2;
+    const y2 = target.position.y + targetSize.height / 2;
+
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" />`;
+  }
+
+  // Render nodes
+  for (const node of nodes) {
+    if (ANNOTATION_NODE_TYPES.has(node.type ?? "")) continue;
+    const { width: nodeWidth, height: nodeHeight } = getNodeSize(node);
+    const x = node.position.x;
+    const y = node.position.y;
+    const label = escapeXml(
+      (node.data as Record<string, unknown> | undefined)?.label?.toString() ?? node.id
+    );
+
+    svg += `<g class="export-node" data-id="${escapeXml(node.id)}">`;
+    svg += `<rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" rx="${DEFAULT_NODE_RADIUS}" ry="${DEFAULT_NODE_RADIUS}" fill="#1f2937" stroke="#9ca3af" stroke-width="1" />`;
+    svg += `<text x="${x + nodeWidth / 2}" y="${y + nodeHeight / 2}" font-size="12" fill="#e5e7eb" text-anchor="middle" dominant-baseline="middle">${label}</text>`;
+    svg += `</g>`;
+  }
+
+  svg += `</g></svg>`;
+  return { svg, transform };
 }
 
 /** Extract attribute from image element attributes string */
@@ -116,9 +224,9 @@ function downloadSvg(content: string, filename: string): void {
 }
 
 /** Check if SVG export is available */
-function isSvgExportAvailable(): boolean {
-  // SVG export requires implementation using ReactFlow's toObject() and custom SVG generation
-  return false;
+function isSvgExportAvailable(rfInstance: ReactFlowInstance | null): boolean {
+  if (!rfInstance) return false;
+  return Boolean(getViewportSize());
 }
 
 type BackgroundOption = "transparent" | "white" | "custom";
@@ -314,7 +422,8 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   onClose,
   textAnnotations = [],
   shapeAnnotations = [],
-  groups = []
+  groups = [],
+  rfInstance
 }) => {
   const [borderZoom, setBorderZoom] = useState(100);
   const [borderPadding, setBorderPadding] = useState(0);
@@ -329,7 +438,7 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
   const [filename, setFilename] = useState("topology");
 
   // SVG export is not yet implemented
-  const isExportAvailable = isSvgExportAvailable();
+  const isExportAvailable = isSvgExportAvailable(rfInstance);
 
   const annotationCounts = {
     groups: groups.length,
@@ -357,8 +466,16 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
       // 5. Download the result
       log.info(`[SvgExport] Export requested: zoom=${borderZoom}%, padding=${borderPadding}px`);
 
-      const svgContent = "<svg>Not implemented</svg>";
-      let finalSvg = svgContent;
+      if (!rfInstance) {
+        throw new Error("React Flow instance not available");
+      }
+
+      const graphSvg = buildGraphSvg(rfInstance, borderZoom);
+      if (!graphSvg) {
+        throw new Error("Unable to capture viewport for SVG export");
+      }
+
+      let finalSvg = graphSvg.svg;
 
       // Apply padding
       if (borderPadding > 0) {

@@ -152,6 +152,26 @@ function buildGroupMemberChanges(
   return changes;
 }
 
+function buildSelectedNodeChanges(
+  draggedNodeId: string,
+  nodes: Node[] | undefined,
+  excludeIds: Set<string>,
+  delta?: XYPosition
+): NodeChange[] {
+  if (!nodes) return [];
+  const changes: NodeChange[] = [];
+  for (const node of nodes) {
+    if (node.id === draggedNodeId) continue;
+    if (!node.selected) continue;
+    if (excludeIds.has(node.id)) continue;
+    const position = delta
+      ? { x: node.position.x + delta.x, y: node.position.y + delta.y }
+      : node.position;
+    changes.push({ type: "position", id: node.id, position, dragging: false });
+  }
+  return changes;
+}
+
 function isNodePositionChange(change: NodeChange): change is NodePositionChange {
   return change.type === "position" && change.position !== undefined;
 }
@@ -387,11 +407,28 @@ function useNodeDragHandlers(
       const changes: NodeChange[] = [
         { type: "position", id: node.id, position: finalPosition, dragging: false }
       ];
+      const delta = isGroupNode
+        ? null
+        : {
+            x: finalPosition.x - node.position.x,
+            y: finalPosition.y - node.position.y
+          };
 
       // Handle group node members
       if (isGroupNode) {
         changes.push(...finalizeGroupChanges(node, nodes, groupMembersRef, groupLastPositionRef));
       }
+
+      // Include other selected nodes for multi-drag persistence (and snap with same delta)
+      const excludeIds = new Set(changes.map((change) => change.id));
+      changes.push(
+        ...buildSelectedNodeChanges(
+          node.id,
+          nodes,
+          excludeIds,
+          delta && (delta.x !== 0 || delta.y !== 0) ? delta : undefined
+        )
+      );
 
       onNodesChangeBase(changes);
       log.info(`[ReactFlowCanvas] Node ${node.id} moved to ${finalPosition.x}, ${finalPosition.y}`);

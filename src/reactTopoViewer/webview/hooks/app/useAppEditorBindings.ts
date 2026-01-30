@@ -1,8 +1,6 @@
 /**
  * useAppEditorBindings - editor handler wiring for AppContent.
  */
-import React from "react";
-
 import type { LinkEditorData } from "../../../shared/types/editors";
 import type { TopoViewerActions, TopoViewerState } from "../../stores/topoViewerStore";
 import {

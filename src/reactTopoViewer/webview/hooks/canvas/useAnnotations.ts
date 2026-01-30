@@ -138,7 +138,6 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
           derived.textAnnotations,
           derived.updateTextAnnotation
         );
-        void saveAnnotationNodesFromGraph();
         return;
       }
 
@@ -149,7 +148,6 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
           derived.shapeAnnotations,
           derived.updateShapeAnnotation
         );
-        void saveAnnotationNodesFromGraph();
         return;
       }
 

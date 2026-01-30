@@ -13,15 +13,18 @@ import type {
   NodeCreatedHandler
 } from "../../../shared/types/graph";
 import type { NodeSaveData } from "../../../shared/io/NodePersistenceIO";
+import type { TopologyHostCommand } from "../../../shared/types/messages";
+import type { NetworkNodeAnnotation } from "../../../shared/types/topology";
 import {
   createLink,
   createNode,
   deleteLink,
   deleteNode,
   saveAnnotationNodesFromGraph,
-  saveNetworkNodesFromGraph
+  saveNetworkNodesFromGraph,
+  executeTopologyCommand
 } from "../../services";
-import { isAnnotationNodeType } from "../../annotations/annotationNodeConverters";
+import { isAnnotationNodeType, nodesToAnnotations } from "../../annotations/annotationNodeConverters";
 import { toLinkSaveData } from "../../services/linkSaveData";
 import {
   BRIDGE_NETWORK_TYPES,
@@ -52,6 +55,7 @@ interface UseGraphHandlersWithContextParams {
 interface GraphHandlersResult {
   handleEdgeCreated: EdgeCreatedHandler;
   handleNodeCreatedCallback: NodeCreatedHandler;
+  handleBatchPaste: (payload: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
   handleDeleteNode: (nodeId: string) => void;
   handleDeleteLink: (edgeId: string) => void;
 }
@@ -75,6 +79,37 @@ const NODE_FALLBACK_PROPS = [
 ] as const;
 
 const NETWORK_NODE_TYPE = "network-node";
+
+function isNetworkNode(node: Node): boolean {
+  return node.type === NETWORK_NODE_TYPE;
+}
+
+function buildNetworkNodeAnnotations(nodes: Node[]): NetworkNodeAnnotation[] {
+  const annotations: NetworkNodeAnnotation[] = [];
+
+  for (const node of nodes) {
+    if (!isNetworkNode(node)) continue;
+
+    const data = (node.data ?? {}) as Record<string, unknown>;
+    const type = getNetworkType(data);
+    if (!type || !SPECIAL_NETWORK_TYPES.has(type)) continue;
+
+    const label = (data.label as string) || (data.name as string) || node.id;
+    const geoCoordinates = data.geoCoordinates as { lat: number; lng: number } | undefined;
+
+    annotations.push({
+      id: node.id,
+      type: type as NetworkNodeAnnotation["type"],
+      label,
+      position: node.position,
+      ...(geoCoordinates ? { geoCoordinates } : {}),
+      ...(typeof data.group === "string" ? { group: data.group } : {}),
+      ...(typeof data.level === "string" ? { level: data.level } : {})
+    });
+  }
+
+  return annotations;
+}
 
 function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
   const ed = (data.extraData ?? {}) as Record<string, unknown>;
@@ -246,6 +281,59 @@ export function useGraphHandlersWithContext(
     [addNode]
   );
 
+  const handleBatchPaste = React.useCallback((payload: { nodes: TopoNode[]; edges: TopoEdge[] }) => {
+    const { nodes: pastedNodes, edges: pastedEdges } = payload;
+    if (pastedNodes.length === 0 && pastedEdges.length === 0) return;
+
+    const commands: TopologyHostCommand[] = [];
+
+    for (const node of pastedNodes) {
+      if (isAnnotationNodeType(node.type)) continue;
+      if (isSpecialNetworkNode(node) && !isBridgeNetworkNode(node)) continue;
+      commands.push({ command: "addNode", payload: toNodeSaveData(node) });
+    }
+
+    for (const edge of pastedEdges) {
+      commands.push({ command: "addLink", payload: toLinkSaveData(edge) });
+    }
+
+    const graphNodes = useGraphStore.getState().nodes;
+    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    const networkNodeAnnotations = buildNetworkNodeAnnotations(graphNodes);
+    const shouldSaveAnnotations =
+      freeTextAnnotations.length > 0 ||
+      freeShapeAnnotations.length > 0 ||
+      groups.length > 0 ||
+      networkNodeAnnotations.length > 0;
+
+    if (shouldSaveAnnotations) {
+      commands.push({
+        command: "setAnnotations",
+        payload: {
+          freeTextAnnotations,
+          freeShapeAnnotations,
+          groupStyleAnnotations: groups,
+          networkNodeAnnotations
+        }
+      });
+    }
+
+    if (commands.length === 0) return;
+    void executeTopologyCommand(
+      { command: "batch", payload: { commands } },
+      { applySnapshot: false }
+    );
+  }, [
+    buildNetworkNodeAnnotations,
+    executeTopologyCommand,
+    isAnnotationNodeType,
+    isBridgeNetworkNode,
+    isSpecialNetworkNode,
+    nodesToAnnotations,
+    toLinkSaveData,
+    toNodeSaveData
+  ]);
+
   const handleDeleteNode = React.useCallback(
     (nodeId: string) => {
       const nodes = getNodes();
@@ -286,6 +374,7 @@ export function useGraphHandlersWithContext(
   return {
     handleEdgeCreated,
     handleNodeCreatedCallback,
+    handleBatchPaste,
     handleDeleteNode,
     handleDeleteLink
   };
