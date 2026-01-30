@@ -3,7 +3,7 @@
  * Uses React Flow nodes/edges arrays for graph queries.
  */
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
-import { executeTopologyCommands } from "../../../services";
+import { executeTopologyCommand } from "../../../services";
 import { toLinkSaveData } from "../../../services/linkSaveData";
 
 import { buildBulkEdges, computeCandidates, type LinkCandidate } from "./bulkLinkUtils";
@@ -82,7 +82,9 @@ export async function confirmAndCreateLinks({
     payload: toLinkSaveData(edge)
   }));
 
-  await executeTopologyCommands(commands);
+  if (commands.length > 0) {
+    await executeTopologyCommand({ command: "batch", payload: { commands } });
+  }
 
   setPendingCandidates(null);
   setStatus(null);
