@@ -8,12 +8,13 @@ import type { TopoNode, TopoEdge } from "../../shared/types/graph";
 import { getNodeById, getConnectedEdges } from "./graphQueryUtils";
 
 const DEFAULT_INTERFACE_PATTERN = "eth{n}";
-const INTERFACE_PATTERN_REGEX = /^(.+)?\{n(?::(\d+))?\}(.+)?$/;
+const INTERFACE_PATTERN_REGEX = /^(.+)?\{n(?::(\d+)(?:-(\d+))?)?\}(.+)?$/;
 
 export type ParsedInterfacePattern = {
   prefix: string;
   suffix: string;
   startIndex: number;
+  endIndex?: number;
 };
 
 type NodeExtraData = {
@@ -21,19 +22,59 @@ type NodeExtraData = {
   kind?: string;
 };
 
-export type EndpointAllocator = {
+type PatternAllocator = {
   parsed: ParsedInterfacePattern;
   usedIndices: Set<number>;
 };
 
-function parseInterfacePattern(pattern: string): ParsedInterfacePattern {
-  const match = INTERFACE_PATTERN_REGEX.exec(pattern);
-  if (!match) {
-    return { prefix: pattern || "eth", suffix: "", startIndex: 1 };
+export type EndpointAllocator = {
+  patterns: PatternAllocator[];
+};
+
+function splitInterfacePatterns(patternList: string): string[] {
+  const patterns: string[] = [];
+  let current = "";
+  let braceDepth = 0;
+
+  for (const char of patternList) {
+    if (char === "{") braceDepth += 1;
+    if (char === "}") braceDepth = Math.max(0, braceDepth - 1);
+
+    if (char === "," && braceDepth === 0) {
+      const trimmed = current.trim();
+      if (trimmed) patterns.push(trimmed);
+      current = "";
+      continue;
+    }
+
+    current += char;
   }
-  const [, prefix = "", startStr, suffix = ""] = match;
-  const startIndex = startStr ? parseInt(startStr, 10) : 1;
-  return { prefix, suffix, startIndex };
+
+  const trimmed = current.trim();
+  if (trimmed) patterns.push(trimmed);
+  return patterns;
+}
+
+function parseInterfacePattern(pattern: string): ParsedInterfacePattern {
+  const trimmed = pattern.trim();
+  const match = INTERFACE_PATTERN_REGEX.exec(trimmed);
+  if (!match) {
+    return { prefix: trimmed || "eth", suffix: "", startIndex: 1 };
+  }
+  const [, prefix = "", startStr, endStr, suffix = ""] = match;
+  const parsedStart = startStr ? parseInt(startStr, 10) : NaN;
+  const startIndex = Number.isFinite(parsedStart) ? parsedStart : 1;
+  const parsedEnd = endStr ? parseInt(endStr, 10) : NaN;
+  const endIndex = Number.isFinite(parsedEnd) && parsedEnd >= startIndex ? parsedEnd : undefined;
+  return { prefix, suffix, startIndex, ...(endIndex !== undefined ? { endIndex } : {}) };
+}
+
+function parseInterfacePatternList(patternList: string): ParsedInterfacePattern[] {
+  const parts = splitInterfacePatterns(patternList);
+  if (parts.length === 0) {
+    return [parseInterfacePattern(DEFAULT_INTERFACE_PATTERN)];
+  }
+  return parts.map(parseInterfacePattern);
 }
 
 function generateInterfaceName(parsed: ParsedInterfacePattern, index: number): string {
@@ -80,35 +121,28 @@ function readEndpointFromEdge(
   return typeof fromTopLevel === "string" && fromTopLevel.length > 0 ? fromTopLevel : undefined;
 }
 
-function tryAddIndexForEndpoint(
-  usedIndices: Set<number>,
-  endpoint: string | undefined,
-  parsed: ParsedInterfacePattern
-) {
+function tryAddIndexForEndpoint(patterns: PatternAllocator[], endpoint: string | undefined) {
   if (!endpoint) return;
-  const idx = extractInterfaceIndex(endpoint, parsed);
-  if (idx >= 0) usedIndices.add(idx);
+  for (const pattern of patterns) {
+    const idx = extractInterfaceIndex(endpoint, pattern.parsed);
+    if (idx >= 0) {
+      pattern.usedIndices.add(idx);
+      return;
+    }
+  }
 }
 
-function collectUsedIndices(
-  edges: TopoEdge[],
-  nodeId: string,
-  parsed: ParsedInterfacePattern
-): Set<number> {
-  const usedIndices = new Set<number>();
-
+function collectUsedIndices(edges: TopoEdge[], nodeId: string, patterns: PatternAllocator[]): void {
   for (const edge of edges) {
     if (edge.source === nodeId) {
       const sourceEndpoint = readEndpointFromEdge(edge, "sourceEndpoint");
-      tryAddIndexForEndpoint(usedIndices, sourceEndpoint, parsed);
+      tryAddIndexForEndpoint(patterns, sourceEndpoint);
     }
     if (edge.target === nodeId) {
       const targetEndpoint = readEndpointFromEdge(edge, "targetEndpoint");
-      tryAddIndexForEndpoint(usedIndices, targetEndpoint, parsed);
+      tryAddIndexForEndpoint(patterns, targetEndpoint);
     }
   }
-
-  return usedIndices;
 }
 
 export function getOrCreateAllocator(
@@ -122,8 +156,9 @@ export function getOrCreateAllocator(
 
   const node = getNodeById(nodes, nodeId);
   if (!node) {
-    const parsed = parseInterfacePattern(DEFAULT_INTERFACE_PATTERN);
-    const createdFallback = { parsed, usedIndices: new Set<number>() };
+    const parsedPatterns = parseInterfacePatternList(DEFAULT_INTERFACE_PATTERN);
+    const patterns = parsedPatterns.map((parsed) => ({ parsed, usedIndices: new Set<number>() }));
+    const createdFallback = { patterns };
     allocators.set(nodeId, createdFallback);
     return createdFallback;
   }
@@ -131,14 +166,30 @@ export function getOrCreateAllocator(
   const data = node.data as Record<string, unknown>;
   const extraData = data.extraData as { interfacePattern?: string; kind?: string } | undefined;
   const pattern = getNodeInterfacePattern(extraData);
-  const parsed = parseInterfacePattern(pattern);
+  const parsedPatterns = parseInterfacePatternList(pattern);
+  const patterns = parsedPatterns.map((parsed) => ({ parsed, usedIndices: new Set<number>() }));
 
   const connectedEdges = getConnectedEdges(edges, nodeId);
-  const usedIndices = collectUsedIndices(connectedEdges, nodeId, parsed);
+  collectUsedIndices(connectedEdges, nodeId, patterns);
 
-  const created = { parsed, usedIndices };
+  const created = { patterns };
   allocators.set(nodeId, created);
   return created;
+}
+
+function getNextAvailableIndex(
+  pattern: PatternAllocator,
+  ignoreEndRange = false
+): number | undefined {
+  let nextIndex = 0;
+  while (pattern.usedIndices.has(nextIndex)) nextIndex++;
+
+  if (!ignoreEndRange && pattern.parsed.endIndex !== undefined) {
+    const maxIndex = pattern.parsed.endIndex - pattern.parsed.startIndex;
+    if (nextIndex > maxIndex) return undefined;
+  }
+
+  return nextIndex;
 }
 
 export function allocateEndpoint(
@@ -150,10 +201,18 @@ export function allocateEndpoint(
   if (isSpecialEndpointId(nodeId)) return "";
 
   const allocator = getOrCreateAllocator(allocators, nodes, edges, nodeId);
-  let nextIndex = 0;
-  while (allocator.usedIndices.has(nextIndex)) nextIndex++;
-  allocator.usedIndices.add(nextIndex);
-  return generateInterfaceName(allocator.parsed, nextIndex);
+  for (const pattern of allocator.patterns) {
+    const nextIndex = getNextAvailableIndex(pattern);
+    if (nextIndex !== undefined) {
+      pattern.usedIndices.add(nextIndex);
+      return generateInterfaceName(pattern.parsed, nextIndex);
+    }
+  }
+
+  const fallbackPattern = allocator.patterns[allocator.patterns.length - 1];
+  const nextIndex = getNextAvailableIndex(fallbackPattern, true) ?? 0;
+  fallbackPattern.usedIndices.add(nextIndex);
+  return generateInterfaceName(fallbackPattern.parsed, nextIndex);
 }
 
 export function allocateEndpointsForLink(
