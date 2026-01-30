@@ -90,6 +90,11 @@ export interface AnnotationActions {
   // Utilities
   clearAllSelections: () => void;
   deleteAllSelected: () => void;
+  deleteSelectedForBatch: (options?: {
+    groupIds?: Iterable<string>;
+    textIds?: Iterable<string>;
+    shapeIds?: Iterable<string>;
+  }) => { didDelete: boolean; membersCleared: boolean };
 }
 
 export type AnnotationContextValue = AnnotationState & AnnotationActions;

@@ -13,6 +13,7 @@ interface KeyboardShortcutsOptions {
   selectedEdge: string | null;
   onDeleteNode: (nodeId: string) => void;
   onDeleteEdge: (edgeId: string) => void;
+  onDeleteSelection?: () => void;
   onDeselectAll: () => void;
   /** Undo handler (Ctrl+Z) */
   onUndo?: () => void;
@@ -332,11 +333,34 @@ function handleDelete(
   selectedEdge: string | null,
   onDeleteNode: (nodeId: string) => void,
   onDeleteEdge: (edgeId: string) => void,
+  onDeleteSelection: (() => void) | undefined,
   selectedAnnotationIds?: Set<string>,
   onDeleteAnnotations?: () => void
 ): boolean {
   if (event.key !== "Delete" && event.key !== "Backspace") return false;
   if (mode !== "edit" || isLocked) return false;
+
+  if (onDeleteSelection) {
+    const { nodes, edges } = useGraphStore.getState();
+    const selectedNodeIds = nodes.filter((n) => n.selected).map((n) => n.id);
+    const selectedEdgeIds = edges.filter((e) => e.selected).map((e) => e.id);
+    let totalSelected =
+      selectedNodeIds.length + selectedEdgeIds.length + (selectedAnnotationIds?.size ?? 0);
+
+    if (selectedNode && !selectedNodeIds.includes(selectedNode)) {
+      totalSelected += 1;
+    }
+    if (selectedEdge && !selectedEdgeIds.includes(selectedEdge)) {
+      totalSelected += 1;
+    }
+
+    if (totalSelected > 0) {
+      log.info(`[Keyboard] Deleting ${totalSelected} selected items (batched)`);
+      onDeleteSelection();
+      event.preventDefault();
+      return true;
+    }
+  }
 
   let handled = deleteSelectedAnnotations(selectedAnnotationIds, onDeleteAnnotations);
 
@@ -396,6 +420,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
     selectedEdge,
     onDeleteNode,
     onDeleteEdge,
+    onDeleteSelection,
     onDeselectAll,
     onUndo,
     onRedo,
@@ -449,6 +474,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
           selectedEdge,
           onDeleteNode,
           onDeleteEdge,
+          onDeleteSelection,
           selectedAnnotationIds,
           onDeleteAnnotations
         )
@@ -470,6 +496,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions): void {
       selectedEdge,
       onDeleteNode,
       onDeleteEdge,
+      onDeleteSelection,
       onDeselectAll,
       onUndo,
       onRedo,

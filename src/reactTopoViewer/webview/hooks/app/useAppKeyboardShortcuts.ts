@@ -38,6 +38,7 @@ export interface AppKeyboardShortcutsConfig {
   deleteHandlers: {
     handleDeleteNode: (nodeId: string) => void;
     handleDeleteLink: (edgeId: string) => void;
+    handleDeleteSelection?: () => void;
   };
   handleDeselectAll: () => void;
 }
@@ -69,6 +70,7 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     selectedEdge: state.selectedEdge,
     onDeleteNode: deleteHandlers.handleDeleteNode,
     onDeleteEdge: deleteHandlers.handleDeleteLink,
+    onDeleteSelection: deleteHandlers.handleDeleteSelection,
     onDeselectAll: handleDeselectAll,
     onUndo: undoRedo.undo,
     onRedo: undoRedo.redo,

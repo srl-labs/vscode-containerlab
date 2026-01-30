@@ -173,38 +173,100 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     ]
   );
 
-  const deleteAllSelected = useCallback(() => {
-    const groupsToDelete = Array.from(uiState.selectedGroupIds);
-    const membersToClear = new Set<string>();
-
-    for (const groupId of groupsToDelete) {
-      derived.getGroupMembers(groupId).forEach((memberId) => membersToClear.add(memberId));
-      derived.deleteGroup(groupId);
-    }
-
-    uiState.selectedTextIds.forEach((id) => derived.deleteTextAnnotation(id));
-    uiState.selectedShapeIds.forEach((id) => derived.deleteShapeAnnotation(id));
-
-    if (membersToClear.size > 0) {
-      for (const memberId of membersToClear) {
-        derived.removeNodeFromGroup(memberId);
+  const deleteSelections = useCallback(
+    (
+      groupIds: Set<string>,
+      textIds: Set<string>,
+      shapeIds: Set<string>,
+      options: { persist: boolean }
+    ): { didDelete: boolean; membersCleared: boolean } => {
+      if (groupIds.size === 0 && textIds.size === 0 && shapeIds.size === 0) {
+        return { didDelete: false, membersCleared: false };
       }
 
-      const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
-      void saveAllNodeGroupMemberships(memberships);
-    }
+      const membersToClear = new Set<string>();
 
-    uiActions.clearAllSelections();
-    void saveAnnotationNodesFromGraph();
+      for (const groupId of groupIds) {
+        derived.getGroupMembers(groupId).forEach((memberId) => membersToClear.add(memberId));
+        derived.deleteGroup(groupId);
+        uiActions.removeFromGroupSelection(groupId);
+      }
+
+      for (const id of textIds) {
+        derived.deleteTextAnnotation(id);
+        uiActions.removeFromTextSelection(id);
+      }
+
+      for (const id of shapeIds) {
+        derived.deleteShapeAnnotation(id);
+        uiActions.removeFromShapeSelection(id);
+      }
+
+      if (membersToClear.size > 0) {
+        for (const memberId of membersToClear) {
+          derived.removeNodeFromGroup(memberId);
+        }
+
+        if (options.persist) {
+          const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
+          void saveAllNodeGroupMemberships(memberships);
+        }
+      }
+
+      uiActions.clearAllSelections();
+
+      if (options.persist) {
+        void saveAnnotationNodesFromGraph();
+      }
+
+      return { didDelete: true, membersCleared: membersToClear.size > 0 };
+    },
+    [derived, uiActions, saveAnnotationNodesFromGraph, saveAllNodeGroupMemberships]
+  );
+
+  const deleteAllSelected = useCallback(() => {
+    void deleteSelections(
+      new Set(uiState.selectedGroupIds),
+      new Set(uiState.selectedTextIds),
+      new Set(uiState.selectedShapeIds),
+      { persist: true }
+    );
   }, [
     uiState.selectedGroupIds,
     uiState.selectedTextIds,
     uiState.selectedShapeIds,
-    uiActions,
-    derived,
-    saveAnnotationNodesFromGraph,
-    saveAllNodeGroupMemberships
+    deleteSelections
   ]);
+
+  const deleteSelectedForBatch = useCallback(
+    (options?: {
+      groupIds?: Iterable<string>;
+      textIds?: Iterable<string>;
+      shapeIds?: Iterable<string>;
+    }): { didDelete: boolean; membersCleared: boolean } => {
+      const groupIds = new Set(uiState.selectedGroupIds);
+      const textIds = new Set(uiState.selectedTextIds);
+      const shapeIds = new Set(uiState.selectedShapeIds);
+
+      for (const id of options?.groupIds ?? []) {
+        groupIds.add(id);
+      }
+      for (const id of options?.textIds ?? []) {
+        textIds.add(id);
+      }
+      for (const id of options?.shapeIds ?? []) {
+        shapeIds.add(id);
+      }
+
+      return deleteSelections(groupIds, textIds, shapeIds, { persist: false });
+    },
+    [
+      uiState.selectedGroupIds,
+      uiState.selectedTextIds,
+      uiState.selectedShapeIds,
+      deleteSelections
+    ]
+  );
 
   const persistAnnotationNodes = useCallback(() => {
     void saveAnnotationNodesFromGraph();
@@ -321,7 +383,8 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
 
       // Utilities
       clearAllSelections: uiActions.clearAllSelections,
-      deleteAllSelected
+      deleteAllSelected,
+      deleteSelectedForBatch
     }),
     [
       derived,
@@ -332,6 +395,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       shapeActions,
       onNodeDropped,
       deleteAllSelected,
+      deleteSelectedForBatch,
       persistAnnotationNodes
     ]
   );

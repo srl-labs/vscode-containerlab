@@ -5,7 +5,15 @@ import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { TopoEdge, TopoNode } from "../shared/types/graph";
+import type { TopologyHostCommand } from "../shared/types/messages";
 
+import {
+  FREE_TEXT_NODE_TYPE,
+  FREE_SHAPE_NODE_TYPE,
+  GROUP_NODE_TYPE,
+  nodesToAnnotations
+} from "./annotations/annotationNodeConverters";
+import { collectNodeGroupMemberships } from "./annotations/groupMembership";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
@@ -42,8 +50,10 @@ import {
   usePanelVisibility,
   useShortcutDisplay
 } from "./hooks/ui";
-import { useGraphActions, useGraphState } from "./stores/graphStore";
+import { useGraphActions, useGraphState, useGraphStore } from "./stores/graphStore";
 import { useTopoViewerActions, useTopoViewerState } from "./stores/topoViewerStore";
+import { toLinkSaveData } from "./services/linkSaveData";
+import { executeTopologyCommand } from "./services/topologyHostCommands";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
 
@@ -233,6 +243,105 @@ export const AppContent: React.FC<AppContentProps> = ({
     handleBatchPaste: graphHandlers.handleBatchPaste
   });
 
+  const handleDeleteSelection = React.useCallback(() => {
+    const { nodes: currentNodes, edges: currentEdges } = useGraphStore.getState();
+    const selectedNodes = currentNodes.filter((node) => node.selected);
+    const selectedEdges = currentEdges.filter((edge) => edge.selected);
+
+    const nodeIds = new Set(selectedNodes.map((node) => node.id));
+    const edgeIds = new Set(selectedEdges.map((edge) => edge.id));
+
+    if (state.selectedNode) {
+      nodeIds.add(state.selectedNode);
+    }
+    if (state.selectedEdge) {
+      edgeIds.add(state.selectedEdge);
+    }
+
+    const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
+    const edgesById = new Map(currentEdges.map((edge) => [edge.id, edge]));
+
+    const graphNodeIds: string[] = [];
+    const groupIds: string[] = [];
+    const textIds: string[] = [];
+    const shapeIds: string[] = [];
+
+    for (const nodeId of nodeIds) {
+      const node = nodesById.get(nodeId);
+      if (!node) continue;
+      switch (node.type) {
+        case GROUP_NODE_TYPE:
+          groupIds.push(nodeId);
+          break;
+        case FREE_TEXT_NODE_TYPE:
+          textIds.push(nodeId);
+          break;
+        case FREE_SHAPE_NODE_TYPE:
+          shapeIds.push(nodeId);
+          break;
+        default:
+          graphNodeIds.push(nodeId);
+      }
+    }
+
+    for (const nodeId of graphNodeIds) {
+      graphActions.removeNodeAndEdges(nodeId);
+      menuHandlers.handleDeleteNode(nodeId);
+    }
+
+    for (const edgeId of edgeIds) {
+      graphActions.removeEdge(edgeId);
+      menuHandlers.handleDeleteLink(edgeId);
+    }
+
+    const annotationResult = annotations.deleteSelectedForBatch({
+      groupIds,
+      textIds,
+      shapeIds
+    });
+
+    const commands: TopologyHostCommand[] = [];
+
+    for (const nodeId of graphNodeIds) {
+      commands.push({ command: "deleteNode", payload: { id: nodeId } });
+    }
+
+    for (const edgeId of edgeIds) {
+      const edge = edgesById.get(edgeId);
+      if (!edge) continue;
+      commands.push({ command: "deleteLink", payload: toLinkSaveData(edge as TopoEdge) });
+    }
+
+    if (annotationResult.didDelete || annotationResult.membersCleared) {
+      const graphNodesForSave = useGraphStore.getState().nodes;
+      const { freeTextAnnotations, freeShapeAnnotations, groups } =
+        nodesToAnnotations(graphNodesForSave);
+      const memberships = collectNodeGroupMemberships(graphNodesForSave);
+
+      commands.push({
+        command: "setAnnotationsWithMemberships",
+        payload: {
+          annotations: {
+            freeTextAnnotations,
+            freeShapeAnnotations,
+            groupStyleAnnotations: groups
+          },
+          memberships: memberships.map((entry) => ({
+            nodeId: entry.id,
+            groupId: entry.groupId
+          }))
+        }
+      });
+    }
+
+    if (commands.length === 0) return;
+
+    void executeTopologyCommand(
+      { command: "batch", payload: { commands } },
+      { applySnapshot: false }
+    );
+  }, [annotations, graphActions, menuHandlers, state.selectedNode, state.selectedEdge]);
+
   useAppKeyboardShortcuts({
     state: {
       mode: state.mode,
@@ -251,7 +360,8 @@ export const AppContent: React.FC<AppContentProps> = ({
     clipboardHandlers,
     deleteHandlers: {
       handleDeleteNode: graphHandlers.handleDeleteNode,
-      handleDeleteLink: graphHandlers.handleDeleteLink
+      handleDeleteLink: graphHandlers.handleDeleteLink,
+      handleDeleteSelection
     },
     handleDeselectAll
   });
