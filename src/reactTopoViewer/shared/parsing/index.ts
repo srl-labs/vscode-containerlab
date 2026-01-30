@@ -62,7 +62,13 @@ export type {
 } from "./types";
 
 // Re-export topology types for convenience
-export type { ClabTopology, ParsedElement, TopologyAnnotations, NodeAnnotation } from "./types";
+export type {
+  ClabTopology,
+  ParsedElement,
+  TopologyAnnotations,
+  NodeAnnotation,
+  NetemState
+} from "./types";
 
 // Constants and utilities from types
 export { nullLogger, ROUTER_KINDS, CLIENT_KINDS, detectRole } from "./types";

@@ -32,6 +32,7 @@ export interface TopoViewerState {
   labSettings?: LabSettings;
   selectedNode: string | null;
   selectedEdge: string | null;
+  editingImpairment: string | null;
   editingNode: string | null;
   editingEdge: string | null;
   editingNetwork: string | null;
@@ -61,6 +62,7 @@ export interface TopoViewerActions {
   // Editing (mutually exclusive, clears selection)
   editNode: (nodeId: string | null) => void;
   editEdge: (edgeId: string | null) => void;
+  editImpairment: (edgeId: string | null) => void;
   editNetwork: (nodeId: string | null) => void;
 
   // Mode and state
@@ -112,6 +114,7 @@ const initialState: TopoViewerState = {
   labSettings: undefined,
   selectedNode: null,
   selectedEdge: null,
+  editingImpairment: null,
   editingNode: null,
   editingEdge: null,
   editingNetwork: null,
@@ -157,11 +160,11 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
 
   // Selection (mutually exclusive)
   selectNode: (nodeId) => {
-    set({ selectedNode: nodeId, selectedEdge: null });
+    set({ selectedNode: nodeId, selectedEdge: null, editingImpairment: null });
   },
 
   selectEdge: (edgeId) => {
-    set({ selectedEdge: edgeId, selectedNode: null });
+    set({ selectedEdge: edgeId, selectedNode: null, editingImpairment: null });
   },
 
   // Editing (mutually exclusive, clears selection)
@@ -169,6 +172,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
     set({
       editingNode: nodeId,
       editingEdge: null,
+      editingImpairment: null,
       editingNetwork: null,
       selectedNode: null,
       selectedEdge: null
@@ -179,6 +183,18 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
     set({
       editingEdge: edgeId,
       editingNode: null,
+      editingImpairment: null,
+      editingNetwork: null,
+      selectedNode: null,
+      selectedEdge: null
+    });
+  },
+
+  editImpairment: (edgeId) => {
+    set({
+      editingImpairment: edgeId,
+      editingNode: null,
+      editingEdge: null,
       editingNetwork: null,
       selectedNode: null,
       selectedEdge: null
@@ -190,6 +206,7 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
       editingNetwork: nodeId,
       editingNode: null,
       editingEdge: null,
+      editingImpairment: null,
       selectedNode: null,
       selectedEdge: null
     });
@@ -289,7 +306,9 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
   clearSelectionForDeletedEdge: (edgeId) => {
     set((state) => ({
       selectedEdge: state.selectedEdge === edgeId ? null : state.selectedEdge,
-      editingEdge: state.editingEdge === edgeId ? null : state.editingEdge
+      editingEdge: state.editingEdge === edgeId ? null : state.editingEdge,
+      editingImpairment:
+        state.editingImpairment === edgeId ? null : state.editingImpairment
     }));
   },
 
@@ -323,6 +342,10 @@ export const useEditingNode = () => useTopoViewerStore((state) => state.editingN
 
 /** Get editing edge */
 export const useEditingEdge = () => useTopoViewerStore((state) => state.editingEdge);
+
+/** Get editing impairment edge */
+export const useEditingImpairment = () =>
+  useTopoViewerStore((state) => state.editingImpairment);
 
 /** Get lock state */
 export const useIsLocked = () => useTopoViewerStore((state) => state.isLocked);
@@ -364,6 +387,7 @@ export const useTopoViewerState = () =>
       canRedo: state.canRedo,
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge,
+      editingImpairment: state.editingImpairment,
       editingNode: state.editingNode,
       editingEdge: state.editingEdge,
       editingNetwork: state.editingNetwork,
@@ -393,6 +417,7 @@ export const useTopoViewerActions = () =>
       selectEdge: state.selectEdge,
       editNode: state.editNode,
       editEdge: state.editEdge,
+      editImpairment: state.editImpairment,
       editNetwork: state.editNetwork,
       setMode: state.setMode,
       setDeploymentState: state.setDeploymentState,

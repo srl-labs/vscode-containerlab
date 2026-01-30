@@ -50,6 +50,7 @@ interface EdgeMenuBuilderContext {
   editEdge: (id: string) => void;
   handleDeleteEdge: (id: string) => void;
   showLinkInfo?: (id: string) => void;
+  showLinkImpairment?: (id: string) => void;
 }
 
 interface PaneMenuBuilderContext {
@@ -294,13 +295,22 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     closeContextMenu,
     editEdge,
     handleDeleteEdge,
-    showLinkInfo
+    showLinkInfo,
+    showLinkImpairment
   } = ctx;
   if (isEditMode && isLocked) {
     return [];
   }
   if (!isEditMode) {
     return [
+      {
+        id: "impair-edge",
+        label: "Link impairments",
+        onClick: () => {
+          showLinkImpairment?.(targetId);
+          closeContextMenu();
+        }
+      },
       {
         id: "info-edge",
         label: "Link Info",

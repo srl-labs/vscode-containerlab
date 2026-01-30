@@ -153,6 +153,7 @@ function applyInterfaceToExtraData(
   extraData[`clab${prefix}MacAddress`] = iface.mac ?? "";
   extraData[`clab${prefix}Mtu`] = iface.mtu ?? "";
   extraData[`clab${prefix}Type`] = iface.type ?? "";
+  extraData[`clab${prefix}Netem`] = iface.netemState ?? undefined;
   const stats = extractEdgeInterfaceStats(iface);
   if (stats) {
     extraData[`clab${prefix}Stats`] = stats;

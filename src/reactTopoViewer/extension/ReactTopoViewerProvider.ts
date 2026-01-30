@@ -14,6 +14,7 @@ import { runningLabsProvider } from "../../globals";
 import type { ClabLabTreeNode } from "../../treeView/common";
 import { TopologyHostCore } from "../shared/host/TopologyHostCore";
 import { nodeFsAdapter } from "../shared/io";
+import { MSG_EDGE_STATS_UPDATE, MSG_TOPO_MODE_CHANGE } from "../shared/messages/webview";
 import type { TopoEdge } from "../shared/types/graph";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
 
@@ -31,11 +32,8 @@ import {
   buildBootstrapData
 } from "./panel";
 
-/** Message type for incremental edge stats updates */
-const MSG_EDGE_STATS_UPDATE = "edge-stats-update";
 const INTERNAL_UPDATE_GRACE_MS = 250;
 const INTERNAL_UPDATE_CACHE_SYNC_DELAY_MS = 50;
-
 /**
  * React TopoViewer class that manages the webview panel
  */
@@ -390,7 +388,7 @@ export class ReactTopoViewer {
     const mode = this.isViewMode ? "viewer" : "editor";
 
     this.currentPanel.webview.postMessage({
-      type: "topo-mode-changed",
+      type: MSG_TOPO_MODE_CHANGE,
       data: {
         mode,
         deploymentState: this.deploymentState

@@ -15,6 +15,11 @@ export interface ClabInterfaceSnapshotEntry {
   txBytes?: number;
   txPackets?: number;
   statsIntervalSeconds?: number;
+  netemDelay?: string;
+  netemJitter?: string;
+  netemLoss?: string;
+  netemRate?: string;
+  netemCorruption?: string;
 }
 
 export type ClabInterfaceStats = Pick<

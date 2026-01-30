@@ -25,7 +25,8 @@ import type {
   InterfaceInfo,
   DummyContext,
   SpecialNodeInfo,
-  ParserLogger
+  ParserLogger,
+  NetemState
 } from "./types";
 import { nullLogger } from "./types";
 
@@ -342,12 +343,14 @@ function extractIfaceProps(ifaceData?: InterfaceInfo): {
   state: string;
   mtu: string | number;
   type: string;
+  netemState: NetemState;
 } {
   return {
     mac: ifaceData?.mac ?? "",
     state: ifaceData?.state ?? "",
     mtu: ifaceData?.mtu ?? "",
-    type: ifaceData?.type ?? ""
+    type: ifaceData?.type ?? "",
+    netemState: ifaceData?.netemState ?? {}
   };
 }
 
@@ -389,7 +392,9 @@ export function createClabInfo(params: {
     clabSourceMtu: src.mtu,
     clabTargetMtu: tgt.mtu,
     clabSourceType: src.type,
-    clabTargetType: tgt.type
+    clabTargetType: tgt.type,
+    clabSourceNetem: src.netemState,
+    clabTargetNetem: tgt.netemState
   };
 
   if (sourceStats) info.clabSourceStats = sourceStats;

@@ -15,5 +15,5 @@ export function useAppToasts({ customNodeError, clearCustomNodeError }: AppToast
 
   useCustomNodeErrorToast(customNodeError, addToast, clearCustomNodeError);
 
-  return { toasts, dismissToast };
+  return { toasts, dismissToast, addToast };
 }

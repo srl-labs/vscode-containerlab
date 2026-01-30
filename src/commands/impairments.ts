@@ -11,6 +11,7 @@ const ERR_EMPTY = "Input should not be empty";
 const TIME_UNIT_RE = /^\d+(ms|s)$/;
 const ERR_TIME_UNIT =
   "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)";
+const NETEM_FIELDS = ["delay", "jitter", "loss", "rate", "corruption"];
 
 function impairmentsAvailable(): boolean {
   if (vscode.env.remoteName === "wsl") {
@@ -22,21 +23,31 @@ function impairmentsAvailable(): boolean {
   return true;
 }
 
-async function setImpairment(
+/**
+ * Set impairment on an interface. Assumes impairment values are validated.
+ * @param node interface to set impairment on
+ * @param impairment object with impairment values to set
+ */
+export async function setImpairment(
   node: ClabInterfaceTreeNode,
-  impairment?: string,
-  value?: string
+  impairment?: Record<string, unknown>
 ): Promise<void> {
-  if (!impairmentsAvailable()) {
+  if (!impairmentsAvailable() || !impairment) {
     return;
   }
-  const impairmentFlag = impairment ? `--${impairment}` : undefined;
-  if (impairment && !value) {
+
+  const impairmentFlag = Object.entries(impairment)
+    .filter(([key, value]) => NETEM_FIELDS.includes(key) && typeof value === "string")
+    .map(([key, value]) => `--${key} ${value}`)
+    .join(" ");
+
+  if (impairmentFlag === "") {
     return;
   }
-  const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag} ${value}`;
-  const msg = `set ${impairment} to ${value} for ${node.name} on ${node.parentName}.`;
+  const cmd = `${containerlabBinaryPath} tools netem set --node ${node.parentName} --interface ${node.name} ${impairmentFlag}`;
+  const msg = `set link impairment to ${JSON.stringify(impairment)} for ${node.name} on ${node.parentName}.`;
   vscode.window.showInformationMessage(`Attempting to ${msg}`);
+
   void execCommandInOutput(
     cmd,
     false,
@@ -64,7 +75,9 @@ async function promptImpairment(
     return;
   }
   const val = await vscode.window.showInputBox({ title, placeHolder, validateInput: validator });
-  void setImpairment(node, impairment, val);
+  const netemData: Record<string, string | undefined> = {};
+  netemData[impairment] = val;
+  void setImpairment(node, netemData);
 }
 
 export async function setLinkDelay(node: ClabInterfaceTreeNode): Promise<void> {
@@ -113,7 +126,7 @@ export async function setLinkLoss(node: ClabInterfaceTreeNode): Promise<void> {
       if (input.length === 0) {
         return ERR_EMPTY;
       }
-      const re = /^(?:[1-9]\d?|100)$/;
+      const re = /^(?:[1-9]\d?|100|0)$/;
       if (!re.test(input)) {
         return "Input should be a number between 0 and 100.";
       }
@@ -151,7 +164,7 @@ export async function setLinkCorruption(node: ClabInterfaceTreeNode): Promise<vo
       if (input.length === 0) {
         return ERR_EMPTY;
       }
-      const re = /^(?:[1-9]\d?|100)$/;
+      const re = /^(?:[1-9]\d?|100|0)$/;
       if (!re.test(input)) {
         return "Input should be a number between 0 and 100.";
       }

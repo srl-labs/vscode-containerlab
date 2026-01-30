@@ -148,6 +148,18 @@ export interface ContainerInfo {
 }
 
 /**
+ * Netem fields
+ */
+
+export interface NetemState {
+  delay?: string;
+  jitter?: string;
+  loss?: string;
+  rate?: string;
+  corruption?: string;
+}
+
+/**
  * Interface info without VS Code dependencies.
  * Maps to ClabInterfaceTreeNode fields.
  */
@@ -168,6 +180,8 @@ export interface InterfaceInfo {
   ifIndex?: number;
   /** Traffic statistics */
   stats?: InterfaceStatsPayload;
+  /** Netem states */
+  netemState?: NetemState;
 }
 
 // ============================================================================

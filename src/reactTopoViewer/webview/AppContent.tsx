@@ -24,6 +24,7 @@ import {
   ViewPanels,
   NodePalettePanel
 } from "./components/panels";
+import type { LinkImpairmentData } from "./components/panels/link-impairment/types";
 import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
@@ -199,7 +200,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     onLockedAction
   });
 
-  const { toasts, dismissToast } = useAppToasts({
+  const { toasts, dismissToast, addToast } = useAppToasts({
     customNodeError: state.customNodeError,
     clearCustomNodeError: topoActions.clearCustomNodeError
   });
@@ -240,6 +241,46 @@ export const AppContent: React.FC<AppContentProps> = ({
       renameNode: graphActions.renameNode
     }
   });
+
+  const updateEdgeNetemData = React.useCallback(
+    (data: LinkImpairmentData) => {
+      const { edges } = useGraphStore.getState();
+      const edge = edges.find((item) => item.id === data.id);
+      if (!edge) return;
+      const edgeData = edge.data as Record<string, unknown> | undefined;
+      const extraData = (edgeData?.extraData ?? {}) as Record<string, unknown>;
+      graphActions.updateEdgeData(data.id, {
+        extraData: {
+          ...extraData,
+          clabSourceNetem: data.sourceNetem,
+          clabTargetNetem: data.targetNetem
+        }
+      });
+    },
+    [graphActions]
+  );
+
+  const handleLinkImpairmentSave = React.useCallback(
+    (data: LinkImpairmentData) => {
+      updateEdgeNetemData(data);
+      topoActions.editImpairment(null);
+    },
+    [topoActions, updateEdgeNetemData]
+  );
+
+  const handleLinkImpairmentApply = React.useCallback(
+    (data: LinkImpairmentData) => {
+      updateEdgeNetemData(data);
+    },
+    [updateEdgeNetemData]
+  );
+
+  const handleLinkImpairmentError = React.useCallback(
+    (error: string) => {
+      addToast(error, "error");
+    },
+    [addToast]
+  );
 
   const {
     nodeEditorHandlers,
@@ -501,6 +542,14 @@ export const AppContent: React.FC<AppContentProps> = ({
             isVisible: !!state.selectedEdge && state.mode === "view",
             linkData: selectionData.selectedLinkData,
             onClose: menuHandlers.handleCloseLinkPanel
+          }}
+          linkImpairment={{
+            isVisible: !!state.editingImpairment && state.mode === "view",
+            linkData: selectionData.selectedLinkImpairmentData,
+            onError: handleLinkImpairmentError,
+            onApply: handleLinkImpairmentApply,
+            onSave: handleLinkImpairmentSave,
+            onClose: () => topoActions.editImpairment(null)
           }}
           shortcuts={{
             isVisible: panelVisibility.showShortcutsPanel,

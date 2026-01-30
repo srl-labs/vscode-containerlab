@@ -76,6 +76,7 @@ interface ContextMenuItemsParams {
   handleDeleteEdge: (edgeId: string) => void;
   showNodeInfo: (nodeId: string) => void;
   showLinkInfo: (edgeId: string) => void;
+  showLinkImpairment: (edgeId: string) => void;
   nodesRef: React.RefObject<Node[]>;
   linkSourceNode: string | null;
   startLinkCreation: (nodeId: string) => void;
@@ -99,6 +100,7 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
     handleDeleteEdge,
     showNodeInfo,
     showLinkInfo,
+    showLinkImpairment,
     nodesRef,
     linkSourceNode,
     startLinkCreation,
@@ -147,7 +149,8 @@ function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] 
         closeContextMenu: handlers.closeContextMenu,
         editEdge,
         handleDeleteEdge,
-        showLinkInfo
+        showLinkInfo,
+        showLinkImpairment
       });
     }
     if (type === "pane") {
@@ -690,7 +693,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
   ) => {
     const mode = useMode();
     const isLocked = useIsLocked();
-    const { selectNode, selectEdge, editNode, editNetwork, editEdge } = useTopoViewerActions();
+    const { selectNode, selectEdge, editNode, editNetwork, editEdge, editImpairment } =
+      useTopoViewerActions();
 
     // Get setters from graph store - these update the single source of truth
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
@@ -853,6 +857,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       handleDeleteEdge,
       showNodeInfo: selectNode,
       showLinkInfo: selectEdge,
+      showLinkImpairment: editImpairment,
       nodesRef,
       linkSourceNode,
       startLinkCreation,

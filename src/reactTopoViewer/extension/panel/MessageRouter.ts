@@ -14,6 +14,26 @@ import { iconService } from "../services/IconService";
 import type { TopologyHost } from "../../shared/types/topologyHost";
 import type { TopologySnapshot, TopologyHostCommand } from "../../shared/types/messages";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../../shared/types/messages";
+import {
+  MSG_CUSTOM_NODE_ERROR,
+  MSG_CUSTOM_NODE_UPDATED,
+  MSG_ICON_LIST_RESPONSE
+} from "../../shared/messages/webview";
+import type {
+  CustomNodeCommand,
+  IconCommand,
+  InterfaceCommand,
+  LifecycleCommand,
+  NodeCommand
+} from "../../shared/messages/extension";
+import {
+  isCustomNodeCommand,
+  isIconCommand,
+  isInterfaceCommand,
+  isLifecycleCommand,
+  isNodeCommand,
+  MSG_TOGGLE_SPLIT_VIEW
+} from "../../shared/messages/extension";
 
 type WebviewMessage = Record<string, unknown> & {
   type?: string;
@@ -22,38 +42,12 @@ type WebviewMessage = Record<string, unknown> & {
   endpointName?: string;
 };
 
-const LIFECYCLE_COMMANDS = new Set([
-  "deployLab",
-  "destroyLab",
-  "redeployLab",
-  "deployLabCleanup",
-  "destroyLabCleanup",
-  "redeployLabCleanup"
-]);
-
-const NODE_COMMANDS = new Set([
-  "clab-node-connect-ssh",
-  "clab-node-attach-shell",
-  "clab-node-view-logs"
-]);
-
-const INTERFACE_COMMANDS = new Set(["clab-interface-capture"]);
-
-const CUSTOM_NODE_COMMANDS = new Set([
-  "save-custom-node",
-  "delete-custom-node",
-  "set-default-custom-node"
-]);
-
-const ICON_COMMANDS = new Set(["icon-list", "icon-upload", "icon-delete", "icon-reconcile"]);
-
 const TOPOLOGY_HOST_GET_SNAPSHOT = "topology-host:get-snapshot";
 const TOPOLOGY_HOST_COMMAND = "topology-host:command";
 const TOPOLOGY_HOST_SNAPSHOT = "topology-host:snapshot";
 const TOPOLOGY_HOST_ACK = "topology-host:ack";
 const TOPOLOGY_HOST_REJECT = "topology-host:reject";
 const TOPOLOGY_HOST_ERROR = "topology-host:error";
-
 /**
  * Context required by the message router
  */
@@ -228,7 +222,7 @@ export class MessageRouter {
     return true;
   }
 
-  private async handleLifecycleCommand(command: string): Promise<void> {
+  private async handleLifecycleCommand(command: LifecycleCommand): Promise<void> {
     const yamlFilePath = this.context.yamlFilePath;
     if (!yamlFilePath) {
       log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
@@ -257,7 +251,7 @@ export class MessageRouter {
   }
 
   private async handleCustomNodeCommand(
-    command: string,
+    command: CustomNodeCommand,
     message: WebviewMessage,
     panel: vscode.WebviewPanel
   ): Promise<void> {
@@ -268,7 +262,7 @@ export class MessageRouter {
       log.error(`[MessageRouter] ${res.error}`);
       // Send error back to webview so user can see the failure
       panel.webview.postMessage({
-        type: "custom-node-error",
+        type: MSG_CUSTOM_NODE_ERROR,
         error: res.error
       });
       return;
@@ -280,7 +274,7 @@ export class MessageRouter {
       | undefined;
     if (payload?.customNodes) {
       panel.webview.postMessage({
-        type: "custom-nodes-updated",
+        type: MSG_CUSTOM_NODE_UPDATED,
         customNodes: payload.customNodes,
         defaultNode: payload.defaultNode ?? ""
       });
@@ -288,7 +282,7 @@ export class MessageRouter {
   }
 
   private async executeCustomNodeCommand(
-    command: string,
+    command: CustomNodeCommand,
     message: WebviewMessage
   ): Promise<{ result?: unknown; error?: string | null } | undefined> {
     let res: { result?: unknown; error?: string | null } | undefined;
@@ -322,7 +316,7 @@ export class MessageRouter {
     return typeof message.name === "string" ? message.name : "";
   }
 
-  private async handleNodeCommand(command: string, message: WebviewMessage): Promise<void> {
+  private async handleNodeCommand(command: NodeCommand, message: WebviewMessage): Promise<void> {
     const yamlFilePath = this.context.yamlFilePath;
     if (!yamlFilePath) {
       log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
@@ -338,7 +332,10 @@ export class MessageRouter {
     else if (res.result) log.info(`[MessageRouter] ${res.result}`);
   }
 
-  private async handleInterfaceCommand(command: string, message: WebviewMessage): Promise<void> {
+  private async handleInterfaceCommand(
+    command: InterfaceCommand,
+    message: WebviewMessage
+  ): Promise<void> {
     const yamlFilePath = this.context.yamlFilePath;
     if (!yamlFilePath) {
       log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
@@ -346,13 +343,15 @@ export class MessageRouter {
     }
     const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
     const interfaceName = typeof message.interfaceName === "string" ? message.interfaceName : "";
+    const data =
+      typeof message.data === "object" ? (message.data as Record<string, unknown>) : undefined;
     if (!nodeName || !interfaceName) {
       log.warn(`[MessageRouter] Invalid interface command payload: ${JSON.stringify(message)}`);
       return;
     }
     const res = await nodeCommandService.handleInterfaceEndpoint(
       command,
-      { nodeName, interfaceName },
+      { nodeName, interfaceName, data },
       yamlFilePath
     );
     if (res.error) log.error(`[MessageRouter] ${res.error}`);
@@ -403,7 +402,7 @@ export class MessageRouter {
   }
 
   private async handleIconCommand(
-    command: string,
+    command: IconCommand,
     message: WebviewMessage,
     panel: vscode.WebviewPanel
   ): Promise<void> {
@@ -423,7 +422,7 @@ export class MessageRouter {
 
   private sendIconResponse(panel: vscode.WebviewPanel, icons: unknown[]): void {
     panel.webview.postMessage({
-      type: "icon-list-response",
+      type: MSG_ICON_LIST_RESPONSE,
       icons
     });
   }
@@ -435,32 +434,32 @@ export class MessageRouter {
     const command = typeof message.command === "string" ? message.command : "";
     if (!command) return false;
 
-    if (LIFECYCLE_COMMANDS.has(command)) {
+    if (isLifecycleCommand(command)) {
       await this.handleLifecycleCommand(command);
       return true;
     }
 
-    if (NODE_COMMANDS.has(command)) {
+    if (isNodeCommand(command)) {
       await this.handleNodeCommand(command, message);
       return true;
     }
 
-    if (INTERFACE_COMMANDS.has(command)) {
+    if (isInterfaceCommand(command)) {
       await this.handleInterfaceCommand(command, message);
       return true;
     }
 
-    if (command === "topo-toggle-split-view") {
+    if (command === MSG_TOGGLE_SPLIT_VIEW) {
       await this.handleSplitViewToggle(panel);
       return true;
     }
 
-    if (CUSTOM_NODE_COMMANDS.has(command)) {
+    if (isCustomNodeCommand(command)) {
       await this.handleCustomNodeCommand(command, message, panel);
       return true;
     }
 
-    if (ICON_COMMANDS.has(command)) {
+    if (isIconCommand(command)) {
       await this.handleIconCommand(command, message, panel);
       return true;
     }

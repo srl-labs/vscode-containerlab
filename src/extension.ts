@@ -279,6 +279,7 @@ function registerCommands(context: vscode.ExtensionContext) {
     ["containerlab.interface.setLoss", cmd.setLinkLoss],
     ["containerlab.interface.setRate", cmd.setLinkRate],
     ["containerlab.interface.setCorruption", cmd.setLinkCorruption],
+    ["containerlab.interface.setImpairment", cmd.setImpairment],
     ["containerlab.interface.copyMACAddress", cmd.copyMACAddress],
     ["containerlab.install.edgeshark", cmd.installEdgeshark],
     ["containerlab.uninstall.edgeshark", cmd.uninstallEdgeshark],

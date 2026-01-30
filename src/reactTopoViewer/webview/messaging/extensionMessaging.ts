@@ -3,6 +3,7 @@
  * Use for VS Code/CLI operations and settings updates. Topology persistence goes
  * through the host command pipeline, not these messages.
  */
+import type { ExtensionCommandType } from "../../shared/messages/extension";
 import type { SaveCustomNodeData } from "../../shared/utilities/customNodeConversions";
 import { log } from "../utils/logger";
 
@@ -22,7 +23,10 @@ function getVscodeApi(): { postMessage(data: unknown): void } | undefined {
 /**
  * Send a fire-and-forget command message to the extension.
  */
-export function sendCommandToExtension(command: string, payload?: Record<string, unknown>): void {
+export function sendCommandToExtension(
+  command: ExtensionCommandType,
+  payload?: Record<string, unknown>
+): void {
   const vscodeApi = getVscodeApi();
   if (!vscodeApi) {
     log.warn(`[ExtensionMessaging] VS Code API unavailable, command skipped: ${command}`);

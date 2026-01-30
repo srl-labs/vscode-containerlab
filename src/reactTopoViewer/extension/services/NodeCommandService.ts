@@ -287,34 +287,61 @@ export class NodeCommandService {
    */
   async handleInterfaceEndpoint(
     endpointName: string,
-    payloadObj: { nodeName: string; interfaceName: string },
+    payloadObj: { nodeName: string; interfaceName: string; data?: Record<string, unknown> },
     yamlFilePath: string
   ): Promise<EndpointResult> {
-    if (endpointName === "clab-interface-capture") {
-      try {
-        const { nodeName, interfaceName } = payloadObj;
-        const actualInterfaceName = await this.resolveInterfaceName(
-          nodeName,
-          interfaceName,
-          yamlFilePath
-        );
-        const iface = createInterfaceObject(
-          nodeName,
-          actualInterfaceName,
-          interfaceName !== actualInterfaceName ? interfaceName : ""
-        );
-        await vscode.commands.executeCommand("containerlab.interface.capture", iface);
-        return { result: `Capture executed for ${nodeName}/${actualInterfaceName}`, error: null };
-      } catch (innerError) {
-        const errorMsg = `Error executing capture: ${innerError}`;
-        log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+    switch (endpointName) {
+      case "clab-interface-capture": {
+        try {
+          const { nodeName, interfaceName } = payloadObj;
+          const actualInterfaceName = await this.resolveInterfaceName(
+            nodeName,
+            interfaceName,
+            yamlFilePath
+          );
+          const iface = createInterfaceObject(
+            nodeName,
+            actualInterfaceName,
+            interfaceName !== actualInterfaceName ? interfaceName : ""
+          );
+          await vscode.commands.executeCommand("containerlab.interface.capture", iface);
+          return { result: `Capture executed for ${nodeName}/${actualInterfaceName}`, error: null };
+        } catch (innerError) {
+          const errorMsg = `Error executing capture: ${innerError}`;
+          log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+          return { result: null, error: errorMsg };
+        }
+      }
+      case "clab-link-impairment": {
+        try {
+          const { nodeName, interfaceName, data } = payloadObj;
+          if (!data || !(data instanceof Object))
+            return { result: null, error: `Invalid netem data: ${data}` };
+
+          const actualInterfaceName = await this.resolveInterfaceName(
+            nodeName,
+            interfaceName,
+            yamlFilePath
+          );
+          const iface = createInterfaceObject(
+            nodeName,
+            actualInterfaceName,
+            interfaceName !== actualInterfaceName ? interfaceName : ""
+          );
+          await vscode.commands.executeCommand("containerlab.interface.setImpairment", iface, data);
+          return { result: `Link impairment set for ${nodeName}:${interfaceName}`, error: null };
+        } catch (innerError) {
+          const errorMsg = `Error executing capture: ${innerError}`;
+          log.error(`Error executing capture: ${JSON.stringify(innerError, null, 2)}`);
+          return { result: null, error: errorMsg };
+        }
+      }
+      default: {
+        const errorMsg = `Unknown interface endpoint "${endpointName}".`;
+        log.error(errorMsg);
         return { result: null, error: errorMsg };
       }
     }
-
-    const errorMsg = `Unknown interface endpoint "${endpointName}".`;
-    log.error(errorMsg);
-    return { result: null, error: errorMsg };
   }
 }
 

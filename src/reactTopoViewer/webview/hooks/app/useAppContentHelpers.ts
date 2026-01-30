@@ -17,6 +17,7 @@ import type { AnnotationContextValue } from "../canvas";
 interface SelectionStateSlice {
   selectedNode: string | null;
   selectedEdge: string | null;
+  editingImpairment: string | null;
   editingNode: string | null;
   editingEdge: string | null;
   editingNetwork: string | null;
@@ -90,6 +91,11 @@ export function useSelectionData(
     [state.selectedEdge, edges]
   );
 
+  const selectedLinkImpairmentData = React.useMemo(
+    () => getEdgeRawData(state.editingImpairment, edges),
+    [state.editingImpairment, edges]
+  );
+
   const editingNodeRawData = React.useMemo(() => {
     if (!state.editingNode) return null;
     const node = nodes.find((n) => n.id === state.editingNode);
@@ -151,6 +157,7 @@ export function useSelectionData(
   return {
     selectedNodeData,
     selectedLinkData,
+    selectedLinkImpairmentData,
     editingNodeData,
     editingNetworkData,
     editingLinkData,
