@@ -11,21 +11,20 @@ import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE,
-  nodesToAnnotations
-} from "./annotations/annotationNodeConverters";
-import { collectNodeGroupMemberships } from "./annotations/groupMembership";
+  nodesToAnnotations,
+  collectNodeGroupMemberships
+} from "./annotations";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
-import { ShortcutDisplay } from "./components/ui/ShortcutDisplay";
 import {
   FloatingActionPanel,
   type FloatingActionPanelHandle,
   EditorPanels,
-  ViewPanels
+  ViewPanels,
+  NodePalettePanel
 } from "./components/panels";
-import { NodePalettePanel } from "./components/panels/NodePalettePanel";
-import { ToastContainer } from "./components/ui/Toast";
+import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
   useAppAnnotations,
@@ -52,10 +51,121 @@ import {
 } from "./hooks/ui";
 import { useGraphActions, useGraphState, useGraphStore } from "./stores/graphStore";
 import { useTopoViewerActions, useTopoViewerState } from "./stores/topoViewerStore";
-import { toLinkSaveData } from "./services/linkSaveData";
-import { executeTopologyCommand } from "./services/topologyHostCommands";
+import { executeTopologyCommand, toLinkSaveData } from "./services";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
+
+interface DeleteMenuHandlers {
+  handleDeleteNode: (nodeId: string) => void;
+  handleDeleteLink: (edgeId: string) => void;
+}
+
+interface DeleteGraphActions {
+  removeNodeAndEdges: (nodeId: string) => void;
+  removeEdge: (edgeId: string) => void;
+}
+
+function collectSelectedIds(
+  nodes: Array<{ id: string; selected?: boolean }>,
+  edges: Array<{ id: string; selected?: boolean }>,
+  selectedNodeId?: string | null,
+  selectedEdgeId?: string | null
+): { nodeIds: Set<string>; edgeIds: Set<string> } {
+  const nodeIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
+  const edgeIds = new Set(edges.filter((edge) => edge.selected).map((edge) => edge.id));
+
+  if (selectedNodeId) nodeIds.add(selectedNodeId);
+  if (selectedEdgeId) edgeIds.add(selectedEdgeId);
+
+  return { nodeIds, edgeIds };
+}
+
+function splitNodeIdsByType(
+  nodeIds: Set<string>,
+  nodesById: Map<string, { type?: string }>
+): { graphNodeIds: string[]; groupIds: string[]; textIds: string[]; shapeIds: string[] } {
+  const graphNodeIds: string[] = [];
+  const groupIds: string[] = [];
+  const textIds: string[] = [];
+  const shapeIds: string[] = [];
+
+  for (const nodeId of nodeIds) {
+    const node = nodesById.get(nodeId);
+    if (!node) continue;
+    switch (node.type) {
+      case GROUP_NODE_TYPE:
+        groupIds.push(nodeId);
+        break;
+      case FREE_TEXT_NODE_TYPE:
+        textIds.push(nodeId);
+        break;
+      case FREE_SHAPE_NODE_TYPE:
+        shapeIds.push(nodeId);
+        break;
+      default:
+        graphNodeIds.push(nodeId);
+    }
+  }
+
+  return { graphNodeIds, groupIds, textIds, shapeIds };
+}
+
+function applyGraphDeletions(
+  graphActions: DeleteGraphActions,
+  menuHandlers: DeleteMenuHandlers,
+  graphNodeIds: string[],
+  edgeIds: Set<string>
+): void {
+  for (const nodeId of graphNodeIds) {
+    graphActions.removeNodeAndEdges(nodeId);
+    menuHandlers.handleDeleteNode(nodeId);
+  }
+
+  for (const edgeId of edgeIds) {
+    graphActions.removeEdge(edgeId);
+    menuHandlers.handleDeleteLink(edgeId);
+  }
+}
+
+function buildDeleteCommands(
+  graphNodeIds: string[],
+  edgeIds: Set<string>,
+  edgesById: Map<string, TopoEdge>
+): TopologyHostCommand[] {
+  const commands: TopologyHostCommand[] = [];
+
+  for (const nodeId of graphNodeIds) {
+    commands.push({ command: "deleteNode", payload: { id: nodeId } });
+  }
+
+  for (const edgeId of edgeIds) {
+    const edge = edgesById.get(edgeId);
+    if (!edge) continue;
+    commands.push({ command: "deleteLink", payload: toLinkSaveData(edge) });
+  }
+
+  return commands;
+}
+
+function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHostCommand {
+  const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodesForSave);
+  const memberships = collectNodeGroupMemberships(graphNodesForSave);
+
+  return {
+    command: "setAnnotationsWithMemberships",
+    payload: {
+      annotations: {
+        freeTextAnnotations,
+        freeShapeAnnotations,
+        groupStyleAnnotations: groups
+      },
+      memberships: memberships.map((entry) => ({
+        nodeId: entry.id,
+        groupId: entry.groupId
+      }))
+    }
+  };
+}
 
 export interface AppContentProps {
   floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
@@ -245,54 +355,23 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const handleDeleteSelection = React.useCallback(() => {
     const { nodes: currentNodes, edges: currentEdges } = useGraphStore.getState();
-    const selectedNodes = currentNodes.filter((node) => node.selected);
-    const selectedEdges = currentEdges.filter((edge) => edge.selected);
-
-    const nodeIds = new Set(selectedNodes.map((node) => node.id));
-    const edgeIds = new Set(selectedEdges.map((edge) => edge.id));
-
-    if (state.selectedNode) {
-      nodeIds.add(state.selectedNode);
-    }
-    if (state.selectedEdge) {
-      edgeIds.add(state.selectedEdge);
-    }
+    const { nodeIds, edgeIds } = collectSelectedIds(
+      currentNodes,
+      currentEdges,
+      state.selectedNode,
+      state.selectedEdge
+    );
+    if (nodeIds.size === 0 && edgeIds.size === 0) return;
 
     const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
-    const edgesById = new Map(currentEdges.map((edge) => [edge.id, edge]));
+    const edgesById = new Map(currentEdges.map((edge) => [edge.id, edge as TopoEdge]));
 
-    const graphNodeIds: string[] = [];
-    const groupIds: string[] = [];
-    const textIds: string[] = [];
-    const shapeIds: string[] = [];
+    const { graphNodeIds, groupIds, textIds, shapeIds } = splitNodeIdsByType(
+      nodeIds,
+      nodesById
+    );
 
-    for (const nodeId of nodeIds) {
-      const node = nodesById.get(nodeId);
-      if (!node) continue;
-      switch (node.type) {
-        case GROUP_NODE_TYPE:
-          groupIds.push(nodeId);
-          break;
-        case FREE_TEXT_NODE_TYPE:
-          textIds.push(nodeId);
-          break;
-        case FREE_SHAPE_NODE_TYPE:
-          shapeIds.push(nodeId);
-          break;
-        default:
-          graphNodeIds.push(nodeId);
-      }
-    }
-
-    for (const nodeId of graphNodeIds) {
-      graphActions.removeNodeAndEdges(nodeId);
-      menuHandlers.handleDeleteNode(nodeId);
-    }
-
-    for (const edgeId of edgeIds) {
-      graphActions.removeEdge(edgeId);
-      menuHandlers.handleDeleteLink(edgeId);
-    }
+    applyGraphDeletions(graphActions, menuHandlers, graphNodeIds, edgeIds);
 
     const annotationResult = annotations.deleteSelectedForBatch({
       groupIds,
@@ -300,46 +379,19 @@ export const AppContent: React.FC<AppContentProps> = ({
       shapeIds
     });
 
-    const commands: TopologyHostCommand[] = [];
-
-    for (const nodeId of graphNodeIds) {
-      commands.push({ command: "deleteNode", payload: { id: nodeId } });
-    }
-
-    for (const edgeId of edgeIds) {
-      const edge = edgesById.get(edgeId);
-      if (!edge) continue;
-      commands.push({ command: "deleteLink", payload: toLinkSaveData(edge as TopoEdge) });
-    }
+    const commands = buildDeleteCommands(graphNodeIds, edgeIds, edgesById);
 
     if (annotationResult.didDelete || annotationResult.membersCleared) {
       const graphNodesForSave = useGraphStore.getState().nodes;
-      const { freeTextAnnotations, freeShapeAnnotations, groups } =
-        nodesToAnnotations(graphNodesForSave);
-      const memberships = collectNodeGroupMemberships(graphNodesForSave);
-
-      commands.push({
-        command: "setAnnotationsWithMemberships",
-        payload: {
-          annotations: {
-            freeTextAnnotations,
-            freeShapeAnnotations,
-            groupStyleAnnotations: groups
-          },
-          memberships: memberships.map((entry) => ({
-            nodeId: entry.id,
-            groupId: entry.groupId
-          }))
-        }
-      });
+      commands.push(buildAnnotationSaveCommand(graphNodesForSave as TopoNode[]));
     }
 
     if (commands.length === 0) return;
 
-    void executeTopologyCommand(
-      { command: "batch", payload: { commands } },
-      { applySnapshot: false }
-    );
+    executeTopologyCommand({ command: "batch", payload: { commands } }, { applySnapshot: false })
+      .catch((err) => {
+        console.error("[TopoViewer] Failed to batch delete", err);
+      });
   }, [annotations, graphActions, menuHandlers, state.selectedNode, state.selectedEdge]);
 
   useAppKeyboardShortcuts({

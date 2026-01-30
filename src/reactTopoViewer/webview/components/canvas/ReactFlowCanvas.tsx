@@ -723,7 +723,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       if (isGeoLayout) return;
       lastFitViewRequestRef.current = fitViewRequestId;
       setTimeout(() => {
-        void reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 });
+        reactFlowInstanceRef.current
+          ?.fitView({ padding: 0.2, duration: 200 })
+          .catch(() => {
+            /* ignore */
+          });
       }, 50);
     }, [fitViewRequestId, allNodes.length, isGeoLayout, isReactFlowReady]);
 
@@ -868,6 +872,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onShiftClickCreate
     });
 
+    const { reactFlowInstance: handlersReactFlowInstance } = handlers;
+
     const { handleNodeDragStart, handleNodeDrag, handleNodeDragStop } = useDragHandlers(
       handlers.onNodeDrag,
       wrappedOnNodeDragStart,
@@ -880,12 +886,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       }
     );
 
+    const { onInit: handleOnInit } = handlers;
+
     const handleCanvasInit = useCallback(
       (instance: ReactFlowInstance) => {
-        handlers.onInit(instance);
+        handleOnInit(instance);
         setIsReactFlowReady(true);
       },
-      [handlers.onInit]
+      [handleOnInit]
     );
 
     const wrappedOnInit = useWrappedOnInit(handleCanvasInit, onInitProp);
@@ -907,7 +915,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
         try {
           const data = JSON.parse(dataStr) as { type: string; templateName?: string; networkType?: string };
-          const rfInstance = handlers.reactFlowInstance.current;
+          const rfInstance = handlersReactFlowInstance.current;
           if (!rfInstance) return;
 
           // Get the drop position in flow coordinates
@@ -931,7 +939,13 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           // Invalid drop data, ignore
         }
       },
-      [mode, isLocked, handlers.reactFlowInstance, onDropCreateNode, onDropCreateNetwork]
+      [
+        mode,
+        isLocked,
+        handlersReactFlowInstance,
+        onDropCreateNode,
+        onDropCreateNetwork
+      ]
     );
 
     const interactionConfig = getCanvasInteractionConfig({

@@ -49,6 +49,34 @@ interface SerializedEdge {
   data: Record<string, unknown>;
 }
 
+type PasteEdgeData = {
+  id: string;
+  source: string;
+  target: string;
+  sourceEndpoint: string;
+  targetEndpoint: string;
+};
+
+type PasteNodeCreatedHandler = (
+  nodeId: string,
+  nodeElement: TopoNode,
+  position: { x: number; y: number }
+) => void;
+
+type PasteEdgeCreatedHandler = (
+  sourceId: string,
+  targetId: string,
+  edgeData: PasteEdgeData
+) => void;
+
+type PasteCallbacks = {
+  onNodeCreated?: PasteNodeCreatedHandler;
+  onEdgeCreated?: PasteEdgeCreatedHandler;
+  addNodeToGroup?: (nodeId: string, groupId: string) => void;
+};
+
+type PasteTimeRef = { current: number };
+
 /** Clipboard data structure */
 interface ClipboardData {
   version: string;
@@ -59,31 +87,11 @@ interface ClipboardData {
 }
 
 /** Options for useClipboard hook */
-export interface UseClipboardOptions {
+export interface UseClipboardOptions extends PasteCallbacks {
   /** React Flow instance for viewport calculations */
   rfInstance?: ReactFlowInstance | null;
-  /** Custom node creation callback (includes YAML persistence) */
-  onNodeCreated?: (
-    nodeId: string,
-    nodeElement: TopoNode,
-    position: { x: number; y: number }
-  ) => void;
-  /** Custom edge creation callback (includes YAML persistence) */
-  onEdgeCreated?: (
-    sourceId: string,
-    targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void;
   /** Get node's group membership (for topology nodes whose groupId is not in node.data) */
   getNodeMembership?: (nodeId: string) => string | null;
-  /** Add node to group (updates in-memory membership map) */
-  addNodeToGroup?: (nodeId: string, groupId: string) => void;
   /** Optional callback for batch persistence after paste */
   onPasteComplete?: (result: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
 }
@@ -173,18 +181,40 @@ function buildIdMapping(
     `[Clipboard] Building unique IDs from ${usedNames.size} existing nodes: ${Array.from(usedNames).join(", ")}`
   );
 
+  const splitNumericSuffix = (value: string): { prefix: string; number: number } | null => {
+    let idx = value.length - 1;
+    while (idx >= 0) {
+      const code = value.charCodeAt(idx);
+      if (code < 48 || code > 57) break;
+      idx -= 1;
+    }
+    if (idx === value.length - 1) return null;
+    const prefix = value.slice(0, idx + 1);
+    if (!prefix) return null;
+    const num = Number.parseInt(value.slice(idx + 1), 10);
+    if (!Number.isFinite(num)) return null;
+    return { prefix, number: num };
+  };
+
+  const isDigits = (value: string): boolean => {
+    if (!value) return false;
+    for (let i = 0; i < value.length; i++) {
+      const code = value.charCodeAt(i);
+      if (code < 48 || code > 57) return false;
+    }
+    return true;
+  };
+
   const generateSequentialId = (baseName: string): string | null => {
-    const match = /^(.*?)(\d+)$/.exec(baseName);
-    if (!match) return null;
-    const prefix = match[1];
-    const baseNum = parseInt(match[2], 10);
-    if (!prefix || Number.isNaN(baseNum)) return null;
+    const suffixInfo = splitNumericSuffix(baseName);
+    if (!suffixInfo) return null;
+    const { prefix, number: baseNum } = suffixInfo;
 
     let maxNum = baseNum;
     for (const id of usedNames) {
       if (!id.startsWith(prefix)) continue;
       const suffix = id.slice(prefix.length);
-      if (!/^\d+$/.test(suffix)) continue;
+      if (!isDigits(suffix)) continue;
       const num = parseInt(suffix, 10);
       if (num > maxNum) maxNum = num;
     }
@@ -235,6 +265,47 @@ function createPastedNode(
   };
 }
 
+function mapYamlNodeId(
+  value: unknown,
+  idMapping: Map<string, string>
+): string | undefined {
+  if (typeof value !== "string" || !value) return undefined;
+  return idMapping.get(value);
+}
+
+function remapEdgeExtraData(
+  data: Record<string, unknown>,
+  idMapping: Map<string, string>
+): Record<string, unknown> {
+  const extra = data.extraData as Record<string, unknown> | undefined;
+  if (!extra || typeof extra !== "object") return data;
+
+  const cleaned = { ...extra };
+  const yamlSource = mapYamlNodeId(cleaned.yamlSourceNodeId, idMapping);
+  const yamlTarget = mapYamlNodeId(cleaned.yamlTargetNodeId, idMapping);
+
+  if (yamlSource) {
+    cleaned.yamlSourceNodeId = yamlSource;
+  } else {
+    delete cleaned.yamlSourceNodeId;
+  }
+
+  if (yamlTarget) {
+    cleaned.yamlTargetNodeId = yamlTarget;
+  } else {
+    delete cleaned.yamlTargetNodeId;
+  }
+
+  const next = { ...data };
+  if (Object.keys(cleaned).length === 0) {
+    delete next.extraData;
+  } else {
+    next.extraData = cleaned;
+  }
+
+  return next;
+}
+
 /** Create a single pasted edge */
 function createPastedEdge(
   edge: SerializedEdge,
@@ -245,34 +316,7 @@ function createPastedEdge(
   const sourceEndpoint = (edge.data.sourceEndpoint as string) || "eth1";
   const targetEndpoint = (edge.data.targetEndpoint as string) || "eth1";
   const newId = `${newSource}:${sourceEndpoint}--${newTarget}:${targetEndpoint}`;
-  const data = { ...edge.data } as Record<string, unknown>;
-  const extra = data.extraData as Record<string, unknown> | undefined;
-  if (extra && typeof extra === "object") {
-    const cleaned = { ...extra };
-    const yamlSource = typeof cleaned.yamlSourceNodeId === "string" ? cleaned.yamlSourceNodeId : "";
-    const yamlTarget = typeof cleaned.yamlTargetNodeId === "string" ? cleaned.yamlTargetNodeId : "";
-    if (yamlSource) {
-      const mapped = idMapping.get(yamlSource);
-      if (mapped) {
-        cleaned.yamlSourceNodeId = mapped;
-      } else {
-        delete cleaned.yamlSourceNodeId;
-      }
-    }
-    if (yamlTarget) {
-      const mapped = idMapping.get(yamlTarget);
-      if (mapped) {
-        cleaned.yamlTargetNodeId = mapped;
-      } else {
-        delete cleaned.yamlTargetNodeId;
-      }
-    }
-    if (Object.keys(cleaned).length === 0) {
-      delete data.extraData;
-    } else {
-      data.extraData = cleaned;
-    }
-  }
+  const data = remapEdgeExtraData({ ...edge.data } as Record<string, unknown>, idMapping);
 
   return {
     id: newId,
@@ -316,7 +360,7 @@ function selectPastedElements(
 }
 
 /** Paste context passed to paste helper functions */
-interface PasteContext {
+interface PasteContext extends PasteCallbacks {
   idMapping: Map<string, string>;
   pastePosition: { x: number; y: number };
   offset: number;
@@ -326,23 +370,6 @@ interface PasteContext {
   pastedEdgeIds: string[];
   addNode: (node: TopoNode) => void;
   addEdge: (edge: TopoEdge) => void;
-  onNodeCreated?: (
-    nodeId: string,
-    nodeElement: TopoNode,
-    position: { x: number; y: number }
-  ) => void;
-  onEdgeCreated?: (
-    sourceId: string,
-    targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void;
-  addNodeToGroup?: (nodeId: string, groupId: string) => void;
 }
 
 /** Paste all nodes from clipboard */
@@ -387,7 +414,7 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
     ctx.pastedEdges.push(newEdge);
 
     if (ctx.onEdgeCreated) {
-      const edgeData = newEdge.data as { sourceEndpoint: string; targetEndpoint: string };
+      const edgeData = newEdge.data as PasteEdgeData;
       ctx.onEdgeCreated(newSource, newTarget, {
         id: newEdge.id,
         source: newSource,
@@ -401,6 +428,103 @@ function pasteEdges(clipboardEdges: SerializedEdge[], ctx: PasteContext): number
     edgeCount++;
   }
   return edgeCount;
+}
+
+function shouldThrottlePaste(
+  now: number,
+  lastPasteTimeRef: PasteTimeRef
+): boolean {
+  if (now - lastPasteTimeRef.current < 100) return true;
+  lastPasteTimeRef.current = now;
+  return false;
+}
+
+interface PasteContextParams extends PasteCallbacks {
+  pastePosition: { x: number; y: number };
+  offset: number;
+  addNode: (node: TopoNode) => void;
+  addEdge: (edge: TopoEdge) => void;
+  existingNodeIds: Set<string>;
+}
+
+function createPasteContext(
+  clipboardData: ClipboardData,
+  params: PasteContextParams
+): PasteContext {
+  return {
+    idMapping: buildIdMapping(clipboardData.nodes, params.existingNodeIds),
+    pastePosition: params.pastePosition,
+    offset: params.offset,
+    pastedNodes: [],
+    pastedEdges: [],
+    pastedNodeIds: [],
+    pastedEdgeIds: [],
+    addNode: params.addNode,
+    addEdge: params.addEdge,
+    onNodeCreated: params.onNodeCreated,
+    onEdgeCreated: params.onEdgeCreated,
+    addNodeToGroup: params.addNodeToGroup
+  };
+}
+
+function finalizePaste(
+  ctx: PasteContext,
+  options: {
+    rfInstance?: ReactFlowInstance | null;
+    onPasteComplete?: (result: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
+  }
+): void {
+  if (options.onPasteComplete) {
+    options.onPasteComplete({ nodes: ctx.pastedNodes, edges: ctx.pastedEdges });
+  }
+
+  setTimeout(() => {
+    if (options.rfInstance) {
+      selectPastedElements(options.rfInstance, ctx.pastedNodeIds, ctx.pastedEdgeIds);
+    }
+  }, 50);
+}
+
+interface PerformPasteParams extends PasteCallbacks {
+  position?: { x: number; y: number };
+  rfInstance?: ReactFlowInstance | null;
+  nodes: Array<{ id: string }>;
+  addNode: (node: TopoNode) => void;
+  addEdge: (edge: TopoEdge) => void;
+  onPasteComplete?: (result: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
+}
+
+async function performPaste(params: PerformPasteParams): Promise<boolean> {
+  const clipboardData = await readClipboardData();
+  if (!clipboardData || clipboardData.nodes.length === 0) {
+    if (clipboardData?.nodes.length === 0) log.info("[Clipboard] No nodes to paste");
+    return false;
+  }
+
+  const pastePosition = calculatePastePosition(params.position, params.rfInstance ?? null);
+  pasteCounter++;
+
+  const currentNodes = params.rfInstance?.getNodes() ?? params.nodes;
+  const existingNodeIds = new Set<string>(currentNodes.map((n: { id: string }) => n.id));
+
+  const ctx = createPasteContext(clipboardData, {
+    pastePosition,
+    offset: pasteCounter * 20,
+    addNode: params.addNode,
+    addEdge: params.addEdge,
+    onNodeCreated: params.onPasteComplete ? undefined : params.onNodeCreated,
+    onEdgeCreated: params.onPasteComplete ? undefined : params.onEdgeCreated,
+    addNodeToGroup: params.addNodeToGroup,
+    existingNodeIds
+  });
+
+  pasteNodes(clipboardData.nodes, ctx);
+  const edgeCount = pasteEdges(clipboardData.edges, ctx);
+  log.info(`[Clipboard] Pasted ${clipboardData.nodes.length} nodes, ${edgeCount} edges`);
+
+  finalizePaste(ctx, { rfInstance: params.rfInstance, onPasteComplete: params.onPasteComplete });
+
+  return true;
 }
 
 // ============================================================================
@@ -530,54 +654,18 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
    */
   const paste = useCallback(
     async (position?: { x: number; y: number }): Promise<boolean> => {
-      const now = Date.now();
-      if (now - lastPasteTimeRef.current < 100) return false;
-      lastPasteTimeRef.current = now;
-
-      const clipboardData = await readClipboardData();
-      if (!clipboardData || clipboardData.nodes.length === 0) {
-        if (clipboardData?.nodes.length === 0) log.info("[Clipboard] No nodes to paste");
-        return false;
-      }
-
-      const pastePosition = calculatePastePosition(position, rfInstance ?? null);
-      pasteCounter++;
-
-      // Get fresh nodes from React Flow instance to ensure we have the latest state
-      const currentNodes = rfInstance?.getNodes() ?? nodes;
-      const existingNodeIds = new Set<string>(currentNodes.map((n: { id: string }) => n.id));
-
-      const ctx: PasteContext = {
-        idMapping: buildIdMapping(clipboardData.nodes, existingNodeIds),
-        pastePosition,
-        offset: pasteCounter * 20,
-        pastedNodes: [],
-        pastedEdges: [],
-        pastedNodeIds: [],
-        pastedEdgeIds: [],
+      if (shouldThrottlePaste(Date.now(), lastPasteTimeRef)) return false;
+      return performPaste({
+        position,
+        rfInstance,
+        nodes,
         addNode,
         addEdge,
-        onNodeCreated: onPasteComplete ? undefined : onNodeCreated,
-        onEdgeCreated: onPasteComplete ? undefined : onEdgeCreated,
-        addNodeToGroup
-      };
-
-      pasteNodes(clipboardData.nodes, ctx);
-      const edgeCount = pasteEdges(clipboardData.edges, ctx);
-      log.info(`[Clipboard] Pasted ${clipboardData.nodes.length} nodes, ${edgeCount} edges`);
-
-      if (onPasteComplete) {
-        onPasteComplete({ nodes: ctx.pastedNodes, edges: ctx.pastedEdges });
-      }
-
-      // Select pasted elements after they're added to React Flow
-      setTimeout(() => {
-        if (rfInstance) {
-          selectPastedElements(rfInstance, ctx.pastedNodeIds, ctx.pastedEdgeIds);
-        }
-      }, 50);
-
-      return true;
+        onNodeCreated,
+        onEdgeCreated,
+        addNodeToGroup,
+        onPasteComplete
+      });
     },
     [
       rfInstance,

@@ -42,6 +42,84 @@ export interface GroupAnnotationActions {
   updateGroupSize: (id: string, width: number, height: number) => void;
 }
 
+function buildGroupsSnapshot(
+  derived: UseDerivedAnnotationsReturn,
+  graphNodes: Node[]
+): GroupStyleAnnotation[] {
+  if (derived.groups.length > 0) return derived.groups;
+
+  return graphNodes
+    .filter((node) => node.type === GROUP_NODE_TYPE)
+    .map((node) => nodeToGroup(node as Node<GroupNodeData>));
+}
+
+function getGroupDeletionContext(
+  derived: UseDerivedAnnotationsReturn,
+  groupsSnapshot: GroupStyleAnnotation[],
+  id: string
+): {
+  parentId: string | null;
+  memberIds: string[];
+  childGroups: GroupStyleAnnotation[];
+  textIds: Set<string>;
+  shapeIds: Set<string>;
+} {
+  const group = groupsSnapshot.find((g) => g.id === id);
+  const parentId = group ? resolveGroupParentId(group.parentId, group.groupId) ?? null : null;
+  const memberIds = derived.getGroupMembers(id);
+  const childGroups = groupsSnapshot.filter(
+    (g) => resolveGroupParentId(g.parentId, g.groupId) === id
+  );
+  const textIds = new Set(derived.textAnnotations.map((t) => t.id));
+  const shapeIds = new Set(derived.shapeAnnotations.map((s) => s.id));
+
+  return {
+    parentId,
+    memberIds,
+    childGroups,
+    textIds,
+    shapeIds
+  };
+}
+
+function updateChildGroupParents(
+  derived: UseDerivedAnnotationsReturn,
+  childGroups: GroupStyleAnnotation[],
+  parentId: string | null
+): void {
+  for (const child of childGroups) {
+    derived.updateGroup(child.id, {
+      parentId: parentId ?? undefined,
+      groupId: parentId ?? undefined
+    });
+  }
+}
+
+function reassignGroupMembers(
+  derived: UseDerivedAnnotationsReturn,
+  memberIds: string[],
+  parentId: string | null,
+  textIds: Set<string>,
+  shapeIds: Set<string>
+): void {
+  for (const memberId of memberIds) {
+    if (textIds.has(memberId)) {
+      derived.updateTextAnnotation(memberId, { groupId: parentId ?? undefined });
+      continue;
+    }
+    if (shapeIds.has(memberId)) {
+      derived.updateShapeAnnotation(memberId, { groupId: parentId ?? undefined });
+      continue;
+    }
+
+    if (parentId) {
+      derived.addNodeToGroup(memberId, parentId);
+    } else {
+      derived.removeNodeFromGroup(memberId);
+    }
+  }
+}
+
 export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnnotationActions {
   const { mode, isLocked, onLockedAction, rfInstance, derived, uiActions } = params;
 
@@ -115,50 +193,19 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
   const deleteGroup = useCallback(
     (id: string) => {
       const graphNodes = useGraphStore.getState().nodes;
-      const groupsSnapshot =
-        derived.groups.length > 0
-          ? derived.groups
-          : graphNodes
-              .filter((node) => node.type === GROUP_NODE_TYPE)
-              .map((node) => nodeToGroup(node as Node<GroupNodeData>));
-      const group = groupsSnapshot.find((g) => g.id === id);
-      const parentId = group ? resolveGroupParentId(group.parentId, group.groupId) : null;
-      const memberIds = derived.getGroupMembers(id);
-      const childGroups = groupsSnapshot.filter(
-        (g) => resolveGroupParentId(g.parentId, g.groupId) === id
+      const groupsSnapshot = buildGroupsSnapshot(derived, graphNodes);
+      const { parentId, memberIds, childGroups, textIds, shapeIds } = getGroupDeletionContext(
+        derived,
+        groupsSnapshot,
+        id
       );
-      const textIds = new Set(derived.textAnnotations.map((t) => t.id));
-      const shapeIds = new Set(derived.shapeAnnotations.map((s) => s.id));
 
       derived.deleteGroup(id);
       uiActions.removeFromGroupSelection(id);
 
       // Promote child groups to parent (or clear parent if none)
-      for (const child of childGroups) {
-        derived.updateGroup(child.id, {
-          parentId: parentId ?? undefined,
-          groupId: parentId ?? undefined
-        });
-      }
-
-      if (memberIds.length > 0) {
-        for (const memberId of memberIds) {
-          if (textIds.has(memberId)) {
-            derived.updateTextAnnotation(memberId, { groupId: parentId ?? undefined });
-            continue;
-          }
-          if (shapeIds.has(memberId)) {
-            derived.updateShapeAnnotation(memberId, { groupId: parentId ?? undefined });
-            continue;
-          }
-
-          if (parentId) {
-            derived.addNodeToGroup(memberId, parentId);
-          } else {
-            derived.removeNodeFromGroup(memberId);
-          }
-        }
-      }
+      updateChildGroupParents(derived, childGroups, parentId);
+      reassignGroupMembers(derived, memberIds, parentId, textIds, shapeIds);
 
       const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
       void saveAnnotationNodesWithMemberships(memberships);

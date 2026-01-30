@@ -14,7 +14,6 @@ import type {
 } from "../../../shared/types/graph";
 import type { NodeSaveData } from "../../../shared/io/NodePersistenceIO";
 import type { TopologyHostCommand } from "../../../shared/types/messages";
-import type { NetworkNodeAnnotation } from "../../../shared/types/topology";
 import {
   createLink,
   createNode,
@@ -31,6 +30,7 @@ import {
   SPECIAL_NETWORK_TYPES,
   getNetworkType
 } from "../../utils/networkNodeTypes";
+import { buildNetworkNodeAnnotations } from "../../utils/networkNodeAnnotations";
 import { useGraphStore } from "../../stores/graphStore";
 
 // ============================================================================
@@ -79,37 +79,6 @@ const NODE_FALLBACK_PROPS = [
 ] as const;
 
 const NETWORK_NODE_TYPE = "network-node";
-
-function isNetworkNode(node: Node): boolean {
-  return node.type === NETWORK_NODE_TYPE;
-}
-
-function buildNetworkNodeAnnotations(nodes: Node[]): NetworkNodeAnnotation[] {
-  const annotations: NetworkNodeAnnotation[] = [];
-
-  for (const node of nodes) {
-    if (!isNetworkNode(node)) continue;
-
-    const data = (node.data ?? {}) as Record<string, unknown>;
-    const type = getNetworkType(data);
-    if (!type || !SPECIAL_NETWORK_TYPES.has(type)) continue;
-
-    const label = (data.label as string) || (data.name as string) || node.id;
-    const geoCoordinates = data.geoCoordinates as { lat: number; lng: number } | undefined;
-
-    annotations.push({
-      id: node.id,
-      type: type as NetworkNodeAnnotation["type"],
-      label,
-      position: node.position,
-      ...(geoCoordinates ? { geoCoordinates } : {}),
-      ...(typeof data.group === "string" ? { group: data.group } : {}),
-      ...(typeof data.level === "string" ? { level: data.level } : {})
-    });
-  }
-
-  return annotations;
-}
 
 function mergeNodeExtraData(data: NodeElementData): NodeSaveData["extraData"] {
   const ed = (data.extraData ?? {}) as Record<string, unknown>;

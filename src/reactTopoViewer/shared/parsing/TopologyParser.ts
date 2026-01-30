@@ -122,16 +122,7 @@ export class TopologyParser {
    */
   static parseToReactFlow(yamlContent: string, options: ParseOptions = {}): ParseResultRF {
     const result = TopologyParser.parse(yamlContent, options);
-    const topology = convertElementsToTopologyData(result.elements);
-
-    return {
-      topology,
-      labName: result.labName,
-      prefix: result.prefix,
-      isPresetLayout: result.isPresetLayout,
-      pendingMigrations: result.pendingMigrations,
-      graphLabelMigrations: result.graphLabelMigrations
-    };
+    return TopologyParser.toReactFlowResult(result);
   }
 
   /**
@@ -142,6 +133,10 @@ export class TopologyParser {
     options: ParseOptions = {}
   ): ParseResultRF {
     const result = TopologyParser.parseFromParsed(parsed, options);
+    return TopologyParser.toReactFlowResult(result);
+  }
+
+  private static toReactFlowResult(result: ParseResult): ParseResultRF {
     const topology = convertElementsToTopologyData(result.elements);
 
     return {

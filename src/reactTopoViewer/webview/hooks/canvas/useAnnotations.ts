@@ -209,14 +209,18 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
 
         if (options.persist) {
           const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
-          void saveAllNodeGroupMemberships(memberships);
+          saveAllNodeGroupMemberships(memberships).catch((err) => {
+            console.error("[Annotations] Failed to save group memberships", err);
+          });
         }
       }
 
       uiActions.clearAllSelections();
 
       if (options.persist) {
-        void saveAnnotationNodesFromGraph();
+        saveAnnotationNodesFromGraph().catch((err) => {
+          console.error("[Annotations] Failed to save annotations", err);
+        });
       }
 
       return { didDelete: true, membersCleared: membersToClear.size > 0 };
@@ -225,7 +229,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
   );
 
   const deleteAllSelected = useCallback(() => {
-    void deleteSelections(
+    deleteSelections(
       new Set(uiState.selectedGroupIds),
       new Set(uiState.selectedTextIds),
       new Set(uiState.selectedShapeIds),
@@ -269,7 +273,9 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
   );
 
   const persistAnnotationNodes = useCallback(() => {
-    void saveAnnotationNodesFromGraph();
+    saveAnnotationNodesFromGraph().catch((err) => {
+      console.error("[Annotations] Failed to save annotations", err);
+    });
   }, [saveAnnotationNodesFromGraph]);
 
   return useMemo<AnnotationContextValue>(

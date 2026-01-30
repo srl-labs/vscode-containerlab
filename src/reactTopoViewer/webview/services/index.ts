@@ -3,6 +3,7 @@
  */
 
 export { executeTopologyCommand, executeTopologyCommands } from "./topologyHostCommands";
+export { toLinkSaveData } from "./linkSaveData";
 
 export {
   saveEdgeAnnotations,

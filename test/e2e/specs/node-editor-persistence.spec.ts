@@ -7,6 +7,7 @@ const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
 const SEL_APPLY_BTN = '[data-testid="node-editor"] [data-testid="panel-apply-btn"]';
 const SEL_OK_BTN = '[data-testid="node-editor"] [data-testid="panel-ok-btn"]';
 const SEL_CLOSE_BTN = '[data-testid="node-editor"] [data-testid="panel-close-btn"]';
+const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
 
 // Tab and field identifiers
 const TAB = {
@@ -27,6 +28,174 @@ const SEL_KIND_FIELD = "#node-kind";
  * Helper to reliably open node editor via double-click on a specific node
  * Uses node ID to fetch fresh bounding box immediately before clicking.
  */
+async function closeEditorPanel(page: Page): Promise<void> {
+  const editorPanel = page.locator(SEL_NODE_EDITOR);
+  if (await editorPanel.isVisible()) {
+    await page.locator(`${SEL_NODE_EDITOR} [data-testid="panel-close-btn"]`).click();
+    await expect(editorPanel).toBeHidden({ timeout: 2000 });
+  }
+}
+
+async function collapseFloatingPanel(page: Page): Promise<void> {
+  const floatingContent = page.locator(".floating-panel-content");
+  if (await floatingContent.isVisible()) {
+    await page.locator('[data-testid="floating-panel-collapse-btn"]').click();
+    await expect(floatingContent).toBeHidden({ timeout: 2000 });
+  }
+}
+
+async function waitForStableNodeBox(
+  page: Page,
+  nodeHandle: ReturnType<Page["locator"]>
+): Promise<{ x: number; y: number; width: number; height: number } | null> {
+  let prev = await nodeHandle.boundingBox();
+  for (let i = 0; i < 4; i++) {
+    await page.waitForTimeout(120);
+    const next = await nodeHandle.boundingBox();
+    if (!prev || !next) {
+      prev = next;
+      continue;
+    }
+    const stable =
+      Math.abs(next.x - prev.x) < 1 &&
+      Math.abs(next.y - prev.y) < 1 &&
+      Math.abs(next.width - prev.width) < 1 &&
+      Math.abs(next.height - prev.height) < 1;
+    if (stable) return next;
+    prev = next;
+  }
+  return prev;
+}
+
+async function separateOverlappingNode(page: Page, nodeId: string): Promise<boolean> {
+  let moved = false;
+  for (let i = 0; i < 2; i++) {
+    const blockingId = await page.evaluate((targetId) => {
+      const target = document.querySelector(`[data-id="${targetId}"]`) as HTMLElement | null;
+      if (!target) return null;
+      const targetRect = target.getBoundingClientRect();
+      const nodes = Array.from(document.querySelectorAll(".react-flow__node"));
+      for (const node of nodes) {
+        const id = node.getAttribute("data-id");
+        if (!id || id === targetId) continue;
+        const rect = (node as HTMLElement).getBoundingClientRect();
+        const overlaps =
+          targetRect.left < rect.right &&
+          targetRect.right > rect.left &&
+          targetRect.top < rect.bottom &&
+          targetRect.bottom > rect.top;
+        if (overlaps) return id;
+      }
+      return null;
+    }, nodeId);
+
+    if (!blockingId) break;
+
+    const blockingHandle = page.locator(`[data-id="${blockingId}"]`);
+    const blockingBox = await blockingHandle.boundingBox();
+    if (!blockingBox) break;
+
+    const startX = blockingBox.x + blockingBox.width / 2;
+    const startY = blockingBox.y + blockingBox.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 120, startY, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    moved = true;
+  }
+  return moved;
+}
+
+async function prepareForNodeEditorAttempt(
+  page: Page,
+  topoViewerPage: { fit: () => Promise<void> },
+  nodeId: string,
+  attempt: number
+): Promise<void> {
+  await closeEditorPanel(page);
+  await collapseFloatingPanel(page);
+  if (attempt === 1) {
+    await topoViewerPage.fit();
+  }
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(`[data-id="${nodeId}"]`, { timeout: 5000 });
+  await page.waitForTimeout(150);
+}
+
+async function getNodeCenter(
+  page: Page,
+  topoViewerPage: {
+    getNodeBoundingBox: (nodeId: string) => Promise<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>;
+  },
+  nodeId: string
+): Promise<{ centerX: number; centerY: number }> {
+  const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
+  await nodeHandle.scrollIntoViewIfNeeded();
+  await expect(nodeHandle).toBeVisible({ timeout: 2000 });
+  await separateOverlappingNode(page, nodeId);
+
+  const nodeBox =
+    (await waitForStableNodeBox(page, nodeHandle)) ??
+    (await topoViewerPage.getNodeBoundingBox(nodeId));
+  if (!nodeBox) {
+    throw new Error(`Node ${nodeId} not found or has no bounding box`);
+  }
+
+  return {
+    centerX: nodeBox.x + nodeBox.width / 2,
+    centerY: nodeBox.y + nodeBox.height / 2
+  };
+}
+
+async function tryOpenEditorAtPosition(
+  page: Page,
+  nodeId: string,
+  centerX: number,
+  centerY: number
+): Promise<boolean> {
+  try {
+    const hitsTarget = await page.evaluate(
+      ({ x, y, id }) => {
+        const el = document.elementFromPoint(x, y);
+        return !!el?.closest(`[data-id="${id}"]`);
+      },
+      { x: centerX, y: centerY, id: nodeId }
+    );
+    if (!hitsTarget) {
+      await separateOverlappingNode(page, nodeId);
+      return false;
+    }
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.click(centerX, centerY, { delay: 60 });
+    await page.waitForTimeout(150);
+    await page.mouse.dblclick(centerX, centerY, { delay: 80 });
+    return true;
+  } catch {
+    await separateOverlappingNode(page, nodeId);
+    return false;
+  }
+}
+
+async function verifyEditorOpen(page: Page, nodeId: string): Promise<boolean> {
+  try {
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeVisible({ timeout: 2000 });
+    await expect(page.locator(SEL_PANEL_TAB_BASIC)).toBeVisible({ timeout: 2000 });
+    const nameInput = page.locator("#node-name");
+    if ((await nameInput.count()) > 0) {
+      await expect(nameInput).toHaveValue(nodeId, { timeout: 1000 });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function openNodeEditorByNodeId(
   page: Page,
   topoViewerPage: {
@@ -41,140 +210,21 @@ async function openNodeEditorByNodeId(
   nodeId: string,
   maxRetries = 3
 ): Promise<void> {
-  const editorPanel = page.locator(SEL_NODE_EDITOR);
-  const panelTab = page.locator('[data-testid="panel-tab-basic"]');
-  const floatingContent = page.locator(".floating-panel-content");
-  const collapsePanelButton = page.locator('[data-testid="floating-panel-collapse-btn"]');
-  const closeEditorPanel = async () => {
-    if (await editorPanel.isVisible()) {
-      await page.locator(`${SEL_NODE_EDITOR} [data-testid="panel-close-btn"]`).click();
-      await expect(editorPanel).toBeHidden({ timeout: 2000 });
-    }
-  };
-  const collapseFloatingPanel = async () => {
-    if (await floatingContent.isVisible()) {
-      await collapsePanelButton.click();
-      await expect(floatingContent).toBeHidden({ timeout: 2000 });
-    }
-  };
-  const waitForStableNodeBox = async (nodeHandle: ReturnType<Page["locator"]>) => {
-    let prev = await nodeHandle.boundingBox();
-    for (let i = 0; i < 4; i++) {
-      await page.waitForTimeout(120);
-      const next = await nodeHandle.boundingBox();
-      if (!prev || !next) {
-        prev = next;
-        continue;
-      }
-      const stable =
-        Math.abs(next.x - prev.x) < 1 &&
-        Math.abs(next.y - prev.y) < 1 &&
-        Math.abs(next.width - prev.width) < 1 &&
-        Math.abs(next.height - prev.height) < 1;
-      if (stable) return next;
-      prev = next;
-    }
-    return prev;
-  };
-
-  const separateOverlappingNode = async () => {
-    let moved = false;
-    for (let i = 0; i < 2; i++) {
-      const blockingId = await page.evaluate((targetId) => {
-        const target = document.querySelector(`[data-id="${targetId}"]`) as HTMLElement | null;
-        if (!target) return null;
-        const targetRect = target.getBoundingClientRect();
-        const nodes = Array.from(document.querySelectorAll(".react-flow__node"));
-        for (const node of nodes) {
-          const id = node.getAttribute("data-id");
-          if (!id || id === targetId) continue;
-          const rect = (node as HTMLElement).getBoundingClientRect();
-          const overlaps =
-            targetRect.left < rect.right &&
-            targetRect.right > rect.left &&
-            targetRect.top < rect.bottom &&
-            targetRect.bottom > rect.top;
-          if (overlaps) return id;
-        }
-        return null;
-      }, nodeId);
-
-      if (!blockingId) break;
-
-      const blockingHandle = page.locator(`[data-id="${blockingId}"]`);
-      const blockingBox = await blockingHandle.boundingBox();
-      if (!blockingBox) break;
-
-      const startX = blockingBox.x + blockingBox.width / 2;
-      const startY = blockingBox.y + blockingBox.height / 2;
-      await page.mouse.move(startX, startY);
-      await page.mouse.down();
-      await page.mouse.move(startX + 120, startY, { steps: 8 });
-      await page.mouse.up();
-      await page.waitForTimeout(200);
-      moved = true;
-    }
-    return moved;
-  };
-
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    await closeEditorPanel();
-    await collapseFloatingPanel();
-    if (attempt === 1) {
-      await topoViewerPage.fit();
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForSelector(`[data-id="${nodeId}"]`, { timeout: 5000 });
-    await page.waitForTimeout(150);
+    await prepareForNodeEditorAttempt(page, topoViewerPage, nodeId, attempt);
 
-    const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
-    await nodeHandle.scrollIntoViewIfNeeded();
-    await expect(nodeHandle).toBeVisible({ timeout: 2000 });
-    await separateOverlappingNode();
+    const { centerX, centerY } = await getNodeCenter(page, topoViewerPage, nodeId);
+    const didClick = await tryOpenEditorAtPosition(page, nodeId, centerX, centerY);
+    if (!didClick) continue;
 
-    const nodeBox = (await waitForStableNodeBox(nodeHandle)) ?? (await topoViewerPage.getNodeBoundingBox(nodeId));
-    if (!nodeBox) {
-      throw new Error(`Node ${nodeId} not found or has no bounding box`);
-    }
-    const centerX = nodeBox.x + nodeBox.width / 2;
-    const centerY = nodeBox.y + nodeBox.height / 2;
+    const didOpen = await verifyEditorOpen(page, nodeId);
+    if (didOpen) return;
 
-    try {
-      const hitsTarget = await page.evaluate(
-        ({ x, y, id }) => {
-          const el = document.elementFromPoint(x, y);
-          return !!el?.closest(`[data-id="${id}"]`);
-        },
-        { x: centerX, y: centerY, id: nodeId }
-      );
-      if (!hitsTarget) {
-        await separateOverlappingNode();
-        continue;
-      }
-      await page.mouse.move(centerX, centerY);
-      await page.mouse.click(centerX, centerY, { delay: 60 });
-      await page.waitForTimeout(150);
-      await page.mouse.dblclick(centerX, centerY, { delay: 80 });
-    } catch {
-      await separateOverlappingNode();
-      continue;
+    await closeEditorPanel(page);
+    if (attempt === maxRetries) {
+      throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
     }
-
-    try {
-      await expect(editorPanel).toBeVisible({ timeout: 2000 });
-      await expect(panelTab).toBeVisible({ timeout: 2000 });
-      const nameInput = page.locator("#node-name");
-      if ((await nameInput.count()) > 0) {
-        await expect(nameInput).toHaveValue(nodeId, { timeout: 1000 });
-      }
-      return;
-    } catch {
-      await closeEditorPanel();
-      if (attempt === maxRetries) {
-        throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
-      }
-      await page.waitForTimeout(300);
-    }
+    await page.waitForTimeout(300);
   }
 }
 

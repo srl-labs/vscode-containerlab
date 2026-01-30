@@ -2,14 +2,12 @@
  * NetworkNodeLite - Lightweight renderer for network endpoint nodes
  */
 import React, { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 
 import type { NetworkNodeData } from "../types";
 import { SELECTION_COLOR } from "../types";
 
-import { HIDDEN_HANDLE_STYLE } from "./nodeStyles";
-
-const ICON_SIZE = 40;
+import { ICON_SIZE, LiteNodeShell } from "./NodeLiteBase";
 
 function getNodeTypeColor(nodeType: string): string {
   switch (nodeType) {
@@ -29,14 +27,6 @@ function getNodeTypeColor(nodeType: string): string {
   }
 }
 
-const CONTAINER_STYLE: React.CSSProperties = {
-  width: ICON_SIZE,
-  height: ICON_SIZE,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center"
-};
-
 const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
   const nodeData = data as NetworkNodeData;
   const color = getNodeTypeColor(nodeData.nodeType);
@@ -50,25 +40,7 @@ const NetworkNodeLiteComponent: React.FC<NodeProps> = ({ data, selected }) => {
     outlineOffset: 1
   };
 
-  return (
-    <div style={CONTAINER_STYLE} className="network-node-lite">
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="source"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="target"
-        style={HIDDEN_HANDLE_STYLE}
-        isConnectable={false}
-      />
-      <div style={iconStyle} />
-    </div>
-  );
+  return <LiteNodeShell className="network-node-lite" iconStyle={iconStyle} />;
 };
 
 function areNetworkNodeLitePropsEqual(prev: NodeProps, next: NodeProps): boolean {

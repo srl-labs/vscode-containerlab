@@ -71,14 +71,11 @@ function getNodeSize(node: Node): { width: number; height: number } {
   return { width, height };
 }
 
-function buildGraphSvg(
-  rfInstance: ReactFlowInstance,
+function buildViewportTransform(
+  viewport: { x: number; y: number; zoom: number },
+  size: { width: number; height: number },
   zoomPercent: number
-): { svg: string; transform: string } | null {
-  const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
-  const size = getViewportSize();
-  if (!size) return null;
-
+): { width: number; height: number; transform: string; scaleFactor: number } {
   const scaleFactor = Math.max(0.1, zoomPercent / 100);
   const width = Math.max(1, Math.round(size.width * scaleFactor));
   const height = Math.max(1, Math.round(size.height * scaleFactor));
@@ -86,15 +83,13 @@ function buildGraphSvg(
     viewport.zoom * scaleFactor
   })`;
 
-  const nodes = rfInstance.getNodes?.() ?? [];
-  const edges = rfInstance.getEdges?.() ?? [];
-  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  return { width, height, transform, scaleFactor };
+}
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-  svg += `<g transform="${transform}">`;
+function renderEdges(edges: Edge[], nodeMap: Map<string, Node>): string {
+  let svg = "";
 
-  // Render edges (simple straight lines between node centers)
-  for (const edge of edges as Edge[]) {
+  for (const edge of edges) {
     const source = nodeMap.get(edge.source);
     const target = nodeMap.get(edge.target);
     if (!source || !target) continue;
@@ -112,7 +107,12 @@ function buildGraphSvg(
     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" />`;
   }
 
-  // Render nodes
+  return svg;
+}
+
+function renderNodes(nodes: Node[]): string {
+  let svg = "";
+
   for (const node of nodes) {
     if (ANNOTATION_NODE_TYPES.has(node.type ?? "")) continue;
     const { width: nodeWidth, height: nodeHeight } = getNodeSize(node);
@@ -128,6 +128,27 @@ function buildGraphSvg(
     svg += `</g>`;
   }
 
+  return svg;
+}
+
+function buildGraphSvg(
+  rfInstance: ReactFlowInstance,
+  zoomPercent: number
+): { svg: string; transform: string } | null {
+  const viewport = rfInstance.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+  const size = getViewportSize();
+  if (!size) return null;
+
+  const { width, height, transform } = buildViewportTransform(viewport, size, zoomPercent);
+
+  const nodes = rfInstance.getNodes?.() ?? [];
+  const edges = rfInstance.getEdges?.() ?? [];
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+  svg += `<g transform="${transform}">`;
+  svg += renderEdges(edges as Edge[], nodeMap);
+  svg += renderNodes(nodes);
   svg += `</g></svg>`;
   return { svg, transform };
 }
@@ -519,7 +540,8 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
     shapeAnnotations,
     backgroundOption,
     customBackgroundColor,
-    filename
+    filename,
+    rfInstance
   ]);
 
   return (

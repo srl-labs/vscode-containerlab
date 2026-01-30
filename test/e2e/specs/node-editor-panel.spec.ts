@@ -4,6 +4,7 @@ import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
+const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
 
 /**
  * Helper to reliably open node editor via double-click on a specific node
@@ -13,7 +14,7 @@ const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
  */
 async function openNodeEditorByNodeId(page: Page, nodeId: string, maxRetries = 3): Promise<void> {
   const editorPanel = page.locator(SEL_NODE_EDITOR);
-  const panelTab = page.locator('[data-testid="panel-tab-basic"]');
+  const panelTab = page.locator(SEL_PANEL_TAB_BASIC);
   const floatingContent = page.locator(".floating-panel-content");
   const collapsePanelButton = page.locator('[data-testid="floating-panel-collapse-btn"]');
   const closeEditorPanel = async () => {
@@ -206,7 +207,7 @@ test.describe("Node Editor Panel", () => {
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
     // Basic tab should be active
-    const basicTab = page.locator('[data-testid="panel-tab-basic"]');
+    const basicTab = page.locator(SEL_PANEL_TAB_BASIC);
     await expect(basicTab).toBeVisible();
     await expect(basicTab).toHaveClass(/tab-active/);
   });
@@ -225,7 +226,7 @@ test.describe("Node Editor Panel", () => {
     await expect(configTab).toHaveClass(/tab-active/);
 
     // Basic tab should no longer be active
-    const basicTab = page.locator('[data-testid="panel-tab-basic"]');
+    const basicTab = page.locator(SEL_PANEL_TAB_BASIC);
     await expect(basicTab).not.toHaveClass(/tab-active/);
   });
 
