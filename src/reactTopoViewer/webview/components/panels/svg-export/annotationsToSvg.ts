@@ -43,7 +43,7 @@ function escapeXml(str: string): string {
 function getBorderDashArray(style?: FreeShapeAnnotation["borderStyle"]): string {
   switch (style) {
     case "dashed":
-      return "10,5";
+      return "8,4"; // Match FreeShapeNode.tsx getStrokeDasharray()
     case "dotted":
       return "2,2";
     default:
@@ -54,7 +54,7 @@ function getBorderDashArray(style?: FreeShapeAnnotation["borderStyle"]): string 
 function getGroupBorderDashArray(style?: GroupStyleAnnotation["borderStyle"]): string {
   switch (style) {
     case "dashed":
-      return "10,5";
+      return "8,4"; // Match FreeShapeNode.tsx getStrokeDasharray()
     case "dotted":
       return "2,2";
     case "double":
@@ -115,78 +115,45 @@ interface GroupRect {
 
 /**
  * Calculate label position based on labelPosition property.
+ * Matches GroupNode.tsx getLabelPositionStyle() CSS offsets:
+ * - top positions: top: -20, left/right: 8
+ * - bottom positions: bottom: -20, left/right: 8
  */
 function calculateLabelPosition(
   rect: GroupRect,
   labelPosition: string,
-  labelFontSize: number,
-  labelPadding: number
+  labelFontSize: number
 ): LabelPosition {
   const { x, y, width, height } = rect;
+  // Match CSS offsets from GroupNode.tsx: top: -20, left: 8
+  const topOffset = 20;
+  const sideOffset = 8;
 
   const positions: Record<string, LabelPosition> = {
-    "top-center": { x: x + width / 2, y: y - labelPadding, textAnchor: "middle" },
-    "top-right": { x: x + width - labelPadding, y: y - labelPadding, textAnchor: "end" },
-    "bottom-left": {
-      x: x + labelPadding,
-      y: y + height + labelFontSize + labelPadding,
-      textAnchor: "start"
-    },
-    "bottom-center": {
-      x: x + width / 2,
-      y: y + height + labelFontSize + labelPadding,
-      textAnchor: "middle"
-    },
-    "bottom-right": {
-      x: x + width - labelPadding,
-      y: y + height + labelFontSize + labelPadding,
-      textAnchor: "end"
-    },
-    "top-left": { x: x + labelPadding, y: y - labelPadding, textAnchor: "start" }
+    "top-left": { x: x + sideOffset, y: y - topOffset + labelFontSize, textAnchor: "start" },
+    "top-center": { x: x + width / 2, y: y - topOffset + labelFontSize, textAnchor: "middle" },
+    "top-right": { x: x + width - sideOffset, y: y - topOffset + labelFontSize, textAnchor: "end" },
+    "bottom-left": { x: x + sideOffset, y: y + height + topOffset, textAnchor: "start" },
+    "bottom-center": { x: x + width / 2, y: y + height + topOffset, textAnchor: "middle" },
+    "bottom-right": { x: x + width - sideOffset, y: y + height + topOffset, textAnchor: "end" }
   };
 
   return positions[labelPosition] ?? positions["top-left"];
 }
 
-/**
- * Calculate label background X position based on text anchor.
- */
-function calculateLabelBgX(
-  labelX: number,
-  textAnchor: string,
-  labelWidth: number,
-  bgPadding: number
-): number {
-  if (textAnchor === "middle") return labelX - labelWidth / 2;
-  if (textAnchor === "end") return labelX - labelWidth;
-  return labelX - bgPadding;
-}
 
 /**
- * Build SVG for group label with background.
+ * Build SVG for group label (no background - matches GroupNode.tsx).
  * Uses MODEL coordinates - the parent transform handles scaling.
  */
 function buildGroupLabelSvg(
   name: string,
   labelPos: LabelPosition,
   labelColor: string,
-  labelFontSize: number,
-  labelPadding: number,
-  labelBgPadding: number
+  labelFontSize: number
 ): string {
-  const estimatedLabelWidth = name.length * labelFontSize * 0.6 + labelBgPadding * 2;
-  const labelBgHeight = labelFontSize + labelPadding * 2;
-  const bgX = calculateLabelBgX(
-    labelPos.x,
-    labelPos.textAnchor,
-    estimatedLabelWidth,
-    labelBgPadding
-  );
-  const bgY = labelPos.y - labelFontSize - labelPadding / 2;
-
-  let svg = `<rect x="${bgX}" y="${bgY}" width="${estimatedLabelWidth}" height="${labelBgHeight}" `;
-  svg += `fill="rgba(0,0,0,0.4)" rx="2" ry="2" />`;
-  svg += `<text x="${labelPos.x}" y="${labelPos.y}" `;
+  // No background rect - canvas GroupNode.tsx doesn't have one
+  let svg = `<text x="${labelPos.x}" y="${labelPos.y}" `;
   svg += `fill="${labelColor}" font-size="${labelFontSize}" font-weight="500" `;
   svg += `font-family="${DEFAULT_FONT_FAMILY}" text-anchor="${labelPos.textAnchor}">`;
   svg += escapeXml(name);
@@ -225,22 +192,19 @@ function groupToSvgString(group: GroupStyleAnnotation): string {
   svg += `/>`;
 
   if (group.name) {
-    const labelFontSize = 9;
-    const labelPadding = 2;
-    const labelBgPadding = 6;
+    // Match GroupNode.tsx: fontSize 12, fontWeight 500, no background
+    const labelFontSize = 12;
     const labelPos = calculateLabelPosition(
       { x, y, width, height },
       group.labelPosition ?? "top-left",
-      labelFontSize,
-      labelPadding
+      labelFontSize
     );
+    // Use #666 as default label color (matches DEFAULT_LABEL_COLOR in GroupNode.tsx)
     svg += buildGroupLabelSvg(
       group.name,
       labelPos,
-      group.labelColor ?? "#ebecf0",
-      labelFontSize,
-      labelPadding,
-      labelBgPadding
+      group.labelColor ?? "#666",
+      labelFontSize
     );
   }
 
@@ -388,17 +352,18 @@ interface TextStyle {
 }
 
 function getTextStyle(text: FreeTextAnnotation): TextStyle {
+  // Match FreeTextNode.tsx buildTextStyle() defaults
   return {
     fontSize: text.fontSize ?? 14,
-    fontColor: text.fontColor ?? "#000000",
+    fontColor: text.fontColor ?? "#333", // Match FreeTextNode default
     fontWeight: text.fontWeight ?? "normal",
     fontStyle: text.fontStyle ?? "normal",
     textDecoration: text.textDecoration ?? "none",
     textAlign: text.textAlign ?? "left",
-    fontFamily: text.fontFamily ?? DEFAULT_FONT_FAMILY,
+    fontFamily: text.fontFamily ?? "inherit", // Match FreeTextNode default
     backgroundColor: text.backgroundColor ?? "transparent",
     borderRadius: text.roundedBackground ? 4 : 0,
-    padding: 4
+    padding: 4 // Base padding; increases to 8px horizontal when backgroundColor set
   };
 }
 
@@ -455,7 +420,7 @@ function estimateTextDimensions(
  * Convert a FreeTextAnnotation to an SVG string using foreignObject.
  * This preserves markdown rendering and styling.
  * NOTE: Uses MODEL coordinates - the parent transform handles scaling.
- * Text position represents the CENTER of the annotation (same as canvas rendering).
+ * Text position represents the TOP-LEFT of the annotation (React Flow convention).
  */
 function textToSvgString(text: FreeTextAnnotation): string {
   // Use explicit dimensions if provided, otherwise estimate from content
@@ -469,29 +434,22 @@ function textToSvgString(text: FreeTextAnnotation): string {
     const estimated = estimateTextDimensions(
       text.text || "",
       text.fontSize ?? 14,
-      text.fontFamily ?? DEFAULT_FONT_FAMILY,
+      text.fontFamily ?? "inherit",
       text.fontWeight ?? "normal"
     );
     width = text.width ?? estimated.width;
     height = text.height ?? estimated.height;
   }
 
-  // Text position is CENTER-based on canvas (uses translate(-50%, -50%))
-  // Canvas wrapper has padding that affects centering calculation.
-  // The wrapper is larger than content due to padding, and translate(-50%, -50%)
-  // uses the wrapper size, shifting content differently than pure center calculation.
-  // Empirically determined offsets to match canvas rendering:
-  const CANVAS_Y_OFFSET = 28; // Shifts text UP to match canvas
-  const CANVAS_X_OFFSET = 5; // Shifts text LEFT to match canvas
-
-  // Convert to top-left corner for SVG foreignObject
-  const x = text.position.x - CANVAS_X_OFFSET - width / 2;
-  const y = text.position.y - CANVAS_Y_OFFSET - height / 2;
+  // Text position is TOP-LEFT based in React Flow
+  // Use position directly for SVG foreignObject
+  const x = text.position.x;
+  const y = text.position.y;
 
   const rotation = text.rotation ?? 0;
-  // Center point for rotation (the original position)
-  const cx = text.position.x;
-  const cy = text.position.y;
+  // Center point for rotation
+  const cx = text.position.x + width / 2;
+  const cy = text.position.y + height / 2;
 
   const style = getTextStyle(text);
   const styleStr = buildTextStyleString(style);
@@ -680,8 +638,12 @@ function getTextDimensions(text: FreeTextAnnotation): { w: number; h: number } {
 function addTextBounds(bounds: BoundingBox, texts: FreeTextAnnotation[]): void {
   for (const text of texts) {
     const { w, h } = getTextDimensions(text);
-    const b = getCenterBasedBounds(text.position.x, text.position.y, w, h);
-    mergeBounds(bounds, b.x1, b.y1, b.x2, b.y2);
+    // Text position is TOP-LEFT based (React Flow convention)
+    const x1 = text.position.x;
+    const y1 = text.position.y;
+    const x2 = text.position.x + w;
+    const y2 = text.position.y + h;
+    mergeBounds(bounds, x1, y1, x2, y2);
   }
 }
 

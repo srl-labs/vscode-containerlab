@@ -52,6 +52,7 @@ import {
 import { useGraphActions, useGraphState, useGraphStore } from "./stores/graphStore";
 import { useTopoViewerActions, useTopoViewerState } from "./stores/topoViewerStore";
 import { executeTopologyCommand, toLinkSaveData } from "./services";
+import { getCustomIconMap } from "./utils/iconUtils";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
 
@@ -521,7 +522,8 @@ export const AppContent: React.FC<AppContentProps> = ({
             textAnnotations: annotations.textAnnotations,
             shapeAnnotations: annotations.shapeAnnotations,
             groups: annotations.groups,
-            rfInstance
+            rfInstance,
+            customIcons: getCustomIconMap(state.customIcons)
           }}
         />
         <EditorPanels
