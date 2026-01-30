@@ -398,11 +398,11 @@ test.describe("Copy, Paste, and Cut Operations", () => {
   // UNDO/REDO TESTS (CRITICAL)
   // ============================================================================
 
-  test("single undo removes the last pasted elements (edge-first)", async ({
+  test("single undo removes all pasted elements (batch undo)", async ({
     topoViewerPage,
     page
   }) => {
-    console.log("[TEST] single undo removes the last pasted elements (edge-first)");
+    console.log("[TEST] single undo removes all pasted elements (batch undo)");
 
     const initialNodeCount = await topoViewerPage.getNodeCount();
     const initialNodeIds = await topoViewerPage.getNodeIds();
@@ -430,22 +430,22 @@ test.describe("Copy, Paste, and Cut Operations", () => {
 
     console.log(`[DEBUG] Pasted nodes: ${pastedNodeIds.join(", ")}`);
 
-    // Single undo should remove the last pasted elements
+    // Single undo should remove ALL pasted elements (batch command creates single history entry)
     await topoViewerPage.undo();
     await page.waitForTimeout(500);
 
-    // Verify undo removed the most recent paste step (link) before nodes
+    // Verify batch undo removed all pasted nodes and edges
     const nodeCountAfterUndo = await topoViewerPage.getNodeCount();
     const nodeIdsAfterUndo = await topoViewerPage.getNodeIds();
     const edgeCountAfterUndo = await topoViewerPage.getEdgeCount();
 
-    expect(nodeCountAfterUndo).toBe(initialNodeCount + 2);
+    expect(nodeCountAfterUndo).toBe(initialNodeCount);
     expect(edgeCountAfterUndo).toBe(initialEdgeCount);
 
     const remainingPasted = pastedNodeIds.filter((id) => nodeIdsAfterUndo.includes(id));
-    expect(remainingPasted.length).toBe(2);
+    expect(remainingPasted.length).toBe(0);
 
-    console.log("[INFO] Single undo removed last pasted elements (edge-first undo)");
+    console.log("[INFO] Single undo removed all pasted elements (batch undo)");
   });
 
   test("redo restores pasted elements", async ({ topoViewerPage, page }) => {

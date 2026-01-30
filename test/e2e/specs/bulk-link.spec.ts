@@ -63,10 +63,12 @@ test.describe("Bulk Link Devices", () => {
 
     await expect.poll(getEndpointCount).toBe(4);
 
+    // Batch undo removes all links at once (batch command creates single history entry)
     await topoViewerPage.undo();
-    await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(3);
-    await expect.poll(getEndpointCount).toBe(3);
+    await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(0);
+    await expect.poll(getEndpointCount).toBe(0);
 
+    // Batch redo restores all links at once
     await topoViewerPage.redo();
     await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(4);
     await expect.poll(getEndpointCount).toBe(4);

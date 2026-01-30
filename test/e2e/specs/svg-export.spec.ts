@@ -96,6 +96,10 @@ test.describe("SVG Export", () => {
 
     expect(annotations.freeTextAnnotations?.length).toBeGreaterThan(0);
 
+    // Wait for annotations to be loaded in the canvas
+    // The useDerivedAnnotations hook extracts annotations from React Flow nodes
+    await page.waitForTimeout(500);
+
     // Open export panel
     await page.locator(SEL_NAVBAR_CAPTURE).click();
     await page.waitForTimeout(300);
@@ -108,12 +112,27 @@ test.describe("SVG Export", () => {
       (annotations.freeShapeAnnotations?.length ?? 0) +
       (annotations.groupStyleAnnotations?.length ?? 0);
 
+    // Wait for annotations to be loaded in the panel before checking
     // New UI shows "13 annotations" text
+    await expect
+      .poll(
+        async () => {
+          const text = await panel.locator(`text=/\\d+ annotation/`).textContent();
+          return text !== null;
+        },
+        {
+          timeout: 5000,
+          message: "Expected annotations count to be visible in export panel"
+        }
+      )
+      .toBe(true);
+
     const annotationsText = panel.locator(`text=${totalAnnotations} annotation`);
     await expect(annotationsText).toBeVisible();
 
     // Verify "Included" toggle is shown (annotations are included by default)
-    await expect(panel.locator('button:has-text("Included")')).toBeVisible();
+    // Use .first() since there may be multiple toggle rows with "Included" buttons
+    await expect(panel.locator('button:has-text("Included")').first()).toBeVisible();
 
     // Set up download listener
     const downloadPromise = page.waitForEvent("download");

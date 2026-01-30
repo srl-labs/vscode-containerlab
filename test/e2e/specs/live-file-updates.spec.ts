@@ -308,7 +308,13 @@ topology:
       .toBe(3);
 
     // Verify we can undo (should have undo history)
-    expect(await topoViewerPage.canUndo()).toBe(true);
+    // Use polling since undo state may take time to sync
+    await expect
+      .poll(() => topoViewerPage.canUndo(), {
+        timeout: 3000,
+        message: "Expected undo history to be available after creating node"
+      })
+      .toBe(true);
 
     // Wait for internal update window to expire (1000ms in dev server)
     // This ensures the subsequent file write is treated as external
@@ -342,9 +348,11 @@ topology:
     // After external file change, undo history should be cleared
     // (testnode1 we created earlier won't be in the new topology,
     // but that's expected - the external edit replaced the file)
+    // Use longer timeout and progressive intervals for state sync
     await expect
       .poll(() => topoViewerPage.canUndo(), {
-        timeout: 3000,
+        timeout: 5000,
+        intervals: [100, 200, 500, 1000],
         message: "Expected undo history to be cleared after external file change"
       })
       .toBe(false);
