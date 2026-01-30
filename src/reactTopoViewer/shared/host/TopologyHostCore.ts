@@ -756,7 +756,11 @@ function extractLabSettings(doc: YAML.Document.Parsed): LabSettings {
   const settings: LabSettings = {};
   const name = doc.get("name") as string | undefined;
   const prefix = doc.get("prefix") as string | undefined;
-  const mgmt = doc.get("mgmt") as LabSettings["mgmt"] | undefined;
+  const mgmtRaw = doc.get("mgmt") as YAML.YAMLMap | Record<string, unknown> | undefined;
+  const mgmt =
+    mgmtRaw && typeof (mgmtRaw as { toJSON?: () => unknown }).toJSON === "function"
+      ? ((mgmtRaw as YAML.YAMLMap).toJSON() as Record<string, unknown>)
+      : (mgmtRaw as Record<string, unknown> | undefined);
 
   if (name) settings.name = name;
   if (prefix !== undefined) settings.prefix = prefix;
