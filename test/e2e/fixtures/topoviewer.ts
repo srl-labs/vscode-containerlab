@@ -1267,6 +1267,9 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           nodeId,
           { timeout: 5000 }
         );
+
+        // Small wait to ensure state fully propagates before next operation
+        await page.waitForTimeout(100);
       },
 
       createLink: async (
