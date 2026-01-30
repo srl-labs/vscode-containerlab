@@ -144,3 +144,19 @@ export const TEXT_SHADOW_FILTER = `
 export function buildSvgDefs(): string {
   return `<defs>${TEXT_SHADOW_FILTER}</defs>`;
 }
+
+// ============================================================================
+// XML Utilities
+// ============================================================================
+
+/**
+ * Escape special XML characters for safe embedding in SVG
+ */
+export function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

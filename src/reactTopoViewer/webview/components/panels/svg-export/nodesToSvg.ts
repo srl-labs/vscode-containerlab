@@ -13,7 +13,8 @@ import {
   NODE_LABEL,
   DEFAULT_ICON_COLOR,
   getNetworkTypeColor,
-  getRoleSvgType
+  getRoleSvgType,
+  escapeXml
 } from "./constants";
 
 // ============================================================================
@@ -40,15 +41,6 @@ interface NetworkNodeData {
 // ============================================================================
 // Helpers
 // ============================================================================
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 /**
  * Decode a data URI SVG and extract the inner content

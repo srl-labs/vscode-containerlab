@@ -26,3 +26,5 @@ export {
 } from "./topologyCrud";
 
 export type { NodeSaveData, LinkSaveData, NetworkNodeData } from "./topologyCrud";
+
+export { getCustomIconMap, buildCustomIconMap } from "../utils/iconUtils";

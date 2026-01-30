@@ -15,7 +15,8 @@ import {
   EDGE_COLOR,
   EDGE_STYLE,
   EDGE_LABEL,
-  CONTROL_POINT_STEP_SIZE
+  CONTROL_POINT_STEP_SIZE,
+  escapeXml
 } from "./constants";
 
 // ============================================================================
@@ -44,15 +45,6 @@ interface NodeRect {
 // ============================================================================
 // Helpers
 // ============================================================================
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 /**
  * Get stroke color based on link status

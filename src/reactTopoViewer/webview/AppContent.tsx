@@ -51,8 +51,7 @@ import {
 } from "./hooks/ui";
 import { useGraphActions, useGraphState, useGraphStore } from "./stores/graphStore";
 import { useTopoViewerActions, useTopoViewerState } from "./stores/topoViewerStore";
-import { executeTopologyCommand, toLinkSaveData } from "./services";
-import { getCustomIconMap } from "./utils/iconUtils";
+import { executeTopologyCommand, toLinkSaveData, getCustomIconMap } from "./services";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
 
