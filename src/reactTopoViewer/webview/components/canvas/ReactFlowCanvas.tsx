@@ -29,7 +29,8 @@ import {
 import {
   FREE_SHAPE_NODE_TYPE,
   FREE_TEXT_NODE_TYPE,
-  GROUP_NODE_TYPE
+  GROUP_NODE_TYPE,
+  isAnnotationNodeType
 } from "../../annotations/annotationNodeConverters";
 import {
   useAnnotationCanvasHandlers,
@@ -1015,6 +1016,17 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       nodesConnectable,
       reactFlowStyle
     } = interactionConfig;
+    const renderNodes = useMemo(() => {
+      if (nodesDraggable) return allNodes;
+      let changed = false;
+      const nextNodes = allNodes.map((node) => {
+        if (!isAnnotationNodeType(node.type)) return node;
+        if (node.draggable === false) return node;
+        changed = true;
+        return { ...node, draggable: false };
+      });
+      return changed ? nextNodes : allNodes;
+    }, [allNodes, nodesDraggable]);
     const overlays = buildCanvasOverlays({
       isGeoLayout,
       isLowDetail,
@@ -1043,7 +1055,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       >
         {overlays.geoMapLayer}
         <ReactFlow
-          nodes={allNodes}
+          nodes={renderNodes}
           edges={allEdges}
           nodeTypes={activeNodeTypes}
           edgeTypes={activeEdgeTypes}
