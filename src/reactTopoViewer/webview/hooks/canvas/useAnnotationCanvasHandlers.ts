@@ -100,7 +100,7 @@ function useWrappedPaneClick(
           y: event.clientY - bounds.top
         });
         log.info(`[ReactFlowCanvas] Adding text at (${position.x}, ${position.y})`);
-        annotationHandlers.onAddTextClick(snapToGrid(position));
+        annotationHandlers.onAddTextClick(position);
         return;
       }
 
@@ -111,7 +111,7 @@ function useWrappedPaneClick(
           y: event.clientY - bounds.top
         });
         log.info(`[ReactFlowCanvas] Adding shape at (${position.x}, ${position.y})`);
-        annotationHandlers.onAddShapeClick(snapToGrid(position));
+        annotationHandlers.onAddShapeClick(position);
         return;
       }
 

@@ -43,6 +43,8 @@ const ANNOTATION_NODE_TYPES: Set<string> = new Set([
 
 /** Padding for line bounding box to accommodate arrows and stroke */
 const LINE_PADDING = 20;
+/** Default zIndex for shapes so they render behind topology nodes */
+const DEFAULT_SHAPE_Z_INDEX = -1;
 
 // ============================================================================
 // Helper Functions
@@ -151,6 +153,8 @@ export function freeTextToNode(annotation: FreeTextAnnotation): Node<FreeTextNod
  */
 export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShapeNodeData> {
   const isLine = annotation.shapeType === "line";
+  const resolvedZIndex =
+    typeof annotation.zIndex === "number" ? annotation.zIndex : DEFAULT_SHAPE_Z_INDEX;
 
   if (isLine) {
     const { nodePosition, width, height, relativeEndPosition, lineStartInNode } =
@@ -162,6 +166,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
       position: nodePosition,
       width,
       height,
+      zIndex: resolvedZIndex,
       draggable: true,
       selectable: true,
       data: {
@@ -186,7 +191,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
         groupId: annotation.groupId,
         geoCoordinates: annotation.geoCoordinates,
         endGeoCoordinates: annotation.endGeoCoordinates,
-        zIndex: annotation.zIndex
+        zIndex: resolvedZIndex
       }
     };
   }
@@ -198,6 +203,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
     position: annotation.position,
     width: annotation.width ?? 100,
     height: annotation.height ?? 100,
+    zIndex: resolvedZIndex,
     draggable: true,
     selectable: true,
     data: {
@@ -214,7 +220,7 @@ export function freeShapeToNode(annotation: FreeShapeAnnotation): Node<FreeShape
       // Store groupId for membership tracking
       groupId: annotation.groupId,
       geoCoordinates: annotation.geoCoordinates,
-      zIndex: annotation.zIndex
+      zIndex: resolvedZIndex
     }
   };
 }
@@ -295,6 +301,7 @@ export function nodeToFreeText(node: Node<FreeTextNodeData>): FreeTextAnnotation
  */
 export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotation {
   const data = node.data;
+  const zIndex = typeof data.zIndex === "number" ? data.zIndex : node.zIndex;
   const isLine = data.shapeType === "line";
 
   if (isLine) {
@@ -316,7 +323,7 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
       groupId: data.groupId as string | undefined,
       geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,
       endGeoCoordinates: data.endGeoCoordinates as { lat: number; lng: number } | undefined,
-      zIndex: data.zIndex as number | undefined
+      zIndex
     };
   }
 
@@ -336,7 +343,7 @@ export function nodeToFreeShape(node: Node<FreeShapeNodeData>): FreeShapeAnnotat
     cornerRadius: data.cornerRadius,
     groupId: data.groupId as string | undefined,
     geoCoordinates: data.geoCoordinates as { lat: number; lng: number } | undefined,
-    zIndex: data.zIndex as number | undefined
+    zIndex
   };
 }
 

@@ -23,6 +23,7 @@ import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import { log } from "../../utils/logger";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 import {
+  FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE,
   isAnnotationNodeType
@@ -403,7 +404,10 @@ function useNodeDragHandlers(
 
       // Normal (non-geo) mode: update preset position
       const isGroupNode = node.type === GROUP_NODE_TYPE;
-      const finalPosition = isGroupNode ? node.position : snapToGrid(node.position);
+      const shouldSnap =
+        node.type !== FREE_SHAPE_NODE_TYPE && node.type !== FREE_TEXT_NODE_TYPE;
+      const finalPosition =
+        isGroupNode || !shouldSnap ? node.position : snapToGrid(node.position);
       const changes: NodeChange[] = [
         { type: "position", id: node.id, position: finalPosition, dragging: false }
       ];
