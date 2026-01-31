@@ -81,11 +81,14 @@ export interface AnnotationActions {
   onShapeRotationStart: (id: string) => void;
   onShapeRotationEnd: (id: string) => void;
   updateShapeSize: (id: string, width: number, height: number) => void;
+  updateShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => void;
   updateShapeEndPosition: (id: string, endPosition: { x: number; y: number }) => void;
   updateShapeGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
   updateShapeEndGeoPosition: (id: string, coords: { lat: number; lng: number }) => void;
   updateShapeAnnotation: (id: string, updates: Partial<FreeShapeAnnotation>) => void;
   handleShapeCanvasClick: (position: { x: number; y: number }) => void;
+  /** Persist annotations to file (call on drag end) */
+  persistAnnotations: () => void;
 
   // Membership
   onNodeDropped: (nodeId: string, position: { x: number; y: number }) => void;

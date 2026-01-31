@@ -193,9 +193,9 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
     onTextRotationEnd,
     onShapeRotationStart,
     onShapeRotationEnd,
+    updateShapeStartPosition,
     updateShapeEndPosition,
-    shapeAnnotations,
-    updateShapeAnnotation,
+    persistAnnotations,
     onNodeDropped,
     updateGroupSize,
     editGroup,
@@ -237,19 +237,10 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
       onFreeShapeRotationStart: onShapeRotationStart,
       onFreeShapeRotationEnd: onShapeRotationEnd,
       // Line-specific handlers
+      onUpdateFreeShapeStartPosition: updateShapeStartPosition,
       onUpdateFreeShapeEndPosition: updateShapeEndPosition,
-      onUpdateFreeShapeStartPosition: (id: string, startPosition: { x: number; y: number }) => {
-        // Update both position and recalculate end position
-        const shape = shapeAnnotations.find((s) => s.id === id);
-        if (shape && shape.endPosition) {
-          const dx = startPosition.x - shape.position.x;
-          const dy = startPosition.y - shape.position.y;
-          updateShapeAnnotation(id, {
-            position: startPosition,
-            endPosition: { x: shape.endPosition.x + dx, y: shape.endPosition.y + dy }
-          });
-        }
-      },
+      // Persist annotations (call on drag end)
+      onPersistAnnotations: persistAnnotations,
       // Node dropped handler (for group membership)
       onNodeDropped,
       // Group handlers
@@ -276,9 +267,9 @@ export function useAnnotationCanvasHandlers(annotations: AnnotationContextValue)
       onTextRotationEnd,
       onShapeRotationStart,
       onShapeRotationEnd,
+      updateShapeStartPosition,
       updateShapeEndPosition,
-      shapeAnnotations,
-      updateShapeAnnotation,
+      persistAnnotations,
       onNodeDropped,
       updateGroupSize,
       editGroup,

@@ -258,6 +258,7 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
   // Scale down preview if shape is too large
   const maxPreviewSize = 120;
   const scale = Math.min(1, maxPreviewSize / Math.max(width, height));
+  const rotation = formData.shapeType === "line" ? 0 : (formData.rotation ?? 0);
 
   return (
     <div className="flex flex-col gap-1">
@@ -267,7 +268,7 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
         <div
           className="relative z-10 transition-all duration-200"
           style={{
-            transform: `rotate(${formData.rotation ?? 0}deg) scale(${scale})`,
+            transform: `rotate(${rotation}deg) scale(${scale})`,
             width: `${width}px`,
             height: `${height}px`
           }}

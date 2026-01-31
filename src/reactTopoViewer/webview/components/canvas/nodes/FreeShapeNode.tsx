@@ -111,16 +111,20 @@ interface ArrowMarkerProps {
 }
 
 function ArrowMarker({ id, size, reversed, color }: ArrowMarkerProps): React.ReactElement {
+  // Arrow pointing right (for end marker): tip at (size, size/2)
+  // Arrow pointing left (for start marker): tip at (0, size/2)
   const points = reversed
     ? `${size},0 ${size},${size} 0,${size / 2}`
     : `0,0 ${size},${size / 2} 0,${size}`;
 
+  // refX/refY specify which point of the marker aligns with the line endpoint
+  // Since we shorten the line by arrow size, place marker at line end and extend outward
   return (
     <marker
       id={id}
       markerWidth={size}
       markerHeight={size}
-      refX={reversed ? 0 : size}
+      refX={reversed ? size : 0}
       refY={size / 2}
       orient="auto"
     >
@@ -167,10 +171,23 @@ function LineShape(props: LineShapeProps): React.ReactElement {
   } = props;
 
   // Calculate line endpoints within SVG
-  const x1 = startX;
-  const y1 = startY;
-  const x2 = startX + relativeEndX;
-  const y2 = startY + relativeEndY;
+  // Shorten line at each end where there's an arrow so the tip is at the endpoint
+  const dx = relativeEndX;
+  const dy = relativeEndY;
+  const length = Math.hypot(dx, dy);
+
+  // Calculate unit vector
+  const ux = length > 0 ? dx / length : 0;
+  const uy = length > 0 ? dy / length : 0;
+
+  // Shorten line by arrow size at each end
+  const startOffset = lineStartArrow ? lineArrowSize : 0;
+  const endOffset = lineEndArrow ? lineArrowSize : 0;
+
+  const x1 = startX + ux * startOffset;
+  const y1 = startY + uy * startOffset;
+  const x2 = startX + relativeEndX - ux * endOffset;
+  const y2 = startY + relativeEndY - uy * endOffset;
 
   // Unique marker IDs for this node
   const startMarkerId = `arrow-start-${nodeId}`;
@@ -231,14 +248,12 @@ function buildBoxWrapperStyle(rotation: number): React.CSSProperties {
 }
 
 /** Build container style for line - uses 100% to fill the bounding box */
-function buildLineContainerStyle(rotation: number): React.CSSProperties {
+function buildLineContainerStyle(): React.CSSProperties {
   return {
     position: "relative",
     cursor: "move",
     width: "100%",
-    height: "100%",
-    transform: rotation ? `rotate(${rotation}deg)` : undefined,
-    transformOrigin: "center center"
+    height: "100%"
   };
 }
 
@@ -252,8 +267,6 @@ interface LineNodeProps {
   readonly isSelected: boolean;
   readonly showHandles: boolean;
   readonly annotationHandlers: ReturnType<typeof useAnnotationHandlers>;
-  readonly onRotationStart: () => void;
-  readonly onRotationEnd: () => void;
 }
 
 /** Line padding constant (must match annotationNodeConverters.ts) */
@@ -266,15 +279,28 @@ function getLinePositions(data: FreeShapeNodeData): {
   endPosition: { x: number; y: number };
   lineStartInNode: { x: number; y: number };
 } {
-  const relativeEnd = data.relativeEndPosition ?? { x: DEFAULT_LINE_LENGTH, y: 0 };
   const startPosition = data.startPosition ?? { x: 0, y: 0 };
   const endPosition = data.endPosition ?? {
     x: startPosition.x + DEFAULT_LINE_LENGTH,
     y: startPosition.y
   };
+  const relativeEnd = data.relativeEndPosition ?? {
+    x: endPosition.x - startPosition.x,
+    y: endPosition.y - startPosition.y
+  };
   // Line start within the node's bounding box (with padding)
-  const lineStartInNode = data.lineStartInNode ?? { x: LINE_PADDING, y: LINE_PADDING };
+  const lineStartInNode =
+    data.lineStartInNode ?? computeLineStartInNode(startPosition, endPosition);
   return { relativeEnd, startPosition, endPosition, lineStartInNode };
+}
+
+function computeLineStartInNode(
+  start: { x: number; y: number },
+  end: { x: number; y: number }
+): { x: number; y: number } {
+  const minX = Math.min(start.x, end.x) - LINE_PADDING;
+  const minY = Math.min(start.y, end.y) - LINE_PADDING;
+  return { x: start.x - minX, y: start.y - minY };
 }
 
 /** Extract line style props from data with defaults */
@@ -301,16 +327,13 @@ function LineNode({
   data,
   isSelected,
   showHandles,
-  annotationHandlers,
-  onRotationStart,
-  onRotationEnd
+  annotationHandlers
 }: LineNodeProps): React.ReactElement {
   const { relativeEnd, startPosition, endPosition, lineStartInNode } = getLinePositions(data);
   const styleProps = getLineStyleProps(data);
-  const rotation = data.rotation ?? 0;
 
   return (
-    <div style={buildLineContainerStyle(rotation)} className="free-shape-node free-shape-line-node">
+    <div style={buildLineContainerStyle()} className="free-shape-node free-shape-line-node">
       <LineShape
         startX={lineStartInNode.x}
         startY={lineStartInNode.y}
@@ -326,9 +349,9 @@ function LineNode({
           startPosition={startPosition}
           endPosition={endPosition}
           lineStartOffset={lineStartInNode}
-          rotation={rotation}
           mode="start"
           onPositionChange={annotationHandlers.onUpdateFreeShapeStartPosition}
+          onDragEnd={annotationHandlers.onPersistAnnotations}
         />
       )}
       {showHandles && annotationHandlers?.onUpdateFreeShapeEndPosition && (
@@ -337,18 +360,9 @@ function LineNode({
           startPosition={startPosition}
           endPosition={endPosition}
           lineStartOffset={lineStartInNode}
-          rotation={rotation}
           mode="end"
           onPositionChange={annotationHandlers.onUpdateFreeShapeEndPosition}
-        />
-      )}
-      {showHandles && annotationHandlers?.onUpdateFreeShapeRotation && (
-        <RotationHandle
-          nodeId={id}
-          currentRotation={rotation}
-          onRotationChange={annotationHandlers.onUpdateFreeShapeRotation}
-          onRotationStart={onRotationStart}
-          onRotationEnd={onRotationEnd}
+          onDragEnd={annotationHandlers.onPersistAnnotations}
         />
       )}
     </div>
@@ -466,8 +480,6 @@ const FreeShapeNodeComponent: React.FC<NodeProps> = ({ id, data, selected }) => 
         isSelected={isSelected}
         showHandles={showHandles}
         annotationHandlers={annotationHandlers}
-        onRotationStart={handleRotationStart}
-        onRotationEnd={handleRotationEnd}
       />
     );
   }

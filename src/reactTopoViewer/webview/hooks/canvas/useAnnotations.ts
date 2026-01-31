@@ -274,6 +274,13 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
     });
   }, [saveAnnotationNodesFromGraph]);
 
+  // Persist without re-applying snapshot - use for continuous updates like handle dragging
+  const persistAnnotationNodesQuiet = useCallback(() => {
+    saveAnnotationNodesFromGraph(undefined, { applySnapshot: false }).catch((err) => {
+      console.error("[Annotations] Failed to save annotations (quiet)", err);
+    });
+  }, [saveAnnotationNodesFromGraph]);
+
   return useMemo<AnnotationContextValue>(
     () => ({
       // State
@@ -368,10 +375,16 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
         derived.updateShapeAnnotation(id, { width, height });
         persistAnnotationNodes();
       },
-      updateShapeEndPosition: (id, endPosition) => {
-        derived.updateShapeAnnotation(id, { endPosition });
-        persistAnnotationNodes();
+      updateShapeStartPosition: (id, startPosition) => {
+        // Only update local state during drag - persist should be called on drag end
+        derived.updateShapeAnnotation(id, { position: startPosition });
       },
+      updateShapeEndPosition: (id, endPosition) => {
+        // Only update local state during drag - persist should be called on drag end
+        derived.updateShapeAnnotation(id, { endPosition });
+      },
+      // Persist annotations (call on drag end)
+      persistAnnotations: persistAnnotationNodesQuiet,
       updateShapeGeoPosition: (id, coords) => {
         derived.updateShapeAnnotation(id, { geoCoordinates: coords });
         persistAnnotationNodes();
@@ -401,7 +414,8 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       onNodeDropped,
       deleteAllSelected,
       deleteSelectedForBatch,
-      persistAnnotationNodes
+      persistAnnotationNodes,
+      persistAnnotationNodesQuiet
     ]
   );
 }

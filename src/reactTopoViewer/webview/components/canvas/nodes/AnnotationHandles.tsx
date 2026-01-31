@@ -11,34 +11,39 @@ import { SELECTION_COLOR } from "../types";
 // ============================================================================
 
 /**
- * Global flag to track when a line handle is being dragged.
- * Used by onNodeDragStop to skip position updates during handle resize.
+ * Global state to track which line handle is being dragged.
+ * Stored at module level to survive component remounts during drag.
  */
-let isLineHandleDragging = false;
+interface LineHandleDragState {
+  nodeId: string;
+  mode: "start" | "end";
+  startClientX: number;
+  startClientY: number;
+  startHandleX: number;
+  startHandleY: number;
+  zoom: number;
+}
+
+let activeLineDrag: LineHandleDragState | null = null;
 
 /** Check if a line handle drag is in progress */
 export function isLineHandleActive(): boolean {
-  return isLineHandleDragging;
+  return activeLineDrag !== null;
+}
+
+/** Get active drag state for a specific handle */
+function getActiveLineDrag(nodeId: string, mode: "start" | "end"): LineHandleDragState | null {
+  if (activeLineDrag && activeLineDrag.nodeId === nodeId && activeLineDrag.mode === mode) {
+    return activeLineDrag;
+  }
+  return null;
 }
 
 /** Set the line handle drag state */
-function setLineHandleDragging(dragging: boolean): void {
-  isLineHandleDragging = dragging;
+function setActiveLineDrag(state: LineHandleDragState | null): void {
+  activeLineDrag = state;
 }
 
-/** Create a mouseup handler for line handle drag end */
-function createLineHandleMouseUpHandler(
-  setIsResizing: React.Dispatch<React.SetStateAction<boolean>>,
-  dragStartRef: { current: unknown }
-): () => void {
-  return () => {
-    setIsResizing(false);
-    dragStartRef.current = null;
-    // Delay clearing the flag to ensure onNodeDragStop checks it first
-    // This prevents the position update from overriding the handle's change
-    setTimeout(() => setLineHandleDragging(false), 0);
-  };
-}
 
 // ============================================================================
 // Constants
@@ -245,10 +250,10 @@ interface LineResizeHandleProps {
   readonly endPosition: { x: number; y: number };
   /** Offset of line start within the node (for bounding box positioning) */
   readonly lineStartOffset: { x: number; y: number };
-  /** Current node rotation in degrees (applied to the node wrapper) */
-  readonly rotation?: number;
   readonly mode: LineHandleMode;
   readonly onPositionChange: (id: string, position: { x: number; y: number }) => void;
+  /** Called when drag ends - use to persist changes */
+  readonly onDragEnd?: () => void;
 }
 
 function getHandleCursor(mode: LineHandleMode, isResizing: boolean): string {
@@ -261,67 +266,21 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
   startPosition,
   endPosition,
   lineStartOffset,
-  rotation = 0,
   mode,
-  onPositionChange
+  onPositionChange,
+  onDragEnd
 }) => {
   const [isResizing, setIsResizing] = useState(false);
   const reactFlow = useReactFlow();
-  const dragStartRef = useRef<{
-    startClientX: number;
-    startClientY: number;
-    startHandleX: number;
-    startHandleY: number;
-    rotationRad: number;
-    zoom: number;
-  } | null>(null);
+  // Store callbacks in refs so document listeners always have the latest
+  const onPositionChangeRef = useRef(onPositionChange);
+  onPositionChangeRef.current = onPositionChange;
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
 
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragStartRef.current) return;
-
-      const deltaClientX = e.clientX - dragStartRef.current.startClientX;
-      const deltaClientY = e.clientY - dragStartRef.current.startClientY;
-      const deltaX = deltaClientX / dragStartRef.current.zoom;
-      const deltaY = deltaClientY / dragStartRef.current.zoom;
-
-      // Convert screen delta into model-space delta for the unrotated line.
-      const cos = Math.cos(-dragStartRef.current.rotationRad);
-      const sin = Math.sin(-dragStartRef.current.rotationRad);
-      const rotatedDx = deltaX * cos - deltaY * sin;
-      const rotatedDy = deltaX * sin + deltaY * cos;
-
-      let nextX = dragStartRef.current.startHandleX + rotatedDx;
-      let nextY = dragStartRef.current.startHandleY + rotatedDy;
-
-      // Ensure minimum line length.
-      const anchor = mode === "end" ? startPosition : endPosition;
-      const dx = nextX - anchor.x;
-      const dy = nextY - anchor.y;
-      const length = Math.hypot(dx, dy);
-      if (length < MIN_LINE_LENGTH && length > 0) {
-        const scale = MIN_LINE_LENGTH / length;
-        nextX = anchor.x + dx * scale;
-        nextY = anchor.y + dy * scale;
-      }
-
-      onPositionChange(nodeId, {
-        x: Math.round(nextX),
-        y: Math.round(nextY)
-      });
-    };
-
-    const handleMouseUp = createLineHandleMouseUpHandler(setIsResizing, dragStartRef);
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isResizing, nodeId, startPosition, endPosition, mode, onPositionChange]);
+  // Store current anchor position in ref for mousemove handler
+  const anchorRef = useRef(mode === "end" ? startPosition : endPosition);
+  anchorRef.current = mode === "end" ? startPosition : endPosition;
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -329,20 +288,88 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
       e.preventDefault();
       e.stopPropagation();
 
-      setIsResizing(true);
-      setLineHandleDragging(true);
       const viewport = reactFlow.getViewport();
       const origin = mode === "end" ? endPosition : startPosition;
-      dragStartRef.current = {
+      const zoom = viewport.zoom || 1;
+
+      // Store drag state at module level
+      setActiveLineDrag({
+        nodeId,
+        mode,
         startClientX: e.clientX,
         startClientY: e.clientY,
         startHandleX: origin.x,
         startHandleY: origin.y,
-        rotationRad: (rotation * Math.PI) / 180,
-        zoom: viewport.zoom || 1
+        zoom
+      });
+
+      setIsResizing(true);
+
+      // Track pending position for throttled updates
+      let pendingPosition: { x: number; y: number } | null = null;
+      let rafId: number | null = null;
+
+      // Process pending position update (throttled via requestAnimationFrame)
+      const processPendingUpdate = () => {
+        rafId = null;
+        if (pendingPosition) {
+          onPositionChangeRef.current(nodeId, pendingPosition);
+          pendingPosition = null;
+        }
       };
+
+      // Set up document listeners directly - bypasses React effect lifecycle
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const dragState = getActiveLineDrag(nodeId, mode);
+        if (!dragState) return;
+
+        const deltaClientX = moveEvent.clientX - dragState.startClientX;
+        const deltaClientY = moveEvent.clientY - dragState.startClientY;
+        const deltaX = deltaClientX / dragState.zoom;
+        const deltaY = deltaClientY / dragState.zoom;
+
+        let nextX = dragState.startHandleX + deltaX;
+        let nextY = dragState.startHandleY + deltaY;
+
+        // Ensure minimum line length using current anchor from ref
+        const anchor = anchorRef.current;
+        const dx = nextX - anchor.x;
+        const dy = nextY - anchor.y;
+        const length = Math.hypot(dx, dy);
+        if (length < MIN_LINE_LENGTH && length > 0) {
+          const scale = MIN_LINE_LENGTH / length;
+          nextX = anchor.x + dx * scale;
+          nextY = anchor.y + dy * scale;
+        }
+
+        // Throttle updates using requestAnimationFrame
+        pendingPosition = { x: Math.round(nextX), y: Math.round(nextY) };
+        if (rafId === null) {
+          rafId = requestAnimationFrame(processPendingUpdate);
+        }
+      };
+
+      const handleMouseUp = () => {
+        // Cancel any pending animation frame
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        // Apply final position if pending
+        if (pendingPosition) {
+          onPositionChangeRef.current(nodeId, pendingPosition);
+        }
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+        setIsResizing(false);
+        setTimeout(() => setActiveLineDrag(null), 0);
+        // Persist changes on drag end
+        onDragEndRef.current?.();
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     },
-    [endPosition, startPosition, reactFlow, rotation, mode]
+    [nodeId, endPosition, startPosition, reactFlow, mode]
   );
 
   const handleX =

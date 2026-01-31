@@ -29,18 +29,29 @@ export async function saveFreeTextAnnotations(annotations: FreeTextAnnotation[])
   }
 }
 
-export async function saveAnnotationNodesFromGraph(nodes?: Node[]): Promise<void> {
+export interface SaveAnnotationNodesOptions {
+  /** Skip re-applying snapshot to avoid position snapback during continuous updates */
+  applySnapshot?: boolean;
+}
+
+export async function saveAnnotationNodesFromGraph(
+  nodes?: Node[],
+  options: SaveAnnotationNodesOptions = {}
+): Promise<void> {
   try {
     const graphNodes = nodes ?? useGraphStore.getState().nodes;
     const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
-    await executeTopologyCommand({
-      command: "setAnnotations",
-      payload: {
-        freeTextAnnotations,
-        freeShapeAnnotations,
-        groupStyleAnnotations: groups
-      }
-    });
+    await executeTopologyCommand(
+      {
+        command: "setAnnotations",
+        payload: {
+          freeTextAnnotations,
+          freeShapeAnnotations,
+          groupStyleAnnotations: groups
+        }
+      },
+      { applySnapshot: options.applySnapshot ?? true }
+    );
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: setAnnotations(annotationNodes)`, err);
   }

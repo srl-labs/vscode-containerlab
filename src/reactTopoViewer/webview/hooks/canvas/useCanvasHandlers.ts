@@ -19,7 +19,7 @@ import {
   type XYPosition
 } from "@xyflow/react";
 
-import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
+import type { TopoNode, TopoEdge, FreeShapeNodeData } from "../../../shared/types/graph";
 import { log } from "../../utils/logger";
 import { isLineHandleActive } from "../../components/canvas/nodes/AnnotationHandles";
 import {
@@ -28,6 +28,7 @@ import {
   GROUP_NODE_TYPE,
   isAnnotationNodeType
 } from "../../annotations/annotationNodeConverters";
+import { DEFAULT_LINE_LENGTH } from "../../annotations/constants";
 import {
   saveAnnotationNodesFromGraph,
   saveNodePositions,
@@ -117,6 +118,100 @@ interface CanvasHandlers {
 const NODE_TYPE_TOPOLOGY = "topology-node";
 const NODE_TYPE_NETWORK = "network-node";
 const EDITABLE_NODE_TYPES = [NODE_TYPE_TOPOLOGY, NODE_TYPE_NETWORK];
+
+// ============================================================================
+// Line drag helpers
+// ============================================================================
+
+interface LineDragSnapshot {
+  nodePosition: XYPosition;
+  startPosition: XYPosition;
+  endPosition: XYPosition;
+}
+
+function isLineShapeNode(node: Node): node is Node<FreeShapeNodeData> {
+  if (node.type !== FREE_SHAPE_NODE_TYPE) return false;
+  const data = node.data as FreeShapeNodeData | undefined;
+  return data?.shapeType === "line";
+}
+
+function getLineEndpoints(node: Node): { start: XYPosition; end: XYPosition } | null {
+  if (!isLineShapeNode(node)) return null;
+  const data = node.data as FreeShapeNodeData;
+  const start = data.startPosition ?? node.position;
+  const end =
+    data.endPosition ?? {
+      x: start.x + DEFAULT_LINE_LENGTH,
+      y: start.y
+    };
+  return {
+    start: { x: start.x, y: start.y },
+    end: { x: end.x, y: end.y }
+  };
+}
+
+function recordLineDragSnapshot(
+  snapshots: Map<string, LineDragSnapshot>,
+  node: Node
+): void {
+  const endpoints = getLineEndpoints(node);
+  if (!endpoints) return;
+  snapshots.set(node.id, {
+    nodePosition: { x: node.position.x, y: node.position.y },
+    startPosition: endpoints.start,
+    endPosition: endpoints.end
+  });
+}
+
+function collectLineDragNodes(
+  draggedNode: Node,
+  nodes: Node[] | undefined,
+  groupMemberHandlers?: GroupMemberHandlers
+): Node[] {
+  if (!nodes) {
+    return isLineShapeNode(draggedNode) ? [draggedNode] : [];
+  }
+
+  if (draggedNode.type === GROUP_NODE_TYPE && groupMemberHandlers?.getGroupMembers) {
+    const memberIds = groupMemberHandlers.getGroupMembers(draggedNode.id, { includeNested: true });
+    return memberIds
+      .map((id) => nodes.find((node) => node.id === id))
+      .filter((node): node is Node => Boolean(node))
+      .filter(isLineShapeNode);
+  }
+
+  const selectedLines = nodes.filter((node) => node.selected && isLineShapeNode(node));
+  if (selectedLines.length > 0) return selectedLines;
+  return isLineShapeNode(draggedNode) ? [draggedNode] : [];
+}
+
+function applyLineDragSnapshots(snapshots: Map<string, LineDragSnapshot>): void {
+  if (snapshots.size === 0) return;
+  const currentNodes = useGraphStore.getState().nodes;
+  const updateNode = useGraphStore.getState().updateNode;
+
+  for (const [id, snapshot] of snapshots) {
+    const currentNode = currentNodes.find((node) => node.id === id);
+    if (!currentNode) continue;
+    const dx = currentNode.position.x - snapshot.nodePosition.x;
+    const dy = currentNode.position.y - snapshot.nodePosition.y;
+    if (dx === 0 && dy === 0) continue;
+    updateNode(id, {
+      data: {
+        startPosition: {
+          x: snapshot.startPosition.x + dx,
+          y: snapshot.startPosition.y + dy
+        },
+        endPosition: {
+          x: snapshot.endPosition.x + dx,
+          y: snapshot.endPosition.y + dy
+        }
+      }
+    });
+  }
+
+  snapshots.clear();
+}
 
 // ============================================================================
 // Node drag stop helpers (extracted for complexity reduction)
@@ -303,7 +398,8 @@ function persistPositionChanges(changes: NodeChange[]) {
   }
 
   if (movedAnnotations) {
-    void saveAnnotationNodesFromGraph(currentNodes);
+    // Use applySnapshot: false to prevent snapshot re-apply from reverting local changes
+    void saveAnnotationNodesFromGraph(currentNodes, { applySnapshot: false });
   }
 }
 
@@ -320,6 +416,7 @@ function useNodeDragHandlers(
   const groupLastPositionRef = useRef<Map<string, XYPosition>>(new Map());
   // Track member IDs that are being moved with a group
   const groupMembersRef = useRef<Map<string, string[]>>(new Map());
+  const lineDragStartRef = useRef<Map<string, LineDragSnapshot>>(new Map());
 
   const onNodeDragStart: NodeMouseHandler = useCallback(
     (_event, node) => {
@@ -332,7 +429,11 @@ function useNodeDragHandlers(
         groupLastPositionRef.current.set(node.id, { ...node.position });
       }
 
-      log.info("[ReactFlowCanvas] Drag started");
+      lineDragStartRef.current.clear();
+      const lineNodes = collectLineDragNodes(node, nodes, groupMemberHandlers);
+      for (const lineNode of lineNodes) {
+        recordLineDragSnapshot(lineDragStartRef.current, lineNode);
+      }
     },
     [isLockedRef, nodes, groupMemberHandlers]
   );
@@ -387,10 +488,14 @@ function useNodeDragHandlers(
 
       // Skip for shape nodes with active line handle
       if (node.type === FREE_SHAPE_NODE_TYPE && isLineHandleActive()) {
+        lineDragStartRef.current.clear();
         return;
       }
 
-      if (handleGeoDragStop(node, onNodesChangeBase, setNodes, geoLayout)) return;
+      if (handleGeoDragStop(node, onNodesChangeBase, setNodes, geoLayout)) {
+        lineDragStartRef.current.clear();
+        return;
+      }
 
       // Normal (non-geo) mode: update preset position
       const isGroupNode = node.type === GROUP_NODE_TYPE;
@@ -434,6 +539,7 @@ function useNodeDragHandlers(
         groupMemberHandlers.onNodeDropped(node.id, finalPosition);
       }
 
+      applyLineDragSnapshots(lineDragStartRef.current);
       persistPositionChanges(changes);
     },
     [isLockedRef, nodes, onNodesChangeBase, groupMemberHandlers, geoLayout, setNodes]
