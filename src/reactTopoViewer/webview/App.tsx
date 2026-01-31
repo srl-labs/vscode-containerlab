@@ -9,7 +9,6 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import type { CanvasRef } from "./hooks/ui";
 import type { ReactFlowCanvasRef } from "./components/canvas";
-import type { FloatingActionPanelHandle } from "./components/panels";
 import { useLayoutControls } from "./hooks/ui";
 import {
   type InitialGraphData,
@@ -24,13 +23,9 @@ import { AppContent } from "./AppContent";
 export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData }) => {
   const reactFlowRef = React.useRef<ReactFlowCanvasRef>(null);
   const [rfInstance, setRfInstance] = React.useState<ReactFlowInstance | null>(null);
-  const floatingPanelRef = React.useRef<FloatingActionPanelHandle>(null);
   const layoutControls = useLayoutControls(
     reactFlowRef as unknown as React.RefObject<CanvasRef | null>
   );
-  const handleLockedAction = React.useCallback(() => {
-    floatingPanelRef.current?.triggerShake();
-  }, []);
 
   // Initialize stores with initial data
   useStoreInitialization({ initialData });
@@ -42,12 +37,10 @@ export const App: React.FC<{ initialData?: InitialGraphData }> = ({ initialData 
 
   return (
     <AppContent
-      floatingPanelRef={floatingPanelRef}
       reactFlowRef={reactFlowRef}
       rfInstance={rfInstance}
       layoutControls={layoutControls}
       onInit={setRfInstance}
-      onLockedAction={handleLockedAction}
     />
   );
 };

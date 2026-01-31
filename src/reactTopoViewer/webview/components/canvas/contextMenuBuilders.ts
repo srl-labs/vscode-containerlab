@@ -9,8 +9,15 @@ import {
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
-import type { ContextMenuItem } from "../context-menu/ContextMenu";
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
+import { getViewportCenter } from "../../utils/viewportUtils";
+import type { ContextMenuItem } from "../context-menu/ContextMenu";
+
+import type { ReactFlowCanvasProps } from "./types";
+
+const ICON_PEN = "fas fa-pen";
+const ICON_TRASH = "fas fa-trash";
+const DIVIDER_ID = "divider-1";
 
 interface MenuBuilderContext {
   targetId: string;
@@ -53,13 +60,21 @@ interface EdgeMenuBuilderContext {
   showLinkImpairment?: (id: string) => void;
 }
 
-interface PaneMenuBuilderContext {
+type PaneMenuActions = Pick<
+  ReactFlowCanvasProps,
+  | "onOpenNodePalette"
+  | "onAddGroup"
+  | "onAddText"
+  | "onAddShapes"
+  | "onAddShapeAtPosition"
+  | "onShowBulkLink"
+>;
+
+interface PaneMenuBuilderContext extends PaneMenuActions {
   isEditMode: boolean;
   isLocked: boolean;
   closeContextMenu: () => void;
   reactFlowInstance: React.RefObject<ReactFlowInstance | null>;
-  /** Callback to open the node palette panel */
-  onOpenNodePalette?: () => void;
   /** Callback to add a default node at a position */
   onAddDefaultNode?: (position: { x: number; y: number }) => void;
   /** Context menu screen position for coordinate conversion */
@@ -76,16 +91,18 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "edit-text",
       label: "Edit Text",
+      icon: ICON_PEN,
       disabled: isLocked,
       onClick: () => {
         editFreeText?.(targetId);
         closeContextMenu();
       }
     },
-    { id: "divider-1", label: "", divider: true },
+    { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-text",
       label: "Delete Text",
+      icon: ICON_TRASH,
       disabled: isLocked,
       onClick: () => {
         deleteFreeText?.(targetId);
@@ -105,16 +122,18 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "edit-shape",
       label: "Edit Shape",
+      icon: ICON_PEN,
       disabled: isLocked,
       onClick: () => {
         editFreeShape?.(targetId);
         closeContextMenu();
       }
     },
-    { id: "divider-1", label: "", divider: true },
+    { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-shape",
       label: "Delete Shape",
+      icon: ICON_TRASH,
       disabled: isLocked,
       onClick: () => {
         deleteFreeShape?.(targetId);
@@ -134,16 +153,18 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "edit-group",
       label: "Edit Group",
+      icon: ICON_PEN,
       disabled: isLocked,
       onClick: () => {
         editGroup?.(targetId);
         closeContextMenu();
       }
     },
-    { id: "divider-1", label: "", divider: true },
+    { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-group",
       label: "Delete Group",
+      icon: ICON_TRASH,
       disabled: isLocked,
       onClick: () => {
         deleteGroup?.(targetId);
@@ -159,6 +180,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "ssh-node",
       label: "SSH",
+      icon: "fas fa-terminal",
       onClick: () => {
         sendCommandToExtension("clab-node-connect-ssh", { nodeName: targetId });
         closeContextMenu();
@@ -167,6 +189,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "shell-node",
       label: "Shell",
+      icon: "fas fa-terminal",
       onClick: () => {
         sendCommandToExtension("clab-node-attach-shell", { nodeName: targetId });
         closeContextMenu();
@@ -175,15 +198,17 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "logs-node",
       label: "Logs",
+      icon: "fas fa-clipboard-list",
       onClick: () => {
         sendCommandToExtension("clab-node-view-logs", { nodeName: targetId });
         closeContextMenu();
       }
     },
-    { id: "divider-1", label: "", divider: true },
+    { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "info-node",
       label: "Info",
+      icon: "fas fa-circle-info",
       onClick: () => {
         showNodeInfo?.(targetId);
         closeContextMenu();
@@ -237,6 +262,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     items.push({
       id: "cancel-link",
       label: "Cancel Link Creation",
+      icon: "fas fa-xmark",
       onClick: () => {
         cancelLinkCreation?.();
         closeContextMenu();
@@ -248,6 +274,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   items.push({
     id: "edit-node",
     label: isNetworkNode ? "Edit NetworkNode" : "Edit Node",
+    icon: isNetworkNode ? "fas fa-network-wired" : ICON_PEN,
     disabled: !isEditMode || isLocked,
     onClick: () => {
       if (isNetworkNode) {
@@ -265,6 +292,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     items.push({
       id: "create-link",
       label: "Create Link",
+      icon: "fas fa-link",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         startLinkCreation?.(targetId);
@@ -273,10 +301,11 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     });
   }
 
-  items.push({ id: "divider-1", label: "", divider: true });
+  items.push({ id: DIVIDER_ID, label: "", divider: true });
   items.push({
     id: "delete-node",
     label: "Delete Node",
+    icon: ICON_TRASH,
     disabled: !isEditMode || isLocked,
     onClick: () => handleDeleteNode(targetId)
   });
@@ -302,21 +331,23 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     return [];
   }
   if (!isEditMode) {
-    return [
-      {
-        id: "impair-edge",
-        label: "Link impairments",
-        onClick: () => {
-          showLinkImpairment?.(targetId);
-          closeContextMenu();
-        }
-      },
-      {
-        id: "info-edge",
-        label: "Link Info",
-        onClick: () => {
-          showLinkInfo?.(targetId);
-          closeContextMenu();
+  return [
+    {
+      id: "impair-edge",
+      label: "Link impairments",
+      icon: "fas fa-sliders",
+      onClick: () => {
+        showLinkImpairment?.(targetId);
+        closeContextMenu();
+      }
+    },
+    {
+      id: "info-edge",
+      label: "Link Info",
+      icon: "fas fa-circle-info",
+      onClick: () => {
+        showLinkInfo?.(targetId);
+        closeContextMenu();
         }
       }
     ];
@@ -325,16 +356,18 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     {
       id: "edit-edge",
       label: "Edit Link",
+      icon: ICON_PEN,
       disabled: !isEditMode || isLocked,
       onClick: () => {
         editEdge(targetId);
         closeContextMenu();
       }
     },
-    { id: "divider-1", label: "", divider: true },
+    { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-edge",
       label: "Delete Link",
+      icon: ICON_TRASH,
       disabled: !isEditMode || isLocked,
       onClick: () => handleDeleteEdge(targetId)
     }
@@ -355,12 +388,18 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     reactFlowInstance,
     onOpenNodePalette,
     onAddDefaultNode,
+    onAddGroup,
+    onAddText,
+    onAddShapes,
+    onAddShapeAtPosition,
+    onShowBulkLink,
     menuPosition
   } = ctx;
-  return [
+  const items: ContextMenuItem[] = [
     {
       id: "add-node",
       label: "Add Node",
+      icon: "fas fa-plus",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
@@ -373,16 +412,129 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     {
       id: "open-node-palette",
       label: "Open Node Palette",
+      icon: "fas fa-th",
       disabled: !isEditMode || isLocked,
       onClick: () => {
         onOpenNodePalette?.();
         closeContextMenu();
       }
-    },
-    { id: "divider-1", label: "", divider: true },
+    }
+  ];
+
+  const editorItems: ContextMenuItem[] = [];
+  const isDisabled = !isEditMode || isLocked;
+
+  if (onAddGroup) {
+    editorItems.push({
+      id: "add-group",
+      label: "Add Group",
+      icon: "fas fa-layer-group",
+      disabled: isDisabled,
+      onClick: () => {
+        onAddGroup();
+        closeContextMenu();
+      }
+    });
+  }
+  if (onAddText) {
+    editorItems.push({
+      id: "add-text",
+      label: "Add Text",
+      icon: "fas fa-font",
+      disabled: isDisabled,
+      onClick: () => {
+        onAddText();
+        closeContextMenu();
+      }
+    });
+  }
+  const getFlowPosition = () => {
+    const instance = reactFlowInstance.current;
+    if (!instance) return null;
+    if (menuPosition) {
+      return instance.screenToFlowPosition(menuPosition);
+    }
+    return getViewportCenter(instance);
+  };
+
+  if (onAddShapes || onAddShapeAtPosition) {
+    editorItems.push({
+      id: "add-shape",
+      label: "Add Shape",
+      icon: "fas fa-shapes",
+      disabled: isDisabled,
+      children: [
+        {
+          id: "add-shape-rectangle",
+          label: "Rectangle",
+          icon: "fas fa-square",
+          disabled: isDisabled,
+          onClick: () => {
+            const flowPosition = getFlowPosition();
+            if (onAddShapeAtPosition && flowPosition) {
+              onAddShapeAtPosition(flowPosition, "rectangle");
+            } else {
+              onAddShapes?.("rectangle");
+            }
+            closeContextMenu();
+          }
+        },
+        {
+          id: "add-shape-circle",
+          label: "Circle",
+          icon: "fas fa-circle",
+          disabled: isDisabled,
+          onClick: () => {
+            const flowPosition = getFlowPosition();
+            if (onAddShapeAtPosition && flowPosition) {
+              onAddShapeAtPosition(flowPosition, "circle");
+            } else {
+              onAddShapes?.("circle");
+            }
+            closeContextMenu();
+          }
+        },
+        {
+          id: "add-shape-line",
+          label: "Line",
+          icon: "fas fa-minus",
+          disabled: isDisabled,
+          onClick: () => {
+            const flowPosition = getFlowPosition();
+            if (onAddShapeAtPosition && flowPosition) {
+              onAddShapeAtPosition(flowPosition, "line");
+            } else {
+              onAddShapes?.("line");
+            }
+            closeContextMenu();
+          }
+        }
+      ]
+    });
+  }
+  if (onShowBulkLink) {
+    editorItems.push({
+      id: "bulk-link",
+      label: "Bulk Link Devices",
+      icon: "fas fa-link",
+      disabled: isDisabled,
+      onClick: () => {
+        onShowBulkLink();
+        closeContextMenu();
+      }
+    });
+  }
+
+  if (editorItems.length > 0) {
+    items.push({ id: "divider-additions", label: "", divider: true }, ...editorItems);
+  }
+
+  items.push(
+    { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "fit-view",
       label: "Fit View",
+      icon: "fas fa-expand",
       onClick: () => {
         reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
           /* ignore */
@@ -390,5 +542,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         closeContextMenu();
       }
     }
-  ];
+  );
+
+  return items;
 }

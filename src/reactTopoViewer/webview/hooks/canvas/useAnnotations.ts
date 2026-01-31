@@ -348,6 +348,7 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
 
       // Shape actions
       handleAddShapes: shapeActions.handleAddShapes,
+      createShapeAtPosition: shapeActions.createShapeAtPosition,
       disableAddShapeMode: uiActions.disableAddShapeMode,
       selectShapeAnnotation: uiActions.selectShapeAnnotation,
       toggleShapeAnnotationSelection: uiActions.toggleShapeAnnotationSelection,

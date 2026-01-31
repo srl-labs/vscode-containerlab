@@ -1,6 +1,6 @@
 /**
  * Consolidated hook for panel position and dragging
- * Combines features from both floating panel and editor panel drag implementations
+ * Combines features from legacy toolbar panels and editor panel drag implementations
  */
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -252,26 +252,6 @@ export function usePanelDrag(options: UsePanelDragOptions = {}): UsePanelDragRet
 /**
  * Custom hook for drawer side calculation
  */
-export function useDrawerSide(
-  panelRef: React.RefObject<HTMLDivElement | null>,
-  position: Position
-): "left" | "right" {
-  const [drawerSide, setDrawerSide] = useState<"left" | "right">("right");
-
-  useEffect(() => {
-    const updateDrawerDirection = () => {
-      if (!panelRef.current) return;
-      const rect = panelRef.current.getBoundingClientRect();
-      setDrawerSide(rect.left + rect.width / 2 > window.innerWidth / 2 ? "left" : "right");
-    };
-    updateDrawerDirection();
-    window.addEventListener("resize", updateDrawerDirection);
-    return () => window.removeEventListener("resize", updateDrawerDirection);
-  }, [panelRef, position]);
-
-  return drawerSide;
-}
-
 /**
  * Hook for shake animation state
  */
@@ -282,25 +262,4 @@ export function useShakeAnimation() {
     setTimeout(() => setIsShaking(false), 300);
   }, []);
   return { isShaking, trigger };
-}
-
-/**
- * Build lock button CSS class
- */
-export function buildLockButtonClass(isLocked: boolean, isShaking: boolean): string {
-  const classes = ["floating-panel-btn"];
-  if (isLocked) classes.push("danger");
-  if (isShaking) classes.push("lock-shake");
-  return classes.join(" ");
-}
-
-// Legacy exports for backwards compatibility
-export const PANEL_STORAGE_KEY = "unifiedPanelState";
-
-/**
- * Save panel state to localStorage including collapsed state
- * Position is saved automatically by usePanelDrag, this saves additional UI state
- */
-export function savePanelState(position: Position, collapsed: boolean): void {
-  window.localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify({ ...position, collapsed }));
 }

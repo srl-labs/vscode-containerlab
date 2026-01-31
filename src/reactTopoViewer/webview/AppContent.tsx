@@ -18,13 +18,11 @@ import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
 import { Navbar } from "./components/navbar/Navbar";
 import {
-  FloatingActionPanel,
-  type FloatingActionPanelHandle,
   EditorPanels,
   ViewPanels,
-  NodePalettePanel
+  NodePalettePanel,
+  type LinkImpairmentData
 } from "./components/panels";
-import type { LinkImpairmentData } from "./components/panels/link-impairment/types";
 import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
@@ -46,8 +44,8 @@ import type { useLayoutControls } from "./hooks/ui";
 import {
   useAppHandlers,
   useContextMenuHandlers,
-  useFloatingPanelCommands,
   usePanelVisibility,
+  useShakeAnimation,
   useShortcutDisplay
 } from "./hooks/ui";
 import { useGraphActions, useGraphState, useGraphStore } from "./stores/graphStore";
@@ -169,21 +167,17 @@ function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHost
 }
 
 export interface AppContentProps {
-  floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
   layoutControls: LayoutControls;
   onInit: (instance: ReactFlowInstance) => void;
-  onLockedAction?: () => void;
 }
 
 export const AppContent: React.FC<AppContentProps> = ({
-  floatingPanelRef,
   reactFlowRef,
   rfInstance,
   layoutControls,
-  onInit,
-  onLockedAction
+  onInit
 }) => {
   const state = useTopoViewerState();
   const topoActions = useTopoViewerActions();
@@ -194,10 +188,11 @@ export const AppContent: React.FC<AppContentProps> = ({
   const graphEdges = edges as TopoEdge[];
 
   const undoRedo = useUndoRedoControls(state.canUndo, state.canRedo);
+  const { isShaking: isLockShaking, trigger: triggerLockShake } = useShakeAnimation();
 
   const { annotations, annotationMode, canvasAnnotationHandlers } = useAppAnnotations({
     rfInstance,
-    onLockedAction
+    onLockedAction: triggerLockShake
   });
 
   const { toasts, dismissToast, addToast } = useAppToasts({
@@ -212,7 +207,6 @@ export const AppContent: React.FC<AppContentProps> = ({
   });
 
   const navbarCommands = useNavbarCommands();
-  const floatingPanelCommands = useFloatingPanelCommands();
   const customNodeCommands = useCustomNodeCommands(
     state.customNodes,
     topoActions.editCustomTemplate
@@ -309,7 +303,7 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const graphCreation = useGraphCreation({
     rfInstance,
-    floatingPanelRef,
+    onLockedAction: triggerLockShake,
     state: {
       mode: state.mode,
       isLocked: state.isLocked,
@@ -327,7 +321,7 @@ export const AppContent: React.FC<AppContentProps> = ({
   const handleDropCreateNode = React.useCallback(
     (position: { x: number; y: number }, templateName: string) => {
       if (state.isLocked) {
-        floatingPanelRef.current?.triggerShake();
+        triggerLockShake();
         return;
       }
       // Find the template by name
@@ -336,18 +330,18 @@ export const AppContent: React.FC<AppContentProps> = ({
         graphCreation.createNodeAtPosition(position, template);
       }
     },
-    [state.isLocked, state.customNodes, graphCreation, floatingPanelRef]
+    [state.isLocked, state.customNodes, graphCreation, triggerLockShake]
   );
 
   const handleDropCreateNetwork = React.useCallback(
     (position: { x: number; y: number }, networkType: string) => {
       if (state.isLocked) {
-        floatingPanelRef.current?.triggerShake();
+        triggerLockShake();
         return;
       }
       graphCreation.createNetworkAtPosition(position, networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]);
     },
-    [state.isLocked, graphCreation, floatingPanelRef]
+    [state.isLocked, graphCreation, triggerLockShake]
   );
 
   useAppE2EExposure({
@@ -505,6 +499,9 @@ export const AppContent: React.FC<AppContentProps> = ({
         onShowAbout={panelVisibility.handleShowAbout}
         shortcutDisplayEnabled={shortcutDisplay.isEnabled}
         onToggleShortcutDisplay={shortcutDisplay.toggle}
+        onOpenNodePalette={panelVisibility.handleShowNodePalette}
+        onLockedAction={triggerLockShake}
+        lockShakeActive={isLockShaking}
         canUndo={undoRedo.canUndo}
         canRedo={undoRedo.canRedo}
         onUndo={undoRedo.undo}
@@ -529,8 +526,14 @@ export const AppContent: React.FC<AppContentProps> = ({
           onNodeDelete={graphHandlers.handleDeleteNode}
           onEdgeDelete={graphHandlers.handleDeleteLink}
           onOpenNodePalette={panelVisibility.handleShowNodePalette}
+          onAddGroup={annotations.handleAddGroup}
+          onAddText={annotations.handleAddText}
+          onAddShapes={annotations.handleAddShapes}
+          onAddShapeAtPosition={annotations.createShapeAtPosition}
+          onShowBulkLink={panelVisibility.handleShowBulkLink}
           onDropCreateNode={handleDropCreateNode}
           onDropCreateNetwork={handleDropCreateNetwork}
+          onLockedAction={triggerLockShake}
         />
         <ViewPanels
           nodeInfo={{
@@ -640,26 +643,6 @@ export const AppContent: React.FC<AppContentProps> = ({
             labSettings: state.labSettings ?? { name: state.labName },
             onClose: panelVisibility.handleCloseLabSettings
           }}
-        />
-        <FloatingActionPanel
-          ref={floatingPanelRef}
-          onDeploy={floatingPanelCommands.onDeploy}
-          onDestroy={floatingPanelCommands.onDestroy}
-          onDeployCleanup={floatingPanelCommands.onDeployCleanup}
-          onDestroyCleanup={floatingPanelCommands.onDestroyCleanup}
-          onRedeploy={floatingPanelCommands.onRedeploy}
-          onRedeployCleanup={floatingPanelCommands.onRedeployCleanup}
-          onAddNode={graphCreation.handleAddNodeFromPanel}
-          onAddNetwork={graphCreation.handleAddNetworkFromPanel}
-          onAddGroup={annotations.handleAddGroup}
-          onAddText={annotations.handleAddText}
-          onAddShapes={annotations.handleAddShapes}
-          onAddBulkLink={panelVisibility.handleShowBulkLink}
-          onEditCustomNode={customNodeCommands.onEditCustomNode}
-          onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
-          onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
-          isAddTextMode={annotations.isAddTextMode}
-          isAddShapeMode={annotations.isAddShapeMode}
         />
         {state.mode === "edit" && (
           <NodePalettePanel

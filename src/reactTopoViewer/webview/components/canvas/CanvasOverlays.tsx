@@ -1,42 +1,24 @@
-/**
- * HelperLines component - Visual alignment guides for node positioning
- *
- * Renders horizontal and vertical lines across the canvas when nodes
- * align during drag operations.
- */
 import React from "react";
 import { useStore } from "@xyflow/react";
 
 import type { HelperLinePositions } from "../../hooks/canvas/useHelperLines";
 
 interface HelperLinesProps {
-  /** Line positions to render */
   lines: HelperLinePositions;
 }
 
-/** Style for the helper line color */
 const HELPER_LINE_COLOR = "#ff6b6b";
 const HELPER_LINE_WIDTH = 1;
-
-/** Style for midpoint helper lines (center between two nodes) */
 const MIDPOINT_LINE_COLOR = "#4ecdc4";
 const MIDPOINT_LINE_WIDTH = 1;
 
-/**
- * HelperLines component
- *
- * Renders SVG lines that span the visible viewport to indicate
- * node alignment positions during drag.
- */
 export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) => {
-  // Get viewport transform from React Flow store
   const transform = useStore((state) => state.transform);
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
 
   const { horizontal, vertical, horizontalMidpoint, verticalMidpoint } = lines;
 
-  // Don't render if no lines
   if (
     horizontal === null &&
     vertical === null &&
@@ -48,8 +30,6 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
 
   const [tx, ty, zoom] = transform;
 
-  // Calculate line positions in screen coordinates
-  // React Flow uses: screenX = flowX * zoom + tx
   const horizontalScreenY = horizontal !== null ? horizontal * zoom + ty : null;
   const verticalScreenX = vertical !== null ? vertical * zoom + tx : null;
   const horizontalMidpointScreenY =
@@ -69,7 +49,6 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
         overflow: "visible"
       }}
     >
-      {/* Horizontal helper line */}
       {horizontalScreenY !== null && (
         <line
           x1={0}
@@ -82,7 +61,6 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
         />
       )}
 
-      {/* Vertical helper line */}
       {verticalScreenX !== null && (
         <line
           x1={verticalScreenX}
@@ -95,7 +73,6 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
         />
       )}
 
-      {/* Horizontal midpoint helper line (center between two nodes) */}
       {horizontalMidpointScreenY !== null && (
         <line
           x1={0}
@@ -108,7 +85,6 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
         />
       )}
 
-      {/* Vertical midpoint helper line (center between two nodes) */}
       {verticalMidpointScreenX !== null && (
         <line
           x1={verticalMidpointScreenX}
@@ -125,3 +101,46 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
 });
 
 HelperLines.displayName = "HelperLines";
+
+export const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
+  <div
+    style={{
+      position: "absolute",
+      top: 10,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "var(--vscode-editor-background, #1e1e1e)",
+      border: "1px solid var(--vscode-charts-green, #4ec9b0)",
+      borderRadius: 4,
+      padding: "6px 12px",
+      fontSize: 12,
+      color: "var(--vscode-editor-foreground, #cccccc)",
+      zIndex: 1000,
+      pointerEvents: "none"
+    }}
+  >
+    {message}
+  </div>
+);
+
+export const LinkCreationIndicator: React.FC<{ linkSourceNode: string }> = ({ linkSourceNode }) => (
+  <div
+    style={{
+      position: "absolute",
+      top: 10,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "var(--vscode-editor-background, #1e1e1e)",
+      border: "1px solid var(--vscode-focusBorder, #007acc)",
+      borderRadius: 4,
+      padding: "6px 12px",
+      fontSize: 12,
+      color: "var(--vscode-editor-foreground, #cccccc)",
+      zIndex: 1000,
+      pointerEvents: "none"
+    }}
+  >
+    Creating link from <strong>{linkSourceNode}</strong> — Click on target node or press Escape to
+    cancel
+  </div>
+);

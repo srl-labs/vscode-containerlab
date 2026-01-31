@@ -312,16 +312,22 @@ export class MessageRouter {
     return { ...(payload as CustomNodeConfig), name, kind };
   }
 
+  private getYamlFilePath(command: string): string | null {
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
+      return null;
+    }
+    return yamlFilePath;
+  }
+
   private getCustomNodeName(message: WebviewMessage): string {
     return typeof message.name === "string" ? message.name : "";
   }
 
   private async handleNodeCommand(command: NodeCommand, message: WebviewMessage): Promise<void> {
-    const yamlFilePath = this.context.yamlFilePath;
-    if (!yamlFilePath) {
-      log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
-      return;
-    }
+    const yamlFilePath = this.getYamlFilePath(command);
+    if (!yamlFilePath) return;
     const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
     if (!nodeName) {
       log.warn(`[MessageRouter] Invalid node command payload: ${JSON.stringify(message)}`);
@@ -336,11 +342,8 @@ export class MessageRouter {
     command: InterfaceCommand,
     message: WebviewMessage
   ): Promise<void> {
-    const yamlFilePath = this.context.yamlFilePath;
-    if (!yamlFilePath) {
-      log.warn(`[MessageRouter] Cannot run ${command}: no YAML path available`);
-      return;
-    }
+    const yamlFilePath = this.getYamlFilePath(command);
+    if (!yamlFilePath) return;
     const nodeName = typeof message.nodeName === "string" ? message.nodeName : "";
     const interfaceName = typeof message.interfaceName === "string" ? message.interfaceName : "";
     const data =

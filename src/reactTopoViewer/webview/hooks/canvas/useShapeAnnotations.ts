@@ -24,6 +24,7 @@ interface UseShapeAnnotationsParams {
 
 export interface ShapeAnnotationActions {
   handleAddShapes: (shapeType?: string) => void;
+  createShapeAtPosition: (position: { x: number; y: number }, shapeType?: string) => void;
   editShapeAnnotation: (id: string) => void;
   saveShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
   deleteShapeAnnotation: (id: string) => void;
@@ -57,6 +58,45 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       uiActions.setAddShapeMode(true, normalizedShape);
     },
     [canEditAnnotations, onLockedAction, uiActions]
+  );
+
+  const buildShapeAnnotation = useCallback(
+    (position: { x: number; y: number }, shapeType?: string): FreeShapeAnnotation => {
+      const normalizedShape: FreeShapeAnnotation["shapeType"] =
+        shapeType === "circle" || shapeType === "line" || shapeType === "rectangle"
+          ? shapeType
+          : "rectangle";
+      const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
+      return {
+        id: `freeShape_${Date.now()}`,
+        shapeType: normalizedShape,
+        position,
+        endPosition: { x: position.x + 120, y: position.y + 60 },
+        rotation: 0,
+        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(255, 255, 255, 0.1)",
+        fillOpacity: lastShapeStyleRef.current.fillOpacity ?? 0.2,
+        borderColor: lastShapeStyleRef.current.borderColor ?? "#ffffff",
+        borderWidth: lastShapeStyleRef.current.borderWidth ?? 1,
+        borderStyle: lastShapeStyleRef.current.borderStyle ?? "solid",
+        borderRadius: lastShapeStyleRef.current.borderRadius ?? 4,
+        groupId: parentGroup?.id
+      };
+    },
+    [derived.groups]
+  );
+
+  const createShapeAtPosition = useCallback(
+    (position: { x: number; y: number }, shapeType?: string) => {
+      if (!canEditAnnotations) {
+        onLockedAction();
+        return;
+      }
+      const newAnnotation = buildShapeAnnotation(position, shapeType);
+      derived.addShapeAnnotation(newAnnotation);
+      persist();
+      log.info(`[FreeShape] Created annotation at (${position.x}, ${position.y})`);
+    },
+    [canEditAnnotations, onLockedAction, buildShapeAnnotation, derived, persist]
   );
 
   const editShapeAnnotation = useCallback(
@@ -135,31 +175,18 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
   const handleShapeCanvasClick = useCallback(
     (position: { x: number; y: number }) => {
       if (!uiState.isAddShapeMode) return;
-      const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
-      const newAnnotation: FreeShapeAnnotation = {
-        id: `freeShape_${Date.now()}`,
-        shapeType: uiState.pendingShapeType ?? "rectangle",
-        position,
-        endPosition: { x: position.x + 120, y: position.y + 60 },
-        rotation: 0,
-        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(255, 255, 255, 0.1)",
-        fillOpacity: lastShapeStyleRef.current.fillOpacity ?? 0.2,
-        borderColor: lastShapeStyleRef.current.borderColor ?? "#ffffff",
-        borderWidth: lastShapeStyleRef.current.borderWidth ?? 1,
-        borderStyle: lastShapeStyleRef.current.borderStyle ?? "solid",
-        borderRadius: lastShapeStyleRef.current.borderRadius ?? 4,
-        groupId: parentGroup?.id
-      };
+      const newAnnotation = buildShapeAnnotation(position, uiState.pendingShapeType);
       uiActions.setEditingShapeAnnotation(newAnnotation);
       uiActions.disableAddShapeMode();
       log.info(`[FreeShape] Creating annotation at (${position.x}, ${position.y})`);
     },
-    [uiState.isAddShapeMode, uiState.pendingShapeType, derived.groups, uiActions]
+    [uiState.isAddShapeMode, uiState.pendingShapeType, buildShapeAnnotation, uiActions]
   );
 
   return useMemo(
     () => ({
       handleAddShapes,
+      createShapeAtPosition,
       editShapeAnnotation,
       saveShapeAnnotation,
       deleteShapeAnnotation,
@@ -170,6 +197,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
     }),
     [
       handleAddShapes,
+      createShapeAtPosition,
       editShapeAnnotation,
       saveShapeAnnotation,
       deleteShapeAnnotation,

@@ -45,6 +45,45 @@
     opacity: 0.9;
   }
 
+  .context-menu-icon,
+  .context-menu-icon-placeholder {
+    width: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .context-menu-icon-placeholder {
+    opacity: 0;
+  }
+
+  .context-menu-item.has-submenu {
+    padding-right: 10px;
+  }
+
+  .context-menu-submenu-caret {
+    margin-left: auto;
+    font-size: 10px;
+    opacity: 0.7;
+  }
+
+  .context-menu-item-wrapper {
+    position: relative;
+  }
+
+  .context-submenu {
+    display: none;
+    position: absolute;
+    top: -4px;
+    left: 100%;
+    margin-left: 4px;
+    min-width: 160px;
+  }
+
+  .context-menu-item-wrapper:not(.disabled):hover > .context-submenu {
+    display: block;
+  }
+
   .context-menu-divider {
     height: 1px;
     background-color: rgba(255, 255, 255, 0.1);

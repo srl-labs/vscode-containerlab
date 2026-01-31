@@ -8,27 +8,16 @@
 // ============================================================================
 export {
   useDeploymentCommands,
-  useEditorPanelCommands,
-  useFloatingPanelCommands,
   usePanelVisibility
 } from "./usePanelCommands";
-export type {
-  DeploymentCommands,
-  EditorPanelCommands,
-  FloatingPanelCommands,
-  PanelVisibility
-} from "./usePanelCommands";
+export type { DeploymentCommands, PanelVisibility } from "./usePanelCommands";
 
 // ============================================================================
 // Panel Visibility & Drag
 // ============================================================================
 export {
   usePanelDrag,
-  useDrawerSide,
-  useShakeAnimation,
-  buildLockButtonClass,
-  savePanelState,
-  PANEL_STORAGE_KEY
+  useShakeAnimation
 } from "./usePanelDrag";
 export type { Position, UsePanelDragOptions, UsePanelDragReturn } from "./usePanelDrag";
 

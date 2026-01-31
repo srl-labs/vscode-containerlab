@@ -13,7 +13,6 @@ import { useNodeCreation, useNetworkCreation, type NetworkType } from "../canvas
 import { useNodeCreationHandlers, type NodeCreationState } from "../editor";
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import type { TopoNode } from "../../../shared/types/graph";
-import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
 import { getViewportCenter } from "../../utils/viewportUtils";
 
 /** Edge data structure for edge creation callback */
@@ -44,7 +43,8 @@ type Position = { x: number; y: number };
 export interface GraphCreationConfig {
   /** React Flow instance for viewport operations */
   rfInstance: ReactFlowInstance | null;
-  floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>;
+  /** Callback when a locked action is attempted */
+  onLockedAction?: () => void;
   state: {
     mode: "edit" | "view";
     isLocked: boolean;
@@ -72,11 +72,11 @@ export interface GraphCreationReturn {
   handleCreateLinkFromNode: (nodeId: string) => void;
   /** Create a node at specific position */
   createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void;
-  /** Handle adding a node from the floating panel */
+  /** Handle adding a node from toolbar controls */
   handleAddNodeFromPanel: (templateName?: string) => void;
   /** Create a network at specific position */
   createNetworkAtPosition: (position: Position, networkType: NetworkType) => string | null;
-  /** Handle adding a network from the floating panel */
+  /** Handle adding a network from toolbar controls */
   handleAddNetworkFromPanel: (networkType?: string) => void;
 }
 
@@ -88,7 +88,7 @@ export interface GraphCreationReturn {
 export function useGraphCreation(config: GraphCreationConfig): GraphCreationReturn {
   const {
     rfInstance,
-    floatingPanelRef,
+    onLockedAction,
     state,
     onEdgeCreated,
     onNodeCreated,
@@ -148,12 +148,12 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     defaultNode: state.defaultNode,
     getUsedNodeIds,
     onNodeCreated,
-    onLockedClick: () => floatingPanelRef.current?.triggerShake()
+    onLockedClick: onLockedAction
   });
 
-  // Node creation handlers (for panel)
+  // Node creation handlers (for toolbar)
   const { handleAddNodeFromPanel } = useNodeCreationHandlers(
-    floatingPanelRef,
+    onLockedAction,
     nodeCreationState,
     rfInstance,
     createNodeAtPosition,
@@ -180,21 +180,21 @@ export function useGraphCreation(config: GraphCreationConfig): GraphCreationRetu
     getExistingNodeIds: getUsedNodeIds,
     getExistingNetworkNodes,
     onNetworkCreated: handleNetworkCreatedCallback,
-    onLockedClick: () => floatingPanelRef.current?.triggerShake()
+    onLockedClick: onLockedAction
   });
 
-  // Handle adding network from panel
+  // Handle adding network from toolbar
   const handleAddNetworkFromPanel = React.useCallback(
     (networkType?: string) => {
       if (state.isLocked) {
-        floatingPanelRef.current?.triggerShake();
+        onLockedAction?.();
         return;
       }
       // Get viewport center for network node placement
       const position = getViewportCenter(rfInstance);
       createNetworkAtPosition(position, (networkType || "host") as NetworkType);
     },
-    [rfInstance, state.isLocked, createNetworkAtPosition, floatingPanelRef]
+    [rfInstance, state.isLocked, createNetworkAtPosition, onLockedAction]
   );
 
   return {

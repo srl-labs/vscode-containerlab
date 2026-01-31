@@ -16,7 +16,6 @@ import {
   convertEditorDataToNodeSaveData,
   convertNetworkEditorDataToYaml
 } from "../../../shared/utilities";
-import type { FloatingActionPanelHandle } from "../../components/panels/floatingPanel/FloatingActionPanel";
 import {
   executeTopologyCommand,
   saveEdgeAnnotations,
@@ -981,7 +980,7 @@ export function useNetworkEditorHandlers(
 // ============================================================================
 
 export function useNodeCreationHandlers(
-  floatingPanelRef: React.RefObject<FloatingActionPanelHandle | null>,
+  onLockedAction: (() => void) | undefined,
   state: NodeCreationState,
   rfInstance: ReactFlowInstance | null,
   createNodeAtPosition: (position: Position, template?: CustomNodeTemplate) => void,
@@ -995,7 +994,7 @@ export function useNodeCreationHandlers(
       }
 
       if (state.isLocked) {
-        floatingPanelRef.current?.triggerShake();
+        onLockedAction?.();
         return;
       }
 
@@ -1014,7 +1013,7 @@ export function useNodeCreationHandlers(
       state.customNodes,
       state.defaultNode,
       createNodeAtPosition,
-      floatingPanelRef,
+      onLockedAction,
       onNewCustomNode,
       rfInstance
     ]

@@ -172,10 +172,22 @@ export interface ReactFlowCanvasProps {
   onShiftClickCreate?: (position: { x: number; y: number }) => void;
   /** Callback to open the node palette panel */
   onOpenNodePalette?: () => void;
+  /** Callback to add a group annotation */
+  onAddGroup?: () => void;
+  /** Callback to enable add text mode */
+  onAddText?: () => void;
+  /** Callback to enable add shape mode */
+  onAddShapes?: (shapeType?: string) => void;
+  /** Callback to add a shape directly at a position */
+  onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
+  /** Callback to open bulk link panel */
+  onShowBulkLink?: () => void;
   /** Callback for drag-drop node creation from palette */
   onDropCreateNode?: (position: { x: number; y: number }, templateName: string) => void;
   /** Callback for drag-drop network creation from palette */
   onDropCreateNetwork?: (position: { x: number; y: number }, networkType: string) => void;
+  /** Callback when a locked action is attempted */
+  onLockedAction?: () => void;
 }
 
 export { SELECTION_COLOR, DEFAULT_ICON_COLOR, ROLE_SVG_MAP };

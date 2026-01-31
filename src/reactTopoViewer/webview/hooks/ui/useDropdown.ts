@@ -48,7 +48,7 @@ export function useDropdown(): UseDropdownReturn {
 
 /**
  * Hook for dropdown state management with hover behavior
- * Used by floating panel dropdown menus
+ * Used by toolbar dropdown menus
  */
 export function useDropdownState(disabled: boolean) {
   const [isOpen, setIsOpen] = useState(false);
@@ -94,7 +94,7 @@ export function useDropdownState(disabled: boolean) {
 }
 
 /**
- * Hook for keyboard navigation in floating panel dropdowns
+ * Hook for keyboard navigation in toolbar dropdowns
  * Different from useDropdownKeyboard which is for form field dropdowns
  */
 interface FloatingDropdownKeyboardParams {

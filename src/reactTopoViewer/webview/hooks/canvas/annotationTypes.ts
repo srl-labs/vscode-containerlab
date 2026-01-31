@@ -64,6 +64,7 @@ export interface AnnotationActions {
 
   // Shape annotations
   handleAddShapes: (shapeType?: string) => void;
+  createShapeAtPosition: (position: { x: number; y: number }, shapeType?: string) => void;
   disableAddShapeMode: () => void;
   selectShapeAnnotation: (id: string) => void;
   toggleShapeAnnotationSelection: (id: string) => void;

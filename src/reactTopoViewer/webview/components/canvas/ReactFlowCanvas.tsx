@@ -47,14 +47,10 @@ import {
 import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
-import { ContextMenu, type ContextMenuItem } from "../context-menu/ContextMenu";
+import { ContextMenu } from "../context-menu/ContextMenu";
 
-import { HelperLines } from "./HelperLines";
-import {
-  buildEdgeContextMenu,
-  buildNodeContextMenu,
-  buildPaneContextMenu
-} from "./contextMenuBuilders";
+import { AnnotationModeIndicator, HelperLines, LinkCreationIndicator } from "./CanvasOverlays";
+import { useContextMenuItems } from "./useContextMenuItems";
 import { edgeTypes, edgeTypesLite } from "./edges";
 import { CustomConnectionLine, LinkCreationLine } from "./LinkPreview";
 import { nodeTypes, nodeTypesLite } from "./nodes";
@@ -64,131 +60,6 @@ import type {
   ReactFlowCanvasProps,
   ReactFlowCanvasRef
 } from "./types";
-
-/** Parameters for useContextMenuItems hook */
-interface ContextMenuItemsParams {
-  handlers: ReturnType<typeof useCanvasHandlers>;
-  state: { mode: "view" | "edit"; isLocked: boolean };
-  editNode: (id: string | null) => void;
-  editNetwork: (id: string | null) => void;
-  editEdge: (id: string | null) => void;
-  handleDeleteNode: (nodeId: string) => void;
-  handleDeleteEdge: (edgeId: string) => void;
-  showNodeInfo: (nodeId: string) => void;
-  showLinkInfo: (edgeId: string) => void;
-  showLinkImpairment: (edgeId: string) => void;
-  nodesRef: React.RefObject<Node[]>;
-  linkSourceNode: string | null;
-  startLinkCreation: (nodeId: string) => void;
-  cancelLinkCreation: () => void;
-  annotationHandlers?: AnnotationHandlers;
-  onOpenNodePalette?: () => void;
-  onAddDefaultNode?: (position: { x: number; y: number }) => void;
-}
-
-/**
- * Hook for building context menu items.
- */
-function useContextMenuItems(params: ContextMenuItemsParams): ContextMenuItem[] {
-  const {
-    handlers,
-    state,
-    editNode,
-    editNetwork,
-    editEdge,
-    handleDeleteNode,
-    handleDeleteEdge,
-    showNodeInfo,
-    showLinkInfo,
-    showLinkImpairment,
-    nodesRef,
-    linkSourceNode,
-    startLinkCreation,
-    cancelLinkCreation,
-    annotationHandlers,
-    onOpenNodePalette,
-    onAddDefaultNode
-  } = params;
-  const { type, targetId, position: menuPosition } = handlers.contextMenu;
-
-  return useMemo(() => {
-    const isEditMode = state.mode === "edit";
-    const isLocked = state.isLocked;
-    const nodes = nodesRef.current ?? [];
-
-    if (type === "node" && targetId) {
-      const targetNode = nodes.find((n) => n.id === targetId);
-      const targetNodeType = targetNode?.type;
-
-      return buildNodeContextMenu({
-        targetId,
-        targetNodeType,
-        isEditMode,
-        isLocked,
-        closeContextMenu: handlers.closeContextMenu,
-        editNode,
-        editNetwork,
-        handleDeleteNode,
-        showNodeInfo,
-        linkSourceNode,
-        startLinkCreation,
-        cancelLinkCreation,
-        editFreeText: annotationHandlers?.onEditFreeText,
-        editFreeShape: annotationHandlers?.onEditFreeShape,
-        deleteFreeText: annotationHandlers?.onDeleteFreeText,
-        deleteFreeShape: annotationHandlers?.onDeleteFreeShape,
-        editGroup: annotationHandlers?.onEditGroup,
-        deleteGroup: annotationHandlers?.onDeleteGroup
-      });
-    }
-    if (type === "edge" && targetId) {
-      return buildEdgeContextMenu({
-        targetId,
-        isEditMode,
-        isLocked,
-        closeContextMenu: handlers.closeContextMenu,
-        editEdge,
-        handleDeleteEdge,
-        showLinkInfo,
-        showLinkImpairment
-      });
-    }
-    if (type === "pane") {
-      return buildPaneContextMenu({
-        isEditMode,
-        isLocked,
-        closeContextMenu: handlers.closeContextMenu,
-        reactFlowInstance: handlers.reactFlowInstance,
-        onOpenNodePalette,
-        onAddDefaultNode,
-        menuPosition
-      });
-    }
-    return [];
-  }, [
-    type,
-    targetId,
-    menuPosition,
-    state.mode,
-    state.isLocked,
-    handlers.closeContextMenu,
-    handlers.reactFlowInstance,
-    editNode,
-    editNetwork,
-    editEdge,
-    handleDeleteNode,
-    handleDeleteEdge,
-    showNodeInfo,
-    showLinkInfo,
-    nodesRef,
-    linkSourceNode,
-    startLinkCreation,
-    cancelLinkCreation,
-    annotationHandlers,
-    onOpenNodePalette,
-    onAddDefaultNode
-  ]);
-}
 
 /** Hook for wrapped node click handling */
 function handleAltDelete(
@@ -686,8 +557,14 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onEdgeCreated,
       onShiftClickCreate,
       onOpenNodePalette,
+      onAddGroup,
+      onAddText,
+      onAddShapes,
+      onAddShapeAtPosition,
+      onShowBulkLink,
       onDropCreateNode,
-      onDropCreateNetwork
+      onDropCreateNetwork,
+      onLockedAction
     },
     ref
   ) => {
@@ -709,8 +586,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     // Import canvas store actions
     const { setEdgeRenderConfig, setNodeRenderConfig, setAnnotationHandlers, setLinkSourceNode } =
       useCanvasStore();
-
-    const floatingPanelRef = useRef<{ triggerShake: () => void } | null>(null);
 
     // All nodes (topology + annotation) are now unified in propNodes
     const allNodes = (propNodes as Node[]) ?? [];
@@ -755,7 +630,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       mode,
       isLocked,
       onNodesChangeBase: onNodesChange,
-      onLockedAction: () => floatingPanelRef.current?.triggerShake(),
+      onLockedAction,
       nodes: allNodes,
       setNodes,
       onEdgeCreated,
@@ -864,7 +739,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       cancelLinkCreation,
       annotationHandlers,
       onOpenNodePalette,
-      onAddDefaultNode: onShiftClickCreate
+      onAddDefaultNode: onShiftClickCreate,
+      onAddGroup,
+      onAddText,
+      onAddShapes,
+      onAddShapeAtPosition,
+      onShowBulkLink
     });
 
     const {
@@ -1071,51 +951,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       </div>
     );
   }
-);
-
-/** Annotation mode indicator component */
-const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
-  <div
-    style={{
-      position: "absolute",
-      top: 10,
-      left: "50%",
-      transform: "translateX(-50%)",
-      background: "var(--vscode-editor-background, #1e1e1e)",
-      border: "1px solid var(--vscode-charts-green, #4ec9b0)",
-      borderRadius: 4,
-      padding: "6px 12px",
-      fontSize: 12,
-      color: "var(--vscode-editor-foreground, #cccccc)",
-      zIndex: 1000,
-      pointerEvents: "none"
-    }}
-  >
-    {message}
-  </div>
-);
-
-/** Link creation indicator component */
-const LinkCreationIndicator: React.FC<{ linkSourceNode: string }> = ({ linkSourceNode }) => (
-  <div
-    style={{
-      position: "absolute",
-      top: 10,
-      left: "50%",
-      transform: "translateX(-50%)",
-      background: "var(--vscode-editor-background, #1e1e1e)",
-      border: "1px solid var(--vscode-focusBorder, #007acc)",
-      borderRadius: 4,
-      padding: "6px 12px",
-      fontSize: 12,
-      color: "var(--vscode-editor-foreground, #cccccc)",
-      zIndex: 1000,
-      pointerEvents: "none"
-    }}
-  >
-    Creating link from <strong>{linkSourceNode}</strong> — Click on target node or press Escape to
-    cancel
-  </div>
 );
 
 ReactFlowCanvasInner.displayName = "ReactFlowCanvasInner";
