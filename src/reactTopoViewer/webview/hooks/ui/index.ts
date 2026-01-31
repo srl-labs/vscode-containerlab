@@ -68,4 +68,4 @@ export {
   snapToGrid,
   DEFAULT_GRID_LINE_WIDTH
 } from "./useAppState";
-export type { CanvasRef, LayoutOption, NodeData, LinkData } from "./useAppState";
+export type { CanvasRef, LayoutOption, GridStyle, NodeData, LinkData } from "./useAppState";

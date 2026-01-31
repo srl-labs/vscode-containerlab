@@ -41,6 +41,37 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
   const lastTextStyleRef = useRef<Partial<FreeTextAnnotation>>({});
   const pendingRotationRef = useRef<string | null>(null);
 
+  const buildTextAnnotation = useCallback(
+    (position: { x: number; y: number }): FreeTextAnnotation => {
+      const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
+      return {
+        id: `freeText_${Date.now()}`,
+        text: "",
+        position,
+        fontSize: lastTextStyleRef.current.fontSize ?? 14,
+        fontColor: lastTextStyleRef.current.fontColor ?? "#ffffff",
+        backgroundColor: lastTextStyleRef.current.backgroundColor,
+        fontWeight: lastTextStyleRef.current.fontWeight ?? "normal",
+        fontStyle: lastTextStyleRef.current.fontStyle ?? "normal",
+        textDecoration: lastTextStyleRef.current.textDecoration ?? "none",
+        textAlign: lastTextStyleRef.current.textAlign ?? "left",
+        fontFamily: lastTextStyleRef.current.fontFamily ?? "Arial",
+        groupId: parentGroup?.id
+      };
+    },
+    [derived.groups]
+  );
+
+  const startTextEditingAtPosition = useCallback(
+    (position: { x: number; y: number }) => {
+      const newAnnotation = buildTextAnnotation(position);
+      uiActions.setEditingTextAnnotation(newAnnotation);
+      uiActions.disableAddTextMode();
+      log.info(`[FreeText] Creating annotation at (${position.x}, ${position.y})`);
+    },
+    [buildTextAnnotation, uiActions]
+  );
+
   const handleAddText = useCallback(() => {
     if (!canEditAnnotations) {
       onLockedAction();
@@ -55,26 +86,9 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         onLockedAction();
         return;
       }
-      const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
-      const newAnnotation: FreeTextAnnotation = {
-        id: `freeText_${Date.now()}`,
-        text: "",
-        position,
-        fontSize: lastTextStyleRef.current.fontSize ?? 14,
-        fontColor: lastTextStyleRef.current.fontColor ?? "#ffffff",
-        backgroundColor: lastTextStyleRef.current.backgroundColor,
-        fontWeight: lastTextStyleRef.current.fontWeight ?? "normal",
-        fontStyle: lastTextStyleRef.current.fontStyle ?? "normal",
-        textDecoration: lastTextStyleRef.current.textDecoration ?? "none",
-        textAlign: lastTextStyleRef.current.textAlign ?? "left",
-        fontFamily: lastTextStyleRef.current.fontFamily ?? "Arial",
-        groupId: parentGroup?.id
-      };
-      uiActions.setEditingTextAnnotation(newAnnotation);
-      uiActions.disableAddTextMode();
-      log.info(`[FreeText] Creating annotation at (${position.x}, ${position.y})`);
+      startTextEditingAtPosition(position);
     },
-    [canEditAnnotations, onLockedAction, derived.groups, uiActions]
+    [canEditAnnotations, onLockedAction, startTextEditingAtPosition]
   );
 
   const editTextAnnotation = useCallback(
@@ -158,26 +172,9 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
   const handleTextCanvasClick = useCallback(
     (position: { x: number; y: number }) => {
       if (!uiState.isAddTextMode) return;
-      const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
-      const newAnnotation: FreeTextAnnotation = {
-        id: `freeText_${Date.now()}`,
-        text: "",
-        position,
-        fontSize: lastTextStyleRef.current.fontSize ?? 14,
-        fontColor: lastTextStyleRef.current.fontColor ?? "#ffffff",
-        backgroundColor: lastTextStyleRef.current.backgroundColor,
-        fontWeight: lastTextStyleRef.current.fontWeight ?? "normal",
-        fontStyle: lastTextStyleRef.current.fontStyle ?? "normal",
-        textDecoration: lastTextStyleRef.current.textDecoration ?? "none",
-        textAlign: lastTextStyleRef.current.textAlign ?? "left",
-        fontFamily: lastTextStyleRef.current.fontFamily ?? "Arial",
-        groupId: parentGroup?.id
-      };
-      uiActions.setEditingTextAnnotation(newAnnotation);
-      uiActions.disableAddTextMode();
-      log.info(`[FreeText] Creating annotation at (${position.x}, ${position.y})`);
+      startTextEditingAtPosition(position);
     },
-    [uiState.isAddTextMode, derived.groups, uiActions]
+    [uiState.isAddTextMode, startTextEditingAtPosition]
   );
 
   return useMemo(

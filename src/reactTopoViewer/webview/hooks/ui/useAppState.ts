@@ -13,7 +13,9 @@ export interface CanvasRef {
 }
 
 export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose" | "geo";
+export type GridStyle = "dotted" | "quadratic";
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
+const DEFAULT_GRID_STYLE: GridStyle = "dotted";
 
 /**
  * Node data interface for info panels
@@ -54,6 +56,7 @@ const GRID_SPACING = 14;
 const GRID_LINE_WIDTH_MIN = 0.00001;
 const GRID_LINE_WIDTH_MAX = 2;
 const GRID_LINE_WIDTH_STORAGE_KEY = "react-topoviewer-grid-line-width";
+const GRID_STYLE_STORAGE_KEY = "react-topoviewer-grid-style";
 
 function clampLineWidth(width: number): number {
   const w = Number(width);
@@ -81,6 +84,28 @@ function storeGridLineWidth(width: number): void {
   }
 }
 
+function parseGridStyle(raw: string | null): GridStyle {
+  if (raw === "quadratic" || raw === "dotted") return raw;
+  return DEFAULT_GRID_STYLE;
+}
+
+function getStoredGridStyle(): GridStyle {
+  try {
+    return parseGridStyle(window.localStorage.getItem(GRID_STYLE_STORAGE_KEY));
+  } catch {
+    /* ignore storage errors */
+  }
+  return DEFAULT_GRID_STYLE;
+}
+
+function storeGridStyle(style: GridStyle): void {
+  try {
+    window.localStorage.setItem(GRID_STYLE_STORAGE_KEY, style);
+  } catch {
+    /* ignore storage errors */
+  }
+}
+
 /**
  * Snap a position to the nearest grid cell center.
  * Grid lines are at 0, 14, 28, ... so cell centers are at 7, 21, 35, ...
@@ -97,15 +122,23 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
   isGeoLayout: boolean;
   gridLineWidth: number;
   setGridLineWidth: (width: number) => void;
+  gridStyle: GridStyle;
+  setGridStyle: (style: GridStyle) => void;
 } {
   const [layout, setLayoutState] = useState<LayoutOption>("preset");
   const [gridLineWidth, setGridLineWidthState] = useState<number>(() => getStoredGridLineWidth());
+  const [gridStyle, setGridStyleState] = useState<GridStyle>(() => getStoredGridStyle());
 
   const setGridLineWidth = useCallback((width: number) => {
     const clamped = clampLineWidth(width);
     setGridLineWidthState(clamped);
     storeGridLineWidth(clamped);
     // Grid overlay is now handled by ReactFlow's grid component
+  }, []);
+
+  const setGridStyle = useCallback((style: GridStyle) => {
+    setGridStyleState(style);
+    storeGridStyle(style);
   }, []);
 
   const setLayout = useCallback(
@@ -124,7 +157,9 @@ export function useLayoutControls(canvasRef: React.RefObject<CanvasRef | null>):
     setLayout,
     isGeoLayout: layout === "geo",
     gridLineWidth,
-    setGridLineWidth
+    setGridLineWidth,
+    gridStyle,
+    setGridStyle
   };
 }
 

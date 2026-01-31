@@ -26,7 +26,6 @@ import {
   type ReactFlowInstance
 } from "@xyflow/react";
 
-import "@xyflow/react/dist/style.css";
 
 import {
   FREE_SHAPE_NODE_TYPE,
@@ -44,6 +43,7 @@ import {
   useSourceNodePosition,
   GRID_SIZE
 } from "../../hooks/canvas";
+import { DEFAULT_GRID_LINE_WIDTH } from "../../hooks/ui";
 import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
@@ -60,6 +60,8 @@ import type {
   ReactFlowCanvasProps,
   ReactFlowCanvasRef
 } from "./types";
+
+const QUADRATIC_GRID_SIZE = 40;
 
 /** Hook for wrapped node click handling */
 function handleAltDelete(
@@ -550,6 +552,81 @@ function getCanvasInteractionConfig(params: {
   return { allowPanOnDrag, allowSelectionOnDrag, nodesDraggable, nodesConnectable, reactFlowStyle };
 }
 
+function renderGeoMapLayer(
+  geoContainerRef: React.RefObject<HTMLDivElement | null>
+): React.ReactElement {
+  return (
+    <div
+      id="react-topoviewer-geo-map"
+      ref={geoContainerRef}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        zIndex: 0
+      }}
+    />
+  );
+}
+
+function renderBackgroundLayer(params: {
+  gridLineWidth: number;
+  gridStyle: "dotted" | "quadratic";
+}): React.ReactElement {
+  const { gridLineWidth, gridStyle } = params;
+  const isQuadraticGrid = gridStyle === "quadratic";
+  return (
+    <Background
+      variant={isQuadraticGrid ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+      gap={isQuadraticGrid ? QUADRATIC_GRID_SIZE : GRID_SIZE}
+      size={isQuadraticGrid ? undefined : gridLineWidth}
+      lineWidth={isQuadraticGrid ? gridLineWidth : undefined}
+      color="#555"
+    />
+  );
+}
+
+function renderLinkCreationLine(params: {
+  linkSourceNode: string;
+  linkTargetNodeId: string | null;
+  nodes: Node[];
+  edges: Edge[];
+  sourcePosition: { x: number; y: number } | null;
+  linkCreationSeed: number | null | undefined;
+  reactFlowInstance: ReactFlowInstance;
+}): React.ReactElement {
+  const {
+    linkSourceNode,
+    linkTargetNodeId,
+    nodes,
+    edges,
+    sourcePosition,
+    linkCreationSeed,
+    reactFlowInstance
+  } = params;
+  return (
+    <LinkCreationLine
+      linkSourceNodeId={linkSourceNode}
+      linkTargetNodeId={linkTargetNodeId}
+      nodes={nodes}
+      edges={edges}
+      sourcePosition={sourcePosition}
+      linkCreationSeed={linkCreationSeed}
+      reactFlowInstance={reactFlowInstance}
+    />
+  );
+}
+
+function renderLinkIndicator(linkSourceNode: string): React.ReactElement {
+  return <LinkCreationIndicator linkSourceNode={linkSourceNode} />;
+}
+
+function renderAnnotationIndicator(message: string): React.ReactElement {
+  return <AnnotationModeIndicator message={message} />;
+}
+
 function buildCanvasOverlays(params: {
   isGeoLayout: boolean;
   isLowDetail: boolean;
@@ -563,6 +640,8 @@ function buildCanvasOverlays(params: {
   reactFlowInstance: ReactFlowInstance | null;
   isInAddMode: boolean;
   addModeMessage?: string | null;
+  gridLineWidth: number;
+  gridStyle: "dotted" | "quadratic";
 }): {
   geoMapLayer: React.ReactNode;
   backgroundLayer: React.ReactNode;
@@ -582,48 +661,38 @@ function buildCanvasOverlays(params: {
     linkCreationSeed,
     reactFlowInstance,
     isInAddMode,
-    addModeMessage
+    addModeMessage,
+    gridLineWidth,
+    gridStyle
   } = params;
 
-  const geoMapLayer = isGeoLayout ? (
-    <div
-      id="react-topoviewer-geo-map"
-      ref={geoContainerRef}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        zIndex: 0
-      }}
-    />
-  ) : null;
+  const canShowGeoMap = isGeoLayout;
+  const canShowBackground = !isLowDetail && !isGeoLayout;
+  const canShowLinkCreation = Boolean(linkSourceNode) && Boolean(reactFlowInstance);
+  const canShowLinkIndicator = Boolean(linkSourceNode);
+  const canShowAnnotationIndicator = isInAddMode && Boolean(addModeMessage);
 
-  const backgroundLayer =
-    !isLowDetail && !isGeoLayout ? (
-      <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#555" />
-    ) : null;
-
-  const linkCreationLine =
-    linkSourceNode && reactFlowInstance ? (
-      <LinkCreationLine
-        linkSourceNodeId={linkSourceNode}
-        linkTargetNodeId={linkTargetNodeId}
-        nodes={nodes}
-        edges={edges}
-        sourcePosition={sourcePosition}
-        linkCreationSeed={linkCreationSeed}
-        reactFlowInstance={reactFlowInstance}
-      />
-    ) : null;
-
-  const linkIndicator = linkSourceNode ? (
-    <LinkCreationIndicator linkSourceNode={linkSourceNode} />
-  ) : null;
-
-  const annotationIndicator =
-    isInAddMode && addModeMessage ? <AnnotationModeIndicator message={addModeMessage} /> : null;
+  const geoMapLayer = canShowGeoMap ? renderGeoMapLayer(geoContainerRef) : null;
+  const backgroundLayer = canShowBackground
+    ? renderBackgroundLayer({ gridLineWidth, gridStyle })
+    : null;
+  const linkCreationLine = canShowLinkCreation
+    ? renderLinkCreationLine({
+        linkSourceNode: linkSourceNode as string,
+        linkTargetNodeId,
+        nodes,
+        edges,
+        sourcePosition,
+        linkCreationSeed,
+        reactFlowInstance: reactFlowInstance as ReactFlowInstance
+      })
+    : null;
+  const linkIndicator = canShowLinkIndicator
+    ? renderLinkIndicator(linkSourceNode as string)
+    : null;
+  const annotationIndicator = canShowAnnotationIndicator
+    ? renderAnnotationIndicator(addModeMessage as string)
+    : null;
 
   return { geoMapLayer, backgroundLayer, linkCreationLine, linkIndicator, annotationIndicator };
 }
@@ -644,6 +713,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       edges: propEdges,
       layout = "preset",
       isGeoLayout = false,
+      gridLineWidth = DEFAULT_GRID_LINE_WIDTH,
+      gridStyle = "dotted",
       annotationMode,
       annotationHandlers,
       onNodeDelete,
@@ -956,7 +1027,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       linkCreationSeed: linkCreationSeed ?? null,
       reactFlowInstance: handlers.reactFlowInstance.current,
       isInAddMode,
-      addModeMessage
+      addModeMessage,
+      gridLineWidth,
+      gridStyle
     });
     const contextMenuVisible = handlers.contextMenu.type !== null;
 

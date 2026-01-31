@@ -58,23 +58,20 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   };
 
   const visibleTabs = tabs.filter((t) => !t.hidden);
+  const tabButtons = visibleTabs.map((tab) => (
+    <button
+      key={tab.id}
+      className={`panel-tab-button ${activeTab === tab.id ? "tab-active" : ""}`}
+      onClick={() => onTabChange(tab.id)}
+      data-tab={tab.id}
+      data-testid={`panel-tab-${tab.id}`}
+    >
+      {tab.label}
+    </button>
+  ));
 
   if (!showArrows) {
-    return (
-      <div className="panel-tabs">
-        {visibleTabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`panel-tab-button ${activeTab === tab.id ? "tab-active" : ""}`}
-            onClick={() => onTabChange(tab.id)}
-            data-tab={tab.id}
-            data-testid={`panel-tab-${tab.id}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-    );
+    return <div className="panel-tabs">{tabButtons}</div>;
   }
 
   return (
@@ -89,19 +86,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
         <i className="fas fa-chevron-left"></i>
       </button>
       <div className="tab-scroll-viewport" ref={viewportRef}>
-        <div className="tab-strip">
-          {visibleTabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`panel-tab-button ${activeTab === tab.id ? "tab-active" : ""}`}
-              onClick={() => onTabChange(tab.id)}
-              data-tab={tab.id}
-              data-testid={`panel-tab-${tab.id}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <div className="tab-strip">{tabButtons}</div>
       </div>
       <button
         className="tab-scroll-btn"

@@ -17,7 +17,7 @@ import {
   useTopoViewerActions
 } from "../../stores/topoViewerStore";
 import { DEFAULT_GRID_LINE_WIDTH, useDeploymentCommands, useDropdown } from "../../hooks/ui";
-import type { LayoutOption } from "../../hooks/ui";
+import type { GridStyle, LayoutOption } from "../../hooks/ui";
 import { saveViewerSettings } from "../../services";
 import {
   ENDPOINT_LABEL_OFFSET_MAX,
@@ -42,6 +42,8 @@ interface NavbarProps {
   onLayoutChange: (layout: LayoutOption) => void;
   gridLineWidth: number;
   onGridLineWidthChange: (width: number) => void;
+  gridStyle: GridStyle;
+  onGridStyleChange: (style: GridStyle) => void;
   onLabSettings?: () => void;
   onToggleSplit?: () => void;
   onFindNode?: () => void;
@@ -74,6 +76,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLayoutChange,
   gridLineWidth,
   onGridLineWidthChange,
+  gridStyle,
+  onGridStyleChange,
   onLabSettings,
   onToggleSplit,
   onFindNode,
@@ -208,7 +212,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         />
 
         {/* Grid line width */}
-        <GridDropdown value={gridLineWidth} onChange={onGridLineWidthChange} />
+        <GridDropdown
+          value={gridLineWidth}
+          gridStyle={gridStyle}
+          onChange={onGridLineWidthChange}
+          onGridStyleChange={onGridStyleChange}
+        />
 
         {/* Find Node */}
         <NavButton
@@ -492,10 +501,22 @@ const LayoutDropdown: React.FC<LayoutDropdownProps> = ({
 
 interface GridSettingsMenuProps {
   value: number;
+  gridStyle: GridStyle;
   onChange: (width: number) => void;
+  onGridStyleChange: (style: GridStyle) => void;
 }
 
-const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({ value, onChange }) => {
+const GRID_STYLE_OPTIONS: { value: GridStyle; label: string }[] = [
+  { value: "dotted", label: "Dotted" },
+  { value: "quadratic", label: "Quadractic" }
+];
+
+const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({
+  value,
+  gridStyle,
+  onChange,
+  onGridStyleChange
+}) => {
   const handleChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     const next = parseFloat(evt.target.value);
     onChange(Number.isFinite(next) ? next : DEFAULT_GRID_LINE_WIDTH);
@@ -503,6 +524,27 @@ const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({ value, onChange }) 
   const handleReset = () => onChange(DEFAULT_GRID_LINE_WIDTH);
   return (
     <div className="navbar-menu grid-menu" role="menu">
+      <div className="flex items-center gap-2 mb-2">
+        <label className="text-2xs font-semibold text-default uppercase tracking-wide">
+          Grid style
+        </label>
+      </div>
+      {GRID_STYLE_OPTIONS.map(({ value: styleValue, label }) => (
+        <button
+          key={styleValue}
+          type="button"
+          className="navbar-menu-option"
+          onClick={() => onGridStyleChange(styleValue)}
+          role="menuitemradio"
+          aria-checked={gridStyle === styleValue}
+        >
+          <span>{label}</span>
+          {gridStyle === styleValue && (
+            <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
+          )}
+        </button>
+      ))}
+      <hr className="my-1 border-t border-default" />
       <div className="flex items-center gap-2 mb-2">
         <label className="text-2xs font-semibold text-default uppercase tracking-wide">
           Grid line width
@@ -532,21 +574,35 @@ const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({ value, onChange }) 
 
 interface GridDropdownProps {
   value: number;
+  gridStyle: GridStyle;
   onChange: (width: number) => void;
+  onGridStyleChange: (style: GridStyle) => void;
 }
 
-const GridDropdown: React.FC<GridDropdownProps> = ({ value, onChange }) => {
+const GridDropdown: React.FC<GridDropdownProps> = ({
+  value,
+  gridStyle,
+  onChange,
+  onGridStyleChange
+}) => {
   const dropdown = useDropdown();
   return (
     <div className="relative inline-block" ref={dropdown.ref}>
       <NavButton
         icon="fa-border-all"
-        title="Grid line width"
+        title="Grid settings"
         onClick={dropdown.toggle}
         active={dropdown.isOpen}
         testId="navbar-grid"
       />
-      {dropdown.isOpen && <GridSettingsMenu value={value} onChange={onChange} />}
+      {dropdown.isOpen && (
+        <GridSettingsMenu
+          value={value}
+          gridStyle={gridStyle}
+          onChange={onChange}
+          onGridStyleChange={onGridStyleChange}
+        />
+      )}
     </div>
   );
 };

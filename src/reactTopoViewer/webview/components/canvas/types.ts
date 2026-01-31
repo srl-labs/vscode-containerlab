@@ -21,6 +21,7 @@ import type {
   GroupRFNode
 } from "../../../shared/types/graph";
 import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP, SELECTION_COLOR } from "../../../shared/types/graph";
+import type { GridStyle } from "../../hooks/ui";
 
 /** Edge label rendering mode */
 export type EdgeLabelMode = "show-all" | "on-select" | "hide";
@@ -141,6 +142,10 @@ export interface ReactFlowCanvasProps {
   layout?: "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
   /** Geo layout active */
   isGeoLayout?: boolean;
+  /** Grid line thickness for the background */
+  gridLineWidth?: number;
+  /** Grid background style */
+  gridStyle?: GridStyle;
   /** Annotation add mode state */
   annotationMode?: AnnotationModeState;
   /** Annotation event handlers */
