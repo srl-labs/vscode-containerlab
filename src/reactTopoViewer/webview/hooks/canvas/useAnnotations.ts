@@ -315,12 +315,14 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
       getNodeMembership: derived.getNodeMembership,
       getGroupMembers: derived.getGroupMembers,
       handleAddGroup: groupActions.handleAddGroup,
+      createGroupAtPosition: groupActions.createGroupAtPosition,
       generateGroupId: () => generateGroupId(derived.groups),
       addGroup: groupActions.addGroup,
       updateGroupSize: groupActions.updateGroupSize,
 
       // Text actions
       handleAddText: textActions.handleAddText,
+      createTextAtPosition: textActions.createTextAtPosition,
       disableAddTextMode: uiActions.disableAddTextMode,
       selectTextAnnotation: uiActions.selectTextAnnotation,
       toggleTextAnnotationSelection: uiActions.toggleTextAnnotationSelection,

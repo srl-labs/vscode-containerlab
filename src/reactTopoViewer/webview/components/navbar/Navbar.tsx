@@ -152,11 +152,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           processingMode={processingMode}
         />
 
-        {/* Node Palette */}
+        {/* Palette */}
         {isEditMode && (
           <NavButton
             icon="fa-plus"
-            title="Open Node Palette"
+            title="Open Palette"
             onClick={handleOpenNodePalette}
             testId="navbar-node-palette"
           />

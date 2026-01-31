@@ -38,12 +38,14 @@ export interface AnnotationActions {
   getNodeMembership: (nodeId: string) => string | null;
   getGroupMembers: (groupId: string, options?: { includeNested?: boolean }) => string[];
   handleAddGroup: () => void;
+  createGroupAtPosition: (position: { x: number; y: number }) => void;
   generateGroupId: () => string;
   addGroup: (group: GroupStyleAnnotation) => void;
   updateGroupSize: (id: string, width: number, height: number) => void;
 
   // Text annotations
   handleAddText: () => void;
+  createTextAtPosition: (position: { x: number; y: number }) => void;
   disableAddTextMode: () => void;
   selectTextAnnotation: (id: string) => void;
   toggleTextAnnotationSelection: (id: string) => void;

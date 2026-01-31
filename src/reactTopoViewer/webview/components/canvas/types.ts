@@ -178,6 +178,10 @@ export interface ReactFlowCanvasProps {
   onAddText?: () => void;
   /** Callback to enable add shape mode */
   onAddShapes?: (shapeType?: string) => void;
+  /** Callback to add text directly at a position */
+  onAddTextAtPosition?: (position: { x: number; y: number }) => void;
+  /** Callback to add a group directly at a position */
+  onAddGroupAtPosition?: (position: { x: number; y: number }) => void;
   /** Callback to add a shape directly at a position */
   onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
   /** Callback to open bulk link panel */

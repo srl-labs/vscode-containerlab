@@ -13,9 +13,15 @@ interface TabNavigationProps {
   tabs: TabDefinition[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
+  showArrows?: boolean;
 }
 
-export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, onTabChange }) => {
+export const TabNavigation: React.FC<TabNavigationProps> = ({
+  tabs,
+  activeTab,
+  onTabChange,
+  showArrows = true
+}) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -52,6 +58,24 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, activeTab, o
   };
 
   const visibleTabs = tabs.filter((t) => !t.hidden);
+
+  if (!showArrows) {
+    return (
+      <div className="panel-tabs">
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`panel-tab-button ${activeTab === tab.id ? "tab-active" : ""}`}
+            onClick={() => onTabChange(tab.id)}
+            data-tab={tab.id}
+            data-testid={`panel-tab-${tab.id}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="panel-tabs panel-tabs--with-arrows">

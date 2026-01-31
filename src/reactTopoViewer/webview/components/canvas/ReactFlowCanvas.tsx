@@ -312,6 +312,102 @@ function useWrappedOnInit(
   );
 }
 
+type CanvasDropData = {
+  type: "node" | "network" | "annotation";
+  templateName?: string;
+  networkType?: string;
+  annotationType?: "text" | "shape" | "group";
+  shapeType?: string;
+};
+
+type CanvasDropHandlers = {
+  onDropCreateNode?: (position: { x: number; y: number }, templateName: string) => void;
+  onDropCreateNetwork?: (position: { x: number; y: number }, networkType: string) => void;
+  onAddTextAtPosition?: (position: { x: number; y: number }) => void;
+  onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
+  onAddGroupAtPosition?: (position: { x: number; y: number }) => void;
+};
+
+const CANVAS_DROP_MIME_TYPE = "application/reactflow-node";
+
+function parseCanvasDropData(event: React.DragEvent): CanvasDropData | null {
+  const dataStr = event.dataTransfer.getData(CANVAS_DROP_MIME_TYPE);
+  if (!dataStr) return null;
+  try {
+    return JSON.parse(dataStr) as CanvasDropData;
+  } catch {
+    return null;
+  }
+}
+
+function getSnappedDropPosition(
+  reactFlowInstance: ReactFlowInstance,
+  event: React.DragEvent
+): { x: number; y: number } {
+  const position = reactFlowInstance.screenToFlowPosition({
+    x: event.clientX,
+    y: event.clientY
+  });
+  return {
+    x: Math.round(position.x / GRID_SIZE) * GRID_SIZE,
+    y: Math.round(position.y / GRID_SIZE) * GRID_SIZE
+  };
+}
+
+function handleNodeDrop(
+  data: CanvasDropData,
+  snappedPosition: { x: number; y: number },
+  handlers: CanvasDropHandlers
+) {
+  if (!data.templateName || !handlers.onDropCreateNode) return;
+  handlers.onDropCreateNode(snappedPosition, data.templateName);
+}
+
+function handleNetworkDrop(
+  data: CanvasDropData,
+  snappedPosition: { x: number; y: number },
+  handlers: CanvasDropHandlers
+) {
+  if (!data.networkType || !handlers.onDropCreateNetwork) return;
+  handlers.onDropCreateNetwork(snappedPosition, data.networkType);
+}
+
+function handleAnnotationDrop(
+  data: CanvasDropData,
+  snappedPosition: { x: number; y: number },
+  handlers: CanvasDropHandlers
+) {
+  if (data.annotationType === "text") {
+    handlers.onAddTextAtPosition?.(snappedPosition);
+    return;
+  }
+  if (data.annotationType === "shape") {
+    handlers.onAddShapeAtPosition?.(snappedPosition, data.shapeType);
+    return;
+  }
+  if (data.annotationType === "group") {
+    handlers.onAddGroupAtPosition?.(snappedPosition);
+  }
+}
+
+function handleCanvasDrop(
+  data: CanvasDropData,
+  snappedPosition: { x: number; y: number },
+  handlers: CanvasDropHandlers
+) {
+  if (data.type === "node") {
+    handleNodeDrop(data, snappedPosition, handlers);
+    return;
+  }
+  if (data.type === "network") {
+    handleNetworkDrop(data, snappedPosition, handlers);
+    return;
+  }
+  if (data.type === "annotation") {
+    handleAnnotationDrop(data, snappedPosition, handlers);
+  }
+}
+
 /** Hook for node and edge refs that update each render */
 function useGraphRefs(nodes: Node[], edges: Edge[]) {
   const nodesRef = useRef<Node[]>(nodes);
@@ -560,6 +656,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddGroup,
       onAddText,
       onAddShapes,
+      onAddTextAtPosition,
+      onAddGroupAtPosition,
       onAddShapeAtPosition,
       onShowBulkLink,
       onDropCreateNode,
@@ -805,41 +903,30 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
 
         if (mode !== "edit" || isLocked) return;
 
-        const dataStr = event.dataTransfer.getData("application/reactflow-node");
-        if (!dataStr) return;
+        const data = parseCanvasDropData(event);
+        if (!data) return;
 
-        try {
-          const data = JSON.parse(dataStr) as { type: string; templateName?: string; networkType?: string };
-          const rfInstance = handlersReactFlowInstance.current;
-          if (!rfInstance) return;
+        const rfInstance = handlersReactFlowInstance.current;
+        if (!rfInstance) return;
 
-          // Get the drop position in flow coordinates
-          const position = rfInstance.screenToFlowPosition({
-            x: event.clientX,
-            y: event.clientY
-          });
-
-          // Snap to grid
-          const snappedPosition = {
-            x: Math.round(position.x / GRID_SIZE) * GRID_SIZE,
-            y: Math.round(position.y / GRID_SIZE) * GRID_SIZE
-          };
-
-          if (data.type === "node" && data.templateName && onDropCreateNode) {
-            onDropCreateNode(snappedPosition, data.templateName);
-          } else if (data.type === "network" && data.networkType && onDropCreateNetwork) {
-            onDropCreateNetwork(snappedPosition, data.networkType);
-          }
-        } catch {
-          // Invalid drop data, ignore
-        }
+        const snappedPosition = getSnappedDropPosition(rfInstance, event);
+        handleCanvasDrop(data, snappedPosition, {
+          onDropCreateNode,
+          onDropCreateNetwork,
+          onAddTextAtPosition,
+          onAddShapeAtPosition,
+          onAddGroupAtPosition
+        });
       },
       [
         mode,
         isLocked,
         handlersReactFlowInstance,
         onDropCreateNode,
-        onDropCreateNetwork
+        onDropCreateNetwork,
+        onAddTextAtPosition,
+        onAddShapeAtPosition,
+        onAddGroupAtPosition
       ]
     );
 

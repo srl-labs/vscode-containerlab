@@ -258,14 +258,91 @@
   }
 
   /* =============================================================================
-   * Node Palette Panel Styles
+   * Palette Panel Styles
    * ============================================================================= */
+
+  .node-palette-drawer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: clamp(240px, 26vw, 320px);
+    max-width: 85vw;
+    display: flex;
+    flex-direction: column;
+    border-left: none;
+    border-radius: 0 0.5rem 0.5rem 0;
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.2s ease;
+    will-change: transform;
+    z-index: 26;
+  }
+
+  .node-palette-drawer.is-open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .node-palette-drawer-header {
+    cursor: default;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0.5rem;
+  }
+
+  .node-palette-drawer-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .node-palette-tabs {
+    padding: 0.5rem 0.5rem 0;
+  }
+
+  .node-palette-tabs .panel-tabs {
+    margin-bottom: 0;
+  }
+
+  .node-palette-tabs .panel-tab-button {
+    font-size: 0.6875rem;
+  }
 
   .node-palette-content {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.5rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
+    overflow-x: hidden;
+  }
+
+  .node-palette-content::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .node-palette-content::-webkit-scrollbar:horizontal {
+    display: none;
+  }
+
+  .node-palette-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .node-palette-content::-webkit-scrollbar-thumb {
+    background-color: var(--vscode-scrollbarSlider-background);
+    border-radius: 4px;
+  }
+
+  .node-palette-content::-webkit-scrollbar-thumb:hover {
+    background-color: var(--vscode-scrollbarSlider-hoverBackground);
   }
 
   /* Search box */
@@ -378,6 +455,10 @@
     background: var(--vscode-editor-background);
   }
 
+  .node-palette-item.node-palette-annotation {
+    grid-template-columns: auto 1fr auto;
+  }
+
   .node-palette-icon {
     display: flex;
     align-items: center;
@@ -434,6 +515,7 @@
     display: flex;
     gap: 4px;
   }
+
 
   .node-palette-action-btn {
     background: none;

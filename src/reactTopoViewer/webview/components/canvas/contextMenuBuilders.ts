@@ -411,7 +411,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     },
     {
       id: "open-node-palette",
-      label: "Open Node Palette",
+      label: "Open Palette",
       icon: "fas fa-th",
       disabled: !isEditMode || isLocked,
       onClick: () => {

@@ -24,6 +24,7 @@ interface UseTextAnnotationsParams {
 
 export interface TextAnnotationActions {
   handleAddText: () => void;
+  createTextAtPosition: (position: { x: number; y: number }) => void;
   editTextAnnotation: (id: string) => void;
   saveTextAnnotation: (annotation: FreeTextAnnotation) => void;
   deleteTextAnnotation: (id: string) => void;
@@ -47,6 +48,34 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
     }
     uiActions.setAddTextMode(true);
   }, [canEditAnnotations, onLockedAction, uiActions]);
+
+  const createTextAtPosition = useCallback(
+    (position: { x: number; y: number }) => {
+      if (!canEditAnnotations) {
+        onLockedAction();
+        return;
+      }
+      const parentGroup = findDeepestGroupAtPosition(position, derived.groups);
+      const newAnnotation: FreeTextAnnotation = {
+        id: `freeText_${Date.now()}`,
+        text: "",
+        position,
+        fontSize: lastTextStyleRef.current.fontSize ?? 14,
+        fontColor: lastTextStyleRef.current.fontColor ?? "#ffffff",
+        backgroundColor: lastTextStyleRef.current.backgroundColor,
+        fontWeight: lastTextStyleRef.current.fontWeight ?? "normal",
+        fontStyle: lastTextStyleRef.current.fontStyle ?? "normal",
+        textDecoration: lastTextStyleRef.current.textDecoration ?? "none",
+        textAlign: lastTextStyleRef.current.textAlign ?? "left",
+        fontFamily: lastTextStyleRef.current.fontFamily ?? "Arial",
+        groupId: parentGroup?.id
+      };
+      uiActions.setEditingTextAnnotation(newAnnotation);
+      uiActions.disableAddTextMode();
+      log.info(`[FreeText] Creating annotation at (${position.x}, ${position.y})`);
+    },
+    [canEditAnnotations, onLockedAction, derived.groups, uiActions]
+  );
 
   const editTextAnnotation = useCallback(
     (id: string) => {
@@ -154,6 +183,7 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
   return useMemo(
     () => ({
       handleAddText,
+      createTextAtPosition,
       editTextAnnotation,
       saveTextAnnotation,
       deleteTextAnnotation,
@@ -164,6 +194,7 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
     }),
     [
       handleAddText,
+      createTextAtPosition,
       editTextAnnotation,
       saveTextAnnotation,
       deleteTextAnnotation,

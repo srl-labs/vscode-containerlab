@@ -37,6 +37,7 @@ export interface GroupAnnotationActions {
   saveGroup: (data: GroupEditorData) => void;
   deleteGroup: (id: string) => void;
   handleAddGroup: () => void;
+  createGroupAtPosition: (position: { x: number; y: number }) => void;
   addGroup: (group: GroupStyleAnnotation) => void;
   updateGroupSize: (id: string, width: number, height: number) => void;
 }
@@ -263,6 +264,64 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
     persistMemberships();
   }, [canEditAnnotations, onLockedAction, rfInstance, derived, persist, persistMemberships]);
 
+  const createGroupAtPosition = useCallback(
+    (position: { x: number; y: number }) => {
+      if (!canEditAnnotations) {
+        onLockedAction();
+        return;
+      }
+
+      const newGroupId = generateGroupId(derived.groups);
+      const padding = 40;
+
+      const rfNodes = rfInstance?.getNodes() ?? [];
+      const selectedNodes = rfNodes.filter((n) => n.selected && n.type !== "group");
+
+      const bounds =
+        selectedNodes.length > 0
+          ? calculateGroupBoundsFromNodes(selectedNodes, padding)
+          : {
+              position,
+              width: 300,
+              height: 200,
+              members: []
+            };
+
+      const parentGroup = findParentGroupForBounds(
+        { x: bounds.position.x, y: bounds.position.y, width: bounds.width, height: bounds.height },
+        derived.groups,
+        newGroupId
+      );
+
+      const newGroup: GroupStyleAnnotation = {
+        id: newGroupId,
+        name: "New Group",
+        level: "1",
+        position: bounds.position,
+        width: bounds.width,
+        height: bounds.height,
+        backgroundColor: "rgba(100, 100, 255, 0.1)",
+        borderColor: "#666",
+        borderWidth: 2,
+        borderStyle: "dashed",
+        borderRadius: 8,
+        members: bounds.members,
+        ...(parentGroup ? { parentId: parentGroup.id, groupId: parentGroup.id } : {})
+      };
+
+      derived.addGroup(newGroup);
+      if (bounds.members.length > 0) {
+        for (const memberId of bounds.members) {
+          derived.addNodeToGroup(memberId, newGroupId);
+        }
+      }
+
+      persist();
+      persistMemberships();
+    },
+    [canEditAnnotations, onLockedAction, rfInstance, derived, persist, persistMemberships]
+  );
+
   const addGroup = useCallback(
     (group: GroupStyleAnnotation) => {
       const memberIds = Array.isArray(group.members) ? (group.members as string[]) : [];
@@ -294,9 +353,18 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       saveGroup,
       deleteGroup,
       handleAddGroup,
+      createGroupAtPosition,
       addGroup,
       updateGroupSize
     }),
-    [editGroup, saveGroup, deleteGroup, handleAddGroup, addGroup, updateGroupSize]
+    [
+      editGroup,
+      saveGroup,
+      deleteGroup,
+      handleAddGroup,
+      createGroupAtPosition,
+      addGroup,
+      updateGroupSize
+    ]
   );
 }

@@ -20,7 +20,7 @@ import { Navbar } from "./components/navbar/Navbar";
 import {
   EditorPanels,
   ViewPanels,
-  NodePalettePanel,
+  PalettePanel,
   type LinkImpairmentData
 } from "./components/panels";
 import { ShortcutDisplay, ToastContainer } from "./components/ui";
@@ -529,6 +529,8 @@ export const AppContent: React.FC<AppContentProps> = ({
           onAddGroup={annotations.handleAddGroup}
           onAddText={annotations.handleAddText}
           onAddShapes={annotations.handleAddShapes}
+          onAddTextAtPosition={annotations.createTextAtPosition}
+          onAddGroupAtPosition={annotations.createGroupAtPosition}
           onAddShapeAtPosition={annotations.createShapeAtPosition}
           onShowBulkLink={panelVisibility.handleShowBulkLink}
           onDropCreateNode={handleDropCreateNode}
@@ -645,7 +647,7 @@ export const AppContent: React.FC<AppContentProps> = ({
           }}
         />
         {state.mode === "edit" && (
-          <NodePalettePanel
+          <PalettePanel
             isVisible={panelVisibility.showNodePalettePanel}
             onClose={panelVisibility.handleCloseNodePalette}
             onEditCustomNode={customNodeCommands.onEditCustomNode}
