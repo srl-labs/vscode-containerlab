@@ -15,7 +15,7 @@ import {
 } from "../../annotations/annotationNodeConverters";
 import { log } from "../../utils/logger";
 
-import { snapToGrid } from "./useCanvasHandlers";
+import { snapToGrid } from "../../utils/grid";
 
 interface UseAnnotationCanvasHandlersOptions {
   mode: "view" | "edit";

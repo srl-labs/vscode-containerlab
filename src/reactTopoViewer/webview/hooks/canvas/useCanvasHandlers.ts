@@ -36,17 +36,7 @@ import {
 import { useGraphStore } from "../../stores/graphStore";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
 import { buildEdgeId } from "../../utils/edgeId";
-
-// Grid size for snapping
-export const GRID_SIZE = 20;
-
-// Snap position to grid
-export function snapToGrid(position: XYPosition): XYPosition {
-  return {
-    x: Math.round(position.x / GRID_SIZE) * GRID_SIZE,
-    y: Math.round(position.y / GRID_SIZE) * GRID_SIZE
-  };
-}
+import { snapToGrid } from "../../utils/grid";
 
 /** Handlers for group member movement during drag */
 export interface GroupMemberHandlers {

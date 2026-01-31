@@ -10,7 +10,7 @@ export {
 } from "./useReactFlowCanvasHooks";
 
 // Canvas event handlers (React Flow integration)
-export { useCanvasHandlers, snapToGrid, GRID_SIZE } from "./useCanvasHandlers";
+export { useCanvasHandlers } from "./useCanvasHandlers";
 export { useAnnotationCanvasHandlers } from "./useAnnotationCanvasHandlers";
 export { useGeoMapLayout } from "./useGeoMapLayout";
 export { useHelperLines, calculateAlignments } from "./useHelperLines";

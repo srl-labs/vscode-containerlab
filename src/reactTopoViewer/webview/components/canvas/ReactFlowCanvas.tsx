@@ -26,7 +26,6 @@ import {
   type ReactFlowInstance
 } from "@xyflow/react";
 
-
 import {
   FREE_SHAPE_NODE_TYPE,
   FREE_TEXT_NODE_TYPE,
@@ -40,14 +39,14 @@ import {
   useGeoMapLayout,
   useHelperLines,
   useLinkCreation,
-  useSourceNodePosition,
-  GRID_SIZE
+  useSourceNodePosition
 } from "../../hooks/canvas";
 import { DEFAULT_GRID_LINE_WIDTH } from "../../hooks/ui";
 import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
 import { ContextMenu } from "../context-menu/ContextMenu";
+import { GRID_SIZE } from "../../utils/grid";
 
 import { AnnotationModeIndicator, HelperLines, LinkCreationIndicator } from "./CanvasOverlays";
 import { useContextMenuItems } from "./useContextMenuItems";
