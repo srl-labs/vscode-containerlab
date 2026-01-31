@@ -30,8 +30,15 @@ export function useDropdown(): UseDropdownReturn {
         setIsOpen(false);
       }
     };
+    const handlePaneClick = () => {
+      setIsOpen(false);
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("topoviewer:pane-click", handlePaneClick as EventListener);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("topoviewer:pane-click", handlePaneClick as EventListener);
+    };
   }, []);
 
   return {

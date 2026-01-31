@@ -615,6 +615,7 @@ function usePaneClickHandler(
   return useCallback(
     (_event: React.MouseEvent) => {
       closeContextMenu();
+      document.dispatchEvent(new Event("topoviewer:pane-click"));
 
       selectNode(null);
       selectEdge(null);
