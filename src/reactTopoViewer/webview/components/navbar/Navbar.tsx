@@ -16,7 +16,12 @@ import {
   useShowDummyLinks,
   useTopoViewerActions
 } from "../../stores/topoViewerStore";
-import { DEFAULT_GRID_LINE_WIDTH, useDeploymentCommands, useDropdown } from "../../hooks/ui";
+import {
+  DEFAULT_GRID_LINE_WIDTH,
+  DEFAULT_GRID_STYLE,
+  useDeploymentCommands,
+  useDropdown
+} from "../../hooks/ui";
 import type { GridStyle, LayoutOption } from "../../hooks/ui";
 import { saveViewerSettings } from "../../services";
 import {
@@ -519,6 +524,7 @@ const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({
     onChange(Number.isFinite(next) ? next : DEFAULT_GRID_LINE_WIDTH);
   };
   const handleReset = () => onChange(DEFAULT_GRID_LINE_WIDTH);
+  const handleGridStyleReset = () => onGridStyleChange(DEFAULT_GRID_STYLE);
   return (
     <div className="navbar-menu grid-menu" role="menu">
       <div className="flex items-center gap-2 mb-2">
@@ -541,6 +547,13 @@ const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({
           )}
         </button>
       ))}
+      <button
+        type="button"
+        className="navbar-menu-option grid-reset-button mt-2"
+        onClick={handleGridStyleReset}
+      >
+        Reset to {DEFAULT_GRID_STYLE}
+      </button>
       <hr className="my-1 border-t border-default" />
       <div className="flex items-center gap-2 mb-2">
         <label className="text-2xs font-semibold text-default uppercase tracking-wide">

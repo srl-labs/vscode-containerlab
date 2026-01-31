@@ -15,7 +15,7 @@ export interface CanvasRef {
 export type GridStyle = "dotted" | "quadratic";
 export type LayoutOption = "preset" | "force" | "geo";
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
-const DEFAULT_GRID_STYLE: GridStyle = "dotted";
+export const DEFAULT_GRID_STYLE: GridStyle = "dotted";
 
 /**
  * Node data interface for info panels

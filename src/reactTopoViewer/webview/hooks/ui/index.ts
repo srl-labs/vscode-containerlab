@@ -66,6 +66,7 @@ export {
   useLayoutControls,
   useContextMenuHandlers,
   snapToGrid,
-  DEFAULT_GRID_LINE_WIDTH
+  DEFAULT_GRID_LINE_WIDTH,
+  DEFAULT_GRID_STYLE
 } from "./useAppState";
 export type { CanvasRef, LayoutOption, GridStyle, NodeData, LinkData } from "./useAppState";
