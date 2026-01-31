@@ -65,6 +65,7 @@ type PaneMenuActions = Pick<
   | "onOpenNodePalette"
   | "onAddGroup"
   | "onAddText"
+  | "onAddTextAtPosition"
   | "onAddShapes"
   | "onAddShapeAtPosition"
   | "onShowBulkLink"
@@ -390,6 +391,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     onAddDefaultNode,
     onAddGroup,
     onAddText,
+    onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
     onShowBulkLink,
@@ -436,14 +438,19 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       }
     });
   }
-  if (onAddText) {
+  if (onAddText || onAddTextAtPosition) {
     editorItems.push({
       id: "add-text",
       label: "Add Text",
       icon: "fas fa-font",
       disabled: isDisabled,
       onClick: () => {
-        onAddText();
+        const flowPosition = getFlowPosition();
+        if (onAddTextAtPosition && flowPosition) {
+          onAddTextAtPosition(flowPosition);
+        } else {
+          onAddText?.();
+        }
         closeContextMenu();
       }
     });

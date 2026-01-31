@@ -910,6 +910,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       onAddDefaultNode: onShiftClickCreate,
       onAddGroup,
       onAddText,
+      onAddTextAtPosition,
       onAddShapes,
       onAddShapeAtPosition,
       onShowBulkLink

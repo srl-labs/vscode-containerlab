@@ -184,7 +184,7 @@ function useAddModeState(annotationMode?: AnnotationModeState) {
 
   const addModeMessage = useMemo(() => {
     if (annotationMode?.isAddTextMode) {
-      return "Click on the canvas to add text — Press Escape to cancel";
+      return "Adding text — Press Escape to cancel";
     }
     if (annotationMode?.isAddShapeMode) {
       const shapeType = annotationMode.pendingShapeType || "shape";

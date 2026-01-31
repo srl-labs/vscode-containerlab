@@ -28,6 +28,7 @@ interface ContextMenuItemsParams {
   onAddDefaultNode?: (position: { x: number; y: number }) => void;
   onAddGroup?: () => void;
   onAddText?: () => void;
+  onAddTextAtPosition?: (position: { x: number; y: number }) => void;
   onAddShapes?: (shapeType?: string) => void;
   onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
   onShowBulkLink?: () => void;
@@ -57,6 +58,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     onAddDefaultNode,
     onAddGroup,
     onAddText,
+    onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
     onShowBulkLink
@@ -116,6 +118,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
         menuPosition,
         onAddGroup,
         onAddText,
+        onAddTextAtPosition,
         onAddShapes,
         onAddShapeAtPosition,
         onShowBulkLink
@@ -147,6 +150,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     onAddDefaultNode,
     onAddGroup,
     onAddText,
+    onAddTextAtPosition,
     onAddShapes,
     onAddShapeAtPosition,
     onShowBulkLink
