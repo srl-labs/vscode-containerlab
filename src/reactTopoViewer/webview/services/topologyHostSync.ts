@@ -77,7 +77,8 @@ async function persistLayoutPositions(
   try {
     const response = await dispatchTopologyCommand({
       command: "savePositions",
-      payload: positions
+      payload: positions,
+      skipHistory: true
     });
     if (response.type === "topology-host:ack") {
       if (response.snapshot) {

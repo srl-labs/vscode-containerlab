@@ -50,6 +50,8 @@ export type TopologyHostCommand =
         position?: { x: number; y: number };
         geoCoordinates?: { lat: number; lng: number };
       }>;
+      /** Skip undo/redo history for internal, non-user-initiated updates. */
+      skipHistory?: boolean;
     }
   | {
       command: "savePositionsAndAnnotations";
@@ -61,6 +63,8 @@ export type TopologyHostCommand =
         }>;
         annotations?: Partial<TopologyAnnotations>;
       };
+      /** Skip undo/redo history for internal, non-user-initiated updates. */
+      skipHistory?: boolean;
     }
   | { command: "setAnnotations"; payload: Partial<TopologyAnnotations> }
   | { command: "setEdgeAnnotations"; payload: EdgeAnnotation[] }

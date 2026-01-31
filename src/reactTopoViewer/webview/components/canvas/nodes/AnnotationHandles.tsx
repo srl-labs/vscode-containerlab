@@ -345,14 +345,14 @@ export const LineResizeHandle: React.FC<LineResizeHandleProps> = ({
         // Throttle updates using requestAnimationFrame
         pendingPosition = { x: Math.round(nextX), y: Math.round(nextY) };
         if (rafId === null) {
-          rafId = requestAnimationFrame(processPendingUpdate);
+          rafId = window.requestAnimationFrame(processPendingUpdate);
         }
       };
 
       const handleMouseUp = () => {
         // Cancel any pending animation frame
         if (rafId !== null) {
-          cancelAnimationFrame(rafId);
+          window.cancelAnimationFrame(rafId);
         }
         // Apply final position if pending
         if (pendingPosition) {

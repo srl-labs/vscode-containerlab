@@ -14,7 +14,6 @@ import {
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 import { log } from "../../utils/logger";
-
 import { snapToGrid } from "../../utils/grid";
 
 interface UseAnnotationCanvasHandlersOptions {

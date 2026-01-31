@@ -47,7 +47,6 @@ import { useCanvasStore, useFitViewRequestId } from "../../stores/canvasStore";
 import { useGraphActions } from "../../stores/graphStore";
 import { useIsLocked, useMode, useTopoViewerActions } from "../../stores/topoViewerStore";
 import { ContextMenu } from "../context-menu/ContextMenu";
-import { GRID_SIZE } from "../../utils/grid";
 
 import { AnnotationModeIndicator, HelperLines, LinkCreationIndicator } from "./CanvasOverlays";
 import { useContextMenuItems } from "./useContextMenuItems";
@@ -56,11 +55,14 @@ import { CustomConnectionLine, LinkCreationLine } from "./LinkPreview";
 import { nodeTypes, nodeTypesLite } from "./nodes";
 import type {
   AnnotationHandlers,
+  CanvasDropData,
+  CanvasDropHandlers,
   EdgeLabelMode,
   ReactFlowCanvasProps,
   ReactFlowCanvasRef
 } from "./types";
 
+const GRID_SIZE = 20;
 const QUADRATIC_GRID_SIZE = 40;
 
 /** Hook for wrapped node click handling */
@@ -313,22 +315,6 @@ function useWrappedOnInit(
     [handlersOnInit, onInitProp]
   );
 }
-
-type CanvasDropData = {
-  type: "node" | "network" | "annotation";
-  templateName?: string;
-  networkType?: string;
-  annotationType?: "text" | "shape" | "group";
-  shapeType?: string;
-};
-
-type CanvasDropHandlers = {
-  onDropCreateNode?: (position: { x: number; y: number }, templateName: string) => void;
-  onDropCreateNetwork?: (position: { x: number; y: number }, networkType: string) => void;
-  onAddTextAtPosition?: (position: { x: number; y: number }) => void;
-  onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
-  onAddGroupAtPosition?: (position: { x: number; y: number }) => void;
-};
 
 const CANVAS_DROP_MIME_TYPE = "application/reactflow-node";
 
@@ -757,8 +743,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       useCanvasStore();
 
     // All nodes (topology + annotation) are now unified in propNodes
-    const allNodes = (propNodes as Node[]) ?? [];
-    const allEdges = (propEdges as Edge[]) ?? [];
+    const allNodes = useMemo(() => (propNodes as Node[]) ?? [], [propNodes]);
+    const allEdges = useMemo(() => (propEdges as Edge[]) ?? [], [propEdges]);
 
     const isGeoEditable = isGeoLayout && !isLocked;
 

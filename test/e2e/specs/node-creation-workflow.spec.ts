@@ -51,8 +51,9 @@ test.describe.serial("Node Creation Workflow", () => {
     await topoViewerPage.createLink("router3", "router1", "eth2", "eth2");
 
     // Verify edges were created
-    const edgesAfterCreation = await topoViewerPage.getEdgeCount();
-    expect(edgesAfterCreation).toBe(3);
+    await expect
+      .poll(() => topoViewerPage.getEdgeCount(), { timeout: 5000 })
+      .toBe(3);
 
     // Wait for all saves to complete
     await page.waitForTimeout(500);
@@ -81,8 +82,9 @@ test.describe.serial("Node Creation Workflow", () => {
     const nodesAfterReload = await topoViewerPage.getNodeCount();
     expect(nodesAfterReload).toBe(3);
 
-    const edgesAfterReload = await topoViewerPage.getEdgeCount();
-    expect(edgesAfterReload).toBe(3);
+    await expect
+      .poll(() => topoViewerPage.getEdgeCount(), { timeout: 5000 })
+      .toBe(3);
 
     // Verify node IDs are correct
     const reloadedNodeIds = await topoViewerPage.getNodeIds();

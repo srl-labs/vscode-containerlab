@@ -149,7 +149,10 @@ test.describe("Navbar Interactions", () => {
 
       // Verify slider and reset button
       await expect(page.locator(".grid-line-slider")).toBeVisible();
-      await expect(page.locator(".grid-reset-button")).toBeVisible();
+      const resetButtons = page.locator(".grid-reset-button");
+      await expect(resetButtons).toHaveCount(2);
+      await expect(resetButtons.first()).toBeVisible();
+      await expect(resetButtons.nth(1)).toBeVisible();
     });
   });
 

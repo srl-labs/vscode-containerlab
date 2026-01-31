@@ -200,8 +200,9 @@ export class TopologyHostCore implements TopologyHost {
 
     const now = Date.now();
     const mergeHistory = this.historyMergeUntil !== null && now <= this.historyMergeUntil;
+    const skipHistory = shouldSkipHistory(command);
 
-    if (!mergeHistory) {
+    if (!mergeHistory && !skipHistory) {
       this.pushHistory(beforeState);
     }
 
@@ -729,6 +730,13 @@ function isRenameEditCommand(command: TopologyHostCommand): boolean {
   const oldName = typeof payload.oldName === "string" ? payload.oldName.trim() : "";
   const nextName = typeof payload.name === "string" ? payload.name.trim() : "";
   return Boolean(oldName && nextName && oldName !== nextName);
+}
+
+function shouldSkipHistory(command: TopologyHostCommand): boolean {
+  if (command.command !== "savePositions" && command.command !== "savePositionsAndAnnotations") {
+    return false;
+  }
+  return command.skipHistory === true;
 }
 
 function getIdPrefix(id: string): string {

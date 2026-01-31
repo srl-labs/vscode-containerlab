@@ -63,6 +63,22 @@ export interface ReactFlowCanvasRef {
   updateEdges: (updater: (edges: Edge[]) => Edge[]) => void;
 }
 
+export type CanvasDropData = {
+  type: "node" | "network" | "annotation";
+  templateName?: string;
+  networkType?: string;
+  annotationType?: "text" | "shape" | "group";
+  shapeType?: string;
+};
+
+export type CanvasDropHandlers = {
+  onDropCreateNode?: (position: { x: number; y: number }, templateName: string) => void;
+  onDropCreateNetwork?: (position: { x: number; y: number }, networkType: string) => void;
+  onAddTextAtPosition?: (position: { x: number; y: number }) => void;
+  onAddShapeAtPosition?: (position: { x: number; y: number }, shapeType?: string) => void;
+  onAddGroupAtPosition?: (position: { x: number; y: number }) => void;
+};
+
 /**
  * Annotation add mode state passed from App
  */
