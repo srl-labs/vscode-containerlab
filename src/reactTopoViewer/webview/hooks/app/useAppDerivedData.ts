@@ -29,5 +29,5 @@ export function useAppDerivedData({ state, nodes, edges }: AppDerivedDataParams)
 
   const selectionData = useSelectionData(state, nodes, edges, edgeAnnotationLookup);
 
-  return { filteredNodes, filteredEdges, selectionData };
+  return { filteredNodes, filteredEdges, selectionData, edgeAnnotationLookup };
 }

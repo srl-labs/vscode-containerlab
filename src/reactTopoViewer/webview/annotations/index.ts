@@ -5,3 +5,5 @@ export {
   nodesToAnnotations
 } from "./annotationNodeConverters";
 export { collectNodeGroupMemberships } from "./groupMembership";
+export { findEdgeAnnotationInLookup } from "./edgeAnnotations";
+export { parseEndpointLabelOffset } from "./endpointLabelOffset";

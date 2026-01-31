@@ -110,6 +110,8 @@ export interface TopologyEdgeData {
   sourceEndpoint: string;
   targetEndpoint: string;
   linkStatus?: "up" | "down" | "unknown";
+  endpointLabelOffsetEnabled?: boolean;
+  endpointLabelOffset?: number;
   extraData?: Record<string, unknown>;
   [key: string]: unknown;
 }

@@ -10,6 +10,7 @@ import { SELECTION_COLOR } from "../types";
 import { useEdgeInfo, useEdgeRenderConfig } from "../../../stores/canvasStore";
 import { useEdges } from "../../../stores/graphStore";
 import { calculateControlPoint, getEdgePoints, getLabelPosition } from "../edgeGeometry";
+import { DEFAULT_ENDPOINT_LABEL_OFFSET } from "../../../annotations/endpointLabelOffset";
 
 // Edge style constants
 const EDGE_COLOR_DEFAULT = "#969799";
@@ -26,8 +27,6 @@ const LABEL_BG_COLOR = "rgba(202, 203, 204, 0.5)";
 const LABEL_TEXT_COLOR = "rgba(0, 0, 0, 0.7)";
 const LABEL_OUTLINE_COLOR = "rgba(255, 255, 255, 0.7)";
 const LABEL_PADDING = "0px 2px";
-const LABEL_OFFSET = 30; // Pixels from node edge
-
 // Bezier curve constants for parallel edges
 const CONTROL_POINT_STEP_SIZE = 40; // Spacing between parallel edges (more curvy for label space)
 
@@ -106,7 +105,8 @@ function calculateLoopEdgeGeometry(
   nodeY: number,
   nodeWidth: number,
   nodeHeight: number,
-  loopIndex: number
+  loopIndex: number,
+  labelOffset: number
 ): LoopEdgeGeometry {
   // Calculate node center
   const centerX = nodeX + nodeWidth / 2;
@@ -139,8 +139,8 @@ function calculateLoopEdgeGeometry(
 
   return {
     path,
-    sourceLabelPos: { x: labelX, y: labelY - 10 },
-    targetLabelPos: { x: labelX, y: labelY + 10 }
+    sourceLabelPos: { x: labelX, y: labelY - labelOffset },
+    targetLabelPos: { x: labelX, y: labelY + labelOffset }
   };
 }
 
@@ -200,14 +200,16 @@ interface EdgeGeometry {
 function computeLoopGeometry(
   sourcePos: { x: number; y: number },
   sourceNodeWidth: number,
-  loopIndex: number
+  loopIndex: number,
+  labelOffset: number
 ): EdgeGeometry {
   const loopGeometry = calculateLoopEdgeGeometry(
     sourcePos.x + (sourceNodeWidth - NODE_ICON_SIZE) / 2,
     sourcePos.y,
     NODE_ICON_SIZE,
     NODE_ICON_SIZE,
-    loopIndex
+    loopIndex,
+    labelOffset
   );
   return {
     points: { sx: 0, sy: 0, tx: 0, ty: 0 },
@@ -224,7 +226,8 @@ function computeRegularGeometry(
   targetPos: { x: number; y: number },
   sourceNodeWidth: number,
   targetNodeWidth: number,
-  parallelInfo: { index: number; total: number; isCanonicalDirection: boolean } | null
+  parallelInfo: { index: number; total: number; isCanonicalDirection: boolean } | null,
+  labelOffset: number
 ): EdgeGeometry {
   const points = getEdgePoints(
     {
@@ -269,7 +272,7 @@ function computeRegularGeometry(
       points.sy,
       points.tx,
       points.ty,
-      LABEL_OFFSET,
+      labelOffset,
       controlPoint ?? undefined
     ),
     targetLabelPos: getLabelPosition(
@@ -277,14 +280,14 @@ function computeRegularGeometry(
       points.ty,
       points.sx,
       points.sy,
-      LABEL_OFFSET,
+      labelOffset,
       controlPoint ?? undefined
     )
   };
 }
 
 /** Hook for calculating edge geometry with bezier curves for parallel edges */
-function useEdgeGeometry(edgeId: string, source: string, target: string) {
+function useEdgeGeometry(edgeId: string, source: string, target: string, labelOffset: number) {
   const sourceNode = useNodeGeometry(source);
   const targetNode = useNodeGeometry(target);
   const edges = useEdges();
@@ -301,7 +304,7 @@ function useEdgeGeometry(edgeId: string, source: string, target: string) {
 
     // Handle loop edges (source === target)
     if (source === target && loopInfo) {
-      return computeLoopGeometry(sourcePos, sourceNodeWidth, loopInfo.loopIndex);
+      return computeLoopGeometry(sourcePos, sourceNodeWidth, loopInfo.loopIndex, labelOffset);
     }
 
     if (!targetNode) return null;
@@ -314,9 +317,10 @@ function useEdgeGeometry(edgeId: string, source: string, target: string) {
       targetPos,
       sourceNodeWidth,
       targetNodeWidth,
-      parallelInfo
+      parallelInfo,
+      labelOffset
     );
-  }, [sourceNode, targetNode, parallelInfo, loopInfo, source, target]);
+  }, [sourceNode, targetNode, parallelInfo, loopInfo, source, target, labelOffset]);
 }
 
 /** Get stroke styling based on selection and link status */
@@ -328,18 +332,36 @@ function getStrokeStyle(linkStatus: string | undefined, selected: boolean) {
   };
 }
 
+function getEdgeLabelOffset(edgeData: TopologyEdgeData | undefined): number {
+  const rawOffset =
+    typeof edgeData?.endpointLabelOffset === "number"
+      ? edgeData.endpointLabelOffset
+      : DEFAULT_ENDPOINT_LABEL_OFFSET;
+  return edgeData?.endpointLabelOffsetEnabled === false ? 0 : rawOffset;
+}
+
+function shouldRenderEdgeLabels(
+  labelMode: "show-all" | "on-select" | "hide",
+  suppressLabels: boolean,
+  selected: boolean
+): boolean {
+  if (suppressLabels) return false;
+  if (labelMode === "show-all") return true;
+  return labelMode === "on-select" && selected;
+}
+
 /**
  * TopologyEdge - Floating edge that connects nodes between source and target nodes
  * Supports bezier curves for parallel edges between the same node pair
  */
 const TopologyEdgeComponent: React.FC<EdgeProps> = ({ id, source, target, data, selected }) => {
   const edgeData = data as TopologyEdgeData | undefined;
-  const geometry = useEdgeGeometry(id, source, target);
+  const labelOffset = getEdgeLabelOffset(edgeData);
+  const geometry = useEdgeGeometry(id, source, target, labelOffset);
   const { labelMode, suppressLabels, suppressHitArea } = useEdgeRenderConfig();
 
   if (!geometry) return null;
-  const shouldRenderLabels =
-    !suppressLabels && (labelMode === "show-all" || (labelMode === "on-select" && !!selected));
+  const shouldRenderLabels = shouldRenderEdgeLabels(labelMode, suppressLabels, !!selected);
 
   const stroke = getStrokeStyle(edgeData?.linkStatus, selected ?? false);
 

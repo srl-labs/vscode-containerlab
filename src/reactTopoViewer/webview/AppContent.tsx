@@ -4,15 +4,17 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { TopoEdge, TopoNode } from "../shared/types/graph";
+import type { TopoEdge, TopoNode, TopologyEdgeData } from "../shared/types/graph";
 import type { TopologyHostCommand } from "../shared/types/messages";
 
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE,
+  findEdgeAnnotationInLookup,
   nodesToAnnotations,
-  collectNodeGroupMemberships
+  collectNodeGroupMemberships,
+  parseEndpointLabelOffset
 } from "./annotations";
 import type { ReactFlowCanvasRef } from "./components/canvas";
 import { ReactFlowCanvas } from "./components/canvas";
@@ -200,11 +202,54 @@ export const AppContent: React.FC<AppContentProps> = ({
     clearCustomNodeError: topoActions.clearCustomNodeError
   });
 
-  const { filteredNodes, filteredEdges, selectionData } = useAppDerivedData({
+  const { filteredNodes, filteredEdges, selectionData, edgeAnnotationLookup } = useAppDerivedData({
     state,
     nodes: graphNodes,
     edges: graphEdges
   });
+
+  const renderedEdges = React.useMemo(() => {
+    if (filteredEdges.length === 0) return filteredEdges;
+    return filteredEdges.map((edge) => {
+      const data = (edge.data ?? {}) as TopologyEdgeData;
+      const sourceEndpoint = data.sourceEndpoint;
+      const targetEndpoint = data.targetEndpoint;
+      const annotation = findEdgeAnnotationInLookup(edgeAnnotationLookup, {
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceEndpoint,
+        targetEndpoint
+      });
+      const annotationOffset = parseEndpointLabelOffset(annotation?.endpointLabelOffset);
+      const annotationEnabled =
+        annotation?.endpointLabelOffsetEnabled ??
+        (annotation?.endpointLabelOffset !== undefined ? true : undefined);
+      const enabled = annotationEnabled ?? state.endpointLabelOffsetEnabled;
+      const resolvedOffset = enabled ? annotationOffset ?? state.endpointLabelOffset : 0;
+
+      if (
+        data.endpointLabelOffsetEnabled === enabled &&
+        data.endpointLabelOffset === resolvedOffset
+      ) {
+        return edge;
+      }
+
+      return {
+        ...edge,
+        data: {
+          ...data,
+          endpointLabelOffsetEnabled: enabled,
+          endpointLabelOffset: resolvedOffset
+        }
+      };
+    });
+  }, [
+    filteredEdges,
+    edgeAnnotationLookup,
+    state.endpointLabelOffset,
+    state.endpointLabelOffsetEnabled
+  ]);
 
   const navbarCommands = useNavbarCommands();
   const customNodeCommands = useCustomNodeCommands(
@@ -516,7 +561,7 @@ export const AppContent: React.FC<AppContentProps> = ({
         <ReactFlowCanvas
           ref={reactFlowRef}
           nodes={filteredNodes}
-          edges={filteredEdges}
+          edges={renderedEdges}
           layout={layoutControls.layout}
           isGeoLayout={layoutControls.isGeoLayout}
           gridLineWidth={layoutControls.gridLineWidth}
