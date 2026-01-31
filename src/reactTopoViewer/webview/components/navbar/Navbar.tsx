@@ -430,10 +430,7 @@ const LinkLabelDropdown: React.FC<LinkLabelDropdownProps> = () => {
 
 const LAYOUT_OPTIONS: { value: LayoutOption; label: string }[] = [
   { value: "preset", label: "Preset" },
-  { value: "cose", label: "Force-Directed (COSE)" },
-  { value: "cola", label: "Cola" },
-  { value: "radial", label: "Radial" },
-  { value: "hierarchical", label: "Hierarchical" },
+  { value: "force", label: "Force-Directed" },
   { value: "geo", label: "GeoMap" }
 ];
 

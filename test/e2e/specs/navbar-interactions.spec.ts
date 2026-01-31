@@ -106,10 +106,10 @@ test.describe("Navbar Interactions", () => {
       const layoutMenu = page.locator(SEL_NAVBAR_MENU);
       await expect(layoutMenu).toBeVisible();
 
-      // Check for layout options
+      // Check for layout options (Preset, Force-Directed, GeoMap)
       const menuOptions = page.locator(".navbar-menu-option");
       const count = await menuOptions.count();
-      expect(count).toBeGreaterThanOrEqual(4); // Preset, COSE, Cola, etc.
+      expect(count).toBe(3);
 
       // Click elsewhere to close
       const canvasCenter = await topoViewerPage.getCanvasCenter();

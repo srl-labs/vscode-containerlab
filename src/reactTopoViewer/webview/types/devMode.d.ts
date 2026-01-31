@@ -13,7 +13,7 @@ import type { CustomIconInfo } from "../../shared/types/icons";
 import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
 
 /** Layout option type */
-type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
+type LayoutOption = "preset" | "force" | "geo";
 
 /**
  * Development mode interface for E2E testing and debugging.

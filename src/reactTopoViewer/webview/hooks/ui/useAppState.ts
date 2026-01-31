@@ -12,8 +12,8 @@ export interface CanvasRef {
   runLayout(name: string): void;
 }
 
-export type LayoutOption = "preset" | "cola" | "radial" | "hierarchical" | "cose" | "geo";
 export type GridStyle = "dotted" | "quadratic";
+export type LayoutOption = "preset" | "force" | "geo";
 export const DEFAULT_GRID_LINE_WIDTH = 0.5;
 const DEFAULT_GRID_STYLE: GridStyle = "dotted";
 
@@ -46,8 +46,6 @@ export interface LinkData {
 }
 
 function normalizeLayoutName(option: LayoutOption): string {
-  if (option === "radial") return "concentric";
-  if (option === "hierarchical") return "breadthfirst";
   if (option === "geo") return "preset";
   return option;
 }

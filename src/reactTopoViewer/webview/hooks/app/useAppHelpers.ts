@@ -102,7 +102,7 @@ export function useNavbarCommands(): NavbarCommands {
 }
 
 /** Layout option type for E2E testing */
-export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
+export type LayoutOption = "preset" | "force" | "geo";
 
 /**
  * E2E testing exposure configuration

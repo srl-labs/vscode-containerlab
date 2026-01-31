@@ -39,7 +39,7 @@ function applyPositionMap(nodes: Node[], positions: Map<string, { x: number; y: 
 /**
  * Available layout types
  */
-export type LayoutName = "preset" | "force" | "grid" | "circle" | "cola";
+export type LayoutName = "preset" | "force";
 
 /**
  * Layout options
@@ -163,81 +163,6 @@ export function applyForceLayout(
 }
 
 /**
- * Apply grid layout
- */
-export function applyGridLayout(nodes: Node[], options: LayoutOptions = {}): Node[] {
-  const { padding = 50, nodeSpacing = 120 } = options;
-
-  if (nodes.length === 0) return nodes;
-
-  // Filter out annotation nodes
-  const layoutNodes = nodes.filter(isLayoutableNode);
-
-  if (layoutNodes.length === 0) return nodes;
-
-  // Calculate grid dimensions
-  const cols = Math.ceil(Math.sqrt(layoutNodes.length));
-
-  // Create position map
-  const nodePositions = new Map<string, { x: number; y: number }>();
-
-  layoutNodes.forEach((node, index) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    nodePositions.set(node.id, {
-      x: padding + col * nodeSpacing,
-      y: padding + row * nodeSpacing
-    });
-  });
-
-  // Return nodes with updated positions
-  return applyPositionMap(nodes, nodePositions);
-}
-
-/**
- * Apply circle layout
- */
-export function applyCircleLayout(nodes: Node[], options: LayoutOptions = {}): Node[] {
-  const { padding = 100 } = options;
-
-  if (nodes.length === 0) return nodes;
-
-  // Filter out annotation nodes
-  const layoutNodes = nodes.filter(isLayoutableNode);
-
-  if (layoutNodes.length === 0) return nodes;
-
-  // Calculate circle parameters
-  const radius = Math.max(150, layoutNodes.length * 30);
-  const centerX = radius + padding;
-  const centerY = radius + padding;
-  const angleStep = (2 * Math.PI) / layoutNodes.length;
-
-  // Create position map
-  const nodePositions = new Map<string, { x: number; y: number }>();
-
-  layoutNodes.forEach((node, index) => {
-    const angle = index * angleStep - Math.PI / 2; // Start from top
-    nodePositions.set(node.id, {
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle)
-    });
-  });
-
-  // Return nodes with updated positions
-  return nodes.map((node) => {
-    const newPos = nodePositions.get(node.id);
-    if (newPos) {
-      return {
-        ...node,
-        position: newPos
-      };
-    }
-    return node;
-  });
-}
-
-/**
  * Apply layout to nodes
  */
 export function applyLayout(
@@ -248,12 +173,7 @@ export function applyLayout(
 ): Node[] {
   switch (layoutName) {
     case "force":
-    case "cola": // Cola layout uses d3-force as fallback
       return applyForceLayout(nodes, edges, options);
-    case "grid":
-      return applyGridLayout(nodes, options);
-    case "circle":
-      return applyCircleLayout(nodes, options);
     case "preset":
     default:
       // Preset layout uses existing positions

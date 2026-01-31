@@ -31,8 +31,6 @@ export type { LayoutName, LayoutOptions } from "./layout";
 export {
   hasPresetPositions,
   applyForceLayout,
-  applyGridLayout,
-  applyCircleLayout,
   applyLayout,
   getLayoutOptions
 } from "./layout";
