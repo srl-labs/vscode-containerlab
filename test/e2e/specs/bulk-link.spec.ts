@@ -1,8 +1,10 @@
 import { test, expect } from "../fixtures/topoviewer";
+import { rightClick } from "../helpers/react-flow-helpers";
 
 const EMPTY_FILE = "empty.clab.yml";
 const KIND = "nokia_srlinux";
-const SEL_BULK_LINK_BTN = '[data-testid="floating-panel-bulk-link-btn"]';
+const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
+const SEL_BULK_LINK_ITEM = '[data-testid="context-menu-item-bulk-link"]';
 const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 
 test.describe("Bulk Link Devices", () => {
@@ -24,7 +26,13 @@ test.describe("Bulk Link Devices", () => {
 
     await expect.poll(() => topoViewerPage.getEdgeCount()).toBe(0);
 
-    await page.click(SEL_BULK_LINK_BTN);
+    const canvasBox = await topoViewerPage.getCanvas().boundingBox();
+    if (!canvasBox) throw new Error("Canvas not found");
+    await rightClick(page, canvasBox.x + 30, canvasBox.y + 30);
+    const contextMenu = page.locator(SEL_CONTEXT_MENU);
+    await expect(contextMenu).toBeVisible();
+    await page.locator(SEL_BULK_LINK_ITEM).click();
+    await expect(contextMenu).not.toBeVisible();
 
     await page.locator('input[placeholder^="e.g. leaf*"]').fill("leaf*");
     await page.locator('input[placeholder^="e.g. spine*"]').fill("spine*");

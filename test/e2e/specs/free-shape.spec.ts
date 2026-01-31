@@ -1,11 +1,35 @@
 import { test, expect } from "../fixtures/topoviewer";
+import { rightClick } from "../helpers/react-flow-helpers";
 
 const EMPTY_FILE = "empty.clab.yml";
 
-const SEL_ADD_SHAPES_BTN = '[data-testid="floating-panel-add-shapes-btn"]';
+const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
+const SEL_ADD_SHAPE_ITEM = '[data-testid="context-menu-item-add-shape"]';
+const SEL_RECTANGLE_ITEM = '[data-testid="context-menu-item-add-shape-rectangle"]';
+const SEL_CIRCLE_ITEM = '[data-testid="context-menu-item-add-shape-circle"]';
+const SEL_LINE_ITEM = '[data-testid="context-menu-item-add-shape-line"]';
 const SEL_FREE_SHAPE_EDITOR = '[data-testid="free-shape-editor"]';
 const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
-const SEL_RECTANGLE_OPTION = "text=Rectangle";
+
+async function addShapeViaContextMenu(
+  page: Parameters<typeof rightClick>[0],
+  topoViewerPage: { getCanvasCenter: () => Promise<{ x: number; y: number }> },
+  menuItemSelector: string,
+  offset: { x: number; y: number } = { x: 150, y: 0 }
+): Promise<void> {
+  const canvasBox = await topoViewerPage.getCanvas().boundingBox();
+  if (!canvasBox) throw new Error("Canvas not found");
+  await rightClick(page, canvasBox.x + offset.x, canvasBox.y + offset.y);
+  const contextMenu = page.locator(SEL_CONTEXT_MENU);
+  await expect(contextMenu).toBeVisible();
+  const addShapeItem = page.locator(SEL_ADD_SHAPE_ITEM);
+  await expect(addShapeItem).toBeVisible();
+  await addShapeItem.hover();
+  await expect(page.locator(menuItemSelector)).toBeVisible();
+  await page.locator(menuItemSelector).click();
+  await expect(contextMenu).not.toBeVisible();
+  await page.waitForTimeout(200);
+}
 
 test.describe("Free Shape Annotations", () => {
   test("can create rectangle and persist to annotations file", async ({ page, topoViewerPage }) => {
@@ -18,14 +42,7 @@ test.describe("Free Shape Annotations", () => {
     const before = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
     const beforeCount = before.freeShapeAnnotations?.length ?? 0;
 
-    await page.locator(SEL_ADD_SHAPES_BTN).click();
-    await page.waitForTimeout(200);
-    await page.locator(SEL_RECTANGLE_OPTION).click();
-    await page.waitForTimeout(200);
-
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 150, canvasCenter.y);
-    await page.waitForTimeout(200);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM);
 
     const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
     if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -59,14 +76,7 @@ test.describe("Free Shape Annotations", () => {
     const beforeCount = before.freeShapeAnnotations?.length ?? 0;
 
     // Create a rectangle
-    await page.locator(SEL_ADD_SHAPES_BTN).click();
-    await page.waitForTimeout(200);
-    await page.locator(SEL_RECTANGLE_OPTION).click();
-    await page.waitForTimeout(200);
-
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 150, canvasCenter.y);
-    await page.waitForTimeout(200);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM);
 
     const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
     if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -127,14 +137,7 @@ test.describe("Free Shape Annotations", () => {
     const beforeCount = before.freeShapeAnnotations?.length ?? 0;
 
     // Create a circle
-    await page.locator(SEL_ADD_SHAPES_BTN).click();
-    await page.waitForTimeout(200);
-    await page.locator("text=Circle").click();
-    await page.waitForTimeout(200);
-
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 150, canvasCenter.y);
-    await page.waitForTimeout(200);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_CIRCLE_ITEM);
 
     const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
     if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -180,14 +183,7 @@ test.describe("Free Shape Annotations", () => {
     const beforeCount = before.freeShapeAnnotations?.length ?? 0;
 
     // Create a line
-    await page.locator(SEL_ADD_SHAPES_BTN).click();
-    await page.waitForTimeout(200);
-    await page.locator("text=Line").click();
-    await page.waitForTimeout(200);
-
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x + 150, canvasCenter.y);
-    await page.waitForTimeout(200);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_LINE_ITEM);
 
     const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
     if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -230,14 +226,7 @@ test.describe("Free Shape Annotations", () => {
     await topoViewerPage.unlock();
 
     // Create a rectangle first
-    await page.locator(SEL_ADD_SHAPES_BTN).click();
-    await page.waitForTimeout(200);
-    await page.locator(SEL_RECTANGLE_OPTION).click();
-    await page.waitForTimeout(200);
-
-    const canvasCenter = await topoViewerPage.getCanvasCenter();
-    await page.mouse.click(canvasCenter.x, canvasCenter.y);
-    await page.waitForTimeout(200);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM, { x: 0, y: 0 });
 
     const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
     if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
