@@ -24,7 +24,10 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           color: "var(--vscode-icon-foreground)",
-          "&:hover": { backgroundColor: "var(--vscode-list-hoverBackground)" }
+          "&:hover": { backgroundColor: "var(--vscode-list-hoverBackground)" },
+          "&.Mui-disabled": {
+            color: "var(--vscode-disabledForeground)"
+          }
         }
       }
     },
@@ -65,6 +68,13 @@ export const theme = createTheme({
     },
     MuiTooltip: {
       styleOverrides: { tooltip: { fontSize: 12 } }
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          borderColor: "var(--vscode-panel-border)"
+        }
+      }
     }
   }
 });
