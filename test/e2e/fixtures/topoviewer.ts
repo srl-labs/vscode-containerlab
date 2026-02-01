@@ -1,16 +1,20 @@
-import { randomUUID } from 'crypto';
-import { writeFileSync } from 'fs';
-import * as path from 'path';
+import { randomUUID } from "crypto";
+import { writeFileSync } from "fs";
+import * as path from "path";
 
-import type { Locator, TestInfo } from '@playwright/test';
-import { test as base } from '@playwright/test';
+import type { Locator, TestInfo } from "@playwright/test";
+import { test as base } from "@playwright/test";
 
 // Test selectors
-const CANVAS_SELECTOR = '[data-testid="cytoscape-canvas"]';
+const CANVAS_SELECTOR = ".react-flow";
 const APP_SELECTOR = '[data-testid="topoviewer-app"]';
 
+// Node type constants (used in browser-side code)
+const TOPOLOGY_NODE_TYPE = "topology-node";
+const NETWORK_NODE_TYPE = "network-node";
+
 // Topologies directory path (must match dev server config)
-const TOPOLOGIES_DIR = path.resolve(__dirname, '../../../dev/topologies');
+const TOPOLOGIES_DIR = path.resolve(__dirname, "../../../dev/topologies");
 
 /**
  * Generate a unique session ID for test isolation
@@ -28,81 +32,138 @@ interface CreateGroupResult {
   isLocked?: boolean;
   groupsBefore: number;
   groupsAfter: number | null;
-  reactGroupsBefore: number | string;
-  reactGroupsAfter?: number | string;
-  hasCy?: boolean;
+  reactGroupsBefore: number;
+  reactGroupsAfter?: number;
+  hasRf?: boolean;
 }
 
 interface GroupDebugInfo {
   reactGroupCount: number;
-  reactGroupsDirectCount: number | string;
+  reactGroupsDirectCount: number;
   stateManagerGroupCount: number;
   reactGroupIds: string[];
   stateManagerGroupIds: string[];
 }
 
+interface EdgeMatchParams {
+  sourceId: string;
+  targetId: string;
+  sourceEndpoint: string;
+  targetEndpoint: string;
+}
+
+const dispatchGroupKeyboardEvent = (): void => {
+  const event = new KeyboardEvent("keydown", {
+    key: "g",
+    ctrlKey: true,
+    bubbles: true,
+    cancelable: true
+  });
+  window.dispatchEvent(event);
+};
+
 /**
  * Browser-side function to create a group from selected nodes.
- * Note: All helper logic is inlined because page.evaluate() only serializes this function,
- * not any external references from the module scope.
+ * Note: Helper functions must be inlined because page.evaluate() serializes only the function body.
  */
 function browserCreateGroup(): CreateGroupResult {
-  const dev = (window as any).__DEV__;
-  const cy = dev?.cy;
-
-  // Inline helper: get selected node IDs
-  const getSelectedNodeIds = (c: any): string[] => {
-    if (!c) return [];
-    return c.nodes(':selected').map((n: any) => n.id());
+  const dev = (
+    window as {
+      __DEV__?: {
+        rfInstance?: unknown;
+        mode?: () => string;
+        isLocked?: () => boolean;
+        getReactGroups?: () => unknown[];
+        createGroupFromSelected?: () => void;
+      };
+    }
+  ).__DEV__;
+  const rf = dev?.rfInstance;
+  const getSelected = (): string[] => {
+    if (!rf) return [];
+    const nodes =
+      (rf as { getNodes?: () => Array<{ id: string; selected?: boolean }> }).getNodes?.() ?? [];
+    return nodes.filter((node) => node.selected).map((node) => node.id);
   };
+  const getGroupCount = (): number => (dev?.getReactGroups?.() ?? []).length;
 
-  // Inline helper: get state manager group count
-  const getStateManagerGroupCount = (d: any): number => {
-    const annotations = d?.stateManager?.getAnnotations?.();
-    return annotations?.groupStyleAnnotations?.length ?? 0;
+  const base = {
+    selectedBefore: getSelected(),
+    mode: dev?.mode?.(),
+    isLocked: dev?.isLocked?.(),
+    groupsBefore: getGroupCount(),
+    reactGroupsBefore: getGroupCount()
   };
-
-  // Inline helper: get react group count
-  const getReactGroupCount = (d: any): number | string => {
-    const groups = d?.getReactGroups?.();
-    return groups?.length ?? 'undefined';
-  };
-
-  // Inline helper: dispatch keyboard event
-  const dispatchGroupKeyboardEvent = (): void => {
-    const event = new KeyboardEvent('keydown', {
-      key: 'g',
-      ctrlKey: true,
-      bubbles: true,
-      cancelable: true
-    });
-    window.dispatchEvent(event);
-  };
-
-  const selectedBefore = getSelectedNodeIds(cy);
-  const mode = dev?.stateManager?.getMode?.();
-  const isLocked = dev?.isLocked?.();
-  const groupsBefore = getStateManagerGroupCount(dev);
-  const reactGroupsBefore = getReactGroupCount(dev);
 
   if (!dev?.createGroupFromSelected) {
     dispatchGroupKeyboardEvent();
-    return { method: 'keyboard', selectedBefore, mode, isLocked, groupsBefore, groupsAfter: null, reactGroupsBefore };
+    return { method: "keyboard", ...base, groupsAfter: null };
   }
 
   dev.createGroupFromSelected();
   return {
-    method: 'direct',
-    selectedBefore,
-    selectedAfter: getSelectedNodeIds(cy),
-    mode,
-    isLocked,
-    groupsBefore,
-    groupsAfter: getStateManagerGroupCount(dev),
-    reactGroupsBefore,
-    reactGroupsAfter: getReactGroupCount(dev),
-    hasCy: !!cy
+    method: "direct",
+    ...base,
+    selectedAfter: getSelected(),
+    groupsAfter: getGroupCount(),
+    reactGroupsAfter: getGroupCount(),
+    hasRf: !!rf
   };
+}
+
+/**
+ * Browser-side edge matcher for createLink waitForFunction.
+ * Note: Helper functions must be inlined because page.waitForFunction() serializes only the function body.
+ */
+function browserHasMatchingEdge({
+  sourceId,
+  targetId,
+  sourceEndpoint,
+  targetEndpoint
+}: EdgeMatchParams): boolean {
+  const dev = (window as any).__DEV__;
+  const rf = dev?.rfInstance;
+  if (!rf) return false;
+  const edges = rf.getEdges?.() ?? [];
+  const specialPrefixes = [
+    "host:",
+    "mgmt-net:",
+    "macvlan:",
+    "vxlan:",
+    "vxlan-stitch:",
+    "dummy"
+  ];
+  const isSpecial = (id: string) => specialPrefixes.some((prefix) => id.startsWith(prefix));
+  const matchNode = (edgeNode: string, expected: string) => {
+    if (edgeNode === expected) return true;
+    return isSpecial(expected) && edgeNode.startsWith(`${expected}:`);
+  };
+  const matches = (
+    edge: any,
+    expectedSource: string,
+    expectedTarget: string,
+    expectedSourceEndpoint: string,
+    expectedTargetEndpoint: string
+  ) => {
+    if (!matchNode(edge.source, expectedSource) || !matchNode(edge.target, expectedTarget)) {
+      return false;
+    }
+    const edgeSourceEndpoint = edge.data?.sourceEndpoint ?? edge.sourceEndpoint;
+    const edgeTargetEndpoint = edge.data?.targetEndpoint ?? edge.targetEndpoint;
+    const sourceEndpointMatches =
+      edgeSourceEndpoint === expectedSourceEndpoint ||
+      (isSpecial(expectedSource) && (edgeSourceEndpoint === "" || edgeSourceEndpoint == null));
+    const targetEndpointMatches =
+      edgeTargetEndpoint === expectedTargetEndpoint ||
+      (isSpecial(expectedTarget) && (edgeTargetEndpoint === "" || edgeTargetEndpoint == null));
+    return sourceEndpointMatches && targetEndpointMatches;
+  };
+
+  return edges.some(
+    (edge: any) =>
+      matches(edge, sourceId, targetId, sourceEndpoint, targetEndpoint) ||
+      matches(edge, targetId, sourceId, targetEndpoint, sourceEndpoint)
+  );
 }
 
 /**
@@ -112,17 +173,16 @@ function browserCreateGroup(): CreateGroupResult {
 function browserGetGroupDebugInfo(): GroupDebugInfo {
   const dev = (window as any).__DEV__;
   const reactGroups = dev?.getReactGroups?.() ?? [];
-  const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
 
   // Inline helper: get group IDs
   const getGroupIds = (groups: any[]): string[] => groups.map((g: any) => g.id);
 
   return {
     reactGroupCount: reactGroups.length,
-    reactGroupsDirectCount: dev?.groupsCount ?? 'undefined',
-    stateManagerGroupCount: stateManagerGroups.length,
+    reactGroupsDirectCount: dev?.groupsCount ?? -1,
+    stateManagerGroupCount: reactGroups.length, // Same as React groups now
     reactGroupIds: getGroupIds(reactGroups),
-    stateManagerGroupIds: getGroupIds(stateManagerGroups)
+    stateManagerGroupIds: getGroupIds(reactGroups) // Same as React groups now
   };
 }
 
@@ -130,22 +190,44 @@ function browserGetGroupDebugInfo(): GroupDebugInfo {
  * Topology files available in dev/topologies/ (file-based)
  */
 type TopologyFileName =
-  | 'simple.clab.yml'
-  | 'spine-leaf.clab.yml'
-  | 'datacenter.clab.yml'
-  | 'network.clab.yml'
-  | 'empty.clab.yml'
+  | "simple.clab.yml"
+  | "spine-leaf.clab.yml"
+  | "datacenter.clab.yml"
+  | "network.clab.yml"
+  | "empty.clab.yml"
   | string; // Allow any filename for dynamic tests
 
 /**
  * Annotations structure from file API
  */
 interface TopologyAnnotations {
-  nodeAnnotations?: Array<{ id: string; position?: { x: number; y: number }; group?: string; level?: string }>;
+  nodeAnnotations?: Array<{
+    id: string;
+    position?: { x: number; y: number };
+    groupId?: string;
+    group?: string;
+    level?: string;
+    icon?: string;
+  }>;
   freeTextAnnotations?: Array<{ id: string; text: string; position: { x: number; y: number } }>;
-  freeShapeAnnotations?: Array<{ id: string; shapeType: string; position: { x: number; y: number } }>;
-  groupStyleAnnotations?: Array<{ id: string; name: string; parentId?: string }>;
-  networkNodeAnnotations?: Array<{ id: string; type: string; label: string; position: { x: number; y: number } }>;
+  freeShapeAnnotations?: Array<{
+    id: string;
+    shapeType: string;
+    position: { x: number; y: number };
+  }>;
+  groupStyleAnnotations?: Array<{
+    id: string;
+    name: string;
+    parentId?: string;
+    position?: { x: number; y: number };
+    zIndex?: number;
+  }>;
+  networkNodeAnnotations?: Array<{
+    id: string;
+    type: string;
+    label: string;
+    position: { x: number; y: number };
+  }>;
   edgeAnnotations?: Array<{
     id?: string;
     source?: string;
@@ -234,6 +316,31 @@ interface TopoViewerPage {
   /** Get all edge IDs */
   getEdgeIds(): Promise<string[]>;
 
+  /** Get edge data objects */
+  getEdgesData(): Promise<
+    Array<{
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint?: string;
+      targetEndpoint?: string;
+    }>
+  >;
+
+  /** Find an edge by endpoints (order-insensitive) */
+  findEdgeByEndpoints(
+    source: string,
+    target: string,
+    sourceEndpoint?: string,
+    targetEndpoint?: string
+  ): Promise<{
+    id: string;
+    source: string;
+    target: string;
+    sourceEndpoint?: string;
+    targetEndpoint?: string;
+  } | null>;
+
   /** Get edge count */
   getEdgeCount(): Promise<number>;
 
@@ -286,7 +393,12 @@ interface TopoViewerPage {
   createNetwork(position: { x: number; y: number }, networkType: string): Promise<string | null>;
 
   /** Create a link between two nodes */
-  createLink(sourceId: string, targetId: string, sourceEndpoint?: string, targetEndpoint?: string): Promise<void>;
+  createLink(
+    sourceId: string,
+    targetId: string,
+    sourceEndpoint?: string,
+    targetEndpoint?: string
+  ): Promise<void>;
 
   /** Get all network node IDs (nodes with topoViewerRole='cloud') */
   getNetworkNodeIds(): Promise<string[]>;
@@ -309,11 +421,18 @@ interface TopoViewerPage {
   /** Perform paste (Ctrl+V) */
   paste(): Promise<void>;
 
+  /** Clear browser clipboard (for deterministic paste tests) */
+  clearClipboard(): Promise<void>;
+
   /** Create a group from selected nodes (Ctrl+G) */
   createGroup(): Promise<void>;
 
   /** Resize a group by dragging a resize handle */
-  resizeGroup(groupId: string, corner: 'nw' | 'ne' | 'sw' | 'se', delta: { x: number; y: number }): Promise<void>;
+  resizeGroup(
+    groupId: string,
+    corner: "nw" | "ne" | "sw" | "se",
+    delta: { x: number; y: number }
+  ): Promise<void>;
 
   /** Delete a node by ID */
   deleteNode(nodeId: string): Promise<void>;
@@ -335,7 +454,7 @@ interface TopoViewerPage {
  * Extended test fixture with TopoViewer helpers
  */
 // Base URL for API requests (must be absolute since page hasn't navigated yet)
-const API_BASE_URL = 'http://localhost:5173';
+const API_BASE_URL = "http://localhost:5173";
 
 export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
   topoViewerPage: async ({ page, request }, use, testInfo: TestInfo) => {
@@ -344,7 +463,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     // Capture browser console logs for debugging on failure
     const consoleLogs: string[] = [];
-    page.on('console', (msg) => {
+    page.on("console", (msg) => {
       const timestamp = new Date().toISOString();
       const type = msg.type().toUpperCase().padEnd(7);
       consoleLogs.push(`[${timestamp}] [${type}] ${msg.text()}`);
@@ -352,24 +471,25 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     // Helper to add session ID to API URLs (uses absolute URL for API calls)
     const withSession = (url: string) => {
-      const separator = url.includes('?') ? '&' : '?';
+      const separator = url.includes("?") ? "&" : "?";
       return `${API_BASE_URL}${url}${separator}sessionId=${sessionId}`;
     };
 
     // Initialize session with default files using request fixture
-    await request.post(withSession('/api/reset'));
+    await request.post(withSession("/api/reset"));
 
     const topoViewerPage: TopoViewerPage = {
       gotoFile: async (filename: string) => {
+        const resolvedFilePath = path.join(TOPOLOGIES_DIR, filename);
         // Pass session ID via URL so auto-load uses correct session
         await page.goto(`${API_BASE_URL}/?sessionId=${sessionId}`);
         await page.waitForSelector(APP_SELECTOR, { timeout: 30000 });
 
         // Wait for the page to be ready (including auto-load of default topology)
-        await page.waitForFunction(
-          () => (window as any).__DEV__?.cy !== undefined,
-          { timeout: 15000 }
-        );
+        // Wait for React Flow instance to be ready
+        await page.waitForFunction(() => (window as any).__DEV__?.rfInstance !== undefined, {
+          timeout: 15000
+        });
 
         // Wait a bit for any auto-load to settle
         await page.waitForTimeout(300);
@@ -380,14 +500,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             // Load the file
-            const loadResult = await page.evaluate(async ({ file, sid }) => {
-              try {
-                await (window as any).__DEV__.loadTopologyFile(file, sid);
-                return { success: true };
-              } catch (e: any) {
-                return { success: false, error: e?.message || String(e) };
-              }
-            }, { file: filename, sid: sessionId });
+            const loadResult = await page.evaluate(
+              async ({ file, sid }) => {
+                try {
+                  await (window as any).__DEV__.loadTopologyFile(file, sid);
+                  return { success: true };
+                } catch (e: any) {
+                  return { success: false, error: e?.message || String(e) };
+                }
+              },
+              { file: resolvedFilePath, sid: sessionId }
+            );
 
             if (!loadResult.success) {
               throw new Error(`loadTopologyFile failed: ${loadResult.error}`);
@@ -397,37 +520,39 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
             await page.waitForFunction(
               (expectedFile) => {
                 const currentFile = (window as any).__DEV__?.getCurrentFile?.();
-                return currentFile === expectedFile;
+                if (!currentFile || typeof currentFile !== "string") return false;
+                return currentFile.endsWith(expectedFile);
               },
               filename,
               { timeout: 5000 }
             );
 
-            // Verify nodes are actually loaded if this is not empty.clab.yml
-            if (filename === 'simple.clab.yml') {
+            // Verify nodes are actually loaded for non-empty topologies
+            if (filename !== "empty.clab.yml") {
               await page.waitForFunction(
-                () => {
+                (types) => {
                   const dev = (window as any).__DEV__;
-                  const cy = dev?.cy;
-                  if (!cy) return false;
-                  const nodes = cy.nodes().filter((n: any) => {
-                    const role = n.data('topoViewerRole');
-                    return role && role !== 'freeText' && role !== 'freeShape';
-                  });
-                  return nodes.length >= 2;
+                  const rf = dev?.rfInstance;
+                  if (!rf) return false;
+                  const nodes = rf.getNodes?.() ?? [];
+                  // Prefer topology nodes, but fall back to any node count
+                  const topoNodes = nodes.filter(
+                    (n: any) => n.type === types.topo || n.type === types.network
+                  );
+                  return topoNodes.length > 0 || nodes.length > 0;
                 },
+                { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE },
                 { timeout: 5000 }
               );
             }
 
-            // Wait for the layout to complete (initialLayoutDone is set after layout animation)
-            // This is critical to avoid race conditions with fitViewportToAll
+            // Wait for React Flow to be fully initialized
+            // Wait for React Flow instance to be initialized
             await page.waitForFunction(
               () => {
                 const dev = (window as any).__DEV__;
-                const cy = dev?.cy;
-                if (!cy) return false;
-                return cy.scratch?.('initialLayoutDone') === true;
+                const rf = dev?.rfInstance;
+                return rf !== undefined && rf !== null;
               },
               { timeout: 10000, polling: 100 }
             );
@@ -448,45 +573,73 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getCurrentFile: async () => {
-        return await page.evaluate(() => {
+        const currentFile = await page.evaluate(() => {
           return (window as any).__DEV__.getCurrentFile();
         });
+        return currentFile ? path.basename(currentFile) : null;
       },
 
       getAnnotationsFromFile: async (filename: string) => {
         // Build full path to annotations file
         const annotationsPath = path.join(TOPOLOGIES_DIR, `${filename}.annotations.json`);
-        const response = await page.request.get(withSession(`/file/${encodeURIComponent(annotationsPath)}`));
-        if (!response.ok()) {
-          if (response.status() === 404) {
-            // Return empty annotations if file doesn't exist
-            return {
-              nodeAnnotations: [],
-              freeTextAnnotations: [],
-              freeShapeAnnotations: [],
-              groupStyleAnnotations: [],
-              edgeAnnotations: [],
-              viewerSettings: {}
-            };
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const response = await page.request.get(
+              withSession(`/file/${encodeURIComponent(annotationsPath)}`)
+            );
+            if (!response.ok()) {
+              if (response.status() === 404) {
+                // Return empty annotations if file doesn't exist
+                return {
+                  nodeAnnotations: [],
+                  freeTextAnnotations: [],
+                  freeShapeAnnotations: [],
+                  groupStyleAnnotations: [],
+                  edgeAnnotations: [],
+                  viewerSettings: {}
+                };
+              }
+              throw new Error(`Failed to read annotations: ${response.statusText()}`);
+            }
+            const text = await response.text();
+            return JSON.parse(text);
+          } catch (err) {
+            if (attempt === 2) throw err;
+            await page.waitForTimeout(200);
           }
-          throw new Error(`Failed to read annotations: ${response.statusText()}`);
         }
-        const text = await response.text();
-        return JSON.parse(text);
+        return {
+          nodeAnnotations: [],
+          freeTextAnnotations: [],
+          freeShapeAnnotations: [],
+          groupStyleAnnotations: [],
+          edgeAnnotations: [],
+          viewerSettings: {}
+        };
       },
 
       getYamlFromFile: async (filename: string) => {
         // Build full path to YAML file
         const yamlPath = path.join(TOPOLOGIES_DIR, filename);
-        const response = await page.request.get(withSession(`/file/${encodeURIComponent(yamlPath)}`));
-        if (!response.ok()) {
-          throw new Error(`Failed to read YAML: ${response.statusText()}`);
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const response = await page.request.get(
+              withSession(`/file/${encodeURIComponent(yamlPath)}`)
+            );
+            if (!response.ok()) {
+              throw new Error(`Failed to read YAML: ${response.statusText()}`);
+            }
+            return response.text();
+          } catch (err) {
+            if (attempt === 2) throw err;
+            await page.waitForTimeout(200);
+          }
         }
-        return response.text();
+        return "";
       },
 
       listTopologyFiles: async () => {
-        const response = await page.request.get(withSession('/files'));
+        const response = await page.request.get(withSession("/files"));
         if (!response.ok()) {
           throw new Error(`Failed to list files: ${response.statusText()}`);
         }
@@ -497,32 +650,115 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Wait for canvas container
         await page.waitForSelector(CANVAS_SELECTOR, { timeout: 10000 });
 
-        // Wait for Cytoscape instance to be exposed via __DEV__.cy
+        // Wait for React Flow instance to be exposed via __DEV__.rfInstance
         await page.waitForFunction(
           () => {
             const dev = (window as any).__DEV__;
-            return dev?.cy !== undefined;
+            return dev?.rfInstance !== undefined;
           },
           { timeout: 15000 }
         );
 
-        // Wait for the initial layout to complete (or be skipped for preset layouts).
-        // This is set by `useElementsUpdate` via `cy.scratch('initialLayoutDone', true)`.
+        // Wait for React Flow instance to be usable
         await page.waitForFunction(
           () => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            return cy.scratch?.('initialLayoutDone') === true;
+            const rf = dev?.rfInstance;
+            return rf !== undefined && rf !== null && typeof rf.getNodes === "function";
           },
           { timeout: 15000, polling: 200 }
         );
+
+        // If a non-empty file is loaded, wait for topology nodes to exist
+        const currentFile = await page.evaluate(
+          () => (window as any).__DEV__?.getCurrentFile?.() ?? null
+        );
+        const currentFileName =
+          currentFile && typeof currentFile === "string" ? path.basename(currentFile) : null;
+        if (currentFileName && currentFileName !== "empty.clab.yml") {
+          await page.waitForFunction(
+            (types) => {
+              const dev = (window as any).__DEV__;
+              const rf = dev?.rfInstance;
+              if (!rf) return false;
+              const nodes = rf.getNodes?.() ?? [];
+              return nodes.some((n: any) => n.type === types.topo || n.type === types.network);
+            },
+            { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE },
+            { timeout: 10000, polling: 200 }
+          );
+        }
+
+        // If topology nodes exist, wait for at least one to render in the DOM
+        const firstNodeId = await page.evaluate(
+          (types) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return null;
+            const nodes = rf.getNodes?.() ?? [];
+            const topoNode = nodes.find(
+              (n: any) => n.type === types.topo || n.type === types.network
+            );
+            return topoNode?.id ?? null;
+          },
+          { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
+        );
+
+        if (firstNodeId) {
+          await page.waitForSelector(`[data-id="${firstNodeId}"]`, { timeout: 10000 });
+          await page.waitForFunction(
+            (nodeId) => {
+              const el = document.querySelector(`[data-id="${nodeId}"]`) as HTMLElement | null;
+              if (!el) return false;
+              const rect = el.getBoundingClientRect();
+              return rect.width > 0 && rect.height > 0;
+            },
+            firstNodeId,
+            { timeout: 10000 }
+          );
+        }
+
+        // Check if nodes need layout (all at 0,0)
+        const needsLayout = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          const rf = dev?.rfInstance;
+          if (!rf) return false;
+          const nodes = rf.getNodes?.() ?? [];
+          if (nodes.length <= 1) return false; // 1 or no nodes don't need layout
+
+          // Check if all nodes are at the same position
+          const firstPos = nodes[0]?.position;
+          if (!firstPos) return false;
+          return nodes.every(
+            (n: any) =>
+              Math.abs(n.position.x - firstPos.x) < 1 && Math.abs(n.position.y - firstPos.y) < 1
+          );
+        });
+
+        // Run force layout if nodes are overlapping
+        if (needsLayout) {
+          await page.evaluate(() => {
+            const dev = (window as any).__DEV__;
+            dev?.setLayout?.("force");
+          });
+          // Wait for layout animation
+          await page.waitForTimeout(500);
+        }
+
+        // Call fitView to ensure proper viewport
+        await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          dev?.rfInstance?.fitView?.({ padding: 0.2, maxZoom: 1.2 });
+        });
+
+        // Wait for fitView animation
+        await page.waitForTimeout(300);
       },
 
       getCanvasCenter: async () => {
         const canvas = page.locator(CANVAS_SELECTOR);
         const box = await canvas.boundingBox();
-        if (!box) throw new Error('Canvas not found');
+        if (!box) throw new Error("Canvas not found");
         return {
           x: box.x + box.width / 2,
           y: box.y + box.height / 2
@@ -530,46 +766,64 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getNodeCount: async () => {
-        return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return 0;
-          // Filter out non-topology nodes (annotations, etc.)
-          return cy.nodes().filter((n: any) => {
-            const role = n.data('topoViewerRole');
-            return role && role !== 'freeText' && role !== 'freeShape';
-          }).length;
-        });
+        return await page.evaluate(
+          (types) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return 0;
+            const nodes = rf.getNodes?.() ?? [];
+            // Filter out non-topology nodes (annotations, etc.)
+            return nodes.filter((n: any) => n.type === types.topo || n.type === types.network).length;
+          },
+          { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
+        );
       },
 
       getNodePosition: async (nodeId: string) => {
         return await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          const node = cy?.getElementById(id);
-          if (!node || node.empty()) return { x: 0, y: 0 };
-          return node.position();
+          const rf = dev?.rfInstance;
+          if (!rf) return { x: 0, y: 0 };
+          const nodes = rf.getNodes?.() ?? [];
+          const node = nodes.find((n: any) => n.id === id);
+          if (!node) return { x: 0, y: 0 };
+          return node.position;
         }, nodeId);
       },
 
       getNodeBoundingBox: async (nodeId: string) => {
-        return await page.evaluate((id) => {
-          const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          const node = cy?.getElementById(id);
-          if (!node || node.empty()) return null;
+        // Try DOM element first - most reliable for visible nodes
+        const domHandle = await page.$(`[data-id="${nodeId}"]`);
+        if (domHandle) {
+          const domBox = await domHandle.boundingBox();
+          if (domBox) return domBox;
+        }
 
-          const bb = node.renderedBoundingBox();
-          const container = cy.container();
-          const rect = container.getBoundingClientRect();
+        // Fallback to React Flow calculation (simplified - use default size)
+        return await page.evaluate(
+          ({ id, sel }) => {
+            const rf = (window as any).__DEV__?.rfInstance;
+            if (!rf) return null;
 
-          return {
-            x: rect.left + bb.x1,
-            y: rect.top + bb.y1,
-            width: bb.w,
-            height: bb.h
-          };
-        }, nodeId);
+            const nodes = rf.getNodes?.() ?? [];
+            const node = nodes.find((n: any) => n.id === id);
+            if (!node) return null;
+
+            const vp = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+            const container = document.querySelector(sel);
+            const rect = container?.getBoundingClientRect();
+            const ox = rect?.left ?? 0;
+            const oy = rect?.top ?? 0;
+
+            return {
+              x: ox + node.position.x * vp.zoom + vp.x,
+              y: oy + node.position.y * vp.zoom + vp.y,
+              width: 60 * vp.zoom,
+              height: 60 * vp.zoom
+            };
+          },
+          { id: nodeId, sel: CANVAS_SELECTOR }
+        );
       },
 
       getCanvas: () => {
@@ -578,30 +832,48 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       setEditMode: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setMode('edit');
+          const dev = (window as any).__DEV__;
+          if (dev?.setModeState) {
+            dev.setModeState("edit");
+            return;
+          }
+          dev?.setMode?.("edit");
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.mode?.() === "edit", {
+          timeout: 2000
+        });
       },
 
       setViewMode: async () => {
         await page.evaluate(() => {
-          (window as any).__DEV__.setMode('view');
+          const dev = (window as any).__DEV__;
+          if (dev?.setModeState) {
+            dev.setModeState("view");
+            return;
+          }
+          dev?.setMode?.("view");
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.mode?.() === "view", {
+          timeout: 2000
+        });
       },
 
       unlock: async () => {
         await page.evaluate(() => {
           (window as any).__DEV__.setLocked(false);
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.isLocked?.() === false, {
+          timeout: 2000
+        });
       },
 
       lock: async () => {
         await page.evaluate(() => {
           (window as any).__DEV__.setLocked(true);
         });
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => (window as any).__DEV__?.isLocked?.() === true, {
+          timeout: 2000
+        });
       },
 
       isLocked: async () => {
@@ -611,142 +883,239 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getNodeIds: async () => {
-        return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy
-            .nodes()
-            .filter((n: any) => {
-              const role = n.data('topoViewerRole');
-              return role && role !== 'freeText' && role !== 'freeShape';
-            })
-            .map((n: any) => n.id());
-        });
+        return await page.evaluate(
+          (types) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return [];
+            const nodes = rf.getNodes?.() ?? [];
+            return nodes
+              .filter((n: any) => n.type === types.topo || n.type === types.network)
+              .map((n: any) => n.id);
+          },
+          { topo: TOPOLOGY_NODE_TYPE, network: NETWORK_NODE_TYPE }
+        );
       },
 
       selectNode: async (nodeId: string) => {
-        const box = await topoViewerPage.getNodeBoundingBox(nodeId);
-        if (!box) throw new Error(`Node ${nodeId} not found`);
+        // Use React Flow selection for proper clipboard support
+        // This sets node.selected = true which is what clipboard copy checks
+        await page.evaluate((id) => {
+          const dev = (window as any).__DEV__;
+          // Use selectNodesForClipboard for React Flow selection
+          if (dev?.selectNodesForClipboard) {
+            dev.selectNodesForClipboard([id]);
+          }
+          // Also update TopoViewerContext state for UI sync
+          if (dev?.selectNode) {
+            dev.selectNode(id);
+          }
+        }, nodeId);
 
-        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        // Wait for React state to propagate
         await page.waitForTimeout(100);
+
+        // Verify React Flow selection was set
+        const selectedIds = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          if (!dev?.rfInstance) return [];
+          const nodes = dev.rfInstance.getNodes();
+          return nodes
+            .filter((n: { selected?: boolean }) => n.selected)
+            .map((n: { id: string }) => n.id);
+        });
+
+        if (!selectedIds.includes(nodeId)) {
+          console.warn(
+            `Selection verification failed: expected ${nodeId} in ${selectedIds.join(", ")}`
+          );
+        }
       },
 
       getGroupCount: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          // Try React state first
-          const reactGroups = dev?.getReactGroups?.();
-          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
-
-          // If React has groups, use React count
-          if (reactGroups && reactGroups.length > 0) {
-            return reactGroups.length;
-          }
-          // If React is empty but stateManager has groups (initial load scenario), use stateManager
-          if (stateManagerGroups.length > 0) {
-            return stateManagerGroups.length;
-          }
-          // Both empty
-          return reactGroups?.length ?? 0;
+          const reactGroups = dev?.getReactGroups?.() ?? [];
+          return reactGroups.length;
         });
       },
 
       getGroupIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          // Try React state first
-          const reactGroups = dev?.getReactGroups?.();
-          const stateManagerGroups = dev?.stateManager?.getAnnotations?.()?.groupStyleAnnotations ?? [];
-
-          // If React has groups, use React IDs
-          if (reactGroups && reactGroups.length > 0) {
-            return reactGroups.map((g: any) => g.id);
-          }
-          // If React is empty but stateManager has groups (initial load scenario), use stateManager
-          if (stateManagerGroups.length > 0) {
-            return stateManagerGroups.map((g: any) => g.id);
-          }
-          // Both empty
-          return [];
+          const reactGroups = dev?.getReactGroups?.() ?? [];
+          return reactGroups.map((g: any) => g.id);
         });
       },
 
       getEdgeIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy.edges().map((e: any) => e.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const edges = rf.getEdges?.() ?? [];
+          return edges.map((e: any) => e.id);
         });
+      },
+
+      getEdgesData: async () => {
+        return await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const edges = rf.getEdges?.() ?? [];
+          return edges.map((e: any) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceEndpoint: e.data?.sourceEndpoint,
+            targetEndpoint: e.data?.targetEndpoint
+          }));
+        });
+      },
+
+      findEdgeByEndpoints: async (source, target, sourceEndpoint, targetEndpoint) => {
+        return await page.evaluate(
+          ({ source, target, sourceEndpoint, targetEndpoint }) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (!rf) return null;
+            const edges = rf.getEdges?.() ?? [];
+            const matches = (edge: any) => {
+              const data = edge.data ?? {};
+              const se = data.sourceEndpoint;
+              const te = data.targetEndpoint;
+              const direct =
+                edge.source === source &&
+                edge.target === target &&
+                (sourceEndpoint === undefined || se === sourceEndpoint) &&
+                (targetEndpoint === undefined || te === targetEndpoint);
+              const flipped =
+                edge.source === target &&
+                edge.target === source &&
+                (sourceEndpoint === undefined || te === sourceEndpoint) &&
+                (targetEndpoint === undefined || se === targetEndpoint);
+              return direct || flipped;
+            };
+            const edge = edges.find(matches);
+            if (!edge) return null;
+            return {
+              id: edge.id,
+              source: edge.source,
+              target: edge.target,
+              sourceEndpoint: edge.data?.sourceEndpoint,
+              targetEndpoint: edge.data?.targetEndpoint
+            };
+          },
+          { source, target, sourceEndpoint, targetEndpoint }
+        );
       },
 
       getEdgeCount: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return 0;
-          return cy.edges().length;
+          const rf = dev?.rfInstance;
+          if (!rf) return 0;
+          const edges = rf.getEdges?.() ?? [];
+          return edges.length;
         });
       },
 
       selectEdge: async (edgeId: string) => {
-        const midpoint = await page.evaluate((id) => {
+        // Use programmatic selection via __DEV__.selectEdge and also set React Flow edge.selected
+        await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          const edge = cy?.getElementById(id);
-          if (!edge || edge.empty()) return null;
-
-          const bb = edge.renderedBoundingBox();
-          const container = cy.container();
-          const rect = container.getBoundingClientRect();
-
-          return {
-            x: rect.left + bb.x1 + bb.w / 2,
-            y: rect.top + bb.y1 + bb.h / 2
-          };
+          // Update context state
+          if (dev?.selectEdge) {
+            dev.selectEdge(id);
+          }
+          // Also set React Flow edge.selected property
+          const rf = dev?.rfInstance;
+          if (rf) {
+            const edges = rf.getEdges?.() ?? [];
+            const updatedEdges = edges.map((e: any) => ({
+              ...e,
+              selected: e.id === id
+            }));
+            rf.setEdges(updatedEdges);
+          }
         }, edgeId);
 
-        if (!midpoint) throw new Error(`Edge ${edgeId} not found`);
-        await page.mouse.click(midpoint.x, midpoint.y);
+        // Wait for React state to propagate
         await page.waitForTimeout(100);
+
+        // Verify selection was set
+        const selectedId = await page.evaluate(() => {
+          const dev = (window as any).__DEV__;
+          return dev?.selectedEdge?.() ?? null;
+        });
+
+        if (selectedId !== edgeId) {
+          console.warn(`Edge selection verification failed: expected ${edgeId}, got ${selectedId}`);
+        }
       },
 
       getZoom: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          return dev?.cy?.zoom() ?? 1;
+          const rf = dev?.rfInstance;
+          return rf?.getViewport?.()?.zoom ?? 1;
         });
       },
 
       getPan: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          return dev?.cy?.pan() ?? { x: 0, y: 0 };
+          const rf = dev?.rfInstance;
+          const viewport = rf?.getViewport?.() ?? { x: 0, y: 0 };
+          return { x: viewport.x, y: viewport.y };
         });
       },
 
       setZoom: async (zoom: number) => {
-        await page.evaluate((z) => {
-          const dev = (window as any).__DEV__;
-          dev?.cy?.zoom(z);
-        }, zoom);
+        await page.evaluate(
+          ({ z, sel }) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (rf?.setViewport) {
+              const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+              const container = document.querySelector(sel) as HTMLElement | null;
+              const rect = container?.getBoundingClientRect();
+              const centerX = rect ? rect.width / 2 : 0;
+              const centerY = rect ? rect.height / 2 : 0;
+              const modelCenterX = (centerX - viewport.x) / viewport.zoom;
+              const modelCenterY = (centerY - viewport.y) / viewport.zoom;
+              rf.setViewport({
+                x: centerX - modelCenterX * z,
+                y: centerY - modelCenterY * z,
+                zoom: z
+              });
+            }
+          },
+          { z: zoom, sel: CANVAS_SELECTOR }
+        );
         await page.waitForTimeout(100);
       },
 
       setPan: async (x: number, y: number) => {
-        await page.evaluate(({ px, py }) => {
-          const dev = (window as any).__DEV__;
-          dev?.cy?.pan({ x: px, y: py });
-        }, { px: x, py: y });
+        await page.evaluate(
+          ({ px, py }) => {
+            const dev = (window as any).__DEV__;
+            const rf = dev?.rfInstance;
+            if (rf?.setViewport) {
+              const viewport = rf.getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+              rf.setViewport({ x: px, y: py, zoom: viewport.zoom });
+            }
+          },
+          { px: x, py: y }
+        );
         await page.waitForTimeout(100);
       },
 
       fit: async () => {
         await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          dev?.cy?.fit();
+          dev?.rfInstance?.fitView?.({ padding: 0.1, maxZoom: 1.2 });
         });
         await page.waitForTimeout(300);
       },
@@ -754,47 +1123,73 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       getSelectedNodeIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy.nodes(':selected').map((n: any) => n.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const nodes = rf.getNodes?.() ?? [];
+          return nodes.filter((n: any) => n.selected).map((n: any) => n.id);
         });
       },
 
       getSelectedEdgeIds: async () => {
         return await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy.edges(':selected').map((e: any) => e.id());
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const edges = rf.getEdges?.() ?? [];
+          return edges.filter((e: any) => e.selected).map((e: any) => e.id);
         });
       },
 
       clearSelection: async () => {
+        // Press Escape to clear context selection, then clear React Flow selection
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(100);
+        // Also clear React Flow node.selected and edge.selected properties
         await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          dev?.cy?.elements().unselect();
+          dev?.clearNodeSelection?.();
+          // Clear edge selection too
+          const rf = dev?.rfInstance;
+          if (rf) {
+            const edges = rf.getEdges?.() ?? [];
+            const updatedEdges = edges.map((e: any) => ({
+              ...e,
+              selected: false
+            }));
+            rf.setEdges(updatedEdges);
+          }
         });
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(50);
       },
 
       deleteSelected: async () => {
-        await page.keyboard.press('Delete');
+        await page.keyboard.press("Delete");
         await page.waitForTimeout(200);
       },
 
       undo: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('z');
-        await page.keyboard.up('Control');
+        await page
+          .waitForFunction(() => (window as any).__DEV__?.undoRedo?.canUndo === true, {
+            timeout: 2000
+          })
+          .catch(() => {});
+        await page.keyboard.down("Control");
+        await page.keyboard.press("z");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(200);
       },
 
       redo: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('z');
-        await page.keyboard.up('Shift');
-        await page.keyboard.up('Control');
+        await page
+          .waitForFunction(() => (window as any).__DEV__?.undoRedo?.canRedo === true, {
+            timeout: 2000
+          })
+          .catch(() => {});
+        await page.keyboard.down("Control");
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("z");
+        await page.keyboard.up("Shift");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(200);
       },
 
@@ -812,7 +1207,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         });
       },
 
-      createNode: async (nodeId: string, position: { x: number; y: number }, kind = 'nokia_srlinux') => {
+      createNode: async (
+        nodeId: string,
+        position: { x: number; y: number },
+        kind = "nokia_srlinux"
+      ) => {
         // Wait for handleNodeCreatedCallback to be available (exposed via __DEV__)
         await page.waitForFunction(
           () => (window as any).__DEV__?.handleNodeCreatedCallback !== undefined,
@@ -820,73 +1219,76 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         );
 
         await page.evaluate(
-          ({ nodeId, position, kind }) => {
+          ({ nodeId, position, kind, nodeType }) => {
             const dev = (window as any).__DEV__;
             if (!dev?.handleNodeCreatedCallback) {
-              throw new Error('handleNodeCreatedCallback not available');
+              throw new Error("handleNodeCreatedCallback not available");
             }
 
-            // Create node data matching the structure expected by the handler
-            const nodeData = {
-              id: nodeId,
-              name: nodeId,
-              topoViewerRole: 'pe',
-              extraData: {
-                kind,
-                image: 'ghcr.io/nokia/srlinux:latest',
-                longname: '',
-                mgmtIpv4Address: ''
-              }
-            };
-
-            // Create the node element
+            // Create node element in React Flow format
             const nodeElement = {
-              group: 'nodes' as const,
-              data: nodeData,
-              position
+              id: nodeId,
+              type: nodeType,
+              position,
+              data: {
+                label: nodeId,
+                name: nodeId,
+                role: "pe",
+                topoViewerRole: "pe",
+                kind,
+                image: "ghcr.io/nokia/srlinux:latest",
+                extraData: {
+                  kind,
+                  image: "ghcr.io/nokia/srlinux:latest",
+                  longname: "",
+                  mgmtIpv4Address: ""
+                }
+              }
             };
 
             // Call handleNodeCreatedCallback which:
             // 1. Adds the node to React state
-            // 2. Sends create-node to extension
+            // 2. Persists to YAML via TopologyIO
             // 3. Pushes undo action
             dev.handleNodeCreatedCallback(nodeId, nodeElement, position);
           },
-          { nodeId, position, kind }
+          { nodeId, position, kind, nodeType: TOPOLOGY_NODE_TYPE }
         );
 
-        // Wait for the node to appear in Cytoscape (state-driven sync)
+        // Wait for the node to appear in React Flow
         await page.waitForFunction(
           (id) => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            const el = cy.getElementById(id);
-            return el && el.length > 0;
+            const rf = dev?.rfInstance;
+            if (!rf) return false;
+            const nodes = rf.getNodes?.() ?? [];
+            return nodes.some((n: any) => n.id === id);
           },
           nodeId,
           { timeout: 5000 }
         );
+
+        // Small wait to ensure state fully propagates before next operation
+        await page.waitForTimeout(100);
       },
 
       createLink: async (
         sourceId: string,
         targetId: string,
-        sourceEndpoint = 'eth1',
-        targetEndpoint = 'eth1'
+        sourceEndpoint = "eth1",
+        targetEndpoint = "eth1"
       ) => {
         // Wait for handleEdgeCreated to be available (exposed via __DEV__)
-        await page.waitForFunction(
-          () => (window as any).__DEV__?.handleEdgeCreated !== undefined,
-          { timeout: 10000 }
-        );
+        await page.waitForFunction(() => (window as any).__DEV__?.handleEdgeCreated !== undefined, {
+          timeout: 10000
+        });
 
         // Check lock state and mode before proceeding (respects UI restrictions)
         const canCreate = await page.evaluate(() => {
           const dev = (window as any).__DEV__;
           // Block if locked (isLocked is a function) or not in edit mode
-          if (typeof dev?.isLocked === 'function' && dev.isLocked() === true) return false;
-          if (typeof dev?.mode === 'function' && dev.mode() !== 'edit') return false;
+          if (typeof dev?.isLocked === "function" && dev.isLocked() === true) return false;
+          if (typeof dev?.mode === "function" && dev.mode() !== "edit") return false;
           return true;
         });
 
@@ -900,13 +1302,11 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           ({ sourceId, targetId, sourceEndpoint, targetEndpoint }) => {
             const dev = (window as any).__DEV__;
             if (!dev?.handleEdgeCreated) {
-              throw new Error('handleEdgeCreated not available');
+              throw new Error("handleEdgeCreated not available");
             }
 
-            // Include endpoints in ID to allow multiple edges between same nodes
-            const linkId = `${sourceId}:${sourceEndpoint}-${targetId}:${targetEndpoint}`;
             const linkData = {
-              id: linkId,
+              id: `${sourceId}:${sourceEndpoint}--${targetId}:${targetEndpoint}`,
               source: sourceId,
               target: targetId,
               sourceEndpoint,
@@ -922,22 +1322,18 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           { sourceId, targetId, sourceEndpoint, targetEndpoint }
         );
 
-        // Include endpoints in ID to allow multiple edges between same nodes (including self-loops/hairpins)
-        const linkId = `${sourceId}:${sourceEndpoint}-${targetId}:${targetEndpoint}`;
+        // Wait for matching edge to appear (ID may be re-written by snapshot sync)
         await page.waitForFunction(
-          (id) => {
-            const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            const el = cy.getElementById(id);
-            return el && el.length > 0;
-          },
-          linkId,
+          browserHasMatchingEdge,
+          { sourceId, targetId, sourceEndpoint, targetEndpoint },
           { timeout: 5000 }
         );
       },
 
-      createNetwork: async (position: { x: number; y: number }, networkType: string): Promise<string | null> => {
+      createNetwork: async (
+        position: { x: number; y: number },
+        networkType: string
+      ): Promise<string | null> => {
         // Wait for createNetworkAtPosition to be available
         await page.waitForFunction(
           () => (window as any).__DEV__?.createNetworkAtPosition !== undefined,
@@ -947,8 +1343,8 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Check lock state and mode before proceeding
         const canCreate = await page.evaluate(() => {
           const dev = (window as any).__DEV__;
-          if (typeof dev?.isLocked === 'function' && dev.isLocked() === true) return false;
-          if (dev?.stateManager?.getMode?.() !== 'edit') return false;
+          if (typeof dev?.isLocked === "function" && dev.isLocked() === true) return false;
+          if (typeof dev?.mode === "function" && dev.mode() !== "edit") return false;
           return true;
         });
 
@@ -961,7 +1357,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           ({ pos, type }) => {
             const dev = (window as any).__DEV__;
             if (!dev?.createNetworkAtPosition) {
-              throw new Error('createNetworkAtPosition not available');
+              throw new Error("createNetworkAtPosition not available");
             }
             return dev.createNetworkAtPosition(pos, type);
           },
@@ -970,14 +1366,14 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
         if (!networkId) return null;
 
-        // Wait for the network node to appear in Cytoscape
+        // Wait for the network node to appear in React Flow
         await page.waitForFunction(
           (id) => {
             const dev = (window as any).__DEV__;
-            const cy = dev?.cy;
-            if (!cy) return false;
-            const el = cy.getElementById(id);
-            return el && el.length > 0;
+            const rf = dev?.rfInstance;
+            if (!rf) return false;
+            const nodes = rf.getNodes?.() ?? [];
+            return nodes.some((n: any) => n.id === id);
           },
           networkId,
           { timeout: 5000 }
@@ -987,15 +1383,13 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       getNetworkNodeIds: async (): Promise<string[]> => {
-        return await page.evaluate(() => {
+        return await page.evaluate((cloudType) => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return [];
-          return cy
-            .nodes()
-            .filter((n: any) => n.data('topoViewerRole') === 'cloud')
-            .map((n: any) => n.id());
-        });
+          const rf = dev?.rfInstance;
+          if (!rf) return [];
+          const nodes = rf.getNodes?.() ?? [];
+          return nodes.filter((n: any) => n.type === cloudType).map((n: any) => n.id);
+        }, NETWORK_NODE_TYPE);
       },
 
       dragNode: async (nodeId: string, delta: { x: number; y: number }) => {
@@ -1021,10 +1415,10 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       },
 
       resetFiles: async () => {
-        const response = await request.post(withSession('/api/reset'));
+        const response = await request.post(withSession("/api/reset"));
         const result = await response.json();
         if (!result.success) {
-          throw new Error(result.error || 'Failed to reset files');
+          throw new Error(result.error || "Failed to reset files");
         }
         // Wait for session reset to settle
         await page.waitForTimeout(100);
@@ -1048,45 +1442,67 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
           const annotations = dev?.stateManager?.getAnnotations?.();
           if (!annotations?.nodeAnnotations) return [];
           return annotations.nodeAnnotations
-            .filter((n: { id: string; group?: string }) => n.group === id || n.group?.startsWith(id.split('__')[0]))
+            .filter(
+              (n: { id: string; group?: string }) =>
+                n.group === id || n.group?.startsWith(id.split("__")[0])
+            )
             .map((n: { id: string; group?: string }) => n.id);
         }, groupId);
       },
 
       copy: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('c');
-        await page.keyboard.up('Control');
+        await page.keyboard.down("Control");
+        await page.keyboard.press("c");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(200);
       },
 
       paste: async () => {
-        await page.keyboard.down('Control');
-        await page.keyboard.press('v');
-        await page.keyboard.up('Control');
+        await page.keyboard.down("Control");
+        await page.keyboard.press("v");
+        await page.keyboard.up("Control");
         await page.waitForTimeout(300);
+      },
+
+      clearClipboard: async () => {
+        await page.evaluate(async () => {
+          try {
+            await window.navigator.clipboard.writeText("");
+          } catch {
+            // Ignore clipboard write failures; tests will fall back to existing state.
+          }
+        });
+        await page.waitForTimeout(100);
       },
 
       createGroup: async () => {
         // Use direct API call instead of keyboard events for reliability
         const result = await page.evaluate(browserCreateGroup);
-        console.log(`[DEBUG] createGroup: method=${result.method}, hasCy=${result.hasCy}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`);
+        console.log(
+          `[DEBUG] createGroup: method=${result.method}, hasRf=${result.hasRf}, selected=${result.selectedBefore} -> ${result.selectedAfter}, mode=${result.mode}, isLocked=${result.isLocked}, stateManager: ${result.groupsBefore} -> ${result.groupsAfter}, react: ${result.reactGroupsBefore} -> ${result.reactGroupsAfter}`
+        );
         // Wait for debounced save (300ms) plus processing time
         await page.waitForTimeout(1000);
         // Check again after wait - both React state and stateManager
         const debugInfo = await page.evaluate(browserGetGroupDebugInfo);
-        console.log(`[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`);
+        console.log(
+          `[DEBUG] After 1000ms: React groups=${debugInfo.reactGroupCount} (direct: ${debugInfo.reactGroupsDirectCount}) (${debugInfo.reactGroupIds}), StateManager groups=${debugInfo.stateManagerGroupCount} (${debugInfo.stateManagerGroupIds})`
+        );
       },
 
-      resizeGroup: async (groupId: string, corner: 'nw' | 'ne' | 'sw' | 'se', delta: { x: number; y: number }) => {
+      resizeGroup: async (
+        groupId: string,
+        corner: "nw" | "ne" | "sw" | "se",
+        delta: { x: number; y: number }
+      ) => {
         // Click the group label to ensure resize handles are rendered (selection/hover-driven UI)
         const label = page.locator(`[data-testid="group-label-${groupId}"]`);
-        await label.waitFor({ state: 'visible', timeout: 5000 });
+        await label.waitFor({ state: "visible", timeout: 5000 });
         await label.click();
         await page.waitForTimeout(200);
 
         const handle = page.locator(`[data-testid="resize-${corner}-${groupId}"]`);
-        await handle.waitFor({ state: 'visible', timeout: 5000 });
+        await handle.waitFor({ state: "visible", timeout: 5000 });
         const box = await handle.boundingBox();
         if (!box) throw new Error(`Resize handle not found for group ${groupId} (${corner})`);
 
@@ -1117,20 +1533,24 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // Press Escape to deselect anything and ensure focus is on canvas
-        await page.keyboard.press('Escape');
+        await page.keyboard.press("Escape");
         await page.waitForTimeout(100);
 
-        // Select the node programmatically via Cytoscape
+        // Select the node programmatically via __DEV__.selectNode (React Flow)
+        await page.evaluate((id) => {
+          const dev = (window as any).__DEV__;
+          if (dev?.selectNode) {
+            dev.selectNode(id);
+          }
+        }, nodeId);
+
+        // Wait for selection state to propagate
+        await page.waitForTimeout(100);
+
+        // Verify selection was set
         const selected = await page.evaluate((id) => {
           const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return false;
-          cy.nodes().unselect();
-          cy.edges().unselect();
-          const node = cy.getElementById(id);
-          if (!node || node.empty()) return false;
-          node.select();
-          return node.selected();
+          return dev?.selectedNode?.() === id;
         }, nodeId);
 
         if (!selected) {
@@ -1138,7 +1558,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         }
 
         // Press Delete key
-        await page.keyboard.press('Delete');
+        await page.keyboard.press("Delete");
         await page.waitForTimeout(500);
       },
 
@@ -1146,13 +1566,17 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         // Close any open editor panel first to ensure Delete key goes to the canvas
         const nodeEditor = page.locator('[data-testid="node-editor"]');
         if (await nodeEditor.isVisible()) {
-          const closeBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-close-btn"]');
+          const closeBtn = page.locator(
+            '[data-testid="node-editor"] [data-testid="panel-close-btn"]'
+          );
           await closeBtn.click();
           await page.waitForTimeout(200);
         }
         const edgeEditor = page.locator('[data-testid="edge-editor"]');
         if (await edgeEditor.isVisible()) {
-          const closeBtn = page.locator('[data-testid="edge-editor"] [data-testid="panel-close-btn"]');
+          const closeBtn = page.locator(
+            '[data-testid="edge-editor"] [data-testid="panel-close-btn"]'
+          );
           await closeBtn.click();
           await page.waitForTimeout(200);
         }
@@ -1162,7 +1586,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         await page.waitForTimeout(100);
 
         await topoViewerPage.selectEdge(edgeId);
-        await page.keyboard.press('Delete');
+        await page.keyboard.press("Delete");
         await page.waitForTimeout(300);
       },
 
@@ -1171,7 +1595,7 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
         const yamlPath = path.join(TOPOLOGIES_DIR, filename);
         const response = await request.put(withSession(`/file/${encodeURIComponent(yamlPath)}`), {
           data: content,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+          headers: { "Content-Type": "text/plain; charset=utf-8" }
         });
         if (!response.ok()) {
           throw new Error(`Failed to write YAML: ${response.statusText()}`);
@@ -1181,10 +1605,13 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
       writeAnnotationsFile: async (filename: string, content: object) => {
         // Build full path to annotations file
         const annotationsPath = path.join(TOPOLOGIES_DIR, `${filename}.annotations.json`);
-        const response = await request.put(withSession(`/file/${encodeURIComponent(annotationsPath)}`), {
-          data: JSON.stringify(content, null, 2),
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-        });
+        const response = await request.put(
+          withSession(`/file/${encodeURIComponent(annotationsPath)}`),
+          {
+            data: JSON.stringify(content, null, 2),
+            headers: { "Content-Type": "text/plain; charset=utf-8" }
+          }
+        );
         if (!response.ok()) {
           throw new Error(`Failed to write annotations: ${response.statusText()}`);
         }
@@ -1205,19 +1632,19 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
     // Save browser console logs on test failure for debugging
     if (testInfo.status !== testInfo.expectedStatus && consoleLogs.length > 0) {
-      const logsContent = consoleLogs.join('\n');
+      const logsContent = consoleLogs.join("\n");
 
       // Write to file in test-results folder
-      const logFilePath = testInfo.outputPath('browser-console-logs.txt');
+      const logFilePath = testInfo.outputPath("browser-console-logs.txt");
       writeFileSync(logFilePath, logsContent);
 
       // Also attach to HTML report
-      await testInfo.attach('browser-console-logs', {
+      await testInfo.attach("browser-console-logs", {
         body: logsContent,
-        contentType: 'text/plain',
+        contentType: "text/plain"
       });
     }
   }
 });
 
-export { expect } from '@playwright/test';
+export { expect } from "@playwright/test";

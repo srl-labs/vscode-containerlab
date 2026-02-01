@@ -4,14 +4,8 @@
  */
 import React, { useState, useEffect, useCallback } from "react";
 
-import { EditorPanel } from "../../shared/editor";
-import {
-  FormField,
-  InputField,
-  FilterableDropdown,
-  Section,
-  KeyValueList
-} from "../../shared/form";
+import { EditorPanel } from "../../ui/editor";
+import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from "../../ui/form";
 
 import type { NetworkEditorData, NetworkType } from "./types";
 import {

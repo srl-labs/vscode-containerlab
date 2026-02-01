@@ -1,21 +1,15 @@
 /**
- * Shared message types between extension and webview
+ * Shared message types between extension and webview.
+ *
+ * Topology state is authoritative in the host via the TopologyHost protocol.
  */
 
-// Re-export CyElement from topology.ts (single source of truth)
+import type { NodeSaveData } from "../io/NodePersistenceIO";
+import type { LinkSaveData } from "../io/LinkPersistenceIO";
 
-import type {
-  MSG_EDGE_STATS_UPDATE,
-  MSG_EXTERNAL_FILE_CHANGE,
-  MSG_NODE_RENAMED,
-  MSG_TOPO_MODE_CHANGE,
-  MSG_TOPOLOGY_DATA
-} from "../messages/webview";
-import type { EdgeStatsUpdate } from "../../extension/services/EdgeStatsBuilder";
-
-import { CyElement, type TopologyAnnotations, type EdgeAnnotation } from "./topology";
-
-export { CyElement };
+import type { TopologyAnnotations, EdgeAnnotation, DeploymentState } from "./topology";
+import type { TopoNode, TopoEdge } from "./graph";
+import type { LabSettings } from "./labSettings";
 
 /**
  * Base message interface for all messages
@@ -26,132 +20,146 @@ export interface BaseMessage {
 }
 
 /**
- * Request message from webview to extension
- */
-export interface RequestMessage extends BaseMessage {
-  type: "POST";
-  endpointName: string;
-  payload?: string;
-}
-
-/**
- * Response message from extension to webview
- */
-export interface ResponseMessage extends BaseMessage {
-  type: "POST_RESPONSE";
-  requestId: string;
-  result: unknown;
-  error: string | null;
-}
-
-/**
- * Push message from extension to webview
- */
-export interface PushMessage extends BaseMessage {
-  type: string;
-  data?: unknown;
-}
-
-/**
- * Topology data message
- */
-export interface TopologyDataMessage extends PushMessage {
-  type: typeof MSG_TOPOLOGY_DATA;
-  data: {
-    elements: CyElement[];
-    labName: string;
-    mode: "edit" | "view";
-    viewerSettings?: TopologyAnnotations["viewerSettings"];
-    edgeAnnotations?: EdgeAnnotation[];
-  };
-}
-
-/**
  * Mode changed message
  */
-export interface ModeChangedMessage extends PushMessage {
-  type: typeof MSG_TOPO_MODE_CHANGE;
+export interface ModeChangedMessage extends BaseMessage {
+  type: "topo-mode-changed";
   data: {
     mode: "editor" | "viewer";
     deploymentState: "deployed" | "undeployed" | "unknown";
   };
 }
 
-/**
- * Edge stats update message
- */
-export interface EdgeStatsUpdateMessage extends PushMessage {
-  type: typeof MSG_EDGE_STATS_UPDATE;
-  data: {
-    edgeUpdates: EdgeStatsUpdate[];
-  };
+// ============================================================================
+// TopologyHost Protocol (authoritative host state)
+// ============================================================================
+
+export const TOPOLOGY_HOST_PROTOCOL_VERSION = 1;
+
+export type TopologyHostCommand =
+  | { command: "addNode"; payload: NodeSaveData }
+  | { command: "editNode"; payload: NodeSaveData }
+  | { command: "deleteNode"; payload: { id: string } }
+  | { command: "addLink"; payload: LinkSaveData }
+  | { command: "editLink"; payload: LinkSaveData }
+  | { command: "deleteLink"; payload: LinkSaveData }
+  | {
+      command: "savePositions";
+      payload: Array<{
+        id: string;
+        position?: { x: number; y: number };
+        geoCoordinates?: { lat: number; lng: number };
+      }>;
+      /** Skip undo/redo history for internal, non-user-initiated updates. */
+      skipHistory?: boolean;
+    }
+  | {
+      command: "savePositionsAndAnnotations";
+      payload: {
+        positions: Array<{
+          id: string;
+          position?: { x: number; y: number };
+          geoCoordinates?: { lat: number; lng: number };
+        }>;
+        annotations?: Partial<TopologyAnnotations>;
+      };
+      /** Skip undo/redo history for internal, non-user-initiated updates. */
+      skipHistory?: boolean;
+    }
+  | { command: "setAnnotations"; payload: Partial<TopologyAnnotations> }
+  | { command: "setEdgeAnnotations"; payload: EdgeAnnotation[] }
+  | { command: "setViewerSettings"; payload: NonNullable<TopologyAnnotations["viewerSettings"]> }
+  | { command: "setNodeGroupMembership"; payload: { nodeId: string; groupId: string | null } }
+  | {
+      command: "setNodeGroupMemberships";
+      payload: Array<{ nodeId: string; groupId: string | null }>;
+    }
+  | {
+      command: "setAnnotationsWithMemberships";
+      payload: {
+        annotations: Partial<TopologyAnnotations>;
+        memberships: Array<{ nodeId: string; groupId: string | null }>;
+      };
+    }
+  | { command: "batch"; payload: { commands: TopologyHostCommand[] } }
+  | { command: "setLabSettings"; payload: LabSettings }
+  | { command: "undo" }
+  | { command: "redo" };
+
+export interface TopologySnapshot {
+  revision: number;
+  nodes: TopoNode[];
+  edges: TopoEdge[];
+  annotations: TopologyAnnotations;
+  labName: string;
+  mode: "edit" | "view";
+  deploymentState: DeploymentState;
+  labSettings?: LabSettings;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
-/**
- * Node renamed message - sent after a node is renamed to trigger in-place update
- */
-export interface NodeRenamedMessage extends PushMessage {
-  type: typeof MSG_NODE_RENAMED;
-  data: {
-    oldId: string;
-    newId: string;
-  };
+export interface TopologyPatch {
+  revision: number;
+  nodes?: TopoNode[];
+  edges?: TopoEdge[];
+  annotations?: Partial<TopologyAnnotations>;
+  labName?: string;
+  mode?: "edit" | "view";
+  deploymentState?: DeploymentState;
+  labSettings?: LabSettings;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
-/**
- * External file change message - sent when YAML file is modified outside the webview
- * Used to notify webview to clear undo history
- */
-export interface ExternalFileChangeMessage extends PushMessage {
-  type: typeof MSG_EXTERNAL_FILE_CHANGE;
+export interface TopologyHostSnapshotRequestMessage extends BaseMessage {
+  type: "topology-host:get-snapshot";
+  protocolVersion: number;
+  requestId: string;
 }
 
-/**
- * Node data for Cytoscape nodes
- */
-export interface NodeData {
-  id: string;
-  label: string;
-  kind?: string;
-  type?: string;
-  image?: string;
-  parent?: string;
-  [key: string]: unknown;
+export interface TopologyHostCommandMessage extends BaseMessage {
+  type: "topology-host:command";
+  protocolVersion: number;
+  requestId: string;
+  baseRevision: number;
+  command: TopologyHostCommand;
 }
 
-/**
- * Edge data for Cytoscape edges
- */
-export interface EdgeData {
-  id: string;
-  source: string;
-  target: string;
-  sourceEndpoint?: string;
-  targetEndpoint?: string;
-  [key: string]: unknown;
+export interface TopologyHostAckMessage extends BaseMessage {
+  type: "topology-host:ack";
+  protocolVersion: number;
+  requestId: string;
+  revision: number;
+  snapshot?: TopologySnapshot;
+  patch?: TopologyPatch;
 }
 
-/**
- * VS Code API interface exposed to webview
- */
-export interface VSCodeAPI {
-  postMessage(msg: unknown): void;
-  getState(): unknown;
-  setState(newState: unknown): void;
+export interface TopologyHostRejectMessage extends BaseMessage {
+  type: "topology-host:reject";
+  protocolVersion: number;
+  requestId: string;
+  revision: number;
+  snapshot: TopologySnapshot;
+  reason: "stale";
 }
 
-/**
- * Endpoint names for message passing
- */
-export type EndpointName =
-  | "lab-settings-get"
-  | "lab-settings-update"
-  | "topo-viewport-save"
-  | "topo-editor-viewport-save"
-  | "topo-editor-load-annotations"
-  | "topo-editor-save-annotations"
-  | "topo-switch-mode"
-  | "deployLab"
-  | "destroyLab"
-  | "redeployLab"
-  | "get-topology-data";
+export interface TopologyHostErrorMessage extends BaseMessage {
+  type: "topology-host:error";
+  protocolVersion: number;
+  requestId: string;
+  error: string;
+}
+
+export interface TopologyHostSnapshotMessage extends BaseMessage {
+  type: "topology-host:snapshot";
+  protocolVersion: number;
+  snapshot: TopologySnapshot;
+  reason?: "init" | "external-change" | "resync";
+}
+
+export type TopologyHostResponseMessage =
+  | TopologyHostAckMessage
+  | TopologyHostRejectMessage
+  | TopologyHostErrorMessage
+  | TopologyHostSnapshotMessage;

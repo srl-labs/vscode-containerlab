@@ -1,141 +1,72 @@
 /**
- * Topology CRUD Helpers
+ * Topology CRUD Helpers (Host-authoritative)
  *
- * Helper functions for node/link CRUD operations via TopologyIO.
+ * Dispatches topology commands to the host and applies snapshots.
  */
+
+import type { Node } from "@xyflow/react";
 
 import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
+import { nodesToAnnotations } from "../annotations/annotationNodeConverters";
+import { useGraphStore } from "../stores/graphStore";
+import { BRIDGE_NETWORK_TYPES } from "../utils/networkNodeTypes";
+import { buildNetworkNodeAnnotations } from "../utils/networkNodeAnnotations";
 
-import { getTopologyIO, isServicesInitialized } from "./serviceInitialization";
+import { executeTopologyCommand } from "./topologyHostCommands";
 
 // Re-export types for convenience
 export type { NodeSaveData, LinkSaveData };
 
-// Warning message
-const WARN_SERVICES_NOT_INIT = "[Services] Cannot perform operation: services not initialized";
+const WARN_COMMAND_FAILED = "[Host] Topology command failed";
 
-/**
- * Create a new node via TopologyIO.
- * Saves to YAML and annotations file.
- */
+export { buildNetworkNodeAnnotations };
+
 export async function createNode(nodeData: NodeSaveData): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
   try {
-    const topologyIO = getTopologyIO();
-    const result = await topologyIO.addNode(nodeData);
-    if (!result.success) {
-      console.error(`[Services] Failed to create node: ${result.error}`);
-    }
+    await executeTopologyCommand({ command: "addNode", payload: nodeData });
   } catch (err) {
-    console.error(`[Services] Failed to create node: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: addNode`, err);
   }
 }
 
-/**
- * Edit an existing node via TopologyIO.
- * Handles renames and updates annotations.
- */
 export async function editNode(nodeData: NodeSaveData): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
   try {
-    const topologyIO = getTopologyIO();
-    const result = await topologyIO.editNode(nodeData);
-    if (!result.success) {
-      console.error(`[Services] Failed to edit node: ${result.error}`);
-    }
+    await executeTopologyCommand({ command: "editNode", payload: nodeData });
   } catch (err) {
-    console.error(`[Services] Failed to edit node: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: editNode`, err);
   }
 }
 
-/**
- * Delete a node via TopologyIO.
- * Removes from YAML and annotations file.
- */
 export async function deleteNode(nodeId: string): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
   try {
-    const topologyIO = getTopologyIO();
-    const result = await topologyIO.deleteNode(nodeId);
-    if (!result.success) {
-      console.error(`[Services] Failed to delete node: ${result.error}`);
-    }
+    await executeTopologyCommand({ command: "deleteNode", payload: { id: nodeId } });
   } catch (err) {
-    console.error(`[Services] Failed to delete node: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: deleteNode`, err);
   }
 }
 
-/**
- * Create a new link via TopologyIO.
- * Saves to YAML file.
- */
 export async function createLink(linkData: LinkSaveData): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
   try {
-    const topologyIO = getTopologyIO();
-    const result = await topologyIO.addLink(linkData);
-    if (!result.success) {
-      console.error(`[Services] Failed to create link: ${result.error}`);
-    }
+    await executeTopologyCommand({ command: "addLink", payload: linkData });
   } catch (err) {
-    console.error(`[Services] Failed to create link: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: addLink`, err);
   }
 }
 
-/**
- * Edit an existing link via TopologyIO.
- */
 export async function editLink(linkData: LinkSaveData): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
   try {
-    const topologyIO = getTopologyIO();
-    const result = await topologyIO.editLink(linkData);
-    if (!result.success) {
-      console.error(`[Services] Failed to edit link: ${result.error}`);
-    }
+    await executeTopologyCommand({ command: "editLink", payload: linkData });
   } catch (err) {
-    console.error(`[Services] Failed to edit link: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: editLink`, err);
   }
 }
 
-/**
- * Delete a link via TopologyIO.
- */
 export async function deleteLink(linkData: LinkSaveData): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
   try {
-    const topologyIO = getTopologyIO();
-    const result = await topologyIO.deleteLink(linkData);
-    if (!result.success) {
-      console.error(`[Services] Failed to delete link: ${result.error}`);
-    }
+    await executeTopologyCommand({ command: "deleteLink", payload: linkData });
   } catch (err) {
-    console.error(`[Services] Failed to delete link: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: deleteLink`, err);
   }
 }
 
@@ -143,50 +74,52 @@ export async function deleteLink(linkData: LinkSaveData): Promise<void> {
 export interface NetworkNodeData {
   id: string;
   label: string;
-  type: "host" | "mgmt-net" | "macvlan" | "vxlan" | "vxlan-stitch" | "dummy";
+  type:
+    | "host"
+    | "mgmt-net"
+    | "macvlan"
+    | "vxlan"
+    | "vxlan-stitch"
+    | "dummy"
+    | "bridge"
+    | "ovs-bridge";
   position: { x: number; y: number };
+  geoCoordinates?: { lat: number; lng: number };
 }
 
 /**
- * Create a network node (non-bridge type) via AnnotationsIO.
- * Network nodes like host, vxlan, dummy etc. are stored in networkNodeAnnotations,
- * not in the YAML nodes section.
+ * Persist network nodes (non-bridge types) via annotations.
+ * Assumes the graph store already contains the latest network nodes.
  */
-export async function createNetworkNode(data: NetworkNodeData): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
+export async function saveNetworkNodesFromGraph(nodes?: Node[]): Promise<void> {
   try {
-    const topologyIO = getTopologyIO();
-    const yamlPath = topologyIO.getYamlFilePath();
-    if (!yamlPath) {
-      console.warn("[Services] No YAML path available for network node creation");
-      return;
-    }
-
-    const { getAnnotationsIO } = await import("./serviceInitialization");
-    const annotationsIO = getAnnotationsIO();
-    await annotationsIO.modifyAnnotations(yamlPath, (ann) => {
-      if (!ann.networkNodeAnnotations) ann.networkNodeAnnotations = [];
-      ann.networkNodeAnnotations.push({
-        id: data.id,
-        label: data.label,
-        type: data.type,
-        position: data.position
-      });
-      return ann;
+    const graphNodes = nodes ?? useGraphStore.getState().nodes;
+    const annotations = buildNetworkNodeAnnotations(graphNodes);
+    await executeTopologyCommand({
+      command: "setAnnotations",
+      payload: { networkNodeAnnotations: annotations }
     });
   } catch (err) {
-    console.error(`[Services] Failed to create network node: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: setAnnotations(networkNodeAnnotations)`, err);
   }
 }
 
 /**
- * Save node positions via TopologyIO.
- * In GeoMap mode, only geoCoordinates should be provided (position is omitted)
- * to avoid overwriting the preset position.
+ * Create a network node stored in annotations (non-bridge types).
+ * Bridge types should be persisted via addNode/editNode instead.
+ */
+export async function createNetworkNode(data: NetworkNodeData): Promise<void> {
+  if (BRIDGE_NETWORK_TYPES.has(data.type)) {
+    console.warn(`[Host] Bridge network nodes should be created via addNode: ${data.type}`);
+    return;
+  }
+  await saveNetworkNodesFromGraph();
+}
+
+/**
+ * Save node positions via host command.
+ * Note: We set applySnapshot: false because position-only changes should not
+ * trigger a full topology reload, which would reset geo-mode positions.
  */
 export async function saveNodePositions(
   positions: Array<{
@@ -195,42 +128,46 @@ export async function saveNodePositions(
     geoCoordinates?: { lat: number; lng: number };
   }>
 ): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-
   try {
-    const topologyIO = getTopologyIO();
-    const result = await topologyIO.savePositions(positions);
-    if (!result.success) {
-      console.error(`[Services] Failed to save positions: ${result.error}`);
-    }
+    await executeTopologyCommand(
+      { command: "savePositions", payload: positions },
+      { applySnapshot: false }
+    );
   } catch (err) {
-    console.error(`[Services] Failed to save positions: ${err}`);
+    console.error(`${WARN_COMMAND_FAILED}: savePositions`, err);
   }
 }
 
 /**
- * Begin a batch operation (defers saves until endBatch).
+ * Save node positions and annotation nodes in a single host command.
+ * This keeps related moves (e.g., groups + members) as one undo entry.
  */
-export function beginBatch(): void {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
+export async function saveNodePositionsWithAnnotations(
+  positions: Array<{
+    id: string;
+    position?: { x: number; y: number };
+    geoCoordinates?: { lat: number; lng: number };
+  }>,
+  nodes?: Node[]
+): Promise<void> {
+  try {
+    const graphNodes = nodes ?? useGraphStore.getState().nodes;
+    const { freeTextAnnotations, freeShapeAnnotations, groups } = nodesToAnnotations(graphNodes);
+    await executeTopologyCommand(
+      {
+        command: "savePositionsAndAnnotations",
+        payload: {
+          positions,
+          annotations: {
+            freeTextAnnotations,
+            freeShapeAnnotations,
+            groupStyleAnnotations: groups
+          }
+        }
+      },
+      { applySnapshot: false }
+    );
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: savePositionsAndAnnotations`, err);
   }
-  const topologyIO = getTopologyIO();
-  topologyIO.beginBatch();
-}
-
-/**
- * End a batch operation and flush pending saves.
- */
-export async function endBatch(): Promise<void> {
-  if (!isServicesInitialized()) {
-    console.warn(WARN_SERVICES_NOT_INIT);
-    return;
-  }
-  const topologyIO = getTopologyIO();
-  await topologyIO.endBatch();
 }

@@ -4,9 +4,7 @@
  */
 
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
-import type { UseEasterEggReturn } from "./useEasterEgg";
 import {
   NightcallMode,
   StickerbushMode,
@@ -14,28 +12,29 @@ import {
   VaporwaveMode,
   DeusExMode
 } from "./modes";
+import type { UseEasterEggReturn } from "./useEasterEgg";
 
 interface EasterEggRendererProps {
   easterEgg: UseEasterEggReturn;
-  cyInstance: CyCore | null;
 }
 
 /**
  * Renders the appropriate easter egg mode based on current state.
- * All modes receive identical props, so we use a switch for cleaner code.
  */
-export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg, cyInstance }) => {
+export const EasterEggRenderer: React.FC<EasterEggRendererProps> = ({ easterEgg }) => {
   const { state, endPartyMode, nextMode, getModeName } = easterEgg;
+  const { isPartyMode, easterEggMode } = state;
+
+  if (!isPartyMode) return null;
 
   const commonProps = {
-    isActive: state.isPartyMode,
+    isActive: isPartyMode,
     onClose: endPartyMode,
     onSwitchMode: nextMode,
-    modeName: getModeName(),
-    cyInstance
+    modeName: getModeName()
   };
 
-  switch (state.easterEggMode) {
+  switch (easterEggMode) {
     case "nightcall":
       return <NightcallMode {...commonProps} />;
     case "stickerbrush":

@@ -18,33 +18,14 @@ export type {
   UseEasterEggReturn
 } from "./useEasterEgg";
 
-// Mode components
-export {
-  AquaticAmbienceMode,
-  VaporwaveMode,
-  NightcallMode,
-  StickerbushMode,
-  DeusExMode
-} from "./modes";
-
 // Renderer component
 export { EasterEggRenderer } from "./EasterEggRenderer";
 
-// Audio hooks
+// Mode components (for direct use if needed)
 export {
-  useAquaticAmbienceAudio,
-  useVaporwaveAudio,
-  useNightcallAudio,
-  useStickerbushAudio
-} from "./audio";
-
-export type {
-  UseAquaticAmbienceAudioReturn,
-  UseVaporwaveAudioReturn,
-  UseNightcallAudioReturn,
-  UseStickerbushAudioReturn
-} from "./audio";
-
-// Shared utilities (re-export for convenience)
-export type { RGBColor, BaseModeProps, BaseAudioReturn } from "./shared";
-export { lerpColor, BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, useNodeGlow, MuteButton } from "./shared";
+  NightcallMode,
+  StickerbushMode,
+  AquaticAmbienceMode,
+  VaporwaveMode,
+  DeusExMode
+} from "./modes";

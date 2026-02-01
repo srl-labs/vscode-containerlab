@@ -1,6 +1,6 @@
 /**
  * Utility functions for converting between NetworkEditorData and
- * Cytoscape node data format for network nodes
+ * Node data format for network nodes
  */
 
 import type { NetworkEditorData, NetworkType } from "../types/editors";
@@ -100,7 +100,7 @@ function parseInterfaceName(
 }
 
 /**
- * Converts raw network node data (from Cytoscape) to NetworkEditorData format
+ * Converts raw network node data (from the graph) to NetworkEditorData format
  */
 export function convertToNetworkEditorData(
   rawData: Record<string, unknown> | null
@@ -115,7 +115,7 @@ export function convertToNetworkEditorData(
     id: nodeId,
     networkType,
     interfaceName: parseInterfaceName(nodeId, networkType, extra),
-    label: getStringOrEmpty(rawData.name) || nodeId,
+    label: getStringOrEmpty(rawData.name) || getStringOrEmpty(rawData.label) || nodeId,
     // VXLAN fields
     vxlanRemote: getStringOrEmpty(extra.extRemote),
     vxlanVni: getStringOrEmpty(extra.extVni),

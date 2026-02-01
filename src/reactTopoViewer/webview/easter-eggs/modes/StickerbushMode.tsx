@@ -5,28 +5,11 @@
  * Ethereal greens and purples with floating firefly particles.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useStickerbushAudio } from "../audio";
-import {
-  BTN_VISIBLE,
-  BTN_HIDDEN,
-  BTN_BLUR,
-  lerpColor,
-  applyNodeGlow,
-  restoreNodeStyles,
-  MuteButton
-} from "../shared";
-import type { RGBColor } from "../shared";
-
-interface StickerbushModeProps {
-  isActive: boolean;
-  onClose?: () => void;
-  onSwitchMode?: () => void;
-  modeName?: string;
-  cyInstance?: CyCore | null;
-}
+import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, useNodeGlow, MuteButton } from "../shared";
+import type { RGBColor, BaseModeProps } from "../shared";
 
 /** Forest/bramble color palette */
 const COLORS = {
@@ -135,22 +118,12 @@ const StickerbushCanvas: React.FC<{
       const beatIntensity = getBeatIntensity();
       const currentSection = getCurrentSection();
 
-      // Clear canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Draw ambient forest glow
       drawForestGlow(ctx, width, height, beatIntensity, time, currentSection);
-
-      // Draw subtle vignette
       drawVignette(ctx, width, height);
-
-      // Draw soft light rays
       drawLightRays(ctx, width, height, time, beatIntensity);
-
-      // Draw frequency visualizer (subtle vertical bars like grass)
       drawGrassBars(ctx, width, height, freqData, beatIntensity, currentSection);
-
-      // Draw floating fireflies
       drawFireflies(ctx, width, height, time, beatIntensity);
 
       animationRef.current = window.requestAnimationFrame(animate);
@@ -175,9 +148,6 @@ const StickerbushCanvas: React.FC<{
   );
 };
 
-/**
- * Draw ambient forest glow effect
- */
 function drawForestGlow(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -192,7 +162,6 @@ function drawForestGlow(
   const baseRadius = Math.max(width, height) * 0.7;
   const pulseRadius = baseRadius + Math.sin(time * 0.01) * 30 + intensity * 40;
 
-  // Central ethereal glow
   const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, pulseRadius);
 
   const alpha = 0.06 + intensity * 0.04;
@@ -208,9 +177,6 @@ function drawForestGlow(
   ctx.fillRect(0, 0, width, height);
 }
 
-/**
- * Draw soft vignette around edges
- */
 function drawVignette(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   const gradient = ctx.createRadialGradient(
     width / 2,
@@ -229,9 +195,6 @@ function drawVignette(ctx: CanvasRenderingContext2D, width: number, height: numb
   ctx.fillRect(0, 0, width, height);
 }
 
-/**
- * Draw soft light rays from top
- */
 function drawLightRays(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -271,9 +234,6 @@ function drawLightRays(
   ctx.restore();
 }
 
-/**
- * Draw grass-like frequency bars at bottom
- */
 function drawGrassBars(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -295,7 +255,6 @@ function drawGrassBars(
     const amplitude = freqData[i] / 255;
     const barHeight = amplitude * maxBarHeight;
 
-    // Gradient from forest green to phrase color
     const t = i / barCount;
     const barColor = lerpColor(COLORS.forestGreen, color, t);
 
@@ -305,7 +264,6 @@ function drawGrassBars(
     const x = startX + i * barWidth;
     const y = baseY - barHeight;
 
-    // Thin blade-like shape
     ctx.beginPath();
     ctx.moveTo(x + barWidth / 2, y);
     ctx.lineTo(x + barWidth - 1, baseY);
@@ -315,9 +273,6 @@ function drawGrassBars(
   }
 }
 
-/**
- * Draw floating firefly particles
- */
 function drawFireflies(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -326,21 +281,17 @@ function drawFireflies(
   intensity: number
 ): void {
   for (const f of fireflies) {
-    // Update position with gentle drift
     f.x += f.vx + Math.sin(time * 0.008 + f.pulsePhase) * 0.3;
     f.y += f.vy + Math.cos(time * 0.006 + f.pulsePhase) * 0.2;
 
-    // Wrap around screen
     if (f.x < -20) f.x = width + 20;
     if (f.x > width + 20) f.x = -20;
     if (f.y < -20) f.y = height + 20;
     if (f.y > height + 20) f.y = -20;
 
-    // Pulsing glow
     const pulse = Math.sin(time * f.pulseSpeed + f.pulsePhase);
     const currentBrightness = f.brightness * (0.5 + pulse * 0.5) + intensity * 0.3;
 
-    // Draw outer glow
     const glowSize = f.size * 4;
     const gradient = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, glowSize);
     gradient.addColorStop(0, `hsla(${f.hue}, 80%, 70%, ${currentBrightness * 0.6})`);
@@ -352,7 +303,6 @@ function drawFireflies(
     ctx.arc(f.x, f.y, glowSize, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw core
     ctx.beginPath();
     ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
     ctx.fillStyle = `hsla(${f.hue}, 90%, 85%, ${currentBrightness})`;
@@ -360,75 +310,25 @@ function drawFireflies(
   }
 }
 
-/**
- * Hook to apply forest glow to nodes
- */
-function useStickerbushNodeGlow(
-  cyInstance: CyCore | null | undefined,
-  isActive: boolean,
-  getBeatIntensity: () => number,
-  getCurrentSection: () => number
-): void {
-  const originalStylesRef = useRef<Map<string, Record<string, string>>>(new Map());
-  const animationRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
-
-    // Capture ref value at effect run time for cleanup
-    const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
-
-    // Store original styles
-    nodes.forEach((node) => {
-      const id = node.id();
-      styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
-      });
-    });
-
-    const cy = cyInstance;
-
-    const animate = (): void => {
-      const beatIntensity = getBeatIntensity();
-      const currentSection = getCurrentSection();
-      const color = getSectionColor(currentSection);
-
-      // Smooth continuous glow
-      cy.batch(() => applyNodeGlow(cy, color, beatIntensity * 0.4 + 0.2));
-
-      animationRef.current = window.requestAnimationFrame(animate);
-    };
-
-    animationRef.current = window.requestAnimationFrame(animate);
-
-    return () => {
-      window.cancelAnimationFrame(animationRef.current);
-      cy.batch(() => restoreNodeStyles(cy, styles));
-      styles.clear();
-    };
-  }, [isActive, cyInstance, getBeatIntensity, getCurrentSection]);
-}
-
-/**
- * Stickerbrush Mode Overlay
- */
-export const StickerbushMode: React.FC<StickerbushModeProps> = ({
+export const StickerbushMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName,
-  cyInstance
+  modeName
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useStickerbushAudio();
 
-  // Apply forest glow to nodes
-  useStickerbushNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentSection);
+  const getColor = useCallback((): RGBColor => {
+    return getSectionColor(audio.getCurrentSection());
+  }, [audio]);
 
-  // Start audio when activated
+  const getIntensity = useCallback((): number => {
+    return audio.getBeatIntensity() * 0.4 + 0.2;
+  }, [audio]);
+
+  useNodeGlow(isActive, getColor, getIntensity);
+
   useEffect(() => {
     if (isActive && !audio.isPlaying && !audio.isLoading) {
       void audio.play();
@@ -460,7 +360,6 @@ export const StickerbushMode: React.FC<StickerbushModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      {/* Control buttons - forest style */}
       <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
         <button
           onClick={handleSwitch}

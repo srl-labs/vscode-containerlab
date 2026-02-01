@@ -70,6 +70,10 @@
     background-color: #3b82f6;
   }
 
+  .mode-badge.processing {
+    background-color: #f59e0b;
+  }
+
   /* Navbar buttons */
   .navbar-buttons {
     display: flex;
@@ -77,6 +81,49 @@
     justify-content: flex-end;
     gap: 0.25rem;
     margin-left: auto;
+  }
+
+  .navbar-deploy {
+    position: relative;
+  }
+
+  .navbar-deploy::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 0.4rem;
+  }
+
+  .navbar-deploy-menu {
+    position: absolute;
+    top: 100%;
+    right: auto;
+    left: 50%;
+    width: max-content;
+    min-width: auto;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -0.35rem) scale(0.98);
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .navbar-deploy:hover .navbar-deploy-menu,
+  .navbar-deploy:focus-within .navbar-deploy-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0.25rem) scale(1);
   }
 
   /* Navbar menu dropdown */
@@ -138,9 +185,20 @@
     transition: background-color 0.1s ease;
   }
 
+  .navbar-menu-option i {
+    width: 1rem;
+    text-align: center;
+  }
+
   .navbar-menu-option:hover {
     background-color: var(--vscode-menu-selectionBackground, rgba(64, 166, 255, 0.18));
   }
+
+  .navbar-menu-option:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
 
   .navbar-menu-option-check {
     margin-left: auto;

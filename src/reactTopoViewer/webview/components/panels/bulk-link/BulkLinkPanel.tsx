@@ -2,11 +2,10 @@
  * BulkLinkPanel - Create multiple links based on name patterns
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
-import { BasePanel } from "../../shared/editor/BasePanel";
-import type { GraphChange } from "../../../hooks/state";
-import type { CyElement } from "../../../../shared/types/messages";
+import { BasePanel } from "../../ui/editor/BasePanel";
+import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
+import { useGraphActions, useGraphState } from "../../../stores/graphStore";
 
 import { CopyableCode } from "./CopyableCode";
 import { ConfirmBulkLinksModal } from "./ConfirmBulkLinksModal";
@@ -17,10 +16,7 @@ interface BulkLinkPanelProps {
   isVisible: boolean;
   mode: "edit" | "view";
   isLocked: boolean;
-  cy: CyCore | null;
   onClose: () => void;
-  recordGraphChanges?: (before: GraphChange[], after: GraphChange[]) => void;
-  addEdge?: (edge: CyElement) => void;
   storageKey?: string;
 }
 
@@ -81,15 +77,11 @@ const ExamplesSection: React.FC = () => (
 
 type UseBulkLinkPanelOptions = Omit<BulkLinkPanelProps, "storageKey">;
 
-function useBulkLinkPanel({
-  isVisible,
-  mode,
-  isLocked,
-  cy,
-  onClose,
-  recordGraphChanges,
-  addEdge
-}: UseBulkLinkPanelOptions) {
+function useBulkLinkPanel({ isVisible, mode, isLocked, onClose }: UseBulkLinkPanelOptions) {
+  // Get nodes and edges from graph store
+  const { nodes, edges } = useGraphState();
+  const { addEdge } = useGraphActions();
+
   const [sourcePattern, setSourcePattern] = React.useState("");
   const [targetPattern, setTargetPattern] = React.useState("");
   const [status, setStatus] = React.useState<string | null>(null);
@@ -113,21 +105,28 @@ function useBulkLinkPanel({
   }, [onClose]);
 
   const handleCompute = React.useCallback(() => {
-    computeAndValidateCandidates(cy, sourcePattern, targetPattern, setStatus, setPendingCandidates);
-  }, [cy, sourcePattern, targetPattern]);
+    computeAndValidateCandidates(
+      nodes as TopoNode[],
+      edges as TopoEdge[],
+      sourcePattern,
+      targetPattern,
+      setStatus,
+      setPendingCandidates
+    );
+  }, [nodes, edges, sourcePattern, targetPattern]);
 
   const handleConfirmCreate = React.useCallback(async () => {
     await confirmAndCreateLinks({
-      cy,
+      nodes: nodes as TopoNode[],
+      edges: edges as TopoEdge[],
       pendingCandidates,
       canApply,
       addEdge,
-      recordGraphChanges,
       setStatus,
       setPendingCandidates,
       onClose
     });
-  }, [cy, pendingCandidates, canApply, addEdge, recordGraphChanges, onClose]);
+  }, [nodes, edges, pendingCandidates, canApply, addEdge, onClose]);
 
   const handleDismissConfirm = React.useCallback(() => {
     setPendingCandidates(null);
@@ -153,10 +152,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
   isVisible,
   mode,
   isLocked,
-  cy,
   onClose,
-  recordGraphChanges,
-  addEdge,
   storageKey = "bulk-link"
 }) => {
   const {
@@ -172,7 +168,7 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
     handleCompute,
     handleConfirmCreate,
     handleDismissConfirm
-  } = useBulkLinkPanel({ isVisible, mode, isLocked, cy, onClose, recordGraphChanges, addEdge });
+  } = useBulkLinkPanel({ isVisible, mode, isLocked, onClose });
 
   return (
     <>

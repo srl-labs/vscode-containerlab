@@ -6,7 +6,6 @@
  * - useKeyboardShortcuts call with all 20+ arguments
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
 
 import { useKeyboardShortcuts } from "../ui/useKeyboardShortcuts";
 
@@ -22,7 +21,6 @@ export interface AppKeyboardShortcutsConfig {
     selectedNode: string | null;
     selectedEdge: string | null;
   };
-  cyInstance: CyCore | null;
   undoRedo: {
     undo: () => void;
     redo: () => void;
@@ -34,12 +32,13 @@ export interface AppKeyboardShortcutsConfig {
     selectedShapeIds: Set<string>;
     selectedGroupIds: Set<string>;
     clearAllSelections: () => void;
-    handleAddGroupWithUndo: () => void;
+    handleAddGroup: () => void;
   };
   clipboardHandlers: ClipboardHandlersReturn;
   deleteHandlers: {
-    handleDeleteNodeWithUndo: (nodeId: string) => void;
-    handleDeleteLinkWithUndo: (edgeId: string) => void;
+    handleDeleteNode: (nodeId: string) => void;
+    handleDeleteLink: (edgeId: string) => void;
+    handleDeleteSelection?: () => void;
   };
   handleDeselectAll: () => void;
 }
@@ -50,15 +49,8 @@ export interface AppKeyboardShortcutsConfig {
  * Simplifies the 20+ argument useKeyboardShortcuts call into a structured config.
  */
 export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): void {
-  const {
-    state,
-    cyInstance,
-    undoRedo,
-    annotations,
-    clipboardHandlers,
-    deleteHandlers,
-    handleDeselectAll
-  } = config;
+  const { state, undoRedo, annotations, clipboardHandlers, deleteHandlers, handleDeselectAll } =
+    config;
 
   // Combined selection IDs (text + shape + group annotations)
   const combinedSelectedAnnotationIds = React.useMemo(() => {
@@ -76,9 +68,9 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     isLocked: state.isLocked,
     selectedNode: state.selectedNode,
     selectedEdge: state.selectedEdge,
-    cyInstance,
-    onDeleteNode: deleteHandlers.handleDeleteNodeWithUndo,
-    onDeleteEdge: deleteHandlers.handleDeleteLinkWithUndo,
+    onDeleteNode: deleteHandlers.handleDeleteNode,
+    onDeleteEdge: deleteHandlers.handleDeleteLink,
+    onDeleteSelection: deleteHandlers.handleDeleteSelection,
     onDeselectAll: handleDeselectAll,
     onUndo: undoRedo.undo,
     onRedo: undoRedo.redo,
@@ -94,6 +86,6 @@ export function useAppKeyboardShortcuts(config: AppKeyboardShortcutsConfig): voi
     onDeleteAnnotations: clipboardHandlers.handleUnifiedDelete,
     onClearAnnotationSelection: annotations.clearAllSelections,
     hasAnnotationClipboard: clipboardHandlers.hasClipboardData,
-    onCreateGroup: annotations.handleAddGroupWithUndo
+    onCreateGroup: annotations.handleAddGroup
   });
 }

@@ -6,7 +6,7 @@
 import type { ReactNode } from "react";
 import React from "react";
 
-import { BasePanel } from "../shared/editor/BasePanel";
+import { BasePanel } from "../ui/editor/BasePanel";
 
 interface FloatingPanelProps {
   title: string;

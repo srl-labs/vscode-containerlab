@@ -5,27 +5,11 @@
  * Deep blues, teals, floating bubbles, and soft light rays.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAquaticAmbienceAudio } from "../audio";
-import {
-  BTN_VISIBLE,
-  BTN_HIDDEN,
-  BTN_BLUR,
-  applyNodeGlow,
-  restoreNodeStyles,
-  MuteButton
-} from "../shared";
-import type { RGBColor } from "../shared";
-
-interface AquaticAmbienceModeProps {
-  isActive: boolean;
-  onClose?: () => void;
-  onSwitchMode?: () => void;
-  modeName?: string;
-  cyInstance?: CyCore | null;
-}
+import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, useNodeGlow, MuteButton } from "../shared";
+import type { RGBColor, BaseModeProps } from "../shared";
 
 /** Underwater color palette */
 const COLORS = {
@@ -39,22 +23,18 @@ const COLORS = {
 
 /** Section to color mapping */
 const SECTION_COLORS: RGBColor[] = [
-  COLORS.teal, // Cm(add9)
-  COLORS.oceanBlue, // Abm(add9)
-  COLORS.teal, // Cm(add9)
-  COLORS.oceanBlue, // Abm(add9)
-  COLORS.aqua, // Fmaj7
-  COLORS.lightBlue // Bdim(add9)
+  COLORS.teal,
+  COLORS.oceanBlue,
+  COLORS.teal,
+  COLORS.oceanBlue,
+  COLORS.aqua,
+  COLORS.lightBlue
 ];
 
-/**
- * Get color for current section
- */
 function getSectionColor(section: number): RGBColor {
   return SECTION_COLORS[section % SECTION_COLORS.length];
 }
 
-/** Bubble particle type */
 interface Bubble {
   x: number;
   y: number;
@@ -65,12 +45,8 @@ interface Bubble {
   alpha: number;
 }
 
-// Persistent bubble storage
 const bubbles: Bubble[] = [];
 
-/**
- * Initialize bubbles for the canvas
- */
 function initializeBubbles(width: number, height: number): void {
   if (bubbles.length > 0) return;
 
@@ -89,9 +65,6 @@ function initializeBubbles(width: number, height: number): void {
   }
 }
 
-/**
- * Aquatic Canvas - Underwater visualization
- */
 const AquaticCanvas: React.FC<{
   isActive: boolean;
   getFrequencyData: () => Uint8Array<ArrayBuffer>;
@@ -131,22 +104,12 @@ const AquaticCanvas: React.FC<{
       const beatIntensity = getBeatIntensity();
       const currentSection = getCurrentSection();
 
-      // Clear canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Draw underwater gradient glow
       drawUnderwaterGlow(ctx, width, height, beatIntensity, time, currentSection);
-
-      // Draw soft caustic light rays
       drawCausticRays(ctx, width, height, time, beatIntensity);
-
-      // Draw subtle wave distortion at top
       drawWaterSurface(ctx, width, time);
-
-      // Draw frequency visualizer (wave-like at bottom)
-      drawWaveVisualizer(ctx, width, height, freqData, beatIntensity, currentSection);
-
-      // Draw floating bubbles
+      drawWaveVisualizer(ctx, width, height, freqData, currentSection);
       drawBubbles(ctx, width, height, time, beatIntensity);
 
       animationRef.current = window.requestAnimationFrame(animate);
@@ -171,9 +134,6 @@ const AquaticCanvas: React.FC<{
   );
 };
 
-/**
- * Draw deep underwater gradient glow
- */
 function drawUnderwaterGlow(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -183,8 +143,6 @@ function drawUnderwaterGlow(
   section: number
 ): void {
   const color = getSectionColor(section);
-
-  // Gradient from top (lighter) to bottom (darker)
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
 
   const alpha = 0.06 + intensity * 0.04;
@@ -208,9 +166,6 @@ function drawUnderwaterGlow(
   ctx.fillRect(0, 0, width, height);
 }
 
-/**
- * Draw soft caustic light rays from above
- */
 function drawCausticRays(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -225,11 +180,8 @@ function drawCausticRays(
   const baseWidth = width / rayCount;
 
   for (let i = 0; i < rayCount; i++) {
-    // Slowly moving rays
     const offset = Math.sin(time * 0.003 + i * 2.0) * 60;
     const x = (i + 0.5) * baseWidth + offset;
-
-    // Pulsing width
     const pulseWidth = 20 + Math.sin(time * 0.005 + i) * 10;
 
     const gradient = ctx.createLinearGradient(x, 0, x, height * 0.8);
@@ -255,9 +207,6 @@ function drawCausticRays(
   ctx.restore();
 }
 
-/**
- * Draw subtle water surface distortion at top
- */
 function drawWaterSurface(ctx: CanvasRenderingContext2D, width: number, time: number): void {
   ctx.save();
   ctx.globalAlpha = 0.08;
@@ -274,7 +223,6 @@ function drawWaterSurface(ctx: CanvasRenderingContext2D, width: number, time: nu
   ctx.beginPath();
   ctx.moveTo(0, 0);
 
-  // Gentle wave pattern
   for (let x = 0; x <= width; x += 20) {
     const y = Math.sin(x * 0.02 + time * 0.02) * 5 + Math.sin(x * 0.01 + time * 0.015) * 3;
     ctx.lineTo(x, y + 30);
@@ -287,15 +235,11 @@ function drawWaterSurface(ctx: CanvasRenderingContext2D, width: number, time: nu
   ctx.restore();
 }
 
-/**
- * Draw wave-like frequency visualizer at bottom
- */
 function drawWaveVisualizer(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   freqData: Uint8Array<ArrayBuffer>,
-  _intensity: number,
   section: number
 ): void {
   const barCount = Math.min(24, freqData.length);
@@ -307,8 +251,6 @@ function drawWaveVisualizer(
   const color = getSectionColor(section);
 
   ctx.save();
-
-  // Draw as connected wave
   ctx.beginPath();
   ctx.moveTo(startX, baseY);
 
@@ -321,7 +263,6 @@ function drawWaveVisualizer(
     if (i === 0) {
       ctx.lineTo(x, y);
     } else {
-      // Smooth curve between points
       const prevX = startX + (i - 1) * segmentWidth;
       const cpX = (prevX + x) / 2;
       ctx.quadraticCurveTo(
@@ -336,7 +277,6 @@ function drawWaveVisualizer(
   ctx.lineTo(startX + totalWidth, baseY);
   ctx.closePath();
 
-  // Fill with gradient
   const waveGradient = ctx.createLinearGradient(0, baseY - 40, 0, baseY);
   waveGradient.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0.5)`);
   waveGradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0.2)`);
@@ -347,9 +287,6 @@ function drawWaveVisualizer(
   ctx.restore();
 }
 
-/**
- * Draw floating bubble particles
- */
 function drawBubbles(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -358,22 +295,18 @@ function drawBubbles(
   intensity: number
 ): void {
   for (const b of bubbles) {
-    // Move upward with wobble
     b.y -= b.speed + intensity * 0.2;
     b.x += Math.sin(time * b.wobbleSpeed + b.wobblePhase) * 0.5;
 
-    // Reset when off screen
     if (b.y < -b.size * 2) {
       b.y = height + b.size * 2;
       // eslint-disable-next-line sonarjs/pseudo-random
       b.x = Math.random() * width;
     }
 
-    // Wrap horizontally
     if (b.x < -b.size) b.x = width + b.size;
     if (b.x > width + b.size) b.x = -b.size;
 
-    // Draw bubble
     const gradient = ctx.createRadialGradient(
       b.x - b.size * 0.3,
       b.y - b.size * 0.3,
@@ -399,7 +332,6 @@ function drawBubbles(
     ctx.fillStyle = gradient;
     ctx.fill();
 
-    // Highlight
     ctx.beginPath();
     ctx.arc(b.x - b.size * 0.3, b.y - b.size * 0.3, b.size * 0.2, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
@@ -407,74 +339,25 @@ function drawBubbles(
   }
 }
 
-/**
- * Hook to apply aquatic glow to nodes (section-based coloring)
- */
-function useAquaticNodeGlow(
-  cyInstance: CyCore | null | undefined,
-  isActive: boolean,
-  getBeatIntensity: () => number,
-  getCurrentSection: () => number
-): void {
-  const originalStylesRef = useRef<Map<string, Record<string, string>>>(new Map());
-  const animationRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
-
-    // Capture ref value at effect run time for cleanup
-    const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
-
-    // Store original styles
-    nodes.forEach((node) => {
-      const id = node.id();
-      styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
-      });
-    });
-
-    const cy = cyInstance;
-
-    const animate = (): void => {
-      const beatIntensity = getBeatIntensity();
-      const currentSection = getCurrentSection();
-      const color = getSectionColor(currentSection);
-
-      cy.batch(() => applyNodeGlow(cy, color, beatIntensity * 0.4 + 0.2));
-
-      animationRef.current = window.requestAnimationFrame(animate);
-    };
-
-    animationRef.current = window.requestAnimationFrame(animate);
-
-    return () => {
-      window.cancelAnimationFrame(animationRef.current);
-      cy.batch(() => restoreNodeStyles(cy, styles));
-      styles.clear();
-    };
-  }, [isActive, cyInstance, getBeatIntensity, getCurrentSection]);
-}
-
-/**
- * Aquatic Ambience Mode Overlay
- */
-export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
+export const AquaticAmbienceMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName,
-  cyInstance
+  modeName
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useAquaticAmbienceAudio();
 
-  // Apply aquatic glow to nodes
-  useAquaticNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentSection);
+  const getColor = useCallback((): RGBColor => {
+    return getSectionColor(audio.getCurrentSection());
+  }, [audio]);
 
-  // Start audio when activated
+  const getIntensity = useCallback((): number => {
+    return audio.getBeatIntensity() * 0.4 + 0.2;
+  }, [audio]);
+
+  useNodeGlow(isActive, getColor, getIntensity);
+
   useEffect(() => {
     if (isActive && !audio.isPlaying && !audio.isLoading) {
       void audio.play();
@@ -506,7 +389,6 @@ export const AquaticAmbienceMode: React.FC<AquaticAmbienceModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      {/* Control buttons - underwater style */}
       <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
         <button
           onClick={handleSwitch}

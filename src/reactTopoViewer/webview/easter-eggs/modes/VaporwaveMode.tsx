@@ -5,43 +5,23 @@
  * perspective grid, and dreamy smooth jazz vibes.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useVaporwaveAudio } from "../audio";
-import {
-  BTN_VISIBLE,
-  BTN_HIDDEN,
-  BTN_BLUR,
-  lerpColor,
-  applyNodeGlow,
-  restoreNodeStyles,
-  MuteButton
-} from "../shared";
-import type { RGBColor } from "../shared";
+import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, useNodeGlow, MuteButton } from "../shared";
+import type { RGBColor, BaseModeProps } from "../shared";
 
-interface VaporwaveModeProps {
-  isActive: boolean;
-  onClose?: () => void;
-  onSwitchMode?: () => void;
-  modeName?: string;
-  cyInstance?: CyCore | null;
-}
-
-/** Button border */
 const BTN_BORDER = "2px solid rgba(255, 255, 255, 0.4)";
 
-/** Vaporwave color palette */
 const COLORS = {
-  pink: { r: 255, g: 113, b: 206 }, // Hot pink
-  cyan: { r: 1, g: 205, b: 254 }, // Neon cyan
-  purple: { r: 185, g: 103, b: 255 }, // Light purple
-  yellow: { r: 254, g: 255, b: 156 }, // Pastel yellow
-  blue: { r: 120, g: 129, b: 255 }, // Periwinkle
-  darkPurple: { r: 25, g: 4, b: 50 } // Dark background
+  pink: { r: 255, g: 113, b: 206 },
+  cyan: { r: 1, g: 205, b: 254 },
+  purple: { r: 185, g: 103, b: 255 },
+  yellow: { r: 254, g: 255, b: 156 },
+  blue: { r: 120, g: 129, b: 255 },
+  darkPurple: { r: 25, g: 4, b: 50 }
 };
 
-/** Section to color mapping - Lisa Frank 420 chord progression */
 const SECTION_COLORS: Record<string, RGBColor> = {
   em7: COLORS.pink,
   bm: COLORS.cyan,
@@ -50,16 +30,10 @@ const SECTION_COLORS: Record<string, RGBColor> = {
   a: COLORS.blue
 };
 
-/**
- * Get color for current section
- */
 function getSectionColor(section: string): RGBColor {
   return SECTION_COLORS[section] || COLORS.cyan;
 }
 
-/**
- * Vaporwave Canvas - Retro aesthetic visualization
- */
 const VaporwaveCanvas: React.FC<{
   isActive: boolean;
   getFrequencyData: () => Uint8Array<ArrayBuffer>;
@@ -97,25 +71,13 @@ const VaporwaveCanvas: React.FC<{
       const currentSection = getCurrentSection();
       const avgIntensity = getAverageIntensity(freqData);
 
-      // Clear canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Draw gradient background glow
       drawBackgroundGlow(ctx, width, height, time, currentSection, avgIntensity);
-
-      // Draw perspective grid
       drawPerspectiveGrid(ctx, width, height, time, currentSection);
-
-      // Draw sun/moon circle
       drawVaporwaveSun(ctx, width, height, time, avgIntensity, currentSection);
-
-      // Draw horizontal bands
       drawHorizontalBands(ctx, width, height, time);
-
-      // Draw frequency bars (minimalist style)
       drawMinimalistBars(ctx, width, height, freqData, currentSection);
-
-      // Draw floating shapes
       drawFloatingShapes(ctx, width, height, time, avgIntensity);
 
       animationRef.current = window.requestAnimationFrame(animate);
@@ -140,9 +102,6 @@ const VaporwaveCanvas: React.FC<{
   );
 };
 
-/**
- * Calculate average intensity from frequency data
- */
 function getAverageIntensity(freqData: Uint8Array<ArrayBuffer>): number {
   if (freqData.length === 0) return 0;
   let sum = 0;
@@ -152,9 +111,6 @@ function getAverageIntensity(freqData: Uint8Array<ArrayBuffer>): number {
   return sum / freqData.length / 255;
 }
 
-/**
- * Draw gradient background glow
- */
 function drawBackgroundGlow(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -166,7 +122,6 @@ function drawBackgroundGlow(
   const color = getSectionColor(section);
   const pulseAlpha = 0.08 + Math.sin(time * 0.01) * 0.02 + intensity * 0.06;
 
-  // Top gradient - pink to transparent
   const topGrad = ctx.createLinearGradient(0, 0, 0, height * 0.4);
   topGrad.addColorStop(
     0,
@@ -177,7 +132,6 @@ function drawBackgroundGlow(
   ctx.fillStyle = topGrad;
   ctx.fillRect(0, 0, width, height * 0.4);
 
-  // Bottom gradient - cyan to transparent
   const botGrad = ctx.createLinearGradient(0, height, 0, height * 0.6);
   botGrad.addColorStop(
     0,
@@ -188,9 +142,6 @@ function drawBackgroundGlow(
   ctx.fillRect(0, height * 0.6, width, height * 0.4);
 }
 
-/**
- * Draw vaporwave perspective grid
- */
 function drawPerspectiveGrid(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -207,7 +158,6 @@ function drawPerspectiveGrid(
   ctx.strokeStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
   ctx.lineWidth = 1;
 
-  // Vertical perspective lines
   const numLines = 16;
   for (let i = 0; i <= numLines; i++) {
     const t = i / numLines;
@@ -219,13 +169,11 @@ function drawPerspectiveGrid(
     ctx.stroke();
   }
 
-  // Horizontal lines with perspective (moving effect)
   const offset = (time * 0.5) % 40;
   for (let i = 0; i < 12; i++) {
     const baseY = horizonY + i * 40 + offset;
     if (baseY > height) continue;
 
-    // Calculate perspective narrowing
     const progress = (baseY - horizonY) / (height - horizonY);
     const lineWidth = progress * width;
     const lineX = (width - lineWidth) / 2;
@@ -240,9 +188,6 @@ function drawPerspectiveGrid(
   ctx.restore();
 }
 
-/**
- * Draw vaporwave sun/circle
- */
 function drawVaporwaveSun(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -257,7 +202,6 @@ function drawVaporwaveSun(
   const baseRadius = Math.min(width, height) * 0.12;
   const radius = baseRadius + Math.sin(time * 0.015) * 5 + intensity * 15;
 
-  // Outer glow
   const gradient = ctx.createRadialGradient(
     centerX,
     centerY,
@@ -273,13 +217,11 @@ function drawVaporwaveSun(
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height * 0.6);
 
-  // Main circle with horizontal bands
   ctx.save();
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
   ctx.clip();
 
-  // Pink to cyan gradient
   const sunGrad = ctx.createLinearGradient(centerX, centerY - radius, centerX, centerY + radius);
   sunGrad.addColorStop(0, `rgba(${COLORS.pink.r}, ${COLORS.pink.g}, ${COLORS.pink.b}, 0.4)`);
   sunGrad.addColorStop(
@@ -291,7 +233,6 @@ function drawVaporwaveSun(
   ctx.fillStyle = sunGrad;
   ctx.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2);
 
-  // Horizontal lines through sun
   ctx.globalAlpha = 0.3;
   ctx.fillStyle = `rgba(${COLORS.darkPurple.r}, ${COLORS.darkPurple.g}, ${COLORS.darkPurple.b}, 0.5)`;
   for (let i = 0; i < 8; i++) {
@@ -303,9 +244,6 @@ function drawVaporwaveSun(
   ctx.restore();
 }
 
-/**
- * Draw horizontal decorative bands
- */
 function drawHorizontalBands(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -315,7 +253,6 @@ function drawHorizontalBands(
   ctx.save();
   ctx.globalAlpha = 0.04;
 
-  // Subtle horizontal scan lines
   const lineSpacing = 3;
   const offset = (time * 0.3) % lineSpacing;
 
@@ -328,9 +265,6 @@ function drawHorizontalBands(
   ctx.restore();
 }
 
-/**
- * Draw minimalist frequency bars
- */
 function drawMinimalistBars(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -350,7 +284,6 @@ function drawMinimalistBars(
     const amplitude = freqData[i] / 255;
     const barHeight = amplitude * maxBarHeight;
 
-    // Gradient from pink to cyan
     const t = i / barCount;
     const barColor = lerpColor(COLORS.pink, COLORS.cyan, t);
 
@@ -360,12 +293,10 @@ function drawMinimalistBars(
     const x = startX + i * barWidth;
     const y = baseY - barHeight;
 
-    // Simple rectangle with slight rounding
     ctx.beginPath();
     ctx.roundRect(x + 2, y, barWidth - 4, barHeight, 2);
     ctx.fill();
 
-    // Glow effect
     if (amplitude > 0.4) {
       ctx.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, 0.6)`;
       ctx.shadowBlur = 8;
@@ -375,7 +306,6 @@ function drawMinimalistBars(
   }
 }
 
-// Floating shape storage
 const shapes: Array<{
   x: number;
   y: number;
@@ -387,9 +317,6 @@ const shapes: Array<{
   hue: number;
 }> = [];
 
-/**
- * Draw floating geometric shapes
- */
 function drawFloatingShapes(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -397,7 +324,6 @@ function drawFloatingShapes(
   time: number,
   intensity: number
 ): void {
-  // Initialize shapes if needed
   if (shapes.length === 0) {
     const shapeTypes: Array<"triangle" | "circle" | "diamond"> = ["triangle", "circle", "diamond"];
     for (let i = 0; i < 15; i++) {
@@ -410,19 +336,17 @@ function drawFloatingShapes(
         rotSpeed: (Math.random() - 0.5) * 0.01,
         type: shapeTypes[Math.floor(Math.random() * 3)],
         alpha: 0.1 + Math.random() * 0.15,
-        hue: 280 + Math.random() * 100 // Pink to cyan range
+        hue: 280 + Math.random() * 100
       });
       /* eslint-enable sonarjs/pseudo-random */
     }
   }
 
   for (const s of shapes) {
-    // Slow drift movement
     s.x += Math.sin(time * 0.005 + s.y * 0.01) * 0.3;
     s.y -= 0.1 + intensity * 0.2;
     s.rotation += s.rotSpeed;
 
-    // Wrap around
     if (s.y < -20) {
       s.y = height + 20;
       // eslint-disable-next-line sonarjs/pseudo-random
@@ -446,7 +370,6 @@ function drawFloatingShapes(
     } else if (s.type === "circle") {
       ctx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
     } else {
-      // Diamond
       ctx.moveTo(0, -s.size / 2);
       ctx.lineTo(s.size / 2, 0);
       ctx.lineTo(0, s.size / 2);
@@ -459,75 +382,27 @@ function drawFloatingShapes(
   }
 }
 
-/**
- * Hook to apply vaporwave glow to nodes
- */
-function useVaporwaveNodeGlow(
-  cyInstance: CyCore | null | undefined,
-  isActive: boolean,
-  getCurrentSection: () => string
-): void {
-  const originalStylesRef = useRef<Map<string, Record<string, string>>>(new Map());
-  const animationRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
-
-    // Capture ref value at effect run time for cleanup
-    const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
-
-    // Store original styles
-    nodes.forEach((node) => {
-      const id = node.id();
-      styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
-      });
-    });
-
-    const cy = cyInstance;
-    let t = 0;
-
-    const animate = (): void => {
-      t += 1;
-      const currentSection = getCurrentSection();
-      const color = getSectionColor(currentSection);
-      const pulseIntensity = 0.3 + Math.sin(t * 0.03) * 0.2;
-
-      cy.batch(() => applyNodeGlow(cy, color, pulseIntensity));
-
-      animationRef.current = window.requestAnimationFrame(animate);
-    };
-
-    animationRef.current = window.requestAnimationFrame(animate);
-
-    return () => {
-      window.cancelAnimationFrame(animationRef.current);
-      cy.batch(() => restoreNodeStyles(cy, styles));
-      styles.clear();
-    };
-  }, [isActive, cyInstance, getCurrentSection]);
-}
-
-/**
- * Vaporwave Mode Overlay
- */
-export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
+export const VaporwaveMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName,
-  cyInstance
+  modeName
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useVaporwaveAudio();
+  const timeRef = useRef(0);
 
-  // Apply vaporwave glow to nodes
-  useVaporwaveNodeGlow(cyInstance, isActive, audio.getCurrentSection);
+  const getColor = useCallback((): RGBColor => {
+    return getSectionColor(audio.getCurrentSection());
+  }, [audio]);
 
-  // Start audio when activated
+  const getIntensity = useCallback((): number => {
+    timeRef.current += 1;
+    return 0.3 + Math.sin(timeRef.current * 0.03) * 0.2;
+  }, []);
+
+  useNodeGlow(isActive, getColor, getIntensity);
+
   useEffect(() => {
     if (isActive && !audio.isPlaying && !audio.isLoading) {
       void audio.play();
@@ -558,7 +433,6 @@ export const VaporwaveMode: React.FC<VaporwaveModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      {/* Control buttons - vaporwave style */}
       <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
         <button
           onClick={handleSwitch}

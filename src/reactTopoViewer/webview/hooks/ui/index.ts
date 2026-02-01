@@ -4,33 +4,20 @@
  */
 
 // ============================================================================
-// Context Menu & Commands
+// Commands
 // ============================================================================
-export { useContextMenu } from "./useContextMenu";
-export type { ContextMenuOptions, ContextMenuState, UseContextMenuReturn } from "./useContextMenu";
 export {
   useDeploymentCommands,
-  useEditorPanelCommands,
-  useFloatingPanelCommands,
   usePanelVisibility
 } from "./usePanelCommands";
-export type {
-  DeploymentCommands,
-  EditorPanelCommands,
-  FloatingPanelCommands,
-  PanelVisibility
-} from "./usePanelCommands";
+export type { DeploymentCommands, PanelVisibility } from "./usePanelCommands";
 
 // ============================================================================
 // Panel Visibility & Drag
 // ============================================================================
 export {
   usePanelDrag,
-  useDrawerSide,
-  useShakeAnimation,
-  buildLockButtonClass,
-  savePanelState,
-  PANEL_STORAGE_KEY
+  useShakeAnimation
 } from "./usePanelDrag";
 export type { Position, UsePanelDragOptions, UsePanelDragReturn } from "./usePanelDrag";
 
@@ -44,7 +31,6 @@ export { useShortcutDisplay } from "./useShortcutDisplay";
 // App Handlers
 // ============================================================================
 export { useAppHandlers } from "./useAppHandlers";
-export type { PendingMembershipChange } from "./useAppHandlers";
 
 // ============================================================================
 // Click, Escape, Hover
@@ -72,3 +58,15 @@ export type {
   FilterableDropdownOption,
   UseFilterableDropdownReturn
 } from "./useFilterableDropdown";
+
+// ============================================================================
+// App State (Layout & Context Menu)
+// ============================================================================
+export {
+  useLayoutControls,
+  useContextMenuHandlers,
+  snapToGrid,
+  DEFAULT_GRID_LINE_WIDTH,
+  DEFAULT_GRID_STYLE
+} from "./useAppState";
+export type { CanvasRef, LayoutOption, GridStyle, NodeData, LinkData } from "./useAppState";

@@ -14,12 +14,6 @@ const ERR_TIME_UNIT =
 const NETEM_FIELDS = ["delay", "jitter", "loss", "rate", "corruption"];
 
 function impairmentsAvailable(): boolean {
-  if (vscode.env.remoteName === "wsl") {
-    vscode.window.showWarningMessage(
-      "Link impairment options are not available for WSL connections."
-    );
-    return false;
-  }
   return true;
 }
 

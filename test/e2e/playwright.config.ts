@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 /**
  * Playwright configuration for React TopoViewer E2E tests.
@@ -8,8 +8,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Retries are enabled to handle flaky network/timing issues.
  */
 export default defineConfig({
-  globalSetup: require.resolve('./global-setup'),
-  testDir: './specs',
+  globalSetup: require.resolve("./global-setup"),
+  testDir: "./specs",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   // Retry flaky tests - helps with timing issues and connection resets
@@ -19,30 +19,31 @@ export default defineConfig({
   workers: process.env.CI ? 4 : 6,
   // Increase timeout for slower CI environments
   timeout: 30000,
-  reporter: [
-    ['list'],
-    ['html', { open: 'never', outputFolder: '../../playwright-report' }]
-  ],
+  reporter: [["list"], ["html", { open: "never", outputFolder: "../../playwright-report" }]],
   use: {
-    baseURL: 'http://localhost:5173',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    baseURL: "http://localhost:5173",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
     // Timeouts for individual actions
     actionTimeout: 10000,
     navigationTimeout: 15000
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // Grant clipboard permissions for copy/paste tests
+        permissions: ["clipboard-read", "clipboard-write"]
+      }
     }
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: "npm run dev",
+    url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
-    cwd: '../../' // Run from project root
+    cwd: "../../" // Run from project root
   }
 });

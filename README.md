@@ -12,6 +12,7 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 ![screencast](https://raw.githubusercontent.com/srl-labs/vscode-containerlab/refs/heads/main/resources/screenshot.png)
 
 ---
+
 ## Key Features
 
 - **Auto-discovery & Tree View:**
@@ -56,11 +57,10 @@ A Visual Studio Code extension that integrates [containerlab](https://containerl
 - You must be in the `clab_admins` and `docker` group. Podman is not supported for runtime features.
 - (Optional) **Edgeshark** for packet capture features - can be installed directly from the extension using the "Install Edgeshark" command.
 
-
-    ### Edgeshark Integration
-    - **Install Edgeshark**: installs Edgeshark using docker compose
-    - **Uninstall Edgeshark**: removes Edgeshark containers
-    - **Configure session hostname**: set hostname for remote connections (packet capture)
+  ### Edgeshark Integration
+  - **Install Edgeshark**: installs Edgeshark using docker compose
+  - **Uninstall Edgeshark**: removes Edgeshark containers
+  - **Configure session hostname**: set hostname for remote connections (packet capture)
 
   - If you want to live capture traffic using Wireshark, please [download the cshargextcap plugin](https://github.com/siemens/cshargextcap/releases) for the OS/distribution and install it.
 
@@ -76,66 +76,67 @@ Note: The extension will automatically prompt to add your user to the `clab_admi
 4. **Right-click** on a lab or container to see context menu commands (Deploy, Destroy, Redeploy, etc.).
 
 ---
+
 ## Extension Settings
 
 Configure the extension behavior through VS Code settings (`containerlab.*`):
 
 ### 🚀 Core Settings
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `binaryPath` | string | `""` | Custom path to containerlab binary (leave empty to resolve from PATH) |
-| `showWelcomePage` | boolean | `true` | Show welcome page on activation |
-| `skipUpdateCheck` | boolean | `false` | Skip extension update check |
-| `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands |
+| Setting              | Type    | Default | Description                                                           |
+| -------------------- | ------- | ------- | --------------------------------------------------------------------- |
+| `binaryPath`         | string  | `""`    | Custom path to containerlab binary (leave empty to resolve from PATH) |
+| `showWelcomePage`    | boolean | `true`  | Show welcome page on activation                                       |
+| `skipUpdateCheck`    | boolean | `false` | Skip extension update check                                           |
+| `skipCleanupWarning` | boolean | `false` | Skip warning popups for cleanup commands                              |
 
 The Containerlab Explorer listens to the containerlab event stream, so running labs update live without manual refresh intervals.
 
 ### 🎯 Command Options
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `deploy.extraArgs` | string | `""` | Additional args for deploy/redeploy commands |
-| `destroy.extraArgs` | string | `""` | Additional args for destroy commands |
-| `extras.fcli.extraDockerArgs` | string | `""` | Additional docker args for fcli commands |
+| Setting                       | Type   | Default | Description                                  |
+| ----------------------------- | ------ | ------- | -------------------------------------------- |
+| `deploy.extraArgs`            | string | `""`    | Additional args for deploy/redeploy commands |
+| `destroy.extraArgs`           | string | `""`    | Additional args for destroy commands         |
+| `extras.fcli.extraDockerArgs` | string | `""`    | Additional docker args for fcli commands     |
 
 ### 🖥️ Node Configuration
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `node.execCommandMapping` | object | `{}` | Map node kind to exec command<br/>Example: `{ "nokia_srlinux": "sr_cli" }` |
-| `node.sshUserMapping` | object | `{}` | Map node kind to SSH user<br/>Example: `{ "nokia_srlinux": "clab" }` |
-| `node.telnetPort` | number | `5000` | Port for telnet connections |
+| Setting                   | Type   | Default | Description                                                                |
+| ------------------------- | ------ | ------- | -------------------------------------------------------------------------- |
+| `node.execCommandMapping` | object | `{}`    | Map node kind to exec command<br/>Example: `{ "nokia_srlinux": "sr_cli" }` |
+| `node.sshUserMapping`     | object | `{}`    | Map node kind to SSH user<br/>Example: `{ "nokia_srlinux": "clab" }`       |
+| `node.telnetPort`         | number | `5000`  | Port for telnet connections                                                |
 
 ### 🎨 TopoViewer/Editor
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `editor.customNodes` | array | See below* | Custom node templates for TopoViewer |
-| `editor.updateLinkEndpointsOnKindChange` | boolean | `true` | Auto-update link endpoints on kind change |
-| `editor.lockLabByDefault` | boolean | `true` | Lock the lab canvas by default to prevent accidental edits |
-| `drawioDefaultTheme` | string | `nokia_modern` | Draw.io theme (`nokia_modern`, `nokia`, `grafana`) |
+| Setting                                  | Type    | Default        | Description                                                |
+| ---------------------------------------- | ------- | -------------- | ---------------------------------------------------------- |
+| `editor.customNodes`                     | array   | See below\*    | Custom node templates for TopoViewer                       |
+| `editor.updateLinkEndpointsOnKindChange` | boolean | `true`         | Auto-update link endpoints on kind change                  |
+| `editor.lockLabByDefault`                | boolean | `true`         | Lock the lab canvas by default to prevent accidental edits |
+| `drawioDefaultTheme`                     | string  | `nokia_modern` | Draw.io theme (`nokia_modern`, `nokia`, `grafana`)         |
 
-*Default custom nodes include SRLinux and Network Multitool templates. They ship with sensible interface naming patterns (for example `nokia_srlinux: "e1-{n}"`, `cisco_xrd: "Gi0-0-0-{n}"`). Patterns accept optional start indices (`{n:0}`), finite ranges (`{n:1-6}`), and comma-separated fallbacks (`1/1/c{n:1-6}/1, 2/1/c{n:1-12}/1`). Existing custom nodes without an Interface Pattern are automatically upgraded to use the defaults.
+\*Default custom nodes include SRLinux and Network Multitool templates. They ship with sensible interface naming patterns (for example `nokia_srlinux: "e1-{n}"`, `cisco_xrd: "Gi0-0-0-{n}"`). Patterns accept optional start indices (`{n:0}`), finite ranges (`{n:1-6}`), and comma-separated fallbacks (`1/1/c{n:1-6}/1, 2/1/c{n:1-12}/1`). Existing custom nodes without an Interface Pattern are automatically upgraded to use the defaults.
 
 ### 📦 Packet Capture
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `capture.preferredAction` | string | `Wireshark VNC` | Preferred capture method (`Edgeshark`, `Wireshark VNC`) |
-| `capture.wireshark.dockerImage` | string | `ghcr.io/kaelemc/`<br/>`wireshark-vnc-docker:latest` | Docker image for Wireshark VNC |
-| `capture.wireshark.pullPolicy` | string | `always` | Image pull policy (`always`, `missing`, `never`) |
-| `capture.wireshark.theme` | string | `Follow VS Code theme` | Wireshark theme |
-| `capture.wireshark.stayOpenInBackground` | boolean | `true` | Keep sessions alive in background |
-| `capture.edgeshark.extraEnvironmentVars` | string | `HTTP_PROXY=,`<br/>`http_proxy=` | Environment variables for Edgeshark |
-| `capture.remoteHostname` | string | `""` | Hostname/IP for Edgeshark packet capture |
-| `capture.packetflixPort` | number | `5001` | Port for Packetflix endpoint (Edgeshark) |
+| Setting                                  | Type    | Default                                              | Description                                             |
+| ---------------------------------------- | ------- | ---------------------------------------------------- | ------------------------------------------------------- |
+| `capture.preferredAction`                | string  | `Wireshark VNC`                                      | Preferred capture method (`Edgeshark`, `Wireshark VNC`) |
+| `capture.wireshark.dockerImage`          | string  | `ghcr.io/kaelemc/`<br/>`wireshark-vnc-docker:latest` | Docker image for Wireshark VNC                          |
+| `capture.wireshark.pullPolicy`           | string  | `always`                                             | Image pull policy (`always`, `missing`, `never`)        |
+| `capture.wireshark.theme`                | string  | `Follow VS Code theme`                               | Wireshark theme                                         |
+| `capture.wireshark.stayOpenInBackground` | boolean | `true`                                               | Keep sessions alive in background                       |
+| `capture.edgeshark.extraEnvironmentVars` | string  | `HTTP_PROXY=,`<br/>`http_proxy=`                     | Environment variables for Edgeshark                     |
+| `capture.remoteHostname`                 | string  | `""`                                                 | Hostname/IP for Edgeshark packet capture                |
+| `capture.packetflixPort`                 | number  | `5001`                                               | Port for Packetflix endpoint (Edgeshark)                |
 
 ### 🌐 Lab Sharing
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `gotty.port` | number | `8080` | Port for GoTTY web terminal |
+| Setting      | Type   | Default | Description                 |
+| ------------ | ------ | ------- | --------------------------- |
+| `gotty.port` | number | `8080`  | Port for GoTTY web terminal |
 
 ### Example Configuration
 
@@ -161,30 +162,33 @@ The Containerlab Explorer listens to the containerlab event stream, so running l
 }
 ```
 
-
 ---
 
 ## Monitor Deployment Progress
+
 When deploying labs, you can monitor the detailed progress in the Output window:
+
 1. Open the Output panel (`Ctrl+Shift+U` or `View -> Output`)
 2. Select "Containerlab" from the dropdown menu
 3. Watch the deployment logs in real-time
 
 ## Live Updates
+
 - The Containerlab Explorer streams containerlab events, so running labs refresh immediately without polling
 - Labs are consistently sorted:
   - Deployed labs appear before undeployed labs
   - Within each group (deployed/undeployed), labs are sorted by their absolute path
-
 
 ---
 
 ## Known Issues
 
 ### "I do not see any interfaces on my deployed lab"
+
 Labs deployed with containerlab versions older than `0.64.0` may require a redeploy.
 
 ## Running Tests
+
 The extension includes a suite of unit tests located in the `test` folder. To run them:
 
 1. Install dependencies with `npm install` if you haven't already.
@@ -198,6 +202,7 @@ See `test/README.md` for a short overview of the test setup and stub utilities.
 ## Feedback and Contributions
 
 If you’d like to request features or report issues:
+
 - Open an issue on our GitHub repository.
 - PRs are welcome! Let us know how we can improve the extension.
 

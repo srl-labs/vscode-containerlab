@@ -83,8 +83,3 @@ export function renderMarkdown(text: string): string {
   const processed = postProcessHtml(rendered);
   return DOMPurify.sanitize(processed);
 }
-
-/**
- * Empty state message for markdown preview
- */
-export const MARKDOWN_EMPTY_MESSAGE = "Start typing to see preview...";

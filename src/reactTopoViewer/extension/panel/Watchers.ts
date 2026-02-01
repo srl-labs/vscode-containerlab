@@ -11,17 +11,12 @@ import { onDockerImagesUpdated } from "../../../utils/docker/images";
 /**
  * Callback for loading topology data
  */
-export type TopologyDataLoader = () => Promise<unknown>;
+export type SnapshotLoader = () => Promise<unknown>;
 
 /**
  * Callback for posting topology data to webview
  */
-export type TopologyDataPoster = (data: unknown) => void;
-
-/**
- * Callback for notifying webview of external file change
- */
-export type ExternalChangeNotifier = () => void;
+export type SnapshotPoster = (data: unknown) => void;
 
 /**
  * Callback for getting/setting internal update flag
@@ -35,9 +30,11 @@ export interface InternalUpdateController {
  */
 export class WatcherManager {
   private fileWatcher: vscode.FileSystemWatcher | undefined;
+  private annotationsWatcher: vscode.FileSystemWatcher | undefined;
   private saveListener: vscode.Disposable | undefined;
   private dockerImagesSubscription: vscode.Disposable | undefined;
   private lastYamlContent: string | undefined;
+  private lastAnnotationsContent: string | undefined;
   private isRefreshingFromFile = false;
   private queuedRefresh = false;
 
@@ -48,6 +45,10 @@ export class WatcherManager {
     if (this.fileWatcher) {
       this.fileWatcher.dispose();
       this.fileWatcher = undefined;
+    }
+    if (this.annotationsWatcher) {
+      this.annotationsWatcher.dispose();
+      this.annotationsWatcher = undefined;
     }
     if (this.saveListener) {
       this.saveListener.dispose();
@@ -65,26 +66,64 @@ export class WatcherManager {
   setupFileWatcher(
     yamlFilePath: string,
     updateController: InternalUpdateController,
-    loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster,
-    notifyExternalChange?: ExternalChangeNotifier
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
   ): void {
     if (!yamlFilePath) return;
 
     this.fileWatcher?.dispose();
+    this.annotationsWatcher?.dispose();
     const fileUri = vscode.Uri.file(yamlFilePath);
     this.fileWatcher = vscode.workspace.createFileSystemWatcher(fileUri.fsPath);
+
+    // Initialize content caches to prevent false-positive external change detection
+    void this.refreshContentCaches(yamlFilePath);
 
     this.fileWatcher.onDidChange(() => {
       void this.handleExternalYamlChange(
         "change",
         yamlFilePath,
         updateController,
-        loadTopologyData,
-        postTopologyData,
-        notifyExternalChange
+        loadSnapshot,
+        postSnapshot
       );
     });
+
+    const annotationsPath = `${yamlFilePath}.annotations.json`;
+    this.annotationsWatcher = vscode.workspace.createFileSystemWatcher(annotationsPath);
+    const handleAnnotations = (trigger: "change" | "create" | "delete") => {
+      void this.handleExternalAnnotationsChange(
+        trigger,
+        annotationsPath,
+        updateController,
+        loadSnapshot,
+        postSnapshot
+      );
+    };
+    this.annotationsWatcher.onDidChange(() => handleAnnotations("change"));
+    this.annotationsWatcher.onDidCreate(() => handleAnnotations("create"));
+    this.annotationsWatcher.onDidDelete(() => handleAnnotations("delete"));
+  }
+
+  /**
+   * Refresh content caches with current file contents.
+   * Used to prevent internal saves from being detected as external changes.
+   */
+  async refreshContentCaches(yamlFilePath: string): Promise<void> {
+    if (!yamlFilePath) return;
+    try {
+      this.lastYamlContent = await nodeFsAdapter.readFile(yamlFilePath);
+    } catch {
+      this.lastYamlContent = undefined;
+    }
+
+    const annotationsPath = `${yamlFilePath}.annotations.json`;
+    try {
+      this.lastAnnotationsContent = await nodeFsAdapter.readFile(annotationsPath);
+    } catch {
+      // Use empty string to match handleExternalAnnotationsChange fallback
+      this.lastAnnotationsContent = "";
+    }
   }
 
   /**
@@ -93,9 +132,8 @@ export class WatcherManager {
   setupSaveListener(
     yamlFilePath: string,
     updateController: InternalUpdateController,
-    loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster,
-    notifyExternalChange?: ExternalChangeNotifier
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
   ): void {
     if (!yamlFilePath) return;
 
@@ -106,9 +144,8 @@ export class WatcherManager {
         "save",
         yamlFilePath,
         updateController,
-        loadTopologyData,
-        postTopologyData,
-        notifyExternalChange
+        loadSnapshot,
+        postSnapshot
       );
     });
   }
@@ -128,26 +165,19 @@ export class WatcherManager {
   }
 
   /**
-   * Update the last known YAML content (for change detection)
-   */
-  setLastYamlContent(content: string): void {
-    this.lastYamlContent = content;
-  }
-
-  /**
    * Reload topology data after external YAML edits and push to webview
    */
   private async handleExternalYamlChange(
     trigger: "change" | "save",
     yamlFilePath: string,
     updateController: InternalUpdateController,
-    loadTopologyData: TopologyDataLoader,
-    postTopologyData: TopologyDataPoster,
-    notifyExternalChange?: ExternalChangeNotifier
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
   ): Promise<void> {
     if (!yamlFilePath) return;
     if (updateController.isInternalUpdate()) {
       log.debug(`[ReactTopoViewer] Ignoring ${trigger} event during internal update`);
+      void this.refreshContentCaches(yamlFilePath);
       return;
     }
 
@@ -168,13 +198,11 @@ export class WatcherManager {
 
       log.info(`[ReactTopoViewer] YAML ${trigger} detected, refreshing topology`);
 
-      // Notify webview of external change (to clear undo history)
-      notifyExternalChange?.();
-
-      const topologyData = await loadTopologyData();
-      if (topologyData) {
-        postTopologyData(topologyData);
+      const snapshot = await loadSnapshot();
+      if (snapshot) {
+        postSnapshot(snapshot);
       }
+      this.lastYamlContent = currentContent;
     } catch (err) {
       log.error(`[ReactTopoViewer] Failed to refresh after YAML ${trigger}: ${err}`);
     } finally {
@@ -185,9 +213,72 @@ export class WatcherManager {
           trigger,
           yamlFilePath,
           updateController,
-          loadTopologyData,
-          postTopologyData,
-          notifyExternalChange
+          loadSnapshot,
+          postSnapshot
+        );
+      }
+    }
+  }
+
+  /**
+   * Reload topology data after external annotations edits and push to webview
+   */
+  private async handleExternalAnnotationsChange(
+    trigger: "change" | "create" | "delete",
+    annotationsPath: string,
+    updateController: InternalUpdateController,
+    loadSnapshot: SnapshotLoader,
+    postSnapshot: SnapshotPoster
+  ): Promise<void> {
+    if (!annotationsPath) return;
+    if (updateController.isInternalUpdate()) {
+      log.debug(`[ReactTopoViewer] Ignoring annotations ${trigger} during internal update`);
+      const yamlPath = annotationsPath.replace(/\.annotations\.json$/, "");
+      void this.refreshContentCaches(yamlPath);
+      return;
+    }
+
+    if (this.isRefreshingFromFile) {
+      this.queuedRefresh = true;
+      return;
+    }
+
+    this.isRefreshingFromFile = true;
+    try {
+      let currentContent = "";
+      try {
+        currentContent = await nodeFsAdapter.readFile(annotationsPath);
+      } catch {
+        currentContent = "";
+      }
+
+      if (this.lastAnnotationsContent === currentContent) {
+        log.debug(
+          `[ReactTopoViewer] Annotations ${trigger} detected but content unchanged, skipping refresh`
+        );
+        return;
+      }
+
+      log.info(`[ReactTopoViewer] Annotations ${trigger} detected, refreshing topology`);
+
+      const snapshot = await loadSnapshot();
+      if (snapshot) {
+        postSnapshot(snapshot);
+      }
+
+      this.lastAnnotationsContent = currentContent;
+    } catch (err) {
+      log.error(`[ReactTopoViewer] Failed to refresh after annotations ${trigger}: ${err}`);
+    } finally {
+      this.isRefreshingFromFile = false;
+      if (this.queuedRefresh) {
+        this.queuedRefresh = false;
+        void this.handleExternalAnnotationsChange(
+          trigger,
+          annotationsPath,
+          updateController,
+          loadSnapshot,
+          postSnapshot
         );
       }
     }

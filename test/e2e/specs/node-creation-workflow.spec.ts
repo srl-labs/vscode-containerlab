@@ -1,12 +1,12 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { shiftClick } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { shiftClick } from "../helpers/react-flow-helpers";
 
 // Test file names
-const EMPTY_FILE = 'empty.clab.yml';
-const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
+const EMPTY_FILE = "empty.clab.yml";
+const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
 
 // Node kinds
-const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
+const KIND_NOKIA_SRLINUX = "nokia_srlinux";
 
 /**
  * Node creation workflow tests
@@ -18,9 +18,8 @@ const KIND_NOKIA_SRLINUX = 'nokia_srlinux';
  * 4. Saving and reloading to verify persistence
  */
 // Use test.describe.serial to run all tests sequentially
-test.describe.serial('Node Creation Workflow', () => {
-
-  test('create 3 nodes, interconnect them, save and reload', async ({ page, topoViewerPage }) => {
+test.describe.serial("Node Creation Workflow", () => {
+  test("create 3 nodes, interconnect them, save and reload", async ({ page, topoViewerPage }) => {
     // Reset files to ensure clean state
     await topoViewerPage.resetFiles();
 
@@ -35,9 +34,9 @@ test.describe.serial('Node Creation Workflow', () => {
     expect(initialNodeCount).toBe(0);
 
     // Step 2: Create 3 nodes in a triangle pattern
-    await topoViewerPage.createNode('router1', { x: 300, y: 100 }, KIND_NOKIA_SRLINUX);
-    await topoViewerPage.createNode('router2', { x: 150, y: 300 }, KIND_NOKIA_SRLINUX);
-    await topoViewerPage.createNode('router3', { x: 450, y: 300 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("router1", { x: 300, y: 100 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("router2", { x: 150, y: 300 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("router3", { x: 450, y: 300 }, KIND_NOKIA_SRLINUX);
 
     // Verify nodes were created in UI
     const nodesAfterCreation = await topoViewerPage.getNodeCount();
@@ -47,32 +46,33 @@ test.describe.serial('Node Creation Workflow', () => {
     await page.waitForTimeout(500);
 
     // Step 3: Create links between all nodes (triangle topology)
-    await topoViewerPage.createLink('router1', 'router2', 'eth1', 'eth1');
-    await topoViewerPage.createLink('router2', 'router3', 'eth2', 'eth1');
-    await topoViewerPage.createLink('router3', 'router1', 'eth2', 'eth2');
+    await topoViewerPage.createLink("router1", "router2", "eth1", "eth1");
+    await topoViewerPage.createLink("router2", "router3", "eth2", "eth1");
+    await topoViewerPage.createLink("router3", "router1", "eth2", "eth2");
 
     // Verify edges were created
-    const edgesAfterCreation = await topoViewerPage.getEdgeCount();
-    expect(edgesAfterCreation).toBe(3);
+    await expect
+      .poll(() => topoViewerPage.getEdgeCount(), { timeout: 5000 })
+      .toBe(3);
 
     // Wait for all saves to complete
     await page.waitForTimeout(500);
 
     // Step 4: Verify YAML was saved correctly
     const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
-    expect(yaml).toContain('router1:');
-    expect(yaml).toContain('router2:');
-    expect(yaml).toContain('router3:');
+    expect(yaml).toContain("router1:");
+    expect(yaml).toContain("router2:");
+    expect(yaml).toContain("router3:");
     expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
-    expect(yaml).toContain('image:');
-    expect(yaml).toContain('endpoints:');
+    expect(yaml).toContain("image:");
+    expect(yaml).toContain("endpoints:");
 
     // Step 5: Verify annotations were saved
     const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
     expect(annotations.nodeAnnotations?.length).toBe(3);
 
-    const nodeIds = annotations.nodeAnnotations?.map(n => n.id).sort();
-    expect(nodeIds).toEqual(['router1', 'router2', 'router3']);
+    const nodeIds = annotations.nodeAnnotations?.map((n) => n.id).sort();
+    expect(nodeIds).toEqual(["router1", "router2", "router3"]);
 
     // Step 6: Reload the topology to test persistence
     await topoViewerPage.gotoFile(EMPTY_FILE);
@@ -82,12 +82,13 @@ test.describe.serial('Node Creation Workflow', () => {
     const nodesAfterReload = await topoViewerPage.getNodeCount();
     expect(nodesAfterReload).toBe(3);
 
-    const edgesAfterReload = await topoViewerPage.getEdgeCount();
-    expect(edgesAfterReload).toBe(3);
+    await expect
+      .poll(() => topoViewerPage.getEdgeCount(), { timeout: 5000 })
+      .toBe(3);
 
     // Verify node IDs are correct
     const reloadedNodeIds = await topoViewerPage.getNodeIds();
-    expect([...reloadedNodeIds].sort()).toEqual(['router1', 'router2', 'router3']);
+    expect([...reloadedNodeIds].sort()).toEqual(["router1", "router2", "router3"]);
 
     // Step 7: Verify files are untouched when in view mode (locked)
     await topoViewerPage.setViewMode();
@@ -97,9 +98,13 @@ test.describe.serial('Node Creation Workflow', () => {
     const edgeCountBeforeBlockedActions = await topoViewerPage.getEdgeCount();
 
     // Try to make changes that should be blocked in view mode
-    await topoViewerPage.createLink('router1', 'router2', 'eth99', 'eth99');
+    await topoViewerPage.createLink("router1", "router2", "eth99", "eth99");
     const canvasCenterForBlockedActions = await topoViewerPage.getCanvasCenter();
-    await shiftClick(page, canvasCenterForBlockedActions.x + 250, canvasCenterForBlockedActions.y + 250);
+    await shiftClick(
+      page,
+      canvasCenterForBlockedActions.x + 250,
+      canvasCenterForBlockedActions.y + 250
+    );
 
     // Wait a moment for any accidental saves to occur
     await page.waitForTimeout(200);
@@ -118,7 +123,7 @@ test.describe.serial('Node Creation Workflow', () => {
     expect(JSON.stringify(annotationsAfterLock)).toBe(JSON.stringify(annotationsBeforeLock));
   });
 
-  test('nodes have correct kind and image after reload', async ({ page, topoViewerPage }) => {
+  test("nodes have correct kind and image after reload", async ({ page, topoViewerPage }) => {
     // This test creates its own state to be independent
     // Reset files first
     await topoViewerPage.resetFiles();
@@ -130,8 +135,8 @@ test.describe.serial('Node Creation Workflow', () => {
     await topoViewerPage.unlock();
 
     // Create two test nodes
-    await topoViewerPage.createNode('test-node1', { x: 200, y: 200 }, KIND_NOKIA_SRLINUX);
-    await topoViewerPage.createNode('test-node2', { x: 400, y: 200 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("test-node1", { x: 200, y: 200 }, KIND_NOKIA_SRLINUX);
+    await topoViewerPage.createNode("test-node2", { x: 400, y: 200 }, KIND_NOKIA_SRLINUX);
     await page.waitForTimeout(500);
 
     // Reload and check YAML content
@@ -141,13 +146,13 @@ test.describe.serial('Node Creation Workflow', () => {
     const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
 
     // Both nodes should have kind and image
-    expect(yaml).toContain('test-node1:');
-    expect(yaml).toContain('test-node2:');
+    expect(yaml).toContain("test-node1:");
+    expect(yaml).toContain("test-node2:");
     expect(yaml).toContain(`kind: ${KIND_NOKIA_SRLINUX}`);
-    expect(yaml).toContain('image:');
+    expect(yaml).toContain("image:");
   });
 
-  test('topology renders correctly after multiple reloads', async ({ topoViewerPage }) => {
+  test("topology renders correctly after multiple reloads", async ({ topoViewerPage }) => {
     // Reset files to ensure clean state
     await topoViewerPage.resetFiles();
 

@@ -1,10 +1,10 @@
 /**
  * Node Editor Panel - Multi-tab editor for node configuration
  */
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
-import type { TabDefinition } from "../../shared/editor";
-import { EditorPanel } from "../../shared/editor";
+import type { TabDefinition } from "../../ui/editor";
+import { EditorPanel } from "../../ui/editor";
 
 import type { NodeEditorData, NodeEditorTabId } from "./types";
 import { BasicTab } from "./BasicTab";
@@ -56,6 +56,8 @@ function useNodeEditorForm(nodeData: NodeEditorData | null) {
   // For tracking inheritance - original values when node was first loaded (never reset during session)
   const [originalData, setOriginalData] = useState<NodeEditorData | null>(null);
   const [loadedNodeId, setLoadedNodeId] = useState<string | null>(null);
+  // Skip syncing formData with nodeData right after Apply to prevent flicker
+  const skipNextSyncRef = useRef(false);
 
   useEffect(() => {
     // Reset form when loading a different node (by id)
@@ -65,14 +67,21 @@ function useNodeEditorForm(nodeData: NodeEditorData | null) {
       setOriginalData({ ...nodeData });
       setLoadedNodeId(nodeData.id);
       setActiveTab("basic");
+      skipNextSyncRef.current = false;
     } else if (nodeData && nodeData.id === loadedNodeId) {
-      // Same node but data changed (e.g., after Apply updated Cytoscape)
+      // Same node but data changed (e.g., after Apply applied changes)
+      // Skip sync if we just applied - formData already has the correct values
+      if (skipNextSyncRef.current) {
+        skipNextSyncRef.current = false;
+        return;
+      }
       // Sync formData with the updated nodeData to reflect saved changes
       setFormData({ ...nodeData });
       setLastAppliedData({ ...nodeData });
     } else if (!nodeData && loadedNodeId) {
       // Panel closed - reset loadedNodeId so reopening same node reloads data
       setLoadedNodeId(null);
+      skipNextSyncRef.current = false;
     }
   }, [nodeData, loadedNodeId]);
 
@@ -84,6 +93,8 @@ function useNodeEditorForm(nodeData: NodeEditorData | null) {
   const resetAfterApply = useCallback(() => {
     if (formData) {
       setLastAppliedData({ ...formData });
+      // Skip the next nodeData sync to prevent flicker
+      skipNextSyncRef.current = true;
     }
   }, [formData]);
 

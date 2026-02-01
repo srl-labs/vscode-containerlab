@@ -49,7 +49,7 @@ export function createVscodeApiMock(): VscodeApiMock {
       messages.length = 0;
     },
     _getLastMessage: () => messages[messages.length - 1],
-    _getMessagesByCommand: (cmd: string) => messages.filter(m => m.command === cmd),
+    _getMessagesByCommand: (cmd: string) => messages.filter((m) => m.command === cmd),
     _getMessageCount: () => messages.length
   };
 }
@@ -70,7 +70,7 @@ export function setupGlobalVscodeMock(): VscodeApiMock {
   (globalThis as Record<string, unknown>).vscode = mock;
 
   // Also set window.vscode if window is defined
-  if (typeof (globalThis as Record<string, unknown>).window !== 'undefined') {
+  if (typeof (globalThis as Record<string, unknown>).window !== "undefined") {
     ((globalThis as Record<string, unknown>).window as Record<string, unknown>).vscode = mock;
   }
 
@@ -84,7 +84,7 @@ export function setupGlobalVscodeMock(): VscodeApiMock {
 export function teardownGlobalVscodeMock(): void {
   delete (globalThis as Record<string, unknown>).vscode;
 
-  if (typeof (globalThis as Record<string, unknown>).window !== 'undefined') {
+  if (typeof (globalThis as Record<string, unknown>).window !== "undefined") {
     delete ((globalThis as Record<string, unknown>).window as Record<string, unknown>).vscode;
   }
 
@@ -110,7 +110,9 @@ export function assertMessagePosted(
 ): PostedMessage {
   const messages = mock._getMessagesByCommand(command);
   if (messages.length === 0) {
-    throw new Error(`Expected message with command "${command}" but none was found. Posted messages: ${JSON.stringify(mock._getMessages().map(m => m.command))}`);
+    throw new Error(
+      `Expected message with command "${command}" but none was found. Posted messages: ${JSON.stringify(mock._getMessages().map((m) => m.command))}`
+    );
   }
 
   const message = messages[messages.length - 1];
@@ -120,7 +122,9 @@ export function assertMessagePosted(
       const actual = message[key];
       const expected = value;
       if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-        throw new Error(`Expected message.${key} to be ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`);
+        throw new Error(
+          `Expected message.${key} to be ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`
+        );
       }
     }
   }
@@ -134,6 +138,8 @@ export function assertMessagePosted(
 export function assertMessageNotPosted(mock: VscodeApiMock, command: string): void {
   const messages = mock._getMessagesByCommand(command);
   if (messages.length > 0) {
-    throw new Error(`Expected no message with command "${command}" but found ${messages.length}. Data: ${JSON.stringify(messages)}`);
+    throw new Error(
+      `Expected no message with command "${command}" but found ${messages.length}. Data: ${JSON.stringify(messages)}`
+    );
   }
 }

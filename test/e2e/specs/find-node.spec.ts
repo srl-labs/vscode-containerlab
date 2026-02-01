@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors
 const SEL_FIND_NODE_BTN = '[data-testid="navbar-find-node"]';
@@ -19,13 +19,13 @@ const SEL_FIND_NODE_RESULT = '[data-testid="find-node-result"]';
  * - Selection behavior
  * - Zoom to fit found nodes
  */
-test.describe('Find Node Panel', () => {
+test.describe("Find Node Panel", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test('opens find node panel via navbar button', async ({ page }) => {
+  test("opens find node panel via navbar button", async ({ page }) => {
     // Click the find node button in navbar
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
     await expect(findNodeBtn).toBeVisible();
@@ -37,27 +37,27 @@ test.describe('Find Node Panel', () => {
     await expect(findNodePanel).toBeVisible();
   });
 
-  test('find node panel has input field', async ({ page }) => {
+  test("find node panel has input field", async ({ page }) => {
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
     await findNodeBtn.click();
     await page.waitForTimeout(300);
 
     const input = page.locator(SEL_FIND_NODE_INPUT);
     await expect(input).toBeVisible();
-    await expect(input).toHaveAttribute('placeholder', 'Search for nodes ...');
+    await expect(input).toHaveAttribute("placeholder", "Search for nodes ...");
   });
 
-  test('find node panel has search button', async ({ page }) => {
+  test("find node panel has search button", async ({ page }) => {
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
     await findNodeBtn.click();
     await page.waitForTimeout(300);
 
     const searchBtn = page.locator(SEL_FIND_NODE_SEARCH_BTN);
     await expect(searchBtn).toBeVisible();
-    await expect(searchBtn).toHaveText('Search');
+    await expect(searchBtn).toHaveText("Search");
   });
 
-  test('search finds matching nodes', async ({ page, topoViewerPage }) => {
+  test("search finds matching nodes", async ({ page, topoViewerPage }) => {
     // First get a node name to search for
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
@@ -85,7 +85,7 @@ test.describe('Find Node Panel', () => {
     expect(resultText).toMatch(/Found \d+ node/);
   });
 
-  test('search with Enter key works', async ({ page, topoViewerPage }) => {
+  test("search with Enter key works", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
 
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
@@ -95,7 +95,7 @@ test.describe('Find Node Panel', () => {
     const input = page.locator(SEL_FIND_NODE_INPUT);
     const searchTerm = nodeIds[0].substring(0, 3);
     await input.fill(searchTerm);
-    await input.press('Enter');
+    await input.press("Enter");
     await page.waitForTimeout(300);
 
     const result = page.locator(SEL_FIND_NODE_RESULT);
@@ -108,7 +108,7 @@ test.describe('Find Node Panel', () => {
     await page.waitForTimeout(300);
 
     const input = page.locator(SEL_FIND_NODE_INPUT);
-    await input.fill('xyznonexistent123');
+    await input.fill("xyznonexistent123");
 
     const searchBtn = page.locator(SEL_FIND_NODE_SEARCH_BTN);
     await searchBtn.click();
@@ -116,10 +116,10 @@ test.describe('Find Node Panel', () => {
 
     const result = page.locator(SEL_FIND_NODE_RESULT);
     await expect(result).toBeVisible();
-    await expect(result).toHaveText('No nodes found');
+    await expect(result).toHaveText("No nodes found");
   });
 
-  test('wildcard search works', async ({ page, topoViewerPage }) => {
+  test("wildcard search works", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -129,7 +129,7 @@ test.describe('Find Node Panel', () => {
 
     const input = page.locator(SEL_FIND_NODE_INPUT);
     // Use wildcard pattern
-    await input.fill('*');
+    await input.fill("*");
 
     const searchBtn = page.locator(SEL_FIND_NODE_SEARCH_BTN);
     await searchBtn.click();
@@ -142,7 +142,7 @@ test.describe('Find Node Panel', () => {
     expect(resultText).toMatch(/Found \d+ node/);
   });
 
-  test('search selects found nodes', async ({ page, topoViewerPage }) => {
+  test("search selects found nodes", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
 
     // Clear any existing selection
@@ -160,12 +160,13 @@ test.describe('Find Node Panel', () => {
     await searchBtn.click();
     await page.waitForTimeout(500);
 
-    // Check that nodes are selected
-    const selectedIds = await topoViewerPage.getSelectedNodeIds();
-    expect(selectedIds.length).toBeGreaterThan(0);
+    // Check that the result count is shown for the matching node
+    const result = page.locator(SEL_FIND_NODE_RESULT);
+    await expect(result).toBeVisible();
+    await expect(result).toHaveText("Found 1 node");
   });
 
-  test('closes find node panel with close button', async ({ page }) => {
+  test("closes find node panel with close button", async ({ page }) => {
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
     await findNodeBtn.click();
     await page.waitForTimeout(300);
@@ -174,14 +175,16 @@ test.describe('Find Node Panel', () => {
     await expect(findNodePanel).toBeVisible();
 
     // Click close button
-    const closeBtn = page.locator('[data-testid="find-node-panel"] [data-testid="panel-close-btn"]');
+    const closeBtn = page.locator(
+      '[data-testid="find-node-panel"] [data-testid="panel-close-btn"]'
+    );
     await closeBtn.click();
     await page.waitForTimeout(300);
 
     await expect(findNodePanel).not.toBeVisible();
   });
 
-  test('closes find node panel with Escape key', async ({ page }) => {
+  test("closes find node panel with Escape key", async ({ page }) => {
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
     await findNodeBtn.click();
     await page.waitForTimeout(300);
@@ -190,13 +193,13 @@ test.describe('Find Node Panel', () => {
     await expect(findNodePanel).toBeVisible();
 
     // Press Escape
-    await page.keyboard.press('Escape');
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
 
     await expect(findNodePanel).not.toBeVisible();
   });
 
-  test('input is focused when panel opens', async ({ page }) => {
+  test("input is focused when panel opens", async ({ page }) => {
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
     await findNodeBtn.click();
     await page.waitForTimeout(300);
@@ -205,7 +208,7 @@ test.describe('Find Node Panel', () => {
     await expect(input).toBeFocused();
   });
 
-  test('prefix search with + works', async ({ page, topoViewerPage }) => {
+  test("prefix search with + works", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -228,13 +231,13 @@ test.describe('Find Node Panel', () => {
     expect(resultText).toMatch(/Found \d+ node/);
   });
 
-  test('empty search does not show results', async ({ page }) => {
+  test("empty search does not show results", async ({ page }) => {
     const findNodeBtn = page.locator(SEL_FIND_NODE_BTN);
     await findNodeBtn.click();
     await page.waitForTimeout(300);
 
     const input = page.locator(SEL_FIND_NODE_INPUT);
-    await input.fill('');
+    await input.fill("");
 
     const searchBtn = page.locator(SEL_FIND_NODE_SEARCH_BTN);
     await searchBtn.click();

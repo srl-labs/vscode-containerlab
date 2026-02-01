@@ -16,5 +16,10 @@
       "@shared/*": ["../src/reactTopoViewer/shared/*"]
     }
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "../src/reactTopoViewer/**/*.ts", "../src/reactTopoViewer/**/*.tsx"]
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "../src/reactTopoViewer/**/*.ts",
+    "../src/reactTopoViewer/**/*.tsx"
+  ]
 }

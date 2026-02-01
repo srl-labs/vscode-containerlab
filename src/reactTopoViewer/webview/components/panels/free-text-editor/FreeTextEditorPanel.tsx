@@ -4,9 +4,9 @@
  */
 import React, { useCallback } from "react";
 
-import { BasePanel } from "../../shared/editor/BasePanel";
+import { BasePanel } from "../../ui/editor/BasePanel";
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
-import { useGenericFormState, useEditorHandlers } from "../../../hooks/panels/useGenericFormState";
+import { useGenericFormState, useEditorHandlers } from "../../../hooks/editor";
 
 import { FreeTextFormContent } from "./FreeTextFormContent";
 

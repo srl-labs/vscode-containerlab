@@ -4,27 +4,30 @@
  * to support E2E testing and debugging.
  */
 
-import type { Core as CyCore } from "cytoscape";
+import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { GroupStyleAnnotation, EdgeAnnotation } from "../../shared/types/topology";
+import type { GroupStyleAnnotation } from "../../shared/types/topology";
 import type { NetworkType } from "../../shared/types/editors";
+import type { TopoNode } from "../../shared/types/graph";
+import type { CustomIconInfo } from "../../shared/types/icons";
+import type { CustomNodeTemplate, SchemaData } from "../../shared/schema";
 
 /** Layout option type */
-type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
+type LayoutOption = "preset" | "force" | "geo";
 
 /**
  * Development mode interface for E2E testing and debugging.
  * Exposed on window.__DEV__ only in development builds.
  */
 export interface DevModeInterface {
-  /** Cytoscape instance for graph manipulation */
-  cy?: CyCore;
   /** Check if topology is locked */
   isLocked?: () => boolean;
   /** Get current mode */
   mode?: () => "edit" | "view";
   /** Set locked state */
   setLocked?: (locked: boolean) => void;
+  /** Set mode state directly */
+  setModeState?: (mode: "edit" | "view") => void;
   /** Undo/redo state */
   undoRedo?: {
     canUndo: boolean;
@@ -45,12 +48,7 @@ export interface DevModeInterface {
   /** Handler for node creation with undo support */
   handleNodeCreatedCallback?: (
     nodeId: string,
-    nodeElement: {
-      group: "nodes" | "edges";
-      data: Record<string, unknown>;
-      position?: { x: number; y: number };
-      classes?: string;
-    },
+    nodeElement: TopoNode,
     position: { x: number; y: number }
   ) => void;
   /** Create group from selected nodes */
@@ -62,6 +60,8 @@ export interface DevModeInterface {
   ) => string | null;
   /** Open or close the network editor panel */
   openNetworkEditor?: (nodeId: string | null) => void;
+  /** Open or close the node editor panel */
+  openNodeEditor?: (nodeId: string | null) => void;
   /** Get React groups state */
   getReactGroups?: () => GroupStyleAnnotation[];
   /** Current group count */
@@ -70,36 +70,33 @@ export interface DevModeInterface {
   getElements?: () => unknown[];
   /** Set layout for the graph (for E2E testing) */
   setLayout?: (layout: LayoutOption) => void;
-  /** Set geo mode (pan/edit) for GeoMap layout */
-  setGeoMode?: (mode: "pan" | "edit") => void;
   /** Check if currently in geo layout mode */
   isGeoLayout?: () => boolean;
-  /** Get current geo mode */
-  geoMode?: () => "pan" | "edit";
+  /** React Flow instance for E2E testing (replaces Cytoscape cy) */
+  rfInstance?: ReactFlowInstance;
+  /** Get current selected node ID */
+  selectedNode?: () => string | null;
+  /** Get current selected edge ID */
+  selectedEdge?: () => string | null;
+  /** Select a node by ID (for E2E testing) */
+  selectNode?: (nodeId: string | null) => void;
+  /** Select an edge by ID (for E2E testing) */
+  selectEdge?: (edgeId: string | null) => void;
+  /** Select multiple nodes for clipboard operations (for E2E testing) */
+  selectNodesForClipboard?: (nodeIds: string[]) => void;
+  /** Clear all node selections (for E2E testing) */
+  clearNodeSelection?: () => void;
 }
 
 /**
- * Initial data passed from extension to webview.
+ * Initial bootstrap data passed from extension/dev host (non-topology).
  */
 export interface WebviewInitialData {
-  elements?: Array<{
-    group: "nodes" | "edges";
-    data: Record<string, unknown>;
-    position?: { x: number; y: number };
-    classes?: string;
-  }>;
-  schemaData?: Record<string, unknown>;
+  schemaData?: SchemaData;
   dockerImages?: string[];
-  annotations?: Record<string, unknown>;
-  edgeAnnotations?: EdgeAnnotation[];
-  viewerSettings?: {
-    gridLineWidth?: number;
-    endpointLabelOffsetEnabled?: boolean;
-    endpointLabelOffset?: number;
-  };
-  isViewMode?: boolean;
-  labName?: string;
-  yamlFilePath?: string;
+  customNodes?: CustomNodeTemplate[];
+  defaultNode?: string;
+  customIcons?: CustomIconInfo[];
   [key: string]: unknown;
 }
 
@@ -107,7 +104,8 @@ declare global {
   interface Window {
     __DEV__?: DevModeInterface;
     __INITIAL_DATA__?: WebviewInitialData;
-    // Note: __SCHEMA_DATA__ is typed in hooks/data/useSchema.ts
+    // Note: __SCHEMA_DATA__ is typed in hooks/editor/useSchema.ts
     __DOCKER_IMAGES__?: string[];
+    maplibreWorkerUrl?: string;
   }
 }

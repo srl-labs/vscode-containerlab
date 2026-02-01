@@ -62,23 +62,43 @@ export function generateSpecialNodeId(baseName: string, usedIds: Set<string>): s
 
 /**
  * Generate unique ID for regular nodes
- * If baseName has trailing number (e.g., "srl2"), start from that number
- * If baseName has no number (e.g., "srl"), start from 1 (srl1, srl2, etc.)
+ * If baseName ends with digits, treat the entire baseName as the base and use "-N" suffix.
+ * Otherwise, append just "N" directly.
+ * E.g., "srl" → srl1, srl2; "iol-l2" → iol-l2-1, iol-l2-2
  */
 export function generateRegularNodeId(baseName: string, usedIds: Set<string>): string {
-  // Find trailing digits in baseName
-  let i = baseName.length - 1;
-  while (i >= 0 && baseName[i] >= "0" && baseName[i] <= "9") i--;
-  const hasNumber = i < baseName.length - 1;
-  const base = hasNumber ? baseName.slice(0, i + 1) : baseName;
-  let num: number;
-  if (hasNumber) {
-    num = parseInt(baseName.slice(i + 1), 10);
-  } else {
-    num = 1;
+  // Check if baseName ends with a digit
+  const endsWithDigit = /\d$/.test(baseName);
+
+  if (endsWithDigit) {
+    // Use baseName as-is with "-N" suffix pattern
+    const separator = "-";
+    let num = 1;
+    while (usedIds.has(`${baseName}${separator}${num}`)) {
+      num++;
+    }
+    return `${baseName}${separator}${num}`;
   }
-  while (usedIds.has(`${base}${num}`)) num++;
-  return `${base}${num}`;
+
+  // Original behavior for names not ending with digits
+  // Find the highest number used for this base across ALL existing IDs
+  let maxNum = 0;
+  for (const id of usedIds) {
+    // Check if this ID starts with the same base
+    if (id.startsWith(baseName)) {
+      const suffix = id.slice(baseName.length);
+      // Check if suffix is entirely digits
+      if (suffix.length > 0 && /^\d+$/.test(suffix)) {
+        const num = parseInt(suffix, 10);
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+
+  // Return the next number in sequence
+  return `${baseName}${maxNum + 1}`;
 }
 
 /**

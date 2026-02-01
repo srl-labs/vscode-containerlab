@@ -1,7 +1,7 @@
 /**
  * Conversions for link editor data.
  */
-import type { LinkEditorData } from "../components/panels/link-editor/types";
+import type { LinkEditorData } from "../../shared/types/editors";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
 import { isSpecialEndpointId } from "../../shared/utilities/LinkTypes";
 
@@ -45,7 +45,7 @@ function getMap(
 }
 
 /**
- * Converts raw Cytoscape edge data to LinkEditorData.
+ * Converts raw Edge data to LinkEditorData.
  */
 export function convertToLinkEditorData(
   rawData: Record<string, unknown> | null
@@ -57,6 +57,14 @@ export function convertToLinkEditorData(
   const sourceEndpoint = getStr(rawData, "sourceEndpoint");
   const targetEndpoint = getStr(rawData, "targetEndpoint");
   const extraData = (rawData.extraData as Record<string, unknown>) || {};
+  const yamlSource =
+    typeof extraData.yamlSourceNodeId === "string" && extraData.yamlSourceNodeId.length > 0
+      ? extraData.yamlSourceNodeId
+      : source;
+  const yamlTarget =
+    typeof extraData.yamlTargetNodeId === "string" && extraData.yamlTargetNodeId.length > 0
+      ? extraData.yamlTargetNodeId
+      : target;
 
   return {
     id: getStr(rawData, "id"),
@@ -70,8 +78,8 @@ export function convertToLinkEditorData(
     mtu: parseMtu(extraData.extMtu),
     vars: getMap(extraData, "extVars", rawData, "vars"),
     labels: getMap(extraData, "extLabels", rawData, "labels"),
-    originalSource: source,
-    originalTarget: target,
+    originalSource: yamlSource,
+    originalTarget: yamlTarget,
     originalSourceEndpoint: sourceEndpoint,
     originalTargetEndpoint: targetEndpoint,
     sourceIsNetwork: isSpecialEndpointId(source),
@@ -80,11 +88,11 @@ export function convertToLinkEditorData(
 }
 
 /**
- * Converts LinkEditorData to LinkSaveData for TopologyIO.
- * This is used when saving link editor changes via the services.
+ * Converts LinkEditorData to LinkSaveData for host commands.
+ * This is used when saving link editor changes via the host pipeline.
  *
  * @param data - LinkEditorData from the editor panel
- * @returns LinkSaveData for TopologyIO.editLink()
+ * @returns LinkSaveData for host editLink command
  */
 export function convertEditorDataToLinkSaveData(data: LinkEditorData): LinkSaveData {
   // Build extraData with extended properties

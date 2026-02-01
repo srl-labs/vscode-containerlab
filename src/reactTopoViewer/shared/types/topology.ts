@@ -1,7 +1,9 @@
 /**
  * Topology-related type definitions for React TopoViewer.
- * These types define the structure for Containerlab topologies and Cytoscape elements.
+ * These types define the structure for Containerlab topologies and ReactFlow elements.
  */
+
+import type { TextStyle, BoxStyle } from "./annotationStyles";
 
 // ============================================================================
 // Containerlab YAML Types
@@ -62,13 +64,14 @@ export interface ClabTopology {
 }
 
 // ============================================================================
-// Cytoscape Element Types
+// Parsed Element Types (Internal intermediate format)
 // ============================================================================
 
 /**
- * Represents a single Cytoscape element, either a node or an edge.
+ * Represents a parsed element (node or edge) from YAML parsing.
+ * This is an internal intermediate format that gets converted to ReactFlow types.
  */
-export interface CyElement {
+export interface ParsedElement {
   group: "nodes" | "edges";
   data: Record<string, unknown>;
   position?: { x: number; y: number };
@@ -81,11 +84,6 @@ export interface CyElement {
   classes?: string;
 }
 
-/**
- * Represents the overall Cytoscape topology as an array of elements.
- */
-export type CytoTopology = CyElement[];
-
 // ============================================================================
 // Annotation Types
 // ============================================================================
@@ -93,25 +91,13 @@ export type CytoTopology = CyElement[];
 /**
  * Free text annotation for canvas text overlays.
  */
-export interface FreeTextAnnotation {
+export interface FreeTextAnnotation extends TextStyle {
   id: string;
   text: string;
   position: { x: number; y: number };
   geoCoordinates?: { lat: number; lng: number };
   groupId?: string; // Parent group ID for hierarchy membership
-  fontSize?: number;
-  fontColor?: string;
-  backgroundColor?: string;
-  fontWeight?: "normal" | "bold";
-  fontStyle?: "normal" | "italic";
-  textDecoration?: "none" | "underline";
-  textAlign?: "left" | "center" | "right";
-  fontFamily?: string;
-  rotation?: number;
-  width?: number;
-  height?: number;
   zIndex?: number;
-  roundedBackground?: boolean;
   [key: string]: unknown;
 }
 
@@ -143,15 +129,16 @@ export interface FreeShapeAnnotation {
 }
 
 /**
- * Group annotation for overlay groups (rendered as HTML/SVG, not Cytoscape nodes).
+ * Group annotation for overlay groups (rendered as HTML/SVG overlays).
  * Members are tracked via NodeAnnotation.groupId (preferred) and group/level for legacy display.
  * Groups can be nested via parentId for hierarchical organization.
  */
-export interface GroupStyleAnnotation {
+export interface GroupStyleAnnotation extends BoxStyle {
   id: string;
   name: string;
   level: string;
   parentId?: string; // Parent group ID for nested groups
+  groupId?: string; // Parent group ID (legacy/alternate field for nested groups)
   // Geometry
   position: { x: number; y: number };
   width: number;
@@ -160,29 +147,8 @@ export interface GroupStyleAnnotation {
   geoCoordinates?: { lat: number; lng: number };
   // Style
   color?: string;
-  backgroundColor?: string;
-  backgroundOpacity?: number;
-  borderColor?: string;
-  borderWidth?: number;
-  borderStyle?: "solid" | "dotted" | "dashed" | "double";
-  borderRadius?: number;
-  labelColor?: string;
-  labelPosition?: string;
   zIndex?: number;
   [key: string]: unknown;
-}
-
-/**
- * Cloud node annotation for external network endpoints.
- * @deprecated Use NetworkNodeAnnotation instead. Kept for migration compatibility.
- */
-export interface CloudNodeAnnotation {
-  id: string;
-  type: "host" | "mgmt-net" | "macvlan";
-  label: string;
-  position: { x: number; y: number };
-  group?: string;
-  level?: string;
 }
 
 /**
@@ -259,11 +225,6 @@ export interface TopologyAnnotations {
   freeTextAnnotations?: FreeTextAnnotation[];
   freeShapeAnnotations?: FreeShapeAnnotation[];
   groupStyleAnnotations?: GroupStyleAnnotation[];
-  /**
-   * @deprecated Use networkNodeAnnotations instead. Kept for migration compatibility.
-   */
-  // eslint-disable-next-line sonarjs/deprecation
-  cloudNodeAnnotations?: CloudNodeAnnotation[];
   networkNodeAnnotations?: NetworkNodeAnnotation[];
   nodeAnnotations?: NodeAnnotation[];
   edgeAnnotations?: EdgeAnnotation[];

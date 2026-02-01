@@ -1,16 +1,19 @@
 /**
  * FindNodePanel - Search/find nodes in the topology
- * Migrated from legacy TopoViewer viewport-drawer-topology-overview.html
+ * Uses graph store state for node data and viewport operations.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { Core as CyCore } from "cytoscape";
+import type { ReactFlowInstance } from "@xyflow/react";
 
-import { BasePanel } from "../shared/editor/BasePanel";
+import { BasePanel } from "../ui/editor/BasePanel";
+import { useGraphState } from "../../stores/graphStore";
+import { searchNodes as searchNodesUtil, getNodesBoundingBox } from "../../utils/graphQueryUtils";
+import type { TopoNode } from "../../../shared/types/graph";
 
 interface FindNodePanelProps {
   isVisible: boolean;
   onClose: () => void;
-  cy: CyCore | null;
+  rfInstance: ReactFlowInstance | null;
 }
 
 /** Creates a wildcard filter regex */
@@ -40,7 +43,6 @@ function createContainsFilter(lower: string): (value: string) => boolean {
 
 /**
  * Creates a filter function for flexible string matching
- * Supports wildcards (*), prefix matching (+), and case-insensitive search
  */
 function createFilter(pattern: string): (value: string) => boolean {
   const trimmed = pattern.trim();
@@ -67,28 +69,18 @@ const SearchResultStatus: React.FC<{ count: number }> = ({ count }) => {
   );
 };
 
-interface NodeDataForSearch {
-  id?: string;
-  name?: string;
-  extraData?: { longname?: string };
-}
-
-/** Search nodes in cytoscape and return count */
-function searchNodes(cy: CyCore, searchTerm: string): number {
+/**
+ * Filter nodes using a custom filter function
+ */
+function filterNodes(nodes: TopoNode[], searchTerm: string): TopoNode[] {
   const filter = createFilter(searchTerm);
-  const matchingNodes = cy.nodes().filter((node) => {
-    const data = node.data() as NodeDataForSearch;
-    const shortName = data.name ?? data.id ?? "";
-    const longName = data.extraData?.longname ?? "";
-    return filter(`${shortName} ${longName}`);
+  return nodes.filter((node) => {
+    if (filter(node.id)) return true;
+    const data = node.data as Record<string, unknown>;
+    const label = data.label;
+    if (typeof label === "string" && filter(label)) return true;
+    return false;
   });
-
-  cy.elements().unselect();
-  if (matchingNodes.length > 0) {
-    matchingNodes.select();
-    cy.fit(matchingNodes, 50);
-  }
-  return matchingNodes.length;
 }
 
 /** Hook for panel focus management */
@@ -104,7 +96,11 @@ function usePanelFocus(isVisible: boolean, inputRef: React.RefObject<HTMLInputEl
 }
 
 /** Hook for search state management */
-function useSearchState(cy: CyCore | null, isVisible: boolean) {
+function useSearchState(
+  nodes: TopoNode[],
+  rfInstance: ReactFlowInstance | null,
+  isVisible: boolean
+) {
   const [searchTerm, setSearchTerm] = useState("");
   const [matchCount, setMatchCount] = useState<number | null>(null);
 
@@ -113,27 +109,55 @@ function useSearchState(cy: CyCore | null, isVisible: boolean) {
   }, [isVisible]);
 
   const handleSearch = useCallback(() => {
-    if (!cy || !searchTerm.trim()) {
+    if (!searchTerm.trim()) {
       setMatchCount(null);
       return;
     }
-    setMatchCount(searchNodes(cy, searchTerm));
-  }, [cy, searchTerm]);
+
+    const basicMatches = searchNodesUtil(nodes, searchTerm);
+    const filterMatches = filterNodes(nodes, searchTerm);
+
+    const matchedIds = new Set<string>();
+    const combinedMatches: TopoNode[] = [];
+    for (const node of [...basicMatches, ...filterMatches]) {
+      if (!matchedIds.has(node.id)) {
+        matchedIds.add(node.id);
+        combinedMatches.push(node);
+      }
+    }
+
+    setMatchCount(combinedMatches.length);
+
+    if (combinedMatches.length > 0 && rfInstance) {
+      const bounds = getNodesBoundingBox(combinedMatches);
+      if (bounds) {
+        rfInstance
+          .fitBounds(
+            { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+            { padding: 0.2, duration: 300 }
+          )
+          .catch(() => {
+            /* ignore */
+          });
+      }
+    }
+  }, [nodes, searchTerm, rfInstance]);
 
   const handleClear = useCallback(() => {
     setSearchTerm("");
     setMatchCount(null);
-    cy?.elements().unselect();
-  }, [cy]);
+  }, []);
 
   return { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear };
 }
 
-export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, cy }) => {
+export const FindNodePanel: React.FC<FindNodePanelProps> = ({ isVisible, onClose, rfInstance }) => {
+  const { nodes } = useGraphState();
   const inputRef = useRef<HTMLInputElement>(null);
   usePanelFocus(isVisible, inputRef);
   const { searchTerm, setSearchTerm, matchCount, handleSearch, handleClear } = useSearchState(
-    cy,
+    nodes as TopoNode[],
+    rfInstance,
     isVisible
   );
 

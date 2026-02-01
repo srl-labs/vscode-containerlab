@@ -1,22 +1,22 @@
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
-test.describe('Canvas Interactions', () => {
+test.describe("Canvas Interactions", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test('canvas is visible and has correct test id', async ({ page }) => {
-    const canvas = page.locator('[data-testid="cytoscape-canvas"]');
+  test("canvas is visible and has correct selector", async ({ page }) => {
+    const canvas = page.locator(".react-flow");
     await expect(canvas).toBeVisible();
   });
 
-  test('app container is visible', async ({ page }) => {
+  test("app container is visible", async ({ page }) => {
     const app = page.locator('[data-testid="topoviewer-app"]');
     await expect(app).toBeVisible();
   });
 
-  test('click on empty canvas deselects all', async ({ page, topoViewerPage }) => {
+  test("click on empty canvas deselects all", async ({ page, topoViewerPage }) => {
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
@@ -37,7 +37,7 @@ test.describe('Canvas Interactions', () => {
     expect(selectedIds.length).toBe(0);
   });
 
-  test('lock state persists across interactions', async ({ page, topoViewerPage }) => {
+  test("lock state persists across interactions", async ({ page, topoViewerPage }) => {
     await topoViewerPage.setEditMode();
 
     // Unlock the canvas
@@ -59,7 +59,7 @@ test.describe('Canvas Interactions', () => {
     expect(isLocked).toBe(true);
   });
 
-  test('mode switching works correctly', async ({ topoViewerPage }) => {
+  test("mode switching works correctly", async ({ topoViewerPage }) => {
     // Start in edit mode
     await topoViewerPage.setEditMode();
 

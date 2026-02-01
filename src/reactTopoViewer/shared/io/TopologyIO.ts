@@ -198,10 +198,12 @@ export class TopologyIO {
       if (nodeData.position && nodeId) {
         const annotationData: NodeAnnotationData | undefined = nodeData.extraData
           ? {
+              label: nodeData.extraData.label as string | null | undefined,
               icon: nodeData.extraData.topoViewerRole as string | undefined,
               iconColor: nodeData.extraData.iconColor as string | undefined,
               iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
-              interfacePattern: nodeData.extraData.interfacePattern as string | undefined
+              interfacePattern: nodeData.extraData.interfacePattern as string | undefined,
+              groupId: nodeData.extraData.groupId as string | undefined
             }
           : undefined;
         await this.saveNodePosition(nodeId, nodeData.position, annotationData);
@@ -232,6 +234,7 @@ export class TopologyIO {
       const nodeId = result.renamed?.newId || nodeData.name || nodeData.id;
       if (nodeData.extraData && nodeId) {
         const annotationData: NodeAnnotationData = {
+          label: nodeData.extraData.label as string | null | undefined,
           icon: nodeData.extraData.topoViewerRole as string | undefined,
           iconColor: nodeData.extraData.iconColor as string | undefined,
           iconCornerRadius: nodeData.extraData.iconCornerRadius as number | undefined,
@@ -239,6 +242,7 @@ export class TopologyIO {
         };
         // Only save if there's actual annotation data to save
         if (
+          annotationData.label !== undefined ||
           annotationData.icon ||
           annotationData.iconColor ||
           annotationData.iconCornerRadius !== undefined ||
@@ -313,7 +317,7 @@ export class TopologyIO {
       return result;
     }
 
-    // If not found as a regular node, try to delete as a network node (cloud node)
+    // If not found as a regular node, try to delete as a network node
     // Network nodes (host, vxlan, dummy, etc.) are represented as links, not nodes
     const networkResult = this.deleteNetworkNode(nodeId);
     if (networkResult.success) {
@@ -368,14 +372,14 @@ export class TopologyIO {
     if (!linkType) return false;
     const typeStr = YAML.isScalar(linkType) ? String(linkType.value) : String(linkType);
 
-    const expectedId = this.buildExpectedCloudNodeId(typeStr, linkMap, nodeId);
+    const expectedId = this.buildExpectedNetworkNodeId(typeStr, linkMap, nodeId);
     return expectedId === nodeId;
   }
 
   /**
-   * Builds the expected cloud node ID for a link based on its type.
+   * Builds the expected network node ID for a link based on its type.
    */
-  private buildExpectedCloudNodeId(
+  private buildExpectedNetworkNodeId(
     typeStr: string,
     linkMap: YAML.YAMLMap,
     nodeId: string

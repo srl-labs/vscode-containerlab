@@ -1,24 +1,20 @@
 /**
  * useClipboardHandlers - Unified clipboard operations with debouncing
  *
- * Extracts clipboard handling from App.tsx:
- * - useUnifiedClipboard call
- * - Debounced copy/paste/duplicate/delete handlers
- * - Viewport center calculation
+ * Provides debounced copy/paste/duplicate/delete handlers
+ * using the React Flow clipboard hook.
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
+import type { ReactFlowInstance } from "@xyflow/react";
 
-import {
-  useUnifiedClipboard,
-  type UseUnifiedClipboardOptions
-} from "../clipboard/useUnifiedClipboard";
 import type {
   GroupStyleAnnotation,
   FreeTextAnnotation,
   FreeShapeAnnotation
 } from "../../../shared/types/topology";
+import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 
+import { useClipboard, type UseClipboardOptions } from "./useClipboard";
 /**
  * Annotations interface subset for clipboard operations
  * Avoids circular dependency with AnnotationContext.tsx
@@ -28,11 +24,11 @@ interface AnnotationsClipboardSubset {
   textAnnotations: FreeTextAnnotation[];
   shapeAnnotations: FreeShapeAnnotation[];
   getNodeMembership: (nodeId: string) => string | null;
-  getGroupMembers: (groupId: string) => string[];
+  getGroupMembers: (groupId: string, options?: { includeNested?: boolean }) => string[];
   selectedGroupIds: Set<string>;
   selectedTextIds: Set<string>;
   selectedShapeIds: Set<string>;
-  addGroupWithUndo: (group: GroupStyleAnnotation) => void;
+  addGroup: (group: GroupStyleAnnotation) => void;
   saveTextAnnotation: (annotation: FreeTextAnnotation) => void;
   saveShapeAnnotation: (annotation: FreeShapeAnnotation) => void;
   addNodeToGroup: (nodeId: string, groupId: string) => void;
@@ -47,14 +43,28 @@ const DEBOUNCE_MS = 50;
  * Configuration for useClipboardHandlers hook
  */
 export interface ClipboardHandlersConfig {
-  cyInstance: CyCore | null;
   annotations: AnnotationsClipboardSubset;
-  undoRedo: {
-    beginBatch: () => void;
-    endBatch: () => void;
-  };
-  handleNodeCreatedCallback: UseUnifiedClipboardOptions["onCreateNode"];
-  handleEdgeCreated: UseUnifiedClipboardOptions["onCreateEdge"];
+  rfInstance?: ReactFlowInstance | null;
+  /** Callback for node creation (includes YAML persistence and undo) */
+  handleNodeCreatedCallback?: (
+    nodeId: string,
+    nodeElement: TopoNode,
+    position: { x: number; y: number }
+  ) => void;
+  /** Callback for edge creation (includes YAML persistence and undo) */
+  handleEdgeCreated?: (
+    sourceId: string,
+    targetId: string,
+    edgeData: {
+      id: string;
+      source: string;
+      target: string;
+      sourceEndpoint: string;
+      targetEndpoint: string;
+    }
+  ) => void;
+  /** Batch paste handler for unified undo/redo */
+  handleBatchPaste?: (result: { nodes: TopoNode[]; edges: TopoEdge[] }) => void;
 }
 
 /**
@@ -69,67 +79,57 @@ export interface ClipboardHandlersReturn {
   handleUnifiedDuplicate: () => void;
   /** Delete selected elements (graph + annotations) */
   handleUnifiedDelete: () => void;
-  /** Check if clipboard has data */
+  /** Check if clipboard has data (async) */
   hasClipboardData: () => boolean;
 }
 
 /**
  * Hook that provides debounced clipboard operations.
- *
- * Consolidates ~70 lines of clipboard code from App.tsx into a single hook.
  */
 export function useClipboardHandlers(config: ClipboardHandlersConfig): ClipboardHandlersReturn {
-  const { cyInstance, annotations, undoRedo, handleNodeCreatedCallback, handleEdgeCreated } =
-    config;
+  const {
+    annotations,
+    handleNodeCreatedCallback,
+    handleEdgeCreated,
+    handleBatchPaste,
+    rfInstance
+  } = config;
 
-  // Viewport center for paste operations
-  const getViewportCenter = React.useCallback(() => {
-    if (!cyInstance) return { x: 0, y: 0 };
-    const extent = cyInstance.extent();
-    return { x: (extent.x1 + extent.x2) / 2, y: (extent.y1 + extent.y2) / 2 };
-  }, [cyInstance]);
+  // Build clipboard options with persistence callbacks
+  const clipboardOptions: UseClipboardOptions = React.useMemo(
+    () => ({
+      rfInstance,
+      onNodeCreated: handleNodeCreatedCallback,
+      onEdgeCreated: handleEdgeCreated,
+      getNodeMembership: annotations.getNodeMembership,
+      addNodeToGroup: annotations.addNodeToGroup,
+      onPasteComplete: handleBatchPaste
+    }),
+    [
+      rfInstance,
+      handleNodeCreatedCallback,
+      handleEdgeCreated,
+      handleBatchPaste,
+      annotations.getNodeMembership,
+      annotations.addNodeToGroup
+    ]
+  );
 
-  // Unified clipboard hook
-  const unifiedClipboard = useUnifiedClipboard({
-    cyInstance,
-    groups: annotations.groups,
-    textAnnotations: annotations.textAnnotations,
-    shapeAnnotations: annotations.shapeAnnotations,
-    getNodeMembership: annotations.getNodeMembership,
-    getGroupMembers: annotations.getGroupMembers,
-    selectedGroupIds: annotations.selectedGroupIds,
-    selectedTextAnnotationIds: annotations.selectedTextIds,
-    selectedShapeAnnotationIds: annotations.selectedShapeIds,
-    onAddGroup: annotations.addGroupWithUndo,
-    onAddTextAnnotation: annotations.saveTextAnnotation,
-    onAddShapeAnnotation: annotations.saveShapeAnnotation,
-    onAddNodeToGroup: annotations.addNodeToGroup,
-    generateGroupId: annotations.generateGroupId,
-    onCreateNode: handleNodeCreatedCallback,
-    onCreateEdge: handleEdgeCreated,
-    beginUndoBatch: undoRedo.beginBatch,
-    endUndoBatch: undoRedo.endBatch
-  });
+  // Use the React Flow clipboard hook with persistence callbacks
+  const clipboard = useClipboard(clipboardOptions);
 
-  const getPasteAnchor = React.useCallback(() => {
-    const viewportCenter = getViewportCenter();
-    if (!cyInstance) return viewportCenter;
-    const clipboardData = unifiedClipboard.getClipboardData();
-    if (!clipboardData) return viewportCenter;
+  // Track if clipboard has data (synced periodically)
+  const [hasData, setHasData] = React.useState(false);
 
-    const extent = cyInstance.extent();
-    const { origin } = clipboardData;
-    const originIsInView =
-      origin.x >= extent.x1 &&
-      origin.x <= extent.x2 &&
-      origin.y >= extent.y1 &&
-      origin.y <= extent.y2;
+  // Check clipboard on mount and after operations
+  const checkClipboard = React.useCallback(async () => {
+    const has = await clipboard.hasClipboardData();
+    setHasData(has);
+  }, [clipboard]);
 
-    // Prefer pasting relative to the copied selection when it's visible, so a
-    // single copy+paste doesn't unexpectedly land far away (or overlap due to
-    // viewport centering).
-    return originIsInView ? origin : viewportCenter;
-  }, [cyInstance, getViewportCenter, unifiedClipboard]);
+  React.useEffect(() => {
+    void checkClipboard();
+  }, [checkClipboard]);
 
   // Debounce refs
   const lastCopyTimeRef = React.useRef(0);
@@ -141,37 +141,42 @@ export function useClipboardHandlers(config: ClipboardHandlersConfig): Clipboard
     const now = Date.now();
     if (now - lastCopyTimeRef.current < DEBOUNCE_MS) return;
     lastCopyTimeRef.current = now;
-    unifiedClipboard.copy();
-  }, [unifiedClipboard]);
+    void clipboard.copy().then(() => checkClipboard());
+  }, [clipboard, checkClipboard]);
 
   // Debounced paste
   const handleUnifiedPaste = React.useCallback(() => {
     const now = Date.now();
     if (now - lastPasteTimeRef.current < DEBOUNCE_MS) return;
     lastPasteTimeRef.current = now;
-    unifiedClipboard.paste(getPasteAnchor());
-  }, [unifiedClipboard, getPasteAnchor]);
+    void clipboard.paste();
+  }, [clipboard]);
 
-  // Debounced duplicate
+  // Debounced duplicate (copy + paste)
   const handleUnifiedDuplicate = React.useCallback(() => {
     const now = Date.now();
     if (now - lastDuplicateTimeRef.current < DEBOUNCE_MS) return;
     lastDuplicateTimeRef.current = now;
-    if (unifiedClipboard.copy()) unifiedClipboard.paste(getPasteAnchor());
-  }, [unifiedClipboard, getPasteAnchor]);
+    void clipboard.copy().then(async (success) => {
+      if (success) {
+        await clipboard.paste();
+      }
+    });
+  }, [clipboard]);
 
   // Delete handler (graph elements + annotations)
   const handleUnifiedDelete = React.useCallback(() => {
-    // Graph deletion is handled by keyboard/context-menu handlers that go through
-    // state + persistence. This unified delete is for annotations only.
     annotations.deleteAllSelected();
-  }, [cyInstance, annotations]);
+  }, [annotations]);
+
+  // Synchronous check (uses cached state)
+  const hasClipboardData = React.useCallback(() => hasData, [hasData]);
 
   return {
     handleUnifiedCopy,
     handleUnifiedPaste,
     handleUnifiedDuplicate,
     handleUnifiedDelete,
-    hasClipboardData: unifiedClipboard.hasClipboardData
+    hasClipboardData
   };
 }

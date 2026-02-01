@@ -2,40 +2,24 @@
  * App helper hooks - extracted from App.tsx to reduce file size
  */
 import React from "react";
-import type { Core as CyCore } from "cytoscape";
+import type { ReactFlowInstance } from "@xyflow/react";
 
 import type {
   CustomNodeTemplate,
   CustomTemplateEditorData,
   NetworkType
 } from "../../../shared/types/editors";
+import type { EdgeCreatedHandler, NodeCreatedHandler } from "../../../shared/types/graph";
 import {
   createNewTemplateEditorData,
   convertTemplateToEditorData
 } from "../../../shared/utilities/customNodeConversions";
 import {
-  ensureCytoscapeLayersRegistered,
-  getCytoscapeLayers,
-  configureLayerNode,
-  type IHTMLLayer
-} from "../shared/cytoscapeLayers";
-import { log } from "../../utils/logger";
-import {
   sendDeleteCustomNode,
   sendSetDefaultCustomNode,
   sendCommandToExtension
-} from "../../utils/extensionMessaging";
-import type { UseUndoRedoReturn } from "../state/useUndoRedo";
-import type {
-  FreeTextAnnotation,
-  FreeShapeAnnotation,
-  GroupStyleAnnotation
-} from "../../../shared/types/topology";
-import type { MapLibreState } from "../canvas/maplibreUtils";
-import {
-  assignMissingGeoCoordinatesToAnnotations,
-  assignMissingGeoCoordinatesToShapeAnnotations
-} from "../canvas/maplibreUtils";
+} from "../../messaging/extensionMessaging";
+import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 
 /**
  * Custom node template UI commands interface
@@ -61,6 +45,12 @@ export function useCustomNodeCommands(
 
   const onEditCustomNode = React.useCallback(
     (nodeName: string) => {
+      // Handle special "__new__" case for creating new custom nodes
+      if (nodeName === "__new__") {
+        const templateData = createNewTemplateEditorData();
+        editCustomTemplate(templateData);
+        return;
+      }
       const template = customNodes.find((n) => n.name === nodeName);
       if (!template) return;
       const templateData = convertTemplateToEditorData(template);
@@ -111,154 +101,43 @@ export function useNavbarCommands(): NavbarCommands {
   };
 }
 
-/**
- * Return type for useShapeLayer hook
- */
-export interface UseShapeLayerReturn {
-  shapeLayerNode: HTMLElement | null;
-  updateLayer: () => void;
-}
-
-/**
- * Hook to create and manage a Cytoscape layer for shape annotations.
- * Uses cytoscape-layers to render shapes BELOW the node layer but above the grid.
- */
-export function useShapeLayer(cy: CyCore | null): UseShapeLayerReturn {
-  const layerRef = React.useRef<IHTMLLayer | null>(null);
-  const [shapeLayerNode, setShapeLayerNode] = React.useState<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    if (!cy) return;
-
-    ensureCytoscapeLayersRegistered();
-
-    try {
-      const layers = getCytoscapeLayers(cy);
-      log.info("[ShapeLayer] Creating shape layer below nodes");
-
-      // Create layer BELOW the node layer
-      const shapeLayer = layers.nodeLayer.insertBefore("html");
-      layerRef.current = shapeLayer;
-
-      // Configure the layer node - pointer events NONE on container so clicks pass through
-      // to layers below (like GroupLayer). Individual shape items set pointerEvents: 'auto'.
-      configureLayerNode(shapeLayer.node, "none", "shape-layer-container");
-
-      log.info("[ShapeLayer] Shape layer created");
-      setShapeLayerNode(shapeLayer.node);
-    } catch (err) {
-      log.error(`[ShapeLayer] Failed to create layer: ${err}`);
-    }
-
-    return () => {
-      layerRef.current?.remove();
-      layerRef.current = null;
-      setShapeLayerNode(null);
-    };
-  }, [cy]);
-
-  const updateLayer = () => {
-    layerRef.current?.update();
-  };
-
-  return { shapeLayerNode, updateLayer };
-}
-
-/**
- * Return type for useTextLayer hook
- */
-export interface UseTextLayerReturn {
-  textLayerNode: HTMLElement | null;
-}
-
-/**
- * Hook to create and manage a Cytoscape layer for text annotations.
- * Uses cytoscape-layers to render text ABOVE nodes for visibility.
- * The layer automatically applies Cytoscape's pan/zoom transform.
- */
-export function useTextLayer(cy: CyCore | null): UseTextLayerReturn {
-  const layerRef = React.useRef<IHTMLLayer | null>(null);
-  const [textLayerNode, setTextLayerNode] = React.useState<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    if (!cy) return;
-
-    ensureCytoscapeLayersRegistered();
-
-    try {
-      const layers = getCytoscapeLayers(cy);
-      log.info("[TextLayer] Creating text layer above nodes");
-
-      // Create layer ABOVE all other layers (on top)
-      const textLayer = layers.append("html");
-      layerRef.current = textLayer;
-
-      // Configure the layer node - pointer events NONE on container so clicks pass through
-      // to layers below (like GroupLayer). Individual text items set pointerEvents: 'auto'.
-      configureLayerNode(textLayer.node, "none", "text-layer-container");
-
-      log.info("[TextLayer] Text layer created");
-      setTextLayerNode(textLayer.node);
-    } catch (err) {
-      log.error(`[TextLayer] Failed to create layer: ${err}`);
-    }
-
-    return () => {
-      layerRef.current?.remove();
-      layerRef.current = null;
-      setTextLayerNode(null);
-    };
-  }, [cy]);
-
-  return { textLayerNode };
-}
-
 /** Layout option type for E2E testing */
-export type LayoutOption = "preset" | "cose" | "cola" | "radial" | "hierarchical" | "geo";
+export type LayoutOption = "preset" | "force" | "geo";
 
 /**
  * E2E testing exposure configuration
  */
 export interface E2ETestingConfig {
-  cyInstance: CyCore | null;
   isLocked: boolean;
   mode: "edit" | "view";
   toggleLock: () => void;
-  undoRedo: UseUndoRedoReturn;
-  handleEdgeCreated: (
-    sourceId: string,
-    targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void;
-  handleNodeCreatedCallback: (
-    nodeId: string,
-    nodeElement: {
-      group: "nodes" | "edges";
-      data: Record<string, unknown>;
-      position?: { x: number; y: number };
-      classes?: string;
-    },
-    position: { x: number; y: number }
-  ) => void;
-  handleAddGroupWithUndo: () => void;
+  setMode?: (mode: "edit" | "view") => void;
+  undoRedo: {
+    canUndo: boolean;
+    canRedo: boolean;
+  };
+  handleEdgeCreated: EdgeCreatedHandler;
+  handleNodeCreatedCallback: NodeCreatedHandler;
+  handleAddGroup: () => void;
   createNetworkAtPosition: (
     position: { x: number; y: number },
     networkType: NetworkType
   ) => string | null;
+  editNode?: (nodeId: string | null) => void;
   editNetwork?: (nodeId: string | null) => void;
   groups: GroupStyleAnnotation[];
   elements: unknown[];
   /** Layout controls for E2E testing */
   setLayout?: (layout: LayoutOption) => void;
-  setGeoMode?: (mode: "pan" | "edit") => void;
   isGeoLayout?: boolean;
-  geoMode?: "pan" | "edit";
+  /** React Flow instance for E2E testing */
+  rfInstance?: ReactFlowInstance | null;
+  /** Selection state for E2E testing */
+  selectedNode?: string | null;
+  selectedEdge?: string | null;
+  /** Selection actions for E2E testing */
+  selectNode?: (nodeId: string | null) => void;
+  selectEdge?: (edgeId: string | null) => void;
 }
 
 /**
@@ -267,35 +146,43 @@ export interface E2ETestingConfig {
  */
 export function useE2ETestingExposure(config: E2ETestingConfig): void {
   const {
-    cyInstance,
     isLocked,
     mode,
     toggleLock,
+    setMode,
     undoRedo,
     handleEdgeCreated,
     handleNodeCreatedCallback,
-    handleAddGroupWithUndo,
+    handleAddGroup,
     createNetworkAtPosition,
+    editNode,
     editNetwork,
     groups,
     elements,
     setLayout,
-    setGeoMode,
     isGeoLayout,
-    geoMode
+    rfInstance,
+    selectedNode,
+    selectedEdge,
+    selectNode,
+    selectEdge
   } = config;
 
-  // Core E2E exposure (cy, isLocked, mode, setLocked)
+  // Core E2E exposure (isLocked, mode, setLocked)
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.__DEV__) {
-      if (cyInstance) window.__DEV__.cy = cyInstance;
       window.__DEV__.isLocked = () => isLocked;
       window.__DEV__.mode = () => mode;
       window.__DEV__.setLocked = (locked: boolean) => {
         if (isLocked !== locked) toggleLock();
       };
+      if (setMode) {
+        window.__DEV__.setModeState = (nextMode: "edit" | "view") => {
+          setMode(nextMode);
+        };
+      }
     }
-  }, [cyInstance, isLocked, mode, toggleLock]);
+  }, [isLocked, mode, toggleLock, setMode]);
 
   // Undo/redo E2E exposure
   React.useEffect(() => {
@@ -303,7 +190,7 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
       window.__DEV__.undoRedo = { canUndo: undoRedo.canUndo, canRedo: undoRedo.canRedo };
       window.__DEV__.handleEdgeCreated = handleEdgeCreated;
       window.__DEV__.handleNodeCreatedCallback = handleNodeCreatedCallback;
-      window.__DEV__.createGroupFromSelected = handleAddGroupWithUndo;
+      window.__DEV__.createGroupFromSelected = handleAddGroup;
       window.__DEV__.createNetworkAtPosition = createNetworkAtPosition;
     }
   }, [
@@ -311,9 +198,18 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
     undoRedo.canRedo,
     handleEdgeCreated,
     handleNodeCreatedCallback,
-    handleAddGroupWithUndo,
+    handleAddGroup,
     createNetworkAtPosition
   ]);
+
+  // Node editor E2E exposure
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.__DEV__ && editNode) {
+      window.__DEV__.openNodeEditor = (nodeId: string | null) => {
+        editNode(nodeId);
+      };
+    }
+  }, [editNode]);
 
   // Network editor E2E exposure
   React.useEffect(() => {
@@ -343,90 +239,55 @@ export function useE2ETestingExposure(config: E2ETestingConfig): void {
   React.useEffect(() => {
     if (typeof window !== "undefined" && window.__DEV__) {
       if (setLayout) window.__DEV__.setLayout = setLayout;
-      if (setGeoMode) window.__DEV__.setGeoMode = setGeoMode;
       window.__DEV__.isGeoLayout = () => isGeoLayout ?? false;
-      window.__DEV__.geoMode = () => geoMode ?? "pan";
     }
-  }, [setLayout, setGeoMode, isGeoLayout, geoMode]);
-}
+  }, [setLayout, isGeoLayout]);
 
-/**
- * Geo coordinate sync configuration
- */
-export interface GeoCoordinateSyncConfig {
-  mapLibreState: MapLibreState | null;
-  isGeoLayout: boolean;
-  textAnnotations: FreeTextAnnotation[];
-  shapeAnnotations: FreeShapeAnnotation[];
-  groups: GroupStyleAnnotation[];
-  updateTextGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-  updateShapeGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-  updateShapeEndGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-  updateGroupGeoPosition: (id: string, coords: { lng: number; lat: number }) => void;
-}
+  // React Flow instance E2E exposure (replaces Cytoscape cy)
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.__DEV__) {
+      window.__DEV__.rfInstance = rfInstance ?? undefined;
+    }
+  }, [rfInstance]);
 
-/**
- * Hook to sync missing geo coordinates when switching to geo layout.
- * Automatically assigns geo coordinates to annotations that don't have them.
- */
-export function useGeoCoordinateSync(config: GeoCoordinateSyncConfig): void {
-  const {
-    mapLibreState,
-    isGeoLayout,
-    textAnnotations,
-    shapeAnnotations,
-    groups,
-    updateTextGeoPosition,
-    updateShapeGeoPosition,
-    updateShapeEndGeoPosition,
-    updateGroupGeoPosition
-  } = config;
-
-  const geoAssignedRef = React.useRef(false);
+  // Selection state and actions E2E exposure
+  // Use refs to ensure the exposed functions always return the latest value
+  const selectedNodeRef = React.useRef(selectedNode);
+  const selectedEdgeRef = React.useRef(selectedEdge);
+  selectedNodeRef.current = selectedNode;
+  selectedEdgeRef.current = selectedEdge;
 
   React.useEffect(() => {
-    if (!mapLibreState?.isInitialized || !isGeoLayout) {
-      geoAssignedRef.current = false;
-      return;
-    }
-    if (geoAssignedRef.current) return;
-    geoAssignedRef.current = true;
+    if (typeof window !== "undefined" && window.__DEV__) {
+      // Use ref.current to always get the latest value
+      window.__DEV__.selectedNode = () => selectedNodeRef.current ?? null;
+      window.__DEV__.selectedEdge = () => selectedEdgeRef.current ?? null;
+      if (selectNode) window.__DEV__.selectNode = selectNode;
+      if (selectEdge) window.__DEV__.selectEdge = selectEdge;
 
-    const textResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, textAnnotations);
-    if (textResult.hasChanges) {
-      textResult.updated.forEach((ann: FreeTextAnnotation) => {
-        if (ann.geoCoordinates) updateTextGeoPosition(ann.id, ann.geoCoordinates);
-      });
-    }
+      // React Flow node selection for clipboard operations
+      // This updates the React Flow nodes' `selected` property directly
+      window.__DEV__.selectNodesForClipboard = (nodeIds: string[]) => {
+        if (!rfInstance) return;
+        const nodeIdSet = new Set(nodeIds);
+        const nodes = rfInstance.getNodes();
+        const updatedNodes = nodes.map((node) => ({
+          ...node,
+          selected: nodeIdSet.has(node.id)
+        }));
+        rfInstance.setNodes(updatedNodes);
+      };
 
-    const shapeResult = assignMissingGeoCoordinatesToShapeAnnotations(
-      mapLibreState,
-      shapeAnnotations
-    );
-    if (shapeResult.hasChanges) {
-      shapeResult.updated.forEach((ann: FreeShapeAnnotation) => {
-        if (ann.geoCoordinates) updateShapeGeoPosition(ann.id, ann.geoCoordinates);
-        if ("endGeoCoordinates" in ann && ann.endGeoCoordinates) {
-          updateShapeEndGeoPosition(ann.id, ann.endGeoCoordinates);
-        }
-      });
+      // Clear all React Flow node selections
+      window.__DEV__.clearNodeSelection = () => {
+        if (!rfInstance) return;
+        const nodes = rfInstance.getNodes();
+        const updatedNodes = nodes.map((node) => ({
+          ...node,
+          selected: false
+        }));
+        rfInstance.setNodes(updatedNodes);
+      };
     }
-
-    const groupResult = assignMissingGeoCoordinatesToAnnotations(mapLibreState, groups);
-    if (groupResult.hasChanges) {
-      groupResult.updated.forEach((grp: GroupStyleAnnotation) => {
-        if (grp.geoCoordinates) updateGroupGeoPosition(grp.id, grp.geoCoordinates);
-      });
-    }
-  }, [
-    mapLibreState,
-    isGeoLayout,
-    textAnnotations,
-    shapeAnnotations,
-    groups,
-    updateTextGeoPosition,
-    updateShapeGeoPosition,
-    updateShapeEndGeoPosition,
-    updateGroupGeoPosition
-  ]);
+  }, [selectNode, selectEdge, rfInstance]); // Include rfInstance in dependencies
 }

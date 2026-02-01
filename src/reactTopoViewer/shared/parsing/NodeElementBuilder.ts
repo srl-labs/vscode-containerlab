@@ -1,13 +1,14 @@
 /**
- * Node element builder for creating Cytoscape node elements.
+ * Node element builder for creating parsed node elements.
  * Pure functions - no VS Code dependencies.
  */
 
 import type {
   ClabNode,
-  CyElement,
+  ParsedElement,
   ClabTopology,
   NodeAnnotation,
+  NetworkNodeAnnotation,
   TopologyAnnotations
 } from "../types/topology";
 import { DEFAULT_INTERFACE_PATTERNS } from "../constants/interfacePatterns";
@@ -221,9 +222,64 @@ export function createNodeExtraData(params: {
 
 /** Result of building a node element */
 interface NodeElementResult {
-  element: CyElement;
+  element: ParsedElement;
   /** If set, this node's interfacePattern needs to be migrated to annotations */
   migrationPattern?: string;
+}
+
+function resolveTopoViewerRole(
+  mergedNode: ClabNode,
+  nodeAnn: NodeAnnotation | undefined,
+  labels: Record<string, unknown> | undefined
+): string {
+  return (
+    nodeAnn?.icon ||
+    (labels?.["topoViewer-role"] as string) ||
+    (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE
+      ? NODE_KIND_BRIDGE
+      : "pe")
+  );
+}
+
+function resolveDisplayName(
+  nodeName: string,
+  nodeAnn: NodeAnnotation | undefined,
+  isBridgeNode: boolean
+): string {
+  const annotatedLabel = nodeAnn?.label?.trim();
+  return isBridgeNode && annotatedLabel ? annotatedLabel : nodeName;
+}
+
+function buildNodeAnnotationLookup(
+  nodeAnnotations?: NodeAnnotation[],
+  networkNodeAnnotations?: NetworkNodeAnnotation[]
+): Map<string, NodeAnnotation> {
+  const lookup = new Map<string, NodeAnnotation>();
+  if (nodeAnnotations) {
+    for (const annotation of nodeAnnotations) {
+      lookup.set(annotation.id, annotation);
+    }
+  }
+  if (networkNodeAnnotations) {
+    for (const annotation of networkNodeAnnotations) {
+      if (!lookup.has(annotation.id)) {
+        lookup.set(annotation.id, { id: annotation.id, position: annotation.position });
+      }
+    }
+  }
+  return lookup;
+}
+
+function shouldSkipAliasBridgeNode(
+  nodeName: string,
+  nodeAnn: NodeAnnotation | undefined,
+  nodeObj: ClabNode
+): boolean {
+  return Boolean(
+    nodeAnn?.yamlNodeId &&
+      nodeAnn.yamlNodeId !== nodeName &&
+      (nodeObj?.kind === NODE_KIND_BRIDGE || nodeObj?.kind === NODE_KIND_OVS_BRIDGE)
+  );
 }
 
 /**
@@ -274,20 +330,18 @@ export function buildNodeElement(params: {
   });
 
   const labels = mergedNode.labels as Record<string, unknown> | undefined;
-  const topoViewerRole =
-    nodeAnn?.icon ||
-    (labels?.["topoViewer-role"] as string) ||
-    (mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE
-      ? NODE_KIND_BRIDGE
-      : "pe");
+  const topoViewerRole = resolveTopoViewerRole(mergedNode, nodeAnn, labels);
 
   const iconVisuals = extractIconVisuals(nodeAnn);
-  const element: CyElement = {
+  const isBridgeNode =
+    mergedNode.kind === NODE_KIND_BRIDGE || mergedNode.kind === NODE_KIND_OVS_BRIDGE;
+  const displayName = resolveDisplayName(nodeName, nodeAnn, isBridgeNode);
+  const element: ParsedElement = {
     group: "nodes",
     data: {
       id: nodeName,
       weight: "30",
-      name: nodeName,
+      name: displayName,
       topoViewerRole,
       ...iconVisuals,
       lat,
@@ -316,7 +370,7 @@ export function addNodeElements(
   opts: NodeBuildOptions,
   fullPrefix: string,
   labName: string,
-  elements: CyElement[]
+  elements: ParsedElement[]
 ): InterfacePatternMigration[] {
   const migrations: InterfacePatternMigration[] = [];
   const topology = parsed.topology;
@@ -324,19 +378,18 @@ export function addNodeElements(
 
   const nodeAnnotations = opts.annotations?.nodeAnnotations;
   const networkNodeAnnotations = opts.annotations?.networkNodeAnnotations;
+  const nodeAnnotationLookup = buildNodeAnnotationLookup(nodeAnnotations, networkNodeAnnotations);
   const interfacePatternMapping = buildInterfacePatternMapping();
   let nodeIndex = 0;
 
   for (const [nodeName, nodeObj] of Object.entries(topology.nodes)) {
     // Check nodeAnnotations first, then fallback to networkNodeAnnotations for bridges
     // (backwards compatibility - bridges were previously saved to networkNodeAnnotations)
-    let nodeAnn = nodeAnnotations?.find((na) => na.id === nodeName);
-    if (!nodeAnn) {
-      const networkAnn = networkNodeAnnotations?.find((na) => na.id === nodeName);
-      if (networkAnn) {
-        // Convert network annotation to node annotation format
-        nodeAnn = { id: networkAnn.id, position: networkAnn.position };
-      }
+    const nodeAnn = nodeAnnotationLookup.get(nodeName);
+    // If this bridge node is configured as an alias (yamlNodeId points elsewhere),
+    // skip rendering the base YAML node to avoid duplicate visuals.
+    if (shouldSkipAliasBridgeNode(nodeName, nodeAnn, nodeObj)) {
+      continue;
     }
     const { element, migrationPattern } = buildNodeElement({
       parsed,

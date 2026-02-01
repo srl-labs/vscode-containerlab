@@ -5,28 +5,11 @@
  * Dreamy, non-stressed aesthetic while keeping topology visible.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useNightcallAudio } from "../audio";
-import {
-  BTN_VISIBLE,
-  BTN_HIDDEN,
-  BTN_BLUR,
-  lerpColor,
-  applyNodeGlow,
-  restoreNodeStyles,
-  MuteButton
-} from "../shared";
-import type { RGBColor } from "../shared";
-
-interface NightcallModeProps {
-  isActive: boolean;
-  onClose?: () => void;
-  onSwitchMode?: () => void;
-  modeName?: string;
-  cyInstance?: CyCore | null;
-}
+import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, useNodeGlow, MuteButton } from "../shared";
+import type { RGBColor, BaseModeProps } from "../shared";
 
 /** Retro synthwave color palette */
 const COLORS = {
@@ -375,72 +358,28 @@ function drawFloatingParticles(
 }
 
 /**
- * Hook to apply synthwave glow to nodes
- */
-function useNightcallNodeGlow(
-  cyInstance: CyCore | null | undefined,
-  isActive: boolean,
-  getBeatIntensity: () => number,
-  getCurrentChord: () => string
-): void {
-  const originalStylesRef = useRef<Map<string, Record<string, string>>>(new Map());
-  const animationRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
-
-    // Capture ref value at effect run time for cleanup
-    const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
-
-    // Store original styles
-    nodes.forEach((node) => {
-      const id = node.id();
-      styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
-      });
-    });
-
-    const cy = cyInstance;
-
-    const animate = (): void => {
-      const beatIntensity = getBeatIntensity();
-      const currentChord = getCurrentChord();
-      const color = getChordColor(currentChord);
-
-      // Smooth continuous glow that pulses with beat
-      cy.batch(() => applyNodeGlow(cy, color, beatIntensity * 0.5 + 0.3));
-
-      animationRef.current = window.requestAnimationFrame(animate);
-    };
-
-    animationRef.current = window.requestAnimationFrame(animate);
-
-    return () => {
-      window.cancelAnimationFrame(animationRef.current);
-      cy.batch(() => restoreNodeStyles(cy, styles));
-      styles.clear();
-    };
-  }, [isActive, cyInstance, getBeatIntensity, getCurrentChord]);
-}
-
-/**
  * Nightcall Mode Overlay
  */
-export const NightcallMode: React.FC<NightcallModeProps> = ({
+export const NightcallMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName,
-  cyInstance
+  modeName
 }) => {
   const [visible, setVisible] = useState(false);
   const audio = useNightcallAudio();
 
-  // Apply synthwave glow to nodes
-  useNightcallNodeGlow(cyInstance, isActive, audio.getBeatIntensity, audio.getCurrentChord);
+  // Get color and intensity for node glow
+  const getColor = useCallback((): RGBColor => {
+    return getChordColor(audio.getCurrentChord());
+  }, [audio]);
+
+  const getIntensity = useCallback((): number => {
+    return audio.getBeatIntensity() * 0.5 + 0.3;
+  }, [audio]);
+
+  // Apply synthwave glow to nodes via canvas store
+  useNodeGlow(isActive, getColor, getIntensity);
 
   // Start audio when activated
   useEffect(() => {

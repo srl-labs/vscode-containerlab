@@ -4,8 +4,8 @@
  */
 import React, { useState, useEffect } from "react";
 
-import { BasePanel } from "../../shared/editor/BasePanel";
-import { useLabSettingsState } from "../../../hooks/panels/useLabSettings";
+import { BasePanel } from "../../ui/editor/BasePanel";
+import { useLabSettingsState } from "../../../hooks/editor";
 
 import { BasicTab } from "./BasicTab";
 import { MgmtTab } from "./MgmtTab";

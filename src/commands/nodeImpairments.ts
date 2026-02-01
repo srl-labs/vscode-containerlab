@@ -212,13 +212,6 @@ export async function manageNodeImpairments(
   node: ClabContainerTreeNode,
   context: vscode.ExtensionContext
 ) {
-  if (vscode.env.remoteName === "wsl") {
-    vscode.window.showWarningMessage(
-      "Link impairment options are not available for WSL connections."
-    );
-    return;
-  }
-
   const netemMap = await refreshNetemSettings(node);
 
   const panel = vscode.window.createWebviewPanel(

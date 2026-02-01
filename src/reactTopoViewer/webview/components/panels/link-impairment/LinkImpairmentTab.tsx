@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { FormField, InputField } from "../../shared/form";
+import { FormField, InputField } from "../../ui/form";
 
 import type { NetemState } from "./types";
 

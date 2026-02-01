@@ -7,17 +7,17 @@
  */
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
-import { FormField, InputField, FilterableDropdown } from "../../shared/form";
-import { IconSelectorModal } from "../../shared/IconSelectorModal";
-import type { NodeType } from "../../../utils/SvgGenerator";
-import { generateEncodedSVG } from "../../../utils/SvgGenerator";
-import { useSchema, useDockerImages } from "../../../hooks/data";
-import { useTopoViewerState } from "../../../context/TopoViewerContext";
+import { FormField, InputField, FilterableDropdown } from "../../ui/form";
+import { IconSelectorModal } from "../../ui/IconSelectorModal";
+import type { NodeType } from "../../../icons/SvgGenerator";
+import { generateEncodedSVG } from "../../../icons/SvgGenerator";
+import { useSchema, useDockerImages } from "../../../hooks/editor";
+import { useCustomIcons } from "../../../stores/topoViewerStore";
+import { buildCustomIconMap } from "../../../utils/iconUtils";
+import { DEFAULT_ICON_COLOR } from "../../canvas/types";
 
 import type { TabProps } from "./types";
 import { CustomNodeTemplateFields } from "./CustomNodeTemplateFields";
-
-const DEFAULT_ICON_COLOR = "#1a73e8";
 
 // Icon options for dropdown (static, defined outside component)
 const ICON_OPTIONS = [
@@ -274,8 +274,7 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
  */
 const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { state } = useTopoViewerState();
-  const customIcons = state.customIcons;
+  const customIcons = useCustomIcons();
 
   const color = data.iconColor || DEFAULT_ICON_COLOR;
   // Don't apply default for dropdown value - show actual value (or empty)
@@ -284,13 +283,7 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   const previewIcon = icon || "pe";
 
   // Build custom icon map for efficient lookup
-  const customIconMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const ci of customIcons) {
-      map.set(ci.name, ci.dataUri);
-    }
-    return map;
-  }, [customIcons]);
+  const customIconMap = useMemo(() => buildCustomIconMap(customIcons), [customIcons]);
 
   // Build combined icon options (built-in + custom)
   const allIconOptions = useMemo(() => {

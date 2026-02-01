@@ -10,26 +10,31 @@
  * The suite stubs the `vscode` module so it can run in a plain Node
  * environment without the VS Code API available.
  */
-import Module from 'module';
-import path from 'path';
+import Module from "module";
+import path from "path";
 
-import { expect } from 'chai';
+import { expect } from "chai";
 
 // The source files depend on the VS Code API.  To run the tests without the
 // actual editor environment we replace Node's module resolution logic and point
 // any import of `vscode` to a lightweight stub.
 const originalResolve = (Module as any)._resolveFilename;
-(Module as any)._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
-  if (request === 'vscode') {
-    return path.join(__dirname, '..', '..', 'helpers', 'vscode-stub.js');
+(Module as any)._resolveFilename = function (
+  request: string,
+  parent: any,
+  isMain: boolean,
+  options: any
+) {
+  if (request === "vscode") {
+    return path.join(__dirname, "..", "..", "helpers", "vscode-stub.js");
   }
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
-import { ClabContainerTreeNode } from '../../../src/treeView/common';
-import { TreeItemCollapsibleState } from '../../helpers/vscode-stub';
+import { ClabContainerTreeNode } from "../../../src/treeView/common";
+import { TreeItemCollapsibleState } from "../../helpers/vscode-stub";
 
-describe('ClabContainerTreeNode getters', () => {
+describe("ClabContainerTreeNode getters", () => {
   after(() => {
     // Restore the original module resolver so subsequent tests use the
     // standard behaviour.
@@ -38,61 +43,61 @@ describe('ClabContainerTreeNode getters', () => {
 
   // When a CIDR is present the getter should strip it and return only
   // the IPv4 address.
-  it('returns IPv4 address without mask', () => {
+  it("returns IPv4 address without mask", () => {
     const node = new ClabContainerTreeNode(
-      'test',
+      "test",
       TreeItemCollapsibleState.None,
-      'node1',
-      'node1',
-      'id',
-      'running',
-      'kind',
-      'image',
+      "node1",
+      "node1",
+      "id",
+      "running",
+      "kind",
+      "image",
       [],
-      { absolute: '/abs/path', relative: 'path' },
-      '10.0.0.1/24',
+      { absolute: "/abs/path", relative: "path" },
+      "10.0.0.1/24",
       undefined,
       undefined,
       undefined,
-      undefined,
+      undefined
     );
-    expect(node.IPv4Address).to.equal('10.0.0.1');
+    expect(node.IPv4Address).to.equal("10.0.0.1");
   });
 
   // The getter returns an empty string if the address is reported as 'N/A'.
-  it('returns empty string when IPv4 is N/A', () => {
+  it("returns empty string when IPv4 is N/A", () => {
     const node = new ClabContainerTreeNode(
-      'test',
+      "test",
       TreeItemCollapsibleState.None,
-      'node1',
-      'node1',
-      'id',
-      'running',
-      'kind',
-      'image',
+      "node1",
+      "node1",
+      "id",
+      "running",
+      "kind",
+      "image",
       [],
-      { absolute: '/abs/path', relative: 'path' },
-      'N/A',
+      { absolute: "/abs/path", relative: "path" },
+      "N/A"
     );
-    expect(node.IPv4Address).to.equal('');
+    expect(node.IPv4Address).to.equal("");
   });
 
   // The same stripping logic applies to IPv6 addresses as well.
-  it('returns IPv6 address without mask', () => {
+  it("returns IPv6 address without mask", () => {
     const node = new ClabContainerTreeNode(
-      'test',
+      "test",
       TreeItemCollapsibleState.None,
-      'node1',
-      'node1',
-      'id',
-      'running',
-      'kind',
-      'image',
+      "node1",
+      "node1",
+      "id",
+      "running",
+      "kind",
+      "image",
       [],
-      { absolute: '/abs/path', relative: 'path' },
+      { absolute: "/abs/path", relative: "path" },
       undefined,
-      '2001:db8::1/64',
+      "2001:db8::1/64"
     );
-    expect(node.IPv6Address).to.equal('2001:db8::1');
+    expect(node.IPv6Address).to.equal("2001:db8::1");
   });
 });

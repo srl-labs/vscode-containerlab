@@ -6,7 +6,7 @@
  */
 import React, { useState, useCallback } from "react";
 
-import { FormField, InputField, CheckboxField, Section } from "../../shared/form";
+import { FormField, InputField, CheckboxField, Section } from "../../ui/form";
 import { copyToClipboard } from "../../../utils/clipboard";
 
 import type { TabProps } from "./types";

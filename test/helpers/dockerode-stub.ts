@@ -7,7 +7,7 @@ class DockerStub {
   getEvents() {
     return Promise.resolve({
       on: () => {},
-      destroy: () => {},
+      destroy: () => {}
     });
   }
 
@@ -18,8 +18,8 @@ class DockerStub {
   getContainer() {
     return {
       inspect: () => Promise.resolve({}),
-      logs: () => Promise.resolve(''),
-      exec: () => Promise.resolve({ start: () => Promise.resolve({}) }),
+      logs: () => Promise.resolve(""),
+      exec: () => Promise.resolve({ start: () => Promise.resolve({}) })
     };
   }
 

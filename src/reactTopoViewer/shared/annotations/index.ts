@@ -10,7 +10,6 @@ export type {
   FreeTextAnnotation,
   FreeShapeAnnotation,
   GroupStyleAnnotation,
-  CloudNodeAnnotation,
   NetworkNodeAnnotation,
   NodeAnnotation,
   AliasEndpointAnnotation,

@@ -1,9 +1,10 @@
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
+const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
 
 /**
  * Helper to reliably open node editor via double-click on a specific node
@@ -11,55 +12,138 @@ const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
  * to avoid stale position issues from animations.
  * Includes retry logic to handle flaky double-click detection under load.
  */
-async function openNodeEditorByNodeId(
-  page: Page,
-  nodeId: string,
-  maxRetries = 3
-): Promise<void> {
+async function openNodeEditorByNodeId(page: Page, nodeId: string, maxRetries = 3): Promise<void> {
   const editorPanel = page.locator(SEL_NODE_EDITOR);
+  const panelTab = page.locator(SEL_PANEL_TAB_BASIC);
+  const floatingContent = page.locator(".floating-panel-content");
+  const collapsePanelButton = page.locator('[data-testid="floating-panel-collapse-btn"]');
+  const closeEditorPanel = async () => {
+    if (await editorPanel.isVisible()) {
+      await page.locator(`${SEL_NODE_EDITOR} [data-testid="panel-close-btn"]`).click();
+      await expect(editorPanel).toBeHidden({ timeout: 2000 });
+    }
+  };
+  const collapseFloatingPanel = async () => {
+    if (await floatingContent.isVisible()) {
+      await collapsePanelButton.click();
+      await expect(floatingContent).toBeHidden({ timeout: 2000 });
+    }
+  };
+  const waitForStableNodeBox = async (nodeHandle: ReturnType<Page["locator"]>) => {
+    let prev = await nodeHandle.boundingBox();
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(120);
+      const next = await nodeHandle.boundingBox();
+      if (!prev || !next) {
+        prev = next;
+        continue;
+      }
+      const stable =
+        Math.abs(next.x - prev.x) < 1 &&
+        Math.abs(next.y - prev.y) < 1 &&
+        Math.abs(next.width - prev.width) < 1 &&
+        Math.abs(next.height - prev.height) < 1;
+      if (stable) return next;
+      prev = next;
+    }
+    return prev;
+  };
+
+  const separateOverlappingNode = async () => {
+    let moved = false;
+    for (let i = 0; i < 2; i++) {
+      const blockingId = await page.evaluate((targetId) => {
+        const target = document.querySelector(`[data-id="${targetId}"]`) as HTMLElement | null;
+        if (!target) return null;
+        const targetRect = target.getBoundingClientRect();
+        const nodes = Array.from(document.querySelectorAll(".react-flow__node"));
+        for (const node of nodes) {
+          const id = node.getAttribute("data-id");
+          if (!id || id === targetId) continue;
+          const rect = (node as HTMLElement).getBoundingClientRect();
+          const overlaps =
+            targetRect.left < rect.right &&
+            targetRect.right > rect.left &&
+            targetRect.top < rect.bottom &&
+            targetRect.bottom > rect.top;
+          if (overlaps) return id;
+        }
+        return null;
+      }, nodeId);
+
+      if (!blockingId) break;
+
+      const blockingHandle = page.locator(`[data-id="${blockingId}"]`);
+      const blockingBox = await blockingHandle.boundingBox();
+      if (!blockingBox) break;
+
+      const startX = blockingBox.x + blockingBox.width / 2;
+      const startY = blockingBox.y + blockingBox.height / 2;
+      await page.mouse.move(startX, startY);
+      await page.mouse.down();
+      await page.mouse.move(startX + 120, startY, { steps: 8 });
+      await page.mouse.up();
+      await page.waitForTimeout(200);
+      moved = true;
+    }
+    return moved;
+  };
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // Get fresh bounding box right before clicking
-    const nodeBox = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const node = cy?.getElementById(id);
-      if (!node || node.empty()) return null;
+    await closeEditorPanel();
+    await collapseFloatingPanel();
+    await page.keyboard.press("Escape");
+    await page.waitForSelector(`[data-id="${nodeId}"]`, { timeout: 5000 });
+    await page.waitForTimeout(150);
 
-      const bb = node.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
+    const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
+    await nodeHandle.scrollIntoViewIfNeeded();
+    await expect(nodeHandle).toBeVisible({ timeout: 2000 });
+    await separateOverlappingNode();
 
-      return {
-        x: rect.left + bb.x1,
-        y: rect.top + bb.y1,
-        width: bb.w,
-        height: bb.h
-      };
-    }, nodeId);
-
+    const nodeBox = await waitForStableNodeBox(nodeHandle);
     if (!nodeBox) {
       throw new Error(`Node ${nodeId} not found or has no bounding box`);
     }
-
     const centerX = nodeBox.x + nodeBox.width / 2;
     const centerY = nodeBox.y + nodeBox.height / 2;
 
-    // Click to select first
-    await page.mouse.click(centerX, centerY);
-    await page.waitForTimeout(150);
+    try {
+      const hitsTarget = await page.evaluate(
+        ({ x, y, id }) => {
+          const el = document.elementFromPoint(x, y);
+          return !!el?.closest(`[data-id="${id}"]`);
+        },
+        { x: centerX, y: centerY, id: nodeId }
+      );
+      if (!hitsTarget) {
+        await separateOverlappingNode();
+        continue;
+      }
+      await page.mouse.move(centerX, centerY);
+      await page.mouse.click(centerX, centerY, { delay: 60 });
+      await page.waitForTimeout(150);
+      await page.mouse.dblclick(centerX, centerY, { delay: 80 });
+    } catch {
+      await separateOverlappingNode();
+      continue;
+    }
 
-    // Double-click to open editor - use same coordinates
-    await page.mouse.dblclick(centerX, centerY);
-
-    // Wait for editor panel to appear
     try {
       await expect(editorPanel).toBeVisible({ timeout: 2000 });
+      await expect(panelTab).toBeVisible({ timeout: 2000 });
+      const nameInput = page.locator("#node-name");
+      if ((await nameInput.count()) > 0) {
+        await expect(nameInput).toHaveValue(nodeId, { timeout: 1000 });
+      }
       return; // Success - exit the retry loop
     } catch {
+      await closeEditorPanel();
       if (attempt === maxRetries) {
         // Final attempt failed - throw with context
-        throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
+        throw new Error(
+          `Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`
+        );
       }
       // Wait before retrying
       await page.waitForTimeout(300);
@@ -76,10 +160,10 @@ async function openNodeEditorByNodeId(
  * - Panel close behavior
  * - Apply/OK button interactions
  */
-test.describe('Node Editor Panel', () => {
+test.describe("Node Editor Panel", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
@@ -94,7 +178,7 @@ test.describe('Node Editor Panel', () => {
     await topoViewerPage.fit();
   });
 
-  test('opens node editor panel on double-click', async ({ page, topoViewerPage }) => {
+  test("opens node editor panel on double-click", async ({ page, topoViewerPage }) => {
     // Wait extra time for the page to fully stabilize after beforeEach
     await page.waitForTimeout(300);
 
@@ -109,26 +193,26 @@ test.describe('Node Editor Panel', () => {
     await expect(editorPanel).toBeVisible();
   });
 
-  test('node editor panel has correct title', async ({ page, topoViewerPage }) => {
+  test("node editor panel has correct title", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
     const title = page.locator('[data-testid="node-editor"] [data-testid="panel-title"]');
     await expect(title).toBeVisible();
-    await expect(title).toHaveText('Node Editor');
+    await expect(title).toHaveText("Node Editor");
   });
 
-  test('node editor panel has Basic tab selected by default', async ({ page, topoViewerPage }) => {
+  test("node editor panel has Basic tab selected by default", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
     // Basic tab should be active
-    const basicTab = page.locator('[data-testid="panel-tab-basic"]');
+    const basicTab = page.locator(SEL_PANEL_TAB_BASIC);
     await expect(basicTab).toBeVisible();
     await expect(basicTab).toHaveClass(/tab-active/);
   });
 
-  test('can navigate between tabs in node editor', async ({ page, topoViewerPage }) => {
+  test("can navigate between tabs in node editor", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
@@ -142,23 +226,23 @@ test.describe('Node Editor Panel', () => {
     await expect(configTab).toHaveClass(/tab-active/);
 
     // Basic tab should no longer be active
-    const basicTab = page.locator('[data-testid="panel-tab-basic"]');
+    const basicTab = page.locator(SEL_PANEL_TAB_BASIC);
     await expect(basicTab).not.toHaveClass(/tab-active/);
   });
 
-  test('node editor panel has all expected tabs', async ({ page, topoViewerPage }) => {
+  test("node editor panel has all expected tabs", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
     // Check all expected tabs exist
-    const tabs = ['basic', 'config', 'runtime', 'network', 'advanced'];
+    const tabs = ["basic", "config", "runtime", "network", "advanced"];
     for (const tabId of tabs) {
       const tab = page.locator(`[data-testid="panel-tab-${tabId}"]`);
       await expect(tab).toBeVisible();
     }
   });
 
-  test('closes node editor panel with close button', async ({ page, topoViewerPage }) => {
+  test("closes node editor panel with close button", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
@@ -172,7 +256,7 @@ test.describe('Node Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('closes node editor panel with OK button', async ({ page, topoViewerPage }) => {
+  test("closes node editor panel with OK button", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
@@ -186,27 +270,24 @@ test.describe('Node Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('Apply button exists in node editor panel', async ({ page, topoViewerPage }) => {
+  test("Apply button exists in node editor panel", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await openNodeEditorByNodeId(page, nodeIds[0]);
 
     // Apply button should exist
     const applyBtn = page.locator('[data-testid="node-editor"] [data-testid="panel-apply-btn"]');
     await expect(applyBtn).toBeVisible();
-    await expect(applyBtn).toHaveText('Apply');
+    await expect(applyBtn).toHaveText("Apply");
   });
 
-  test('node editor panel does not open in view mode', async ({ page, topoViewerPage }) => {
+  test("node editor panel does not open in view mode", async ({ page, topoViewerPage }) => {
     // Switch to view mode
     await topoViewerPage.setViewMode();
 
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
+    await page.mouse.dblclick(nodeBox!.x + nodeBox!.width / 2, nodeBox!.y + nodeBox!.height / 2);
     await page.waitForTimeout(500);
 
     // Editor panel should NOT appear in view mode
@@ -214,17 +295,17 @@ test.describe('Node Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('node editor panel does not open when canvas is locked', async ({ page, topoViewerPage }) => {
+  test("node editor panel does not open when canvas is locked", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Lock the canvas
     await topoViewerPage.lock();
 
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeBox = await topoViewerPage.getNodeBoundingBox(nodeIds[0]);
 
-    await page.mouse.dblclick(
-      nodeBox!.x + nodeBox!.width / 2,
-      nodeBox!.y + nodeBox!.height / 2
-    );
+    await page.mouse.dblclick(nodeBox!.x + nodeBox!.width / 2, nodeBox!.y + nodeBox!.height / 2);
     await page.waitForTimeout(500);
 
     // Editor panel should NOT appear when locked - BUG: it opens anyway
@@ -232,7 +313,10 @@ test.describe('Node Editor Panel', () => {
     await expect(editorPanel).not.toBeVisible();
   });
 
-  test('double-click on different node opens editor for that node', async ({ page, topoViewerPage }) => {
+  test("double-click on different node opens editor for that node", async ({
+    page,
+    topoViewerPage
+  }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(1);
 

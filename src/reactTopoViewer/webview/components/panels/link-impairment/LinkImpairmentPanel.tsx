@@ -4,7 +4,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { EditorPanel, type TabDefinition } from "../../shared/editor";
+import { EditorPanel, type TabDefinition } from "../../ui/editor";
 
 import { LinkImpairmentTab } from "./LinkImpairmentTab";
 import type {
@@ -57,6 +57,9 @@ function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
     if (!netemData) return;
     setFormData((prev) => {
       const isNewLink = !prev || prev.id !== netemData.id;
+      if (!isNewLink && hasChanges) {
+        return prev;
+      }
 
       // compare baseline
       const currentBaseline = {

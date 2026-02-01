@@ -35,6 +35,102 @@
     font-size: 1.25rem;
   }
 
+  .btn-icon.btn-icon--primary {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+  }
+
+  .btn-icon.btn-icon--primary:hover {
+    background-color: var(--vscode-button-hoverBackground);
+  }
+
+  .btn-icon.btn-icon--danger {
+    background-color: var(--vscode-testing-iconFailed, #f14c4c);
+    color: var(--vscode-button-foreground, #ffffff);
+  }
+
+  .btn-icon.btn-icon--danger:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconFailed, #f14c4c) 85%,
+      #000
+    );
+  }
+
+  .btn-icon.lock-shake {
+    animation: lock-shake 0.3s;
+  }
+
+  .btn-icon.processing {
+    position: relative;
+    cursor: wait;
+  }
+
+  .btn-icon.processing i {
+    opacity: 0.35;
+  }
+
+  .btn-icon.processing::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 6px;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    opacity: 0;
+    animation: deploy-processing-spinner 0.9s linear infinite;
+  }
+
+  .btn-icon.processing.processing--deploy {
+    color: var(--vscode-button-foreground);
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconPassed, #73c991) 40%,
+      var(--vscode-button-background, rgba(0, 0, 0, 0))
+    );
+    box-shadow:
+      0 0 0 1px
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 65%, transparent),
+      0 0 0 4px
+        color-mix(in srgb, var(--vscode-testing-iconPassed, #73c991) 25%, transparent);
+  }
+
+  .btn-icon.processing.processing--deploy::after {
+    opacity: 1;
+    border-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconPassed, #73c991) 80%,
+      transparent
+    );
+    border-top-color: transparent;
+    border-right-color: transparent;
+  }
+
+  .btn-icon.processing.processing--destroy {
+    color: var(--vscode-button-foreground);
+    background-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconFailed, #f14c4c) 40%,
+      var(--vscode-button-background, rgba(0, 0, 0, 0))
+    );
+    box-shadow:
+      0 0 0 1px
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 65%, transparent),
+      0 0 0 4px
+        color-mix(in srgb, var(--vscode-testing-iconFailed, #f14c4c) 25%, transparent);
+  }
+
+  .btn-icon.processing.processing--destroy::after {
+    opacity: 1;
+    border-color: color-mix(
+      in srgb,
+      var(--vscode-testing-iconFailed, #f14c4c) 85%,
+      transparent
+    );
+    border-top-color: transparent;
+    border-right-color: transparent;
+  }
+
   /* Button styles */
   .btn {
     display: inline-flex;

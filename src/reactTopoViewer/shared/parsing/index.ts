@@ -3,12 +3,13 @@
  *
  * This module provides a VS Code-free topology parser that can be used by both
  * the production extension and the dev server. It converts containerlab YAML
- * topologies to Cytoscape elements.
+ * topologies to ReactFlow nodes and edges.
  *
  * @example Basic usage (dev server)
  * ```typescript
  * import { TopologyParser } from '@shared/parsing';
- * const result = TopologyParser.parse(yamlContent, { annotations });
+ * const result = TopologyParser.parseToReactFlow(yamlContent, { annotations });
+ * // result.topology contains { nodes: TopoNode[], edges: TopoEdge[] }
  * ```
  *
  * @example With container enrichment (VS Code extension)
@@ -17,7 +18,7 @@
  * import { ContainerDataAdapter } from './ContainerDataAdapter';
  *
  * const adapter = new ContainerDataAdapter(clabTreeData);
- * const result = TopologyParser.parse(yamlContent, {
+ * const result = TopologyParser.parseToReactFlow(yamlContent, {
  *   annotations,
  *   containerDataProvider: adapter,
  *   logger: vscodeLogger
@@ -36,12 +37,18 @@
  */
 
 // Main parser API
-export { TopologyParser, parseTopology, parseTopologyForEditor } from "./TopologyParser";
+export {
+  TopologyParser,
+  parseTopologyToReactFlow,
+  parseTopologyToReactFlowFromParsed,
+  parseTopologyForEditorRF,
+  parseTopologyForEditorRFParsed
+} from "./TopologyParser";
 
 // Core types
 export type {
   ParseOptions,
-  ParseResult,
+  ParseResultRF,
   ContainerDataProvider,
   ContainerInfo,
   InterfaceInfo,
@@ -50,13 +57,14 @@ export type {
   GraphLabelMigration,
   NodeBuildContext,
   EdgeBuildContext,
-  NodeRole
+  NodeRole,
+  TopologyData
 } from "./types";
 
 // Re-export topology types for convenience
 export type {
   ClabTopology,
-  CyElement,
+  ParsedElement,
   TopologyAnnotations,
   NodeAnnotation,
   NetemState

@@ -1,25 +1,13 @@
 /**
  * Types for Lab Settings Panel
  */
+import type {
+  LabSettings as SharedLabSettings,
+  MgmtSettings as SharedMgmtSettings
+} from "../../../../shared/types/labSettings";
 
-export interface LabSettings {
-  name?: string;
-  prefix?: string | null;
-  mgmt?: MgmtSettings | null;
-}
-
-export interface MgmtSettings {
-  network?: string;
-  "ipv4-subnet"?: string;
-  "ipv4-gw"?: string;
-  "ipv4-range"?: string;
-  "ipv6-subnet"?: string;
-  "ipv6-gw"?: string;
-  mtu?: number;
-  bridge?: string;
-  "external-access"?: boolean;
-  "driver-opts"?: Record<string, string>;
-}
+export type LabSettings = SharedLabSettings;
+export type MgmtSettings = SharedMgmtSettings;
 
 export type PrefixType = "default" | "custom" | "no-prefix";
 export type IpType = "default" | "auto" | "custom";

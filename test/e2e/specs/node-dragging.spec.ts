@@ -1,26 +1,29 @@
-import { test, expect } from '../fixtures/topoviewer';
-import { drag } from '../helpers/cytoscape-helpers';
+import { test, expect } from "../fixtures/topoviewer";
+import { drag } from "../helpers/react-flow-helpers";
 
 // Test file names for file-based tests
-const SPINE_LEAF_FILE = 'spine-leaf.clab.yml';
+const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
 
-test.describe('Node Dragging', () => {
+test.describe("Node Dragging", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile('simple.clab.yml');
+    await topoViewerPage.gotoFile("simple.clab.yml");
     await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
   });
 
-  test('drags node to new position', async ({ page, topoViewerPage }) => {
+  test("drags node to new position", async ({ page, topoViewerPage }) => {
     // Get all node IDs
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
     const nodeId = nodeIds[0];
 
-    // Get initial position
+    // Get initial position (model coords) and current zoom
+    const initialPosition = await topoViewerPage.getNodePosition(nodeId);
+
+    // Get bounding box for drag start (screen coords)
     const initialBox = await topoViewerPage.getNodeBoundingBox(nodeId);
     expect(initialBox).not.toBeNull();
 
@@ -39,20 +42,17 @@ test.describe('Node Dragging', () => {
     // Wait for drag to complete
     await page.waitForTimeout(300);
 
-    // Get new position
-    const newBox = await topoViewerPage.getNodeBoundingBox(nodeId);
-    expect(newBox).not.toBeNull();
+    // Get new position (model coords)
+    const newPosition = await topoViewerPage.getNodePosition(nodeId);
 
-    // Verify node moved approximately the drag distance
-    const movedX = newBox!.x - initialBox!.x;
-    const movedY = newBox!.y - initialBox!.y;
-
-    // Allow some tolerance for coordinate transforms (70% of expected)
-    expect(movedX).toBeGreaterThan(dragDistance * 0.7);
-    expect(movedY).toBeGreaterThan(dragDistance * 0.7);
+    // Verify node moved a meaningful amount in model space (zoom-independent threshold)
+    const movedX = Math.abs(newPosition.x - initialPosition.x);
+    const movedY = Math.abs(newPosition.y - initialPosition.y);
+    expect(movedX).toBeGreaterThan(10);
+    expect(movedY).toBeGreaterThan(10);
   });
 
-  test('does not drag node when canvas is locked', async ({ page, topoViewerPage }) => {
+  test("does not drag node when canvas is locked", async ({ page, topoViewerPage }) => {
     // Lock the canvas
     await topoViewerPage.lock();
 
@@ -62,7 +62,10 @@ test.describe('Node Dragging', () => {
 
     const nodeId = nodeIds[0];
 
-    // Get initial position
+    // Get initial position (model coords)
+    const initialPosition = await topoViewerPage.getNodePosition(nodeId);
+
+    // Get bounding box for drag start (screen coords)
     const initialBox = await topoViewerPage.getNodeBoundingBox(nodeId);
     expect(initialBox).not.toBeNull();
 
@@ -70,28 +73,22 @@ test.describe('Node Dragging', () => {
     const startY = initialBox!.y + initialBox!.height / 2;
 
     // Try to drag the node
-    await drag(
-      page,
-      { x: startX, y: startY },
-      { x: startX + 100, y: startY + 100 },
-      { steps: 10 }
-    );
+    await drag(page, { x: startX, y: startY }, { x: startX + 100, y: startY + 100 }, { steps: 10 });
 
     await page.waitForTimeout(300);
 
-    // Get position after attempted drag
-    const afterBox = await topoViewerPage.getNodeBoundingBox(nodeId);
-    expect(afterBox).not.toBeNull();
+    // Get position after attempted drag (model coords)
+    const afterPosition = await topoViewerPage.getNodePosition(nodeId);
 
     // Position should be the same (or very close)
-    const movedX = Math.abs(afterBox!.x - initialBox!.x);
-    const movedY = Math.abs(afterBox!.y - initialBox!.y);
+    const movedX = Math.abs(afterPosition.x - initialPosition.x);
+    const movedY = Math.abs(afterPosition.y - initialPosition.y);
 
-    expect(movedX).toBeLessThan(5);
-    expect(movedY).toBeLessThan(5);
+    expect(movedX).toBeLessThan(1);
+    expect(movedY).toBeLessThan(1);
   });
 
-  test('drag maintains relative position', async ({ page, topoViewerPage }) => {
+  test("drag maintains relative position", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -109,12 +106,7 @@ test.describe('Node Dragging', () => {
     const dragDist = 80;
 
     // Perform drag
-    await drag(
-      page,
-      { x: startX, y: startY },
-      { x: startX + dragDist, y: startY },
-      { steps: 5 }
-    );
+    await drag(page, { x: startX, y: startY }, { x: startX + dragDist, y: startY }, { steps: 5 });
 
     await page.waitForTimeout(300);
 
@@ -132,7 +124,7 @@ test.describe('Node Dragging', () => {
  * These tests verify that node dragging properly updates:
  * - .clab.yml.annotations.json file (saves new position)
  */
-test.describe('Node Dragging - File Persistence', () => {
+test.describe("Node Dragging - File Persistence", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(SPINE_LEAF_FILE);
@@ -141,10 +133,10 @@ test.describe('Node Dragging - File Persistence', () => {
     await topoViewerPage.unlock();
   });
 
-  test('dragging node persists position to annotations file', async ({ page, topoViewerPage }) => {
+  test("dragging node persists position to annotations file", async ({ page, topoViewerPage }) => {
     // Get initial annotations
     const initialAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-    const spine1Initial = initialAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
+    const spine1Initial = initialAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
     expect(spine1Initial).toBeDefined();
     expect(spine1Initial?.position).toBeDefined();
 
@@ -152,7 +144,7 @@ test.describe('Node Dragging - File Persistence', () => {
     const initialY = spine1Initial!.position!.y;
 
     // Get node bounding box for dragging
-    const nodeBox = await topoViewerPage.getNodeBoundingBox('spine1');
+    const nodeBox = await topoViewerPage.getNodeBoundingBox("spine1");
     expect(nodeBox).not.toBeNull();
 
     const startX = nodeBox!.x + nodeBox!.width / 2;
@@ -172,7 +164,7 @@ test.describe('Node Dragging - File Persistence', () => {
 
     // Read annotations from file again
     const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-    const spine1Updated = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
+    const spine1Updated = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
     expect(spine1Updated).toBeDefined();
     expect(spine1Updated?.position).toBeDefined();
 
@@ -184,9 +176,12 @@ test.describe('Node Dragging - File Persistence', () => {
     expect(deltaX + deltaY).toBeGreaterThan(20);
   });
 
-  test('dragging multiple nodes persists all positions to annotations file', async ({ page, topoViewerPage }) => {
+  test("dragging multiple nodes persists all positions to annotations file", async ({
+    page,
+    topoViewerPage
+  }) => {
     // Drag spine1
-    const box1 = await topoViewerPage.getNodeBoundingBox('spine1');
+    const box1 = await topoViewerPage.getNodeBoundingBox("spine1");
     expect(box1).not.toBeNull();
     await drag(
       page,
@@ -197,7 +192,7 @@ test.describe('Node Dragging - File Persistence', () => {
     await page.waitForTimeout(500);
 
     // Drag spine2
-    const box2 = await topoViewerPage.getNodeBoundingBox('spine2');
+    const box2 = await topoViewerPage.getNodeBoundingBox("spine2");
     expect(box2).not.toBeNull();
     await drag(
       page,
@@ -209,16 +204,16 @@ test.describe('Node Dragging - File Persistence', () => {
     // Wait for saves to complete
     await page.waitForTimeout(1000);
 
-    // Get updated Cytoscape positions
-    const spine1AfterCy = await topoViewerPage.getNodePosition('spine1');
-    const spine2AfterCy = await topoViewerPage.getNodePosition('spine2');
+    // Get updated React Flow positions
+    const spine1AfterCy = await topoViewerPage.getNodePosition("spine1");
+    const spine2AfterCy = await topoViewerPage.getNodePosition("spine2");
 
     // Read updated annotations from file
     const updatedAnnotations = await topoViewerPage.getAnnotationsFromFile(SPINE_LEAF_FILE);
-    const spine1File = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine1');
-    const spine2File = updatedAnnotations.nodeAnnotations?.find(n => n.id === 'spine2');
+    const spine1File = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine1");
+    const spine2File = updatedAnnotations.nodeAnnotations?.find((n) => n.id === "spine2");
 
-    // Both positions in file should match Cytoscape positions (with some tolerance)
+    // Both positions in file should match React Flow positions (with some tolerance)
     expect(Math.abs(spine1File!.position!.x - spine1AfterCy.x)).toBeLessThan(10);
     expect(Math.abs(spine2File!.position!.x - spine2AfterCy.x)).toBeLessThan(10);
   });

@@ -34,6 +34,10 @@ export class NodeFsAdapter implements FileSystemAdapter {
     }
   }
 
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    await fs.promises.rename(oldPath, newPath);
+  }
+
   async exists(filePath: string): Promise<boolean> {
     try {
       await fs.promises.access(filePath);

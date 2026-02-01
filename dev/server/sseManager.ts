@@ -5,9 +5,10 @@
  * file change notifications to the browser.
  */
 
-import type { ServerResponse } from 'http';
-import * as path from 'path';
-import { watch } from 'chokidar';
+import type { ServerResponse } from "http";
+import * as path from "path";
+import { watch } from "chokidar";
+import { isInternalUpdate } from "./internalUpdateTracker";
 
 // Type for SSE client connection
 interface SSEClient {
@@ -19,7 +20,7 @@ interface SSEClient {
 const clients: Map<string, Set<SSEClient>> = new Map();
 
 // Special session ID for non-session clients (direct dev mode)
-const NO_SESSION = '__no_session__';
+const NO_SESSION = "__no_session__";
 
 /**
  * Add a new SSE client connection
@@ -32,10 +33,12 @@ export function addClient(sessionId: string, res: ServerResponse): void {
   const client: SSEClient = { res, sessionId };
   clients.get(sessionId)!.add(client);
 
-  console.log(`[SSE] Client connected (session: ${sessionId}, total: ${clients.get(sessionId)!.size})`);
+  console.log(
+    `[SSE] Client connected (session: ${sessionId}, total: ${clients.get(sessionId)!.size})`
+  );
 
   // Handle disconnect
-  res.on('close', () => {
+  res.on("close", () => {
     removeClient(sessionId, client);
   });
 }
@@ -47,7 +50,9 @@ function removeClient(sessionId: string, client: SSEClient): void {
   const sessionClients = clients.get(sessionId);
   if (sessionClients) {
     sessionClients.delete(client);
-    console.log(`[SSE] Client disconnected (session: ${sessionId}, remaining: ${sessionClients.size})`);
+    console.log(
+      `[SSE] Client disconnected (session: ${sessionId}, remaining: ${sessionClients.size})`
+    );
 
     // Clean up empty session
     if (sessionClients.size === 0) {
@@ -66,23 +71,25 @@ export function broadcastFileChange(sessionId: string, filePath: string): void {
   }
 
   // Determine file type
-  const type = filePath.endsWith('.annotations.json') ? 'annotations' : 'yaml';
+  const type = filePath.endsWith(".annotations.json") ? "annotations" : "yaml";
 
   const event = {
     path: filePath,
     type,
-    timestamp: Date.now(),
+    timestamp: Date.now()
   };
 
   const message = `event: file-changed\ndata: ${JSON.stringify(event)}\n\n`;
 
-  console.log(`[SSE] Broadcasting file change (session: ${sessionId}, path: ${filePath}, clients: ${sessionClients.size})`);
+  console.log(
+    `[SSE] Broadcasting file change (session: ${sessionId}, path: ${filePath}, clients: ${sessionClients.size})`
+  );
 
   for (const client of sessionClients) {
     try {
       client.res.write(message);
     } catch (err) {
-      console.error('[SSE] Failed to send message:', err);
+      console.error("[SSE] Failed to send message:", err);
     }
   }
 }
@@ -92,13 +99,13 @@ export function broadcastFileChange(sessionId: string, filePath: string): void {
  */
 export function broadcastFileChangeToAll(filePath: string): void {
   // Determine file type
-  const type = filePath.endsWith('.annotations.json') ? 'annotations' : 'yaml';
+  const type = filePath.endsWith(".annotations.json") ? "annotations" : "yaml";
   const filename = path.basename(filePath);
 
   const event = {
     path: filename,
     type,
-    timestamp: Date.now(),
+    timestamp: Date.now()
   };
 
   const message = `event: file-changed\ndata: ${JSON.stringify(event)}\n\n`;
@@ -110,7 +117,7 @@ export function broadcastFileChangeToAll(filePath: string): void {
         client.res.write(message);
         totalClients++;
       } catch (err) {
-        console.error('[SSE] Failed to send message:', err);
+        console.error("[SSE] Failed to send message:", err);
       }
     }
   }
@@ -151,7 +158,7 @@ let fileWatcher: ReturnType<typeof watch> | null = null;
  */
 export function startFileWatcher(topologiesDir: string): void {
   if (fileWatcher) {
-    console.log('[SSE] File watcher already running');
+    console.log("[SSE] File watcher already running");
     return;
   }
 
@@ -168,19 +175,23 @@ export function startFileWatcher(topologiesDir: string): void {
     }
   });
 
-  fileWatcher.on('change', (filePath) => {
+  fileWatcher.on("change", (filePath) => {
     // Only watch .clab.yml and .annotations.json files
-    if (filePath.endsWith('.clab.yml') || filePath.endsWith('.annotations.json')) {
-      console.log(`[SSE] Disk file changed: ${filePath}`);
-      broadcastFileChangeToAll(filePath);
+    if (!filePath.endsWith(".clab.yml") && !filePath.endsWith(".annotations.json")) {
+      return;
     }
+    if (isInternalUpdate(filePath)) {
+      return;
+    }
+    console.log(`[SSE] Disk file changed: ${filePath}`);
+    broadcastFileChangeToAll(filePath);
   });
 
-  fileWatcher.on('error', (error) => {
-    console.error('[SSE] File watcher error:', error);
+  fileWatcher.on("error", (error) => {
+    console.error("[SSE] File watcher error:", error);
   });
 
-  console.log('[SSE] File watcher started');
+  console.log("[SSE] File watcher started");
 }
 
 /**
@@ -190,6 +201,6 @@ export function stopFileWatcher(): void {
   if (fileWatcher) {
     fileWatcher.close();
     fileWatcher = null;
-    console.log('[SSE] File watcher stopped');
+    console.log("[SSE] File watcher stopped");
   }
 }

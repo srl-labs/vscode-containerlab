@@ -4,13 +4,6 @@
  * All hooks extracted from App.tsx to reduce complexity.
  */
 
-// Annotation layer props
-export {
-  useAnnotationLayerProps,
-  type AnnotationLayerPropsConfig,
-  type AnnotationLayerPropsReturn
-} from "./useAnnotationLayerProps";
-
 // Clipboard handlers
 export {
   useClipboardHandlers,
@@ -35,14 +28,28 @@ export {
 export {
   useCustomNodeCommands,
   useNavbarCommands,
-  useShapeLayer,
-  useTextLayer,
   useE2ETestingExposure,
-  useGeoCoordinateSync,
   type CustomNodeCommands,
   type NavbarCommands,
-  type UseShapeLayerReturn,
-  type UseTextLayerReturn,
-  type E2ETestingConfig,
-  type GeoCoordinateSyncConfig
+  type E2ETestingConfig
 } from "./useAppHelpers";
+
+// App content composition helpers
+export { useAppAnnotations } from "./useAppAnnotations";
+export { useAppDerivedData } from "./useAppDerivedData";
+export { useAppEditorBindings } from "./useAppEditorBindings";
+export { useAppE2EExposure } from "./useAppE2EExposure";
+export { useAppGraphHandlers } from "./useAppGraphHandlers";
+export { useAppToasts } from "./useAppToasts";
+export { useIconReconciliation } from "./useIconReconciliation";
+export { useUndoRedoControls } from "./useUndoRedoControls";
+export type { InitialGraphData } from "./useInitialGraphData";
+
+// App initialization & subscriptions
+export {
+  useStoreInitialization,
+  useGraphMessageSubscription,
+  useTopoViewerMessageSubscription,
+  useTopologyHostInitialization,
+  type StoreInitializationData
+} from "./lifecycle";

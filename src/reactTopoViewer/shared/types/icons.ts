@@ -77,7 +77,7 @@ export function getIconFormat(ext: string): "svg" | "png" {
  * Extract unique custom icon names used by nodes in an element list.
  * Filters out built-in icons, returning only custom icon names.
  *
- * @param elements - Array of Cytoscape elements (nodes and edges)
+ * @param elements - Array of graph elements (nodes and edges)
  * @returns Array of unique custom icon names
  */
 export function extractUsedCustomIcons<T extends { data?: { topoViewerRole?: string } }>(

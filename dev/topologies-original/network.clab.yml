@@ -16,16 +16,16 @@ topology:
 
   links:
     # Regular link between nodes
-    - endpoints: [ "srl1:e1-1", "srl2:e1-1" ]
+    - endpoints: ["srl1:e1-1", "srl2:e1-1"]
 
     # Host link - connects to host namespace
-    - endpoints: [ "srl1:e1-2", "host:srl1_e1-2" ]
+    - endpoints: ["srl1:e1-2", "host:srl1_e1-2"]
 
     # Management network link
-    - endpoints: [ "srl2:e1-2", "mgmt-net:srl2-e1-2" ]
+    - endpoints: ["srl2:e1-2", "mgmt-net:srl2-e1-2"]
 
     # Macvlan link
-    - endpoints: [ "linux1:eth1", "macvlan:enp0s3" ]
+    - endpoints: ["linux1:eth1", "macvlan:enp0s3"]
     - type: mgmt-net
       endpoint:
         node: "linux1"
@@ -35,4 +35,4 @@ topology:
       endpoint:
         node: "srl2"
         interface: "eth1"
-    - endpoints: [ "bridge0:eth0", "linux1:eth0" ]
+    - endpoints: ["bridge0:eth0", "linux1:eth0"]

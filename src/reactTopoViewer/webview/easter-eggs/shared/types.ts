@@ -2,8 +2,6 @@
  * Shared types for Easter Egg modes
  */
 
-import type { Core as CyCore } from "cytoscape";
-
 /** RGB color type */
 export interface RGBColor {
   r: number;
@@ -17,7 +15,6 @@ export interface BaseModeProps {
   onClose?: () => void;
   onSwitchMode?: () => void;
   modeName?: string;
-  cyInstance?: CyCore | null;
 }
 
 /** Base return type for audio hooks */

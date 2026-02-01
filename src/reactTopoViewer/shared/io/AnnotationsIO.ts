@@ -5,12 +5,7 @@
  * Environment-agnostic: works in both VS Code extension and dev server.
  */
 
-import type {
-  // eslint-disable-next-line sonarjs/deprecation -- CloudNodeAnnotation needed for migration
-  CloudNodeAnnotation,
-  NetworkNodeAnnotation,
-  TopologyAnnotations
-} from "../types/topology";
+import type { TopologyAnnotations } from "../types/topology";
 import { createEmptyAnnotations } from "../annotations/types";
 
 import type { FileSystemAdapter, IOLogger } from "./types";
@@ -23,40 +18,6 @@ export interface AnnotationsIOOptions {
   fs: FileSystemAdapter;
   cacheTtlMs?: number;
   logger?: IOLogger;
-}
-
-/**
- * Migrate cloudNodeAnnotations to networkNodeAnnotations.
- * This provides backward compatibility - reads old format, writes new format.
- */
-export function migrateAnnotations(annotations: TopologyAnnotations): TopologyAnnotations {
-  // If networkNodeAnnotations already exists, no migration needed
-  if (annotations.networkNodeAnnotations && annotations.networkNodeAnnotations.length > 0) {
-    return annotations;
-  }
-
-  // If cloudNodeAnnotations exists, migrate to networkNodeAnnotations
-  // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
-  if (annotations.cloudNodeAnnotations && annotations.cloudNodeAnnotations.length > 0) {
-    // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
-    annotations.networkNodeAnnotations = annotations.cloudNodeAnnotations.map(
-      // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated type for migration
-      (cloud: CloudNodeAnnotation): NetworkNodeAnnotation => ({
-        id: cloud.id,
-        type: cloud.type,
-        label: cloud.label,
-        position: cloud.position,
-        group: cloud.group,
-        level: cloud.level
-      })
-    );
-
-    // Clear the old format (will be written as new format on next save)
-    // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
-    delete annotations.cloudNodeAnnotations;
-  }
-
-  return annotations;
 }
 
 /**
@@ -162,9 +123,6 @@ export class AnnotationsIO {
         let annotations = JSON.parse(content) as TopologyAnnotations;
         this.logger.info(`Loaded annotations from ${annotationsPath}`);
 
-        // Migrate cloudNodeAnnotations to networkNodeAnnotations if needed
-        annotations = migrateAnnotations(annotations);
-
         this.cache.set(annotationsPath, { data: annotations, timestamp: Date.now() });
         return annotations;
       }
@@ -252,9 +210,6 @@ export class AnnotationsIO {
     if (this.hasContent(annotations.freeShapeAnnotations)) return true;
     if (this.hasContent(annotations.groupStyleAnnotations)) return true;
     if (this.hasContent(annotations.networkNodeAnnotations)) return true;
-    // Also check legacy format for backward compatibility during migration
-    // eslint-disable-next-line sonarjs/deprecation -- Intentional use of deprecated field for migration
-    if (this.hasContent(annotations.cloudNodeAnnotations)) return true;
     if (this.hasContent(annotations.nodeAnnotations)) return true;
     if (this.hasContent(annotations.edgeAnnotations)) return true;
     if (this.hasContent(annotations.aliasEndpointAnnotations)) return true;

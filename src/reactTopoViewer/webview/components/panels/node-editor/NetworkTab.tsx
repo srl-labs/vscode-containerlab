@@ -3,7 +3,7 @@
  */
 import React from "react";
 
-import { FormField, InputField, SelectField, DynamicList } from "../../shared/form";
+import { FormField, InputField, SelectField, DynamicList } from "../../ui/form";
 
 import type { TabProps } from "./types";
 

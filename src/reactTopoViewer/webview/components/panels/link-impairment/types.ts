@@ -1,5 +1,5 @@
 import type { NetemState as _NetemState } from "../../../../shared/parsing";
-import type { LinkData } from "../../../hooks/useAppState";
+import type { LinkData } from "../../../hooks/ui";
 
 export type NetemState = _NetemState;
 

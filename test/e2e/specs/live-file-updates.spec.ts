@@ -7,11 +7,24 @@
  * This proves the SSE-based live update mechanism works correctly.
  */
 
-import { test, expect } from '../fixtures/topoviewer';
+import type { Page } from "@playwright/test";
 
-test.describe.serial('Live File Updates', () => {
+import { test, expect } from "../fixtures/topoviewer";
+
+const getNodeKindFromStore = async (page: Page, nodeId: string) => {
+  return page.evaluate((id: string) => {
+    const dev = (window as any).__DEV__;
+    const rf = dev?.rfInstance;
+    if (!rf) return null;
+    const nodes = rf.getNodes?.() ?? [];
+    const node = nodes.find((n: any) => n.id === id);
+    return node?.data?.extraData?.kind ?? node?.data?.kind ?? null;
+  }, nodeId);
+};
+
+test.describe.serial("Live File Updates", () => {
   // Use simple.clab.yml as our test file
-  const testFile = 'simple.clab.yml';
+  const testFile = "simple.clab.yml";
 
   test.beforeEach(async ({ topoViewerPage }) => {
     // Reset files to clean state
@@ -22,14 +35,14 @@ test.describe.serial('Live File Updates', () => {
     await topoViewerPage.waitForCanvasReady();
   });
 
-  test('adding node via external edit updates canvas', async ({ topoViewerPage }) => {
+  test("adding node via external edit updates canvas", async ({ topoViewerPage }) => {
     // Verify initial state (simple.clab.yml has 2 nodes: srl1, srl2)
     const initialNodeCount = await topoViewerPage.getNodeCount();
     expect(initialNodeCount).toBe(2);
 
     const initialNodeIds = await topoViewerPage.getNodeIds();
-    expect(initialNodeIds).toContain('srl1');
-    expect(initialNodeIds).toContain('srl2');
+    expect(initialNodeIds).toContain("srl1");
+    expect(initialNodeIds).toContain("srl2");
 
     // Externally modify the YAML to add a third node
     const newYaml = `name: simple
@@ -51,20 +64,19 @@ topology:
     await topoViewerPage.writeYamlFile(testFile, newYaml);
 
     // Wait for live update to propagate (SSE + debounce + render)
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      {
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,
-        message: 'Expected canvas to update with 3 nodes after external edit'
-      }
-    ).toBe(3);
+        message: "Expected canvas to update with 3 nodes after external edit"
+      })
+      .toBe(3);
 
     // Verify the new node is present
     const updatedNodeIds = await topoViewerPage.getNodeIds();
-    expect(updatedNodeIds).toContain('srl3');
+    expect(updatedNodeIds).toContain("srl3");
   });
 
-  test('removing node via external edit updates canvas', async ({ topoViewerPage }) => {
+  test("removing node via external edit updates canvas", async ({ topoViewerPage }) => {
     // Verify initial state
     const initialNodeCount = await topoViewerPage.getNodeCount();
     expect(initialNodeCount).toBe(2);
@@ -81,21 +93,20 @@ topology:
     await topoViewerPage.writeYamlFile(testFile, newYaml);
 
     // Wait for live update
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      {
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,
-        message: 'Expected canvas to update with 1 node after external edit'
-      }
-    ).toBe(1);
+        message: "Expected canvas to update with 1 node after external edit"
+      })
+      .toBe(1);
 
     // Verify srl2 is gone
     const updatedNodeIds = await topoViewerPage.getNodeIds();
-    expect(updatedNodeIds).not.toContain('srl2');
-    expect(updatedNodeIds).toContain('srl1');
+    expect(updatedNodeIds).not.toContain("srl2");
+    expect(updatedNodeIds).toContain("srl1");
   });
 
-  test('adding link via external edit updates canvas', async ({ topoViewerPage }) => {
+  test("adding link via external edit updates canvas", async ({ topoViewerPage }) => {
     // Verify initial edge count
     const initialEdgeCount = await topoViewerPage.getEdgeCount();
     expect(initialEdgeCount).toBe(1); // simple.clab.yml has 1 link
@@ -118,16 +129,15 @@ topology:
     await topoViewerPage.writeYamlFile(testFile, newYaml);
 
     // Wait for live update
-    await expect.poll(
-      () => topoViewerPage.getEdgeCount(),
-      {
+    await expect
+      .poll(() => topoViewerPage.getEdgeCount(), {
         timeout: 5000,
-        message: 'Expected canvas to update with 2 edges after external edit'
-      }
-    ).toBe(2);
+        message: "Expected canvas to update with 2 edges after external edit"
+      })
+      .toBe(2);
   });
 
-  test('modifying node kind via external edit updates canvas', async ({ topoViewerPage, page }) => {
+  test("modifying node kind via external edit updates canvas", async ({ topoViewerPage, page }) => {
     // This test verifies that changes to node properties are reflected
     // We'll check that the node exists and has correct data after external edit
 
@@ -151,25 +161,15 @@ topology:
     await topoViewerPage.writeYamlFile(testFile, newYaml);
 
     // Wait for the node kind to be updated
-    await expect.poll(
-      async () => {
-        return await page.evaluate(() => {
-          const dev = (window as any).__DEV__;
-          const cy = dev?.cy;
-          if (!cy) return null;
-          const node = cy.getElementById('srl1');
-          if (!node || node.empty()) return null;
-          return node.data('extraData')?.kind;
-        });
-      },
-      {
+    await expect
+      .poll(() => getNodeKindFromStore(page, "srl1"), {
         timeout: 5000,
-        message: 'Expected node kind to update after external edit'
-      }
-    ).toBe('linux');
+        message: "Expected node kind to update after external edit"
+      })
+      .toBe("linux");
   });
 
-  test('rapid file changes are debounced correctly', async ({ topoViewerPage }) => {
+  test("rapid file changes are debounced correctly", async ({ topoViewerPage }) => {
     // Verify initial state
     expect(await topoViewerPage.getNodeCount()).toBe(2);
 
@@ -210,16 +210,18 @@ topology:
 
     // The final state should be 4 nodes (from yaml3)
     // Debouncing should prevent intermediate renders
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      {
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,
-        message: 'Expected final state to have 4 nodes after rapid changes'
-      }
-    ).toBe(4);
+        message: "Expected final state to have 4 nodes after rapid changes"
+      })
+      .toBe(4);
   });
 
-  test('deleting externally-added node via UI persists to YAML', async ({ topoViewerPage, page }) => {
+  test("deleting externally-added node via UI persists to YAML", async ({
+    topoViewerPage,
+    page
+  }) => {
     // This test reproduces a bug where deleting a node that was added
     // externally (via YAML edit) doesn't persist to the YAML file
 
@@ -247,17 +249,16 @@ topology:
     await topoViewerPage.writeYamlFile(testFile, newYaml);
 
     // Wait for live update to propagate
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      {
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 5000,
-        message: 'Expected canvas to update with 3 nodes after external edit'
-      }
-    ).toBe(3);
+        message: "Expected canvas to update with 3 nodes after external edit"
+      })
+      .toBe(3);
 
     // Verify the new node is present
     const updatedNodeIds = await topoViewerPage.getNodeIds();
-    expect(updatedNodeIds).toContain('srl3');
+    expect(updatedNodeIds).toContain("srl3");
 
     // Unlock and ensure edit mode
     await topoViewerPage.unlock();
@@ -267,28 +268,27 @@ topology:
     await page.waitForTimeout(1200);
 
     // Now delete the externally-added node via UI
-    await topoViewerPage.deleteNode('srl3');
+    await topoViewerPage.deleteNode("srl3");
 
     // Wait for deletion to complete in canvas
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      {
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
         timeout: 3000,
-        message: 'Expected canvas to show 2 nodes after deleting srl3'
-      }
-    ).toBe(2);
+        message: "Expected canvas to show 2 nodes after deleting srl3"
+      })
+      .toBe(2);
 
     // Verify node was actually removed from YAML file
     // Give it some time for file write to complete
     await page.waitForTimeout(500);
 
     const finalYaml = await topoViewerPage.readYamlFile(testFile);
-    expect(finalYaml).not.toContain('srl3');
-    expect(finalYaml).toContain('srl1');
-    expect(finalYaml).toContain('srl2');
+    expect(finalYaml).not.toContain("srl3");
+    expect(finalYaml).toContain("srl1");
+    expect(finalYaml).toContain("srl2");
   });
 
-  test('external file change clears undo history', async ({ topoViewerPage, page }) => {
+  test("external file change clears undo history", async ({ topoViewerPage, page }) => {
     // Verify initial state (simple.clab.yml has 2 nodes: srl1, srl2)
     const initialNodeCount = await topoViewerPage.getNodeCount();
     expect(initialNodeCount).toBe(2);
@@ -297,16 +297,24 @@ topology:
     await topoViewerPage.unlock();
 
     // Create a new node to build up undo history
-    await topoViewerPage.createNode('testnode1', { x: 300, y: 300 });
+    await topoViewerPage.createNode("testnode1", { x: 300, y: 300 });
 
     // Wait for node to be created
-    await expect.poll(
-      () => topoViewerPage.getNodeCount(),
-      { timeout: 5000, message: 'Expected 3 nodes after creating testnode1' }
-    ).toBe(3);
+    await expect
+      .poll(() => topoViewerPage.getNodeCount(), {
+        timeout: 5000,
+        message: "Expected 3 nodes after creating testnode1"
+      })
+      .toBe(3);
 
     // Verify we can undo (should have undo history)
-    expect(await topoViewerPage.canUndo()).toBe(true);
+    // Use polling since undo state may take time to sync
+    await expect
+      .poll(() => topoViewerPage.canUndo(), {
+        timeout: 3000,
+        message: "Expected undo history to be available after creating node"
+      })
+      .toBe(true);
 
     // Wait for internal update window to expire (1000ms in dev server)
     // This ensures the subsequent file write is treated as external
@@ -330,24 +338,24 @@ topology:
     await topoViewerPage.writeYamlFile(testFile, newYaml);
 
     // Wait for live update to propagate
-    await expect.poll(
-      () => topoViewerPage.getNodeIds(),
-      {
+    await expect
+      .poll(() => topoViewerPage.getNodeIds(), {
         timeout: 5000,
-        message: 'Expected canvas to update with externalnode after external edit'
-      }
-    ).toContain('externalnode');
+        message: "Expected canvas to update with externalnode after external edit"
+      })
+      .toContain("externalnode");
 
     // After external file change, undo history should be cleared
     // (testnode1 we created earlier won't be in the new topology,
     // but that's expected - the external edit replaced the file)
-    await expect.poll(
-      () => topoViewerPage.canUndo(),
-      {
-        timeout: 3000,
-        message: 'Expected undo history to be cleared after external file change'
-      }
-    ).toBe(false);
+    // Use longer timeout and progressive intervals for state sync
+    await expect
+      .poll(() => topoViewerPage.canUndo(), {
+        timeout: 5000,
+        intervals: [100, 200, 500, 1000],
+        message: "Expected undo history to be cleared after external file change"
+      })
+      .toBe(false);
 
     // Verify both undo and redo are cleared
     expect(await topoViewerPage.canUndo()).toBe(false);

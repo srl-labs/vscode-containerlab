@@ -1,88 +1,241 @@
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
-import { test, expect } from '../fixtures/topoviewer';
+import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors
 const SEL_NODE_EDITOR = '[data-testid="node-editor"]';
 const SEL_APPLY_BTN = '[data-testid="node-editor"] [data-testid="panel-apply-btn"]';
 const SEL_OK_BTN = '[data-testid="node-editor"] [data-testid="panel-ok-btn"]';
 const SEL_CLOSE_BTN = '[data-testid="node-editor"] [data-testid="panel-close-btn"]';
+const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
 
 // Tab and field identifiers
 const TAB = {
-  BASIC: 'basic',
-  CONFIG: 'config',
-  RUNTIME: 'runtime',
-  NETWORK: 'network',
-  ADVANCED: 'advanced',
+  BASIC: "basic",
+  CONFIG: "config",
+  RUNTIME: "runtime",
+  NETWORK: "network",
+  ADVANCED: "advanced"
 } as const;
 
 // Test values
-const TEST_KIND = 'linux';
-const TEST_USER = 'testuser';
-const TEST_TOPOLOGY = 'simple.clab.yml';
-const SEL_KIND_FIELD = '#node-kind';
+const TEST_KIND = "linux";
+const TEST_USER = "testuser";
+const TEST_TOPOLOGY = "simple.clab.yml";
+const SEL_KIND_FIELD = "#node-kind";
 
 /**
  * Helper to reliably open node editor via double-click on a specific node
  * Uses node ID to fetch fresh bounding box immediately before clicking.
  */
-async function openNodeEditorByNodeId(
-  page: Page,
-  nodeId: string,
-  maxRetries = 3
-): Promise<void> {
+async function closeEditorPanel(page: Page): Promise<void> {
   const editorPanel = page.locator(SEL_NODE_EDITOR);
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const nodeBox = await page.evaluate((id) => {
-      const dev = (window as any).__DEV__;
-      const cy = dev?.cy;
-      const node = cy?.getElementById(id);
-      if (!node || node.empty()) return null;
-
-      const bb = node.renderedBoundingBox();
-      const container = cy.container();
-      const rect = container.getBoundingClientRect();
-
-      return {
-        x: rect.left + bb.x1,
-        y: rect.top + bb.y1,
-        width: bb.w,
-        height: bb.h
-      };
-    }, nodeId);
-
-    if (!nodeBox) {
-      throw new Error(`Node ${nodeId} not found or has no bounding box`);
-    }
-
-    const centerX = nodeBox.x + nodeBox.width / 2;
-    const centerY = nodeBox.y + nodeBox.height / 2;
-
-    await page.mouse.click(centerX, centerY);
-    await page.waitForTimeout(150);
-    await page.mouse.dblclick(centerX, centerY);
-
-    try {
-      await expect(editorPanel).toBeVisible({ timeout: 2000 });
-      return;
-    } catch {
-      if (attempt === maxRetries) {
-        throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
-      }
-      await page.waitForTimeout(300);
-    }
+  if (await editorPanel.isVisible()) {
+    await page.locator(`${SEL_NODE_EDITOR} [data-testid="panel-close-btn"]`).click();
+    await expect(editorPanel).toBeHidden({ timeout: 2000 });
   }
 }
 
-type TabName = typeof TAB[keyof typeof TAB];
+async function collapseFloatingPanel(page: Page): Promise<void> {
+  const floatingContent = page.locator(".floating-panel-content");
+  if (await floatingContent.isVisible()) {
+    await page.locator('[data-testid="floating-panel-collapse-btn"]').click();
+    await expect(floatingContent).toBeHidden({ timeout: 2000 });
+  }
+}
+
+async function waitForStableNodeBox(
+  page: Page,
+  nodeHandle: ReturnType<Page["locator"]>
+): Promise<{ x: number; y: number; width: number; height: number } | null> {
+  let prev = await nodeHandle.boundingBox();
+  for (let i = 0; i < 4; i++) {
+    await page.waitForTimeout(120);
+    const next = await nodeHandle.boundingBox();
+    if (!prev || !next) {
+      prev = next;
+      continue;
+    }
+    const stable =
+      Math.abs(next.x - prev.x) < 1 &&
+      Math.abs(next.y - prev.y) < 1 &&
+      Math.abs(next.width - prev.width) < 1 &&
+      Math.abs(next.height - prev.height) < 1;
+    if (stable) return next;
+    prev = next;
+  }
+  return prev;
+}
+
+async function separateOverlappingNode(page: Page, nodeId: string): Promise<boolean> {
+  let moved = false;
+  for (let i = 0; i < 2; i++) {
+    const blockingId = await page.evaluate((targetId) => {
+      const target = document.querySelector(`[data-id="${targetId}"]`) as HTMLElement | null;
+      if (!target) return null;
+      const targetRect = target.getBoundingClientRect();
+      const nodes = Array.from(document.querySelectorAll(".react-flow__node"));
+      for (const node of nodes) {
+        const id = node.getAttribute("data-id");
+        if (!id || id === targetId) continue;
+        const rect = (node as HTMLElement).getBoundingClientRect();
+        const overlaps =
+          targetRect.left < rect.right &&
+          targetRect.right > rect.left &&
+          targetRect.top < rect.bottom &&
+          targetRect.bottom > rect.top;
+        if (overlaps) return id;
+      }
+      return null;
+    }, nodeId);
+
+    if (!blockingId) break;
+
+    const blockingHandle = page.locator(`[data-id="${blockingId}"]`);
+    const blockingBox = await blockingHandle.boundingBox();
+    if (!blockingBox) break;
+
+    const startX = blockingBox.x + blockingBox.width / 2;
+    const startY = blockingBox.y + blockingBox.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 120, startY, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    moved = true;
+  }
+  return moved;
+}
+
+async function prepareForNodeEditorAttempt(
+  page: Page,
+  topoViewerPage: { fit: () => Promise<void> },
+  nodeId: string,
+  attempt: number
+): Promise<void> {
+  await closeEditorPanel(page);
+  await collapseFloatingPanel(page);
+  if (attempt === 1) {
+    await topoViewerPage.fit();
+  }
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(`[data-id="${nodeId}"]`, { timeout: 5000 });
+  await page.waitForTimeout(150);
+}
+
+async function getNodeCenter(
+  page: Page,
+  topoViewerPage: {
+    getNodeBoundingBox: (nodeId: string) => Promise<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>;
+  },
+  nodeId: string
+): Promise<{ centerX: number; centerY: number }> {
+  const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
+  await nodeHandle.scrollIntoViewIfNeeded();
+  await expect(nodeHandle).toBeVisible({ timeout: 2000 });
+  await separateOverlappingNode(page, nodeId);
+
+  const nodeBox =
+    (await waitForStableNodeBox(page, nodeHandle)) ??
+    (await topoViewerPage.getNodeBoundingBox(nodeId));
+  if (!nodeBox) {
+    throw new Error(`Node ${nodeId} not found or has no bounding box`);
+  }
+
+  return {
+    centerX: nodeBox.x + nodeBox.width / 2,
+    centerY: nodeBox.y + nodeBox.height / 2
+  };
+}
+
+async function tryOpenEditorAtPosition(
+  page: Page,
+  nodeId: string,
+  centerX: number,
+  centerY: number
+): Promise<boolean> {
+  try {
+    const hitsTarget = await page.evaluate(
+      ({ x, y, id }) => {
+        const el = document.elementFromPoint(x, y);
+        return !!el?.closest(`[data-id="${id}"]`);
+      },
+      { x: centerX, y: centerY, id: nodeId }
+    );
+    if (!hitsTarget) {
+      await separateOverlappingNode(page, nodeId);
+      return false;
+    }
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.click(centerX, centerY, { delay: 60 });
+    await page.waitForTimeout(150);
+    await page.mouse.dblclick(centerX, centerY, { delay: 80 });
+    return true;
+  } catch {
+    await separateOverlappingNode(page, nodeId);
+    return false;
+  }
+}
+
+async function verifyEditorOpen(page: Page, nodeId: string): Promise<boolean> {
+  try {
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeVisible({ timeout: 2000 });
+    await expect(page.locator(SEL_PANEL_TAB_BASIC)).toBeVisible({ timeout: 2000 });
+    const nameInput = page.locator("#node-name");
+    if ((await nameInput.count()) > 0) {
+      await expect(nameInput).toHaveValue(nodeId, { timeout: 1000 });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function openNodeEditorByNodeId(
+  page: Page,
+  topoViewerPage: {
+    getNodeBoundingBox: (nodeId: string) => Promise<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>;
+    fit: () => Promise<void>;
+  },
+  nodeId: string,
+  maxRetries = 3
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    await prepareForNodeEditorAttempt(page, topoViewerPage, nodeId, attempt);
+
+    const { centerX, centerY } = await getNodeCenter(page, topoViewerPage, nodeId);
+    const didClick = await tryOpenEditorAtPosition(page, nodeId, centerX, centerY);
+    if (!didClick) continue;
+
+    const didOpen = await verifyEditorOpen(page, nodeId);
+    if (didOpen) return;
+
+    await closeEditorPanel(page);
+    if (attempt === maxRetries) {
+      throw new Error(`Failed to open node editor after ${maxRetries} attempts for node ${nodeId}`);
+    }
+    await page.waitForTimeout(300);
+  }
+}
+
+type TabName = (typeof TAB)[keyof typeof TAB];
 
 /**
  * Helper to navigate to a specific tab in the node editor
  */
 async function navigateToTab(page: Page, tabName: TabName): Promise<void> {
   const tab = page.locator(`[data-testid="panel-tab-${tabName}"]`);
+  await expect(tab).toBeVisible({ timeout: 2000 });
   await tab.click();
   await page.waitForTimeout(200);
 }
@@ -128,7 +281,7 @@ async function selectOption(page: Page, fieldId: string, value: string): Promise
  * 2. Reflected in UI after reopening the editor
  * 3. Persisted after page reload
  */
-test.describe('Node Editor Persistence', () => {
+test.describe("Node Editor Persistence", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(TEST_TOPOLOGY);
@@ -138,26 +291,31 @@ test.describe('Node Editor Persistence', () => {
     await topoViewerPage.fit();
   });
 
-  test('kind field persists after applying and reopening editor', async ({ page, topoViewerPage }) => {
+  test("kind field persists after applying and reopening editor", async ({
+    page,
+    topoViewerPage
+  }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
     const nodeId = nodeIds[0];
 
     // Open editor and change kind
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.BASIC);
-    await fillField(page, 'node-kind', TEST_KIND);
+    await fillField(page, "node-kind", TEST_KIND);
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => topoViewerPage.getYamlFromFile(TEST_TOPOLOGY), { timeout: 5000 })
+      .toContain(`kind: ${TEST_KIND}`);
 
     // Close editor
     await page.locator(SEL_CLOSE_BTN).click();
-    await page.waitForTimeout(300);
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeHidden({ timeout: 3000 });
 
     // Reopen editor
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.BASIC);
 
     // Verify kind is still linux
@@ -165,101 +323,116 @@ test.describe('Node Editor Persistence', () => {
     await expect(kindField).toHaveValue(TEST_KIND);
   });
 
-  test('startup-config field persists to YAML', async ({ page, topoViewerPage }) => {
+  test("startup-config field persists to YAML", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor and change startup-config
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.CONFIG);
-    await fillField(page, 'node-startup-config', '/path/to/config.txt');
+    await fillField(page, "node-startup-config", "/path/to/config.txt");
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => topoViewerPage.getYamlFromFile(TEST_TOPOLOGY), { timeout: 5000 })
+      .toContain("startup-config: /path/to/config.txt");
 
     // Close editor
     await page.locator(SEL_CLOSE_BTN).click();
-    await page.waitForTimeout(300);
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeHidden({ timeout: 3000 });
 
     // Verify YAML file contains startup-config
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('startup-config');
-    expect(yamlContent).toContain('/path/to/config.txt');
+    expect(yamlContent).toContain("startup-config");
+    expect(yamlContent).toContain("/path/to/config.txt");
   });
 
-  test('user field persists to YAML', async ({ page, topoViewerPage }) => {
+  test("user field persists to YAML", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor and set user
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.RUNTIME);
-    await fillField(page, 'node-user', TEST_USER);
+    await fillField(page, "node-user", TEST_USER);
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => topoViewerPage.getYamlFromFile(TEST_TOPOLOGY), { timeout: 5000 })
+      .toContain(`user: ${TEST_USER}`);
 
     // Verify YAML file contains user
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
     expect(yamlContent).toContain(`user: ${TEST_USER}`);
   });
 
-  test('multiple fields persist after save', async ({ page, topoViewerPage }) => {
+  test("multiple fields persist after save", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     // Set multiple fields across tabs
     await navigateToTab(page, TAB.BASIC);
-    await fillField(page, 'node-kind', TEST_KIND);
-    await fillField(page, 'node-image', 'alpine:latest');
+    await fillField(page, "node-kind", TEST_KIND);
+    await fillField(page, "node-image", "alpine:latest");
 
     await navigateToTab(page, TAB.RUNTIME);
-    await fillField(page, 'node-user', 'root');
+    await fillField(page, "node-user", "root");
 
     await navigateToTab(page, TAB.NETWORK);
-    await fillField(page, 'node-mgmt-ipv4', '172.20.20.10');
+    await fillField(page, "node-mgmt-ipv4", "172.20.20.10");
 
     await navigateToTab(page, TAB.ADVANCED);
-    await fillField(page, 'node-memory', '512m');
+    await fillField(page, "node-memory", "512m");
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
-    await page.waitForTimeout(500);
+    await expect
+      .poll(async () => {
+        const yaml = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
+        return (
+          yaml.includes(`kind: ${TEST_KIND}`) &&
+          yaml.includes("image: alpine:latest") &&
+          yaml.includes("user: root") &&
+          yaml.includes("mgmt-ipv4: 172.20.20.10") &&
+          yaml.includes("memory: 512m")
+        );
+      }, { timeout: 5000 })
+      .toBe(true);
 
     // Close editor
     await page.locator(SEL_CLOSE_BTN).click();
-    await page.waitForTimeout(300);
+    await expect(page.locator(SEL_NODE_EDITOR)).toBeHidden({ timeout: 3000 });
 
     // Reopen editor and verify all fields
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     await navigateToTab(page, TAB.BASIC);
     await expect(page.locator(SEL_KIND_FIELD)).toHaveValue(TEST_KIND);
-    await expect(page.locator('#node-image')).toHaveValue('alpine:latest');
+    await expect(page.locator("#node-image")).toHaveValue("alpine:latest");
 
     await navigateToTab(page, TAB.RUNTIME);
-    await expect(page.locator('#node-user')).toHaveValue('root');
+    await expect(page.locator("#node-user")).toHaveValue("root");
 
     await navigateToTab(page, TAB.NETWORK);
-    await expect(page.locator('#node-mgmt-ipv4')).toHaveValue('172.20.20.10');
+    await expect(page.locator("#node-mgmt-ipv4")).toHaveValue("172.20.20.10");
 
     await navigateToTab(page, TAB.ADVANCED);
-    await expect(page.locator('#node-memory')).toHaveValue('512m');
+    await expect(page.locator("#node-memory")).toHaveValue("512m");
   });
 
-  test('restart-policy persists to YAML', async ({ page, topoViewerPage }) => {
+  test("restart-policy persists to YAML", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor and set restart-policy
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.RUNTIME);
-    await selectOption(page, 'node-restart-policy', 'always');
+    await selectOption(page, "node-restart-policy", "always");
 
     // Click OK (save and close)
     await page.locator(SEL_OK_BTN).click();
@@ -267,17 +440,17 @@ test.describe('Node Editor Persistence', () => {
 
     // Verify YAML file contains restart-policy
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('restart-policy: always');
+    expect(yamlContent).toContain("restart-policy: always");
   });
 
-  test('enforce-startup-config checkbox persists', async ({ page, topoViewerPage }) => {
+  test("enforce-startup-config checkbox persists", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor and set enforce-startup-config
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.CONFIG);
-    await setCheckbox(page, 'node-enforce-startup-config', true);
+    await setCheckbox(page, "node-enforce-startup-config", true);
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
@@ -288,23 +461,23 @@ test.describe('Node Editor Persistence', () => {
     await page.waitForTimeout(300);
 
     // Reopen editor and verify checkbox is checked
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.CONFIG);
-    await expect(page.locator('#node-enforce-startup-config')).toBeChecked();
+    await expect(page.locator("#node-enforce-startup-config")).toBeChecked();
 
     // Verify YAML file contains enforce-startup-config
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('enforce-startup-config: true');
+    expect(yamlContent).toContain("enforce-startup-config: true");
   });
 
-  test('network-mode persists to YAML', async ({ page, topoViewerPage }) => {
+  test("network-mode persists to YAML", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor and set network-mode
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.NETWORK);
-    await selectOption(page, 'node-network-mode', 'host');
+    await selectOption(page, "node-network-mode", "host");
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
@@ -312,17 +485,17 @@ test.describe('Node Editor Persistence', () => {
 
     // Verify YAML file contains network-mode
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('network-mode: host');
+    expect(yamlContent).toContain("network-mode: host");
   });
 
-  test('image-pull-policy persists to YAML', async ({ page, topoViewerPage }) => {
+  test("image-pull-policy persists to YAML", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor and set image-pull-policy
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
     await navigateToTab(page, TAB.ADVANCED);
-    await selectOption(page, 'node-image-pull-policy', 'always');
+    await selectOption(page, "node-image-pull-policy", "always");
 
     // Click Apply
     await page.locator(SEL_APPLY_BTN).click();
@@ -330,21 +503,21 @@ test.describe('Node Editor Persistence', () => {
 
     // Verify YAML file contains image-pull-policy
     const yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
-    expect(yamlContent).toContain('image-pull-policy: always');
+    expect(yamlContent).toContain("image-pull-policy: always");
   });
 
-  test('values persist after page reload', async ({ page, topoViewerPage }) => {
+  test("values persist after page reload", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     const nodeId = nodeIds[0];
 
     // Open editor and set multiple fields
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     await navigateToTab(page, TAB.BASIC);
-    await fillField(page, 'node-kind', TEST_KIND);
+    await fillField(page, "node-kind", TEST_KIND);
 
     await navigateToTab(page, TAB.RUNTIME);
-    await fillField(page, 'node-user', 'admin');
+    await fillField(page, "node-user", "admin");
 
     // Click OK (save and close)
     await page.locator(SEL_OK_BTN).click();
@@ -363,12 +536,12 @@ test.describe('Node Editor Persistence', () => {
     expect(newNodeIds).toContain(nodeId);
 
     // Open editor and verify fields persisted
-    await openNodeEditorByNodeId(page, nodeId);
+    await openNodeEditorByNodeId(page, topoViewerPage, nodeId);
 
     await navigateToTab(page, TAB.BASIC);
     await expect(page.locator(SEL_KIND_FIELD)).toHaveValue(TEST_KIND);
 
     await navigateToTab(page, TAB.RUNTIME);
-    await expect(page.locator('#node-user')).toHaveValue('admin');
+    await expect(page.locator("#node-user")).toHaveValue("admin");
   });
 });

@@ -32,8 +32,6 @@ export interface EasterEggState {
 }
 
 export interface UseEasterEggOptions {
-  /** Cytoscape instance (passed to Nightcall component) */
-  cyInstance: unknown;
   /** Callback when easter egg activates */
   onActivate?: () => void;
   /** Callback when easter egg ends */

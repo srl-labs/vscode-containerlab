@@ -1,94 +1,82 @@
 /**
- * Shared node glow utilities for Easter Egg modes
+ * Node glow hook for React Flow easter egg modes
+ *
+ * Updates the canvas store's easterEggGlow state at a throttled rate
+ * so node components can read and apply CSS box-shadow effects.
  */
 
-import { useEffect, useRef } from "react";
-import type { Core as CyCore } from "cytoscape";
+import { useCallback, useEffect, useRef } from "react";
+
+import { useCanvasStore } from "../../stores/canvasStore";
 
 import type { RGBColor } from "./types";
 
-/**
- * Apply glow effect to cytoscape nodes
- */
-export function applyNodeGlow(cyInstance: CyCore, color: RGBColor, intensity: number): void {
-  const borderWidth = `${2 + intensity * 2}px`;
-  const borderColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.6 + intensity * 0.4})`;
-
-  cyInstance.nodes().forEach((node) => {
-    node.style({
-      "border-width": borderWidth,
-      "border-color": borderColor
-    });
-  });
-}
+/** Throttle interval for glow updates (~30fps) */
+const GLOW_UPDATE_INTERVAL = 33; // ms
 
 /**
- * Restore original node styles
- */
-export function restoreNodeStyles(
-  cyInstance: CyCore,
-  originalStyles: Map<string, Record<string, string>>
-): void {
-  cyInstance.nodes().forEach((node) => {
-    const original = originalStyles.get(node.id());
-    if (original) {
-      node.style({
-        "border-width": original["border-width"],
-        "border-color": original["border-color"]
-      });
-    }
-  });
-}
-
-/**
- * Hook to apply glow effect to nodes based on audio/animation
+ * Hook to update the canvas store's easter egg glow state.
  *
- * @param cyInstance - Cytoscape instance
- * @param isActive - Whether the mode is active
- * @param getColor - Function to get current color
- * @param getIntensity - Function to get current intensity (0-1)
+ * This hook manages glow state updates at ~30fps, throttled to avoid
+ * excessive React re-renders while still providing smooth visual effects.
+ *
+ * @param isActive - Whether the easter egg mode is active
+ * @param getColor - Function that returns the current glow color
+ * @param getIntensity - Function that returns the current intensity (0-1)
  */
 export function useNodeGlow(
-  cyInstance: CyCore | null | undefined,
   isActive: boolean,
   getColor: () => RGBColor,
   getIntensity: () => number
 ): void {
-  const originalStylesRef = useRef<Map<string, Record<string, string>>>(new Map());
-  const animationRef = useRef<number>(0);
+  const setEasterEggGlow = useCanvasStore((state) => state.setEasterEggGlow);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastColorRef = useRef<RGBColor | null>(null);
+  const lastIntensityRef = useRef<number>(-1);
+
+  const updateGlow = useCallback(() => {
+    const color = getColor();
+    const intensity = getIntensity();
+
+    // Only update if values changed (to minimize store updates)
+    const colorChanged =
+      !lastColorRef.current ||
+      lastColorRef.current.r !== color.r ||
+      lastColorRef.current.g !== color.g ||
+      lastColorRef.current.b !== color.b;
+    const intensityChanged = Math.abs(lastIntensityRef.current - intensity) > 0.01;
+
+    if (colorChanged || intensityChanged) {
+      lastColorRef.current = color;
+      lastIntensityRef.current = intensity;
+      setEasterEggGlow({ color, intensity });
+    }
+  }, [getColor, getIntensity, setEasterEggGlow]);
 
   useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
+    if (!isActive) {
+      // Clear glow when deactivated
+      setEasterEggGlow(null);
+      lastColorRef.current = null;
+      lastIntensityRef.current = -1;
+      return undefined;
+    }
 
-    const nodes = cyInstance.nodes();
+    // Start interval for glow updates
+    intervalRef.current = setInterval(updateGlow, GLOW_UPDATE_INTERVAL);
 
-    // Store original styles
-    nodes.forEach((node) => {
-      const id = node.id();
-      originalStylesRef.current.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
-      });
-    });
-
-    const cy = cyInstance;
-
-    const animate = (): void => {
-      const color = getColor();
-      const intensity = getIntensity();
-
-      cy.batch(() => applyNodeGlow(cy, color, intensity));
-
-      animationRef.current = window.requestAnimationFrame(animate);
-    };
-
-    animationRef.current = window.requestAnimationFrame(animate);
+    // Initial update
+    updateGlow();
 
     return () => {
-      window.cancelAnimationFrame(animationRef.current);
-      cy.batch(() => restoreNodeStyles(cy, originalStylesRef.current));
-      originalStylesRef.current.clear();
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      // Clear glow on cleanup
+      setEasterEggGlow(null);
+      lastColorRef.current = null;
+      lastIntensityRef.current = -1;
     };
-  }, [isActive, cyInstance, getColor, getIntensity]);
+  }, [isActive, updateGlow, setEasterEggGlow]);
 }

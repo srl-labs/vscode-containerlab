@@ -14,12 +14,28 @@
     z-index: 0;
   }
 
-  /* When maplibre-active class is present, hide grid and make cytoscape transparent */
-  .cytoscape-container.maplibre-active {
+  /* When maplibre-active class is present, hide grid and make canvas transparent */
+  .canvas-container.maplibre-active {
     background: transparent !important;
   }
 
-  .cytoscape-container.maplibre-active .react-topoviewer-grid-overlay {
+  .canvas-container.maplibre-active .react-flow {
+    background: transparent !important;
+  }
+
+  .canvas-container.maplibre-active .react-flow__renderer {
+    background: transparent !important;
+  }
+
+  .canvas-container.maplibre-active .react-flow__pane {
+    background: transparent !important;
+  }
+
+  .canvas-container.maplibre-active .react-flow__viewport {
+    background: transparent !important;
+  }
+
+  .canvas-container.maplibre-active .react-topoviewer-grid-overlay {
     display: none !important;
   }
 

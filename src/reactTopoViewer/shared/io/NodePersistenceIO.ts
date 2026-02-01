@@ -49,11 +49,14 @@ export interface NodeSaveData {
 
 /** Node annotation data that can be saved to annotations file */
 export interface NodeAnnotationData {
+  label?: string | null;
   icon?: string;
   iconColor?: string;
   iconCornerRadius?: number;
   /** Interface pattern for link creation - tracks template inheritance */
   interfacePattern?: string;
+  /** Group ID for group membership */
+  groupId?: string;
 }
 
 /** Node properties that can be saved to YAML */
@@ -492,18 +495,26 @@ export function deleteNodeFromDoc(
 /** Apply annotation data to an annotation object */
 export function applyAnnotationData(
   annotation: {
+    label?: string;
     icon?: string;
     iconColor?: string;
     iconCornerRadius?: number;
     interfacePattern?: string;
+    groupId?: string;
   },
   data?: NodeAnnotationData
 ): void {
   if (!data) return;
+  if (data.label === null) {
+    delete annotation.label;
+  } else if (data.label !== undefined) {
+    annotation.label = data.label;
+  }
   if (data.icon) annotation.icon = data.icon;
   if (data.iconColor) annotation.iconColor = data.iconColor;
   if (data.iconCornerRadius !== undefined) annotation.iconCornerRadius = data.iconCornerRadius;
   if (data.interfacePattern) annotation.interfacePattern = data.interfacePattern;
+  if (data.groupId) annotation.groupId = data.groupId;
 }
 
 /** Build annotation properties for spread */
@@ -513,6 +524,7 @@ export function buildAnnotationProps(data?: NodeAnnotationData): Record<string, 
     ...(data.icon && { icon: data.icon }),
     ...(data.iconColor && { iconColor: data.iconColor }),
     ...(data.iconCornerRadius !== undefined && { iconCornerRadius: data.iconCornerRadius }),
-    ...(data.interfacePattern && { interfacePattern: data.interfacePattern })
+    ...(data.interfacePattern && { interfacePattern: data.interfacePattern }),
+    ...(data.groupId && { groupId: data.groupId })
   };
 }

@@ -3,32 +3,22 @@
  *
  * Silent easter egg with 3D rotating containerlab logo.
  * Inspired by the iconic Deus Ex main menu logo animation.
- * Renders behind nodes by inserting canvas into cytoscape container.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import type { Core as CyCore } from "cytoscape";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { lerpColor, applyNodeGlow, restoreNodeStyles } from "../shared";
-import type { RGBColor } from "../shared";
-
-interface DeusExModeProps {
-  isActive: boolean;
-  onClose?: () => void;
-  onSwitchMode?: () => void;
-  modeName?: string;
-  cyInstance?: CyCore | null;
-}
+import { lerpColor, useNodeGlow } from "../shared";
+import type { RGBColor, BaseModeProps } from "../shared";
 
 /** Deus Ex color palette with neon accents */
 const COLORS: Record<string, RGBColor> = {
-  silver: { r: 192, g: 192, b: 192 }, // Primary silver
-  chrome: { r: 220, g: 220, b: 225 }, // Chrome accent
-  steel: { r: 113, g: 121, b: 126 }, // Steel gray
-  dark: { r: 15, g: 18, b: 22 }, // Near-black background
-  highlight: { r: 255, g: 255, b: 255 }, // White shine
-  cyan: { r: 0, g: 255, b: 255 }, // Neon cyan
-  magenta: { r: 255, g: 0, b: 255 } // Neon magenta
+  silver: { r: 192, g: 192, b: 192 },
+  chrome: { r: 220, g: 220, b: 225 },
+  steel: { r: 113, g: 121, b: 126 },
+  dark: { r: 15, g: 18, b: 22 },
+  highlight: { r: 255, g: 255, b: 255 },
+  cyan: { r: 0, g: 255, b: 255 },
+  magenta: { r: 255, g: 0, b: 255 }
 };
 
 /** Containerlab SVG content with original blue water/bubbles */
@@ -41,111 +31,86 @@ const CONTAINERLAB_SVG_CONTENT = `<?xml version="1.0" encoding="utf-8"?>
   <circle cx="280.642" cy="11.229" r="3.4" style="fill: none; stroke: rgb(30, 144, 255); stroke-miterlimit: 10; stroke-width: 0.8px;"/>
 </svg>`;
 
-/** Containerlab SVG as data URL */
 const CONTAINERLAB_SVG = "data:image/svg+xml," + encodeURIComponent(CONTAINERLAB_SVG_CONTENT);
 
 /**
- * Hook to create a canvas layer below cytoscape nodes for the rotating logo.
- * Inserts canvas as first child of cytoscape container so it renders behind.
+ * Deus Ex Canvas - 3D rotating logo
  */
-function useDeusExLayer(
-  cy: CyCore | null | undefined,
-  isActive: boolean,
-  getRotationAngle: () => number
-): void {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+const DeusExCanvas: React.FC<{
+  isActive: boolean;
+  getRotationAngle: () => number;
+}> = ({ isActive, getRotationAngle }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const logoRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    if (!cy || !isActive) return undefined;
+    if (!isActive) return undefined;
 
-    // Get cytoscape container
-    const container = cy.container();
-    if (!container) return undefined;
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
 
-    // Create canvas element and insert as first child (behind cytoscape canvases)
-    const canvas = document.createElement("canvas");
-    canvas.style.position = "absolute";
-    canvas.style.top = "0";
-    canvas.style.left = "0";
-    canvas.style.pointerEvents = "none";
-    canvas.style.zIndex = "0"; // Behind cytoscape which has z-index: 2
-    container.insertBefore(canvas, container.firstChild);
-    canvasRef.current = canvas;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return undefined;
 
     // Load logo image
     const logo = new window.Image();
     logo.src = CONTAINERLAB_SVG;
     logoRef.current = logo;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return undefined;
-
-    // Use devicePixelRatio for sharp rendering
     const dpr = window.devicePixelRatio || 1;
 
     const updateSize = (): void => {
-      const rect = container.getBoundingClientRect();
-      // Scale canvas for high DPI displays
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-      // Scale context to account for DPI
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     updateSize();
-
-    const resizeObserver = new ResizeObserver(updateSize);
-    resizeObserver.observe(container);
+    window.addEventListener("resize", updateSize);
 
     const animate = (): void => {
-      const rect = container.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       const rotationAngle = getRotationAngle();
 
-      // Clear canvas (use scaled size)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Calculate cycling color for glow (same as nodes)
       const colorT = (Math.sin(rotationAngle * 0.5) + 1) / 2;
       const glowColor = lerpColor(COLORS.cyan, COLORS.magenta, colorT);
 
-      // Draw 3D rotating logo as background sun element
       drawRotatingLogo(ctx, width, height, rotationAngle, logoRef.current);
-
-      // Draw glow around logo with cycling colors
       drawLogoGlow(ctx, width, height, rotationAngle, glowColor);
 
       animationRef.current = window.requestAnimationFrame(animate);
     };
 
-    // Wait for logo to load before starting animation
     logo.onload = () => {
       animationRef.current = window.requestAnimationFrame(animate);
     };
 
-    // Start anyway if logo fails to load
     logo.onerror = () => {
       animationRef.current = window.requestAnimationFrame(animate);
     };
 
     return () => {
-      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateSize);
       window.cancelAnimationFrame(animationRef.current);
-      if (canvasRef.current && canvasRef.current.parentNode) {
-        canvasRef.current.parentNode.removeChild(canvasRef.current);
-      }
-      canvasRef.current = null;
     };
-  }, [cy, isActive, getRotationAngle]);
-}
+  }, [isActive, getRotationAngle]);
 
-/**
- * Draw 3D rotating logo with thickness (extruded look)
- */
+  if (!isActive) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none z-[99998]"
+      style={{ width: "100%", height: "100%" }}
+    />
+  );
+};
+
 function drawRotatingLogo(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -156,46 +121,38 @@ function drawRotatingLogo(
   if (!logo || !logo.complete) return;
 
   const centerX = width / 2;
-  const centerY = height * 0.35; // Position like vaporwave sun
+  const centerY = height * 0.35;
 
-  // Logo size - responsive to screen (medium size for background element)
   const baseSize = Math.min(width, height) * 0.22;
-  const aspectRatio = 81.8 / 87.413; // SVG viewBox aspect ratio
+  const aspectRatio = 81.8 / 87.413;
   const logoWidth = baseSize * aspectRatio;
   const logoHeight = baseSize;
 
-  // 3D rotation effect - Y-axis rotation
   const scaleX = Math.cos(angle);
   const absScaleX = Math.abs(scaleX);
   const sinAngle = Math.sin(angle);
 
-  // Extrusion parameters
-  const extrusionDepth = 15; // Total depth in pixels
+  const extrusionDepth = 15;
   const numLayers = 15;
 
   ctx.save();
   ctx.translate(centerX, centerY);
 
-  // Determine if showing front or back face
   const isBackFace = scaleX < 0;
 
-  // Draw extruded layers from back to front
   for (let i = numLayers - 1; i >= 0; i--) {
     const t = i / numLayers;
-    // Offset based on rotation - creates the 3D depth effect
     const xOffset = sinAngle * extrusionDepth * t;
 
     ctx.save();
     ctx.translate(xOffset, 0);
     ctx.scale(scaleX, 1);
 
-    // Back layers are darker
     const brightness = 0.3 + (1 - t) * 0.7;
     const alpha = (0.2 + (1 - t) * 0.2) * absScaleX + 0.05;
 
     ctx.globalAlpha = alpha;
 
-    // Back face is slightly darker to show full 360 rotation
     if (isBackFace) {
       ctx.filter = `brightness(${brightness * 0.6})`;
     } else {
@@ -209,9 +166,6 @@ function drawRotatingLogo(
   ctx.restore();
 }
 
-/**
- * Draw neon glow around logo with cycling cyan/magenta colors
- */
 function drawLogoGlow(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -220,10 +174,9 @@ function drawLogoGlow(
   color: RGBColor
 ): void {
   const centerX = width / 2;
-  const centerY = height * 0.35; // Match logo position
+  const centerY = height * 0.35;
   const glowSize = Math.min(width, height) * 0.25;
 
-  // Glow intensity varies with rotation
   const intensity = 0.15 + Math.abs(Math.sin(angle)) * 0.1;
 
   const gradient = ctx.createRadialGradient(
@@ -243,93 +196,40 @@ function drawLogoGlow(
   ctx.fillRect(0, 0, width, height);
 }
 
-/**
- * Hook to apply cycling neon glow to nodes
- */
-function useDeusExNodeGlow(
-  cyInstance: CyCore | null | undefined,
-  isActive: boolean,
-  getRotationAngle: () => number
-): void {
-  const originalStylesRef = useRef<Map<string, Record<string, string>>>(new Map());
-  const animationRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (!isActive || !cyInstance) return undefined;
-
-    // Capture ref value at effect run time for cleanup
-    const styles = originalStylesRef.current;
-    const nodes = cyInstance.nodes();
-
-    // Store original styles
-    nodes.forEach((node) => {
-      const id = node.id();
-      styles.set(id, {
-        "background-color": node.style("background-color") as string,
-        "border-color": node.style("border-color") as string,
-        "border-width": node.style("border-width") as string
-      });
-    });
-
-    const cy = cyInstance;
-
-    const animate = (): void => {
-      const angle = getRotationAngle();
-      // Intensity based on rotation angle
-      const intensity = 0.3 + Math.abs(Math.sin(angle)) * 0.5;
-
-      // Cycle between cyan and magenta based on rotation
-      const colorT = (Math.sin(angle * 0.5) + 1) / 2; // 0 to 1
-      const color = lerpColor(COLORS.cyan, COLORS.magenta, colorT);
-
-      cy.batch(() => applyNodeGlow(cy, color, intensity));
-
-      animationRef.current = window.requestAnimationFrame(animate);
-    };
-
-    animationRef.current = window.requestAnimationFrame(animate);
-
-    return () => {
-      window.cancelAnimationFrame(animationRef.current);
-      cy.batch(() => restoreNodeStyles(cy, styles));
-      styles.clear();
-    };
-  }, [isActive, cyInstance, getRotationAngle]);
-}
-
-/**
- * Deus Ex Mode Overlay
- */
-export const DeusExMode: React.FC<DeusExModeProps> = ({
+export const DeusExMode: React.FC<BaseModeProps> = ({
   isActive,
   onClose,
   onSwitchMode,
-  modeName,
-  cyInstance
+  modeName
 }) => {
   const [visible, setVisible] = useState(false);
   const timeRef = useRef<number>(0);
   const animationRef = useRef<number>(0);
 
-  // Rotation angle updated via animation frame
-  const getRotationAngle = (): number => {
-    return timeRef.current * 0.5; // Slow rotation speed
-  };
+  const getRotationAngle = useCallback((): number => {
+    return timeRef.current * 0.5;
+  }, []);
 
-  // Apply gold glow to nodes
-  useDeusExNodeGlow(cyInstance, isActive, getRotationAngle);
+  const getColor = useCallback((): RGBColor => {
+    const angle = getRotationAngle();
+    const colorT = (Math.sin(angle * 0.5) + 1) / 2;
+    return lerpColor(COLORS.cyan, COLORS.magenta, colorT);
+  }, [getRotationAngle]);
 
-  // Create cytoscape layer for rotating logo (behind nodes)
-  useDeusExLayer(cyInstance, isActive, getRotationAngle);
+  const getIntensity = useCallback((): number => {
+    const angle = getRotationAngle();
+    return 0.3 + Math.abs(Math.sin(angle)) * 0.5;
+  }, [getRotationAngle]);
 
-  // Manage animation time
+  useNodeGlow(isActive, getColor, getIntensity);
+
   useEffect(() => {
     if (isActive) {
       setVisible(true);
       timeRef.current = 0;
 
       const animate = (): void => {
-        timeRef.current += 0.016; // ~60fps
+        timeRef.current += 0.016;
         animationRef.current = window.requestAnimationFrame(animate);
       };
 
@@ -356,7 +256,8 @@ export const DeusExMode: React.FC<DeusExModeProps> = ({
 
   return (
     <>
-      {/* Control buttons - Deus Ex metallic style */}
+      <DeusExCanvas isActive={isActive} getRotationAngle={getRotationAngle} />
+
       <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
         <button
           onClick={handleSwitch}
