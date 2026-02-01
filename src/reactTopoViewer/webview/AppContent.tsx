@@ -652,7 +652,7 @@ export const AppContent: React.FC<AppContentProps> = ({
             onClose: menuHandlers.handleCloseLinkPanel
           }}
           linkImpairment={{
-            isVisible: !!state.editingImpairment && state.mode === "view",
+            isVisible: !!state.editingImpairment,
             linkData: selectionData.selectedLinkImpairmentData,
             onError: handleLinkImpairmentError,
             onApply: handleLinkImpairmentApply,

@@ -57,6 +57,9 @@ function useLinkImpairmentForm(netemData: LinkImpairmentData | null) {
     if (!netemData) return;
     setFormData((prev) => {
       const isNewLink = !prev || prev.id !== netemData.id;
+      if (!isNewLink && hasChanges) {
+        return prev;
+      }
 
       // compare baseline
       const currentBaseline = {

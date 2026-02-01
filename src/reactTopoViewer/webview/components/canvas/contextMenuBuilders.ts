@@ -328,30 +328,31 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     showLinkInfo,
     showLinkImpairment
   } = ctx;
-  if (isEditMode && isLocked) {
-    return [];
-  }
+  const impairmentItem: ContextMenuItem = {
+    id: "impair-edge",
+    label: "Link impairments",
+    icon: "fas fa-sliders",
+    onClick: () => {
+      showLinkImpairment?.(targetId);
+      closeContextMenu();
+    }
+  };
   if (!isEditMode) {
-  return [
-    {
-      id: "impair-edge",
-      label: "Link impairments",
-      icon: "fas fa-sliders",
-      onClick: () => {
-        showLinkImpairment?.(targetId);
-        closeContextMenu();
-      }
-    },
-    {
-      id: "info-edge",
-      label: "Link Info",
-      icon: "fas fa-circle-info",
-      onClick: () => {
-        showLinkInfo?.(targetId);
-        closeContextMenu();
+    return [
+      impairmentItem,
+      {
+        id: "info-edge",
+        label: "Link Info",
+        icon: "fas fa-circle-info",
+        onClick: () => {
+          showLinkInfo?.(targetId);
+          closeContextMenu();
         }
       }
     ];
+  }
+  if (isLocked) {
+    return [impairmentItem];
   }
   return [
     {
@@ -364,6 +365,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
         closeContextMenu();
       }
     },
+    impairmentItem,
     { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-edge",
