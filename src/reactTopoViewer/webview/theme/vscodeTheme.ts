@@ -14,10 +14,14 @@ export const theme = createTheme({
     },
     primary: {
       main: "var(--vscode-button-background)",
+      light: "var(--vscode-button-hoverBackground)",
+      dark: "var(--vscode-button-background)",
       contrastText: "var(--vscode-button-foreground)"
     },
     secondary: {
       main: "var(--vscode-button-secondaryBackground)",
+      light: "var(--vscode-button-secondaryHoverBackground)",
+      dark: "var(--vscode-button-secondaryBackground)",
       contrastText: "var(--vscode-button-secondaryForeground)"
     },
     divider: "var(--vscode-panel-border)",
