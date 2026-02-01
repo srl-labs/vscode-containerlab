@@ -1,32 +1,7 @@
 import { createTheme } from "@mui/material/styles";
 
-const editorBackground = "var(--vscode-editor-background)";
-
 export const theme = createTheme({
-  palette: {
-    background: {
-      default: editorBackground,
-      paper: editorBackground
-    },
-    text: {
-      primary: "var(--vscode-editor-foreground)",
-      secondary: "var(--vscode-descriptionForeground)"
-    },
-    primary: {
-      main: "var(--vscode-button-background)",
-      light: "var(--vscode-button-hoverBackground)",
-      dark: "var(--vscode-button-background)",
-      contrastText: "var(--vscode-button-foreground)"
-    },
-    secondary: {
-      main: "var(--vscode-button-secondaryBackground)",
-      light: "var(--vscode-button-secondaryHoverBackground)",
-      dark: "var(--vscode-button-secondaryBackground)",
-      contrastText: "var(--vscode-button-secondaryForeground)"
-    },
-    divider: "var(--vscode-panel-border)",
-    action: { hover: "var(--vscode-list-hoverBackground)" }
-  },
+  palette: { mode: "dark" },
   typography: {
     fontFamily: "var(--vscode-font-family)",
     fontSize: 13
@@ -34,14 +9,50 @@ export const theme = createTheme({
   shape: { borderRadius: 4 },
   components: {
     MuiCssBaseline: {
-      styleOverrides: { body: { backgroundColor: editorBackground } }
+      styleOverrides: {
+        body: {
+          backgroundColor: "var(--vscode-editor-background)",
+          color: "var(--vscode-editor-foreground)"
+        }
+      }
     },
     MuiButton: {
       styleOverrides: { root: { textTransform: "none", minWidth: 0 } },
       defaultProps: { disableElevation: true }
     },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          color: "var(--vscode-icon-foreground)",
+          "&:hover": { backgroundColor: "var(--vscode-list-hoverBackground)" }
+        }
+      }
+    },
     MuiPaper: {
-      styleOverrides: { root: { backgroundImage: "none" } }
+      styleOverrides: {
+        root: {
+          backgroundImage: "none",
+          backgroundColor: "var(--vscode-editor-background)"
+        }
+      }
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "var(--vscode-editor-background)",
+          color: "var(--vscode-editor-foreground)"
+        }
+      }
+    },
+    MuiToolbar: {
+      styleOverrides: {
+        root: { borderBottom: "1px solid var(--vscode-panel-border)" }
+      }
+    },
+    MuiTypography: {
+      styleOverrides: {
+        root: { color: "var(--vscode-editor-foreground)" }
+      }
     },
     MuiTextField: {
       defaultProps: { size: "small", variant: "outlined" }
