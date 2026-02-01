@@ -15,9 +15,19 @@ import { dispatchTopologyCommand, requestSnapshot, setHostRevision } from "./top
 import { enqueueHostCommand } from "./topologyHostQueue";
 import { applySnapshotToStores } from "./topologyHostSync";
 
+const HOST_ACK = "topology-host:ack" as const;
+const HOST_REJECT = "topology-host:reject" as const;
+
 interface ExecuteOptions {
   applySnapshot?: boolean;
 }
+
+function notifyDevHostUpdate(): void {
+  if (typeof window === "undefined") return;
+  const dev = (window as unknown as { __DEV__?: { onHostUpdate?: () => void } }).__DEV__;
+  dev?.onHostUpdate?.();
+}
+
 async function handleHostResponse(
   response: TopologyHostResponseMessage,
   applySnapshot: boolean
@@ -29,40 +39,71 @@ async function handleHostResponse(
     });
   };
 
-  if (response.type === "topology-host:ack") {
-    if (response.snapshot) {
-      if (applySnapshot) {
-        applySnapshotToStores(response.snapshot);
-      } else {
-        setHostRevision(response.snapshot.revision);
-        syncUndoRedo(response.snapshot);
-      }
+  const applySnapshotAndNotify = (snapshot: TopologySnapshot) => {
+    applySnapshotToStores(snapshot);
+    notifyDevHostUpdate();
+  };
+
+  const setRevisionAndNotify = (revision: number, snapshot?: TopologySnapshot) => {
+    setHostRevision(revision);
+    if (snapshot) {
+      syncUndoRedo(snapshot);
+    }
+    notifyDevHostUpdate();
+  };
+
+  switch (response.type) {
+    case HOST_ACK:
+      return handleAckResponse(response, applySnapshot, applySnapshotAndNotify, setRevisionAndNotify);
+    case HOST_REJECT:
+      return handleRejectResponse(response, applySnapshot, applySnapshotAndNotify, setRevisionAndNotify);
+    case "topology-host:error":
+      throw new Error(response.error);
+    default:
       return response;
-    }
-
-    if (applySnapshot) {
-      const snapshot = await requestSnapshot();
-      applySnapshotToStores(snapshot);
-    } else if (typeof response.revision === "number") {
-      setHostRevision(response.revision);
-    }
-    return response;
   }
+}
 
-  if (response.type === "topology-host:reject") {
+async function handleAckResponse(
+  response: TopologyHostResponseMessage,
+  applySnapshot: boolean,
+  applySnapshotAndNotify: (snapshot: TopologySnapshot) => void,
+  setRevisionAndNotify: (revision: number, snapshot?: TopologySnapshot) => void
+): Promise<TopologyHostResponseMessage> {
+  if (response.type !== HOST_ACK) return response;
+
+  if (response.snapshot) {
     if (applySnapshot) {
-      applySnapshotToStores(response.snapshot);
+      applySnapshotAndNotify(response.snapshot);
     } else {
-      setHostRevision(response.snapshot.revision);
-      syncUndoRedo(response.snapshot);
+      setRevisionAndNotify(response.snapshot.revision, response.snapshot);
     }
     return response;
   }
 
-  if (response.type === "topology-host:error") {
-    throw new Error(response.error);
+  if (applySnapshot) {
+    const snapshot = await requestSnapshot();
+    applySnapshotAndNotify(snapshot);
+    return response;
   }
 
+  setRevisionAndNotify(response.revision);
+  return response;
+}
+
+function handleRejectResponse(
+  response: TopologyHostResponseMessage,
+  applySnapshot: boolean,
+  applySnapshotAndNotify: (snapshot: TopologySnapshot) => void,
+  setRevisionAndNotify: (revision: number, snapshot?: TopologySnapshot) => void
+): TopologyHostResponseMessage {
+  if (response.type !== HOST_REJECT) return response;
+
+  if (applySnapshot) {
+    applySnapshotAndNotify(response.snapshot);
+  } else {
+    setRevisionAndNotify(response.snapshot.revision, response.snapshot);
+  }
   return response;
 }
 
@@ -96,7 +137,7 @@ export async function executeTopologyCommands(
       const response = await dispatchTopologyCommand(command);
       lastResponse = await handleHostResponse(response, false);
 
-      if (response.type === "topology-host:reject") {
+      if (response.type === HOST_REJECT) {
         if (applySnapshot) {
           applySnapshotToStores(response.snapshot);
         }
@@ -105,7 +146,7 @@ export async function executeTopologyCommands(
     }
 
     if (applySnapshot) {
-      if (lastResponse?.type === "topology-host:ack" && lastResponse.snapshot) {
+      if (lastResponse?.type === HOST_ACK && lastResponse.snapshot) {
         applySnapshotToStores(lastResponse.snapshot);
       } else {
         const snapshot = await requestSnapshot();
@@ -123,5 +164,6 @@ export async function refreshTopologySnapshot(
 ): Promise<TopologySnapshot> {
   const snapshot = await requestSnapshot(options);
   applySnapshotToStores(snapshot);
+  notifyDevHostUpdate();
   return snapshot;
 }
