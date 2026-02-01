@@ -1424,6 +1424,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.18",
