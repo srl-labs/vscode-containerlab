@@ -581,7 +581,6 @@ function renderLinkCreationLine(params: {
   edges: Edge[];
   sourcePosition: { x: number; y: number } | null;
   linkCreationSeed: number | null | undefined;
-  reactFlowInstance: ReactFlowInstance;
 }): React.ReactElement {
   const {
     linkSourceNode,
@@ -589,8 +588,7 @@ function renderLinkCreationLine(params: {
     nodes,
     edges,
     sourcePosition,
-    linkCreationSeed,
-    reactFlowInstance
+    linkCreationSeed
   } = params;
   return (
     <LinkCreationLine
@@ -600,7 +598,6 @@ function renderLinkCreationLine(params: {
       edges={edges}
       sourcePosition={sourcePosition}
       linkCreationSeed={linkCreationSeed}
-      reactFlowInstance={reactFlowInstance}
     />
   );
 }
@@ -623,7 +620,6 @@ function buildCanvasOverlays(params: {
   edges: Edge[];
   sourcePosition: { x: number; y: number } | null;
   linkCreationSeed: number | null | undefined;
-  reactFlowInstance: ReactFlowInstance | null;
   isInAddMode: boolean;
   addModeMessage?: string | null;
   gridLineWidth: number;
@@ -645,7 +641,6 @@ function buildCanvasOverlays(params: {
     edges,
     sourcePosition,
     linkCreationSeed,
-    reactFlowInstance,
     isInAddMode,
     addModeMessage,
     gridLineWidth,
@@ -654,7 +649,7 @@ function buildCanvasOverlays(params: {
 
   const canShowGeoMap = isGeoLayout;
   const canShowBackground = !isLowDetail && !isGeoLayout;
-  const canShowLinkCreation = Boolean(linkSourceNode) && Boolean(reactFlowInstance);
+  const canShowLinkCreation = Boolean(linkSourceNode);
   const canShowLinkIndicator = Boolean(linkSourceNode);
   const canShowAnnotationIndicator = isInAddMode && Boolean(addModeMessage);
 
@@ -669,8 +664,7 @@ function buildCanvasOverlays(params: {
         nodes,
         edges,
         sourcePosition,
-        linkCreationSeed,
-        reactFlowInstance: reactFlowInstance as ReactFlowInstance
+        linkCreationSeed
       })
     : null;
   const linkIndicator = canShowLinkIndicator
@@ -1023,7 +1017,6 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       edges: allEdges,
       sourcePosition: sourceNodePosition,
       linkCreationSeed: linkCreationSeed ?? null,
-      reactFlowInstance: handlers.reactFlowInstance.current,
       isInAddMode,
       addModeMessage,
       gridLineWidth,

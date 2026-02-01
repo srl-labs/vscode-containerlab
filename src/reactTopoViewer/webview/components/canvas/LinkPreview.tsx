@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import type { ConnectionLineComponentProps, Edge, Node, ReactFlowInstance } from "@xyflow/react";
+import { useStore } from "@xyflow/react";
+import type { ConnectionLineComponentProps, Edge, Node } from "@xyflow/react";
 
 import { useEdges } from "../../stores/graphStore";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
@@ -498,7 +499,6 @@ export interface LinkCreationLineProps {
   edges: Edge[];
   sourcePosition: { x: number; y: number } | null;
   linkCreationSeed?: number | null;
-  reactFlowInstance: ReactFlowInstance;
 }
 
 const LINK_LINE_SVG_STYLE: React.CSSProperties = {
@@ -534,8 +534,7 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
     nodes,
     edges,
     sourcePosition,
-    linkCreationSeed,
-    reactFlowInstance
+    linkCreationSeed
   }) => {
     const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -555,6 +554,8 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
       };
     }, []);
 
+    const [viewportX, viewportY, viewportZoom] = useStore((state) => state.transform);
+
     const sourceNode = useMemo(
       () => nodes.find((node) => node.id === linkSourceNodeId) ?? null,
       [nodes, linkSourceNodeId]
@@ -564,7 +565,10 @@ export const LinkCreationLine = React.memo<LinkCreationLineProps>(
         linkTargetNodeId ? (nodes.find((node) => node.id === linkTargetNodeId) ?? null) : null,
       [nodes, linkTargetNodeId]
     );
-    const viewport = reactFlowInstance.getViewport();
+    const viewport = useMemo(
+      () => ({ x: viewportX, y: viewportY, zoom: viewportZoom }),
+      [viewportX, viewportY, viewportZoom]
+    );
     const bounds = getContainerBounds();
     const labelStyle = useMemo(() => buildLinkLabelStyle(viewport.zoom), [viewport.zoom]);
 
