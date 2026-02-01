@@ -12,14 +12,12 @@ import type {
 import { useTopoViewerStore } from "../stores/topoViewerStore";
 
 import { dispatchTopologyCommand, requestSnapshot, setHostRevision } from "./topologyHostClient";
+import { enqueueHostCommand } from "./topologyHostQueue";
 import { applySnapshotToStores } from "./topologyHostSync";
 
 interface ExecuteOptions {
   applySnapshot?: boolean;
 }
-
-let commandQueue: Promise<unknown> = Promise.resolve();
-
 async function handleHostResponse(
   response: TopologyHostResponseMessage,
   applySnapshot: boolean
@@ -72,21 +70,24 @@ export async function executeTopologyCommand(
   command: TopologyHostCommand,
   options: ExecuteOptions = {}
 ): Promise<TopologyHostResponseMessage> {
+  if (useTopoViewerStore.getState().isProcessing) {
+    throw new Error("TopoViewer is processing; edits are temporarily disabled.");
+  }
   const run = async () => {
     const applySnapshot = options.applySnapshot ?? true;
     const response = await dispatchTopologyCommand(command);
     return handleHostResponse(response, applySnapshot);
   };
-
-  const queued = commandQueue.then(run, run);
-  commandQueue = queued.catch(() => undefined);
-  return queued;
+  return enqueueHostCommand(run);
 }
 
 export async function executeTopologyCommands(
   commands: TopologyHostCommand[],
   options: ExecuteOptions = {}
 ): Promise<TopologyHostResponseMessage | null> {
+  if (useTopoViewerStore.getState().isProcessing) {
+    throw new Error("TopoViewer is processing; edits are temporarily disabled.");
+  }
   const run = async () => {
     const applySnapshot = options.applySnapshot ?? true;
     let lastResponse: TopologyHostResponseMessage | null = null;
@@ -114,10 +115,7 @@ export async function executeTopologyCommands(
 
     return lastResponse;
   };
-
-  const queued = commandQueue.then(run, run);
-  commandQueue = queued.catch(() => undefined);
-  return queued;
+  return enqueueHostCommand(run);
 }
 
 export async function refreshTopologySnapshot(

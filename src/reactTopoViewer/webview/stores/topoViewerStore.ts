@@ -286,7 +286,24 @@ export const useTopoViewerStore = createWithEqualityFn<TopoViewerStore>((set) =>
 
   // Processing state
   setProcessing: (isProcessing, mode) => {
-    set({ isProcessing, processingMode: mode ?? null });
+    set((state) => {
+      const next: Partial<TopoViewerState> = {
+        isProcessing,
+        processingMode: mode ?? null
+      };
+
+      if (isProcessing) {
+        next.editingNode = null;
+        next.editingEdge = null;
+        next.editingImpairment = null;
+        next.editingNetwork = null;
+        next.editingCustomTemplate = null;
+        next.selectedNode = null;
+        next.selectedEdge = null;
+      }
+
+      return { ...state, ...next };
+    });
   },
 
   // Data refresh
@@ -348,7 +365,8 @@ export const useEditingImpairment = () =>
   useTopoViewerStore((state) => state.editingImpairment);
 
 /** Get lock state */
-export const useIsLocked = () => useTopoViewerStore((state) => state.isLocked);
+export const useIsLocked = () =>
+  useTopoViewerStore((state) => state.isLocked || state.isProcessing);
 
 /** Get link label mode */
 export const useLinkLabelMode = () => useTopoViewerStore((state) => state.linkLabelMode);

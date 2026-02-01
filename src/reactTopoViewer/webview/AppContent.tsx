@@ -50,8 +50,14 @@ import {
   useShakeAnimation,
   useShortcutDisplay
 } from "./hooks/ui";
-import { useGraphActions, useGraphState, useGraphStore } from "./stores/graphStore";
-import { useTopoViewerActions, useTopoViewerState } from "./stores/topoViewerStore";
+import {
+  useAnnotationUIActions,
+  useGraphActions,
+  useGraphState,
+  useGraphStore,
+  useTopoViewerActions,
+  useTopoViewerState
+} from "./stores";
 import { executeTopologyCommand, toLinkSaveData, getCustomIconMap } from "./services";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
@@ -168,6 +174,15 @@ function buildAnnotationSaveCommand(graphNodesForSave: TopoNode[]): TopologyHost
   };
 }
 
+function getInteractionMode(mode: "view" | "edit", isProcessing: boolean): "view" | "edit" {
+  if (isProcessing) return "view";
+  return mode;
+}
+
+function getInteractionLockState(isLocked: boolean, isProcessing: boolean): boolean {
+  return isLocked || isProcessing;
+}
+
 export interface AppContentProps {
   reactFlowRef: React.RefObject<ReactFlowCanvasRef | null>;
   rfInstance: ReactFlowInstance | null;
@@ -185,6 +200,10 @@ export const AppContent: React.FC<AppContentProps> = ({
   const topoActions = useTopoViewerActions();
   const { nodes, edges } = useGraphState();
   const graphActions = useGraphActions();
+  const annotationUiActions = useAnnotationUIActions();
+  const isProcessing = state.isProcessing;
+  const isInteractionLocked = getInteractionLockState(state.isLocked, isProcessing);
+  const interactionMode = getInteractionMode(state.mode, isProcessing);
 
   const graphNodes = nodes as TopoNode[];
   const graphEdges = edges as TopoEdge[];
@@ -350,8 +369,8 @@ export const AppContent: React.FC<AppContentProps> = ({
     rfInstance,
     onLockedAction: triggerLockShake,
     state: {
-      mode: state.mode,
-      isLocked: state.isLocked,
+      mode: interactionMode,
+      isLocked: isInteractionLocked,
       customNodes: state.customNodes,
       defaultNode: state.defaultNode,
       nodes: graphNodes
@@ -365,7 +384,7 @@ export const AppContent: React.FC<AppContentProps> = ({
   // Drag-drop handlers for node palette
   const handleDropCreateNode = React.useCallback(
     (position: { x: number; y: number }, templateName: string) => {
-      if (state.isLocked) {
+      if (isInteractionLocked) {
         triggerLockShake();
         return;
       }
@@ -375,24 +394,24 @@ export const AppContent: React.FC<AppContentProps> = ({
         graphCreation.createNodeAtPosition(position, template);
       }
     },
-    [state.isLocked, state.customNodes, graphCreation, triggerLockShake]
+    [isInteractionLocked, state.customNodes, graphCreation, triggerLockShake]
   );
 
   const handleDropCreateNetwork = React.useCallback(
     (position: { x: number; y: number }, networkType: string) => {
-      if (state.isLocked) {
+      if (isInteractionLocked) {
         triggerLockShake();
         return;
       }
       graphCreation.createNetworkAtPosition(position, networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]);
     },
-    [state.isLocked, graphCreation, triggerLockShake]
+    [isInteractionLocked, graphCreation, triggerLockShake]
   );
 
   useAppE2EExposure({
     state: {
-      isLocked: state.isLocked,
-      mode: state.mode,
+      isLocked: isInteractionLocked,
+      mode: interactionMode,
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge
     },
@@ -424,6 +443,41 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const shortcutDisplay = useShortcutDisplay();
   const panelVisibility = usePanelVisibility();
+  const { handleCloseBulkLink, handleCloseNodePalette, handleCloseLabSettings } =
+    panelVisibility;
+
+  const processingRef = React.useRef(false);
+  React.useEffect(() => {
+    if (isProcessing) {
+      if (processingRef.current) return;
+      processingRef.current = true;
+      topoActions.editNode(null);
+      topoActions.editEdge(null);
+      topoActions.editImpairment(null);
+      topoActions.editNetwork(null);
+      topoActions.editCustomTemplate(null);
+      topoActions.selectNode(null);
+      topoActions.selectEdge(null);
+      annotationUiActions.closeTextEditor();
+      annotationUiActions.closeShapeEditor();
+      annotationUiActions.closeGroupEditor();
+      annotationUiActions.disableAddTextMode();
+      annotationUiActions.disableAddShapeMode();
+      annotationUiActions.clearAllSelections();
+      handleCloseBulkLink();
+      handleCloseNodePalette();
+      handleCloseLabSettings();
+      return;
+    }
+    processingRef.current = false;
+  }, [
+    annotationUiActions,
+    handleCloseBulkLink,
+    handleCloseLabSettings,
+    handleCloseNodePalette,
+    isProcessing,
+    topoActions
+  ]);
 
   const clipboardHandlers = useClipboardHandlers({
     annotations,
@@ -476,8 +530,8 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   useAppKeyboardShortcuts({
     state: {
-      mode: state.mode,
-      isLocked: state.isLocked,
+      mode: interactionMode,
+      isLocked: isInteractionLocked,
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge
     },
@@ -630,7 +684,7 @@ export const AppContent: React.FC<AppContentProps> = ({
         />
         <EditorPanels
           nodeEditor={{
-            isVisible: !!state.editingNode,
+            isVisible: !!state.editingNode && !isProcessing,
             nodeData: selectionData.editingNodeData,
             inheritedProps: selectionData.editingNodeInheritedProps,
             onClose: nodeEditorHandlers.handleClose,
@@ -638,21 +692,21 @@ export const AppContent: React.FC<AppContentProps> = ({
             onApply: nodeEditorHandlers.handleApply
           }}
           networkEditor={{
-            isVisible: !!state.editingNetwork,
+            isVisible: !!state.editingNetwork && !isProcessing,
             nodeData: selectionData.editingNetworkData,
             onClose: networkEditorHandlers.handleClose,
             onSave: handleNetworkSave,
             onApply: handleNetworkApply
           }}
           customTemplateEditor={{
-            isVisible: !!state.editingCustomTemplate,
+            isVisible: !!state.editingCustomTemplate && !isProcessing,
             nodeData: customTemplateEditorData,
             onClose: customTemplateHandlers.handleClose,
             onSave: customTemplateHandlers.handleSave,
             onApply: customTemplateHandlers.handleApply
           }}
           linkEditor={{
-            isVisible: !!state.editingEdge,
+            isVisible: !!state.editingEdge && !isProcessing,
             linkData: selectionData.editingLinkData,
             onClose: linkEditorHandlers.handleClose,
             onSave: linkEditorHandlers.handleSave,
@@ -660,27 +714,27 @@ export const AppContent: React.FC<AppContentProps> = ({
             onAutoApplyOffset: linkEditorHandlers.handleAutoApplyOffset
           }}
           bulkLink={{
-            isVisible: panelVisibility.showBulkLinkPanel,
-            mode: state.mode,
-            isLocked: state.isLocked,
+            isVisible: panelVisibility.showBulkLinkPanel && !isProcessing,
+            mode: interactionMode,
+            isLocked: isInteractionLocked,
             onClose: panelVisibility.handleCloseBulkLink
           }}
           freeTextEditor={{
-            isVisible: !!annotations.editingTextAnnotation,
+            isVisible: !!annotations.editingTextAnnotation && !isProcessing,
             annotation: annotations.editingTextAnnotation,
             onSave: annotations.saveTextAnnotation,
             onClose: annotations.closeTextEditor,
             onDelete: annotations.deleteTextAnnotation
           }}
           freeShapeEditor={{
-            isVisible: !!annotations.editingShapeAnnotation,
+            isVisible: !!annotations.editingShapeAnnotation && !isProcessing,
             annotation: annotations.editingShapeAnnotation,
             onSave: annotations.saveShapeAnnotation,
             onClose: annotations.closeShapeEditor,
             onDelete: annotations.deleteShapeAnnotation
           }}
           groupEditor={{
-            isVisible: !!annotations.editingGroup,
+            isVisible: !!annotations.editingGroup && !isProcessing,
             groupData: annotations.editingGroup,
             onSave: annotations.saveGroup,
             onClose: annotations.closeGroupEditor,
@@ -690,12 +744,12 @@ export const AppContent: React.FC<AppContentProps> = ({
           labSettings={{
             isVisible: panelVisibility.showLabSettingsPanel,
             mode: state.mode,
-            isLocked: state.isLocked,
+            isLocked: isInteractionLocked,
             labSettings: state.labSettings ?? { name: state.labName },
             onClose: panelVisibility.handleCloseLabSettings
           }}
         />
-        {state.mode === "edit" && (
+        {state.mode === "edit" && !isProcessing && (
           <PalettePanel
             isVisible={panelVisibility.showNodePalettePanel}
             onClose={panelVisibility.handleCloseNodePalette}

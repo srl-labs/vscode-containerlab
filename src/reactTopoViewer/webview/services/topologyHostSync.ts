@@ -25,6 +25,7 @@ import { applyForceLayout, hasPresetPositions } from "../components/canvas/layou
 import { snapToGrid } from "../utils/grid";
 
 import { dispatchTopologyCommand, setHostRevision } from "./topologyHostClient";
+import { enqueueHostCommand } from "./topologyHostQueue";
 
 export interface ApplySnapshotOptions {
   /** If true, apply auto-layout when nodes have no preset positions */
@@ -75,11 +76,13 @@ async function persistLayoutPositions(
 ): Promise<void> {
   if (positions.length === 0) return;
   try {
-    const response = await dispatchTopologyCommand({
-      command: "savePositions",
-      payload: positions,
-      skipHistory: true
-    });
+    const response = await enqueueHostCommand(() =>
+      dispatchTopologyCommand({
+        command: "savePositions",
+        payload: positions,
+        skipHistory: true
+      })
+    );
     if (response.type === "topology-host:ack") {
       if (response.snapshot) {
         setHostRevision(response.snapshot.revision);

@@ -70,6 +70,10 @@
     background-color: #3b82f6;
   }
 
+  .mode-badge.processing {
+    background-color: #f59e0b;
+  }
+
   /* Navbar buttons */
   .navbar-buttons {
     display: flex;

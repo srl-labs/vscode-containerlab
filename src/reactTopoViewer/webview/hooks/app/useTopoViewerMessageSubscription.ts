@@ -86,7 +86,9 @@ function handleTopoModeChanged(msg: TopoModeChangedMessage): void {
 }
 
 function handlePanelAction(msg: PanelActionMessage): void {
-  const { selectNode, selectEdge, editNode, editEdge } = useTopoViewerStore.getState();
+  const { selectNode, selectEdge, editNode, editEdge, isProcessing } =
+    useTopoViewerStore.getState();
+  if (isProcessing) return;
   const action = msg.action;
   const nodeId = msg.nodeId;
   const edgeId = msg.edgeId;

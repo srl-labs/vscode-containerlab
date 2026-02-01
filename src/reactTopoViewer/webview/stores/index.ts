@@ -6,9 +6,14 @@
  */
 
 // Core store hooks
-export { useGraphStore } from "./graphStore";
-export { useTopoViewerStore, parseInitialData } from "./topoViewerStore";
-export { useAnnotationUIStore } from "./annotationUIStore";
+export { useGraphStore, useGraphActions, useGraphState } from "./graphStore";
+export {
+  useTopoViewerStore,
+  parseInitialData,
+  useTopoViewerActions,
+  useTopoViewerState
+} from "./topoViewerStore";
+export { useAnnotationUIStore, useAnnotationUIActions, useAnnotationUIState } from "./annotationUIStore";
 export { useCanvasStore, buildEdgeInfo, useEdgeInfo } from "./canvasStore";
 
 // Essential types (import other types directly from sub-modules)

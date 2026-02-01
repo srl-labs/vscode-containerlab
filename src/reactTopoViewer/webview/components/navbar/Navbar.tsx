@@ -111,7 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { toggleLock } = useTopoViewerActions();
 
   const isViewerMode = mode === "view";
-  const isEditMode = mode === "edit";
+  const isEditMode = mode === "edit" && !isProcessing;
   const lockButtonClass = buildLockButtonClass(isLocked, lockShakeActive);
 
   const handleOpenNodePalette = React.useCallback(() => {
@@ -131,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           clickProgress={logoClickProgress}
           isPartyMode={isPartyMode}
         />
-        <NavbarTitle mode={mode} labName={labName} />
+        <NavbarTitle mode={mode} labName={labName} isProcessing={isProcessing} />
       </div>
 
       {/* Center: Buttons */}
@@ -149,6 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           icon={isLocked ? "fa-lock" : "fa-unlock"}
           title={isLocked ? "Unlock Lab" : "Lock Lab"}
           onClick={toggleLock}
+          disabled={isProcessing}
           className={lockButtonClass}
           ariaPressed={isLocked}
           testId="navbar-lock"
@@ -822,11 +823,15 @@ const NavbarLogo: React.FC<NavbarLogoProps> = ({
 interface NavbarTitleProps {
   mode: "view" | "edit";
   labName: string | null;
+  isProcessing?: boolean;
 }
 
-const NavbarTitle: React.FC<NavbarTitleProps> = ({ mode, labName }) => {
-  const modeClass = mode === "view" ? "viewer" : "editor";
-  const modeLabel = mode === "view" ? "viewer" : "editor";
+const NavbarTitle: React.FC<NavbarTitleProps> = ({
+  mode,
+  labName,
+  isProcessing = false
+}) => {
+  const { modeClass, modeLabel } = getNavbarModePresentation(mode, isProcessing);
   const displayName = labName || "Unknown Lab";
 
   return (
@@ -839,3 +844,14 @@ const NavbarTitle: React.FC<NavbarTitleProps> = ({ mode, labName }) => {
     </div>
   );
 };
+
+function getNavbarModePresentation(
+  mode: "view" | "edit",
+  isProcessing: boolean
+): { modeClass: string; modeLabel: string } {
+  if (isProcessing) {
+    return { modeClass: "processing", modeLabel: "processing" };
+  }
+  const resolvedMode = mode === "view" ? "viewer" : "editor";
+  return { modeClass: resolvedMode, modeLabel: resolvedMode };
+}
