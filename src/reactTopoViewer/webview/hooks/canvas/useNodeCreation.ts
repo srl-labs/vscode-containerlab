@@ -4,7 +4,7 @@
  * Uses ReactFlow instance for viewport operations.
  * The event handling should be integrated via ReactFlow's onPaneClick callback.
  */
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
 import { log } from "../../utils/logger";
@@ -235,6 +235,16 @@ export function useNodeCreation(
   const optionsRef = useRef(options);
   optionsRef.current = options;
   const reservedIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (reservedIdsRef.current.size === 0) return;
+    const usedIds = options.getUsedNodeIds();
+    for (const id of reservedIdsRef.current) {
+      if (!usedIds.has(id)) {
+        reservedIdsRef.current.delete(id);
+      }
+    }
+  }, [options.getUsedNodeIds]);
 
   const getUsedIds = () => {
     const base = optionsRef.current.getUsedNodeIds();
