@@ -4,8 +4,8 @@
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 
-import type { TopoEdge, TopoNode, TopologyEdgeData } from "../shared/types/graph";
-import type { TopologyHostCommand } from "../shared/types/messages";
+import type { NetemState } from "../shared/parsing";
+import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
 
 import {
   FREE_TEXT_NODE_TYPE,
@@ -42,13 +42,13 @@ import {
   useNavbarCommands,
   useUndoRedoControls
 } from "./hooks/app";
-import type { useLayoutControls } from "./hooks/ui";
 import {
   useAppHandlers,
   useContextMenuHandlers,
   usePanelVisibility,
   useShakeAnimation,
-  useShortcutDisplay
+  useShortcutDisplay,
+  type useLayoutControls
 } from "./hooks/ui";
 import {
   useAnnotationUIActions,
@@ -59,6 +59,11 @@ import {
   useTopoViewerState
 } from "./stores";
 import { executeTopologyCommand, toLinkSaveData, getCustomIconMap } from "./services";
+import {
+  PENDING_NETEM_KEY,
+  areNetemEquivalent,
+  createPendingNetemOverride
+} from "./utils/netemOverrides";
 
 type LayoutControls = ReturnType<typeof useLayoutControls>;
 
@@ -307,12 +312,24 @@ export const AppContent: React.FC<AppContentProps> = ({
       if (!edge) return;
       const edgeData = edge.data as Record<string, unknown> | undefined;
       const extraData = (edgeData?.extraData ?? {}) as Record<string, unknown>;
+      const currentSourceNetem = extraData.clabSourceNetem as NetemState | undefined;
+      const currentTargetNetem = extraData.clabTargetNetem as NetemState | undefined;
+      const hasNetemChanges =
+        !areNetemEquivalent(currentSourceNetem, data.sourceNetem) ||
+        !areNetemEquivalent(currentTargetNetem, data.targetNetem);
+      const nextExtraData: Record<string, unknown> = {
+        ...extraData,
+        clabSourceNetem: data.sourceNetem,
+        clabTargetNetem: data.targetNetem
+      };
+      if (hasNetemChanges) {
+        nextExtraData[PENDING_NETEM_KEY] = createPendingNetemOverride(
+          data.sourceNetem,
+          data.targetNetem
+        );
+      }
       graphActions.updateEdgeData(data.id, {
-        extraData: {
-          ...extraData,
-          clabSourceNetem: data.sourceNetem,
-          clabTargetNetem: data.targetNetem
-        }
+        extraData: nextExtraData
       });
     },
     [graphActions]

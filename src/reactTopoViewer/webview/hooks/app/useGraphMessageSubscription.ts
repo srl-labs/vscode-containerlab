@@ -8,6 +8,7 @@
 import { useEffect } from "react";
 import type { Edge } from "@xyflow/react";
 
+import type { NetemState } from "../../../shared/parsing";
 import type { TopologySnapshot } from "../../../shared/types/messages";
 import {
   subscribeToWebviewMessages,
@@ -15,6 +16,12 @@ import {
 } from "../../messaging/webviewMessageBus";
 import { useGraphStore } from "../../stores/graphStore";
 import { applySnapshotToStores } from "../../services/topologyHostSync";
+import {
+  PENDING_NETEM_KEY,
+  type PendingNetemOverride,
+  areNetemEquivalent,
+  isPendingNetemFresh
+} from "../../utils/netemOverrides";
 
 // ============================================================================
 // Message Types
@@ -40,6 +47,73 @@ type ExtensionMessage =
 // Helper Functions
 // ============================================================================
 
+function buildEdgeWithExtraData(
+  edge: Edge,
+  extraData: Record<string, unknown>,
+  classes?: string
+): Edge {
+  return {
+    ...edge,
+    data: { ...edge.data, extraData },
+    className: classes ?? edge.className
+  };
+}
+
+function mergeExtraData(
+  oldExtraData: Record<string, unknown>,
+  updateExtraData: Record<string, unknown>
+): Record<string, unknown> {
+  return { ...oldExtraData, ...updateExtraData };
+}
+
+function stripPendingNetemKey(extraData: Record<string, unknown>): void {
+  delete extraData[PENDING_NETEM_KEY];
+}
+
+function hasNetemUpdate(updateExtraData: Record<string, unknown>): boolean {
+  return (
+    Object.prototype.hasOwnProperty.call(updateExtraData, "clabSourceNetem") ||
+    Object.prototype.hasOwnProperty.call(updateExtraData, "clabTargetNetem")
+  );
+}
+
+function matchesPendingNetem(
+  updateExtraData: Record<string, unknown>,
+  pending: PendingNetemOverride
+): boolean {
+  const incomingSource = updateExtraData.clabSourceNetem as NetemState | undefined;
+  const incomingTarget = updateExtraData.clabTargetNetem as NetemState | undefined;
+  return (
+    areNetemEquivalent(incomingSource, pending.source) &&
+    areNetemEquivalent(incomingTarget, pending.target)
+  );
+}
+
+function mergeExtraDataWithPending(
+  oldExtraData: Record<string, unknown>,
+  updateExtraData: Record<string, unknown>,
+  pending: PendingNetemOverride
+): Record<string, unknown> {
+  if (!isPendingNetemFresh(pending)) {
+    const merged = mergeExtraData(oldExtraData, updateExtraData);
+    stripPendingNetemKey(merged);
+    return merged;
+  }
+
+  if (!hasNetemUpdate(updateExtraData)) {
+    return mergeExtraData(oldExtraData, updateExtraData);
+  }
+
+  if (!matchesPendingNetem(updateExtraData, pending)) {
+    const { clabSourceNetem, clabTargetNetem, ...rest } = updateExtraData;
+    return mergeExtraData(oldExtraData, rest);
+  }
+
+  const merged = mergeExtraData(oldExtraData, updateExtraData);
+  stripPendingNetemKey(merged);
+  return merged;
+}
+
 /** Apply edge stats update to a single edge */
 function applyEdgeStatsToEdge(
   edge: Edge,
@@ -51,12 +125,13 @@ function applyEdgeStatsToEdge(
     string,
     unknown
   >;
-  const newExtraData = { ...oldExtraData, ...update.extraData };
-  return {
-    ...edge,
-    data: { ...edge.data, extraData: newExtraData },
-    className: update.classes ?? edge.className
-  };
+  const updateExtraData = update.extraData ?? {};
+  const pending = oldExtraData[PENDING_NETEM_KEY] as PendingNetemOverride | undefined;
+  const mergedExtraData = pending
+    ? mergeExtraDataWithPending(oldExtraData, updateExtraData, pending)
+    : mergeExtraData(oldExtraData, updateExtraData);
+
+  return buildEdgeWithExtraData(edge, mergedExtraData, update.classes);
 }
 
 function handleSnapshotMessage(msg: { snapshot?: TopologySnapshot }): void {

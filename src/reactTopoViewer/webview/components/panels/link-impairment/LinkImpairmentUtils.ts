@@ -1,5 +1,6 @@
 import { postCommand } from "../../../messaging/extensionMessaging";
 import type { NetemState } from "../../../../shared/parsing";
+import { normalizeNetemPercentage } from "../../../utils/netemNormalization";
 
 import type { LinkImpairmentData } from "./types";
 
@@ -7,7 +8,7 @@ import type { LinkImpairmentData } from "./types";
 const TIME_UNIT_RE = /^\d+(ms|s)$/;
 const ERR_TIME_UNIT =
   "Input should be a number and a time unit. Either ms (milliseconds) or s (seconds)";
-const PERCENTAGE_RE = /^(?:[1-9]\d?|100|0)$/;
+const PERCENTAGE_RE = /^(?:100(?:\.0+)?|(?:0|[1-9]\d?)(?:\.\d+)?)$/;
 const ERR_PERCENTAGE = "Input should be a number between 0 and 100.";
 const NUMBER_RE = /^\d+$/;
 const ERR_NUMBER = "Input should be a number.";
@@ -50,21 +51,13 @@ export function validateLinkImpairmentState(netemState: NetemState): string[] {
   return errors;
 }
 
-function normalizePercentage(value?: string | number): string {
-  const string = value?.toString() ?? "";
-  if (string.endsWith("%")) {
-    return string.slice(0, -1);
-  }
-  return string;
-}
-
 function stripNetemDataUnit(data: NetemState): NetemState {
   return {
     delay: data.delay,
     jitter: data.jitter,
-    loss: normalizePercentage(data.loss),
+    loss: normalizeNetemPercentage(data.loss),
     rate: data.rate,
-    corruption: normalizePercentage(data.corruption)
+    corruption: normalizeNetemPercentage(data.corruption)
   };
 }
 
