@@ -2,6 +2,10 @@
  * Shared button components for dynamic list components
  */
 import React from "react";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 
 interface DeleteItemButtonProps {
   onRemove: () => void;
@@ -9,15 +13,15 @@ interface DeleteItemButtonProps {
 }
 
 export const DeleteItemButton: React.FC<DeleteItemButtonProps> = ({ onRemove, disabled }) => (
-  <button
-    type="button"
-    className="dynamic-delete-btn"
+  <IconButton
+    size="small"
     onClick={onRemove}
     aria-label="Remove"
     disabled={disabled}
+    sx={{ "&:hover": { color: "error.main" } }}
   >
-    <i className="fas fa-trash"></i>
-  </button>
+    <DeleteIcon fontSize="small" />
+  </IconButton>
 );
 
 interface AddItemButtonProps {
@@ -27,8 +31,13 @@ interface AddItemButtonProps {
 }
 
 export const AddItemButton: React.FC<AddItemButtonProps> = ({ onAdd, label = "Add", disabled }) => (
-  <button type="button" className="btn btn-small" onClick={onAdd} disabled={disabled}>
-    <i className="fas fa-plus mr-1"></i>
+  <Button
+    size="small"
+    variant="outlined"
+    startIcon={<AddIcon />}
+    onClick={onAdd}
+    disabled={disabled}
+  >
     {label}
-  </button>
+  </Button>
 );

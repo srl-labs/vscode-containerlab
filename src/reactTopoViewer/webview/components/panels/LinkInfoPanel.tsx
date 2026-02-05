@@ -3,6 +3,9 @@
  * Shows properties of a selected link/edge with endpoint tabs and traffic charts
  */
 import React, { useState } from "react";
+import Box from "@mui/material/Box";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 
 import type { LinkData } from "../../hooks/ui";
 import type { InterfaceStatsPayload } from "../../../shared/types/topology";
@@ -79,6 +82,10 @@ export const LinkInfoPanel: React.FC<LinkInfoPanelProps> = ({ isVisible, linkDat
   const currentEndpoint = activeTab === "a" ? endpoints.a : endpoints.b;
   const endpointKey = `${activeTab}:${currentEndpoint.node}:${currentEndpoint.interface}`;
 
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: EndpointTab) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <FloatingPanel
       title="Link Properties"
@@ -92,59 +99,52 @@ export const LinkInfoPanel: React.FC<LinkInfoPanelProps> = ({ isVisible, linkDat
       minHeight={400}
     >
       {/* Tabs */}
-      <div className="flex border-b border-[var(--border)] mb-3 -mx-4 -mt-2 px-2">
-        <TabButton
-          label={`${linkData.source}:${linkData.sourceEndpoint || "eth"}`}
-          isActive={activeTab === "a"}
-          onClick={() => setActiveTab("a")}
-        />
-        <TabButton
-          label={`${linkData.target}:${linkData.targetEndpoint || "eth"}`}
-          isActive={activeTab === "b"}
-          onClick={() => setActiveTab("b")}
-        />
-      </div>
+      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2, mx: -2, mt: -1 }}>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          sx={{
+            minHeight: 40,
+            "& .MuiTab-root": {
+              minHeight: 40,
+              textTransform: "none",
+              fontSize: "0.8125rem"
+            }
+          }}
+        >
+          <Tab
+            value="a"
+            label={`${linkData.source}:${linkData.sourceEndpoint || "eth"}`}
+          />
+          <Tab
+            value="b"
+            label={`${linkData.target}:${linkData.targetEndpoint || "eth"}`}
+          />
+        </Tabs>
+      </Box>
 
       {/* Properties Grid */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 2,
+          mb: 2
+        }}
+      >
         <PropertyRow label="Node" value={currentEndpoint.node || "N/A"} />
         <PropertyRow label="Interface" value={currentEndpoint.interface || "N/A"} />
         <PropertyRow label="Type" value={currentEndpoint.type || "N/A"} />
 
         <PropertyRow label="MAC" value={currentEndpoint.mac || "N/A"} />
         <PropertyRow label="MTU" value={String(currentEndpoint.mtu || "N/A")} />
-        <div></div>
-      </div>
+        <Box />
+      </Box>
 
       {/* Traffic Chart */}
-      <div className="flex-1 min-h-[200px]">
+      <Box sx={{ flex: 1, minHeight: 200 }}>
         <TrafficChart stats={currentEndpoint.stats} endpointKey={endpointKey} />
-      </div>
+      </Box>
     </FloatingPanel>
   );
 };
-
-/**
- * Tab Button Component
- */
-interface TabButtonProps {
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}
-
-const TabButton: React.FC<TabButtonProps> = ({ label, isActive, onClick }) => (
-  <button
-    className={`
-      px-3 py-2 text-sm font-medium border-b-2 transition-colors
-      ${
-        isActive
-          ? "border-[var(--accent)] text-[var(--accent)]"
-          : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-      }
-    `}
-    onClick={onClick}
-  >
-    {label}
-  </button>
-);

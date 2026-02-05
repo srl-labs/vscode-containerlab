@@ -2,11 +2,17 @@
  * InputField - Text or number input
  */
 import React from "react";
+import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
+import InputAdornment from "@mui/material/InputAdornment";
+import IconButton from "@mui/material/IconButton";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 interface InputFieldProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  label?: string;
   placeholder?: string;
   type?: "text" | "number";
   min?: number;
@@ -14,30 +20,57 @@ interface InputFieldProps {
   step?: number;
   className?: string;
   disabled?: boolean;
+  helperText?: string;
+  tooltip?: string;
+  required?: boolean;
 }
 
 export const InputField: React.FC<InputFieldProps> = ({
   id,
   value,
   onChange,
+  label,
   placeholder,
   type = "text",
   min,
   max,
   step,
-  className = "",
-  disabled
+  disabled,
+  helperText,
+  tooltip,
+  required
 }) => (
-  <input
-    type={type}
+  <TextField
     id={id}
+    type={type}
     value={value}
     onChange={(e) => onChange(e.target.value)}
-    className={`input-field w-full ${className}`}
+    label={label}
     placeholder={placeholder}
-    min={min}
-    max={max}
-    step={step}
     disabled={disabled}
+    size="small"
+    fullWidth
+    required={required}
+    helperText={helperText}
+    inputProps={{
+      min,
+      max,
+      step
+    }}
+    InputProps={
+      tooltip
+        ? {
+            endAdornment: (
+              <InputAdornment position="end">
+                <Tooltip title={tooltip} arrow>
+                  <IconButton size="small" edge="end" tabIndex={-1}>
+                    <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              </InputAdornment>
+            )
+          }
+        : undefined
+    }
   />
 );

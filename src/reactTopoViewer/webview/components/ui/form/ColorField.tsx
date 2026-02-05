@@ -2,6 +2,8 @@
  * ColorField - Color picker input with hex display
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
 
 interface ColorFieldProps {
   id: string;
@@ -30,24 +32,33 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   };
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <input
+    <Box className={className} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Box
+        component="input"
         type="color"
         id={id}
         value={value || "#000000"}
         onChange={handleColorChange}
-        className="input-field h-8 w-14 cursor-pointer border border-gray-500 p-1"
+        sx={{
+          height: 32,
+          width: 56,
+          cursor: "pointer",
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 0.5,
+          p: 0.5
+        }}
       />
       {showHex && (
-        <input
-          type="text"
+        <TextField
+          size="small"
           value={value || ""}
           onChange={handleHexChange}
-          className="input-field flex-1"
           placeholder="#000000"
-          maxLength={7}
+          inputProps={{ maxLength: 7 }}
+          sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
         />
       )}
-    </div>
+    </Box>
   );
 };

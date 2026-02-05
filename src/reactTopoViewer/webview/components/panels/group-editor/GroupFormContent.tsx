@@ -3,6 +3,9 @@
  * Allows editing group name, level, and visual styles
  */
 import React from "react";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import type { GroupStyleAnnotation } from "../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../hooks/canvas";
@@ -25,7 +28,9 @@ const BasicInfoSection: React.FC<{
   updateField: Props["updateField"];
 }> = ({ formData, updateField }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="section-header">Basic Information</h4>
+    <Typography variant="subtitle2" fontWeight={600}>
+      Basic Information
+    </Typography>
     <div className="grid grid-cols-2 gap-3">
       <TextInput
         label="Group Name"
@@ -61,7 +66,9 @@ const BackgroundSection: React.FC<{
   updateStyle: Props["updateStyle"];
 }> = ({ formData, updateStyle }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="section-header">Background</h4>
+    <Typography variant="subtitle2" fontWeight={600}>
+      Background
+    </Typography>
     <div className="flex items-start gap-4 flex-wrap">
       <ColorSwatch
         label="Color"
@@ -83,7 +90,9 @@ const BorderSection: React.FC<{
   updateStyle: Props["updateStyle"];
 }> = ({ formData, updateStyle }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="section-header">Border</h4>
+    <Typography variant="subtitle2" fontWeight={600}>
+      Border
+    </Typography>
     <div className="flex items-start gap-4 flex-wrap">
       <ColorSwatch
         label="Color"
@@ -127,7 +136,9 @@ const TextSection: React.FC<{
   updateStyle: Props["updateStyle"];
 }> = ({ formData, updateStyle }) => (
   <div className="flex flex-col gap-3">
-    <h4 className="section-header">Label</h4>
+    <Typography variant="subtitle2" fontWeight={600}>
+      Label
+    </Typography>
     <div className="flex items-start gap-4">
       <ColorSwatch
         label="Text Color"
@@ -145,8 +156,10 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="field-label">Preview</span>
-      <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 min-h-[80px] flex items-center justify-center">
+      <Typography variant="caption" color="text.secondary">
+        Preview
+      </Typography>
+      <div className="relative p-4 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)] min-h-[80px] flex items-center justify-center">
         <div
           className="relative w-full h-16 flex items-start justify-center pt-1"
           style={{
@@ -184,14 +197,16 @@ export const GroupFormContent: React.FC<Props> = ({
     <TextSection formData={formData} updateStyle={updateStyle} />
     <PreviewSection formData={formData} />
     {onDelete && (
-      <button
-        type="button"
-        className="self-start text-xs text-[var(--vscode-errorForeground)] opacity-60 hover:opacity-100 transition-opacity"
+      <Button
+        variant="text"
+        color="error"
+        size="small"
+        startIcon={<DeleteIcon />}
         onClick={onDelete}
+        sx={{ alignSelf: "flex-start", textTransform: "none" }}
       >
-        <i className="fas fa-trash-alt mr-1.5" />
         Delete Group
-      </button>
+      </Button>
     )}
   </div>
 );

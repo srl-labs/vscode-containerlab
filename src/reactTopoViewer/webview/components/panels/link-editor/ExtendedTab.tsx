@@ -2,9 +2,11 @@
  * ExtendedTab - Extended link configuration (MAC, MTU, vars, labels)
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Paper from "@mui/material/Paper";
 
-import { FormField, InputField, KeyValueList, ReadOnlyBadge } from "../../ui/form";
-import { quoteBlockStyle } from "../../../styles/cssVariables";
+import { InputField, KeyValueList, ReadOnlyBadge } from "../../ui/form";
 
 import type { LinkTabProps, LinkEditorData } from "./types";
 
@@ -12,53 +14,67 @@ import type { LinkTabProps, LinkEditorData } from "./types";
  * Header section with link name and type
  */
 const HeaderSection: React.FC<{ linkId: string; linkType?: string }> = ({ linkId, linkType }) => (
-  <div className="border-b pb-3 mb-3" style={{ borderColor: "var(--vscode-panel-border)" }}>
-    <FormField label="Link Name">
+  <Box sx={{ borderBottom: 1, borderColor: "divider", pb: 1.5, mb: 1.5 }}>
+    <Box sx={{ mb: 1.5 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+        Link Name
+      </Typography>
       <ReadOnlyBadge>{linkId || "New Link"}</ReadOnlyBadge>
-    </FormField>
-    <FormField label="Type">
-      <ReadOnlyBadge>{linkType || "veth"}</ReadOnlyBadge>
-      <span className="text-xs text-[var(--vscode-descriptionForeground)] ml-2">
+    </Box>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+          Type
+        </Typography>
+        <ReadOnlyBadge>{linkType || "veth"}</ReadOnlyBadge>
+      </Box>
+      <Typography variant="caption" color="text.secondary">
         (auto-detected)
-      </span>
-    </FormField>
-  </div>
+      </Typography>
+    </Box>
+  </Box>
 );
 
 /**
  * Veth link properties (MAC, MTU, vars, labels)
  */
 const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => (
-  <>
-    <FormField label="Source MAC" tooltip="MAC address for source endpoint">
-      <InputField
-        id="link-source-mac"
-        value={data.sourceMac || ""}
-        onChange={(value) => onChange({ sourceMac: value })}
-        placeholder="e.g., 02:42:ac:11:00:01"
-      />
-    </FormField>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <InputField
+      id="link-source-mac"
+      label="Source MAC"
+      value={data.sourceMac || ""}
+      onChange={(value) => onChange({ sourceMac: value })}
+      placeholder="e.g., 02:42:ac:11:00:01"
+      tooltip="MAC address for source endpoint"
+    />
 
-    <FormField label="Target MAC" tooltip="MAC address for target endpoint">
-      <InputField
-        id="link-target-mac"
-        value={data.targetMac || ""}
-        onChange={(value) => onChange({ targetMac: value })}
-        placeholder="e.g., 02:42:ac:11:00:02"
-      />
-    </FormField>
+    <InputField
+      id="link-target-mac"
+      label="Target MAC"
+      value={data.targetMac || ""}
+      onChange={(value) => onChange({ targetMac: value })}
+      placeholder="e.g., 02:42:ac:11:00:02"
+      tooltip="MAC address for target endpoint"
+    />
 
-    <FormField label="MTU" tooltip="Maximum Transmission Unit">
-      <InputField
-        id="link-mtu"
-        value={data.mtu?.toString() || ""}
-        onChange={(value) => onChange({ mtu: value ? parseInt(value, 10) : undefined })}
-        placeholder="e.g., 1500"
-        type="number"
-      />
-    </FormField>
+    <InputField
+      id="link-mtu"
+      label="MTU"
+      value={data.mtu?.toString() || ""}
+      onChange={(value) => onChange({ mtu: value ? parseInt(value, 10) : undefined })}
+      placeholder="e.g., 1500"
+      type="number"
+      tooltip="Maximum Transmission Unit"
+    />
 
-    <FormField label="Variables" tooltip="Link variables (key-value pairs)">
+    <Box>
+      <Typography
+        variant="caption"
+        sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5, display: "block" }}
+      >
+        Variables
+      </Typography>
       <KeyValueList
         items={data.vars || {}}
         onChange={(vars) => onChange({ vars })}
@@ -66,9 +82,15 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => (
         valuePlaceholder="Value"
         addLabel="Add Variable"
       />
-    </FormField>
+    </Box>
 
-    <FormField label="Labels" tooltip="Link labels (key-value pairs)">
+    <Box>
+      <Typography
+        variant="caption"
+        sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5, display: "block" }}
+      >
+        Labels
+      </Typography>
       <KeyValueList
         items={data.labels || {}}
         onChange={(labels) => onChange({ labels })}
@@ -76,32 +98,33 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => (
         valuePlaceholder="Label value"
         addLabel="Add Label"
       />
-    </FormField>
-  </>
+    </Box>
+  </Box>
 );
 
 /**
  * Info message for non-veth links
  */
 const NonVethInfo: React.FC = () => (
-  <div className="my-1">
-    <div className="p-2 rounded-sm" style={quoteBlockStyle}>
-      <div className="text-sm">
-        <span className="font-semibold">Note:</span> This link connects to a network node. Configure
-        extended properties on the network node itself.
-      </div>
-    </div>
-  </div>
+  <Paper
+    variant="outlined"
+    sx={{ p: 1.5, bgcolor: "action.hover" }}
+  >
+    <Typography variant="body2">
+      <strong>Note:</strong> This link connects to a network node. Configure
+      extended properties on the network node itself.
+    </Typography>
+  </Paper>
 );
 
 export const ExtendedTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
   const isVethLink = !data.type || data.type === "veth";
 
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <HeaderSection linkId={data.id} linkType={data.type} />
       {isVethLink ? <VethLinkFields data={data} onChange={onChange} /> : <NonVethInfo />}
-    </div>
+    </Box>
   );
 };
 

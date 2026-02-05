@@ -3,6 +3,11 @@
  * Shows properties of a selected node with selectable/copyable values
  */
 import React, { useCallback } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+import Tooltip from "@mui/material/Tooltip";
 
 import type { NodeData } from "../../hooks/ui";
 
@@ -46,9 +51,10 @@ function extractNodeDisplayProps(nodeData: NodeData) {
 /**
  * Copyable value component with hover effect
  */
-const CopyableValue: React.FC<{ value: string; className?: string }> = ({
+const CopyableValue: React.FC<{ value: string; variant?: "body1" | "body2" | "h6"; mono?: boolean }> = ({
   value,
-  className = ""
+  variant = "body2",
+  mono = false
 }) => {
   const handleCopy = useCallback(() => {
     if (value) {
@@ -57,23 +63,32 @@ const CopyableValue: React.FC<{ value: string; className?: string }> = ({
   }, [value]);
 
   if (!value) {
-    return <span className="text-[var(--vscode-descriptionForeground)] opacity-50">—</span>;
+    return (
+      <Typography variant={variant} color="text.disabled">
+        —
+      </Typography>
+    );
   }
 
   return (
-    <span
-      onClick={handleCopy}
-      title="Click to copy"
-      className={`
-        cursor-pointer select-text
-        hover:bg-[var(--vscode-toolbar-hoverBackground)]
-        active:bg-[var(--vscode-toolbar-activeBackground)]
-        rounded px-1 -mx-1 transition-colors duration-150
-        ${className}
-      `}
-    >
-      {value}
-    </span>
+    <Tooltip title="Click to copy" arrow placement="top">
+      <Typography
+        variant={variant}
+        onClick={handleCopy}
+        sx={{
+          cursor: "pointer",
+          fontFamily: mono ? "monospace" : undefined,
+          borderRadius: 0.5,
+          px: 0.5,
+          mx: -0.5,
+          "&:hover": { bgcolor: "action.hover" },
+          "&:active": { bgcolor: "action.selected" },
+          wordBreak: "break-all"
+        }}
+      >
+        {value}
+      </Typography>
+    </Tooltip>
   );
 };
 
@@ -83,28 +98,29 @@ const CopyableValue: React.FC<{ value: string; className?: string }> = ({
 const InfoRow: React.FC<{
   label: string;
   value: string;
-  valueClassName?: string;
+  mono?: boolean;
   fullWidth?: boolean;
-}> = ({ label, value, valueClassName = "", fullWidth = false }) => (
-  <div className={`flex flex-col gap-0.5 ${fullWidth ? "col-span-full" : ""}`}>
-    <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)] font-medium">
+}> = ({ label, value, mono = false, fullWidth = false }) => (
+  <Box sx={{ gridColumn: fullWidth ? "1 / -1" : undefined }}>
+    <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
       {label}
-    </span>
-    <CopyableValue value={value} className={valueClassName} />
-  </div>
+    </Typography>
+    <CopyableValue value={value} mono={mono} />
+  </Box>
 );
 
 /**
  * Get state indicator dot color
  */
-function getStateIndicatorColor(lowerState: string): string {
+function getStateColor(state: string): "success" | "error" | "default" {
+  const lowerState = state.toLowerCase();
   if (lowerState === "running" || lowerState === "healthy") {
-    return "bg-green-400";
+    return "success";
   }
   if (lowerState === "stopped" || lowerState === "exited") {
-    return "bg-red-400";
+    return "error";
   }
-  return "bg-[var(--vscode-badge-foreground)]";
+  return "default";
 }
 
 /**
@@ -112,34 +128,21 @@ function getStateIndicatorColor(lowerState: string): string {
  */
 const StateBadge: React.FC<{ state: string }> = ({ state }) => {
   if (!state) {
-    return <span className="text-[var(--vscode-descriptionForeground)] opacity-50">—</span>;
+    return (
+      <Typography variant="body2" color="text.disabled">
+        —
+      </Typography>
+    );
   }
-
-  const lowerState = state.toLowerCase();
-
-  let bgColor = "bg-[var(--vscode-badge-background)]";
-  let textColor = "text-[var(--vscode-badge-foreground)]";
-
-  if (lowerState === "running" || lowerState === "healthy") {
-    bgColor = "bg-green-500/20";
-    textColor = "text-green-400";
-  } else if (lowerState === "stopped" || lowerState === "exited") {
-    bgColor = "bg-red-500/20";
-    textColor = "text-red-400";
-  }
-
-  const indicatorColor = getStateIndicatorColor(lowerState);
 
   return (
-    <span
-      className={`
-      inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-      ${bgColor} ${textColor}
-    `}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${indicatorColor}`} />
-      {state}
-    </span>
+    <Chip
+      label={state}
+      size="small"
+      color={getStateColor(state)}
+      variant="outlined"
+      sx={{ fontWeight: 500 }}
+    />
   );
 };
 
@@ -159,50 +162,49 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({ isVisible, nodeDat
       minWidth={280}
       minHeight={200}
     >
-      <div className="flex flex-col gap-4 select-text">
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {/* Node Name - Hero section */}
-        <div className="pb-3 border-b border-[var(--vscode-panel-border)]">
-          <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)] font-medium">
+        <Box sx={{ pb: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
             Name
-          </span>
-          <div className="mt-1">
-            <CopyableValue
-              value={nodeName}
-              className="text-base font-semibold text-[var(--vscode-foreground)]"
-            />
-          </div>
-        </div>
+          </Typography>
+          <CopyableValue value={nodeName} variant="h6" />
+        </Box>
+
+        <Divider />
 
         {/* Status row */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)] font-medium">
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
               Kind
-            </span>
-            <CopyableValue value={kind} className="text-sm" />
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase tracking-wider text-[var(--vscode-descriptionForeground)] font-medium">
+            </Typography>
+            <CopyableValue value={kind} />
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
               State
-            </span>
-            <StateBadge state={state} />
-          </div>
-        </div>
+            </Typography>
+            <Box sx={{ mt: 0.5 }}>
+              <StateBadge state={state} />
+            </Box>
+          </Box>
+        </Box>
 
         {/* Image */}
         <InfoRow label="Image" value={image} fullWidth />
 
+        <Divider />
+
         {/* Network section */}
-        <div className="pt-3 border-t border-[var(--vscode-panel-border)]">
-          <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Mgmt IPv4" value={mgmtIpv4} valueClassName="font-mono text-sm" />
-            <InfoRow label="Mgmt IPv6" value={mgmtIpv6} valueClassName="font-mono text-sm" />
-          </div>
-        </div>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <InfoRow label="Mgmt IPv4" value={mgmtIpv4} mono />
+          <InfoRow label="Mgmt IPv6" value={mgmtIpv6} mono />
+        </Box>
 
         {/* FQDN */}
-        <InfoRow label="FQDN" value={fqdn} fullWidth valueClassName="font-mono text-sm" />
-      </div>
+        <InfoRow label="FQDN" value={fqdn} fullWidth mono />
+      </Box>
     </FloatingPanel>
   );
 };

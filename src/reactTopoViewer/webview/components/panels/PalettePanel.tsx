@@ -3,12 +3,45 @@
  * Based on React Flow drag-and-drop example
  */
 import React, { type ReactNode, useCallback, useMemo, useState } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import MuiIconButton from "@mui/material/IconButton";
+import Drawer from "@mui/material/Drawer";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import Tooltip from "@mui/material/Tooltip";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import CloseIcon from "@mui/icons-material/Close";
+import AddIcon from "@mui/icons-material/Add";
+import StarIcon from "@mui/icons-material/Star";
+import StarOutlineIcon from "@mui/icons-material/StarOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import DnsIcon from "@mui/icons-material/Dns";
+import LanIcon from "@mui/icons-material/Lan";
+import HubIcon from "@mui/icons-material/Hub";
+import DeviceHubIcon from "@mui/icons-material/DeviceHub";
+import CableIcon from "@mui/icons-material/Cable";
+import PowerIcon from "@mui/icons-material/Power";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import TextFieldsIcon from "@mui/icons-material/TextFields";
+import CropSquareIcon from "@mui/icons-material/CropSquare";
+import CircleOutlinedIcon from "@mui/icons-material/CircleOutlined";
+import RemoveIcon from "@mui/icons-material/Remove";
+import SelectAllIcon from "@mui/icons-material/SelectAll";
+import InfoIcon from "@mui/icons-material/Info";
+import ViewInArIcon from "@mui/icons-material/ViewInAr";
+import CloudIcon from "@mui/icons-material/Cloud";
 
 import type { CustomNodeTemplate } from "../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../shared/types/graph";
 import { generateEncodedSVG, type NodeType } from "../../icons/SvgGenerator";
 import { useCustomNodes, useTopoViewerStore } from "../../stores/topoViewerStore";
-import { TabNavigation, type TabDefinition } from "../ui/editor/TabNavigation";
 
 interface PalettePanelProps {
   isVisible: boolean;
@@ -25,18 +58,18 @@ interface PalettePanelProps {
 interface NetworkTypeDefinition {
   readonly type: string;
   readonly label: string;
-  readonly icon: string;
+  readonly icon: React.ReactNode;
 }
 
 const NETWORK_TYPE_DEFINITIONS: readonly NetworkTypeDefinition[] = [
-  { type: "host", label: "Host", icon: "fa-server" },
-  { type: "mgmt-net", label: "Mgmt Net", icon: "fa-network-wired" },
-  { type: "macvlan", label: "Macvlan", icon: "fa-ethernet" },
-  { type: "vxlan", label: "VXLAN", icon: "fa-project-diagram" },
-  { type: "vxlan-stitch", label: "VXLAN Stitch", icon: "fa-link" },
-  { type: "dummy", label: "Dummy", icon: "fa-plug" },
-  { type: "bridge", label: "Bridge", icon: "fa-bezier-curve" },
-  { type: "ovs-bridge", label: "OVS Bridge", icon: "fa-code-branch" }
+  { type: "host", label: "Host", icon: <DnsIcon fontSize="small" /> },
+  { type: "mgmt-net", label: "Mgmt Net", icon: <LanIcon fontSize="small" /> },
+  { type: "macvlan", label: "Macvlan", icon: <CableIcon fontSize="small" /> },
+  { type: "vxlan", label: "VXLAN", icon: <DeviceHubIcon fontSize="small" /> },
+  { type: "vxlan-stitch", label: "VXLAN Stitch", icon: <CableIcon fontSize="small" /> },
+  { type: "dummy", label: "Dummy", icon: <PowerIcon fontSize="small" /> },
+  { type: "bridge", label: "Bridge", icon: <AccountTreeIcon fontSize="small" /> },
+  { type: "ovs-bridge", label: "OVS Bridge", icon: <HubIcon fontSize="small" /> }
 ];
 
 /** Map role to SVG node type */
@@ -96,81 +129,85 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
 
   const iconUrl = useMemo(() => getTemplateIconUrl(template), [template]);
 
-  const handleEditClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onEdit?.(template.name);
-    },
-    [onEdit, template.name]
-  );
-
-  const handleDeleteClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onDelete?.(template.name);
-    },
-    [onDelete, template.name]
-  );
-
-  const handleSetDefaultClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!isDefault) {
-        onSetDefault?.(template.name);
-      }
-    },
-    [onSetDefault, template.name, isDefault]
-  );
-
   return (
-    <div
-      className="node-palette-item"
+    <Card
+      variant="outlined"
       draggable
       onDragStart={onDragStart}
       title={`Drag to add ${template.name}`}
+      sx={{
+        p: 1,
+        cursor: "grab",
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        "&:hover": { bgcolor: "action.hover" },
+        "&:active": { cursor: "grabbing" }
+      }}
     >
-      <div
-        className="node-palette-icon node-palette-icon-svg"
-        style={{
-          backgroundImage: `url(${iconUrl})`,
+      <Box
+        sx={{
           width: PALETTE_ICON_SIZE,
           height: PALETTE_ICON_SIZE,
-          borderRadius: template.iconCornerRadius ? `${template.iconCornerRadius}px` : 0
+          backgroundImage: `url(${iconUrl})`,
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center",
+          borderRadius: template.iconCornerRadius ? `${template.iconCornerRadius}px` : 0,
+          flexShrink: 0
         }}
       />
-      <div className="node-palette-label">
-        <span className="node-palette-name">{template.name}</span>
-      </div>
-      <div className="node-palette-kind">{template.kind}</div>
-      <div className="node-palette-actions">
-        <button
-          className={`node-palette-action-btn${isDefault ? " is-default" : ""}`}
-          title={isDefault ? "Default node" : "Set as default node"}
-          onClick={handleSetDefaultClick}
-        >
-          {isDefault ? "★" : "☆"}
-        </button>
-        <button className="node-palette-action-btn" title="Edit custom node" onClick={handleEditClick}>
-          ✎
-        </button>
-        <button
-          className="node-palette-action-btn node-palette-action-btn-danger"
-          title="Delete custom node"
-          onClick={handleDeleteClick}
-        >
-          ×
-        </button>
-      </div>
-    </div>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="body2" noWrap fontWeight={500}>
+          {template.name}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" noWrap>
+          {template.kind}
+        </Typography>
+      </Box>
+      <Box sx={{ display: "flex", gap: 0.25 }}>
+        <Tooltip title={isDefault ? "Default node" : "Set as default"}>
+          <MuiIconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isDefault) onSetDefault?.(template.name);
+            }}
+            sx={{ color: isDefault ? "warning.main" : "text.secondary" }}
+          >
+            {isDefault ? <StarIcon fontSize="small" /> : <StarOutlineIcon fontSize="small" />}
+          </MuiIconButton>
+        </Tooltip>
+        <Tooltip title="Edit">
+          <MuiIconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(template.name);
+            }}
+          >
+            <EditIcon fontSize="small" />
+          </MuiIconButton>
+        </Tooltip>
+        <Tooltip title="Delete">
+          <MuiIconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.(template.name);
+            }}
+            sx={{ "&:hover": { color: "error.main" } }}
+          >
+            <DeleteIcon fontSize="small" />
+          </MuiIconButton>
+        </Tooltip>
+      </Box>
+    </Card>
   );
 };
 
 /** Draggable network item component */
-interface DraggableNetworkProps {
-  network: NetworkTypeDefinition;
-}
-
-const DraggableNetwork: React.FC<DraggableNetworkProps> = ({ network }) => {
+const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ network }) => {
   const onDragStart = useCallback(
     (event: React.DragEvent) => {
       event.dataTransfer.setData(
@@ -186,72 +223,86 @@ const DraggableNetwork: React.FC<DraggableNetworkProps> = ({ network }) => {
   );
 
   return (
-    <div
-      className="node-palette-item node-palette-network"
+    <Card
+      variant="outlined"
       draggable
       onDragStart={onDragStart}
       title={`Drag to add ${network.label}`}
+      sx={{
+        p: 1,
+        cursor: "grab",
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        "&:hover": { bgcolor: "action.hover" },
+        "&:active": { cursor: "grabbing" }
+      }}
     >
-      <div className="node-palette-icon">
-        <i className={`fas ${network.icon}`} />
-      </div>
-      <div className="node-palette-label">{network.label}</div>
-      <div className="node-palette-kind">{network.type}</div>
-    </div>
-  );
-};
-
-/** "New custom node" button */
-interface NewCustomNodeButtonProps {
-  onAddNew: () => void;
-}
-
-const NewCustomNodeButton: React.FC<NewCustomNodeButtonProps> = ({ onAddNew }) => {
-  const handleClick = useCallback(() => {
-    onAddNew();
-  }, [onAddNew]);
-
-  return (
-    <button className="node-palette-new-btn" onClick={handleClick} title="Create a new custom node template">
-      <i className="fas fa-plus" />
-      <span>New custom node...</span>
-    </button>
+      <Box sx={{ color: "text.secondary" }}>{network.icon}</Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="body2" noWrap fontWeight={500}>
+          {network.label}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" noWrap>
+          {network.type}
+        </Typography>
+      </Box>
+    </Card>
   );
 };
 
 interface DraggableAnnotationProps {
   label: string;
   kind: string;
-  icon: string;
+  icon: React.ReactNode;
   payload: AnnotationPayload;
-  onDragStart: (event: React.DragEvent, payload: AnnotationPayload) => void;
 }
 
 const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
   label,
   kind,
   icon,
-  payload,
-  onDragStart
-}) => (
-  <div
-    className="node-palette-item node-palette-annotation"
-    draggable
-    onDragStart={(event) => onDragStart(event, payload)}
-    title="Drag onto the canvas"
-  >
-    <div className="node-palette-icon">
-      <i className={`fas ${icon}`} />
-    </div>
-    <div className="node-palette-label">{label}</div>
-    <div className="node-palette-kind">{kind}</div>
-  </div>
-);
+  payload
+}) => {
+  const onDragStart = useCallback(
+    (event: React.DragEvent) => {
+      event.dataTransfer.setData(
+        REACTFLOW_NODE_MIME_TYPE,
+        JSON.stringify({ type: "annotation", ...payload })
+      );
+      event.dataTransfer.effectAllowed = "move";
+    },
+    [payload]
+  );
 
-const TAB_DEFINITIONS: readonly TabDefinition[] = [
-  { id: "nodes", label: "Nodes" },
-  { id: "annotations", label: "Annotations" }
-];
+  return (
+    <Card
+      variant="outlined"
+      draggable
+      onDragStart={onDragStart}
+      title="Drag onto the canvas"
+      sx={{
+        p: 1,
+        cursor: "grab",
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        "&:hover": { bgcolor: "action.hover" },
+        "&:active": { cursor: "grabbing" }
+      }}
+    >
+      <Box sx={{ color: "text.secondary" }}>{icon}</Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="body2" noWrap fontWeight={500}>
+          {label}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" noWrap>
+          {kind}
+        </Typography>
+      </Box>
+    </Card>
+  );
+};
 
 const DRAG_INSTRUCTION_TEXT = "Drag items onto the canvas to add them";
 
@@ -265,7 +316,7 @@ export const PalettePanel: React.FC<PalettePanelProps> = ({
   const customNodes = useCustomNodes();
   const defaultNode = useTopoViewerStore((state) => state.defaultNode);
   const [filter, setFilter] = useState("");
-  const [activeTab, setActiveTab] = useState("nodes");
+  const [activeTab, setActiveTab] = useState(0);
 
   // Filter nodes and networks based on search
   const filteredNodes = useMemo(() => {
@@ -287,186 +338,169 @@ export const PalettePanel: React.FC<PalettePanelProps> = ({
     );
   }, [filter]);
 
-  const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilter(e.target.value);
-  }, []);
-
-  const handleClearFilter = useCallback(() => {
-    setFilter("");
-  }, []);
-
   const handleAddNewNode = useCallback(() => {
     // This triggers the "new custom node" flow
     onEditCustomNode?.("__new__");
   }, [onEditCustomNode]);
 
-  const handleAnnotationDragStart = useCallback(
-    (event: React.DragEvent, payload: AnnotationPayload) => {
-      event.dataTransfer.setData(
-        REACTFLOW_NODE_MIME_TYPE,
-        JSON.stringify({ type: "annotation", ...payload })
-      );
-      event.dataTransfer.effectAllowed = "move";
-    },
-    []
-  );
-
   return (
     <PaletteDrawer isOpen={isVisible} onClose={onClose} title="Palette">
-      <div className="node-palette-tabs">
-        <TabNavigation
-          tabs={[...TAB_DEFINITIONS]}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          showArrows={false}
-        />
-      </div>
-      <div className="node-palette-content">
-        {activeTab === "nodes" && (
-          <>
+      <Tabs
+        value={activeTab}
+        onChange={(_e, v) => setActiveTab(v)}
+        sx={{ borderBottom: 1, borderColor: "divider", mb: 2, px: 2 }}
+      >
+        <Tab label="Nodes" />
+        <Tab label="Annotations" />
+      </Tabs>
+
+      <Box sx={{ px: 2, pb: 2 }}>
+        {activeTab === 0 && (
+          <Box>
             {/* Search/Filter */}
-            <div className="node-palette-search">
-              <i className="fas fa-search node-palette-search-icon" />
-              <input
-                type="text"
-                placeholder="Search nodes..."
-                value={filter}
-                onChange={handleFilterChange}
-                className="node-palette-search-input"
-              />
-              {filter && (
-                <button
-                  className="node-palette-search-clear"
-                  onClick={handleClearFilter}
-                  title="Clear search"
-                >
-                  <i className="fas fa-times" />
-                </button>
-              )}
-            </div>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search nodes..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+                endAdornment: filter && (
+                  <InputAdornment position="end">
+                    <MuiIconButton size="small" onClick={() => setFilter("")} title="Clear search">
+                      <ClearIcon fontSize="small" />
+                    </MuiIconButton>
+                  </InputAdornment>
+                )
+              }}
+              sx={{ mb: 2 }}
+            />
 
             {/* Custom Nodes Section */}
-            <section className="node-palette-section">
-              <h4 className="node-palette-section-title">
-                <i className="fas fa-cube" />
-                Node Templates
-              </h4>
-              <div className="node-palette-grid">
-                {filteredNodes.length === 0 && (
-                  <div className="node-palette-empty">
-                    {filter ? "No matching templates" : "No node templates defined"}
-                  </div>
-                )}
-                {filteredNodes.map((template) => (
-                  <DraggableNode
-                    key={template.name}
-                    template={template}
-                    isDefault={template.name === defaultNode || template.setDefault}
-                    onEdit={onEditCustomNode}
-                    onDelete={onDeleteCustomNode}
-                    onSetDefault={onSetDefaultCustomNode}
-                  />
-                ))}
-              </div>
-              {/* New custom node button */}
-              {!filter && <NewCustomNodeButton onAddNew={handleAddNewNode} />}
-            </section>
+            <Typography variant="subtitle2" sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+              <ViewInArIcon fontSize="small" />
+              Node Templates
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {filteredNodes.length === 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                  {filter ? "No matching templates" : "No node templates defined"}
+                </Typography>
+              )}
+              {filteredNodes.map((template) => (
+                <DraggableNode
+                  key={template.name}
+                  template={template}
+                  isDefault={template.name === defaultNode || template.setDefault}
+                  onEdit={onEditCustomNode}
+                  onDelete={onDeleteCustomNode}
+                  onSetDefault={onSetDefaultCustomNode}
+                />
+              ))}
+            </Box>
+            {/* New custom node button */}
+            {!filter && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={handleAddNewNode}
+                sx={{ mt: 1, mb: 2, textTransform: "none" }}
+              >
+                New custom node
+              </Button>
+            )}
 
             {/* Networks Section */}
-            <section className="node-palette-section">
-              <h4 className="node-palette-section-title">
-                <i className="fas fa-cloud" />
-                Networks
-              </h4>
-              <div className="node-palette-grid">
-                {filteredNetworks.length === 0 ? (
-                  <div className="node-palette-empty">No matching networks</div>
-                ) : (
-                  filteredNetworks.map((network) => (
-                    <DraggableNetwork key={network.type} network={network} />
-                  ))
-                )}
-              </div>
-            </section>
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
+              <CloudIcon fontSize="small" />
+              Networks
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {filteredNetworks.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                  No matching networks
+                </Typography>
+              ) : (
+                filteredNetworks.map((network) => (
+                  <DraggableNetwork key={network.type} network={network} />
+                ))
+              )}
+            </Box>
 
             {/* Instructions */}
-            <div className="node-palette-instructions">
-              <i className="fas fa-info-circle" />
-              <span>{DRAG_INSTRUCTION_TEXT}</span>
-            </div>
-          </>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 2 }}>
+              <InfoIcon sx={{ fontSize: 14 }} />
+              {DRAG_INSTRUCTION_TEXT}
+            </Typography>
+          </Box>
         )}
 
-        {activeTab === "annotations" && (
-          <>
-            <section className="node-palette-section">
-              <h4 className="node-palette-section-title">
-                <i className="fas fa-font" />
-                Text
-              </h4>
-              <div className="node-palette-grid">
-                <DraggableAnnotation
-                  label="Text"
-                  kind="annotation"
-                  icon="fa-font"
-                  payload={{ annotationType: "text" }}
-                  onDragStart={handleAnnotationDragStart}
-                />
-              </div>
-            </section>
+        {activeTab === 1 && (
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+              <TextFieldsIcon fontSize="small" />
+              Text
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <DraggableAnnotation
+                label="Text"
+                kind="annotation"
+                icon={<TextFieldsIcon fontSize="small" />}
+                payload={{ annotationType: "text" }}
+              />
+            </Box>
 
-            <section className="node-palette-section">
-              <h4 className="node-palette-section-title">
-                <i className="fas fa-shapes" />
-                Shapes
-              </h4>
-              <div className="node-palette-grid">
-                <DraggableAnnotation
-                  label="Rectangle"
-                  kind="shape"
-                  icon="fa-square"
-                  payload={{ annotationType: "shape", shapeType: "rectangle" }}
-                  onDragStart={handleAnnotationDragStart}
-                />
-                <DraggableAnnotation
-                  label="Circle"
-                  kind="shape"
-                  icon="fa-circle"
-                  payload={{ annotationType: "shape", shapeType: "circle" }}
-                  onDragStart={handleAnnotationDragStart}
-                />
-                <DraggableAnnotation
-                  label="Line"
-                  kind="shape"
-                  icon="fa-minus"
-                  payload={{ annotationType: "shape", shapeType: "line" }}
-                  onDragStart={handleAnnotationDragStart}
-                />
-              </div>
-            </section>
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
+              <CropSquareIcon fontSize="small" />
+              Shapes
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <DraggableAnnotation
+                label="Rectangle"
+                kind="shape"
+                icon={<CropSquareIcon fontSize="small" />}
+                payload={{ annotationType: "shape", shapeType: "rectangle" }}
+              />
+              <DraggableAnnotation
+                label="Circle"
+                kind="shape"
+                icon={<CircleOutlinedIcon fontSize="small" />}
+                payload={{ annotationType: "shape", shapeType: "circle" }}
+              />
+              <DraggableAnnotation
+                label="Line"
+                kind="shape"
+                icon={<RemoveIcon fontSize="small" />}
+                payload={{ annotationType: "shape", shapeType: "line" }}
+              />
+            </Box>
 
-            <section className="node-palette-section">
-              <h4 className="node-palette-section-title">
-                <i className="fas fa-object-group" />
-                Groups
-              </h4>
-              <div className="node-palette-grid">
-                <DraggableAnnotation
-                  label="Group"
-                  kind="annotation"
-                  icon="fa-object-group"
-                  payload={{ annotationType: "group" }}
-                  onDragStart={handleAnnotationDragStart}
-                />
-              </div>
-            </section>
-            <div className="node-palette-instructions">
-              <i className="fas fa-info-circle" />
-              <span>{DRAG_INSTRUCTION_TEXT}</span>
-            </div>
-          </>
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
+              <SelectAllIcon fontSize="small" />
+              Groups
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <DraggableAnnotation
+                label="Group"
+                kind="annotation"
+                icon={<SelectAllIcon fontSize="small" />}
+                payload={{ annotationType: "group" }}
+              />
+            </Box>
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 2 }}>
+              <InfoIcon sx={{ fontSize: 14 }} />
+              {DRAG_INSTRUCTION_TEXT}
+            </Typography>
+          </Box>
         )}
-      </div>
+      </Box>
     </PaletteDrawer>
   );
 };
@@ -479,17 +513,41 @@ interface PaletteDrawerProps {
 }
 
 const PaletteDrawer: React.FC<PaletteDrawerProps> = ({ title, isOpen, onClose, children }) => (
-  <aside
-    className={`node-palette-drawer panel${isOpen ? " is-open" : ""}`}
-    aria-hidden={!isOpen}
+  <Drawer
+    anchor="left"
+    open={isOpen}
+    onClose={onClose}
+    variant="persistent"
     data-testid="node-palette-drawer"
+    sx={{
+      "& .MuiDrawer-paper": {
+        width: 280,
+        top: 48,
+        height: "calc(100% - 48px)",
+        bgcolor: "var(--vscode-sideBar-background)",
+        borderRight: 1,
+        borderColor: "divider"
+      }
+    }}
   >
-    <div className="node-palette-drawer-header panel-heading panel-title-bar">
-      <span className="panel-title">{title}</span>
-      <button className="panel-close-btn" onClick={onClose} aria-label="Close" title="Close">
-        <i className="fas fa-times" />
-      </button>
-    </div>
-    <div className="node-palette-drawer-body">{children}</div>
-  </aside>
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        px: 2,
+        py: 1,
+        borderBottom: 1,
+        borderColor: "divider"
+      }}
+    >
+      <Typography variant="subtitle2" fontWeight={600}>
+        {title}
+      </Typography>
+      <MuiIconButton size="small" onClick={onClose} aria-label="Close" title="Close">
+        <CloseIcon fontSize="small" />
+      </MuiIconButton>
+    </Box>
+    <Box sx={{ overflowY: "auto", flex: 1 }}>{children}</Box>
+  </Drawer>
 );

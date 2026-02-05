@@ -7,6 +7,8 @@ import { useCallback, useState } from "react";
 
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 
+import type { LabDrawerSection } from "../../components/panels/lab-drawer";
+
 export interface DeploymentCommands {
   onDeploy: () => void;
   onDeployCleanup: () => void;
@@ -40,6 +42,8 @@ export interface PanelVisibility {
   showLabSettingsPanel: boolean;
   showBulkLinkPanel: boolean;
   showNodePalettePanel: boolean;
+  showSettingsDrawer: boolean;
+  settingsDrawerSection: LabDrawerSection;
   handleShowShortcuts: () => void;
   handleShowAbout: () => void;
   handleShowFindNode: () => void;
@@ -54,6 +58,9 @@ export interface PanelVisibility {
   handleCloseLabSettings: () => void;
   handleCloseBulkLink: () => void;
   handleCloseNodePalette: () => void;
+  handleOpenSettingsDrawer: (section: LabDrawerSection) => void;
+  handleCloseSettingsDrawer: () => void;
+  handleSetLabDrawerSection: (section: LabDrawerSection) => void;
 }
 
 /** Hook for info panels (shortcuts/about) with mutual exclusivity */
@@ -131,10 +138,38 @@ function useEditorPanels() {
   };
 }
 
+function useSettingsDrawer() {
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
+  const [settingsDrawerSection, setLabDrawerSection] =
+    useState<LabDrawerSection>("labSettings");
+
+  const handleOpenSettingsDrawer = useCallback((section: LabDrawerSection) => {
+    setLabDrawerSection(section);
+    setShowSettingsDrawer(true);
+  }, []);
+
+  const handleCloseSettingsDrawer = useCallback(() => {
+    setShowSettingsDrawer(false);
+  }, []);
+
+  const handleSetLabDrawerSection = useCallback((section: LabDrawerSection) => {
+    setLabDrawerSection(section);
+  }, []);
+
+  return {
+    showSettingsDrawer,
+    settingsDrawerSection,
+    handleOpenSettingsDrawer,
+    handleCloseSettingsDrawer,
+    handleSetLabDrawerSection
+  };
+}
+
 export function usePanelVisibility(): PanelVisibility {
   const info = useInfoPanels();
   const utility = useUtilityPanels();
   const editor = useEditorPanels();
+  const settingsDrawer = useSettingsDrawer();
 
-  return { ...info, ...utility, ...editor };
+  return { ...info, ...utility, ...editor, ...settingsDrawer };
 }

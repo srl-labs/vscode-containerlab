@@ -4,6 +4,7 @@
  */
 import type { ReactNode } from "react";
 import React from "react";
+import Box from "@mui/material/Box";
 
 import { BasePanel } from "./BasePanel";
 import type { TabDefinition } from "./TabNavigation";
@@ -76,6 +77,6 @@ export const EditorPanel: React.FC<EditorPanelProps> = ({
     {tabs && activeTab && onTabChange && (
       <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
     )}
-    {children}
+    <Box sx={{ p: 2 }}>{children}</Box>
   </BasePanel>
 );

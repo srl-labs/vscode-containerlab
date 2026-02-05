@@ -2,8 +2,12 @@
  * BasicTab - Basic link configuration (endpoints)
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Slider from "@mui/material/Slider";
+import Button from "@mui/material/Button";
 
-import { FormField, ReadOnlyBadge, InputField } from "../../ui/form";
+import { ReadOnlyBadge, InputField } from "../../ui/form";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,
@@ -20,9 +24,8 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
     : DEFAULT_ENDPOINT_LABEL_OFFSET;
   const isDefaultOffset = endpointOffsetValue === DEFAULT_ENDPOINT_LABEL_OFFSET;
 
-  const handleOffsetChange = (value: string) => {
-    const parsed = Number.parseFloat(value);
-    const nextOffset = Number.isFinite(parsed) ? parsed : 0;
+  const handleOffsetChange = (_event: Event, value: number | number[]) => {
+    const nextOffset = typeof value === "number" ? value : value[0];
     const nextData = {
       ...data,
       endpointLabelOffset: nextOffset,
@@ -49,90 +52,115 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
   };
 
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {/* Source Endpoint Section */}
-      <div className="border-b pb-3 mb-3" style={{ borderColor: "var(--vscode-panel-border)" }}>
-        <div className="section-header">Source Endpoint</div>
-        <FormField label="Node">
-          <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
-        </FormField>
-        {data.sourceIsNetwork ? (
-          <FormField label="Interface">
+      <Box sx={{ borderBottom: 1, borderColor: "divider", pb: 1.5 }}>
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
+        >
+          Source Endpoint
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              Node
+            </Typography>
             <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
-          </FormField>
-        ) : (
-          <FormField label="Interface" required>
+          </Box>
+          {data.sourceIsNetwork ? (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                Interface
+              </Typography>
+              <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
+            </Box>
+          ) : (
             <InputField
               id="link-source-interface"
+              label="Interface"
+              required
               value={data.sourceEndpoint || ""}
               onChange={(value: string) => onChange({ sourceEndpoint: value })}
               placeholder="e.g., eth1, e1-1"
             />
-          </FormField>
-        )}
-      </div>
+          )}
+        </Box>
+      </Box>
 
       {/* Target Endpoint Section */}
-      <div>
-        <div className="section-header">Target Endpoint</div>
-        <FormField label="Node">
-          <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
-        </FormField>
-        {data.targetIsNetwork ? (
-          <FormField label="Interface">
+      <Box>
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
+        >
+          Target Endpoint
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              Node
+            </Typography>
             <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
-          </FormField>
-        ) : (
-          <FormField label="Interface" required>
+          </Box>
+          {data.targetIsNetwork ? (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                Interface
+              </Typography>
+              <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
+            </Box>
+          ) : (
             <InputField
               id="link-target-interface"
+              label="Interface"
+              required
               value={data.targetEndpoint || ""}
               onChange={(value: string) => onChange({ targetEndpoint: value })}
               placeholder="e.g., eth1, e1-1"
             />
-          </FormField>
-        )}
-      </div>
+          )}
+        </Box>
+      </Box>
 
-      <div className="border-t pt-3 mt-4" style={{ borderColor: "var(--vscode-panel-border)" }}>
-        <div className="section-header">Label Offset</div>
-        <div className="form-group">
-          <div className="px-2">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="field-label">Value</span>
-              <input
-                id="link-endpoint-offset"
-                type="range"
-                min={ENDPOINT_LABEL_OFFSET_MIN}
-                max={ENDPOINT_LABEL_OFFSET_MAX}
-                step="1"
-                value={endpointOffsetValue}
-                onChange={(evt) => handleOffsetChange(evt.target.value)}
-                className="grid-line-slider m-0 flex-1 text-[var(--vscode-font-size)]"
-              />
-              <input
-                type="text"
-                value={endpointOffsetValue.toFixed(0)}
-                readOnly
-                aria-label="Offset value"
-                className="input-field w-12 text-center text-[var(--vscode-font-size)]"
-              />
-              <div className="w-20">
-                {!isDefaultOffset ? (
-                  <button
-                    type="button"
-                    className="btn btn-small btn-secondary w-full whitespace-nowrap"
-                    onClick={handleOffsetReset}
-                    title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
-                  >
-                    Reset
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Box sx={{ borderTop: 1, borderColor: "divider", pt: 1.5 }}>
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
+        >
+          Label Offset
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            Value
+          </Typography>
+          <Slider
+            id="link-endpoint-offset"
+            value={endpointOffsetValue}
+            min={ENDPOINT_LABEL_OFFSET_MIN}
+            max={ENDPOINT_LABEL_OFFSET_MAX}
+            step={1}
+            onChange={handleOffsetChange}
+            size="small"
+            sx={{ flex: 1 }}
+          />
+          <Typography variant="body2" sx={{ width: 40, textAlign: "center" }}>
+            {endpointOffsetValue.toFixed(0)}
+          </Typography>
+          <Box sx={{ width: 70 }}>
+            {!isDefaultOffset && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleOffsetReset}
+                title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
+              >
+                Reset
+              </Button>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };

@@ -4,6 +4,18 @@
  */
 import React, { useState, useCallback } from "react";
 import type { ReactFlowInstance, Edge } from "@xyflow/react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import Button from "@mui/material/Button";
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
+import GridOnIcon from "@mui/icons-material/GridOn";
+import PaletteIcon from "@mui/icons-material/Palette";
+import DownloadIcon from "@mui/icons-material/Download";
+import LightbulbIcon from "@mui/icons-material/Lightbulb";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 
 import type {
   FreeTextAnnotation,
@@ -142,7 +154,9 @@ type BackgroundOption = "transparent" | "white" | "custom";
 
 // Section header component
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h4 className="section-header">{children}</h4>
+  <Typography variant="subtitle2" fontWeight={600}>
+    {children}
+  </Typography>
 );
 
 // Quality section
@@ -187,16 +201,22 @@ const BackgroundSection: React.FC<{
     <div className="flex items-start gap-3 flex-wrap">
       <div className="flex gap-2 pt-4">
         <Toggle active={option === "transparent"} onClick={() => setOption("transparent")}>
-          <i className="fas fa-chess-board mr-1.5 text-[10px]" />
-          Transparent
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <GridOnIcon sx={{ fontSize: 14 }} />
+            Transparent
+          </Box>
         </Toggle>
         <Toggle active={option === "white"} onClick={() => setOption("white")}>
-          <span className="inline-block w-3 h-3 bg-white rounded-sm mr-1.5 border border-white/30" />
-          White
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <span className="inline-block w-3 h-3 bg-white rounded-sm border border-[var(--vscode-panel-border)]" />
+            White
+          </Box>
         </Toggle>
         <Toggle active={option === "custom"} onClick={() => setOption("custom")}>
-          <i className="fas fa-palette mr-1.5 text-[10px]" />
-          Custom
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <PaletteIcon sx={{ fontSize: 14 }} />
+            Custom
+          </Box>
         </Toggle>
       </div>
       {option === "custom" && (
@@ -220,7 +240,7 @@ const AnnotationsSection: React.FC<{
   return (
     <div className="flex flex-col gap-3">
       <SectionHeader>Annotations</SectionHeader>
-      <div className="flex items-center justify-between p-3 bg-black/20 rounded-sm border border-white/5">
+      <div className="flex items-center justify-between p-3 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)]">
         <div className="flex flex-col">
           <span className="text-sm text-[var(--vscode-foreground)]">{annotationLabel}</span>
           {hasAny && (
@@ -250,7 +270,7 @@ const EdgeLabelsSection: React.FC<{
 }> = ({ include, setInclude }) => (
   <div className="flex flex-col gap-3">
     <SectionHeader>Edge Labels</SectionHeader>
-    <div className="flex items-center justify-between p-3 bg-black/20 rounded-sm border border-white/5">
+    <div className="flex items-center justify-between p-3 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)]">
       <div className="flex flex-col">
         <span className="text-sm text-[var(--vscode-foreground)]">Interface labels</span>
         <span className="text-[10px] text-[var(--vscode-descriptionForeground)]">
@@ -271,16 +291,23 @@ const FilenameSection: React.FC<{
 }> = ({ value, onChange }) => (
   <div className="flex flex-col gap-1">
     <SectionHeader>Filename</SectionHeader>
-    <div className="flex items-center gap-1">
-      <input
-        type="text"
-        className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs hover:border-white/20 focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors outline-none"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="topology"
-      />
-      <span className="text-xs text-[var(--vscode-descriptionForeground)] px-2">.svg</span>
-    </div>
+    <TextField
+      size="small"
+      fullWidth
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="topology"
+      InputProps={{
+        endAdornment: (
+          <InputAdornment position="end">
+            <Typography variant="caption" color="text.secondary">
+              .svg
+            </Typography>
+          </InputAdornment>
+        )
+      }}
+      sx={{ "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
+    />
   </div>
 );
 
@@ -306,11 +333,11 @@ const PreviewSection: React.FC<{
   return (
     <div className="flex flex-col gap-1">
       <SectionHeader>Preview</SectionHeader>
-      <div className="relative p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 overflow-hidden">
+      <div className="relative p-4 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)] overflow-hidden">
         <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-30`} />
         <div className="relative z-10 flex items-center justify-center">
           <div
-            className="w-24 h-16 rounded-sm shadow-lg border border-white/10 flex items-center justify-center transition-all duration-200"
+            className="w-24 h-16 rounded-sm shadow-lg border border-[var(--vscode-panel-border)] flex items-center justify-center transition-all duration-200"
             style={{
               ...bgStyle,
               padding: `${Math.min(padding / 20, 8)}px`,
@@ -318,7 +345,7 @@ const PreviewSection: React.FC<{
             }}
           >
             <div className="flex flex-col items-center gap-1">
-              <i className="fas fa-project-diagram text-lg text-[var(--accent)] opacity-80" />
+              <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
               {includeAnnotations && annotationCount > 0 && (
                 <span className="text-[8px] px-1.5 py-0.5 bg-[var(--accent)]/20 text-[var(--accent)] rounded-sm">
                   +{annotationCount}
@@ -334,17 +361,27 @@ const PreviewSection: React.FC<{
 
 // Tips section
 const TipsSection: React.FC = () => (
-  <div className="flex flex-col gap-1.5 p-3 bg-black/10 rounded-sm border border-white/5">
-    <div className="flex items-center gap-2 text-[var(--vscode-descriptionForeground)]">
-      <i className="fas fa-lightbulb text-yellow-400/70 text-xs" />
-      <span className="field-label">Tips</span>
-    </div>
-    <ul className="helper-text space-y-1 ml-5">
+  <Box
+    sx={{
+      p: 1.5,
+      bgcolor: "var(--vscode-input-background)",
+      borderRadius: 0.5,
+      border: 1,
+      borderColor: "divider"
+    }}
+  >
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+      <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
+      <Typography variant="caption" color="text.secondary">
+        Tips
+      </Typography>
+    </Box>
+    <Typography variant="caption" color="text.secondary" component="ul" sx={{ pl: 2, m: 0, "& li": { mb: 0.25 } }}>
       <li>Higher zoom = better quality, larger file</li>
       <li>SVG files scale without quality loss</li>
       <li>Transparent background for layering</li>
-    </ul>
-  </div>
+    </Typography>
+  </Box>
 );
 
 export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
@@ -499,43 +536,21 @@ export const SvgExportPanel: React.FC<SvgExportPanelProps> = ({
         />
 
         {/* Export button */}
-        <button
-          type="button"
-          className={`w-full py-3 px-4 rounded-sm font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-            isExporting || !isExportAvailable
-              ? "bg-white/5 text-[var(--vscode-descriptionForeground)] cursor-not-allowed"
-              : "bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:shadow-[var(--accent)]/30"
-          }`}
+        <Button
+          variant="contained"
+          fullWidth
           onClick={() => void handleExport()}
           disabled={isExporting || !isExportAvailable}
+          startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
         >
-          {isExporting ? (
-            <>
-              <i className="fas fa-circle-notch fa-spin" />
-              Exporting...
-            </>
-          ) : (
-            <>
-              <i className="fas fa-download" />
-              Export SVG
-            </>
-          )}
-        </button>
+          {isExporting ? "Exporting..." : "Export SVG"}
+        </Button>
 
         {/* Status message */}
         {exportStatus && (
-          <div
-            className={`flex items-center gap-2 p-3 rounded-sm text-sm ${
-              exportStatus.type === "success"
-                ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                : "bg-red-500/10 text-red-400 border border-red-500/20"
-            }`}
-          >
-            <i
-              className={`fas ${exportStatus.type === "success" ? "fa-check-circle" : "fa-exclamation-circle"}`}
-            />
+          <Alert severity={exportStatus.type === "success" ? "success" : "error"}>
             {exportStatus.message}
-          </div>
+          </Alert>
         )}
 
         <TipsSection />

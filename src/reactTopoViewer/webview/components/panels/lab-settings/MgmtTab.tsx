@@ -2,6 +2,20 @@
  * MgmtTab - Management network settings tab for Lab Settings panel
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormHelperText from "@mui/material/FormHelperText";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import type { IpType, DriverOption } from "./types";
 
@@ -50,53 +64,52 @@ const Ipv4Section: React.FC<
     | "onIpv4RangeChange"
   >
 > = (props) => (
-  <div className="form-group">
-    <label className="block field-label mb-1">IPv4 Subnet</label>
-    <select
-      className="input-field w-full mb-2"
-      value={props.ipv4Type}
-      onChange={(e) => props.onIpv4TypeChange(e.target.value as IpType)}
-      disabled={props.isViewMode}
-    >
-      <option value="default">Default (172.20.20.0/24)</option>
-      <option value="auto">Auto-assign</option>
-      <option value="custom">Custom</option>
-    </select>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <FormControl size="small" fullWidth disabled={props.isViewMode}>
+      <InputLabel>IPv4 Subnet</InputLabel>
+      <Select
+        value={props.ipv4Type}
+        label="IPv4 Subnet"
+        onChange={(e) => props.onIpv4TypeChange(e.target.value as IpType)}
+      >
+        <MenuItem value="default">Default (172.20.20.0/24)</MenuItem>
+        <MenuItem value="auto">Auto-assign</MenuItem>
+        <MenuItem value="custom">Custom</MenuItem>
+      </Select>
+    </FormControl>
+
     {props.ipv4Type === "custom" && (
       <>
-        <input
-          type="text"
-          className="input-field w-full mb-2"
+        <TextField
+          label="IPv4 Subnet"
           placeholder="e.g., 172.100.100.0/24"
           value={props.ipv4Subnet}
           onChange={(e) => props.onIpv4SubnetChange(e.target.value)}
           disabled={props.isViewMode}
+          size="small"
+          fullWidth
         />
-        <div className="form-group">
-          <label className="block field-label mb-1">IPv4 Gateway</label>
-          <input
-            type="text"
-            className="input-field w-full"
-            placeholder="e.g., 172.100.100.1"
-            value={props.ipv4Gateway}
-            onChange={(e) => props.onIpv4GatewayChange(e.target.value)}
-            disabled={props.isViewMode}
-          />
-        </div>
-        <div className="form-group">
-          <label className="block field-label mb-1">IPv4 Range</label>
-          <input
-            type="text"
-            className="input-field w-full"
-            placeholder="e.g., 172.100.100.128/25"
-            value={props.ipv4Range}
-            onChange={(e) => props.onIpv4RangeChange(e.target.value)}
-            disabled={props.isViewMode}
-          />
-        </div>
+        <TextField
+          label="IPv4 Gateway"
+          placeholder="e.g., 172.100.100.1"
+          value={props.ipv4Gateway}
+          onChange={(e) => props.onIpv4GatewayChange(e.target.value)}
+          disabled={props.isViewMode}
+          size="small"
+          fullWidth
+        />
+        <TextField
+          label="IPv4 Range"
+          placeholder="e.g., 172.100.100.128/25"
+          value={props.ipv4Range}
+          onChange={(e) => props.onIpv4RangeChange(e.target.value)}
+          disabled={props.isViewMode}
+          size="small"
+          fullWidth
+        />
       </>
     )}
-  </div>
+  </Box>
 );
 
 /** IPv6 settings section */
@@ -112,42 +125,43 @@ const Ipv6Section: React.FC<
     | "onIpv6GatewayChange"
   >
 > = (props) => (
-  <div className="form-group">
-    <label className="block field-label mb-1">IPv6 Subnet</label>
-    <select
-      className="input-field w-full mb-2"
-      value={props.ipv6Type}
-      onChange={(e) => props.onIpv6TypeChange(e.target.value as IpType)}
-      disabled={props.isViewMode}
-    >
-      <option value="default">Default (3fff:172:20:20::/64)</option>
-      <option value="auto">Auto-assign</option>
-      <option value="custom">Custom</option>
-    </select>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <FormControl size="small" fullWidth disabled={props.isViewMode}>
+      <InputLabel>IPv6 Subnet</InputLabel>
+      <Select
+        value={props.ipv6Type}
+        label="IPv6 Subnet"
+        onChange={(e) => props.onIpv6TypeChange(e.target.value as IpType)}
+      >
+        <MenuItem value="default">Default (3fff:172:20:20::/64)</MenuItem>
+        <MenuItem value="auto">Auto-assign</MenuItem>
+        <MenuItem value="custom">Custom</MenuItem>
+      </Select>
+    </FormControl>
+
     {props.ipv6Type === "custom" && (
       <>
-        <input
-          type="text"
-          className="input-field w-full mb-2"
+        <TextField
+          label="IPv6 Subnet"
           placeholder="e.g., 3fff:172:100:100::/80"
           value={props.ipv6Subnet}
           onChange={(e) => props.onIpv6SubnetChange(e.target.value)}
           disabled={props.isViewMode}
+          size="small"
+          fullWidth
         />
-        <div className="form-group">
-          <label className="block field-label mb-1">IPv6 Gateway</label>
-          <input
-            type="text"
-            className="input-field w-full"
-            placeholder="e.g., 3fff:172:100:100::1"
-            value={props.ipv6Gateway}
-            onChange={(e) => props.onIpv6GatewayChange(e.target.value)}
-            disabled={props.isViewMode}
-          />
-        </div>
+        <TextField
+          label="IPv6 Gateway"
+          placeholder="e.g., 3fff:172:100:100::1"
+          value={props.ipv6Gateway}
+          onChange={(e) => props.onIpv6GatewayChange(e.target.value)}
+          disabled={props.isViewMode}
+          size="small"
+          fullWidth
+        />
       </>
     )}
-  </div>
+  </Box>
 );
 
 /** Driver options section */
@@ -161,118 +175,117 @@ const DriverOptionsSection: React.FC<
     | "onUpdateDriverOption"
   >
 > = (props) => (
-  <div className="form-group">
-    <label className="block field-label mb-1">Bridge Driver Options</label>
-    <div className="space-y-2">
+  <Box>
+    <Typography variant="body2" sx={{ mb: 1 }}>
+      Bridge Driver Options
+    </Typography>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       {props.driverOptions.map((opt, idx) => (
-        <div key={idx} className="flex gap-2">
-          <input
-            type="text"
-            className="input-field flex-1"
+        <Box key={idx} sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <TextField
             placeholder="Option key"
             value={opt.key}
             onChange={(e) => props.onUpdateDriverOption(idx, "key", e.target.value)}
             disabled={props.isViewMode}
+            size="small"
+            sx={{ flex: 1 }}
           />
-          <input
-            type="text"
-            className="input-field flex-1"
+          <TextField
             placeholder="Option value"
             value={opt.value}
             onChange={(e) => props.onUpdateDriverOption(idx, "value", e.target.value)}
             disabled={props.isViewMode}
+            size="small"
+            sx={{ flex: 1 }}
           />
           {!props.isViewMode && (
-            <button
-              type="button"
-              className="btn-icon"
+            <IconButton
+              size="small"
               onClick={() => props.onRemoveDriverOption(idx)}
               title="Remove option"
             >
-              <i className="fas fa-times" aria-hidden="true"></i>
-            </button>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
           )}
-        </div>
+        </Box>
       ))}
-    </div>
+    </Box>
     {!props.isViewMode && (
-      <button type="button" className="btn btn-small mt-2" onClick={props.onAddDriverOption}>
-        <i className="fas fa-plus mr-1" aria-hidden="true"></i>
+      <Button
+        size="small"
+        startIcon={<AddIcon />}
+        onClick={props.onAddDriverOption}
+        sx={{ mt: 1 }}
+      >
         Add Option
-      </button>
+      </Button>
     )}
-  </div>
+  </Box>
 );
 
 export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       {/* Network Name */}
-      <div className="form-group">
-        <label className="block field-label mb-1">Network Name</label>
-        <input
-          type="text"
-          className="input-field w-full"
-          placeholder="clab"
-          value={props.networkName}
-          onChange={(e) => props.onNetworkNameChange(e.target.value)}
-          disabled={props.isViewMode}
-        />
-        <small className="helper-text">Docker network name (default: clab)</small>
-      </div>
+      <TextField
+        label="Network Name"
+        placeholder="clab"
+        value={props.networkName}
+        onChange={(e) => props.onNetworkNameChange(e.target.value)}
+        disabled={props.isViewMode}
+        size="small"
+        fullWidth
+        helperText="Docker network name (default: clab)"
+      />
 
       <Ipv4Section {...props} />
       <Ipv6Section {...props} />
 
       {/* MTU */}
-      <div className="form-group">
-        <label className="block field-label mb-1">MTU</label>
-        <input
-          type="number"
-          className="input-field w-full"
-          placeholder="Default: auto"
-          value={props.mtu}
-          onChange={(e) => props.onMtuChange(e.target.value)}
-          disabled={props.isViewMode}
-        />
-        <small className="helper-text">MTU size (defaults to docker0 interface MTU)</small>
-      </div>
+      <TextField
+        label="MTU"
+        type="number"
+        placeholder="Default: auto"
+        value={props.mtu}
+        onChange={(e) => props.onMtuChange(e.target.value)}
+        disabled={props.isViewMode}
+        size="small"
+        fullWidth
+        helperText="MTU size (defaults to docker0 interface MTU)"
+        inputProps={{ min: 0, step: 1 }}
+      />
 
       {/* Bridge Name */}
-      <div className="form-group">
-        <label className="block field-label mb-1">Bridge Name</label>
-        <input
-          type="text"
-          className="input-field w-full"
-          placeholder="Default: auto"
-          value={props.bridge}
-          onChange={(e) => props.onBridgeChange(e.target.value)}
-          disabled={props.isViewMode}
-        />
-        <small className="helper-text">
-          Custom Linux bridge name (default: br-&lt;network-id&gt;)
-        </small>
-      </div>
+      <TextField
+        label="Bridge Name"
+        placeholder="Default: auto"
+        value={props.bridge}
+        onChange={(e) => props.onBridgeChange(e.target.value)}
+        disabled={props.isViewMode}
+        size="small"
+        fullWidth
+        helperText="Custom Linux bridge name (default: br-<network-id>)"
+      />
 
       {/* External Access */}
-      <div className="form-group">
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="mgmt-external-access"
-            className="vscode-checkbox mr-2"
-            checked={props.externalAccess}
-            onChange={(e) => props.onExternalAccessChange(e.target.checked)}
-            disabled={props.isViewMode}
-          />
-          <label htmlFor="mgmt-external-access" className="checkbox-label">
-            Enable External Access
-          </label>
-        </div>
-        <small className="helper-text">Allow external systems to reach lab nodes</small>
-      </div>
+      <Box>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={props.externalAccess}
+              onChange={(e) => props.onExternalAccessChange(e.target.checked)}
+              disabled={props.isViewMode}
+              size="small"
+            />
+          }
+          label="Enable External Access"
+        />
+        <FormHelperText sx={{ mt: -0.5, ml: 4 }}>
+          Allow external systems to reach lab nodes
+        </FormHelperText>
+      </Box>
 
       <DriverOptionsSection {...props} />
-    </div>
+    </Box>
   );
 };

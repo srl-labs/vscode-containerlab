@@ -2,6 +2,9 @@
  * BulkLinkPanel - Create multiple links based on name patterns
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
 
 import { BasePanel } from "../../ui/editor/BasePanel";
 import type { TopoNode, TopoEdge } from "../../../../shared/types/graph";
@@ -22,56 +25,78 @@ interface BulkLinkPanelProps {
 
 const ExamplesSection: React.FC = () => (
   <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 space-y-2">
-    <div className="section-header">Examples</div>
+    <Typography variant="subtitle2" fontWeight={600}>
+      Examples
+    </Typography>
 
-    <div className="space-y-1.5 text-sm text-secondary">
-      <div className="flex items-start gap-2">
-        <span className="shrink-0 text-[var(--vscode-symbolIcon-variableForeground)]">1.</span>
+    <div className="space-y-1.5 text-sm">
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+          1.
+        </Typography>
         <div>
-          <span>All leaves to all spines:</span>
+          <Typography variant="body2" color="text.secondary">
+            All leaves to all spines:
+          </Typography>
           <div className="mt-0.5">
             <CopyableCode>leaf*</CopyableCode> → <CopyableCode>spine*</CopyableCode>
           </div>
         </div>
-      </div>
+      </Box>
 
-      <div className="flex items-start gap-2">
-        <span className="shrink-0 text-[var(--vscode-symbolIcon-variableForeground)]">2.</span>
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+          2.
+        </Typography>
         <div>
-          <span>Pair by number (leaf1→spine1):</span>
+          <Typography variant="body2" color="text.secondary">
+            Pair by number (leaf1→spine1):
+          </Typography>
           <div className="mt-0.5">
             <CopyableCode>leaf(\d+)</CopyableCode> → <CopyableCode>spine$1</CopyableCode>
           </div>
         </div>
-      </div>
+      </Box>
 
-      <div className="flex items-start gap-2">
-        <span className="shrink-0 text-[var(--vscode-symbolIcon-variableForeground)]">3.</span>
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+          3.
+        </Typography>
         <div>
-          <span>Single char match:</span>
+          <Typography variant="body2" color="text.secondary">
+            Single char match:
+          </Typography>
           <div className="mt-0.5">
             <CopyableCode>srl?</CopyableCode> → <CopyableCode>client*</CopyableCode>
           </div>
         </div>
-      </div>
+      </Box>
     </div>
 
-    <div className="border-t border-[var(--vscode-panel-border)] pt-2 text-sm text-secondary">
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-        <div>
-          <CopyableCode>*</CopyableCode> any chars
+    <Box
+      sx={{
+        borderTop: 1,
+        borderColor: "divider",
+        pt: 1
+      }}
+    >
+      <Typography variant="body2" color="text.secondary" component="div">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+          <div>
+            <CopyableCode>*</CopyableCode> any chars
+          </div>
+          <div>
+            <CopyableCode>?</CopyableCode> single char
+          </div>
+          <div>
+            <CopyableCode>#</CopyableCode> single digit
+          </div>
+          <div>
+            <CopyableCode>$1</CopyableCode> capture group
+          </div>
         </div>
-        <div>
-          <CopyableCode>?</CopyableCode> single char
-        </div>
-        <div>
-          <CopyableCode>#</CopyableCode> single digit
-        </div>
-        <div>
-          <CopyableCode>$1</CopyableCode> capture group
-        </div>
-      </div>
-    </div>
+      </Typography>
+    </Box>
   </div>
 );
 
@@ -184,56 +209,82 @@ export const BulkLinkPanel: React.FC<BulkLinkPanelProps> = ({
         onPrimaryClick={handleCompute}
         onSecondaryClick={handleCancel}
       >
-        <div className="space-y-3">
-          <p className="helper-text">Create multiple links by matching node names with patterns.</p>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            Create multiple links by matching node names with patterns.
+          </Typography>
 
           <ExamplesSection />
 
-          <div className="space-y-2">
-            <div className="form-group">
-              <label className="block field-label mb-1">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Box>
+              <Typography variant="caption" component="label" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                 Source Pattern
-                <span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
-              </label>
-              <input
-                ref={sourceInputRef}
-                type="text"
-                className="input-field"
+                <Typography component="span" color="error.main" sx={{ ml: 0.5 }}>
+                  *
+                </Typography>
+              </Typography>
+              <TextField
+                inputRef={sourceInputRef}
+                size="small"
+                fullWidth
                 value={sourcePattern}
                 onChange={(e) => setSourcePattern(e.target.value)}
                 placeholder="e.g. leaf*, srl(\d+)"
                 disabled={mode !== "edit"}
               />
-            </div>
+            </Box>
 
-            <div className="form-group">
-              <label className="block field-label mb-1">
+            <Box>
+              <Typography variant="caption" component="label" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                 Target Pattern
-                <span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>
-              </label>
-              <input
-                type="text"
-                className="input-field"
+                <Typography component="span" color="error.main" sx={{ ml: 0.5 }}>
+                  *
+                </Typography>
+              </Typography>
+              <TextField
+                size="small"
+                fullWidth
                 value={targetPattern}
                 onChange={(e) => setTargetPattern(e.target.value)}
                 placeholder="e.g. spine*, client$1"
                 disabled={mode !== "edit"}
               />
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           {status && (
-            <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 text-sm text-secondary">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                p: 1,
+                borderRadius: 0.5,
+                border: 1,
+                borderColor: "divider",
+                bgcolor: "var(--vscode-editor-background)"
+              }}
+            >
               {status}
-            </div>
+            </Typography>
           )}
 
           {!canApply && (
-            <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 text-sm text-secondary">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                p: 1,
+                borderRadius: 0.5,
+                border: 1,
+                borderColor: "divider",
+                bgcolor: "var(--vscode-editor-background)"
+              }}
+            >
               Bulk linking is disabled while locked or in view mode.
-            </div>
+            </Typography>
           )}
-        </div>
+        </Box>
       </BasePanel>
 
       <ConfirmBulkLinksModal

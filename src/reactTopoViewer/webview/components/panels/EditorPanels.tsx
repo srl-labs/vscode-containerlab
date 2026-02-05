@@ -12,7 +12,6 @@ import { BulkLinkPanel } from "./bulk-link";
 import { FreeTextEditorPanel } from "./free-text-editor";
 import { FreeShapeEditorPanel } from "./free-shape-editor";
 import { GroupEditorPanel } from "./group-editor";
-import { LabSettingsPanel } from "./lab-settings";
 
 /** Props passed directly to each panel */
 type NodeEditorProps = React.ComponentProps<typeof NodeEditorPanel>;
@@ -22,7 +21,6 @@ type BulkLinkProps = React.ComponentProps<typeof BulkLinkPanel>;
 type FreeTextEditorProps = React.ComponentProps<typeof FreeTextEditorPanel>;
 type FreeShapeEditorProps = React.ComponentProps<typeof FreeShapeEditorPanel>;
 type GroupEditorProps = React.ComponentProps<typeof GroupEditorPanel>;
-type LabSettingsProps = React.ComponentProps<typeof LabSettingsPanel>;
 
 export interface EditorPanelsProps {
   nodeEditor: NodeEditorProps;
@@ -33,7 +31,6 @@ export interface EditorPanelsProps {
   freeTextEditor: FreeTextEditorProps;
   freeShapeEditor: FreeShapeEditorProps;
   groupEditor: GroupEditorProps;
-  labSettings: LabSettingsProps;
 }
 
 /**
@@ -47,8 +44,7 @@ export const EditorPanels: React.FC<EditorPanelsProps> = ({
   bulkLink,
   freeTextEditor,
   freeShapeEditor,
-  groupEditor,
-  labSettings
+  groupEditor
 }) => {
   return (
     <>
@@ -60,7 +56,6 @@ export const EditorPanels: React.FC<EditorPanelsProps> = ({
       <FreeTextEditorPanel {...freeTextEditor} />
       <FreeShapeEditorPanel {...freeShapeEditor} />
       <GroupEditorPanel {...groupEditor} />
-      <LabSettingsPanel {...labSettings} />
     </>
   );
 };

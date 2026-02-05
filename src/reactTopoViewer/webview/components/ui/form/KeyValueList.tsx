@@ -2,6 +2,8 @@
  * KeyValueList - Dynamic key-value pairs
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
 
 import { AddItemButton, DeleteItemButton } from "./ListButtons";
 
@@ -49,7 +51,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       {entries.map(([key, value], index) => (
         <KeyValueItem
           key={index}
@@ -64,7 +66,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
         />
       ))}
       <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
-    </div>
+    </Box>
   );
 };
 
@@ -92,23 +94,23 @@ const KeyValueItem: React.FC<KeyValueItemProps> = ({
   valuePlaceholder,
   disabled
 }) => (
-  <div className="flex gap-2">
-    <input
-      type="text"
+  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <TextField
       value={itemKey}
       onChange={(e) => onKeyChange(e.target.value)}
-      className="input-field w-1/3"
       placeholder={keyPlaceholder}
       disabled={disabled}
+      size="small"
+      sx={{ width: "33%" }}
     />
-    <input
-      type="text"
+    <TextField
       value={value}
       onChange={(e) => onValueChange(e.target.value)}
-      className="input-field flex-1"
       placeholder={valuePlaceholder}
       disabled={disabled}
+      size="small"
+      sx={{ flex: 1 }}
     />
     <DeleteItemButton onRemove={onRemove} disabled={disabled} />
-  </div>
+  </Box>
 );

@@ -2,6 +2,11 @@
  * Sub-components for BasePanel
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
+import CloseIcon from "@mui/icons-material/Close";
 
 export const PanelFooter: React.FC<{
   hasChanges: boolean;
@@ -10,27 +15,34 @@ export const PanelFooter: React.FC<{
   primary: string;
   secondary: string;
 }> = ({ hasChanges, onPrimary, onSecondary, primary, secondary }) => (
-  <div
-    className="panel-footer flex justify-end gap-2 p-4 border-t flex-shrink-0"
-    style={{ borderColor: "var(--vscode-panel-border)" }}
+  <Box
+    sx={{
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 1,
+      p: 2,
+      borderTop: 1,
+      borderColor: "divider",
+      flexShrink: 0
+    }}
   >
-    <button
-      type="button"
-      className={`btn btn-small ${hasChanges ? "btn-has-changes" : "btn-secondary"}`}
+    <Button
+      variant={hasChanges ? "contained" : "outlined"}
+      size="small"
       onClick={onSecondary}
       data-testid="panel-apply-btn"
     >
       {secondary}
-    </button>
-    <button
-      type="button"
-      className="btn btn-primary btn-small"
+    </Button>
+    <Button
+      variant="contained"
+      size="small"
       onClick={onPrimary}
       data-testid="panel-ok-btn"
     >
       {primary}
-    </button>
-  </div>
+    </Button>
+  </Box>
 );
 
 export const PanelHeader: React.FC<{
@@ -39,32 +51,76 @@ export const PanelHeader: React.FC<{
   onMouseDown: (e: React.MouseEvent) => void;
   onClose: () => void;
 }> = ({ title, isDragging, onMouseDown, onClose }) => (
-  <div
-    className="panel-heading panel-title-bar"
+  <Box
     onMouseDown={onMouseDown}
-    style={{ cursor: isDragging ? "grabbing" : "grab" }}
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      px: 2,
+      py: 1,
+      borderBottom: 1,
+      borderColor: "divider",
+      cursor: isDragging ? "grabbing" : "grab",
+      userSelect: "none",
+      bgcolor: "background.paper"
+    }}
   >
-    <span className="panel-title" data-testid="panel-title">
+    <Typography variant="subtitle1" fontWeight={500} data-testid="panel-title">
       {title}
-    </span>
-    <button
-      className="panel-close-btn"
+    </Typography>
+    <IconButton
+      size="small"
       onClick={onClose}
       aria-label="Close"
       data-testid="panel-close-btn"
+      sx={{ ml: 1 }}
     >
-      <i className="fas fa-times"></i>
-    </button>
-  </div>
+      <CloseIcon fontSize="small" />
+    </IconButton>
+  </Box>
 );
 
 export const ResizeHandle: React.FC<{ onMouseDown: (e: React.MouseEvent) => void }> = ({
   onMouseDown
-}) => <div className="panel-resize-handle" onMouseDown={onMouseDown} title="Drag to resize" />;
+}) => (
+  <Box
+    onMouseDown={onMouseDown}
+    title="Drag to resize"
+    sx={{
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      width: 16,
+      height: 16,
+      cursor: "nwse-resize",
+      "&::after": {
+        content: '""',
+        position: "absolute",
+        bottom: 4,
+        right: 4,
+        width: 8,
+        height: 8,
+        borderRight: 2,
+        borderBottom: 2,
+        borderColor: "divider",
+        opacity: 0.6
+      }
+    }}
+  />
+);
 
 export const Backdrop: React.FC<{ zIndex: number; onClick: () => void }> = ({
   zIndex,
   onClick
 }) => (
-  <div className="fixed inset-0 bg-black/30" style={{ zIndex: zIndex - 1 }} onClick={onClick} />
+  <Box
+    onClick={onClick}
+    sx={{
+      position: "fixed",
+      inset: 0,
+      bgcolor: "rgba(0, 0, 0, 0.3)",
+      zIndex: zIndex - 1
+    }}
+  />
 );

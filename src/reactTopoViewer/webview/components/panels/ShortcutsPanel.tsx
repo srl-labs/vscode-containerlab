@@ -3,6 +3,9 @@
  * Migrated from legacy TopoViewer shortcuts-modal.html
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
 
 import { BasePanel } from "../ui/editor/BasePanel";
 
@@ -29,27 +32,38 @@ interface ShortcutRowProps {
 }
 
 const ShortcutRow: React.FC<ShortcutRowProps> = ({ label, shortcut }) => (
-  <div className="flex justify-between items-center py-0.5">
-    <span className="text-default">{label}</span>
-    <kbd className="shortcuts-kbd">{formatKey(shortcut)}</kbd>
-  </div>
+  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", py: 0.5 }}>
+    <Typography variant="body2">{label}</Typography>
+    <Chip
+      label={formatKey(shortcut)}
+      size="small"
+      sx={{
+        fontFamily: "monospace",
+        fontSize: "0.75rem",
+        height: 22,
+        bgcolor: "var(--vscode-badge-background)",
+        color: "var(--vscode-badge-foreground)"
+      }}
+    />
+  </Box>
 );
 
 interface ShortcutSectionProps {
   title: string;
-  icon: string;
-  colorClass: string;
+  color: string;
   children: React.ReactNode;
 }
 
-const ShortcutSection: React.FC<ShortcutSectionProps> = ({ title, icon, colorClass, children }) => (
-  <section className="mb-4">
-    <h4 className={`font-semibold mb-2 flex items-center gap-2 ${colorClass}`}>
-      <i className={`fas ${icon}`} aria-hidden="true"></i>
+const ShortcutSection: React.FC<ShortcutSectionProps> = ({ title, color, children }) => (
+  <Box sx={{ mb: 3 }}>
+    <Typography
+      variant="subtitle2"
+      sx={{ color, fontWeight: 600, mb: 1, display: "flex", alignItems: "center", gap: 1 }}
+    >
       {title}
-    </h4>
-    <div className="space-y-1 text-sm">{children}</div>
-  </section>
+    </Typography>
+    <Box sx={{ pl: 0 }}>{children}</Box>
+  </Box>
 );
 
 export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClose }) => {
@@ -66,9 +80,9 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
       minWidth={280}
       minHeight={200}
     >
-      <div className="shortcuts-panel-content">
+      <Box sx={{ p: 2 }}>
         {/* Viewer Mode */}
-        <ShortcutSection title="Viewer Mode" icon="fa-eye" colorClass="text-green-500">
+        <ShortcutSection title="Viewer Mode" color="success.main">
           <ShortcutRow label="Select node/link" shortcut="Left Click" />
           <ShortcutRow label="Node actions" shortcut="Right Click" />
           <ShortcutRow label="Capture packets" shortcut="Right Click + Link" />
@@ -76,7 +90,7 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
         </ShortcutSection>
 
         {/* Editor Mode */}
-        <ShortcutSection title="Editor Mode" icon="fa-edit" colorClass="text-blue-500">
+        <ShortcutSection title="Editor Mode" color="info.main">
           <ShortcutRow label="Add node" shortcut="Shift + Click" />
           <ShortcutRow label="Create link" shortcut="Shift + Click node" />
           <ShortcutRow label="Delete element" shortcut="Alt + Click" />
@@ -93,24 +107,22 @@ export const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isVisible, onClo
         </ShortcutSection>
 
         {/* Navigation */}
-        <ShortcutSection title="Navigation" icon="fa-cog" colorClass="text-purple-500">
+        <ShortcutSection title="Navigation" color="secondary.main">
           <ShortcutRow label="Deselect all" shortcut="Esc" />
         </ShortcutSection>
 
         {/* Tips */}
-        <ShortcutSection title="Tips" icon="fa-lightbulb" colorClass="text-orange-500">
-          <ul className="list-disc list-inside text-secondary space-y-1.5 text-sm">
+        <ShortcutSection title="Tips" color="warning.main">
+          <Typography variant="body2" component="ul" sx={{ pl: 2, m: 0, "& li": { mb: 0.5 } }}>
             <li>Use layout algorithms to auto-arrange</li>
             <li>
-              Box select nodes, then <kbd className="shortcuts-kbd-inline">Ctrl</kbd> +{" "}
-              <kbd className="shortcuts-kbd-inline">G</kbd> to group or{" "}
-              <kbd className="shortcuts-kbd-inline">Del</kbd> to delete
+              Box select nodes, then <code>Ctrl+G</code> to group or <code>Del</code> to delete
             </li>
             <li>Double-click any item to directly edit</li>
             <li>Shift+Click a node to start creating a link</li>
-          </ul>
+          </Typography>
         </ShortcutSection>
-      </div>
+      </Box>
     </BasePanel>
   );
 };

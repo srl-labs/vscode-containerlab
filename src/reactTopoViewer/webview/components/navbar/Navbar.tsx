@@ -3,44 +3,53 @@
  * Complete implementation matching legacy features
  */
 import React from "react";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
+import Divider from "@mui/material/Divider";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import CheckIcon from "@mui/icons-material/Check";
+
+import SettingsIcon from "@mui/icons-material/Settings";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import StopIcon from "@mui/icons-material/Stop";
+import AddIcon from "@mui/icons-material/Add";
+import UndoIcon from "@mui/icons-material/Undo";
+import RedoIcon from "@mui/icons-material/Redo";
+import FitScreenIcon from "@mui/icons-material/FitScreen";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import ViewColumnIcon from "@mui/icons-material/ViewColumn";
+import GridOnIcon from "@mui/icons-material/GridOn";
+import SearchIcon from "@mui/icons-material/Search";
+import LabelIcon from "@mui/icons-material/Label";
+import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import KeyboardIcon from "@mui/icons-material/Keyboard";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import InfoIcon from "@mui/icons-material/Info";
 
 import type { LinkLabelMode } from "../../stores/topoViewerStore";
+
 import {
-  useEndpointLabelOffset,
   useIsLocked,
   useIsProcessing,
   useLabName,
-  useLinkLabelMode,
   useMode,
-  useProcessingMode,
-  useShowDummyLinks,
   useTopoViewerActions
 } from "../../stores/topoViewerStore";
-import {
-  DEFAULT_GRID_LINE_WIDTH,
-  DEFAULT_GRID_STYLE,
-  useDeploymentCommands,
-  useDropdown
-} from "../../hooks/ui";
+import { useDeploymentCommands } from "../../hooks/ui";
 import type { GridStyle, LayoutOption } from "../../hooks/ui";
-import { saveViewerSettings } from "../../services";
-import {
-  ENDPOINT_LABEL_OFFSET_MAX,
-  ENDPOINT_LABEL_OFFSET_MIN
-} from "../../annotations/endpointLabelOffset";
 
 import { ContainerlabLogo } from "./ContainerlabLogo";
-import { NavbarLoadingIndicator } from "./NavbarLoadingIndicator";
 
-type ProcessingMode = "deploy" | "destroy";
-
-const DEPLOY_MODE: ProcessingMode = "deploy";
-const DESTROY_MODE: ProcessingMode = "destroy";
-
-const DANGER_CLASS = "btn-icon--danger";
-const SHAKE_CLASS = "lock-shake";
-
-interface NavbarProps {
+export interface NavbarProps {
   onZoomToFit?: () => void;
   onToggleLayout?: () => void;
   layout: LayoutOption;
@@ -66,23 +75,26 @@ interface NavbarProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
-  /** Easter egg logo click handler and state */
-  onLogoClick?: () => void;
   /** Easter egg click progress (0-10) */
   logoClickProgress?: number;
   /** Whether party mode is active (logo has exploded) */
   isPartyMode?: boolean;
+  /** Easter egg logo click handler and state */
+  onLogoClick?: () => void;
+  onShowGridSettings?: () => void;
+  linkLabelMode: LinkLabelMode;
+  onLinkLabelModeChange: (mode: LinkLabelMode) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onZoomToFit,
-  onToggleLayout,
+  onToggleLayout: _onToggleLayout,
   layout,
   onLayoutChange,
-  gridLineWidth,
-  onGridLineWidthChange,
-  gridStyle,
-  onGridStyleChange,
+  gridLineWidth: _gridLineWidth,
+  onGridLineWidthChange: _onGridLineWidthChange,
+  gridStyle: _gridStyle,
+  onGridStyleChange: _onGridStyleChange,
   onLabSettings,
   onToggleSplit,
   onFindNode,
@@ -90,8 +102,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onShowShortcuts,
   onShowAbout,
   onOpenNodePalette,
-  onLockedAction,
-  lockShakeActive = false,
+  onLockedAction: _onLockedAction,
+  lockShakeActive: _lockShakeActive = false,
   shortcutDisplayEnabled = false,
   onToggleShortcutDisplay,
   canUndo = false,
@@ -100,758 +112,232 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRedo,
   onLogoClick,
   logoClickProgress = 0,
-  isPartyMode = false
+  isPartyMode = false,
+  onShowGridSettings,
+  linkLabelMode,
+  onLinkLabelModeChange
 }) => {
   const mode = useMode();
   const labName = useLabName();
   const isLocked = useIsLocked();
   const isProcessing = useIsProcessing();
-  const processingMode = useProcessingMode();
+  const { toggleLock, setProcessing } = useTopoViewerActions();
+  const deploymentCommands = useDeploymentCommands();
 
-  const { toggleLock } = useTopoViewerActions();
-
-  const isViewerMode = mode === "view";
   const isEditMode = mode === "edit" && !isProcessing;
-  const lockButtonClass = buildLockButtonClass(isLocked, lockShakeActive);
+  const isViewerMode = mode === "view";
 
-  const handleOpenNodePalette = React.useCallback(() => {
-    if (isLocked) {
-      onLockedAction?.();
-      return;
+  const appBarRef = React.useRef<HTMLDivElement>(null);
+  const [linkLabelMenuPosition, setLinkLabelMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const linkLabelMenuOpen = Boolean(linkLabelMenuPosition);
+
+  const handleLinkLabelClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    const appBar = appBarRef.current;
+    const button = event.currentTarget;
+    if (appBar) {
+      const appBarRect = appBar.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      setLinkLabelMenuPosition({
+        top: appBarRect.bottom,
+        left: buttonRect.left + buttonRect.width / 2
+      });
     }
-    onOpenNodePalette?.();
-  }, [isLocked, onLockedAction, onOpenNodePalette]);
+  }, []);
+
+  const handleLinkLabelClose = React.useCallback(() => {
+    setLinkLabelMenuPosition(null);
+  }, []);
+
+  const handleLinkLabelSelect = React.useCallback((newMode: LinkLabelMode) => {
+    onLinkLabelModeChange(newMode);
+    setLinkLabelMenuPosition(null);
+  }, [onLinkLabelModeChange]);
+
+  const handleDeploy = React.useCallback(() => {
+    if (isViewerMode) {
+      setProcessing(true, "destroy");
+      deploymentCommands.onDestroy();
+    } else {
+      setProcessing(true, "deploy");
+      deploymentCommands.onDeploy();
+    }
+  }, [isViewerMode, setProcessing, deploymentCommands]);
+
+  const handleLayoutToggle = React.useCallback(() => {
+    const layouts: LayoutOption[] = ["preset", "force", "geo"];
+    const currentIndex = layouts.indexOf(layout);
+    const nextIndex = (currentIndex + 1) % layouts.length;
+    onLayoutChange(layouts[nextIndex]);
+  }, [layout, onLayoutChange]);
 
   return (
-    <nav className="navbar" role="navigation" aria-label="main navigation">
-      {/* Left: Logo + Title */}
-      <div className="navbar-brand">
-        <NavbarLogo
-          onClick={onLogoClick}
-          clickProgress={logoClickProgress}
-          isPartyMode={isPartyMode}
-        />
-        <NavbarTitle mode={mode} labName={labName} isProcessing={isProcessing} />
-      </div>
+    <AppBar ref={appBarRef} position="static" elevation={0} sx={{ bgcolor: "var(--vscode-editor-background)" }}>
+      <Toolbar variant="dense" disableGutters sx={{ minHeight: 40, px: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
+        {/* Left: Logo + Title */}
+        <IconButton size="small" onClick={onLogoClick}>
+          <ContainerlabLogo clickProgress={logoClickProgress} isExploded={isPartyMode} />
+        </IconButton>
+        <Typography variant="h5" fontWeight={500} ml={0.5} sx={{ lineHeight: 1, flexGrow: 1 }}>
+          {labName || "TopoViewer"}
+        </Typography>
 
-      {/* Center: Buttons */}
-      <div className="navbar-buttons">
         {/* Lab Settings */}
-        <NavButton
-          icon="fa-gear"
-          title="Lab Settings"
-          onClick={onLabSettings}
-          testId="navbar-lab-settings"
-        />
+        <Tooltip title="Lab Settings">
+          <IconButton size="small" onClick={onLabSettings}>
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
         {/* Lock / Unlock */}
-        <NavButton
-          icon={isLocked ? "fa-lock" : "fa-unlock"}
-          title={isLocked ? "Unlock Lab" : "Lock Lab"}
-          onClick={toggleLock}
-          disabled={isProcessing}
-          className={lockButtonClass}
-          ariaPressed={isLocked}
-          testId="navbar-lock"
-        />
+        <Tooltip title={isLocked ? "Unlock Lab" : "Lock Lab"}>
+          <IconButton size="small" onClick={toggleLock} disabled={isProcessing}>
+            {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
 
         {/* Deploy / Destroy + Options */}
-        <DeployControl
-          isViewerMode={isViewerMode}
-          isProcessing={isProcessing}
-          processingMode={processingMode}
-        />
+        <Tooltip title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}>
+          <IconButton
+            size="small"
+            onClick={handleDeploy}
+            disabled={isProcessing}
+            sx={{ color: isViewerMode ? "error.main" : "success.main" }}
+          >
+            {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
 
         {/* Palette */}
         {isEditMode && (
-          <NavButton
-            icon="fa-plus"
-            title="Open Palette"
-            onClick={handleOpenNodePalette}
-            testId="navbar-node-palette"
-          />
+          <Tooltip title="Open Palette">
+            <IconButton size="small" onClick={onOpenNodePalette}>
+              <AddIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         )}
 
         {/* Undo - only show in edit mode */}
         {isEditMode && (
-          <NavButton
-            icon="fa-rotate-left"
-            title="Undo (Ctrl+Z)"
-            onClick={onUndo}
-            disabled={!canUndo}
-            testId="navbar-undo"
-          />
+          <Tooltip title="Undo (Ctrl+Z)">
+            <span>
+              <IconButton size="small" onClick={onUndo} disabled={!canUndo}>
+                <UndoIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
         )}
 
         {/* Redo - only show in edit mode */}
         {isEditMode && (
-          <NavButton
-            icon="fa-rotate-right"
-            title="Redo (Ctrl+Y)"
-            onClick={onRedo}
-            disabled={!canRedo}
-            testId="navbar-redo"
-          />
+          <Tooltip title="Redo (Ctrl+Y)">
+            <span>
+              <IconButton size="small" onClick={onRedo} disabled={!canRedo}>
+                <RedoIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
         )}
+
+        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
         {/* Fit to Viewport */}
-        <NavButton
-          icon="fa-expand"
-          title="Fit to Viewport"
-          onClick={onZoomToFit}
-          testId="navbar-fit-viewport"
-        />
+        <Tooltip title="Fit to Viewport">
+          <IconButton size="small" onClick={onZoomToFit}>
+            <FitScreenIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
         {/* Toggle YAML Split View */}
-        <NavButton
-          icon="fa-columns"
-          title="Toggle YAML Split View"
-          onClick={onToggleSplit}
-          testId="navbar-split-view"
-        />
+        <Tooltip title="Toggle YAML Split View">
+          <IconButton size="small" onClick={onToggleSplit}>
+            <ViewColumnIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
         {/* Layout Manager */}
-        <LayoutDropdown
-          layout={layout}
-          onLayoutChange={onLayoutChange}
-          onToggleLayout={onToggleLayout}
-        />
+        <Tooltip title={`Layout: ${layout}`}>
+          <IconButton size="small" onClick={handleLayoutToggle}>
+            <AccountTreeIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
         {/* Grid line width */}
-        <GridDropdown
-          value={gridLineWidth}
-          gridStyle={gridStyle}
-          onChange={onGridLineWidthChange}
-          onGridStyleChange={onGridStyleChange}
-        />
+        <Tooltip title="Grid Settings">
+          <IconButton size="small" onClick={onShowGridSettings}>
+            <GridOnIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
         {/* Find Node */}
-        <NavButton
-          icon="fa-binoculars"
-          title="Find Node"
-          onClick={onFindNode}
-          testId="navbar-find-node"
-        />
+        <Tooltip title="Find Node">
+          <IconButton size="small" onClick={onFindNode}>
+            <SearchIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
         {/* Link Labels Dropdown */}
-        <LinkLabelDropdown />
+        <Tooltip title="Link Labels">
+          <IconButton size="small" onClick={handleLinkLabelClick}>
+            <LabelIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Menu
+          open={linkLabelMenuOpen}
+          onClose={handleLinkLabelClose}
+          anchorReference="anchorPosition"
+          anchorPosition={linkLabelMenuPosition ?? undefined}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <MenuItem onClick={() => handleLinkLabelSelect("show-all")}>
+            <ListItemIcon>
+              {linkLabelMode === "show-all" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>Show All</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleLinkLabelSelect("on-select")}>
+            <ListItemIcon>
+              {linkLabelMode === "on-select" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>On Select</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleLinkLabelSelect("hide")}>
+            <ListItemIcon>
+              {linkLabelMode === "hide" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>Hide</ListItemText>
+          </MenuItem>
+        </Menu>
 
         {/* Capture Viewport */}
-        <NavButton
-          icon="fa-camera"
-          title="Capture Viewport as SVG"
-          onClick={onCaptureViewport}
-          testId="navbar-capture"
-        />
+        <Tooltip title="Capture Viewport as SVG">
+          <IconButton size="small" onClick={onCaptureViewport}>
+            <CameraAltIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
         {/* Shortcuts */}
-        <NavButton
-          icon="fa-keyboard"
-          title="Shortcuts"
-          onClick={onShowShortcuts}
-          testId="navbar-shortcuts"
-        />
+        <Tooltip title="Shortcuts">
+          <IconButton size="small" onClick={onShowShortcuts}>
+            <KeyboardIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
 
         {/* Toggle Shortcut Display */}
-        <NavButton
-          icon={shortcutDisplayEnabled ? "fa-eye" : "fa-eye-slash"}
-          title="Toggle Shortcut Display"
-          onClick={onToggleShortcutDisplay}
-          active={shortcutDisplayEnabled}
-          testId="navbar-shortcut-display"
-        />
+        <Tooltip title="Toggle Shortcut Display">
+          <IconButton size="small" onClick={onToggleShortcutDisplay}>
+            {shortcutDisplayEnabled ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
 
         {/* About */}
-        <NavButton
-          icon="fa-circle-info"
-          title="About TopoViewer"
-          onClick={onShowAbout}
-          testId="navbar-about"
-        />
-      </div>
-
-      {/* Loading Indicator - shows during deployment/destroy operations */}
-      <NavbarLoadingIndicator isActive={isProcessing} mode={processingMode} />
-    </nav>
+        <Tooltip title="About TopoViewer">
+          <IconButton size="small" onClick={onShowAbout}>
+            <InfoIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Toolbar>
+    </AppBar>
   );
 };
-
-/**
- * Link Label Menu Component
- */
-interface LinkLabelMenuProps {
-  currentMode: LinkLabelMode;
-  showDummyLinks: boolean;
-  endpointLabelOffset: number;
-  isLocked: boolean;
-  onModeChange: (mode: LinkLabelMode) => void;
-  onToggleDummyLinks: () => void;
-  onEndpointLabelOffsetChange: (value: number) => void;
-  onEndpointLabelOffsetCommit: () => void;
-}
-
-const LINK_LABEL_MODES: { value: LinkLabelMode; label: string }[] = [
-  { value: "show-all", label: "Show Labels" },
-  { value: "on-select", label: "Show Link Labels on Select" },
-  { value: "hide", label: "No Labels" }
-];
-
-function buildLockButtonClass(isLocked: boolean, isShaking: boolean): string {
-  return [isLocked ? DANGER_CLASS : "", isShaking ? SHAKE_CLASS : ""]
-    .filter(Boolean)
-    .join(" ");
-}
-
-function buildDeployButtonClass(
-  isViewerMode: boolean,
-  isProcessing: boolean,
-  activeProcessingMode: ProcessingMode
-): string {
-  return [
-    isViewerMode ? DANGER_CLASS : "btn-icon--primary",
-    isProcessing ? `processing processing--${activeProcessingMode}` : ""
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
-const LinkLabelMenu: React.FC<LinkLabelMenuProps> = ({
-  currentMode,
-  showDummyLinks,
-  endpointLabelOffset,
-  isLocked,
-  onModeChange,
-  onToggleDummyLinks,
-  onEndpointLabelOffsetChange,
-  onEndpointLabelOffsetCommit
-}) => {
-  const handleEndpointOffsetChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    const next = parseFloat(evt.target.value);
-    onEndpointLabelOffsetChange(Number.isFinite(next) ? next : endpointLabelOffset);
-  };
-
-  return (
-    <div className="navbar-menu" role="menu">
-      {LINK_LABEL_MODES.map(({ value, label }) => (
-        <button
-          key={value}
-          type="button"
-          className="navbar-menu-option"
-          onClick={() => onModeChange(value)}
-          role="menuitemradio"
-          aria-checked={currentMode === value}
-        >
-          <span>{label}</span>
-          {currentMode === value && (
-            <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
-          )}
-        </button>
-      ))}
-      <hr className="my-1 border-t border-default" />
-      <button
-        type="button"
-        className="navbar-menu-option"
-        onClick={onToggleDummyLinks}
-        role="menuitemcheckbox"
-        aria-checked={showDummyLinks}
-      >
-        <span>Show Dummy Links</span>
-        {showDummyLinks && (
-          <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
-        )}
-      </button>
-      <hr className="my-1 border-t border-default" />
-      <div className="px-3 pb-2 pt-1">
-        <div className="flex items-center gap-2 mb-2">
-          <label className="text-2xs font-semibold text-default uppercase tracking-wide">
-            Endpoint offset
-          </label>
-          <span className="grid-line-display">{endpointLabelOffset.toFixed(0)}</span>
-        </div>
-        <input
-          type="range"
-          min={ENDPOINT_LABEL_OFFSET_MIN}
-          max={ENDPOINT_LABEL_OFFSET_MAX}
-          step="1"
-          value={endpointLabelOffset}
-          onChange={handleEndpointOffsetChange}
-          onMouseUp={onEndpointLabelOffsetCommit}
-          onTouchEnd={onEndpointLabelOffsetCommit}
-          className="grid-line-slider"
-          aria-label="Endpoint label offset"
-          disabled={isLocked}
-        />
-      </div>
-    </div>
-  );
-};
-
-interface LinkLabelDropdownProps {}
-
-const LinkLabelDropdown: React.FC<LinkLabelDropdownProps> = () => {
-  const linkLabelMode = useLinkLabelMode();
-  const showDummyLinks = useShowDummyLinks();
-  const endpointLabelOffset = useEndpointLabelOffset();
-  const isLocked = useIsLocked();
-  const { setLinkLabelMode, toggleDummyLinks, setEndpointLabelOffset } = useTopoViewerActions();
-  const dropdown = useDropdown();
-
-  const saveEndpointLabelOffset = React.useCallback(() => {
-    void saveViewerSettings({ endpointLabelOffset });
-  }, [endpointLabelOffset]);
-
-  const handleLinkLabelModeChange = (mode: LinkLabelMode) => {
-    setLinkLabelMode(mode);
-    dropdown.close();
-  };
-
-  const handleEndpointLabelOffsetChange = (value: number) => {
-    setEndpointLabelOffset(value);
-  };
-
-  return (
-    <div className="relative inline-block" ref={dropdown.ref}>
-      <NavButton
-        icon="fa-tag"
-        title="Link Labels"
-        onClick={dropdown.toggle}
-        active={dropdown.isOpen}
-        testId="navbar-link-labels"
-      />
-      {dropdown.isOpen && (
-        <LinkLabelMenu
-          currentMode={linkLabelMode}
-          showDummyLinks={showDummyLinks}
-          endpointLabelOffset={endpointLabelOffset}
-          isLocked={isLocked}
-          onModeChange={handleLinkLabelModeChange}
-          onToggleDummyLinks={toggleDummyLinks}
-          onEndpointLabelOffsetChange={handleEndpointLabelOffsetChange}
-          onEndpointLabelOffsetCommit={saveEndpointLabelOffset}
-        />
-      )}
-    </div>
-  );
-};
-
-const LAYOUT_OPTIONS: { value: LayoutOption; label: string }[] = [
-  { value: "preset", label: "Preset" },
-  { value: "force", label: "Force-Directed" },
-  { value: "geo", label: "GeoMap" }
-];
-
-function getLayoutLabel(option: LayoutOption): string {
-  const match = LAYOUT_OPTIONS.find((o) => o.value === option);
-  return match ? match.label : option;
-}
-
-interface LayoutMenuProps {
-  currentLayout: LayoutOption;
-  onSelect: (layout: LayoutOption) => void;
-}
-
-const LayoutMenu: React.FC<LayoutMenuProps> = ({ currentLayout, onSelect }) => (
-  <div className="navbar-menu" role="menu">
-    {LAYOUT_OPTIONS.map(({ value, label }) => (
-      <button
-        key={value}
-        type="button"
-        className="navbar-menu-option"
-        onClick={() => onSelect(value)}
-        role="menuitemradio"
-        aria-checked={currentLayout === value}
-      >
-        <span>{label}</span>
-        {currentLayout === value && (
-          <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
-        )}
-      </button>
-    ))}
-  </div>
-);
-
-interface LayoutDropdownProps {
-  layout: LayoutOption;
-  onLayoutChange: (layout: LayoutOption) => void;
-  onToggleLayout?: () => void;
-}
-
-const LayoutDropdown: React.FC<LayoutDropdownProps> = ({
-  layout,
-  onLayoutChange,
-  onToggleLayout
-}) => {
-  const dropdown = useDropdown();
-  const handleLayoutSelect = (nextLayout: LayoutOption) => {
-    onLayoutChange(nextLayout);
-    onToggleLayout?.();
-    dropdown.close();
-  };
-
-  return (
-    <div className="relative inline-block" ref={dropdown.ref}>
-      <NavButton
-        icon="fa-circle-nodes"
-        title={`Layout: ${getLayoutLabel(layout)}`}
-        onClick={dropdown.toggle}
-        active={dropdown.isOpen}
-        testId="navbar-layout"
-      />
-      {dropdown.isOpen && <LayoutMenu currentLayout={layout} onSelect={handleLayoutSelect} />}
-    </div>
-  );
-};
-
-interface GridSettingsMenuProps {
-  value: number;
-  gridStyle: GridStyle;
-  onChange: (width: number) => void;
-  onGridStyleChange: (style: GridStyle) => void;
-}
-
-const GRID_STYLE_OPTIONS: { value: GridStyle; label: string }[] = [
-  { value: "dotted", label: "Dotted" },
-  { value: "quadratic", label: "Quadractic" }
-];
-
-const GridSettingsMenu: React.FC<GridSettingsMenuProps> = ({
-  value,
-  gridStyle,
-  onChange,
-  onGridStyleChange
-}) => {
-  const handleChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
-    const next = parseFloat(evt.target.value);
-    onChange(Number.isFinite(next) ? next : DEFAULT_GRID_LINE_WIDTH);
-  };
-  const handleReset = () => onChange(DEFAULT_GRID_LINE_WIDTH);
-  const handleGridStyleReset = () => onGridStyleChange(DEFAULT_GRID_STYLE);
-  return (
-    <div className="navbar-menu grid-menu" role="menu">
-      <div className="flex items-center gap-2 mb-2">
-        <label className="text-2xs font-semibold text-default uppercase tracking-wide">
-          Grid style
-        </label>
-      </div>
-      {GRID_STYLE_OPTIONS.map(({ value: styleValue, label }) => (
-        <button
-          key={styleValue}
-          type="button"
-          className="navbar-menu-option"
-          onClick={() => onGridStyleChange(styleValue)}
-          role="menuitemradio"
-          aria-checked={gridStyle === styleValue}
-        >
-          <span>{label}</span>
-          {gridStyle === styleValue && (
-            <i className="fa-solid fa-check navbar-menu-option-check" aria-hidden="true"></i>
-          )}
-        </button>
-      ))}
-      <button
-        type="button"
-        className="navbar-menu-option grid-reset-button mt-2"
-        onClick={handleGridStyleReset}
-      >
-        Reset to {DEFAULT_GRID_STYLE}
-      </button>
-      <hr className="my-1 border-t border-default" />
-      <div className="flex items-center gap-2 mb-2">
-        <label className="text-2xs font-semibold text-default uppercase tracking-wide">
-          Grid line width
-        </label>
-        <span className="grid-line-display">{value.toFixed(2)}</span>
-      </div>
-      <input
-        type="range"
-        min="0.00001"
-        max="2"
-        step="0.05"
-        value={value}
-        onChange={handleChange}
-        className="grid-line-slider"
-        aria-label="Grid line width"
-      />
-      <button
-        type="button"
-        className="navbar-menu-option grid-reset-button mt-2"
-        onClick={handleReset}
-      >
-        Reset to {DEFAULT_GRID_LINE_WIDTH}
-      </button>
-    </div>
-  );
-};
-
-interface GridDropdownProps {
-  value: number;
-  gridStyle: GridStyle;
-  onChange: (width: number) => void;
-  onGridStyleChange: (style: GridStyle) => void;
-}
-
-const GridDropdown: React.FC<GridDropdownProps> = ({
-  value,
-  gridStyle,
-  onChange,
-  onGridStyleChange
-}) => {
-  const dropdown = useDropdown();
-  return (
-    <div className="relative inline-block" ref={dropdown.ref}>
-      <NavButton
-        icon="fa-border-all"
-        title="Grid settings"
-        onClick={dropdown.toggle}
-        active={dropdown.isOpen}
-        testId="navbar-grid"
-      />
-      {dropdown.isOpen && (
-        <GridSettingsMenu
-          value={value}
-          gridStyle={gridStyle}
-          onChange={onChange}
-          onGridStyleChange={onGridStyleChange}
-        />
-      )}
-    </div>
-  );
-};
-
-interface DeploymentMenuProps {
-  isViewerMode: boolean;
-  isProcessing: boolean;
-  onDeployCleanup: () => void;
-  onDestroyCleanup: () => void;
-  onRedeploy: () => void;
-  onRedeployCleanup: () => void;
-}
-
-const DeploymentMenu: React.FC<DeploymentMenuProps> = ({
-  isViewerMode,
-  isProcessing,
-  onDeployCleanup,
-  onDestroyCleanup,
-  onRedeploy,
-  onRedeployCleanup
-}) => {
-  const items = isViewerMode
-    ? [
-        { label: "Destroy (cleanup)", icon: "fa-broom", onClick: onDestroyCleanup, danger: true },
-        { label: "Redeploy", icon: "fa-redo", onClick: onRedeploy, danger: false },
-        {
-          label: "Redeploy (cleanup)",
-          icon: "fa-redo",
-          onClick: onRedeployCleanup,
-          danger: true
-        }
-      ]
-    : [
-        { label: "Deploy (cleanup)", icon: "fa-broom", onClick: onDeployCleanup, danger: true }
-      ];
-
-  return (
-    <div className="navbar-deploy-menu" role="menu">
-      {items.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          className={`btn-icon ${item.danger ? DANGER_CLASS : ""}`}
-          onClick={item.onClick}
-          disabled={isProcessing}
-          title={item.label}
-          aria-label={item.label}
-        >
-          <i className={`fas ${item.icon}`} aria-hidden="true"></i>
-        </button>
-      ))}
-    </div>
-  );
-};
-
-interface DeployControlProps {
-  isViewerMode: boolean;
-  isProcessing: boolean;
-  processingMode: ProcessingMode | null;
-}
-
-const DeployControl: React.FC<DeployControlProps> = ({
-  isViewerMode,
-  isProcessing,
-  processingMode
-}) => {
-  const { setProcessing } = useTopoViewerActions();
-  const deploymentCommands = useDeploymentCommands();
-  const activeProcessingMode = processingMode ?? (isViewerMode ? DESTROY_MODE : DEPLOY_MODE);
-  const deployButtonClass = buildDeployButtonClass(
-    isViewerMode,
-    isProcessing,
-    activeProcessingMode
-  );
-
-  const handleDeployClick = React.useCallback(() => {
-    const nextMode = isViewerMode ? DESTROY_MODE : DEPLOY_MODE;
-    setProcessing(true, nextMode);
-    if (isViewerMode) {
-      deploymentCommands.onDestroy();
-    } else {
-      deploymentCommands.onDeploy();
-    }
-  }, [deploymentCommands, isViewerMode, setProcessing]);
-
-  const handleDeployCleanup = React.useCallback(() => {
-    setProcessing(true, DEPLOY_MODE);
-    deploymentCommands.onDeployCleanup();
-  }, [deploymentCommands, setProcessing]);
-
-  const handleDestroyCleanup = React.useCallback(() => {
-    setProcessing(true, DESTROY_MODE);
-    deploymentCommands.onDestroyCleanup();
-  }, [deploymentCommands, setProcessing]);
-
-  const handleRedeploy = React.useCallback(() => {
-    setProcessing(true, DEPLOY_MODE);
-    deploymentCommands.onRedeploy();
-  }, [deploymentCommands, setProcessing]);
-
-  const handleRedeployCleanup = React.useCallback(() => {
-    setProcessing(true, DEPLOY_MODE);
-    deploymentCommands.onRedeployCleanup();
-  }, [deploymentCommands, setProcessing]);
-
-  return (
-    <div className="navbar-deploy relative inline-flex items-center">
-      <NavButton
-        icon={isViewerMode ? "fa-stop" : "fa-play"}
-        title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}
-        onClick={handleDeployClick}
-        disabled={isProcessing}
-        className={deployButtonClass}
-        testId="navbar-deploy"
-      />
-      <DeploymentMenu
-        isViewerMode={isViewerMode}
-        isProcessing={isProcessing}
-        onDeployCleanup={handleDeployCleanup}
-        onDestroyCleanup={handleDestroyCleanup}
-        onRedeploy={handleRedeploy}
-        onRedeployCleanup={handleRedeployCleanup}
-      />
-    </div>
-  );
-};
-
-/**
- * Navbar Button Component
- */
-interface NavButtonProps {
-  icon: string;
-  title: string;
-  onClick?: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  testId?: string;
-  className?: string;
-  ariaPressed?: boolean;
-}
-
-const NavButton: React.FC<NavButtonProps> = ({
-  icon,
-  title,
-  onClick,
-  active,
-  disabled,
-  testId,
-  className,
-  ariaPressed
-}) => {
-  const classes = [
-    "btn-icon",
-    active ? "active" : "",
-    disabled ? "opacity-50 cursor-not-allowed" : "",
-    className ?? ""
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <button
-      className={classes}
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      data-testid={testId}
-      aria-pressed={ariaPressed}
-    >
-      <span className="inline-flex items-center justify-center text-xl">
-        <i className={`fas ${icon}`}></i>
-      </span>
-    </button>
-  );
-};
-
-/**
- * Logo section with easter egg click handling
- */
-interface NavbarLogoProps {
-  onClick?: () => void;
-  clickProgress?: number;
-  isPartyMode?: boolean;
-}
-
-const NavbarLogo: React.FC<NavbarLogoProps> = ({
-  onClick,
-  clickProgress = 0,
-  isPartyMode = false
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="navbar-logo-button flex items-center bg-transparent border-none cursor-pointer p-0"
-    aria-label="Containerlab logo"
-  >
-    <ContainerlabLogo
-      className="navbar-logo"
-      clickProgress={clickProgress}
-      isExploded={isPartyMode}
-    />
-  </button>
-);
-
-/**
- * Navbar title section showing mode and lab name
- */
-interface NavbarTitleProps {
-  mode: "view" | "edit";
-  labName: string | null;
-  isProcessing?: boolean;
-}
-
-const NavbarTitle: React.FC<NavbarTitleProps> = ({
-  mode,
-  labName,
-  isProcessing = false
-}) => {
-  const { modeClass, modeLabel } = getNavbarModePresentation(mode, isProcessing);
-  const displayName = labName || "Unknown Lab";
-
-  return (
-    <div className="navbar-title pl-0">
-      <span className="navbar-title-main">TopoViewer</span>
-      <span className="navbar-title-sub">
-        <span className={`mode-badge ${modeClass}`}>{modeLabel}</span>
-        <span className="font-light">· {displayName}</span>
-      </span>
-    </div>
-  );
-};
-
-function getNavbarModePresentation(
-  mode: "view" | "edit",
-  isProcessing: boolean
-): { modeClass: string; modeLabel: string } {
-  if (isProcessing) {
-    return { modeClass: "processing", modeLabel: "processing" };
-  }
-  const resolvedMode = mode === "view" ? "viewer" : "editor";
-  return { modeClass: resolvedMode, modeLabel: resolvedMode };
-}

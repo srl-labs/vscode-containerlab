@@ -3,6 +3,8 @@
  */
 import type { ReactNode } from "react";
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
 
 import { usePanelDrag } from "../../../hooks/ui/usePanelDrag";
 
@@ -231,27 +233,35 @@ export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement |
   if (!isVisible) return null;
 
   const maxH = size.height ? undefined : `calc(100vh - ${position.y}px - 20px)`;
-  const style = {
-    left: position.x,
-    top: position.y,
-    width: size.width,
-    height: size.height,
-    maxHeight: maxH,
-    zIndex: sz.zIndex
-  };
-  const cls = `panel panel-overlay panel-editor fixed overflow-hidden flex flex-col${isResizing ? " panel-resizing" : ""}`;
 
   return (
     <>
       {sz.backdrop && <Backdrop zIndex={sz.zIndex} onClick={onClose} />}
-      <div ref={panelRef} className={cls} style={style} data-testid={testId}>
+      <Paper
+        ref={panelRef}
+        elevation={8}
+        data-testid={testId}
+        sx={{
+          position: "fixed",
+          left: position.x,
+          top: position.y,
+          width: size.width,
+          height: size.height,
+          maxHeight: maxH,
+          zIndex: sz.zIndex,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          userSelect: isResizing ? "none" : undefined
+        }}
+      >
         <PanelHeader
           title={title}
           isDragging={isDragging}
           onMouseDown={handleMouseDown}
           onClose={onClose}
         />
-        <div className="panel-block p-4 overflow-y-auto flex-1 min-h-0">{children}</div>
+        <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>{children}</Box>
         {btn.footer && (
           <PanelFooter
             hasChanges={btn.hasChanges}
@@ -262,7 +272,7 @@ export function BasePanel(props: Readonly<BasePanelProps>): React.ReactElement |
           />
         )}
         {sz.resizable && <ResizeHandle onMouseDown={handleResizeStart} />}
-      </div>
+      </Paper>
     </>
   );
 }

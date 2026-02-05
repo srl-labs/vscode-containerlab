@@ -2,21 +2,12 @@
  * Advanced Tab for Node Editor
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 
-import {
-  FormField,
-  InputField,
-  SelectField,
-  CheckboxField,
-  DynamicList,
-  KeyValueList,
-  Section
-} from "../../ui/form";
+import { InputField, SelectField, CheckboxField, DynamicList, KeyValueList, Section } from "../../ui/form";
 
 import type { TabProps, HealthCheckConfig } from "./types";
-
-/** Helper to check if a property is inherited */
-const isInherited = (prop: string, inheritedProps: string[] = []) => inheritedProps.includes(prop);
 
 const KEY_SIZE_OPTIONS = [
   { value: "", label: "Default" },
@@ -41,53 +32,49 @@ const RUNTIME_OPTIONS = [
 /**
  * Resource Limits Section
  */
-const ResourceLimitsSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
+const ResourceLimitsSection: React.FC<TabProps> = ({ data, onChange }) => (
   <Section title="Resource Limits">
-    <div className="grid grid-cols-2 gap-2">
-      <FormField label="CPU Limit" inherited={isInherited("cpu", inheritedProps)}>
-        <InputField
-          id="node-cpu"
-          type="number"
-          value={String(data.cpu ?? "")}
-          onChange={(v) => onChange({ cpu: v ? parseFloat(v) : undefined })}
-          placeholder="e.g., 1.5"
-          step={0.1}
-          min={0}
-        />
-      </FormField>
-      <FormField label="CPU Set" inherited={isInherited("cpu-set", inheritedProps)}>
-        <InputField
-          id="node-cpu-set"
-          value={data.cpuSet || ""}
-          onChange={(v) => onChange({ cpuSet: v })}
-          placeholder="e.g., 0-3, 0,3"
-        />
-      </FormField>
-      <FormField label="Memory Limit" inherited={isInherited("memory", inheritedProps)}>
-        <InputField
-          id="node-memory"
-          value={data.memory || ""}
-          onChange={(v) => onChange({ memory: v })}
-          placeholder="e.g., 1Gb, 512Mb"
-        />
-      </FormField>
-      <FormField label="Shared Memory Size" inherited={isInherited("shm-size", inheritedProps)}>
-        <InputField
-          id="node-shm-size"
-          value={data.shmSize || ""}
-          onChange={(v) => onChange({ shmSize: v })}
-          placeholder="e.g., 256MB"
-        />
-      </FormField>
-    </div>
+    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+      <InputField
+        id="node-cpu"
+        label="CPU Limit"
+        type="number"
+        value={String(data.cpu ?? "")}
+        onChange={(v) => onChange({ cpu: v ? parseFloat(v) : undefined })}
+        placeholder="e.g., 1.5"
+        step={0.1}
+        min={0}
+      />
+      <InputField
+        id="node-cpu-set"
+        label="CPU Set"
+        value={data.cpuSet || ""}
+        onChange={(v) => onChange({ cpuSet: v })}
+        placeholder="e.g., 0-3, 0,3"
+      />
+      <InputField
+        id="node-memory"
+        label="Memory Limit"
+        value={data.memory || ""}
+        onChange={(v) => onChange({ memory: v })}
+        placeholder="e.g., 1Gb, 512Mb"
+      />
+      <InputField
+        id="node-shm-size"
+        label="Shared Memory Size"
+        value={data.shmSize || ""}
+        onChange={(v) => onChange({ shmSize: v })}
+        placeholder="e.g., 256MB"
+      />
+    </Box>
   </Section>
 );
 
 /**
  * Capabilities Section
  */
-const CapabilitiesSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <Section title="Capabilities" inherited={isInherited("cap-add", inheritedProps)}>
+const CapabilitiesSection: React.FC<TabProps> = ({ data, onChange }) => (
+  <Section title="Capabilities">
     <DynamicList
       items={data.capAdd || []}
       onChange={(items) => onChange({ capAdd: items })}
@@ -100,8 +87,8 @@ const CapabilitiesSection: React.FC<TabProps> = ({ data, onChange, inheritedProp
 /**
  * Sysctls Section
  */
-const SysctlsSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <Section title="Sysctls" inherited={isInherited("sysctls", inheritedProps)}>
+const SysctlsSection: React.FC<TabProps> = ({ data, onChange }) => (
+  <Section title="Sysctls">
     <KeyValueList
       items={data.sysctls || {}}
       onChange={(items) => onChange({ sysctls: items })}
@@ -115,8 +102,8 @@ const SysctlsSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [
 /**
  * Devices Section
  */
-const DevicesSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <Section title="Devices" inherited={isInherited("devices", inheritedProps)}>
+const DevicesSection: React.FC<TabProps> = ({ data, onChange }) => (
+  <Section title="Devices">
     <DynamicList
       items={data.devices || []}
       onChange={(items) => onChange({ devices: items })}
@@ -129,45 +116,48 @@ const DevicesSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [
 /**
  * TLS Certificate Section
  */
-const TlsCertSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => (
-  <Section title="TLS Certificate" inherited={isInherited("certificate", inheritedProps)}>
-    <CheckboxField
-      id="node-cert-issue"
-      label="Auto-generate TLS certificate"
-      checked={data.certIssue || false}
-      onChange={(checked) => onChange({ certIssue: checked })}
-    />
-    {data.certIssue && (
-      <div className="mt-2 space-y-3">
-        <FormField label="Key Size" inherited={isInherited("certificate", inheritedProps)}>
+const TlsCertSection: React.FC<TabProps> = ({ data, onChange }) => (
+  <Section title="TLS Certificate">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <CheckboxField
+        id="node-cert-issue"
+        label="Auto-generate TLS certificate"
+        checked={data.certIssue || false}
+        onChange={(checked) => onChange({ certIssue: checked })}
+      />
+      {data.certIssue && (
+        <>
           <SelectField
             id="node-cert-key-size"
+            label="Key Size"
             value={data.certKeySize || ""}
             onChange={(v) => onChange({ certKeySize: v })}
             options={KEY_SIZE_OPTIONS}
           />
-        </FormField>
-        <FormField label="Validity Duration" inherited={isInherited("certificate", inheritedProps)}>
           <InputField
             id="node-cert-validity"
+            label="Validity Duration"
             value={data.certValidity || ""}
             onChange={(v) => onChange({ certValidity: v })}
             placeholder="e.g., 1h, 30d, 1y"
           />
-        </FormField>
-        <FormField
-          label="SANs (Subject Alternative Names)"
-          inherited={isInherited("sans", inheritedProps)}
-        >
-          <DynamicList
-            items={data.sans || []}
-            onChange={(items) => onChange({ sans: items })}
-            placeholder="SAN entry"
-            addLabel="Add SAN"
-          />
-        </FormField>
-      </div>
-    )}
+          <Box>
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5, display: "block" }}
+            >
+              SANs (Subject Alternative Names)
+            </Typography>
+            <DynamicList
+              items={data.sans || []}
+              onChange={(items) => onChange({ sans: items })}
+              placeholder="SAN entry"
+              addLabel="Add SAN"
+            />
+          </Box>
+        </>
+      )}
+    </Box>
   </Section>
 );
 
@@ -180,75 +170,70 @@ interface HealthCheckTimingsProps {
 }
 
 const HealthCheckTimings: React.FC<HealthCheckTimingsProps> = ({ hc, updateHc }) => (
-  <div className="grid grid-cols-2 gap-2 mt-2">
-    <FormField label="Start Period (s)">
-      <InputField
-        id="node-healthcheck-start-period"
-        type="number"
-        value={String(hc.startPeriod ?? "")}
-        onChange={(v) => updateHc({ startPeriod: v ? parseInt(v, 10) : undefined })}
-        placeholder="0"
-        min={0}
-      />
-    </FormField>
-    <FormField label="Interval (s)">
-      <InputField
-        id="node-healthcheck-interval"
-        type="number"
-        value={String(hc.interval ?? "")}
-        onChange={(v) => updateHc({ interval: v ? parseInt(v, 10) : undefined })}
-        placeholder="30"
-        min={0}
-      />
-    </FormField>
-    <FormField label="Timeout (s)">
-      <InputField
-        id="node-healthcheck-timeout"
-        type="number"
-        value={String(hc.timeout ?? "")}
-        onChange={(v) => updateHc({ timeout: v ? parseInt(v, 10) : undefined })}
-        placeholder="30"
-        min={0}
-      />
-    </FormField>
-    <FormField label="Retries">
-      <InputField
-        id="node-healthcheck-retries"
-        type="number"
-        value={String(hc.retries ?? "")}
-        onChange={(v) => updateHc({ retries: v ? parseInt(v, 10) : undefined })}
-        placeholder="3"
-        min={0}
-      />
-    </FormField>
-  </div>
+  <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mt: 2 }}>
+    <InputField
+      id="node-healthcheck-start-period"
+      label="Start Period (s)"
+      type="number"
+      value={String(hc.startPeriod ?? "")}
+      onChange={(v) => updateHc({ startPeriod: v ? parseInt(v, 10) : undefined })}
+      placeholder="0"
+      min={0}
+    />
+    <InputField
+      id="node-healthcheck-interval"
+      label="Interval (s)"
+      type="number"
+      value={String(hc.interval ?? "")}
+      onChange={(v) => updateHc({ interval: v ? parseInt(v, 10) : undefined })}
+      placeholder="30"
+      min={0}
+    />
+    <InputField
+      id="node-healthcheck-timeout"
+      label="Timeout (s)"
+      type="number"
+      value={String(hc.timeout ?? "")}
+      onChange={(v) => updateHc({ timeout: v ? parseInt(v, 10) : undefined })}
+      placeholder="30"
+      min={0}
+    />
+    <InputField
+      id="node-healthcheck-retries"
+      label="Retries"
+      type="number"
+      value={String(hc.retries ?? "")}
+      onChange={(v) => updateHc({ retries: v ? parseInt(v, 10) : undefined })}
+      placeholder="3"
+      min={0}
+    />
+  </Box>
 );
 
 /**
  * Health Check Section
  */
-const HealthCheckSection: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => {
+const HealthCheckSection: React.FC<TabProps> = ({ data, onChange }) => {
   const hc = data.healthCheck || {};
   const updateHc = (updates: Partial<HealthCheckConfig>) => {
     onChange({ healthCheck: { ...hc, ...updates } });
   };
 
   return (
-    <Section title="Health Check" inherited={isInherited("healthcheck", inheritedProps)}>
-      <FormField label="Test Command" inherited={isInherited("healthcheck", inheritedProps)}>
-        <InputField
-          id="node-healthcheck-test"
-          value={hc.test || ""}
-          onChange={(v) => updateHc({ test: v })}
-          placeholder="e.g., CMD-SHELL cat /etc/os-release"
-        />
-      </FormField>
+    <Section title="Health Check">
+      <InputField
+        id="node-healthcheck-test"
+        label="Test Command"
+        value={hc.test || ""}
+        onChange={(v) => updateHc({ test: v })}
+        placeholder="e.g., CMD-SHELL cat /etc/os-release"
+      />
       <HealthCheckTimings hc={hc} updateHc={updateHc} />
     </Section>
   );
 };
 
-export const AdvancedTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = [] }) => {
+export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
   const sections = [
     ResourceLimitsSection,
     CapabilitiesSection,
@@ -259,38 +244,26 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange, inheritedProps
   ];
 
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {sections.map((SectionComponent, index) => (
-        <SectionComponent
-          key={index}
-          data={data}
-          onChange={onChange}
-          inheritedProps={inheritedProps}
-        />
+        <SectionComponent key={index} data={data} onChange={onChange} />
       ))}
 
-      {/* Image Pull Policy */}
-      <FormField
+      <SelectField
+        id="node-image-pull-policy"
         label="Image Pull Policy"
-        inherited={isInherited("image-pull-policy", inheritedProps)}
-      >
-        <SelectField
-          id="node-image-pull-policy"
-          value={data.imagePullPolicy || ""}
-          onChange={(v) => onChange({ imagePullPolicy: v })}
-          options={PULL_POLICY_OPTIONS}
-        />
-      </FormField>
+        value={data.imagePullPolicy || ""}
+        onChange={(v) => onChange({ imagePullPolicy: v })}
+        options={PULL_POLICY_OPTIONS}
+      />
 
-      {/* Container Runtime */}
-      <FormField label="Container Runtime" inherited={isInherited("runtime", inheritedProps)}>
-        <SelectField
-          id="node-runtime"
-          value={data.runtime || ""}
-          onChange={(v) => onChange({ runtime: v })}
-          options={RUNTIME_OPTIONS}
-        />
-      </FormField>
-    </div>
+      <SelectField
+        id="node-runtime"
+        label="Container Runtime"
+        value={data.runtime || ""}
+        onChange={(v) => onChange({ runtime: v })}
+        options={RUNTIME_OPTIONS}
+      />
+    </Box>
   );
 };

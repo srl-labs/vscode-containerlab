@@ -2,6 +2,9 @@
  * ConfirmBulkLinksModal - Confirmation dialog for bulk link creation
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Button from "@mui/material/Button";
 
 import { BasePanel } from "../../ui/editor/BasePanel";
 
@@ -32,29 +35,38 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
     zIndex={10000}
     footer={false}
   >
-    <div className="space-y-3">
-      <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2">
-        <div className="text-sm">
-          Create <span className="font-semibold">{count}</span> new link{count === 1 ? "" : "s"}?
-        </div>
-        <div className="mt-1 text-xs text-secondary">
-          <div>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box
+        sx={{
+          p: 1,
+          borderRadius: 0.5,
+          border: 1,
+          borderColor: "divider",
+          bgcolor: "var(--vscode-editor-background)"
+        }}
+      >
+        <Typography variant="body2">
+          Create <strong>{count}</strong> new link{count === 1 ? "" : "s"}?
+        </Typography>
+        <Box sx={{ mt: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
             Source: <code className="select-text">{sourcePattern}</code>
-          </div>
-          <div>
+          </Typography>
+          <br />
+          <Typography variant="caption" color="text.secondary">
             Target: <code className="select-text">{targetPattern}</code>
-          </div>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Box>
 
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn btn-secondary btn-small" onClick={onCancel}>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+        <Button variant="outlined" size="small" onClick={onCancel}>
           Cancel
-        </button>
-        <button type="button" className="btn btn-primary btn-small" onClick={onConfirm}>
+        </Button>
+        <Button variant="contained" size="small" onClick={onConfirm}>
           Create Links
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   </BasePanel>
 );

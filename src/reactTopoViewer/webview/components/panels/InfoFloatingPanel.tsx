@@ -5,6 +5,8 @@
  */
 import type { ReactNode } from "react";
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 
 import { BasePanel } from "../ui/editor/BasePanel";
 
@@ -55,7 +57,7 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
       minWidth={minWidth}
       minHeight={minHeight}
     >
-      {children}
+      <Box sx={{ p: 2 }}>{children}</Box>
     </BasePanel>
   );
 };
@@ -66,14 +68,19 @@ export const FloatingPanel: React.FC<FloatingPanelProps> = ({
 interface PropertyRowProps {
   label: string;
   value: string | ReactNode;
-  className?: string;
 }
 
-export const PropertyRow: React.FC<PropertyRowProps> = ({ label, value, className = "" }) => (
-  <div className={`flex flex-col items-center ${className}`}>
-    <span className="field-label mb-1">{label}</span>
-    <span className="text-sm text-[var(--vscode-foreground)] text-center break-all">
+export const PropertyRow: React.FC<PropertyRowProps> = ({ label, value }) => (
+  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <Typography
+      variant="caption"
+      color="text.secondary"
+      sx={{ mb: 0.5, textTransform: "uppercase", letterSpacing: 0.5 }}
+    >
+      {label}
+    </Typography>
+    <Typography variant="body2" sx={{ textAlign: "center", wordBreak: "break-all" }}>
       {value || "N/A"}
-    </span>
-  </div>
+    </Typography>
+  </Box>
 );

@@ -3,6 +3,11 @@
  * Matches the style of FreeTextFormContent
  */
 import React, { useMemo } from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Slider from "@mui/material/Slider";
+import Button from "@mui/material/Button";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
 import {
@@ -16,7 +21,7 @@ import {
   DEFAULT_ARROW_SIZE,
   DEFAULT_CORNER_RADIUS
 } from "../../../annotations/constants";
-import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../../ui/form";
+import { Toggle, ColorSwatch, NumberInput, SelectInput, PREVIEW_GRID_BG } from "../../ui/form";
 
 import { buildShapeSvg } from "./FreeShapeSvg";
 
@@ -35,18 +40,16 @@ const ShapeTypeSelector: React.FC<{
   value: FreeShapeAnnotation["shapeType"];
   onChange: (v: FreeShapeAnnotation["shapeType"]) => void;
 }> = ({ value, onChange }) => (
-  <div className="flex flex-col gap-0.5">
-    <span className="field-label">Shape Type</span>
-    <select
-      className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
-      value={value}
-      onChange={(e) => onChange(e.target.value as FreeShapeAnnotation["shapeType"])}
-    >
-      <option value="rectangle">Rectangle</option>
-      <option value="circle">Circle</option>
-      <option value="line">Line</option>
-    </select>
-  </div>
+  <SelectInput
+    label="Shape Type"
+    value={value}
+    onChange={(v) => onChange(v as FreeShapeAnnotation["shapeType"])}
+    options={[
+      { value: "rectangle", label: "Rectangle" },
+      { value: "circle", label: "Circle" },
+      { value: "line", label: "Line" }
+    ]}
+  />
 );
 
 // Size controls
@@ -95,22 +98,25 @@ const FillControls: React.FC<{
         onChange={(v) => updateField("fillColor", v)}
         disabled={isTransparent}
       />
-      <div className="flex flex-col gap-0.5 flex-1 min-w-[120px]">
-        <div className="flex justify-between">
-          <span className="field-label">Opacity</span>
-          <span className="field-label">{Math.round(opacity * 100)}%</span>
-        </div>
-        <div className="flex items-center h-[30px]">
-          <input
-            type="range"
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, flex: 1, minWidth: 120 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+          <Typography variant="caption" color="text.secondary">
+            Opacity
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {Math.round(opacity * 100)}%
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", height: 30, px: 0.5 }}>
+          <Slider
+            size="small"
             min={0}
             max={100}
             value={Math.round(opacity * 100)}
-            onChange={(e) => updateField("fillOpacity", parseInt(e.target.value) / 100)}
-            className="w-full h-2 bg-white/10 rounded-sm appearance-none cursor-pointer"
+            onChange={(_e, v) => updateField("fillOpacity", (v as number) / 100)}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
       <div className="pt-4">
         <Toggle
           active={isTransparent}
@@ -149,20 +155,16 @@ const BorderControls: React.FC<{
           max={20}
           unit="px"
         />
-        <div className="flex flex-col gap-0.5 flex-1 min-w-[80px]">
-          <span className="field-label">Style</span>
-          <select
-            className="w-full px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
-            value={formData.borderStyle ?? DEFAULT_BORDER_STYLE}
-            onChange={(e) =>
-              updateField("borderStyle", e.target.value as FreeShapeAnnotation["borderStyle"])
-            }
-          >
-            <option value="solid">Solid</option>
-            <option value="dashed">Dashed</option>
-            <option value="dotted">Dotted</option>
-          </select>
-        </div>
+        <SelectInput
+          label="Style"
+          value={formData.borderStyle ?? DEFAULT_BORDER_STYLE}
+          onChange={(v) => updateField("borderStyle", v as FreeShapeAnnotation["borderStyle"])}
+          options={[
+            { value: "solid", label: "Solid" },
+            { value: "dashed", label: "Dashed" },
+            { value: "dotted", label: "Dotted" }
+          ]}
+        />
         {!isLine && (
           <div className="pt-4">
             <Toggle
@@ -262,8 +264,10 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="field-label">Preview</span>
-      <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 min-h-[100px] flex items-center justify-center overflow-hidden">
+      <Typography variant="caption" color="text.secondary">
+        Preview
+      </Typography>
+      <div className="relative p-6 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)] min-h-[100px] flex items-center justify-center overflow-hidden">
         <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
         <div
           className="relative z-10 transition-all duration-200"
@@ -297,14 +301,16 @@ export const FreeShapeFormContent: React.FC<Props> = ({
     <RotationControl formData={formData} updateField={updateField} />
     <Preview formData={formData} />
     {!isNew && onDelete && (
-      <button
-        type="button"
-        className="self-start text-xs text-[var(--vscode-errorForeground)] opacity-60 hover:opacity-100 transition-opacity"
+      <Button
+        variant="text"
+        color="error"
+        size="small"
+        startIcon={<DeleteIcon />}
         onClick={onDelete}
+        sx={{ alignSelf: "flex-start", textTransform: "none" }}
       >
-        <i className="fas fa-trash-alt mr-1.5" />
         Delete
-      </button>
+      </Button>
     )}
   </div>
 );

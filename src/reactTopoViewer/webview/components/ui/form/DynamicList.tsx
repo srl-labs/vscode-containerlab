@@ -2,6 +2,8 @@
  * DynamicList - Array of string inputs with add/remove
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
 
 import { AddItemButton, DeleteItemButton } from "./ListButtons";
 
@@ -35,7 +37,7 @@ export const DynamicList: React.FC<DynamicListProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       {items.map((item, index) => (
         <DynamicListItem
           key={index}
@@ -47,7 +49,7 @@ export const DynamicList: React.FC<DynamicListProps> = ({
         />
       ))}
       <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
-    </div>
+    </Box>
   );
 };
 
@@ -69,15 +71,15 @@ const DynamicListItem: React.FC<DynamicListItemProps> = ({
   placeholder,
   disabled
 }) => (
-  <div className="flex gap-2">
-    <input
-      type="text"
+  <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+    <TextField
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="input-field flex-1"
       placeholder={placeholder}
       disabled={disabled}
+      size="small"
+      fullWidth
     />
     <DeleteItemButton onRemove={onRemove} disabled={disabled} />
-  </div>
+  </Box>
 );

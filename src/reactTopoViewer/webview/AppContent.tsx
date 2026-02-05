@@ -5,6 +5,7 @@ import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import Box from "@mui/material/Box";
 
 import type { NetemState } from "../shared/parsing";
 import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
@@ -25,9 +26,10 @@ import { Navbar } from "./components/navbar/Navbar";
 import {
   EditorPanels,
   ViewPanels,
-  PalettePanel,
+  AboutModal,
   type LinkImpairmentData
 } from "./components/panels";
+import { LabDrawer } from "./components/panels/lab-drawer";
 import { ShortcutDisplay, ToastContainer } from "./components/ui";
 import { EasterEggRenderer, useEasterEgg } from "./easter-eggs";
 import {
@@ -604,7 +606,14 @@ export const AppContent: React.FC<AppContentProps> = ({
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline enableColorScheme />
-      <div className="topoviewer-app" data-testid="topoviewer-app">
+      <Box
+        data-testid="topoviewer-app"
+        display="flex"
+        flexDirection="column"
+        height="100vh"
+        width="100vw"
+        overflow="hidden"
+      >
         <Navbar
           onZoomToFit={handleZoomToFit}
           onToggleLayout={navbarCommands.onLayoutToggle}
@@ -614,15 +623,18 @@ export const AppContent: React.FC<AppContentProps> = ({
           onGridLineWidthChange={layoutControls.setGridLineWidth}
           gridStyle={layoutControls.gridStyle}
           onGridStyleChange={layoutControls.setGridStyle}
-          onLabSettings={panelVisibility.handleShowLabSettings}
+          onLabSettings={() => panelVisibility.handleOpenSettingsDrawer("labSettings")}
           onToggleSplit={navbarCommands.onToggleSplit}
-          onFindNode={panelVisibility.handleShowFindNode}
+          onFindNode={() => panelVisibility.handleOpenSettingsDrawer("findNode")}
           onCaptureViewport={panelVisibility.handleShowSvgExport}
-          onShowShortcuts={panelVisibility.handleShowShortcuts}
+          onShowShortcuts={() => panelVisibility.handleOpenSettingsDrawer("shortcuts")}
           onShowAbout={panelVisibility.handleShowAbout}
+          onShowGridSettings={() => panelVisibility.handleOpenSettingsDrawer("grid")}
+          linkLabelMode={state.linkLabelMode}
+          onLinkLabelModeChange={topoActions.setLinkLabelMode}
           shortcutDisplayEnabled={shortcutDisplay.isEnabled}
           onToggleShortcutDisplay={shortcutDisplay.toggle}
-          onOpenNodePalette={panelVisibility.handleShowNodePalette}
+          onOpenNodePalette={() => panelVisibility.handleOpenSettingsDrawer("palette")}
           onLockedAction={triggerLockShake}
           lockShakeActive={isLockShaking}
           canUndo={undoRedo.canUndo}
@@ -633,8 +645,33 @@ export const AppContent: React.FC<AppContentProps> = ({
           logoClickProgress={easterEgg.state.progress}
           isPartyMode={easterEgg.state.isPartyMode}
         />
-        <main className="topoviewer-main">
-          <ReactFlowCanvas
+        <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
+          <LabDrawer
+            isOpen={panelVisibility.showSettingsDrawer}
+            activeSection={panelVisibility.settingsDrawerSection}
+            onSectionChange={panelVisibility.handleSetLabDrawerSection}
+            onClose={panelVisibility.handleCloseSettingsDrawer}
+            mode={state.mode}
+            isLocked={isInteractionLocked}
+            labSettings={state.labSettings ?? { name: state.labName }}
+            onEditCustomNode={customNodeCommands.onEditCustomNode}
+            onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
+            onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
+            gridLineWidth={layoutControls.gridLineWidth}
+            onGridLineWidthChange={layoutControls.setGridLineWidth}
+            gridStyle={layoutControls.gridStyle}
+            onGridStyleChange={layoutControls.setGridStyle}
+            rfInstance={rfInstance}
+          />
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              overflow: "hidden",
+              position: "relative"
+            }}
+          >
+            <ReactFlowCanvas
             ref={reactFlowRef}
             nodes={filteredNodes}
             edges={renderedEdges}
@@ -650,7 +687,7 @@ export const AppContent: React.FC<AppContentProps> = ({
             onShiftClickCreate={graphCreation.createNodeAtPosition}
             onNodeDelete={graphHandlers.handleDeleteNode}
             onEdgeDelete={graphHandlers.handleDeleteLink}
-            onOpenNodePalette={panelVisibility.handleShowNodePalette}
+            onOpenNodePalette={() => panelVisibility.handleOpenSettingsDrawer("palette")}
             onAddGroup={annotations.handleAddGroup}
             onAddText={annotations.handleAddText}
             onAddShapes={annotations.handleAddShapes}
@@ -680,19 +717,6 @@ export const AppContent: React.FC<AppContentProps> = ({
               onApply: handleLinkImpairmentApply,
               onSave: handleLinkImpairmentSave,
               onClose: () => topoActions.editImpairment(null)
-            }}
-            shortcuts={{
-              isVisible: panelVisibility.showShortcutsPanel,
-              onClose: panelVisibility.handleCloseShortcuts
-            }}
-            about={{
-              isVisible: panelVisibility.showAboutPanel,
-              onClose: panelVisibility.handleCloseAbout
-            }}
-            findNode={{
-              isVisible: panelVisibility.showFindNodePanel,
-              onClose: panelVisibility.handleCloseFindNode,
-              rfInstance
             }}
             svgExport={{
               isVisible: panelVisibility.showSvgExportPanel,
@@ -763,28 +787,17 @@ export const AppContent: React.FC<AppContentProps> = ({
               onDelete: annotations.deleteGroup,
               onStyleChange: annotations.updateGroup
             }}
-            labSettings={{
-              isVisible: panelVisibility.showLabSettingsPanel,
-              mode: state.mode,
-              isLocked: isInteractionLocked,
-              labSettings: state.labSettings ?? { name: state.labName },
-              onClose: panelVisibility.handleCloseLabSettings
-            }}
           />
-          {state.mode === "edit" && !isProcessing && (
-            <PalettePanel
-              isVisible={panelVisibility.showNodePalettePanel}
-              onClose={panelVisibility.handleCloseNodePalette}
-              onEditCustomNode={customNodeCommands.onEditCustomNode}
-              onDeleteCustomNode={customNodeCommands.onDeleteCustomNode}
-              onSetDefaultCustomNode={customNodeCommands.onSetDefaultCustomNode}
-            />
-          )}
           <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
           <EasterEggRenderer easterEgg={easterEgg} />
           <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-        </main>
-      </div>
+          <AboutModal
+            isOpen={panelVisibility.showAboutPanel}
+            onClose={panelVisibility.handleCloseAbout}
+          />
+          </Box>
+        </Box>
+      </Box>
     </ThemeProvider>
   );
 };
