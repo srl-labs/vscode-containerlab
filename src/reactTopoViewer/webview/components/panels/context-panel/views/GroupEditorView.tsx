@@ -1,12 +1,12 @@
 /**
  * GroupEditorView - Group editor content for the ContextPanel
  */
-import React, { useCallback, useEffect } from "react";
-import Box from "@mui/material/Box";
+import React, { useCallback } from "react";
 
 import type { GroupStyleAnnotation } from "../../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../../hooks/canvas";
-import { useGenericFormState, useEditorHandlers } from "../../../../hooks/editor";
+import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
+import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
 import { GroupFormContent } from "../../group-editor/GroupFormContent";
 
 export interface GroupEditorViewProps {
@@ -53,30 +53,26 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
     [setFormData, onStyleChange]
   );
 
-  const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
+  const { handleDelete } = useEditorHandlersWithFooterRef({
     formData,
     onSave,
     onClose,
     onDelete,
-    resetInitialData
+    resetInitialData,
+    onFooterRef,
+    hasChangesForFooter: hasChanges
   });
-
-  useEffect(() => {
-    if (onFooterRef) {
-      onFooterRef(formData ? { handleApply, handleSave: handleSaveAndClose, hasChanges } : null);
-    }
-  }, [onFooterRef, formData, handleApply, handleSaveAndClose, hasChanges]);
 
   if (!formData) return null;
 
   return (
-    <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
+    <ContextPanelScrollArea>
       <GroupFormContent
         formData={formData}
         updateField={updateField}
         updateStyle={updateStyle}
         onDelete={onDelete ? handleDelete : undefined}
       />
-    </Box>
+    </ContextPanelScrollArea>
   );
 };

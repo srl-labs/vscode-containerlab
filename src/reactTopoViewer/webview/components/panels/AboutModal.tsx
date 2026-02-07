@@ -2,23 +2,27 @@
  * AboutModal - Modal dialog for displaying TopoViewer about information
  */
 import React from "react";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import IconButton from "@mui/material/IconButton";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Link from "@mui/material/Link";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
-import Avatar from "@mui/material/Avatar";
-import Divider from "@mui/material/Divider";
-import CloseIcon from "@mui/icons-material/Close";
-import GitHubIcon from "@mui/icons-material/GitHub";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import ExtensionIcon from "@mui/icons-material/Extension";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import FavoriteIcon from "@mui/icons-material/Favorite";
+import {
+  Avatar,
+  Box,
+  Card,
+  CardActionArea,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  Link,
+  Typography
+} from "@mui/material";
+import {
+  Close as CloseIcon,
+  Extension as ExtensionIcon,
+  Favorite as FavoriteIcon,
+  GitHub as GitHubIcon,
+  MenuBook as MenuBookIcon,
+  OpenInNew as OpenInNewIcon
+} from "@mui/icons-material";
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -32,6 +36,8 @@ interface AuthorCardProps {
   iconText: string;
   iconColor: string;
 }
+
+const TEXT_SECONDARY = "text.secondary";
 
 const AuthorCard: React.FC<AuthorCardProps> = ({ name, role, linkedIn, iconText, iconColor }) => (
   <Card variant="outlined" sx={{ mb: 1 }}>
@@ -49,11 +55,11 @@ const AuthorCard: React.FC<AuthorCardProps> = ({ name, role, linkedIn, iconText,
         <Typography variant="body2" fontWeight={500}>
           {name}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color={TEXT_SECONDARY}>
           {role}
         </Typography>
       </Box>
-      <OpenInNewIcon fontSize="small" sx={{ color: "text.secondary" }} />
+      <OpenInNewIcon fontSize="small" sx={{ color: TEXT_SECONDARY }} />
     </CardActionArea>
   </Card>
 );
@@ -74,16 +80,16 @@ const RepoCard: React.FC<RepoCardProps> = ({ name, description, url, icon }) => 
       rel="noopener noreferrer"
       sx={{ p: 1.5, display: "flex", alignItems: "center", gap: 1.5 }}
     >
-      <Box sx={{ color: "text.secondary" }}>{icon}</Box>
+      <Box sx={{ color: TEXT_SECONDARY }}>{icon}</Box>
       <Box sx={{ flexGrow: 1 }}>
         <Typography variant="body2" fontWeight={500}>
           {name}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color={TEXT_SECONDARY}>
           {description}
         </Typography>
       </Box>
-      <OpenInNewIcon fontSize="small" sx={{ color: "text.secondary" }} />
+      <OpenInNewIcon fontSize="small" sx={{ color: TEXT_SECONDARY }} />
     </CardActionArea>
   </Card>
 );
@@ -250,9 +256,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          maxHeight: "80vh"
+      slotProps={{
+        paper: {
+          sx: {
+            maxHeight: "80vh"
+          }
         }
       }}
     >
@@ -269,7 +277,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       </DialogTitle>
       <DialogContent dividers>
         {/* Description */}
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        <Typography variant="body2" color={TEXT_SECONDARY} sx={{ mb: 3 }}>
           Interactive topology visualization and editing for{" "}
           <Link href="https://containerlab.dev/" target="_blank" rel="noopener noreferrer">
             Containerlab
@@ -355,7 +363,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             justifyContent: "center",
             gap: 0.5,
             mt: 3,
-            color: "text.secondary"
+            color: TEXT_SECONDARY
           }}
         >
           <Typography variant="caption">Made with</Typography>

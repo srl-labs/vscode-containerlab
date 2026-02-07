@@ -3,26 +3,19 @@
  * Supports markdown rendering in preview
  */
 import React, { useMemo } from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
-import MuiIconButton from "@mui/material/IconButton";
-import Divider from "@mui/material/Divider";
-import Button from "@mui/material/Button";
-import InputAdornment from "@mui/material/InputAdornment";
-import FormatBoldIcon from "@mui/icons-material/FormatBold";
-import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
-import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
-import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
-import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
-import DeleteIcon from "@mui/icons-material/Delete";
+import {
+  FormatAlignCenter as FormatAlignCenterIcon,
+  FormatAlignLeft as FormatAlignLeftIcon,
+  FormatAlignRight as FormatAlignRightIcon,
+  FormatBold as FormatBoldIcon,
+  FormatItalic as FormatItalicIcon,
+  FormatUnderlined as FormatUnderlinedIcon
+} from "@mui/icons-material";
+import { Box, Divider, IconButton as MuiIconButton, InputAdornment, MenuItem, Select, TextField, Typography } from "@mui/material";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
-import { Toggle, ColorSwatch, PREVIEW_GRID_BG_SX } from "../../ui/form";
+import { Toggle, ColorSwatch, PreviewSurface, DeleteActionButton } from "../../ui/form";
 
 // Helper functions to avoid duplicate calculations
 const isBackgroundTransparent = (bg: string | undefined): boolean => bg === "transparent";
@@ -160,15 +153,17 @@ const FontControls: React.FC<{
       size="small"
       value={formData.fontSize || 14}
       onChange={(e) => updateField("fontSize", parseInt(e.target.value) || 14)}
-      inputProps={{ min: 1, max: 72, style: { textAlign: "center" } }}
-      InputProps={{
-        endAdornment: (
-          <InputAdornment position="end">
-            <Typography variant="caption" color="text.secondary">
-              px
-            </Typography>
-          </InputAdornment>
-        )
+      slotProps={{
+        htmlInput: { min: 1, max: 72, style: { textAlign: "center" } },
+        input: {
+          endAdornment: (
+            <InputAdornment position="end">
+              <Typography variant="caption" color="text.secondary">
+                px
+              </Typography>
+            </InputAdornment>
+          )
+        }
       }}
       sx={{ width: 80, "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
     />
@@ -216,7 +211,7 @@ const StyleOptions: React.FC<{
           size="small"
           value={formData.rotation || 0}
           onChange={(e) => updateField("rotation", parseInt(e.target.value) || 0)}
-          inputProps={{ min: -360, max: 360, style: { textAlign: "center" } }}
+          slotProps={{ htmlInput: { min: -360, max: 360, style: { textAlign: "center" } } }}
           sx={{ width: 64, "& .MuiInputBase-input": { fontSize: "0.75rem", py: 0.75, px: 1 } }}
         />
       </Box>
@@ -266,8 +261,7 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
       <PreviewHeader />
-      <Box sx={{ position: "relative", p: 3, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-        <Box sx={{ position: "absolute", inset: 0, opacity: 0.5, ...PREVIEW_GRID_BG_SX }} />
+      <PreviewSurface>
         <Box className="free-text-markdown" sx={{ position: "relative", zIndex: 10, transition: "all 200ms", ...style }}>
           {isEmpty ? (
             <Box component="span" sx={{ opacity: 0.5, fontStyle: "italic" }}>Start typing to see preview...</Box>
@@ -275,7 +269,7 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
             <Box dangerouslySetInnerHTML={{ __html: renderedHtml }} />
           )}
         </Box>
-      </Box>
+      </PreviewSurface>
     </Box>
   );
 };
@@ -303,16 +297,7 @@ export const FreeTextFormContent: React.FC<Props> = ({
     <StyleOptions formData={formData} updateField={updateField} />
     <Preview formData={formData} />
     {!isNew && onDelete && (
-      <Button
-        variant="text"
-        color="error"
-        size="small"
-        startIcon={<DeleteIcon />}
-        onClick={onDelete}
-        sx={{ alignSelf: "flex-start", textTransform: "none" }}
-      >
-        Delete
-      </Button>
+      <DeleteActionButton onClick={onDelete} />
     )}
   </Box>
 );

@@ -6,7 +6,6 @@ import React, { useRef, useEffect, useCallback } from "react";
 import Typography from "@mui/material/Typography";
 import uPlot from "uplot";
 
-import "uplot/dist/uPlot.min.css";
 import type { InterfaceStatsPayload, EndpointStatsHistory } from "../../../shared/types/topology";
 
 const MAX_GRAPH_POINTS = 60;

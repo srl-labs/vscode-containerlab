@@ -1,11 +1,11 @@
 /**
  * FreeTextEditorView - Text annotation editor content for the ContextPanel
  */
-import React, { useCallback, useEffect } from "react";
-import Box from "@mui/material/Box";
+import React, { useCallback } from "react";
 
 import type { FreeTextAnnotation } from "../../../../../shared/types/topology";
-import { useGenericFormState, useEditorHandlers } from "../../../../hooks/editor";
+import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
+import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
 import { FreeTextFormContent } from "../../free-text-editor/FreeTextFormContent";
 
 export interface FreeTextEditorViewProps {
@@ -40,32 +40,28 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
 
   const validateSave = useCallback((data: FreeTextAnnotation) => canSave(data), []);
 
-  const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
+  const canSaveNow = formData ? canSave(formData) : false;
+  const { handleDelete } = useEditorHandlersWithFooterRef({
     formData,
     onSave,
     onClose,
     onDelete,
     resetInitialData,
-    canSave: validateSave
+    onFooterRef,
+    canSave: validateSave,
+    hasChangesForFooter: hasChanges && canSaveNow
   });
-
-  useEffect(() => {
-    if (onFooterRef) {
-      const canSaveNow = formData ? canSave(formData) : false;
-      onFooterRef(formData ? { handleApply, handleSave: handleSaveAndClose, hasChanges: hasChanges && canSaveNow } : null);
-    }
-  }, [onFooterRef, formData, handleApply, handleSaveAndClose, hasChanges]);
 
   if (!formData) return null;
 
   return (
-    <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
+    <ContextPanelScrollArea>
       <FreeTextFormContent
         formData={formData}
         updateField={updateField}
         isNew={isNew}
         onDelete={onDelete ? handleDelete : undefined}
       />
-    </Box>
+    </ContextPanelScrollArea>
   );
 };

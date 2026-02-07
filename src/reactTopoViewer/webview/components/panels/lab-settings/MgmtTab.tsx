@@ -2,20 +2,21 @@
  * MgmtTab - Management network settings tab for Lab Settings panel
  */
 import React from "react";
-import Box from "@mui/material/Box";
-import TextField from "@mui/material/TextField";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
-import FormHelperText from "@mui/material/FormHelperText";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Checkbox from "@mui/material/Checkbox";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { Add as AddIcon, Delete as DeleteIcon } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Checkbox,
+  FormControl,
+  FormControlLabel,
+  FormHelperText,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography
+} from "@mui/material";
 
 import type { IpType, DriverOption } from "./types";
 
@@ -252,7 +253,7 @@ export const MgmtTab: React.FC<MgmtTabProps> = (props) => {
         size="small"
         fullWidth
         helperText="MTU size (defaults to docker0 interface MTU)"
-        inputProps={{ min: 0, step: 1 }}
+        slotProps={{ htmlInput: { min: 0, step: 1 } }}
       />
 
       {/* Bridge Name */}

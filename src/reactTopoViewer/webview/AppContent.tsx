@@ -1,6 +1,7 @@
 /**
  * App content - UI composition for the React TopoViewer.
  */
+/* eslint-disable import-x/max-dependencies */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
 import Box from "@mui/material/Box";

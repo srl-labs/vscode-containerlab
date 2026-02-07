@@ -6,7 +6,7 @@ import Box from "@mui/material/Box";
 
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
-
+import { useFooterControlsRef } from "../../../../hooks/ui";
 import type { LinkEditorData, LinkEditorTabId } from "../../link-editor/types";
 import { BasicTab } from "../../link-editor/BasicTab";
 import { ExtendedTab, validateLinkEditorData } from "../../link-editor/ExtendedTab";
@@ -156,11 +156,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
     [onAutoApplyOffset, markOffsetApplied]
   );
 
-  useEffect(() => {
-    if (onFooterRef) {
-      onFooterRef(formData ? { handleApply, handleSave, hasChanges } : null);
-    }
-  }, [onFooterRef, formData, handleApply, handleSave, hasChanges]);
+  useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
 
   if (!formData) return null;
 

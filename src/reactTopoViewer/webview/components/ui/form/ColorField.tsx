@@ -55,7 +55,7 @@ export const ColorField: React.FC<ColorFieldProps> = ({
           value={value || ""}
           onChange={handleHexChange}
           placeholder="#000000"
-          inputProps={{ maxLength: 7 }}
+          slotProps={{ htmlInput: { maxLength: 7 } }}
           sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
         />
       )}

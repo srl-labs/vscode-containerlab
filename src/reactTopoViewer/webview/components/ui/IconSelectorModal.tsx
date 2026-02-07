@@ -3,19 +3,21 @@
  * Uses MUI Dialog. Supports both built-in and custom icons.
  */
 import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Slider from "@mui/material/Slider";
-import Button from "@mui/material/Button";
-import MuiIconButton from "@mui/material/IconButton";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import CloseIcon from "@mui/icons-material/Close";
+import { Close as CloseIcon } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  IconButton as MuiIconButton,
+  Slider,
+  TextField,
+  Typography
+} from "@mui/material";
 
 import type { NodeType } from "../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../icons/SvgGenerator";
@@ -61,6 +63,25 @@ const ICON_LABELS: Record<string, string> = {
 const DEFAULT_COLOR = "#1a73e8";
 const MAX_RADIUS = 40;
 const COLOR_DEBOUNCE_MS = 50;
+const VSCODE_PANEL_BORDER = "var(--vscode-panel-border)";
+const VSCODE_INPUT_BG = "var(--vscode-input-background)";
+
+const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+      gap: 0.5,
+      borderRadius: 0.5,
+      border: 1,
+      borderColor: VSCODE_PANEL_BORDER,
+      bgcolor: VSCODE_INPUT_BG,
+      p: 1
+    }}
+  >
+    {children}
+  </Box>
+);
 
 /**
  * Get icon source - for built-in icons applies color, for custom icons returns as-is
@@ -299,7 +320,7 @@ const ColorPicker: React.FC<{
           }
         }}
         placeholder={DEFAULT_COLOR}
-        inputProps={{ maxLength: 7 }}
+        slotProps={{ htmlInput: { maxLength: 7 } }}
         disabled={!enabled}
         sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
       />
@@ -414,7 +435,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
             Built-in Icons
           </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 0.5, borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-input-background)", p: 1 }}>
+          <IconsGrid>
             {AVAILABLE_ICONS.map((i) => (
               <IconButton
                 key={i}
@@ -425,7 +446,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
                 onClick={iconClickHandlers.current[i]}
               />
             ))}
-          </Box>
+          </IconsGrid>
         </Box>
 
         {/* Custom Icons Section */}
@@ -444,7 +465,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
             </Button>
           </Box>
           {customIcons.length > 0 ? (
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 0.5, borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-input-background)", p: 1 }}>
+            <IconsGrid>
               {customIcons.map((ci) => (
                 <IconButton
                   key={ci.name}
@@ -458,7 +479,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
                   source={ci.source}
                 />
               ))}
-            </Box>
+            </IconsGrid>
           ) : (
             <Typography
               variant="caption"
@@ -520,7 +541,7 @@ const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc,
     <Typography variant="caption" color="text.secondary">
       Preview
     </Typography>
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-input-background)", p: 1.5 }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER, bgcolor: VSCODE_INPUT_BG, p: 1.5 }}>
       <img
         src={iconSrc}
         alt="Preview"

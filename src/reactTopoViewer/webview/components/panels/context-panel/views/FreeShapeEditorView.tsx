@@ -1,12 +1,12 @@
 /**
  * FreeShapeEditorView - Shape annotation editor content for the ContextPanel
  */
-import React, { useEffect } from "react";
-import Box from "@mui/material/Box";
+import React from "react";
 
 import type { FreeShapeAnnotation } from "../../../../../shared/types/topology";
-import { useGenericFormState, useEditorHandlers } from "../../../../hooks/editor";
+import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
 import { normalizeShapeAnnotationColors } from "../../../../utils/color";
+import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
 import { FreeShapeFormContent } from "../../free-shape-editor/FreeShapeFormContent";
 
 export interface FreeShapeEditorViewProps {
@@ -35,30 +35,26 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
     { transformData: normalizeShapeAnnotationColors }
   );
 
-  const { handleApply, handleSaveAndClose, handleDelete } = useEditorHandlers({
+  const { handleDelete } = useEditorHandlersWithFooterRef({
     formData,
     onSave,
     onClose,
     onDelete,
-    resetInitialData
+    resetInitialData,
+    onFooterRef,
+    hasChangesForFooter: hasChanges
   });
-
-  useEffect(() => {
-    if (onFooterRef) {
-      onFooterRef(formData ? { handleApply, handleSave: handleSaveAndClose, hasChanges } : null);
-    }
-  }, [onFooterRef, formData, handleApply, handleSaveAndClose, hasChanges]);
 
   if (!formData) return null;
 
   return (
-    <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
+    <ContextPanelScrollArea>
       <FreeShapeFormContent
         formData={formData}
         updateField={updateField}
         isNew={isNew}
         onDelete={onDelete ? handleDelete : undefined}
       />
-    </Box>
+    </ContextPanelScrollArea>
   );
 };

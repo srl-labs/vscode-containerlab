@@ -5,9 +5,6 @@
 import React, { useMemo } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Slider from "@mui/material/Slider";
-import Button from "@mui/material/Button";
-import DeleteIcon from "@mui/icons-material/Delete";
 
 import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
 import {
@@ -21,7 +18,15 @@ import {
   DEFAULT_ARROW_SIZE,
   DEFAULT_CORNER_RADIUS
 } from "../../../annotations/constants";
-import { Toggle, ColorSwatch, NumberInput, SelectInput, PREVIEW_GRID_BG_SX } from "../../ui/form";
+import {
+  Toggle,
+  ColorSwatch,
+  NumberInput,
+  SelectInput,
+  RangeSlider,
+  PreviewSurface,
+  DeleteActionButton
+} from "../../ui/form";
 
 import { buildShapeSvg } from "./FreeShapeSvg";
 
@@ -34,6 +39,8 @@ interface Props {
   isNew: boolean;
   onDelete?: () => void;
 }
+
+const FLEX_START = "flex-start";
 
 // Shape type selector
 const ShapeTypeSelector: React.FC<{
@@ -91,32 +98,21 @@ const FillControls: React.FC<{
   const isTransparent = opacity === 0;
 
   return (
-    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+    <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 2, flexWrap: "wrap" }}>
       <ColorSwatch
         label="Fill"
         value={formData.fillColor ?? DEFAULT_FILL_COLOR}
         onChange={(v) => updateField("fillColor", v)}
         disabled={isTransparent}
       />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, flex: 1, minWidth: 120 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="caption" color="text.secondary">
-            Opacity
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {Math.round(opacity * 100)}%
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", height: 30, px: 0.5 }}>
-          <Slider
-            size="small"
-            min={0}
-            max={100}
-            value={Math.round(opacity * 100)}
-            onChange={(_e, v) => updateField("fillOpacity", (v as number) / 100)}
-          />
-        </Box>
-      </Box>
+      <RangeSlider
+        label="Opacity"
+        value={Math.round(opacity * 100)}
+        onChange={(v) => updateField("fillOpacity", v / 100)}
+        min={0}
+        max={100}
+        unit="%"
+      />
       <Box sx={{ pt: 2 }}>
         <Toggle
           active={isTransparent}
@@ -140,7 +136,7 @@ const BorderControls: React.FC<{
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+      <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 2, flexWrap: "wrap" }}>
         <ColorSwatch
           label={isLine ? "Line" : "Border"}
           value={formData.borderColor ?? DEFAULT_BORDER_COLOR}
@@ -206,7 +202,7 @@ const ArrowControls: React.FC<{
   if (formData.shapeType !== "line") return null;
   const hasArrows = formData.lineStartArrow || formData.lineEndArrow;
   return (
-    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+    <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 2, flexWrap: "wrap" }}>
       <Box sx={{ display: "flex", gap: 1, ...(hasArrows ? { pt: 2 } : {}) }}>
         <Toggle
           active={formData.lineStartArrow ?? false}
@@ -267,8 +263,7 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
       <Typography variant="caption" color="text.secondary">
         Preview
       </Typography>
-      <Box sx={{ position: "relative", p: 3, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", minHeight: 100, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-        <Box sx={{ position: "absolute", inset: 0, opacity: 0.5, ...PREVIEW_GRID_BG_SX }} />
+      <PreviewSurface minHeight={100}>
         <Box
           sx={{
             position: "relative",
@@ -281,7 +276,7 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
         >
           {svg}
         </Box>
-      </Box>
+      </PreviewSurface>
     </Box>
   );
 };
@@ -303,16 +298,7 @@ export const FreeShapeFormContent: React.FC<Props> = ({
     <RotationControl formData={formData} updateField={updateField} />
     <Preview formData={formData} />
     {!isNew && onDelete && (
-      <Button
-        variant="text"
-        color="error"
-        size="small"
-        startIcon={<DeleteIcon />}
-        onClick={onDelete}
-        sx={{ alignSelf: "flex-start", textTransform: "none" }}
-      >
-        Delete
-      </Button>
+      <DeleteActionButton onClick={onDelete} alignSelf={FLEX_START} />
     )}
   </Box>
 );

@@ -16,6 +16,60 @@ import {
 
 import type { LinkTabProps } from "./types";
 
+const EndpointSection: React.FC<{
+  title: string;
+  withDivider?: boolean;
+  nodeValue: string | undefined;
+  isNetwork: boolean | undefined;
+  interfaceBadgeValue: string | undefined;
+  interfaceInputId: string;
+  interfaceInputValue: string | undefined;
+  onInterfaceChange: (value: string) => void;
+}> = ({
+  title,
+  withDivider,
+  nodeValue,
+  isNetwork,
+  interfaceBadgeValue,
+  interfaceInputId,
+  interfaceInputValue,
+  onInterfaceChange
+}) => (
+  <Box sx={withDivider ? { borderBottom: 1, borderColor: "divider", pb: 1.5 } : undefined}>
+    <Typography
+      variant="caption"
+      sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
+    >
+      {title}
+    </Typography>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+          Node
+        </Typography>
+        <ReadOnlyBadge>{nodeValue || "Unknown"}</ReadOnlyBadge>
+      </Box>
+      {isNetwork ? (
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+            Interface
+          </Typography>
+          <ReadOnlyBadge>{interfaceBadgeValue || "Unknown"}</ReadOnlyBadge>
+        </Box>
+      ) : (
+        <InputField
+          id={interfaceInputId}
+          label="Interface"
+          required
+          value={interfaceInputValue || ""}
+          onChange={onInterfaceChange}
+          placeholder="e.g., eth1, e1-1"
+        />
+      )}
+    </Box>
+  </Box>
+);
+
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOffset }) => {
   const rawEndpointOffset =
     typeof data.endpointLabelOffset === "number" ? data.endpointLabelOffset : Number.NaN;
@@ -53,75 +107,26 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {/* Source Endpoint Section */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider", pb: 1.5 }}>
-        <Typography
-          variant="caption"
-          sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
-        >
-          Source Endpoint
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-              Node
-            </Typography>
-            <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
-          </Box>
-          {data.sourceIsNetwork ? (
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                Interface
-              </Typography>
-              <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
-            </Box>
-          ) : (
-            <InputField
-              id="link-source-interface"
-              label="Interface"
-              required
-              value={data.sourceEndpoint || ""}
-              onChange={(value: string) => onChange({ sourceEndpoint: value })}
-              placeholder="e.g., eth1, e1-1"
-            />
-          )}
-        </Box>
-      </Box>
+      <EndpointSection
+        title="Source Endpoint"
+        withDivider
+        nodeValue={data.source}
+        isNetwork={data.sourceIsNetwork}
+        interfaceBadgeValue={data.source}
+        interfaceInputId="link-source-interface"
+        interfaceInputValue={data.sourceEndpoint}
+        onInterfaceChange={(value) => onChange({ sourceEndpoint: value })}
+      />
 
-      {/* Target Endpoint Section */}
-      <Box>
-        <Typography
-          variant="caption"
-          sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
-        >
-          Target Endpoint
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-              Node
-            </Typography>
-            <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
-          </Box>
-          {data.targetIsNetwork ? (
-            <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-                Interface
-              </Typography>
-              <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
-            </Box>
-          ) : (
-            <InputField
-              id="link-target-interface"
-              label="Interface"
-              required
-              value={data.targetEndpoint || ""}
-              onChange={(value: string) => onChange({ targetEndpoint: value })}
-              placeholder="e.g., eth1, e1-1"
-            />
-          )}
-        </Box>
-      </Box>
+      <EndpointSection
+        title="Target Endpoint"
+        nodeValue={data.target}
+        isNetwork={data.targetIsNetwork}
+        interfaceBadgeValue={data.target}
+        interfaceInputId="link-target-interface"
+        interfaceInputValue={data.targetEndpoint}
+        onInterfaceChange={(value) => onChange({ targetEndpoint: value })}
+      />
 
       <Box sx={{ borderTop: 1, borderColor: "divider", pt: 1.5 }}>
         <Typography

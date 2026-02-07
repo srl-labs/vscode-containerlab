@@ -52,13 +52,13 @@ export const InputField: React.FC<InputFieldProps> = ({
     fullWidth
     required={required}
     helperText={helperText}
-    inputProps={{
-      min,
-      max,
-      step
-    }}
-    InputProps={
-      tooltip
+    slotProps={{
+      htmlInput: {
+        min,
+        max,
+        step
+      },
+      input: tooltip
         ? {
             endAdornment: (
               <InputAdornment position="end">
@@ -71,6 +71,6 @@ export const InputField: React.FC<InputFieldProps> = ({
             )
           }
         : undefined
-    }
+    }}
   />
 );

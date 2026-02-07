@@ -69,15 +69,15 @@ export const FilterableDropdown: React.FC<FilterableDropdownProps> = ({
       disabled={disabled}
       size="small"
       fullWidth
-      renderOption={
-        renderOption
-          ? (props, option) => {
-              const { key, ...otherProps } = props;
-              return (
-                <Box component="li" key={key} {...otherProps}>
-                  {renderOption(option)}
-                </Box>
-              );
+	      renderOption={
+	        renderOption
+	          ? (props, option) => {
+	              const { key, ...otherProps } = props as React.HTMLAttributes<HTMLLIElement> & { key: React.Key };
+	              return (
+	                <Box component="li" key={key} {...otherProps}>
+	                  {renderOption(option)}
+	                </Box>
+	              );
             }
           : undefined
       }

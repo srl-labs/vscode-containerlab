@@ -7,7 +7,7 @@ import Box from "@mui/material/Box";
 
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
-
+import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
 import type { NodeEditorData, NodeEditorTabId } from "../../node-editor/types";
 import { BasicTab } from "../../node-editor/BasicTab";
 import { ComponentsTab } from "../../node-editor/ComponentsTab";
@@ -152,23 +152,9 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
     return inheritedProps.filter((prop) => !hasFieldChanged(prop, formData, originalData));
   }, [inheritedProps, formData, originalData]);
 
-  const handleApply = useCallback(() => {
-    if (formData) {
-      onApply(formData);
-      resetAfterApply();
-    }
-  }, [formData, onApply, resetAfterApply]);
+  const { handleApply, handleSave } = useApplySaveHandlers(formData, onApply, onSave, resetAfterApply);
 
-  const handleSave = useCallback(() => {
-    if (formData) onSave(formData);
-  }, [formData, onSave]);
-
-  // Expose footer controls to parent
-  useEffect(() => {
-    if (onFooterRef) {
-      onFooterRef(formData ? { handleApply, handleSave, hasChanges } : null);
-    }
-  }, [onFooterRef, formData, handleApply, handleSave, hasChanges]);
+  useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
 
   if (!formData) return null;
 

@@ -18,5 +18,7 @@ export {
   TextInput,
   SelectInput,
   RangeSlider,
-  PREVIEW_GRID_BG_SX
+  PREVIEW_GRID_BG_SX,
+  PreviewSurface,
+  DeleteActionButton
 } from "./FormComponents";

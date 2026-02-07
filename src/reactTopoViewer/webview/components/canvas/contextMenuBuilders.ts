@@ -3,36 +3,37 @@
  */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
+import {
+  Add as AddIcon,
+  Article as ArticleIcon,
+  Category as CategoryIcon,
+  CircleOutlined as CircleOutlinedIcon,
+  Close as CloseIcon,
+  CropSquare as CropSquareIcon,
+  Dashboard as DashboardIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  FitScreen as FitScreenIcon,
+  Info as InfoIcon,
+  Lan as LanIcon,
+  Layers as LayersIcon,
+  Link as LinkIcon,
+  Remove as RemoveIcon,
+  Terminal as TerminalIcon,
+  TextFields as TextFieldsIcon,
+  Tune as TuneIcon
+} from "@mui/icons-material";
 
+import type { ContextMenuItem } from "../context-menu/ContextMenu";
+import { getViewportCenter } from "../../utils/viewportUtils";
+import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
-import { sendCommandToExtension } from "../../messaging/extensionMessaging";
-import { getViewportCenter } from "../../utils/viewportUtils";
-import type { ContextMenuItem } from "../context-menu/ContextMenu";
 
 import type { ReactFlowCanvasProps } from "./types";
-
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import TerminalIcon from "@mui/icons-material/Terminal";
-import ArticleIcon from "@mui/icons-material/Article";
-import InfoIcon from "@mui/icons-material/Info";
-import CloseIcon from "@mui/icons-material/Close";
-import LinkIcon from "@mui/icons-material/Link";
-import LanIcon from "@mui/icons-material/Lan";
-import AddIcon from "@mui/icons-material/Add";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import LayersIcon from "@mui/icons-material/Layers";
-import TextFieldsIcon from "@mui/icons-material/TextFields";
-import CategoryIcon from "@mui/icons-material/Category";
-import CropSquareIcon from "@mui/icons-material/CropSquare";
-import CircleOutlinedIcon from "@mui/icons-material/CircleOutlined";
-import RemoveIcon from "@mui/icons-material/Remove";
-import FitScreenIcon from "@mui/icons-material/FitScreen";
-import TuneIcon from "@mui/icons-material/Tune";
 
 const DIVIDER_ID = "divider-1";
 

@@ -3,40 +3,32 @@
  * Uses MUI components with drag-and-drop functionality
  */
 import React, { useCallback, useMemo, useState } from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import IconButton from "@mui/material/IconButton";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
-import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import Tooltip from "@mui/material/Tooltip";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
-import AddIcon from "@mui/icons-material/Add";
-import StarIcon from "@mui/icons-material/Star";
-import StarOutlineIcon from "@mui/icons-material/StarOutline";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import DnsIcon from "@mui/icons-material/Dns";
-import LanIcon from "@mui/icons-material/Lan";
-import HubIcon from "@mui/icons-material/Hub";
-import DeviceHubIcon from "@mui/icons-material/DeviceHub";
-import CableIcon from "@mui/icons-material/Cable";
-import PowerIcon from "@mui/icons-material/Power";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import TextFieldsIcon from "@mui/icons-material/TextFields";
-import CropSquareIcon from "@mui/icons-material/CropSquare";
-import CircleOutlinedIcon from "@mui/icons-material/CircleOutlined";
-import RemoveIcon from "@mui/icons-material/Remove";
-import SelectAllIcon from "@mui/icons-material/SelectAll";
-import InfoIcon from "@mui/icons-material/Info";
-import ViewInArIcon from "@mui/icons-material/ViewInAr";
-import CloudIcon from "@mui/icons-material/Cloud";
-
-import LockIcon from "@mui/icons-material/Lock";
+import {
+  AccountTree as AccountTreeIcon,
+  Add as AddIcon,
+  Cable as CableIcon,
+  CircleOutlined as CircleOutlinedIcon,
+  Clear as ClearIcon,
+  Cloud as CloudIcon,
+  CropSquare as CropSquareIcon,
+  Delete as DeleteIcon,
+  DeviceHub as DeviceHubIcon,
+  Dns as DnsIcon,
+  Edit as EditIcon,
+  Hub as HubIcon,
+  Info as InfoIcon,
+  Lan as LanIcon,
+  Lock as LockIcon,
+  Power as PowerIcon,
+  Remove as RemoveIcon,
+  Search as SearchIcon,
+  SelectAll as SelectAllIcon,
+  Star as StarIcon,
+  StarOutline as StarOutlineIcon,
+  TextFields as TextFieldsIcon,
+  ViewInAr as ViewInArIcon
+} from "@mui/icons-material";
+import { Box, Button, Card, IconButton, InputAdornment, Tab, Tabs, TextField, Tooltip, Typography } from "@mui/material";
 
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../../shared/types/graph";
@@ -86,6 +78,65 @@ function getTemplateIconUrl(template: CustomNodeTemplate): string {
 
 const PALETTE_ICON_SIZE = 28;
 const REACTFLOW_NODE_MIME_TYPE = "application/reactflow-node";
+const ACTION_HOVER_BG = "action.hover";
+const TEXT_SECONDARY = "text.secondary";
+
+const PaletteDraggableCard: React.FC<{
+  onDragStart: (event: React.DragEvent) => void;
+  children: React.ReactNode;
+}> = ({ onDragStart, children }) => (
+  <Card
+    variant="outlined"
+    draggable
+    onDragStart={onDragStart}
+    sx={{
+      p: 1,
+      cursor: "grab",
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+      "&:hover": { bgcolor: ACTION_HOVER_BG },
+      "&:active": { cursor: "grabbing" }
+    }}
+  >
+    {children}
+  </Card>
+);
+
+const PaletteSectionTitle: React.FC<{ icon: React.ReactNode; title: string; mt?: number }> = ({
+  icon,
+  title,
+  mt
+}) => (
+  <Typography
+    variant="subtitle2"
+    sx={{
+      mb: 1,
+      ...(typeof mt === "number" ? { mt } : null),
+      display: "flex",
+      alignItems: "center",
+      gap: 1
+    }}
+  >
+    {icon}
+    {title}
+  </Typography>
+);
+
+const PaletteList: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>{children}</Box>
+);
+
+const PaletteDragHint: React.FC = () => (
+  <Typography
+    variant="caption"
+    color={TEXT_SECONDARY}
+    sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 2 }}
+  >
+    <InfoIcon sx={{ fontSize: 14 }} />
+    Drag items onto the canvas to add them
+  </Typography>
+);
 
 type AnnotationPayload = {
   annotationType: "text" | "shape" | "group";
@@ -125,20 +176,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
   const iconUrl = useMemo(() => getTemplateIconUrl(template), [template]);
 
   return (
-    <Card
-      variant="outlined"
-      draggable
-      onDragStart={onDragStart}
-      sx={{
-        p: 1,
-        cursor: "grab",
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        "&:hover": { bgcolor: "action.hover" },
-        "&:active": { cursor: "grabbing" }
-      }}
-    >
+    <PaletteDraggableCard onDragStart={onDragStart}>
       <Box
         sx={{
           width: PALETTE_ICON_SIZE,
@@ -155,7 +193,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
         <Typography variant="body2" noWrap fontWeight={500}>
           {template.name}
         </Typography>
-        <Typography variant="caption" color="text.secondary" noWrap>
+        <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
           {template.kind}
         </Typography>
       </Box>
@@ -167,7 +205,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
               e.stopPropagation();
               if (!isDefault) onSetDefault?.(template.name);
             }}
-            sx={{ color: isDefault ? "warning.main" : "text.secondary" }}
+            sx={{ color: isDefault ? "warning.main" : TEXT_SECONDARY }}
           >
             {isDefault ? <StarIcon fontSize="small" /> : <StarOutlineIcon fontSize="small" />}
           </IconButton>
@@ -196,7 +234,7 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
           </IconButton>
         </Tooltip>
       </Box>
-    </Card>
+    </PaletteDraggableCard>
   );
 };
 
@@ -217,30 +255,17 @@ const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ networ
   );
 
   return (
-    <Card
-      variant="outlined"
-      draggable
-      onDragStart={onDragStart}
-      sx={{
-        p: 1,
-        cursor: "grab",
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        "&:hover": { bgcolor: "action.hover" },
-        "&:active": { cursor: "grabbing" }
-      }}
-    >
-      <Box sx={{ color: "text.secondary" }}>{network.icon}</Box>
+    <PaletteDraggableCard onDragStart={onDragStart}>
+      <Box sx={{ color: TEXT_SECONDARY }}>{network.icon}</Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="body2" noWrap fontWeight={500}>
           {network.label}
         </Typography>
-        <Typography variant="caption" color="text.secondary" noWrap>
+        <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
           {network.type}
         </Typography>
       </Box>
-    </Card>
+    </PaletteDraggableCard>
   );
 };
 
@@ -270,33 +295,23 @@ const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
   );
 
   return (
-    <Card
-      variant="outlined"
-      draggable
-      onDragStart={onDragStart}
-      sx={{
-        p: 1,
-        cursor: "grab",
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        "&:hover": { bgcolor: "action.hover" },
-        "&:active": { cursor: "grabbing" }
-      }}
-    >
-      <Box sx={{ color: "text.secondary" }}>{icon}</Box>
+    <PaletteDraggableCard onDragStart={onDragStart}>
+      <Box sx={{ color: TEXT_SECONDARY }}>{icon}</Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="body2" noWrap fontWeight={500}>
           {label}
         </Typography>
-        <Typography variant="caption" color="text.secondary" noWrap>
+        <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
           {kind}
         </Typography>
       </Box>
-    </Card>
+    </PaletteDraggableCard>
   );
 };
 
+// This is a UI composition component with lots of conditional rendering and filtering.
+// Breaking it up further doesn't materially improve readability, but it does increase file churn.
+/* eslint-disable complexity */
 export const PaletteSection: React.FC<PaletteSectionProps> = ({
   mode = "edit",
   isLocked = false,
@@ -343,21 +358,21 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
             display: "flex",
             alignItems: "center",
             gap: 0.5,
-            px: 1.5,
-            py: 0.5,
-            mb: 1.5,
-            bgcolor: "action.hover",
-            borderRadius: 0.5,
-            border: 1,
-            borderColor: "divider"
-          }}
-        >
-          <LockIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-          <Typography variant="caption" color="text.secondary">
-            Unlock to drag items onto canvas
-          </Typography>
-        </Box>
-      )}
+	            px: 1.5,
+	            py: 0.5,
+	            mb: 1.5,
+	            bgcolor: ACTION_HOVER_BG,
+	            borderRadius: 0.5,
+	            border: 1,
+	            borderColor: "divider"
+	          }}
+	        >
+	          <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
+	          <Typography variant="caption" color={TEXT_SECONDARY}>
+	            Unlock to drag items onto canvas
+	          </Typography>
+	        </Box>
+	      )}
 
       {/* Tabs */}
       <Tabs
@@ -379,31 +394,30 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
             placeholder="Search nodes..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-              endAdornment: filter && (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setFilter("")}>
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              )
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+                endAdornment: filter ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setFilter("")}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : undefined
+              }
             }}
             sx={{ mb: 2 }}
           />
 
           {/* Node Templates */}
-          <Typography variant="subtitle2" sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
-            <ViewInArIcon fontSize="small" />
-            Node Templates
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <PaletteSectionTitle icon={<ViewInArIcon fontSize="small" />} title="Node Templates" />
+          <PaletteList>
             {filteredNodes.length === 0 && (
-              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
                 {filter ? "No matching templates" : "No node templates defined"}
               </Typography>
             )}
@@ -417,7 +431,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                 onSetDefault={onSetDefaultCustomNode}
               />
             ))}
-          </Box>
+          </PaletteList>
           {!filter && (
             <Button
               variant="outlined"
@@ -431,13 +445,10 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           )}
 
           {/* Networks */}
-          <Typography variant="subtitle2" sx={{ mb: 1, mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
-            <CloudIcon fontSize="small" />
-            Networks
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <PaletteSectionTitle icon={<CloudIcon fontSize="small" />} title="Networks" mt={2} />
+          <PaletteList>
             {filteredNetworks.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
                 No matching networks
               </Typography>
             ) : (
@@ -445,36 +456,26 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
                 <DraggableNetwork key={network.type} network={network} />
               ))
             )}
-          </Box>
-
-          <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 2 }}>
-            <InfoIcon sx={{ fontSize: 14 }} />
-            Drag items onto the canvas to add them
-          </Typography>
+          </PaletteList>
+          <PaletteDragHint />
         </Box>
       )}
 
       {/* Annotations Tab */}
       {(isViewMode || activeTab === 1) && (
         <Box sx={isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
-          <Typography variant="subtitle2" sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
-            <TextFieldsIcon fontSize="small" />
-            Text
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <PaletteSectionTitle icon={<TextFieldsIcon fontSize="small" />} title="Text" />
+          <PaletteList>
             <DraggableAnnotation
               label="Text"
               kind="annotation"
               icon={<TextFieldsIcon fontSize="small" />}
               payload={{ annotationType: "text" }}
             />
-          </Box>
+          </PaletteList>
 
-          <Typography variant="subtitle2" sx={{ mb: 1, mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
-            <CropSquareIcon fontSize="small" />
-            Shapes
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <PaletteSectionTitle icon={<CropSquareIcon fontSize="small" />} title="Shapes" mt={2} />
+          <PaletteList>
             <DraggableAnnotation
               label="Rectangle"
               kind="shape"
@@ -493,27 +494,21 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
               icon={<RemoveIcon fontSize="small" />}
               payload={{ annotationType: "shape", shapeType: "line" }}
             />
-          </Box>
+          </PaletteList>
 
-          <Typography variant="subtitle2" sx={{ mb: 1, mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
-            <SelectAllIcon fontSize="small" />
-            Groups
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <PaletteSectionTitle icon={<SelectAllIcon fontSize="small" />} title="Groups" mt={2} />
+          <PaletteList>
             <DraggableAnnotation
               label="Group"
               kind="annotation"
               icon={<SelectAllIcon fontSize="small" />}
               payload={{ annotationType: "group" }}
             />
-          </Box>
-
-          <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 2 }}>
-            <InfoIcon sx={{ fontSize: 14 }} />
-            Drag items onto the canvas to add them
-          </Typography>
+          </PaletteList>
+          <PaletteDragHint />
         </Box>
       )}
     </Box>
   );
 };
+/* eslint-enable complexity */

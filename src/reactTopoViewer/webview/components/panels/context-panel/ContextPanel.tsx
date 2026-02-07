@@ -11,16 +11,8 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
-import Tooltip from "@mui/material/Tooltip";
-import CloseIcon from "@mui/icons-material/Close";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import LockIcon from "@mui/icons-material/Lock";
+import { ArrowBack as ArrowBackIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon } from "@mui/icons-material";
+import { Box, Button, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import type { NodeData, LinkData } from "../../../hooks/ui";
@@ -163,7 +155,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
 
   const showBackButton = panelView.kind !== "palette";
 
-  const renderContent = (): React.ReactNode => {
+  const renderContent = (): React.ReactElement => {
     switch (panelView.kind) {
       case "palette":
         return <PaletteView {...palette} isLocked={isLocked} />;
@@ -252,7 +244,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           />
         );
       default:
-        return <PaletteView {...palette} />;
+        return <PaletteView {...palette} isLocked={isLocked} />;
     }
   };
 

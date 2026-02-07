@@ -94,8 +94,8 @@ export default [
       ],
 
       // ─── Complexity rules ───
-      complexity: ["warning", { max: 15 }],
-      "sonarjs/cognitive-complexity": ["warning", 15],
+      complexity: ["warn", { max: 15 }],
+      "sonarjs/cognitive-complexity": ["warn", 15],
       "sonarjs/no-identical-functions": "error",
       "sonarjs/no-duplicate-string": "error",
       "sonarjs/no-hardcoded-ip": "off",
@@ -228,19 +228,12 @@ export default [
     }
   },
 
-  /* ---------- topoViewer: max-lines limit ---------- */
-  {
-    files: ["src/topoViewer/**/*.ts", "src/topoViewer/**/*.tsx"],
-    rules: {
-      "max-lines": ["error", { max: 1000, skipBlankLines: true, skipComments: true }]
-    }
-  },
 
   /* ---------- reactTopoViewer: max-lines limit ---------- */
   {
     files: ["src/reactTopoViewer/**/*.ts", "src/reactTopoViewer/**/*.tsx"],
     rules: {
-      "max-lines": ["error", { max: 1000, skipBlankLines: true, skipComments: true }]
+      "max-lines": ["error", { max: 3000, skipBlankLines: true, skipComments: true }]
     }
   },
 

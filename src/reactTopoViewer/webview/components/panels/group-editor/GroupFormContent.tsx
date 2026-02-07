@@ -23,6 +23,12 @@ interface Props {
   onDelete?: () => void;
 }
 
+const FLEX_START = "flex-start";
+
+const StyleRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 2, flexWrap: "wrap" }}>{children}</Box>
+);
+
 // Basic info section
 const BasicInfoSection: React.FC<{
   formData: GroupEditorData;
@@ -70,7 +76,7 @@ const BackgroundSection: React.FC<{
     <Typography variant="subtitle2" fontWeight={600}>
       Background
     </Typography>
-    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+    <StyleRow>
       <ColorSwatch
         label="Color"
         value={formData.style.backgroundColor ?? "#d9d9d9"}
@@ -81,7 +87,7 @@ const BackgroundSection: React.FC<{
         value={formData.style.backgroundOpacity ?? 20}
         onChange={(v) => updateStyle("backgroundOpacity", v)}
       />
-    </Box>
+    </StyleRow>
   </Box>
 );
 
@@ -94,7 +100,7 @@ const BorderSection: React.FC<{
     <Typography variant="subtitle2" fontWeight={600}>
       Border
     </Typography>
-    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+    <StyleRow>
       <ColorSwatch
         label="Color"
         value={formData.style.borderColor ?? "#dddddd"}
@@ -120,7 +126,7 @@ const BorderSection: React.FC<{
           { value: "double", label: "Double" }
         ]}
       />
-    </Box>
+    </StyleRow>
     <RangeSlider
       label="Corner Radius"
       value={formData.style.borderRadius ?? 0}
@@ -140,7 +146,7 @@ const TextSection: React.FC<{
     <Typography variant="subtitle2" fontWeight={600}>
       Label
     </Typography>
-    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+    <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 2 }}>
       <ColorSwatch
         label="Text Color"
         value={formData.style.labelColor ?? formData.style.color ?? "#ebecf0"}
@@ -167,7 +173,7 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
             width: "100%",
             height: 64,
             display: "flex",
-            alignItems: "flex-start",
+            alignItems: FLEX_START,
             justifyContent: "center",
             pt: 0.5,
             backgroundColor: style.backgroundColor ?? "#d9d9d9",
@@ -214,7 +220,7 @@ export const GroupFormContent: React.FC<Props> = ({
         size="small"
         startIcon={<DeleteIcon />}
         onClick={onDelete}
-        sx={{ alignSelf: "flex-start", textTransform: "none" }}
+        sx={{ alignSelf: FLEX_START, textTransform: "none" }}
       >
         Delete Group
       </Button>

@@ -4,23 +4,20 @@
  */
 import React, { useState, useCallback } from "react";
 import type { ReactFlowInstance, Edge } from "@xyflow/react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import Button from "@mui/material/Button";
-import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
-import GridOnIcon from "@mui/icons-material/GridOn";
-import PaletteIcon from "@mui/icons-material/Palette";
-import DownloadIcon from "@mui/icons-material/Download";
-import LightbulbIcon from "@mui/icons-material/Lightbulb";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import { AccountTree as AccountTreeIcon, Close as CloseIcon, Download as DownloadIcon, GridOn as GridOnIcon, Lightbulb as LightbulbIcon, Palette as PaletteIcon } from "@mui/icons-material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  InputAdornment,
+  TextField,
+  Typography
+} from "@mui/material";
 
 import type {
   FreeTextAnnotation,
@@ -55,6 +52,42 @@ export interface SvgExportModalProps {
 }
 
 const ANNOTATION_NODE_TYPES: Set<string> = new Set([FREE_TEXT_NODE_TYPE, FREE_SHAPE_NODE_TYPE, GROUP_NODE_TYPE]);
+
+const JUSTIFY_SPACE_BETWEEN = "space-between";
+const VSCODE_PANEL_BORDER = "var(--vscode-panel-border)";
+const VSCODE_INPUT_BG = "var(--vscode-input-background)";
+const VSCODE_FOREGROUND = "var(--vscode-foreground)";
+
+const ToggleSettingRow: React.FC<{
+  label: React.ReactNode;
+  active: boolean;
+  onToggle: () => void;
+}> = ({ label, active, onToggle }) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: JUSTIFY_SPACE_BETWEEN,
+      p: 1.5,
+      bgcolor: VSCODE_INPUT_BG,
+      borderRadius: 0.5,
+      border: 1,
+      borderColor: VSCODE_PANEL_BORDER
+    }}
+  >
+    <Box component="span" sx={{ fontSize: "0.875rem", color: VSCODE_FOREGROUND }}>
+      {label}
+    </Box>
+    <Toggle active={active} onClick={onToggle}>
+      {active ? "Included" : "Excluded"}
+    </Toggle>
+  </Box>
+);
+
+function formatCount(count: number, singular: string): string {
+  const label = count === 1 ? singular : `${singular}s`;
+  return `${count} ${label}`;
+}
 
 function getViewportSize(): { width: number; height: number } | null {
   const container = document.querySelector(".react-flow") as HTMLElement | null;
@@ -179,11 +212,26 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
     } finally {
       setIsExporting(false);
     }
-  }, [isExportAvailable, borderZoom, borderPadding, includeAnnotations, includeEdgeLabels, totalAnnotations, groups, textAnnotations, shapeAnnotations, backgroundOption, customBackgroundColor, filename, rfInstance, customIcons]);
+	  }, [isExportAvailable, borderZoom, borderPadding, includeAnnotations, includeEdgeLabels, totalAnnotations, groups, textAnnotations, shapeAnnotations, backgroundOption, customBackgroundColor, filename, rfInstance, customIcons]);
+
+  const annotationsLabel = totalAnnotations > 0 ? formatCount(totalAnnotations, "annotation") : "No annotations";
+
+  const previewBackgroundSx = (() => {
+    if (backgroundOption === "transparent") {
+      return {
+        backgroundImage:
+          "linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)",
+        backgroundSize: "8px 8px",
+        backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px"
+      } as const;
+    }
+    if (backgroundOption === "white") return { backgroundColor: "#ffffff" } as const;
+    return { backgroundColor: customBackgroundColor } as const;
+  })();
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: JUSTIFY_SPACE_BETWEEN, py: 1.5 }}>
         Export SVG
         <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
       </DialogTitle>
@@ -206,11 +254,11 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 <Toggle active={backgroundOption === "transparent"} onClick={() => setBackgroundOption("transparent")}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><GridOnIcon sx={{ fontSize: 14 }} />Transparent</Box>
                 </Toggle>
-                <Toggle active={backgroundOption === "white"} onClick={() => setBackgroundOption("white")}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <Box component="span" sx={{ display: "inline-block", width: 12, height: 12, bgcolor: "white", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)" }} />White
-                  </Box>
-                </Toggle>
+	                <Toggle active={backgroundOption === "white"} onClick={() => setBackgroundOption("white")}>
+	                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+	                    <Box component="span" sx={{ display: "inline-block", width: 12, height: 12, bgcolor: "white", borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER }} />White
+	                  </Box>
+	                </Toggle>
                 <Toggle active={backgroundOption === "custom"} onClick={() => setBackgroundOption("custom")}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><PaletteIcon sx={{ fontSize: 14 }} />Custom</Box>
                 </Toggle>
@@ -219,31 +267,25 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
             </Box>
           </Box>
 
-          {/* Annotations section */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <SectionHeader>Annotations</SectionHeader>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 1.5, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)" }}>
-              <Box sx={{ display: "flex", flexDirection: "column" }}>
-                <Box component="span" sx={{ fontSize: "0.875rem", color: "var(--vscode-foreground)" }}>
-                  {totalAnnotations > 0 ? `${totalAnnotations} annotation${totalAnnotations !== 1 ? "s" : ""}` : "No annotations"}
-                </Box>
-              </Box>
-              <Toggle active={includeAnnotations} onClick={() => setIncludeAnnotations(!includeAnnotations)}>
-                {includeAnnotations ? "Included" : "Excluded"}
-              </Toggle>
-            </Box>
-          </Box>
+		          {/* Annotations section */}
+		          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+		            <SectionHeader>Annotations</SectionHeader>
+                <ToggleSettingRow
+                  label={annotationsLabel}
+                  active={includeAnnotations}
+                  onToggle={() => setIncludeAnnotations(!includeAnnotations)}
+                />
+		          </Box>
 
-          {/* Edge Labels */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <SectionHeader>Edge Labels</SectionHeader>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 1.5, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)" }}>
-              <Box component="span" sx={{ fontSize: "0.875rem", color: "var(--vscode-foreground)" }}>Interface labels</Box>
-              <Toggle active={includeEdgeLabels} onClick={() => setIncludeEdgeLabels(!includeEdgeLabels)}>
-                {includeEdgeLabels ? "Included" : "Excluded"}
-              </Toggle>
-            </Box>
-          </Box>
+		          {/* Edge Labels */}
+		          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+		            <SectionHeader>Edge Labels</SectionHeader>
+                <ToggleSettingRow
+                  label="Interface labels"
+                  active={includeEdgeLabels}
+                  onToggle={() => setIncludeEdgeLabels(!includeEdgeLabels)}
+                />
+		          </Box>
 
           {/* Filename */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
@@ -254,40 +296,44 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
               placeholder="topology"
-              InputProps={{ endAdornment: <InputAdornment position="end"><Typography variant="caption" color="text.secondary">.svg</Typography></InputAdornment> }}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Typography variant="caption" color="text.secondary">
+                        .svg
+                      </Typography>
+                    </InputAdornment>
+                  )
+                }
+              }}
               sx={{ "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
             />
           </Box>
 
-          {/* Preview */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-            <SectionHeader>Preview</SectionHeader>
-            <Box sx={{ position: "relative", p: 2, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", overflow: "hidden" }}>
-              <Box sx={{ position: "absolute", inset: 0, opacity: 0.3, ...PREVIEW_GRID_BG_SX }} />
-              <Box sx={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Box
+	          {/* Preview */}
+	          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+	            <SectionHeader>Preview</SectionHeader>
+	            <Box sx={{ position: "relative", p: 2, bgcolor: VSCODE_INPUT_BG, borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER, overflow: "hidden" }}>
+	              <Box sx={{ position: "absolute", inset: 0, opacity: 0.3, ...PREVIEW_GRID_BG_SX }} />
+	              <Box sx={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+	                <Box
                   sx={{
                     width: 96,
                     height: 64,
-                    borderRadius: 0.5,
-                    boxShadow: 3,
-                    border: 1,
-                    borderColor: "var(--vscode-panel-border)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 200ms",
-                    ...(backgroundOption === "transparent"
-                      ? {
-                          backgroundImage: "linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)",
-                          backgroundSize: "8px 8px",
-                          backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0px"
-                        }
-                      : { backgroundColor: backgroundOption === "white" ? "#ffffff" : customBackgroundColor }),
-                    padding: `${Math.min(borderPadding / 20, 8)}px`,
-                    transform: `scale(${0.8 + borderZoom / 500})`
-                  }}
-                >
+	                    borderRadius: 0.5,
+	                    boxShadow: 3,
+	                    border: 1,
+	                    borderColor: VSCODE_PANEL_BORDER,
+	                    display: "flex",
+	                    alignItems: "center",
+	                    justifyContent: "center",
+	                    transition: "all 200ms",
+	                    ...previewBackgroundSx,
+	                    padding: `${Math.min(borderPadding / 20, 8)}px`,
+	                    transform: `scale(${0.8 + borderZoom / 500})`
+	                  }}
+	                >
                   <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
                 </Box>
               </Box>
@@ -311,12 +357,12 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
             </Alert>
           )}
 
-          {/* Tips */}
-          <Box sx={{ p: 1.5, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "divider" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-              <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
-              <Typography variant="caption" color="text.secondary">Tips</Typography>
-            </Box>
+	          {/* Tips */}
+	          <Box sx={{ p: 1.5, bgcolor: VSCODE_INPUT_BG, borderRadius: 0.5, border: 1, borderColor: "divider" }}>
+	            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+	              <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
+	              <Typography variant="caption" color="text.secondary">Tips</Typography>
+	            </Box>
             <Typography variant="caption" color="text.secondary" component="ul" sx={{ pl: 2, m: 0, "& li": { mb: 0.25 } }}>
               <li>Higher zoom = better quality, larger file</li>
               <li>SVG files scale without quality loss</li>

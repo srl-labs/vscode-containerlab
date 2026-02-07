@@ -2,16 +2,18 @@
  * BulkLinkModal - MUI Dialog wrapper for bulk link creation
  */
 import React from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  TextField,
+  Typography
+} from "@mui/material";
+import { Close as CloseIcon } from "@mui/icons-material";
 
 import type { TopoNode, TopoEdge } from "../../../shared/types/graph";
 import { useGraphActions, useGraphState } from "../../stores/graphStore";
@@ -28,31 +30,57 @@ interface BulkLinkModalProps {
   onClose: () => void;
 }
 
+const VSCODE_PANEL_BORDER = "var(--vscode-panel-border)";
+const VSCODE_EDITOR_BG = "var(--vscode-editor-background)";
+const FLEX_START = "flex-start";
+
+type ExampleDefinition = {
+  title: string;
+  source: React.ReactNode;
+  target: React.ReactNode;
+};
+
+const EXAMPLES: readonly ExampleDefinition[] = [
+  {
+    title: "All leaves to all spines:",
+    source: <CopyableCode>leaf*</CopyableCode>,
+    target: <CopyableCode>spine*</CopyableCode>
+  },
+  {
+    title: "Pair by number (leaf1→spine1):",
+    source: <CopyableCode>{"leaf(\\d+)"}</CopyableCode>,
+    target: <CopyableCode>spine$1</CopyableCode>
+  },
+  {
+    title: "Single char match:",
+    source: <CopyableCode>srl?</CopyableCode>,
+    target: <CopyableCode>client*</CopyableCode>
+  }
+] as const;
+
+const ExampleRow: React.FC<{ index: number; def: ExampleDefinition }> = ({ index, def }) => (
+  <Box sx={{ display: "flex", alignItems: FLEX_START, gap: 1 }}>
+    <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+      {index}.
+    </Typography>
+    <Box>
+      <Typography variant="body2" color="text.secondary">
+        {def.title}
+      </Typography>
+      <Box sx={{ mt: 0.25 }}>
+        {def.source} → {def.target}
+      </Box>
+    </Box>
+  </Box>
+);
+
 const ExamplesSection: React.FC = () => (
-  <Box sx={{ borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-editor-background)", p: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+  <Box sx={{ borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER, bgcolor: VSCODE_EDITOR_BG, p: 1, display: "flex", flexDirection: "column", gap: 1 }}>
     <Typography variant="subtitle2" fontWeight={600}>Examples</Typography>
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, fontSize: "0.875rem" }}>
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>1.</Typography>
-        <Box>
-          <Typography variant="body2" color="text.secondary">All leaves to all spines:</Typography>
-          <Box sx={{ mt: 0.25 }}><CopyableCode>leaf*</CopyableCode> → <CopyableCode>spine*</CopyableCode></Box>
-        </Box>
-      </Box>
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>2.</Typography>
-        <Box>
-          <Typography variant="body2" color="text.secondary">Pair by number (leaf1→spine1):</Typography>
-          <Box sx={{ mt: 0.25 }}><CopyableCode>{"leaf(\\d+)"}</CopyableCode> → <CopyableCode>spine$1</CopyableCode></Box>
-        </Box>
-      </Box>
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>3.</Typography>
-        <Box>
-          <Typography variant="body2" color="text.secondary">Single char match:</Typography>
-          <Box sx={{ mt: 0.25 }}><CopyableCode>srl?</CopyableCode> → <CopyableCode>client*</CopyableCode></Box>
-        </Box>
-      </Box>
+      {EXAMPLES.map((def, idx) => (
+        <ExampleRow key={idx} index={idx + 1} def={def} />
+      ))}
     </Box>
     <Box sx={{ borderTop: 1, borderColor: "divider", pt: 1 }}>
       <Typography variant="body2" color="text.secondary" component="div">
@@ -129,12 +157,12 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLo
               </Box>
             </Box>
             {status && (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider", bgcolor: "var(--vscode-editor-background)" }}>
+              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider", bgcolor: VSCODE_EDITOR_BG }}>
                 {status}
               </Typography>
             )}
             {!canApply && (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider", bgcolor: "var(--vscode-editor-background)" }}>
+              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider", bgcolor: VSCODE_EDITOR_BG }}>
                 Bulk linking is disabled while locked or in view mode.
               </Typography>
             )}

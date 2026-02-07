@@ -5,8 +5,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import Box from "@mui/material/Box";
 
 import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from "../../../ui/form";
-
+import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
 import type { NetworkEditorData, NetworkType } from "../../network-editor/types";
+import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
 import {
   NETWORK_TYPES,
   VXLAN_TYPES,
@@ -34,6 +35,12 @@ export interface NetworkEditorFooterRef {
 const NETWORK_TYPE_OPTIONS = NETWORK_TYPES.map((type) => ({ value: type, label: type }));
 const MACVLAN_MODE_OPTIONS = MACVLAN_MODES.map((mode) => ({ value: mode, label: mode }));
 
+const SettingsGroupTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Box sx={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--vscode-foreground)", opacity: 0.7, mt: 2, mb: 1 }}>
+    {children}
+  </Box>
+);
+
 function useNetworkEditorForm(nodeData: NetworkEditorData | null) {
   const [formData, setFormData] = useState<NetworkEditorData | null>(null);
   const [initialData, setInitialData] = useState<string | null>(null);
@@ -58,6 +65,8 @@ function useNetworkEditorForm(nodeData: NetworkEditorData | null) {
   return { formData, handleChange, hasChanges, resetInitialData };
 }
 
+// This form is intentionally dense (conditional sections depend on network type).
+/* eslint-disable complexity */
 const NetworkEditorContent: React.FC<{
   formData: NetworkEditorData;
   onChange: (updates: Partial<NetworkEditorData>) => void;
@@ -127,9 +136,7 @@ const NetworkEditorContent: React.FC<{
 
       {VXLAN_TYPES.includes(formData.networkType) && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Box sx={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--vscode-foreground)", opacity: 0.7, mt: 2, mb: 1 }}>
-            VXLAN Settings
-          </Box>
+          <SettingsGroupTitle>VXLAN Settings</SettingsGroupTitle>
           <FormField label="Remote">
             <InputField
               id="vxlan-remote"
@@ -158,9 +165,7 @@ const NetworkEditorContent: React.FC<{
 
       {supportsExtendedProps(formData.networkType) && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Box sx={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--vscode-foreground)", opacity: 0.7, mt: 2, mb: 1 }}>
-            Extended Properties
-          </Box>
+          <SettingsGroupTitle>Extended Properties</SettingsGroupTitle>
           <FormField label="MTU">
             <InputField id="network-mtu" type="number" value={formData.mtu || ""} onChange={(v) => onChange({ mtu: v })} placeholder="e.g., 9000" min={1} max={65535} />
           </FormField>
@@ -175,6 +180,7 @@ const NetworkEditorContent: React.FC<{
     </Box>
   );
 };
+/* eslint-enable complexity */
 
 export const NetworkEditorView: React.FC<NetworkEditorViewProps> = ({
   nodeData,
@@ -184,28 +190,15 @@ export const NetworkEditorView: React.FC<NetworkEditorViewProps> = ({
 }) => {
   const { formData, handleChange, hasChanges, resetInitialData } = useNetworkEditorForm(nodeData);
 
-  const handleApply = useCallback(() => {
-    if (formData) {
-      onApply(formData);
-      resetInitialData();
-    }
-  }, [formData, onApply, resetInitialData]);
+  const { handleApply, handleSave } = useApplySaveHandlers(formData, onApply, onSave, resetInitialData);
 
-  const handleSave = useCallback(() => {
-    if (formData) onSave(formData);
-  }, [formData, onSave]);
-
-  useEffect(() => {
-    if (onFooterRef) {
-      onFooterRef(formData ? { handleApply, handleSave, hasChanges } : null);
-    }
-  }, [onFooterRef, formData, handleApply, handleSave, hasChanges]);
+  useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
 
   if (!formData) return null;
 
   return (
-    <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
+    <ContextPanelScrollArea>
       <NetworkEditorContent formData={formData} onChange={handleChange} />
-    </Box>
+    </ContextPanelScrollArea>
   );
 };

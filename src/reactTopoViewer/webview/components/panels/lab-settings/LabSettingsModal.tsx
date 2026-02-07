@@ -9,6 +9,7 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { LabSettingsSection } from "../lab-drawer/LabSettingsSection";
+
 import type { LabSettings } from "./types";
 
 interface LabSettingsModalProps {

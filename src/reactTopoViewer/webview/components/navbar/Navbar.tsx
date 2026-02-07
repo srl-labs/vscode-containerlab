@@ -3,44 +3,46 @@
  * Complete implementation matching legacy features
  */
 import React from "react";
-import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
-import Button from "@mui/material/Button";
-import ButtonGroup from "@mui/material/ButtonGroup";
-import Tooltip from "@mui/material/Tooltip";
-import Divider from "@mui/material/Divider";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import CheckIcon from "@mui/icons-material/Check";
-
-import SettingsIcon from "@mui/icons-material/Settings";
-import LockIcon from "@mui/icons-material/Lock";
-import LockOpenIcon from "@mui/icons-material/LockOpen";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import StopIcon from "@mui/icons-material/Stop";
-import ReplayIcon from "@mui/icons-material/Replay";
-import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import UndoIcon from "@mui/icons-material/Undo";
-import RedoIcon from "@mui/icons-material/Redo";
-import FitScreenIcon from "@mui/icons-material/FitScreen";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import ViewColumnIcon from "@mui/icons-material/ViewColumn";
-import GridOnIcon from "@mui/icons-material/GridOn";
-import SearchIcon from "@mui/icons-material/Search";
-import LabelIcon from "@mui/icons-material/Label";
-import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import KeyboardIcon from "@mui/icons-material/Keyboard";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import InfoIcon from "@mui/icons-material/Info";
+import {
+  AppBar,
+  Button,
+  ButtonGroup,
+  Divider,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Toolbar,
+  Tooltip,
+  Typography
+} from "@mui/material";
+import {
+  AccountTree as AccountTreeIcon,
+  ArrowDropDown as ArrowDropDownIcon,
+  CameraAlt as CameraAltIcon,
+  Check as CheckIcon,
+  CleaningServices as CleaningServicesIcon,
+  FitScreen as FitScreenIcon,
+  GridOn as GridOnIcon,
+  Info as InfoIcon,
+  Keyboard as KeyboardIcon,
+  Label as LabelIcon,
+  Lock as LockIcon,
+  LockOpen as LockOpenIcon,
+  PlayArrow as PlayArrowIcon,
+  Redo as RedoIcon,
+  Replay as ReplayIcon,
+  Search as SearchIcon,
+  Settings as SettingsIcon,
+  Stop as StopIcon,
+  Undo as UndoIcon,
+  ViewColumn as ViewColumnIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon
+} from "@mui/icons-material";
 
 import type { LinkLabelMode } from "../../stores/topoViewerStore";
-
 import {
   useIsLocked,
   useIsProcessing,
@@ -52,6 +54,11 @@ import { useDeploymentCommands } from "../../hooks/ui";
 import type { LayoutOption } from "../../hooks/ui";
 
 import { ContainerlabLogo } from "./ContainerlabLogo";
+
+const ERROR_MAIN = "error.main";
+const ERROR_DARK = "error.dark";
+const SUCCESS_MAIN = "success.main";
+const SUCCESS_DARK = "success.dark";
 
 export interface NavbarProps {
   onZoomToFit?: () => void;
@@ -82,6 +89,8 @@ export interface NavbarProps {
   onLinkLabelModeChange: (mode: LinkLabelMode) => void;
 }
 
+// This is a UI composition component with lots of conditional rendering and menu wiring.
+/* eslint-disable complexity */
 export const Navbar: React.FC<NavbarProps> = ({
   onZoomToFit,
   layout,
@@ -253,13 +262,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           disabled={isProcessing}
           sx={{
             "& .MuiButton-root": {
-              bgcolor: isViewerMode ? "error.main" : "success.main",
+              bgcolor: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN,
               color: "#fff",
               "&:hover": {
-                bgcolor: isViewerMode ? "error.dark" : "success.dark"
+                bgcolor: isViewerMode ? ERROR_DARK : SUCCESS_DARK
               },
               "&.Mui-disabled": {
-                bgcolor: isViewerMode ? "error.main" : "success.main",
+                bgcolor: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN,
                 color: "#fff",
                 opacity: 0.5
               }
@@ -292,35 +301,35 @@ export const Navbar: React.FC<NavbarProps> = ({
           anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
           transformOrigin={{ vertical: "top", horizontal: "right" }}
         >
-          {isViewerMode ? [
-            <MenuItem key="destroy" onClick={handleDestroy}>
-              <ListItemIcon><StopIcon fontSize="small" sx={{ color: "error.main" }} /></ListItemIcon>
-              <ListItemText>Destroy</ListItemText>
-            </MenuItem>,
-            <MenuItem key="destroy-cleanup" onClick={handleDestroyCleanup}>
-              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: "error.main" }} /></ListItemIcon>
-              <ListItemText>Destroy (cleanup)</ListItemText>
-            </MenuItem>,
-            <Divider key="divider" sx={{ my: 0.5 }} />,
-            <MenuItem key="redeploy" onClick={handleRedeploy}>
-              <ListItemIcon><ReplayIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
-              <ListItemText>Redeploy</ListItemText>
-            </MenuItem>,
-            <MenuItem key="redeploy-cleanup" onClick={handleRedeployCleanup}>
-              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
-              <ListItemText>Redeploy (cleanup)</ListItemText>
-            </MenuItem>
-          ] : [
-            <MenuItem key="deploy" onClick={() => { handleDeployMenuClose(); handleDeploy(); }}>
-              <ListItemIcon><PlayArrowIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
-              <ListItemText>Deploy</ListItemText>
-            </MenuItem>,
-            <MenuItem key="deploy-cleanup" onClick={handleDeployCleanup}>
-              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
-              <ListItemText>Deploy (cleanup)</ListItemText>
-            </MenuItem>
-          ]}
-        </Menu>
+	          {isViewerMode ? [
+	            <MenuItem key="destroy" onClick={handleDestroy}>
+	              <ListItemIcon><StopIcon fontSize="small" sx={{ color: ERROR_MAIN }} /></ListItemIcon>
+	              <ListItemText>Destroy</ListItemText>
+	            </MenuItem>,
+	            <MenuItem key="destroy-cleanup" onClick={handleDestroyCleanup}>
+	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: ERROR_MAIN }} /></ListItemIcon>
+	              <ListItemText>Destroy (cleanup)</ListItemText>
+	            </MenuItem>,
+	            <Divider key="divider" sx={{ my: 0.5 }} />,
+	            <MenuItem key="redeploy" onClick={handleRedeploy}>
+	              <ListItemIcon><ReplayIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
+	              <ListItemText>Redeploy</ListItemText>
+	            </MenuItem>,
+	            <MenuItem key="redeploy-cleanup" onClick={handleRedeployCleanup}>
+	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
+	              <ListItemText>Redeploy (cleanup)</ListItemText>
+	            </MenuItem>
+	          ] : [
+	            <MenuItem key="deploy" onClick={() => { handleDeployMenuClose(); handleDeploy(); }}>
+	              <ListItemIcon><PlayArrowIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
+	              <ListItemText>Deploy</ListItemText>
+	            </MenuItem>,
+	            <MenuItem key="deploy-cleanup" onClick={handleDeployCleanup}>
+	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
+	              <ListItemText>Deploy (cleanup)</ListItemText>
+	            </MenuItem>
+	          ]}
+	        </Menu>
 
         {/* Undo - only show in edit mode */}
         {isEditMode && (
@@ -473,3 +482,4 @@ export const Navbar: React.FC<NavbarProps> = ({
     </AppBar>
   );
 };
+/* eslint-enable complexity */

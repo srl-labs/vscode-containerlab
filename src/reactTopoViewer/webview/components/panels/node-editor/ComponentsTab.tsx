@@ -3,25 +3,23 @@
  * Handles CPM, Card, SFM, MDA, XIOM configuration for nokia_srsim nodes
  */
 import React, { useCallback, useState } from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Paper from "@mui/material/Paper";
-import IconButton from "@mui/material/IconButton";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import Collapse from "@mui/material/Collapse";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import StorageIcon from "@mui/icons-material/Storage";
-import HubIcon from "@mui/icons-material/Hub";
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
+  Hub as HubIcon,
+  Storage as StorageIcon
+} from "@mui/icons-material";
+import { Box, Button, Chip, Collapse, IconButton, Paper, Typography } from "@mui/material";
 
 import { InputField, SelectField, Section } from "../../ui/form";
 import { useSchema, type SrosComponentTypes } from "../../../hooks/editor";
 
 import type { TabProps, SrosComponent, SrosMda, SrosXiom } from "./types";
 import { INTEGRATED_SROS_TYPES } from "./types";
+
+const ACTION_HOVER_BG = "action.hover";
 
 /** Check if type is integrated mode (simpler chassis) */
 const isIntegratedType = (type: string | undefined): boolean => {
@@ -69,7 +67,7 @@ const MdaEntry: React.FC<MdaEntryProps> = ({
       gap: 1,
       py: 1,
       px: 1.5,
-      bgcolor: "action.hover",
+      bgcolor: ACTION_HOVER_BG,
       borderRadius: 1,
       border: 1,
       borderColor: "divider"
@@ -219,7 +217,7 @@ const XiomEntry: React.FC<XiomEntryProps> = ({
           justifyContent: "space-between",
           px: 1.5,
           py: 1,
-          bgcolor: "action.hover",
+          bgcolor: ACTION_HOVER_BG,
           cursor: "pointer"
         }}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -331,7 +329,7 @@ const ComponentHeader: React.FC<{
       justifyContent: "space-between",
       px: 1.5,
       py: 1,
-      bgcolor: "action.hover",
+      bgcolor: ACTION_HOVER_BG,
       cursor: "pointer"
     }}
     onClick={onToggle}
@@ -866,7 +864,7 @@ export const ComponentsTab: React.FC<TabProps> = ({ data, onChange }) => {
           gap: 1.5,
           px: 2,
           py: 1.5,
-          bgcolor: "action.hover"
+          bgcolor: ACTION_HOVER_BG
         }}
       >
         {isIntegrated ? (

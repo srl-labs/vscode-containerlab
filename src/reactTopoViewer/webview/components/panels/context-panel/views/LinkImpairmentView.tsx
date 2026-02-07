@@ -6,7 +6,7 @@ import Box from "@mui/material/Box";
 
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
-
+import { useFooterControlsRef } from "../../../../hooks/ui";
 import { LinkImpairmentTab } from "../../link-impairment/LinkImpairmentTab";
 import type {
   EndpointWithNetem,
@@ -160,11 +160,7 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
     resetAfterApply();
   }, [formData, onApply, onError, resetAfterApply, validationErrors]);
 
-  useEffect(() => {
-    if (onFooterRef) {
-      onFooterRef(formData ? { handleApply, handleSave, hasChanges } : null);
-    }
-  }, [onFooterRef, formData, handleApply, handleSave, hasChanges]);
+  useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
 
   if (!formData) return null;
 

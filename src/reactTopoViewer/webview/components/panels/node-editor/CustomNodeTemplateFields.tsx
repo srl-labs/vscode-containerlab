@@ -5,20 +5,14 @@
  * - Template Name, Base Name, Interface Pattern, Set as default
  */
 import React, { useState, useCallback } from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Collapse from "@mui/material/Collapse";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import CheckIcon from "@mui/icons-material/Check";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import {
+  Check as CheckIcon,
+  ContentCopy as ContentCopyIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
+  InfoOutlined as InfoOutlinedIcon
+} from "@mui/icons-material";
+import { Box, Collapse, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 
 import { InputField, CheckboxField, Section } from "../../ui/form";
 import { copyToClipboard } from "../../../utils/clipboard";
