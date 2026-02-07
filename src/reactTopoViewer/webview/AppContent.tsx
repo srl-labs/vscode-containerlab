@@ -482,6 +482,44 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotationUiActions.closeGroupEditor();
   }, [topoActions, annotationUiActions]);
 
+  const handleEmptyCanvasClick = React.useCallback(() => {
+    // When dismissing any context (editors/info) via empty canvas click, close the context panel
+    // instead of falling back to the Nodes/Annotations palette view.
+    // Exception: if the user opened the panel manually, keep it open until they close it.
+    const shouldClosePanel =
+      panelVisibility.isContextPanelOpen &&
+      panelVisibility.contextPanelOpenReason !== "manual" &&
+      (!!state.selectedNode ||
+        !!state.selectedEdge ||
+        !!state.editingNode ||
+        !!state.editingEdge ||
+        !!state.editingNetwork ||
+        !!state.editingImpairment ||
+        !!state.editingCustomTemplate ||
+        !!annotations.editingTextAnnotation ||
+        !!annotations.editingShapeAnnotation ||
+        !!annotations.editingGroup);
+
+    clearAllEditingState();
+
+    if (shouldClosePanel) {
+      panelVisibility.handleCloseContextPanel();
+    }
+  }, [
+    annotations.editingGroup,
+    annotations.editingShapeAnnotation,
+    annotations.editingTextAnnotation,
+    clearAllEditingState,
+    panelVisibility,
+    state.editingCustomTemplate,
+    state.editingEdge,
+    state.editingImpairment,
+    state.editingNetwork,
+    state.editingNode,
+    state.selectedEdge,
+    state.selectedNode,
+  ]);
+
   const processingRef = React.useRef(false);
   React.useEffect(() => {
     if (isProcessing) {
@@ -591,8 +629,8 @@ export const AppContent: React.FC<AppContentProps> = ({
       !!state.editingNetwork ||
       !!state.editingImpairment ||
       !!state.editingCustomTemplate;
-    if (hasContent && !isProcessing) {
-      panelVisibility.handleOpenContextPanel();
+    if (hasContent && !isProcessing && !panelVisibility.isContextPanelOpen) {
+      panelVisibility.handleOpenContextPanel("auto");
     }
   }, [
     state.selectedNode,
@@ -603,7 +641,8 @@ export const AppContent: React.FC<AppContentProps> = ({
     state.editingImpairment,
     state.editingCustomTemplate,
     isProcessing,
-    panelVisibility
+    panelVisibility,
+    panelVisibility.isContextPanelOpen
   ]);
 
   // Back button clears selection/editing state → panel returns to palette
@@ -750,6 +789,8 @@ export const AppContent: React.FC<AppContentProps> = ({
               ref={reactFlowRef}
               nodes={filteredNodes}
               edges={renderedEdges}
+              isContextPanelOpen={panelVisibility.isContextPanelOpen}
+              onPaneClick={handleEmptyCanvasClick}
               layout={layoutControls.layout}
               isGeoLayout={layoutControls.isGeoLayout}
               gridLineWidth={layoutControls.gridLineWidth}

@@ -226,7 +226,10 @@ function buildColors(vars: VarMap): ThemeColors {
     progressBarBg: vars["--vscode-progressBar-background"],
     notificationsBg: vars["--vscode-notifications-background"],
     notificationsFg: vars["--vscode-notifications-foreground"],
-    notificationsBorder: vars["--vscode-notifications-border"]
+    notificationsBorder: vars["--vscode-notifications-border"],
+    scrollbarSliderBg: vars["--vscode-scrollbarSlider-background"],
+    scrollbarSliderHoverBg: vars["--vscode-scrollbarSlider-hoverBackground"],
+    scrollbarSliderActiveBg: vars["--vscode-scrollbarSlider-activeBackground"]
   };
 }
 

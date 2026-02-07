@@ -156,6 +156,8 @@ export interface ReactFlowCanvasProps {
   nodes?: TopoNode[];
   /** ReactFlow edges */
   edges?: TopoEdge[];
+  /** Whether the left ContextPanel (palette) is currently open */
+  isContextPanelOpen?: boolean;
   /** Current layout (used for geo layout transitions) */
   layout?: "preset" | "force" | "geo";
   /** Geo layout active */

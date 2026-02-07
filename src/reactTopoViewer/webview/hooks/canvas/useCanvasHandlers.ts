@@ -57,6 +57,14 @@ interface CanvasHandlersConfig {
   isLocked: boolean;
   onNodesChangeBase: OnNodesChange;
   onLockedAction?: () => void;
+  /** Called only when the click actually falls through to the pane (no add-mode/shift-click handling). */
+  onPaneClickExtra?: () => void;
+  /**
+   * Optional guard to suppress syncing React Flow selection into the app store.
+   * Used to prevent side effects (like auto-opening the ContextPanel) during transient
+   * interactions such as link creation.
+   */
+  shouldSuppressSelectionSync?: () => boolean;
   /** Current nodes (needed for position tracking) */
   nodes?: Node[];
   /** Direct setNodes for member node updates (bypasses React Flow drag tracking) */
@@ -700,7 +708,8 @@ function usePaneClickHandler(
   reactFlowInstance: React.RefObject<ReactFlowInstance | null>,
   modeRef: React.RefObject<"view" | "edit">,
   isLockedRef: React.RefObject<boolean>,
-  onLockedAction?: () => void
+  onLockedAction?: () => void,
+  onPaneClickExtra?: () => void
 ) {
   return useCallback(
     (_event: React.MouseEvent) => {
@@ -711,6 +720,7 @@ function usePaneClickHandler(
       selectEdge(null);
       // Clear editing state so panel returns to palette
       editNode(null);
+      onPaneClickExtra?.();
     },
     [
       selectNode,
@@ -718,6 +728,7 @@ function usePaneClickHandler(
       editNode,
       closeContextMenu,
       onLockedAction,
+      onPaneClickExtra,
       reactFlowInstance,
       modeRef,
       isLockedRef
@@ -843,6 +854,8 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     isLocked,
     onNodesChangeBase,
     onLockedAction,
+    onPaneClickExtra,
+    shouldSuppressSelectionSync,
     nodes,
     setNodes,
     onEdgeCreated,
@@ -900,7 +913,8 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     reactFlowInstance,
     modeRef,
     isLockedRef,
-    onLockedAction
+    onLockedAction,
+    onPaneClickExtra
   );
   const onConnect = useConnectionHandler(modeRef, isLockedRef, onLockedAction, onEdgeCreated);
 
@@ -933,7 +947,14 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   );
 
   // Selection change handler (for box selection)
-  const onSelectionChange = useSelectionChangeHandler(selectNode, selectEdge);
+  const baseOnSelectionChange = useSelectionChangeHandler(selectNode, selectEdge);
+  const onSelectionChange: OnSelectionChangeFunc = useCallback(
+    (params) => {
+      if (shouldSuppressSelectionSync?.()) return;
+      baseOnSelectionChange(params);
+    },
+    [baseOnSelectionChange, shouldSuppressSelectionSync]
+  );
 
   return {
     reactFlowInstance,

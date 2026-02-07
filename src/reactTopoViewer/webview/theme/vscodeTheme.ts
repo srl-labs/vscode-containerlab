@@ -63,7 +63,10 @@ const vscodeColors: ThemeColors = {
   progressBarBg: "var(--vscode-progressBar-background)",
   notificationsBg: "var(--vscode-notifications-background)",
   notificationsFg: "var(--vscode-notifications-foreground)",
-  notificationsBorder: "var(--vscode-notifications-border)"
+  notificationsBorder: "var(--vscode-notifications-border)",
+  scrollbarSliderBg: "var(--vscode-scrollbarSlider-background)",
+  scrollbarSliderHoverBg: "var(--vscode-scrollbarSlider-hoverBackground)",
+  scrollbarSliderActiveBg: "var(--vscode-scrollbarSlider-activeBackground)"
 };
 
 /**

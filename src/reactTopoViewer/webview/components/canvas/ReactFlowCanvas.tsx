@@ -258,50 +258,6 @@ function useDragHandlers(
   return { handleNodeDragStart, handleNodeDrag, handleNodeDragStop };
 }
 
-/** Hook for link and delete handlers combined */
-function useLinkAndDeleteHandlers(
-  selectNode: (id: string | null) => void,
-  selectEdge: (id: string | null) => void,
-  closeContextMenu: () => void,
-  onNodeDelete?: (nodeId: string) => void,
-  onEdgeDelete?: (edgeId: string) => void,
-  onEdgeCreated?: (
-    sourceId: string,
-    targetId: string,
-    edgeData: {
-      id: string;
-      source: string;
-      target: string;
-      sourceEndpoint: string;
-      targetEndpoint: string;
-    }
-  ) => void
-) {
-  const {
-    linkSourceNode,
-    startLinkCreation,
-    completeLinkCreation,
-    cancelLinkCreation,
-    linkCreationSeed
-  } = useLinkCreation(onEdgeCreated);
-  const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
-    selectNode,
-    selectEdge,
-    closeContextMenu,
-    onNodeDelete,
-    onEdgeDelete
-  );
-  return {
-    linkSourceNode,
-    startLinkCreation,
-    completeLinkCreation,
-    cancelLinkCreation,
-    linkCreationSeed,
-    handleDeleteNode,
-    handleDeleteEdge
-  };
-}
-
 /** Hook to wrap onInit with additional callback */
 function useWrappedOnInit(
   handlersOnInit: (instance: ReactFlowInstance) => void,
@@ -691,6 +647,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     {
       nodes: propNodes,
       edges: propEdges,
+      isContextPanelOpen = false,
       layout = "preset",
       isGeoLayout = false,
       gridLineWidth = DEFAULT_GRID_LINE_WIDTH,
@@ -699,6 +656,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       annotationHandlers,
       onNodeDelete,
       onEdgeDelete,
+      onPaneClick,
       linkLabelMode = "show-all",
       onInit: onInitProp,
       onEdgeCreated,
@@ -729,6 +687,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const fitViewRequestId = useFitViewRequestId();
     const lastFitViewRequestRef = useRef(0);
     const [isReactFlowReady, setIsReactFlowReady] = useState(false);
+    const suppressSelectionSyncUntilRef = useRef(0);
 
     const topoState = useMemo(() => ({ mode, isLocked }), [mode, isLocked]);
 
@@ -739,6 +698,46 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     // All nodes (topology + annotation) are now unified in propNodes
     const allNodes = useMemo(() => (propNodes as Node[]) ?? [], [propNodes]);
     const allEdges = useMemo(() => (propEdges as Edge[]) ?? [], [propEdges]);
+
+    const handleEdgeCreatedWithContextPanel = useCallback(
+      (
+        sourceId: string,
+        targetId: string,
+        edgeData: {
+          id: string;
+          source: string;
+          target: string;
+          sourceEndpoint: string;
+          targetEndpoint: string;
+        }
+      ) => {
+        // React Flow may transiently select the target node/edge during connect.
+        // Suppress syncing that selection into the app store to avoid auto-opening the panel.
+        suppressSelectionSyncUntilRef.current = Date.now() + 250;
+
+        onEdgeCreated?.(sourceId, targetId, edgeData);
+
+        // If the panel is already open, switch directly to the link editor for the newly created link.
+        if (mode === "edit" && isContextPanelOpen) {
+          editEdge(edgeData.id);
+        }
+      },
+      [editEdge, isContextPanelOpen, mode, onEdgeCreated]
+    );
+
+    const {
+      linkSourceNode,
+      startLinkCreation,
+      completeLinkCreation,
+      cancelLinkCreation,
+      linkCreationSeed
+    } = useLinkCreation(handleEdgeCreatedWithContextPanel);
+    const linkSourceNodeRef = useRef<string | null>(null);
+    linkSourceNodeRef.current = linkSourceNode;
+    const shouldSuppressSelectionSync = useCallback(
+      () => Boolean(linkSourceNodeRef.current) || Date.now() < suppressSelectionSyncUntilRef.current,
+      []
+    );
 
     const isGeoEditable = isGeoLayout && !isLocked;
 
@@ -780,9 +779,11 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       isLocked,
       onNodesChangeBase: onNodesChange,
       onLockedAction,
+      onPaneClickExtra: onPaneClick,
+      shouldSuppressSelectionSync,
       nodes: allNodes,
       setNodes,
-      onEdgeCreated,
+      onEdgeCreated: handleEdgeCreatedWithContextPanel,
       groupMemberHandlers: {
         getGroupMembers: annotationHandlers?.getGroupMembers,
         onNodeDropped: annotationHandlers?.onNodeDropped
@@ -795,21 +796,12 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       }
     });
 
-    const {
-      linkSourceNode,
-      startLinkCreation,
-      completeLinkCreation,
-      cancelLinkCreation,
-      linkCreationSeed,
-      handleDeleteNode,
-      handleDeleteEdge
-    } = useLinkAndDeleteHandlers(
+    const { handleDeleteNode, handleDeleteEdge } = useDeleteHandlers(
       selectNode,
       selectEdge,
       handlers.closeContextMenu,
       onNodeDelete,
-      onEdgeDelete,
-      onEdgeCreated
+      onEdgeDelete
     );
     const sourceNodePosition = useSourceNodePosition(linkSourceNode, allNodes);
     const { linkTargetNodeId, handleNodeMouseEnter, handleNodeMouseLeave } =

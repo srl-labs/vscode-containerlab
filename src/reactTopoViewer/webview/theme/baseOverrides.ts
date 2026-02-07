@@ -65,6 +65,9 @@ export interface ThemeColors {
   notificationsBg: string;
   notificationsFg: string;
   notificationsBorder: string;
+  scrollbarSliderBg: string;
+  scrollbarSliderHoverBg: string;
+  scrollbarSliderActiveBg: string;
 }
 
 /**
@@ -77,6 +80,30 @@ export function getBaseOverrides(c: ThemeColors): NonNullable<ThemeOptions["comp
         body: {
           backgroundColor: c.editorBg,
           color: c.editorFg
+        },
+        "*": {
+          scrollbarWidth: "thin",
+          scrollbarColor: `${c.scrollbarSliderBg} transparent`
+        },
+        "*::-webkit-scrollbar": {
+          width: 8,
+          height: 8
+        },
+        "*::-webkit-scrollbar-track": {
+          background: "transparent"
+        },
+        "*::-webkit-scrollbar-thumb": {
+          backgroundColor: c.scrollbarSliderBg,
+          borderRadius: 4
+        },
+        "*::-webkit-scrollbar-thumb:hover": {
+          backgroundColor: c.scrollbarSliderHoverBg
+        },
+        "*::-webkit-scrollbar-thumb:active": {
+          backgroundColor: c.scrollbarSliderActiveBg
+        },
+        "*::-webkit-scrollbar-corner": {
+          background: "transparent"
         },
         "@keyframes shortcutFade": {
           "0%": { opacity: 0, transform: "translateY(8px) scale(0.95)" },
@@ -118,6 +145,15 @@ export function getBaseOverrides(c: ThemeColors): NonNullable<ThemeOptions["comp
         }
       },
       defaultProps: { disableElevation: true }
+    },
+    MuiButtonGroup: {
+      styleOverrides: {
+        grouped: {
+          "&:not(:last-of-type)": {
+            borderColor: c.panelBorder
+          }
+        }
+      }
     },
     MuiIconButton: {
       styleOverrides: {

@@ -37,7 +37,7 @@ import {
   GroupEditorView
 } from "./views";
 
-const DRAWER_WIDTH = 480;
+const DRAWER_WIDTH = 400;
 
 /** Generic footer ref shape - all editor views expose the same interface */
 interface FooterRef {
@@ -267,19 +267,19 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 12,
-              height: 32,
+              width: 20,
+              height: 48,
               cursor: "pointer",
-              borderRadius: "0 3px 3px 0",
+              borderRadius: "0 4px 4px 0",
               border: 1,
               borderLeft: 0,
               borderColor: "divider",
               bgcolor: "var(--vscode-editor-background)",
-              opacity: 0.6,
+              opacity: 0.8,
               "&:hover": { opacity: 1, bgcolor: "action.hover" }
             }}
           >
-            <ChevronRightIcon sx={{ fontSize: 12, color: "text.secondary" }} />
+            <ChevronRightIcon sx={{ fontSize: 16, color: "text.secondary" }} />
           </Box>
         </Tooltip>
       )}

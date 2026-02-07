@@ -38,7 +38,14 @@ export function useDeploymentCommands(): DeploymentCommands {
 export interface PanelVisibility {
   // Context panel (left drawer)
   isContextPanelOpen: boolean;
-  handleOpenContextPanel: () => void;
+  /** Why the panel is open. Used to decide how pane-click should behave. */
+  contextPanelOpenReason: "manual" | "auto" | null;
+  /**
+   * Open the ContextPanel.
+   * Note: this is also used directly as an `onClick` handler, so it may receive a mouse event;
+   * non-string inputs are treated as a manual open.
+   */
+  handleOpenContextPanel: (reason?: "manual" | "auto" | unknown) => void;
   handleCloseContextPanel: () => void;
   handleToggleContextPanel: () => void;
 
@@ -70,12 +77,30 @@ export interface PanelVisibility {
 
 function useContextPanel() {
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
+  const [contextPanelOpenReason, setContextPanelOpenReason] = useState<
+    "manual" | "auto" | null
+  >(null);
 
   return {
     isContextPanelOpen,
-    handleOpenContextPanel: useCallback(() => setIsContextPanelOpen(true), []),
-    handleCloseContextPanel: useCallback(() => setIsContextPanelOpen(false), []),
-    handleToggleContextPanel: useCallback(() => setIsContextPanelOpen((prev) => !prev), [])
+    contextPanelOpenReason,
+    handleOpenContextPanel: useCallback((reason?: unknown) => {
+      // React passes the click event as the first arg when used as an onClick handler.
+      const normalizedReason: "manual" | "auto" = reason === "auto" ? "auto" : "manual";
+      setIsContextPanelOpen(true);
+      setContextPanelOpenReason(normalizedReason);
+    }, []),
+    handleCloseContextPanel: useCallback(() => {
+      setIsContextPanelOpen(false);
+      setContextPanelOpenReason(null);
+    }, []),
+    handleToggleContextPanel: useCallback(() => {
+      setIsContextPanelOpen((prev) => {
+        const next = !prev;
+        setContextPanelOpenReason(next ? "manual" : null);
+        return next;
+      });
+    }, [])
   };
 }
 
