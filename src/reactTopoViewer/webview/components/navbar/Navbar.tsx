@@ -7,6 +7,8 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
+import Button from "@mui/material/Button";
+import ButtonGroup from "@mui/material/ButtonGroup";
 import Tooltip from "@mui/material/Tooltip";
 import Divider from "@mui/material/Divider";
 import Menu from "@mui/material/Menu";
@@ -20,6 +22,9 @@ import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
+import ReplayIcon from "@mui/icons-material/Replay";
+import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AddIcon from "@mui/icons-material/Add";
 import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
@@ -153,15 +158,60 @@ export const Navbar: React.FC<NavbarProps> = ({
     setLinkLabelMenuPosition(null);
   }, [onLinkLabelModeChange]);
 
+  // Split button menu state for deploy/destroy
+  const [deployMenuAnchor, setDeployMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const deployMenuOpen = Boolean(deployMenuAnchor);
+
+  const handleDeployMenuOpen = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
+    setDeployMenuAnchor(event.currentTarget);
+  }, []);
+
+  const handleDeployMenuClose = React.useCallback(() => {
+    setDeployMenuAnchor(null);
+  }, []);
+
   const handleDeploy = React.useCallback(() => {
+    setProcessing(true, "deploy");
+    deploymentCommands.onDeploy();
+  }, [setProcessing, deploymentCommands]);
+
+  const handleDeployCleanup = React.useCallback(() => {
+    setDeployMenuAnchor(null);
+    setProcessing(true, "deploy");
+    deploymentCommands.onDeployCleanup();
+  }, [setProcessing, deploymentCommands]);
+
+  const handleDestroy = React.useCallback(() => {
+    setProcessing(true, "destroy");
+    deploymentCommands.onDestroy();
+  }, [setProcessing, deploymentCommands]);
+
+  const handleDestroyCleanup = React.useCallback(() => {
+    setDeployMenuAnchor(null);
+    setProcessing(true, "destroy");
+    deploymentCommands.onDestroyCleanup();
+  }, [setProcessing, deploymentCommands]);
+
+  const handleRedeploy = React.useCallback(() => {
+    setDeployMenuAnchor(null);
+    setProcessing(true, "deploy");
+    deploymentCommands.onRedeploy();
+  }, [setProcessing, deploymentCommands]);
+
+  const handleRedeployCleanup = React.useCallback(() => {
+    setDeployMenuAnchor(null);
+    setProcessing(true, "deploy");
+    deploymentCommands.onRedeployCleanup();
+  }, [setProcessing, deploymentCommands]);
+
+  // Primary action depends on mode
+  const handlePrimaryAction = React.useCallback(() => {
     if (isViewerMode) {
-      setProcessing(true, "destroy");
-      deploymentCommands.onDestroy();
+      handleDestroy();
     } else {
-      setProcessing(true, "deploy");
-      deploymentCommands.onDeploy();
+      handleDeploy();
     }
-  }, [isViewerMode, setProcessing, deploymentCommands]);
+  }, [isViewerMode, handleDestroy, handleDeploy]);
 
   const handleLayoutToggle = React.useCallback(() => {
     const layouts: LayoutOption[] = ["preset", "force", "geo"];
@@ -195,17 +245,81 @@ export const Navbar: React.FC<NavbarProps> = ({
           </IconButton>
         </Tooltip>
 
-        {/* Deploy / Destroy + Options */}
-        <Tooltip title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}>
-          <IconButton
-            size="small"
-            onClick={handleDeploy}
-            disabled={isProcessing}
-            sx={{ color: isViewerMode ? "error.main" : "success.main" }}
+        {/* Deploy / Destroy Split Button */}
+        <ButtonGroup
+          variant="contained"
+          size="small"
+          disabled={isProcessing}
+          sx={{
+            "& .MuiButton-root": {
+              bgcolor: isViewerMode ? "error.main" : "success.main",
+              color: "#fff",
+              "&:hover": {
+                bgcolor: isViewerMode ? "error.dark" : "success.dark"
+              },
+              "&.Mui-disabled": {
+                bgcolor: isViewerMode ? "error.main" : "success.main",
+                color: "#fff",
+                opacity: 0.5
+              }
+            }
+          }}
+        >
+          <Tooltip title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}>
+            <Button
+              onClick={handlePrimaryAction}
+              sx={{ px: 1, py: 0.25, minWidth: 0 }}
+            >
+              {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+            </Button>
+          </Tooltip>
+          <Button
+            onClick={handleDeployMenuOpen}
+            aria-controls={deployMenuOpen ? "deploy-split-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={deployMenuOpen ? "true" : undefined}
+            sx={{ px: 0.5, minWidth: 0 }}
           >
-            {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
-          </IconButton>
-        </Tooltip>
+            <ArrowDropDownIcon fontSize="small" />
+          </Button>
+        </ButtonGroup>
+        <Menu
+          id="deploy-split-menu"
+          anchorEl={deployMenuAnchor}
+          open={deployMenuOpen}
+          onClose={handleDeployMenuClose}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          {isViewerMode ? [
+            <MenuItem key="destroy" onClick={handleDestroy}>
+              <ListItemIcon><StopIcon fontSize="small" sx={{ color: "error.main" }} /></ListItemIcon>
+              <ListItemText>Destroy</ListItemText>
+            </MenuItem>,
+            <MenuItem key="destroy-cleanup" onClick={handleDestroyCleanup}>
+              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: "error.main" }} /></ListItemIcon>
+              <ListItemText>Destroy (cleanup)</ListItemText>
+            </MenuItem>,
+            <Divider key="divider" sx={{ my: 0.5 }} />,
+            <MenuItem key="redeploy" onClick={handleRedeploy}>
+              <ListItemIcon><ReplayIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
+              <ListItemText>Redeploy</ListItemText>
+            </MenuItem>,
+            <MenuItem key="redeploy-cleanup" onClick={handleRedeployCleanup}>
+              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
+              <ListItemText>Redeploy (cleanup)</ListItemText>
+            </MenuItem>
+          ] : [
+            <MenuItem key="deploy" onClick={() => { handleDeployMenuClose(); handleDeploy(); }}>
+              <ListItemIcon><PlayArrowIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
+              <ListItemText>Deploy</ListItemText>
+            </MenuItem>,
+            <MenuItem key="deploy-cleanup" onClick={handleDeployCleanup}>
+              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: "success.main" }} /></ListItemIcon>
+              <ListItemText>Deploy (cleanup)</ListItemText>
+            </MenuItem>
+          ]}
+        </Menu>
 
         {/* Palette */}
         {isEditMode && (
