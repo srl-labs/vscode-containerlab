@@ -657,8 +657,8 @@ export const AppContent: React.FC<AppContentProps> = ({
         data-testid="topoviewer-app"
         display="flex"
         flexDirection="column"
-        height="100vh"
-        width="100vw"
+        height="100%"
+        width="100%"
         overflow="hidden"
       >
         <Navbar
