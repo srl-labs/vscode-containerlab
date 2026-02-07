@@ -14,6 +14,8 @@ export interface FreeShapeEditorViewProps {
   onSave: (annotation: FreeShapeAnnotation) => void;
   onClose: () => void;
   onDelete?: (id: string) => void;
+  /** Disable editing, but keep scrolling available */
+  readOnly?: boolean;
   onFooterRef?: (ref: FreeShapeEditorFooterRef | null) => void;
 }
 
@@ -28,6 +30,7 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
   onSave,
   onClose,
   onDelete,
+  readOnly = false,
   onFooterRef
 }) => {
   const { formData, updateField, hasChanges, resetInitialData, isNew } = useGenericFormState(
@@ -47,14 +50,24 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
 
   if (!formData) return null;
 
+  const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
+  const fieldsetStyle: React.CSSProperties = {
+    border: 0,
+    margin: 0,
+    padding: 0,
+    minInlineSize: 0
+  };
+
   return (
     <ContextPanelScrollArea>
-      <FreeShapeFormContent
-        formData={formData}
-        updateField={updateField}
-        isNew={isNew}
-        onDelete={onDelete ? handleDelete : undefined}
-      />
+      <fieldset disabled={readOnly} style={fieldsetStyle}>
+        <FreeShapeFormContent
+          formData={formData}
+          updateField={effectiveUpdateField}
+          isNew={isNew}
+          onDelete={!readOnly && onDelete ? handleDelete : undefined}
+        />
+      </fieldset>
     </ContextPanelScrollArea>
   );
 };

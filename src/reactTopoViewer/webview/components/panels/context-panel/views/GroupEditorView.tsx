@@ -15,6 +15,8 @@ export interface GroupEditorViewProps {
   onClose: () => void;
   onDelete?: (groupId: string) => void;
   onStyleChange?: (groupId: string, style: Partial<GroupStyleAnnotation>) => void;
+  /** Disable editing, but keep scrolling available */
+  readOnly?: boolean;
   onFooterRef?: (ref: GroupEditorFooterRef | null) => void;
 }
 
@@ -30,6 +32,7 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
   onClose,
   onDelete,
   onStyleChange,
+  readOnly = false,
   onFooterRef
 }) => {
   const transformData = useCallback(
@@ -44,13 +47,14 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
 
   const updateStyle = useCallback(
     <K extends keyof GroupStyleAnnotation>(field: K, value: GroupStyleAnnotation[K]) => {
+      if (readOnly) return;
       setFormData((prev) => {
         if (!prev) return null;
         if (onStyleChange) onStyleChange(prev.id, { [field]: value });
         return { ...prev, style: { ...prev.style, [field]: value } };
       });
     },
-    [setFormData, onStyleChange]
+    [setFormData, onStyleChange, readOnly]
   );
 
   const { handleDelete } = useEditorHandlersWithFooterRef({
@@ -65,14 +69,24 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
 
   if (!formData) return null;
 
+  const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
+  const fieldsetStyle: React.CSSProperties = {
+    border: 0,
+    margin: 0,
+    padding: 0,
+    minInlineSize: 0
+  };
+
   return (
     <ContextPanelScrollArea>
-      <GroupFormContent
-        formData={formData}
-        updateField={updateField}
-        updateStyle={updateStyle}
-        onDelete={onDelete ? handleDelete : undefined}
-      />
+      <fieldset disabled={readOnly} style={fieldsetStyle}>
+        <GroupFormContent
+          formData={formData}
+          updateField={effectiveUpdateField}
+          updateStyle={updateStyle}
+          onDelete={!readOnly && onDelete ? handleDelete : undefined}
+        />
+      </fieldset>
     </ContextPanelScrollArea>
   );
 };

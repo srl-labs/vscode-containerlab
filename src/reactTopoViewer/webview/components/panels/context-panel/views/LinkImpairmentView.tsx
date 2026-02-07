@@ -26,6 +26,8 @@ export interface LinkImpairmentViewProps {
   onSave: (data: LinkImpairmentData) => void;
   onApply: (data: LinkImpairmentData) => void;
   onClose: () => void;
+  /** Disable editing, but keep scrolling and tab navigation available */
+  readOnly?: boolean;
   onFooterRef?: (ref: LinkImpairmentFooterRef | null) => void;
 }
 
@@ -133,12 +135,14 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
   onSave,
   onApply,
   onClose,
+  readOnly = false,
   onFooterRef
 }) => {
   const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, validationErrors } =
     useLinkImpairmentForm(linkData);
 
   const handleSave = useCallback(() => {
+    if (readOnly) return;
     if (!formData) return;
     if (validationErrors.length > 0) {
       validationErrors.forEach(onError);
@@ -147,9 +151,10 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
     applyNetemSettings(formData);
     onSave(formData);
     onClose();
-  }, [formData, onClose, onError, onSave, validationErrors]);
+  }, [formData, onClose, onError, onSave, readOnly, validationErrors]);
 
   const handleApply = useCallback(() => {
+    if (readOnly) return;
     if (!formData) return;
     if (validationErrors.length > 0) {
       validationErrors.forEach(onError);
@@ -158,7 +163,7 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
     applyNetemSettings(formData);
     onApply(formData);
     resetAfterApply();
-  }, [formData, onApply, onError, resetAfterApply, validationErrors]);
+  }, [formData, onApply, onError, readOnly, resetAfterApply, validationErrors]);
 
   useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
 
@@ -169,6 +174,14 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
     { id: "target", label: `${formData.target}:${formData.targetEndpoint}` }
   ];
 
+  const effectiveOnChange = readOnly ? () => {} : handleChange;
+  const fieldsetStyle: React.CSSProperties = {
+    border: 0,
+    margin: 0,
+    padding: 0,
+    minInlineSize: 0
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <TabNavigation
@@ -177,11 +190,17 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
         onTabChange={(id) => setActiveTab(id as LinkImpairmentTabId)}
       />
       <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
-        <LinkImpairmentTab
-          key={formData.id + activeTab}
-          data={activeTab === "source" ? (formData.sourceNetem ?? {}) : (formData.targetNetem ?? {})}
-          onChange={handleChange}
-        />
+        <fieldset disabled={readOnly} style={fieldsetStyle}>
+          <LinkImpairmentTab
+            key={formData.id + activeTab}
+            data={
+              activeTab === "source"
+                ? (formData.sourceNetem ?? {})
+                : (formData.targetNetem ?? {})
+            }
+            onChange={effectiveOnChange}
+          />
+        </fieldset>
       </Box>
     </Box>
   );

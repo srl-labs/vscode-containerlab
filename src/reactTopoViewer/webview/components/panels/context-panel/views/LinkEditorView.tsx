@@ -16,6 +16,8 @@ export interface LinkEditorViewProps {
   onSave: (data: LinkEditorData) => void;
   onApply: (data: LinkEditorData) => void;
   onAutoApplyOffset?: (data: LinkEditorData) => void;
+  /** Disable editing, but keep scrolling and tab navigation available */
+  readOnly?: boolean;
   onFooterRef?: (ref: LinkEditorFooterRef | null) => void;
 }
 
@@ -126,6 +128,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   onSave,
   onApply,
   onAutoApplyOffset,
+  readOnly = false,
   onFooterRef
 }) => {
   const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, markOffsetApplied } =
@@ -149,11 +152,12 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
 
   const handleAutoApplyOffset = useCallback(
     (nextData: LinkEditorData) => {
+      if (readOnly) return;
       if (!onAutoApplyOffset) return;
       onAutoApplyOffset(nextData);
       markOffsetApplied(nextData.endpointLabelOffset, nextData.endpointLabelOffsetEnabled);
     },
-    [onAutoApplyOffset, markOffsetApplied]
+    [onAutoApplyOffset, markOffsetApplied, readOnly]
   );
 
   useFooterControlsRef(onFooterRef, Boolean(formData), handleApply, handleSave, hasChanges);
@@ -163,6 +167,13 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   const isVethLink = !formData.sourceIsNetwork && !formData.targetIsNetwork;
   const tabs = isVethLink ? ALL_TABS : BASIC_ONLY_TABS;
   const effectiveActiveTab = !isVethLink && activeTab === "extended" ? "basic" : activeTab;
+  const effectiveOnChange = readOnly ? () => {} : handleChange;
+  const fieldsetStyle: React.CSSProperties = {
+    border: 0,
+    margin: 0,
+    padding: 0,
+    minInlineSize: 0
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -173,11 +184,17 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
       />
       <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
         <ValidationBanner errors={validationErrors} />
-        {effectiveActiveTab === "basic" ? (
-          <BasicTab data={formData} onChange={handleChange} onAutoApplyOffset={handleAutoApplyOffset} />
-        ) : (
-          <ExtendedTab data={formData} onChange={handleChange} />
-        )}
+        <fieldset disabled={readOnly} style={fieldsetStyle}>
+          {effectiveActiveTab === "basic" ? (
+            <BasicTab
+              data={formData}
+              onChange={effectiveOnChange}
+              onAutoApplyOffset={handleAutoApplyOffset}
+            />
+          ) : (
+            <ExtendedTab data={formData} onChange={effectiveOnChange} />
+          )}
+        </fieldset>
       </Box>
     </Box>
   );

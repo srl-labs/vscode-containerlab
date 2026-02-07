@@ -13,6 +13,8 @@ export interface FreeTextEditorViewProps {
   onSave: (annotation: FreeTextAnnotation) => void;
   onClose: () => void;
   onDelete?: (id: string) => void;
+  /** Disable editing, but keep scrolling available */
+  readOnly?: boolean;
   onFooterRef?: (ref: FreeTextEditorFooterRef | null) => void;
 }
 
@@ -31,6 +33,7 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
   onSave,
   onClose,
   onDelete,
+  readOnly = false,
   onFooterRef
 }) => {
   const { formData, updateField, hasChanges, resetInitialData, isNew } = useGenericFormState(
@@ -54,14 +57,24 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
 
   if (!formData) return null;
 
+  const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
+  const fieldsetStyle: React.CSSProperties = {
+    border: 0,
+    margin: 0,
+    padding: 0,
+    minInlineSize: 0
+  };
+
   return (
     <ContextPanelScrollArea>
-      <FreeTextFormContent
-        formData={formData}
-        updateField={updateField}
-        isNew={isNew}
-        onDelete={onDelete ? handleDelete : undefined}
-      />
+      <fieldset disabled={readOnly} style={fieldsetStyle}>
+        <FreeTextFormContent
+          formData={formData}
+          updateField={effectiveUpdateField}
+          isNew={isNew}
+          onDelete={!readOnly && onDelete ? handleDelete : undefined}
+        />
+      </fieldset>
     </ContextPanelScrollArea>
   );
 };

@@ -23,6 +23,8 @@ export interface NetworkEditorViewProps {
   nodeData: NetworkEditorData | null;
   onSave: (data: NetworkEditorData) => void;
   onApply: (data: NetworkEditorData) => void;
+  /** Disable editing, but keep scrolling available */
+  readOnly?: boolean;
   onFooterRef?: (ref: NetworkEditorFooterRef | null) => void;
 }
 
@@ -186,6 +188,7 @@ export const NetworkEditorView: React.FC<NetworkEditorViewProps> = ({
   nodeData,
   onSave,
   onApply,
+  readOnly = false,
   onFooterRef
 }) => {
   const { formData, handleChange, hasChanges, resetInitialData } = useNetworkEditorForm(nodeData);
@@ -196,9 +199,19 @@ export const NetworkEditorView: React.FC<NetworkEditorViewProps> = ({
 
   if (!formData) return null;
 
+  const effectiveOnChange = readOnly ? () => {} : handleChange;
+  const fieldsetStyle: React.CSSProperties = {
+    border: 0,
+    margin: 0,
+    padding: 0,
+    minInlineSize: 0
+  };
+
   return (
     <ContextPanelScrollArea>
-      <NetworkEditorContent formData={formData} onChange={handleChange} />
+      <fieldset disabled={readOnly} style={fieldsetStyle}>
+        <NetworkEditorContent formData={formData} onChange={effectiveOnChange} />
+      </fieldset>
     </ContextPanelScrollArea>
   );
 };

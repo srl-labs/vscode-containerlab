@@ -21,6 +21,8 @@ export interface NodeEditorViewProps {
   onSave: (data: NodeEditorData) => void;
   onApply: (data: NodeEditorData) => void;
   inheritedProps?: string[];
+  /** Disable editing, but keep scrolling and tab navigation available */
+  readOnly?: boolean;
   /** Exposed for ContextPanel footer */
   onFooterRef?: (ref: NodeEditorFooterRef | null) => void;
 }
@@ -140,6 +142,7 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   onSave,
   onApply,
   inheritedProps = [],
+  readOnly = false,
   onFooterRef
 }) => {
   const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, originalData } =
@@ -159,6 +162,13 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
   if (!formData) return null;
 
   const Component = TAB_COMPONENTS[activeTab];
+  const effectiveOnChange = readOnly ? () => {} : handleChange;
+  const fieldsetStyle: React.CSSProperties = {
+    border: 0,
+    margin: 0,
+    padding: 0,
+    minInlineSize: 0
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -168,9 +178,15 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
         onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
       />
       <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
-        {Component ? (
-          <Component data={formData} onChange={handleChange} inheritedProps={effectiveInheritedProps} />
-        ) : null}
+        <fieldset disabled={readOnly} style={fieldsetStyle}>
+          {Component ? (
+            <Component
+              data={formData}
+              onChange={effectiveOnChange}
+              inheritedProps={effectiveInheritedProps}
+            />
+          ) : null}
+        </fieldset>
       </Box>
     </Box>
   );

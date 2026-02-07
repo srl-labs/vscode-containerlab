@@ -171,6 +171,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onApply={editor.nodeEditorHandlers.handleApply}
             inheritedProps={editor.editingNodeInheritedProps}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       case "customTemplateEditor":
@@ -180,6 +181,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onSave={editor.customTemplateHandlers.handleSave}
             onApply={editor.customTemplateHandlers.handleApply}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       case "linkEditor":
@@ -190,6 +192,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onApply={editor.linkEditorHandlers.handleApply}
             onAutoApplyOffset={editor.linkEditorHandlers.handleAutoApplyOffset}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       case "networkEditor":
@@ -199,6 +202,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onSave={editor.networkEditorHandlers.handleSave}
             onApply={editor.networkEditorHandlers.handleApply}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       case "linkImpairment":
@@ -210,6 +214,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onApply={editor.linkImpairmentHandlers.onApply}
             onClose={editor.linkImpairmentHandlers.onClose}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       case "freeTextEditor":
@@ -220,6 +225,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onClose={editor.textAnnotationHandlers.onClose}
             onDelete={editor.textAnnotationHandlers.onDelete}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       case "freeShapeEditor":
@@ -230,6 +236,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onClose={editor.shapeAnnotationHandlers.onClose}
             onDelete={editor.shapeAnnotationHandlers.onDelete}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       case "groupEditor":
@@ -241,6 +248,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             onDelete={editor.groupHandlers.onDelete}
             onStyleChange={editor.groupHandlers.onStyleChange}
             onFooterRef={setFooterRef}
+            readOnly={isReadOnly}
           />
         );
       default:
@@ -355,8 +363,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         <Box
           sx={{
             flexGrow: 1,
-            overflow: "auto",
-            ...(isReadOnly && { pointerEvents: "none", opacity: 0.7 })
+            overflow: "auto"
           }}
         >
           {renderContent()}
