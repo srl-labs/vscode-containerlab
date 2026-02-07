@@ -101,16 +101,12 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
 
   const editShapeAnnotation = useCallback(
     (id: string) => {
-      if (!canEditAnnotations) {
-        onLockedAction();
-        return;
-      }
       const annotation = derived.shapeAnnotations.find((a) => a.id === id);
       if (annotation) {
         uiActions.setEditingShapeAnnotation(annotation);
       }
     },
-    [canEditAnnotations, onLockedAction, derived.shapeAnnotations, uiActions]
+    [derived.shapeAnnotations, uiActions]
   );
 
   const saveShapeAnnotation = useCallback(

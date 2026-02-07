@@ -482,6 +482,18 @@ export const AppContent: React.FC<AppContentProps> = ({
     annotationUiActions.closeGroupEditor();
   }, [topoActions, annotationUiActions]);
 
+  const hasContextContent =
+    !!state.selectedNode ||
+    !!state.selectedEdge ||
+    !!state.editingNode ||
+    !!state.editingEdge ||
+    !!state.editingNetwork ||
+    !!state.editingImpairment ||
+    !!state.editingCustomTemplate ||
+    !!annotations.editingTextAnnotation ||
+    !!annotations.editingShapeAnnotation ||
+    !!annotations.editingGroup;
+
   const handleEmptyCanvasClick = React.useCallback(() => {
     // When dismissing any context (editors/info) via empty canvas click, close the context panel
     // instead of falling back to the Nodes/Annotations palette view.
@@ -489,16 +501,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     const shouldClosePanel =
       panelVisibility.isContextPanelOpen &&
       panelVisibility.contextPanelOpenReason !== "manual" &&
-      (!!state.selectedNode ||
-        !!state.selectedEdge ||
-        !!state.editingNode ||
-        !!state.editingEdge ||
-        !!state.editingNetwork ||
-        !!state.editingImpairment ||
-        !!state.editingCustomTemplate ||
-        !!annotations.editingTextAnnotation ||
-        !!annotations.editingShapeAnnotation ||
-        !!annotations.editingGroup);
+      hasContextContent;
 
     clearAllEditingState();
 
@@ -506,18 +509,9 @@ export const AppContent: React.FC<AppContentProps> = ({
       panelVisibility.handleCloseContextPanel();
     }
   }, [
-    annotations.editingGroup,
-    annotations.editingShapeAnnotation,
-    annotations.editingTextAnnotation,
     clearAllEditingState,
+    hasContextContent,
     panelVisibility,
-    state.editingCustomTemplate,
-    state.editingEdge,
-    state.editingImpairment,
-    state.editingNetwork,
-    state.editingNode,
-    state.selectedEdge,
-    state.selectedNode,
   ]);
 
   const processingRef = React.useRef(false);
@@ -621,28 +615,13 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   // Auto-open context panel when selection/editing state changes
   React.useEffect(() => {
-    const hasContent =
-      !!state.selectedNode ||
-      !!state.selectedEdge ||
-      !!state.editingNode ||
-      !!state.editingEdge ||
-      !!state.editingNetwork ||
-      !!state.editingImpairment ||
-      !!state.editingCustomTemplate;
-    if (hasContent && !isProcessing && !panelVisibility.isContextPanelOpen) {
+    if (hasContextContent && !isProcessing && !panelVisibility.isContextPanelOpen) {
       panelVisibility.handleOpenContextPanel("auto");
     }
   }, [
-    state.selectedNode,
-    state.selectedEdge,
-    state.editingNode,
-    state.editingEdge,
-    state.editingNetwork,
-    state.editingImpairment,
-    state.editingCustomTemplate,
+    hasContextContent,
     isProcessing,
     panelVisibility,
-    panelVisibility.isContextPanelOpen
   ]);
 
   // Back button clears selection/editing state → panel returns to palette

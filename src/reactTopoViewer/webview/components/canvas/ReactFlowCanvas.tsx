@@ -109,6 +109,36 @@ function handleLinkCreationClick(
   return true;
 }
 
+function handleAnnotationEditClick(
+  event: React.MouseEvent,
+  node: { id: string; type?: string },
+  clearContextForAnnotationEdit: () => void,
+  annotationHandlers?: AnnotationHandlers
+): boolean {
+  if (!annotationHandlers) return false;
+
+  if (node.type === FREE_TEXT_NODE_TYPE && annotationHandlers.onEditFreeText) {
+    event.stopPropagation();
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditFreeText(node.id);
+    return true;
+  }
+  if (node.type === FREE_SHAPE_NODE_TYPE && annotationHandlers.onEditFreeShape) {
+    event.stopPropagation();
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditFreeShape(node.id);
+    return true;
+  }
+  if (node.type === GROUP_NODE_TYPE && annotationHandlers.onEditGroup) {
+    event.stopPropagation();
+    clearContextForAnnotationEdit();
+    annotationHandlers.onEditGroup(node.id);
+    return true;
+  }
+
+  return false;
+}
+
 function useWrappedNodeClick(
   linkSourceNode: string | null,
   completeLinkCreation: (nodeId: string) => void,
@@ -116,6 +146,7 @@ function useWrappedNodeClick(
   mode: "view" | "edit",
   isLocked: boolean,
   handleDeleteNode: (nodeId: string) => void,
+  clearContextForAnnotationEdit: () => void,
   annotationHandlers?: AnnotationHandlers
 ) {
   return useCallback(
@@ -123,6 +154,19 @@ function useWrappedNodeClick(
       if (handleAltDelete(event, node, mode, isLocked, handleDeleteNode, annotationHandlers))
         return;
       if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
+      if (
+        handleAnnotationEditClick(
+          event,
+          node,
+          clearContextForAnnotationEdit,
+          annotationHandlers
+        )
+      ) {
+        // Still flow through to the base handler to ensure shared behavior
+        // like closing context menus stays consistent for annotation nodes.
+        onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
+        return;
+      }
       onNodeClick(event, node as Parameters<typeof onNodeClick>[1]);
     },
     [
@@ -132,6 +176,7 @@ function useWrappedNodeClick(
       mode,
       isLocked,
       handleDeleteNode,
+      clearContextForAnnotationEdit,
       annotationHandlers
     ]
   );
@@ -677,7 +722,15 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
   ) => {
     const mode = useMode();
     const isLocked = useIsLocked();
-    const { selectNode, selectEdge, editNode, editNetwork, editEdge, editImpairment } =
+    const {
+      selectNode,
+      selectEdge,
+      editNode,
+      editNetwork,
+      editEdge,
+      editImpairment,
+      editCustomTemplate
+    } =
       useTopoViewerActions();
 
     // Get setters from graph store - these update the single source of truth
@@ -855,6 +908,17 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       mode,
       isLocked,
       handleDeleteNode,
+      () => {
+        // Switch the context panel from node/link editors to annotation editors.
+        // This is intentionally destructive to any in-progress node/link edits.
+        editNode(null);
+        editNetwork(null);
+        editEdge(null);
+        editImpairment(null);
+        editCustomTemplate(null);
+        selectNode(null);
+        selectEdge(null);
+      },
       annotationHandlers
     );
     const wrappedOnEdgeClick = useWrappedEdgeClick(

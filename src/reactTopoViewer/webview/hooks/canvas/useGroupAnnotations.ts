@@ -135,10 +135,6 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
 
   const editGroup = useCallback(
     (id: string) => {
-      if (!canEditAnnotations) {
-        onLockedAction();
-        return;
-      }
       const group = derived.groups.find((g) => g.id === id);
       if (!group) return;
 
@@ -161,7 +157,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         height: group.height ?? 150
       });
     },
-    [canEditAnnotations, onLockedAction, derived.groups, uiActions]
+    [derived.groups, uiActions]
   );
 
   const saveGroup = useCallback(

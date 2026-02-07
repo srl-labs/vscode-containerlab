@@ -127,7 +127,16 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
 
   // Group editing
   setEditingGroup: (editingGroup) => {
-    set({ editingGroup });
+    set({
+      editingGroup,
+      ...(editingGroup
+        ? {
+            // Ensure only one annotation editor is active at a time.
+            editingTextAnnotation: null,
+            editingShapeAnnotation: null
+          }
+        : {})
+    });
   },
 
   closeGroupEditor: () => {
@@ -158,7 +167,16 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
 
   // Text annotation editing
   setEditingTextAnnotation: (editingTextAnnotation) => {
-    set({ editingTextAnnotation });
+    set({
+      editingTextAnnotation,
+      ...(editingTextAnnotation
+        ? {
+            // Ensure only one annotation editor is active at a time.
+            editingGroup: null,
+            editingShapeAnnotation: null
+          }
+        : {})
+    });
   },
 
   closeTextEditor: () => {
@@ -197,7 +215,16 @@ export const useAnnotationUIStore = createWithEqualityFn<AnnotationUIStore>((set
 
   // Shape annotation editing
   setEditingShapeAnnotation: (editingShapeAnnotation) => {
-    set({ editingShapeAnnotation });
+    set({
+      editingShapeAnnotation,
+      ...(editingShapeAnnotation
+        ? {
+            // Ensure only one annotation editor is active at a time.
+            editingGroup: null,
+            editingTextAnnotation: null
+          }
+        : {})
+    });
   },
 
   closeShapeEditor: () => {
