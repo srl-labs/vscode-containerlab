@@ -55,11 +55,11 @@ async function copyMapLibreWorker() {
   await fs.promises.copyFile(srcPath, destPath);
 }
 
-// Build CSS with PostCSS (Tailwind v4 requires proper postcss processing)
+// Build CSS with PostCSS
 async function buildCss() {
   console.log("Building CSS with PostCSS...");
   execSync(
-    "npx postcss src/reactTopoViewer/webview/styles/tailwind.css -o dist/reactTopoViewerStyles.css",
+    "npx postcss src/reactTopoViewer/webview/styles/global.css -o dist/reactTopoViewerStyles.css",
     { stdio: "inherit" }
   );
 

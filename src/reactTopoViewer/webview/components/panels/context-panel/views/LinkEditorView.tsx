@@ -100,22 +100,24 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
 const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
   if (errors.length === 0) return null;
   return (
-    <div
-      className="mb-2 p-2 rounded-sm"
-      style={{
+    <Box
+      sx={{
+        mb: 1,
+        p: 1,
+        borderRadius: 0.5,
         backgroundColor: "var(--vscode-inputValidation-errorBackground)",
         border: "1px solid var(--vscode-inputValidation-errorBorder)"
       }}
     >
-      <div className="text-[var(--vscode-editorError-foreground)] text-sm font-semibold">
+      <Box sx={{ color: "var(--vscode-editorError-foreground)", fontSize: "0.875rem", fontWeight: 600 }}>
         Invalid link configuration
-      </div>
-      <div className="text-[var(--vscode-editorError-foreground)] text-xs mt-1">
+      </Box>
+      <Box sx={{ color: "var(--vscode-editorError-foreground)", fontSize: "0.75rem", mt: 0.5 }}>
         {errors.map((error, i) => (
-          <div key={i}>{error}</div>
+          <Box key={i}>{error}</Box>
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

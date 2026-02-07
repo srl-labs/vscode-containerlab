@@ -176,27 +176,49 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
   source
 }) {
   return (
-    <div className="relative group">
-      <button
+    <Box sx={{ position: "relative", minWidth: 0, "&:hover .icon-delete-btn": { opacity: 1 } }}>
+      <Box
+        component="button"
         type="button"
-        className={`flex w-full flex-col items-center gap-0.5 rounded-sm p-1.5 transition-colors ${
-          isSelected
-            ? "bg-[var(--vscode-list-activeSelectionBackground)]"
-            : "hover:bg-[var(--vscode-list-hoverBackground)]"
-        }`}
         onClick={onClick}
         title={(ICON_LABELS[icon] || icon) + (source ? " (" + source + ")" : "")}
+        sx={{
+          display: "flex",
+          width: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 0.25,
+          borderRadius: 0.5,
+          p: 0.75,
+          overflow: "hidden",
+          transition: "background-color 0.15s",
+          bgcolor: isSelected ? "var(--vscode-list-activeSelectionBackground)" : "transparent",
+          "&:hover": { bgcolor: isSelected ? undefined : "var(--vscode-list-hoverBackground)" },
+          border: "none",
+          cursor: "pointer",
+          color: "inherit",
+          background: isSelected ? "var(--vscode-list-activeSelectionBackground)" : "none"
+        }}
       >
         <img
           src={iconSrc}
           alt={icon}
-          className="rounded-sm"
           style={{ width: 36, height: 36, borderRadius: `${(cornerRadius / 48) * 36}px` }}
         />
-        <span className="max-w-full truncate text-[10px] text-[var(--vscode-foreground)]">
+        <Box
+          component="span"
+          sx={{
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: "10px",
+            color: "var(--vscode-foreground)"
+          }}
+        >
           {ICON_LABELS[icon] || icon}
-        </span>
-      </button>
+        </Box>
+      </Box>
       {/* Delete button for global custom icons */}
       {isCustom && source === "global" && onDelete && (
         <MuiIconButton
@@ -215,14 +237,14 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
             bgcolor: "error.main",
             color: "white",
             opacity: 0,
-            ".group:hover &": { opacity: 1 },
             "&:hover": { bgcolor: "error.dark" }
           }}
+          className="icon-delete-btn"
         >
           <CloseIcon sx={{ fontSize: 12 }} />
         </MuiIconButton>
       )}
-    </div>
+    </Box>
   );
 });
 
@@ -392,7 +414,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
             Built-in Icons
           </Typography>
-          <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 0.5, borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-input-background)", p: 1 }}>
             {AVAILABLE_ICONS.map((i) => (
               <IconButton
                 key={i}
@@ -403,7 +425,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
                 onClick={iconClickHandlers.current[i]}
               />
             ))}
-          </div>
+          </Box>
         </Box>
 
         {/* Custom Icons Section */}
@@ -422,7 +444,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
             </Button>
           </Box>
           {customIcons.length > 0 ? (
-            <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 0.5, borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-input-background)", p: 1 }}>
               {customIcons.map((ci) => (
                 <IconButton
                   key={ci.name}
@@ -436,7 +458,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
                   source={ci.source}
                 />
               ))}
-            </div>
+            </Box>
           ) : (
             <Typography
               variant="caption"
@@ -458,7 +480,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
         </Box>
 
         {/* Color, Radius, and Preview */}
-        <div className="grid grid-cols-[1fr_auto] gap-3">
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 1.5 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             {/* Only show color picker for built-in icons */}
             {isBuiltInIcon(icon) ? (
@@ -476,7 +498,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
             <RadiusSlider value={radius} onChange={setRadius} />
           </Box>
           <PreviewCustom iconSrc={previewIconSrc} radius={radius} />
-        </div>
+        </Box>
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.5 }}>
         <Button variant="outlined" size="small" onClick={onClose}>
@@ -498,12 +520,12 @@ const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc,
     <Typography variant="caption" color="text.secondary">
       Preview
     </Typography>
-    <div className="flex items-center justify-center rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-3">
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-input-background)", p: 1.5 }}>
       <img
         src={iconSrc}
         alt="Preview"
         style={{ width: 56, height: 56, borderRadius: `${(radius / 48) * 56}px` }}
       />
-    </div>
+    </Box>
   </Box>
 );

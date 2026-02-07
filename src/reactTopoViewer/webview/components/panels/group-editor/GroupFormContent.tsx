@@ -3,6 +3,7 @@
  * Allows editing group name, level, and visual styles
  */
 import React from "react";
+import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -27,11 +28,11 @@ const BasicInfoSection: React.FC<{
   formData: GroupEditorData;
   updateField: Props["updateField"];
 }> = ({ formData, updateField }) => (
-  <div className="flex flex-col gap-3">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
     <Typography variant="subtitle2" fontWeight={600}>
       Basic Information
     </Typography>
-    <div className="grid grid-cols-2 gap-3">
+    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
       <TextInput
         label="Group Name"
         value={formData.name}
@@ -44,7 +45,7 @@ const BasicInfoSection: React.FC<{
         onChange={(v) => updateField("level", v)}
         placeholder="e.g., 1"
       />
-    </div>
+    </Box>
     <SelectInput
       label="Label Position"
       value={formData.style.labelPosition ?? "top-center"}
@@ -57,7 +58,7 @@ const BasicInfoSection: React.FC<{
           .join(" ")
       }))}
     />
-  </div>
+  </Box>
 );
 
 // Background section
@@ -65,11 +66,11 @@ const BackgroundSection: React.FC<{
   formData: GroupEditorData;
   updateStyle: Props["updateStyle"];
 }> = ({ formData, updateStyle }) => (
-  <div className="flex flex-col gap-3">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
     <Typography variant="subtitle2" fontWeight={600}>
       Background
     </Typography>
-    <div className="flex items-start gap-4 flex-wrap">
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
       <ColorSwatch
         label="Color"
         value={formData.style.backgroundColor ?? "#d9d9d9"}
@@ -80,8 +81,8 @@ const BackgroundSection: React.FC<{
         value={formData.style.backgroundOpacity ?? 20}
         onChange={(v) => updateStyle("backgroundOpacity", v)}
       />
-    </div>
-  </div>
+    </Box>
+  </Box>
 );
 
 // Border section
@@ -89,11 +90,11 @@ const BorderSection: React.FC<{
   formData: GroupEditorData;
   updateStyle: Props["updateStyle"];
 }> = ({ formData, updateStyle }) => (
-  <div className="flex flex-col gap-3">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
     <Typography variant="subtitle2" fontWeight={600}>
       Border
     </Typography>
-    <div className="flex items-start gap-4 flex-wrap">
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
       <ColorSwatch
         label="Color"
         value={formData.style.borderColor ?? "#dddddd"}
@@ -119,7 +120,7 @@ const BorderSection: React.FC<{
           { value: "double", label: "Double" }
         ]}
       />
-    </div>
+    </Box>
     <RangeSlider
       label="Corner Radius"
       value={formData.style.borderRadius ?? 0}
@@ -127,7 +128,7 @@ const BorderSection: React.FC<{
       max={50}
       unit="px"
     />
-  </div>
+  </Box>
 );
 
 // Text color section
@@ -135,18 +136,18 @@ const TextSection: React.FC<{
   formData: GroupEditorData;
   updateStyle: Props["updateStyle"];
 }> = ({ formData, updateStyle }) => (
-  <div className="flex flex-col gap-3">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
     <Typography variant="subtitle2" fontWeight={600}>
       Label
     </Typography>
-    <div className="flex items-start gap-4">
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
       <ColorSwatch
         label="Text Color"
         value={formData.style.labelColor ?? formData.style.color ?? "#ebecf0"}
         onChange={(v) => updateStyle("labelColor", v)}
       />
-    </div>
-  </div>
+    </Box>
+  </Box>
 );
 
 // Preview section
@@ -155,14 +156,20 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
   const bgOpacity = (style.backgroundOpacity ?? 20) / 100;
 
   return (
-    <div className="flex flex-col gap-1">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
       <Typography variant="caption" color="text.secondary">
         Preview
       </Typography>
-      <div className="relative p-4 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)] min-h-[80px] flex items-center justify-center">
-        <div
-          className="relative w-full h-16 flex items-start justify-center pt-1"
-          style={{
+      <Box sx={{ position: "relative", p: 2, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Box
+          sx={{
+            position: "relative",
+            width: "100%",
+            height: 64,
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            pt: 0.5,
             backgroundColor: style.backgroundColor ?? "#d9d9d9",
             opacity: bgOpacity,
             borderColor: style.borderColor ?? "#dddddd",
@@ -171,15 +178,19 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
             borderRadius: `${style.borderRadius ?? 0}px`
           }}
         >
-          <span
-            className="text-xs font-medium"
-            style={{ color: style.labelColor ?? style.color ?? "#ebecf0" }}
+          <Box
+            component="span"
+            sx={{
+              fontSize: "0.75rem",
+              fontWeight: 500,
+              color: style.labelColor ?? style.color ?? "#ebecf0"
+            }}
           >
             {formData.name || "Group Name"}
-          </span>
-        </div>
-      </div>
-    </div>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 
@@ -190,7 +201,7 @@ export const GroupFormContent: React.FC<Props> = ({
   updateStyle,
   onDelete
 }) => (
-  <div className="flex flex-col gap-4">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
     <BasicInfoSection formData={formData} updateField={updateField} />
     <BackgroundSection formData={formData} updateStyle={updateStyle} />
     <BorderSection formData={formData} updateStyle={updateStyle} />
@@ -208,5 +219,5 @@ export const GroupFormContent: React.FC<Props> = ({
         Delete Group
       </Button>
     )}
-  </div>
+  </Box>
 );

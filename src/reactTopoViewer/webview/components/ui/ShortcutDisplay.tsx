@@ -3,6 +3,7 @@
  * Displays detected input events as floating labels
  */
 import React from "react";
+import Box from "@mui/material/Box";
 
 interface ShortcutDisplayItem {
   id: number;
@@ -17,15 +18,38 @@ export const ShortcutDisplay: React.FC<ShortcutDisplayProps> = ({ shortcuts }) =
   if (shortcuts.length === 0) return null;
 
   return (
-    <div className="shortcut-display fixed bottom-4 left-4 flex flex-col-reverse items-start gap-1 z-[100000] pointer-events-none">
+    <Box
+      className="shortcut-display"
+      sx={{
+        position: "fixed",
+        bottom: 16,
+        left: 16,
+        display: "flex",
+        flexDirection: "column-reverse",
+        alignItems: "flex-start",
+        gap: 0.5,
+        zIndex: 100000,
+        pointerEvents: "none"
+      }}
+    >
       {shortcuts.map((shortcut) => (
-        <div
+        <Box
           key={shortcut.id}
-          className="shortcut-display-item px-4 py-1.5 rounded-lg shadow-md font-sans text-sm tracking-wide animate-shortcut-fade"
+          className="shortcut-display-item"
+          sx={{
+            px: 2,
+            py: 0.75,
+            borderRadius: 2,
+            boxShadow: 3,
+            fontFamily: "sans-serif",
+            fontSize: "0.875rem",
+            letterSpacing: "0.025em",
+            animation: "shortcutFade 2s ease-in-out forwards"
+          }}
         >
           {shortcut.text}
-        </div>
+        </Box>
       ))}
-    </div>
+    </Box>
   );
 };

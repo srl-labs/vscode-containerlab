@@ -18,5 +18,5 @@ export {
   TextInput,
   SelectInput,
   RangeSlider,
-  PREVIEW_GRID_BG
+  PREVIEW_GRID_BG_SX
 } from "./FormComponents";

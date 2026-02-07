@@ -33,7 +33,7 @@ import {
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
 import { log } from "../../utils/logger";
-import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG } from "../ui/form";
+import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG_SX } from "../ui/form";
 
 import {
   buildSvgDefs,
@@ -188,65 +188,65 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
         <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
       </DialogTitle>
       <DialogContent dividers>
-        <div className="flex flex-col gap-4">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {/* Quality section */}
-          <div className="flex flex-col gap-3">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <SectionHeader>Quality & Size</SectionHeader>
-            <div className="grid grid-cols-2 gap-3">
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
               <NumberInput label="Zoom" value={borderZoom} onChange={(v) => setBorderZoom(Math.max(10, Math.min(300, v)))} min={10} max={300} unit="%" />
               <NumberInput label="Padding" value={borderPadding} onChange={(v) => setBorderPadding(Math.max(0, v))} min={0} max={500} unit="px" />
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           {/* Background section */}
-          <div className="flex flex-col gap-3">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <SectionHeader>Background</SectionHeader>
-            <div className="flex items-start gap-3 flex-wrap">
-              <div className="flex gap-2 pt-4">
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5, flexWrap: "wrap" }}>
+              <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
                 <Toggle active={backgroundOption === "transparent"} onClick={() => setBackgroundOption("transparent")}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><GridOnIcon sx={{ fontSize: 14 }} />Transparent</Box>
                 </Toggle>
                 <Toggle active={backgroundOption === "white"} onClick={() => setBackgroundOption("white")}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <span className="inline-block w-3 h-3 bg-white rounded-sm border border-[var(--vscode-panel-border)]" />White
+                    <Box component="span" sx={{ display: "inline-block", width: 12, height: 12, bgcolor: "white", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)" }} />White
                   </Box>
                 </Toggle>
                 <Toggle active={backgroundOption === "custom"} onClick={() => setBackgroundOption("custom")}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}><PaletteIcon sx={{ fontSize: 14 }} />Custom</Box>
                 </Toggle>
-              </div>
+              </Box>
               {backgroundOption === "custom" && <ColorSwatch label="Color" value={customBackgroundColor} onChange={setCustomBackgroundColor} />}
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           {/* Annotations section */}
-          <div className="flex flex-col gap-3">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <SectionHeader>Annotations</SectionHeader>
-            <div className="flex items-center justify-between p-3 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)]">
-              <div className="flex flex-col">
-                <span className="text-sm text-[var(--vscode-foreground)]">
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 1.5, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)" }}>
+              <Box sx={{ display: "flex", flexDirection: "column" }}>
+                <Box component="span" sx={{ fontSize: "0.875rem", color: "var(--vscode-foreground)" }}>
                   {totalAnnotations > 0 ? `${totalAnnotations} annotation${totalAnnotations !== 1 ? "s" : ""}` : "No annotations"}
-                </span>
-              </div>
+                </Box>
+              </Box>
               <Toggle active={includeAnnotations} onClick={() => setIncludeAnnotations(!includeAnnotations)}>
                 {includeAnnotations ? "Included" : "Excluded"}
               </Toggle>
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           {/* Edge Labels */}
-          <div className="flex flex-col gap-3">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <SectionHeader>Edge Labels</SectionHeader>
-            <div className="flex items-center justify-between p-3 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)]">
-              <span className="text-sm text-[var(--vscode-foreground)]">Interface labels</span>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 1.5, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)" }}>
+              <Box component="span" sx={{ fontSize: "0.875rem", color: "var(--vscode-foreground)" }}>Interface labels</Box>
               <Toggle active={includeEdgeLabels} onClick={() => setIncludeEdgeLabels(!includeEdgeLabels)}>
                 {includeEdgeLabels ? "Included" : "Excluded"}
               </Toggle>
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           {/* Filename */}
-          <div className="flex flex-col gap-1">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             <SectionHeader>Filename</SectionHeader>
             <TextField
               size="small"
@@ -257,17 +257,26 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
               InputProps={{ endAdornment: <InputAdornment position="end"><Typography variant="caption" color="text.secondary">.svg</Typography></InputAdornment> }}
               sx={{ "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
             />
-          </div>
+          </Box>
 
           {/* Preview */}
-          <div className="flex flex-col gap-1">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             <SectionHeader>Preview</SectionHeader>
-            <div className="relative p-4 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)] overflow-hidden">
-              <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-30`} />
-              <div className="relative z-10 flex items-center justify-center">
-                <div
-                  className="w-24 h-16 rounded-sm shadow-lg border border-[var(--vscode-panel-border)] flex items-center justify-center transition-all duration-200"
-                  style={{
+            <Box sx={{ position: "relative", p: 2, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", overflow: "hidden" }}>
+              <Box sx={{ position: "absolute", inset: 0, opacity: 0.3, ...PREVIEW_GRID_BG_SX }} />
+              <Box sx={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Box
+                  sx={{
+                    width: 96,
+                    height: 64,
+                    borderRadius: 0.5,
+                    boxShadow: 3,
+                    border: 1,
+                    borderColor: "var(--vscode-panel-border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 200ms",
                     ...(backgroundOption === "transparent"
                       ? {
                           backgroundImage: "linear-gradient(45deg, #444 25%, transparent 25%), linear-gradient(-45deg, #444 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #444 75%), linear-gradient(-45deg, transparent 75%, #444 75%)",
@@ -280,10 +289,10 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                   }}
                 >
                   <AccountTreeIcon sx={{ fontSize: 24, color: "primary.main", opacity: 0.8 }} />
-                </div>
-              </div>
-            </div>
-          </div>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
 
           {/* Export button */}
           <Button
@@ -314,7 +323,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
               <li>Transparent background for layering</li>
             </Typography>
           </Box>
-        </div>
+        </Box>
       </DialogContent>
     </Dialog>
   );

@@ -21,7 +21,7 @@ import {
   DEFAULT_ARROW_SIZE,
   DEFAULT_CORNER_RADIUS
 } from "../../../annotations/constants";
-import { Toggle, ColorSwatch, NumberInput, SelectInput, PREVIEW_GRID_BG } from "../../ui/form";
+import { Toggle, ColorSwatch, NumberInput, SelectInput, PREVIEW_GRID_BG_SX } from "../../ui/form";
 
 import { buildShapeSvg } from "./FreeShapeSvg";
 
@@ -59,7 +59,7 @@ const SizeControls: React.FC<{
 }> = ({ formData, updateField }) => {
   if (formData.shapeType === "line") return null;
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
       <NumberInput
         label="Width"
         value={formData.width ?? DEFAULT_SHAPE_WIDTH}
@@ -76,7 +76,7 @@ const SizeControls: React.FC<{
         max={2000}
         unit="px"
       />
-    </div>
+    </Box>
   );
 };
 
@@ -91,7 +91,7 @@ const FillControls: React.FC<{
   const isTransparent = opacity === 0;
 
   return (
-    <div className="flex items-start gap-4 flex-wrap">
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
       <ColorSwatch
         label="Fill"
         value={formData.fillColor ?? DEFAULT_FILL_COLOR}
@@ -117,15 +117,15 @@ const FillControls: React.FC<{
           />
         </Box>
       </Box>
-      <div className="pt-4">
+      <Box sx={{ pt: 2 }}>
         <Toggle
           active={isTransparent}
           onClick={() => updateField("fillOpacity", isTransparent ? 1 : 0)}
         >
           Transparent
         </Toggle>
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
@@ -139,8 +139,8 @@ const BorderControls: React.FC<{
   const noBorder = borderWidth === 0;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-start gap-4 flex-wrap">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
         <ColorSwatch
           label={isLine ? "Line" : "Border"}
           value={formData.borderColor ?? DEFAULT_BORDER_COLOR}
@@ -166,17 +166,17 @@ const BorderControls: React.FC<{
           ]}
         />
         {!isLine && (
-          <div className="pt-4">
+          <Box sx={{ pt: 2 }}>
             <Toggle
               active={noBorder}
               onClick={() => updateField("borderWidth", noBorder ? DEFAULT_BORDER_WIDTH : 0)}
             >
               No Border
             </Toggle>
-          </div>
+          </Box>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
@@ -206,8 +206,8 @@ const ArrowControls: React.FC<{
   if (formData.shapeType !== "line") return null;
   const hasArrows = formData.lineStartArrow || formData.lineEndArrow;
   return (
-    <div className="flex items-start gap-4 flex-wrap">
-      <div className={hasArrows ? "pt-4 flex gap-2" : "flex gap-2"}>
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+      <Box sx={{ display: "flex", gap: 1, ...(hasArrows ? { pt: 2 } : {}) }}>
         <Toggle
           active={formData.lineStartArrow ?? false}
           onClick={() => updateField("lineStartArrow", !formData.lineStartArrow)}
@@ -220,7 +220,7 @@ const ArrowControls: React.FC<{
         >
           End Arrow
         </Toggle>
-      </div>
+      </Box>
       {hasArrows && (
         <NumberInput
           label="Arrow Size"
@@ -231,7 +231,7 @@ const ArrowControls: React.FC<{
           unit="px"
         />
       )}
-    </div>
+    </Box>
   );
 };
 
@@ -263,24 +263,26 @@ const Preview: React.FC<{ formData: FreeShapeAnnotation }> = ({ formData }) => {
   const rotation = formData.shapeType === "line" ? 0 : (formData.rotation ?? 0);
 
   return (
-    <div className="flex flex-col gap-1">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
       <Typography variant="caption" color="text.secondary">
         Preview
       </Typography>
-      <div className="relative p-6 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)] min-h-[100px] flex items-center justify-center overflow-hidden">
-        <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
-        <div
-          className="relative z-10 transition-all duration-200"
-          style={{
+      <Box sx={{ position: "relative", p: 3, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", minHeight: 100, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        <Box sx={{ position: "absolute", inset: 0, opacity: 0.5, ...PREVIEW_GRID_BG_SX }} />
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 10,
+            transition: "all 200ms",
             transform: `rotate(${rotation}deg) scale(${scale})`,
             width: `${width}px`,
             height: `${height}px`
           }}
         >
           {svg}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 
@@ -291,7 +293,7 @@ export const FreeShapeFormContent: React.FC<Props> = ({
   isNew,
   onDelete
 }) => (
-  <div className="flex flex-col gap-4">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
     <ShapeTypeSelector value={formData.shapeType} onChange={(v) => updateField("shapeType", v)} />
     <SizeControls formData={formData} updateField={updateField} />
     <FillControls formData={formData} updateField={updateField} />
@@ -312,5 +314,5 @@ export const FreeShapeFormContent: React.FC<Props> = ({
         Delete
       </Button>
     )}
-  </div>
+  </Box>
 );

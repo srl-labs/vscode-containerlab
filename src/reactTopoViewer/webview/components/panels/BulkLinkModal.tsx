@@ -29,42 +29,42 @@ interface BulkLinkModalProps {
 }
 
 const ExamplesSection: React.FC = () => (
-  <div className="rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-editor-background)] p-2 space-y-2">
+  <Box sx={{ borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", bgcolor: "var(--vscode-editor-background)", p: 1, display: "flex", flexDirection: "column", gap: 1 }}>
     <Typography variant="subtitle2" fontWeight={600}>Examples</Typography>
-    <div className="space-y-1.5 text-sm">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, fontSize: "0.875rem" }}>
       <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
         <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>1.</Typography>
-        <div>
+        <Box>
           <Typography variant="body2" color="text.secondary">All leaves to all spines:</Typography>
-          <div className="mt-0.5"><CopyableCode>leaf*</CopyableCode> → <CopyableCode>spine*</CopyableCode></div>
-        </div>
+          <Box sx={{ mt: 0.25 }}><CopyableCode>leaf*</CopyableCode> → <CopyableCode>spine*</CopyableCode></Box>
+        </Box>
       </Box>
       <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
         <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>2.</Typography>
-        <div>
+        <Box>
           <Typography variant="body2" color="text.secondary">Pair by number (leaf1→spine1):</Typography>
-          <div className="mt-0.5"><CopyableCode>{"leaf(\\d+)"}</CopyableCode> → <CopyableCode>spine$1</CopyableCode></div>
-        </div>
+          <Box sx={{ mt: 0.25 }}><CopyableCode>{"leaf(\\d+)"}</CopyableCode> → <CopyableCode>spine$1</CopyableCode></Box>
+        </Box>
       </Box>
       <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
         <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>3.</Typography>
-        <div>
+        <Box>
           <Typography variant="body2" color="text.secondary">Single char match:</Typography>
-          <div className="mt-0.5"><CopyableCode>srl?</CopyableCode> → <CopyableCode>client*</CopyableCode></div>
-        </div>
+          <Box sx={{ mt: 0.25 }}><CopyableCode>srl?</CopyableCode> → <CopyableCode>client*</CopyableCode></Box>
+        </Box>
       </Box>
-    </div>
+    </Box>
     <Box sx={{ borderTop: 1, borderColor: "divider", pt: 1 }}>
       <Typography variant="body2" color="text.secondary" component="div">
-        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-          <div><CopyableCode>*</CopyableCode> any chars</div>
-          <div><CopyableCode>?</CopyableCode> single char</div>
-          <div><CopyableCode>#</CopyableCode> single digit</div>
-          <div><CopyableCode>$1</CopyableCode> capture group</div>
-        </div>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 1.5, rowGap: 0.25 }}>
+          <Box><CopyableCode>*</CopyableCode> any chars</Box>
+          <Box><CopyableCode>?</CopyableCode> single char</Box>
+          <Box><CopyableCode>#</CopyableCode> single digit</Box>
+          <Box><CopyableCode>$1</CopyableCode> capture group</Box>
+        </Box>
       </Typography>
     </Box>
-  </div>
+  </Box>
 );
 
 export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLocked, onClose }) => {

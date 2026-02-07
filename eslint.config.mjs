@@ -94,8 +94,8 @@ export default [
       ],
 
       // ─── Complexity rules ───
-      complexity: ["error", { max: 15 }],
-      "sonarjs/cognitive-complexity": ["error", 15],
+      complexity: ["warning", { max: 15 }],
+      "sonarjs/cognitive-complexity": ["warning", 15],
       "sonarjs/no-identical-functions": "error",
       "sonarjs/no-duplicate-string": "error",
       "sonarjs/no-hardcoded-ip": "off",

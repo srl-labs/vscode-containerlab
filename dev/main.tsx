@@ -5,7 +5,7 @@ import { createRoot, type Root as ReactRoot } from "react-dom/client";
 import { App } from "@webview/App";
 import type { CustomNodeTemplate } from "@shared/types/editors";
 import type { CustomIconInfo } from "@shared/types/icons";
-import "@webview/styles/tailwind.css";
+import "@webview/styles/global.css";
 import * as monaco from "monaco-editor";
 import "monaco-editor/min/vs/editor/editor.main.css";
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";

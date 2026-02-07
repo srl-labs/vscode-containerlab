@@ -3,14 +3,12 @@
  */
 import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 
 import type { NetemState } from "../shared/parsing";
 import type { TopoEdge, TopoNode, TopologyEdgeData, TopologyHostCommand } from "../shared/types";
 
-import { theme } from "./theme";
+import { MuiThemeProvider } from "./theme";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
@@ -635,8 +633,7 @@ export const AppContent: React.FC<AppContentProps> = ({
   );
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline enableColorScheme />
+    <MuiThemeProvider>
       <Box
         data-testid="topoviewer-app"
         display="flex"
@@ -832,6 +829,6 @@ export const AppContent: React.FC<AppContentProps> = ({
           rfInstance={rfInstance}
         />
       </Box>
-    </ThemeProvider>
+    </MuiThemeProvider>
   );
 };

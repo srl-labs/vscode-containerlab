@@ -6,9 +6,10 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Box from "@mui/material/Box";
 
 import { useVaporwaveAudio } from "../audio";
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR, lerpColor, useNodeGlow, MuteButton } from "../shared";
+import { BTN_VISIBLE_SX, BTN_HIDDEN_SX, BTN_BLUR, lerpColor, useNodeGlow, MuteButton } from "../shared";
 import type { RGBColor, BaseModeProps } from "../shared";
 
 const BTN_BORDER = "2px solid rgba(255, 255, 255, 0.4)";
@@ -94,10 +95,10 @@ const VaporwaveCanvas: React.FC<{
   if (!isActive) return null;
 
   return (
-    <canvas
+    <Box
+      component="canvas"
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-[99998]"
-      style={{ width: "100%", height: "100%" }}
+      sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99998, width: "100%", height: "100%" }}
     />
   );
 };
@@ -433,13 +434,17 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
         getCurrentSection={audio.getCurrentSection}
       />
 
-      <div className="fixed inset-0 pointer-events-none z-[99999] flex items-end justify-center pb-8 gap-4">
-        <button
+      <Box sx={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 99999, display: "flex", alignItems: "flex-end", justifyContent: "center", pb: 4, gap: 2 }}>
+        <Box
+          component="button"
           onClick={handleSwitch}
-          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? BTN_VISIBLE : BTN_HIDDEN
-          }`}
-          style={{
+          sx={{
+            px: 3,
+            py: 1.25,
+            borderRadius: "9999px",
+            pointerEvents: "auto",
+            transition: "all 0.5s",
+            ...(visible ? BTN_VISIBLE_SX : BTN_HIDDEN_SX),
             background:
               "linear-gradient(135deg, rgba(120, 129, 255, 0.8) 0%, rgba(185, 103, 255, 0.8) 100%)",
             border: BTN_BORDER,
@@ -454,7 +459,7 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
           title={`Current: ${modeName}`}
         >
           S W I T C H
-        </button>
+        </Box>
         <MuteButton
           isMuted={audio.isMuted}
           onToggle={audio.toggleMute}
@@ -463,12 +468,16 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
           unmutedShadow="0 0 20px rgba(254, 255, 156, 0.5), inset 0 0 20px rgba(255, 113, 206, 0.1)"
           borderColor="rgba(255, 255, 255, 0.4)"
         />
-        <button
+        <Box
+          component="button"
           onClick={handleClose}
-          className={`px-6 py-2.5 rounded-full pointer-events-auto transition-all duration-500 ${
-            visible ? BTN_VISIBLE : BTN_HIDDEN
-          }`}
-          style={{
+          sx={{
+            px: 3,
+            py: 1.25,
+            borderRadius: "9999px",
+            pointerEvents: "auto",
+            transition: "all 0.5s",
+            ...(visible ? BTN_VISIBLE_SX : BTN_HIDDEN_SX),
             background:
               "linear-gradient(135deg, rgba(255, 113, 206, 0.8) 0%, rgba(1, 205, 254, 0.8) 100%)",
             border: BTN_BORDER,
@@ -482,8 +491,8 @@ export const VaporwaveMode: React.FC<BaseModeProps> = ({
           }}
         >
           E X I T V A P O R
-        </button>
-      </div>
+        </Box>
+      </Box>
     </>
   );
 };

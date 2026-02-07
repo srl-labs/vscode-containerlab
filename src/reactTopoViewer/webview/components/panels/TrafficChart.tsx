@@ -3,6 +3,7 @@
  * uPlot-based real-time traffic visualization for link endpoints
  */
 import React, { useRef, useEffect, useCallback } from "react";
+import Typography from "@mui/material/Typography";
 import uPlot from "uplot";
 
 import "uplot/dist/uPlot.min.css";
@@ -325,9 +326,12 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({ stats, endpointKey }
         }}
       />
       {!stats && (
-        <div className="text-center text-[var(--text-secondary)] text-sm mt-2">
+        <Typography
+          variant="body2"
+          sx={{ textAlign: "center", color: "text.secondary", fontSize: "0.875rem", mt: 1 }}
+        >
           No traffic data available
-        </div>
+        </Typography>
       )}
     </div>
   );

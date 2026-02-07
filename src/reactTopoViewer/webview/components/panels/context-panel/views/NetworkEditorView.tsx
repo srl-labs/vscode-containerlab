@@ -78,7 +78,7 @@ const NetworkEditorContent: React.FC<{
   );
 
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
       <FormField label="Network Type">
         <FilterableDropdown
           id="network-type"
@@ -126,10 +126,10 @@ const NetworkEditorContent: React.FC<{
       )}
 
       {VXLAN_TYPES.includes(formData.networkType) && (
-        <div className="space-y-3">
-          <div className="text-xs font-medium text-[var(--vscode-foreground)] opacity-70 mt-4 mb-2">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box sx={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--vscode-foreground)", opacity: 0.7, mt: 2, mb: 1 }}>
             VXLAN Settings
-          </div>
+          </Box>
           <FormField label="Remote">
             <InputField
               id="vxlan-remote"
@@ -138,7 +138,7 @@ const NetworkEditorContent: React.FC<{
               placeholder="Remote endpoint IP address"
             />
           </FormField>
-          <div className="grid grid-cols-3 gap-2">
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1 }}>
             <FormField label="VNI">
               <InputField id="vxlan-vni" value={formData.vxlanVni || ""} onChange={(v) => onChange({ vxlanVni: v })} placeholder="e.g., 100" />
             </FormField>
@@ -148,8 +148,8 @@ const NetworkEditorContent: React.FC<{
             <FormField label="Src Port">
               <InputField id="vxlan-src-port" value={formData.vxlanSrcPort || ""} onChange={(v) => onChange({ vxlanSrcPort: v })} placeholder="e.g., 0" />
             </FormField>
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
 
       <FormField label="MAC Address">
@@ -157,10 +157,10 @@ const NetworkEditorContent: React.FC<{
       </FormField>
 
       {supportsExtendedProps(formData.networkType) && (
-        <div className="space-y-3">
-          <div className="text-xs font-medium text-[var(--vscode-foreground)] opacity-70 mt-4 mb-2">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Box sx={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--vscode-foreground)", opacity: 0.7, mt: 2, mb: 1 }}>
             Extended Properties
-          </div>
+          </Box>
           <FormField label="MTU">
             <InputField id="network-mtu" type="number" value={formData.mtu || ""} onChange={(v) => onChange({ mtu: v })} placeholder="e.g., 9000" min={1} max={65535} />
           </FormField>
@@ -170,9 +170,9 @@ const NetworkEditorContent: React.FC<{
           <Section title="Labels">
             <KeyValueList items={formData.labels || {}} onChange={(items) => onChange({ labels: items })} keyPlaceholder="Label name" valuePlaceholder="Value" addLabel="Add Label" />
           </Section>
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 

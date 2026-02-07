@@ -233,6 +233,7 @@ function syncNodesToMap(map: MapLibreMap, nodes: Node[]): { nodes: Node[]; chang
       const end = map.project([endGeo.lng, endGeo.lat]);
       const boundsInfo = computeLineBounds({ x: start.x, y: start.y }, { x: end.x, y: end.y });
       if (
+        node.position &&
         positionEquals(node.position, boundsInfo.nodePosition) &&
         node.width === boundsInfo.width &&
         node.height === boundsInfo.height
@@ -258,7 +259,7 @@ function syncNodesToMap(map: MapLibreMap, nodes: Node[]): { nodes: Node[]; chang
     const geo = extractGeoCoordinates(node);
     if (!geo) return node;
     const position = projectGeoToPosition(map, node, geo);
-    if (positionEquals(node.position, position)) return node;
+    if (node.position && positionEquals(node.position, position)) return node;
     changed = true;
     return { ...node, position };
   });
@@ -367,7 +368,7 @@ export function useGeoMapLayout({
     if (!isGeoLayout || wasGeoRef.current) return;
     wasGeoRef.current = true;
     originalPositionsRef.current = new Map(
-      nodesRef.current.map((node) => [node.id, { ...node.position }])
+      nodesRef.current.map((node) => [node.id, { ...(node.position ?? { x: 0, y: 0 }) }])
     );
     const rf = reactFlowInstanceRef.current;
     if (rf) {

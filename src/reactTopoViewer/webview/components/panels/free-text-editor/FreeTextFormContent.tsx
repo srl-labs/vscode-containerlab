@@ -22,7 +22,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
-import { Toggle, ColorSwatch, PREVIEW_GRID_BG } from "../../ui/form";
+import { Toggle, ColorSwatch, PREVIEW_GRID_BG_SX } from "../../ui/form";
 
 // Helper functions to avoid duplicate calculations
 const isBackgroundTransparent = (bg: string | undefined): boolean => bg === "transparent";
@@ -184,7 +184,7 @@ const StyleOptions: React.FC<{
   const isRounded = isBackgroundRounded(formData.roundedBackground);
 
   return (
-    <div className="flex items-start gap-4 flex-wrap">
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
       <ColorSwatch
         label="Text"
         value={formData.fontColor || "#FFFFFF"}
@@ -196,7 +196,7 @@ const StyleOptions: React.FC<{
         onChange={(v) => updateField("backgroundColor", v)}
         disabled={isTransparent}
       />
-      <div className="flex gap-2 pt-4">
+      <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
         <Toggle
           active={isTransparent}
           onClick={() => updateField("backgroundColor", isTransparent ? "#000000" : "transparent")}
@@ -206,7 +206,7 @@ const StyleOptions: React.FC<{
         <Toggle active={isRounded} onClick={() => updateField("roundedBackground", !isRounded)}>
           Rounded
         </Toggle>
-      </div>
+      </Box>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, ml: "auto" }}>
         <Typography variant="caption" color="text.secondary">
           Rotate
@@ -220,7 +220,7 @@ const StyleOptions: React.FC<{
           sx={{ width: 64, "& .MuiInputBase-input": { fontSize: "0.75rem", py: 0.75, px: 1 } }}
         />
       </Box>
-    </div>
+    </Box>
   );
 };
 
@@ -264,19 +264,19 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
   const style = computePreviewStyle(formData);
 
   return (
-    <div className="flex flex-col gap-1">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
       <PreviewHeader />
-      <div className="relative p-6 bg-[var(--vscode-input-background)] rounded-sm border border-[var(--vscode-panel-border)] min-h-[80px] flex items-center justify-center overflow-hidden">
-        <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
-        <div className="relative z-10 transition-all duration-200 free-text-markdown" style={style}>
+      <Box sx={{ position: "relative", p: 3, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        <Box sx={{ position: "absolute", inset: 0, opacity: 0.5, ...PREVIEW_GRID_BG_SX }} />
+        <Box className="free-text-markdown" sx={{ position: "relative", zIndex: 10, transition: "all 200ms", ...style }}>
           {isEmpty ? (
-            <span className="opacity-50 italic">Start typing to see preview...</span>
+            <Box component="span" sx={{ opacity: 0.5, fontStyle: "italic" }}>Start typing to see preview...</Box>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+            <Box dangerouslySetInnerHTML={{ __html: renderedHtml }} />
           )}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 
@@ -287,7 +287,7 @@ export const FreeTextFormContent: React.FC<Props> = ({
   isNew,
   onDelete
 }) => (
-  <div className="flex flex-col gap-4">
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
     <TextField
       multiline
       minRows={5}
@@ -314,5 +314,5 @@ export const FreeTextFormContent: React.FC<Props> = ({
         Delete
       </Button>
     )}
-  </div>
+  </Box>
 );
