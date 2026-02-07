@@ -3,8 +3,9 @@
  */
 
 import React from "react";
+import Box from "@mui/material/Box";
 
-import { BTN_VISIBLE, BTN_HIDDEN, BTN_BLUR } from "./buttonConstants";
+import { BTN_VISIBLE_SX, BTN_HIDDEN_SX, BTN_BLUR } from "./buttonConstants";
 
 export interface MuteButtonProps {
   isMuted: boolean;
@@ -72,12 +73,15 @@ export const MuteButton: React.FC<MuteButtonProps> = ({
   borderColor = "rgba(255, 255, 255, 0.5)"
 }) => {
   return (
-    <button
+    <Box
+      component="button"
       onClick={onToggle}
-      className={`p-3 rounded-full pointer-events-auto transition-all duration-500 ${
-        visible ? BTN_VISIBLE : BTN_HIDDEN
-      }`}
-      style={{
+      sx={{
+        p: 1.5,
+        borderRadius: "50%",
+        pointerEvents: "auto",
+        transition: "all 0.5s",
+        ...(visible ? BTN_VISIBLE_SX : BTN_HIDDEN_SX),
         background: isMuted ? MUTED_BACKGROUND : unmutedBackground,
         border: `2px solid ${borderColor}`,
         cursor: "pointer",
@@ -87,6 +91,6 @@ export const MuteButton: React.FC<MuteButtonProps> = ({
       title={isMuted ? "Unmute" : "Mute"}
     >
       {isMuted ? <MutedIcon /> : <UnmutedIcon />}
-    </button>
+    </Box>
   );
 };

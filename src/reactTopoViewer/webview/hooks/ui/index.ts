@@ -13,13 +13,26 @@ export {
 export type { DeploymentCommands, PanelVisibility } from "./usePanelCommands";
 
 // ============================================================================
-// Panel Visibility & Drag
+// Context Panel Content
 // ============================================================================
-export {
-  usePanelDrag,
-  useShakeAnimation
-} from "./usePanelDrag";
-export type { Position, UsePanelDragOptions, UsePanelDragReturn } from "./usePanelDrag";
+export { useContextPanelContent } from "./useContextPanelContent";
+export type { PanelView, PanelViewKind } from "./useContextPanelContent";
+
+// ============================================================================
+// Footer Refs (Editor Panels)
+// ============================================================================
+export { useFooterControlsRef } from "./useFooterControlsRef";
+export type { FooterControlsRef } from "./useFooterControlsRef";
+
+// ============================================================================
+// Editor Button Handlers
+// ============================================================================
+export { useApplySaveHandlers } from "./useApplySaveHandlers";
+
+// ============================================================================
+// Shake Animation
+// ============================================================================
+export { useShakeAnimation } from "./useShakeAnimation";
 
 // ============================================================================
 // Keyboard & Shortcuts

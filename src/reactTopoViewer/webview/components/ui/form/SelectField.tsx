@@ -2,6 +2,11 @@
  * SelectField - Dropdown select
  */
 import React from "react";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormHelperText from "@mui/material/FormHelperText";
 
 export interface SelectOption {
   value: string;
@@ -13,9 +18,12 @@ interface SelectFieldProps {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
+  label?: string;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  helperText?: string;
+  required?: boolean;
 }
 
 export const SelectField: React.FC<SelectFieldProps> = ({
@@ -23,22 +31,33 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   value,
   onChange,
   options,
+  label,
   placeholder,
-  className = "",
-  disabled
+  disabled,
+  helperText,
+  required
 }) => (
-  <select
-    id={id}
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    className={`input-field w-full ${className}`}
-    disabled={disabled}
-  >
-    {placeholder && <option value="">{placeholder}</option>}
-    {options.map((opt) => (
-      <option key={opt.value} value={opt.value}>
-        {opt.label}
-      </option>
-    ))}
-  </select>
+  <FormControl fullWidth size="small" disabled={disabled} required={required}>
+    {label && <InputLabel id={`${id}-label`}>{label}</InputLabel>}
+    <Select
+      id={id}
+      labelId={label ? `${id}-label` : undefined}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      label={label}
+      displayEmpty={!!placeholder && !label}
+    >
+      {placeholder && !label && (
+        <MenuItem value="" disabled>
+          <em>{placeholder}</em>
+        </MenuItem>
+      )}
+      {options.map((opt) => (
+        <MenuItem key={opt.value} value={opt.value}>
+          {opt.label}
+        </MenuItem>
+      ))}
+    </Select>
+    {helperText && <FormHelperText>{helperText}</FormHelperText>}
+  </FormControl>
 );

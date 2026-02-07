@@ -2,15 +2,15 @@
  * CopyableCode - Inline code with click-to-copy functionality
  */
 import React from "react";
+import Box from "@mui/material/Box";
 
 import { copyToClipboard } from "../../../utils/clipboard";
 
 interface CopyableCodeProps {
   children: string;
-  className?: string;
 }
 
-export const CopyableCode: React.FC<CopyableCodeProps> = ({ children, className = "" }) => {
+export const CopyableCode: React.FC<CopyableCodeProps> = ({ children }) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = React.useCallback(async () => {
@@ -22,12 +22,25 @@ export const CopyableCode: React.FC<CopyableCodeProps> = ({ children, className 
   }, [children]);
 
   return (
-    <code
+    <Box
+      component="code"
       onClick={() => void handleCopy()}
       title="Click to copy"
-      className={`cursor-pointer select-text rounded-sm bg-[var(--vscode-textCodeBlock-background)] px-1 py-0.5 font-mono text-xs transition-colors hover:bg-[var(--vscode-list-hoverBackground)] ${copied ? "ring-1 ring-[var(--vscode-focusBorder)]" : ""} ${className}`}
+      sx={{
+        cursor: "pointer",
+        userSelect: "text",
+        borderRadius: 0.5,
+        bgcolor: "var(--vscode-textCodeBlock-background)",
+        px: 0.5,
+        py: 0.25,
+        fontFamily: "monospace",
+        fontSize: "0.75rem",
+        transition: "background-color 0.2s",
+        "&:hover": { bgcolor: "var(--vscode-list-hoverBackground)" },
+        ...(copied ? { outline: "1px solid var(--vscode-focusBorder)" } : {})
+      }}
     >
       {copied ? "Copied!" : children}
-    </code>
+    </Box>
   );
 };

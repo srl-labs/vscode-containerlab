@@ -57,6 +57,14 @@ interface CanvasHandlersConfig {
   isLocked: boolean;
   onNodesChangeBase: OnNodesChange;
   onLockedAction?: () => void;
+  /** Called only when the click actually falls through to the pane (no add-mode/shift-click handling). */
+  onPaneClickExtra?: () => void;
+  /**
+   * Optional guard to suppress syncing React Flow selection into the app store.
+   * Used to prevent side effects (like auto-opening the ContextPanel) during transient
+   * interactions such as link creation.
+   */
+  shouldSuppressSelectionSync?: () => boolean;
   /** Current nodes (needed for position tracking) */
   nodes?: Node[];
   /** Direct setNodes for member node updates (bypasses React Flow drag tracking) */
@@ -625,37 +633,34 @@ function useNodeClickHandlers(
   editNode: (id: string | null) => void,
   editNetwork: (id: string | null) => void,
   closeContextMenu: () => void,
-  modeRef: React.RefObject<"view" | "edit">,
-  isLockedRef: React.RefObject<boolean>,
-  onLockedAction?: () => void
+  modeRef: React.RefObject<"view" | "edit">
 ) {
   const onNodeClick: NodeMouseHandler = useCallback(
     (_event, node) => {
       log.info(`[ReactFlowCanvas] Node clicked: ${node.id}`);
       closeContextMenu();
       if (isAnnotationNodeType(node.type)) return;
-      selectNode(node.id);
-      selectEdge(null);
+      // In edit mode, open editor directly (read-only when locked)
+      if (modeRef.current === "edit" && EDITABLE_NODE_TYPES.includes(node.type || "")) {
+        if (node.type === NODE_TYPE_NETWORK) {
+          editNetwork(node.id);
+        } else {
+          editNode(node.id);
+        }
+      } else {
+        selectNode(node.id);
+        selectEdge(null);
+      }
     },
-    [selectNode, selectEdge, closeContextMenu]
+    [selectNode, selectEdge, editNode, editNetwork, closeContextMenu, modeRef]
   );
 
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
-    (_event, node) => {
-      log.info(`[ReactFlowCanvas] Node double clicked: ${node.id}`);
-      if (modeRef.current === "edit" && EDITABLE_NODE_TYPES.includes(node.type || "")) {
-        if (isLockedRef.current) {
-          onLockedAction?.();
-          return;
-        }
-        if (node.type === NODE_TYPE_NETWORK) {
-          editNetwork(node.id);
-          return;
-        }
-        editNode(node.id);
-      }
+    (_event, _node) => {
+      // Node editing in edit mode is handled by single click.
+      // Annotation double-click (text/shape/group) is handled by the annotation wrapper.
     },
-    [editNetwork, editNode, onLockedAction, modeRef, isLockedRef]
+    []
   );
 
   return { onNodeClick, onNodeDoubleClick };
@@ -667,32 +672,28 @@ function useEdgeClickHandlers(
   selectEdge: (id: string | null) => void,
   editEdge: (id: string | null) => void,
   closeContextMenu: () => void,
-  modeRef: React.RefObject<"view" | "edit">,
-  isLockedRef: React.RefObject<boolean>,
-  onLockedAction?: () => void
+  modeRef: React.RefObject<"view" | "edit">
 ) {
   const onEdgeClick: EdgeMouseHandler = useCallback(
     (_event, edge) => {
       log.info(`[ReactFlowCanvas] Edge clicked: ${edge.id}`);
       closeContextMenu();
-      selectEdge(edge.id);
-      selectNode(null);
+      // In edit mode, open editor directly (read-only when locked)
+      if (modeRef.current === "edit") {
+        editEdge(edge.id);
+      } else {
+        selectEdge(edge.id);
+        selectNode(null);
+      }
     },
-    [selectNode, selectEdge, closeContextMenu]
+    [selectNode, selectEdge, editEdge, closeContextMenu, modeRef]
   );
 
   const onEdgeDoubleClick: EdgeMouseHandler = useCallback(
-    (_event, edge) => {
-      log.info(`[ReactFlowCanvas] Edge double clicked: ${edge.id}`);
-      if (modeRef.current === "edit") {
-        if (isLockedRef.current) {
-          onLockedAction?.();
-          return;
-        }
-        editEdge(edge.id);
-      }
+    (_event, _edge) => {
+      // Edge editing in edit mode is handled by single click.
     },
-    [editEdge, onLockedAction, modeRef, isLockedRef]
+    []
   );
 
   return { onEdgeClick, onEdgeDoubleClick };
@@ -702,11 +703,13 @@ function useEdgeClickHandlers(
 function usePaneClickHandler(
   selectNode: (id: string | null) => void,
   selectEdge: (id: string | null) => void,
+  editNode: (id: string | null) => void,
   closeContextMenu: () => void,
   reactFlowInstance: React.RefObject<ReactFlowInstance | null>,
   modeRef: React.RefObject<"view" | "edit">,
   isLockedRef: React.RefObject<boolean>,
-  onLockedAction?: () => void
+  onLockedAction?: () => void,
+  onPaneClickExtra?: () => void
 ) {
   return useCallback(
     (_event: React.MouseEvent) => {
@@ -715,12 +718,17 @@ function usePaneClickHandler(
 
       selectNode(null);
       selectEdge(null);
+      // Clear editing state so panel returns to palette
+      editNode(null);
+      onPaneClickExtra?.();
     },
     [
       selectNode,
       selectEdge,
+      editNode,
       closeContextMenu,
       onLockedAction,
+      onPaneClickExtra,
       reactFlowInstance,
       modeRef,
       isLockedRef
@@ -846,6 +854,8 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     isLocked,
     onNodesChangeBase,
     onLockedAction,
+    onPaneClickExtra,
+    shouldSuppressSelectionSync,
     nodes,
     setNodes,
     onEdgeCreated,
@@ -886,27 +896,25 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     editNode,
     editNetwork,
     closeContextMenu,
-    modeRef,
-    isLockedRef,
-    onLockedAction
+    modeRef
   );
   const { onEdgeClick, onEdgeDoubleClick } = useEdgeClickHandlers(
     selectNode,
     selectEdge,
     editEdge,
     closeContextMenu,
-    modeRef,
-    isLockedRef,
-    onLockedAction
+    modeRef
   );
   const onPaneClick = usePaneClickHandler(
     selectNode,
     selectEdge,
+    editNode,
     closeContextMenu,
     reactFlowInstance,
     modeRef,
     isLockedRef,
-    onLockedAction
+    onLockedAction,
+    onPaneClickExtra
   );
   const onConnect = useConnectionHandler(modeRef, isLockedRef, onLockedAction, onEdgeCreated);
 
@@ -939,7 +947,14 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
   );
 
   // Selection change handler (for box selection)
-  const onSelectionChange = useSelectionChangeHandler(selectNode, selectEdge);
+  const baseOnSelectionChange = useSelectionChangeHandler(selectNode, selectEdge);
+  const onSelectionChange: OnSelectionChangeFunc = useCallback(
+    (params) => {
+      if (shouldSuppressSelectionSync?.()) return;
+      baseOnSelectionChange(params);
+    },
+    [baseOnSelectionChange, shouldSuppressSelectionSync]
+  );
 
   return {
     reactFlowInstance,

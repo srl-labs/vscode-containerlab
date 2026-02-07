@@ -1,6 +1,4 @@
 /**
- * Shared editor panel components
+ * Shared editor components
  */
-export { BasePanel } from "./BasePanel";
-export { EditorPanel } from "./EditorPanel";
 export { TabNavigation, type TabDefinition } from "./TabNavigation";

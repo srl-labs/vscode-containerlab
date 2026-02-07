@@ -93,16 +93,12 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
 
   const editTextAnnotation = useCallback(
     (id: string) => {
-      if (!canEditAnnotations) {
-        onLockedAction();
-        return;
-      }
       const annotation = derived.textAnnotations.find((a) => a.id === id);
       if (annotation) {
         uiActions.setEditingTextAnnotation(annotation);
       }
     },
-    [canEditAnnotations, onLockedAction, derived.textAnnotations, uiActions]
+    [derived.textAnnotations, uiActions]
   );
 
   const persist = useCallback(() => {

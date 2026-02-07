@@ -19,9 +19,9 @@ import type {
   FreeTextRFNode,
   FreeShapeRFNode,
   GroupRFNode
-} from "../../../shared/types/graph";
-import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP, SELECTION_COLOR } from "../../../shared/types/graph";
-import type { GridStyle } from "../../hooks/ui";
+	} from "../../../shared/types/graph";
+	import { DEFAULT_ICON_COLOR, ROLE_SVG_MAP, SELECTION_COLOR } from "../../../shared/types/graph";
+	import type { GridStyle } from "../../hooks/ui/useAppState";
 
 /** Edge label rendering mode */
 export type EdgeLabelMode = "show-all" | "on-select" | "hide";
@@ -156,6 +156,8 @@ export interface ReactFlowCanvasProps {
   nodes?: TopoNode[];
   /** ReactFlow edges */
   edges?: TopoEdge[];
+  /** Whether the left ContextPanel (palette) is currently open */
+  isContextPanelOpen?: boolean;
   /** Current layout (used for geo layout transitions) */
   layout?: "preset" | "force" | "geo";
   /** Geo layout active */

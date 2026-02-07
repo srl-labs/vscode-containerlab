@@ -1,4 +1,4 @@
 /**
- * Free Text Editor Panel exports
+ * Free Text Editor exports
  */
-export { FreeTextEditorPanel } from "./FreeTextEditorPanel";
+export { FreeTextFormContent } from "./FreeTextFormContent";

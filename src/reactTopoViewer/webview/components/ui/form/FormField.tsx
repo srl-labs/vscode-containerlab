@@ -2,6 +2,11 @@
  * FormField - Label wrapper with optional tooltip and inheritance badge
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Tooltip from "@mui/material/Tooltip";
+import IconButton from "@mui/material/IconButton";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { InheritanceBadge } from "./Badge";
 
@@ -19,38 +24,39 @@ interface FormFieldProps {
 export const FormField: React.FC<FormFieldProps> = ({
   label,
   children,
-  className = "",
   unit,
   tooltip,
   required,
   inherited
 }) => (
-  <div className={`form-group ${className}`}>
-    <label className="block field-label mb-1">
-      {label}
-      {unit && <span className="ml-1 normal-case">({unit})</span>}
-      {required && <span className="text-[var(--vscode-editorError-foreground)] ml-0.5">*</span>}
+  <Box sx={{ mb: 1.5 }}>
+    <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+      <Typography
+        component="label"
+        variant="body2"
+        sx={{ fontWeight: 500, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: 0.5 }}
+      >
+        {label}
+        {unit && (
+          <Typography component="span" sx={{ ml: 0.5, textTransform: "none", fontWeight: 400 }}>
+            ({unit})
+          </Typography>
+        )}
+        {required && (
+          <Typography component="span" color="error" sx={{ ml: 0.5 }}>
+            *
+          </Typography>
+        )}
+      </Typography>
       {inherited && <InheritanceBadge />}
-      {tooltip && <TooltipIcon tooltip={tooltip} label={label} />}
-    </label>
+      {tooltip && (
+        <Tooltip title={tooltip} arrow placement="top">
+          <IconButton size="small" sx={{ ml: 0.5, p: 0.25 }}>
+            <InfoOutlinedIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
     {children}
-  </div>
-);
-
-/**
- * Tooltip icon with hover popup
- */
-const TooltipIcon: React.FC<{ tooltip: string; label: string }> = ({ tooltip, label }) => (
-  <span className="relative inline-flex items-center ml-1 group">
-    <button
-      type="button"
-      className="inline-flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-      aria-label={`${label} help`}
-    >
-      <i className="fas fa-info-circle text-xs" aria-hidden="true"></i>
-    </button>
-    <span className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-sm border border-[var(--vscode-editorHoverWidget-border)] bg-[var(--vscode-editorHoverWidget-background)] px-3 py-2 text-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-      {tooltip}
-    </span>
-  </span>
+  </Box>
 );

@@ -2,6 +2,13 @@
  * BasicTab - Basic settings tab for Lab Settings panel
  */
 import React from "react";
+import Box from "@mui/material/Box";
+import TextField from "@mui/material/TextField";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormHelperText from "@mui/material/FormHelperText";
 
 import type { PrefixType } from "./types";
 
@@ -25,50 +32,47 @@ export const BasicTab: React.FC<BasicTabProps> = ({
   onCustomPrefixChange
 }) => {
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       {/* Lab Name */}
-      <div className="form-group">
-        <label className="block field-label mb-1">Lab Name</label>
-        <input
-          type="text"
-          className="input-field w-full"
-          placeholder="Enter lab name"
-          value={labName}
-          onChange={(e) => onLabNameChange(e.target.value)}
-          disabled={isViewMode}
-        />
-        <small className="helper-text">
-          Unique name to identify and distinguish this topology from others
-        </small>
-      </div>
+      <TextField
+        label="Lab Name"
+        placeholder="Enter lab name"
+        value={labName}
+        onChange={(e) => onLabNameChange(e.target.value)}
+        disabled={isViewMode}
+        size="small"
+        fullWidth
+        helperText="Unique name to identify and distinguish this topology from others"
+      />
 
       {/* Prefix */}
-      <div className="form-group">
-        <label className="block field-label mb-1">Container Name Prefix</label>
-        <select
-          className="input-field w-full mb-2"
+      <FormControl size="small" fullWidth disabled={isViewMode}>
+        <InputLabel>Container Name Prefix</InputLabel>
+        <Select
           value={prefixType}
+          label="Container Name Prefix"
           onChange={(e) => onPrefixTypeChange(e.target.value as PrefixType)}
-          disabled={isViewMode}
         >
-          <option value="default">Default (clab)</option>
-          <option value="custom">Custom</option>
-          <option value="no-prefix">No prefix</option>
-        </select>
-        {prefixType === "custom" && (
-          <input
-            type="text"
-            className="input-field w-full"
-            placeholder="Enter custom prefix"
-            value={customPrefix}
-            onChange={(e) => onCustomPrefixChange(e.target.value)}
-            disabled={isViewMode}
-          />
-        )}
-        <small className="helper-text">
+          <MenuItem value="default">Default (clab)</MenuItem>
+          <MenuItem value="custom">Custom</MenuItem>
+          <MenuItem value="no-prefix">No prefix</MenuItem>
+        </Select>
+        <FormHelperText>
           Default: clab-&lt;lab-name&gt;-&lt;node-name&gt; | No prefix: &lt;node-name&gt;
-        </small>
-      </div>
-    </div>
+        </FormHelperText>
+      </FormControl>
+
+      {prefixType === "custom" && (
+        <TextField
+          label="Custom Prefix"
+          placeholder="Enter custom prefix"
+          value={customPrefix}
+          onChange={(e) => onCustomPrefixChange(e.target.value)}
+          disabled={isViewMode}
+          size="small"
+          fullWidth
+        />
+      )}
+    </Box>
   );
 };

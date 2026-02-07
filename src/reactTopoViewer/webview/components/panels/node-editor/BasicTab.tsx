@@ -6,8 +6,12 @@
  * - A custom node template: Custom Node Name, Base Name, Interface Pattern, Set as default + Kind/Type/Image/Version/Icon fields
  */
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import PaletteIcon from "@mui/icons-material/Palette";
 
-import { FormField, InputField, FilterableDropdown } from "../../ui/form";
+import { InputField, FilterableDropdown } from "../../ui/form";
 import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
@@ -59,13 +63,12 @@ function calcBorderRadius(cornerRadius: number | undefined, size: number): strin
  * Node Name field - shown only for regular nodes
  */
 const NodeNameField: React.FC<TabProps> = ({ data, onChange }) => (
-  <FormField label="Node Name">
-    <InputField
-      id="node-name"
-      value={data.name || ""}
-      onChange={(value) => onChange({ name: value })}
-    />
-  </FormField>
+  <InputField
+    id="node-name"
+    label="Node Name"
+    value={data.name || ""}
+    onChange={(value) => onChange({ name: value })}
+  />
 );
 
 /**
@@ -76,13 +79,7 @@ interface KindFieldProps extends TabProps {
   onKindChange: (kind: string) => void;
 }
 
-const KindField: React.FC<KindFieldProps> = ({
-  data,
-  onChange,
-  kinds,
-  onKindChange,
-  inheritedProps = []
-}) => {
+const KindField: React.FC<KindFieldProps> = ({ data, onChange, kinds, onKindChange }) => {
   const kindOptions = useMemo(() => kinds.map((kind) => ({ value: kind, label: kind })), [kinds]);
 
   const handleKindChange = useCallback(
@@ -94,16 +91,15 @@ const KindField: React.FC<KindFieldProps> = ({
   );
 
   return (
-    <FormField label="Kind" inherited={inheritedProps.includes("kind")}>
-      <FilterableDropdown
-        id="node-kind"
-        options={kindOptions}
-        value={data.kind || ""}
-        onChange={handleKindChange}
-        placeholder="Search or type kind..."
-        allowFreeText={true}
-      />
-    </FormField>
+    <FilterableDropdown
+      id="node-kind"
+      label="Kind"
+      options={kindOptions}
+      value={data.kind || ""}
+      onChange={handleKindChange}
+      placeholder="Search or type kind..."
+      allowFreeText={true}
+    />
   );
 };
 
@@ -114,30 +110,24 @@ interface TypeFieldProps extends TabProps {
   availableTypes: string[];
 }
 
-const TypeField: React.FC<TypeFieldProps> = ({
-  data,
-  onChange,
-  availableTypes,
-  inheritedProps = []
-}) => {
+const TypeField: React.FC<TypeFieldProps> = ({ data, onChange, availableTypes }) => {
   const typeOptions = useMemo(
     () => availableTypes.map((type) => ({ value: type, label: type })),
     [availableTypes]
   );
 
   return (
-    <FormField label="Type" inherited={inheritedProps.includes("type")}>
-      <FilterableDropdown
-        id="node-type"
-        options={typeOptions}
-        value={data.type || ""}
-        onChange={(value) => onChange({ type: value })}
-        placeholder={
-          availableTypes.length > 0 ? "Search or type..." : "Type value (no predefined types)"
-        }
-        allowFreeText={true}
-      />
-    </FormField>
+    <FilterableDropdown
+      id="node-type"
+      label="Type"
+      options={typeOptions}
+      value={data.type || ""}
+      onChange={(value) => onChange({ type: value })}
+      placeholder={
+        availableTypes.length > 0 ? "Search or type..." : "Type value (no predefined types)"
+      }
+      allowFreeText={true}
+    />
   );
 };
 
@@ -161,8 +151,7 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
   hasImages,
   getVersionsForImage,
   parseImageString,
-  combineImageVersion,
-  inheritedProps = []
+  combineImageVersion
 }) => {
   // Parse the current image into base and version
   const { base: currentBase, version: currentVersion } = useMemo(() => {
@@ -215,32 +204,28 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
     [currentBase, onChange, combineImageVersion]
   );
 
-  const isImageInherited = inheritedProps.includes("image");
-
   // If we have docker images, show dropdowns
   if (hasImages) {
     return (
       <>
-        <FormField label="Image" inherited={isImageInherited}>
-          <FilterableDropdown
-            id="node-image"
-            options={imageOptions}
-            value={currentBase}
-            onChange={handleBaseChange}
-            placeholder="Search for image..."
-            allowFreeText={true}
-          />
-        </FormField>
-        <FormField label="Version">
-          <FilterableDropdown
-            id="node-version"
-            options={versionOptions}
-            value={localVersion}
-            onChange={handleVersionChange}
-            placeholder="Select version..."
-            allowFreeText={true}
-          />
-        </FormField>
+        <FilterableDropdown
+          id="node-image"
+          label="Image"
+          options={imageOptions}
+          value={currentBase}
+          onChange={handleBaseChange}
+          placeholder="Search for image..."
+          allowFreeText={true}
+        />
+        <FilterableDropdown
+          id="node-version"
+          label="Version"
+          options={versionOptions}
+          value={localVersion}
+          onChange={handleVersionChange}
+          placeholder="Select version..."
+          allowFreeText={true}
+        />
       </>
     );
   }
@@ -248,22 +233,20 @@ const ImageVersionFields: React.FC<ImageVersionFieldsProps> = ({
   // Fallback to simple text inputs
   return (
     <>
-      <FormField label="Image" inherited={isImageInherited}>
-        <InputField
-          id="node-image"
-          value={currentBase}
-          onChange={handleBaseChange}
-          placeholder="e.g., ghcr.io/nokia/srlinux"
-        />
-      </FormField>
-      <FormField label="Version">
-        <InputField
-          id="node-version"
-          value={localVersion}
-          onChange={handleVersionChange}
-          placeholder="e.g., latest"
-        />
-      </FormField>
+      <InputField
+        id="node-image"
+        label="Image"
+        value={currentBase}
+        onChange={handleBaseChange}
+        placeholder="e.g., ghcr.io/nokia/srlinux"
+      />
+      <InputField
+        id="node-version"
+        label="Version"
+        value={localVersion}
+        onChange={handleVersionChange}
+        placeholder="e.g., latest"
+      />
     </>
   );
 };
@@ -320,52 +303,69 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
   // Render icon option with preview
   const renderOption = useCallback(
     (option: { value: string; label: string }) => (
-      <div className="flex items-center gap-2">
-        <img
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box
+          component="img"
           src={getIconSource(option.value, color)}
           alt={option.label}
-          className="h-6 w-6 rounded-sm"
-          style={{ borderRadius: calcBorderRadius(data.iconCornerRadius, 24) }}
+          sx={{
+            width: 24,
+            height: 24,
+            borderRadius: calcBorderRadius(data.iconCornerRadius, 24)
+          }}
         />
         <span>{option.label}</span>
-      </div>
+      </Box>
     ),
     [color, data.iconCornerRadius, getIconSource]
   );
 
   return (
     <>
-      <FormField label="Icon">
-        <div className="flex gap-2 items-start">
-          <img
+      <Box sx={{ display: "flex", gap: 1, alignItems: "stretch" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 40,
+            flexShrink: 0
+          }}
+        >
+          <Box
+            component="img"
             src={getIconSource(previewIcon, color)}
             alt="Icon preview"
-            className="h-9 w-9 rounded-sm"
-            style={{ borderRadius: calcBorderRadius(data.iconCornerRadius, 36) }}
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: calcBorderRadius(data.iconCornerRadius, 40)
+            }}
           />
-          <div className="flex-1">
-            <FilterableDropdown
-              id="node-icon"
-              options={allIconOptions}
-              value={icon}
-              onChange={(value) => onChange({ icon: value })}
-              placeholder="Select icon..."
-              allowFreeText={false}
-              renderOption={renderOption}
-              menuClassName="max-h-64"
-            />
-          </div>
-          <button
-            type="button"
-            className="btn btn-small whitespace-nowrap"
-            title="Customize icon color and shape"
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          <FilterableDropdown
+            id="node-icon"
+            label="Icon"
+            options={allIconOptions}
+            value={icon}
+            onChange={(value) => onChange({ icon: value })}
+            placeholder="Select icon..."
+            allowFreeText={false}
+            renderOption={renderOption}
+          />
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PaletteIcon />}
             onClick={() => setIsModalOpen(true)}
           >
-            <i className="fas fa-palette mr-1" />
             Edit
-          </button>
-        </div>
-      </FormField>
+          </Button>
+        </Box>
+      </Box>
 
       <IconSelectorModal
         isOpen={isModalOpen}
@@ -409,7 +409,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
   );
 
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {/* Show Node Name for regular nodes, Custom Template fields for custom node templates */}
       {data.isCustomTemplate ? (
         <CustomNodeTemplateFields data={data} onChange={onChange} />
@@ -437,7 +437,7 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
       )}
 
       {/* Image and Version in 2-column grid */}
-      <div className="grid grid-cols-2 gap-2">
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
         <ImageVersionFields
           data={data}
           onChange={onChange}
@@ -448,12 +448,16 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
           combineImageVersion={combineImageVersion}
           inheritedProps={inheritedProps}
         />
-      </div>
+      </Box>
 
       <IconField data={data} onChange={onChange} />
 
       {/* Show loading indicator if schema not yet loaded */}
-      {!isLoaded && <div className="helper-text opacity-60">Loading schema...</div>}
-    </div>
+      {!isLoaded && (
+        <Typography variant="caption" color="text.secondary">
+          Loading schema...
+        </Typography>
+      )}
+    </Box>
   );
 };

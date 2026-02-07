@@ -3,25 +3,35 @@
  * Supports markdown rendering in preview
  */
 import React, { useMemo } from "react";
+import {
+  FormatAlignCenter as FormatAlignCenterIcon,
+  FormatAlignLeft as FormatAlignLeftIcon,
+  FormatAlignRight as FormatAlignRightIcon,
+  FormatBold as FormatBoldIcon,
+  FormatItalic as FormatItalicIcon,
+  FormatUnderlined as FormatUnderlinedIcon
+} from "@mui/icons-material";
+import { Box, Divider, IconButton as MuiIconButton, InputAdornment, MenuItem, Select, TextField, Typography } from "@mui/material";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
 import { renderMarkdown } from "../../../utils/markdownRenderer";
-import { Toggle, ColorSwatch, PREVIEW_GRID_BG } from "../../ui/form";
+import { Toggle, ColorSwatch, PreviewSurface, DeleteActionButton } from "../../ui/form";
+
+// Helper functions to avoid duplicate calculations
+const isBackgroundTransparent = (bg: string | undefined): boolean => bg === "transparent";
+const isBackgroundRounded = (rounded: boolean | undefined): boolean => rounded !== false;
 
 const FONTS = [
   "monospace",
   "sans-serif",
   "serif",
   "Arial",
-  "Helvetica",
   "Courier New",
+  "Georgia",
+  "Helvetica",
   "Times New Roman",
-  "Georgia"
+  "Verdana"
 ];
-
-// Helper functions to avoid duplicate calculations
-const isBackgroundTransparent = (bg: string | undefined): boolean => bg === "transparent";
-const isBackgroundRounded = (rounded: boolean | undefined): boolean => rounded !== false;
 
 interface Props {
   formData: FreeTextAnnotation;
@@ -37,17 +47,19 @@ const IconBtn: React.FC<{
   children: React.ReactNode;
   title?: string;
 }> = ({ active, onClick, children, title }) => (
-  <button
+  <MuiIconButton
     title={title}
     onClick={onClick}
-    className={`w-8 h-8 flex items-center justify-center rounded-sm transition-all duration-150 ${
-      active
-        ? "bg-[var(--accent)] text-white shadow-sm"
-        : "text-[var(--vscode-foreground)] hover:bg-white/10"
-    }`}
+    size="small"
+    sx={{
+      borderRadius: 0.5,
+      color: active ? "primary.contrastText" : "text.primary",
+      bgcolor: active ? "primary.main" : "transparent",
+      "&:hover": { bgcolor: active ? "primary.dark" : "action.hover" }
+    }}
   >
     {children}
-  </button>
+  </MuiIconButton>
 );
 
 // Formatting toolbar
@@ -61,51 +73,60 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props["upda
   const align = formData.textAlign || "left";
 
   return (
-    <div className="flex items-center gap-0.5 p-1.5 bg-black/20 rounded-sm backdrop-blur-sm">
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.25,
+        p: 0.75,
+        bgcolor: "var(--vscode-input-background)",
+        borderRadius: 0.5
+      }}
+    >
       <IconBtn
         active={isBold}
         onClick={() => updateField("fontWeight", isBold ? "normal" : "bold")}
         title="Bold"
       >
-        <span className="font-bold text-sm">B</span>
+        <FormatBoldIcon fontSize="small" />
       </IconBtn>
       <IconBtn
         active={isItalic}
         onClick={() => updateField("fontStyle", isItalic ? "normal" : "italic")}
         title="Italic"
       >
-        <span className="italic text-sm">I</span>
+        <FormatItalicIcon fontSize="small" />
       </IconBtn>
       <IconBtn
         active={isUnderline}
         onClick={() => updateField("textDecoration", isUnderline ? "none" : "underline")}
         title="Underline"
       >
-        <span className="underline text-sm">U</span>
+        <FormatUnderlinedIcon fontSize="small" />
       </IconBtn>
-      <div className="w-px h-6 bg-white/10 mx-1.5" />
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.75 }} />
       <IconBtn
         active={align === "left"}
         onClick={() => updateField("textAlign", "left")}
         title="Align Left"
       >
-        <i className="fas fa-align-left text-xs" />
+        <FormatAlignLeftIcon fontSize="small" />
       </IconBtn>
       <IconBtn
         active={align === "center"}
         onClick={() => updateField("textAlign", "center")}
         title="Align Center"
       >
-        <i className="fas fa-align-center text-xs" />
+        <FormatAlignCenterIcon fontSize="small" />
       </IconBtn>
       <IconBtn
         active={align === "right"}
         onClick={() => updateField("textAlign", "right")}
         title="Align Right"
       >
-        <i className="fas fa-align-right text-xs" />
+        <FormatAlignRightIcon fontSize="small" />
       </IconBtn>
-    </div>
+    </Box>
   );
 };
 
@@ -114,36 +135,39 @@ const FontControls: React.FC<{
   formData: FreeTextAnnotation;
   updateField: Props["updateField"];
 }> = ({ formData, updateField }) => (
-  <div className="flex gap-2">
-    <select
-      className="flex-1 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs cursor-pointer hover:border-white/20 transition-colors"
+  <Box sx={{ display: "flex", gap: 1 }}>
+    <Select
+      size="small"
       value={formData.fontFamily || "monospace"}
       onChange={(e) => updateField("fontFamily", e.target.value)}
+      sx={{ flex: 1, fontSize: "0.75rem" }}
     >
       {FONTS.map((f) => (
-        <option
-          key={f}
-          value={f}
-          className="bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)]"
-        >
+        <MenuItem key={f} value={f} sx={{ fontSize: "0.75rem" }}>
           {f}
-        </option>
+        </MenuItem>
       ))}
-    </select>
-    <div className="relative">
-      <input
-        type="number"
-        className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs text-center hover:border-white/20 transition-colors"
-        value={formData.fontSize || 14}
-        onChange={(e) => updateField("fontSize", parseInt(e.target.value) || 14)}
-        min={1}
-        max={72}
-      />
-      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--vscode-descriptionForeground)] pointer-events-none">
-        px
-      </span>
-    </div>
-  </div>
+    </Select>
+    <TextField
+      type="number"
+      size="small"
+      value={formData.fontSize || 14}
+      onChange={(e) => updateField("fontSize", parseInt(e.target.value) || 14)}
+      slotProps={{
+        htmlInput: { min: 1, max: 72, style: { textAlign: "center" } },
+        input: {
+          endAdornment: (
+            <InputAdornment position="end">
+              <Typography variant="caption" color="text.secondary">
+                px
+              </Typography>
+            </InputAdornment>
+          )
+        }
+      }}
+      sx={{ width: 80, "& .MuiInputBase-input": { fontSize: "0.75rem" } }}
+    />
+  </Box>
 );
 
 // Style options (colors, toggles, rotation)
@@ -155,7 +179,7 @@ const StyleOptions: React.FC<{
   const isRounded = isBackgroundRounded(formData.roundedBackground);
 
   return (
-    <div className="flex items-start gap-4 flex-wrap">
+    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
       <ColorSwatch
         label="Text"
         value={formData.fontColor || "#FFFFFF"}
@@ -167,7 +191,7 @@ const StyleOptions: React.FC<{
         onChange={(v) => updateField("backgroundColor", v)}
         disabled={isTransparent}
       />
-      <div className="flex gap-2 pt-4">
+      <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
         <Toggle
           active={isTransparent}
           onClick={() => updateField("backgroundColor", isTransparent ? "#000000" : "transparent")}
@@ -177,19 +201,21 @@ const StyleOptions: React.FC<{
         <Toggle active={isRounded} onClick={() => updateField("roundedBackground", !isRounded)}>
           Rounded
         </Toggle>
-      </div>
-      <div className="flex flex-col gap-0.5 ml-auto">
-        <span className="field-label">Rotate</span>
-        <input
+      </Box>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, ml: "auto" }}>
+        <Typography variant="caption" color="text.secondary">
+          Rotate
+        </Typography>
+        <TextField
           type="number"
-          className="w-16 px-2 py-1.5 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] border border-white/10 rounded-sm text-xs text-center hover:border-white/20 transition-colors"
+          size="small"
           value={formData.rotation || 0}
           onChange={(e) => updateField("rotation", parseInt(e.target.value) || 0)}
-          min={-360}
-          max={360}
+          slotProps={{ htmlInput: { min: -360, max: 360, style: { textAlign: "center" } } }}
+          sx={{ width: 64, "& .MuiInputBase-input": { fontSize: "0.75rem", py: 0.75, px: 1 } }}
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
@@ -216,10 +242,14 @@ function computePreviewStyle(formData: FreeTextAnnotation): React.CSSProperties 
 
 // Preview header component
 const PreviewHeader: React.FC = () => (
-  <div className="flex items-center justify-between">
-    <span className="field-label">Preview</span>
-    <span className="helper-text">Markdown supported</span>
-  </div>
+  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <Typography variant="caption" color="text.secondary">
+      Preview
+    </Typography>
+    <Typography variant="caption" color="text.secondary">
+      Markdown supported
+    </Typography>
+  </Box>
 );
 
 // Live preview with markdown rendering
@@ -229,19 +259,18 @@ const Preview: React.FC<{ formData: FreeTextAnnotation }> = ({ formData }) => {
   const style = computePreviewStyle(formData);
 
   return (
-    <div className="flex flex-col gap-1">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
       <PreviewHeader />
-      <div className="relative p-6 bg-gradient-to-br from-black/30 to-black/10 rounded-sm border border-white/5 min-h-[80px] flex items-center justify-center overflow-hidden">
-        <div className={`absolute inset-0 ${PREVIEW_GRID_BG} opacity-50`} />
-        <div className="relative z-10 transition-all duration-200 free-text-markdown" style={style}>
+      <PreviewSurface>
+        <Box className="free-text-markdown" sx={{ position: "relative", zIndex: 10, transition: "all 200ms", ...style }}>
           {isEmpty ? (
-            <span className="opacity-50 italic">Start typing to see preview...</span>
+            <Box component="span" sx={{ opacity: 0.5, fontStyle: "italic" }}>Start typing to see preview...</Box>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+            <Box dangerouslySetInnerHTML={{ __html: renderedHtml }} />
           )}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </PreviewSurface>
+    </Box>
   );
 };
 
@@ -252,26 +281,23 @@ export const FreeTextFormContent: React.FC<Props> = ({
   isNew,
   onDelete
 }) => (
-  <div className="flex flex-col gap-4">
-    <textarea
-      className="w-full h-32 px-4 py-3 bg-[var(--vscode-input-background)] text-[var(--vscode-input-foreground)] placeholder-[var(--vscode-input-placeholderForeground)] border border-white/10 rounded-sm resize-y focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all"
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <TextField
+      multiline
+      minRows={5}
+      fullWidth
       value={formData.text}
       onChange={(e) => updateField("text", e.target.value)}
       placeholder="Enter your text... (Markdown and fenced code blocks supported)"
       autoFocus
+      sx={{ "& textarea": { resize: "vertical" } }}
     />
     <Toolbar formData={formData} updateField={updateField} />
     <FontControls formData={formData} updateField={updateField} />
     <StyleOptions formData={formData} updateField={updateField} />
     <Preview formData={formData} />
     {!isNew && onDelete && (
-      <button
-        className="self-start text-xs text-[var(--vscode-errorForeground)] opacity-60 hover:opacity-100 transition-opacity"
-        onClick={onDelete}
-      >
-        <i className="fas fa-trash-alt mr-1.5" />
-        Delete
-      </button>
+      <DeleteActionButton onClick={onDelete} />
     )}
-  </div>
+  </Box>
 );

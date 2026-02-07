@@ -1,22 +1,40 @@
 /**
  * Context menu item builders for ReactFlowCanvas
  */
-import type React from "react";
+import React from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
+import {
+  Add as AddIcon,
+  Article as ArticleIcon,
+  Category as CategoryIcon,
+  CircleOutlined as CircleOutlinedIcon,
+  Close as CloseIcon,
+  CropSquare as CropSquareIcon,
+  Dashboard as DashboardIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  FitScreen as FitScreenIcon,
+  Info as InfoIcon,
+  Lan as LanIcon,
+  Layers as LayersIcon,
+  Link as LinkIcon,
+  Remove as RemoveIcon,
+  Terminal as TerminalIcon,
+  TextFields as TextFieldsIcon,
+  Tune as TuneIcon
+} from "@mui/icons-material";
 
+import type { ContextMenuItem } from "../context-menu/ContextMenu";
+import { getViewportCenter } from "../../utils/viewportUtils";
+import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import {
   FREE_TEXT_NODE_TYPE,
   FREE_SHAPE_NODE_TYPE,
   GROUP_NODE_TYPE
 } from "../../annotations/annotationNodeConverters";
-import { sendCommandToExtension } from "../../messaging/extensionMessaging";
-import { getViewportCenter } from "../../utils/viewportUtils";
-import type { ContextMenuItem } from "../context-menu/ContextMenu";
 
 import type { ReactFlowCanvasProps } from "./types";
 
-const ICON_PEN = "fas fa-pen";
-const ICON_TRASH = "fas fa-trash";
 const DIVIDER_ID = "divider-1";
 
 interface MenuBuilderContext {
@@ -92,7 +110,7 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "edit-text",
       label: "Edit Text",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: isLocked,
       onClick: () => {
         editFreeText?.(targetId);
@@ -103,8 +121,9 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "delete-text",
       label: "Delete Text",
-      icon: ICON_TRASH,
+      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
       disabled: isLocked,
+      danger: true,
       onClick: () => {
         deleteFreeText?.(targetId);
         closeContextMenu();
@@ -123,7 +142,7 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "edit-shape",
       label: "Edit Shape",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: isLocked,
       onClick: () => {
         editFreeShape?.(targetId);
@@ -134,8 +153,9 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "delete-shape",
       label: "Delete Shape",
-      icon: ICON_TRASH,
+      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
       disabled: isLocked,
+      danger: true,
       onClick: () => {
         deleteFreeShape?.(targetId);
         closeContextMenu();
@@ -154,7 +174,7 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "edit-group",
       label: "Edit Group",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: isLocked,
       onClick: () => {
         editGroup?.(targetId);
@@ -165,8 +185,9 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "delete-group",
       label: "Delete Group",
-      icon: ICON_TRASH,
+      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
       disabled: isLocked,
+      danger: true,
       onClick: () => {
         deleteGroup?.(targetId);
         closeContextMenu();
@@ -181,7 +202,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "ssh-node",
       label: "SSH",
-      icon: "fas fa-terminal",
+      icon: React.createElement(TerminalIcon, { fontSize: "small" }),
       onClick: () => {
         sendCommandToExtension("clab-node-connect-ssh", { nodeName: targetId });
         closeContextMenu();
@@ -190,7 +211,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "shell-node",
       label: "Shell",
-      icon: "fas fa-terminal",
+      icon: React.createElement(TerminalIcon, { fontSize: "small" }),
       onClick: () => {
         sendCommandToExtension("clab-node-attach-shell", { nodeName: targetId });
         closeContextMenu();
@@ -199,7 +220,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "logs-node",
       label: "Logs",
-      icon: "fas fa-clipboard-list",
+      icon: React.createElement(ArticleIcon, { fontSize: "small" }),
       onClick: () => {
         sendCommandToExtension("clab-node-view-logs", { nodeName: targetId });
         closeContextMenu();
@@ -209,7 +230,7 @@ function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
     {
       id: "info-node",
       label: "Info",
-      icon: "fas fa-circle-info",
+      icon: React.createElement(InfoIcon, { fontSize: "small" }),
       onClick: () => {
         showNodeInfo?.(targetId);
         closeContextMenu();
@@ -263,7 +284,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     items.push({
       id: "cancel-link",
       label: "Cancel Link Creation",
-      icon: "fas fa-xmark",
+      icon: React.createElement(CloseIcon, { fontSize: "small" }),
       onClick: () => {
         cancelLinkCreation?.();
         closeContextMenu();
@@ -274,8 +295,10 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
 
   items.push({
     id: "edit-node",
-    label: isNetworkNode ? "Edit NetworkNode" : "Edit Node",
-    icon: isNetworkNode ? "fas fa-network-wired" : ICON_PEN,
+    label: isNetworkNode ? "Edit Network" : "Edit Node",
+    icon: isNetworkNode
+      ? React.createElement(LanIcon, { fontSize: "small" })
+      : React.createElement(EditIcon, { fontSize: "small" }),
     disabled: !isEditMode || isLocked,
     onClick: () => {
       if (isNetworkNode) {
@@ -293,7 +316,7 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     items.push({
       id: "create-link",
       label: "Create Link",
-      icon: "fas fa-link",
+      icon: React.createElement(LinkIcon, { fontSize: "small" }),
       disabled: !isEditMode || isLocked,
       onClick: () => {
         startLinkCreation?.(targetId);
@@ -306,8 +329,9 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
   items.push({
     id: "delete-node",
     label: "Delete Node",
-    icon: ICON_TRASH,
+    icon: React.createElement(DeleteIcon, { fontSize: "small" }),
     disabled: !isEditMode || isLocked,
+    danger: true,
     onClick: () => handleDeleteNode(targetId)
   });
 
@@ -330,8 +354,8 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
   } = ctx;
   const impairmentItem: ContextMenuItem = {
     id: "impair-edge",
-    label: "Link impairments",
-    icon: "fas fa-sliders",
+    label: "Link Impairments",
+    icon: React.createElement(TuneIcon, { fontSize: "small" }),
     onClick: () => {
       showLinkImpairment?.(targetId);
       closeContextMenu();
@@ -343,7 +367,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       {
         id: "info-edge",
         label: "Link Info",
-        icon: "fas fa-circle-info",
+        icon: React.createElement(InfoIcon, { fontSize: "small" }),
         onClick: () => {
           showLinkInfo?.(targetId);
           closeContextMenu();
@@ -358,7 +382,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     {
       id: "edit-edge",
       label: "Edit Link",
-      icon: ICON_PEN,
+      icon: React.createElement(EditIcon, { fontSize: "small" }),
       disabled: !isEditMode || isLocked,
       onClick: () => {
         editEdge(targetId);
@@ -370,8 +394,9 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     {
       id: "delete-edge",
       label: "Delete Link",
-      icon: ICON_TRASH,
+      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
       disabled: !isEditMode || isLocked,
+      danger: true,
       onClick: () => handleDeleteEdge(targetId)
     }
   ];
@@ -403,7 +428,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     {
       id: "add-node",
       label: "Add Node",
-      icon: "fas fa-plus",
+      icon: React.createElement(AddIcon, { fontSize: "small" }),
       disabled: !isEditMode || isLocked,
       onClick: () => {
         if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
@@ -416,7 +441,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     {
       id: "open-node-palette",
       label: "Open Palette",
-      icon: "fas fa-th",
+      icon: React.createElement(DashboardIcon, { fontSize: "small" }),
       disabled: !isEditMode || isLocked,
       onClick: () => {
         onOpenNodePalette?.();
@@ -432,7 +457,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     editorItems.push({
       id: "add-group",
       label: "Add Group",
-      icon: "fas fa-layer-group",
+      icon: React.createElement(LayersIcon, { fontSize: "small" }),
       disabled: isDisabled,
       onClick: () => {
         onAddGroup();
@@ -444,7 +469,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     editorItems.push({
       id: "add-text",
       label: "Add Text",
-      icon: "fas fa-font",
+      icon: React.createElement(TextFieldsIcon, { fontSize: "small" }),
       disabled: isDisabled,
       onClick: () => {
         const flowPosition = getFlowPosition();
@@ -470,13 +495,13 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     editorItems.push({
       id: "add-shape",
       label: "Add Shape",
-      icon: "fas fa-shapes",
+      icon: React.createElement(CategoryIcon, { fontSize: "small" }),
       disabled: isDisabled,
       children: [
         {
           id: "add-shape-rectangle",
           label: "Rectangle",
-          icon: "fas fa-square",
+          icon: React.createElement(CropSquareIcon, { fontSize: "small" }),
           disabled: isDisabled,
           onClick: () => {
             const flowPosition = getFlowPosition();
@@ -491,7 +516,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         {
           id: "add-shape-circle",
           label: "Circle",
-          icon: "fas fa-circle",
+          icon: React.createElement(CircleOutlinedIcon, { fontSize: "small" }),
           disabled: isDisabled,
           onClick: () => {
             const flowPosition = getFlowPosition();
@@ -506,7 +531,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         {
           id: "add-shape-line",
           label: "Line",
-          icon: "fas fa-minus",
+          icon: React.createElement(RemoveIcon, { fontSize: "small" }),
           disabled: isDisabled,
           onClick: () => {
             const flowPosition = getFlowPosition();
@@ -525,7 +550,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     editorItems.push({
       id: "bulk-link",
       label: "Bulk Link Devices",
-      icon: "fas fa-link",
+      icon: React.createElement(LinkIcon, { fontSize: "small" }),
       disabled: isDisabled,
       onClick: () => {
         onShowBulkLink();
@@ -543,7 +568,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     {
       id: "fit-view",
       label: "Fit View",
-      icon: "fas fa-expand",
+      icon: React.createElement(FitScreenIcon, { fontSize: "small" }),
       onClick: () => {
         reactFlowInstance.current?.fitView(FIT_VIEW_OPTIONS).catch(() => {
           /* ignore */
