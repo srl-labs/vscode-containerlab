@@ -1,6 +1,6 @@
 /**
- * Node Info Panel Component
- * Shows properties of a selected node with selectable/copyable values
+ * NodeInfoView - Node info content for the ContextPanel
+ * Extracts the display content from NodeInfoPanel without the FloatingPanel wrapper.
  */
 import React, { useCallback } from "react";
 import Box from "@mui/material/Box";
@@ -9,19 +9,12 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Tooltip from "@mui/material/Tooltip";
 
-import type { NodeData } from "../../hooks/ui";
+import type { NodeData } from "../../../../hooks/ui";
 
-import { FloatingPanel } from "./InfoFloatingPanel";
-
-interface NodeInfoPanelProps {
-  isVisible: boolean;
+export interface NodeInfoViewProps {
   nodeData: NodeData | null;
-  onClose: () => void;
 }
 
-/**
- * Extract a string property from extraData with fallback to top-level nodeData
- */
 function getNodeProperty(
   extraData: Record<string, unknown>,
   nodeData: NodeData,
@@ -31,12 +24,8 @@ function getNodeProperty(
   return (extraData[extraKey] as string) || (nodeData[topLevelKey] as string) || "";
 }
 
-/**
- * Extract display properties from node data
- */
 function extractNodeDisplayProps(nodeData: NodeData) {
   const extraData = (nodeData.extraData as Record<string, unknown>) || {};
-
   return {
     nodeName: nodeData.label || nodeData.name || nodeData.id || "Unknown",
     kind: getNodeProperty(extraData, nodeData, "kind", "kind"),
@@ -48,9 +37,6 @@ function extractNodeDisplayProps(nodeData: NodeData) {
   };
 }
 
-/**
- * Copyable value component with hover effect
- */
 const CopyableValue: React.FC<{ value: string; variant?: "body1" | "body2" | "h6"; mono?: boolean }> = ({
   value,
   variant = "body2",
@@ -92,9 +78,6 @@ const CopyableValue: React.FC<{ value: string; variant?: "body1" | "body2" | "h6
   );
 };
 
-/**
- * Property row with label and copyable value
- */
 const InfoRow: React.FC<{
   label: string;
   value: string;
@@ -109,23 +92,13 @@ const InfoRow: React.FC<{
   </Box>
 );
 
-/**
- * Get state indicator dot color
- */
 function getStateColor(state: string): "success" | "error" | "default" {
   const lowerState = state.toLowerCase();
-  if (lowerState === "running" || lowerState === "healthy") {
-    return "success";
-  }
-  if (lowerState === "stopped" || lowerState === "exited") {
-    return "error";
-  }
+  if (lowerState === "running" || lowerState === "healthy") return "success";
+  if (lowerState === "stopped" || lowerState === "exited") return "error";
   return "default";
 }
 
-/**
- * State badge with color coding
- */
 const StateBadge: React.FC<{ state: string }> = ({ state }) => {
   if (!state) {
     return (
@@ -134,77 +107,52 @@ const StateBadge: React.FC<{ state: string }> = ({ state }) => {
       </Typography>
     );
   }
-
-  return (
-    <Chip
-      label={state}
-      size="small"
-      color={getStateColor(state)}
-      variant="outlined"
-      sx={{ fontWeight: 500 }}
-    />
-  );
+  return <Chip label={state} size="small" color={getStateColor(state)} variant="outlined" sx={{ fontWeight: 500 }} />;
 };
 
-export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({ isVisible, nodeData, onClose }) => {
+export const NodeInfoView: React.FC<NodeInfoViewProps> = ({ nodeData }) => {
   if (!nodeData) return null;
 
-  const { nodeName, kind, state, image, mgmtIpv4, mgmtIpv6, fqdn } =
-    extractNodeDisplayProps(nodeData);
+  const { nodeName, kind, state, image, mgmtIpv4, mgmtIpv6, fqdn } = extractNodeDisplayProps(nodeData);
 
   return (
-    <FloatingPanel
-      title="Node Properties"
-      isVisible={isVisible}
-      onClose={onClose}
-      initialPosition={{ x: 20, y: 100 }}
-      width={340}
-      minWidth={280}
-      minHeight={200}
-    >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {/* Node Name - Hero section */}
-        <Box sx={{ pb: 2 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-            Name
-          </Typography>
-          <CopyableValue value={nodeName} variant="h6" />
-        </Box>
-
-        <Divider />
-
-        {/* Status row */}
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Kind
-            </Typography>
-            <CopyableValue value={kind} />
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
-              State
-            </Typography>
-            <Box sx={{ mt: 0.5 }}>
-              <StateBadge state={state} />
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Image */}
-        <InfoRow label="Image" value={image} fullWidth />
-
-        <Divider />
-
-        {/* Network section */}
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-          <InfoRow label="Mgmt IPv4" value={mgmtIpv4} mono />
-          <InfoRow label="Mgmt IPv6" value={mgmtIpv6} mono />
-        </Box>
-
-        {/* FQDN */}
-        <InfoRow label="FQDN" value={fqdn} fullWidth mono />
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Box sx={{ pb: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Name
+        </Typography>
+        <CopyableValue value={nodeName} variant="h6" />
       </Box>
-    </FloatingPanel>
+
+      <Divider />
+
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Kind
+          </Typography>
+          <CopyableValue value={kind} />
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            State
+          </Typography>
+          <Box sx={{ mt: 0.5 }}>
+            <StateBadge state={state} />
+          </Box>
+        </Box>
+      </Box>
+
+      <InfoRow label="Image" value={image} fullWidth />
+
+      <Divider />
+
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+        <InfoRow label="Mgmt IPv4" value={mgmtIpv4} mono />
+        <InfoRow label="Mgmt IPv6" value={mgmtIpv6} mono />
+      </Box>
+
+      <InfoRow label="FQDN" value={fqdn} fullWidth mono />
+    </Box>
   );
 };

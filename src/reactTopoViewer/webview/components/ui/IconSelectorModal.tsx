@@ -1,6 +1,6 @@
 /**
  * IconSelectorModal - Modal for selecting and customizing node icons
- * Built on top of BasePanel. Supports both built-in and custom icons.
+ * Uses MUI Dialog. Supports both built-in and custom icons.
  */
 import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import Box from "@mui/material/Box";
@@ -11,6 +11,10 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Slider from "@mui/material/Slider";
 import Button from "@mui/material/Button";
 import MuiIconButton from "@mui/material/IconButton";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 import CloseIcon from "@mui/icons-material/Close";
 
 import type { NodeType } from "../../icons/SvgGenerator";
@@ -19,8 +23,6 @@ import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
 import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
-
-import { BasePanel } from "./editor/BasePanel";
 
 const AVAILABLE_ICONS: NodeType[] = [
   "pe",
@@ -377,109 +379,114 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
   }, [icon, displayColor, currentCustomIcon]);
 
   return (
-    <BasePanel
-      title="Select Icon"
-      isVisible={isOpen}
-      onClose={onClose}
-      storageKey="icon-selector"
-      backdrop={true}
-      width={400}
-      onSecondaryClick={onClose}
-      onPrimaryClick={handleSave}
-      secondaryLabel="Cancel"
-      primaryLabel="Apply"
-    >
-      {/* Built-in Icons Grid */}
-      <Box sx={{ mb: 1.5 }}>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-          Built-in Icons
-        </Typography>
-        <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
-          {AVAILABLE_ICONS.map((i) => (
-            <IconButton
-              key={i}
-              icon={i}
-              isSelected={icon === i}
-              iconSrc={iconSources[i]}
-              cornerRadius={radius}
-              onClick={iconClickHandlers.current[i]}
-            />
-          ))}
-        </div>
-      </Box>
-
-      {/* Custom Icons Section */}
-      <Box sx={{ mb: 1.5 }}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            Custom Icons
+    <Dialog open={isOpen} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+        Select Icon
+        <MuiIconButton size="small" onClick={onClose}>
+          <CloseIcon fontSize="small" />
+        </MuiIconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        {/* Built-in Icons Grid */}
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+            Built-in Icons
           </Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleUploadIcon}
-            sx={{ textTransform: "none", fontSize: "0.7rem", py: 0, minHeight: 24 }}
-          >
-            + Add
-          </Button>
-        </Box>
-        {customIcons.length > 0 ? (
           <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
-            {customIcons.map((ci) => (
+            {AVAILABLE_ICONS.map((i) => (
               <IconButton
-                key={ci.name}
-                icon={ci.name}
-                isSelected={icon === ci.name}
-                iconSrc={ci.dataUri}
+                key={i}
+                icon={i}
+                isSelected={icon === i}
+                iconSrc={iconSources[i]}
                 cornerRadius={radius}
-                onClick={iconClickHandlers.current[ci.name]}
-                onDelete={() => handleDeleteIcon(ci.name)}
-                isCustom={true}
-                source={ci.source}
+                onClick={iconClickHandlers.current[i]}
               />
             ))}
           </div>
-        ) : (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              fontStyle: "italic",
-              p: 1,
-              textAlign: "center",
-              display: "block",
-              border: 1,
-              borderStyle: "dashed",
-              borderColor: "divider",
-              borderRadius: 0.5
-            }}
-          >
-            No custom icons. Click &quot;+ Add&quot; to upload.
-          </Typography>
-        )}
-      </Box>
+        </Box>
 
-      {/* Color, Radius, and Preview */}
-      <div className="grid grid-cols-[1fr_auto] gap-3">
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          {/* Only show color picker for built-in icons */}
-          {isBuiltInIcon(icon) ? (
-            <ColorPicker
-              color={color}
-              enabled={useColor}
-              onColorChange={setColor}
-              onToggle={setUseColor}
-            />
+        {/* Custom Icons Section */}
+        <Box sx={{ mb: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              Custom Icons
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleUploadIcon}
+              sx={{ textTransform: "none", fontSize: "0.7rem", py: 0, minHeight: 24 }}
+            >
+              + Add
+            </Button>
+          </Box>
+          {customIcons.length > 0 ? (
+            <div className="grid grid-cols-7 gap-1 rounded-sm border border-[var(--vscode-panel-border)] bg-[var(--vscode-input-background)] p-2">
+              {customIcons.map((ci) => (
+                <IconButton
+                  key={ci.name}
+                  icon={ci.name}
+                  isSelected={icon === ci.name}
+                  iconSrc={ci.dataUri}
+                  cornerRadius={radius}
+                  onClick={iconClickHandlers.current[ci.name]}
+                  onDelete={() => handleDeleteIcon(ci.name)}
+                  isCustom={true}
+                  source={ci.source}
+                />
+              ))}
+            </div>
           ) : (
-            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
-              Custom icons use their original colors
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                fontStyle: "italic",
+                p: 1,
+                textAlign: "center",
+                display: "block",
+                border: 1,
+                borderStyle: "dashed",
+                borderColor: "divider",
+                borderRadius: 0.5
+              }}
+            >
+              No custom icons. Click &quot;+ Add&quot; to upload.
             </Typography>
           )}
-          <RadiusSlider value={radius} onChange={setRadius} />
         </Box>
-        <PreviewCustom iconSrc={previewIconSrc} radius={radius} />
-      </div>
-    </BasePanel>
+
+        {/* Color, Radius, and Preview */}
+        <div className="grid grid-cols-[1fr_auto] gap-3">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {/* Only show color picker for built-in icons */}
+            {isBuiltInIcon(icon) ? (
+              <ColorPicker
+                color={color}
+                enabled={useColor}
+                onColorChange={setColor}
+                onToggle={setUseColor}
+              />
+            ) : (
+              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                Custom icons use their original colors
+              </Typography>
+            )}
+            <RadiusSlider value={radius} onChange={setRadius} />
+          </Box>
+          <PreviewCustom iconSrc={previewIconSrc} radius={radius} />
+        </div>
+      </DialogContent>
+      <DialogActions sx={{ px: 2, py: 1.5 }}>
+        <Button variant="outlined" size="small" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="contained" size="small" onClick={handleSave}>
+          Apply
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

@@ -1,22 +1,28 @@
 /**
- * Link Editor Panel - Multi-tab editor for link configuration
+ * LinkEditorView - Link editor content for the ContextPanel
  */
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Box from "@mui/material/Box";
 
-import type { TabDefinition } from "../../ui/editor";
-import { EditorPanel } from "../../ui/editor";
+import type { TabDefinition } from "../../../ui/editor";
+import { TabNavigation } from "../../../ui/editor/TabNavigation";
 
-import type { LinkEditorData, LinkEditorTabId } from "./types";
-import { BasicTab } from "./BasicTab";
-import { ExtendedTab, validateLinkEditorData } from "./ExtendedTab";
+import type { LinkEditorData, LinkEditorTabId } from "../../link-editor/types";
+import { BasicTab } from "../../link-editor/BasicTab";
+import { ExtendedTab, validateLinkEditorData } from "../../link-editor/ExtendedTab";
 
-interface LinkEditorPanelProps {
-  isVisible: boolean;
+export interface LinkEditorViewProps {
   linkData: LinkEditorData | null;
-  onClose: () => void;
   onSave: (data: LinkEditorData) => void;
   onApply: (data: LinkEditorData) => void;
   onAutoApplyOffset?: (data: LinkEditorData) => void;
+  onFooterRef?: (ref: LinkEditorFooterRef | null) => void;
+}
+
+export interface LinkEditorFooterRef {
+  handleApply: () => void;
+  handleSave: () => void;
+  hasChanges: boolean;
 }
 
 const ALL_TABS: TabDefinition[] = [
@@ -26,9 +32,6 @@ const ALL_TABS: TabDefinition[] = [
 
 const BASIC_ONLY_TABS: TabDefinition[] = [{ id: "basic", label: "Basic" }];
 
-/**
- * Custom hook to manage link editor form state with change tracking
- */
 function useLinkEditorForm(linkData: LinkEditorData | null) {
   const [activeTab, setActiveTab] = useState<LinkEditorTabId>("basic");
   const [formData, setFormData] = useState<LinkEditorData | null>(null);
@@ -49,9 +52,7 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
         const serialized = JSON.stringify(linkData);
         initialDataRef.current = serialized;
         setInitialData(serialized);
-        if (isNewLink) {
-          setActiveTab("basic");
-        }
+        if (isNewLink) setActiveTab("basic");
         return { ...linkData };
       }
       return prev;
@@ -62,11 +63,8 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
     setFormData((prev) => (prev ? { ...prev, ...updates } : null));
   }, []);
 
-  // Reset initial data after apply (to track further changes from the applied state)
-  // Also update the original values to the current values so subsequent saves work
   const resetAfterApply = useCallback(() => {
     if (formData) {
-      // Update original values to current values (the link in YAML now has these)
       const updatedFormData: LinkEditorData = {
         ...formData,
         originalSource: formData.source,
@@ -84,11 +82,7 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
       if (!prev) return prev;
       try {
         const parsed = JSON.parse(prev) as LinkEditorData;
-        const next = {
-          ...parsed,
-          endpointLabelOffset: offset,
-          endpointLabelOffsetEnabled: enabled
-        };
+        const next = { ...parsed, endpointLabelOffset: offset, endpointLabelOffsetEnabled: enabled };
         const serialized = JSON.stringify(next);
         initialDataRef.current = serialized;
         return serialized;
@@ -98,45 +92,13 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
     });
   }, []);
 
-  // Check if form has changes compared to initial state
   const hasChanges = formData && initialData ? JSON.stringify(formData) !== initialData : false;
 
-  return {
-    activeTab,
-    setActiveTab,
-    formData,
-    handleChange,
-    hasChanges,
-    resetAfterApply,
-    markOffsetApplied
-  };
+  return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, markOffsetApplied };
 }
 
-/**
- * Renders the active tab content
- */
-const TabContent: React.FC<{
-  activeTab: LinkEditorTabId;
-  formData: LinkEditorData;
-  onChange: (updates: Partial<LinkEditorData>) => void;
-  onAutoApplyOffset?: (data: LinkEditorData) => void;
-}> = ({ activeTab, formData, onChange, onAutoApplyOffset }) => {
-  switch (activeTab) {
-    case "basic":
-      return <BasicTab data={formData} onChange={onChange} onAutoApplyOffset={onAutoApplyOffset} />;
-    case "extended":
-      return <ExtendedTab data={formData} onChange={onChange} />;
-    default:
-      return null;
-  }
-};
-
-/**
- * Validation banner component
- */
 const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
   if (errors.length === 0) return null;
-
   return (
     <div
       className="mb-2 p-2 rounded-sm"
@@ -157,23 +119,15 @@ const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
   );
 };
 
-export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
-  isVisible,
+export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   linkData,
-  onClose,
   onSave,
   onApply,
-  onAutoApplyOffset
+  onAutoApplyOffset,
+  onFooterRef
 }) => {
-  const {
-    activeTab,
-    setActiveTab,
-    formData,
-    handleChange,
-    hasChanges,
-    resetAfterApply,
-    markOffsetApplied
-  } = useLinkEditorForm(linkData);
+  const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, markOffsetApplied } =
+    useLinkEditorForm(linkData);
 
   const validationErrors = useMemo(() => {
     if (!formData) return [];
@@ -183,14 +137,12 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
   const handleApply = useCallback(() => {
     if (formData && validationErrors.length === 0) {
       onApply(formData);
-      resetAfterApply(); // Reset tracking and update original values after apply
+      resetAfterApply();
     }
   }, [formData, validationErrors, onApply, resetAfterApply]);
 
   const handleSave = useCallback(() => {
-    if (formData && validationErrors.length === 0) {
-      onSave(formData);
-    }
+    if (formData && validationErrors.length === 0) onSave(formData);
   }, [formData, validationErrors, onSave]);
 
   const handleAutoApplyOffset = useCallback(
@@ -202,40 +154,33 @@ export const LinkEditorPanel: React.FC<LinkEditorPanelProps> = ({
     [onAutoApplyOffset, markOffsetApplied]
   );
 
+  useEffect(() => {
+    if (onFooterRef) {
+      onFooterRef(formData ? { handleApply, handleSave, hasChanges } : null);
+    }
+  }, [onFooterRef, formData, handleApply, handleSave, hasChanges]);
+
   if (!formData) return null;
 
-  const isNewLink = !linkData?.id || linkData.id.startsWith("temp-");
-  const title = isNewLink ? "Create Link" : "Link Editor";
-
-  // Only show Extended tab for veth links (both endpoints are regular nodes)
   const isVethLink = !formData.sourceIsNetwork && !formData.targetIsNetwork;
   const tabs = isVethLink ? ALL_TABS : BASIC_ONLY_TABS;
-
-  // Force basic tab if on extended tab but not a veth link
   const effectiveActiveTab = !isVethLink && activeTab === "extended" ? "basic" : activeTab;
 
   return (
-    <EditorPanel
-      title={title}
-      isVisible={isVisible}
-      onClose={onClose}
-      onApply={handleApply}
-      onSave={handleSave}
-      tabs={tabs}
-      activeTab={effectiveActiveTab}
-      onTabChange={(id) => setActiveTab(id as LinkEditorTabId)}
-      storageKey="link-editor"
-      width={400}
-      hasChanges={hasChanges}
-      testId="link-editor"
-    >
-      <ValidationBanner errors={validationErrors} />
-      <TabContent
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <TabNavigation
+        tabs={tabs}
         activeTab={effectiveActiveTab}
-        formData={formData}
-        onChange={handleChange}
-        onAutoApplyOffset={handleAutoApplyOffset}
+        onTabChange={(id) => setActiveTab(id as LinkEditorTabId)}
       />
-    </EditorPanel>
+      <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
+        <ValidationBanner errors={validationErrors} />
+        {effectiveActiveTab === "basic" ? (
+          <BasicTab data={formData} onChange={handleChange} onAutoApplyOffset={handleAutoApplyOffset} />
+        ) : (
+          <ExtendedTab data={formData} onChange={handleChange} />
+        )}
+      </Box>
+    </Box>
   );
 };

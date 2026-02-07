@@ -1,13 +1,14 @@
 /**
  * usePanelCommands - Hooks providing deployment callbacks and panel visibility management.
  *
- * Merged from usePanelVisibility.ts - manages panel visibility for shortcuts, about, find node, SVG export, lab settings, and bulk link.
+ * Simplified for the new UI model:
+ * - ContextPanel (left drawer) with auto-open on selection
+ * - MUI Dialogs for modals (LabSettings, Shortcuts, SvgExport, BulkLink, About)
+ * - MUI Popovers for Grid and Find (anchor-based)
  */
 import { useCallback, useState } from "react";
 
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
-
-import type { LabDrawerSection } from "../../components/panels/lab-drawer";
 
 export interface DeploymentCommands {
   onDeploy: () => void;
@@ -31,145 +32,97 @@ export function useDeploymentCommands(): DeploymentCommands {
 }
 
 // ============================================================================
-// Panel Visibility Management (merged from usePanelVisibility.ts)
+// Panel Visibility Management
 // ============================================================================
 
 export interface PanelVisibility {
-  showShortcutsPanel: boolean;
+  // Context panel (left drawer)
+  isContextPanelOpen: boolean;
+  handleOpenContextPanel: () => void;
+  handleCloseContextPanel: () => void;
+  handleToggleContextPanel: () => void;
+
+  // Modals
+  showLabSettingsModal: boolean;
+  showShortcutsModal: boolean;
+  showSvgExportModal: boolean;
+  showBulkLinkModal: boolean;
   showAboutPanel: boolean;
-  showFindNodePanel: boolean;
-  showSvgExportPanel: boolean;
-  showLabSettingsPanel: boolean;
-  showBulkLinkPanel: boolean;
-  showNodePalettePanel: boolean;
-  showSettingsDrawer: boolean;
-  settingsDrawerSection: LabDrawerSection;
-  handleShowShortcuts: () => void;
-  handleShowAbout: () => void;
-  handleShowFindNode: () => void;
-  handleShowSvgExport: () => void;
   handleShowLabSettings: () => void;
+  handleShowShortcuts: () => void;
+  handleShowSvgExport: () => void;
   handleShowBulkLink: () => void;
-  handleShowNodePalette: () => void;
-  handleCloseShortcuts: () => void;
-  handleCloseAbout: () => void;
-  handleCloseFindNode: () => void;
-  handleCloseSvgExport: () => void;
+  handleShowAbout: () => void;
   handleCloseLabSettings: () => void;
+  handleCloseShortcuts: () => void;
+  handleCloseSvgExport: () => void;
   handleCloseBulkLink: () => void;
-  handleCloseNodePalette: () => void;
-  handleOpenSettingsDrawer: (section: LabDrawerSection) => void;
-  handleCloseSettingsDrawer: () => void;
-  handleSetLabDrawerSection: (section: LabDrawerSection) => void;
+  handleCloseAbout: () => void;
+
+  // Popovers (anchor element based)
+  gridPopoverAnchor: HTMLElement | null;
+  findPopoverAnchor: HTMLElement | null;
+  handleOpenGridPopover: (anchor: HTMLElement) => void;
+  handleCloseGridPopover: () => void;
+  handleOpenFindPopover: (anchor: HTMLElement) => void;
+  handleCloseFindPopover: () => void;
 }
 
-/** Hook for info panels (shortcuts/about) with mutual exclusivity */
-function useInfoPanels() {
-  const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
+function useContextPanel() {
+  const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
+
+  return {
+    isContextPanelOpen,
+    handleOpenContextPanel: useCallback(() => setIsContextPanelOpen(true), []),
+    handleCloseContextPanel: useCallback(() => setIsContextPanelOpen(false), []),
+    handleToggleContextPanel: useCallback(() => setIsContextPanelOpen((prev) => !prev), [])
+  };
+}
+
+function useModals() {
+  const [showLabSettingsModal, setShowLabSettingsModal] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showSvgExportModal, setShowSvgExportModal] = useState(false);
+  const [showBulkLinkModal, setShowBulkLinkModal] = useState(false);
   const [showAboutPanel, setShowAboutPanel] = useState(false);
 
-  const handleShowShortcuts = useCallback(() => {
-    setShowAboutPanel(false);
-    setShowShortcutsPanel((prev) => !prev);
-  }, []);
-
-  const handleShowAbout = useCallback(() => {
-    setShowShortcutsPanel(false);
-    setShowAboutPanel((prev) => !prev);
-  }, []);
-
-  const handleCloseShortcuts = useCallback(() => setShowShortcutsPanel(false), []);
-  const handleCloseAbout = useCallback(() => setShowAboutPanel(false), []);
-
   return {
-    showShortcutsPanel,
+    showLabSettingsModal,
+    showShortcutsModal,
+    showSvgExportModal,
+    showBulkLinkModal,
     showAboutPanel,
-    handleShowShortcuts,
-    handleShowAbout,
-    handleCloseShortcuts,
-    handleCloseAbout
+    handleShowLabSettings: useCallback(() => setShowLabSettingsModal(true), []),
+    handleShowShortcuts: useCallback(() => setShowShortcutsModal(true), []),
+    handleShowSvgExport: useCallback(() => setShowSvgExportModal(true), []),
+    handleShowBulkLink: useCallback(() => setShowBulkLinkModal(true), []),
+    handleShowAbout: useCallback(() => setShowAboutPanel((prev) => !prev), []),
+    handleCloseLabSettings: useCallback(() => setShowLabSettingsModal(false), []),
+    handleCloseShortcuts: useCallback(() => setShowShortcutsModal(false), []),
+    handleCloseSvgExport: useCallback(() => setShowSvgExportModal(false), []),
+    handleCloseBulkLink: useCallback(() => setShowBulkLinkModal(false), []),
+    handleCloseAbout: useCallback(() => setShowAboutPanel(false), [])
   };
 }
 
-/** Hook for utility panels (find node, SVG export, lab settings) */
-function useUtilityPanels() {
-  const [showFindNodePanel, setShowFindNodePanel] = useState(false);
-  const [showSvgExportPanel, setShowSvgExportPanel] = useState(false);
-  const [showLabSettingsPanel, setShowLabSettingsPanel] = useState(false);
-
-  const handleShowFindNode = useCallback(() => setShowFindNodePanel((prev) => !prev), []);
-  const handleShowSvgExport = useCallback(() => setShowSvgExportPanel((prev) => !prev), []);
-  const handleShowLabSettings = useCallback(() => setShowLabSettingsPanel((prev) => !prev), []);
-
-  const handleCloseFindNode = useCallback(() => setShowFindNodePanel(false), []);
-  const handleCloseSvgExport = useCallback(() => setShowSvgExportPanel(false), []);
-  const handleCloseLabSettings = useCallback(() => setShowLabSettingsPanel(false), []);
+function usePopovers() {
+  const [gridPopoverAnchor, setGridPopoverAnchor] = useState<HTMLElement | null>(null);
+  const [findPopoverAnchor, setFindPopoverAnchor] = useState<HTMLElement | null>(null);
 
   return {
-    showFindNodePanel,
-    showSvgExportPanel,
-    showLabSettingsPanel,
-    handleShowFindNode,
-    handleShowSvgExport,
-    handleShowLabSettings,
-    handleCloseFindNode,
-    handleCloseSvgExport,
-    handleCloseLabSettings
-  };
-}
-
-function useEditorPanels() {
-  const [showBulkLinkPanel, setShowBulkLinkPanel] = useState(false);
-  const [showNodePalettePanel, setShowNodePalettePanel] = useState(false);
-
-  const handleShowBulkLink = useCallback(() => setShowBulkLinkPanel(true), []);
-  const handleCloseBulkLink = useCallback(() => setShowBulkLinkPanel(false), []);
-
-  const handleShowNodePalette = useCallback(() => setShowNodePalettePanel((prev) => !prev), []);
-  const handleCloseNodePalette = useCallback(() => setShowNodePalettePanel(false), []);
-
-  return {
-    showBulkLinkPanel,
-    handleShowBulkLink,
-    handleCloseBulkLink,
-    showNodePalettePanel,
-    handleShowNodePalette,
-    handleCloseNodePalette
-  };
-}
-
-function useSettingsDrawer() {
-  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
-  const [settingsDrawerSection, setLabDrawerSection] =
-    useState<LabDrawerSection>("labSettings");
-
-  const handleOpenSettingsDrawer = useCallback((section: LabDrawerSection) => {
-    setLabDrawerSection(section);
-    setShowSettingsDrawer(true);
-  }, []);
-
-  const handleCloseSettingsDrawer = useCallback(() => {
-    setShowSettingsDrawer(false);
-  }, []);
-
-  const handleSetLabDrawerSection = useCallback((section: LabDrawerSection) => {
-    setLabDrawerSection(section);
-  }, []);
-
-  return {
-    showSettingsDrawer,
-    settingsDrawerSection,
-    handleOpenSettingsDrawer,
-    handleCloseSettingsDrawer,
-    handleSetLabDrawerSection
+    gridPopoverAnchor,
+    findPopoverAnchor,
+    handleOpenGridPopover: useCallback((anchor: HTMLElement) => setGridPopoverAnchor(anchor), []),
+    handleCloseGridPopover: useCallback(() => setGridPopoverAnchor(null), []),
+    handleOpenFindPopover: useCallback((anchor: HTMLElement) => setFindPopoverAnchor(anchor), []),
+    handleCloseFindPopover: useCallback(() => setFindPopoverAnchor(null), [])
   };
 }
 
 export function usePanelVisibility(): PanelVisibility {
-  const info = useInfoPanels();
-  const utility = useUtilityPanels();
-  const editor = useEditorPanels();
-  const settingsDrawer = useSettingsDrawer();
+  const contextPanel = useContextPanel();
+  const modals = useModals();
+  const popovers = usePopovers();
 
-  return { ...info, ...utility, ...editor, ...settingsDrawer };
+  return { ...contextPanel, ...modals, ...popovers };
 }

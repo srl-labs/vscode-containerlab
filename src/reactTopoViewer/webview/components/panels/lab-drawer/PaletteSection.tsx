@@ -36,12 +36,16 @@ import InfoIcon from "@mui/icons-material/Info";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
 import CloudIcon from "@mui/icons-material/Cloud";
 
+import LockIcon from "@mui/icons-material/Lock";
+
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../../shared/types/graph";
 import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
 import { useCustomNodes, useTopoViewerStore } from "../../../stores/topoViewerStore";
 
 interface PaletteSectionProps {
+  mode?: "edit" | "view";
+  isLocked?: boolean;
   onEditCustomNode?: (nodeName: string) => void;
   onDeleteCustomNode?: (nodeName: string) => void;
   onSetDefaultCustomNode?: (nodeName: string) => void;
@@ -294,6 +298,8 @@ const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
 };
 
 export const PaletteSection: React.FC<PaletteSectionProps> = ({
+  mode = "edit",
+  isLocked = false,
   onEditCustomNode,
   onDeleteCustomNode,
   onSetDefaultCustomNode
@@ -301,7 +307,9 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const customNodes = useCustomNodes();
   const defaultNode = useTopoViewerStore((state) => state.defaultNode);
   const [filter, setFilter] = useState("");
-  const [activeTab, setActiveTab] = useState(0);
+  const isViewMode = mode === "view";
+  // In view mode, force annotations tab (nodes can't be added to deployed labs)
+  const [activeTab, setActiveTab] = useState(isViewMode ? 1 : 0);
 
   const filteredNodes = useMemo(() => {
     if (!filter) return customNodes;
@@ -328,23 +336,42 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
 
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Palette
-      </Typography>
+      {/* Lock banner */}
+      {isLocked && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 1.5,
+            py: 0.5,
+            mb: 1.5,
+            bgcolor: "action.hover",
+            borderRadius: 0.5,
+            border: 1,
+            borderColor: "divider"
+          }}
+        >
+          <LockIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+          <Typography variant="caption" color="text.secondary">
+            Unlock to drag items onto canvas
+          </Typography>
+        </Box>
+      )}
 
       {/* Tabs */}
       <Tabs
-        value={activeTab}
+        value={isViewMode ? 1 : activeTab}
         onChange={(_e, v) => setActiveTab(v)}
         sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
       >
-        <Tab label="Nodes" />
+        <Tab label="Nodes" disabled={isViewMode} />
         <Tab label="Annotations" />
       </Tabs>
 
-      {/* Nodes Tab */}
-      {activeTab === 0 && (
-        <Box>
+      {/* Nodes Tab (hidden in view mode) */}
+      {!isViewMode && activeTab === 0 && (
+        <Box sx={isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
           {/* Search */}
           <TextField
             fullWidth
@@ -428,8 +455,8 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
       )}
 
       {/* Annotations Tab */}
-      {activeTab === 1 && (
-        <Box>
+      {(isViewMode || activeTab === 1) && (
+        <Box sx={isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
           <Typography variant="subtitle2" sx={{ mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
             <TextFieldsIcon fontSize="small" />
             Text

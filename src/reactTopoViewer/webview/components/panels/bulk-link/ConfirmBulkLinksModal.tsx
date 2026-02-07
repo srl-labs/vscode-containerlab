@@ -5,8 +5,12 @@ import React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-
-import { BasePanel } from "../../ui/editor/BasePanel";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
 
 interface ConfirmBulkLinksModalProps {
   isOpen: boolean;
@@ -25,17 +29,14 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
   onCancel,
   onConfirm
 }) => (
-  <BasePanel
-    title="Bulk Link Creation"
-    isVisible={isOpen}
-    onClose={onCancel}
-    storageKey="bulk-link-confirm"
-    backdrop={true}
-    width={420}
-    zIndex={10000}
-    footer={false}
-  >
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+  <Dialog open={isOpen} onClose={onCancel} maxWidth="xs" fullWidth>
+    <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
+      Bulk Link Creation
+      <IconButton size="small" onClick={onCancel}>
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </DialogTitle>
+    <DialogContent dividers>
       <Box
         sx={{
           p: 1,
@@ -58,15 +59,14 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
           </Typography>
         </Box>
       </Box>
-
-      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-        <Button variant="outlined" size="small" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button variant="contained" size="small" onClick={onConfirm}>
-          Create Links
-        </Button>
-      </Box>
-    </Box>
-  </BasePanel>
+    </DialogContent>
+    <DialogActions sx={{ px: 2, py: 1.5 }}>
+      <Button variant="outlined" size="small" onClick={onCancel}>
+        Cancel
+      </Button>
+      <Button variant="contained" size="small" onClick={onConfirm}>
+        Create Links
+      </Button>
+    </DialogActions>
+  </Dialog>
 );

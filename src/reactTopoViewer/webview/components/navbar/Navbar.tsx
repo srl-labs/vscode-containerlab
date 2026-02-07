@@ -25,7 +25,6 @@ import StopIcon from "@mui/icons-material/Stop";
 import ReplayIcon from "@mui/icons-material/Replay";
 import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import AddIcon from "@mui/icons-material/Add";
 import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
 import FitScreenIcon from "@mui/icons-material/FitScreen";
@@ -50,28 +49,20 @@ import {
   useTopoViewerActions
 } from "../../stores/topoViewerStore";
 import { useDeploymentCommands } from "../../hooks/ui";
-import type { GridStyle, LayoutOption } from "../../hooks/ui";
+import type { LayoutOption } from "../../hooks/ui";
 
 import { ContainerlabLogo } from "./ContainerlabLogo";
 
 export interface NavbarProps {
   onZoomToFit?: () => void;
-  onToggleLayout?: () => void;
   layout: LayoutOption;
   onLayoutChange: (layout: LayoutOption) => void;
-  gridLineWidth: number;
-  onGridLineWidthChange: (width: number) => void;
-  gridStyle: GridStyle;
-  onGridStyleChange: (style: GridStyle) => void;
   onLabSettings?: () => void;
   onToggleSplit?: () => void;
-  onFindNode?: () => void;
+  onFindNode?: (anchor: HTMLElement) => void;
   onCaptureViewport?: () => void;
   onShowShortcuts?: () => void;
   onShowAbout?: () => void;
-  onOpenNodePalette?: () => void;
-  onLockedAction?: () => void;
-  lockShakeActive?: boolean;
   /** Toggle shortcut display props */
   shortcutDisplayEnabled?: boolean;
   onToggleShortcutDisplay?: () => void;
@@ -86,29 +77,21 @@ export interface NavbarProps {
   isPartyMode?: boolean;
   /** Easter egg logo click handler and state */
   onLogoClick?: () => void;
-  onShowGridSettings?: () => void;
+  onShowGridSettings?: (anchor: HTMLElement) => void;
   linkLabelMode: LinkLabelMode;
   onLinkLabelModeChange: (mode: LinkLabelMode) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onZoomToFit,
-  onToggleLayout: _onToggleLayout,
   layout,
   onLayoutChange,
-  gridLineWidth: _gridLineWidth,
-  onGridLineWidthChange: _onGridLineWidthChange,
-  gridStyle: _gridStyle,
-  onGridStyleChange: _onGridStyleChange,
   onLabSettings,
   onToggleSplit,
   onFindNode,
   onCaptureViewport,
   onShowShortcuts,
   onShowAbout,
-  onOpenNodePalette,
-  onLockedAction: _onLockedAction,
-  lockShakeActive: _lockShakeActive = false,
   shortcutDisplayEnabled = false,
   onToggleShortcutDisplay,
   canUndo = false,
@@ -213,12 +196,30 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   }, [isViewerMode, handleDestroy, handleDeploy]);
 
-  const handleLayoutToggle = React.useCallback(() => {
-    const layouts: LayoutOption[] = ["preset", "force", "geo"];
-    const currentIndex = layouts.indexOf(layout);
-    const nextIndex = (currentIndex + 1) % layouts.length;
-    onLayoutChange(layouts[nextIndex]);
-  }, [layout, onLayoutChange]);
+  const [layoutMenuPosition, setLayoutMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const layoutMenuOpen = Boolean(layoutMenuPosition);
+
+  const handleLayoutClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    const appBar = appBarRef.current;
+    const button = event.currentTarget;
+    if (appBar) {
+      const appBarRect = appBar.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      setLayoutMenuPosition({
+        top: appBarRect.bottom,
+        left: buttonRect.left + buttonRect.width / 2
+      });
+    }
+  }, []);
+
+  const handleLayoutClose = React.useCallback(() => {
+    setLayoutMenuPosition(null);
+  }, []);
+
+  const handleLayoutSelect = React.useCallback((newLayout: LayoutOption) => {
+    onLayoutChange(newLayout);
+    setLayoutMenuPosition(null);
+  }, [onLayoutChange]);
 
   return (
     <AppBar ref={appBarRef} position="static" elevation={0} sx={{ bgcolor: "var(--vscode-editor-background)" }}>
@@ -321,15 +322,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           ]}
         </Menu>
 
-        {/* Palette */}
-        {isEditMode && (
-          <Tooltip title="Open Palette">
-            <IconButton size="small" onClick={onOpenNodePalette}>
-              <AddIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-
         {/* Undo - only show in edit mode */}
         {isEditMode && (
           <Tooltip title="Undo (Ctrl+Z)">
@@ -369,22 +361,48 @@ export const Navbar: React.FC<NavbarProps> = ({
         </Tooltip>
 
         {/* Layout Manager */}
-        <Tooltip title={`Layout: ${layout}`}>
-          <IconButton size="small" onClick={handleLayoutToggle}>
+        <Tooltip title="Layout">
+          <IconButton size="small" onClick={handleLayoutClick}>
             <AccountTreeIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        <Menu
+          open={layoutMenuOpen}
+          onClose={handleLayoutClose}
+          anchorReference="anchorPosition"
+          anchorPosition={layoutMenuPosition ?? undefined}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <MenuItem onClick={() => handleLayoutSelect("preset")}>
+            <ListItemIcon>
+              {layout === "preset" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>Preset</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleLayoutSelect("force")}>
+            <ListItemIcon>
+              {layout === "force" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>Force</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleLayoutSelect("geo")}>
+            <ListItemIcon>
+              {layout === "geo" && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText>Geo</ListItemText>
+          </MenuItem>
+        </Menu>
 
         {/* Grid line width */}
         <Tooltip title="Grid Settings">
-          <IconButton size="small" onClick={onShowGridSettings}>
+          <IconButton size="small" onClick={(e) => onShowGridSettings?.(e.currentTarget)}>
             <GridOnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Find Node */}
         <Tooltip title="Find Node">
-          <IconButton size="small" onClick={onFindNode}>
+          <IconButton size="small" onClick={(e) => onFindNode?.(e.currentTarget)}>
             <SearchIcon fontSize="small" />
           </IconButton>
         </Tooltip>

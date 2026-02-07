@@ -13,13 +13,15 @@ export {
 export type { DeploymentCommands, PanelVisibility } from "./usePanelCommands";
 
 // ============================================================================
-// Panel Visibility & Drag
+// Context Panel Content
 // ============================================================================
-export {
-  usePanelDrag,
-  useShakeAnimation
-} from "./usePanelDrag";
-export type { Position, UsePanelDragOptions, UsePanelDragReturn } from "./usePanelDrag";
+export { useContextPanelContent } from "./useContextPanelContent";
+export type { PanelView, PanelViewKind } from "./useContextPanelContent";
+
+// ============================================================================
+// Shake Animation
+// ============================================================================
+export { useShakeAnimation } from "./useShakeAnimation";
 
 // ============================================================================
 // Keyboard & Shortcuts

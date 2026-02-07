@@ -37,21 +37,6 @@ async function copyFonts() {
   const fontDir = path.join(__dirname, "dist/webfonts");
   await fs.promises.mkdir(fontDir, { recursive: true });
 
-  const fontSources = [
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2",
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-brands-400.woff2",
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-regular-400.woff2",
-    "node_modules/@fortawesome/fontawesome-free/webfonts/fa-v4compatibility.woff2"
-  ];
-
-  for (const src of fontSources) {
-    const srcPath = path.join(__dirname, src);
-    const destPath = path.join(fontDir, path.basename(src));
-    if (fs.existsSync(srcPath)) {
-      await fs.promises.copyFile(srcPath, destPath);
-    }
-  }
-
   // Copy wireshark SVG
   const wiresharkSrc = path.join(
     __dirname,
@@ -82,13 +67,7 @@ async function buildCss() {
   const cssPath = path.join(__dirname, "dist/reactTopoViewerStyles.css");
   let css = await fs.promises.readFile(cssPath, "utf8");
 
-  // Replace all node_modules font paths with relative webfonts/ paths
-  css = css.replace(
-    /url\([^)]*node_modules\/@fortawesome\/fontawesome-free\/webfonts\/([^)]+)\)/g,
-    "url(webfonts/$1)"
-  );
-
-  // Also handle maplibre-gl font references if any
+  // Handle maplibre-gl font references if any
   css = css.replace(
     /url\([^)]*node_modules\/maplibre-gl\/[^)]*\/([^/)]+\.(woff2?|ttf|eot))\)/g,
     "url(webfonts/$1)"
