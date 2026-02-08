@@ -83,6 +83,12 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
   const maplibreWorkerUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "dist", "maplibre-gl-csp-worker.js")
   );
+  const monacoEditorWorkerUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, "dist", "monaco-editor-worker.js")
+  );
+  const monacoJsonWorkerUri = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, "dist", "monaco-json-worker.js")
+  );
 
   // Get schema URI for kind/type dropdowns
   const schemaUri = webview
@@ -112,6 +118,8 @@ export function generateWebviewHtml(data: WebviewHtmlData): string {
     window.__INITIAL_DATA__ = ${initialDataJson};
     window.schemaUrl = "${schemaUri}";
     window.maplibreWorkerUrl = "${maplibreWorkerUri.toString()}";
+    window.monacoEditorWorkerUrl = "${monacoEditorWorkerUri.toString()}";
+    window.monacoJsonWorkerUrl = "${monacoJsonWorkerUri.toString()}";
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

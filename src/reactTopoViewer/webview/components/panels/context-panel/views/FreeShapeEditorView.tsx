@@ -6,7 +6,7 @@ import React from "react";
 import type { FreeShapeAnnotation } from "../../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
 import { normalizeShapeAnnotationColors } from "../../../../utils/color";
-import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
+import { EditorFieldset } from "../ContextPanelScrollArea";
 import { FreeShapeFormContent } from "../../free-shape-editor/FreeShapeFormContent";
 
 export interface FreeShapeEditorViewProps {
@@ -51,23 +51,15 @@ export const FreeShapeEditorView: React.FC<FreeShapeEditorViewProps> = ({
   if (!formData) return null;
 
   const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
-  const fieldsetStyle: React.CSSProperties = {
-    border: 0,
-    margin: 0,
-    padding: 0,
-    minInlineSize: 0
-  };
 
   return (
-    <ContextPanelScrollArea>
-      <fieldset disabled={readOnly} style={fieldsetStyle}>
-        <FreeShapeFormContent
-          formData={formData}
-          updateField={effectiveUpdateField}
-          isNew={isNew}
-          onDelete={!readOnly && onDelete ? handleDelete : undefined}
-        />
-      </fieldset>
-    </ContextPanelScrollArea>
+    <EditorFieldset readOnly={readOnly}>
+      <FreeShapeFormContent
+        formData={formData}
+        updateField={effectiveUpdateField}
+        isNew={isNew}
+        onDelete={!readOnly && onDelete ? handleDelete : undefined}
+      />
+    </EditorFieldset>
   );
 };

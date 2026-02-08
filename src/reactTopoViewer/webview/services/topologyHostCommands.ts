@@ -39,6 +39,15 @@ async function handleHostResponse(
     });
   };
 
+  const syncSource = (snapshot: TopologySnapshot) => {
+    useTopoViewerStore.getState().setInitialData({
+      yamlFileName: snapshot.yamlFileName,
+      annotationsFileName: snapshot.annotationsFileName,
+      yamlContent: snapshot.yamlContent,
+      annotationsContent: snapshot.annotationsContent
+    });
+  };
+
   const applySnapshotAndNotify = (snapshot: TopologySnapshot) => {
     applySnapshotToStores(snapshot);
     notifyDevHostUpdate();
@@ -48,6 +57,8 @@ async function handleHostResponse(
     setHostRevision(revision);
     if (snapshot) {
       syncUndoRedo(snapshot);
+      // Even when applySnapshot=false (quiet updates), keep source editors in sync.
+      syncSource(snapshot);
     }
     notifyDevHostUpdate();
   };

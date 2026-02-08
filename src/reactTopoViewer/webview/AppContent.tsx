@@ -47,7 +47,6 @@ import {
   useCustomNodeCommands,
   useGraphCreation,
   useIconReconciliation,
-  useNavbarCommands,
   useUndoRedoControls
 } from "./hooks/app";
 import {
@@ -283,7 +282,7 @@ export const AppContent: React.FC<AppContentProps> = ({
     state.endpointLabelOffsetEnabled
   ]);
 
-  const navbarCommands = useNavbarCommands();
+  const [paletteTabRequest, setPaletteTabRequest] = React.useState<{ tab: number } | undefined>(undefined);
   const customNodeCommands = useCustomNodeCommands(
     state.customNodes,
     topoActions.editCustomTemplate
@@ -666,7 +665,10 @@ export const AppContent: React.FC<AppContentProps> = ({
           layout={layoutControls.layout}
           onLayoutChange={layoutControls.setLayout}
           onLabSettings={panelVisibility.handleShowLabSettings}
-          onToggleSplit={navbarCommands.onToggleSplit}
+          onToggleSplit={() => {
+            panelVisibility.handleOpenContextPanel("manual");
+            setPaletteTabRequest({ tab: 2 });
+          }}
           onFindNode={panelVisibility.handleOpenFindPopover}
           onCaptureViewport={panelVisibility.handleShowSvgExport}
           onShowShortcuts={panelVisibility.handleShowShortcuts}
@@ -693,6 +695,8 @@ export const AppContent: React.FC<AppContentProps> = ({
             rfInstance={rfInstance}
             palette={{
               mode: state.mode,
+              requestedTab: paletteTabRequest,
+
               onEditCustomNode: customNodeCommands.onEditCustomNode,
               onDeleteCustomNode: customNodeCommands.onDeleteCustomNode,
               onSetDefaultCustomNode: customNodeCommands.onSetDefaultCustomNode

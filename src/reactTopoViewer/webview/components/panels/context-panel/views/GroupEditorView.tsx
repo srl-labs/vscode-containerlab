@@ -6,7 +6,7 @@ import React, { useCallback } from "react";
 import type { GroupStyleAnnotation } from "../../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../../hooks/canvas";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
-import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
+import { EditorFieldset } from "../ContextPanelScrollArea";
 import { GroupFormContent } from "../../group-editor/GroupFormContent";
 
 export interface GroupEditorViewProps {
@@ -57,6 +57,8 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
     [setFormData, onStyleChange, readOnly]
   );
 
+  const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
+
   const { handleDelete } = useEditorHandlersWithFooterRef({
     formData,
     onSave,
@@ -69,24 +71,14 @@ export const GroupEditorView: React.FC<GroupEditorViewProps> = ({
 
   if (!formData) return null;
 
-  const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
-  const fieldsetStyle: React.CSSProperties = {
-    border: 0,
-    margin: 0,
-    padding: 0,
-    minInlineSize: 0
-  };
-
   return (
-    <ContextPanelScrollArea>
-      <fieldset disabled={readOnly} style={fieldsetStyle}>
-        <GroupFormContent
-          formData={formData}
-          updateField={effectiveUpdateField}
-          updateStyle={updateStyle}
-          onDelete={!readOnly && onDelete ? handleDelete : undefined}
-        />
-      </fieldset>
-    </ContextPanelScrollArea>
+    <EditorFieldset readOnly={readOnly}>
+      <GroupFormContent
+        formData={formData}
+        updateField={effectiveUpdateField}
+        updateStyle={updateStyle}
+        onDelete={!readOnly && onDelete ? handleDelete : undefined}
+      />
+    </EditorFieldset>
   );
 };

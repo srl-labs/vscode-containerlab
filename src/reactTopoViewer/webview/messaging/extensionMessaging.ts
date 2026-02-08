@@ -9,7 +9,7 @@ import { log } from "../utils/logger";
 
 declare global {
   interface Window {
-    vscode?: { postMessage(data: unknown): void };
+    vscode?: { postMessage(data: unknown): void; __isDevMock__?: boolean };
   }
 }
 

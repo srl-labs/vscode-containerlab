@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon } from "@mui/icons-material";
+import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon } from "@mui/icons-material";
 import { Box, Button, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 
 import { useIsLocked } from "../../../stores/topoViewerStore";
@@ -37,7 +37,9 @@ import {
   GroupEditorView
 } from "./views";
 
-const DRAWER_WIDTH = 400;
+const MIN_WIDTH = 400;
+const MAX_WIDTH = 500;
+const TEXT_SECONDARY = "text.secondary";
 
 /** Generic footer ref shape - all editor views expose the same interface */
 interface FooterRef {
@@ -49,6 +51,7 @@ interface FooterRef {
 // ─── Palette props ───
 export interface ContextPanelPaletteProps {
   mode?: "edit" | "view";
+  requestedTab?: { tab: number };
   onEditCustomNode: (name: string) => void;
   onDeleteCustomNode: (name: string) => void;
   onSetDefaultCustomNode: (name: string) => void;
@@ -122,6 +125,157 @@ export interface ContextPanelEditorProps {
   };
 }
 
+function renderContextPanelContent(
+  kind: string,
+  palette: ContextPanelPaletteProps,
+  view: ContextPanelViewProps,
+  editor: ContextPanelEditorProps,
+  isLocked: boolean,
+  isReadOnly: boolean,
+  setFooterRef: (ref: FooterRef | null) => void
+): React.ReactElement {
+  switch (kind) {
+    case "palette":
+      return <PaletteView {...palette} isLocked={isLocked} />;
+    case "nodeInfo":
+      return <NodeInfoView nodeData={view.selectedNodeData} />;
+    case "linkInfo":
+      return <LinkInfoView linkData={view.selectedLinkData} />;
+    case "nodeEditor":
+      return (
+        <NodeEditorView
+          nodeData={editor.editingNodeData}
+          onSave={editor.nodeEditorHandlers.handleSave}
+          onApply={editor.nodeEditorHandlers.handleApply}
+          inheritedProps={editor.editingNodeInheritedProps}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "customTemplateEditor":
+      return (
+        <NodeEditorView
+          nodeData={editor.customTemplateEditorData}
+          onSave={editor.customTemplateHandlers.handleSave}
+          onApply={editor.customTemplateHandlers.handleApply}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "linkEditor":
+      return (
+        <LinkEditorView
+          linkData={editor.editingLinkData}
+          onSave={editor.linkEditorHandlers.handleSave}
+          onApply={editor.linkEditorHandlers.handleApply}
+          onAutoApplyOffset={editor.linkEditorHandlers.handleAutoApplyOffset}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "networkEditor":
+      return (
+        <NetworkEditorView
+          nodeData={editor.editingNetworkData}
+          onSave={editor.networkEditorHandlers.handleSave}
+          onApply={editor.networkEditorHandlers.handleApply}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "linkImpairment":
+      return (
+        <LinkImpairmentView
+          linkData={editor.linkImpairmentData}
+          onError={editor.linkImpairmentHandlers.onError}
+          onSave={editor.linkImpairmentHandlers.onSave}
+          onApply={editor.linkImpairmentHandlers.onApply}
+          onClose={editor.linkImpairmentHandlers.onClose}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "freeTextEditor":
+      return (
+        <FreeTextEditorView
+          annotation={editor.editingTextAnnotation}
+          onSave={editor.textAnnotationHandlers.onSave}
+          onClose={editor.textAnnotationHandlers.onClose}
+          onDelete={editor.textAnnotationHandlers.onDelete}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "freeShapeEditor":
+      return (
+        <FreeShapeEditorView
+          annotation={editor.editingShapeAnnotation}
+          onSave={editor.shapeAnnotationHandlers.onSave}
+          onClose={editor.shapeAnnotationHandlers.onClose}
+          onDelete={editor.shapeAnnotationHandlers.onDelete}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    case "groupEditor":
+      return (
+        <GroupEditorView
+          groupData={editor.editingGroup}
+          onSave={editor.groupHandlers.onSave}
+          onClose={editor.groupHandlers.onClose}
+          onDelete={editor.groupHandlers.onDelete}
+          onStyleChange={editor.groupHandlers.onStyleChange}
+          onFooterRef={setFooterRef}
+          readOnly={isReadOnly}
+        />
+      );
+    default:
+      return <PaletteView {...palette} isLocked={isLocked} />;
+  }
+}
+
+/** Toggle handle shown on the side of the panel — extracted to reduce component complexity. */
+const ToggleHandle: React.FC<{
+  isOpen: boolean;
+  panelWidth: number;
+  isDragging: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onBack: () => void;
+}> = ({ isOpen, panelWidth, isDragging, onOpen, onClose, onBack }) => (
+  <Tooltip title={isOpen ? "Close panel" : "Open panel"} placement="right">
+    <Box
+      onClick={isOpen ? () => { onBack(); onClose(); } : onOpen}
+      sx={{
+        position: "absolute",
+        left: isOpen ? panelWidth : 0,
+        top: "50%",
+        transform: "translateY(-50%)",
+        transition: isDragging ? "none" : "left 0.25s ease",
+        zIndex: 15,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 20,
+        height: 48,
+        cursor: "pointer",
+        borderRadius: "0 4px 4px 0",
+        border: 1,
+        borderLeft: 0,
+        borderColor: "divider",
+        bgcolor: "var(--vscode-editor-background)",
+        opacity: 0.8,
+        "&:hover": { opacity: 1, bgcolor: "action.hover" }
+      }}
+    >
+      {isOpen
+        ? <ChevronLeftIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
+        : <ChevronRightIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
+      }
+    </Box>
+  </Tooltip>
+);
+
 export interface ContextPanelProps {
   isOpen: boolean;
   onOpen: () => void;
@@ -146,6 +300,9 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const isLocked = useIsLocked();
   const isReadOnly = isLocked && panelView.hasFooter;
   const footerRef = useRef<FooterRef | null>(null);
+  const [panelWidth, setPanelWidth] = useState(MIN_WIDTH);
+  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
   const [, forceUpdate] = useState(0);
 
   const setFooterRef = useCallback((ref: FooterRef | null) => {
@@ -153,161 +310,56 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     forceUpdate((n) => n + 1);
   }, []);
 
-  const showBackButton = panelView.kind !== "palette";
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, ev.clientX)));
+    };
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      setIsDragging(false);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, []);
 
-  const renderContent = (): React.ReactElement => {
-    switch (panelView.kind) {
-      case "palette":
-        return <PaletteView {...palette} isLocked={isLocked} />;
-      case "nodeInfo":
-        return <NodeInfoView nodeData={view.selectedNodeData} />;
-      case "linkInfo":
-        return <LinkInfoView linkData={view.selectedLinkData} />;
-      case "nodeEditor":
-        return (
-          <NodeEditorView
-            nodeData={editor.editingNodeData}
-            onSave={editor.nodeEditorHandlers.handleSave}
-            onApply={editor.nodeEditorHandlers.handleApply}
-            inheritedProps={editor.editingNodeInheritedProps}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      case "customTemplateEditor":
-        return (
-          <NodeEditorView
-            nodeData={editor.customTemplateEditorData}
-            onSave={editor.customTemplateHandlers.handleSave}
-            onApply={editor.customTemplateHandlers.handleApply}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      case "linkEditor":
-        return (
-          <LinkEditorView
-            linkData={editor.editingLinkData}
-            onSave={editor.linkEditorHandlers.handleSave}
-            onApply={editor.linkEditorHandlers.handleApply}
-            onAutoApplyOffset={editor.linkEditorHandlers.handleAutoApplyOffset}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      case "networkEditor":
-        return (
-          <NetworkEditorView
-            nodeData={editor.editingNetworkData}
-            onSave={editor.networkEditorHandlers.handleSave}
-            onApply={editor.networkEditorHandlers.handleApply}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      case "linkImpairment":
-        return (
-          <LinkImpairmentView
-            linkData={editor.linkImpairmentData}
-            onError={editor.linkImpairmentHandlers.onError}
-            onSave={editor.linkImpairmentHandlers.onSave}
-            onApply={editor.linkImpairmentHandlers.onApply}
-            onClose={editor.linkImpairmentHandlers.onClose}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      case "freeTextEditor":
-        return (
-          <FreeTextEditorView
-            annotation={editor.editingTextAnnotation}
-            onSave={editor.textAnnotationHandlers.onSave}
-            onClose={editor.textAnnotationHandlers.onClose}
-            onDelete={editor.textAnnotationHandlers.onDelete}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      case "freeShapeEditor":
-        return (
-          <FreeShapeEditorView
-            annotation={editor.editingShapeAnnotation}
-            onSave={editor.shapeAnnotationHandlers.onSave}
-            onClose={editor.shapeAnnotationHandlers.onClose}
-            onDelete={editor.shapeAnnotationHandlers.onDelete}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      case "groupEditor":
-        return (
-          <GroupEditorView
-            groupData={editor.editingGroup}
-            onSave={editor.groupHandlers.onSave}
-            onClose={editor.groupHandlers.onClose}
-            onDelete={editor.groupHandlers.onDelete}
-            onStyleChange={editor.groupHandlers.onStyleChange}
-            onFooterRef={setFooterRef}
-            readOnly={isReadOnly}
-          />
-        );
-      default:
-        return <PaletteView {...palette} isLocked={isLocked} />;
-    }
-  };
+  const showBackButton = panelView.kind !== "palette";
+  const isPaletteView = panelView.kind === "palette";
+
+  const content = renderContextPanelContent(panelView.kind, palette, view, editor, isLocked, isReadOnly, setFooterRef);
 
   const footer = footerRef.current;
   const showFooter = panelView.hasFooter && footer;
 
   return (
     <>
-      {/* Toggle tab when panel is closed */}
-      {!isOpen && (
-        <Tooltip title="Open panel" placement="right">
-          <Box
-            onClick={onOpen}
-            sx={{
-              position: "absolute",
-              left: 0,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 5,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 20,
-              height: 48,
-              cursor: "pointer",
-              borderRadius: "0 4px 4px 0",
-              border: 1,
-              borderLeft: 0,
-              borderColor: "divider",
-              bgcolor: "var(--vscode-editor-background)",
-              opacity: 0.8,
-              "&:hover": { opacity: 1, bgcolor: "action.hover" }
-            }}
-          >
-            <ChevronRightIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-          </Box>
-        </Tooltip>
-      )}
+      <ToggleHandle isOpen={isOpen} panelWidth={panelWidth} isDragging={isDragging} onOpen={onOpen} onClose={onClose} onBack={onBack} />
       <Box
         sx={{
           position: "absolute",
           left: 0,
           top: 0,
           bottom: 0,
-          width: DRAWER_WIDTH,
+          width: panelWidth,
           zIndex: 10,
           bgcolor: "var(--vscode-editor-background)",
           borderRight: 1,
           borderColor: "divider",
-          display: isOpen ? "flex" : "none",
+          display: "flex",
           flexDirection: "column",
-          boxShadow: 4
+          boxShadow: 4,
+          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: isDragging ? "none" : "transform 0.25s ease",
+          pointerEvents: isOpen ? "auto" : "none"
         }}
       >
-          {/* Header */}
+          {/* Header (hidden for palette view - use toggle handle instead) */}
+        {!isPaletteView && (
         <Box
           sx={{
             display: "flex",
@@ -337,6 +389,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
+        )}
 
         {/* Read-only indicator */}
         {isReadOnly && (
@@ -352,7 +405,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               borderColor: "divider"
             }}
           >
-            <LockIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+            <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
             <Typography variant="caption" color="text.secondary">
               Read-only — unlock to edit
             </Typography>
@@ -366,7 +419,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             overflow: "auto"
           }}
         >
-          {renderContent()}
+          {content}
         </Box>
 
         {/* Footer (for editor views, hidden when read-only) */}
@@ -387,6 +440,21 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             </Box>
           </>
         )}
+
+        {/* Resize handle */}
+        <Box
+          onMouseDown={handleResizeStart}
+          sx={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            cursor: "col-resize",
+            zIndex: 1,
+            "&:hover": { bgcolor: "primary.main", opacity: 0.3 }
+          }}
+        />
       </Box>
     </>
   );

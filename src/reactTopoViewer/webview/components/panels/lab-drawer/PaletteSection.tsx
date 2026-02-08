@@ -2,7 +2,7 @@
  * PaletteSection - Node and annotation palette for the Lab Drawer
  * Uses MUI components with drag-and-drop functionality
  */
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AccountTree as AccountTreeIcon,
   Add as AddIcon,
@@ -33,11 +33,15 @@ import { Box, Button, Card, IconButton, InputAdornment, Tab, Tabs, TextField, To
 import type { CustomNodeTemplate } from "../../../../shared/types/editors";
 import { ROLE_SVG_MAP, DEFAULT_ICON_COLOR } from "../../../../shared/types/graph";
 import { generateEncodedSVG, type NodeType } from "../../../icons/SvgGenerator";
+import { executeTopologyCommand } from "../../../services/topologyHostCommands";
 import { useCustomNodes, useTopoViewerStore } from "../../../stores/topoViewerStore";
+import { MonacoCodeEditor } from "../../monaco/MonacoCodeEditor";
+import clabSchema from "../../../../../../schema/clab.schema.json";
 
 interface PaletteSectionProps {
   mode?: "edit" | "view";
   isLocked?: boolean;
+  requestedTab?: { tab: number };
   onEditCustomNode?: (nodeName: string) => void;
   onDeleteCustomNode?: (nodeName: string) => void;
   onSetDefaultCustomNode?: (nodeName: string) => void;
@@ -80,6 +84,50 @@ const PALETTE_ICON_SIZE = 28;
 const REACTFLOW_NODE_MIME_TYPE = "application/reactflow-node";
 const ACTION_HOVER_BG = "action.hover";
 const TEXT_SECONDARY = "text.secondary";
+
+/** Reusable source-editor tab (YML / JSON) with dirty indicator and save button. */
+const SourceEditorTab: React.FC<{
+  fileName: string;
+  dirty: boolean;
+  saving: boolean;
+  readOnly: boolean;
+  error: string | null;
+  language: "yaml" | "json";
+  value: string;
+  jsonSchema?: object;
+  onSave: () => void;
+  onChange: (next: string) => void;
+}> = ({ fileName, dirty, saving, readOnly, error, language, value, jsonSchema, onSave, onChange }) => (
+  <Box sx={{ height: "100%", display: "flex", flexDirection: "column", gap: 1 }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <Typography variant="caption" color={TEXT_SECONDARY} sx={{ flex: 1, minWidth: 0 }} noWrap>
+        {fileName}{dirty ? " ●" : ""}
+      </Typography>
+      <Button
+        size="small"
+        variant="contained"
+        disabled={readOnly || !dirty || saving}
+        onClick={onSave}
+      >
+        Save
+      </Button>
+    </Box>
+    {error && (
+      <Typography variant="caption" color="error">
+        {error}
+      </Typography>
+    )}
+    <Box sx={{ flex: 1, minHeight: 0, border: 1, borderColor: "divider", borderRadius: 1, overflow: "hidden" }}>
+      <MonacoCodeEditor
+        language={language}
+        value={value}
+        readOnly={readOnly}
+        jsonSchema={jsonSchema}
+        onChange={readOnly ? undefined : onChange}
+      />
+    </Box>
+  </Box>
+);
 
 const PaletteDraggableCard: React.FC<{
   onDragStart: (event: React.DragEvent) => void;
@@ -315,16 +363,109 @@ const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
 export const PaletteSection: React.FC<PaletteSectionProps> = ({
   mode = "edit",
   isLocked = false,
+  requestedTab,
   onEditCustomNode,
   onDeleteCustomNode,
   onSetDefaultCustomNode
 }) => {
   const customNodes = useCustomNodes();
   const defaultNode = useTopoViewerStore((state) => state.defaultNode);
+  const yamlFileName = useTopoViewerStore((state) => state.yamlFileName);
+  const annotationsFileName = useTopoViewerStore((state) => state.annotationsFileName);
+  const yamlContent = useTopoViewerStore((state) => state.yamlContent);
+  const annotationsContent = useTopoViewerStore((state) => state.annotationsContent);
   const [filter, setFilter] = useState("");
   const isViewMode = mode === "view";
-  // In view mode, force annotations tab (nodes can't be added to deployed labs)
+  // In view mode, force the add-annotations tab (nodes can't be added to deployed labs)
   const [activeTab, setActiveTab] = useState(isViewMode ? 1 : 0);
+
+  // Allow parent to steer the active tab (e.g. split-view button → YML tab).
+  // Uses an object reference so each request triggers the effect even for the same tab.
+  useEffect(() => {
+    if (requestedTab) setActiveTab(requestedTab.tab);
+  }, [requestedTab]);
+
+  const [yamlError, setYamlError] = useState<string | null>(null);
+  const [annotationsError, setAnnotationsError] = useState<string | null>(null);
+  const [yamlDraft, setYamlDraft] = useState<string>(yamlContent);
+  const [annotationsDraft, setAnnotationsDraft] = useState<string>(annotationsContent);
+  const [yamlDirty, setYamlDirty] = useState(false);
+  const [annotationsDirty, setAnnotationsDirty] = useState(false);
+  const [yamlSaving, setYamlSaving] = useState(false);
+  const [annotationsSaving, setAnnotationsSaving] = useState(false);
+
+  const isSourceReadOnly = isLocked || isViewMode;
+
+  // Keep drafts in sync with host updates as long as the user hasn't modified the draft.
+  useEffect(() => {
+    if (!yamlDirty) {
+      setYamlDraft(yamlContent);
+    }
+  }, [yamlContent, yamlDirty]);
+
+  useEffect(() => {
+    if (!annotationsDirty) {
+      setAnnotationsDraft(annotationsContent);
+    }
+  }, [annotationsContent, annotationsDirty]);
+
+  // Reset dirty state when files change (loading a new topology in dev, or switching documents).
+  useEffect(() => {
+    setYamlDirty(false);
+    setYamlError(null);
+  }, [yamlFileName]);
+
+  useEffect(() => {
+    setAnnotationsDirty(false);
+    setAnnotationsError(null);
+  }, [annotationsFileName]);
+
+  const saveYaml = useCallback(async () => {
+    if (isSourceReadOnly) return;
+    setYamlSaving(true);
+    setYamlError(null);
+    const content = yamlDraft;
+    try {
+      const res = await executeTopologyCommand(
+        { command: "setYamlContent", payload: { content } },
+        { applySnapshot: true }
+      );
+      if (res.type === "topology-host:reject") {
+        await executeTopologyCommand({ command: "setYamlContent", payload: { content } }, { applySnapshot: true });
+      }
+      setYamlDirty(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setYamlError(msg);
+    } finally {
+      setYamlSaving(false);
+    }
+  }, [isSourceReadOnly, yamlDraft]);
+
+  const saveAnnotations = useCallback(async () => {
+    if (isSourceReadOnly) return;
+    setAnnotationsSaving(true);
+    setAnnotationsError(null);
+    const content = annotationsDraft;
+    try {
+      const res = await executeTopologyCommand(
+        { command: "setAnnotationsContent", payload: { content } },
+        { applySnapshot: true }
+      );
+      if (res.type === "topology-host:reject") {
+        await executeTopologyCommand(
+          { command: "setAnnotationsContent", payload: { content } },
+          { applySnapshot: true }
+        );
+      }
+      setAnnotationsDirty(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setAnnotationsError(msg);
+    } finally {
+      setAnnotationsSaving(false);
+    }
+  }, [isSourceReadOnly, annotationsDraft]);
 
   const filteredNodes = useMemo(() => {
     if (!filter) return customNodes;
@@ -350,7 +491,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   }, [onEditCustomNode]);
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: 2, height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Lock banner */}
       {isLocked && (
         <Box
@@ -376,17 +517,36 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
 
       {/* Tabs */}
       <Tabs
-        value={isViewMode ? 1 : activeTab}
+        value={activeTab}
         onChange={(_e, v) => setActiveTab(v)}
-        sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
+        sx={{
+          borderBottom: 1,
+          borderColor: "divider",
+          mb: 2,
+          // Pull the tab strip flush with the panel edge while keeping the
+          // rest of the palette content padded.
+          mx: -2,
+          px: 2,
+          // When MUI disables scroll buttons, it leaves them in the layout.
+          // Hide disabled buttons so tabs start flush-left.
+          "& .MuiTabs-scrollButtons.Mui-disabled": {
+            display: "none"
+          }
+        }}
       >
         <Tab label="Nodes" disabled={isViewMode} />
         <Tab label="Annotations" />
+        <Tab label="YML" />
+        <Tab label="JSON" />
       </Tabs>
 
+      <Box sx={{ flex: 1, minHeight: 0 }}>
       {/* Nodes Tab (hidden in view mode) */}
       {!isViewMode && activeTab === 0 && (
-        <Box sx={isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
+        <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined) }}>
           {/* Search */}
           <TextField
             fullWidth
@@ -461,9 +621,9 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
         </Box>
       )}
 
-      {/* Annotations Tab */}
-      {(isViewMode || activeTab === 1) && (
-        <Box sx={isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined}>
+      {/* Add annotations (palette) Tab */}
+      {activeTab === 1 && (
+        <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined) }}>
           <PaletteSectionTitle icon={<TextFieldsIcon fontSize="small" />} title="Text" />
           <PaletteList>
             <DraggableAnnotation
@@ -508,6 +668,38 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           <PaletteDragHint />
         </Box>
       )}
+
+      {/* YML Tab */}
+      {activeTab === 2 && (
+        <SourceEditorTab
+          fileName={yamlFileName}
+          dirty={yamlDirty}
+          saving={yamlSaving}
+          readOnly={isSourceReadOnly}
+          error={yamlError}
+          language="yaml"
+          value={yamlDraft}
+          jsonSchema={clabSchema}
+          onSave={() => void saveYaml()}
+          onChange={(next) => { setYamlDraft(next); setYamlDirty(true); }}
+        />
+      )}
+
+      {/* JSON Tab */}
+      {activeTab === 3 && (
+        <SourceEditorTab
+          fileName={annotationsFileName}
+          dirty={annotationsDirty}
+          saving={annotationsSaving}
+          readOnly={isSourceReadOnly}
+          error={annotationsError}
+          language="json"
+          value={annotationsDraft}
+          onSave={() => void saveAnnotations()}
+          onChange={(next) => { setAnnotationsDraft(next); setAnnotationsDirty(true); }}
+        />
+      )}
+      </Box>
     </Box>
   );
 };

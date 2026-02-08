@@ -30,6 +30,12 @@ export interface TopoViewerState {
   mode: "edit" | "view";
   deploymentState: DeploymentState;
   labSettings?: LabSettings;
+  yamlFileName: string;
+  annotationsFileName: string;
+  /** Raw YAML content from host snapshot (used by Monaco source editors). */
+  yamlContent: string;
+  /** Raw annotations JSON content from host snapshot (used by Monaco source editors). */
+  annotationsContent: string;
   selectedNode: string | null;
   selectedEdge: string | null;
   editingImpairment: string | null;
@@ -112,6 +118,10 @@ const initialState: TopoViewerState = {
   mode: "edit",
   deploymentState: "unknown",
   labSettings: undefined,
+  yamlFileName: "topology.clab.yml",
+  annotationsFileName: "topology.clab.yml.annotations.json",
+  yamlContent: "",
+  annotationsContent: "{}\n",
   selectedNode: null,
   selectedEdge: null,
   editingImpairment: null,
@@ -401,6 +411,10 @@ export const useTopoViewerState = () =>
       mode: state.mode,
       deploymentState: state.deploymentState,
       labSettings: state.labSettings,
+      yamlFileName: state.yamlFileName,
+      annotationsFileName: state.annotationsFileName,
+      yamlContent: state.yamlContent,
+      annotationsContent: state.annotationsContent,
       canUndo: state.canUndo,
       canRedo: state.canRedo,
       selectedNode: state.selectedNode,

@@ -165,113 +165,7 @@
         left: 18px;
       }
 
-      /* Split View Panel - positioned below navbar (4.5rem = 72px) */
-      #splitViewPanel {
-        position: fixed;
-        top: 4.5rem;
-        right: 0;
-        width: 0;
-        height: calc(100% - 4.5rem);
-        background: var(--vscode-sideBar-background);
-        border-left: 1px solid var(--vscode-panel-border);
-        overflow: hidden;
-        transition: width 0.3s ease;
-        display: flex;
-        flex-direction: column;
-        z-index: 40;
-      }
-      #splitViewPanel.open {
-        width: 30%;
-      }
-      .split-view-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 12px;
-        background: var(--vscode-tab-activeBackground);
-        border-bottom: 1px solid var(--vscode-panel-border);
-      }
-      .split-view-header span {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--vscode-foreground);
-      }
-      .split-view-close {
-        background: none;
-        border: none;
-        color: var(--vscode-foreground);
-        cursor: pointer;
-        padding: 4px 8px;
-        font-size: 14px;
-        opacity: 0.7;
-      }
-      .split-view-close:hover {
-        opacity: 1;
-      }
-      .split-view-content {
-        flex: 1;
-        overflow: hidden;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-      }
-      .split-view-section {
-        display: flex;
-        flex-direction: column;
-        flex: 1 1 50%;
-        min-height: 0;
-      }
-      .split-view-section-label {
-        padding: 6px 10px;
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--vscode-descriptionForeground);
-        background: var(--vscode-editor-background);
-        border-bottom: 1px solid var(--vscode-panel-border);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .split-view-label-text {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .split-view-dirty {
-        color: #f4b400;
-        font-size: 12px;
-        visibility: hidden;
-      }
-      .split-view-save {
-        background: var(--vscode-button-background);
-        color: var(--vscode-button-foreground);
-        border: 1px solid transparent;
-        border-radius: 4px;
-        padding: 2px 6px;
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: none;
-        letter-spacing: 0;
-        cursor: pointer;
-      }
-      .split-view-save:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .split-view-save-all {
-        margin-left: 8px;
-      }
-      .split-view-editor {
-        flex: 1 1 auto;
-        min-height: 140px;
-        background: var(--vscode-editor-background);
-      }
-      /* Split view uses position:fixed, #root shrinks via split-view-active class */
+      /* Split view removed: source editing is now in the Palette (Monaco) */
     </style>
   </head>
   <body>
@@ -336,15 +230,6 @@
       </div>
 
       <div class="dev-settings-section">
-        <div class="dev-settings-label">Split View</div>
-        <div class="dev-settings-buttons">
-          <button class="dev-settings-btn" id="splitViewBtn" onclick="toggleSplitView()">
-            Toggle YAML + Annotations
-          </button>
-        </div>
-      </div>
-
-      <div class="dev-settings-section">
         <div class="dev-settings-row">
           <div class="dev-settings-label" style="margin-bottom: 0">Light Theme</div>
           <div class="dev-settings-switch" id="themeSwitch" onclick="toggleTheme()"></div>
@@ -354,58 +239,6 @@
 
     <div id="root"></div>
 
-    <!-- Split View Panel (must come after #root for flexbox to position on right) -->
-    <div id="splitViewPanel">
-      <div class="split-view-header">
-        <div style="display: flex; align-items: center; gap: 6px">
-          <span id="splitViewFilePath">No file loaded</span>
-          <button
-            class="split-view-save split-view-save-all"
-            id="splitViewSaveAll"
-            onclick="saveAllSplitView()"
-            title="Save all"
-          >
-            Save All
-          </button>
-        </div>
-        <button class="split-view-close" onclick="toggleSplitView()" title="Close">&times;</button>
-      </div>
-      <div class="split-view-content">
-        <div class="split-view-section">
-          <div class="split-view-section-label">
-            <span class="split-view-label-text" id="splitViewYamlLabel">topology.clab.yml</span>
-            <span class="split-view-dirty" id="splitViewYamlDirty" aria-hidden="true">●</span>
-            <button
-              class="split-view-save"
-              id="splitViewYamlSave"
-              onclick="saveYamlSplitView()"
-              title="Save YAML"
-            >
-              Save
-            </button>
-          </div>
-          <div class="split-view-editor" id="yamlEditor"></div>
-        </div>
-        <div class="split-view-section">
-          <div class="split-view-section-label">
-            <span class="split-view-label-text" id="splitViewAnnotLabel">
-              topology.annotations.json
-            </span>
-            <span class="split-view-dirty" id="splitViewAnnotDirty" aria-hidden="true">●</span>
-            <button
-              class="split-view-save"
-              id="splitViewAnnotSave"
-              onclick="saveAnnotationsSplitView()"
-              title="Save annotations"
-            >
-              Save
-            </button>
-          </div>
-          <div class="split-view-editor" id="annotationsEditor"></div>
-        </div>
-      </div>
-    </div>
-
     <script>
       function toggleSettingsPanel() {
         document.getElementById("devSettingsPanel").classList.toggle("open");
@@ -414,29 +247,12 @@
       function toggleTheme() {
         const isLight = document.documentElement.classList.toggle("light");
         document.getElementById("themeSwitch").classList.toggle("on", isLight);
-        if (window.__DEV__) window.__DEV__.updateSplitViewTheme();
       }
 
       function setMode(mode) {
         if (window.__DEV__) window.__DEV__.setMode(mode);
         document.getElementById("modeEdit").classList.toggle("active", mode === "edit");
         document.getElementById("modeView").classList.toggle("active", mode === "view");
-      }
-
-      function toggleSplitView() {
-        if (window.__DEV__) window.__DEV__.toggleSplitView();
-      }
-
-      function saveYamlSplitView() {
-        if (window.__DEV__) window.__DEV__.saveSplitViewYaml();
-      }
-
-      function saveAnnotationsSplitView() {
-        if (window.__DEV__) window.__DEV__.saveSplitViewAnnotations();
-      }
-
-      function saveAllSplitView() {
-        if (window.__DEV__) window.__DEV__.saveSplitViewAll();
       }
 
       // Reset all files to original state
@@ -509,12 +325,6 @@
           if (window.__DEV__) {
             await window.__DEV__.loadTopologyFile(filename);
             updateFileStatus("Loaded: " + filename);
-
-            // Update split view labels
-            document.getElementById("splitViewFilePath").textContent = "File: " + filename;
-            document.getElementById("splitViewYamlLabel").textContent = filename;
-            document.getElementById("splitViewAnnotLabel").textContent =
-              filename + ".annotations.json";
           }
         } catch (error) {
           console.error("Failed to load file:", error);

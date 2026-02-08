@@ -8,6 +8,7 @@ import { PaletteSection } from "../../lab-drawer/PaletteSection";
 export interface PaletteViewProps {
   mode?: "edit" | "view";
   isLocked?: boolean;
+  requestedTab?: { tab: number };
   onEditCustomNode: (name: string) => void;
   onDeleteCustomNode: (name: string) => void;
   onSetDefaultCustomNode: (name: string) => void;

@@ -7,6 +7,7 @@
 @import "../../../../node_modules/maplibre-gl/dist/maplibre-gl.css";
 @import "../../../../node_modules/uplot/dist/uPlot.min.css";
 @import "../../../../node_modules/@xyflow/react/dist/style.css";
+@import "../../../../node_modules/monaco-editor/min/vs/editor/editor.main.css";
 
 /* Webview reset:
  * VS Code webviews default to a non-zero body margin and allow document scrolling.

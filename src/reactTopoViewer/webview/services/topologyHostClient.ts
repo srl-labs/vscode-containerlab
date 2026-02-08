@@ -17,7 +17,7 @@ import { subscribeToWebviewMessages } from "../messaging/webviewMessageBus";
 
 declare global {
   interface Window {
-    vscode?: { postMessage(data: unknown): void };
+    vscode?: { postMessage(data: unknown): void; __isDevMock__?: boolean };
   }
 }
 

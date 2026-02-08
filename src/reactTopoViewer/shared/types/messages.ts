@@ -44,6 +44,20 @@ export type TopologyHostCommand =
   | { command: "editLink"; payload: LinkSaveData }
   | { command: "deleteLink"; payload: LinkSaveData }
   | {
+      /** Replace the entire YAML topology file content. */
+      command: "setYamlContent";
+      payload: { content: string };
+      /** Skip undo/redo history for live typing updates. */
+      skipHistory?: boolean;
+    }
+  | {
+      /** Replace the entire annotations JSON file content. */
+      command: "setAnnotationsContent";
+      payload: { content: string };
+      /** Skip undo/redo history for live typing updates. */
+      skipHistory?: boolean;
+    }
+  | {
       command: "savePositions";
       payload: Array<{
         id: string;
@@ -91,6 +105,14 @@ export interface TopologySnapshot {
   nodes: TopoNode[];
   edges: TopoEdge[];
   annotations: TopologyAnnotations;
+  /** Source file name for the YAML topology (e.g. mylab.clab.yml). */
+  yamlFileName: string;
+  /** Source file name for the annotations JSON (e.g. mylab.clab.yml.annotations.json). */
+  annotationsFileName: string;
+  /** Raw YAML content as read from disk. */
+  yamlContent: string;
+  /** Raw annotations JSON content as read from disk (or a generated default if missing). */
+  annotationsContent: string;
   labName: string;
   mode: "edit" | "view";
   deploymentState: DeploymentState;

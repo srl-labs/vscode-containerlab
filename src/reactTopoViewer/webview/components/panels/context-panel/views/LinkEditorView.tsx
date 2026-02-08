@@ -7,6 +7,7 @@ import Box from "@mui/material/Box";
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
 import { useFooterControlsRef } from "../../../../hooks/ui";
+import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import type { LinkEditorData, LinkEditorTabId } from "../../link-editor/types";
 import { BasicTab } from "../../link-editor/BasicTab";
 import { ExtendedTab, validateLinkEditorData } from "../../link-editor/ExtendedTab";
@@ -168,12 +169,6 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   const tabs = isVethLink ? ALL_TABS : BASIC_ONLY_TABS;
   const effectiveActiveTab = !isVethLink && activeTab === "extended" ? "basic" : activeTab;
   const effectiveOnChange = readOnly ? () => {} : handleChange;
-  const fieldsetStyle: React.CSSProperties = {
-    border: 0,
-    margin: 0,
-    padding: 0,
-    minInlineSize: 0
-  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -184,7 +179,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
       />
       <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
         <ValidationBanner errors={validationErrors} />
-        <fieldset disabled={readOnly} style={fieldsetStyle}>
+        <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
           {effectiveActiveTab === "basic" ? (
             <BasicTab
               data={formData}

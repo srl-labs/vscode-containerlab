@@ -7,7 +7,7 @@ import Box from "@mui/material/Box";
 import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from "../../../ui/form";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
 import type { NetworkEditorData, NetworkType } from "../../network-editor/types";
-import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
+import { EditorFieldset } from "../ContextPanelScrollArea";
 import {
   NETWORK_TYPES,
   VXLAN_TYPES,
@@ -200,18 +200,10 @@ export const NetworkEditorView: React.FC<NetworkEditorViewProps> = ({
   if (!formData) return null;
 
   const effectiveOnChange = readOnly ? () => {} : handleChange;
-  const fieldsetStyle: React.CSSProperties = {
-    border: 0,
-    margin: 0,
-    padding: 0,
-    minInlineSize: 0
-  };
 
   return (
-    <ContextPanelScrollArea>
-      <fieldset disabled={readOnly} style={fieldsetStyle}>
-        <NetworkEditorContent formData={formData} onChange={effectiveOnChange} />
-      </fieldset>
-    </ContextPanelScrollArea>
+    <EditorFieldset readOnly={readOnly}>
+      <NetworkEditorContent formData={formData} onChange={effectiveOnChange} />
+    </EditorFieldset>
   );
 };

@@ -51,6 +51,33 @@ export function applyAlphaToColor(color: string, alpha: number): string {
   return color;
 }
 
+/**
+ * Parse a CSS color string (hex or rgb/rgba) and return perceived luminance.
+ * Returns a number 0..1 where 0 = black, 1 = white, or null if unparseable.
+ */
+export function parseLuminance(color: string): number | null {
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
+  const hexMatch = /^#([0-9a-f]{3,8})$/i.exec(color.trim());
+  if (hexMatch) {
+    let hex = hexMatch[1];
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } else {
+    const rgbMatch = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color);
+    if (!rgbMatch) return null;
+    r = parseInt(rgbMatch[1], 10);
+    g = parseInt(rgbMatch[2], 10);
+    b = parseInt(rgbMatch[3], 10);
+  }
+
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
 export function normalizeHexColor(value: string | undefined, fallback = "#000000"): string {
   if (!value) return fallback;
   const trimmed = value.trim();

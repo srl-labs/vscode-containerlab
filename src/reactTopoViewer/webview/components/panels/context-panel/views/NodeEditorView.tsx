@@ -8,6 +8,7 @@ import Box from "@mui/material/Box";
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
+import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import type { NodeEditorData, NodeEditorTabId } from "../../node-editor/types";
 import { BasicTab } from "../../node-editor/BasicTab";
 import { ComponentsTab } from "../../node-editor/ComponentsTab";
@@ -163,12 +164,6 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
 
   const Component = TAB_COMPONENTS[activeTab];
   const effectiveOnChange = readOnly ? () => {} : handleChange;
-  const fieldsetStyle: React.CSSProperties = {
-    border: 0,
-    margin: 0,
-    padding: 0,
-    minInlineSize: 0
-  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -178,7 +173,7 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
         onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
       />
       <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
-        <fieldset disabled={readOnly} style={fieldsetStyle}>
+        <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
           {Component ? (
             <Component
               data={formData}

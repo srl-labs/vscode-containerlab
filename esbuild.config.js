@@ -45,6 +45,15 @@ async function copyFonts() {
   if (fs.existsSync(wiresharkSrc)) {
     await fs.promises.copyFile(wiresharkSrc, path.join(fontDir, "wireshark_bold.svg"));
   }
+
+  // Monaco codicon font (used by Monaco UI widgets)
+  const codiconSrc = path.join(
+    __dirname,
+    "node_modules/monaco-editor/min/vs/base/browser/ui/codicons/codicon/codicon.ttf"
+  );
+  if (fs.existsSync(codiconSrc)) {
+    await fs.promises.copyFile(codiconSrc, path.join(fontDir, "codicon.ttf"));
+  }
 }
 
 // Copy MapLibre CSP worker to dist for webview CSP compatibility
@@ -71,6 +80,12 @@ async function buildCss() {
   css = css.replace(
     /url\([^)]*node_modules\/maplibre-gl\/[^)]*\/([^/)]+\.(woff2?|ttf|eot))\)/g,
     "url(webfonts/$1)"
+  );
+
+  // Monaco codicon font reference (relative to editor.main.css)
+  css = css.replace(
+    /url\((\"|')?\.\.\/base\/browser\/ui\/codicons\/codicon\/codicon\.ttf(\")?\)/g,
+    "url(webfonts/codicon.ttf)"
   );
 
   await fs.promises.writeFile(cssPath, css);
@@ -124,8 +139,29 @@ async function build() {
     }
   });
 
+  // Build Monaco workers for webview (separate files for CSP-friendly worker-src)
+  const monacoWorkersBuild = esbuild.build({
+    ...commonOptions,
+    entryPoints: {
+      "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
+      "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+    },
+    platform: "browser",
+    format: "iife",
+    target: ["es2020", "chrome90", "firefox90", "safari14"],
+    outdir: "dist",
+    plugins: [ignoreCssPlugin]
+  });
+
   // Run all builds in parallel
-  await Promise.all([extensionBuild, webviewBuild, copyFonts(), copyMapLibreWorker(), buildCss()]);
+  await Promise.all([
+    extensionBuild,
+    webviewBuild,
+    monacoWorkersBuild,
+    copyFonts(),
+    copyMapLibreWorker(),
+    buildCss()
+  ]);
 
   console.log("Build complete!");
 
@@ -161,7 +197,20 @@ async function build() {
       }
     });
 
-    await Promise.all([extCtx.watch(), webCtx.watch()]);
+    const monacoWorkersCtx = await esbuild.context({
+      ...commonOptions,
+      entryPoints: {
+        "monaco-editor-worker": "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
+        "monaco-json-worker": "node_modules/monaco-editor/esm/vs/language/json/json.worker.js"
+      },
+      platform: "browser",
+      format: "iife",
+      target: ["es2020", "chrome90", "firefox90", "safari14"],
+      outdir: "dist",
+      plugins: [ignoreCssPlugin]
+    });
+
+    await Promise.all([extCtx.watch(), webCtx.watch(), monacoWorkersCtx.watch()]);
 
     // Watch CSS files and rebuild
     const cssWatcher = watch("src/reactTopoViewer/webview/styles/**/*.css", {

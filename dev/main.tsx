@@ -6,11 +6,8 @@ import { App } from "@webview/App";
 import type { CustomNodeTemplate } from "@shared/types/editors";
 import type { CustomIconInfo } from "@shared/types/icons";
 import "@webview/styles/global.css";
-import * as monaco from "monaco-editor";
-import "monaco-editor/min/vs/editor/editor.main.css";
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
-import { conf as yamlConf, language as yamlLanguage } from "monaco-editor/esm/vs/basic-languages/yaml/yaml";
 
 import { setHostContext } from "@webview/services/topologyHostClient";
 import { refreshTopologySnapshot } from "@webview/services/topologyHostCommands";
@@ -129,9 +126,6 @@ let currentFilePath: string | null = null;
 async function loadTopologyFile(filePath: string): Promise<void> {
   console.log(`%c[Dev] Loading topology: ${filePath}`, "color: #2196F3;");
   currentFilePath = filePath;
-  clearSplitViewSaveTimers();
-  setYamlDirty(false);
-  setAnnotationsDirty(false);
   stateManager.setLoadedFile(filePath);
 
   setHostContext({
@@ -143,11 +137,6 @@ async function loadTopologyFile(filePath: string): Promise<void> {
 
   renderApp();
   await refreshTopologySnapshot();
-
-  // Update split view if open
-  if (splitViewOpen) {
-    await updateSplitViewContent();
-  }
 }
 
 async function listTopologyFiles(): Promise<
@@ -181,350 +170,9 @@ async function resetFiles(): Promise<void> {
 }
 
 // ============================================================================
-// Split View
+// Split View (Removed)
 // ============================================================================
-
-let splitViewOpen = false;
-const SPLIT_VIEW_REFRESH_DEBOUNCE_MS = 200;
-const MONACO_THEME_LIGHT = "dev-vscode-light";
-const MONACO_THEME_DARK = "dev-vscode-dark";
-const SPLIT_VIEW_FONT_FAMILY = "Consolas, Monaco, 'Courier New', monospace";
-const YAML_DIRTY_ID = "splitViewYamlDirty";
-const ANNOT_DIRTY_ID = "splitViewAnnotDirty";
-const YAML_SAVE_ID = "splitViewYamlSave";
-const ANNOT_SAVE_ID = "splitViewAnnotSave";
-const SAVE_ALL_ID = "splitViewSaveAll";
-
-let yamlEditor: monaco.editor.IStandaloneCodeEditor | null = null;
-let annotationsEditor: monaco.editor.IStandaloneCodeEditor | null = null;
-let yamlModel: monaco.editor.ITextModel | null = null;
-let annotationsModel: monaco.editor.ITextModel | null = null;
-let yamlRemoteUpdate = false;
-let annotationsRemoteUpdate = false;
-let splitViewRefreshTimer: number | null = null;
-let splitViewLayoutListenerBound = false;
-let monacoInitialized = false;
-let yamlLanguageRegistered = false;
-let yamlDirty = false;
-let annotationsDirty = false;
-
-function registerYamlLanguage(): void {
-  if (yamlLanguageRegistered) return;
-  if (monaco.languages.getLanguages().some((lang) => lang.id === "yaml")) {
-    yamlLanguageRegistered = true;
-    return;
-  }
-
-  monaco.languages.register({ id: "yaml" });
-  monaco.languages.setMonarchTokensProvider("yaml", yamlLanguage);
-  monaco.languages.setLanguageConfiguration("yaml", yamlConf);
-  yamlLanguageRegistered = true;
-}
-
-function getCssVar(name: string, fallback: string): string {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value || fallback;
-}
-
-function applyMonacoTheme(): void {
-  const isLight = document.documentElement.classList.contains("light");
-  const themeName = isLight ? MONACO_THEME_LIGHT : MONACO_THEME_DARK;
-  const background = getCssVar("--vscode-editor-background", isLight ? "#ffffff" : "#1e1e1e");
-  const foreground = getCssVar("--vscode-editor-foreground", isLight ? "#333333" : "#cccccc");
-  const selection = getCssVar("--vscode-editor-selectionBackground", isLight ? "#add6ff" : "#264f78");
-  const inactiveSelection = getCssVar(
-    "--vscode-editor-inactiveSelectionBackground",
-    isLight ? "#e5ebf1" : "#3a3d41"
-  );
-
-  monaco.editor.defineTheme(themeName, {
-    base: isLight ? "vs" : "vs-dark",
-    inherit: true,
-    rules: [],
-    colors: {
-      "editor.background": background,
-      "editor.foreground": foreground,
-      "editor.selectionBackground": selection,
-      "editor.inactiveSelectionBackground": inactiveSelection
-    }
-  });
-
-  monaco.editor.setTheme(themeName);
-}
-
-function ensureMonacoInitialized(): void {
-  if (monacoInitialized) return;
-  registerYamlLanguage();
-  monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ validate: false });
-  applyMonacoTheme();
-  monacoInitialized = true;
-}
-
-function layoutSplitViewEditors(): void {
-  yamlEditor?.layout();
-  annotationsEditor?.layout();
-}
-
-function scheduleSplitViewLayout(): void {
-  if (!yamlEditor && !annotationsEditor) return;
-  requestAnimationFrame(() => {
-    layoutSplitViewEditors();
-    window.setTimeout(layoutSplitViewEditors, 350);
-  });
-}
-
-function clearSplitViewSaveTimers(): void {
-  if (splitViewRefreshTimer) {
-    window.clearTimeout(splitViewRefreshTimer);
-    splitViewRefreshTimer = null;
-  }
-}
-
-async function writeSplitViewFile(filePath: string, content: string): Promise<void> {
-  const url = sessionId
-    ? `/file/${encodeURIComponent(filePath)}?sessionId=${sessionId}`
-    : `/file/${encodeURIComponent(filePath)}`;
-
-  try {
-    const response = await fetch(url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8"
-      },
-      body: content
-    });
-
-    if (!response.ok) {
-      console.error(`[Dev] Failed to write file: ${filePath}`, response.statusText);
-    }
-  } catch (error) {
-    console.error(`[Dev] Failed to write file: ${filePath}`, error);
-  }
-}
-
-function scheduleSplitViewRefresh(): void {
-  if (!splitViewOpen || !currentFilePath) return;
-  if (splitViewRefreshTimer) {
-    window.clearTimeout(splitViewRefreshTimer);
-  }
-  splitViewRefreshTimer = window.setTimeout(() => {
-    if (!splitViewOpen || !currentFilePath) return;
-    void updateSplitViewContent();
-  }, SPLIT_VIEW_REFRESH_DEBOUNCE_MS);
-}
-
-function updateDirtyUI(): void {
-  const yamlDirtyEl = document.getElementById(YAML_DIRTY_ID);
-  const annotDirtyEl = document.getElementById(ANNOT_DIRTY_ID);
-  const yamlSaveBtn = document.getElementById(YAML_SAVE_ID) as HTMLButtonElement | null;
-  const annotSaveBtn = document.getElementById(ANNOT_SAVE_ID) as HTMLButtonElement | null;
-  const saveAllBtn = document.getElementById(SAVE_ALL_ID) as HTMLButtonElement | null;
-
-  if (yamlDirtyEl) {
-    yamlDirtyEl.style.visibility = yamlDirty ? "visible" : "hidden";
-  }
-  if (annotDirtyEl) {
-    annotDirtyEl.style.visibility = annotationsDirty ? "visible" : "hidden";
-  }
-  if (yamlSaveBtn) {
-    yamlSaveBtn.disabled = !yamlDirty;
-  }
-  if (annotSaveBtn) {
-    annotSaveBtn.disabled = !annotationsDirty;
-  }
-  if (saveAllBtn) {
-    saveAllBtn.disabled = !(yamlDirty || annotationsDirty);
-  }
-}
-
-function setYamlDirty(next: boolean): void {
-  yamlDirty = next;
-  updateDirtyUI();
-}
-
-function setAnnotationsDirty(next: boolean): void {
-  annotationsDirty = next;
-  updateDirtyUI();
-}
-
-async function saveYamlFromEditor(): Promise<void> {
-  if (!currentFilePath || !yamlModel) return;
-  await writeSplitViewFile(currentFilePath, yamlModel.getValue());
-  setYamlDirty(false);
-}
-
-async function saveAnnotationsFromEditor(): Promise<void> {
-  if (!currentFilePath || !annotationsModel) return;
-  await writeSplitViewFile(`${currentFilePath}.annotations.json`, annotationsModel.getValue());
-  setAnnotationsDirty(false);
-}
-
-async function saveAllFromEditor(): Promise<void> {
-  await Promise.all([saveYamlFromEditor(), saveAnnotationsFromEditor()]);
-}
-
-function ensureSplitViewEditors(): void {
-  if (yamlEditor && annotationsEditor) return;
-
-  const yamlContainer = document.getElementById("yamlEditor");
-  const annotationsContainer = document.getElementById("annotationsEditor");
-
-  if (!yamlContainer || !annotationsContainer) {
-    console.warn("[Dev] Split view editor containers not found");
-    return;
-  }
-
-  ensureMonacoInitialized();
-
-  yamlModel = monaco.editor.createModel("# Loading...", "yaml");
-  annotationsModel = monaco.editor.createModel("{}", "json");
-
-  yamlEditor = monaco.editor.create(yamlContainer, {
-    model: yamlModel,
-    minimap: { enabled: false },
-    wordWrap: "on",
-    fontFamily: SPLIT_VIEW_FONT_FAMILY,
-    fontSize: 12,
-    scrollBeyondLastLine: false,
-    padding: { top: 8, bottom: 8 },
-    automaticLayout: false
-  });
-
-  annotationsEditor = monaco.editor.create(annotationsContainer, {
-    model: annotationsModel,
-    minimap: { enabled: false },
-    wordWrap: "on",
-    fontFamily: SPLIT_VIEW_FONT_FAMILY,
-    fontSize: 12,
-    scrollBeyondLastLine: false,
-    padding: { top: 8, bottom: 8 },
-    automaticLayout: false
-  });
-
-  yamlEditor.onDidChangeModelContent(() => {
-    if (yamlRemoteUpdate || !currentFilePath) return;
-    setYamlDirty(true);
-  });
-
-  annotationsEditor.onDidChangeModelContent(() => {
-    if (annotationsRemoteUpdate || !currentFilePath) return;
-    setAnnotationsDirty(true);
-  });
-
-  if (!splitViewLayoutListenerBound) {
-    window.addEventListener("resize", layoutSplitViewEditors);
-    splitViewLayoutListenerBound = true;
-  }
-
-  scheduleSplitViewLayout();
-}
-
-function setYamlContent(value: string): void {
-  if (!yamlModel) return;
-  if (yamlModel.getValue() === value) return;
-  if (yamlDirty) {
-    console.warn("[Dev] Skipping YAML refresh; editor has unsaved changes.");
-    return;
-  }
-  yamlRemoteUpdate = true;
-  yamlModel.setValue(value);
-  yamlRemoteUpdate = false;
-  setYamlDirty(false);
-}
-
-function setAnnotationsContent(value: string): void {
-  if (!annotationsModel) return;
-  if (annotationsModel.getValue() === value) return;
-  if (annotationsDirty) {
-    console.warn("[Dev] Skipping annotations refresh; editor has unsaved changes.");
-    return;
-  }
-  annotationsRemoteUpdate = true;
-  annotationsModel.setValue(value);
-  annotationsRemoteUpdate = false;
-  setAnnotationsDirty(false);
-}
-
-function updateSplitViewTheme(): void {
-  applyMonacoTheme();
-}
-
-async function toggleSplitView(): Promise<void> {
-  const panel = document.getElementById("splitViewPanel");
-  const root = document.getElementById("root");
-  const splitViewBtn = document.getElementById("splitViewBtn");
-
-  if (!panel || !root) {
-    console.warn("[Dev] Split view panel or root element not found");
-    return;
-  }
-
-  splitViewOpen = !splitViewOpen;
-  panel.classList.toggle("open", splitViewOpen);
-  root.classList.toggle("split-view-active", splitViewOpen);
-  splitViewBtn?.classList.toggle("active", splitViewOpen);
-
-  if (splitViewOpen && currentFilePath) {
-    ensureSplitViewEditors();
-    await updateSplitViewContent();
-    scheduleSplitViewLayout();
-    updateDirtyUI();
-  }
-}
-
-async function updateSplitViewContent(): Promise<void> {
-  if (!currentFilePath) return;
-
-  const filePathLabel = document.getElementById("splitViewFilePath");
-  const yamlLabel = document.getElementById("splitViewYamlLabel");
-  const annotLabel = document.getElementById("splitViewAnnotLabel");
-
-  ensureSplitViewEditors();
-
-  if (!yamlModel || !annotationsModel) return;
-
-  const filename = currentFilePath.split("/").pop() || currentFilePath;
-  if (filePathLabel) filePathLabel.textContent = `File: ${filename}`;
-  if (yamlLabel) yamlLabel.textContent = filename;
-  if (annotLabel) annotLabel.textContent = `${filename}.annotations.json`;
-
-  updateDirtyUI();
-
-  try {
-    // Fetch YAML content
-    const yamlUrl = sessionId
-      ? `/file/${encodeURIComponent(currentFilePath)}?sessionId=${sessionId}`
-      : `/file/${encodeURIComponent(currentFilePath)}`;
-    const yamlResponse = await fetch(yamlUrl);
-    if (yamlResponse.ok) {
-      setYamlContent(await yamlResponse.text());
-    } else {
-      setYamlContent("# Failed to load YAML file");
-    }
-
-    // Fetch annotations content
-    const annotPath = `${currentFilePath}.annotations.json`;
-    const annotUrl = sessionId
-      ? `/file/${encodeURIComponent(annotPath)}?sessionId=${sessionId}`
-      : `/file/${encodeURIComponent(annotPath)}`;
-    const annotResponse = await fetch(annotUrl);
-    if (annotResponse.ok) {
-      const annotText = await annotResponse.text();
-      try {
-        const parsed = JSON.parse(annotText);
-        setAnnotationsContent(JSON.stringify(parsed, null, 2));
-      } catch {
-        setAnnotationsContent(annotText);
-      }
-    } else {
-      setAnnotationsContent("{}");
-    }
-  } catch (error) {
-    console.error("[Dev] Failed to update split view content:", error);
-    setYamlContent("# Error loading content");
-    setAnnotationsContent("{}");
-  }
-}
+// Source editing is now done in the TopoViewer Palette tabs (Monaco).
 
 // ============================================================================
 // External File Changes (SSE)
@@ -550,14 +198,6 @@ function subscribeToFileChanges(): void {
       if (isYamlChange || isAnnotationsChange) {
         void refreshTopologySnapshot({ externalChange: true });
       }
-
-      // Refresh split view on any file change for current topology
-      if (
-        splitViewOpen &&
-        (payload.path === filename || payload.path === `${filename}.annotations.json`)
-      ) {
-        void updateSplitViewContent();
-      }
     } catch (err) {
       console.warn("[Dev] Failed to parse SSE message", err);
     }
@@ -577,12 +217,7 @@ interface DevServerInterface {
   getCurrentFile: () => string | null;
   setMode: (mode: "edit" | "view") => void;
   setDeploymentState: (state: "deployed" | "undeployed" | "unknown") => void;
-  toggleSplitView: () => Promise<void>;
-  updateSplitViewTheme: () => void;
   onHostUpdate: () => void;
-  saveSplitViewYaml: () => Promise<void>;
-  saveSplitViewAnnotations: () => Promise<void>;
-  saveSplitViewAll: () => Promise<void>;
   stateManager: DevStateManager;
 }
 
@@ -611,12 +246,7 @@ interface DevServerInterface {
     });
     void refreshTopologySnapshot();
   },
-  toggleSplitView,
-  updateSplitViewTheme,
-  onHostUpdate: scheduleSplitViewRefresh,
-  saveSplitViewYaml: saveYamlFromEditor,
-  saveSplitViewAnnotations: saveAnnotationsFromEditor,
-  saveSplitViewAll: saveAllFromEditor,
+  onHostUpdate: () => {},
   stateManager
 };
 
@@ -633,9 +263,6 @@ console.log("");
 console.log("%cMode and state:", "color: #2196F3; font-weight: bold;");
 console.log('  __DEV__.setMode("edit" | "view")');
 console.log('  __DEV__.setDeploymentState("deployed" | "undeployed")');
-console.log("");
-console.log("%cSplit view:", "color: #9C27B0; font-weight: bold;");
-console.log("  __DEV__.toggleSplitView()");
 
 // ============================================================================
 // Dev Mode Command Interceptor
@@ -681,9 +308,6 @@ function setupDevModeCommandInterceptor(): void {
   };
 
   const commandHandlers: Record<string, (msg: DevVscodeMessage) => void> = {
-    "topo-toggle-split-view": () => {
-      void toggleSplitView();
-    },
     reactTopoViewerLog: handleViewerLog,
     topoViewerLog: handleViewerLog
   };

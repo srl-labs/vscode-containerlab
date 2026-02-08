@@ -5,7 +5,7 @@ import React, { useCallback } from "react";
 
 import type { FreeTextAnnotation } from "../../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
-import { ContextPanelScrollArea } from "../ContextPanelScrollArea";
+import { EditorFieldset } from "../ContextPanelScrollArea";
 import { FreeTextFormContent } from "../../free-text-editor/FreeTextFormContent";
 
 export interface FreeTextEditorViewProps {
@@ -58,23 +58,15 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
   if (!formData) return null;
 
   const effectiveUpdateField: typeof updateField = readOnly ? (() => {}) : updateField;
-  const fieldsetStyle: React.CSSProperties = {
-    border: 0,
-    margin: 0,
-    padding: 0,
-    minInlineSize: 0
-  };
 
   return (
-    <ContextPanelScrollArea>
-      <fieldset disabled={readOnly} style={fieldsetStyle}>
-        <FreeTextFormContent
-          formData={formData}
-          updateField={effectiveUpdateField}
-          isNew={isNew}
-          onDelete={!readOnly && onDelete ? handleDelete : undefined}
-        />
-      </fieldset>
-    </ContextPanelScrollArea>
+    <EditorFieldset readOnly={readOnly}>
+      <FreeTextFormContent
+        formData={formData}
+        updateField={effectiveUpdateField}
+        isNew={isNew}
+        onDelete={!readOnly && onDelete ? handleDelete : undefined}
+      />
+    </EditorFieldset>
   );
 };
