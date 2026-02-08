@@ -237,20 +237,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         <IconButton size="small" onClick={onLogoClick}>
           <ContainerlabLogo clickProgress={logoClickProgress} isExploded={isPartyMode} />
         </IconButton>
-        <Typography variant="h5" fontWeight={500} ml={0.5} sx={{ lineHeight: 1, flexGrow: 1 }}>
+        <Typography variant="h5" fontWeight={500} ml={0.5} sx={{ lineHeight: 1, flexGrow: 1 }} data-testid="navbar-lab-name">
           {labName || "TopoViewer"}
         </Typography>
 
         {/* Lab Settings */}
         <Tooltip title="Lab Settings">
-          <IconButton size="small" onClick={onLabSettings}>
+          <IconButton size="small" onClick={onLabSettings} data-testid="navbar-lab-settings">
             <SettingsIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Lock / Unlock */}
         <Tooltip title={isLocked ? "Unlock Lab" : "Lock Lab"}>
-          <IconButton size="small" onClick={toggleLock} disabled={isProcessing}>
+          <IconButton size="small" onClick={toggleLock} disabled={isProcessing} data-testid="navbar-lock">
             {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
@@ -279,6 +279,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Button
               onClick={handlePrimaryAction}
               sx={{ px: 1, py: 0.25, minWidth: 0 }}
+              data-testid="navbar-deploy"
             >
               {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
             </Button>
@@ -289,6 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             aria-haspopup="true"
             aria-expanded={deployMenuOpen ? "true" : undefined}
             sx={{ px: 0.5, minWidth: 0 }}
+            data-testid="navbar-deploy-menu"
           >
             <ArrowDropDownIcon fontSize="small" />
           </Button>
@@ -302,29 +304,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           transformOrigin={{ vertical: "top", horizontal: "right" }}
         >
 	          {isViewerMode ? [
-	            <MenuItem key="destroy" onClick={handleDestroy}>
+	            <MenuItem key="destroy" onClick={handleDestroy} data-testid="navbar-deploy-item-destroy">
 	              <ListItemIcon><StopIcon fontSize="small" sx={{ color: ERROR_MAIN }} /></ListItemIcon>
 	              <ListItemText>Destroy</ListItemText>
 	            </MenuItem>,
-	            <MenuItem key="destroy-cleanup" onClick={handleDestroyCleanup}>
+	            <MenuItem key="destroy-cleanup" onClick={handleDestroyCleanup} data-testid="navbar-deploy-item-destroy-cleanup">
 	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: ERROR_MAIN }} /></ListItemIcon>
 	              <ListItemText>Destroy (cleanup)</ListItemText>
 	            </MenuItem>,
 	            <Divider key="divider" sx={{ my: 0.5 }} />,
-	            <MenuItem key="redeploy" onClick={handleRedeploy}>
+	            <MenuItem key="redeploy" onClick={handleRedeploy} data-testid="navbar-deploy-item-redeploy">
 	              <ListItemIcon><ReplayIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
 	              <ListItemText>Redeploy</ListItemText>
 	            </MenuItem>,
-	            <MenuItem key="redeploy-cleanup" onClick={handleRedeployCleanup}>
+	            <MenuItem key="redeploy-cleanup" onClick={handleRedeployCleanup} data-testid="navbar-deploy-item-redeploy-cleanup">
 	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
 	              <ListItemText>Redeploy (cleanup)</ListItemText>
 	            </MenuItem>
 	          ] : [
-	            <MenuItem key="deploy" onClick={() => { handleDeployMenuClose(); handleDeploy(); }}>
+	            <MenuItem key="deploy" onClick={() => { handleDeployMenuClose(); handleDeploy(); }} data-testid="navbar-deploy-item-deploy">
 	              <ListItemIcon><PlayArrowIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
 	              <ListItemText>Deploy</ListItemText>
 	            </MenuItem>,
-	            <MenuItem key="deploy-cleanup" onClick={handleDeployCleanup}>
+	            <MenuItem key="deploy-cleanup" onClick={handleDeployCleanup} data-testid="navbar-deploy-item-deploy-cleanup">
 	              <ListItemIcon><CleaningServicesIcon fontSize="small" sx={{ color: SUCCESS_MAIN }} /></ListItemIcon>
 	              <ListItemText>Deploy (cleanup)</ListItemText>
 	            </MenuItem>
@@ -335,7 +337,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {isEditMode && (
           <Tooltip title="Undo (Ctrl+Z)">
             <span>
-              <IconButton size="small" onClick={onUndo} disabled={!canUndo}>
+              <IconButton size="small" onClick={onUndo} disabled={!canUndo} data-testid="navbar-undo">
                 <UndoIcon fontSize="small" />
               </IconButton>
             </span>
@@ -346,7 +348,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {isEditMode && (
           <Tooltip title="Redo (Ctrl+Y)">
             <span>
-              <IconButton size="small" onClick={onRedo} disabled={!canRedo}>
+              <IconButton size="small" onClick={onRedo} disabled={!canRedo} data-testid="navbar-redo">
                 <RedoIcon fontSize="small" />
               </IconButton>
             </span>
@@ -357,21 +359,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Fit to Viewport */}
         <Tooltip title="Fit to Viewport">
-          <IconButton size="small" onClick={onZoomToFit}>
+          <IconButton size="small" onClick={onZoomToFit} data-testid="navbar-fit-viewport">
             <FitScreenIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Toggle YAML Split View */}
         <Tooltip title="Toggle YAML Split View">
-          <IconButton size="small" onClick={onToggleSplit}>
+          <IconButton size="small" onClick={onToggleSplit} data-testid="navbar-split-view">
             <ViewColumnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Layout Manager */}
         <Tooltip title="Layout">
-          <IconButton size="small" onClick={handleLayoutClick}>
+          <IconButton size="small" onClick={handleLayoutClick} data-testid="navbar-layout">
             <AccountTreeIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -382,19 +384,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           anchorPosition={layoutMenuPosition ?? undefined}
           transformOrigin={{ vertical: "top", horizontal: "center" }}
         >
-          <MenuItem onClick={() => handleLayoutSelect("preset")}>
+          <MenuItem onClick={() => handleLayoutSelect("preset")} data-testid="navbar-layout-preset">
             <ListItemIcon>
               {layout === "preset" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
             <ListItemText>Preset</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleLayoutSelect("force")}>
+          <MenuItem onClick={() => handleLayoutSelect("force")} data-testid="navbar-layout-force">
             <ListItemIcon>
               {layout === "force" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
             <ListItemText>Force</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleLayoutSelect("geo")}>
+          <MenuItem onClick={() => handleLayoutSelect("geo")} data-testid="navbar-layout-geo">
             <ListItemIcon>
               {layout === "geo" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
@@ -404,21 +406,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Grid line width */}
         <Tooltip title="Grid Settings">
-          <IconButton size="small" onClick={(e) => onShowGridSettings?.(e.currentTarget)}>
+          <IconButton size="small" onClick={(e) => onShowGridSettings?.(e.currentTarget)} data-testid="navbar-grid">
             <GridOnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Find Node */}
         <Tooltip title="Find Node">
-          <IconButton size="small" onClick={(e) => onFindNode?.(e.currentTarget)}>
+          <IconButton size="small" onClick={(e) => onFindNode?.(e.currentTarget)} data-testid="navbar-find-node">
             <SearchIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Link Labels Dropdown */}
         <Tooltip title="Link Labels">
-          <IconButton size="small" onClick={handleLinkLabelClick}>
+          <IconButton size="small" onClick={handleLinkLabelClick} data-testid="navbar-link-labels">
             <LabelIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -429,19 +431,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           anchorPosition={linkLabelMenuPosition ?? undefined}
           transformOrigin={{ vertical: "top", horizontal: "center" }}
         >
-          <MenuItem onClick={() => handleLinkLabelSelect("show-all")}>
+          <MenuItem onClick={() => handleLinkLabelSelect("show-all")} data-testid="navbar-link-label-show-all">
             <ListItemIcon>
               {linkLabelMode === "show-all" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
             <ListItemText>Show All</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleLinkLabelSelect("on-select")}>
+          <MenuItem onClick={() => handleLinkLabelSelect("on-select")} data-testid="navbar-link-label-on-select">
             <ListItemIcon>
               {linkLabelMode === "on-select" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
             <ListItemText>On Select</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleLinkLabelSelect("hide")}>
+          <MenuItem onClick={() => handleLinkLabelSelect("hide")} data-testid="navbar-link-label-hide">
             <ListItemIcon>
               {linkLabelMode === "hide" && <CheckIcon fontSize="small" />}
             </ListItemIcon>
@@ -451,7 +453,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Capture Viewport */}
         <Tooltip title="Capture Viewport as SVG">
-          <IconButton size="small" onClick={onCaptureViewport}>
+          <IconButton size="small" onClick={onCaptureViewport} data-testid="navbar-capture">
             <CameraAltIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -460,21 +462,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Shortcuts */}
         <Tooltip title="Shortcuts">
-          <IconButton size="small" onClick={onShowShortcuts}>
+          <IconButton size="small" onClick={onShowShortcuts} data-testid="navbar-shortcuts">
             <KeyboardIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Toggle Shortcut Display */}
         <Tooltip title="Toggle Shortcut Display">
-          <IconButton size="small" onClick={onToggleShortcutDisplay}>
+          <IconButton size="small" onClick={onToggleShortcutDisplay} data-testid="navbar-shortcut-display">
             {shortcutDisplayEnabled ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
 
         {/* About */}
         <Tooltip title="About TopoViewer">
-          <IconButton size="small" onClick={onShowAbout}>
+          <IconButton size="small" onClick={onShowAbout} data-testid="navbar-about">
             <InfoIcon fontSize="small" />
           </IconButton>
         </Tooltip>

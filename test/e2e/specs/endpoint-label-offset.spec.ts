@@ -1,33 +1,18 @@
-import type { Locator, Page } from "@playwright/test";
-
 import { test, expect } from "../fixtures/topoviewer";
-import { getEdgeMidpoint } from "../helpers/react-flow-helpers";
+import { rightClick, getEdgeMidpoint } from "../helpers/react-flow-helpers";
 
 const SIMPLE_FILE = "simple.clab.yml";
 
 const SEL_LINK_LABELS_BTN = '[data-testid="navbar-link-labels"]';
-const SEL_LINK_LABELS_MENU = '.navbar-menu:has-text("Endpoint offset")';
-const SEL_ENDPOINT_SLIDER = `${SEL_LINK_LABELS_MENU} input[aria-label="Endpoint label offset"]`;
-const SEL_LINK_EDITOR = '[data-testid="link-editor"]';
-const SEL_LINK_OFFSET_SLIDER = "#link-endpoint-offset";
+const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
+const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
 
-async function openLinkLabelsMenu(page: Page): Promise<Locator> {
-  await page.locator(SEL_LINK_LABELS_BTN).click();
-  const menu = page.locator(SEL_LINK_LABELS_MENU);
-  await expect(menu).toBeVisible();
-  return menu;
-}
-
-async function openLinkEditorForEdge(page: Page, edgeId: string): Promise<Locator> {
-  const midpoint = await getEdgeMidpoint(page, edgeId);
-
-  if (!midpoint) throw new Error(`Edge ${edgeId} not found`);
-  await page.mouse.dblclick(midpoint.x, midpoint.y);
-  const panel = page.locator(SEL_LINK_EDITOR);
-  await expect(panel).toBeVisible();
-  return panel;
-}
-
+/**
+ * Endpoint Label Offset E2E Tests (MUI version)
+ *
+ * The MUI navbar link labels menu now only controls label mode.
+ * Endpoint offset is set per-link in the Link Editor.
+ */
 test.describe("Endpoint Label Offset", () => {
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
@@ -37,99 +22,129 @@ test.describe("Endpoint Label Offset", () => {
     await topoViewerPage.unlock();
   });
 
-  test("persists global endpoint label offset and restores on reload", async ({
-    page,
-    topoViewerPage
-  }) => {
-    await openLinkLabelsMenu(page);
-    const slider = page.locator(SEL_ENDPOINT_SLIDER);
+  test("link labels menu has Show All, On Select, and Hide options", async ({ page }) => {
+    await page.locator(SEL_LINK_LABELS_BTN).click();
+    await page.waitForTimeout(200);
 
-    // Slider should be enabled by default
-    await expect(slider).toBeEnabled();
-
-    // Get initial value and set a new one
-    const initialValue = Number(await slider.inputValue());
-    const newValue = initialValue === 30 ? 40 : 30;
-
-    // Change the slider value and trigger commit via mouseup
-    await slider.fill(String(newValue));
-    await slider.dispatchEvent("mouseup");
-
-    // Verify the new value persists to the annotations file
-    await expect
-      .poll(
-        async () => {
-          const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
-          return annotations.viewerSettings?.endpointLabelOffset;
-        },
-        { timeout: 5000, message: "endpoint label offset should persist after slider change" }
-      )
-      .toBe(newValue);
-
-    // Reload and verify value is restored
-    await topoViewerPage.gotoFile(SIMPLE_FILE);
-    await topoViewerPage.waitForCanvasReady();
-
-    await openLinkLabelsMenu(page);
-    await expect(page.locator(SEL_ENDPOINT_SLIDER)).toHaveValue(String(newValue));
+    await expect(page.locator('[data-testid="navbar-link-label-show-all"]')).toBeVisible();
+    await expect(page.locator('[data-testid="navbar-link-label-on-select"]')).toBeVisible();
+    await expect(page.locator('[data-testid="navbar-link-label-hide"]')).toBeVisible();
   });
 
   test("undo/redo syncs per-link endpoint offset override", async ({ page, topoViewerPage }) => {
+    const edgeIds = await topoViewerPage.getEdgeIds();
+    expect(edgeIds.length).toBeGreaterThan(0);
+    const edgeId = edgeIds[0];
+
+    // Open context menu on edge and click Edit
+    const midpoint = await getEdgeMidpoint(page, edgeId);
+    expect(midpoint).not.toBeNull();
+    await rightClick(page, midpoint!.x, midpoint!.y);
+    await expect(page.locator(SEL_CONTEXT_MENU)).toBeVisible();
+    await page.locator(SEL_EDIT_EDGE_ITEM).click();
+    await expect(page.locator(SEL_CONTEXT_MENU)).not.toBeVisible();
+
+    // Slider is an MUI Slider (role="slider")
+    const slider = page.locator("#link-endpoint-offset").getByRole("slider");
+    await expect(slider).toBeVisible({ timeout: 3000 });
+
+    const readState = async () => {
+      const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+      const entry = annotations.edgeAnnotations?.find((e: any) => e.id === edgeId);
+      if (!entry) return null;
+      return {
+        enabled: entry.endpointLabelOffsetEnabled ?? false,
+        offset: entry.endpointLabelOffset
+      };
+    };
+
+    const initialState = await readState();
+
+    const initialValue = Number(await slider.getAttribute("aria-valuenow"));
+    expect(Number.isFinite(initialValue)).toBe(true);
+
+    // Nudge the slider via keyboard to avoid brittle pointer math.
+    await slider.focus();
+    for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(200);
+
+    const newValue = Number(await slider.getAttribute("aria-valuenow"));
+    expect(newValue).toBeGreaterThanOrEqual(initialValue);
+
+    // Verify persisted
+    await expect
+      .poll(readState, { timeout: 5000 })
+      .toEqual({ enabled: true, offset: newValue });
+
+    // Undo should revert
+    // Ensure canvas has focus so Ctrl+Z triggers the app-level undo handler (not an input undo).
+    await topoViewerPage.getCanvas().click();
+    await topoViewerPage.undo();
+    await page.waitForTimeout(500);
+    await expect.poll(readState, { timeout: 5000 }).toEqual(initialState);
+
+    // Redo should restore
+    await topoViewerPage.getCanvas().click();
+    await topoViewerPage.redo();
+    await page.waitForTimeout(500);
+    await expect
+      .poll(readState, { timeout: 5000 })
+      .toEqual({ enabled: true, offset: newValue });
+  });
+
+  test("loads global endpoint label offset from annotations and restores on reload", async ({
+    page,
+    topoViewerPage
+  }) => {
+    const TARGET_OFFSET = 40;
+
+    // Write viewer settings directly to the annotations file (global setting).
+    const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
+    await topoViewerPage.writeAnnotationsFile(SIMPLE_FILE, {
+      ...annotations,
+      viewerSettings: {
+        ...(annotations.viewerSettings ?? {}),
+        endpointLabelOffsetEnabled: true,
+        endpointLabelOffset: TARGET_OFFSET
+      }
+    });
+
+    // Reload to ensure settings are applied from disk.
+    await topoViewerPage.gotoFile(SIMPLE_FILE);
+    await topoViewerPage.waitForCanvasReady();
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(edgeIds.length).toBeGreaterThan(0);
-    const edgeId = edgeIds[0];
 
-    const panel = await openLinkEditorForEdge(page, edgeId);
-    const slider = panel.locator(SEL_LINK_OFFSET_SLIDER);
-    const initialValue = Number(await slider.inputValue());
-    const maxValue = Number((await slider.getAttribute("max")) ?? "60");
-    const minValue = Number((await slider.getAttribute("min")) ?? "0");
-    const nextValue =
-      initialValue + 7 <= maxValue ? initialValue + 7 : Math.max(minValue, initialValue - 7);
-
-    await slider.evaluate((el, value) => {
-      const input = el as HTMLInputElement;
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-      setter?.call(input, String(value));
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    }, nextValue);
-
-    await expect(slider).toHaveValue(String(nextValue));
-
-    const getOffsetState = async () => {
-      const annotations = await topoViewerPage.getAnnotationsFromFile(SIMPLE_FILE);
-      const entry = annotations.edgeAnnotations?.find((edge) => edge.id === edgeId);
-      return {
-        enabled: entry?.endpointLabelOffsetEnabled ?? false,
-        offset: entry?.endpointLabelOffset
-      };
+    const openLinkEditorForEdge = async (edgeId: string) => {
+      const midpoint = await getEdgeMidpoint(page, edgeId);
+      expect(midpoint).not.toBeNull();
+      await rightClick(page, midpoint!.x, midpoint!.y);
+      await expect(page.locator(SEL_CONTEXT_MENU)).toBeVisible();
+      await page.locator(SEL_EDIT_EDGE_ITEM).click();
+      await expect(page.locator(SEL_CONTEXT_MENU)).not.toBeVisible();
     };
-    const initialOffsetState = await getOffsetState();
 
-    await expect
-      .poll(getOffsetState, {
-        timeout: 5000,
-        message: "per-link endpoint offset should persist after slider change"
-      })
-      .toEqual({ enabled: true, offset: nextValue });
+    await openLinkEditorForEdge(edgeIds[0]);
 
-    await topoViewerPage.undo();
-    await expect
-      .poll(getOffsetState, {
-        timeout: 5000,
-        message: "undo should revert per-link endpoint offset override"
-      })
-      .toEqual(initialOffsetState);
+    const slider = page.locator("#link-endpoint-offset").getByRole("slider");
+    await expect(slider).toBeVisible({ timeout: 3000 });
+    const value = Number(await slider.getAttribute("aria-valuenow"));
+    expect(value).toBe(TARGET_OFFSET);
 
-    await topoViewerPage.redo();
-    await expect
-      .poll(getOffsetState, {
-        timeout: 5000,
-        message: "redo should restore per-link endpoint offset override"
-      })
-      .toEqual({ enabled: true, offset: nextValue });
+    // Close editor and reload again to ensure it restores.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+
+    await topoViewerPage.gotoFile(SIMPLE_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    await openLinkEditorForEdge(edgeIds[0]);
+    const valueAfterReload = Number(await slider.getAttribute("aria-valuenow"));
+    expect(valueAfterReload).toBe(TARGET_OFFSET);
   });
 });

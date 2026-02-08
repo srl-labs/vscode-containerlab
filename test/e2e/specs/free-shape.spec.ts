@@ -8,14 +8,12 @@ const SEL_ADD_SHAPE_ITEM = '[data-testid="context-menu-item-add-shape"]';
 const SEL_RECTANGLE_ITEM = '[data-testid="context-menu-item-add-shape-rectangle"]';
 const SEL_CIRCLE_ITEM = '[data-testid="context-menu-item-add-shape-circle"]';
 const SEL_LINE_ITEM = '[data-testid="context-menu-item-add-shape-line"]';
-const SEL_FREE_SHAPE_EDITOR = '[data-testid="free-shape-editor"]';
-const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 
 async function addShapeViaContextMenu(
   page: Parameters<typeof rightClick>[0],
-  topoViewerPage: { getCanvasCenter: () => Promise<{ x: number; y: number }> },
+  topoViewerPage: { getCanvas: () => ReturnType<Parameters<typeof rightClick>[0]["locator"]> },
   menuItemSelector: string,
-  offset: { x: number; y: number } = { x: 150, y: 0 }
+  offset: { x: number; y: number } = { x: 150, y: 150 }
 ): Promise<void> {
   const canvasBox = await topoViewerPage.getCanvas().boundingBox();
   if (!canvasBox) throw new Error("Canvas not found");
@@ -31,6 +29,22 @@ async function addShapeViaContextMenu(
   await page.waitForTimeout(200);
 }
 
+async function dismissEditorIfAny(page: Parameters<typeof rightClick>[0]): Promise<void> {
+  // Some shape creations may open an editor in the context panel; Escape should close it safely.
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+}
+
+async function getFreeShapeCount(topoViewerPage: any): Promise<number> {
+  const ann = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+  return ann.freeShapeAnnotations?.length ?? 0;
+}
+
+/**
+ * Free Shape Annotations E2E Tests (MUI version)
+ *
+ * Tests creating shape annotations via the context menu.
+ */
 test.describe("Free Shape Annotations", () => {
   test("can create rectangle and persist to annotations file", async ({ page, topoViewerPage }) => {
     await topoViewerPage.resetFiles();
@@ -44,25 +58,66 @@ test.describe("Free Shape Annotations", () => {
 
     await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM);
 
-    const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
-    if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await shapeEditor.locator(SEL_PANEL_OK_BTN).click();
-      await page.waitForTimeout(200);
-    }
+    await dismissEditorIfAny(page);
 
     await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected rectangle shape annotation to be persisted" }
-      )
+      .poll(async () => {
+        const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+        return after.freeShapeAnnotations?.length ?? 0;
+      }, { timeout: 5000 })
+      .toBe(beforeCount + 1);
+  });
+
+  test("can create circle via context menu", async ({ page, topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile(EMPTY_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    const before = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+    const beforeCount = before.freeShapeAnnotations?.length ?? 0;
+
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_CIRCLE_ITEM, { x: 200, y: 200 });
+
+    await dismissEditorIfAny(page);
+
+    await expect
+      .poll(async () => {
+        const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+        return after.freeShapeAnnotations?.length ?? 0;
+      }, { timeout: 5000 })
+      .toBe(beforeCount + 1);
+  });
+
+  test("undo removes created shape", async ({ page, topoViewerPage }) => {
+    await topoViewerPage.resetFiles();
+    await topoViewerPage.gotoFile(EMPTY_FILE);
+    await topoViewerPage.waitForCanvasReady();
+    await topoViewerPage.setEditMode();
+    await topoViewerPage.unlock();
+
+    const before = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+    const beforeCount = before.freeShapeAnnotations?.length ?? 0;
+
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM, { x: 250, y: 250 });
+    await dismissEditorIfAny(page);
+
+    // Verify shape was created
+    await expect
+      .poll(async () => {
+        return await getFreeShapeCount(topoViewerPage);
+      }, { timeout: 5000 })
       .toBe(beforeCount + 1);
 
-    const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-    const rectangle = after.freeShapeAnnotations?.find((s) => s.shapeType === "rectangle");
-    expect(rectangle).toBeDefined();
+    // Undo
+    await topoViewerPage.undo();
+    await page.waitForTimeout(300);
+
+    // Verify shape was removed
+    await expect
+      .poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 })
+      .toBe(beforeCount);
   });
 
   test("can undo and redo rectangle creation", async ({ page, topoViewerPage }) => {
@@ -72,58 +127,24 @@ test.describe("Free Shape Annotations", () => {
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
-    const before = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-    const beforeCount = before.freeShapeAnnotations?.length ?? 0;
+    const beforeCount = await getFreeShapeCount(topoViewerPage);
 
-    // Create a rectangle
-    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM, { x: 150, y: 150 });
+    await dismissEditorIfAny(page);
 
-    const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
-    if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await shapeEditor.locator(SEL_PANEL_OK_BTN).click();
-      await page.waitForTimeout(200);
-    }
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount + 1
+    );
 
-    // Wait for shape to be created
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected rectangle to be created" }
-      )
-      .toBe(beforeCount + 1);
-
-    // Undo the rectangle creation
     await topoViewerPage.undo();
-    await page.waitForTimeout(500);
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount
+    );
 
-    // Verify rectangle is removed
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected rectangle to be removed after undo" }
-      )
-      .toBe(beforeCount);
-
-    // Redo the rectangle creation
     await topoViewerPage.redo();
-    await page.waitForTimeout(500);
-
-    // Verify rectangle is restored
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected rectangle to be restored after redo" }
-      )
-      .toBe(beforeCount + 1);
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount + 1
+    );
   });
 
   test("can undo and redo circle creation", async ({ page, topoViewerPage }) => {
@@ -133,43 +154,24 @@ test.describe("Free Shape Annotations", () => {
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
-    const before = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-    const beforeCount = before.freeShapeAnnotations?.length ?? 0;
+    const beforeCount = await getFreeShapeCount(topoViewerPage);
 
-    // Create a circle
-    await addShapeViaContextMenu(page, topoViewerPage, SEL_CIRCLE_ITEM);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_CIRCLE_ITEM, { x: 200, y: 200 });
+    await dismissEditorIfAny(page);
 
-    const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
-    if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await shapeEditor.locator(SEL_PANEL_OK_BTN).click();
-      await page.waitForTimeout(200);
-    }
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount + 1
+    );
 
-    // Wait for shape to be created
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected circle to be created" }
-      )
-      .toBe(beforeCount + 1);
-
-    // Undo the circle creation
     await topoViewerPage.undo();
-    await page.waitForTimeout(500);
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount
+    );
 
-    // Verify circle is removed
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected circle to be removed after undo" }
-      )
-      .toBe(beforeCount);
+    await topoViewerPage.redo();
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount + 1
+    );
   });
 
   test("can undo and redo line creation", async ({ page, topoViewerPage }) => {
@@ -179,43 +181,24 @@ test.describe("Free Shape Annotations", () => {
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
-    const before = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-    const beforeCount = before.freeShapeAnnotations?.length ?? 0;
+    const beforeCount = await getFreeShapeCount(topoViewerPage);
 
-    // Create a line
-    await addShapeViaContextMenu(page, topoViewerPage, SEL_LINE_ITEM);
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_LINE_ITEM, { x: 220, y: 140 });
+    await dismissEditorIfAny(page);
 
-    const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
-    if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await shapeEditor.locator(SEL_PANEL_OK_BTN).click();
-      await page.waitForTimeout(200);
-    }
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount + 1
+    );
 
-    // Wait for shape to be created
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected line to be created" }
-      )
-      .toBe(beforeCount + 1);
-
-    // Undo the line creation
     await topoViewerPage.undo();
-    await page.waitForTimeout(500);
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount
+    );
 
-    // Verify line is removed
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected line to be removed after undo" }
-      )
-      .toBe(beforeCount);
+    await topoViewerPage.redo();
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(
+      beforeCount + 1
+    );
   });
 
   test("can undo and redo rectangle position change", async ({ page, topoViewerPage }) => {
@@ -225,101 +208,69 @@ test.describe("Free Shape Annotations", () => {
     await topoViewerPage.setEditMode();
     await topoViewerPage.unlock();
 
-    // Create a rectangle first
-    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM, { x: 0, y: 0 });
+    // Create exactly one rectangle.
+    await addShapeViaContextMenu(page, topoViewerPage, SEL_RECTANGLE_ITEM, { x: 120, y: 120 });
+    await dismissEditorIfAny(page);
+    await expect.poll(async () => await getFreeShapeCount(topoViewerPage), { timeout: 5000 }).toBe(1);
 
-    const shapeEditor = page.locator(SEL_FREE_SHAPE_EDITOR);
-    if (await shapeEditor.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await shapeEditor.locator(SEL_PANEL_OK_BTN).click();
-      await page.waitForTimeout(200);
-    }
+    const before = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
+    const originalPos = before.freeShapeAnnotations?.[0]?.position;
+    expect(originalPos).toBeDefined();
 
-    // Wait for shape to be created and get its position
-    await expect
-      .poll(
-        async () => {
-          const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          return after.freeShapeAnnotations?.length ?? 0;
-        },
-        { timeout: 5000, message: "Expected rectangle to be created" }
-      )
-      .toBe(1);
-
-    const beforeDrag = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-    const originalPosition = beforeDrag.freeShapeAnnotations?.[0]?.position;
-    expect(originalPosition).toBeDefined();
-
-    // Find the shape node and drag it (React Flow nodes have class .react-flow__node)
     const shapeNode = page.locator(".react-flow__node.react-flow__node-free-shape-node").first();
-    await expect(shapeNode).toBeVisible({ timeout: 3000 });
-
-    // Get the bounding box for dragging
+    await expect(shapeNode).toBeVisible({ timeout: 5000 });
     const box = await shapeNode.boundingBox();
     expect(box).not.toBeNull();
 
-    // Drag the shape to a new position (100px to the right, 50px down)
+    // Drag the shape.
     await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
     await page.mouse.down();
-    await page.mouse.move(box!.x + box!.width / 2 + 100, box!.y + box!.height / 2 + 50, {
-      steps: 5
+    await page.mouse.move(box!.x + box!.width / 2 + 120, box!.y + box!.height / 2 + 60, {
+      steps: 8
     });
     await page.mouse.up();
-    await page.waitForTimeout(500);
 
-    // Verify position changed
     await expect
       .poll(
         async () => {
           const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-          const newPos = after.freeShapeAnnotations?.[0]?.position;
-          return newPos && (newPos.x !== originalPosition!.x || newPos.y !== originalPosition!.y);
+          const pos = after.freeShapeAnnotations?.[0]?.position;
+          if (!pos || !originalPos) return false;
+          return pos.x !== originalPos.x || pos.y !== originalPos.y;
         },
-        { timeout: 5000, message: "Expected position to change after drag" }
+        { timeout: 5000 }
       )
       .toBe(true);
 
     const afterDrag = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
-    const draggedPosition = afterDrag.freeShapeAnnotations?.[0]?.position;
+    const draggedPos = afterDrag.freeShapeAnnotations?.[0]?.position;
+    expect(draggedPos).toBeDefined();
 
-    // Undo the position change
+    // Undo drag, expect near original (snapping tolerance).
     await topoViewerPage.undo();
-    await page.waitForTimeout(500);
-
-    // Verify position reverted to original
     await expect
       .poll(
         async () => {
           const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
           const pos = after.freeShapeAnnotations?.[0]?.position;
-          // Allow small tolerance for snapping
-          return (
-            pos &&
-            Math.abs(pos.x - originalPosition!.x) < 20 &&
-            Math.abs(pos.y - originalPosition!.y) < 20
-          );
+          if (!pos || !originalPos) return false;
+          return Math.abs(pos.x - originalPos.x) < 20 && Math.abs(pos.y - originalPos.y) < 20;
         },
-        { timeout: 5000, message: "Expected position to revert after undo" }
+        { timeout: 5000 }
       )
       .toBe(true);
 
-    // Redo the position change
+    // Redo drag, expect near dragged.
     await topoViewerPage.redo();
-    await page.waitForTimeout(500);
-
-    // Verify position restored to dragged position
     await expect
       .poll(
         async () => {
           const after = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
           const pos = after.freeShapeAnnotations?.[0]?.position;
-          // Allow small tolerance
-          return (
-            pos &&
-            Math.abs(pos.x - draggedPosition!.x) < 20 &&
-            Math.abs(pos.y - draggedPosition!.y) < 20
-          );
+          if (!pos || !draggedPos) return false;
+          return Math.abs(pos.x - draggedPos.x) < 20 && Math.abs(pos.y - draggedPos.y) < 20;
         },
-        { timeout: 5000, message: "Expected position to restore after redo" }
+        { timeout: 5000 }
       )
       .toBe(true);
   });

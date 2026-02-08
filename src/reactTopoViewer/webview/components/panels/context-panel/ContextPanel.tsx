@@ -388,6 +388,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     <>
       <ToggleHandle isOpen={isOpen} panelWidth={panelWidth} isDragging={isDragging} side={side} onOpen={onOpen} onClose={onClose} onBack={onBack} onToggleSide={onToggleSide} />
       <Box
+        data-testid="context-panel"
         sx={{
           position: "absolute",
           [sideLayout.pos]: 0,
@@ -420,11 +421,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           }}
         >
           {showBackButton && (
-            <IconButton size="small" onClick={onBack} sx={{ mr: 0.5 }}>
+            <IconButton size="small" onClick={onBack} sx={{ mr: 0.5 }} data-testid="panel-back-btn">
               <ArrowBackIcon fontSize="small" />
             </IconButton>
           )}
-          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }} data-testid="panel-title">
             {panelView.title}
           </Typography>
           <IconButton
@@ -433,6 +434,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               onBack();
               onClose();
             }}
+            data-testid="panel-close-btn"
           >
             <CloseIcon fontSize="small" />
           </IconButton>
@@ -442,6 +444,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         {/* Read-only indicator */}
         {isReadOnly && (
           <Box
+            data-testid="panel-readonly-indicator"
             sx={{
               display: "flex",
               alignItems: "center",
@@ -479,10 +482,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 variant={footer.hasChanges ? "contained" : "outlined"}
                 size="small"
                 onClick={footer.handleApply}
+                data-testid="panel-apply-btn"
               >
                 Apply
               </Button>
-              <Button variant="contained" size="small" onClick={footer.handleSave}>
+              <Button variant="contained" size="small" onClick={footer.handleSave} data-testid="panel-ok-btn">
                 OK
               </Button>
             </Box>

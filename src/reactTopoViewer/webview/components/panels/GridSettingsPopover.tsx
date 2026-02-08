@@ -37,6 +37,7 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
       onClose={onClose}
       anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       transformOrigin={{ vertical: "top", horizontal: "center" }}
+      data-testid="grid-settings-popover"
     >
       <Box sx={{ p: 2, width: 260 }}>
         <Typography variant="subtitle2" gutterBottom>

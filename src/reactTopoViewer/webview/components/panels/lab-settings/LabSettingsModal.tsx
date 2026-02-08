@@ -27,10 +27,10 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
   isLocked,
   labSettings
 }) => (
-  <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
+  <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="lab-settings-modal">
     <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
       Lab Settings
-      <IconButton size="small" onClick={onClose}>
+      <IconButton size="small" onClick={onClose} data-testid="lab-settings-close-btn">
         <CloseIcon fontSize="small" />
       </IconButton>
     </DialogTitle>

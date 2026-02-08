@@ -28,6 +28,7 @@ export const FindNodePopover: React.FC<FindNodePopoverProps> = ({
       onClose={onClose}
       anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       transformOrigin={{ vertical: "top", horizontal: "center" }}
+      data-testid="find-node-popover"
     >
       <Box sx={{ p: 2, width: 320 }}>
         <FindNodeSearchWidget

@@ -131,7 +131,7 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLo
 
   return (
     <>
-      <Dialog open={isOpen} onClose={handleCancel} maxWidth="sm" fullWidth>
+      <Dialog open={isOpen} onClose={handleCancel} maxWidth="sm" fullWidth data-testid="bulk-link-modal">
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
           Bulk Link Devices
           <IconButton size="small" onClick={handleCancel}><CloseIcon fontSize="small" /></IconButton>
@@ -147,13 +147,13 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLo
                 <Typography variant="caption" component="label" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                   Source Pattern<Typography component="span" color="error.main" sx={{ ml: 0.5 }}>*</Typography>
                 </Typography>
-                <TextField inputRef={sourceInputRef} size="small" fullWidth value={sourcePattern} onChange={(e) => setSourcePattern(e.target.value)} placeholder="e.g. leaf*, srl(\d+)" disabled={mode !== "edit"} />
+                <TextField inputRef={sourceInputRef} size="small" fullWidth value={sourcePattern} onChange={(e) => setSourcePattern(e.target.value)} placeholder="e.g. leaf*, srl(\d+)" disabled={mode !== "edit"} data-testid="bulk-link-source" />
               </Box>
               <Box>
                 <Typography variant="caption" component="label" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
                   Target Pattern<Typography component="span" color="error.main" sx={{ ml: 0.5 }}>*</Typography>
                 </Typography>
-                <TextField size="small" fullWidth value={targetPattern} onChange={(e) => setTargetPattern(e.target.value)} placeholder="e.g. spine*, client$1" disabled={mode !== "edit"} />
+                <TextField size="small" fullWidth value={targetPattern} onChange={(e) => setTargetPattern(e.target.value)} placeholder="e.g. spine*, client$1" disabled={mode !== "edit"} data-testid="bulk-link-target" />
               </Box>
             </Box>
             {status && (
@@ -169,8 +169,8 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLo
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button variant="outlined" size="small" onClick={handleCancel}>Cancel</Button>
-          <Button variant="contained" size="small" onClick={handleCompute}>Apply</Button>
+          <Button variant="outlined" size="small" onClick={handleCancel} data-testid="bulk-link-cancel-btn">Cancel</Button>
+          <Button variant="contained" size="small" onClick={handleCompute} data-testid="bulk-link-apply-btn">Apply</Button>
         </DialogActions>
       </Dialog>
 

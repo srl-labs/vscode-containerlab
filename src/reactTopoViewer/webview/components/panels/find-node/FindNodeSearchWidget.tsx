@@ -113,6 +113,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         onKeyDown={handleKeyDown}
+        data-testid="find-node-input"
         slotProps={{
           input: {
             startAdornment: (
@@ -122,7 +123,7 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
             ),
             endAdornment: searchTerm ? (
               <InputAdornment position="end">
-                <IconButton size="small" onClick={handleClear} edge="end">
+                <IconButton size="small" onClick={handleClear} edge="end" data-testid="find-node-clear-btn">
                   <ClearIcon fontSize="small" />
                 </IconButton>
               </InputAdornment>
@@ -133,11 +134,11 @@ export const FindNodeSearchWidget: React.FC<FindNodeSearchWidgetProps> = ({
       />
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: mbActions }}>
-        <Button variant="contained" size="small" onClick={handleSearch}>
+        <Button variant="contained" size="small" onClick={handleSearch} data-testid="find-node-search-btn">
           Search
         </Button>
         {matchCount !== null && (
-          <Typography variant="body2" sx={{ color: matchCount > 0 ? "success.main" : "warning.main" }}>
+          <Typography variant="body2" sx={{ color: matchCount > 0 ? "success.main" : "warning.main" }} data-testid="find-node-match-count">
             {formatMatchCountText(matchCount)}
           </Typography>
         )}

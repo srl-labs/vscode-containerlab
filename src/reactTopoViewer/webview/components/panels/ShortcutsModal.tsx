@@ -16,7 +16,7 @@ interface ShortcutsModalProps {
 }
 
 export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose }) => (
-  <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
+  <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="shortcuts-modal">
     <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}>
       Shortcuts & Interactions
       <IconButton size="small" onClick={onClose}>

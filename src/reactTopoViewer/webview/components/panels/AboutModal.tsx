@@ -256,6 +256,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      data-testid="about-modal"
       slotProps={{
         paper: {
           sx: {

@@ -42,6 +42,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       onClose={onClose}
       anchorReference="anchorPosition"
       anchorPosition={{ top: position.y, left: position.x }}
+      data-testid="context-menu"
       slotProps={{
         paper: {
           sx: { minWidth: 180 }

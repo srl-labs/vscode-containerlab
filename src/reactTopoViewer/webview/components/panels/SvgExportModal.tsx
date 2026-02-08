@@ -230,7 +230,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
   })();
 
   return (
-    <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="svg-export-modal">
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: JUSTIFY_SPACE_BETWEEN, py: 1.5 }}>
         Export SVG
         <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
@@ -296,6 +296,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
               placeholder="topology"
+              data-testid="svg-export-filename"
               slotProps={{
                 input: {
                   endAdornment: (
@@ -347,6 +348,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
             onClick={() => void handleExport()}
             disabled={isExporting || !isExportAvailable}
             startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+            data-testid="svg-export-btn"
           >
             {isExporting ? "Exporting..." : "Export SVG"}
           </Button>
