@@ -62,10 +62,6 @@ const ShortcutSection: React.FC<ShortcutSectionProps> = ({ title, color, childre
 export const ShortcutsSection: React.FC = () => {
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Shortcuts & Interactions
-      </Typography>
-
       {/* Viewer Mode */}
       <ShortcutSection title="Viewer Mode" color="success.main">
         <ShortcutRow label="Select node/link" shortcut="Left Click" />

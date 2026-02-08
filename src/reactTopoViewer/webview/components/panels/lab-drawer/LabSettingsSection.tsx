@@ -4,7 +4,6 @@
  */
 import React, { useState } from "react";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Button from "@mui/material/Button";
@@ -43,10 +42,6 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
 
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Lab Settings
-      </Typography>
-
       {/* Tab Navigation */}
       <Tabs
         value={activeTab}
