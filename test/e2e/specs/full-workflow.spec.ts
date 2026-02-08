@@ -238,6 +238,15 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
 
     await topoViewerPage.createGroup();
     await expect.poll(() => topoViewerPage.getGroupCount(), { timeout: 10000 }).toBe(initialGroupCount + 1);
+
+    // A single undo must fully remove the group (not require two undos).
+    await topoViewerPage.undo();
+    await expect.poll(() => topoViewerPage.getGroupCount(), { timeout: 10000 }).toBe(initialGroupCount);
+
+    // A single redo must fully restore the group.
+    await topoViewerPage.redo();
+    await expect.poll(() => topoViewerPage.getGroupCount(), { timeout: 10000 }).toBe(initialGroupCount + 1);
+
   });
 
   test("5-6. Complex undo/redo with interleaved operations", async ({ page, topoViewerPage }) => {

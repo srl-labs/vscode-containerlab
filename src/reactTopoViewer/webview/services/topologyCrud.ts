@@ -9,6 +9,7 @@ import type { Node } from "@xyflow/react";
 import type { NodeSaveData } from "../../shared/io/NodePersistenceIO";
 import type { LinkSaveData } from "../../shared/io/LinkPersistenceIO";
 import { nodesToAnnotations } from "../annotations/annotationNodeConverters";
+import { collectNodeGroupMemberships } from "../annotations/groupMembership";
 import { useGraphStore } from "../stores/graphStore";
 import { BRIDGE_NETWORK_TYPES } from "../utils/networkNodeTypes";
 import { buildNetworkNodeAnnotations } from "../utils/networkNodeAnnotations";
@@ -169,5 +170,38 @@ export async function saveNodePositionsWithAnnotations(
     );
   } catch (err) {
     console.error(`${WARN_COMMAND_FAILED}: savePositionsAndAnnotations`, err);
+  }
+}
+
+/**
+ * Save node positions + group memberships as a single batch command (one undo entry).
+ * Used when a node drag may change group membership.
+ */
+export async function saveNodePositionsWithMemberships(
+  positions: Array<{
+    id: string;
+    position?: { x: number; y: number };
+    geoCoordinates?: { lat: number; lng: number };
+  }>
+): Promise<void> {
+  try {
+    const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
+    await executeTopologyCommand(
+      {
+        command: "batch",
+        payload: {
+          commands: [
+            { command: "savePositions", payload: positions },
+            {
+              command: "setNodeGroupMemberships",
+              payload: memberships.map((m) => ({ nodeId: m.id, groupId: m.groupId ?? null }))
+            }
+          ]
+        }
+      },
+      { applySnapshot: false }
+    );
+  } catch (err) {
+    console.error(`${WARN_COMMAND_FAILED}: savePositionsWithMemberships(batch)`, err);
   }
 }

@@ -5,7 +5,6 @@ import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { GroupNodeData } from "../../components/canvas/types";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
 import {
-  saveAllNodeGroupMemberships,
   saveAnnotationNodesFromGraph,
   saveAnnotationNodesWithMemberships
 } from "../../services";
@@ -128,9 +127,10 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
     void saveAnnotationNodesFromGraph();
   }, []);
 
-  const persistMemberships = useCallback(() => {
+  /** Persist annotations + memberships as a single host command (one undo step). */
+  const persistWithMemberships = useCallback(() => {
     const memberships = collectNodeGroupMemberships(useGraphStore.getState().nodes);
-    void saveAllNodeGroupMemberships(memberships);
+    void saveAnnotationNodesWithMemberships(memberships);
   }, []);
 
   const editGroup = useCallback(
@@ -256,9 +256,8 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       }
     }
 
-    persist();
-    persistMemberships();
-  }, [canEditAnnotations, onLockedAction, rfInstance, derived, persist, persistMemberships]);
+    persistWithMemberships();
+  }, [canEditAnnotations, onLockedAction, rfInstance, derived, persistWithMemberships]);
 
   const createGroupAtPosition = useCallback(
     (position: { x: number; y: number }) => {
@@ -312,10 +311,9 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         }
       }
 
-      persist();
-      persistMemberships();
+      persistWithMemberships();
     },
-    [canEditAnnotations, onLockedAction, rfInstance, derived, persist, persistMemberships]
+    [canEditAnnotations, onLockedAction, rfInstance, derived, persistWithMemberships]
   );
 
   const addGroup = useCallback(
@@ -327,10 +325,9 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
           derived.addNodeToGroup(memberId, group.id);
         }
       }
-      persist();
-      persistMemberships();
+      persistWithMemberships();
     },
-    [derived, persist, persistMemberships]
+    [derived, persistWithMemberships]
   );
 
   const updateGroupSize = useCallback(

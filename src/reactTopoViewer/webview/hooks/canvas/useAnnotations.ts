@@ -3,8 +3,7 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 import {
   saveAllNodeGroupMemberships,
-  saveAnnotationNodesFromGraph,
-  saveNodeGroupMembership
+  saveAnnotationNodesFromGraph
 } from "../../services";
 import { useAnnotationUIActions, useAnnotationUIState } from "../../stores/annotationUIStore";
 import { useGraphStore } from "../../stores/graphStore";
@@ -155,17 +154,13 @@ export function useAnnotations(params?: UseAnnotationsParams): AnnotationContext
         derived.addNodeToGroup,
         derived.removeNodeFromGroup
       );
-
-      if (currentGroupId !== targetGroupId) {
-        void saveNodeGroupMembership(nodeId, targetGroupId);
-      }
+      // Membership persistence is handled by persistPositionChanges in onNodeDragStop
+      // to keep position + membership as a single undo entry.
     },
     [
       derived,
       getGroupDescendants,
-      getGroupParentId,
-      saveAnnotationNodesFromGraph,
-      saveNodeGroupMembership
+      getGroupParentId
     ]
   );
 

@@ -22,7 +22,8 @@ export {
   buildNetworkNodeAnnotations,
   saveNetworkNodesFromGraph,
   saveNodePositions,
-  saveNodePositionsWithAnnotations
+  saveNodePositionsWithAnnotations,
+  saveNodePositionsWithMemberships
 } from "./topologyCrud";
 
 export type { NodeSaveData, LinkSaveData, NetworkNodeData } from "./topologyCrud";

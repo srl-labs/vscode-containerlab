@@ -32,7 +32,8 @@ import { DEFAULT_LINE_LENGTH } from "../../annotations/constants";
 import {
   saveAnnotationNodesFromGraph,
   saveNodePositions,
-  saveNodePositionsWithAnnotations
+  saveNodePositionsWithAnnotations,
+  saveNodePositionsWithMemberships
 } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
 import { allocateEndpointsForLink } from "../../utils/endpointAllocator";
@@ -402,7 +403,10 @@ function persistPositionChanges(changes: NodeChange[]) {
   }
 
   if (topoPositions.length > 0) {
-    void saveNodePositions(topoPositions);
+    // Include memberships so position + membership changes are a single undo entry
+    // (e.g., dragging a node into/out of a group).
+    void saveNodePositionsWithMemberships(topoPositions);
+    return;
   }
 
   if (movedAnnotations) {
