@@ -689,9 +689,11 @@ export const AppContent: React.FC<AppContentProps> = ({
         <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden", position: "relative" }}>
           <ContextPanel
             isOpen={panelVisibility.isContextPanelOpen}
+            side={panelVisibility.panelSide}
             onOpen={panelVisibility.handleOpenContextPanel}
             onClose={panelVisibility.handleCloseContextPanel}
             onBack={handleContextPanelBack}
+            onToggleSide={panelVisibility.handleTogglePanelSide}
             rfInstance={rfInstance}
             palette={{
               mode: state.mode,

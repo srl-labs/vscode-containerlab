@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon } from "@mui/icons-material";
+import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
 import { Box, Button, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 
 import { useIsLocked } from "../../../stores/topoViewerStore";
@@ -239,76 +239,75 @@ const ToggleHandle: React.FC<{
   isOpen: boolean;
   panelWidth: number;
   isDragging: boolean;
+  side: "left" | "right";
   onOpen: () => void;
   onClose: () => void;
   onBack: () => void;
-}> = ({ isOpen, panelWidth, isDragging, onOpen, onClose, onBack }) => (
-  <Tooltip title={isOpen ? "Close panel" : "Open panel"} placement="right">
+  onToggleSide: () => void;
+}> = ({ isOpen, panelWidth, isDragging, onOpen, onClose, onBack, side, onToggleSide }) => {
+  const isLeft = side === "left";
+  const tooltipPlacement = isLeft ? "right" : "left";
+  const positionProp = isLeft ? "left" : "right";
+  const transitionProp = `${positionProp} 0.25s ease`;
+  const OpenIcon = isLeft ? ChevronRightIcon : ChevronLeftIcon;
+  const CloseChevron = isLeft ? ChevronLeftIcon : ChevronRightIcon;
+
+  const handleStyle = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 20,
+    cursor: "pointer",
+    borderRadius: isLeft ? "0 4px 4px 0" : "4px 0 0 4px",
+    border: 1,
+    [isLeft ? "borderLeft" : "borderRight"]: 0,
+    borderColor: "divider",
+    bgcolor: "var(--vscode-editor-background)",
+    opacity: 0.8,
+    "&:hover": { opacity: 1, bgcolor: "action.hover" }
+  };
+
+  return (
     <Box
-      onClick={isOpen ? () => { onBack(); onClose(); } : onOpen}
       sx={{
         position: "absolute",
-        left: isOpen ? panelWidth : 0,
+        [isLeft ? "left" : "right"]: isOpen ? panelWidth : 0,
         top: "50%",
         transform: "translateY(-50%)",
-        transition: isDragging ? "none" : "left 0.25s ease",
+        transition: isDragging ? "none" : transitionProp,
         zIndex: 15,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        width: 20,
-        height: 48,
-        cursor: "pointer",
-        borderRadius: "0 4px 4px 0",
-        border: 1,
-        borderLeft: 0,
-        borderColor: "divider",
-        bgcolor: "var(--vscode-editor-background)",
-        opacity: 0.8,
-        "&:hover": { opacity: 1, bgcolor: "action.hover" }
+        gap: 0.5,
       }}
     >
-      {isOpen
-        ? <ChevronLeftIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
-        : <ChevronRightIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
-      }
+      <Tooltip title={isOpen ? "Close panel" : "Open panel"} placement={tooltipPlacement}>
+        <Box
+          onClick={isOpen ? () => { onBack(); onClose(); } : onOpen}
+          sx={{ ...handleStyle, height: 48 }}
+        >
+          {isOpen
+            ? <CloseChevron sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
+            : <OpenIcon sx={{ fontSize: 16, color: TEXT_SECONDARY }} />
+          }
+        </Box>
+      </Tooltip>
+      {isOpen && (
+        <Tooltip title={`Move panel to ${isLeft ? "right" : "left"}`} placement={tooltipPlacement}>
+          <Box onClick={onToggleSide} sx={{ ...handleStyle, height: 24 }}>
+            <SwapHorizIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
+          </Box>
+        </Tooltip>
+      )}
     </Box>
-  </Tooltip>
-);
+  );
+};
 
-export interface ContextPanelProps {
-  isOpen: boolean;
-  onOpen: () => void;
-  onClose: () => void;
-  onBack: () => void;
-  rfInstance: ReactFlowInstance | null;
-  palette: ContextPanelPaletteProps;
-  view: ContextPanelViewProps;
-  editor: ContextPanelEditorProps;
-}
-
-export const ContextPanel: React.FC<ContextPanelProps> = ({
-  isOpen,
-  onOpen,
-  onClose,
-  onBack,
-  palette,
-  view,
-  editor
-}) => {
-  const panelView = useContextPanelContent();
-  const isLocked = useIsLocked();
-  const isReadOnly = isLocked && panelView.hasFooter;
-  const footerRef = useRef<FooterRef | null>(null);
+function usePanelResize(sideRef: React.RefObject<string>) {
   const [panelWidth, setPanelWidth] = useState(MIN_WIDTH);
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
-  const [, forceUpdate] = useState(0);
-
-  const setFooterRef = useCallback((ref: FooterRef | null) => {
-    footerRef.current = ref;
-    forceUpdate((n) => n + 1);
-  }, []);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -316,7 +315,10 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     setIsDragging(true);
     const onMouseMove = (ev: MouseEvent) => {
       if (!isDraggingRef.current) return;
-      setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, ev.clientX)));
+      const newWidth = sideRef.current === "left"
+        ? ev.clientX
+        : window.innerWidth - ev.clientX;
+      setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth)));
     };
     const onMouseUp = () => {
       isDraggingRef.current = false;
@@ -326,7 +328,53 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     };
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
+  }, [sideRef]);
+
+  return { panelWidth, isDragging, handleResizeStart };
+}
+
+export interface ContextPanelProps {
+  isOpen: boolean;
+  side: "left" | "right";
+  onOpen: () => void;
+  onClose: () => void;
+  onBack: () => void;
+  onToggleSide: () => void;
+  rfInstance: ReactFlowInstance | null;
+  palette: ContextPanelPaletteProps;
+  view: ContextPanelViewProps;
+  editor: ContextPanelEditorProps;
+}
+
+export const ContextPanel: React.FC<ContextPanelProps> = ({
+  isOpen,
+  side,
+  onOpen,
+  onClose,
+  onBack,
+  onToggleSide,
+  palette,
+  view,
+  editor
+}) => {
+  const panelView = useContextPanelContent();
+  const isLocked = useIsLocked();
+  const isReadOnly = isLocked && panelView.hasFooter;
+  const footerRef = useRef<FooterRef | null>(null);
+  const [, forceUpdate] = useState(0);
+  const isLeft = side === "left";
+  const sideRef = useRef(side);
+  sideRef.current = side;
+  const { panelWidth, isDragging, handleResizeStart } = usePanelResize(sideRef);
+
+  const setFooterRef = useCallback((ref: FooterRef | null) => {
+    footerRef.current = ref;
+    forceUpdate((n) => n + 1);
   }, []);
+
+  const sideLayout = isLeft
+    ? { pos: "left", border: "borderRight", hidden: "translateX(-100%)", resize: "right" }
+    : { pos: "right", border: "borderLeft", hidden: "translateX(100%)", resize: "left" };
 
   const showBackButton = panelView.kind !== "palette";
   const isPaletteView = panelView.kind === "palette";
@@ -338,22 +386,22 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
 
   return (
     <>
-      <ToggleHandle isOpen={isOpen} panelWidth={panelWidth} isDragging={isDragging} onOpen={onOpen} onClose={onClose} onBack={onBack} />
+      <ToggleHandle isOpen={isOpen} panelWidth={panelWidth} isDragging={isDragging} side={side} onOpen={onOpen} onClose={onClose} onBack={onBack} onToggleSide={onToggleSide} />
       <Box
         sx={{
           position: "absolute",
-          left: 0,
+          [sideLayout.pos]: 0,
           top: 0,
           bottom: 0,
           width: panelWidth,
           zIndex: 10,
           bgcolor: "var(--vscode-editor-background)",
-          borderRight: 1,
+          [sideLayout.border]: 1,
           borderColor: "divider",
           display: "flex",
           flexDirection: "column",
           boxShadow: 4,
-          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+          transform: isOpen ? "translateX(0)" : sideLayout.hidden,
           transition: isDragging ? "none" : "transform 0.25s ease",
           pointerEvents: isOpen ? "auto" : "none"
         }}
@@ -446,7 +494,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           onMouseDown={handleResizeStart}
           sx={{
             position: "absolute",
-            right: 0,
+            [sideLayout.resize]: 0,
             top: 0,
             bottom: 0,
             width: 4,

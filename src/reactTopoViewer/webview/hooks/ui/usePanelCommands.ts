@@ -40,6 +40,8 @@ export interface PanelVisibility {
   isContextPanelOpen: boolean;
   /** Why the panel is open. Used to decide how pane-click should behave. */
   contextPanelOpenReason: "manual" | "auto" | null;
+  /** Which side the context panel is on. */
+  panelSide: "left" | "right";
   /**
    * Open the ContextPanel.
    * Note: this is also used directly as an `onClick` handler, so it may receive a mouse event;
@@ -48,6 +50,7 @@ export interface PanelVisibility {
   handleOpenContextPanel: (reason?: "manual" | "auto" | unknown) => void;
   handleCloseContextPanel: () => void;
   handleToggleContextPanel: () => void;
+  handleTogglePanelSide: () => void;
 
   // Modals
   showLabSettingsModal: boolean;
@@ -75,15 +78,25 @@ export interface PanelVisibility {
   handleCloseFindPopover: () => void;
 }
 
+const PANEL_SIDE_KEY = "contextPanelSide";
+
 function useContextPanel() {
-  const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
+  const [isContextPanelOpen, setIsContextPanelOpen] = useState(true);
   const [contextPanelOpenReason, setContextPanelOpenReason] = useState<
     "manual" | "auto" | null
-  >(null);
+  >("manual");
+  const [panelSide, setPanelSide] = useState<"left" | "right">(() => {
+    try {
+      const stored = window.localStorage.getItem(PANEL_SIDE_KEY);
+      if (stored === "left" || stored === "right") return stored;
+    } catch { /* ignore */ }
+    return "right";
+  });
 
   return {
     isContextPanelOpen,
     contextPanelOpenReason,
+    panelSide,
     handleOpenContextPanel: useCallback((reason?: unknown) => {
       // React passes the click event as the first arg when used as an onClick handler.
       const normalizedReason: "manual" | "auto" = reason === "auto" ? "auto" : "manual";
@@ -98,6 +111,13 @@ function useContextPanel() {
       setIsContextPanelOpen((prev) => {
         const next = !prev;
         setContextPanelOpenReason(next ? "manual" : null);
+        return next;
+      });
+    }, []),
+    handleTogglePanelSide: useCallback(() => {
+      setPanelSide((prev) => {
+        const next = prev === "left" ? "right" : "left";
+        try { window.localStorage.setItem(PANEL_SIDE_KEY, next); } catch { /* ignore */ }
         return next;
       });
     }, [])
