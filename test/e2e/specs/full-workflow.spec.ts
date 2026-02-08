@@ -11,6 +11,11 @@ const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
 const SEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
 const SEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
+const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
+const SEL_NODE_NAME = "#node-name";
+
+const CORE_ROUTER = "core-router";
+const CORE_ROUTER_YAML_KEY = `${CORE_ROUTER}:`;
 
 async function clickNode(page: Page, nodeId: string): Promise<void> {
   const nodeHandle = page.locator(`[data-id="${nodeId}"]`);
@@ -57,7 +62,7 @@ test.describe("Full Workflow", () => {
 
     // Step 3: Edit node kind via editor
     await clickNode(page, "router1");
-    await expect(page.locator('[data-testid="panel-tab-basic"]')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator(SEL_PANEL_TAB_BASIC)).toBeVisible({ timeout: 3000 });
 
     const kindField = page.locator("#node-kind");
     await kindField.clear();
@@ -100,11 +105,11 @@ test.describe("Full Workflow", () => {
 
     // Open editor and rename
     await clickNode(page, "router1");
-    await expect(page.locator('[data-testid="panel-tab-basic"]')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator(SEL_PANEL_TAB_BASIC)).toBeVisible({ timeout: 3000 });
 
-    const nameField = page.locator("#node-name");
+    const nameField = page.locator(SEL_NODE_NAME);
     await nameField.clear();
-    await nameField.fill("core-router");
+    await nameField.fill(CORE_ROUTER);
     await nameField.blur();
     await page.waitForTimeout(200);
 
@@ -113,12 +118,12 @@ test.describe("Full Workflow", () => {
 
     // Verify YAML has new name
     const yaml = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
-    expect(yaml).toContain("core-router:");
+    expect(yaml).toContain(CORE_ROUTER_YAML_KEY);
     expect(yaml).not.toContain("router1:");
 
     // Verify graph has new name
     const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds).toContain("core-router");
+    expect(nodeIds).toContain(CORE_ROUTER);
     expect(nodeIds).not.toContain("router1");
   });
 });
@@ -200,15 +205,15 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
     await clickNode(page, "router1");
     await expect(page.locator(SEL_PANEL_TITLE)).toHaveText("Node Editor", { timeout: 5000 });
 
-    const nameField = page.locator("#node-name");
+    const nameField = page.locator(SEL_NODE_NAME);
     await nameField.clear();
-    await nameField.fill("core-router");
+    await nameField.fill(CORE_ROUTER);
     await nameField.blur();
     await page.waitForTimeout(200);
 
     await page.locator(SEL_APPLY_BTN).click();
     await expect.poll(() => topoViewerPage.getYamlFromFile(TOPOLOGY_FILE), { timeout: 10000 }).toContain(
-      "core-router:"
+      CORE_ROUTER_YAML_KEY
     );
 
     const okBtn = page.locator(SEL_OK_BTN);
@@ -217,7 +222,7 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
     await page.waitForTimeout(500);
 
     const nodeIds = await topoViewerPage.getNodeIds();
-    expect(nodeIds).toContain("core-router");
+    expect(nodeIds).toContain(CORE_ROUTER);
     expect(nodeIds).not.toContain("router1");
   });
 
@@ -389,6 +394,7 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
 
     const nodeIdsAfter = await topoViewerPage.getNodeIds();
     const newNodeIds = nodeIdsAfter.filter((id: string) => !nodeIdsBefore.includes(id));
+    expect(newNodeIds.length).toBeGreaterThan(0);
 
     // Undo until pasted group and nodes are removed.
     let currentGroupCount = await topoViewerPage.getGroupCount();
@@ -416,7 +422,7 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
     await page.waitForTimeout(500);
     await clickNode(page, "router1");
     await expect(page.locator(SEL_PANEL_TITLE)).toHaveText("Node Editor", { timeout: 5000 });
-    await page.locator("#node-name").fill("core-router");
+    await page.locator(SEL_NODE_NAME).fill(CORE_ROUTER);
     await page.locator(SEL_APPLY_BTN).click();
     {
       const okBtn = page.locator(SEL_OK_BTN);
@@ -431,13 +437,13 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
     await page.waitForTimeout(700);
 
     const nodeIds = await topoViewerPage.getNodeIds();
-    for (const nodeId of ["core-router", "router2", "router3", "router4"]) {
+    for (const nodeId of [CORE_ROUTER, "router2", "router3", "router4"]) {
       expect(nodeIds).toContain(nodeId);
     }
     expect(await topoViewerPage.getEdgeCount()).toBeGreaterThanOrEqual(4);
 
     const yaml = await topoViewerPage.getYamlFromFile(TOPOLOGY_FILE);
-    expect(yaml).toContain("core-router:");
+    expect(yaml).toContain(CORE_ROUTER_YAML_KEY);
   });
 
   test("11. Nested groups", async ({ page, topoViewerPage }) => {

@@ -10,6 +10,8 @@ const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
 const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
 const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
 
+const PANEL_TITLE_LINK_EDITOR = "Link Editor";
+
 /**
  * Link Editor Panel E2E Tests (MUI ContextPanel version)
  *
@@ -44,7 +46,7 @@ test.describe("Link Editor Panel", () => {
 
     const panelTitle = page.locator(SEL_PANEL_TITLE);
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText("Link Editor");
+    await expect(panelTitle).toHaveText(PANEL_TITLE_LINK_EDITOR);
   });
 
   test("link editor panel has correct title", async ({ page, topoViewerPage }) => {
@@ -53,7 +55,7 @@ test.describe("Link Editor Panel", () => {
 
     const title = page.locator(SEL_PANEL_TITLE);
     await expect(title).toBeVisible();
-    await expect(title).toHaveText("Link Editor");
+    await expect(title).toHaveText(PANEL_TITLE_LINK_EDITOR);
   });
 
   test("link editor panel has Basic tab selected by default", async ({ page, topoViewerPage }) => {
@@ -87,7 +89,7 @@ test.describe("Link Editor Panel", () => {
 
     const panelTitle = page.locator(SEL_PANEL_TITLE);
     await expect(panelTitle).toBeVisible();
-    await expect(panelTitle).toHaveText("Link Editor");
+    await expect(panelTitle).toHaveText(PANEL_TITLE_LINK_EDITOR);
 
     // Avoid rare overlay interception (dev-only UI) by using keyboard activation.
     const okBtn = page.locator(SEL_PANEL_OK_BTN);

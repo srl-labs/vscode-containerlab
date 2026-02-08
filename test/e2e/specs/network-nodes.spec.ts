@@ -36,73 +36,155 @@ function validateYamlAgainstSchema(yamlContent: string): { valid: boolean; error
   }
 }
 
+const SINGLE_ENDPOINT_NETWORK_TYPES = ["host", "mgmt-net", "macvlan", "vxlan", "vxlan-stitch", "dummy"] as const;
+const BRIDGE_TYPES = ["bridge", "ovs-bridge"] as const;
+const ALL_NETWORK_TYPES = [...SINGLE_ENDPOINT_NETWORK_TYPES, ...BRIDGE_TYPES] as const;
+
+const SRL_POSITIONS = {
+  srl1: { x: 200, y: 300 },
+  srl2: { x: 600, y: 300 }
+} as const;
+
+async function setupEmptyTopology(topoViewerPage: any): Promise<void> {
+  await topoViewerPage.resetFiles();
+  await topoViewerPage.gotoFile(EMPTY_FILE);
+  await topoViewerPage.waitForCanvasReady();
+  await topoViewerPage.setEditMode();
+  await topoViewerPage.unlock();
+}
+
+async function createBaseNodes(page: Page, topoViewerPage: any): Promise<void> {
+  await topoViewerPage.createNode("srl1", SRL_POSITIONS.srl1, KIND_NOKIA_SRLINUX);
+  await topoViewerPage.createNode("srl2", SRL_POSITIONS.srl2, KIND_NOKIA_SRLINUX);
+  await page.waitForTimeout(500);
+  expect(await topoViewerPage.getNodeCount()).toBe(2);
+}
+
+function networkPositionForIndex(i: number, targetNode: "srl1" | "srl2") {
+  const xOffset = (i % 4) * 100 - 150;
+  const yOffset = i < 4 ? -150 : 150;
+  const base = targetNode === "srl1" ? SRL_POSITIONS.srl1 : SRL_POSITIONS.srl2;
+  return { x: base.x + xOffset, y: base.y + yOffset };
+}
+
+async function createNetworksAndLinks(page: Page, topoViewerPage: any) {
+  const createdNetworkIds: string[] = [];
+  const createdBridgeIds: string[] = [];
+  const createdLinkBased: Array<{ id: string; type: string }> = [];
+
+  let interfaceCounter = 1;
+  for (let i = 0; i < ALL_NETWORK_TYPES.length; i++) {
+    const networkType = ALL_NETWORK_TYPES[i];
+    const targetNode = i < 4 ? "srl1" : "srl2";
+    const position = networkPositionForIndex(i, targetNode);
+
+    const networkId = await topoViewerPage.createNetwork(position, networkType);
+    expect(networkId).not.toBeNull();
+    createdNetworkIds.push(networkId!);
+
+    const isBridge = (BRIDGE_TYPES as readonly string[]).includes(networkType);
+    if (isBridge) {
+      createdBridgeIds.push(networkId!);
+      // Bridges require interfaces on both ends.
+      await topoViewerPage.createLink(networkId!, targetNode, `eth${interfaceCounter}`, `e1-${interfaceCounter}`);
+    } else {
+      createdLinkBased.push({ id: networkId!, type: networkType });
+      // Link-based networks: real node interface to network eth0.
+      await topoViewerPage.createLink(targetNode, networkId!, `e1-${interfaceCounter}`, "eth0");
+    }
+
+    interfaceCounter++;
+    await page.waitForTimeout(350);
+  }
+
+  return { createdNetworkIds, createdBridgeIds, createdLinkBased };
+}
+
+function assertCreatedIdsAreUsed(
+  createdNetworkIds: string[],
+  createdBridgeIds: string[],
+  createdLinkBased: Array<{ id: string; type: string }>
+): void {
+  expect(createdNetworkIds).toHaveLength(ALL_NETWORK_TYPES.length);
+  for (const id of createdBridgeIds) {
+    expect(createdNetworkIds).toContain(id);
+  }
+  for (const { id } of createdLinkBased) {
+    expect(createdNetworkIds).toContain(id);
+  }
+}
+
+function assertYamlContainsNetworkNodes(
+  yaml: string,
+  parsedYaml: unknown,
+  createdBridgeIds: string[],
+  createdLinkBased: Array<{ id: string; type: string }>
+): void {
+  // YAML should contain bridges as nodes.
+  for (const bridgeId of createdBridgeIds) {
+    expect(yaml).toContain(`${bridgeId}:`);
+  }
+  for (const bridgeType of BRIDGE_TYPES) {
+    if (createdBridgeIds.some((id) => id.startsWith(bridgeType))) {
+      expect(yaml).toContain(`kind: ${bridgeType}`);
+    }
+  }
+
+  // YAML should contain links and have one link for each link-based network type.
+  expect(yaml).toContain("links:");
+  for (const { type } of createdLinkBased) {
+    expect(findLinkByType(parsedYaml, type), `Missing link type ${type} in YAML`).toBeDefined();
+  }
+}
+
+function assertYamlContainsNetworkDefaults(yaml: string): void {
+  // VXLAN family links should have default fields present when type is used.
+  if (yaml.includes("type: vxlan") || yaml.includes("type: vxlan-stitch")) {
+    expect(yaml).toContain("remote:");
+    expect(yaml).toContain("vni:");
+    expect(yaml).toContain("dst-port:");
+  }
+
+  // Dummy links should use the extended single endpoint format in our YAML.
+  if (yaml.includes("type: dummy")) {
+    expect(yaml).toContain("endpoint:");
+    expect(yaml).toContain("node:");
+    expect(yaml).toContain("interface:");
+  }
+}
+
+function assertAnnotationsContainNetworkNodes(
+  annotations: any,
+  createdBridgeIds: string[],
+  createdLinkBased: Array<{ id: string; type: string }>
+): void {
+  // Bridges use nodeAnnotations, others use networkNodeAnnotations.
+  for (const bridgeId of createdBridgeIds) {
+    const ann = annotations.nodeAnnotations?.find((n: any) => n.id === bridgeId);
+    expect(ann).toBeDefined();
+    expect(ann?.position).toBeDefined();
+  }
+  for (const { id: networkId, type } of createdLinkBased) {
+    const ann = annotations.networkNodeAnnotations?.find((n: any) => n.id === networkId);
+    expect(ann).toBeDefined();
+    expect(ann?.type).toBe(type);
+    expect(ann?.position).toBeDefined();
+  }
+}
+
 test.describe("Network Nodes E2E Tests", () => {
   test.setTimeout(180000);
 
   test("comprehensive network nodes workflow with schema validation", async ({ page, topoViewerPage }) => {
-    const SINGLE_ENDPOINT_NETWORK_TYPES = [
-      "host",
-      "mgmt-net",
-      "macvlan",
-      "vxlan",
-      "vxlan-stitch",
-      "dummy"
-    ] as const;
-    const BRIDGE_TYPES = ["bridge", "ovs-bridge"] as const;
-    const ALL_NETWORK_TYPES = [...SINGLE_ENDPOINT_NETWORK_TYPES, ...BRIDGE_TYPES] as const;
-
-    await topoViewerPage.resetFiles();
-    await topoViewerPage.gotoFile(EMPTY_FILE);
-    await topoViewerPage.waitForCanvasReady();
-    await topoViewerPage.setEditMode();
-    await topoViewerPage.unlock();
-
+    await setupEmptyTopology(topoViewerPage);
     expect(await topoViewerPage.getNodeCount()).toBe(0);
 
-    const srlPositions = {
-      srl1: { x: 200, y: 300 },
-      srl2: { x: 600, y: 300 }
-    };
-
-    await topoViewerPage.createNode("srl1", srlPositions.srl1, KIND_NOKIA_SRLINUX);
-    await topoViewerPage.createNode("srl2", srlPositions.srl2, KIND_NOKIA_SRLINUX);
-    await page.waitForTimeout(500);
-
-    expect(await topoViewerPage.getNodeCount()).toBe(2);
-
-    const createdNetworkIds: string[] = [];
-    const createdBridgeIds: string[] = [];
-    const createdLinkBased: Array<{ id: string; type: string }> = [];
-
-    let interfaceCounter = 1;
-    for (let i = 0; i < ALL_NETWORK_TYPES.length; i++) {
-      const networkType = ALL_NETWORK_TYPES[i];
-      const targetNode = i < 4 ? "srl1" : "srl2";
-      const xOffset = (i % 4) * 100 - 150;
-      const yOffset = i < 4 ? -150 : 150;
-      const position = {
-        x: (targetNode === "srl1" ? srlPositions.srl1.x : srlPositions.srl2.x) + xOffset,
-        y: (targetNode === "srl1" ? srlPositions.srl1.y : srlPositions.srl2.y) + yOffset
-      };
-
-      const networkId = await topoViewerPage.createNetwork(position, networkType);
-      expect(networkId).not.toBeNull();
-      createdNetworkIds.push(networkId!);
-
-      const isBridge = (BRIDGE_TYPES as readonly string[]).includes(networkType);
-      if (isBridge) {
-        createdBridgeIds.push(networkId!);
-        // Bridges require interfaces on both ends.
-        await topoViewerPage.createLink(networkId!, targetNode, `eth${interfaceCounter}`, `e1-${interfaceCounter}`);
-      } else {
-        createdLinkBased.push({ id: networkId!, type: networkType });
-        // Link-based networks: real node interface to network eth0.
-        await topoViewerPage.createLink(targetNode, networkId!, `e1-${interfaceCounter}`, "eth0");
-      }
-
-      interfaceCounter++;
-      await page.waitForTimeout(350);
-    }
+    await createBaseNodes(page, topoViewerPage);
+    const { createdNetworkIds, createdBridgeIds, createdLinkBased } = await createNetworksAndLinks(
+      page,
+      topoViewerPage
+    );
+    assertCreatedIdsAreUsed(createdNetworkIds, createdBridgeIds, createdLinkBased);
 
     // Each created network is connected by exactly one edge.
     await expect.poll(() => topoViewerPage.getEdgeCount(), { timeout: 15000 }).toBe(
@@ -115,52 +197,14 @@ test.describe("Network Nodes E2E Tests", () => {
 
     const parsedYaml = YAML.parse(yaml);
 
-    // YAML should contain bridges as nodes.
-    for (const bridgeId of createdBridgeIds) {
-      expect(yaml).toContain(`${bridgeId}:`);
-    }
-    for (const bridgeType of BRIDGE_TYPES) {
-      if (createdBridgeIds.some((id) => id.startsWith(bridgeType))) {
-        expect(yaml).toContain(`kind: ${bridgeType}`);
-      }
-    }
-
-    // YAML should contain links and have one link for each link-based network type.
-    expect(yaml).toContain("links:");
-    for (const { type } of createdLinkBased) {
-      expect(findLinkByType(parsedYaml, type), `Missing link type ${type} in YAML`).toBeDefined();
-    }
-
-    // VXLAN family links should have default fields present when type is used.
-    if (yaml.includes("type: vxlan") || yaml.includes("type: vxlan-stitch")) {
-      expect(yaml).toContain("remote:");
-      expect(yaml).toContain("vni:");
-      expect(yaml).toContain("dst-port:");
-    }
-
-    // Dummy links should use the extended single endpoint format in our YAML.
-    if (yaml.includes("type: dummy")) {
-      expect(yaml).toContain("endpoint:");
-      expect(yaml).toContain("node:");
-      expect(yaml).toContain("interface:");
-    }
+    assertYamlContainsNetworkNodes(yaml, parsedYaml, createdBridgeIds, createdLinkBased);
+    assertYamlContainsNetworkDefaults(yaml);
 
     // Validate annotations for all created networks.
     const annotations = await topoViewerPage.getAnnotationsFromFile(EMPTY_FILE);
     expect(annotations).toBeDefined();
 
-    // Bridges use nodeAnnotations, others use networkNodeAnnotations.
-    for (const bridgeId of createdBridgeIds) {
-      const ann = annotations.nodeAnnotations?.find((n: any) => n.id === bridgeId);
-      expect(ann).toBeDefined();
-      expect(ann?.position).toBeDefined();
-    }
-    for (const { id: networkId, type } of createdLinkBased) {
-      const ann = annotations.networkNodeAnnotations?.find((n: any) => n.id === networkId);
-      expect(ann).toBeDefined();
-      expect(ann?.type).toBe(type);
-      expect(ann?.position).toBeDefined();
-    }
+    assertAnnotationsContainNetworkNodes(annotations, createdBridgeIds, createdLinkBased);
 
     // Verify graph state includes the created nodes.
     const networkNodeIds = await topoViewerPage.getNetworkNodeIds();
@@ -700,8 +744,6 @@ test.describe("Network Node Modification", () => {
 });
 
 test.describe("Bridge Rename Persistence", () => {
-  const BRIDGE_TYPES = ["bridge", "ovs-bridge"] as const;
-
   test.beforeEach(async ({ topoViewerPage }) => {
     await topoViewerPage.resetFiles();
     await topoViewerPage.gotoFile(EMPTY_FILE);
@@ -738,8 +780,7 @@ test.describe("Bridge Rename Persistence", () => {
         .poll(async () => {
           const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
           const parsed = YAML.parse(yaml);
-          const nodeIds = Object.keys((parsed as any)?.topology?.nodes ?? {});
-          return nodeIds;
+          return Object.keys((parsed as any)?.topology?.nodes ?? {});
         }, { timeout: 5000 })
         .toContain(newBridgeId);
 
@@ -765,8 +806,7 @@ test.describe("Bridge Rename Persistence", () => {
         .poll(async () => {
           const yaml = await topoViewerPage.getYamlFromFile(EMPTY_FILE);
           const parsed = YAML.parse(yaml);
-          const nodeIds = Object.keys((parsed as any)?.topology?.nodes ?? {});
-          return nodeIds.includes(newBridgeId);
+          return Object.keys((parsed as any)?.topology?.nodes ?? {}).includes(newBridgeId);
         }, { timeout: 5000 })
         .toBe(false);
 

@@ -6,6 +6,7 @@ const SIMPLE_FILE = "simple.clab.yml";
 const SEL_LINK_LABELS_BTN = '[data-testid="navbar-link-labels"]';
 const SEL_CONTEXT_MENU = '[data-testid="context-menu"]';
 const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
+const ATTR_ARIA_VALUE_NOW = "aria-valuenow";
 
 /**
  * Endpoint Label Offset E2E Tests (MUI version)
@@ -60,7 +61,7 @@ test.describe("Endpoint Label Offset", () => {
 
     const initialState = await readState();
 
-    const initialValue = Number(await slider.getAttribute("aria-valuenow"));
+    const initialValue = Number(await slider.getAttribute(ATTR_ARIA_VALUE_NOW));
     expect(Number.isFinite(initialValue)).toBe(true);
 
     // Nudge the slider via keyboard to avoid brittle pointer math.
@@ -68,7 +69,7 @@ test.describe("Endpoint Label Offset", () => {
     for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(200);
 
-    const newValue = Number(await slider.getAttribute("aria-valuenow"));
+    const newValue = Number(await slider.getAttribute(ATTR_ARIA_VALUE_NOW));
     expect(newValue).toBeGreaterThanOrEqual(initialValue);
 
     // Verify persisted
@@ -131,7 +132,7 @@ test.describe("Endpoint Label Offset", () => {
 
     const slider = page.locator("#link-endpoint-offset").getByRole("slider");
     await expect(slider).toBeVisible({ timeout: 3000 });
-    const value = Number(await slider.getAttribute("aria-valuenow"));
+    const value = Number(await slider.getAttribute(ATTR_ARIA_VALUE_NOW));
     expect(value).toBe(TARGET_OFFSET);
 
     // Close editor and reload again to ensure it restores.
@@ -144,7 +145,7 @@ test.describe("Endpoint Label Offset", () => {
     await topoViewerPage.unlock();
 
     await openLinkEditorForEdge(edgeIds[0]);
-    const valueAfterReload = Number(await slider.getAttribute("aria-valuenow"));
+    const valueAfterReload = Number(await slider.getAttribute(ATTR_ARIA_VALUE_NOW));
     expect(valueAfterReload).toBe(TARGET_OFFSET);
   });
 });

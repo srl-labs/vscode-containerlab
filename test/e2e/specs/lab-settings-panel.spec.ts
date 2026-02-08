@@ -10,6 +10,8 @@ const SEL_LAB_SETTINGS_TAB_BASIC = '[data-testid="lab-settings-tab-basic"]';
 const SEL_LAB_SETTINGS_TAB_MGMT = '[data-testid="lab-settings-tab-mgmt"]';
 const SEL_LAB_SETTINGS_SAVE_BTN = '[data-testid="lab-settings-save-btn"]';
 
+const LABEL_CONTAINER_NAME_PREFIX = "Container Name Prefix";
+
 const ATTR_ARIA_SELECTED = "aria-selected";
 const ARIA_TRUE = "true";
 const ARIA_FALSE = "false";
@@ -188,7 +190,7 @@ test.describe("Lab Settings Modal", () => {
     await expect(saveBtn).not.toBeVisible();
 
     await expect(modal.getByRole("textbox", { name: "Lab Name" })).toBeDisabled();
-    await expectMuiSelectDisabled(modal, "Container Name Prefix");
+    await expectMuiSelectDisabled(modal, LABEL_CONTAINER_NAME_PREFIX);
   });
 
   test("Save button is hidden in view mode", async ({ page, topoViewerPage }) => {
@@ -200,13 +202,13 @@ test.describe("Lab Settings Modal", () => {
     await expect(saveBtn).not.toBeVisible();
 
     await expect(modal.getByRole("textbox", { name: "Lab Name" })).toBeDisabled();
-    await expectMuiSelectDisabled(modal, "Container Name Prefix");
+    await expectMuiSelectDisabled(modal, LABEL_CONTAINER_NAME_PREFIX);
   });
 
   test("can change prefix type to custom and enter custom prefix", async ({ page }) => {
     const modal = await openModal(page);
 
-    const prefixSelect = muiSelectTriggerByLabel(modal, "Container Name Prefix");
+    const prefixSelect = muiSelectTriggerByLabel(modal, LABEL_CONTAINER_NAME_PREFIX);
     await prefixSelect.click();
     await chooseOption(page, /^Custom$/);
 
@@ -219,7 +221,7 @@ test.describe("Lab Settings Modal", () => {
   test("custom prefix input is hidden when prefix type is not custom", async ({ page }) => {
     const modal = await openModal(page);
 
-    const prefixSelect = muiSelectTriggerByLabel(modal, "Container Name Prefix");
+    const prefixSelect = muiSelectTriggerByLabel(modal, LABEL_CONTAINER_NAME_PREFIX);
     await prefixSelect.click();
     // Option label is "Default (clab)"
     await chooseOption(page, /Default/i);
