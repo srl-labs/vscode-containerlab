@@ -322,27 +322,18 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
 
   return (
     <>
-      <Box sx={{ display: "flex", gap: 1, alignItems: "stretch" }}>
+      <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
         <Box
+          component="img"
+          src={getIconSource(previewIcon, color)}
+          alt="Icon preview"
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 40,
-            flexShrink: 0
+            width: 32,
+            height: 32,
+            flexShrink: 0,
+            borderRadius: calcBorderRadius(data.iconCornerRadius, 32)
           }}
-        >
-          <Box
-            component="img"
-            src={getIconSource(previewIcon, color)}
-            alt="Icon preview"
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: calcBorderRadius(data.iconCornerRadius, 40)
-            }}
-          />
-        </Box>
+        />
         <Box sx={{ flex: 1 }}>
           <FilterableDropdown
             id="node-icon"
@@ -355,16 +346,15 @@ const IconField: React.FC<TabProps> = ({ data, onChange }) => {
             renderOption={renderOption}
           />
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<PaletteIcon />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Edit
-          </Button>
-        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<PaletteIcon fontSize="small" />}
+          onClick={() => setIsModalOpen(true)}
+          sx={{ whiteSpace: "nowrap", alignSelf: "stretch" }}
+        >
+          Edit
+        </Button>
       </Box>
 
       <IconSelectorModal

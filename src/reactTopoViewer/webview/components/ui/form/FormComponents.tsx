@@ -5,6 +5,7 @@
 import React from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import type { SxProps, Theme } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
 import Typography from "@mui/material/Typography";
@@ -23,12 +24,13 @@ export const Toggle: React.FC<{
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
-}> = ({ active, onClick, children }) => (
+  sx?: SxProps<Theme>;
+}> = ({ active, onClick, children, sx }) => (
   <Button
     variant={active ? "contained" : "outlined"}
     size="small"
     onClick={onClick}
-    sx={{ textTransform: "none", fontSize: "0.6875rem", fontWeight: 500, minWidth: 0, px: 1.5, py: 0.5 }}
+    sx={{ textTransform: "none", fontSize: "0.6875rem", fontWeight: 500, minWidth: 0, px: 1.5, py: 0.5, ...sx as object }}
   >
     {children}
   </Button>

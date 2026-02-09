@@ -162,10 +162,11 @@ const BorderControls: React.FC<{
           ]}
         />
         {!isLine && (
-          <Box sx={{ pt: 2 }}>
+          <Box sx={{ alignSelf: "flex-end" }}>
             <Toggle
               active={noBorder}
               onClick={() => updateField("borderWidth", noBorder ? DEFAULT_BORDER_WIDTH : 0)}
+              sx={{ fontSize: "0.75rem" }}
             >
               No Border
             </Toggle>

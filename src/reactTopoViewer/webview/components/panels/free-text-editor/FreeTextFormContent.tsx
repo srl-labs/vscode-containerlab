@@ -191,14 +191,19 @@ const StyleOptions: React.FC<{
         onChange={(v) => updateField("backgroundColor", v)}
         disabled={isTransparent}
       />
-      <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
+      <Box sx={{ display: "flex", gap: 1, alignSelf: "flex-end" }}>
         <Toggle
           active={isTransparent}
           onClick={() => updateField("backgroundColor", isTransparent ? "#000000" : "transparent")}
+          sx={{ fontSize: "0.75rem" }}
         >
           No Fill
         </Toggle>
-        <Toggle active={isRounded} onClick={() => updateField("roundedBackground", !isRounded)}>
+        <Toggle
+          active={isRounded}
+          onClick={() => updateField("roundedBackground", !isRounded)}
+          sx={{ fontSize: "0.75rem" }}
+        >
           Rounded
         </Toggle>
       </Box>
