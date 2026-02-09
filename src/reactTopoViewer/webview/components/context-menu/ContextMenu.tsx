@@ -98,14 +98,29 @@ const MenuItemButton: React.FC<MenuItemComponentProps> = ({ item, onClose }) => 
 const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({ item, onClose }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const submenuOpen = Boolean(anchorEl);
+  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
 
-  const handleMouseLeave = () => {
-    setAnchorEl(null);
-  };
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setAnchorEl(null), 100);
+  }, [cancelClose]);
+
+  React.useEffect(() => () => cancelClose(), [cancelClose]);
+
+  const handleMouseEnter = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      cancelClose();
+      setAnchorEl(event.currentTarget);
+    },
+    [cancelClose]
+  );
 
   const handleClick = useCallback(() => {
     if (!item.disabled && item.onClick) {
@@ -115,9 +130,10 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({ item, onClose }
   }, [item, onClose]);
 
   return (
-    <div onMouseLeave={handleMouseLeave}>
+    <>
       <MenuItem
         onMouseEnter={handleMouseEnter}
+        onMouseLeave={scheduleClose}
         onClick={item.onClick ? handleClick : undefined}
         disabled={item.disabled}
         data-testid={`context-menu-item-${item.id}`}
@@ -133,11 +149,14 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({ item, onClose }
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "left" }}
-        disablePortal
+        autoFocus={false}
+        hideBackdrop
+        sx={{ pointerEvents: "none" }}
         slotProps={{
           paper: {
-            sx: { minWidth: 150 },
-            onMouseLeave: handleMouseLeave
+            sx: { minWidth: 150, pointerEvents: "auto" },
+            onMouseEnter: cancelClose,
+            onMouseLeave: scheduleClose
           }
         }}
       >
@@ -151,6 +170,6 @@ const MenuItemWithSubmenu: React.FC<MenuItemComponentProps> = ({ item, onClose }
           return <MenuItemButton key={child.id} item={child} onClose={onClose} />;
         })}
       </Menu>
-    </div>
+    </>
   );
 };
