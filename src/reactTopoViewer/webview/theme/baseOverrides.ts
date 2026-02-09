@@ -308,6 +308,13 @@ export function getBaseOverrides(c: ThemeColors): NonNullable<ThemeOptions["comp
           border: `1px solid ${c.panelBorder}`,
           boxShadow: `0 4px 16px ${c.widgetShadow}`
         }
+      },
+      defaultProps: {
+        slotProps: {
+          backdrop: {
+            sx: { backgroundColor: "rgba(0, 0, 0, 0.5)" }
+          }
+        }
       }
     },
     MuiDialogTitle: {
@@ -557,7 +564,7 @@ export function getBaseOverrides(c: ThemeColors): NonNullable<ThemeOptions["comp
     },
     MuiBackdrop: {
       styleOverrides: {
-        root: { backgroundColor: "rgba(0, 0, 0, 0.5)" }
+        root: { backgroundColor: "transparent" }
       }
     },
     MuiPopover: {
