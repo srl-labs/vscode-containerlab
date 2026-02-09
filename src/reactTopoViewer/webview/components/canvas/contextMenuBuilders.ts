@@ -424,12 +424,15 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     onShowBulkLink,
     menuPosition
   } = ctx;
-  const items: ContextMenuItem[] = [
-    {
+  const items: ContextMenuItem[] = [];
+
+  // Add Node is only available in edit mode (not when deployed)
+  if (isEditMode) {
+    items.push({
       id: "add-node",
       label: "Add Node",
       icon: React.createElement(AddIcon, { fontSize: "small" }),
-      disabled: !isEditMode || isLocked,
+      disabled: isLocked,
       onClick: () => {
         if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
           const flowPosition = reactFlowInstance.current.screenToFlowPosition(menuPosition);
@@ -437,28 +440,36 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
         }
         closeContextMenu();
       }
-    },
-    {
-      id: "open-node-palette",
-      label: "Open Palette",
-      icon: React.createElement(DashboardIcon, { fontSize: "small" }),
-      disabled: !isEditMode || isLocked,
-      onClick: () => {
-        onOpenNodePalette?.();
-        closeContextMenu();
-      }
+    });
+  }
+
+  items.push({
+    id: "open-node-palette",
+    label: "Open Palette",
+    icon: React.createElement(DashboardIcon, { fontSize: "small" }),
+    onClick: () => {
+      onOpenNodePalette?.();
+      closeContextMenu();
     }
-  ];
+  });
 
   const editorItems: ContextMenuItem[] = [];
-  const isDisabled = !isEditMode || isLocked;
+
+  const getFlowPosition = () => {
+    const instance = reactFlowInstance.current;
+    if (!instance) return null;
+    if (menuPosition) {
+      return instance.screenToFlowPosition(menuPosition);
+    }
+    return getViewportCenter(instance);
+  };
 
   if (onAddGroup) {
     editorItems.push({
       id: "add-group",
       label: "Add Group",
       icon: React.createElement(LayersIcon, { fontSize: "small" }),
-      disabled: isDisabled,
+      disabled: isLocked,
       onClick: () => {
         onAddGroup();
         closeContextMenu();
@@ -470,7 +481,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       id: "add-text",
       label: "Add Text",
       icon: React.createElement(TextFieldsIcon, { fontSize: "small" }),
-      disabled: isDisabled,
+      disabled: isLocked,
       onClick: () => {
         const flowPosition = getFlowPosition();
         if (onAddTextAtPosition && flowPosition) {
@@ -482,27 +493,19 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       }
     });
   }
-  const getFlowPosition = () => {
-    const instance = reactFlowInstance.current;
-    if (!instance) return null;
-    if (menuPosition) {
-      return instance.screenToFlowPosition(menuPosition);
-    }
-    return getViewportCenter(instance);
-  };
 
   if (onAddShapes || onAddShapeAtPosition) {
     editorItems.push({
       id: "add-shape",
       label: "Add Shape",
       icon: React.createElement(CategoryIcon, { fontSize: "small" }),
-      disabled: isDisabled,
+      disabled: isLocked,
       children: [
         {
           id: "add-shape-rectangle",
           label: "Rectangle",
           icon: React.createElement(CropSquareIcon, { fontSize: "small" }),
-          disabled: isDisabled,
+          disabled: isLocked,
           onClick: () => {
             const flowPosition = getFlowPosition();
             if (onAddShapeAtPosition && flowPosition) {
@@ -517,7 +520,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
           id: "add-shape-circle",
           label: "Circle",
           icon: React.createElement(CircleOutlinedIcon, { fontSize: "small" }),
-          disabled: isDisabled,
+          disabled: isLocked,
           onClick: () => {
             const flowPosition = getFlowPosition();
             if (onAddShapeAtPosition && flowPosition) {
@@ -532,7 +535,7 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
           id: "add-shape-line",
           label: "Line",
           icon: React.createElement(RemoveIcon, { fontSize: "small" }),
-          disabled: isDisabled,
+          disabled: isLocked,
           onClick: () => {
             const flowPosition = getFlowPosition();
             if (onAddShapeAtPosition && flowPosition) {
@@ -546,12 +549,13 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
       ]
     });
   }
-  if (onShowBulkLink) {
+  // Bulk Link Devices is only available in edit mode (not when deployed)
+  if (isEditMode && onShowBulkLink) {
     editorItems.push({
       id: "bulk-link",
       label: "Bulk Link Devices",
       icon: React.createElement(LinkIcon, { fontSize: "small" }),
-      disabled: isDisabled,
+      disabled: isLocked,
       onClick: () => {
         onShowBulkLink();
         closeContextMenu();

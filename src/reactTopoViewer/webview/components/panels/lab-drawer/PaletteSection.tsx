@@ -92,12 +92,13 @@ const SourceEditorTab: React.FC<{
   saving: boolean;
   readOnly: boolean;
   error: string | null;
+  info?: string | null;
   language: "yaml" | "json";
   value: string;
   jsonSchema?: object;
   onSave: () => void;
   onChange: (next: string) => void;
-}> = ({ fileName, dirty, saving, readOnly, error, language, value, jsonSchema, onSave, onChange }) => (
+}> = ({ fileName, dirty, saving, readOnly, error, info, language, value, jsonSchema, onSave, onChange }) => (
   <Box sx={{ height: "100%", display: "flex", flexDirection: "column", gap: 1 }}>
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
       <Typography variant="caption" color={TEXT_SECONDARY} sx={{ flex: 1, minWidth: 0 }} noWrap>
@@ -112,6 +113,14 @@ const SourceEditorTab: React.FC<{
         Save
       </Button>
     </Box>
+    {info && (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1, py: 0.5, bgcolor: ACTION_HOVER_BG, borderRadius: 0.5, border: 1, borderColor: "divider" }}>
+        <InfoIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
+        <Typography variant="caption" color={TEXT_SECONDARY}>
+          {info}
+        </Typography>
+      </Box>
+    )}
     {error && (
       <Typography variant="caption" color="error">
         {error}
@@ -376,8 +385,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const annotationsContent = useTopoViewerStore((state) => state.annotationsContent);
   const [filter, setFilter] = useState("");
   const isViewMode = mode === "view";
-  // In view mode, force the add-annotations tab (nodes can't be added to deployed labs)
-  const [activeTab, setActiveTab] = useState(isViewMode ? 1 : 0);
+  const [activeTab, setActiveTab] = useState(0);
 
   // Allow parent to steer the active tab (e.g. split-view button → YML tab).
   // Uses an object reference so each request triggers the effect even for the same tab.
@@ -537,16 +545,16 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           }
         }}
       >
-        <Tab label="Nodes" disabled={isViewMode} />
+        <Tab label="Nodes" />
         <Tab label="Annotations" />
         <Tab label="YML" />
         <Tab label="JSON" />
       </Tabs>
 
       <Box sx={{ flex: 1, minHeight: 0 }}>
-      {/* Nodes Tab (hidden in view mode) */}
-      {!isViewMode && activeTab === 0 && (
-        <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined) }}>
+      {/* Nodes Tab */}
+      {activeTab === 0 && (
+        <Box sx={{ height: "100%", overflow: "auto", ...((isLocked || isViewMode) ? { pointerEvents: "none", opacity: 0.6 } : undefined) }}>
           {/* Search */}
           <TextField
             fullWidth
@@ -623,7 +631,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
 
       {/* Add annotations (palette) Tab */}
       {activeTab === 1 && (
-        <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none", opacity: 0.5 } : undefined) }}>
+        <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none" } : undefined) }}>
           <PaletteSectionTitle icon={<TextFieldsIcon fontSize="small" />} title="Text" />
           <PaletteList>
             <DraggableAnnotation
@@ -677,6 +685,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           saving={yamlSaving}
           readOnly={isSourceReadOnly}
           error={yamlError}
+          info={isViewMode ? "Read-only — lab is deployed" : null}
           language="yaml"
           value={yamlDraft}
           jsonSchema={clabSchema}
@@ -693,6 +702,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           saving={annotationsSaving}
           readOnly={isSourceReadOnly}
           error={annotationsError}
+          info={isViewMode ? "Read-only — lab is deployed" : null}
           language="json"
           value={annotationsDraft}
           onSave={() => void saveAnnotations()}

@@ -279,7 +279,11 @@ export function getBaseOverrides(c: ThemeColors): NonNullable<ThemeOptions["comp
             color: c.menuSelectionFg,
             "&:hover": { backgroundColor: c.menuSelectionBg }
           },
-          "&.Mui-disabled": { color: c.disabledFg, opacity: 1 }
+          "&.Mui-disabled": {
+            color: c.disabledFg,
+            opacity: 0.5,
+            "& .MuiListItemIcon-root": { color: c.disabledFg }
+          }
         }
       }
     },
