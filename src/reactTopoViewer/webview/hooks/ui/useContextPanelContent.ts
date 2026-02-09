@@ -25,7 +25,7 @@ export type PanelViewKind =
 export interface PanelView {
   kind: PanelViewKind;
   title: string;
-  /** Whether the view has editor footer (Apply/OK buttons) */
+  /** Whether the view has editor footer (Apply button) */
   hasFooter: boolean;
 }
 

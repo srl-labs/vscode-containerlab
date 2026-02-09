@@ -6,8 +6,7 @@ import { test, expect } from "../fixtures/topoviewer";
 // Test selectors - ContextPanel-based
 const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_OK_BTN = '[data-testid="panel-ok-btn"]';
-const SEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
+const SEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 
 // Tab identifiers
 const TAB = {
@@ -132,7 +131,7 @@ test.describe("Node Editor Persistence", () => {
       .toContain(`kind: ${TEST_KIND}`);
 
     // Close editor
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     // Reopen editor
@@ -207,7 +206,7 @@ test.describe("Node Editor Persistence", () => {
       .toBe(true);
 
     // Close and reopen editor to verify all fields
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
     await openNodeEditor(page, nodeId);
 
@@ -240,7 +239,7 @@ test.describe("Node Editor Persistence", () => {
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
 
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     // Reopen and verify
@@ -273,13 +272,6 @@ test.describe("Node Editor Persistence", () => {
         { timeout: 5000 }
       )
       .toBe("always");
-
-    // Optional: ensure OK can close without losing persistence
-    const okBtn = page.locator(SEL_OK_BTN);
-    if (await okBtn.isVisible().catch(() => false)) {
-      await okBtn.click();
-      await page.waitForTimeout(300);
-    }
   });
 
   test("network-mode persists to YAML", async ({ page, topoViewerPage }) => {
@@ -329,7 +321,7 @@ test.describe("Node Editor Persistence", () => {
     // Click Apply and close
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     // Reload the page

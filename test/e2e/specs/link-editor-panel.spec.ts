@@ -5,8 +5,8 @@ import { getEdgeMidpoint, rightClick } from "../helpers/react-flow-helpers";
 
 // Test selectors for the new MUI ContextPanel-based editor
 const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
-const SEL_PANEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
-const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
+const SEL_PANEL_BACK_BTN = '[data-testid="panel-back-btn"]';
+const SEL_PANEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
 const SEL_EDIT_EDGE_ITEM = '[data-testid="context-menu-item-edit-edge"]';
 
@@ -67,21 +67,21 @@ test.describe("Link Editor Panel", () => {
     await expect(basicTab).toHaveAttribute("aria-selected", "true");
   });
 
-  test("closes link editor panel with close button", async ({ page, topoViewerPage }) => {
+  test("closes link editor panel with toggle handle", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     await openLinkEditor(page, edgeIds[0]);
 
     const panelTitle = page.locator(SEL_PANEL_TITLE);
     await expect(panelTitle).toBeVisible();
 
-    const closeBtn = page.locator(SEL_PANEL_CLOSE_BTN);
-    await closeBtn.click();
+    const toggleBtn = page.locator(SEL_PANEL_TOGGLE_BTN);
+    await toggleBtn.click();
     await page.waitForTimeout(300);
 
     await expect(panelTitle).not.toBeVisible();
   });
 
-  test("closes link editor panel with OK button", async ({ page, topoViewerPage }) => {
+  test("closes link editor panel with back button", async ({ page, topoViewerPage }) => {
     const edgeIds = await topoViewerPage.getEdgeIds();
     expect(edgeIds.length).toBeGreaterThan(0);
 
@@ -91,13 +91,11 @@ test.describe("Link Editor Panel", () => {
     await expect(panelTitle).toBeVisible();
     await expect(panelTitle).toHaveText(PANEL_TITLE_LINK_EDITOR);
 
-    // Avoid rare overlay interception (dev-only UI) by using keyboard activation.
-    const okBtn = page.locator(SEL_PANEL_OK_BTN);
-    await okBtn.focus();
-    await page.keyboard.press("Enter");
+    const backBtn = page.locator(SEL_PANEL_BACK_BTN);
+    await backBtn.click();
     await page.waitForTimeout(300);
 
-    // OK returns the context panel back to palette view, which hides the header/title entirely.
+    // Back returns the context panel back to palette view, which hides the header/title entirely.
     await expect(panelTitle).not.toBeVisible();
     await expect(page.getByPlaceholder("Search nodes...")).toBeVisible();
   });
@@ -129,20 +127,6 @@ test.describe("Link Editor Panel", () => {
     await page.waitForTimeout(200);
 
     await expect(page.locator(SEL_EDIT_EDGE_ITEM)).not.toBeVisible();
-  });
-
-  test("OK button exists and is clickable in link editor", async ({ page, topoViewerPage }) => {
-    const edgeIds = await topoViewerPage.getEdgeIds();
-    await openLinkEditor(page, edgeIds[0]);
-
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
-    await expect(panelTitle).toBeVisible();
-
-    // OK button should exist in the footer
-    const okBtn = page.locator(SEL_PANEL_OK_BTN);
-    await expect(okBtn).toBeVisible();
-    await expect(okBtn).toHaveText("OK");
-    await expect(okBtn).toBeEnabled();
   });
 
   test("Apply button exists in link editor panel", async ({ page, topoViewerPage }) => {

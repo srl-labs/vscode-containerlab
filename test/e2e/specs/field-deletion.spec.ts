@@ -4,7 +4,7 @@ import { test, expect } from "../fixtures/topoviewer";
 
 // Test selectors - ContextPanel-based
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
+const SEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
 
 // Tab identifiers
@@ -100,7 +100,7 @@ topology:
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
 
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -143,7 +143,7 @@ topology:
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(500);
 
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -185,7 +185,7 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -229,7 +229,7 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -324,7 +324,7 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -365,7 +365,7 @@ topology:
     await page.waitForTimeout(200);
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);
@@ -407,7 +407,7 @@ topology:
 
     await page.locator(SEL_APPLY_BTN).click();
     await page.waitForTimeout(700);
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(300);
 
     yamlContent = await topoViewerPage.getYamlFromFile(TEST_TOPOLOGY);

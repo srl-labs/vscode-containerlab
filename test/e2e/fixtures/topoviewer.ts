@@ -1522,12 +1522,23 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       deleteNode: async (nodeId: string) => {
         // Close any open editor panel first to ensure Delete key goes to the canvas
-        const closePanelBtns = page.locator('[data-testid="panel-close-btn"]');
-        const panelCount = await closePanelBtns.count();
-        for (let i = 0; i < panelCount; i++) {
-          const btn = closePanelBtns.nth(i);
-          if (await btn.isVisible()) {
-            await btn.click();
+        const isContextPanelOpen = await page.evaluate(() => {
+          const el = document.querySelector('[data-testid="context-panel"]') as HTMLElement | null;
+          if (!el) return false;
+          return window.getComputedStyle(el).pointerEvents !== "none";
+        });
+
+        if (isContextPanelOpen) {
+          // Prefer returning to palette, then closing the panel completely.
+          const backBtn = page.locator('[data-testid="panel-back-btn"]');
+          if (await backBtn.isVisible().catch(() => false)) {
+            await backBtn.click();
+            await page.waitForTimeout(100);
+          }
+
+          const toggleBtn = page.locator('[data-testid="panel-toggle-btn"]');
+          if (await toggleBtn.isVisible().catch(() => false)) {
+            await toggleBtn.click();
             await page.waitForTimeout(100);
           }
         }
@@ -1564,21 +1575,24 @@ export const test = base.extend<{ topoViewerPage: TopoViewerPage }>({
 
       deleteEdge: async (edgeId: string) => {
         // Close any open editor panel first to ensure Delete key goes to the canvas
-        const nodeEditor = page.locator('[data-testid="node-editor"]');
-        if (await nodeEditor.isVisible()) {
-          const closeBtn = page.locator(
-            '[data-testid="node-editor"] [data-testid="panel-close-btn"]'
-          );
-          await closeBtn.click();
-          await page.waitForTimeout(200);
-        }
-        const edgeEditor = page.locator('[data-testid="edge-editor"]');
-        if (await edgeEditor.isVisible()) {
-          const closeBtn = page.locator(
-            '[data-testid="edge-editor"] [data-testid="panel-close-btn"]'
-          );
-          await closeBtn.click();
-          await page.waitForTimeout(200);
+        const isContextPanelOpen = await page.evaluate(() => {
+          const el = document.querySelector('[data-testid="context-panel"]') as HTMLElement | null;
+          if (!el) return false;
+          return window.getComputedStyle(el).pointerEvents !== "none";
+        });
+
+        if (isContextPanelOpen) {
+          const backBtn = page.locator('[data-testid="panel-back-btn"]');
+          if (await backBtn.isVisible().catch(() => false)) {
+            await backBtn.click();
+            await page.waitForTimeout(200);
+          }
+
+          const toggleBtn = page.locator('[data-testid="panel-toggle-btn"]');
+          if (await toggleBtn.isVisible().catch(() => false)) {
+            await toggleBtn.click();
+            await page.waitForTimeout(200);
+          }
         }
 
         // Click on canvas background to clear any focus/selection state

@@ -5,8 +5,8 @@ import { test, expect } from "../fixtures/topoviewer";
 // Test selectors for the new MUI ContextPanel-based editor
 const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
 const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
-const SEL_PANEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
-const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
+const SEL_PANEL_BACK_BTN = '[data-testid="panel-back-btn"]';
+const SEL_PANEL_TOGGLE_BTN = '[data-testid="panel-toggle-btn"]';
 const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
 
 const TITLE_NODE_EDITOR = "Node Editor";
@@ -100,21 +100,21 @@ test.describe("Node Editor Panel", () => {
     }
   });
 
-  test("closes node editor panel with close button", async ({ page, topoViewerPage }) => {
+  test("closes node editor panel with toggle handle", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     await clickNode(page, nodeIds[0]);
 
     const panelTitle = page.locator(SEL_PANEL_TITLE);
     await expect(panelTitle).toBeVisible();
 
-    const closeBtn = page.locator(SEL_PANEL_CLOSE_BTN);
-    await closeBtn.click();
+    const toggleBtn = page.locator(SEL_PANEL_TOGGLE_BTN);
+    await toggleBtn.click();
     await page.waitForTimeout(300);
 
     await expect(panelTitle).not.toBeVisible();
   });
 
-  test("closes node editor panel with OK button", async ({ page, topoViewerPage }) => {
+  test("closes node editor panel with back button", async ({ page, topoViewerPage }) => {
     const nodeIds = await topoViewerPage.getNodeIds();
     expect(nodeIds.length).toBeGreaterThan(0);
 
@@ -124,13 +124,11 @@ test.describe("Node Editor Panel", () => {
     await expect(panelTitle).toBeVisible();
     await expect(panelTitle).toHaveText(TITLE_NODE_EDITOR);
 
-    // Prefer keyboard activation to avoid dev-only overlay intercepting pointer events.
-    const okBtn = page.locator(SEL_PANEL_OK_BTN);
-    await okBtn.focus();
-    await page.keyboard.press("Enter");
+    const backBtn = page.locator(SEL_PANEL_BACK_BTN);
+    await backBtn.click();
     await page.waitForTimeout(300);
 
-    // OK returns the context panel back to palette view, which hides the header/title entirely.
+    // Back returns the context panel back to palette view, which hides the header/title entirely.
     await expect(panelTitle).not.toBeVisible();
     await expect(page.getByPlaceholder("Search nodes...")).toBeVisible();
   });
@@ -166,24 +164,9 @@ test.describe("Node Editor Panel", () => {
     // Read-only indicator should be shown and editor footer should be hidden.
     await expect(page.locator('[data-testid="panel-readonly-indicator"]')).toBeVisible();
     await expect(page.locator(SEL_PANEL_APPLY_BTN)).not.toBeVisible();
-    await expect(page.locator(SEL_PANEL_OK_BTN)).not.toBeVisible();
 
     // Inputs should be disabled via <fieldset disabled>.
     await expect(page.locator("#node-name")).toBeDisabled();
-  });
-
-  test("OK button exists and is clickable in node editor", async ({ page, topoViewerPage }) => {
-    const nodeIds = await topoViewerPage.getNodeIds();
-    await clickNode(page, nodeIds[0]);
-
-    const panelTitle = page.locator(SEL_PANEL_TITLE);
-    await expect(panelTitle).toBeVisible();
-
-    // OK button should exist in the footer
-    const okBtn = page.locator(SEL_PANEL_OK_BTN);
-    await expect(okBtn).toBeVisible();
-    await expect(okBtn).toHaveText("OK");
-    await expect(okBtn).toBeEnabled();
   });
 
   test("Apply button exists in node editor panel", async ({ page, topoViewerPage }) => {

@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
+import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
 import { Box, Button, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 
 import { useIsLocked } from "../../../stores/topoViewerStore";
@@ -285,6 +285,7 @@ const ToggleHandle: React.FC<{
       <Tooltip title={isOpen ? "Close panel" : "Open panel"} placement={tooltipPlacement}>
         <Box
           onClick={isOpen ? () => { onBack(); onClose(); } : onOpen}
+          data-testid="panel-toggle-btn"
           sx={{ ...handleStyle, height: 48 }}
         >
           {isOpen
@@ -428,16 +429,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }} data-testid="panel-title">
             {panelView.title}
           </Typography>
-          <IconButton
-            size="small"
-            onClick={() => {
-              onBack();
-              onClose();
-            }}
-            data-testid="panel-close-btn"
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
         </Box>
         )}
 
@@ -485,9 +476,6 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 data-testid="panel-apply-btn"
               >
                 Apply
-              </Button>
-              <Button variant="contained" size="small" onClick={footer.handleSave} data-testid="panel-ok-btn">
-                OK
               </Button>
             </Box>
           </>

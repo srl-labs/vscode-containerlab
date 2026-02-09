@@ -9,7 +9,8 @@ const SPINE_LEAF_FILE = "spine-leaf.clab.yml";
 const DATACENTER_FILE = "datacenter.clab.yml";
 
 const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
-const SEL_PANEL_OK_BTN = '[data-testid="panel-ok-btn"]';
+const SEL_PANEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
+const SEL_PANEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 const SEL_CONTEXT_PANEL = '[data-testid="context-panel"]';
 
 type NodeBox = { x: number; y: number; width: number; height: number };
@@ -104,12 +105,22 @@ async function openGroupContextMenu(page: Page, groupId: string) {
   await rightClick(page, clickX, clickY);
 }
 
-async function activateOkButton(page: Page) {
+async function applyAndBack(page: Page) {
   // In dev mode, a floating dev toggle can intercept pointer clicks on footer buttons.
   // Keyboard activation avoids that flake without weakening assertions.
-  const ok = page.locator(SEL_PANEL_OK_BTN);
-  await ok.focus();
+  const apply = page.locator(SEL_PANEL_APPLY_BTN);
+  await apply.focus();
   await page.keyboard.press("Enter");
+  await page.waitForTimeout(300);
+
+  const back = page.locator(SEL_PANEL_BACK_BTN);
+  if (await back.isVisible().catch(() => false)) {
+    await back.click();
+    await page.waitForTimeout(300);
+  }
+
+  // Some editors may already return to the palette after Apply.
+  await expect(page.getByPlaceholder("Search nodes...")).toBeVisible({ timeout: 5000 });
 }
 
 function findById<T extends { id: string }>(items: T[], id: string): T | undefined {
@@ -412,7 +423,7 @@ test.describe("Group Operations - Membership promotions", () => {
     const nameInput = panel.getByPlaceholder("e.g., rack1");
     await expect(nameInput).toBeVisible({ timeout: 5000 });
     await nameInput.fill(firstGroup!.name);
-    await activateOkButton(page);
+    await applyAndBack(page);
 
     await expect
       .poll(

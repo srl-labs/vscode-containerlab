@@ -8,8 +8,7 @@ const KIND = "nokia_srlinux";
 
 // Selectors
 const SEL_APPLY_BTN = '[data-testid="panel-apply-btn"]';
-const SEL_CLOSE_BTN = '[data-testid="panel-close-btn"]';
-const SEL_OK_BTN = '[data-testid="panel-ok-btn"]';
+const SEL_BACK_BTN = '[data-testid="panel-back-btn"]';
 const SEL_PANEL_TITLE = '[data-testid="panel-title"]';
 const SEL_PANEL_TAB_BASIC = '[data-testid="panel-tab-basic"]';
 const SEL_NODE_NAME = "#node-name";
@@ -77,7 +76,7 @@ test.describe("Full Workflow", () => {
     expect(yaml).toContain("kind: linux");
 
     // Step 4: Undo the kind change
-    await page.locator(SEL_CLOSE_BTN).click();
+    await page.locator(SEL_BACK_BTN).click();
     await page.waitForTimeout(200);
     await topoViewerPage.undo();
     await page.waitForTimeout(500);
@@ -216,9 +215,8 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
       CORE_ROUTER_YAML_KEY
     );
 
-    const okBtn = page.locator(SEL_OK_BTN);
-    await okBtn.focus();
-    await page.keyboard.press("Enter");
+    const backBtn = page.locator(SEL_BACK_BTN);
+    await backBtn.click();
     await page.waitForTimeout(500);
 
     const nodeIds = await topoViewerPage.getNodeIds();
@@ -425,9 +423,8 @@ test.describe.serial("Full Workflow E2E Test (Integration)", () => {
     await page.locator(SEL_NODE_NAME).fill(CORE_ROUTER);
     await page.locator(SEL_APPLY_BTN).click();
     {
-      const okBtn = page.locator(SEL_OK_BTN);
-      await okBtn.focus();
-      await page.keyboard.press("Enter");
+      const backBtn = page.locator(SEL_BACK_BTN);
+      await backBtn.click();
     }
     await page.waitForTimeout(500);
 
