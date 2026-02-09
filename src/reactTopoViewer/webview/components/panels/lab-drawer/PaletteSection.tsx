@@ -142,22 +142,24 @@ const PaletteDraggableCard: React.FC<{
   onDragStart: (event: React.DragEvent) => void;
   children: React.ReactNode;
 }> = ({ onDragStart, children }) => (
-  <Card
-    variant="outlined"
-    draggable
-    onDragStart={onDragStart}
-    sx={{
-      p: 1,
-      cursor: "grab",
-      display: "flex",
-      alignItems: "center",
-      gap: 1,
-      "&:hover": { bgcolor: ACTION_HOVER_BG },
-      "&:active": { cursor: "grabbing" }
-    }}
-  >
-    {children}
-  </Card>
+  <Tooltip title="Drag to canvas" placement="top" enterDelay={500} slotProps={{ popper: { modifiers: [{ name: "offset", options: { offset: [-20, -20] } }] } }}>
+    <Card
+      variant="outlined"
+      draggable
+      onDragStart={onDragStart}
+      sx={{
+        p: 1,
+        cursor: "grab",
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        "&:hover": { bgcolor: ACTION_HOVER_BG },
+        "&:active": { cursor: "grabbing" }
+      }}
+    >
+      {children}
+    </Card>
+  </Tooltip>
 );
 
 const PaletteSectionTitle: React.FC<{ icon: React.ReactNode; title: string; mt?: number }> = ({
@@ -184,16 +186,7 @@ const PaletteList: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>{children}</Box>
 );
 
-const PaletteDragHint: React.FC = () => (
-  <Typography
-    variant="caption"
-    color={TEXT_SECONDARY}
-    sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 2 }}
-  >
-    <InfoIcon sx={{ fontSize: 14 }} />
-    Drag items onto the canvas to add them
-  </Typography>
-);
+
 
 type AnnotationPayload = {
   annotationType: "text" | "shape" | "group";
@@ -507,21 +500,21 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
             display: "flex",
             alignItems: "center",
             gap: 0.5,
-	            px: 1.5,
-	            py: 0.5,
-	            mb: 1.5,
-	            bgcolor: ACTION_HOVER_BG,
-	            borderRadius: 0.5,
-	            border: 1,
-	            borderColor: "divider"
-	          }}
-	        >
-	          <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
-	          <Typography variant="caption" color={TEXT_SECONDARY}>
-	            Unlock to drag items onto canvas
-	          </Typography>
-	        </Box>
-	      )}
+            px: 1.5,
+            py: 0.5,
+            mb: 1.5,
+            bgcolor: ACTION_HOVER_BG,
+            borderRadius: 0.5,
+            border: 1,
+            borderColor: "divider"
+          }}
+        >
+          <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
+          <Typography variant="caption" color={TEXT_SECONDARY}>
+            Unlock to drag items onto canvas
+          </Typography>
+        </Box>
+      )}
 
       {/* Tabs */}
       <Tabs
@@ -552,163 +545,163 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
       </Tabs>
 
       <Box sx={{ flex: 1, minHeight: 0 }}>
-      {/* Nodes Tab */}
-      {activeTab === 0 && (
-        <Box sx={{ height: "100%", overflow: "auto", ...((isLocked || isViewMode) ? { pointerEvents: "none", opacity: 0.6 } : undefined) }}>
-          {/* Search */}
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Search nodes..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-                endAdornment: filter ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setFilter("")}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ) : undefined
-              }
-            }}
-            sx={{ mb: 2 }}
-          />
-
-          {/* Node Templates */}
-          <PaletteSectionTitle icon={<ViewInArIcon fontSize="small" />} title="Node Templates" />
-          <PaletteList>
-            {filteredNodes.length === 0 && (
-              <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
-                {filter ? "No matching templates" : "No node templates defined"}
-              </Typography>
-            )}
-            {filteredNodes.map((template) => (
-              <DraggableNode
-                key={template.name}
-                template={template}
-                isDefault={template.name === defaultNode || template.setDefault}
-                onEdit={onEditCustomNode}
-                onDelete={onDeleteCustomNode}
-                onSetDefault={onSetDefaultCustomNode}
-              />
-            ))}
-          </PaletteList>
-          {!filter && (
-            <Button
-              variant="outlined"
+        {/* Nodes Tab */}
+        {activeTab === 0 && (
+          <Box sx={{ height: "100%", overflow: "auto", ...((isLocked || isViewMode) ? { pointerEvents: "none", opacity: 0.6 } : undefined) }}>
+            {/* Search */}
+            <TextField
+              fullWidth
               size="small"
-              startIcon={<AddIcon />}
-              onClick={handleAddNewNode}
-              sx={{ mt: 1, mb: 2 }}
-            >
-              New custom node
-            </Button>
-          )}
+              placeholder="Search nodes..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: filter ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setFilter("")}>
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined
+                }
+              }}
+              sx={{ mb: 2 }}
+            />
 
-          {/* Networks */}
-          <PaletteSectionTitle icon={<CloudIcon fontSize="small" />} title="Networks" mt={2} />
-          <PaletteList>
-            {filteredNetworks.length === 0 ? (
-              <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
-                No matching networks
-              </Typography>
-            ) : (
-              filteredNetworks.map((network) => (
-                <DraggableNetwork key={network.type} network={network} />
-              ))
+            {/* Node Templates */}
+            <PaletteSectionTitle icon={<ViewInArIcon fontSize="small" />} title="Node Templates" />
+            <PaletteList>
+              {filteredNodes.length === 0 && (
+                <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
+                  {filter ? "No matching templates" : "No node templates defined"}
+                </Typography>
+              )}
+              {filteredNodes.map((template) => (
+                <DraggableNode
+                  key={template.name}
+                  template={template}
+                  isDefault={template.name === defaultNode || template.setDefault}
+                  onEdit={onEditCustomNode}
+                  onDelete={onDeleteCustomNode}
+                  onSetDefault={onSetDefaultCustomNode}
+                />
+              ))}
+            </PaletteList>
+            {!filter && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={handleAddNewNode}
+                sx={{ mt: 1, mb: 2 }}
+              >
+                New custom node
+              </Button>
             )}
-          </PaletteList>
-          <PaletteDragHint />
-        </Box>
-      )}
 
-      {/* Add annotations (palette) Tab */}
-      {activeTab === 1 && (
-        <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none" } : undefined) }}>
-          <PaletteSectionTitle icon={<TextFieldsIcon fontSize="small" />} title="Text" />
-          <PaletteList>
-            <DraggableAnnotation
-              label="Text"
-              kind="annotation"
-              icon={<TextFieldsIcon fontSize="small" />}
-              payload={{ annotationType: "text" }}
-            />
-          </PaletteList>
+            {/* Networks */}
+            <PaletteSectionTitle icon={<CloudIcon fontSize="small" />} title="Networks" mt={2} />
+            <PaletteList>
+              {filteredNetworks.length === 0 ? (
+                <Typography variant="body2" color={TEXT_SECONDARY} sx={{ py: 2 }}>
+                  No matching networks
+                </Typography>
+              ) : (
+                filteredNetworks.map((network) => (
+                  <DraggableNetwork key={network.type} network={network} />
+                ))
+              )}
+            </PaletteList>
 
-          <PaletteSectionTitle icon={<CropSquareIcon fontSize="small" />} title="Shapes" mt={2} />
-          <PaletteList>
-            <DraggableAnnotation
-              label="Rectangle"
-              kind="shape"
-              icon={<CropSquareIcon fontSize="small" />}
-              payload={{ annotationType: "shape", shapeType: "rectangle" }}
-            />
-            <DraggableAnnotation
-              label="Circle"
-              kind="shape"
-              icon={<CircleOutlinedIcon fontSize="small" />}
-              payload={{ annotationType: "shape", shapeType: "circle" }}
-            />
-            <DraggableAnnotation
-              label="Line"
-              kind="shape"
-              icon={<RemoveIcon fontSize="small" />}
-              payload={{ annotationType: "shape", shapeType: "line" }}
-            />
-          </PaletteList>
+          </Box>
+        )}
 
-          <PaletteSectionTitle icon={<SelectAllIcon fontSize="small" />} title="Groups" mt={2} />
-          <PaletteList>
-            <DraggableAnnotation
-              label="Group"
-              kind="annotation"
-              icon={<SelectAllIcon fontSize="small" />}
-              payload={{ annotationType: "group" }}
-            />
-          </PaletteList>
-          <PaletteDragHint />
-        </Box>
-      )}
+        {/* Add annotations (palette) Tab */}
+        {activeTab === 1 && (
+          <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none" } : undefined) }}>
+            <PaletteSectionTitle icon={<TextFieldsIcon fontSize="small" />} title="Text" />
+            <PaletteList>
+              <DraggableAnnotation
+                label="Text"
+                kind="annotation"
+                icon={<TextFieldsIcon fontSize="small" />}
+                payload={{ annotationType: "text" }}
+              />
+            </PaletteList>
 
-      {/* YML Tab */}
-      {activeTab === 2 && (
-        <SourceEditorTab
-          fileName={yamlFileName}
-          dirty={yamlDirty}
-          saving={yamlSaving}
-          readOnly={isSourceReadOnly}
-          error={yamlError}
-          info={isViewMode ? "Read-only — lab is deployed" : null}
-          language="yaml"
-          value={yamlDraft}
-          jsonSchema={clabSchema}
-          onSave={() => void saveYaml()}
-          onChange={(next) => { setYamlDraft(next); setYamlDirty(true); }}
-        />
-      )}
+            <PaletteSectionTitle icon={<CropSquareIcon fontSize="small" />} title="Shapes" mt={2} />
+            <PaletteList>
+              <DraggableAnnotation
+                label="Rectangle"
+                kind="shape"
+                icon={<CropSquareIcon fontSize="small" />}
+                payload={{ annotationType: "shape", shapeType: "rectangle" }}
+              />
+              <DraggableAnnotation
+                label="Circle"
+                kind="shape"
+                icon={<CircleOutlinedIcon fontSize="small" />}
+                payload={{ annotationType: "shape", shapeType: "circle" }}
+              />
+              <DraggableAnnotation
+                label="Line"
+                kind="shape"
+                icon={<RemoveIcon fontSize="small" />}
+                payload={{ annotationType: "shape", shapeType: "line" }}
+              />
+            </PaletteList>
 
-      {/* JSON Tab */}
-      {activeTab === 3 && (
-        <SourceEditorTab
-          fileName={annotationsFileName}
-          dirty={annotationsDirty}
-          saving={annotationsSaving}
-          readOnly={isSourceReadOnly}
-          error={annotationsError}
-          info={isViewMode ? "Read-only — lab is deployed" : null}
-          language="json"
-          value={annotationsDraft}
-          onSave={() => void saveAnnotations()}
-          onChange={(next) => { setAnnotationsDraft(next); setAnnotationsDirty(true); }}
-        />
-      )}
+            <PaletteSectionTitle icon={<SelectAllIcon fontSize="small" />} title="Groups" mt={2} />
+            <PaletteList>
+              <DraggableAnnotation
+                label="Group"
+                kind="annotation"
+                icon={<SelectAllIcon fontSize="small" />}
+                payload={{ annotationType: "group" }}
+              />
+            </PaletteList>
+
+          </Box>
+        )}
+
+        {/* YML Tab */}
+        {activeTab === 2 && (
+          <SourceEditorTab
+            fileName={yamlFileName}
+            dirty={yamlDirty}
+            saving={yamlSaving}
+            readOnly={isSourceReadOnly}
+            error={yamlError}
+            info={isViewMode ? "Read-only — lab is deployed" : null}
+            language="yaml"
+            value={yamlDraft}
+            jsonSchema={clabSchema}
+            onSave={() => void saveYaml()}
+            onChange={(next) => { setYamlDraft(next); setYamlDirty(true); }}
+          />
+        )}
+
+        {/* JSON Tab */}
+        {activeTab === 3 && (
+          <SourceEditorTab
+            fileName={annotationsFileName}
+            dirty={annotationsDirty}
+            saving={annotationsSaving}
+            readOnly={isSourceReadOnly}
+            error={annotationsError}
+            info={isViewMode ? "Read-only — lab is deployed" : null}
+            language="json"
+            value={annotationsDraft}
+            onSave={() => void saveAnnotations()}
+            onChange={(next) => { setAnnotationsDraft(next); setAnnotationsDirty(true); }}
+          />
+        )}
       </Box>
     </Box>
   );
