@@ -18,7 +18,7 @@ import {
 import {
   AccountTree as AccountTreeIcon,
   ExpandMore as ExpandMoreIcon,
-  ScreenshotMonitor as ScreenshotMonitorIcon,
+  PhotoCameraBack as PhotoCameraBackIcon,
   Check as CheckIcon,
   CleaningServices as CleaningServicesIcon,
   FitScreen as FitScreenIcon,
@@ -310,17 +310,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
-        {/* Lab Settings */}
-        <Tooltip title="Lab Settings">
-          <IconButton size="small" onClick={onLabSettings} data-testid="navbar-lab-settings">
-            <SettingsIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
         {/* Lock / Unlock */}
         <Tooltip title={isLocked ? "Unlock lab to edit" : "Lock Lab"}>
           <IconButton size="small" onClick={toggleLock} disabled={isProcessing} sx={{ color: isLocked ? "error.main" : "inherit" }} data-testid="navbar-lock">
             {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+
+        {/* Lab Settings */}
+        <Tooltip title="Lab Settings">
+          <IconButton size="small" onClick={onLabSettings} data-testid="navbar-lab-settings">
+            <SettingsIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
@@ -445,7 +445,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Capture Viewport */}
         <Tooltip title="Capture Viewport as SVG">
           <IconButton size="small" onClick={onCaptureViewport} data-testid="navbar-capture">
-            <ScreenshotMonitorIcon fontSize="small" />
+            <PhotoCameraBackIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
