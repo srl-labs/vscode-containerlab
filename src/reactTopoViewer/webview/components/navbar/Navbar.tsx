@@ -5,8 +5,6 @@
 import React from "react";
 import {
   AppBar,
-  Button,
-  ButtonGroup,
   Divider,
   IconButton,
   ListItemIcon,
@@ -19,8 +17,8 @@ import {
 } from "@mui/material";
 import {
   AccountTree as AccountTreeIcon,
-  ArrowDropDown as ArrowDropDownIcon,
-  CameraAlt as CameraAltIcon,
+  ExpandMore as ExpandMoreIcon,
+  ScreenshotMonitor as ScreenshotMonitorIcon,
   Check as CheckIcon,
   CleaningServices as CleaningServicesIcon,
   FitScreen as FitScreenIcon,
@@ -56,9 +54,7 @@ import type { LayoutOption } from "../../hooks/ui";
 import { ContainerlabLogo } from "./ContainerlabLogo";
 
 const ERROR_MAIN = "error.main";
-const ERROR_DARK = "error.dark";
 const SUCCESS_MAIN = "success.main";
-const SUCCESS_DARK = "success.dark";
 
 export interface NavbarProps {
   onZoomToFit?: () => void;
@@ -66,7 +62,7 @@ export interface NavbarProps {
   onLayoutChange: (layout: LayoutOption) => void;
   onLabSettings?: () => void;
   onToggleSplit?: () => void;
-  onFindNode?: (anchor: HTMLElement) => void;
+  onFindNode?: (position: { top: number; left: number }) => void;
   onCaptureViewport?: () => void;
   onShowShortcuts?: () => void;
   onShowAbout?: () => void;
@@ -84,7 +80,7 @@ export interface NavbarProps {
   isPartyMode?: boolean;
   /** Easter egg logo click handler and state */
   onLogoClick?: () => void;
-  onShowGridSettings?: (anchor: HTMLElement) => void;
+  onShowGridSettings?: (position: { top: number; left: number }) => void;
   linkLabelMode: LinkLabelMode;
   onLinkLabelModeChange: (mode: LinkLabelMode) => void;
 }
@@ -151,15 +147,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [onLinkLabelModeChange]);
 
   // Split button menu state for deploy/destroy
-  const [deployMenuAnchor, setDeployMenuAnchor] = React.useState<null | HTMLElement>(null);
-  const deployMenuOpen = Boolean(deployMenuAnchor);
+  const [deployMenuPosition, setDeployMenuPosition] = React.useState<{ top: number; left: number } | null>(null);
+  const deployMenuOpen = Boolean(deployMenuPosition);
 
   const handleDeployMenuOpen = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
-    setDeployMenuAnchor(event.currentTarget);
+    const appBar = appBarRef.current;
+    const button = event.currentTarget;
+    if (appBar) {
+      const appBarRect = appBar.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      setDeployMenuPosition({
+        top: appBarRect.bottom,
+        left: buttonRect.left + buttonRect.width / 2
+      });
+    }
   }, []);
 
   const handleDeployMenuClose = React.useCallback(() => {
-    setDeployMenuAnchor(null);
+    setDeployMenuPosition(null);
   }, []);
 
   const handleDeploy = React.useCallback(() => {
@@ -168,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [setProcessing, deploymentCommands]);
 
   const handleDeployCleanup = React.useCallback(() => {
-    setDeployMenuAnchor(null);
+    setDeployMenuPosition(null);
     setProcessing(true, "deploy");
     deploymentCommands.onDeployCleanup();
   }, [setProcessing, deploymentCommands]);
@@ -179,19 +184,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [setProcessing, deploymentCommands]);
 
   const handleDestroyCleanup = React.useCallback(() => {
-    setDeployMenuAnchor(null);
+    setDeployMenuPosition(null);
     setProcessing(true, "destroy");
     deploymentCommands.onDestroyCleanup();
   }, [setProcessing, deploymentCommands]);
 
   const handleRedeploy = React.useCallback(() => {
-    setDeployMenuAnchor(null);
+    setDeployMenuPosition(null);
     setProcessing(true, "deploy");
     deploymentCommands.onRedeploy();
   }, [setProcessing, deploymentCommands]);
 
   const handleRedeployCleanup = React.useCallback(() => {
-    setDeployMenuAnchor(null);
+    setDeployMenuPosition(null);
     setProcessing(true, "deploy");
     deploymentCommands.onRedeployCleanup();
   }, [setProcessing, deploymentCommands]);
@@ -241,65 +246,37 @@ export const Navbar: React.FC<NavbarProps> = ({
           {labName || "TopoViewer"}
         </Typography>
 
-        {/* Lab Settings */}
-        <Tooltip title="Lab Settings">
-          <IconButton size="small" onClick={onLabSettings} data-testid="navbar-lab-settings">
-            <SettingsIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        {/* Lock / Unlock */}
-        <Tooltip title={isLocked ? "Unlock Lab" : "Lock Lab"}>
-          <IconButton size="small" onClick={toggleLock} disabled={isProcessing} data-testid="navbar-lock">
-            {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
-          </IconButton>
-        </Tooltip>
-
-        {/* Deploy / Destroy Split Button */}
-        <ButtonGroup
-          variant="contained"
-          size="small"
-          disabled={isProcessing}
-          sx={{
-            "& .MuiButton-root": {
-              bgcolor: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN,
-              "&:hover": {
-                bgcolor: isViewerMode ? ERROR_DARK : SUCCESS_DARK
-              },
-              "&.Mui-disabled": {
-                bgcolor: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN,
-                opacity: 0.5
-              }
-            }
-          }}
-        >
-          <Tooltip title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}>
-            <Button
-              onClick={handlePrimaryAction}
-              sx={{ px: 1, py: 0.25, minWidth: 0 }}
-              data-testid="navbar-deploy"
-            >
-              {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
-            </Button>
-          </Tooltip>
-          <Button
-            onClick={handleDeployMenuOpen}
-            aria-controls={deployMenuOpen ? "deploy-split-menu" : undefined}
-            aria-haspopup="true"
-            aria-expanded={deployMenuOpen ? "true" : undefined}
-            sx={{ px: 0.5, minWidth: 0 }}
-            data-testid="navbar-deploy-menu"
+        {/* Deploy / Destroy */}
+        <Tooltip title={isViewerMode ? "Destroy Lab" : "Deploy Lab"}>
+          <IconButton
+            size="small"
+            onClick={handlePrimaryAction}
+            disabled={isProcessing}
+            sx={{ color: isViewerMode ? "error.main" : "success.main" }}
+            data-testid="navbar-deploy"
           >
-            <ArrowDropDownIcon fontSize="small" />
-          </Button>
-        </ButtonGroup>
+            {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+        <IconButton
+          size="small"
+          onClick={handleDeployMenuOpen}
+          disabled={isProcessing}
+          aria-controls={deployMenuOpen ? "deploy-split-menu" : undefined}
+          aria-haspopup="true"
+          aria-expanded={deployMenuOpen ? "true" : undefined}
+          sx={{ color: isViewerMode ? "error.main" : "success.main", ml: -0.5 }}
+          data-testid="navbar-deploy-menu"
+        >
+          <ExpandMoreIcon fontSize="small" />
+        </IconButton>
         <Menu
           id="deploy-split-menu"
-          anchorEl={deployMenuAnchor}
           open={deployMenuOpen}
           onClose={handleDeployMenuClose}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          anchorReference="anchorPosition"
+          anchorPosition={deployMenuPosition ?? undefined}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
         >
 	          {isViewerMode ? [
 	            <MenuItem key="destroy" onClick={handleDestroy} data-testid="navbar-deploy-item-destroy">
@@ -330,6 +307,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 	            </MenuItem>
 	          ]}
 	        </Menu>
+
+        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+        {/* Lab Settings */}
+        <Tooltip title="Lab Settings">
+          <IconButton size="small" onClick={onLabSettings} data-testid="navbar-lab-settings">
+            <SettingsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Lock / Unlock */}
+        <Tooltip title={isLocked ? "Unlock lab to edit" : "Lock Lab"}>
+          <IconButton size="small" onClick={toggleLock} disabled={isProcessing} sx={{ color: isLocked ? "error.main" : "inherit" }} data-testid="navbar-lock">
+            {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
 
         {/* Undo - only show in edit mode */}
         {isEditMode && (
@@ -404,14 +397,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Grid line width */}
         <Tooltip title="Grid Settings">
-          <IconButton size="small" onClick={(e) => onShowGridSettings?.(e.currentTarget)} data-testid="navbar-grid">
+          <IconButton size="small" onClick={(e) => { const appBar = appBarRef.current; const btn = e.currentTarget; if (appBar) { const ar = appBar.getBoundingClientRect(); const br = btn.getBoundingClientRect(); onShowGridSettings?.({ top: ar.bottom, left: br.left + br.width / 2 }); } }} data-testid="navbar-grid">
             <GridOnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Find Node */}
         <Tooltip title="Find Node">
-          <IconButton size="small" onClick={(e) => onFindNode?.(e.currentTarget)} data-testid="navbar-find-node">
+          <IconButton size="small" onClick={(e) => { const appBar = appBarRef.current; const btn = e.currentTarget; if (appBar) { const ar = appBar.getBoundingClientRect(); const br = btn.getBoundingClientRect(); onFindNode?.({ top: ar.bottom, left: br.left + br.width / 2 }); } }} data-testid="navbar-find-node">
             <SearchIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -452,7 +445,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Capture Viewport */}
         <Tooltip title="Capture Viewport as SVG">
           <IconButton size="small" onClick={onCaptureViewport} data-testid="navbar-capture">
-            <CameraAltIcon fontSize="small" />
+            <ScreenshotMonitorIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 

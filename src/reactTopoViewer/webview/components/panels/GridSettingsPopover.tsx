@@ -12,7 +12,7 @@ import Popover from "@mui/material/Popover";
 import type { GridStyle } from "../../hooks/ui";
 
 interface GridSettingsPopoverProps {
-  anchorEl: HTMLElement | null;
+  anchorPosition: { top: number; left: number } | null;
   onClose: () => void;
   gridLineWidth: number;
   onGridLineWidthChange: (width: number) => void;
@@ -21,21 +21,21 @@ interface GridSettingsPopoverProps {
 }
 
 export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
-  anchorEl,
+  anchorPosition,
   onClose,
   gridLineWidth,
   onGridLineWidthChange,
   gridStyle,
   onGridStyleChange
 }) => {
-  const open = Boolean(anchorEl);
+  const open = Boolean(anchorPosition);
 
   return (
     <Popover
       open={open}
-      anchorEl={anchorEl}
       onClose={onClose}
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      anchorReference="anchorPosition"
+      anchorPosition={anchorPosition ?? undefined}
       transformOrigin={{ vertical: "top", horizontal: "center" }}
       data-testid="grid-settings-popover"
     >

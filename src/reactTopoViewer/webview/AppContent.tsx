@@ -848,7 +848,7 @@ export const AppContent: React.FC<AppContentProps> = ({
 
         {/* Popovers */}
         <GridSettingsPopover
-          anchorEl={panelVisibility.gridPopoverAnchor}
+          anchorPosition={panelVisibility.gridPopoverPosition}
           onClose={panelVisibility.handleCloseGridPopover}
           gridLineWidth={layoutControls.gridLineWidth}
           onGridLineWidthChange={layoutControls.setGridLineWidth}
@@ -856,7 +856,7 @@ export const AppContent: React.FC<AppContentProps> = ({
           onGridStyleChange={layoutControls.setGridStyle}
         />
         <FindNodePopover
-          anchorEl={panelVisibility.findPopoverAnchor}
+          anchorPosition={panelVisibility.findPopoverPosition}
           onClose={panelVisibility.handleCloseFindPopover}
           rfInstance={rfInstance}
         />

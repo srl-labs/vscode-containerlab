@@ -9,24 +9,24 @@ import Popover from "@mui/material/Popover";
 import { FindNodeSearchWidget } from "./find-node/FindNodeSearchWidget";
 
 interface FindNodePopoverProps {
-  anchorEl: HTMLElement | null;
+  anchorPosition: { top: number; left: number } | null;
   onClose: () => void;
   rfInstance: ReactFlowInstance | null;
 }
 
 export const FindNodePopover: React.FC<FindNodePopoverProps> = ({
-  anchorEl,
+  anchorPosition,
   onClose,
   rfInstance
 }) => {
-  const open = Boolean(anchorEl);
+  const open = Boolean(anchorPosition);
 
   return (
     <Popover
       open={open}
-      anchorEl={anchorEl}
       onClose={onClose}
-      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      anchorReference="anchorPosition"
+      anchorPosition={anchorPosition ?? undefined}
       transformOrigin={{ vertical: "top", horizontal: "center" }}
       data-testid="find-node-popover"
     >

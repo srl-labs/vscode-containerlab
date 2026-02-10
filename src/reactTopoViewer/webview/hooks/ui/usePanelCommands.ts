@@ -69,12 +69,12 @@ export interface PanelVisibility {
   handleCloseBulkLink: () => void;
   handleCloseAbout: () => void;
 
-  // Popovers (anchor element based)
-  gridPopoverAnchor: HTMLElement | null;
-  findPopoverAnchor: HTMLElement | null;
-  handleOpenGridPopover: (anchor: HTMLElement) => void;
+  // Popovers (position based)
+  gridPopoverPosition: { top: number; left: number } | null;
+  findPopoverPosition: { top: number; left: number } | null;
+  handleOpenGridPopover: (position: { top: number; left: number }) => void;
   handleCloseGridPopover: () => void;
-  handleOpenFindPopover: (anchor: HTMLElement) => void;
+  handleOpenFindPopover: (position: { top: number; left: number }) => void;
   handleCloseFindPopover: () => void;
 }
 
@@ -151,16 +151,16 @@ function useModals() {
 }
 
 function usePopovers() {
-  const [gridPopoverAnchor, setGridPopoverAnchor] = useState<HTMLElement | null>(null);
-  const [findPopoverAnchor, setFindPopoverAnchor] = useState<HTMLElement | null>(null);
+  const [gridPopoverPosition, setGridPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+  const [findPopoverPosition, setFindPopoverPosition] = useState<{ top: number; left: number } | null>(null);
 
   return {
-    gridPopoverAnchor,
-    findPopoverAnchor,
-    handleOpenGridPopover: useCallback((anchor: HTMLElement) => setGridPopoverAnchor(anchor), []),
-    handleCloseGridPopover: useCallback(() => setGridPopoverAnchor(null), []),
-    handleOpenFindPopover: useCallback((anchor: HTMLElement) => setFindPopoverAnchor(anchor), []),
-    handleCloseFindPopover: useCallback(() => setFindPopoverAnchor(null), [])
+    gridPopoverPosition,
+    findPopoverPosition,
+    handleOpenGridPopover: useCallback((position: { top: number; left: number }) => setGridPopoverPosition(position), []),
+    handleCloseGridPopover: useCallback(() => setGridPopoverPosition(null), []),
+    handleOpenFindPopover: useCallback((position: { top: number; left: number }) => setFindPopoverPosition(position), []),
+    handleCloseFindPopover: useCallback(() => setFindPopoverPosition(null), [])
   };
 }
 

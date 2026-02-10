@@ -449,7 +449,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             >
               <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
               <Typography variant="caption" color="text.secondary">
-                Read-only — unlock to edit
+                Read-only — unlock lab to edit
               </Typography>
             </Box>
             <Divider />
