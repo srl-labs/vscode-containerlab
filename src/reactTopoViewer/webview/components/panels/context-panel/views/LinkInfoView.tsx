@@ -4,6 +4,7 @@
  */
 import React, { useState } from "react";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Typography from "@mui/material/Typography";
@@ -93,19 +94,18 @@ export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          sx={{
-            minHeight: 40,
-            "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontSize: "0.8125rem" }
-          }}
-        >
-          <Tab value="a" label={`${linkData.source}:${linkData.sourceEndpoint || "eth"}`} />
-          <Tab value="b" label={`${linkData.target}:${linkData.targetEndpoint || "eth"}`} />
-        </Tabs>
-      </Box>
+      <Tabs
+        value={activeTab}
+        onChange={handleTabChange}
+        sx={{
+          minHeight: 40,
+          "& .MuiTab-root": { minHeight: 40, fontSize: "0.8125rem" }
+        }}
+      >
+        <Tab value="a" label={`${linkData.source}:${linkData.sourceEndpoint || "eth"}`} />
+        <Tab value="b" label={`${linkData.target}:${linkData.targetEndpoint || "eth"}`} />
+      </Tabs>
+      <Divider sx={{ mb: 2 }} />
 
       <Box sx={{ px: 2, pb: 2, flex: 1, overflow: "auto" }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, mb: 2 }}>

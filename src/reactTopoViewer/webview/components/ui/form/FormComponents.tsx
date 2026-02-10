@@ -17,6 +17,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 import { normalizeHexColor } from "../../../utils/color";
 
+
 /**
  * Toggle pill button
  */
@@ -30,7 +31,7 @@ export const Toggle: React.FC<{
     variant={active ? "contained" : "outlined"}
     size="small"
     onClick={onClick}
-    sx={{ textTransform: "none", fontSize: "0.6875rem", fontWeight: 500, minWidth: 0, px: 1.5, py: 0.5, ...sx as object }}
+    sx={{ fontSize: "0.6875rem", fontWeight: 500, minWidth: 0, px: 1.5, py: 0.5, ...sx as object }}
   >
     {children}
   </Button>
@@ -233,10 +234,8 @@ export const PreviewSurface: React.FC<{
     sx={{
       position: "relative",
       p: padding,
-      bgcolor: "var(--vscode-input-background)",
       borderRadius: 0.5,
       border: 1,
-      borderColor: "var(--vscode-panel-border)",
       minHeight,
       display: "flex",
       alignItems: "center",
@@ -260,7 +259,7 @@ export const DeleteActionButton: React.FC<{
     size="small"
     startIcon={<DeleteIcon />}
     onClick={onClick}
-    sx={{ alignSelf, textTransform: "none" }}
+    sx={{ alignSelf }}
   >
     {label}
   </Button>

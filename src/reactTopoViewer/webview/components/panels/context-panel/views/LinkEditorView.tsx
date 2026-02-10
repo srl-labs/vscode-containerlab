@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Box from "@mui/material/Box";
 
+
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
 import { useFooterControlsRef } from "../../../../hooks/ui";
@@ -108,14 +109,13 @@ const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
         mb: 1,
         p: 1,
         borderRadius: 0.5,
-        backgroundColor: "var(--vscode-inputValidation-errorBackground)",
-        border: "1px solid var(--vscode-inputValidation-errorBorder)"
+        border: 1
       }}
     >
-      <Box sx={{ color: "var(--vscode-editorError-foreground)", fontSize: "0.875rem", fontWeight: 600 }}>
+      <Box sx={{ fontSize: "0.875rem", fontWeight: 600 }}>
         Invalid link configuration
       </Box>
-      <Box sx={{ color: "var(--vscode-editorError-foreground)", fontSize: "0.75rem", mt: 0.5 }}>
+      <Box sx={{ fontSize: "0.75rem", mt: 0.5 }}>
         {errors.map((error, i) => (
           <Box key={i}>{error}</Box>
         ))}

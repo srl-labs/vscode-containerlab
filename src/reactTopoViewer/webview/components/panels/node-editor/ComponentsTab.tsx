@@ -11,7 +11,7 @@ import {
   Hub as HubIcon,
   Storage as StorageIcon
 } from "@mui/icons-material";
-import { Box, Button, Chip, Collapse, IconButton, Paper, Typography } from "@mui/material";
+import { Box, Button, Chip, Collapse, Divider, IconButton, Paper, Typography } from "@mui/material";
 
 import { InputField, SelectField, Section } from "../../ui/form";
 import { useSchema, type SrosComponentTypes } from "../../../hooks/editor";
@@ -162,19 +162,22 @@ const MdaSectionWrapper: React.FC<MdaSectionWrapperProps> = ({
   onUpdateMda,
   onRemoveMda
 }) => (
-  <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: "divider" }}>
-    <Typography variant="caption" sx={{ fontWeight: 500, display: "block", mb: 1 }}>
-      MDA Modules
-    </Typography>
-    <MdaListSection
-      mdas={mdas}
-      mdaTypes={mdaTypes}
-      slotPrefix={slotPrefix}
-      onUpdate={(idx, updates) => onUpdateMda(parentIndex, idx, updates)}
-      onRemove={(idx) => onRemoveMda(parentIndex, idx)}
-      onAdd={() => onAddMda(parentIndex)}
-    />
-  </Box>
+  <>
+    <Divider sx={{ mt: 2 }} />
+    <Box sx={{ pt: 2 }}>
+      <Typography variant="caption" sx={{ fontWeight: 500, display: "block", mb: 1 }}>
+        MDA Modules
+      </Typography>
+      <MdaListSection
+        mdas={mdas}
+        mdaTypes={mdaTypes}
+        slotPrefix={slotPrefix}
+        onUpdate={(idx, updates) => onUpdateMda(parentIndex, idx, updates)}
+        onRemove={(idx) => onRemoveMda(parentIndex, idx)}
+        onAdd={() => onAddMda(parentIndex)}
+      />
+    </Box>
+  </>
 );
 
 // ============================================================================
@@ -246,7 +249,8 @@ const XiomEntry: React.FC<XiomEntryProps> = ({
       </Box>
 
       <Collapse in={isExpanded}>
-        <Box sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
+        <Divider />
+        <Box sx={{ p: 1.5 }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
             <SelectField
               id={`xiom-slot-${index}`}
@@ -405,32 +409,35 @@ const ComponentXiomSection: React.FC<
   onUpdateXiomMda,
   onRemoveXiomMda
 }) => (
-  <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: "divider" }}>
-    <Typography variant="caption" sx={{ fontWeight: 500, display: "block", mb: 1 }}>
-      XIOM Extension Modules
-    </Typography>
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      {(component.xiom || []).map((xiom, xiomIdx) => (
-        <XiomEntry
-          key={xiomIdx}
-          xiom={xiom}
-          index={xiomIdx}
-          cardSlot={component.slot ?? ""}
-          srosTypes={srosTypes}
-          onUpdate={(idx, updates) => onUpdateXiom(index, idx, updates)}
-          onRemove={(idx) => onRemoveXiom(index, idx)}
-          onAddMda={(xIdx) => onAddXiomMda(index, xIdx)}
-          onUpdateMda={(xIdx, mIdx, updates) => onUpdateXiomMda(index, xIdx, mIdx, updates)}
-          onRemoveMda={(xIdx, mIdx) => onRemoveXiomMda(index, xIdx, mIdx)}
-        />
-      ))}
+  <>
+    <Divider sx={{ mt: 2 }} />
+    <Box sx={{ pt: 2 }}>
+      <Typography variant="caption" sx={{ fontWeight: 500, display: "block", mb: 1 }}>
+        XIOM Extension Modules
+      </Typography>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        {(component.xiom || []).map((xiom, xiomIdx) => (
+          <XiomEntry
+            key={xiomIdx}
+            xiom={xiom}
+            index={xiomIdx}
+            cardSlot={component.slot ?? ""}
+            srosTypes={srosTypes}
+            onUpdate={(idx, updates) => onUpdateXiom(index, idx, updates)}
+            onRemove={(idx) => onRemoveXiom(index, idx)}
+            onAddMda={(xIdx) => onAddXiomMda(index, xIdx)}
+            onUpdateMda={(xIdx, mIdx, updates) => onUpdateXiomMda(index, xIdx, mIdx, updates)}
+            onRemoveMda={(xIdx, mIdx) => onRemoveXiomMda(index, xIdx, mIdx)}
+          />
+        ))}
+      </Box>
+      {(component.xiom?.length ?? 0) < 2 && (
+        <Button size="small" startIcon={<AddIcon />} onClick={() => onAddXiom(index)} sx={{ mt: 1 }}>
+          Add XIOM
+        </Button>
+      )}
     </Box>
-    {(component.xiom?.length ?? 0) < 2 && (
-      <Button size="small" startIcon={<AddIcon />} onClick={() => onAddXiom(index)} sx={{ mt: 1 }}>
-        Add XIOM
-      </Button>
-    )}
-  </Box>
+  </>
 );
 
 // ============================================================================
@@ -553,7 +560,8 @@ const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
       />
 
       <Collapse in={isExpanded}>
-        <Box sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
+        <Divider />
+        <Box sx={{ p: 1.5 }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
             <InputField
               id={`comp-slot-${index}`}

@@ -9,6 +9,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   IconButton,
   TextField,
   Typography
@@ -23,6 +24,7 @@ import { ConfirmBulkLinksModal } from "./bulk-link/ConfirmBulkLinksModal";
 import type { LinkCandidate } from "./bulk-link/bulkLinkUtils";
 import { computeAndValidateCandidates, confirmAndCreateLinks } from "./bulk-link/bulkLinkHandlers";
 
+
 interface BulkLinkModalProps {
   isOpen: boolean;
   mode: "edit" | "view";
@@ -30,8 +32,6 @@ interface BulkLinkModalProps {
   onClose: () => void;
 }
 
-const VSCODE_PANEL_BORDER = "var(--vscode-panel-border)";
-const VSCODE_EDITOR_BG = "var(--vscode-editor-background)";
 const FLEX_START = "flex-start";
 
 type ExampleDefinition = {
@@ -75,14 +75,15 @@ const ExampleRow: React.FC<{ index: number; def: ExampleDefinition }> = ({ index
 );
 
 const ExamplesSection: React.FC = () => (
-  <Box sx={{ borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER, bgcolor: VSCODE_EDITOR_BG, p: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+  <Box sx={{ borderRadius: 0.5, border: 1, p: 1, display: "flex", flexDirection: "column", gap: 1 }}>
     <Typography variant="subtitle2" fontWeight={600}>Examples</Typography>
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, fontSize: "0.875rem" }}>
       {EXAMPLES.map((def, idx) => (
         <ExampleRow key={idx} index={idx + 1} def={def} />
       ))}
     </Box>
-    <Box sx={{ borderTop: 1, borderColor: "divider", pt: 1 }}>
+    <Divider />
+    <Box sx={{ pt: 1 }}>
       <Typography variant="body2" color="text.secondary" component="div">
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 1.5, rowGap: 0.25 }}>
           <Box><CopyableCode>*</CopyableCode> any chars</Box>
@@ -157,12 +158,12 @@ export const BulkLinkModal: React.FC<BulkLinkModalProps> = ({ isOpen, mode, isLo
               </Box>
             </Box>
             {status && (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider", bgcolor: VSCODE_EDITOR_BG }}>
+              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider" }}>
                 {status}
               </Typography>
             )}
             {!canApply && (
-              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider", bgcolor: VSCODE_EDITOR_BG }}>
+              <Typography variant="body2" color="text.secondary" sx={{ p: 1, borderRadius: 0.5, border: 1, borderColor: "divider" }}>
                 Bulk linking is disabled while locked or in view mode.
               </Typography>
             )}

@@ -3,6 +3,7 @@
  */
 import React from "react";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
 
@@ -14,25 +15,28 @@ import type { LinkTabProps, LinkEditorData } from "./types";
  * Header section with link name and type
  */
 const HeaderSection: React.FC<{ linkId: string; linkType?: string }> = ({ linkId, linkType }) => (
-  <Box sx={{ borderBottom: 1, borderColor: "divider", pb: 1.5, mb: 1.5 }}>
-    <Box sx={{ mb: 1.5 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-        Link Name
-      </Typography>
-      <ReadOnlyBadge>{linkId || "New Link"}</ReadOnlyBadge>
-    </Box>
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      <Box>
+  <>
+    <Box>
+      <Box sx={{ mb: 1.5 }}>
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-          Type
+          Link Name
         </Typography>
-        <ReadOnlyBadge>{linkType || "veth"}</ReadOnlyBadge>
+        <ReadOnlyBadge>{linkId || "New Link"}</ReadOnlyBadge>
       </Box>
-      <Typography variant="caption" color="text.secondary">
-        (auto-detected)
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+            Type
+          </Typography>
+          <ReadOnlyBadge>{linkType || "veth"}</ReadOnlyBadge>
+        </Box>
+        <Typography variant="caption" color="text.secondary">
+          (auto-detected)
+        </Typography>
+      </Box>
     </Box>
-  </Box>
+    <Divider sx={{ my: 1.5 }} />
+  </>
 );
 
 /**

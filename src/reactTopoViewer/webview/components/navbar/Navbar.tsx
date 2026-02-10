@@ -231,7 +231,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [onLayoutChange]);
 
   return (
-    <AppBar ref={appBarRef} position="static" elevation={0} sx={{ bgcolor: "var(--vscode-editor-background)" }}>
+    <AppBar ref={appBarRef} position="static" elevation={0}>
       <Toolbar variant="dense" disableGutters sx={{ minHeight: 40, px: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
         {/* Left: Logo + Title */}
         <IconButton size="small" onClick={onLogoClick}>
@@ -263,13 +263,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           sx={{
             "& .MuiButton-root": {
               bgcolor: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN,
-              color: "#fff",
               "&:hover": {
                 bgcolor: isViewerMode ? ERROR_DARK : SUCCESS_DARK
               },
               "&.Mui-disabled": {
                 bgcolor: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN,
-                color: "#fff",
                 opacity: 0.5
               }
             }

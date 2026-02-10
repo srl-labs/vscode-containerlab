@@ -11,8 +11,9 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
-import { Box, Button, Divider, IconButton, Tooltip, Typography } from "@mui/material";
+import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
+import { Box, Button, Divider, Drawer, IconButton, Tooltip, Typography } from "@mui/material";
+
 
 import { useIsLocked } from "../../../stores/topoViewerStore";
 import type { NodeData, LinkData } from "../../../hooks/ui";
@@ -262,7 +263,6 @@ const ToggleHandle: React.FC<{
     border: 1,
     [isLeft ? "borderLeft" : "borderRight"]: 0,
     borderColor: "divider",
-    bgcolor: "var(--vscode-editor-background)",
     opacity: 0.8,
     "&:hover": { opacity: 1, bgcolor: "action.hover" }
   };
@@ -374,11 +374,10 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   }, []);
 
   const sideLayout = isLeft
-    ? { pos: "left", border: "borderRight", hidden: "translateX(-100%)", resize: "right" }
-    : { pos: "right", border: "borderLeft", hidden: "translateX(100%)", resize: "left" };
+    ? { border: "borderRight", resize: "right" }
+    : { border: "borderLeft", resize: "left" };
 
   const showBackButton = panelView.kind !== "palette";
-  const isPaletteView = panelView.kind === "palette";
 
   const content = renderContextPanelContent(panelView.kind, palette, view, editor, isLocked, isReadOnly, setFooterRef);
 
@@ -388,70 +387,73 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   return (
     <>
       <ToggleHandle isOpen={isOpen} panelWidth={panelWidth} isDragging={isDragging} side={side} onOpen={onOpen} onClose={onClose} onBack={onBack} onToggleSide={onToggleSide} />
-      <Box
+      <Drawer
+        variant="persistent"
+        anchor={side}
+        open={isOpen}
+        transitionDuration={250}
         data-testid="context-panel"
         sx={{
           position: "absolute",
-          [sideLayout.pos]: 0,
-          top: 0,
-          bottom: 0,
-          width: panelWidth,
+          inset: 0,
           zIndex: 10,
-          bgcolor: "var(--vscode-editor-background)",
-          [sideLayout.border]: 1,
-          borderColor: "divider",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: 4,
-          transform: isOpen ? "translateX(0)" : sideLayout.hidden,
-          transition: isDragging ? "none" : "transform 0.25s ease",
-          pointerEvents: isOpen ? "auto" : "none"
+          pointerEvents: "none",
+          "& .MuiDrawer-paper": {
+            position: "absolute",
+            width: panelWidth,
+            boxShadow: 4,
+            [sideLayout.border]: 1,
+            borderColor: "divider",
+            pointerEvents: "auto",
+          }
         }}
       >
-          {/* Header (hidden for palette view - use toggle handle instead) */}
-        {!isPaletteView && (
+          {/* Header */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             px: 1,
             py: 0.5,
-            borderBottom: 1,
-            borderColor: "divider",
             minHeight: 40
           }}
         >
-          {showBackButton && (
+          {showBackButton ? (
             <IconButton size="small" onClick={onBack} sx={{ mr: 0.5 }} data-testid="panel-back-btn">
               <ArrowBackIcon fontSize="small" />
+            </IconButton>
+          ) : (
+            <IconButton size="small" onClick={() => { onBack(); onClose(); }} sx={{ mr: 0.5 }} data-testid="panel-close-btn">
+              <CloseIcon fontSize="small" />
             </IconButton>
           )}
           <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }} data-testid="panel-title">
             {panelView.title}
           </Typography>
         </Box>
-        )}
+        <Divider />
 
         {/* Read-only indicator */}
-        {isReadOnly && (
-          <Box
-            data-testid="panel-readonly-indicator"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 2,
-              py: 0.5,
-              bgcolor: "action.hover",
-              borderBottom: 1,
-              borderColor: "divider"
-            }}
-          >
-            <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
-            <Typography variant="caption" color="text.secondary">
-              Read-only — unlock to edit
-            </Typography>
-          </Box>
+        {isLocked && (
+          <>
+            <Box
+              data-testid="panel-readonly-indicator"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 2,
+                py: 0.5,
+                bgcolor: "action.hover",
+              }}
+            >
+              <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
+              <Typography variant="caption" color="text.secondary">
+                Read-only — unlock to edit
+              </Typography>
+            </Box>
+            <Divider />
+          </>
         )}
 
         {/* Content */}
@@ -495,7 +497,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             "&:hover": { bgcolor: "primary.main", opacity: 0.3 }
           }}
         />
-      </Box>
+      </Drawer>
     </>
   );
 };

@@ -7,8 +7,7 @@
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 import deepmerge from "@mui/utils/deepmerge";
 
-import { getBaseOverrides } from "./baseOverrides";
-import type { ThemeColors } from "./baseOverrides";
+import { structuralOverrides } from "./vscodeTheme";
 
 /** Map of --vscode-* variable name → value, per mode. */
 interface VarMap {
@@ -88,6 +87,7 @@ const DARK_VARS: VarMap = {
   "--vscode-testing-iconPassed": "#73c991",
   "--vscode-progressBar-background": "#0e70c0",
   "--vscode-editorError-foreground": "#f48771",
+  "--vscode-charts-green": "#4ec9b0",
   "--vscode-font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   "--vscode-font-size": "13px"
 };
@@ -165,81 +165,74 @@ const LIGHT_VARS: VarMap = {
   "--vscode-testing-iconPassed": "#388a34",
   "--vscode-progressBar-background": "#007acc",
   "--vscode-editorError-foreground": "#a1260d",
+  "--vscode-charts-green": "#16825d",
   "--vscode-font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   "--vscode-font-size": "13px"
 };
 
-/** Convert a VarMap to ThemeColors by reading the concrete values. */
-function buildColors(vars: VarMap): ThemeColors {
-  return {
-    editorBg: vars["--vscode-editor-background"],
-    editorFg: vars["--vscode-editor-foreground"],
-    sideBarBg: vars["--vscode-sideBar-background"],
-    panelBorder: vars["--vscode-panel-border"],
-    buttonBg: vars["--vscode-button-background"],
-    buttonFg: vars["--vscode-button-foreground"],
-    buttonHoverBg: vars["--vscode-button-hoverBackground"],
-    buttonBorder: vars["--vscode-panel-border"],
-    buttonSecondaryFg: vars["--vscode-foreground"],
-    buttonSecondaryHoverBg: vars["--vscode-list-hoverBackground"],
-    inputBg: vars["--vscode-input-background"],
-    inputFg: vars["--vscode-input-foreground"],
-    inputBorder: vars["--vscode-input-border"],
-    inputPlaceholderFg: vars["--vscode-input-placeholderForeground"],
-    focusBorder: vars["--vscode-focusBorder"],
-    foreground: vars["--vscode-foreground"],
-    descriptionFg: vars["--vscode-descriptionForeground"],
-    errorFg: vars["--vscode-errorForeground"],
-    iconFg: vars["--vscode-icon-foreground"],
-    listHoverBg: vars["--vscode-list-hoverBackground"],
-    listActiveSelectionBg: vars["--vscode-list-activeSelectionBackground"],
-    listActiveSelectionFg: vars["--vscode-list-activeSelectionForeground"],
-    badgeBg: vars["--vscode-badge-background"],
-    badgeFg: vars["--vscode-badge-foreground"],
-    textLinkFg: vars["--vscode-textLink-foreground"],
-    textLinkActiveFg: vars["--vscode-textLink-activeForeground"],
-    disabledFg: vars["--vscode-disabledForeground"],
-    dropdownBg: vars["--vscode-dropdown-background"],
-    dropdownFg: vars["--vscode-dropdown-foreground"],
-    dropdownBorder: vars["--vscode-dropdown-border"],
-    menuBg: vars["--vscode-menu-background"],
-    menuBorder: vars["--vscode-menu-border"],
-    menuFg: vars["--vscode-menu-foreground"],
-    menuSelectionBg: vars["--vscode-menu-selectionBackground"],
-    menuSelectionFg: vars["--vscode-menu-selectionForeground"],
-    tabActiveBorderTop: vars["--vscode-tab-activeBorderTop"],
-    tabActiveFg: vars["--vscode-tab-activeForeground"],
-    tabInactiveFg: vars["--vscode-tab-inactiveForeground"],
-    tabHoverBg: vars["--vscode-tab-hoverBackground"],
-    widgetShadow: vars["--vscode-widget-shadow"],
-    widgetBg: vars["--vscode-editorWidget-background"],
-    widgetFg: vars["--vscode-editorWidget-foreground"],
-    widgetBorder: vars["--vscode-editorWidget-border"],
-    validationErrorBg: vars["--vscode-inputValidation-errorBackground"],
-    validationErrorBorder: vars["--vscode-inputValidation-errorBorder"],
-    validationWarningBg: vars["--vscode-inputValidation-warningBackground"],
-    validationWarningBorder: vars["--vscode-inputValidation-warningBorder"],
-    validationInfoBg: vars["--vscode-inputValidation-infoBackground"],
-    validationInfoBorder: vars["--vscode-inputValidation-infoBorder"],
-    testingIconPassed: vars["--vscode-testing-iconPassed"],
-    checkboxBorder: vars["--vscode-checkbox-border"],
-    progressBarBg: vars["--vscode-progressBar-background"],
-    notificationsBg: vars["--vscode-notifications-background"],
-    notificationsFg: vars["--vscode-notifications-foreground"],
-    notificationsBorder: vars["--vscode-notifications-border"],
-    scrollbarSliderBg: vars["--vscode-scrollbarSlider-background"],
-    scrollbarSliderHoverBg: vars["--vscode-scrollbarSlider-hoverBackground"],
-    scrollbarSliderActiveBg: vars["--vscode-scrollbarSlider-activeBackground"]
-  };
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-/** Build a CSS-property object for `:root` injection from a VarMap. */
-function buildRootVarStyles(vars: VarMap): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(vars)) {
-    out[k] = v;
-  }
-  return out;
+/** Build a MUI palette directly from a VarMap. */
+function buildDevPalette(v: VarMap, mode: "light" | "dark") {
+  return {
+    mode,
+    divider: v["--vscode-panel-border"],
+    background: {
+      default: v["--vscode-editor-background"],
+      paper: v["--vscode-editor-background"]
+    },
+    text: {
+      primary: v["--vscode-foreground"],
+      secondary: v["--vscode-descriptionForeground"],
+      disabled: v["--vscode-disabledForeground"]
+    },
+    primary: {
+      main: v["--vscode-button-background"],
+      dark: v["--vscode-button-hoverBackground"],
+      light: v["--vscode-focusBorder"],
+      contrastText: v["--vscode-button-foreground"]
+    },
+    secondary: {
+      main: v["--vscode-badge-background"],
+      dark: v["--vscode-badge-background"],
+      light: v["--vscode-badge-background"],
+      contrastText: v["--vscode-badge-foreground"]
+    },
+    error: {
+      main: v["--vscode-errorForeground"],
+      dark: v["--vscode-errorForeground"],
+      light: v["--vscode-errorForeground"],
+      contrastText: v["--vscode-button-foreground"]
+    },
+    warning: {
+      main: v["--vscode-inputValidation-warningBorder"],
+      dark: v["--vscode-inputValidation-warningBorder"],
+      light: v["--vscode-inputValidation-warningBackground"],
+      contrastText: v["--vscode-foreground"]
+    },
+    info: {
+      main: v["--vscode-focusBorder"],
+      dark: v["--vscode-focusBorder"],
+      light: v["--vscode-inputValidation-infoBackground"],
+      contrastText: v["--vscode-button-foreground"]
+    },
+    success: {
+      main: v["--vscode-testing-iconPassed"],
+      dark: v["--vscode-testing-iconPassed"],
+      light: v["--vscode-testing-iconPassed"],
+      contrastText: v["--vscode-button-foreground"]
+    },
+    action: {
+      active: v["--vscode-icon-foreground"],
+      hover: v["--vscode-list-hoverBackground"],
+      selected: v["--vscode-list-activeSelectionBackground"],
+      disabled: v["--vscode-disabledForeground"],
+      disabledBackground: v["--vscode-input-background"],
+      focus: v["--vscode-focusBorder"]
+    }
+  } as const;
 }
 
 /**
@@ -249,28 +242,26 @@ function buildRootVarStyles(vars: VarMap): Record<string, string> {
  */
 export function createDevTheme(mode: "light" | "dark") {
   const vars = mode === "light" ? LIGHT_VARS : DARK_VARS;
-  const colors = buildColors(vars);
-  const baseOverrides = getBaseOverrides(colors);
 
   // Deep-merge CssBaseline to add :root CSS variable injection
   const baseStyleOverrides =
-    (baseOverrides.MuiCssBaseline as Record<string, unknown>)?.styleOverrides ?? {};
+    (structuralOverrides.MuiCssBaseline as Record<string, unknown>)?.styleOverrides ?? {};
   const cssBaselineOverride: ThemeOptions["components"] = {
     MuiCssBaseline: {
       styleOverrides: deepmerge(
         baseStyleOverrides as Record<string, unknown>,
-        { ":root": buildRootVarStyles(vars) }
+        { ":root": { ...vars } }
       ) as Record<string, unknown>
     }
   };
 
   return createTheme({
-    palette: { mode },
+    palette: buildDevPalette(vars, mode),
     typography: {
       fontFamily: vars["--vscode-font-family"],
       fontSize: 13
     },
     shape: { borderRadius: 4 },
-    components: deepmerge(baseOverrides, cssBaselineOverride) as ThemeOptions["components"]
+    components: deepmerge(structuralOverrides, cssBaselineOverride) as ThemeOptions["components"]
   });
 }

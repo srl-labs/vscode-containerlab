@@ -13,6 +13,7 @@ import type { GroupEditorData } from "../../../hooks/canvas";
 import { GROUP_LABEL_POSITIONS } from "../../../hooks/canvas";
 import { ColorSwatch, TextInput, NumberInput, SelectInput, RangeSlider } from "../../ui/form";
 
+
 interface Props {
   formData: GroupEditorData;
   updateField: <K extends keyof GroupEditorData>(field: K, value: GroupEditorData[K]) => void;
@@ -166,7 +167,7 @@ const PreviewSection: React.FC<{ formData: GroupEditorData }> = ({ formData }) =
       <Typography variant="caption" color="text.secondary">
         Preview
       </Typography>
-      <Box sx={{ position: "relative", p: 2, bgcolor: "var(--vscode-input-background)", borderRadius: 0.5, border: 1, borderColor: "var(--vscode-panel-border)", minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box sx={{ position: "relative", p: 2, borderRadius: 0.5, border: 1, minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Box
           sx={{
             position: "relative",

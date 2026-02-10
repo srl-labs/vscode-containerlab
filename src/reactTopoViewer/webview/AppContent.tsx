@@ -223,14 +223,19 @@ export const AppContent: React.FC<AppContentProps> = ({
   const undoRedo = useUndoRedoControls(state.canUndo, state.canRedo);
   const { trigger: triggerLockShake } = useShakeAnimation();
 
-  const { annotations, annotationMode, canvasAnnotationHandlers } = useAppAnnotations({
-    rfInstance,
-    onLockedAction: triggerLockShake
-  });
-
   const { toasts, dismissToast, addToast } = useAppToasts({
     customNodeError: state.customNodeError,
     clearCustomNodeError: topoActions.clearCustomNodeError
+  });
+
+  const handleLockedAction = React.useCallback(() => {
+    triggerLockShake();
+    addToast("Lab is locked (read-only)", "error", 2000);
+  }, [triggerLockShake, addToast]);
+
+  const { annotations, annotationMode, canvasAnnotationHandlers } = useAppAnnotations({
+    rfInstance,
+    onLockedAction: handleLockedAction
   });
 
   const { filteredNodes, filteredEdges, selectionData, edgeAnnotationLookup } = useAppDerivedData({
@@ -391,7 +396,7 @@ export const AppContent: React.FC<AppContentProps> = ({
 
   const graphCreation = useGraphCreation({
     rfInstance,
-    onLockedAction: triggerLockShake,
+    onLockedAction: handleLockedAction,
     state: {
       mode: interactionMode,
       isLocked: isInteractionLocked,
@@ -409,7 +414,7 @@ export const AppContent: React.FC<AppContentProps> = ({
   const handleDropCreateNode = React.useCallback(
     (position: { x: number; y: number }, templateName: string) => {
       if (isInteractionLocked) {
-        triggerLockShake();
+        handleLockedAction();
         return;
       }
       // Find the template by name
@@ -418,18 +423,18 @@ export const AppContent: React.FC<AppContentProps> = ({
         graphCreation.createNodeAtPosition(position, template);
       }
     },
-    [isInteractionLocked, state.customNodes, graphCreation, triggerLockShake]
+    [isInteractionLocked, state.customNodes, graphCreation, handleLockedAction]
   );
 
   const handleDropCreateNetwork = React.useCallback(
     (position: { x: number; y: number }, networkType: string) => {
       if (isInteractionLocked) {
-        triggerLockShake();
+        handleLockedAction();
         return;
       }
       graphCreation.createNetworkAtPosition(position, networkType as Parameters<typeof graphCreation.createNetworkAtPosition>[1]);
     },
-    [isInteractionLocked, graphCreation, triggerLockShake]
+    [isInteractionLocked, graphCreation, handleLockedAction]
   );
 
   useAppE2EExposure({
@@ -801,7 +806,7 @@ export const AppContent: React.FC<AppContentProps> = ({
               onShowBulkLink={panelVisibility.handleShowBulkLink}
               onDropCreateNode={handleDropCreateNode}
               onDropCreateNetwork={handleDropCreateNetwork}
-              onLockedAction={triggerLockShake}
+              onLockedAction={handleLockedAction}
             />
             <ShortcutDisplay shortcuts={shortcutDisplay.shortcuts} />
             <EasterEggRenderer easterEgg={easterEgg} />

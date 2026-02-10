@@ -5,6 +5,7 @@ import React from "react";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 
 export interface TabDefinition {
   id: string;
@@ -31,19 +32,16 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   };
 
   return (
-    <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+    <Box>
       <Tabs
         value={activeTab}
         onChange={handleChange}
         variant="scrollable"
         scrollButtons="auto"
         sx={{
-          minHeight: 36,
           "& .MuiTab-root": {
-            minHeight: 36,
             py: 0.5,
             px: 2,
-            textTransform: "none",
             fontSize: "0.8125rem"
           }
         }}
@@ -58,6 +56,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
           />
         ))}
       </Tabs>
+      <Divider />
     </Box>
   );
 };

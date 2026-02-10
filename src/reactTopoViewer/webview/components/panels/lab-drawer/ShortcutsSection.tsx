@@ -7,6 +7,8 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 
+
+
 /** Platform detection for keyboard symbols */
 const isMac =
   typeof window !== "undefined" &&
@@ -34,8 +36,6 @@ const ShortcutRow: React.FC<ShortcutRowProps> = ({ label, shortcut }) => (
         fontFamily: "monospace",
         fontSize: "0.75rem",
         height: 22,
-        bgcolor: "var(--vscode-badge-background)",
-        color: "var(--vscode-badge-foreground)"
       }}
     />
   </Box>

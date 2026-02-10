@@ -79,7 +79,6 @@ const Toolbar: React.FC<{ formData: FreeTextAnnotation; updateField: Props["upda
         alignItems: "center",
         gap: 0.25,
         p: 0.75,
-        bgcolor: "var(--vscode-input-background)",
         borderRadius: 0.5
       }}
     >

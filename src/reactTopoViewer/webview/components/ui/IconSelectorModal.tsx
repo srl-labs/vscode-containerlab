@@ -26,6 +26,7 @@ import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
 
+
 const AVAILABLE_ICONS: NodeType[] = [
   "pe",
   "dcgw",
@@ -63,8 +64,6 @@ const ICON_LABELS: Record<string, string> = {
 const DEFAULT_COLOR = "#1a73e8";
 const MAX_RADIUS = 40;
 const COLOR_DEBOUNCE_MS = 50;
-const VSCODE_PANEL_BORDER = "var(--vscode-panel-border)";
-const VSCODE_INPUT_BG = "var(--vscode-input-background)";
 
 const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box
@@ -74,8 +73,6 @@ const IconsGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       gap: 0.5,
       borderRadius: 0.5,
       border: 1,
-      borderColor: VSCODE_PANEL_BORDER,
-      bgcolor: VSCODE_INPUT_BG,
       p: 1
     }}
   >
@@ -213,12 +210,9 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
           p: 0.75,
           overflow: "hidden",
           transition: "background-color 0.15s",
-          bgcolor: isSelected ? "var(--vscode-list-activeSelectionBackground)" : "transparent",
-          "&:hover": { bgcolor: isSelected ? undefined : "var(--vscode-list-hoverBackground)" },
           border: "none",
           cursor: "pointer",
-          color: "inherit",
-          background: isSelected ? "var(--vscode-list-activeSelectionBackground)" : "none"
+          color: "inherit"
         }}
       >
         <img
@@ -233,8 +227,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            fontSize: "10px",
-            color: "var(--vscode-foreground)"
+            fontSize: "10px"
           }}
         >
           {ICON_LABELS[icon] || icon}
@@ -541,7 +534,7 @@ const PreviewCustom: React.FC<{ iconSrc: string; radius: number }> = ({ iconSrc,
     <Typography variant="caption" color="text.secondary">
       Preview
     </Typography>
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER, bgcolor: VSCODE_INPUT_BG, p: 1.5 }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 0.5, border: 1, p: 1.5 }}>
       <img
         src={iconSrc}
         alt="Preview"

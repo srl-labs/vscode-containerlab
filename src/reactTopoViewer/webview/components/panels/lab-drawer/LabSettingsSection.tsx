@@ -4,6 +4,7 @@
  */
 import React, { useState } from "react";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Button from "@mui/material/Button";
@@ -46,11 +47,11 @@ export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({
       <Tabs
         value={activeTab}
         onChange={handleTabChange}
-        sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
       >
         <Tab label="Basic" data-testid="lab-settings-tab-basic" />
         <Tab label="Management" data-testid="lab-settings-tab-mgmt" />
       </Tabs>
+      <Divider sx={{ mb: 2 }} />
 
       {/* Basic Tab */}
       {activeTab === 0 && (

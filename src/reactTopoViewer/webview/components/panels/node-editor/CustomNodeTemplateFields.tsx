@@ -12,9 +12,10 @@ import {
   ExpandMore as ExpandMoreIcon,
   InfoOutlined as InfoOutlinedIcon
 } from "@mui/icons-material";
-import { Box, Collapse, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Box, Collapse, Divider, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 
 import { InputField, CheckboxField, Section } from "../../ui/form";
+
 import { copyToClipboard } from "../../../utils/clipboard";
 
 import type { TabProps } from "./types";
@@ -118,13 +119,14 @@ const InterfacePatternInfo: React.FC<{ isExpanded: boolean; onToggle: () => void
         )}
         <InfoOutlinedIcon fontSize="small" color="primary" />
         <Typography variant="caption" color="text.secondary">
-          Pattern syntax: Use <code style={{ padding: "0 4px", background: "var(--vscode-textCodeBlock-background)", borderRadius: 2 }}>{"{n}"}</code> for sequential numbering
+          Pattern syntax: Use <code style={{ padding: "0 4px", borderRadius: 2 }}>{"{n}"}</code> for sequential numbering
         </Typography>
       </Box>
 
       {/* Expandable content */}
       <Collapse in={isExpanded}>
-        <Box sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
+        <Divider />
+        <Box sx={{ p: 1.5 }}>
           <Table size="small">
             <TableHead>
               <TableRow>

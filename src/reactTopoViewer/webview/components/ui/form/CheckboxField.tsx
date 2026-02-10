@@ -32,10 +32,5 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
       />
     }
     label={label}
-    sx={{
-      "& .MuiFormControlLabel-label": {
-        fontSize: "0.875rem"
-      }
-    }}
   />
 );

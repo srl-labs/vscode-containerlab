@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Box from "@mui/material/Box";
 
+
 import { FormField, InputField, FilterableDropdown, Section, KeyValueList } from "../../../ui/form";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
 import type { NetworkEditorData, NetworkType } from "../../network-editor/types";
@@ -38,7 +39,7 @@ const NETWORK_TYPE_OPTIONS = NETWORK_TYPES.map((type) => ({ value: type, label: 
 const MACVLAN_MODE_OPTIONS = MACVLAN_MODES.map((mode) => ({ value: mode, label: mode }));
 
 const SettingsGroupTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Box sx={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--vscode-foreground)", opacity: 0.7, mt: 2, mb: 1 }}>
+  <Box sx={{ fontSize: "0.75rem", fontWeight: 500, opacity: 0.7, mt: 2, mb: 1 }}>
     {children}
   </Box>
 );

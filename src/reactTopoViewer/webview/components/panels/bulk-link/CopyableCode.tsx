@@ -4,6 +4,7 @@
 import React from "react";
 import Box from "@mui/material/Box";
 
+
 import { copyToClipboard } from "../../../utils/clipboard";
 
 interface CopyableCodeProps {
@@ -30,14 +31,12 @@ export const CopyableCode: React.FC<CopyableCodeProps> = ({ children }) => {
         cursor: "pointer",
         userSelect: "text",
         borderRadius: 0.5,
-        bgcolor: "var(--vscode-textCodeBlock-background)",
         px: 0.5,
         py: 0.25,
         fontFamily: "monospace",
         fontSize: "0.75rem",
         transition: "background-color 0.2s",
-        "&:hover": { bgcolor: "var(--vscode-list-hoverBackground)" },
-        ...(copied ? { outline: "1px solid var(--vscode-focusBorder)" } : {})
+        ...(copied ? { outline: "1px solid" } : {})
       }}
     >
       {copied ? "Copied!" : children}

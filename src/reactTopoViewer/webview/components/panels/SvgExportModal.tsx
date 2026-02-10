@@ -32,6 +32,7 @@ import {
 import { log } from "../../utils/logger";
 import { Toggle, ColorSwatch, NumberInput, PREVIEW_GRID_BG_SX } from "../ui/form";
 
+
 import {
   buildSvgDefs,
   renderNodesToSvg,
@@ -54,9 +55,6 @@ export interface SvgExportModalProps {
 const ANNOTATION_NODE_TYPES: Set<string> = new Set([FREE_TEXT_NODE_TYPE, FREE_SHAPE_NODE_TYPE, GROUP_NODE_TYPE]);
 
 const JUSTIFY_SPACE_BETWEEN = "space-between";
-const VSCODE_PANEL_BORDER = "var(--vscode-panel-border)";
-const VSCODE_INPUT_BG = "var(--vscode-input-background)";
-const VSCODE_FOREGROUND = "var(--vscode-foreground)";
 
 const ToggleSettingRow: React.FC<{
   label: React.ReactNode;
@@ -69,13 +67,11 @@ const ToggleSettingRow: React.FC<{
       alignItems: "center",
       justifyContent: JUSTIFY_SPACE_BETWEEN,
       p: 1.5,
-      bgcolor: VSCODE_INPUT_BG,
       borderRadius: 0.5,
       border: 1,
-      borderColor: VSCODE_PANEL_BORDER
     }}
   >
-    <Box component="span" sx={{ fontSize: "0.875rem", color: VSCODE_FOREGROUND }}>
+    <Box component="span" sx={{ fontSize: "0.875rem" }}>
       {label}
     </Box>
     <Toggle active={active} onClick={onToggle}>
@@ -256,7 +252,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
                 </Toggle>
 	                <Toggle active={backgroundOption === "white"} onClick={() => setBackgroundOption("white")}>
 	                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-	                    <Box component="span" sx={{ display: "inline-block", width: 12, height: 12, bgcolor: "white", borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER }} />White
+	                    <Box component="span" sx={{ display: "inline-block", width: 12, height: 12, bgcolor: "white", borderRadius: 0.5, border: 1 }} />White
 	                  </Box>
 	                </Toggle>
                 <Toggle active={backgroundOption === "custom"} onClick={() => setBackgroundOption("custom")}>
@@ -315,7 +311,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
 	          {/* Preview */}
 	          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
 	            <SectionHeader>Preview</SectionHeader>
-	            <Box sx={{ position: "relative", p: 2, bgcolor: VSCODE_INPUT_BG, borderRadius: 0.5, border: 1, borderColor: VSCODE_PANEL_BORDER, overflow: "hidden" }}>
+	            <Box sx={{ position: "relative", p: 2, borderRadius: 0.5, border: 1, overflow: "hidden" }}>
 	              <Box sx={{ position: "absolute", inset: 0, opacity: 0.3, ...PREVIEW_GRID_BG_SX }} />
 	              <Box sx={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
 	                <Box
@@ -325,7 +321,6 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
 	                    borderRadius: 0.5,
 	                    boxShadow: 3,
 	                    border: 1,
-	                    borderColor: VSCODE_PANEL_BORDER,
 	                    display: "flex",
 	                    alignItems: "center",
 	                    justifyContent: "center",
@@ -360,7 +355,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
           )}
 
 	          {/* Tips */}
-	          <Box sx={{ p: 1.5, bgcolor: VSCODE_INPUT_BG, borderRadius: 0.5, border: 1, borderColor: "divider" }}>
+	          <Box sx={{ p: 1.5, borderRadius: 0.5, border: 1 }}>
 	            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
 	              <LightbulbIcon sx={{ fontSize: 14, color: "warning.main" }} />
 	              <Typography variant="caption" color="text.secondary">Tips</Typography>

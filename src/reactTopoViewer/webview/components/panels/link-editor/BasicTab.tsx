@@ -3,6 +3,7 @@
  */
 import React from "react";
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
 import Button from "@mui/material/Button";
@@ -35,39 +36,42 @@ const EndpointSection: React.FC<{
   interfaceInputValue,
   onInterfaceChange
 }) => (
-  <Box sx={withDivider ? { borderBottom: 1, borderColor: "divider", pb: 1.5 } : undefined}>
-    <Typography
-      variant="caption"
-      sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
-    >
-      {title}
-    </Typography>
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-          Node
-        </Typography>
-        <ReadOnlyBadge>{nodeValue || "Unknown"}</ReadOnlyBadge>
-      </Box>
-      {isNetwork ? (
+  <>
+    <Box>
+      <Typography
+        variant="caption"
+        sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
+      >
+        {title}
+      </Typography>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         <Box>
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-            Interface
+            Node
           </Typography>
-          <ReadOnlyBadge>{interfaceBadgeValue || "Unknown"}</ReadOnlyBadge>
+          <ReadOnlyBadge>{nodeValue || "Unknown"}</ReadOnlyBadge>
         </Box>
-      ) : (
-        <InputField
-          id={interfaceInputId}
-          label="Interface"
-          required
-          value={interfaceInputValue || ""}
-          onChange={onInterfaceChange}
-          placeholder="e.g., eth1, e1-1"
-        />
-      )}
+        {isNetwork ? (
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              Interface
+            </Typography>
+            <ReadOnlyBadge>{interfaceBadgeValue || "Unknown"}</ReadOnlyBadge>
+          </Box>
+        ) : (
+          <InputField
+            id={interfaceInputId}
+            label="Interface"
+            required
+            value={interfaceInputValue || ""}
+            onChange={onInterfaceChange}
+            placeholder="e.g., eth1, e1-1"
+          />
+        )}
+      </Box>
     </Box>
-  </Box>
+    {withDivider && <Divider />}
+  </>
 );
 
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOffset }) => {
@@ -128,7 +132,8 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
         onInterfaceChange={(value) => onChange({ targetEndpoint: value })}
       />
 
-      <Box sx={{ borderTop: 1, borderColor: "divider", pt: 1.5 }}>
+      <Divider />
+      <Box sx={{ pt: 1.5 }}>
         <Typography
           variant="caption"
           sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}

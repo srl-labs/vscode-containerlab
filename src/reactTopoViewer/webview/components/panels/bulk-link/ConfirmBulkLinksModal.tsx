@@ -12,6 +12,7 @@ import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
+
 interface ConfirmBulkLinksModalProps {
   isOpen: boolean;
   count: number;
@@ -41,9 +42,7 @@ export const ConfirmBulkLinksModal: React.FC<ConfirmBulkLinksModalProps> = ({
         sx={{
           p: 1,
           borderRadius: 0.5,
-          border: 1,
-          borderColor: "divider",
-          bgcolor: "var(--vscode-editor-background)"
+          border: 1
         }}
       >
         <Typography variant="body2">
