@@ -13,6 +13,7 @@ import React, {
   useEffect,
   useState
 } from "react";
+import { flushSync } from "react-dom";
 import {
   Background,
   BackgroundVariant,
@@ -1080,6 +1081,29 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     });
     const contextMenuVisible = handlers.contextMenu.type !== null;
 
+    const handleBackdropContextMenu = useCallback(
+      (event: React.MouseEvent) => {
+        const { clientX, clientY } = event;
+        flushSync(() => {
+          handlers.closeContextMenu();
+        });
+        const target = document.elementFromPoint(clientX, clientY);
+        if (target) {
+          target.dispatchEvent(
+            new MouseEvent("contextmenu", {
+              bubbles: true,
+              cancelable: true,
+              clientX,
+              clientY,
+              button: 2,
+              buttons: 2
+            })
+          );
+        }
+      },
+      [handlers.closeContextMenu]
+    );
+
     return (
       <div
         ref={canvasContainerRef}
@@ -1087,6 +1111,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
         className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}`}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {overlays.geoMapLayer}
         <ReactFlow
@@ -1145,6 +1170,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           position={handlers.contextMenu.position}
           items={contextMenuItems}
           onClose={handlers.closeContextMenu}
+          onBackdropContextMenu={handleBackdropContextMenu}
         />
 
         {/* Helper lines for node alignment during drag */}

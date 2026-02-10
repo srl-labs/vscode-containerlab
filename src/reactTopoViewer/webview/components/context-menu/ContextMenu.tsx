@@ -26,14 +26,31 @@ interface ContextMenuProps {
   position: { x: number; y: number };
   items: ContextMenuItem[];
   onClose: () => void;
+  onBackdropContextMenu?: (event: React.MouseEvent) => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   isVisible,
   position,
   items,
-  onClose
+  onClose,
+  onBackdropContextMenu
 }) => {
+  const handleBackdropContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onBackdropContextMenu) {
+      onBackdropContextMenu(e);
+    } else {
+      onClose();
+    }
+  }, [onClose, onBackdropContextMenu]);
+
+  const suppressNativeMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    onClose();
+  }, [onClose]);
+
   if (!isVisible || items.length === 0) return null;
 
   return (
@@ -44,8 +61,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       anchorPosition={{ top: position.y, left: position.x }}
       data-testid="context-menu"
       slotProps={{
+        backdrop: {
+          invisible: true,
+          onContextMenu: handleBackdropContextMenu
+        },
         paper: {
-          sx: { minWidth: 180 }
+          sx: { minWidth: 180 },
+          onContextMenu: suppressNativeMenu
         }
       }}
     >
