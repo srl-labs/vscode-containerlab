@@ -128,8 +128,9 @@ test.describe("Node Editor Panel", () => {
     await backBtn.click();
     await page.waitForTimeout(300);
 
-    // Back returns the context panel back to palette view, which hides the header/title entirely.
-    await expect(panelTitle).not.toBeVisible();
+    // Back returns the context panel to palette view.
+    await expect(panelTitle).toBeVisible();
+    await expect(panelTitle).toHaveText("Palette");
     await expect(page.getByPlaceholder("Search nodes...")).toBeVisible();
   });
 

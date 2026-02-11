@@ -130,6 +130,7 @@ test.describe("Context Menu Actions", () => {
       await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setViewMode();
+      await topoViewerPage.unlock();
     });
 
     test("right-click on node shows context menu with SSH, Shell, Logs, Info options but NOT Edit", async ({
@@ -224,6 +225,7 @@ test.describe("Context Menu Actions", () => {
       await topoViewerPage.gotoFile(SIMPLE_FILE);
       await topoViewerPage.waitForCanvasReady();
       await topoViewerPage.setViewMode();
+      await topoViewerPage.unlock();
     });
 
     test("right-click on edge shows context menu with Info option but NOT Edit", async ({
