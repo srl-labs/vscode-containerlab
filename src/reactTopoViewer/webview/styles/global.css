@@ -29,3 +29,16 @@ body,
 *::after {
   box-sizing: border-box;
 }
+
+/* In GeoMap mode, empty-canvas drag should reach MapLibre for panning. */
+.react-flow-canvas.maplibre-active .react-flow__pane {
+  pointer-events: none;
+}
+
+/* During active map motion, promote key layers to help compositor smoothness. */
+.react-flow-canvas.maplibre-moving .react-flow__viewport,
+.react-flow-canvas.maplibre-moving .react-flow__edges,
+.react-flow-canvas.maplibre-moving .react-flow__nodes,
+.react-flow-canvas.maplibre-moving #react-topoviewer-geo-map .maplibregl-canvas {
+  will-change: transform;
+}

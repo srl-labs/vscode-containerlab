@@ -646,10 +646,14 @@ export const AppContent: React.FC<AppContentProps> = ({
   }, [state.editingNode, state.editingEdge, graphHandlers]);
 
   const handleZoomToFit = React.useCallback(() => {
+    if (reactFlowRef.current) {
+      reactFlowRef.current.fit();
+      return;
+    }
     rfInstance?.fitView({ padding: 0.1 }).catch(() => {
       /* ignore */
     });
-  }, [rfInstance]);
+  }, [reactFlowRef, rfInstance]);
 
   const handleNetworkSave = React.useCallback(
     (data: Parameters<typeof networkEditorHandlers.handleSave>[0]) => {

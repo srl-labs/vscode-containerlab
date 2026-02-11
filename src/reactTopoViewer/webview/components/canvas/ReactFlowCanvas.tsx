@@ -221,17 +221,23 @@ const LARGE_GRAPH_EDGE_THRESHOLD = 900;
 // ============================================================================
 
 /** Hook for render configuration based on graph size and zoom level */
-function useRenderConfig(nodeCount: number, edgeCount: number, linkLabelMode: EdgeLabelMode) {
+function useRenderConfig(
+  nodeCount: number,
+  edgeCount: number,
+  linkLabelMode: EdgeLabelMode,
+  disableZoomTracking = false
+) {
   const isLargeGraph =
     nodeCount >= LARGE_GRAPH_NODE_THRESHOLD || edgeCount >= LARGE_GRAPH_EDGE_THRESHOLD;
 
   const isLowDetail = useStore(
     useCallback(
       (store) => {
+        if (disableZoomTracking) return false;
         const zoom = store.transform[2];
         return isLargeGraph && zoom <= LOW_DETAIL_ZOOM_THRESHOLD;
       },
-      [isLargeGraph]
+      [isLargeGraph, disableZoomTracking]
     ),
     (left, right) => left === right
   );
@@ -444,15 +450,30 @@ function useGeoWheelZoom(
 
     const handleWheel = (event: WheelEvent) => {
       if (!isGeoLayout || !isGeoEdit) return;
+
+      const mapCanvas = map.getCanvas();
+      if (event.target instanceof Element && mapCanvas.contains(event.target)) {
+        // Let native MapLibre scroll-zoom handle direct map-canvas wheel events.
+        return;
+      }
+
       event.preventDefault();
-
-      const rect = container.getBoundingClientRect();
-      const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
-
-      const around = map.unproject(point);
-      const zoomDelta = -event.deltaY * 0.002;
-      const nextZoom = map.getZoom() + zoomDelta;
-      map.zoomTo(nextZoom, { duration: 0, around });
+      mapCanvas.dispatchEvent(
+        new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          deltaZ: event.deltaZ,
+          deltaMode: event.deltaMode,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          metaKey: event.metaKey
+        })
+      );
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });
@@ -517,13 +538,14 @@ function getCanvasInteractionConfig(params: {
 } {
   const { mode, isLocked, isGeoLayout, isGeoEdit, isInAddMode } = params;
   const allowPanOnDrag = !isInAddMode && !isGeoLayout;
-  const allowSelectionOnDrag = !isInAddMode && (!isGeoLayout || isGeoEdit);
+  const allowSelectionOnDrag = !isInAddMode && !isGeoLayout;
   const nodesDraggable = !isLocked && (!isGeoLayout || isGeoEdit);
   const nodesConnectable = mode === "edit" && !isLocked;
   const reactFlowStyle: React.CSSProperties | undefined = isGeoLayout
     ? {
         background: "transparent",
-        pointerEvents: isGeoEdit ? "auto" : "none",
+        // Let MapLibre receive pane drags in geo layout; node/edge elements stay interactive.
+        pointerEvents: "none",
         position: "absolute",
         top: 0,
         left: 0,
@@ -788,6 +810,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       nodes: allNodes,
       setNodes,
       reactFlowInstanceRef,
+      canvasContainerRef,
       restoreOnExit: layout === "preset"
     });
     const isGeoEdit = isGeoEditable;
@@ -853,14 +876,30 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const { isLowDetail, edgeRenderConfig, nodeRenderConfig } = useRenderConfig(
       allNodes.length,
       allEdges.length,
-      linkLabelMode
+      linkLabelMode,
+      isGeoLayout
     );
-    const activeNodeTypes = useMemo(() => (isLowDetail ? nodeTypesLite : nodeTypes), [isLowDetail]);
-    const activeEdgeTypes = useMemo(() => (isLowDetail ? edgeTypesLite : edgeTypes), [isLowDetail]);
+    const isGeoInteracting = isGeoLayout && geoLayout.isInteracting;
+    const effectiveEdgeRenderConfig = useMemo(
+      () => ({
+        ...edgeRenderConfig,
+        suppressLabels: edgeRenderConfig.suppressLabels || isGeoLayout,
+        suppressHitArea: edgeRenderConfig.suppressHitArea || isGeoLayout
+      }),
+      [edgeRenderConfig, isGeoLayout]
+    );
+    const activeNodeTypes = useMemo(
+      () => (isLowDetail && !isGeoLayout ? nodeTypesLite : nodeTypes),
+      [isLowDetail, isGeoLayout]
+    );
+    const activeEdgeTypes = useMemo(
+      () => (isGeoLayout || isLowDetail ? edgeTypesLite : edgeTypes),
+      [isGeoLayout, isLowDetail]
+    );
     useSyncCanvasStore({
       linkSourceNode,
       setLinkSourceNode,
-      edgeRenderConfig,
+      edgeRenderConfig: effectiveEdgeRenderConfig,
       setEdgeRenderConfig,
       nodeRenderConfig,
       setNodeRenderConfig,
@@ -879,7 +918,23 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       setNodes,
       setEdges
     );
-    useImperativeHandle(ref, () => refMethods, [refMethods]);
+    const fitCanvas = useCallback(() => {
+      if (isGeoLayout) {
+        geoLayout.fitToViewport();
+        return;
+      }
+      Promise.resolve(refMethods.fit()).catch(() => {
+        /* ignore */
+      });
+    }, [isGeoLayout, geoLayout, refMethods]);
+    const refHandle = useMemo(
+      () => ({
+        ...refMethods,
+        fit: fitCanvas
+      }),
+      [refMethods, fitCanvas]
+    );
+    useImperativeHandle(ref, () => refHandle, [refHandle]);
 
     const wrappedOnNodeClick = useWrappedNodeClick(
       linkSourceNode,
@@ -1087,7 +1142,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       <div
         ref={canvasContainerRef}
         style={canvasStyle}
-        className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}`}
+        className={`react-flow-canvas canvas-container${isGeoLayout ? " maplibre-active" : ""}${isGeoInteracting ? " maplibre-moving" : ""}`}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onContextMenu={(e) => e.preventDefault()}
@@ -1122,7 +1177,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
           defaultViewport={defaultViewport}
           minZoom={0.1}
           maxZoom={Infinity}
-          onlyRenderVisibleElements={!isLowDetail}
+          onlyRenderVisibleElements={!isLowDetail && !isGeoLayout}
           selectionMode={SelectionMode.Partial}
           selectNodesOnDrag={false}
           panOnDrag={allowPanOnDrag}

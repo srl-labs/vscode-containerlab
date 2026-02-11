@@ -22,6 +22,7 @@ interface GeoMapLayoutParams {
   nodes: Node[];
   setNodes: Dispatch<SetStateAction<Node[]>>;
   reactFlowInstanceRef: RefObject<ReactFlowInstance | null>;
+  canvasContainerRef: RefObject<HTMLDivElement | null>;
   restoreOnExit: boolean;
 }
 
@@ -29,6 +30,8 @@ export interface GeoMapLayoutApi {
   containerRef: RefObject<HTMLDivElement | null>;
   mapRef: RefObject<MapLibreMap | null>;
   isReady: boolean;
+  isInteracting: boolean;
+  fitToViewport: () => void;
   getGeoCoordinatesForNode: (node: Node) => GeoCoordinates | null;
   getGeoUpdateForNode: (
     node: Node
@@ -64,11 +67,15 @@ const DEFAULT_GROUP_SIZE = { width: 200, height: 150 };
 const DEFAULT_TEXT_SIZE = { width: 140, height: 40 };
 const DEFAULT_SHAPE_SIZE = { width: 120, height: 120 };
 
-const POSITION_EPSILON = 0.25;
+const POSITION_EPSILON = 0.05;
 
 const AUTO_GEO_TYPES = new Set(["topology-node", "network-node"]);
 
 const LINE_PADDING = 20;
+const GEO_TRANSFORM_ANCHOR: [number, number] = [0, 0];
+const GEO_VIEWPORT_RESET = { x: 0, y: 0, zoom: 1 };
+const INTERACTION_END_DEBOUNCE_MS = 20;
+const ZOOM_END_DEBOUNCE_MS = 20;
 
 // Offset multiplier for distributing nodes without coordinates (smaller = tighter cluster)
 const GEO_OFFSET_MULTIPLIER = 0.15;
@@ -267,24 +274,134 @@ function syncNodesToMap(map: MapLibreMap, nodes: Node[]): { nodes: Node[]; chang
   return { nodes: changed ? nextNodes : nodes, changed };
 }
 
+function buildGeoSyncSignature(nodes: Node[]): string {
+  return nodes
+    .map((node) => {
+      const geo = extractGeoCoordinates(node);
+      const endGeo = extractEndGeoCoordinates(node);
+      const geoPart = geo ? `${roundCoord(geo.lat)},${roundCoord(geo.lng)}` : "-";
+      const endPart = endGeo ? `${roundCoord(endGeo.lat)},${roundCoord(endGeo.lng)}` : "-";
+      return `${node.id}:${node.type ?? ""}:${geoPart}:${endPart}`;
+    })
+    .join("|");
+}
+
+interface GeoInteractionBase {
+  zoom: number;
+  anchorPoint: { x: number; y: number };
+}
+
+interface GeoViewportTransform {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+function computeGeoViewportTransform(
+  map: MapLibreMap,
+  base: GeoInteractionBase
+): GeoViewportTransform {
+  const currentAnchorPoint = map.project(GEO_TRANSFORM_ANCHOR);
+  const scale = Math.pow(2, map.getZoom() - base.zoom);
+  return {
+    x: currentAnchorPoint.x - scale * base.anchorPoint.x,
+    y: currentAnchorPoint.y - scale * base.anchorPoint.y,
+    zoom: scale
+  };
+}
+
+function applyViewportTransformToElement(
+  viewportElement: HTMLElement,
+  transform: GeoViewportTransform
+): void {
+  viewportElement.style.transformOrigin = "0 0";
+  viewportElement.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`;
+}
+
+function clearViewportTransformOverride(viewportElement: HTMLElement): void {
+  viewportElement.style.transform = "";
+  viewportElement.style.transformOrigin = "";
+}
+
+function resolveViewportElement(container: HTMLDivElement | null): HTMLElement | null {
+  if (!container) return null;
+  const renderer = container.querySelector(".react-flow__renderer");
+  if (renderer instanceof HTMLElement) return renderer;
+  const viewport = container.querySelector(".react-flow__viewport");
+  return viewport instanceof HTMLElement ? viewport : null;
+}
+
+function clearViewportOverrideOnNextFrame(
+  viewportElementRef: { current: HTMLElement | null },
+  viewportTransformOverrideActiveRef: { current: boolean }
+): void {
+  if (!viewportElementRef.current || !viewportTransformOverrideActiveRef.current) return;
+  window.requestAnimationFrame(() => {
+    if (viewportElementRef.current) {
+      clearViewportTransformOverride(viewportElementRef.current);
+    }
+    viewportTransformOverrideActiveRef.current = false;
+  });
+}
+
+function applyGeoViewportTransform(
+  map: MapLibreMap,
+  rf: ReactFlowInstance | null,
+  base: GeoInteractionBase,
+  viewportElement: HTMLElement | null
+): void {
+  const transform = computeGeoViewportTransform(map, base);
+  if (viewportElement) {
+    applyViewportTransformToElement(viewportElement, transform);
+    return;
+  }
+  if (rf) {
+    void rf.setViewport(transform, { duration: 0 });
+  }
+}
+
+function resetGeoViewport(rf: ReactFlowInstance | null): void {
+  if (!rf) return;
+  void rf.setViewport(GEO_VIEWPORT_RESET, { duration: 0 });
+}
+
+function syncNodesAndResetViewport(
+  map: MapLibreMap,
+  rf: ReactFlowInstance | null,
+  nodesRef: { current: Node[] },
+  setNodesRef: { current: Dispatch<SetStateAction<Node[]>> }
+): void {
+  resetGeoViewport(rf);
+  const { nodes: syncedNodes, changed } = syncNodesToMap(map, nodesRef.current);
+  if (changed) {
+    setNodesRef.current(syncedNodes);
+  }
+}
+
 export function useGeoMapLayout({
   isGeoLayout,
-  isEditable,
   nodes,
   setNodes,
   reactFlowInstanceRef,
+  canvasContainerRef,
   restoreOnExit
 }: GeoMapLayoutParams): GeoMapLayoutApi {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isInteracting, setIsInteracting] = useState(false);
   const nodesRef = useRef<Node[]>(nodes);
   const setNodesRef = useRef(setNodes);
   const wasGeoRef = useRef(false);
   const initialAssignmentRef = useRef(false);
   const originalPositionsRef = useRef<Map<string, XYPosition>>(new Map());
   const previousViewportRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const interactionEndTimeoutRef = useRef<number | null>(null);
+  const isInteractingRef = useRef(false);
+  const interactionBaseRef = useRef<GeoInteractionBase | null>(null);
+  const viewportElementRef = useRef<HTMLElement | null>(null);
+  const viewportTransformOverrideActiveRef = useRef(false);
+  const geoSyncSignatureRef = useRef<string>("");
   const workerConfiguredRef = useRef(false);
 
   nodesRef.current = nodes;
@@ -328,6 +445,19 @@ export function useGeoMapLayout({
 
   useEffect(() => {
     if (isGeoLayout) return;
+    if (interactionEndTimeoutRef.current !== null) {
+      window.clearTimeout(interactionEndTimeoutRef.current);
+      interactionEndTimeoutRef.current = null;
+    }
+    isInteractingRef.current = false;
+    interactionBaseRef.current = null;
+    if (viewportElementRef.current) {
+      clearViewportTransformOverride(viewportElementRef.current);
+    }
+    viewportTransformOverrideActiveRef.current = false;
+    viewportElementRef.current = null;
+    setIsInteracting(false);
+    geoSyncSignatureRef.current = "";
     if (mapRef.current) {
       mapRef.current.remove();
       mapRef.current = null;
@@ -337,6 +467,17 @@ export function useGeoMapLayout({
 
   useEffect(() => {
     return () => {
+      if (interactionEndTimeoutRef.current !== null) {
+        window.clearTimeout(interactionEndTimeoutRef.current);
+        interactionEndTimeoutRef.current = null;
+      }
+      isInteractingRef.current = false;
+      interactionBaseRef.current = null;
+      if (viewportElementRef.current) {
+        clearViewportTransformOverride(viewportElementRef.current);
+      }
+      viewportTransformOverrideActiveRef.current = false;
+      viewportElementRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -348,12 +489,16 @@ export function useGeoMapLayout({
     const map = mapRef.current;
     if (!map) return;
     if (isGeoLayout) {
-      if (!isEditable) {
-        map.dragPan.enable();
-      } else {
-        map.dragPan.disable();
-      }
+      map.dragPan.enable({
+        linearity: 0.2,
+        maxSpeed: 2200,
+        deceleration: 3200
+      });
+      map.dragRotate.disable();
+      map.touchZoomRotate.disableRotation();
       map.scrollZoom.enable();
+      map.scrollZoom.setWheelZoomRate(1 / 700);
+      map.scrollZoom.setZoomRate(1 / 120);
       map.doubleClickZoom.enable();
       map.keyboard.enable();
     } else {
@@ -362,7 +507,7 @@ export function useGeoMapLayout({
       map.doubleClickZoom.disable();
       map.keyboard.disable();
     }
-  }, [isGeoLayout, isEditable, isReady]);
+  }, [isGeoLayout, isReady]);
 
   useEffect(() => {
     if (!isGeoLayout || wasGeoRef.current) return;
@@ -374,10 +519,10 @@ export function useGeoMapLayout({
     if (rf) {
       previousViewportRef.current = rf.getViewport();
       log.info("[GeoMap] Setting viewport to {x:0, y:0, zoom:1}");
-      void rf.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 0 });
+      resetGeoViewport(rf);
       // Re-set multiple times with delays to override any pending fitView operations
       const setGeoViewport = () => {
-        void rf.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 0 });
+        resetGeoViewport(rf);
       };
       window.requestAnimationFrame(setGeoViewport);
       setTimeout(setGeoViewport, 50);
@@ -470,6 +615,10 @@ export function useGeoMapLayout({
     if (initialAssignmentRef.current) return;
     if (nodes.some((node) => node.dragging)) return;
 
+    const geoSyncSignature = buildGeoSyncSignature(nodes);
+    if (geoSyncSignature === geoSyncSignatureRef.current) return;
+    geoSyncSignatureRef.current = geoSyncSignature;
+
     const center = map.getCenter();
     const assigned = assignAutoGeoCoordinates(nodes, { lat: center.lat, lng: center.lng });
     const { nodes: syncedNodes, changed } = syncNodesToMap(map, assigned.nodes);
@@ -488,33 +637,99 @@ export function useGeoMapLayout({
     const map = mapRef.current;
     if (!map) return;
 
-    const scheduleSync = () => {
-      if (rafRef.current !== null) return;
-      rafRef.current = window.requestAnimationFrame(() => {
-        rafRef.current = null;
-        const currentMap = mapRef.current;
-        if (!isGeoLayout || !currentMap) return;
-        const { nodes: syncedNodes, changed } = syncNodesToMap(currentMap, nodesRef.current);
-        if (changed) {
-          setNodesRef.current(syncedNodes);
-        }
-      });
+    const syncDuringRender = () => {
+      const currentMap = mapRef.current;
+      if (!isGeoLayout || !currentMap || !isInteractingRef.current) return;
+      const base = interactionBaseRef.current;
+      if (!base) return;
+      const rf = reactFlowInstanceRef.current;
+      if (!rf) return;
+      if (!viewportElementRef.current) {
+        viewportElementRef.current = resolveViewportElement(canvasContainerRef.current);
+      }
+      applyGeoViewportTransform(currentMap, rf, base, viewportElementRef.current);
+      viewportTransformOverrideActiveRef.current = Boolean(viewportElementRef.current);
     };
 
-    map.on("move", scheduleSync);
-    map.on("zoom", scheduleSync);
-    map.on("rotate", scheduleSync);
+    const handleInteractionStart = () => {
+      if (interactionEndTimeoutRef.current !== null) {
+        window.clearTimeout(interactionEndTimeoutRef.current);
+        interactionEndTimeoutRef.current = null;
+      }
+      if (!isInteractingRef.current) {
+        const currentMap = mapRef.current;
+        if (currentMap) {
+          interactionBaseRef.current = {
+            zoom: currentMap.getZoom(),
+            anchorPoint: currentMap.project(GEO_TRANSFORM_ANCHOR)
+          };
+        } else {
+          interactionBaseRef.current = null;
+        }
+      }
+      if (!viewportElementRef.current) {
+        viewportElementRef.current = resolveViewportElement(canvasContainerRef.current);
+      }
+      isInteractingRef.current = true;
+      setIsInteracting(true);
+    };
+
+    const scheduleInteractionEnd = (delayMs: number) => {
+      if (interactionEndTimeoutRef.current !== null) {
+        window.clearTimeout(interactionEndTimeoutRef.current);
+      }
+      interactionEndTimeoutRef.current = window.setTimeout(() => {
+        interactionEndTimeoutRef.current = null;
+        isInteractingRef.current = false;
+        const currentMap = mapRef.current;
+        if (currentMap) {
+          syncNodesAndResetViewport(
+            currentMap,
+            reactFlowInstanceRef.current,
+            nodesRef,
+            setNodesRef
+          );
+        } else {
+          resetGeoViewport(reactFlowInstanceRef.current);
+        }
+        clearViewportOverrideOnNextFrame(viewportElementRef, viewportTransformOverrideActiveRef);
+        interactionBaseRef.current = null;
+        setIsInteracting(false);
+      }, delayMs);
+    };
+    const handleInteractionEnd = () => scheduleInteractionEnd(INTERACTION_END_DEBOUNCE_MS);
+    const handleZoomEnd = () => scheduleInteractionEnd(ZOOM_END_DEBOUNCE_MS);
+
+    map.on("render", syncDuringRender);
+    map.on("movestart", handleInteractionStart);
+    map.on("zoomstart", handleInteractionStart);
+    map.on("rotatestart", handleInteractionStart);
+    map.on("moveend", handleInteractionEnd);
+    map.on("zoomend", handleZoomEnd);
+    map.on("rotateend", handleInteractionEnd);
 
     return () => {
-      map.off("move", scheduleSync);
-      map.off("zoom", scheduleSync);
-      map.off("rotate", scheduleSync);
-      if (rafRef.current !== null) {
-        window.cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
+      map.off("render", syncDuringRender);
+      map.off("movestart", handleInteractionStart);
+      map.off("zoomstart", handleInteractionStart);
+      map.off("rotatestart", handleInteractionStart);
+      map.off("moveend", handleInteractionEnd);
+      map.off("zoomend", handleZoomEnd);
+      map.off("rotateend", handleInteractionEnd);
+      if (interactionEndTimeoutRef.current !== null) {
+        window.clearTimeout(interactionEndTimeoutRef.current);
+        interactionEndTimeoutRef.current = null;
       }
+      isInteractingRef.current = false;
+      interactionBaseRef.current = null;
+      if (viewportElementRef.current) {
+        clearViewportTransformOverride(viewportElementRef.current);
+      }
+      viewportTransformOverrideActiveRef.current = false;
+      resetGeoViewport(reactFlowInstanceRef.current);
+      setIsInteracting(false);
     };
-  }, [isGeoLayout]);
+  }, [isGeoLayout, reactFlowInstanceRef, canvasContainerRef]);
 
   useEffect(() => {
     if (!isGeoLayout) return;
@@ -564,14 +779,42 @@ export function useGeoMapLayout({
     []
   );
 
+  const fitToViewport = useCallback(() => {
+    if (!isGeoLayout) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (interactionEndTimeoutRef.current !== null) {
+      window.clearTimeout(interactionEndTimeoutRef.current);
+      interactionEndTimeoutRef.current = null;
+    }
+    isInteractingRef.current = false;
+    interactionBaseRef.current = null;
+    if (viewportElementRef.current) {
+      clearViewportTransformOverride(viewportElementRef.current);
+    }
+    viewportTransformOverrideActiveRef.current = false;
+    setIsInteracting(false);
+    resetGeoViewport(reactFlowInstanceRef.current);
+
+    const bounds = buildGeoBounds(nodesRef.current);
+    if (bounds) {
+      map.fitBounds(bounds, { padding: 120, duration: 200, maxZoom: 12 });
+      return;
+    }
+    map.easeTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 200 });
+  }, [isGeoLayout, reactFlowInstanceRef]);
+
   return useMemo(
     () => ({
       containerRef,
       mapRef,
       isReady,
+      isInteracting,
+      fitToViewport,
       getGeoCoordinatesForNode,
       getGeoUpdateForNode
     }),
-    [isReady, getGeoCoordinatesForNode, getGeoUpdateForNode]
+    [isReady, isInteracting, fitToViewport, getGeoCoordinatesForNode, getGeoUpdateForNode]
   );
 }
