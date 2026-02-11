@@ -199,6 +199,7 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
         component="button"
         type="button"
         onClick={onClick}
+        aria-pressed={isSelected}
         title={(ICON_LABELS[icon] || icon) + (source ? " (" + source + ")" : "")}
         sx={{
           display: "flex",
@@ -212,7 +213,14 @@ const IconButton = React.memo<IconButtonProps>(function IconButton({
           transition: "background-color 0.15s",
           border: "none",
           cursor: "pointer",
-          color: "inherit"
+          color: "inherit",
+          backgroundColor: isSelected ? "action.selected" : "transparent",
+          outline: isSelected ? "2px solid" : "none",
+          outlineColor: "primary.main",
+          outlineOffset: 1,
+          "&:hover": {
+            backgroundColor: isSelected ? "action.selected" : "action.hover"
+          }
         }}
       >
         <img

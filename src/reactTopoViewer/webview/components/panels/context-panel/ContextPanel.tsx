@@ -43,6 +43,7 @@ function getMaxWidth() {
   return Math.floor(window.innerWidth / 2);
 }
 const TEXT_SECONDARY = "text.secondary";
+const ACTION_HOVER = "action.hover";
 
 /** Banner ref for validation errors shown below the header */
 interface BannerRef {
@@ -273,7 +274,7 @@ const ToggleHandle: React.FC<{
     [isLeft ? "borderLeft" : "borderRight"]: 0,
     borderColor: "divider",
     bgcolor: "background.paper",
-    "&:hover": { bgcolor: "action.hover" }
+    "&:hover": { bgcolor: ACTION_HOVER }
   };
 
   return (
@@ -469,7 +470,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 gap: 0.5,
                 px: 2,
                 py: 0.5,
-                bgcolor: "action.hover",
+                bgcolor: ACTION_HOVER,
               }}
             >
               <LockIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
@@ -491,7 +492,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
                 gap: 0.5,
                 px: 2,
                 py: 0.5,
-                bgcolor: "action.hover",
+                bgcolor: ACTION_HOVER,
                 color: "error.main",
               }}
             >

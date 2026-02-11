@@ -252,7 +252,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             size="small"
             onClick={handlePrimaryAction}
             disabled={isProcessing}
-            sx={{ color: isViewerMode ? "error.main" : "success.main" }}
+            sx={{ color: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN }}
             data-testid="navbar-deploy"
           >
             {isViewerMode ? <StopIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
@@ -265,7 +265,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           aria-controls={deployMenuOpen ? "deploy-split-menu" : undefined}
           aria-haspopup="true"
           aria-expanded={deployMenuOpen ? "true" : undefined}
-          sx={{ color: isViewerMode ? "error.main" : "success.main", ml: -0.5 }}
+          sx={{ color: isViewerMode ? ERROR_MAIN : SUCCESS_MAIN, ml: -0.5 }}
           data-testid="navbar-deploy-menu"
         >
           <ExpandMoreIcon fontSize="small" />
@@ -312,7 +312,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Lock / Unlock */}
         <Tooltip title={isLocked ? "Unlock lab to edit" : "Lock Lab"}>
-          <IconButton size="small" onClick={toggleLock} disabled={isProcessing} sx={{ color: isLocked ? "error.main" : "inherit" }} data-testid="navbar-lock">
+          <IconButton size="small" onClick={toggleLock} disabled={isProcessing} sx={{ color: isLocked ? ERROR_MAIN : "inherit" }} data-testid="navbar-lock">
             {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
           </IconButton>
         </Tooltip>

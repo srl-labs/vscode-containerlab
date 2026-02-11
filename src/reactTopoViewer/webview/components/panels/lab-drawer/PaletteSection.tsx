@@ -360,7 +360,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const isViewMode = mode === "view";
   const [activeTab, setActiveTab] = useState(() => {
     try {
-      const stored = sessionStorage.getItem("paletteActiveTab");
+      const stored = window.sessionStorage.getItem("paletteActiveTab");
       if (stored && PALETTE_TABS.some((t) => t.id === stored)) return stored;
     } catch { /* ignore */ }
     return "nodes";
@@ -434,7 +434,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
         activeTab={activeTab}
         onTabChange={(id) => {
           setActiveTab(id);
-          try { sessionStorage.setItem("paletteActiveTab", id); } catch { /* ignore */ }
+          try { window.sessionStorage.setItem("paletteActiveTab", id); } catch { /* ignore */ }
         }}
       />
       {(activeTab === "nodes" || activeTab === "annotations") && (

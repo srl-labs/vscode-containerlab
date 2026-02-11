@@ -11,6 +11,12 @@
  */
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 
+const VSCODE_BUTTON_FOREGROUND = "var(--vscode-button-foreground)";
+const VSCODE_FOCUS_BORDER = "var(--vscode-focusBorder)";
+const VSCODE_BADGE_BACKGROUND = "var(--vscode-badge-background)";
+const VSCODE_ERROR_FOREGROUND = "var(--vscode-errorForeground)";
+const VSCODE_SUCCESS_FOREGROUND = "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))";
+
 // ---------------------------------------------------------------------------
 // Palette — every slot MUI would otherwise try to derive is filled explicitly
 // so that no color-math runs on opaque var() strings.
@@ -34,20 +40,20 @@ export const vscodePalette = {
   primary: {
     main: "var(--vscode-button-background)",
     dark: "var(--vscode-button-hoverBackground)",
-    light: "var(--vscode-focusBorder)",
-    contrastText: "var(--vscode-button-foreground)"
+    light: VSCODE_FOCUS_BORDER,
+    contrastText: VSCODE_BUTTON_FOREGROUND
   },
   secondary: {
-    main: "var(--vscode-badge-background)",
-    dark: "var(--vscode-badge-background)",
-    light: "var(--vscode-badge-background)",
+    main: VSCODE_BADGE_BACKGROUND,
+    dark: VSCODE_BADGE_BACKGROUND,
+    light: VSCODE_BADGE_BACKGROUND,
     contrastText: "var(--vscode-badge-foreground)"
   },
   error: {
-    main: "var(--vscode-errorForeground)",
-    dark: "var(--vscode-errorForeground)",
-    light: "var(--vscode-errorForeground)",
-    contrastText: "var(--vscode-button-foreground)"
+    main: VSCODE_ERROR_FOREGROUND,
+    dark: VSCODE_ERROR_FOREGROUND,
+    light: VSCODE_ERROR_FOREGROUND,
+    contrastText: VSCODE_BUTTON_FOREGROUND
   },
   warning: {
     main: "var(--vscode-inputValidation-warningBorder)",
@@ -56,16 +62,16 @@ export const vscodePalette = {
     contrastText: "var(--vscode-foreground)"
   },
   info: {
-    main: "var(--vscode-focusBorder)",
-    dark: "var(--vscode-focusBorder)",
+    main: VSCODE_FOCUS_BORDER,
+    dark: VSCODE_FOCUS_BORDER,
     light: "var(--vscode-inputValidation-infoBackground)",
-    contrastText: "var(--vscode-button-foreground)"
+    contrastText: VSCODE_BUTTON_FOREGROUND
   },
   success: {
-    main: "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))",
-    dark: "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))",
-    light: "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))",
-    contrastText: "var(--vscode-button-foreground)"
+    main: VSCODE_SUCCESS_FOREGROUND,
+    dark: VSCODE_SUCCESS_FOREGROUND,
+    light: VSCODE_SUCCESS_FOREGROUND,
+    contrastText: VSCODE_BUTTON_FOREGROUND
   },
   action: {
     active: "var(--vscode-icon-foreground)",
@@ -73,7 +79,7 @@ export const vscodePalette = {
     selected: "var(--vscode-list-activeSelectionBackground)",
     disabled: "var(--vscode-disabledForeground)",
     disabledBackground: "var(--vscode-input-background)",
-    focus: "var(--vscode-focusBorder)"
+    focus: VSCODE_FOCUS_BORDER
   }
 } as const;
 
