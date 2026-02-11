@@ -628,8 +628,14 @@ export const AppContent: React.FC<AppContentProps> = ({
     panelVisibility,
   ]);
 
-  // Back button clears selection/editing state → panel returns to palette
-  const handleContextPanelBack = clearAllEditingState;
+  // close if palette wasn't open, else go back to palette
+  const handleContextPanelBack = React.useCallback(() => {
+    const shouldClose = panelVisibility.contextPanelOpenReason === "auto";
+    clearAllEditingState();
+    if (shouldClose) {
+      panelVisibility.handleCloseContextPanel();
+    }
+  }, [clearAllEditingState, panelVisibility]);
 
   const handleZoomToFit = React.useCallback(() => {
     rfInstance?.fitView({ padding: 0.1 }).catch(() => {

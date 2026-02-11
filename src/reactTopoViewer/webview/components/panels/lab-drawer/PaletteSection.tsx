@@ -358,7 +358,13 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
   const annotationsContent = useTopoViewerStore((state) => state.annotationsContent);
   const [filter, setFilter] = useState("");
   const isViewMode = mode === "view";
-  const [activeTab, setActiveTab] = useState("nodes");
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem("paletteActiveTab");
+      if (stored && PALETTE_TABS.some((t) => t.id === stored)) return stored;
+    } catch { /* ignore */ }
+    return "nodes";
+  });
 
   // Allow parent to steer the active tab (e.g. split-view button → YML tab).
   // Uses an object reference so each request triggers the effect even for the same tab.
@@ -426,7 +432,10 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
       <TabNavigation
         tabs={PALETTE_TABS}
         activeTab={activeTab}
-        onTabChange={(id) => setActiveTab(id)}
+        onTabChange={(id) => {
+          setActiveTab(id);
+          try { sessionStorage.setItem("paletteActiveTab", id); } catch { /* ignore */ }
+        }}
       />
       {(activeTab === "nodes" || activeTab === "annotations") && (
       <Box sx={{ p: 2, flex: 1, overflow: "auto", minHeight: 0 }}>
