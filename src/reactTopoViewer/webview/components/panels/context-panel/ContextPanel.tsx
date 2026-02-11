@@ -39,7 +39,9 @@ import {
 } from "./views";
 
 const MIN_WIDTH = 400;
-const MAX_WIDTH = 500;
+function getMaxWidth() {
+  return Math.floor(window.innerWidth / 2);
+}
 const TEXT_SECONDARY = "text.secondary";
 
 /** Generic footer ref shape - all editor views expose the same interface */
@@ -319,7 +321,7 @@ function usePanelResize(sideRef: React.RefObject<string>) {
       const newWidth = sideRef.current === "left"
         ? ev.clientX
         : window.innerWidth - ev.clientX;
-      setPanelWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, newWidth)));
+      setPanelWidth(Math.min(getMaxWidth(), Math.max(MIN_WIDTH, newWidth)));
     };
     const onMouseUp = () => {
       isDraggingRef.current = false;

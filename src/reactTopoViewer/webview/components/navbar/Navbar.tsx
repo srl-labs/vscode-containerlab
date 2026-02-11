@@ -236,7 +236,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [onLayoutChange]);
 
   return (
-    <AppBar ref={appBarRef} position="static" elevation={0}>
+    <AppBar ref={appBarRef} position="static" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
       <Toolbar variant="dense" disableGutters sx={{ minHeight: 40, px: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
         {/* Left: Logo + Title */}
         <IconButton size="small" onClick={onLogoClick}>
