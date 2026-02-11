@@ -252,14 +252,11 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     editNode,
     editNetwork,
     handleDeleteNode,
+    showNodeInfo,
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation
   } = ctx;
-
-  if (isEditMode && isLocked) {
-    return [];
-  }
 
   // Handle annotation nodes with specific menus
   if (targetNodeType === FREE_TEXT_NODE_TYPE) {
@@ -325,6 +322,18 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
     });
   }
 
+  if (showNodeInfo) {
+    items.push({
+      id: "info-node",
+      label: "Info",
+      icon: React.createElement(InfoIcon, { fontSize: "small" }),
+      onClick: () => {
+        showNodeInfo(targetId);
+        closeContextMenu();
+      }
+    });
+  }
+
   items.push({ id: DIVIDER_ID, label: "", divider: true });
   items.push({
     id: "delete-node",
@@ -361,22 +370,20 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       closeContextMenu();
     }
   };
+  const linkInfoItem: ContextMenuItem = {
+    id: "info-edge",
+    label: "Link Info",
+    icon: React.createElement(InfoIcon, { fontSize: "small" }),
+    onClick: () => {
+      showLinkInfo?.(targetId);
+      closeContextMenu();
+    }
+  };
   if (!isEditMode) {
-    return [
-      impairmentItem,
-      {
-        id: "info-edge",
-        label: "Link Info",
-        icon: React.createElement(InfoIcon, { fontSize: "small" }),
-        onClick: () => {
-          showLinkInfo?.(targetId);
-          closeContextMenu();
-        }
-      }
-    ];
+    return [impairmentItem, linkInfoItem];
   }
   if (isLocked) {
-    return [impairmentItem];
+    return [linkInfoItem, impairmentItem];
   }
   return [
     {
@@ -390,6 +397,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       }
     },
     impairmentItem,
+    linkInfoItem,
     { id: DIVIDER_ID, label: "", divider: true },
     {
       id: "delete-edge",

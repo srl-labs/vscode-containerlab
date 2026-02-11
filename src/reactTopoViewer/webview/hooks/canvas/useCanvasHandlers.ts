@@ -566,42 +566,38 @@ function useContextMenuHandlers(
   selectEdge: (id: string | null) => void,
   openNodeMenu: (x: number, y: number, id: string) => void,
   openEdgeMenu: (x: number, y: number, id: string) => void,
-  openPaneMenu: (x: number, y: number) => void,
-  isLockedRef: React.RefObject<boolean>
+  openPaneMenu: (x: number, y: number) => void
 ) {
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
       event.preventDefault();
       event.stopPropagation();
-      if (isLockedRef.current) return;
       selectNode(node.id);
       selectEdge(null);
       openNodeMenu(event.clientX, event.clientY, node.id);
     },
-    [selectNode, selectEdge, openNodeMenu, isLockedRef]
+    [selectNode, selectEdge, openNodeMenu]
   );
 
   const onEdgeContextMenu = useCallback(
     (event: React.MouseEvent, edge: Edge) => {
       event.preventDefault();
       event.stopPropagation();
-      if (isLockedRef.current) return;
       selectEdge(edge.id);
       selectNode(null);
       openEdgeMenu(event.clientX, event.clientY, edge.id);
     },
-    [selectNode, selectEdge, openEdgeMenu, isLockedRef]
+    [selectNode, selectEdge, openEdgeMenu]
   );
 
   const onPaneContextMenu = useCallback(
     (event: MouseEvent | React.MouseEvent) => {
       event.preventDefault();
-      if (isLockedRef.current) return;
       selectNode(null);
       selectEdge(null);
       openPaneMenu(event.clientX, event.clientY);
     },
-    [selectNode, selectEdge, openPaneMenu, isLockedRef]
+    [selectNode, selectEdge, openPaneMenu]
   );
 
   return { onNodeContextMenu, onEdgeContextMenu, onPaneContextMenu };
@@ -951,8 +947,7 @@ export function useCanvasHandlers(config: CanvasHandlersConfig): CanvasHandlers 
     selectEdge,
     openNodeMenu,
     openEdgeMenu,
-    openPaneMenu,
-    isLockedRef
+    openPaneMenu
   );
 
   // Selection change handler (for box selection)
