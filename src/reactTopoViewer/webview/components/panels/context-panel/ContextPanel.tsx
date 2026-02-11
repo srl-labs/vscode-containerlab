@@ -265,8 +265,8 @@ const ToggleHandle: React.FC<{
     border: 1,
     [isLeft ? "borderLeft" : "borderRight"]: 0,
     borderColor: "divider",
-    opacity: 0.8,
-    "&:hover": { opacity: 1, bgcolor: "action.hover" }
+    bgcolor: "background.paper",
+    "&:hover": { bgcolor: "action.hover" }
   };
 
   return (
