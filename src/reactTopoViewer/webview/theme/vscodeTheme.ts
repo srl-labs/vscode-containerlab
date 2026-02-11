@@ -17,6 +17,47 @@ const VSCODE_BADGE_BACKGROUND = "var(--vscode-badge-background)";
 const VSCODE_ERROR_FOREGROUND = "var(--vscode-errorForeground)";
 const VSCODE_SUCCESS_FOREGROUND = "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))";
 
+type ColorManipulator = (color: string, coefficient: number | string) => string;
+
+function toCssPercent(coefficient: number | string): string {
+  if (typeof coefficient === "number") {
+    return `${Math.round(coefficient * 100)}%`;
+  }
+  return `calc((${coefficient}) * 100%)`;
+}
+
+function wrapColorManipulator(base: ColorManipulator, fallback: ColorManipulator): ColorManipulator {
+  return (color: string, coefficient: number | string) => {
+    try {
+      return base(color, coefficient);
+    } catch {
+      return fallback(color, coefficient);
+    }
+  };
+}
+
+/**
+ * Patch MUI color manipulation helpers so CSS variable colors are handled
+ * through CSS (`color-mix`) instead of JS parsing.
+ */
+function patchThemeColorManipulators(theme: ReturnType<typeof createTheme>) {
+  const baseAlpha = theme.alpha.bind(theme) as ColorManipulator;
+  const baseLighten = theme.lighten.bind(theme) as ColorManipulator;
+  const baseDarken = theme.darken.bind(theme) as ColorManipulator;
+
+  theme.alpha = wrapColorManipulator(baseAlpha, (color, coefficient) => {
+    return `color-mix(in srgb, ${color} ${toCssPercent(coefficient)}, transparent)`;
+  });
+
+  theme.lighten = wrapColorManipulator(baseLighten, (color, coefficient) => {
+    return `color-mix(in srgb, ${color}, #fff ${toCssPercent(coefficient)})`;
+  });
+
+  theme.darken = wrapColorManipulator(baseDarken, (color, coefficient) => {
+    return `color-mix(in srgb, ${color}, #000 ${toCssPercent(coefficient)})`;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Palette — every slot MUI would otherwise try to derive is filled explicitly
 // so that no color-math runs on opaque var() strings.
@@ -226,6 +267,7 @@ export function createVscodeTheme(mode: "light" | "dark", overrides?: ThemeOptio
     shape: { borderRadius: 4 },
     components: structuralOverrides
   });
-
-  return overrides ? createTheme(base, overrides) : base;
+  const theme = overrides ? createTheme(base, overrides) : base;
+  patchThemeColorManipulators(theme);
+  return theme;
 }
