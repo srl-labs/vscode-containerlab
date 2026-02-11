@@ -15,8 +15,10 @@ const VSCODE_BUTTON_FOREGROUND = "var(--vscode-button-foreground)";
 const VSCODE_FOCUS_BORDER = "var(--vscode-focusBorder)";
 const VSCODE_BADGE_BACKGROUND = "var(--vscode-badge-background)";
 const VSCODE_ERROR_FOREGROUND = "var(--vscode-errorForeground)";
+const VSCODE_FOREGROUND = "var(--vscode-foreground)";
 const VSCODE_SUCCESS_FOREGROUND =
   "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))";
+const TOPOVIEWER_SURFACE_ELEVATED = "var(--topoviewer-surface-elevated)";
 
 type ColorManipulator = (color: string, coefficient: number | string) => string;
 
@@ -79,7 +81,7 @@ export const vscodePalette = {
       "var(--topoviewer-surface-panel, var(--vscode-editorWidget-background, var(--vscode-editor-background)))"
   },
   text: {
-    primary: "var(--vscode-foreground)",
+    primary: VSCODE_FOREGROUND,
     secondary: "var(--vscode-descriptionForeground)",
     disabled: "var(--vscode-disabledForeground)"
   },
@@ -105,7 +107,7 @@ export const vscodePalette = {
     main: "var(--vscode-inputValidation-warningBorder)",
     dark: "var(--vscode-inputValidation-warningBorder)",
     light: "var(--vscode-inputValidation-warningBackground)",
-    contrastText: "var(--vscode-foreground)"
+    contrastText: VSCODE_FOREGROUND
   },
   info: {
     main: VSCODE_FOCUS_BORDER,
@@ -188,7 +190,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
     styleOverrides: {
       root: {
         backgroundColor: "var(--topoviewer-surface-panel)",
-        color: "var(--vscode-foreground)"
+        color: VSCODE_FOREGROUND
       }
     }
   },
@@ -196,7 +198,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
     styleOverrides: {
       paper: {
         backgroundColor: "var(--topoviewer-surface-panel)",
-        color: "var(--vscode-foreground)"
+        color: VSCODE_FOREGROUND
       }
     }
   },
@@ -218,8 +220,8 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiMenu: {
     styleOverrides: {
       paper: {
-        backgroundColor: "var(--topoviewer-surface-elevated)",
-        color: "var(--vscode-foreground)",
+        backgroundColor: TOPOVIEWER_SURFACE_ELEVATED,
+        color: VSCODE_FOREGROUND,
         border: "1px solid var(--vscode-menu-border)"
       },
       list: { padding: "4px 0" }
@@ -228,8 +230,8 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiPopover: {
     styleOverrides: {
       paper: {
-        backgroundColor: "var(--topoviewer-surface-elevated)",
-        color: "var(--vscode-foreground)",
+        backgroundColor: TOPOVIEWER_SURFACE_ELEVATED,
+        color: VSCODE_FOREGROUND,
         border: "1px solid var(--vscode-panel-border)"
       }
     }
@@ -252,8 +254,8 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiDialog: {
     styleOverrides: {
       paper: {
-        backgroundColor: "var(--topoviewer-surface-elevated)",
-        color: "var(--vscode-foreground)",
+        backgroundColor: TOPOVIEWER_SURFACE_ELEVATED,
+        color: VSCODE_FOREGROUND,
         border: "1px solid var(--vscode-panel-border)"
       }
     },
