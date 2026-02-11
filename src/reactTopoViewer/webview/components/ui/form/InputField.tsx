@@ -23,6 +23,7 @@ interface InputFieldProps {
   helperText?: string;
   tooltip?: string;
   required?: boolean;
+  error?: boolean;
 }
 
 export const InputField: React.FC<InputFieldProps> = ({
@@ -38,7 +39,8 @@ export const InputField: React.FC<InputFieldProps> = ({
   disabled,
   helperText,
   tooltip,
-  required
+  required,
+  error
 }) => (
   <TextField
     id={id}
@@ -51,6 +53,7 @@ export const InputField: React.FC<InputFieldProps> = ({
     size="small"
     fullWidth
     required={required}
+    error={error}
     helperText={helperText}
     slotProps={{
       htmlInput: {

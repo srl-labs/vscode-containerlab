@@ -17,63 +17,6 @@ import {
 
 import type { LinkTabProps } from "./types";
 
-const EndpointSection: React.FC<{
-  title: string;
-  withDivider?: boolean;
-  nodeValue: string | undefined;
-  isNetwork: boolean | undefined;
-  interfaceBadgeValue: string | undefined;
-  interfaceInputId: string;
-  interfaceInputValue: string | undefined;
-  onInterfaceChange: (value: string) => void;
-}> = ({
-  title,
-  withDivider,
-  nodeValue,
-  isNetwork,
-  interfaceBadgeValue,
-  interfaceInputId,
-  interfaceInputValue,
-  onInterfaceChange
-}) => (
-  <>
-    <Box>
-      <Typography
-        variant="caption"
-        sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
-      >
-        {title}
-      </Typography>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-            Node
-          </Typography>
-          <ReadOnlyBadge>{nodeValue || "Unknown"}</ReadOnlyBadge>
-        </Box>
-        {isNetwork ? (
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-              Interface
-            </Typography>
-            <ReadOnlyBadge>{interfaceBadgeValue || "Unknown"}</ReadOnlyBadge>
-          </Box>
-        ) : (
-          <InputField
-            id={interfaceInputId}
-            label="Interface"
-            required
-            value={interfaceInputValue || ""}
-            onChange={onInterfaceChange}
-            placeholder="e.g., eth1, e1-1"
-          />
-        )}
-      </Box>
-    </Box>
-    {withDivider && <Divider />}
-  </>
-);
-
 export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOffset }) => {
   const rawEndpointOffset =
     typeof data.endpointLabelOffset === "number" ? data.endpointLabelOffset : Number.NaN;
@@ -110,37 +53,84 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <EndpointSection
-        title="Source Endpoint"
-        withDivider
-        nodeValue={data.source}
-        isNetwork={data.sourceIsNetwork}
-        interfaceBadgeValue={data.source}
-        interfaceInputId="link-source-interface"
-        interfaceInputValue={data.sourceEndpoint}
-        onInterfaceChange={(value) => onChange({ sourceEndpoint: value })}
-      />
-
-      <EndpointSection
-        title="Target Endpoint"
-        nodeValue={data.target}
-        isNetwork={data.targetIsNetwork}
-        interfaceBadgeValue={data.target}
-        interfaceInputId="link-target-interface"
-        interfaceInputValue={data.targetEndpoint}
-        onInterfaceChange={(value) => onChange({ targetEndpoint: value })}
-      />
-
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Endpoints section */}
+      <Box sx={{ px: 2, pt: 1.5 }}>
+        <Typography variant="subtitle2">Endpoints</Typography>
+      </Box>
       <Divider />
-      <Box sx={{ pt: 1.5 }}>
-        <Typography
-          variant="caption"
-          sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 1, display: "block" }}
-        >
-          Label Offset
-        </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 1 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          {data.sourceIsNetwork ? (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                {data.source || "Source"} Interface
+              </Typography>
+              <ReadOnlyBadge>{data.source || "Unknown"}</ReadOnlyBadge>
+            </Box>
+          ) : (
+            <InputField
+              id="link-source-interface"
+              label={`${data.source || "Source"} Interface`}
+              required
+              value={data.sourceEndpoint || ""}
+              onChange={(value) => onChange({ sourceEndpoint: value })}
+              placeholder="e.g., eth1, e1-1"
+            />
+          )}
+          {data.targetIsNetwork ? (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                {data.target || "Target"} Interface
+              </Typography>
+              <ReadOnlyBadge>{data.target || "Unknown"}</ReadOnlyBadge>
+            </Box>
+          ) : (
+            <InputField
+              id="link-target-interface"
+              label={`${data.target || "Target"} Interface`}
+              required
+              value={data.targetEndpoint || ""}
+              onChange={(value) => onChange({ targetEndpoint: value })}
+              placeholder="e.g., eth1, e1-1"
+            />
+          )}
+        </Box>
+
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+          <InputField
+            id="link-source-mac"
+            label={`${data.source || "Source"} MAC`}
+            value={data.sourceMac || ""}
+            onChange={(value) => onChange({ sourceMac: value })}
+            placeholder="e.g., 02:42:ac:11:00:01"
+          />
+          <InputField
+            id="link-target-mac"
+            label={`${data.target || "Target"} MAC`}
+            value={data.targetMac || ""}
+            onChange={(value) => onChange({ targetMac: value })}
+            placeholder="e.g., 02:42:ac:11:00:02"
+          />
+        </Box>
+
+        <InputField
+          id="link-mtu"
+          label="MTU"
+          value={data.mtu?.toString() || ""}
+          onChange={(value) => onChange({ mtu: value ? parseInt(value, 10) : undefined })}
+          placeholder="e.g., 1500"
+          type="number"
+        />
+      </Box>
+
+      {/* Label Offset section */}
+      <Box sx={{ px: 2, pt: 1.5 }}>
+        <Typography variant="subtitle2">Label Offset</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Typography variant="caption" color="text.secondary">
             Value
           </Typography>

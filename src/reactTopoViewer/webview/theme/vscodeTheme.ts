@@ -118,11 +118,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiSelect: {
     defaultProps: { size: "small" }
   },
-  MuiInputBase: {
-    styleOverrides: {
-      root: { fontSize: "var(--vscode-font-size)" }
-    }
-  },
+  MuiInputBase: {},
   MuiOutlinedInput: {
     styleOverrides: {
       root: { "&.Mui-disabled": { opacity: 0.5 } }
@@ -157,7 +153,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   },
   MuiTooltip: {
     styleOverrides: {
-      tooltip: { fontSize: 12 }
+      tooltip: {}
     }
   },
   MuiChip: {
@@ -189,7 +185,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
     styleOverrides: { root: { minWidth: 36 } }
   },
   MuiFormControlLabel: {
-    styleOverrides: { label: { fontSize: "0.875rem" } }
+    styleOverrides: { label: {} }
   },
   MuiLinearProgress: {
     styleOverrides: { root: { borderRadius: 2 } }
@@ -198,7 +194,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
     styleOverrides: { root: { backgroundColor: "transparent" } }
   },
   MuiTableCell: {
-    styleOverrides: { head: { fontWeight: 600 } }
+    styleOverrides: { head: {} }
   },
   MuiAccordion: {
     styleOverrides: {
@@ -220,10 +216,7 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
 export function createVscodeTheme(mode: "light" | "dark", overrides?: ThemeOptions) {
   const base = createTheme({
     palette: { ...vscodePalette, mode },
-    typography: {
-      fontFamily: "var(--vscode-font-family)",
-      fontSize: 13
-    },
+    typography: {},
     shape: { borderRadius: 4 },
     components: structuralOverrides
   });

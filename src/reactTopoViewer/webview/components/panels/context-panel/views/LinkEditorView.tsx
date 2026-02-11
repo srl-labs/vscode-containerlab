@@ -13,6 +13,10 @@ import type { LinkEditorData, LinkEditorTabId } from "../../link-editor/types";
 import { BasicTab } from "../../link-editor/BasicTab";
 import { ExtendedTab, validateLinkEditorData } from "../../link-editor/ExtendedTab";
 
+export interface LinkEditorBannerRef {
+  errors: string[];
+}
+
 export interface LinkEditorViewProps {
   linkData: LinkEditorData | null;
   onSave: (data: LinkEditorData) => void;
@@ -21,6 +25,7 @@ export interface LinkEditorViewProps {
   /** Disable editing, but keep scrolling and tab navigation available */
   readOnly?: boolean;
   onFooterRef?: (ref: LinkEditorFooterRef | null) => void;
+  onBannerRef?: (ref: LinkEditorBannerRef | null) => void;
 }
 
 export interface LinkEditorFooterRef {
@@ -101,36 +106,14 @@ function useLinkEditorForm(linkData: LinkEditorData | null) {
   return { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, markOffsetApplied };
 }
 
-const ValidationBanner: React.FC<{ errors: string[] }> = ({ errors }) => {
-  if (errors.length === 0) return null;
-  return (
-    <Box
-      sx={{
-        mb: 1,
-        p: 1,
-        borderRadius: 0.5,
-        border: 1
-      }}
-    >
-      <Box sx={{ fontSize: "0.875rem", fontWeight: 600 }}>
-        Invalid link configuration
-      </Box>
-      <Box sx={{ fontSize: "0.75rem", mt: 0.5 }}>
-        {errors.map((error, i) => (
-          <Box key={i}>{error}</Box>
-        ))}
-      </Box>
-    </Box>
-  );
-};
-
 export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
   linkData,
   onSave,
   onApply,
   onAutoApplyOffset,
   readOnly = false,
-  onFooterRef
+  onFooterRef,
+  onBannerRef
 }) => {
   const { activeTab, setActiveTab, formData, handleChange, hasChanges, resetAfterApply, markOffsetApplied } =
     useLinkEditorForm(linkData);
@@ -139,6 +122,12 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
     if (!formData) return [];
     return validateLinkEditorData(formData);
   }, [formData]);
+
+  // Expose validation errors to ContextPanel banner
+  useEffect(() => {
+    onBannerRef?.({ errors: validationErrors });
+    return () => onBannerRef?.(null);
+  }, [validationErrors, onBannerRef]);
 
   const handleApply = useCallback(() => {
     if (formData && validationErrors.length === 0) {
@@ -177,8 +166,7 @@ export const LinkEditorView: React.FC<LinkEditorViewProps> = ({
         activeTab={effectiveActiveTab}
         onTabChange={(id) => setActiveTab(id as LinkEditorTabId)}
       />
-      <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
-        <ValidationBanner errors={validationErrors} />
+      <Box sx={{ flex: 1, overflow: "auto" }}>
         <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
           {effectiveActiveTab === "basic" ? (
             <BasicTab

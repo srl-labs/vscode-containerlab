@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, DeleteOutline as DeleteOutlineIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
+import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, DeleteOutline as DeleteOutlineIcon, ErrorOutline as ErrorOutlineIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
 import { Box, Button, Divider, Drawer, IconButton, Tooltip, Typography } from "@mui/material";
 
 
@@ -43,6 +43,11 @@ function getMaxWidth() {
   return Math.floor(window.innerWidth / 2);
 }
 const TEXT_SECONDARY = "text.secondary";
+
+/** Banner ref for validation errors shown below the header */
+interface BannerRef {
+  errors: string[];
+}
 
 /** Generic footer ref shape - all editor views expose the same interface */
 interface FooterRef {
@@ -135,7 +140,8 @@ function renderContextPanelContent(
   editor: ContextPanelEditorProps,
   isLocked: boolean,
   isReadOnly: boolean,
-  setFooterRef: (ref: FooterRef | null) => void
+  setFooterRef: (ref: FooterRef | null) => void,
+  setBannerRef: (ref: BannerRef | null) => void
 ): React.ReactElement {
   switch (kind) {
     case "palette":
@@ -173,6 +179,7 @@ function renderContextPanelContent(
           onApply={editor.linkEditorHandlers.handleApply}
           onAutoApplyOffset={editor.linkEditorHandlers.handleAutoApplyOffset}
           onFooterRef={setFooterRef}
+          onBannerRef={setBannerRef}
           readOnly={isReadOnly}
         />
       );
@@ -366,6 +373,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const isLocked = useIsLocked();
   const isReadOnly = isLocked && panelView.hasFooter;
   const footerRef = useRef<FooterRef | null>(null);
+  const bannerRef = useRef<BannerRef | null>(null);
   const [, forceUpdate] = useState(0);
   const isLeft = side === "left";
   const sideRef = useRef(side);
@@ -377,6 +385,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     forceUpdate((n) => n + 1);
   }, []);
 
+  const setBannerRef = useCallback((ref: BannerRef | null) => {
+    bannerRef.current = ref;
+    forceUpdate((n) => n + 1);
+  }, []);
+
   const sideLayout = isLeft
     ? { border: "borderRight", resize: "right" }
     : { border: "borderLeft", resize: "left" };
@@ -384,7 +397,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const showBackButton = panelView.kind !== "palette";
   const showDelete = onDelete && (panelView.kind === "nodeEditor" || panelView.kind === "linkEditor") && !isLocked;
 
-  const content = renderContextPanelContent(panelView.kind, palette, view, editor, isLocked, isReadOnly, setFooterRef);
+  const content = renderContextPanelContent(panelView.kind, palette, view, editor, isLocked, isReadOnly, setFooterRef, setBannerRef);
 
   const footer = footerRef.current;
   const showFooter = panelView.hasFooter && footer;
@@ -467,6 +480,27 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             <Divider />
           </>
         )}
+
+        {/* Validation banners */}
+        {bannerRef.current && bannerRef.current.errors.map((err, i) => (
+          <React.Fragment key={i}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 2,
+                py: 0.5,
+                bgcolor: "action.hover",
+                color: "error.main",
+              }}
+            >
+              <ErrorOutlineIcon sx={{ fontSize: 14 }} />
+              <Typography variant="caption">{err}</Typography>
+            </Box>
+            <Divider />
+          </React.Fragment>
+        ))}
 
         {/* Content */}
         <Box
