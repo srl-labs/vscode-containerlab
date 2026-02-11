@@ -32,3 +32,23 @@ export function buildNodeLabelStyle(params: {
     fontSize: params.fontSize
   };
 }
+
+export type NodeRuntimeBadgeState = "running" | "stopped" | "paused" | "undeployed";
+
+export function getNodeRuntimeBadgeState(
+  deploymentState: "deployed" | "undeployed" | "unknown",
+  rawState: string | undefined
+): NodeRuntimeBadgeState {
+  if (deploymentState !== "deployed") {
+    return "undeployed";
+  }
+
+  const state = rawState?.trim().toLowerCase() ?? "";
+  if (state.includes("pause")) {
+    return "paused";
+  }
+  if (state.includes("run") || state.includes("healthy")) {
+    return "running";
+  }
+  return "stopped";
+}

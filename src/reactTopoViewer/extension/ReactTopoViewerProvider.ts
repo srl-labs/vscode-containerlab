@@ -14,14 +14,18 @@ import { runningLabsProvider } from "../../globals";
 import type { ClabLabTreeNode } from "../../treeView/common";
 import { TopologyHostCore } from "../shared/host/TopologyHostCore";
 import { nodeFsAdapter } from "../shared/io";
-import { MSG_EDGE_STATS_UPDATE, MSG_TOPO_MODE_CHANGE } from "../shared/messages/webview";
+import {
+  MSG_EDGE_STATS_UPDATE,
+  MSG_NODE_DATA_UPDATED,
+  MSG_TOPO_MODE_CHANGE
+} from "../shared/messages/webview";
 import type { TopoEdge } from "../shared/types/graph";
 import { TOPOLOGY_HOST_PROTOCOL_VERSION } from "../shared/types/messages";
 
 import { log } from "./services/logger";
 import { ContainerDataAdapter } from "./services/ContainerDataAdapter";
 import { deploymentStateChecker } from "./services/DeploymentStateChecker";
-import { buildEdgeStatsUpdates } from "./services/EdgeStatsBuilder";
+import { buildEdgeStatsUpdates, buildNodeRuntimeUpdates } from "./services/EdgeStatsBuilder";
 import { SplitViewManager } from "./services/SplitViewManager";
 import {
   createPanel,
@@ -401,7 +405,8 @@ export class ReactTopoViewer {
   /**
    * Refresh link states from running labs inspection data.
    * This is called periodically by the runningLabsProvider when tree data changes.
-   * Updates edge elements with fresh interface stats (rxBps, txBps, etc.).
+   * Updates edge elements with fresh interface stats (rxBps, txBps, etc.)
+   * and topology node runtime state (running/stopped/paused).
    */
   public async refreshLinkStatesFromInspect(
     labsData?: Record<string, ClabLabTreeNode>
@@ -424,12 +429,20 @@ export class ReactTopoViewer {
         currentLabName: this.currentLabName,
         topology: this.topologyHost?.currentClabTopology?.topology
       });
+      const nodeUpdates = buildNodeRuntimeUpdates(labsData, this.currentLabName);
 
       if (edgeUpdates.length > 0) {
         // Send only edge stats updates (not full topology)
         this.currentPanel.webview.postMessage({
           type: MSG_EDGE_STATS_UPDATE,
           data: { edgeUpdates }
+        });
+      }
+
+      if (nodeUpdates.length > 0) {
+        this.currentPanel.webview.postMessage({
+          type: MSG_NODE_DATA_UPDATED,
+          data: { nodeUpdates }
         });
       }
     } catch (err) {
