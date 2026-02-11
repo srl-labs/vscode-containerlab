@@ -45,6 +45,8 @@ const DARK_VARS: VarMap = {
   "--vscode-list-hoverBackground": "#2a2d2e",
   "--vscode-list-activeSelectionBackground": "#094771",
   "--vscode-list-activeSelectionForeground": "#ffffff",
+  "--vscode-list-inactiveSelectionBackground": "#37373d",
+  "--vscode-list-inactiveSelectionForeground": "#cccccc",
   "--vscode-badge-background": "#4d4d4d",
   "--vscode-badge-foreground": "#ffffff",
   "--vscode-scrollbarSlider-background": "rgba(121, 121, 121, 0.4)",
@@ -123,6 +125,8 @@ const LIGHT_VARS: VarMap = {
   "--vscode-list-hoverBackground": "#e8e8e8",
   "--vscode-list-activeSelectionBackground": "#0060c0",
   "--vscode-list-activeSelectionForeground": "#ffffff",
+  "--vscode-list-inactiveSelectionBackground": "#e5ebf1",
+  "--vscode-list-inactiveSelectionForeground": "#333333",
   "--vscode-badge-background": "#c4c4c4",
   "--vscode-badge-foreground": "#333333",
   "--vscode-scrollbarSlider-background": "rgba(100, 100, 100, 0.4)",
@@ -181,7 +185,8 @@ function buildDevPalette(v: VarMap, mode: "light" | "dark") {
     divider: v["--vscode-panel-border"],
     background: {
       default: v["--vscode-editor-background"],
-      paper: v["--vscode-editor-background"]
+      paper:
+        "var(--topoviewer-surface-panel, var(--vscode-editorWidget-background, var(--vscode-editor-background)))"
     },
     text: {
       primary: v["--vscode-foreground"],
@@ -227,7 +232,8 @@ function buildDevPalette(v: VarMap, mode: "light" | "dark") {
     action: {
       active: v["--vscode-icon-foreground"],
       hover: v["--vscode-list-hoverBackground"],
-      selected: v["--vscode-list-activeSelectionBackground"],
+      selected:
+        v["--vscode-list-inactiveSelectionBackground"] ?? v["--vscode-list-hoverBackground"],
       disabled: v["--vscode-disabledForeground"],
       disabledBackground: v["--vscode-input-background"],
       focus: v["--vscode-focusBorder"]
@@ -248,10 +254,9 @@ export function createDevTheme(mode: "light" | "dark") {
     (structuralOverrides.MuiCssBaseline as Record<string, unknown>)?.styleOverrides ?? {};
   const cssBaselineOverride: ThemeOptions["components"] = {
     MuiCssBaseline: {
-      styleOverrides: deepmerge(
-        baseStyleOverrides as Record<string, unknown>,
-        { ":root": { ...vars } }
-      ) as Record<string, unknown>
+      styleOverrides: deepmerge(baseStyleOverrides as Record<string, unknown>, {
+        ":root": { ...vars }
+      }) as Record<string, unknown>
     }
   };
 

@@ -22,6 +22,17 @@ interface UseTextAnnotationsParams {
   >;
 }
 
+function readThemeColor(cssVar: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const bodyColor = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
+  if (bodyColor) return bodyColor;
+  const rootColor = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(cssVar)
+    .trim();
+  return rootColor || fallback;
+}
+
 export interface TextAnnotationActions {
   handleAddText: () => void;
   createTextAtPosition: (position: { x: number; y: number }) => void;
@@ -49,7 +60,9 @@ export function useTextAnnotations(params: UseTextAnnotationsParams): TextAnnota
         text: "",
         position,
         fontSize: lastTextStyleRef.current.fontSize ?? 14,
-        fontColor: lastTextStyleRef.current.fontColor ?? "#ffffff",
+        fontColor:
+          lastTextStyleRef.current.fontColor ??
+          readThemeColor("--vscode-editor-foreground", "#333333"),
         backgroundColor: lastTextStyleRef.current.backgroundColor,
         fontWeight: lastTextStyleRef.current.fontWeight ?? "normal",
         fontStyle: lastTextStyleRef.current.fontStyle ?? "normal",

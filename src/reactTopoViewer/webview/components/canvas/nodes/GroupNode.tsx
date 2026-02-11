@@ -40,12 +40,12 @@ export interface GroupNodeData {
 
 const MIN_WIDTH = 100;
 const MIN_HEIGHT = 80;
-const DEFAULT_BACKGROUND = "rgba(100, 100, 255, 0.1)";
-const DEFAULT_BORDER_COLOR = "#666";
+const DEFAULT_BACKGROUND = "color-mix(in srgb, var(--vscode-focusBorder) 16%, transparent)";
+const DEFAULT_BORDER_COLOR = "var(--vscode-editor-foreground)";
 const DEFAULT_BORDER_WIDTH = 2;
 const DEFAULT_BORDER_STYLE = "dashed";
 const DEFAULT_BORDER_RADIUS = 8;
-const DEFAULT_LABEL_COLOR = "#666";
+const DEFAULT_LABEL_COLOR = "var(--vscode-editor-foreground)";
 
 // ============================================================================
 // Helper Functions

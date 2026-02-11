@@ -22,6 +22,17 @@ interface UseShapeAnnotationsParams {
   >;
 }
 
+function readThemeColor(cssVar: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const bodyColor = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
+  if (bodyColor) return bodyColor;
+  const rootColor = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(cssVar)
+    .trim();
+  return rootColor || fallback;
+}
+
 export interface ShapeAnnotationActions {
   handleAddShapes: (shapeType?: string) => void;
   createShapeAtPosition: (position: { x: number; y: number }, shapeType?: string) => void;
@@ -73,9 +84,11 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
         position,
         endPosition: { x: position.x + 120, y: position.y + 60 },
         rotation: 0,
-        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(255, 255, 255, 0.1)",
+        fillColor: lastShapeStyleRef.current.fillColor ?? "rgba(127, 127, 127, 0.16)",
         fillOpacity: lastShapeStyleRef.current.fillOpacity ?? 0.2,
-        borderColor: lastShapeStyleRef.current.borderColor ?? "#ffffff",
+        borderColor:
+          lastShapeStyleRef.current.borderColor ??
+          readThemeColor("--vscode-editor-foreground", "#666666"),
         borderWidth: lastShapeStyleRef.current.borderWidth ?? 1,
         borderStyle: lastShapeStyleRef.current.borderStyle ?? "solid",
         borderRadius: lastShapeStyleRef.current.borderRadius ?? 4,

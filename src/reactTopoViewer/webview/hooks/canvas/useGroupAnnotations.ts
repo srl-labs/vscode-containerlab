@@ -4,10 +4,7 @@ import type { Node, ReactFlowInstance } from "@xyflow/react";
 import type { GroupStyleAnnotation } from "../../../shared/types/topology";
 import type { GroupNodeData } from "../../components/canvas/types";
 import type { AnnotationUIActions } from "../../stores/annotationUIStore";
-import {
-  saveAnnotationNodesFromGraph,
-  saveAnnotationNodesWithMemberships
-} from "../../services";
+import { saveAnnotationNodesFromGraph, saveAnnotationNodesWithMemberships } from "../../services";
 import { useGraphStore } from "../../stores/graphStore";
 import { collectNodeGroupMemberships } from "../../annotations/groupMembership";
 import {
@@ -41,6 +38,17 @@ export interface GroupAnnotationActions {
   updateGroupSize: (id: string, width: number, height: number) => void;
 }
 
+function readThemeColor(cssVar: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const bodyColor = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
+  if (bodyColor) return bodyColor;
+  const rootColor = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(cssVar)
+    .trim();
+  return rootColor || fallback;
+}
+
 function buildGroupsSnapshot(
   derived: UseDerivedAnnotationsReturn,
   graphNodes: Node[]
@@ -64,7 +72,7 @@ function getGroupDeletionContext(
   shapeIds: Set<string>;
 } {
   const group = groupsSnapshot.find((g) => g.id === id);
-  const parentId = group ? resolveGroupParentId(group.parentId, group.groupId) ?? null : null;
+  const parentId = group ? (resolveGroupParentId(group.parentId, group.groupId) ?? null) : null;
   const memberIds = derived.getGroupMembers(id);
   const childGroups = groupsSnapshot.filter(
     (g) => resolveGroupParentId(g.parentId, g.groupId) === id
@@ -241,7 +249,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
       width,
       height,
       backgroundColor: "rgba(100, 100, 255, 0.1)",
-      borderColor: "#666",
+      borderColor: readThemeColor("--vscode-editor-foreground", "#666666"),
       borderWidth: 2,
       borderStyle: "dashed",
       borderRadius: 8,
@@ -296,7 +304,7 @@ export function useGroupAnnotations(params: UseGroupAnnotationsParams): GroupAnn
         width: bounds.width,
         height: bounds.height,
         backgroundColor: "rgba(100, 100, 255, 0.1)",
-        borderColor: "#666",
+        borderColor: readThemeColor("--vscode-editor-foreground", "#666666"),
         borderWidth: 2,
         borderStyle: "dashed",
         borderRadius: 8,

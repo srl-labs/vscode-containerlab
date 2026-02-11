@@ -156,12 +156,7 @@ function useWrappedNodeClick(
         return;
       if (handleLinkCreationClick(event, node, linkSourceNode, completeLinkCreation)) return;
       if (
-        handleAnnotationEditClick(
-          event,
-          node,
-          clearContextForAnnotationEdit,
-          annotationHandlers
-        )
+        handleAnnotationEditClick(event, node, clearContextForAnnotationEdit, annotationHandlers)
       ) {
         // Still flow through to the base handler to ensure shared behavior
         // like closing context menus stays consistent for annotation nodes.
@@ -571,7 +566,7 @@ function renderBackgroundLayer(params: {
       gap={isQuadraticGrid ? QUADRATIC_GRID_SIZE : GRID_SIZE}
       size={isQuadraticGrid ? undefined : gridLineWidth}
       lineWidth={isQuadraticGrid ? gridLineWidth : undefined}
-      color="#555"
+      color="var(--topoviewer-grid-color)"
     />
   );
 }
@@ -584,14 +579,8 @@ function renderLinkCreationLine(params: {
   sourcePosition: { x: number; y: number } | null;
   linkCreationSeed: number | null | undefined;
 }): React.ReactElement {
-  const {
-    linkSourceNode,
-    linkTargetNodeId,
-    nodes,
-    edges,
-    sourcePosition,
-    linkCreationSeed
-  } = params;
+  const { linkSourceNode, linkTargetNodeId, nodes, edges, sourcePosition, linkCreationSeed } =
+    params;
   return (
     <LinkCreationLine
       linkSourceNodeId={linkSourceNode}
@@ -669,9 +658,7 @@ function buildCanvasOverlays(params: {
         linkCreationSeed
       })
     : null;
-  const linkIndicator = canShowLinkIndicator
-    ? renderLinkIndicator(linkSourceNode as string)
-    : null;
+  const linkIndicator = canShowLinkIndicator ? renderLinkIndicator(linkSourceNode as string) : null;
   const annotationIndicator = canShowAnnotationIndicator
     ? renderAnnotationIndicator(addModeMessage as string)
     : null;
@@ -731,8 +718,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       editEdge,
       editImpairment,
       editCustomTemplate
-    } =
-      useTopoViewerActions();
+    } = useTopoViewerActions();
 
     // Get setters from graph store - these update the single source of truth
     const { setNodes, setEdges, onNodesChange, onEdgesChange } = useGraphActions();
@@ -789,7 +775,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     const linkSourceNodeRef = useRef<string | null>(null);
     linkSourceNodeRef.current = linkSourceNode;
     const shouldSuppressSelectionSync = useCallback(
-      () => Boolean(linkSourceNodeRef.current) || Date.now() < suppressSelectionSyncUntilRef.current,
+      () =>
+        Boolean(linkSourceNodeRef.current) || Date.now() < suppressSelectionSyncUntilRef.current,
       []
     );
 
@@ -812,11 +799,9 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       if (isGeoLayout) return;
       lastFitViewRequestRef.current = fitViewRequestId;
       setTimeout(() => {
-        reactFlowInstanceRef.current
-          ?.fitView({ padding: 0.2, duration: 200 })
-          .catch(() => {
-            /* ignore */
-          });
+        reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 200 }).catch(() => {
+          /* ignore */
+        });
       }, 50);
     }, [fitViewRequestId, allNodes.length, isGeoLayout, isReactFlowReady]);
 
@@ -870,14 +855,8 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       allEdges.length,
       linkLabelMode
     );
-    const activeNodeTypes = useMemo(
-      () => (isLowDetail ? nodeTypesLite : nodeTypes),
-      [isLowDetail]
-    );
-    const activeEdgeTypes = useMemo(
-      () => (isLowDetail ? edgeTypesLite : edgeTypes),
-      [isLowDetail]
-    );
+    const activeNodeTypes = useMemo(() => (isLowDetail ? nodeTypesLite : nodeTypes), [isLowDetail]);
+    const activeEdgeTypes = useMemo(() => (isLowDetail ? edgeTypesLite : edgeTypes), [isLowDetail]);
     useSyncCanvasStore({
       linkSourceNode,
       setLinkSourceNode,

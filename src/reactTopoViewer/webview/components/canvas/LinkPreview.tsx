@@ -48,9 +48,9 @@ const LINK_PREVIEW_LOOP_EDGE_SIZE = 50;
 const LINK_PREVIEW_LOOP_EDGE_OFFSET = 10;
 const LINK_LABEL_OFFSET = 30;
 const LINK_LABEL_FONT_SIZE = 10;
-const LINK_LABEL_BG_COLOR = "rgba(202, 203, 204, 0.5)";
-const LINK_LABEL_TEXT_COLOR = "rgba(0, 0, 0, 0.7)";
-const LINK_LABEL_OUTLINE_COLOR = "rgba(255, 255, 255, 0.7)";
+const LINK_LABEL_BG_COLOR = "var(--topoviewer-edge-label-background)";
+const LINK_LABEL_TEXT_COLOR = "var(--topoviewer-edge-label-foreground)";
+const LINK_LABEL_OUTLINE_COLOR = "var(--topoviewer-edge-label-outline)";
 const LINK_LABEL_PADDING_X = 2;
 const LINK_LABEL_PADDING_Y = 0;
 const LINK_LABEL_BORDER_RADIUS = 4;
@@ -528,14 +528,7 @@ function getContainerBounds(): DOMRect | null {
 }
 
 export const LinkCreationLine = React.memo<LinkCreationLineProps>(
-  ({
-    linkSourceNodeId,
-    linkTargetNodeId,
-    nodes,
-    edges,
-    sourcePosition,
-    linkCreationSeed
-  }) => {
+  ({ linkSourceNodeId, linkTargetNodeId, nodes, edges, sourcePosition, linkCreationSeed }) => {
     const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
 
     useEffect(() => {

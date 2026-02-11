@@ -15,7 +15,8 @@ const VSCODE_BUTTON_FOREGROUND = "var(--vscode-button-foreground)";
 const VSCODE_FOCUS_BORDER = "var(--vscode-focusBorder)";
 const VSCODE_BADGE_BACKGROUND = "var(--vscode-badge-background)";
 const VSCODE_ERROR_FOREGROUND = "var(--vscode-errorForeground)";
-const VSCODE_SUCCESS_FOREGROUND = "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))";
+const VSCODE_SUCCESS_FOREGROUND =
+  "var(--vscode-testing-iconPassed, var(--vscode-inputValidation-infoBorder))";
 
 type ColorManipulator = (color: string, coefficient: number | string) => string;
 
@@ -26,7 +27,10 @@ function toCssPercent(coefficient: number | string): string {
   return `calc((${coefficient}) * 100%)`;
 }
 
-function wrapColorManipulator(base: ColorManipulator, fallback: ColorManipulator): ColorManipulator {
+function wrapColorManipulator(
+  base: ColorManipulator,
+  fallback: ColorManipulator
+): ColorManipulator {
   return (color: string, coefficient: number | string) => {
     try {
       return base(color, coefficient);
@@ -71,7 +75,8 @@ export const vscodePalette = {
   divider: "var(--vscode-panel-border)",
   background: {
     default: "var(--vscode-editor-background)",
-    paper: "var(--vscode-editor-background)"
+    paper:
+      "var(--topoviewer-surface-panel, var(--vscode-editorWidget-background, var(--vscode-editor-background)))"
   },
   text: {
     primary: "var(--vscode-foreground)",
@@ -117,7 +122,7 @@ export const vscodePalette = {
   action: {
     active: "var(--vscode-icon-foreground)",
     hover: "var(--vscode-list-hoverBackground)",
-    selected: "var(--vscode-list-activeSelectionBackground)",
+    selected: "var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground))",
     disabled: "var(--vscode-disabledForeground)",
     disabledBackground: "var(--vscode-input-background)",
     focus: VSCODE_FOCUS_BORDER
@@ -135,6 +140,26 @@ export const vscodePalette = {
 export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiCssBaseline: {
     styleOverrides: {
+      ":root": {
+        "--topoviewer-surface-panel":
+          "color-mix(in srgb, var(--vscode-sideBar-background) 72%, var(--vscode-editor-background) 28%)",
+        "--topoviewer-surface-elevated":
+          "color-mix(in srgb, var(--vscode-editorWidget-background, var(--vscode-sideBar-background)) 75%, var(--vscode-editor-background) 25%)",
+        "--topoviewer-grid-color": "color-mix(in srgb, var(--vscode-foreground) 24%, transparent)",
+        "--topoviewer-node-label-background":
+          "var(--vscode-badge-background, color-mix(in srgb, var(--vscode-editor-background) 30%, var(--vscode-foreground) 70%))",
+        "--topoviewer-node-label-foreground":
+          "var(--vscode-badge-foreground, var(--vscode-foreground))",
+        "--topoviewer-node-label-outline":
+          "color-mix(in srgb, var(--vscode-editor-background) 85%, transparent)",
+        "--topoviewer-edge-label-background":
+          "color-mix(in srgb, var(--vscode-editor-background) 88%, var(--vscode-foreground) 12%)",
+        "--topoviewer-edge-label-foreground": "var(--vscode-foreground)",
+        "--topoviewer-edge-label-outline":
+          "color-mix(in srgb, var(--vscode-editor-background) 78%, transparent)",
+        "--topoviewer-network-node-background":
+          "color-mix(in srgb, var(--vscode-editor-background) 84%, var(--vscode-foreground) 16%)"
+      },
       "*::-webkit-scrollbar": { width: 8, height: 8 },
       "*::-webkit-scrollbar-track": { background: "transparent" },
       "*::-webkit-scrollbar-thumb": { borderRadius: 4 },
@@ -159,6 +184,22 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
       root: { backgroundImage: "none" }
     }
   },
+  MuiAppBar: {
+    styleOverrides: {
+      root: {
+        backgroundColor: "var(--topoviewer-surface-panel)",
+        color: "var(--vscode-foreground)"
+      }
+    }
+  },
+  MuiDrawer: {
+    styleOverrides: {
+      paper: {
+        backgroundColor: "var(--topoviewer-surface-panel)",
+        color: "var(--vscode-foreground)"
+      }
+    }
+  },
   MuiTextField: {
     defaultProps: { size: "small", variant: "outlined" }
   },
@@ -168,12 +209,29 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiInputBase: {},
   MuiOutlinedInput: {
     styleOverrides: {
-      root: { "&.Mui-disabled": { opacity: 0.5 } }
+      root: {
+        backgroundColor: "var(--vscode-input-background)",
+        "&.Mui-disabled": { opacity: 0.5 }
+      }
     }
   },
   MuiMenu: {
     styleOverrides: {
+      paper: {
+        backgroundColor: "var(--topoviewer-surface-elevated)",
+        color: "var(--vscode-foreground)",
+        border: "1px solid var(--vscode-menu-border)"
+      },
       list: { padding: "4px 0" }
+    }
+  },
+  MuiPopover: {
+    styleOverrides: {
+      paper: {
+        backgroundColor: "var(--topoviewer-surface-elevated)",
+        color: "var(--vscode-foreground)",
+        border: "1px solid var(--vscode-panel-border)"
+      }
     }
   },
   MuiMenuItem: {
@@ -192,6 +250,13 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
     }
   },
   MuiDialog: {
+    styleOverrides: {
+      paper: {
+        backgroundColor: "var(--topoviewer-surface-elevated)",
+        color: "var(--vscode-foreground)",
+        border: "1px solid var(--vscode-panel-border)"
+      }
+    },
     defaultProps: {
       slotProps: {
         backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.5)" } }

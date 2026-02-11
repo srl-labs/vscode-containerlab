@@ -313,7 +313,7 @@ function getLineStyleProps(data: FreeShapeNodeData): {
   lineArrowSize: number;
 } {
   return {
-    borderColor: data.borderColor ?? "#666",
+    borderColor: data.borderColor ?? "var(--vscode-editor-foreground)",
     borderWidth: data.borderWidth ?? 2,
     borderStyle: data.borderStyle ?? "solid",
     lineStartArrow: data.lineStartArrow ?? false,
@@ -402,7 +402,7 @@ function BoxNode({
     fillOpacity: data.fillOpacity ?? 0.2,
     borderWidth: data.borderWidth ?? 2,
     borderStyle: data.borderStyle ?? "solid",
-    borderColor: data.borderColor ?? "#666",
+    borderColor: data.borderColor ?? "var(--vscode-editor-foreground)",
     selected: isSelected
   };
 
