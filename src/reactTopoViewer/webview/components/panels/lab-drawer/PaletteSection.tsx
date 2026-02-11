@@ -432,7 +432,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
       <Box sx={{ p: 2, flex: 1, overflow: "auto", minHeight: 0 }}>
         {/* Nodes Tab */}
         {activeTab === "nodes" && (
-          <Box sx={{ height: "100%", overflow: "auto", ...((isLocked || isViewMode) ? { pointerEvents: "none", opacity: 0.6 } : undefined) }}>
+          <Box sx={{ ...((isLocked || isViewMode) ? { pointerEvents: "none", opacity: 0.6 } : undefined) }}>
             {/* Search */}
             <TextField
               fullWidth
@@ -509,7 +509,7 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
 
         {/* Add annotations (palette) Tab */}
         {activeTab === "annotations" && (
-          <Box sx={{ height: "100%", overflow: "auto", ...(isLocked ? { pointerEvents: "none" } : undefined) }}>
+          <Box sx={{ ...(isLocked ? { pointerEvents: "none" } : undefined) }}>
             <PaletteSectionTitle icon={<TextFieldsIcon fontSize="small" />} title="Text" />
             <PaletteList>
               <DraggableAnnotation
