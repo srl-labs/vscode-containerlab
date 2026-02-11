@@ -14,6 +14,7 @@ interface KeyValueListProps {
   valuePlaceholder?: string;
   addLabel?: string;
   disabled?: boolean;
+  hideAddButton?: boolean;
 }
 
 export const KeyValueList: React.FC<KeyValueListProps> = ({
@@ -22,13 +23,13 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
   keyPlaceholder = "Key",
   valuePlaceholder = "Value",
   addLabel = "Add",
-  disabled
+  disabled,
+  hideAddButton
 }) => {
   const entries = Object.entries(items);
 
   const handleAdd = () => {
-    const newKey = `key${entries.length + 1}`;
-    onChange({ ...items, [newKey]: "" });
+    onChange({ ...items, "": "" });
   };
 
   const handleRemove = (key: string) => {
@@ -65,7 +66,7 @@ export const KeyValueList: React.FC<KeyValueListProps> = ({
           disabled={disabled}
         />
       ))}
-      <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
+      {!hideAddButton && <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />}
     </Box>
   );
 };
@@ -98,7 +99,7 @@ const KeyValueItem: React.FC<KeyValueItemProps> = ({
     <TextField
       value={itemKey}
       onChange={(e) => onKeyChange(e.target.value)}
-      placeholder={keyPlaceholder}
+      label={keyPlaceholder}
       disabled={disabled}
       size="small"
       sx={{ width: "33%" }}
@@ -106,7 +107,7 @@ const KeyValueItem: React.FC<KeyValueItemProps> = ({
     <TextField
       value={value}
       onChange={(e) => onValueChange(e.target.value)}
-      placeholder={valuePlaceholder}
+      label={valuePlaceholder}
       disabled={disabled}
       size="small"
       sx={{ flex: 1 }}

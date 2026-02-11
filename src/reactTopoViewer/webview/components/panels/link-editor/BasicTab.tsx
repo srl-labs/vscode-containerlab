@@ -23,7 +23,6 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
   const endpointOffsetValue = Number.isFinite(rawEndpointOffset)
     ? rawEndpointOffset
     : DEFAULT_ENDPOINT_LABEL_OFFSET;
-  const isDefaultOffset = endpointOffsetValue === DEFAULT_ENDPOINT_LABEL_OFFSET;
 
   const handleOffsetChange = (_event: Event, value: number | number[]) => {
     const nextOffset = typeof value === "number" ? value : value[0];
@@ -55,8 +54,8 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Endpoints section */}
-      <Box sx={{ px: 2, pt: 1.5 }}>
-        <Typography variant="subtitle2">Endpoints</Typography>
+      <Box sx={{ p: 2, pb: 1 }}>
+        <Typography variant="subtitle1" fontWeight={600}>Endpoints</Typography>
       </Box>
       <Divider />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
@@ -125,41 +124,36 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
       </Box>
 
       {/* Label Offset section */}
-      <Box sx={{ px: 2, pt: 1.5 }}>
-        <Typography variant="subtitle2">Label Offset</Typography>
+      <Divider />
+      <Box sx={{ p: 2, pb: 1 }}>
+        <Typography variant="subtitle1" fontWeight={600}>Label Offset</Typography>
       </Box>
       <Divider />
-      <Box sx={{ p: 2 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Typography variant="caption" color="text.secondary">
-            Value
-          </Typography>
-          <Slider
-            id="link-endpoint-offset"
-            value={endpointOffsetValue}
-            min={ENDPOINT_LABEL_OFFSET_MIN}
-            max={ENDPOINT_LABEL_OFFSET_MAX}
-            step={1}
-            onChange={handleOffsetChange}
-            size="small"
-            sx={{ flex: 1 }}
-          />
-          <Typography variant="body2" sx={{ width: 40, textAlign: "center" }}>
-            {endpointOffsetValue.toFixed(0)}
-          </Typography>
-          <Box sx={{ width: 70 }}>
-            {!isDefaultOffset && (
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={handleOffsetReset}
-                title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
-              >
-                Reset
-              </Button>
-            )}
-          </Box>
-        </Box>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          {ENDPOINT_LABEL_OFFSET_MIN}
+        </Typography>
+        <Slider
+          id="link-endpoint-offset"
+          value={endpointOffsetValue}
+          min={ENDPOINT_LABEL_OFFSET_MIN}
+          max={ENDPOINT_LABEL_OFFSET_MAX}
+          step={1}
+          onChange={handleOffsetChange}
+          valueLabelDisplay="auto"
+          sx={{ flex: 1 }}
+        />
+        <Typography variant="body2" color="text.secondary">
+          {ENDPOINT_LABEL_OFFSET_MAX}
+        </Typography>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={handleOffsetReset}
+          title={`Reset to ${DEFAULT_ENDPOINT_LABEL_OFFSET}`}
+        >
+          Reset
+        </Button>
       </Box>
     </Box>
   );

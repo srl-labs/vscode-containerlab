@@ -3,51 +3,65 @@
  */
 import React from "react";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
+import AddIcon from "@mui/icons-material/Add";
 
 import { KeyValueList } from "../../ui/form";
 
 import type { LinkTabProps, LinkEditorData } from "./types";
 
 /**
- * Veth link properties (MAC, MTU, vars, labels)
+ * Veth link properties (vars, labels)
  */
-const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-    <Box>
-      <Typography
-        variant="caption"
-        sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5, display: "block" }}
-      >
-        Variables
-      </Typography>
-      <KeyValueList
-        items={data.vars || {}}
-        onChange={(vars) => onChange({ vars })}
-        keyPlaceholder="Variable name"
-        valuePlaceholder="Value"
-        addLabel="Add Variable"
-      />
-    </Box>
+const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
+  const handleAddVar = () => {
+    const vars = data.vars || {};
+    onChange({ vars: { ...vars, "": "" } });
+  };
 
-    <Box>
-      <Typography
-        variant="caption"
-        sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: 0.5, mb: 0.5, display: "block" }}
-      >
-        Labels
-      </Typography>
-      <KeyValueList
-        items={data.labels || {}}
-        onChange={(labels) => onChange({ labels })}
-        keyPlaceholder="Label key"
-        valuePlaceholder="Label value"
-        addLabel="Add Label"
-      />
+  const handleAddLabel = () => {
+    const labels = data.labels || {};
+    onChange({ labels: { ...labels, "": "" } });
+  };
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
+        <Typography variant="body2">Variables</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddVar}>ADD</Button>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <KeyValueList
+          items={data.vars || {}}
+          onChange={(vars) => onChange({ vars })}
+          keyPlaceholder="Variable name"
+          valuePlaceholder="Value"
+          hideAddButton
+        />
+      </Box>
+
+      <Divider />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
+        <Typography variant="body2">Labels</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel}>ADD</Button>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <KeyValueList
+          items={data.labels || {}}
+          onChange={(labels) => onChange({ labels })}
+          keyPlaceholder="Label key"
+          valuePlaceholder="Label value"
+          hideAddButton
+        />
+      </Box>
     </Box>
-  </Box>
-);
+  );
+};
 
 /**
  * Info message for non-veth links
@@ -68,8 +82,8 @@ export const ExtendedTab: React.FC<LinkTabProps> = ({ data, onChange }) => {
   const isVethLink = !data.type || data.type === "veth";
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", p: 2 }}>
-      {isVethLink ? <VethLinkFields data={data} onChange={onChange} /> : <NonVethInfo />}
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {isVethLink ? <VethLinkFields data={data} onChange={onChange} /> : <Box sx={{ p: 2 }}><NonVethInfo /></Box>}
     </Box>
   );
 };
