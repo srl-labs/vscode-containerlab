@@ -637,6 +637,14 @@ export const AppContent: React.FC<AppContentProps> = ({
     }
   }, [clearAllEditingState, panelVisibility]);
 
+  const handleContextPanelDelete = React.useCallback(() => {
+    if (state.editingNode) {
+      graphHandlers.handleDeleteNode(state.editingNode);
+    } else if (state.editingEdge) {
+      graphHandlers.handleDeleteLink(state.editingEdge);
+    }
+  }, [state.editingNode, state.editingEdge, graphHandlers]);
+
   const handleZoomToFit = React.useCallback(() => {
     rfInstance?.fitView({ padding: 0.1 }).catch(() => {
       /* ignore */
@@ -705,6 +713,7 @@ export const AppContent: React.FC<AppContentProps> = ({
             onClose={panelVisibility.handleCloseContextPanel}
             onBack={handleContextPanelBack}
             onToggleSide={panelVisibility.handleTogglePanelSide}
+            onDelete={handleContextPanelDelete}
             rfInstance={rfInstance}
             palette={{
               mode: state.mode,

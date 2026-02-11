@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
+import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, DeleteOutline as DeleteOutlineIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
 import { Box, Button, Divider, Drawer, IconButton, Tooltip, Typography } from "@mui/material";
 
 
@@ -343,6 +343,7 @@ export interface ContextPanelProps {
   onClose: () => void;
   onBack: () => void;
   onToggleSide: () => void;
+  onDelete?: () => void;
   rfInstance: ReactFlowInstance | null;
   palette: ContextPanelPaletteProps;
   view: ContextPanelViewProps;
@@ -356,6 +357,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   onClose,
   onBack,
   onToggleSide,
+  onDelete,
   palette,
   view,
   editor
@@ -380,6 +382,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
     : { border: "borderLeft", resize: "left" };
 
   const showBackButton = panelView.kind !== "palette";
+  const showDelete = onDelete && (panelView.kind === "nodeEditor" || panelView.kind === "linkEditor") && !isLocked;
 
   const content = renderContextPanelContent(panelView.kind, palette, view, editor, isLocked, isReadOnly, setFooterRef);
 
@@ -432,6 +435,13 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }} data-testid="panel-title">
             {panelView.title}
           </Typography>
+          {showDelete && (
+            <Tooltip title={panelView.kind === "nodeEditor" ? "Delete node" : "Delete link"}>
+              <IconButton size="small" onClick={onDelete} data-testid="panel-delete-btn">
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
         <Divider />
 
