@@ -29,6 +29,8 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
   onGridStyleChange
 }) => {
   const open = Boolean(anchorPosition);
+  const isGridStyle = (value: unknown): value is GridStyle =>
+    value === "dotted" || value === "quadratic";
 
   return (
     <Popover
@@ -64,12 +66,14 @@ export const GridSettingsPopover: React.FC<GridSettingsPopoverProps> = ({
         <ToggleButtonGroup
           value={gridStyle}
           exclusive
-          onChange={(_e, value: GridStyle | null) => { if (value) onGridStyleChange(value); }}
+          onChange={(_e, value: string | null) => {
+            if (isGridStyle(value)) onGridStyleChange(value);
+          }}
           size="small"
           fullWidth
         >
-          <ToggleButton value="dots">Dotted</ToggleButton>
-          <ToggleButton value="lines">Quadratic</ToggleButton>
+          <ToggleButton value="dotted">Dotted</ToggleButton>
+          <ToggleButton value="quadratic">Quadratic</ToggleButton>
         </ToggleButtonGroup>
       </Box>
     </Popover>
