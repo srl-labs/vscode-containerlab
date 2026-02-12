@@ -446,7 +446,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               <CloseIcon fontSize="small" />
             </IconButton>
           )}
-          <Typography variant="subtitle1" fontWeight={600} sx={{ flexGrow: 1 }} data-testid="panel-title">
+          <Typography variant="panelHeading" sx={{ flexGrow: 1 }} data-testid="panel-title">
             {panelView.title}
           </Typography>
           {showDelete && (

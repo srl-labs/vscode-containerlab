@@ -29,9 +29,9 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
-        <Typography variant="body2">Variables</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddVar}>ADD</Button>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="panelHeading">Variables</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddVar} sx={{ py: 0 }}>ADD</Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -45,9 +45,9 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
       </Box>
 
       <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
-        <Typography variant="body2">Labels</Typography>
-        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel}>ADD</Button>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="panelHeading">Labels</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>ADD</Button>
       </Box>
       <Divider />
       <Box sx={{ p: 2 }}>

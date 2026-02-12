@@ -54,8 +54,8 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Endpoints section */}
-      <Box sx={{ p: 2, pb: 1 }}>
-        <Typography variant="subtitle1" fontWeight={600}>Endpoints</Typography>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="panelHeading">Endpoints</Typography>
       </Box>
       <Divider />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
@@ -125,8 +125,8 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onAutoApplyOf
 
       {/* Label Offset section */}
       <Divider />
-      <Box sx={{ p: 2, pb: 1 }}>
-        <Typography variant="subtitle1" fontWeight={600}>Label Offset</Typography>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="panelHeading">Label Offset</Typography>
       </Box>
       <Divider />
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}>

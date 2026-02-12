@@ -11,6 +11,21 @@
  */
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 
+declare module "@mui/material/styles" {
+  interface TypographyVariants {
+    panelHeading: React.CSSProperties;
+  }
+  interface TypographyVariantsOptions {
+    panelHeading?: React.CSSProperties;
+  }
+}
+
+declare module "@mui/material/Typography" {
+  interface TypographyPropsVariantOverrides {
+    panelHeading: true;
+  }
+}
+
 const VSCODE_BUTTON_FOREGROUND = "var(--vscode-button-foreground)";
 const VSCODE_FOCUS_BORDER = "var(--vscode-focusBorder)";
 const VSCODE_BADGE_BACKGROUND = "var(--vscode-badge-background)";
@@ -329,7 +344,13 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
 export function createVscodeTheme(mode: "light" | "dark", overrides?: ThemeOptions) {
   const base = createTheme({
     palette: { ...vscodePalette, mode },
-    typography: {},
+    typography: {
+      panelHeading: {
+        fontSize: "1rem",
+        fontWeight: 600,
+        lineHeight: 1.75
+      }
+    },
     shape: { borderRadius: 4 },
     components: structuralOverrides
   });
