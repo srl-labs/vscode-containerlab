@@ -13,7 +13,7 @@ import {
 } from "@mui/icons-material";
 import { Box, Button, Chip, Collapse, Divider, IconButton, Paper, Typography } from "@mui/material";
 
-import { InputField, SelectField, Section } from "../../ui/form";
+import { InputField, SelectField } from "../../ui/form";
 import { useSchema, type SrosComponentTypes } from "../../../hooks/editor";
 
 import type { TabProps, SrosComponent, SrosMda, SrosXiom } from "./types";
@@ -470,7 +470,6 @@ interface ComponentSectionProps {
   onAdd: () => void;
   addDisabled?: boolean;
   addDisabledTitle?: string;
-  hasBorder?: boolean;
 }
 
 const ComponentSection: React.FC<ComponentSectionProps> = ({
@@ -493,48 +492,54 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
   addButtonLabel,
   onAdd,
   addDisabled,
-  addDisabledTitle,
-  hasBorder = true
+  addDisabledTitle
 }) => (
-  <Section title={title} hasBorder={hasBorder}>
-    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-      {description}
-    </Typography>
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      {filteredComponents.map((comp) => {
-        const realIndex = allComponents.indexOf(comp);
-        return (
-          <ComponentEntry
-            key={realIndex}
-            component={comp}
-            index={realIndex}
-            srosTypes={srosTypes}
-            onUpdate={updateComponent}
-            onRemove={removeComponent}
-            onAddMda={addMda}
-            onUpdateMda={updateMda}
-            onRemoveMda={removeMda}
-            onAddXiom={addXiom}
-            onUpdateXiom={updateXiom}
-            onRemoveXiom={removeXiom}
-            onAddXiomMda={addXiomMda}
-            onUpdateXiomMda={updateXiomMda}
-            onRemoveXiomMda={removeXiomMda}
-          />
-        );
-      })}
+  <>
+    <Divider />
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+      <Typography variant="panelHeading">{title}</Typography>
+      <Button
+        size="small"
+        startIcon={<AddIcon />}
+        onClick={onAdd}
+        disabled={addDisabled}
+        title={addDisabled ? addDisabledTitle : undefined}
+        sx={{ py: 0 }}
+      >
+        {addButtonLabel}
+      </Button>
     </Box>
-    <Button
-      size="small"
-      startIcon={<AddIcon />}
-      onClick={onAdd}
-      disabled={addDisabled}
-      title={addDisabled ? addDisabledTitle : undefined}
-      sx={{ mt: 1.5 }}
-    >
-      {addButtonLabel}
-    </Button>
-  </Section>
+    <Divider />
+    <Box sx={{ p: 2 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+        {description}
+      </Typography>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        {filteredComponents.map((comp) => {
+          const realIndex = allComponents.indexOf(comp);
+          return (
+            <ComponentEntry
+              key={realIndex}
+              component={comp}
+              index={realIndex}
+              srosTypes={srosTypes}
+              onUpdate={updateComponent}
+              onRemove={removeComponent}
+              onAddMda={addMda}
+              onUpdateMda={updateMda}
+              onRemoveMda={removeMda}
+              onAddXiom={addXiom}
+              onUpdateXiom={updateXiom}
+              onRemoveXiom={removeXiom}
+              onAddXiomMda={addXiomMda}
+              onUpdateXiomMda={updateXiomMda}
+              onRemoveXiomMda={removeXiomMda}
+            />
+          );
+        })}
+      </Box>
+    </Box>
+  </>
 );
 
 const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
@@ -624,18 +629,33 @@ const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({
   };
 
   return (
-    <Section title="MDA Configuration">
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
-        Configure MDA modules directly for integrated chassis
-      </Typography>
-      <MdaListSection
-        mdas={mdas}
-        mdaTypes={srosTypes.mda}
-        onUpdate={updateMda}
-        onRemove={removeMda}
-        onAdd={addMda}
-      />
-    </Section>
+    <>
+      <Divider />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="panelHeading">MDA Configuration</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={addMda} sx={{ py: 0 }}>
+          Add MDA
+        </Button>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+          Configure MDA modules directly for integrated chassis
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {mdas.map((mda, mdaIdx) => (
+            <MdaEntry
+              key={mdaIdx}
+              mda={mda}
+              index={mdaIdx}
+              mdaTypes={srosTypes.mda}
+              onUpdate={updateMda}
+              onRemove={removeMda}
+            />
+          ))}
+        </Box>
+      </Box>
+    </>
   );
 };
 
@@ -795,20 +815,6 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
 
   return (
     <>
-      {/* SFM Configuration */}
-      <Section title="Switch Fabric Module (SFM)">
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-          Override the default SFM type for all components
-        </Typography>
-        <SelectField
-          id="sfm-type"
-          label="SFM Type"
-          value={sfmValue}
-          onChange={onSfmChange}
-          options={toSelectOptions(srosTypes.sfm)}
-        />
-      </Section>
-
       {/* CPM Components */}
       <ComponentSection
         {...commonSectionProps}
@@ -829,8 +835,27 @@ const DistributedModeSection: React.FC<DistributedModeSectionProps> = ({
         filteredComponents={cardComponents}
         addButtonLabel="Add Card"
         onAdd={addCard}
-        hasBorder={false}
       />
+
+      {/* SFM Configuration */}
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Typography variant="panelHeading">Switch Fabric Module (SFM)</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+          Override the default SFM type for all components
+        </Typography>
+        <SelectField
+          id="sfm-type"
+          label="SFM Type"
+          value={sfmValue}
+          onChange={onSfmChange}
+          options={toSelectOptions(srosTypes.sfm)}
+          clearable
+        />
+      </Box>
     </>
   );
 };
@@ -862,35 +887,37 @@ export const ComponentsTab: React.FC<TabProps> = ({ data, onChange }) => {
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
       {/* Mode indicator */}
-      <Paper
-        variant="outlined"
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          px: 2,
-          py: 1.5,
-          bgcolor: ACTION_HOVER_BG
-        }}
-      >
-        {isIntegrated ? (
-          <StorageIcon color="primary" />
-        ) : (
-          <HubIcon color="primary" />
-        )}
-        <Box>
-          <Typography variant="body2" fontWeight={500}>
-            {isIntegrated ? "Integrated Chassis" : "Distributed Chassis"}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {isIntegrated
-              ? `Simplified MDA configuration for ${data.type}`
-              : "Full component configuration with CPM, Cards, MDA, and XIOM"}
-          </Typography>
-        </Box>
-      </Paper>
+      <Box sx={{ p: 2 }}>
+        <Paper
+          variant="outlined"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            px: 2,
+            py: 1.5,
+            bgcolor: ACTION_HOVER_BG
+          }}
+        >
+          {isIntegrated ? (
+            <StorageIcon color="primary" />
+          ) : (
+            <HubIcon color="primary" />
+          )}
+          <Box>
+            <Typography variant="body2" fontWeight={500}>
+              {isIntegrated ? "Integrated Chassis" : "Distributed Chassis"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {isIntegrated
+                ? `Simplified MDA configuration for ${data.type}`
+                : "Full component configuration with CPM, Cards, MDA, and XIOM"}
+            </Typography>
+          </Box>
+        </Paper>
+      </Box>
 
       {isIntegrated ? (
         <IntegratedModeSection

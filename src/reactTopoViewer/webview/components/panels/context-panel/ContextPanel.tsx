@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "@xyflow/react";
-import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, DeleteOutline as DeleteOutlineIcon, ErrorOutline as ErrorOutlineIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
+import { ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, Close as CloseIcon, DeleteOutline as DeleteOutlineIcon, EditOutlined as EditOutlinedIcon, ErrorOutline as ErrorOutlineIcon, Lock as LockIcon, SwapHoriz as SwapHorizIcon } from "@mui/icons-material";
 import { Box, Button, Divider, Drawer, IconButton, Tooltip, Typography } from "@mui/material";
 
 
@@ -502,6 +502,28 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             <Divider />
           </React.Fragment>
         ))}
+
+        {/* Unsaved changes banner */}
+        {footer?.hasChanges && !isReadOnly && (
+          <>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 2,
+                py: 0.5,
+                bgcolor: ACTION_HOVER,
+              }}
+            >
+              <EditOutlinedIcon sx={{ fontSize: 14, color: TEXT_SECONDARY }} />
+              <Typography variant="caption" color="text.secondary">
+                Unsaved changes — click Apply to save
+              </Typography>
+            </Box>
+            <Divider />
+          </>
+        )}
 
         {/* Content */}
         <Box

@@ -13,6 +13,7 @@ interface DynamicListProps {
   placeholder?: string;
   addLabel?: string;
   disabled?: boolean;
+  hideAddButton?: boolean;
 }
 
 export const DynamicList: React.FC<DynamicListProps> = ({
@@ -20,7 +21,8 @@ export const DynamicList: React.FC<DynamicListProps> = ({
   onChange,
   placeholder,
   addLabel = "Add",
-  disabled
+  disabled,
+  hideAddButton
 }) => {
   const handleAdd = () => {
     onChange([...items, ""]);
@@ -48,7 +50,7 @@ export const DynamicList: React.FC<DynamicListProps> = ({
           disabled={disabled}
         />
       ))}
-      <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />
+      {!hideAddButton && <AddItemButton onAdd={handleAdd} label={addLabel} disabled={disabled} />}
     </Box>
   );
 };

@@ -172,7 +172,7 @@ export const NodeEditorView: React.FC<NodeEditorViewProps> = ({
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as NodeEditorTabId)}
       />
-      <Box sx={{ p: 2, flex: 1, overflow: "auto" }}>
+      <Box sx={{ flex: 1, overflow: "auto" }}>
         <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
           {Component ? (
             <Component

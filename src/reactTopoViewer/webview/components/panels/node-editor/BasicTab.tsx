@@ -8,6 +8,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import PaletteIcon from "@mui/icons-material/Palette";
 
@@ -399,55 +400,70 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {/* Show Node Name for regular nodes, Custom Template fields for custom node templates */}
-      {data.isCustomTemplate ? (
-        <CustomNodeTemplateFields data={data} onChange={onChange} />
-      ) : (
-        <NodeNameField data={data} onChange={onChange} />
-      )}
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Configuration section */}
+      <Box sx={{ p: 2 }}>
+        <Typography variant="panelHeading">Configuration</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+        {/* Show Node Name for regular nodes, Custom Template fields for custom node templates */}
+        {data.isCustomTemplate ? (
+          <CustomNodeTemplateFields data={data} onChange={onChange} />
+        ) : (
+          <NodeNameField data={data} onChange={onChange} />
+        )}
 
-      {/* Kind/Type fields - use schema data */}
-      <KindField
-        data={data}
-        onChange={onChange}
-        kinds={kinds}
-        onKindChange={handleKindChange}
-        inheritedProps={inheritedProps}
-      />
-
-      {/* Only show Type field for kinds that support it */}
-      {showTypeField && (
-        <TypeField
+        {/* Kind/Type fields - use schema data */}
+        <KindField
           data={data}
           onChange={onChange}
-          availableTypes={availableTypes}
+          kinds={kinds}
+          onKindChange={handleKindChange}
           inheritedProps={inheritedProps}
         />
-      )}
 
-      {/* Image and Version in 2-column grid */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-        <ImageVersionFields
-          data={data}
-          onChange={onChange}
-          baseImages={baseImages}
-          hasImages={hasImages}
-          getVersionsForImage={getVersionsForImage}
-          parseImageString={parseImageString}
-          combineImageVersion={combineImageVersion}
-          inheritedProps={inheritedProps}
-        />
+        {/* Only show Type field for kinds that support it */}
+        {showTypeField && (
+          <TypeField
+            data={data}
+            onChange={onChange}
+            availableTypes={availableTypes}
+            inheritedProps={inheritedProps}
+          />
+        )}
+
+        {/* Image and Version in 2-column grid */}
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <ImageVersionFields
+            data={data}
+            onChange={onChange}
+            baseImages={baseImages}
+            hasImages={hasImages}
+            getVersionsForImage={getVersionsForImage}
+            parseImageString={parseImageString}
+            combineImageVersion={combineImageVersion}
+            inheritedProps={inheritedProps}
+          />
+        </Box>
+
+        {/* Show loading indicator if schema not yet loaded */}
+        {!isLoaded && (
+          <Typography variant="caption" color="text.secondary">
+            Loading schema...
+          </Typography>
+        )}
       </Box>
 
-      <IconField data={data} onChange={onChange} />
-
-      {/* Show loading indicator if schema not yet loaded */}
-      {!isLoaded && (
-        <Typography variant="caption" color="text.secondary">
-          Loading schema...
-        </Typography>
-      )}
+      {/* Icon section */}
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Typography variant="panelHeading">Icon</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <IconField data={data} onChange={onChange} />
+      </Box>
     </Box>
   );
 };

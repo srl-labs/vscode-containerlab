@@ -3,18 +3,22 @@
  */
 import React from "react";
 import Box from "@mui/material/Box";
-import FormControl from "@mui/material/FormControl";
-import FormLabel from "@mui/material/FormLabel";
-import RadioGroup from "@mui/material/RadioGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Radio from "@mui/material/Radio";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
+import AddIcon from "@mui/icons-material/Add";
 
-import { InputField, DynamicList, KeyValueList } from "../../ui/form";
+import { InputField, SelectField, DynamicList, KeyValueList } from "../../ui/form";
 
 import type { TabProps } from "./types";
 
 type StartupConfigMode = "default" | "enforce" | "suppress";
+
+const STARTUP_CONFIG_MODE_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "enforce", label: "Enforce startup config" },
+  { value: "suppress", label: "Suppress startup config" }
+];
 
 function getStartupConfigMode(data: { enforceStartupConfig?: boolean; suppressStartupConfig?: boolean }): StartupConfigMode {
   if (data.enforceStartupConfig) return "enforce";
@@ -22,7 +26,7 @@ function getStartupConfigMode(data: { enforceStartupConfig?: boolean; suppressSt
   return "default";
 }
 
-const StartupConfigSection: React.FC<TabProps> = ({ data, onChange }) => {
+export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
   const mode = getStartupConfigMode(data);
 
   const handleModeChange = (newMode: StartupConfigMode) => {
@@ -32,105 +36,127 @@ const StartupConfigSection: React.FC<TabProps> = ({ data, onChange }) => {
     });
   };
 
+  const handleAddBind = () => {
+    onChange({ binds: [...(data.binds || []), ""] });
+  };
+
+  const handleAddEnvVar = () => {
+    onChange({ env: { ...(data.env || {}), "": "" } });
+  };
+
+  const handleAddEnvFile = () => {
+    onChange({ envFiles: [...(data.envFiles || []), ""] });
+  };
+
+  const handleAddLabel = () => {
+    onChange({ labels: { ...(data.labels || {}), "": "" } });
+  };
+
   return (
-    <>
-      <InputField
-        id="node-startup-config"
-        label="Startup Config"
-        value={data.startupConfig || ""}
-        onChange={(value) => onChange({ startupConfig: value })}
-        placeholder="Path to config file"
-      />
-      <FormControl size="small">
-        <FormLabel sx={{ fontSize: "0.75rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          Startup Config Mode
-        </FormLabel>
-        <RadioGroup
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {/* Startup Configuration */}
+      <Box sx={{ p: 2 }}>
+        <Typography variant="panelHeading">Startup Configuration</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+        <InputField
+          id="node-startup-config"
+          label="Startup configuration Path"
+          value={data.startupConfig || ""}
+          onChange={(value) => onChange({ startupConfig: value })}
+          placeholder="Path to startup configuration file"
+        />
+        <SelectField
+          id="node-startup-config-mode"
+          label="Startup configuration mode"
           value={mode}
-          onChange={(e) => handleModeChange(e.target.value as StartupConfigMode)}
-        >
-          <FormControlLabel
-            value="default"
-            control={<Radio size="small" />}
-            label={<Typography variant="body2">Default</Typography>}
-          />
-          <FormControlLabel
-            value="enforce"
-            control={<Radio size="small" />}
-            label={<Typography variant="body2">Enforce startup config</Typography>}
-          />
-          <FormControlLabel
-            value="suppress"
-            control={<Radio size="small" />}
-            label={<Typography variant="body2">Suppress startup config</Typography>}
-          />
-        </RadioGroup>
-      </FormControl>
-      <InputField
-        id="node-license"
-        label="License File"
-        value={data.license || ""}
-        onChange={(value) => onChange({ license: value })}
-        placeholder="Path to license file"
-      />
-    </>
+          onChange={(value) => handleModeChange(value as StartupConfigMode)}
+          options={STARTUP_CONFIG_MODE_OPTIONS}
+        />
+      </Box>
+
+      {/* License */}
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <Typography variant="panelHeading">License</Typography>
+      </Box>
+      <Divider />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+        <InputField
+          id="node-license"
+          label="License File"
+          value={data.license || ""}
+          onChange={(value) => onChange({ license: value })}
+          placeholder="Path to license file"
+        />
+      </Box>
+
+      {/* Bind Mounts */}
+      <Divider />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="panelHeading">Bind Mounts</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddBind} sx={{ py: 0 }}>ADD</Button>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <DynamicList
+          items={data.binds || []}
+          onChange={(items) => onChange({ binds: items })}
+          placeholder="host:container[:options]"
+          hideAddButton
+        />
+      </Box>
+
+      {/* Environment Variables */}
+      <Divider />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="panelHeading">Environment Variables</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvVar} sx={{ py: 0 }}>ADD</Button>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <KeyValueList
+          items={data.env || {}}
+          onChange={(items) => onChange({ env: items })}
+          keyPlaceholder="Variable"
+          valuePlaceholder="Value"
+          hideAddButton
+        />
+      </Box>
+
+      {/* Environment Files */}
+      <Divider />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="panelHeading">Environment Files</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddEnvFile} sx={{ py: 0 }}>ADD</Button>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <DynamicList
+          items={data.envFiles || []}
+          onChange={(items) => onChange({ envFiles: items })}
+          placeholder="Path to env file"
+          hideAddButton
+        />
+      </Box>
+
+      {/* Labels */}
+      <Divider />
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+        <Typography variant="panelHeading">Labels</Typography>
+        <Button size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>ADD</Button>
+      </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        <KeyValueList
+          items={data.labels || {}}
+          onChange={(items) => onChange({ labels: items })}
+          keyPlaceholder="Label"
+          valuePlaceholder="Value"
+          hideAddButton
+        />
+      </Box>
+    </Box>
   );
 };
-
-const BindsAndEnvSection: React.FC<TabProps> = ({ data, onChange }) => (
-  <>
-    <Box>
-      <Typography variant="caption" sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", mb: 0.5, display: "block" }}>
-        Bind Mounts
-      </Typography>
-      <DynamicList
-        items={data.binds || []}
-        onChange={(items) => onChange({ binds: items })}
-        placeholder="host:container[:options]"
-        addLabel="Add Bind"
-      />
-    </Box>
-    <Box>
-      <Typography variant="caption" sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", mb: 0.5, display: "block" }}>
-        Environment Variables
-      </Typography>
-      <KeyValueList
-        items={data.env || {}}
-        onChange={(items) => onChange({ env: items })}
-        keyPlaceholder="Variable"
-        valuePlaceholder="Value"
-        addLabel="Add Variable"
-      />
-    </Box>
-    <Box>
-      <Typography variant="caption" sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", mb: 0.5, display: "block" }}>
-        Environment Files
-      </Typography>
-      <DynamicList
-        items={data.envFiles || []}
-        onChange={(items) => onChange({ envFiles: items })}
-        placeholder="Path to env file"
-        addLabel="Add Env File"
-      />
-    </Box>
-    <Box>
-      <Typography variant="caption" sx={{ fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", mb: 0.5, display: "block" }}>
-        Labels
-      </Typography>
-      <KeyValueList
-        items={data.labels || {}}
-        onChange={(items) => onChange({ labels: items })}
-        keyPlaceholder="Label"
-        valuePlaceholder="Value"
-        addLabel="Add Label"
-      />
-    </Box>
-  </>
-);
-
-export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-    <StartupConfigSection data={data} onChange={onChange} />
-    <BindsAndEnvSection data={data} onChange={onChange} />
-  </Box>
-);
