@@ -212,7 +212,6 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
   MuiOutlinedInput: {
     styleOverrides: {
       root: {
-        backgroundColor: "var(--vscode-input-background)",
         "&.Mui-disabled": { opacity: 0.5 }
       }
     }
