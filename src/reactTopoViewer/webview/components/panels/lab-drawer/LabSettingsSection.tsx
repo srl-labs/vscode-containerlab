@@ -15,7 +15,7 @@ export interface LabSettingsSectionProps {
   isLocked: boolean;
   labSettings?: LabSettings;
   onClose: () => void;
-  saveRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  saveRef?: React.RefObject<(() => Promise<void>) | null>;
 }
 
 export const LabSettingsSection: React.FC<LabSettingsSectionProps> = ({

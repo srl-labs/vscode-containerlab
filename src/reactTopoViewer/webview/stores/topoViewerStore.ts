@@ -7,11 +7,12 @@ import type { EdgeAnnotation } from "../../shared/types/topology";
 import type { CustomIconInfo } from "../../shared/types/icons";
 import type { LabSettings } from "../../shared/types/labSettings";
 import { upsertEdgeAnnotation } from "../annotations/edgeAnnotations";
-import { useAnnotationUIStore } from "./annotationUIStore";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   clampEndpointLabelOffset
 } from "../annotations/endpointLabelOffset";
+
+import { useAnnotationUIStore } from "./annotationUIStore";
 
 // ============================================================================
 // Types

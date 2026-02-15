@@ -1,5 +1,5 @@
 // Lab settings dialog.
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -29,6 +29,15 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
 }) => {
   const saveRef = useRef<(() => Promise<void>) | null>(null);
   const isReadOnly = mode === "view" || isLocked;
+  const handleSaveClick = useCallback(() => {
+    const save = saveRef.current;
+    if (!save) {
+      return;
+    }
+    save().catch((error) => {
+      console.error("Failed to save lab settings", error);
+    });
+  }, []);
 
   return (
     <Dialog
@@ -37,7 +46,7 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
       maxWidth="sm"
       fullWidth
       data-testid="lab-settings-modal"
-      PaperProps={{ sx: { height: "80vh", maxHeight: "80vh" } }}
+      slotProps={{ paper: { sx: { height: "80vh", maxHeight: "80vh" } } }}
     >
       <DialogTitle
         sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
@@ -58,11 +67,7 @@ export const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
       </DialogContent>
       {!isReadOnly && (
         <DialogActions>
-          <Button
-            size="small"
-            onClick={() => void saveRef.current?.()}
-            data-testid="lab-settings-save-btn"
-          >
+          <Button size="small" onClick={handleSaveClick} data-testid="lab-settings-save-btn">
             Apply
           </Button>
         </DialogActions>

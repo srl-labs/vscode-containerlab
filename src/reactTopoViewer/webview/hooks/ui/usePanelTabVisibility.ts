@@ -10,8 +10,9 @@
  * - Edit tab from appearing in view mode
  */
 import { useTopoViewerState } from "../../stores";
-import { useContextPanelContent } from "./useContextPanelContent";
 import { useAnnotationUIStore } from "../../stores/annotationUIStore";
+
+import { useContextPanelContent } from "./useContextPanelContent";
 
 export interface PanelTabVisibility {
   showInfoTab: boolean;
@@ -30,12 +31,12 @@ export function usePanelTabVisibility(): PanelTabVisibility {
   // Info tab: ONLY in view mode, when node or link is selected
   const showInfoTab =
     isViewMode && (panelView.kind === "nodeInfo" || panelView.kind === "linkInfo");
-  const infoTabTitle =
-    panelView.kind === "nodeInfo"
-      ? "Node Properties"
-      : panelView.kind === "linkInfo"
-        ? "Link Properties"
-        : undefined;
+  let infoTabTitle: string | undefined;
+  if (panelView.kind === "nodeInfo") {
+    infoTabTitle = "Node Properties";
+  } else if (panelView.kind === "linkInfo") {
+    infoTabTitle = "Link Properties";
+  }
 
   // Edit tab: visible whenever an editor is active (any mode).
   // Some editors are view-mode features (Link Impairments, annotation editing).

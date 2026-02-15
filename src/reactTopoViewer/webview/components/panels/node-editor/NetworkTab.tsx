@@ -18,6 +18,14 @@ const NETWORK_MODE_OPTIONS = [
   { value: "container", label: "Container" }
 ];
 
+const SECTION_HEADER_SX = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  px: 2,
+  py: 1
+} as const;
+
 export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
   const handleAddPort = () => {
     onChange({ ports: [...(data.ports || []), ""] });
@@ -64,15 +72,7 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Port Mappings */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Port Mappings</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddPort} sx={{ py: 0 }}>
           ADD
@@ -90,15 +90,7 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* DNS Servers */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">DNS Servers</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddDns} sx={{ py: 0 }}>
           ADD
@@ -116,15 +108,7 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Network Aliases */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Network Aliases</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddAlias} sx={{ py: 0 }}>
           ADD

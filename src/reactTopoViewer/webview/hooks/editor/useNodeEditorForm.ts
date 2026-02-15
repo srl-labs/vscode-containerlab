@@ -3,6 +3,7 @@
  * Extracted from NodeEditorView.tsx
  */
 import { useState, useEffect, useCallback, useRef } from "react";
+
 import type { NodeEditorData, NodeEditorTabId } from "../../components/panels/node-editor/types";
 
 /** Maps YAML kebab-case keys to camelCase NodeEditorData keys */

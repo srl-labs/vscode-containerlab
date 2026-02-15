@@ -22,6 +22,7 @@ import { useEscapeKey } from "../../hooks/ui/useDomInteractions";
 import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
+
 import { ColorField, IconPreview, InputField } from "./form";
 
 const AVAILABLE_ICONS: NodeType[] = [

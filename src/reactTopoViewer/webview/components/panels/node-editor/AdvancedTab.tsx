@@ -30,6 +30,14 @@ const RUNTIME_OPTIONS = [
   { value: "runsc", label: "runsc (gVisor)" }
 ];
 
+const SECTION_HEADER_SX = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  px: 2,
+  py: 1
+} as const;
+
 export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
   const hc = data.healthCheck || {};
 
@@ -98,15 +106,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Capabilities */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Capabilities</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddCapability} sx={{ py: 0 }}>
           ADD
@@ -124,15 +124,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Sysctls */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Sysctls</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddSysctl} sx={{ py: 0 }}>
           ADD
@@ -151,15 +143,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Devices */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Devices</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddDevice} sx={{ py: 0 }}>
           ADD
@@ -212,15 +196,7 @@ export const AdvancedTab: React.FC<TabProps> = ({ data, onChange }) => {
       {data.certIssue && (
         <>
           <Divider />
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              px: 2,
-              py: 1
-            }}
-          >
+          <Box sx={SECTION_HEADER_SX}>
             <Typography variant="subtitle2">SANs (Subject Alternative Names)</Typography>
             <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddSan} sx={{ py: 0 }}>
               ADD

@@ -2,11 +2,12 @@
 import React from "react";
 import Box from "@mui/material/Box";
 
-import { TabNavigation } from "./TabNavigation";
-import type { TabDefinition } from "./TabNavigation";
 import { useFooterControlsRef } from "../../../hooks/ui/useFooterControlsRef";
 import type { FooterControlsRef } from "../../../hooks/ui/useFooterControlsRef";
 import { FIELDSET_RESET_STYLE } from "../../panels/context-panel/ContextPanelScrollArea";
+
+import type { TabDefinition } from "./TabNavigation";
+import { TabNavigation } from "./TabNavigation";
 
 export interface TabConfig {
   id: string;

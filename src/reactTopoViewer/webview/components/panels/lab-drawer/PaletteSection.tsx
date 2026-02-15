@@ -517,14 +517,23 @@ export const PaletteSection: React.FC<PaletteSectionProps> = ({
           </IconButton>
         )}
         {activeTab === "yaml" && !isSourceReadOnly && (
-          <IconButton size="small" onClick={handleSaveYaml} disabled={!yamlDirty} title="Save">
+          <IconButton
+            size="small"
+            onClick={() => {
+              handleSaveYaml().catch(() => undefined);
+            }}
+            disabled={!yamlDirty}
+            title="Save"
+          >
             <SaveIcon fontSize="small" />
           </IconButton>
         )}
         {activeTab === "json" && !isSourceReadOnly && (
           <IconButton
             size="small"
-            onClick={handleSaveAnnotations}
+            onClick={() => {
+              handleSaveAnnotations().catch(() => undefined);
+            }}
             disabled={!annotationsDirty}
             title="Save"
           >

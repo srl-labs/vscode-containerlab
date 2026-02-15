@@ -4,7 +4,6 @@ import Box from "@mui/material/Box";
 
 import type { GroupStyleAnnotation } from "../../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../../hooks/canvas";
-
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
 import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import { GroupFormContent } from "../../group-editor/GroupFormContent";

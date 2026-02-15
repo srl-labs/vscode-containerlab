@@ -1,5 +1,6 @@
 // Icon preview with configurable corner radius.
 import Avatar from "@mui/material/Avatar";
+import type { FC } from "react";
 
 interface IconPreviewProps {
   src: string;
@@ -8,7 +9,7 @@ interface IconPreviewProps {
   cornerRadius?: number;
 }
 
-export const IconPreview: React.FC<IconPreviewProps> = ({ src, alt = "", size, cornerRadius }) => (
+export const IconPreview: FC<IconPreviewProps> = ({ src, alt = "", size, cornerRadius }) => (
   <Avatar
     variant="square"
     src={src}

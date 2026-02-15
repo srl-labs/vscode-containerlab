@@ -1,10 +1,9 @@
 // Text annotation editor for the ContextPanel.
 import React, { useCallback } from "react";
+import Box from "@mui/material/Box";
 
 import type { FreeTextAnnotation } from "../../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
-import Box from "@mui/material/Box";
-
 import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import { FreeTextFormContent } from "../../free-text-editor/FreeTextFormContent";
 

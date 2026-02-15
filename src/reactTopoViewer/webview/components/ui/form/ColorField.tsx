@@ -5,6 +5,7 @@ import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+
 import { normalizeHexColor } from "../../../utils/color";
 
 interface ColorFieldProps {
@@ -71,7 +72,11 @@ export const ColorField: React.FC<ColorFieldProps> = ({
   );
 
   const handleCopy = useCallback(() => {
-    void navigator.clipboard.writeText(normalizedValue);
+    const clipboard = globalThis.navigator?.clipboard;
+    if (!clipboard?.writeText) {
+      return;
+    }
+    clipboard.writeText(normalizedValue).catch(() => undefined);
   }, [normalizedValue]);
 
   const openPicker = useCallback(() => {

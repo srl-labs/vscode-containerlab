@@ -3,6 +3,7 @@
  * Extracted from LinkEditorView.tsx
  */
 import { useState, useEffect, useCallback, useRef } from "react";
+
 import type { LinkEditorData, LinkEditorTabId } from "../../components/panels/link-editor/types";
 
 export interface UseLinkEditorFormReturn {

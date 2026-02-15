@@ -39,7 +39,7 @@ export const NodeTemplateModal: React.FC = () => {
       onClose={handlers.handleClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { height: "80vh", maxHeight: "80vh" } }}
+      slotProps={{ paper: { sx: { height: "80vh", maxHeight: "80vh" } } }}
     >
       <DialogTitle
         sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}

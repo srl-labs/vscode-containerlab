@@ -45,6 +45,8 @@ const isCpmSlot = (slot: string | number | undefined): boolean => {
 const toOptions = (types: string[]): Array<{ value: string; label: string }> =>
   types.map((t) => ({ value: t, label: t }));
 
+const JUSTIFY_SPACE_BETWEEN = "space-between";
+
 // ============================================================================
 // MDA Entry Component
 // ============================================================================
@@ -176,7 +178,7 @@ const MdaSectionWrapper: React.FC<MdaSectionWrapperProps> = ({
   onRemoveMda
 }) => (
   <>
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: JUSTIFY_SPACE_BETWEEN, px: 2, py: 1 }}>
       <Typography variant="subtitle2">MDA Components</Typography>
       <Button variant="text" size="small" startIcon={<AddIcon />} onClick={() => onAddMda(parentIndex)} sx={{ py: 0 }}>
         Add
@@ -283,7 +285,7 @@ const ComponentHeader: React.FC<{
     sx={{
       display: "flex",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: JUSTIFY_SPACE_BETWEEN,
       px: 1.5,
       py: 0.5,
       cursor: "pointer"
@@ -373,7 +375,7 @@ const ComponentXiomSection: React.FC<
 
   return (
     <>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: JUSTIFY_SPACE_BETWEEN, px: 2, py: 1 }}>
         <Typography variant="subtitle2">XIOM Components</Typography>
         <Button
           variant="text"
@@ -492,7 +494,7 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
   <>
     <Divider />
     <Box
-      sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1 }}
+      sx={{ display: "flex", alignItems: "center", justifyContent: JUSTIFY_SPACE_BETWEEN, px: 2, py: 1 }}
     >
       <Typography variant="subtitle2">{title}</Typography>
       <Button
@@ -659,7 +661,7 @@ const IntegratedModeSection: React.FC<IntegratedModeSectionProps> = ({
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: JUSTIFY_SPACE_BETWEEN,
           px: 2,
           py: 1
         }}

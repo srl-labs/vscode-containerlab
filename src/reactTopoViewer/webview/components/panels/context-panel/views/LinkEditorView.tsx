@@ -6,9 +6,8 @@ import type { TabConfig } from "../../../ui/editor/EditorPanel";
 import { useFooterControlsRef } from "../../../../hooks/ui";
 import { useLinkEditorForm } from "../../../../hooks/editor/useLinkEditorForm";
 import type { LinkEditorData, LinkEditorTabId } from "../../link-editor/types";
-import { validateLinkEditorData } from "../../link-editor/ExtendedTab";
+import { validateLinkEditorData, ExtendedTab  } from "../../link-editor/ExtendedTab";
 import { BasicTab } from "../../link-editor/BasicTab";
-import { ExtendedTab } from "../../link-editor/ExtendedTab";
 
 export interface LinkEditorBannerRef {
   errors: string[];

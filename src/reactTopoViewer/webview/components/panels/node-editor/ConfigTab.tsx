@@ -18,6 +18,14 @@ const STARTUP_CONFIG_MODE_OPTIONS = [
   { value: "suppress", label: "Suppress startup config" }
 ];
 
+const SECTION_HEADER_SX = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  px: 2,
+  py: 1
+} as const;
+
 function getStartupConfigMode(data: {
   enforceStartupConfig?: boolean;
   suppressStartupConfig?: boolean;
@@ -95,15 +103,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Bind Mounts */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Bind Mounts</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddBind} sx={{ py: 0 }}>
           ADD
@@ -121,15 +121,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Environment Variables */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Environment Variables</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddEnvVar} sx={{ py: 0 }}>
           ADD
@@ -148,15 +140,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Environment Files */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Environment Files</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddEnvFile} sx={{ py: 0 }}>
           ADD
@@ -174,15 +158,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
       {/* Labels */}
       <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
+      <Box sx={SECTION_HEADER_SX}>
         <Typography variant="subtitle2">Labels</Typography>
         <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
           ADD

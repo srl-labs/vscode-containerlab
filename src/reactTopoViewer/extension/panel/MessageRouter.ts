@@ -2,9 +2,10 @@
  * MessageRouter - Handles webview message routing for ReactTopoViewer
  */
 
+import * as path from "path";
+
 import type * as vscode from "vscode";
 
-import * as path from "path";
 import { log, logWithLocation } from "../services/logger";
 import { labLifecycleService } from "../services/LabLifecycleService";
 import { nodeFsAdapter } from "../../shared/io";
@@ -483,12 +484,12 @@ export class MessageRouter {
       log.warn("[MessageRouter] dump-css-vars: no vars payload");
       return;
     }
-    const yamlDir = this.context.yamlFilePath
-      ? path.dirname(this.context.yamlFilePath)
-      : undefined;
-    const outPath = yamlDir
-      ? path.join(yamlDir, "vscode-css-vars.json")
-      : "/tmp/vscode-css-vars.json";
+    const yamlFilePath = this.context.yamlFilePath;
+    if (!yamlFilePath) {
+      log.warn("[MessageRouter] dump-css-vars: yamlFilePath is unavailable");
+      return;
+    }
+    const outPath = path.join(path.dirname(yamlFilePath), "vscode-css-vars.json");
     await nodeFsAdapter.writeFile(outPath, JSON.stringify(vars, null, 2));
     log.info(`[MessageRouter] Wrote CSS vars to ${outPath}`);
   }

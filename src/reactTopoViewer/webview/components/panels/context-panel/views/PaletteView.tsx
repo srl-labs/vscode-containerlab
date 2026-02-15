@@ -13,12 +13,12 @@ import type { LinkEditorData } from "../../link-editor/types";
 import type { LinkImpairmentData } from "../../link-impairment/types";
 import type { NetworkEditorData } from "../../network-editor/types";
 import type { NodeEditorData } from "../../node-editor/types";
+import { usePanelTabVisibility } from "../../../../hooks/ui/usePanelTabVisibility";
+import type { NodeData, LinkData } from "../../../../hooks/ui";
 
 import { EditorTabContent } from "./EditorTabContent";
 import type { EditorFooterRef, EditorBannerRef } from "./EditorTabContent";
 import { InfoTabContent } from "./InfoTabContent";
-import { usePanelTabVisibility } from "../../../../hooks/ui/usePanelTabVisibility";
-import type { NodeData, LinkData } from "../../../../hooks/ui";
 
 type FooterRefLocal = EditorFooterRef | null;
 

@@ -2,6 +2,21 @@
 // Palette values are CSS var() references — VS Code swaps them for light/dark.
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 
+const BUTTON_BACKGROUND = "var(--vscode-button-background)";
+const BUTTON_SECONDARY_BACKGROUND = "var(--vscode-button-secondaryBackground)";
+const EDITOR_ERROR_FOREGROUND = "var(--vscode-editorError-foreground)";
+const EDITOR_WARNING_FOREGROUND = "var(--vscode-editorWarning-foreground)";
+const EDITOR_INFO_FOREGROUND = "var(--vscode-editorInfo-foreground)";
+const TESTING_ICON_PASSED = "var(--vscode-testing-iconPassed, var(--vscode-charts-green))";
+const FOCUS_BORDER = "var(--vscode-focusBorder)";
+
+const buildPaletteColor = (main: string, contrastText: string) => ({
+  main,
+  dark: main,
+  light: main,
+  contrastText
+});
+
 // Palette — single source of truth for all colors.
 // dark/light repeat main to prevent createTheme from deriving them (crashes on CSS vars).
 export const vscodePalette = {
@@ -15,49 +30,22 @@ export const vscodePalette = {
     secondary: "var(--vscode-descriptionForeground)",
     disabled: "var(--vscode-disabledForeground)"
   },
-  primary: {
-    main: "var(--vscode-button-background)",
-    dark: "var(--vscode-button-background)",
-    light: "var(--vscode-button-background)",
-    contrastText: "var(--vscode-button-foreground)"
-  },
-  secondary: {
-    main: "var(--vscode-button-secondaryBackground)",
-    dark: "var(--vscode-button-secondaryBackground)",
-    light: "var(--vscode-button-secondaryBackground)",
-    contrastText: "var(--vscode-button-secondaryForeground)"
-  },
-  error: {
-    main: "var(--vscode-editorError-foreground)",
-    dark: "var(--vscode-editorError-foreground)",
-    light: "var(--vscode-editorError-foreground)",
-    contrastText: "var(--vscode-inputValidation-errorForeground)"
-  },
-  warning: {
-    main: "var(--vscode-editorWarning-foreground)",
-    dark: "var(--vscode-editorWarning-foreground)",
-    light: "var(--vscode-editorWarning-foreground)",
-    contrastText: "var(--vscode-inputValidation-warningForeground)"
-  },
-  info: {
-    main: "var(--vscode-editorInfo-foreground)",
-    dark: "var(--vscode-editorInfo-foreground)",
-    light: "var(--vscode-editorInfo-foreground)",
-    contrastText: "var(--vscode-inputValidation-infoForeground)"
-  },
-  success: {
-    main: "var(--vscode-testing-iconPassed, var(--vscode-charts-green))",
-    dark: "var(--vscode-testing-iconPassed, var(--vscode-charts-green))",
-    light: "var(--vscode-testing-iconPassed, var(--vscode-charts-green))",
-    contrastText: "var(--vscode-button-foreground)"
-  },
+  primary: buildPaletteColor(BUTTON_BACKGROUND, "var(--vscode-button-foreground)"),
+  secondary: buildPaletteColor(BUTTON_SECONDARY_BACKGROUND, "var(--vscode-button-secondaryForeground)"),
+  error: buildPaletteColor(EDITOR_ERROR_FOREGROUND, "var(--vscode-inputValidation-errorForeground)"),
+  warning: buildPaletteColor(
+    EDITOR_WARNING_FOREGROUND,
+    "var(--vscode-inputValidation-warningForeground)"
+  ),
+  info: buildPaletteColor(EDITOR_INFO_FOREGROUND, "var(--vscode-inputValidation-infoForeground)"),
+  success: buildPaletteColor(TESTING_ICON_PASSED, "var(--vscode-button-foreground)"),
   action: {
     active: "var(--vscode-icon-foreground)",
     hover: "var(--vscode-list-hoverBackground)",
     selected: "var(--vscode-list-inactiveSelectionBackground)",
     disabled: "var(--vscode-disabledForeground)",
     disabledBackground: "var(--vscode-input-background)",
-    focus: "var(--vscode-focusBorder)"
+    focus: FOCUS_BORDER
   }
 } as const;
 
@@ -115,10 +103,10 @@ export const structuralOverrides: NonNullable<ThemeOptions["components"]> = {
     styleOverrides: {
       root: {
         "&:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: "var(--vscode-focusBorder)"
+          borderColor: FOCUS_BORDER
         },
         "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-          borderColor: "var(--vscode-focusBorder)"
+          borderColor: FOCUS_BORDER
         }
       },
       notchedOutline: {
@@ -174,8 +162,10 @@ const baseTheme = createTheme({
 
 // Patch MUI color utils — default implementations crash on CSS var() strings.
 // alpha uses color-mix so hover/focus overlays resolve correctly at runtime.
-baseTheme.alpha = (color: string, opacity: number | string) =>
-  `color-mix(in srgb, ${color} ${typeof opacity === "number" ? `${Math.round(opacity * 100)}%` : opacity}, transparent)`;
+baseTheme.alpha = (color: string, opacity: number | string) => {
+  const opacityValue = typeof opacity === "number" ? `${Math.round(opacity * 100)}%` : opacity;
+  return `color-mix(in srgb, ${color} ${opacityValue}, transparent)`;
+};
 baseTheme.lighten = (color: string) => color;
 baseTheme.darken = (color: string) => color;
 baseTheme.palette.getContrastText = () => vscodePalette.text.primary;
