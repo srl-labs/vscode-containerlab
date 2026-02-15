@@ -416,7 +416,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
   };
   const linkInfoItem: ContextMenuItem = {
     id: "info-edge",
-    label: "Link Info",
+    label: "Info",
     icon: React.createElement(InfoIcon, { fontSize: "small" }),
     onClick: () => {
       showLinkInfo?.(targetId);
@@ -428,6 +428,7 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
       ...captureItems,
       ...(captureItems.length > 0 ? [{ id: "divider-capture", label: "", divider: true }] : []),
       impairmentItem,
+      { id: "divider-info", label: "", divider: true },
       linkInfoItem
     ];
   }
@@ -476,19 +477,22 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
 
   // Add Node is only available in edit mode (not when deployed)
   if (isEditMode) {
-    items.push({
-      id: "add-node",
-      label: "Add Node",
-      icon: React.createElement(AddIcon, { fontSize: "small" }),
-      disabled: isLocked,
-      onClick: () => {
-        if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
-          const flowPosition = reactFlowInstance.current.screenToFlowPosition(menuPosition);
-          onAddDefaultNode(flowPosition);
+    items.push(
+      {
+        id: "add-node",
+        label: "Add Node",
+        icon: React.createElement(AddIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        onClick: () => {
+          if (onAddDefaultNode && menuPosition && reactFlowInstance.current) {
+            const flowPosition = reactFlowInstance.current.screenToFlowPosition(menuPosition);
+            onAddDefaultNode(flowPosition);
+          }
+          closeContextMenu();
         }
-        closeContextMenu();
-      }
-    });
+      },
+      { id: "divider-additions", label: "", divider: true }
+    );
   }
 
   const editorItems: ContextMenuItem[] = [];
@@ -588,21 +592,22 @@ export function buildPaneContextMenu(ctx: PaneMenuBuilderContext): ContextMenuIt
     });
   }
   if (editorItems.length > 0) {
-    items.push({ id: "divider-additions", label: "", divider: true }, ...editorItems);
+    items.push(...editorItems);
   }
 
-  items.push(
-    { id: "divider-palette", label: "", divider: true },
-    {
-      id: "open-node-palette",
-      label: "Open Palette",
-      icon: React.createElement(DashboardIcon, { fontSize: "small" }),
-      onClick: () => {
-        onOpenNodePalette?.();
-        closeContextMenu();
-      }
+  const paletteItem: ContextMenuItem = {
+    id: "open-node-palette",
+    label: "Open Palette",
+    icon: React.createElement(DashboardIcon, { fontSize: "small" }),
+    onClick: () => {
+      onOpenNodePalette?.();
+      closeContextMenu();
     }
-  );
+  };
+  if (items.length > 0) {
+    items.push({ id: "divider-palette", label: "", divider: true });
+  }
+  items.push(paletteItem);
 
   return items;
 }
