@@ -3,7 +3,9 @@ import React, { useCallback } from "react";
 
 import type { FreeTextAnnotation } from "../../../../../shared/types/topology";
 import { useGenericFormState, useEditorHandlersWithFooterRef } from "../../../../hooks/editor";
-import { EditorFieldset } from "../ContextPanelScrollArea";
+import Box from "@mui/material/Box";
+
+import { FIELDSET_RESET_STYLE } from "../ContextPanelScrollArea";
 import { FreeTextFormContent } from "../../free-text-editor/FreeTextFormContent";
 
 export interface FreeTextEditorViewProps {
@@ -58,13 +60,13 @@ export const FreeTextEditorView: React.FC<FreeTextEditorViewProps> = ({
   const effectiveUpdateField: typeof updateField = readOnly ? () => {} : updateField;
 
   return (
-    <EditorFieldset readOnly={readOnly}>
-      <FreeTextFormContent
-        formData={formData}
-        updateField={effectiveUpdateField}
-        isNew={isNew}
-        onDelete={!readOnly && onDelete ? handleDelete : undefined}
-      />
-    </EditorFieldset>
+    <Box sx={{ flex: 1, overflow: "auto" }}>
+      <fieldset disabled={readOnly} style={FIELDSET_RESET_STYLE}>
+        <FreeTextFormContent
+          formData={formData}
+          updateField={effectiveUpdateField}
+        />
+      </fieldset>
+    </Box>
   );
 };
