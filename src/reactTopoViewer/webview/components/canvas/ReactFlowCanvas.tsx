@@ -823,7 +823,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
     }, [fitViewRequestId, allNodes.length, isGeoLayout, isReactFlowReady]);
 
     // Refs for context menu (to avoid re-renders)
-    const { nodesRef } = useGraphRefs(allNodes, allEdges);
+    const { nodesRef, edgesRef } = useGraphRefs(allNodes, allEdges);
 
     const handlers = useCanvasHandlers({
       selectNode,
@@ -968,6 +968,7 @@ const ReactFlowCanvasInner = forwardRef<ReactFlowCanvasRef, ReactFlowCanvasProps
       showLinkInfo: selectEdge,
       showLinkImpairment: editImpairment,
       nodesRef,
+      edgesRef,
       linkSourceNode,
       startLinkCreation,
       cancelLinkCreation,

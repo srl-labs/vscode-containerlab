@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
+import { WiresharkIcon } from "../context-menu/WiresharkIcon";
 import { getViewportCenter } from "../../utils/viewportUtils";
 import { sendCommandToExtension } from "../../messaging/extensionMessaging";
 import {
@@ -66,6 +67,11 @@ interface MenuBuilderContext {
 
 interface EdgeMenuBuilderContext {
   targetId: string;
+  sourceNode?: string;
+  targetNode?: string;
+  sourceEndpoint?: string;
+  targetEndpoint?: string;
+  extraData?: Record<string, unknown>;
   isEditMode: boolean;
   isLocked: boolean;
   closeContextMenu: () => void;
@@ -337,6 +343,11 @@ export function buildNodeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[]
 export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuItem[] {
   const {
     targetId,
+    sourceNode,
+    targetNode,
+    sourceEndpoint,
+    targetEndpoint,
+    extraData,
     isEditMode,
     isLocked,
     closeContextMenu,
@@ -345,6 +356,40 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     showLinkInfo,
     showLinkImpairment
   } = ctx;
+
+  // Build capture items for each endpoint
+  const captureItems: ContextMenuItem[] = [];
+  const srcName = (extraData?.clabSourceLongName as string) ?? sourceNode;
+  const dstName = (extraData?.clabTargetLongName as string) ?? targetNode;
+  if (srcName && sourceEndpoint) {
+    captureItems.push({
+      id: "capture-source",
+      label: `${srcName} - ${sourceEndpoint}`,
+      icon: React.createElement(WiresharkIcon, { fontSize: "small" }),
+      onClick: () => {
+        sendCommandToExtension("clab-interface-capture", {
+          nodeName: srcName,
+          interfaceName: sourceEndpoint
+        });
+        closeContextMenu();
+      }
+    });
+  }
+  if (dstName && targetEndpoint) {
+    captureItems.push({
+      id: "capture-target",
+      label: `${dstName} - ${targetEndpoint}`,
+      icon: React.createElement(WiresharkIcon, { fontSize: "small" }),
+      onClick: () => {
+        sendCommandToExtension("clab-interface-capture", {
+          nodeName: dstName,
+          interfaceName: targetEndpoint
+        });
+        closeContextMenu();
+      }
+    });
+  }
+
   const impairmentItem: ContextMenuItem = {
     id: "impair-edge",
     label: "Link Impairments",
@@ -364,7 +409,12 @@ export function buildEdgeContextMenu(ctx: EdgeMenuBuilderContext): ContextMenuIt
     }
   };
   if (!isEditMode) {
-    return [impairmentItem, linkInfoItem];
+    return [
+      ...captureItems,
+      ...(captureItems.length > 0 ? [{ id: "divider-capture", label: "", divider: true }] : []),
+      impairmentItem,
+      linkInfoItem
+    ];
   }
   return [
     {

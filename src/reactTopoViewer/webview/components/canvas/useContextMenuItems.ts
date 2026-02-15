@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from "react";
-import type { Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 import type { useCanvasHandlers } from "../../hooks/canvas";
 import type { ContextMenuItem } from "../context-menu/ContextMenu";
@@ -24,6 +24,7 @@ interface ContextMenuItemsParams {
   showLinkInfo: (edgeId: string) => void;
   showLinkImpairment: (edgeId: string) => void;
   nodesRef: RefObject<Node[]>;
+  edgesRef: RefObject<Edge[]>;
   linkSourceNode: string | null;
   startLinkCreation: (nodeId: string) => void;
   cancelLinkCreation: () => void;
@@ -53,6 +54,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     showLinkInfo,
     showLinkImpairment,
     nodesRef,
+    edgesRef,
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation,
@@ -71,6 +73,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     const isEditMode = state.mode === "edit";
     const isLocked = state.isLocked;
     const nodes = nodesRef.current ?? [];
+    const edges = edgesRef.current ?? [];
 
     if (type === "node" && targetId) {
       const targetNode = nodes.find((n) => n.id === targetId);
@@ -98,8 +101,17 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
       });
     }
     if (type === "edge" && targetId) {
+      const targetEdge = edges.find((e) => e.id === targetId);
+      const edgeData = targetEdge?.data as
+        | { sourceEndpoint?: string; targetEndpoint?: string; extraData?: Record<string, unknown> }
+        | undefined;
       return buildEdgeContextMenu({
         targetId,
+        sourceNode: targetEdge?.source,
+        targetNode: targetEdge?.target,
+        sourceEndpoint: edgeData?.sourceEndpoint,
+        targetEndpoint: edgeData?.targetEndpoint,
+        extraData: edgeData?.extraData,
         isEditMode,
         isLocked,
         closeContextMenu: handlers.closeContextMenu,
@@ -143,6 +155,7 @@ export function useContextMenuItems(params: ContextMenuItemsParams): ContextMenu
     showLinkInfo,
     showLinkImpairment,
     nodesRef,
+    edgesRef,
     linkSourceNode,
     startLinkCreation,
     cancelLinkCreation,
