@@ -259,40 +259,6 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
   );
 };
 
-const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ network }) => {
-  const onDragStart = useCallback(
-    (event: React.DragEvent) => {
-      event.dataTransfer.setData(
-        REACTFLOW_NODE_MIME_TYPE,
-        JSON.stringify({
-          type: "network",
-          networkType: network.type
-        })
-      );
-      event.dataTransfer.effectAllowed = "move";
-    },
-    [network.type]
-  );
-
-  return (
-    <PaletteDraggableCard onDragStart={onDragStart}>
-      <Box sx={{ color: TEXT_SECONDARY }}>{network.icon}</Box>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography
-          variant="body2"
-          noWrap
-          sx={{ fontWeight: (theme) => theme.typography.fontWeightMedium }}
-        >
-          {network.label}
-        </Typography>
-        <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
-          {network.type}
-        </Typography>
-      </Box>
-    </PaletteDraggableCard>
-  );
-};
-
 interface DraggableAnnotationProps {
   label: string;
   kind: string;
@@ -300,21 +266,25 @@ interface DraggableAnnotationProps {
   payload: AnnotationPayload;
 }
 
-const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
-  label,
-  kind,
+interface PaletteSimpleDraggableProps {
+  dragPayload: Record<string, unknown>;
+  icon: React.ReactNode;
+  label: string;
+  subtitle: string;
+}
+
+const PaletteSimpleDraggable: React.FC<PaletteSimpleDraggableProps> = ({
+  dragPayload,
   icon,
-  payload
+  label,
+  subtitle
 }) => {
   const onDragStart = useCallback(
     (event: React.DragEvent) => {
-      event.dataTransfer.setData(
-        REACTFLOW_NODE_MIME_TYPE,
-        JSON.stringify({ type: "annotation", ...payload })
-      );
+      event.dataTransfer.setData(REACTFLOW_NODE_MIME_TYPE, JSON.stringify(dragPayload));
       event.dataTransfer.effectAllowed = "move";
     },
-    [payload]
+    [dragPayload]
   );
 
   return (
@@ -329,12 +299,30 @@ const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({
           {label}
         </Typography>
         <Typography variant="caption" color={TEXT_SECONDARY} noWrap>
-          {kind}
+          {subtitle}
         </Typography>
       </Box>
     </PaletteDraggableCard>
   );
 };
+
+const DraggableNetwork: React.FC<{ network: NetworkTypeDefinition }> = ({ network }) => (
+  <PaletteSimpleDraggable
+    dragPayload={{ type: "network", networkType: network.type }}
+    icon={network.icon}
+    label={network.label}
+    subtitle={network.type}
+  />
+);
+
+const DraggableAnnotation: React.FC<DraggableAnnotationProps> = ({ label, kind, icon, payload }) => (
+  <PaletteSimpleDraggable
+    dragPayload={{ type: "annotation", ...payload }}
+    icon={icon}
+    label={label}
+    subtitle={kind}
+  />
+);
 
 export const PALETTE_TABS: TabDefinition[] = [
   { id: "info", label: "Info" },

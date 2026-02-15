@@ -17,6 +17,7 @@ import type { GroupEditorData } from "./groupTypes";
 import { calculateDefaultGroupPosition, calculateGroupBoundsFromNodes } from "./annotationHelpers";
 import { findParentGroupForBounds, generateGroupId } from "./groupUtils";
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
+import { readThemeColor } from "./themeColor";
 interface UseGroupAnnotationsParams {
   isLocked: boolean;
   onLockedAction: () => void;
@@ -33,17 +34,6 @@ export interface GroupAnnotationActions {
   createGroupAtPosition: (position: { x: number; y: number }) => void;
   addGroup: (group: GroupStyleAnnotation) => void;
   updateGroupSize: (id: string, width: number, height: number) => void;
-}
-
-function readThemeColor(cssVar: string, fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  const bodyColor = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
-  if (bodyColor) return bodyColor;
-  const rootColor = window
-    .getComputedStyle(document.documentElement)
-    .getPropertyValue(cssVar)
-    .trim();
-  return rootColor || fallback;
 }
 
 function buildGroupsSnapshot(

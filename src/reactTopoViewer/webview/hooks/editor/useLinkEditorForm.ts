@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 import type { LinkEditorData, LinkEditorTabId } from "../../components/panels/link-editor/types";
 
+import { applyFormUpdates } from "./formState";
+
 export interface UseLinkEditorFormReturn {
   activeTab: LinkEditorTabId;
   setActiveTab: (tab: LinkEditorTabId) => void;
@@ -48,8 +50,7 @@ export function useLinkEditorForm(
 
   const handleChange = useCallback(
     (updates: Partial<LinkEditorData>) => {
-      if (readOnly) return;
-      setFormData((prev) => (prev ? { ...prev, ...updates } : null));
+      applyFormUpdates(readOnly, setFormData, updates);
     },
     [readOnly]
   );

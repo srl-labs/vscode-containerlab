@@ -1,11 +1,9 @@
 // Node info view with read-only fields.
 import React from "react";
 import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
 
 import type { NodeData } from "../../../../hooks/ui";
-import { ReadOnlyCopyField } from "../../../ui/form";
+import { PanelSectionHeader, ReadOnlyCopyField } from "../../../ui/form";
 
 export interface NodeInfoViewProps {
   nodeData: NodeData | null;
@@ -33,16 +31,6 @@ function extractNodeDisplayProps(nodeData: NodeData) {
   };
 }
 
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <>
-    <Divider />
-    <Box sx={{ px: 2, py: 1 }}>
-      <Typography variant="subtitle2">{title}</Typography>
-    </Box>
-    <Divider />
-  </>
-);
-
 export const NodeInfoView: React.FC<NodeInfoViewProps> = ({ nodeData }) => {
   if (!nodeData) return null;
 
@@ -51,12 +39,12 @@ export const NodeInfoView: React.FC<NodeInfoViewProps> = ({ nodeData }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      <SectionHeader title="Node" />
+      <PanelSectionHeader title="Node" withTopDivider={true} />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <ReadOnlyCopyField label="Name" value={nodeName} />
       </Box>
 
-      <SectionHeader title="Properties" />
+      <PanelSectionHeader title="Properties" withTopDivider={true} />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <ReadOnlyCopyField label="Kind" value={kind} />
@@ -65,7 +53,7 @@ export const NodeInfoView: React.FC<NodeInfoViewProps> = ({ nodeData }) => {
         <ReadOnlyCopyField label="Image" value={image} />
       </Box>
 
-      <SectionHeader title="Management" />
+      <PanelSectionHeader title="Management" withTopDivider={true} />
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <ReadOnlyCopyField label="IPv4" value={mgmtIpv4} mono />

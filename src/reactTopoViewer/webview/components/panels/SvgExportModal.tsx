@@ -3,7 +3,6 @@ import React, { useState, useCallback } from "react";
 import type { ReactFlowInstance, Edge } from "@xyflow/react";
 import {
   AccountTree as AccountTreeIcon,
-  Close as CloseIcon,
   Download as DownloadIcon,
   Lightbulb as LightbulbIcon
 } from "@mui/icons-material";
@@ -16,10 +15,8 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle,
   Divider,
   FormControlLabel,
-  IconButton,
   InputAdornment,
   Paper,
   Radio,
@@ -40,6 +37,7 @@ import {
 } from "../../annotations/annotationNodeConverters";
 import { log } from "../../utils/logger";
 import { ColorField, PREVIEW_GRID_BG_SX } from "../ui/form";
+import { DialogTitleWithClose } from "../ui/dialog/DialogChrome";
 
 import {
   buildSvgDefs,
@@ -234,14 +232,7 @@ export const SvgExportModal: React.FC<SvgExportModalProps> = ({
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="sm" fullWidth data-testid="svg-export-modal">
-      <DialogTitle
-        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
-      >
-        Export SVG
-        <IconButton size="small" onClick={onClose}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
+      <DialogTitleWithClose title="Export SVG" onClose={onClose} />
       <DialogContent dividers sx={{ p: 0 }}>
         <Box sx={{ p: 2 }}>
           <TextField

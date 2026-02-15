@@ -1,15 +1,13 @@
 // Link info view with endpoint tabs.
 import React, { useState } from "react";
 import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
 
 import type { LinkData } from "../../../../hooks/ui";
 import type { InterfaceStatsPayload } from "../../../../../shared/types/topology";
 import { TrafficChart } from "../../TrafficChart";
 import type { TabDefinition } from "../../../ui/editor";
 import { TabNavigation } from "../../../ui/editor/TabNavigation";
-import { ReadOnlyCopyField } from "../../../ui/form";
+import { PanelSectionHeader, ReadOnlyCopyField } from "../../../ui/form";
 
 interface EndpointData {
   node?: string;
@@ -66,16 +64,6 @@ function getEndpoints(linkData: LinkInfoData): { a: EndpointData; b: EndpointDat
   return { a, b };
 }
 
-const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <>
-    <Divider />
-    <Box sx={{ px: 2, py: 1 }}>
-      <Typography variant="subtitle2">{title}</Typography>
-    </Box>
-    <Divider />
-  </>
-);
-
 export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
   const [activeTab, setActiveTab] = useState<EndpointTab>("a");
 
@@ -99,7 +87,7 @@ export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
       />
 
       <Box sx={{ flex: 1, overflow: "auto" }}>
-        <SectionHeader title="Endpoint" />
+        <PanelSectionHeader title="Endpoint" withTopDivider={true} />
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
             <ReadOnlyCopyField label="Node" value={currentEndpoint.node || ""} />
@@ -108,7 +96,7 @@ export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
           <ReadOnlyCopyField label="Type" value={currentEndpoint.type || ""} />
         </Box>
 
-        <SectionHeader title="Layer 2" />
+        <PanelSectionHeader title="Layer 2" withTopDivider={true} />
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
             <ReadOnlyCopyField label="MAC" value={currentEndpoint.mac || ""} mono />
@@ -116,7 +104,7 @@ export const LinkInfoView: React.FC<LinkInfoViewProps> = ({ linkData }) => {
           </Box>
         </Box>
 
-        <SectionHeader title="Traffic" />
+        <PanelSectionHeader title="Traffic" withTopDivider={true} />
         <Box sx={{ minHeight: 200 }}>
           <TrafficChart stats={currentEndpoint.stats} endpointKey={endpointKey} />
         </Box>

@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 import type { NodeEditorData, NodeEditorTabId } from "../../components/panels/node-editor/types";
 
+import { applyFormUpdates } from "./formState";
+
 /** Maps YAML kebab-case keys to camelCase NodeEditorData keys */
 export const YAML_TO_EDITOR_MAP: Record<string, keyof NodeEditorData> = {
   "startup-config": "startupConfig",
@@ -80,8 +82,7 @@ export function useNodeEditorForm(
 
   const handleChange = useCallback(
     (updates: Partial<NodeEditorData>) => {
-      if (readOnly) return;
-      setFormData((prev) => (prev ? { ...prev, ...updates } : null));
+      applyFormUpdates(readOnly, setFormData, updates);
     },
     [readOnly]
   );

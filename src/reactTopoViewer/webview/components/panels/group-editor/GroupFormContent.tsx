@@ -1,13 +1,11 @@
 // Group editor form.
 import React from "react";
 import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
 
 import type { GroupStyleAnnotation } from "../../../../shared/types/topology";
 import type { GroupEditorData } from "../../../hooks/canvas";
 import { GROUP_LABEL_POSITIONS } from "../../../hooks/canvas";
-import { InputField, SelectField, ColorField } from "../../ui/form";
+import { InputField, SelectField, ColorField, PanelSection } from "../../ui/form";
 
 interface Props {
   formData: GroupEditorData;
@@ -24,12 +22,7 @@ export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updat
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Basic Information */}
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Basic Information</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Basic Information" withTopDivider={false}>
         <InputField
           id="group-name"
           label="Group Name"
@@ -60,15 +53,12 @@ export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updat
             min={0}
           />
         </Box>
-      </Box>
+      </PanelSection>
 
-      {/* Background */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Background</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
+      <PanelSection
+        title="Background"
+        bodySx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}
+      >
         <ColorField
           label="Color"
           value={style.backgroundColor ?? "#d9d9d9"}
@@ -84,15 +74,9 @@ export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updat
           max={100}
           suffix="%"
         />
-      </Box>
+      </PanelSection>
 
-      {/* Border */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Border</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Border">
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <ColorField
             label="Color"
@@ -136,21 +120,15 @@ export const GroupFormContent: React.FC<Props> = ({ formData, updateField, updat
             ]}
           />
         </Box>
-      </Box>
+      </PanelSection>
 
-      {/* Label */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Label</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelSection title="Label" bodySx={{ p: 2 }}>
         <ColorField
           label="Text Color"
           value={style.labelColor ?? style.color ?? "#ebecf0"}
           onChange={(v) => updateStyle("labelColor", v)}
         />
-      </Box>
+      </PanelSection>
     </Box>
   );
 };

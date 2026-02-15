@@ -1,12 +1,11 @@
 // Basic link configuration tab.
 import React from "react";
 import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import Slider from "@mui/material/Slider";
 import Button from "@mui/material/Button";
 
-import { ReadOnlyBadge, InputField } from "../../ui/form";
+import { ReadOnlyBadge, InputField, PanelSection } from "../../ui/form";
 import {
   DEFAULT_ENDPOINT_LABEL_OFFSET,
   ENDPOINT_LABEL_OFFSET_MIN,
@@ -65,13 +64,11 @@ const LabelOffsetSection: React.FC<LabelOffsetSectionProps> = ({
   onOffsetReset
 }) => {
   return (
-    <>
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Label Offset</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}>
+    <PanelSection
+      title="Label Offset"
+      bodySx={{ display: "flex", alignItems: "center", gap: 2, px: 2, py: 1 }}
+    >
+      <>
         <Typography variant="body2" color="text.secondary">
           {ENDPOINT_LABEL_OFFSET_MIN}
         </Typography>
@@ -95,8 +92,8 @@ const LabelOffsetSection: React.FC<LabelOffsetSectionProps> = ({
         >
           Reset
         </Button>
-      </Box>
-    </>
+      </>
+    </PanelSection>
   );
 };
 
@@ -142,11 +139,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Endpoints</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Endpoints" withTopDivider={false}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <EndpointInterfaceField
             isNetwork={Boolean(data.sourceIsNetwork)}
@@ -189,7 +182,7 @@ export const BasicTab: React.FC<LinkTabProps> = ({ data, onChange, onPreviewOffs
           placeholder="e.g., 1500"
           type="number"
         />
-      </Box>
+      </PanelSection>
 
       <LabelOffsetSection
         endpointOffsetValue={endpointOffsetValue}

@@ -1,13 +1,10 @@
 // Extended link configuration tab.
 import React from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
-import AddIcon from "@mui/icons-material/Add";
 
-import { KeyValueList } from "../../ui/form";
+import { KeyValueList, PanelAddSection } from "../../ui/form";
 
 import type { LinkTabProps, LinkEditorData } from "./types";
 
@@ -27,22 +24,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
-        <Typography variant="subtitle2">Variables</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddVar} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Variables" onAdd={handleAddVar} withTopDivider={false}>
         <KeyValueList
           items={data.vars || {}}
           onChange={(vars) => onChange({ vars })}
@@ -50,25 +32,9 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
           valuePlaceholder="Value"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
 
-      <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
-        <Typography variant="subtitle2">Labels</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Labels" onAdd={handleAddLabel}>
         <KeyValueList
           items={data.labels || {}}
           onChange={(labels) => onChange({ labels })}
@@ -76,7 +42,7 @@ const VethLinkFields: React.FC<LinkTabProps> = ({ data, onChange }) => {
           valuePlaceholder="Label value"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
     </Box>
   );
 };

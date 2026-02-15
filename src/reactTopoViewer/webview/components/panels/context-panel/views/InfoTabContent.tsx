@@ -1,11 +1,10 @@
 // Info content for the Info tab.
 import React from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { useContextPanelContent } from "../../../../hooks/ui/useContextPanelContent";
 import type { NodeData, LinkData } from "../../../../hooks/ui";
+import { PanelEmptyState } from "../../../ui/form";
 
 import { NodeInfoView } from "./NodeInfoView";
 import { LinkInfoView } from "./LinkInfoView";
@@ -17,23 +16,10 @@ export interface InfoTabContentProps {
 
 /** Placeholder shown when no info view is active */
 const InfoPlaceholder: React.FC = () => (
-  <Box
-    sx={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      height: "100%",
-      gap: 2,
-      color: "text.secondary",
-      p: 4
-    }}
-  >
-    <InfoOutlinedIcon sx={{ fontSize: 48, opacity: 0.5 }} />
-    <Typography variant="body2" textAlign="center">
-      Select a node or link to view its properties.
-    </Typography>
-  </Box>
+  <PanelEmptyState
+    icon={<InfoOutlinedIcon sx={{ fontSize: 48, opacity: 0.5 }} />}
+    message="Select a node or link to view its properties."
+  />
 );
 
 export const InfoTabContent: React.FC<InfoTabContentProps> = ({

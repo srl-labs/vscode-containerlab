@@ -1,12 +1,15 @@
 // Runtime tab for node editor.
 import React from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
 
-import { InputField, SelectField, CheckboxField, DynamicList } from "../../ui/form";
+import {
+  InputField,
+  SelectField,
+  CheckboxField,
+  DynamicList,
+  PanelAddSection,
+  PanelSection
+} from "../../ui/form";
 
 import type { TabProps } from "./types";
 
@@ -25,12 +28,7 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Container Settings */}
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Container Settings</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Container Settings" withTopDivider={false}>
         <InputField
           id="node-user"
           label="User"
@@ -52,41 +50,18 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
           onChange={(value) => onChange({ cmd: value })}
           placeholder="Container command"
         />
-      </Box>
+      </PanelSection>
 
-      {/* Exec Commands */}
-      <Divider />
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1
-        }}
-      >
-        <Typography variant="subtitle2">Exec Commands</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddExec} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Exec Commands" onAdd={handleAddExec}>
         <DynamicList
           items={data.exec || []}
           onChange={(items) => onChange({ exec: items })}
           placeholder="Command to execute"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
 
-      {/* Lifecycle */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Lifecycle</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Lifecycle">
         <InputField
           id="node-startup-delay"
           label="Startup Delay"
@@ -110,7 +85,7 @@ export const RuntimeTab: React.FC<TabProps> = ({ data, onChange }) => {
           checked={data.autoRemove || false}
           onChange={(checked) => onChange({ autoRemove: checked })}
         />
-      </Box>
+      </PanelSection>
     </Box>
   );
 };

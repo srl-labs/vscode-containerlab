@@ -1,8 +1,6 @@
 // Shape annotation editor form.
 import React from "react";
 import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
 
 import type { FreeShapeAnnotation } from "../../../../shared/types/topology";
 import {
@@ -16,7 +14,7 @@ import {
   DEFAULT_ARROW_SIZE,
   DEFAULT_CORNER_RADIUS
 } from "../../../annotations/constants";
-import { InputField, SelectField, Toggle, ColorField } from "../../ui/form";
+import { InputField, SelectField, Toggle, ColorField, PanelSection } from "../../ui/form";
 
 interface Props {
   formData: FreeShapeAnnotation;
@@ -36,12 +34,8 @@ interface BorderSectionProps extends SectionProps {
 
 const ShapeSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) => {
   return (
-    <>
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Shape</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+    <PanelSection title="Shape" withTopDivider={false}>
+      <>
         <SelectField
           id="shape-type"
           label="Shape Type"
@@ -87,8 +81,8 @@ const ShapeSection: React.FC<SectionProps> = ({ formData, updateField, isLine })
             />
           </Box>
         )}
-      </Box>
-    </>
+      </>
+    </PanelSection>
   );
 };
 
@@ -98,13 +92,8 @@ const FillSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) 
   const opacity = formData.fillOpacity ?? DEFAULT_FILL_OPACITY;
 
   return (
-    <>
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Fill</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
+    <PanelSection title="Fill" bodySx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5, p: 2 }}>
+      <>
         <ColorField
           label="Fill Color"
           value={formData.fillColor ?? DEFAULT_FILL_COLOR}
@@ -121,8 +110,8 @@ const FillSection: React.FC<SectionProps> = ({ formData, updateField, isLine }) 
           suffix="%"
           clearable
         />
-      </Box>
-    </>
+      </>
+    </PanelSection>
   );
 };
 
@@ -135,13 +124,8 @@ const BorderSection: React.FC<BorderSectionProps> = ({
   const borderWidth = formData.borderWidth ?? DEFAULT_BORDER_WIDTH;
 
   return (
-    <>
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">{isLine ? "Line" : "Border"}</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+    <PanelSection title={isLine ? "Line" : "Border"}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <ColorField
             label={isLine ? "Line Color" : "Border Color"}
@@ -186,7 +170,7 @@ const BorderSection: React.FC<BorderSectionProps> = ({
           />
         </Box>
       </Box>
-    </>
+    </PanelSection>
   );
 };
 
@@ -196,13 +180,8 @@ const ArrowSection: React.FC<SectionProps> = ({ formData, updateField, isLine })
   const hasArrows = Boolean(formData.lineStartArrow || formData.lineEndArrow);
 
   return (
-    <>
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Arrows</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+    <PanelSection title="Arrows">
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         <Box sx={{ display: "flex", gap: 1 }}>
           <Toggle
             active={formData.lineStartArrow ?? false}
@@ -230,7 +209,7 @@ const ArrowSection: React.FC<SectionProps> = ({ formData, updateField, isLine })
           />
         )}
       </Box>
-    </>
+    </PanelSection>
   );
 };
 

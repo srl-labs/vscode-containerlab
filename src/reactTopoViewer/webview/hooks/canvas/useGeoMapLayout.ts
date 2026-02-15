@@ -378,6 +378,46 @@ function syncNodesAndResetViewport(
   }
 }
 
+function clearPendingInteractionTimeout(interactionEndTimeoutRef: { current: number | null }): void {
+  if (interactionEndTimeoutRef.current === null) return;
+  window.clearTimeout(interactionEndTimeoutRef.current);
+  interactionEndTimeoutRef.current = null;
+}
+
+interface ResetGeoInteractionParams {
+  interactionEndTimeoutRef: { current: number | null };
+  isInteractingRef: { current: boolean };
+  interactionBaseRef: { current: GeoInteractionBase | null };
+  viewportElementRef: { current: HTMLElement | null };
+  viewportTransformOverrideActiveRef: { current: boolean };
+  setIsInteracting: (isInteracting: boolean) => void;
+  reactFlowInstance: ReactFlowInstance | null;
+  resetViewport?: boolean;
+}
+
+function resetGeoInteractionState({
+  interactionEndTimeoutRef,
+  isInteractingRef,
+  interactionBaseRef,
+  viewportElementRef,
+  viewportTransformOverrideActiveRef,
+  setIsInteracting,
+  reactFlowInstance,
+  resetViewport = false
+}: ResetGeoInteractionParams): void {
+  clearPendingInteractionTimeout(interactionEndTimeoutRef);
+  isInteractingRef.current = false;
+  interactionBaseRef.current = null;
+  if (viewportElementRef.current) {
+    clearViewportTransformOverride(viewportElementRef.current);
+  }
+  viewportTransformOverrideActiveRef.current = false;
+  if (resetViewport) {
+    resetGeoViewport(reactFlowInstance);
+  }
+  setIsInteracting(false);
+}
+
 export function useGeoMapLayout({
   isGeoLayout,
   nodes,
@@ -445,18 +485,16 @@ export function useGeoMapLayout({
 
   useEffect(() => {
     if (isGeoLayout) return;
-    if (interactionEndTimeoutRef.current !== null) {
-      window.clearTimeout(interactionEndTimeoutRef.current);
-      interactionEndTimeoutRef.current = null;
-    }
-    isInteractingRef.current = false;
-    interactionBaseRef.current = null;
-    if (viewportElementRef.current) {
-      clearViewportTransformOverride(viewportElementRef.current);
-    }
-    viewportTransformOverrideActiveRef.current = false;
+    resetGeoInteractionState({
+      interactionEndTimeoutRef,
+      isInteractingRef,
+      interactionBaseRef,
+      viewportElementRef,
+      viewportTransformOverrideActiveRef,
+      setIsInteracting,
+      reactFlowInstance: reactFlowInstanceRef.current
+    });
     viewportElementRef.current = null;
-    setIsInteracting(false);
     geoSyncSignatureRef.current = "";
     if (mapRef.current) {
       mapRef.current.remove();
@@ -467,16 +505,15 @@ export function useGeoMapLayout({
 
   useEffect(() => {
     return () => {
-      if (interactionEndTimeoutRef.current !== null) {
-        window.clearTimeout(interactionEndTimeoutRef.current);
-        interactionEndTimeoutRef.current = null;
-      }
-      isInteractingRef.current = false;
-      interactionBaseRef.current = null;
-      if (viewportElementRef.current) {
-        clearViewportTransformOverride(viewportElementRef.current);
-      }
-      viewportTransformOverrideActiveRef.current = false;
+      resetGeoInteractionState({
+        interactionEndTimeoutRef,
+        isInteractingRef,
+        interactionBaseRef,
+        viewportElementRef,
+        viewportTransformOverrideActiveRef,
+        setIsInteracting,
+        reactFlowInstance: reactFlowInstanceRef.current
+      });
       viewportElementRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
@@ -652,10 +689,7 @@ export function useGeoMapLayout({
     };
 
     const handleInteractionStart = () => {
-      if (interactionEndTimeoutRef.current !== null) {
-        window.clearTimeout(interactionEndTimeoutRef.current);
-        interactionEndTimeoutRef.current = null;
-      }
+      clearPendingInteractionTimeout(interactionEndTimeoutRef);
       if (!isInteractingRef.current) {
         const currentMap = mapRef.current;
         if (currentMap) {
@@ -675,9 +709,7 @@ export function useGeoMapLayout({
     };
 
     const scheduleInteractionEnd = (delayMs: number) => {
-      if (interactionEndTimeoutRef.current !== null) {
-        window.clearTimeout(interactionEndTimeoutRef.current);
-      }
+      clearPendingInteractionTimeout(interactionEndTimeoutRef);
       interactionEndTimeoutRef.current = window.setTimeout(() => {
         interactionEndTimeoutRef.current = null;
         isInteractingRef.current = false;
@@ -716,18 +748,16 @@ export function useGeoMapLayout({
       map.off("moveend", handleInteractionEnd);
       map.off("zoomend", handleZoomEnd);
       map.off("rotateend", handleInteractionEnd);
-      if (interactionEndTimeoutRef.current !== null) {
-        window.clearTimeout(interactionEndTimeoutRef.current);
-        interactionEndTimeoutRef.current = null;
-      }
-      isInteractingRef.current = false;
-      interactionBaseRef.current = null;
-      if (viewportElementRef.current) {
-        clearViewportTransformOverride(viewportElementRef.current);
-      }
-      viewportTransformOverrideActiveRef.current = false;
-      resetGeoViewport(reactFlowInstanceRef.current);
-      setIsInteracting(false);
+      resetGeoInteractionState({
+        interactionEndTimeoutRef,
+        isInteractingRef,
+        interactionBaseRef,
+        viewportElementRef,
+        viewportTransformOverrideActiveRef,
+        setIsInteracting,
+        reactFlowInstance: reactFlowInstanceRef.current,
+        resetViewport: true
+      });
     };
   }, [isGeoLayout, reactFlowInstanceRef, canvasContainerRef]);
 
@@ -784,18 +814,16 @@ export function useGeoMapLayout({
     const map = mapRef.current;
     if (!map) return;
 
-    if (interactionEndTimeoutRef.current !== null) {
-      window.clearTimeout(interactionEndTimeoutRef.current);
-      interactionEndTimeoutRef.current = null;
-    }
-    isInteractingRef.current = false;
-    interactionBaseRef.current = null;
-    if (viewportElementRef.current) {
-      clearViewportTransformOverride(viewportElementRef.current);
-    }
-    viewportTransformOverrideActiveRef.current = false;
-    setIsInteracting(false);
-    resetGeoViewport(reactFlowInstanceRef.current);
+    resetGeoInteractionState({
+      interactionEndTimeoutRef,
+      isInteractingRef,
+      interactionBaseRef,
+      viewportElementRef,
+      viewportTransformOverrideActiveRef,
+      setIsInteracting,
+      reactFlowInstance: reactFlowInstanceRef.current,
+      resetViewport: true
+    });
 
     const bounds = buildGeoBounds(nodesRef.current);
     if (bounds) {

@@ -54,6 +54,19 @@ import { ContainerlabLogo } from "./ContainerlabLogo";
 const ERROR_MAIN = "error.main";
 const SUCCESS_MAIN = "success.main";
 
+function getToolbarAnchorPosition(
+  appBar: HTMLDivElement | null,
+  button: HTMLElement
+): { top: number; left: number } | null {
+  if (!appBar) return null;
+  const appBarRect = appBar.getBoundingClientRect();
+  const buttonRect = button.getBoundingClientRect();
+  return {
+    top: appBarRect.bottom,
+    left: buttonRect.left + buttonRect.width / 2
+  };
+}
+
 export interface NavbarProps {
   onZoomToFit?: () => void;
   layout: LayoutOption;
@@ -128,15 +141,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const linkLabelMenuOpen = Boolean(linkLabelMenuPosition);
 
   const handleLinkLabelClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    const appBar = appBarRef.current;
-    const button = event.currentTarget;
-    if (appBar) {
-      const appBarRect = appBar.getBoundingClientRect();
-      const buttonRect = button.getBoundingClientRect();
-      setLinkLabelMenuPosition({
-        top: appBarRect.bottom,
-        left: buttonRect.left + buttonRect.width / 2
-      });
+    const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
+    if (anchorPosition) {
+      setLinkLabelMenuPosition(anchorPosition);
     }
   }, []);
 
@@ -160,15 +167,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const deployMenuOpen = Boolean(deployMenuPosition);
 
   const handleDeployMenuOpen = React.useCallback((event: React.MouseEvent<HTMLElement>) => {
-    const appBar = appBarRef.current;
-    const button = event.currentTarget;
-    if (appBar) {
-      const appBarRect = appBar.getBoundingClientRect();
-      const buttonRect = button.getBoundingClientRect();
-      setDeployMenuPosition({
-        top: appBarRect.bottom,
-        left: buttonRect.left + buttonRect.width / 2
-      });
+    const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
+    if (anchorPosition) {
+      setDeployMenuPosition(anchorPosition);
     }
   }, []);
 
@@ -226,15 +227,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const layoutMenuOpen = Boolean(layoutMenuPosition);
 
   const handleLayoutClick = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    const appBar = appBarRef.current;
-    const button = event.currentTarget;
-    if (appBar) {
-      const appBarRect = appBar.getBoundingClientRect();
-      const buttonRect = button.getBoundingClientRect();
-      setLayoutMenuPosition({
-        top: appBarRect.bottom,
-        left: buttonRect.left + buttonRect.width / 2
-      });
+    const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
+    if (anchorPosition) {
+      setLayoutMenuPosition(anchorPosition);
     }
   }, []);
 
@@ -248,6 +243,26 @@ export const Navbar: React.FC<NavbarProps> = ({
       setLayoutMenuPosition(null);
     },
     [onLayoutChange]
+  );
+
+  const handleGridSettingsClick = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
+      if (anchorPosition) {
+        onShowGridSettings?.(anchorPosition);
+      }
+    },
+    [onShowGridSettings]
+  );
+
+  const handleFindNodeClick = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const anchorPosition = getToolbarAnchorPosition(appBarRef.current, event.currentTarget);
+      if (anchorPosition) {
+        onFindNode?.(anchorPosition);
+      }
+    },
+    [onFindNode]
   );
 
   return (
@@ -494,38 +509,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Grid line width */}
         <Tooltip title="Grid Settings">
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              const appBar = appBarRef.current;
-              const btn = e.currentTarget;
-              if (appBar) {
-                const ar = appBar.getBoundingClientRect();
-                const br = btn.getBoundingClientRect();
-                onShowGridSettings?.({ top: ar.bottom, left: br.left + br.width / 2 });
-              }
-            }}
-            data-testid="navbar-grid"
-          >
+          <IconButton size="small" onClick={handleGridSettingsClick} data-testid="navbar-grid">
             <GridOnIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         {/* Find Node */}
         <Tooltip title="Find Node">
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              const appBar = appBarRef.current;
-              const btn = e.currentTarget;
-              if (appBar) {
-                const ar = appBar.getBoundingClientRect();
-                const br = btn.getBoundingClientRect();
-                onFindNode?.({ top: ar.bottom, left: br.left + br.width / 2 });
-              }
-            }}
-            data-testid="navbar-find-node"
-          >
+          <IconButton size="small" onClick={handleFindNodeClick} data-testid="navbar-find-node">
             <SearchIcon fontSize="small" />
           </IconButton>
         </Tooltip>

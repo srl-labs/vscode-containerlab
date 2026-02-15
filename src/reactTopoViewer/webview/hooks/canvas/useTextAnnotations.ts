@@ -7,6 +7,7 @@ import { log } from "../../utils/logger";
 
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
+import { readThemeColor } from "./themeColor";
 interface UseTextAnnotationsParams {
   isLocked: boolean;
   onLockedAction: () => void;
@@ -16,17 +17,6 @@ interface UseTextAnnotationsParams {
     AnnotationUIActions,
     "setAddTextMode" | "disableAddTextMode" | "setEditingTextAnnotation" | "removeFromTextSelection"
   >;
-}
-
-function readThemeColor(cssVar: string, fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  const bodyColor = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
-  if (bodyColor) return bodyColor;
-  const rootColor = window
-    .getComputedStyle(document.documentElement)
-    .getPropertyValue(cssVar)
-    .trim();
-  return rootColor || fallback;
 }
 
 export interface TextAnnotationActions {

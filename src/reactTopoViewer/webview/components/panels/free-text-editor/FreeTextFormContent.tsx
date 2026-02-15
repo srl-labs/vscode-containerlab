@@ -21,7 +21,7 @@ import {
 } from "@mui/material";
 
 import type { FreeTextAnnotation } from "../../../../shared/types/topology";
-import { ColorField } from "../../ui/form";
+import { ColorField, PanelSection } from "../../ui/form";
 
 // Helper functions to avoid duplicate calculations
 const isBackgroundTransparent = (bg: string | undefined): boolean => bg === "transparent";
@@ -240,12 +240,7 @@ export const FreeTextFormContent: React.FC<Props> = ({
   updateField
 }) => (
   <Box sx={{ display: "flex", flexDirection: "column" }}>
-    {/* Text */}
-    <Box sx={{ px: 2, py: 1 }}>
-      <Typography variant="subtitle2">Text</Typography>
-    </Box>
-    <Divider />
-    <Box sx={{ p: 2 }}>
+    <PanelSection title="Text" withTopDivider={false} bodySx={{ p: 2 }}>
       <Toolbar formData={formData} updateField={updateField} />
       <TextField
         multiline
@@ -257,27 +252,14 @@ export const FreeTextFormContent: React.FC<Props> = ({
         autoFocus
         sx={{ "& textarea": { resize: "vertical", overflow: "auto" } }}
       />
-    </Box>
+    </PanelSection>
 
-    {/* Font */}
-    <Divider />
-    <Box sx={{ px: 2, py: 1 }}>
-      <Typography variant="subtitle2">Font</Typography>
-    </Box>
-    <Divider />
-    <Box sx={{ p: 2 }}>
+    <PanelSection title="Font" bodySx={{ p: 2 }}>
       <FontControls formData={formData} updateField={updateField} />
-    </Box>
+    </PanelSection>
 
-    {/* Style */}
-    <Divider />
-    <Box sx={{ px: 2, py: 1 }}>
-      <Typography variant="subtitle2">Style</Typography>
-    </Box>
-    <Divider />
-    <Box sx={{ p: 2 }}>
+    <PanelSection title="Style" bodySx={{ p: 2 }}>
       <StyleOptions formData={formData} updateField={updateField} />
-    </Box>
-
+    </PanelSection>
   </Box>
 );

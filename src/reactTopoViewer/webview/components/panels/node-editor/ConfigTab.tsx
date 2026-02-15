@@ -1,12 +1,15 @@
 // Configuration tab for node editor.
 import React from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
 
-import { InputField, SelectField, DynamicList, KeyValueList } from "../../ui/form";
+import {
+  InputField,
+  SelectField,
+  DynamicList,
+  KeyValueList,
+  PanelAddSection,
+  PanelSection
+} from "../../ui/form";
 
 import type { TabProps } from "./types";
 
@@ -17,14 +20,6 @@ const STARTUP_CONFIG_MODE_OPTIONS = [
   { value: "enforce", label: "Enforce startup config" },
   { value: "suppress", label: "Suppress startup config" }
 ];
-
-const SECTION_HEADER_SX = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  px: 2,
-  py: 1
-} as const;
 
 function getStartupConfigMode(data: {
   enforceStartupConfig?: boolean;
@@ -63,12 +58,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Startup Configuration */}
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Startup Configuration</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Startup Configuration" withTopDivider={false}>
         <InputField
           id="node-startup-config"
           label="Startup configuration Path"
@@ -83,15 +73,9 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
           onChange={(value) => handleModeChange(value as StartupConfigMode)}
           options={STARTUP_CONFIG_MODE_OPTIONS}
         />
-      </Box>
+      </PanelSection>
 
-      {/* License */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">License</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="License">
         <InputField
           id="node-license"
           label="License File"
@@ -99,36 +83,18 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
           onChange={(value) => onChange({ license: value })}
           placeholder="Path to license file"
         />
-      </Box>
+      </PanelSection>
 
-      {/* Bind Mounts */}
-      <Divider />
-      <Box sx={SECTION_HEADER_SX}>
-        <Typography variant="subtitle2">Bind Mounts</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddBind} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Bind Mounts" onAdd={handleAddBind}>
         <DynamicList
           items={data.binds || []}
           onChange={(items) => onChange({ binds: items })}
           placeholder="host:container[:options]"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
 
-      {/* Environment Variables */}
-      <Divider />
-      <Box sx={SECTION_HEADER_SX}>
-        <Typography variant="subtitle2">Environment Variables</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddEnvVar} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Environment Variables" onAdd={handleAddEnvVar}>
         <KeyValueList
           items={data.env || {}}
           onChange={(items) => onChange({ env: items })}
@@ -136,36 +102,18 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
           valuePlaceholder="Value"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
 
-      {/* Environment Files */}
-      <Divider />
-      <Box sx={SECTION_HEADER_SX}>
-        <Typography variant="subtitle2">Environment Files</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddEnvFile} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Environment Files" onAdd={handleAddEnvFile}>
         <DynamicList
           items={data.envFiles || []}
           onChange={(items) => onChange({ envFiles: items })}
           placeholder="Path to env file"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
 
-      {/* Labels */}
-      <Divider />
-      <Box sx={SECTION_HEADER_SX}>
-        <Typography variant="subtitle2">Labels</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddLabel} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Labels" onAdd={handleAddLabel}>
         <KeyValueList
           items={data.labels || {}}
           onChange={(items) => onChange({ labels: items })}
@@ -173,7 +121,7 @@ export const ConfigTab: React.FC<TabProps> = ({ data, onChange }) => {
           valuePlaceholder="Value"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
     </Box>
   );
 };

@@ -1,10 +1,14 @@
 // Network editor content for the ContextPanel.
 import React, { useCallback } from "react";
 import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
 
-import { InputField, FilterableDropdown, Section, KeyValueList } from "../../../ui/form";
+import {
+  InputField,
+  FilterableDropdown,
+  Section,
+  KeyValueList,
+  PanelSection
+} from "../../../ui/form";
 import { EditorPanel } from "../../../ui/editor/EditorPanel";
 import { useApplySaveHandlers, useFooterControlsRef } from "../../../../hooks/ui";
 import { useNetworkEditorForm } from "../../../../hooks/editor/useNetworkEditorForm";
@@ -62,12 +66,7 @@ const NetworkEditorContent: React.FC<{
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Network Configuration */}
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Network Configuration</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Network Configuration" withTopDivider={false}>
         <FilterableDropdown
           id="network-type"
           label="Network Type"
@@ -118,17 +117,12 @@ const NetworkEditorContent: React.FC<{
           onChange={(v) => onChange({ mac: v })}
           placeholder="e.g., 00:11:22:33:44:55 (optional)"
         />
-      </Box>
+      </PanelSection>
 
       {/* VXLAN Settings */}
       {VXLAN_TYPES.includes(formData.networkType) && (
-        <>
-          <Divider />
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="subtitle2">VXLAN Settings</Typography>
-          </Box>
-          <Divider />
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <PanelSection title="VXLAN Settings">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <InputField
               id="vxlan-remote"
               label="Remote"
@@ -160,18 +154,13 @@ const NetworkEditorContent: React.FC<{
               />
             </Box>
           </Box>
-        </>
+        </PanelSection>
       )}
 
       {/* Extended Properties */}
       {supportsExtendedProps(formData.networkType) && (
-        <>
-          <Divider />
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="subtitle2">Extended Properties</Typography>
-          </Box>
-          <Divider />
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+        <PanelSection title="Extended Properties">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <InputField
               id="network-mtu"
               label="MTU"
@@ -201,7 +190,7 @@ const NetworkEditorContent: React.FC<{
               />
             </Section>
           </Box>
-        </>
+        </PanelSection>
       )}
     </Box>
   );

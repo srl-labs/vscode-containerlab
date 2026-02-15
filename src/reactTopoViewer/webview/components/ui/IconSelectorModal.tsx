@@ -5,9 +5,7 @@ import {
   Box,
   Button,
   Dialog,
-  DialogActions,
   DialogContent,
-  DialogTitle,
   Divider,
   IconButton as MuiIconButton,
   Tab,
@@ -23,6 +21,7 @@ import { useCustomIcons } from "../../stores/topoViewerStore";
 import { postCommand } from "../../messaging/extensionMessaging";
 import { isBuiltInIcon } from "../../../shared/types/icons";
 
+import { DialogCancelSaveActions, DialogTitleWithClose } from "./dialog/DialogChrome";
 import { ColorField, IconPreview, InputField } from "./form";
 
 const AVAILABLE_ICONS: NodeType[] = [
@@ -353,14 +352,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle
-        sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5 }}
-      >
-        Edit Icons
-        <MuiIconButton size="small" onClick={onClose}>
-          <CloseIcon fontSize="small" />
-        </MuiIconButton>
-      </DialogTitle>
+      <DialogTitleWithClose title="Edit Icons" onClose={onClose} />
       <DialogContent dividers sx={{ p: 0 }}>
         <Box sx={{ display: "flex", flexDirection: "column" }}>
           {/* Icon tabs */}
@@ -488,15 +480,7 @@ export const IconSelectorModal: React.FC<IconSelectorModalProps> = ({
           </Box>
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button variant="text" size="small" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button size="small" onClick={handleSave}>
-          Save
-        </Button>
-      </DialogActions>
+      <DialogCancelSaveActions onCancel={onClose} onSave={handleSave} />
     </Dialog>
   );
 };
-

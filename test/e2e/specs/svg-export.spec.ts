@@ -128,15 +128,15 @@ test.describe("SVG Export Modal", () => {
     expect(svgString).toContain(LAYER_TEXT);
 
     // Verify annotation content made it into the SVG for existing annotation kinds.
-    if ((annotations.groupStyleAnnotations?.length ?? 0) > 0) {
-      expect(svgString).toContain("annotation-group");
-    }
-    if ((annotations.freeShapeAnnotations?.length ?? 0) > 0) {
-      expect(svgString).toContain("annotation-shape");
-    }
-    if ((annotations.freeTextAnnotations?.length ?? 0) > 0) {
-      expect(svgString).toContain("foreignObject");
-    }
+    const expectedAnnotationMarkers = [
+      [(annotations.groupStyleAnnotations?.length ?? 0) > 0, "annotation-group"],
+      [(annotations.freeShapeAnnotations?.length ?? 0) > 0, "annotation-shape"],
+      [(annotations.freeTextAnnotations?.length ?? 0) > 0, "foreignObject"],
+    ] as const;
+
+    expectedAnnotationMarkers
+      .filter(([shouldExist]) => shouldExist)
+      .forEach(([, marker]) => expect(svgString).toContain(marker));
   });
 
   test("exports SVG with custom filename", async ({ page, topoViewerPage }) => {

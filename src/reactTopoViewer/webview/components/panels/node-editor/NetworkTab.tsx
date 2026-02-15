@@ -1,12 +1,8 @@
 // Network tab for node editor.
 import React from "react";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
 
-import { InputField, SelectField, DynamicList } from "../../ui/form";
+import { InputField, SelectField, DynamicList, PanelAddSection, PanelSection } from "../../ui/form";
 
 import type { TabProps } from "./types";
 
@@ -17,14 +13,6 @@ const NETWORK_MODE_OPTIONS = [
   { value: "none", label: "None" },
   { value: "container", label: "Container" }
 ];
-
-const SECTION_HEADER_SX = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  px: 2,
-  py: 1
-} as const;
 
 export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
   const handleAddPort = () => {
@@ -41,12 +29,7 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Management Network */}
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Management Network</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Management Network" withTopDivider={false}>
         <InputField
           id="node-mgmt-ipv4"
           label="Management IPv4"
@@ -68,61 +51,34 @@ export const NetworkTab: React.FC<TabProps> = ({ data, onChange }) => {
           onChange={(value) => onChange({ networkMode: value })}
           options={NETWORK_MODE_OPTIONS}
         />
-      </Box>
+      </PanelSection>
 
-      {/* Port Mappings */}
-      <Divider />
-      <Box sx={SECTION_HEADER_SX}>
-        <Typography variant="subtitle2">Port Mappings</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddPort} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Port Mappings" onAdd={handleAddPort}>
         <DynamicList
           items={data.ports || []}
           onChange={(items) => onChange({ ports: items })}
           placeholder="host:container[/protocol]"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
 
-      {/* DNS Servers */}
-      <Divider />
-      <Box sx={SECTION_HEADER_SX}>
-        <Typography variant="subtitle2">DNS Servers</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddDns} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="DNS Servers" onAdd={handleAddDns}>
         <DynamicList
           items={data.dnsServers || []}
           onChange={(items) => onChange({ dnsServers: items })}
           placeholder="DNS server address"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
 
-      {/* Network Aliases */}
-      <Divider />
-      <Box sx={SECTION_HEADER_SX}>
-        <Typography variant="subtitle2">Network Aliases</Typography>
-        <Button variant="text" size="small" startIcon={<AddIcon />} onClick={handleAddAlias} sx={{ py: 0 }}>
-          ADD
-        </Button>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelAddSection title="Network Aliases" onAdd={handleAddAlias}>
         <DynamicList
           items={data.aliases || []}
           onChange={(items) => onChange({ aliases: items })}
           placeholder="Alias name"
           hideAddButton
         />
-      </Box>
+      </PanelAddSection>
     </Box>
   );
 };

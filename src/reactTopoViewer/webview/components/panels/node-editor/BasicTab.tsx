@@ -2,10 +2,9 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 
-import { InputField, FilterableDropdown, IconPreview } from "../../ui/form";
+import { InputField, FilterableDropdown, IconPreview, PanelSection } from "../../ui/form";
 import { IconSelectorModal } from "../../ui/IconSelectorModal";
 import type { NodeType } from "../../../icons/SvgGenerator";
 import { generateEncodedSVG } from "../../../icons/SvgGenerator";
@@ -378,29 +377,15 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      {/* Custom Node Template section - only for custom templates */}
       {data.isCustomTemplate && (
-        <>
-          <Box sx={{ px: 2, py: 1 }}>
-            <Typography variant="subtitle2">Template</Typography>
-          </Box>
-          <Divider />
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
-            <CustomNodeTemplateFields data={data} onChange={onChange} />
-          </Box>
-        </>
+        <PanelSection title="Template" withTopDivider={false}>
+          <CustomNodeTemplateFields data={data} onChange={onChange} />
+        </PanelSection>
       )}
 
-      {/* Node Parameters section */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Node Parameters</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2 }}>
+      <PanelSection title="Node Parameters">
         {!data.isCustomTemplate && <NodeNameField data={data} onChange={onChange} />}
 
-        {/* Kind/Type fields - use schema data */}
         <KindField
           data={data}
           onChange={onChange}
@@ -409,7 +394,6 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
           inheritedProps={inheritedProps}
         />
 
-        {/* Only show Type field for kinds that support it */}
         {showTypeField && (
           <TypeField
             data={data}
@@ -419,7 +403,6 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
           />
         )}
 
-        {/* Image and Version in 2-column grid */}
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
           <ImageVersionFields
             data={data}
@@ -433,23 +416,16 @@ export const BasicTab: React.FC<TabProps> = ({ data, onChange, inheritedProps = 
           />
         </Box>
 
-        {/* Show loading indicator if schema not yet loaded */}
         {!isLoaded && (
           <Typography variant="caption" color="text.secondary">
             Loading schema...
           </Typography>
         )}
-      </Box>
+      </PanelSection>
 
-      {/* Icon section */}
-      <Divider />
-      <Box sx={{ px: 2, py: 1 }}>
-        <Typography variant="subtitle2">Icon</Typography>
-      </Box>
-      <Divider />
-      <Box sx={{ p: 2 }}>
+      <PanelSection title="Icon" bodySx={{ p: 2 }}>
         <IconField data={data} onChange={onChange} />
-      </Box>
+      </PanelSection>
     </Box>
   );
 };

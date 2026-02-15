@@ -539,6 +539,59 @@ const ComponentSection: React.FC<ComponentSectionProps> = ({
   </>
 );
 
+interface ComponentSlotTypeRowProps {
+  index: number;
+  component: SrosComponent;
+  typeOptions: string[];
+  slotPlaceholder: string;
+  onUpdate: (index: number, updates: Partial<SrosComponent>) => void;
+  onRemove?: () => void;
+  removeTitle?: string;
+  padded?: boolean;
+}
+
+const ComponentSlotTypeRow: React.FC<ComponentSlotTypeRowProps> = ({
+  index,
+  component,
+  typeOptions,
+  slotPlaceholder,
+  onUpdate,
+  onRemove,
+  removeTitle,
+  padded = false
+}) => (
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: onRemove ? "1fr 4fr auto" : "1fr 4fr",
+      gap: 1.5,
+      alignItems: "center",
+      ...(padded ? { p: 1.5 } : undefined)
+    }}
+  >
+    <InputField
+      id={`comp-slot-${index}`}
+      label="Slot"
+      value={String(component.slot ?? "")}
+      onChange={(v) => onUpdate(index, { slot: v })}
+      placeholder={slotPlaceholder}
+    />
+    <FilterableDropdown
+      id={`comp-type-${index}`}
+      label="Type"
+      value={component.type || ""}
+      onChange={(v) => onUpdate(index, { type: v })}
+      options={toOptions(typeOptions)}
+      allowFreeText
+    />
+    {onRemove && (
+      <IconButton size="small" onClick={onRemove} color="error" title={removeTitle}>
+        <DeleteIcon fontSize="small" />
+      </IconButton>
+    )}
+  </Box>
+);
+
 const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
   const { component, index, srosTypes, onUpdate, onRemove } = props;
   const [isExpanded, setIsExpanded] = useState(true);
@@ -548,26 +601,15 @@ const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
   if (isCpm) {
     return (
       <Paper variant="outlined" sx={{ p: 1.5 }}>
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 4fr auto", gap: 1.5, alignItems: "center" }}>
-          <InputField
-            id={`comp-slot-${index}`}
-            label="Slot"
-            value={String(component.slot ?? "")}
-            onChange={(v) => onUpdate(index, { slot: v })}
-            placeholder="A or B"
-          />
-          <FilterableDropdown
-            id={`comp-type-${index}`}
-            label="Type"
-            value={component.type || ""}
-            onChange={(v) => onUpdate(index, { type: v })}
-            options={toOptions(typeOptions)}
-            allowFreeText
-          />
-          <IconButton size="small" onClick={() => onRemove(index)} color="error" title="Remove CPM">
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Box>
+        <ComponentSlotTypeRow
+          index={index}
+          component={component}
+          typeOptions={typeOptions}
+          slotPlaceholder="A or B"
+          onUpdate={onUpdate}
+          onRemove={() => onRemove(index)}
+          removeTitle="Remove CPM"
+        />
       </Paper>
     );
   }
@@ -591,23 +633,14 @@ const ComponentEntry: React.FC<ComponentEntryProps> = (props) => {
       <Collapse in={isExpanded}>
         <Divider />
         <Box>
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 4fr", gap: 1.5, p: 1.5 }}>
-            <InputField
-              id={`comp-slot-${index}`}
-              label="Slot"
-              value={String(component.slot ?? "")}
-              onChange={(v) => onUpdate(index, { slot: v })}
-              placeholder="1, 2, ..."
-            />
-            <FilterableDropdown
-              id={`comp-type-${index}`}
-              label="Type"
-              value={component.type || ""}
-              onChange={(v) => onUpdate(index, { type: v })}
-              options={toOptions(typeOptions)}
-              allowFreeText
-            />
-          </Box>
+          <ComponentSlotTypeRow
+            index={index}
+            component={component}
+            typeOptions={typeOptions}
+            slotPlaceholder="1, 2, ..."
+            onUpdate={onUpdate}
+            padded={true}
+          />
           <Divider/>
           <ComponentMdaSection {...props} />
           <Divider/>

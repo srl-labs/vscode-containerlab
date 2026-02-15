@@ -3,21 +3,11 @@ import React, { useCallback, useMemo, useRef } from "react";
 
 import { PaletteSection } from "../../lab-drawer/PaletteSection";
 import { NodeTemplateModal } from "../../node-editor/NodeTemplateModal";
-import type { GroupEditorData } from "../../../../hooks/canvas";
-import type {
-  FreeTextAnnotation,
-  FreeShapeAnnotation,
-  GroupStyleAnnotation
-} from "../../../../../shared/types/topology";
-import type { LinkEditorData } from "../../link-editor/types";
-import type { LinkImpairmentData } from "../../link-impairment/types";
-import type { NetworkEditorData } from "../../network-editor/types";
-import type { NodeEditorData } from "../../node-editor/types";
 import { usePanelTabVisibility } from "../../../../hooks/ui/usePanelTabVisibility";
 import type { NodeData, LinkData } from "../../../../hooks/ui";
 
+import type { ContextPanelEditorState, EditorFooterRef, EditorBannerRef } from "./editorTypes";
 import { EditorTabContent } from "./EditorTabContent";
-import type { EditorFooterRef, EditorBannerRef } from "./EditorTabContent";
 import { InfoTabContent } from "./InfoTabContent";
 
 type FooterRefLocal = EditorFooterRef | null;
@@ -31,57 +21,7 @@ export interface PaletteViewProps {
   onSetDefaultCustomNode: (name: string) => void;
   selectedNodeData?: NodeData | null;
   selectedLinkData?: (LinkData & { extraData?: Record<string, unknown> }) | null;
-  editor?: {
-    editingNodeData: NodeEditorData | null;
-    editingNodeInheritedProps: string[];
-    nodeEditorHandlers: {
-      handleClose: () => void;
-      handleSave: (data: NodeEditorData) => void;
-      handleApply: (data: NodeEditorData) => void;
-      handleDelete?: () => void;
-    };
-    editingLinkData: LinkEditorData | null;
-    linkEditorHandlers: {
-      handleClose: () => void;
-      handleSave: (data: LinkEditorData) => void;
-      handleApply: (data: LinkEditorData) => void;
-      previewOffset: (data: LinkEditorData) => void;
-      revertOffset: () => void;
-      handleDelete?: () => void;
-    };
-    editingNetworkData: NetworkEditorData | null;
-    networkEditorHandlers: {
-      handleClose: () => void;
-      handleSave: (data: NetworkEditorData) => void;
-      handleApply: (data: NetworkEditorData) => void;
-    };
-    linkImpairmentData: LinkImpairmentData | null;
-    linkImpairmentHandlers: {
-      onError: (error: string) => void;
-      onApply: (data: LinkImpairmentData) => void;
-      onSave: (data: LinkImpairmentData) => void;
-      onClose: () => void;
-    };
-    editingTextAnnotation: FreeTextAnnotation | null;
-    textAnnotationHandlers: {
-      onSave: (annotation: FreeTextAnnotation) => void;
-      onClose: () => void;
-      onDelete: (id: string) => void;
-    };
-    editingShapeAnnotation: FreeShapeAnnotation | null;
-    shapeAnnotationHandlers: {
-      onSave: (annotation: FreeShapeAnnotation) => void;
-      onClose: () => void;
-      onDelete: (id: string) => void;
-    };
-    editingGroup: GroupEditorData | null;
-    groupHandlers: {
-      onSave: (data: GroupEditorData) => void;
-      onClose: () => void;
-      onDelete: (groupId: string) => void;
-      onStylePreview: (groupId: string, style: Partial<GroupStyleAnnotation>) => void;
-    };
-  };
+  editor?: ContextPanelEditorState;
   onFooterRef?: (ref: EditorFooterRef | null) => void;
   onBannerRef?: (ref: EditorBannerRef | null) => void;
 }

@@ -103,7 +103,7 @@ export const HelperLines: React.FC<HelperLinesProps> = React.memo(({ lines }) =>
 
 HelperLines.displayName = "HelperLines";
 
-export const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
+const OverlayIndicator: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box
     sx={{
       position: "absolute",
@@ -119,27 +119,17 @@ export const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message
       pointerEvents: "none"
     }}
   >
-    {message}
+    {children}
   </Box>
 );
 
+export const AnnotationModeIndicator: React.FC<{ message: string }> = ({ message }) => (
+  <OverlayIndicator>{message}</OverlayIndicator>
+);
+
 export const LinkCreationIndicator: React.FC<{ linkSourceNode: string }> = ({ linkSourceNode }) => (
-  <Box
-    sx={{
-      position: "absolute",
-      top: 10,
-      left: "50%",
-      transform: "translateX(-50%)",
-      border: 1,
-      borderRadius: 1,
-      px: 1.5,
-      py: 0.75,
-      fontSize: 12,
-      zIndex: 1000,
-      pointerEvents: "none"
-    }}
-  >
+  <OverlayIndicator>
     Creating link from <strong>{linkSourceNode}</strong> — Click on target node or press Escape to
     cancel
-  </Box>
+  </OverlayIndicator>
 );

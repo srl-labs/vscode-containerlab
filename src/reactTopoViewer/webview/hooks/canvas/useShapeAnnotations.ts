@@ -2,11 +2,12 @@ import { useCallback, useMemo, useRef } from "react";
 
 import type { FreeShapeAnnotation } from "../../../shared/types/topology";
 import type { AnnotationUIActions, AnnotationUIState } from "../../stores/annotationUIStore";
-import { saveAnnotationNodesFromGraph } from "../../services";
-import { log } from "../../utils/logger";
+import * as annotationServices from "../../services";
+import * as logger from "../../utils/logger";
 
 import type { UseDerivedAnnotationsReturn } from "./useDerivedAnnotations";
 import { findDeepestGroupAtPosition } from "./groupUtils";
+import { readThemeColor } from "./themeColor";
 interface UseShapeAnnotationsParams {
   isLocked: boolean;
   onLockedAction: () => void;
@@ -19,17 +20,6 @@ interface UseShapeAnnotationsParams {
     | "setEditingShapeAnnotation"
     | "removeFromShapeSelection"
   >;
-}
-
-function readThemeColor(cssVar: string, fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  const bodyColor = window.getComputedStyle(document.body).getPropertyValue(cssVar).trim();
-  if (bodyColor) return bodyColor;
-  const rootColor = window
-    .getComputedStyle(document.documentElement)
-    .getPropertyValue(cssVar)
-    .trim();
-  return rootColor || fallback;
 }
 
 export interface ShapeAnnotationActions {
@@ -52,7 +42,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
   const pendingRotationRef = useRef<string | null>(null);
 
   const persist = useCallback(() => {
-    void saveAnnotationNodesFromGraph();
+    void annotationServices.saveAnnotationNodesFromGraph();
   }, []);
 
   const handleAddShapes = useCallback(
@@ -106,7 +96,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       const newAnnotation = buildShapeAnnotation(position, shapeType);
       derived.addShapeAnnotation(newAnnotation);
       persist();
-      log.info(`[FreeShape] Created annotation at (${position.x}, ${position.y})`);
+      logger.log.info(`[FreeShape] Created annotation at (${position.x}, ${position.y})`);
     },
     [canEditAnnotations, onLockedAction, buildShapeAnnotation, derived, persist]
   );
@@ -185,7 +175,7 @@ export function useShapeAnnotations(params: UseShapeAnnotationsParams): ShapeAnn
       const newAnnotation = buildShapeAnnotation(position, uiState.pendingShapeType);
       uiActions.setEditingShapeAnnotation(newAnnotation);
       uiActions.disableAddShapeMode();
-      log.info(`[FreeShape] Creating annotation at (${position.x}, ${position.y})`);
+      logger.log.info(`[FreeShape] Creating annotation at (${position.x}, ${position.y})`);
     },
     [uiState.isAddShapeMode, uiState.pendingShapeType, buildShapeAnnotation, uiActions]
   );
