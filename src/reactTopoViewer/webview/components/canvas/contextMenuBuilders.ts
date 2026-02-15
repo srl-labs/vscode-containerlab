@@ -106,9 +106,9 @@ interface PaneMenuBuilderContext extends PaneMenuActions {
  * Build context menu for free text annotations
  */
 function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
+  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeText, deleteFreeText } = ctx;
 
-  return [
+  const items: ContextMenuItem[] = [
     {
       id: "edit-text",
       label: "Edit Text",
@@ -118,29 +118,34 @@ function buildFreeTextContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
         editFreeText?.(targetId);
         closeContextMenu();
       }
-    },
-    { id: DIVIDER_ID, label: "", divider: true },
-    {
-      id: "delete-text",
-      label: "Delete Text",
-      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
-      disabled: isLocked,
-      danger: true,
-      onClick: () => {
-        deleteFreeText?.(targetId);
-        closeContextMenu();
-      }
     }
   ];
+  if (isEditMode) {
+    items.push(
+      { id: DIVIDER_ID, label: "", divider: true },
+      {
+        id: "delete-text",
+        label: "Delete Text",
+        icon: React.createElement(DeleteIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        danger: true,
+        onClick: () => {
+          deleteFreeText?.(targetId);
+          closeContextMenu();
+        }
+      }
+    );
+  }
+  return items;
 }
 
 /**
  * Build context menu for free shape annotations
  */
 function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
+  const { targetId, isEditMode, isLocked, closeContextMenu, editFreeShape, deleteFreeShape } = ctx;
 
-  return [
+  const items: ContextMenuItem[] = [
     {
       id: "edit-shape",
       label: "Edit Shape",
@@ -150,29 +155,34 @@ function buildFreeShapeContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
         editFreeShape?.(targetId);
         closeContextMenu();
       }
-    },
-    { id: DIVIDER_ID, label: "", divider: true },
-    {
-      id: "delete-shape",
-      label: "Delete Shape",
-      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
-      disabled: isLocked,
-      danger: true,
-      onClick: () => {
-        deleteFreeShape?.(targetId);
-        closeContextMenu();
-      }
     }
   ];
+  if (isEditMode) {
+    items.push(
+      { id: DIVIDER_ID, label: "", divider: true },
+      {
+        id: "delete-shape",
+        label: "Delete Shape",
+        icon: React.createElement(DeleteIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        danger: true,
+        onClick: () => {
+          deleteFreeShape?.(targetId);
+          closeContextMenu();
+        }
+      }
+    );
+  }
+  return items;
 }
 
 /**
  * Build context menu for group annotations
  */
 function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
-  const { targetId, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
+  const { targetId, isEditMode, isLocked, closeContextMenu, editGroup, deleteGroup } = ctx;
 
-  return [
+  const items: ContextMenuItem[] = [
     {
       id: "edit-group",
       label: "Edit Group",
@@ -182,20 +192,25 @@ function buildGroupContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {
         editGroup?.(targetId);
         closeContextMenu();
       }
-    },
-    { id: DIVIDER_ID, label: "", divider: true },
-    {
-      id: "delete-group",
-      label: "Delete Group",
-      icon: React.createElement(DeleteIcon, { fontSize: "small" }),
-      disabled: isLocked,
-      danger: true,
-      onClick: () => {
-        deleteGroup?.(targetId);
-        closeContextMenu();
-      }
     }
   ];
+  if (isEditMode) {
+    items.push(
+      { id: DIVIDER_ID, label: "", divider: true },
+      {
+        id: "delete-group",
+        label: "Delete Group",
+        icon: React.createElement(DeleteIcon, { fontSize: "small" }),
+        disabled: isLocked,
+        danger: true,
+        onClick: () => {
+          deleteGroup?.(targetId);
+          closeContextMenu();
+        }
+      }
+    );
+  }
+  return items;
 }
 
 function buildNodeViewContextMenu(ctx: MenuBuilderContext): ContextMenuItem[] {

@@ -71,6 +71,40 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
     resetAfterApply();
   }, [formData, onApply, onError, readOnly, resetAfterApply, validationErrors]);
 
+  // Dynamic tabs based on endpoint names
+  const tabs: TabConfig[] = useMemo(
+    () =>
+      formData
+        ? [
+            {
+              id: "source",
+              label: `${formData.source}:${formData.sourceEndpoint}`,
+              component: LinkImpairmentTab
+            },
+            {
+              id: "target",
+              label: `${formData.target}:${formData.targetEndpoint}`,
+              component: LinkImpairmentTab
+            }
+          ]
+        : [],
+    [formData]
+  );
+
+  // Props specific to the active tab's endpoint
+  const tabProps = useMemo(
+    () =>
+      formData
+        ? {
+            key: formData.id + activeTab,
+            data:
+              activeTab === "source" ? (formData.sourceNetem ?? {}) : (formData.targetNetem ?? {}),
+            onChange: handleChange
+          }
+        : { key: "", data: {}, onChange: handleChange },
+    [formData, activeTab, handleChange]
+  );
+
   useFooterControlsRef(
     onFooterRef,
     Boolean(formData),
@@ -81,33 +115,6 @@ export const LinkImpairmentView: React.FC<LinkImpairmentViewProps> = ({
   );
 
   if (!formData) return null;
-
-  // Dynamic tabs based on endpoint names
-  const tabs: TabConfig[] = useMemo(
-    () => [
-      {
-        id: "source",
-        label: `${formData.source}:${formData.sourceEndpoint}`,
-        component: LinkImpairmentTab
-      },
-      {
-        id: "target",
-        label: `${formData.target}:${formData.targetEndpoint}`,
-        component: LinkImpairmentTab
-      }
-    ],
-    [formData.source, formData.sourceEndpoint, formData.target, formData.targetEndpoint]
-  );
-
-  // Props specific to the active tab's endpoint
-  const tabProps = useMemo(
-    () => ({
-      key: formData.id + activeTab,
-      data: activeTab === "source" ? (formData.sourceNetem ?? {}) : (formData.targetNetem ?? {}),
-      onChange: handleChange
-    }),
-    [formData, activeTab, handleChange]
-  );
 
   return (
     <EditorPanel

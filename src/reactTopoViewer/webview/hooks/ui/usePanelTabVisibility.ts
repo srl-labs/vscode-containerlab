@@ -25,9 +25,7 @@ export function usePanelTabVisibility(): PanelTabVisibility {
   const panelView = useContextPanelContent();
   const annotationUI = useAnnotationUIStore();
 
-  // Hard rules based on mode
   const isViewMode = state.mode === "view";
-  const isEditMode = state.mode === "edit";
 
   // Info tab: ONLY in view mode, when node or link is selected
   const showInfoTab =
@@ -39,8 +37,8 @@ export function usePanelTabVisibility(): PanelTabVisibility {
         ? "Link Properties"
         : undefined;
 
-  // Edit tab: ONLY in edit mode, when an editor is active
-  // Check all editor sources (store editing states + annotation UI)
+  // Edit tab: visible whenever an editor is active (any mode).
+  // Some editors are view-mode features (Link Impairments, annotation editing).
   const hasEditor = !!(
     state.editingNode ||
     state.editingEdge ||
@@ -51,7 +49,7 @@ export function usePanelTabVisibility(): PanelTabVisibility {
     annotationUI.editingShapeAnnotation ||
     annotationUI.editingGroup
   );
-  const showEditTab = isEditMode && hasEditor;
+  const showEditTab = hasEditor;
 
   const editTabTitle = showEditTab ? panelView.title : undefined;
 
